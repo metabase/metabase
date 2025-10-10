@@ -421,7 +421,7 @@
    ;; formatting to display values of the column" according
    ;; to [[metabase.query-processor-test.nested-queries-test/breakout-year-test]]
    (when-let [temporal-unit ((some-fn :metabase.lib.field/temporal-unit :inherited-temporal-unit) col)]
-     {:unit temporal-unit})
+     {::unit temporal-unit})
    col))
 
 (defn- add-binning-info [col]
