@@ -3,7 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import EmptyState from "metabase/common/components/EmptyState";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+// import { useMetadataToasts } from "metabase/metadata/hooks";
 import S from "metabase/metadata/pages/DataModel/components/TableSection/TableSection.module.css";
 import { getModelFieldMetadataUrl } from "metabase/metadata/pages/DataModel/components/models/utils";
 import { Group, Stack, Text, rem } from "metabase/ui";
@@ -67,8 +67,8 @@ export function ModelColumnsSection({
   table,
   onFieldChange,
 }: ModelColumnsSectionProps) {
-  const { sendErrorToast, sendSuccessToast, sendUndoToast } =
-    useMetadataToasts();
+  // const { sendErrorToast, sendSuccessToast, sendUndoToast } =
+  //   useMetadataToasts();
   // const [isSorting, setIsSorting] = useState(false);
   const isSorting = false;
 
@@ -151,7 +151,7 @@ export function ModelColumnsSection({
           miw={0}
           wrap="nowrap"
         >
-          <Text flex="0 0 auto" fw="bold">{t`Columns`}</Text>
+          <Text flex="0 0 auto" fw="bold">{t`Fields`}</Text>
 
           <Group
             flex="1"
