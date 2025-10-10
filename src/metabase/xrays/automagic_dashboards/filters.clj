@@ -11,7 +11,8 @@
 (defn- temporal?
   "Does `field` represent a temporal value, i.e. a date, time, or datetime?"
   [{base-type :base_type, effective-type :effective_type, unit :unit}]
-  ;; TODO -- not sure why we're excluding year here? Is it because we normally returned it as an integer in the past?
+  ;; Excluding :year because it's (currently) both an extraction and truncation unit.
+  ;; For the purposes of this check, :year is an interesting :unit which yields a time interval, not just a number.
   (and (not ((disj u.date/extract-units :year) unit))
        (isa? (or effective-type base-type) :type/Temporal)))
 
