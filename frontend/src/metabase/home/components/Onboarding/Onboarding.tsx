@@ -593,8 +593,8 @@ export const Onboarding = () => {
                   <Text>
                     {jt`Go to a question and click on the ${(
                       <Icon
-                        key="sharing-icon"
-                        name="share"
+                        key="more-icon"
+                        name="ellipsis"
                         className={S.inlineIcon}
                       />
                     )} icon on the top bar, then ${(
