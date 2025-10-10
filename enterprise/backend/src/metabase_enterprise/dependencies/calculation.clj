@@ -35,9 +35,13 @@
 
 (mu/defn upstream-deps:transform :- ::deps.schema/upstream-deps
   "Given a Transform (in Toucan form), return its upstream dependencies."
-  [{{:keys [query], source-type :type} :source :as transform} :- [:map
-                                                                  [:source [:map
-                                                                            [:query ::lib.schema/query]]]]]
+  [{{:keys [query], source-type :type} :source :as transform} :-
+   [:map
+    [:source [:multi {:dispatch (comp keyword :type)}
+              [:query
+               [:map [:query ::lib.schema/query]]]
+              [:python
+               [:map]]]]]]
   (if (= (keyword source-type) :query)
     (upstream-deps:query query)
     (do (log/warnf "Don't know how to analyze the deps of Transform %d with source type '%s'" (:id transform) source-type)
