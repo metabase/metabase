@@ -17,11 +17,11 @@
 ;;; Tests for dirty-global?
 ;;; ------------------------------------------------------------------------------------------------
 
-(deftest ^:parallel dirty-global?-no-objects-test
+(deftest dirty-global?-no-objects-test
   (testing "dirty-global? returns false when no remote sync objects exist"
     (is (false? (rs-object/dirty-global?)))))
 
-(deftest ^:parallel dirty-global?-synced-objects-test
+(deftest dirty-global?-synced-objects-test
   (testing "dirty-global? returns false when all objects are synced"
     (mt/with-temp
       [:model/Collection collection {:name "Test Collection"
@@ -37,7 +37,7 @@
                                   :status_changed_at (java.time.OffsetDateTime/now)}]
       (is (false? (rs-object/dirty-global?))))))
 
-(deftest ^:parallel dirty-global?-pending-objects-test
+(deftest dirty-global?-pending-objects-test
   (testing "dirty-global? returns true when objects have pending status"
     (mt/with-temp
       [:model/Collection collection {:name "Test Collection"
@@ -53,7 +53,7 @@
                                   :status_changed_at (java.time.OffsetDateTime/now)}]
       (is (true? (rs-object/dirty-global?))))))
 
-(deftest ^:parallel dirty-global?-error-objects-test
+(deftest dirty-global?-error-objects-test
   (testing "dirty-global? returns true when objects have error status"
     (mt/with-temp
       [:model/Collection collection {:name "Test Collection"
@@ -69,7 +69,7 @@
                                   :status_changed_at (java.time.OffsetDateTime/now)}]
       (is (true? (rs-object/dirty-global?))))))
 
-(deftest ^:parallel dirty-global?-mixed-status-test
+(deftest dirty-global?-mixed-status-test
   (testing "dirty-global? returns true when some objects are not synced"
     (mt/with-temp
       [:model/Collection collection {:name "Test Collection"
@@ -98,11 +98,11 @@
 ;;; Tests for dirty-for-global
 ;;; ------------------------------------------------------------------------------------------------
 
-(deftest ^:parallel dirty-for-global-no-objects-test
+(deftest dirty-for-global-no-objects-test
   (testing "dirty-for-global returns empty when no remote sync objects exist"
     (is (empty? (rs-object/dirty-for-global)))))
 
-(deftest ^:parallel dirty-for-global-synced-objects-test
+(deftest dirty-for-global-synced-objects-test
   (testing "dirty-for-global returns empty when all objects are synced"
     (mt/with-temp
       [:model/Collection collection {:name "Test Collection"
@@ -118,7 +118,7 @@
                                   :status_changed_at (java.time.OffsetDateTime/now)}]
       (is (empty? (rs-object/dirty-for-global))))))
 
-(deftest ^:parallel dirty-for-global-returns-dirty-items-test
+(deftest dirty-for-global-returns-dirty-items-test
   (testing "dirty-for-global returns items with non-synced status"
     (mt/with-temp
       [:model/Collection collection {:name "Test Collection"
@@ -140,7 +140,7 @@
           (is (= "card" (:model item)))
           (is (= "pending" (:sync_status item))))))))
 
-(deftest ^:parallel dirty-for-global-multiple-model-types-test
+(deftest dirty-for-global-multiple-model-types-test
   (testing "dirty-for-global with multiple model types"
     (mt/with-temp
       [:model/Collection collection {:name "Test Collection"
@@ -169,7 +169,7 @@
           (is (= "pending" (:sync_status (first (get items-by-model "card")))))
           (is (= "error" (:sync_status (first (get items-by-model "dashboard"))))))))))
 
-(deftest ^:parallel dirty-for-global-includes-collections-test
+(deftest dirty-for-global-includes-collections-test
   (testing "dirty-for-global includes collection items"
     (mt/with-temp
       [:model/Collection collection {:name "Test Collection"
@@ -185,7 +185,7 @@
           (is (= "Test Collection" (:name item)))
           (is (= "collection" (:model item))))))))
 
-(deftest ^:parallel dirty-for-global-filters-synced-items-test
+(deftest dirty-for-global-filters-synced-items-test
   (testing "dirty-for-global filters out synced items"
     (mt/with-temp
       [:model/Collection collection {:name "Test Collection"
@@ -213,7 +213,7 @@
         (is (= 1 (count dirty-items)))
         (is (= #{"Pending Card"} names))))))
 
-(deftest ^:parallel dirty-for-global-includes-snippets-test
+(deftest dirty-for-global-includes-snippets-test
   (testing "dirty-for-global includes snippet items"
     (mt/with-temp
       [:model/Collection snip-collection {:name "Snippet Collection"
@@ -234,7 +234,7 @@
           (is (= "Test Snippet" (:name item)))
           (is (= "snippet" (:model item))))))))
 
-(deftest ^:parallel dirty-for-global-includes-documents-test
+(deftest dirty-for-global-includes-documents-test
   (testing "dirty-for-global includes document items"
     (mt/with-temp
       [:model/Collection collection {:name "Test Collection"
@@ -254,7 +254,7 @@
           (is (= "document" (:model item)))
           (is (= "error" (:sync_status item))))))))
 
-(deftest ^:parallel dirty-for-global-all-model-types-test
+(deftest dirty-for-global-all-model-types-test
   (testing "dirty-for-global handles all supported model types"
     (mt/with-temp
       [:model/Collection collection {:name "Test Collection"
@@ -306,7 +306,7 @@
 ;;; Integration Tests
 ;;; ------------------------------------------------------------------------------------------------
 
-(deftest ^:parallel dirty-functions-consistency-test
+(deftest dirty-functions-consistency-test
   (testing "dirty-global? and dirty-for-global are consistent"
     (testing "when no dirty items exist"
       (is (false? (rs-object/dirty-global?)))
