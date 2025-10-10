@@ -45,7 +45,7 @@ export function ListHeader({
         placeholder={t`Search`}
         leftSection={<Icon name="search" />}
         rightSection={
-          <Group>
+          <Group gap={0}>
             <SortOptionsPicker
               groupType={selection.groupType}
               sortOptions={sortOptions}
@@ -57,6 +57,7 @@ export function ListHeader({
             />
           </Group>
         }
+        rightSectionWidth="4.25rem"
         onChange={(event) => onSearchTextChange(event.target.value)}
       />
     </Stack>

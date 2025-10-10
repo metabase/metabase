@@ -17,5 +17,31 @@ export function getFilterGroups(): FilterGroupItem[] {
         },
       ],
     },
+    {
+      label: t`Location`,
+      items: [
+        {
+          value: "dashboard",
+          label: t`Dashboard`,
+        },
+        {
+          value: "collection",
+          label: t`Collection`,
+        },
+      ],
+    },
+    {
+      label: t`Collection type`,
+      items: [
+        {
+          value: "collection-official",
+          label: t`Official`,
+        },
+        {
+          value: "collection-not-official",
+          label: t`Regular`,
+        },
+      ],
+    },
   ];
 }

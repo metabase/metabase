@@ -68,7 +68,7 @@ function FilterOptionsPopover({
           label={group.label}
           onChange={handleFilterOptionsChange}
         >
-          <Stack gap="sm">
+          <Stack mt="sm" gap="sm">
             {group.items.map((item) => (
               <Checkbox
                 key={item.value}

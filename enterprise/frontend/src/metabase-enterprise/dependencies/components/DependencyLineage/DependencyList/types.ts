@@ -1,8 +1,8 @@
 export type FilterOption =
   | "verified"
   | "not-verified"
-  | "location-collection"
-  | "location-dashboard"
+  | "collection"
+  | "dashboard"
   | "collection-official"
   | "collection-not-official"
   | "collection-personal"
