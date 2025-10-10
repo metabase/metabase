@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import {
   ActionIcon,
+  Box,
   Checkbox,
   Icon,
   Popover,
@@ -12,7 +13,7 @@ import {
 
 import type { FilterOption } from "../../types";
 
-import { getFilterGroups } from "./utils";
+import { getFilterItems } from "./utils";
 
 type FilterOptionsPickerProps = {
   filterOptions: FilterOption[];
@@ -53,32 +54,24 @@ function FilterOptionsPopover({
   filterOptions,
   onFilterOptionsChange,
 }: FilterOptionsPopoverProps) {
-  const filterGroups = getFilterGroups();
+  const filterItems = getFilterItems();
 
   const handleFilterOptionsChange = (filterOptions: string[]) => {
     onFilterOptionsChange(filterOptions as FilterOption[]);
   };
 
   return (
-    <Stack w="15rem" p="md" gap="lg">
-      {filterGroups.map((group, groupIndex) => (
-        <Checkbox.Group
-          key={groupIndex}
-          value={filterOptions}
-          label={group.label}
-          onChange={handleFilterOptionsChange}
-        >
-          <Stack mt="sm" gap="sm">
-            {group.items.map((item) => (
-              <Checkbox
-                key={item.value}
-                value={item.value}
-                label={item.label}
-              />
-            ))}
-          </Stack>
-        </Checkbox.Group>
-      ))}
-    </Stack>
+    <Box w="15rem" p="md">
+      <Checkbox.Group
+        value={filterOptions}
+        onChange={handleFilterOptionsChange}
+      >
+        <Stack mt="sm" gap="sm">
+          {filterItems.map((item) => (
+            <Checkbox key={item.value} value={item.value} label={item.label} />
+          ))}
+        </Stack>
+      </Checkbox.Group>
+    </Box>
   );
 }

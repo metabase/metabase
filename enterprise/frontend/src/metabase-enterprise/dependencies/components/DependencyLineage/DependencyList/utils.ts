@@ -15,7 +15,12 @@ import {
   getNodeViewCount,
 } from "../utils";
 
-import type { SearchOptions, SortColumn, SortOptions } from "./types";
+import type {
+  NodeComparator,
+  SearchOptions,
+  SortColumn,
+  SortOptions,
+} from "./types";
 
 export function getListRequest(
   selection: GraphSelection,
@@ -55,36 +60,30 @@ function isMatchingSearchQuery(node: DependencyNode, searchQuery: string) {
   return getNodeLabel(node).toLowerCase().includes(searchQuery);
 }
 
-function compareNodesByColumn(
-  node1: DependencyNode,
-  node2: DependencyNode,
-  column: SortColumn,
-) {
-  return match(column)
-    .with("name", () => {
-      const label1 = getNodeLabel(node1);
-      const label2 = getNodeLabel(node2);
-      return label1.localeCompare(label2);
-    })
-    .with("location", () => {
-      const label1 = getNodeLocationLabel(node1) ?? "";
-      const label2 = getNodeLocationLabel(node2) ?? "";
-      return label1.localeCompare(label2);
-    })
-    .with("view-count", () => {
-      const count1 = getNodeViewCount(node1) ?? 0;
-      const count2 = getNodeViewCount(node2) ?? 0;
-      return count1 - count2;
-    })
-    .exhaustive();
-}
+const COMPARATORS: Record<SortColumn, NodeComparator> = {
+  name: (node1, node2) => {
+    const label1 = getNodeLabel(node1);
+    const label2 = getNodeLabel(node2);
+    return label1.localeCompare(label2);
+  },
+  location: (node1, node2) => {
+    const label1 = getNodeLocationLabel(node1) ?? "";
+    const label2 = getNodeLocationLabel(node2) ?? "";
+    return label1.localeCompare(label2);
+  },
+  "view-count": (node1, node2) => {
+    const count1 = getNodeViewCount(node1) ?? 0;
+    const count2 = getNodeViewCount(node2) ?? 0;
+    return count1 - count2;
+  },
+};
 
 function compareNodes(
   node1: DependencyNode,
   node2: DependencyNode,
   { column, direction }: SortOptions,
 ) {
-  const result = compareNodesByColumn(node1, node2, column);
+  const result = COMPARATORS[column](node1, node2);
   const factor = direction === "asc" ? 1 : -1;
   return result * factor;
 }

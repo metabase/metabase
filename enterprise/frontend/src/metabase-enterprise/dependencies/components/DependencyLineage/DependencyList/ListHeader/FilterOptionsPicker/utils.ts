@@ -1,47 +1,24 @@
 import { t } from "ttag";
 
-import type { FilterGroupItem } from "./types";
+import type { FilterItem } from "./types";
 
-export function getFilterGroups(): FilterGroupItem[] {
+export function getFilterItems(): FilterItem[] {
   return [
     {
-      label: t`Verification`,
-      items: [
-        {
-          value: "verified",
-          label: t`Verified`,
-        },
-        {
-          value: "not-verified",
-          label: t`Not verified`,
-        },
-      ],
+      value: "verified",
+      label: t`Verified`,
     },
     {
-      label: t`Location`,
-      items: [
-        {
-          value: "dashboard",
-          label: t`Dashboard`,
-        },
-        {
-          value: "collection",
-          label: t`Collection`,
-        },
-      ],
+      value: "in-dashboard",
+      label: t`In a dashboard`,
     },
     {
-      label: t`Collection type`,
-      items: [
-        {
-          value: "collection-official",
-          label: t`Official`,
-        },
-        {
-          value: "collection-not-official",
-          label: t`Regular`,
-        },
-      ],
+      value: "in-official-collection",
+      label: t`In an official collection`,
+    },
+    {
+      value: "not-in-personal-collection",
+      label: t`Not in personal collection`,
     },
   ];
 }

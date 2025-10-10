@@ -1,12 +1,10 @@
+import type { DependencyNode } from "metabase-types/api";
+
 export type FilterOption =
   | "verified"
-  | "not-verified"
-  | "collection"
-  | "dashboard"
-  | "collection-official"
-  | "collection-not-official"
-  | "collection-personal"
-  | "collection-not-personal";
+  | "in-dashboard"
+  | "in-official-collection"
+  | "not-in-personal-collection";
 
 export type SortColumn = "name" | "location" | "view-count";
 
@@ -21,3 +19,10 @@ export type SearchOptions = {
   searchQuery: string;
   sortOptions: SortOptions;
 };
+
+export type NodeFilter = (node: DependencyNode) => boolean;
+
+export type NodeComparator = (
+  node1: DependencyNode,
+  node2: DependencyNode,
+) => number;
