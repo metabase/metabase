@@ -702,8 +702,8 @@
 
 (defmacro with-temp-public-document {:style/indent 1} [[binding & [document]] & body]
   `(do-with-temp-public-document
-     ~(or document {})
-     (fn [~binding] ~@body)))
+    ~(or document {})
+    (fn [~binding] ~@body)))
 
 (deftest get-public-document-errors-test
   (testing "GET /api/public/document/:uuid"
@@ -760,7 +760,7 @@
                                   :content [{:type "cardEmbed"
                                              :attrs {:id card-id}}]}]
             (with-temp-public-document [document {:document document-content
-                                                   :content_type "application/json+vnd.prose-mirror"}]
+                                                  :content_type "application/json+vnd.prose-mirror"}]
               (let [uuid (:public_uuid document)]
                 (testing "Can fetch card data from public document"
                   (is (= 200

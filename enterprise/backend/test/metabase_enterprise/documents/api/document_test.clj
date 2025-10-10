@@ -2015,7 +2015,7 @@
   (mt/with-temporary-setting-values [enable-public-sharing true]
     (testing "Test that we can share a Document"
       (mt/with-temp [:model/Document document {:name "Test Document"
-                                                :document (text->prose-mirror-ast "Test content")}]
+                                               :document (text->prose-mirror-ast "Test content")}]
         (let [{uuid :uuid} (mt/user-http-request :crowberto :post 200
                                                  (format "ee/document/%d/public_link" (:id document)))]
           (is (t2/exists? :model/Document :id (:id document), :public_uuid uuid))
@@ -2025,7 +2025,7 @@
                                                 (format "ee/document/%d/public_link" (:id document))))))))))
 
     (mt/with-temp [:model/Document document {:name "Test Document"
-                                              :document (text->prose-mirror-ast "Test content")}]
+                                             :document (text->prose-mirror-ast "Test content")}]
       (testing "Test that we *cannot* share a Document if we aren't admins"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :post 403 (format "ee/document/%d/public_link" (:id document))))))
@@ -2044,22 +2044,22 @@
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (testing "Test that we can unshare a Document"
         (mt/with-temp [:model/Document document (merge {:name "Test Document"
-                                                         :document (text->prose-mirror-ast "Test content")}
-                                                        (shared-document))]
+                                                        :document (text->prose-mirror-ast "Test content")}
+                                                       (shared-document))]
           (mt/user-http-request :crowberto :delete 204 (format "ee/document/%d/public_link" (:id document)))
           (is (= false
                  (t2/exists? :model/Document :id (:id document), :public_uuid (:public_uuid document))))))
 
       (testing "Test that we *cannot* unshare a Document if we are not admins"
         (mt/with-temp [:model/Document document (merge {:name "Test Document"
-                                                         :document (text->prose-mirror-ast "Test content")}
-                                                        (shared-document))]
+                                                        :document (text->prose-mirror-ast "Test content")}
+                                                       (shared-document))]
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :delete 403 (format "ee/document/%d/public_link" (:id document)))))))
 
       (testing "Test that we get a 404 if Document isn't shared"
         (mt/with-temp [:model/Document document {:name "Test Document"
-                                                  :document (text->prose-mirror-ast "Test content")}]
+                                                 :document (text->prose-mirror-ast "Test content")}]
           (is (= "Not found."
                  (mt/user-http-request :crowberto :delete 404 (format "ee/document/%d/public_link" (:id document)))))))
 
@@ -2072,8 +2072,8 @@
   (testing "GET /api/ee/document/public"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp [:model/Document _document (merge {:name "Public Document"
-                                                        :document (text->prose-mirror-ast "Public content")}
-                                                       (shared-document))]
+                                                       :document (text->prose-mirror-ast "Public content")}
+                                                      (shared-document))]
         (testing "Test that it requires superuser"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 "ee/document/public"))))
@@ -2089,8 +2089,8 @@
     (testing "Test that we can fetch a public Document"
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (mt/with-temp [:model/Document document (merge {:name "Public Test Document"
-                                                         :document (text->prose-mirror-ast "Public test content")}
-                                                        (shared-document))]
+                                                        :document (text->prose-mirror-ast "Public test content")}
+                                                       (shared-document))]
           (is (partial= {:name "Public Test Document"
                          :document (text->prose-mirror-ast "Public test content")
                          :id (:id document)}
@@ -2100,9 +2100,9 @@
   (testing "GET /api/public/document/:uuid should only return safe fields"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp [:model/Document document (merge {:name "Public Test Document"
-                                                       :document (text->prose-mirror-ast "Public test content")
-                                                       :description "A test description"}
-                                                      (shared-document))]
+                                                      :document (text->prose-mirror-ast "Public test content")
+                                                      :description "A test description"}
+                                                     (shared-document))]
         (let [result (mt/client :get 200 (str "public/document/" (:public_uuid document)))]
           (testing "Should include safe fields"
             (is (contains? result :id))
@@ -2121,8 +2121,8 @@
     (testing "Shouldn't be able to fetch a public Document if public sharing is disabled"
       (mt/with-temporary-setting-values [enable-public-sharing false]
         (mt/with-temp [:model/Document document (merge {:name "Test Document"
-                                                         :document (text->prose-mirror-ast "Test content")}
-                                                        (shared-document))]
+                                                        :document (text->prose-mirror-ast "Test content")}
+                                                       (shared-document))]
           (is (= "An error occurred."
                  (mt/client :get 400 (str "public/document/" (:public_uuid document))))))))
 
@@ -2135,8 +2135,8 @@
   (testing "POST /api/ee/document/:id/public_link should not work for archived documents"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp [:model/Document document {:name "Archived Document"
-                                                :document (text->prose-mirror-ast "Archived content")
-                                                :archived true}]
+                                               :document (text->prose-mirror-ast "Archived content")
+                                               :archived true}]
         (is (= "Not found."
                (mt/user-http-request :crowberto :post 404 (format "ee/document/%d/public_link" (:id document)))))))))
 
@@ -2144,9 +2144,9 @@
   (testing "DELETE /api/ee/document/:id/public_link should not work for archived documents"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp [:model/Document document (merge {:name "Archived Shared Document"
-                                                       :document (text->prose-mirror-ast "Archived shared content")
-                                                       :archived true}
-                                                      (shared-document))]
+                                                      :document (text->prose-mirror-ast "Archived shared content")
+                                                      :archived true}
+                                                     (shared-document))]
         (is (= "Not found."
                (mt/user-http-request :crowberto :delete 404 (format "ee/document/%d/public_link" (:id document)))))))))
 
@@ -2154,8 +2154,8 @@
   (testing "GET /api/public/document/:uuid should not work for archived documents"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp [:model/Document document (merge {:name "Test Document"
-                                                       :document (text->prose-mirror-ast "Test content")}
-                                                      (shared-document))]
+                                                      :document (text->prose-mirror-ast "Test content")}
+                                                     (shared-document))]
         (let [uuid (:public_uuid document)]
           (testing "Document is accessible when not archived"
             (is (= 200
@@ -2169,12 +2169,12 @@
   (testing "GET /api/ee/document/public should not include archived documents"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp [:model/Document active-doc (merge {:name "Active Public Document"
-                                                         :document (text->prose-mirror-ast "Active content")}
-                                                        (shared-document))
+                                                        :document (text->prose-mirror-ast "Active content")}
+                                                       (shared-document))
                      :model/Document _archived-doc (merge {:name "Archived Public Document"
-                                                            :document (text->prose-mirror-ast "Archived content")
-                                                            :archived true}
-                                                           (shared-document))]
+                                                           :document (text->prose-mirror-ast "Archived content")
+                                                           :archived true}
+                                                          (shared-document))]
         (let [public-docs (mt/user-http-request :crowberto :get 200 "ee/document/public")
               public-doc-ids (set (map :id public-docs))]
           (testing "Active document should be in the list"

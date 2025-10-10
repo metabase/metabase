@@ -246,7 +246,7 @@
   "Generate a public link for this Document. If it's already public, we'll return the existing link instead of making
   a new one. Public sharing must be enabled."
   [{:keys [document-id]} :- [:map
-                              [:document-id ms/PositiveInt]]]
+                             [:document-id ms/PositiveInt]]]
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-404 (t2/select-one :model/Document :id document-id))
@@ -260,7 +260,7 @@
 (api.macros/defendpoint :delete "/:document-id/public_link"
   "Remove the public link for this Document."
   [{:keys [document-id]} :- [:map
-                              [:document-id ms/PositiveInt]]]
+                             [:document-id ms/PositiveInt]]]
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Document :id document-id, :public_uuid [:not= nil], :archived false)
