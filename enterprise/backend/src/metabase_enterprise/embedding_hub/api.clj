@@ -43,7 +43,7 @@
 (defn- has-user-created-models? []
   (let [sample-collection-ids (t2/select-pks-set :model/Collection :is_sample true)
         audit-collection-id (:id (audit/default-audit-collection))
-        excluded-ids (not-empty (filter some? (conj sample-collection-ids audit-collection-id)))]
+        excluded-ids (not-empty (vec (filter some? (conj sample-collection-ids audit-collection-id))))]
     (t2/exists? :model/Card {:where (cond-> [:and
                                              [:= :type "model"]
                                              [:= :archived false]]
