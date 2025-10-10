@@ -72,24 +72,12 @@
          :table (:name t)}
         u/remove-nils)))
 
-(defn table-ref?
-  "Is this a table ref or a field ref?"
-  [x]
-  (and (map? x)
-       (contains? x :database)
-       (contains? x :schema)
-       (contains? x :table)))
-
-(defn table-refs
-  "Returns all table refs present in the entity-map, recursively walking to discover them."
-  [entity]
-  (let [v (volatile! [])]
-    (walk/postwalk (fn [node]
-                     (when (table-ref? node)
-                       (vswap! v conj node))
-                     node)
-                   entity)
-    (into #{} (map #(dissoc % :field)) @v)))
+(defn- field-ref
+  "Convert a field id to a representation ref map."
+  [field-id]
+  (let [field (t2/select-one :model/Field field-id)
+        tr (table-ref (:table_id field))]
+    (assoc tr :field (:name field))))
 
 (defn- card-ref
   "Convert a card reference string (e.g. 'card__123') to a representation ref."
@@ -124,28 +112,42 @@
     (assoc query :database (v0-common/->ref db :database))
     query))
 
+(defn- field?
+  "Is x a field? ex: `[:field 34 {}]`"
+  [x]
+  (and (vector? x)
+       (or (= :field (first x))
+           (= "field" (first x)))))
+
 (defn ->ref-fields
   "Convert fields from [:field id] vectors to representation ref maps for export."
   [query]
   (walk/postwalk
    (fn [node]
-     (if (and (vector? node)
-              (or (= :field (first node))
-                  (= "field" (first node))))
+     (if (field? node)
        (let [[_ id] node]
          (cond
+           ;; if it's a string, it's referring to a custom field, so we leave it
            (string? id)
            node
 
            (number? id)
-           (let [field (t2/select-one :model/Field id)
-                 tr (table-ref (:table_id field))]
-             (assoc tr :field (:name field)))
+           (field-ref id)
 
-           :else
+           :else ;; ???: should we fail here?
            node))
        node))
    query))
+
+(defn patch-refs-for-export
+  "Take a query and convert dependency ids to refs for export.
+
+  It currently updates database, source table, and fields."
+  [query]
+  (-> query
+      ->ref-database
+      ->ref-source-table
+      ->ref-fields))
 
 (defn import-dataset-query
   "Returns Metabase's dataset_query format, given a representation.

@@ -267,14 +267,8 @@
 
 ;;; -- Export --
 
-(defn- patch-refs-for-export [query]
-  (-> query
-      (v0-mbql/->ref-database)
-      (v0-mbql/->ref-source-table)
-      (v0-mbql/->ref-fields)))
-
 (defmethod export/export-entity :metric [card]
-  (let [query (patch-refs-for-export (:dataset_query card))]
+  (let [query (v0-mbql/patch-refs-for-export (:dataset_query card))]
     (cond-> {:name (:name card)
              :type (:type card)
              :version :v0

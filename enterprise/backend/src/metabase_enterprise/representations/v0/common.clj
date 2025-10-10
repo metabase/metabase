@@ -109,3 +109,22 @@
   "Creates a suitable filename."
   [id name suffix]
   (str id "_" (str/replace (u/lower-case-en name) " " "_") suffix))
+
+(defn table-ref?
+  "Is this a table ref or a field ref?"
+  [x]
+  (and (map? x)
+       (contains? x :database)
+       (contains? x :schema)
+       (contains? x :table)))
+
+(defn table-refs
+  "Returns all table refs present in the representation, recursively walking to discover them."
+  [entity]
+  (let [v (volatile! [])]
+    (walk/postwalk (fn [node]
+                     (when (table-ref? node)
+                       (vswap! v conj node))
+                     node)
+                   entity)
+    (into #{} (map #(dissoc % :field)) @v)))

@@ -170,17 +170,6 @@
 
 ;; EXPORT
 
-(defn ->ref
-  "Make a ref"
-  [card]
-  (format "%s-%s" "transform" (:id card)))
-
-(defn- patch-refs-for-export [query]
-  (-> query
-      (v0-mbql/->ref-database)
-      (v0-mbql/->ref-source-table)
-      (v0-mbql/->ref-fields)))
-
 (defmethod export/export-entity :model/Transform [transform]
   (let [query (patch-refs-for-export (-> transform :source :query))]
     (cond-> {:name (:name transform)
@@ -205,19 +194,3 @@
 
       :always
       u/remove-nils)))
-
-(comment
-  (t2/hydrate (t2/select-one :model/Transform) :transform_tag_names)
-  (t2/select-one :model/TransformTag)
-  (def t (t2/hydrate (t2/select-one :model/Transform) :transform_tag_names))
-  (def q (-> t :source :query))
-  (v0-mbql/->ref-fields q)
-  (def i {"database-53" (t2/select-one :model/Database 53)})
-  (yaml->toucan (export/export-entity t) i)
-
-  (spit "test_resources/representations/v0/orders-count.transform.yml"
-        (-> :model/Transform
-            t2/select-one
-            (t2/hydrate :transform_tag_names)
-            export/export-entity
-            rep-yaml/generate-string)))
