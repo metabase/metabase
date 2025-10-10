@@ -54,6 +54,7 @@
                                        :dataset_query (mt/mbql-query users)}]
     (let [edn (rep/export question)
           export-set (export/export-set [edn])
+          export-set (export/reduce-tables export-set)
           db-ref (v0-common/unref (:database edn))
           idx (into {} (map (juxt :ref identity)) export-set)
           database (get idx db-ref)]
@@ -62,8 +63,7 @@
       (let [database-tables (set (for [schema (:schemas database)
                                        table (:tables schema)]
                                    [(:name schema) (:name table)]))]
-        (is (= #{["PUBLIC" "USERS"]} database-tables)))
-      (clojure.pprint/pprint database))))
+        (is (= #{["PUBLIC" "USERS"]} database-tables))))))
 
 #_(deftest import-export-singleton-test
     (testing "Testing import then export roundtrip with IDs"
