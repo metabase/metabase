@@ -628,10 +628,8 @@
    [:name :string]
    [:description {:optional true} [:maybe :string]]
    [:entity_id {:optional true} [:maybe :string]]
-   [:source [:and
-             ::metabot-v3.tools.transforms/transform-source
-             [:map
-              {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}]]]])
+   ;; :source keys are not snake_cased to match what the FE expects / provides in user_is_viewing context
+   [:source ::metabot-v3.tools.transforms/transform-source]])
 
 (mr/def ::full-transform
   [:merge
@@ -639,10 +637,8 @@
    [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
     [:created_at ms/TemporalString]
     [:updated_at ms/TemporalString]
-    [:target [:and
-              ::metabot-v3.tools.transforms/transform-target
-              [:map
-               {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}]]]]])
+    ;; :target keys are not snake_cased to match what the FE expects / provides in user_is_viewing context
+    [:target ::metabot-v3.tools.transforms/transform-target]]])
 
 (mr/def ::get-transforms-result
   [:or

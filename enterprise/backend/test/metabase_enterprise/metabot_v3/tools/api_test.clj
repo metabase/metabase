@@ -1208,7 +1208,7 @@
                                            :description "Simple python transform"
                                            :source {:type "python"
                                                     :body "print('hello world')"
-                                                    :source_tables {}}
+                                                    :source-tables {}}
                                            :target {:type "table"
                                                     :name "t2_table"}}]
          (testing "With insufficient permissions"
@@ -1243,7 +1243,7 @@
                                           :description "Simple Python transform"
                                           :source {:type "python"
                                                    :body "print('hello world')"
-                                                   :source_tables {}}
+                                                   :source-tables {}}
                                           :target {:type "table"
                                                    :name "t2_table"}}]
         (testing "With insufficient permissions"
