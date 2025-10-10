@@ -9,6 +9,7 @@ import LoadingSpinner from "metabase/common/components/LoadingSpinner";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { isMac } from "metabase/lib/browser";
+import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import { useSelector } from "metabase/lib/redux";
 import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
 import { Box, Flex, Stack, Text, Title } from "metabase/ui";
@@ -53,7 +54,9 @@ export default function QueryVisualization(props) {
           !isRunnable ||
           isRunning ||
           isNativeEditorOpen ||
-          result?.error
+          (result?.error &&
+            // This error should not prevent showing a dirty-state overlay with the `run` button
+            result.error_type !== SERVER_ERROR_TYPES.missingRequiredParameter)
         }
         className={cx(CS.spread, CS.z2)}
       />
