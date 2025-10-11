@@ -48,30 +48,6 @@ describe("Embedding SDK: shared Host Apps compatibility tests", () => {
     });
   });
 
-  it("should load a moment locale", () => {
-    const time = new Date("2025-01-01");
-    cy.clock(time, ["Date"]);
-
-    cy.visit({
-      url: `${CLIENT_HOST}/interactive-question?locale=es&questionId=1`,
-    });
-
-    cy.findByTestId("interactive-question-result-toolbar", {
-      timeout: TIMEOUT_MS,
-    }).within(() => {
-      cy.findByText("Filtro").click();
-    });
-
-    cy.get('[data-element-id="mantine-popover"]').within(() => {
-      cy.findByText("Started At").click();
-      cy.findByText(/Rango de fechas relativo…/).click();
-    });
-
-    cy.findByTestId("date-filter-picker").within(() => {
-      cy.findByText(/^dic\..*2024/).should("exist");
-    });
-  });
-
   it("should load a dayjs locale", () => {
     const time = new Date("2025-01-01");
     cy.clock(time, ["Date"]);
