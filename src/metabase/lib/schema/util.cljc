@@ -140,10 +140,28 @@
                                       order-bys))))
     stage))
 
-(defn indexed-order-bys
-  "Convert all order-bys in a query to refer to aggregations by index instead of uuid. The result is
-  not a valid query, but avoiding random uuids is important during hashing."
-  [query]
-  (if (:stages query)
-    (update query :stages #(mapv indexed-order-bys-for-stage %))
-    query))
+(defn pred-matches-form?
+  "Check if `form` or any of its children forms match `pred`. This function is used for validation; during normal
+  operation it will never match, so calling this function before `matching-locations` is more efficient."
+  [form pred]
+  (cond
+    (pred form)        true
+    (map? form)        (reduce-kv (fn [b _ v] (or b (pred-matches-form? v pred))) false form)
+    (sequential? form) (reduce (fn [b x] (or b (pred-matches-form? x pred))) false form)
+    :else              false))
+
+(defn matching-locations
+  "Find the forms matching pred, returns a list of tuples of location (as used in get-in) and the match."
+  [form pred]
+  ;; Surprisingly enough, a list works better as a stack here than a vector.
+  (loop [stack (list [[] form]), matches []]
+    (if-let [[loc form :as top] (peek stack)]
+      (let [stack (pop stack)
+            map-onto-stack #(transduce (map (fn [[k v]] [(conj loc k) v])) conj stack %)
+            seq-onto-stack #(transduce (map-indexed (fn [i v] [(conj loc i) v])) conj stack %)]
+        (cond
+          (pred form)        (recur stack                 (conj matches top))
+          (map? form)        (recur (map-onto-stack form) matches)
+          (sequential? form) (recur (seq-onto-stack form) matches)
+          :else              (recur stack                 matches)))
+      matches)))

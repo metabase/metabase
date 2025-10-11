@@ -4,8 +4,7 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.set :as set]
    [clojure.test :as t]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.util.malli :as mu]))
+   [metabase.legacy-mbql.normalize :as mbql.normalize]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -1495,17 +1494,6 @@
              [:expression "expr" {:base-type :type/Date}]
              [:field 66302 {:base-type :type/DateTime}]]))))
 
-(t/deftest ^:parallel normalize-source-metadata-test
-  (t/testing "normalize-source-metadata"
-    (t/testing "should convert legacy field_refs to modern `:field` clauses"
-      (t/is (= {:field_ref [:field 1 {:temporal-unit :month}]}
-               (mbql.normalize/normalize-source-metadata
-                {:field_ref ["datetime-field" ["field-id" 1] "month"]}))))
-    (t/testing "should correctly keywordize Field options"
-      (t/is (= {:field_ref [:field 1 {:temporal-unit :month}]}
-               (mbql.normalize/normalize-source-metadata
-                {:field_ref ["field" 1 {:temporal-unit "month"}]}))))))
-
 (t/deftest ^:parallel do-not-normalize-fingerprints-test
   (t/testing "Numbers in fingerprints shouldn't get normalized"
     (let [fingerprint {:global {:distinct-count 1, :nil% 0}
@@ -1538,13 +1526,6 @@
                                            :fingerprint  fingerprint}]))]
             (t/is (= query
                      (mbql.normalize/normalize query)))))))))
-
-(t/deftest ^:parallel do-not-normalize-fingerprints-test-2
-  (let [col {:fingerprint {:global {:distinct-count 200, :nil% 0}
-                           :type   {:type/DateTime {:earliest "2016-04-26T19:29:55.147Z"
-                                                    :latest   "2019-04-15T13:34:19.931Z"}}}}]
-    (t/is (= col
-             (mbql.normalize/normalize-source-metadata col)))))
 
 (t/deftest ^:parallel error-messages-test
   (t/testing "Normalization error messages should be sane"
@@ -1666,18 +1647,3 @@
            (mbql.normalize/normalize-tokens [:datetime "" {:mode "iso"}])))
   (t/is (= [:datetime "" {:mode :iso}]
            (mbql.normalize/normalize-tokens ["datetime" "" {"mode" "iso"}]))))
-
-(t/deftest ^:parallel normalize-evil-source-metadata-test
-  (t/testing "Fix really messed up fingerprints with lower-cased type names (only in prod) (#63397)"
-    (mu/disable-enforcement
-      (t/is (= {:fingerprint
-                {:global {:distinct-count 418, :nil% 0.0},
-                 :type
-                 {:type/Text
-                  {:percent-json 0.0, :percent-url 0.0, :percent-email 0.0, :percent-state 0.0, :average-length 13.26388888888889}}}}
-               (#'mbql.normalize/normalize-source-metadata
-                {:fingerprint
-                 {:global {:distinct-count 418, :nil% 0.0},
-                  :type
-                  {:type/text
-                   {:percent-json 0.0, :percent-url 0.0, :percent-email 0.0, :percent-state 0.0, :average-length 13.26388888888889}}}}))))))

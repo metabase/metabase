@@ -5,7 +5,8 @@
    [metabase.api.macros :as api.macros]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.indexed-entities.task.index-values :as task.index-values]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ;; legacy usage, do not use this in new code
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -13,7 +14,9 @@
 (defn- ensure-type
   "Ensure that the ref exists and is of type required for indexing."
   [t ref metadata]
-  (if-let [field (some (fn [f] (when ((comp #{(mbql.normalize/normalize-field-ref ref)} :field_ref) f)
+  (if-let [field (some (fn [f] (when ((comp #{#_{:clj-kondo/ignore [:deprecated-var]} (mbql.normalize/normalize-field-ref ref)}
+                                            :field_ref)
+                                      f)
                                  f))
                        metadata)]
     (let [type-slot (case t

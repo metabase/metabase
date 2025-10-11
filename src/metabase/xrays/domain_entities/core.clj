@@ -2,7 +2,8 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.legacy-mbql.util :as mbql.u]
+   ;; legacy usage, do not use legacy MBQL stuff in new code.
+   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
@@ -49,6 +50,8 @@
   (let [[table-or-dimension maybe-dimension] (str/split dimension-reference #"\.")]
     (if maybe-dimension
       (let [field-clause (get-in bindings [table-or-dimension :dimensions maybe-dimension])]
+        ;; legacy usage, do not use legacy MBQL stuff in new code.
+        #_{:clj-kondo/ignore [:deprecated-var]}
         (cond-> field-clause
           (not= source table-or-dimension) (mbql.u/assoc-field-options :join-alias table-or-dimension)))
       (get-in bindings [source :dimensions table-or-dimension]))))

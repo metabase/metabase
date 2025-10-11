@@ -18,7 +18,6 @@
                       :source-map      true}
    :closure-defines {goog.debug.LOGGING_ENABLED true}
    :entries    [metabase.dashboards.constants
-                metabase.legacy-mbql.js
                 metabase.lib.column-group
                 metabase.lib.js
                 metabase.lib.limit

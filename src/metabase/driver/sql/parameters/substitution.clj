@@ -261,14 +261,16 @@
     {:replacement-snippet     snippet
      :prepared-statement-args args}))
 
-(defn- field->clause
+(mu/defn- field->clause :- driver-api/mbql.schema.field
   [field other-opts]
-  [:field
-   (:id field)
-   (merge {:base-type                     (:base-type field)
-           driver-api/qp.add.source-table (:table-id field)
-           ::compiling-field-filter?      true}
-          other-opts)])
+  (driver-api/normalize
+   driver-api/mbql.schema.field
+   [:field
+    (:id field)
+    (merge {:base-type                     (:base-type field)
+            driver-api/qp.add.source-table (:table-id field)
+            ::compiling-field-filter?      true}
+           other-opts)]))
 
 (mu/defn- field->field-filter-clause :- driver-api/mbql.schema.field
   [driver     :- :keyword

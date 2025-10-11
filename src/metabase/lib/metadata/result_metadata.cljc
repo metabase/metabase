@@ -13,8 +13,8 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.util :as mbql.u]
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
+   ^{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]} [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.card :as lib.card]
    [metabase.lib.convert :as lib.convert]
@@ -236,6 +236,7 @@
   used by individual pieces of middleware or driver implementations for tracking little bits of information that
   should not be considered relevant when comparing clauses for equality."
   [legacy-ref]
+  ^{:clj-kondo/ignore [:deprecated-var]}
   (mbql.u/update-field-options legacy-ref (partial into {} (remove (fn [[k _]]
                                                                      (qualified-keyword? k))))))
 

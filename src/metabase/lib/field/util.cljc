@@ -91,7 +91,7 @@
      (add-source-and-desired-aliases-xform query unique-name-generator)))
 
   ([metadata-providerable :- ::lib.metadata.protocols/metadata-providerable
-    unique-name-fn        :- ::lib.util/unique-name-generator]
+    unique-name-fn        :- :metabase.lib.util.unique-name-generator/unique-name-generator]
    (comp (add-deduplicated-names)
          (map (fn [col]
                 (let [source-alias  ((some-fn :lib/source-column-alias :lib/original-name :name) col)

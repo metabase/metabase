@@ -585,7 +585,8 @@
 
 (deftest ^:parallel specific-date-filter-parts-test
   (let [query  (lib.tu/venues-query)
-        column (m/filter-vals some? (meta/field-metadata :checkins :date))]
+        column (-> (m/filter-vals some? (meta/field-metadata :checkins :date))
+                   (assoc :base-type :type/DateTime :effective-type :type/DateTime))]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/= column "2024-11-28")
                               {:operator   :=
