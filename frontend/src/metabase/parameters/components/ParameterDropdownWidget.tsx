@@ -4,6 +4,7 @@ import type { ParameterValueWidgetProps } from "metabase/parameters/components/P
 import { getParameterWidgetTitle } from "metabase/parameters/utils/ui";
 import { BooleanWidget } from "metabase/querying/parameters/components/BooleanWidget";
 import { DateAllOptionsWidget } from "metabase/querying/parameters/components/DateAllOptionsWidget";
+import { DateExtendedRangeWidget } from "metabase/querying/parameters/components/DateExtendedRangeWidget";
 import { DateMonthYearWidget } from "metabase/querying/parameters/components/DateMonthYearWidget";
 import { DateQuarterYearWidget } from "metabase/querying/parameters/components/DateQuarterYearWidget";
 import { DateRangeWidget } from "metabase/querying/parameters/components/DateRangeWidget";
@@ -68,6 +69,7 @@ export const ParameterDropdownWidget = ({
     const DateWidget = {
       "date/single": DateSingleWidget,
       "date/range": DateRangeWidget,
+      "date/extended-range": DateExtendedRangeWidget,
       "date/month-year": DateMonthYearWidget,
       "date/quarter-year": DateQuarterYearWidget,
       "date/relative": DateRelativeWidget,
