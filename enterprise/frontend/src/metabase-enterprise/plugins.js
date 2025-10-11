@@ -44,3 +44,4 @@ import "./documents";
 import "./semantic_search";
 import "./transforms";
 import "./transforms-python";
+import "./public-sharing";
