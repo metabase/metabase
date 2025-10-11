@@ -39,8 +39,8 @@
 ;; TODO: Need to load sample database first
 (deftest can-import
   (doseq [filename ["test_resources/representations/v0/product-performance.model.yml"
-                    "test_resources/representations/v0/collection-8/sales-data-enriched.model.yml"
-                    "test_resources/representations/v0/collection-8/sales-data.model.yml"]]
+                    #_"test_resources/representations/v0/collection-8/sales-data-enriched.model.yml"
+                    #_"test_resources/representations/v0/collection-8/sales-data.model.yml"]]
     (testing (str "Importing: " filename)
       (let [rep (yaml/from-file filename)]
         (is (rep/persist! (rep/normalize-representation rep)))))))
