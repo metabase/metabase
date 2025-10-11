@@ -2665,6 +2665,39 @@ describe("scenarios > admin > transforms > runs", () => {
   });
 });
 
+H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
+  beforeEach(() => {
+    H.restore();
+    H.resetSnowplow();
+    cy.signInAsAdmin();
+    H.activateToken("bleeding-edge");
+  });
+
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
+  });
+
+  it("should not pick the only database when it is disabled in SQL editor", () => {
+    cy.log("create a new transform");
+    visitTransformListPage();
+    getTransformListPage().button("Create a transform").click();
+    H.popover().findByText("SQL query").click();
+
+    cy.findByTestId("gui-builder-data")
+      .findByText("Select a database")
+      .should("be.visible");
+  });
+
+  it("should not pick the only database when it is disabled in Python editor", () => {
+    cy.log("create a new transform");
+    visitTransformListPage();
+    getTransformListPage().button("Create a transform").click();
+    H.popover().findByText("Python script").click();
+
+    getPythonDataPicker().findByText("Select a database").should("be.visible");
+  });
+});
+
 function getTransformListPage() {
   return cy.findByTestId("transform-list-page");
 }
