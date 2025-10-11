@@ -192,5 +192,9 @@
       (assoc :target_table {:schema (-> transform :target :schema)
                             :table (-> transform :target :name)})
 
+      (= :mbql/query (:lib/type query))
+      (assoc :lib_query (:stages query)
+             :database (:database query))
+
       :always
       u/remove-nils)))
