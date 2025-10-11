@@ -9,11 +9,13 @@
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase-enterprise.transforms.models.transform-run-cancelation :as transform-run-cancelation]
    [metabase-enterprise.transforms.ordering :as transforms.ordering]
+   [metabase-enterprise.transforms.schema :as transforms.schema]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
+   [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.request.core :as request]
@@ -30,26 +32,6 @@
          metabase-enterprise.transforms.api.transform-tag/keep-me)
 
 (set! *warn-on-reflection* true)
-
-(mr/def ::transform-source
-  [:multi {:dispatch (comp keyword :type)}
-   [:query
-    [:map
-     [:type [:= "query"]]
-     [:query [:map [:database :int]]]]]
-   [:python
-    [:map {:closed true}
-     [:source-database {:optional true} :int]
-     [:source-tables   [:map-of :string :int]]
-     [:type [:= "python"]]
-     [:body :string]]]])
-
-(mr/def ::transform-target
-  [:map
-   [:database {:optional true} :int]
-   [:type [:enum "table"]]
-   [:schema {:optional true} [:or ms/NonBlankString :nil]]
-   [:name :string]])
 
 (mr/def ::run-trigger
   [:enum "none" "global-schedule"])
@@ -103,6 +85,21 @@
                 (map #(update % :last_run transforms.util/localize-run-timestamps)))
           (t2/hydrate transforms :last_run :transform_tag_ids))))
 
+(defn- watermark-table-for-transform [{:keys [target]}]
+  (assoc target :name "mb__watermark_table"))
+
+(defn- ensure-mb-watermark-table-exists! [{:keys [target] :as transform}]
+  (when (= :table-incremental (-> target :type keyword))
+    (let [db-id (transforms.util/target-database-id transform)
+          {driver :engine :as database} (t2/select-one :model/Database db-id)
+          watermark-table (watermark-table-for-transform transform)
+          watermark-table-name (transforms.util/qualified-table-name driver watermark-table)]
+      (when-not (driver/table-exists? driver database watermark-table)
+        (driver/create-table! driver db-id watermark-table-name
+                              {:transform_id (driver/type->database-type driver :type/Integer),
+                               :watermark_id (driver/type->database-type driver :type/Integer)}
+                              :primary-key [:transform_id])))))
+
 (api.macros/defendpoint :post "/"
   "Create a new transform."
   [_route-params
@@ -110,13 +107,14 @@
    body :- [:map
             [:name :string]
             [:description {:optional true} [:maybe :string]]
-            [:source ::transform-source]
-            [:target ::transform-target]
+            [:source ::transforms.schema/transform-source]
+            [:target ::transforms.schema/transform-target]
             [:run_trigger {:optional true} ::run-trigger]
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (api/check-superuser)
   (check-database-feature body)
   (check-feature-enabled! body)
+  (ensure-mb-watermark-table-exists! body)
   (api/check (not (transforms.util/target-table-exists? body))
              403
              (deferred-tru "A table with that name already exists."))
@@ -185,8 +183,8 @@
    body :- [:map
             [:name {:optional true} :string]
             [:description {:optional true} [:maybe :string]]
-            [:source {:optional true} ::transform-source]
-            [:target {:optional true} ::transform-target]
+            [:source {:optional true} ::transforms.schema/transform-source]
+            [:target {:optional true} ::transforms.schema/transform-target]
             [:run_trigger {:optional true} ::run-trigger]
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "put transform" id)
@@ -197,6 +195,7 @@
                           new (merge old body)
                           target-fields #(-> % :target (select-keys [:schema :name]))]
                       ;; we must validate on a full transform object
+                      (ensure-mb-watermark-table-exists! new)
                       (check-feature-enabled! new)
                       (check-database-feature new)
                       (when (transforms.util/query-transform? old)

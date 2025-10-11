@@ -1,3 +1,4 @@
+import { useFormikContext } from "formik";
 import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
@@ -11,6 +12,7 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   Form,
+  FormCheckbox,
   FormErrorMessage,
   FormProvider,
   FormSubmitButton,
@@ -32,12 +34,14 @@ type CreateTransformModalProps = {
   source: TransformSource;
   onCreate: (transform: Transform) => void;
   onClose: () => void;
+  initialIncremental?: boolean;
 };
 
 export function CreateTransformModal({
   source,
   onCreate,
   onClose,
+  initialIncremental = false,
 }: CreateTransformModalProps) {
   return (
     <Modal title={t`Save your transform`} opened padding="xl" onClose={onClose}>
@@ -46,6 +50,7 @@ export function CreateTransformModal({
         source={source}
         onCreate={onCreate}
         onClose={onClose}
+        initialIncremental={initialIncremental}
       />
     </Modal>
   );
@@ -55,6 +60,7 @@ type CreateTransformFormProps = {
   source: TransformSource;
   onCreate: (transform: Transform) => void;
   onClose: () => void;
+  initialIncremental: boolean;
 };
 
 type NewTransformValues = {
@@ -62,6 +68,8 @@ type NewTransformValues = {
   description: string | null;
   targetName: string;
   targetSchema: string | null;
+  incremental: boolean;
+  watermarkField: string | null;
 };
 
 const NEW_TRANSFORM_SCHEMA = Yup.object({
@@ -69,12 +77,36 @@ const NEW_TRANSFORM_SCHEMA = Yup.object({
   description: Yup.string().nullable(),
   targetName: Yup.string().required(Errors.required),
   targetSchema: Yup.string().nullable(),
+  incremental: Yup.boolean().required(),
+  watermarkField: Yup.string().nullable().when("incremental", {
+    is: true,
+    then: (schema) => schema.required(Errors.required),
+    otherwise: (schema) => schema.nullable(),
+  }),
 });
+
+function WatermarkFieldInput() {
+  const { values } = useFormikContext<NewTransformValues>();
+
+  if (!values.incremental) {
+    return null;
+  }
+
+  return (
+    <FormTextInput
+      name="watermarkField"
+      label={t`Watermark field`}
+      placeholder={t`e.g., id, row_num`}
+      description={t`An integer field used to track incremental updates`}
+    />
+  );
+}
 
 function CreateTransformForm({
   source,
   onCreate,
   onClose,
+  initialIncremental,
 }: CreateTransformFormProps) {
   const databaseId =
     source.type === "query" ? source.query.database : source["source-database"];
@@ -100,8 +132,8 @@ function CreateTransformForm({
   const supportsSchemas = database && hasFeature(database, "schemas");
 
   const initialValues: NewTransformValues = useMemo(
-    () => getInitialValues(schemas),
-    [schemas],
+    () => getInitialValues(schemas, initialIncremental),
+    [schemas, initialIncremental],
   );
 
   if (isLoading || error != null) {
@@ -152,6 +184,11 @@ function CreateTransformForm({
             label={t`Table name`}
             placeholder={t`descriptive_name`}
           />
+          <FormCheckbox
+            name="incremental"
+            label={t`Incremental?`}
+          />
+          <WatermarkFieldInput />
           <Group>
             <Box flex={1}>
               <FormErrorMessage />
@@ -165,18 +202,23 @@ function CreateTransformForm({
   );
 }
 
-function getInitialValues(schemas: string[]): NewTransformValues {
+function getInitialValues(
+  schemas: string[],
+  initialIncremental: boolean,
+): NewTransformValues {
   return {
     name: "",
     description: null,
     targetName: "",
     targetSchema: schemas?.[0] || null,
+    incremental: initialIncremental,
+    watermarkField: initialIncremental ? "id" : null,
   };
 }
 
 function getCreateRequest(
   source: TransformSource,
-  { name, description, targetName, targetSchema }: NewTransformValues,
+  { name, description, targetName, targetSchema, incremental, watermarkField }: NewTransformValues,
   databaseId: number,
 ): CreateTransformRequest {
   return {
@@ -184,10 +226,11 @@ function getCreateRequest(
     description,
     source,
     target: {
-      type: "table",
+      type: incremental ? "table-incremental" : "table",
       name: targetName,
       schema: targetSchema,
       database: databaseId,
+      watermarkField: incremental ? watermarkField : null,
     },
   };
 }
