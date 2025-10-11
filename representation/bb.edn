@@ -1,0 +1,41 @@
+{:paths ["."]
+
+ :deps {org.clojure/tools.cli {:mvn/version "1.0.219"}
+        clj-commons/clj-yaml {:mvn/version "1.0.27"}}
+
+ :tasks
+ {export
+  {:doc "Export collections from Metabase instance to local filesystem"
+   :requires ([representation.cli :as cli]
+              [representation.export :as export])
+   :task (let [opts [[nil "--mb-instance-url URL" "Metabase instance URL"]
+                     [nil "--mb-instance-api-key KEY" "Metabase API key"]
+                     [nil "--manifest PATH" "Path to manifest.yml file"
+                      :default "manifest.yml"]
+                     [nil "--collection NAMES" "Comma-separated collection names"]]
+               parsed (cli/parse! opts)]
+           (export/run parsed))}
+
+  import
+  {:doc "Import collections from local filesystem to Metabase instance"
+   :requires ([representation.cli :as cli]
+              [representation.import :as import])
+   :task (let [opts [[nil "--mb-instance-url URL" "Metabase instance URL"]
+                     [nil "--mb-instance-api-key KEY" "Metabase API key"]
+                     [nil "--manifest PATH" "Path to manifest.yml file"
+                      :default "manifest.yml"]
+                     [nil "--collection NAMES" "Comma-separated collection names"]]
+               parsed (cli/parse! opts)]
+           (import/run parsed))}
+
+  lint
+  {:doc "Validate collections without importing to Metabase"
+   :requires ([representation.cli :as cli]
+              [representation.lint :as lint])
+   :task (let [opts [[nil "--mb-instance-url URL" "Metabase instance URL"]
+                     [nil "--mb-instance-api-key KEY" "Metabase API key"]
+                     [nil "--manifest PATH" "Path to manifest.yml file"
+                      :default "manifest.yml"]
+                     [nil "--collection NAMES" "Comma-separated collection names"]]
+               parsed (cli/parse! opts)]
+           (lint/run parsed))}}}

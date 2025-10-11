@@ -1,0 +1,7 @@
+name: Sales Data
+type: question
+ref: question-870
+entity-id: ZkB8pnBqduzPlZ45RbVTt
+description: 'Orders + Products, Average of Total, Average of Quantity, and Average of Tax, Grouped by Products → Category and Created At: Month'
+mbql_query: ref:mbql-question-870
+database: ref:database-1
