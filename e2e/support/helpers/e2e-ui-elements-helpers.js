@@ -626,3 +626,11 @@ export function mapPinIcon() {
 export function waitForLoaderToBeRemoved() {
   cy.findByTestId("loading-indicator").should("not.exist");
 }
+
+export function ensureParameterColumnValue({ columnName, columnValue }) {
+  tableInteractiveBody().within(() => {
+    cy.get(`[data-column-id="${columnName}"]`).each((cell) => {
+      cy.wrap(cell).should("have.text", columnValue);
+    });
+  });
+}
