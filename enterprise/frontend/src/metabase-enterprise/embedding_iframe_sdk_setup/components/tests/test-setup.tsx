@@ -1,12 +1,18 @@
 import {
   findRequests,
   setupDashboardEndpoints,
+  setupDashboardQueryMetadataEndpoint,
   setupRecentViewsAndSelectionsEndpoints,
+  setupSearchEndpoints,
   setupUpdateSettingEndpoint,
   setupUpdateSettingsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, waitFor } from "__support__/ui";
-import { createMockDashboard } from "metabase-types/api/mocks";
+import {
+  createMockDashboard,
+  createMockDashboardQueryMetadata,
+  createMockDatabase,
+} from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
   createMockState,
@@ -26,8 +32,16 @@ export const setup = (options?: {
   jwtReady?: boolean;
   urlSearchParams?: string;
 }) => {
+  const mockDashboard = createMockDashboard();
   setupRecentViewsAndSelectionsEndpoints([], ["selections", "views"]);
-  setupDashboardEndpoints(createMockDashboard());
+  setupSearchEndpoints([]);
+  setupDashboardEndpoints(mockDashboard);
+  setupDashboardQueryMetadataEndpoint(
+    mockDashboard,
+    createMockDashboardQueryMetadata({
+      databases: [createMockDatabase()],
+    }),
+  );
   setupUpdateSettingsEndpoint();
   setupUpdateSettingEndpoint();
 
