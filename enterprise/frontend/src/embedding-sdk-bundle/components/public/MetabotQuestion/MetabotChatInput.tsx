@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { t } from "ttag";
 
 import { useSdkDispatch } from "embedding-sdk-bundle/store";
@@ -91,9 +92,8 @@ export function MetabotChatInput() {
       <Flex align="center" justify="center" gap="xs">
         {metabot.isDoingScience && (
           <UnstyledButton
-            data-testid="metabot-cancel-request"
             onClick={cancelRequest}
-            className={S.chatButton}
+            className={cx(S.chatButton, S.stopGenerationButton)}
           >
             <Tooltip label={t`Stop generation`}>
               <Icon name="stop" c="var(--mb-color-text-secondary)" />

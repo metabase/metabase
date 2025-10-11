@@ -33,17 +33,9 @@ export const FullWidth = {
 export const Centered = {
   render() {
     return (
-      <Stack align="center" justify="center">
-        <Flex
-          m="40px"
-          style={{
-            border: "1px solid var(--mb-color-border)",
-            borderRadius: "16px",
-          }}
-        >
-          <MetabotQuestion height="calc(100vh - 90px)" />
-        </Flex>
-      </Stack>
+      <CenteredLayoutPreview>
+        <MetabotQuestion height="calc(100vh - 90px)" />
+      </CenteredLayoutPreview>
     );
   },
 };
@@ -90,17 +82,9 @@ export const MultipleInstances = {
 export const SidebarLayout = {
   render() {
     return (
-      <Stack align="center" justify="center">
-        <Flex
-          m="40px"
-          style={{
-            border: "1px solid var(--mb-color-border)",
-            borderRadius: "16px",
-          }}
-        >
-          <MetabotQuestion height="calc(100vh - 90px)" layout="sidebar" />
-        </Flex>
-      </Stack>
+      <CenteredLayoutPreview>
+        <MetabotQuestion height="calc(100vh - 90px)" layout="sidebar" />
+      </CenteredLayoutPreview>
     );
   },
 };
@@ -108,17 +92,24 @@ export const SidebarLayout = {
 export const StackedLayout = {
   render() {
     return (
-      <Stack align="center" justify="center">
-        <Flex
-          m="40px"
-          style={{
-            border: "1px solid var(--mb-color-border)",
-            borderRadius: "16px",
-          }}
-        >
-          <MetabotQuestion height="calc(100vh - 90px)" layout="stacked" />
-        </Flex>
-      </Stack>
+      <CenteredLayoutPreview>
+        <MetabotQuestion height="calc(100vh - 90px)" layout="stacked" />
+      </CenteredLayoutPreview>
     );
   },
 };
+
+const CenteredLayoutPreview = ({ children }: { children: React.ReactNode }) => (
+  <Stack align="center" justify="center">
+    <Flex
+      m="40px"
+      bg="var(--mb-color-background)"
+      style={{
+        border: "1px solid var(--mb-color-border)",
+        borderRadius: "16px",
+      }}
+    >
+      {children}
+    </Flex>
+  </Stack>
+);
