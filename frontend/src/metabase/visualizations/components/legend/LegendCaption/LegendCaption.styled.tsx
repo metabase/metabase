@@ -16,10 +16,18 @@ export const LegendCaptionRoot = styled.div`
 export const LEGEND_LABEL_FONT_SIZE = "0.875rem";
 export const LEGEND_LABEL_FONT_WEIGHT = 700;
 
-export const LegendLabel = styled(BaseLegendLabel)`
+interface LegendLabelProps {
+  visualizationType?: string;
+}
+
+export const LegendLabel = styled(BaseLegendLabel)<LegendLabelProps>`
   overflow: hidden;
   margin-top: 2px;
+  margin-bottom: ${(props) =>
+    props.visualizationType === "scalar" ? "0" : "inherit"};
   padding: 0.25rem 0 0;
+  padding-bottom: ${(props) =>
+    props.visualizationType === "scalar" ? "0" : "inherit"};
   display: flex;
   flex-direction: row;
   align-items: center;

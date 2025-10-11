@@ -174,9 +174,13 @@ export class Scalar extends Component<
       jsx: true,
     };
 
+    // Calculate effective width for compact logic based on actual font size
+    // Use a more conservative width calculation since we have dynamic font sizing
+    const effectiveWidth = Math.max(width * 0.8, width - 100); // Account for padding and larger fonts
+
     const { displayValue, fullScalarValue } = compactifyValue(
       value,
-      width,
+      effectiveWidth,
       formatOptions,
     );
 
@@ -199,19 +203,22 @@ export class Scalar extends Component<
     };
 
     return (
-      <ScalarWrapper>
+      <ScalarWrapper cardRowHeight={gridSize?.height}>
         <ScalarContainer
           className={DashboardS.fullscreenNormalText}
           data-testid="scalar-container"
-          tooltip={fullScalarValue}
-          alwaysShowTooltip={fullScalarValue !== displayValue}
+          tooltip={
+            fullScalarValue !== displayValue ? fullScalarValue : undefined
+          }
+          alwaysShowTooltip={false}
+          showTooltip={fullScalarValue !== displayValue}
           isClickable={isClickable}
         >
           <span onClick={handleClick} ref={(scalar) => (this._scalar = scalar)}>
             <ScalarValue
               fontFamily={fontFamily}
               gridSize={gridSize}
-              height={Math.max(height - PADDING * 2, 0)}
+              height={height}
               totalNumGridCols={totalNumGridCols}
               value={displayValue as string}
               width={Math.max(width - PADDING, 0)}
