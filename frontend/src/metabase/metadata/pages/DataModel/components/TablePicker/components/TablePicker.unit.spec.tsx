@@ -18,9 +18,8 @@ import {
   createMockTable,
 } from "metabase-types/api/mocks";
 
-import type { TreePath } from "./types";
-
-import { UncontrolledTablePicker } from ".";
+import type { TreePath } from "../types";
+import { UncontrolledTablePicker } from "../wrappers";
 
 let id = 1000;
 function nextId() {
