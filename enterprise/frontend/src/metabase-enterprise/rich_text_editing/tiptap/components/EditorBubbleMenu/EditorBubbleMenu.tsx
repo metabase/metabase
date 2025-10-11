@@ -5,7 +5,7 @@ import type { Editor as TiptapEditor } from "@tiptap/react";
 // @ts-expect-error - BubbleMenu is a Tiptap extension that is registered through @tiptap/extension-bubble-menu
 import { BubbleMenu } from "@tiptap/react/menus";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { useForceUpdate } from "metabase/common/hooks/use-force-update";
@@ -44,15 +44,48 @@ const LinkPopup: React.FC<{
   initialUrl: string;
   onSubmit: (url: string) => void;
   onCancel: () => void;
-}> = ({ isOpen, initialUrl, onSubmit, onCancel }) => {
+  bubbleMenuRef?: React.RefObject<HTMLElement>;
+  overridePosition?: { top: number; left: number };
+}> = ({
+  isOpen,
+  initialUrl,
+  onSubmit,
+  onCancel,
+  bubbleMenuRef,
+  overridePosition,
+}) => {
   const [url, setUrl] = useState(initialUrl);
+  const [position, setPosition] = useState({ top: 0, left: 0 });
 
   useEffect(() => {
     setUrl(initialUrl);
-  }, [initialUrl]);
+
+    if (isOpen) {
+      if (overridePosition) {
+        // Use override position (e.g., from hover menu)
+        setPosition(overridePosition);
+      } else if (bubbleMenuRef?.current) {
+        // Use bubble menu position
+        const bubbleRect = bubbleMenuRef.current.getBoundingClientRect();
+        setPosition({
+          top: bubbleRect.bottom + 8, // 8px below the bubble menu
+          left: bubbleRect.left, // Align with left edge of bubble menu
+        });
+      }
+    }
+  }, [initialUrl, isOpen, bubbleMenuRef, overridePosition]);
 
   const handleSubmit = () => {
-    onSubmit(url);
+    let processedUrl = url.trim();
+
+    if (processedUrl) {
+      // Check if it looks like a valid URL (contains a dot and doesn't start with special characters)
+      if (/^[a-zA-Z0-9].*\.[a-zA-Z]{2,}/.test(processedUrl)) {
+        processedUrl = `https://${processedUrl}`;
+      }
+    }
+
+    onSubmit(processedUrl);
     setUrl("");
   };
 
@@ -66,8 +99,14 @@ const LinkPopup: React.FC<{
   }
 
   return (
-    <Box className={S.linkPopup}>
-      <Flex align="center" gap={8}>
+    <Box
+      className={S.linkPopup}
+      style={{
+        top: `${position.top}px`,
+        left: `${position.left}px`,
+      }}
+    >
+      <Flex align="center" gap={4}>
         <TextInput
           value={url}
           onChange={(e) => setUrl(e.target.value)}
@@ -104,12 +143,20 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
   const forceUpdate = useForceUpdate();
   const [showLinkPopup, setShowLinkPopup] = useState(false);
   const [initialLinkUrl, setInitialLinkUrl] = useState("");
+  const [popupPosition, setPopupPosition] = useState<
+    { top: number; left: number } | undefined
+  >();
+  const bubbleMenuRef = useRef<HTMLDivElement>(null);
 
-  const handleLinkClick = () => {
-    const existingLink = editor.getAttributes("link");
-    setInitialLinkUrl(existingLink.href || "");
-    setShowLinkPopup(true);
-  };
+  const handleLinkClick = useCallback(
+    (position?: { top: number; left: number }) => {
+      const existingLink = editor.getAttributes("link");
+      setInitialLinkUrl(existingLink.href || "");
+      setPopupPosition(position);
+      setShowLinkPopup(true);
+    },
+    [editor],
+  );
 
   const handleLinkSubmit = (url: string) => {
     if (url.trim()) {
@@ -122,17 +169,43 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
 
   const handleLinkCancel = () => {
     setShowLinkPopup(false);
+    setPopupPosition(undefined);
   };
 
   useEffect(() => {
-    editor.on("selectionUpdate", forceUpdate);
-    editor.on("update", forceUpdate);
+    const handleSelectionUpdate = () => {
+      forceUpdate();
+      // Clear URL and hide link popup when selection changes
+      if (showLinkPopup) {
+        setShowLinkPopup(false);
+        setInitialLinkUrl("");
+      }
+    };
+
+    const handleUpdate = () => {
+      forceUpdate();
+    };
+
+    const handleOpenLinkPopup = (event: any) => {
+      // Check if we have a link selected
+      if (editor.isActive("link")) {
+        // Get position from the event detail if available
+        const position = event.detail?.position;
+        handleLinkClick(position);
+      }
+    };
+
+    editor.on("selectionUpdate", handleSelectionUpdate);
+    editor.on("update", handleUpdate);
+    document.addEventListener("openLinkPopup", handleOpenLinkPopup);
 
     return () => {
-      editor.off("selectionUpdate", forceUpdate);
-      editor.off("update", forceUpdate);
+      editor.off("selectionUpdate", handleSelectionUpdate);
+      editor.off("update", handleUpdate);
+      document.removeEventListener("openLinkPopup", handleOpenLinkPopup);
     };
-  }, [editor, forceUpdate]);
+  }, [editor, forceUpdate, showLinkPopup, handleLinkClick]);
+
   return (
     <BubbleMenu
       className={className}
@@ -177,6 +250,7 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
       }}
     >
       <Flex
+        ref={bubbleMenuRef}
         gap={4}
         bg="white"
         p="2px"
@@ -291,6 +365,8 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
         initialUrl={initialLinkUrl}
         onSubmit={handleLinkSubmit}
         onCancel={handleLinkCancel}
+        bubbleMenuRef={bubbleMenuRef}
+        overridePosition={popupPosition}
       />
     </BubbleMenu>
   );

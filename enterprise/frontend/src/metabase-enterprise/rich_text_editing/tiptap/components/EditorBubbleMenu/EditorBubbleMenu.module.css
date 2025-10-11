@@ -6,17 +6,14 @@
 
 .linkPopup {
   position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
   z-index: 9999;
   background: var(--mb-color-bg-white);
   border: 1px solid var(--mb-color-border);
-  border-radius: 6px;
-  box-shadow: 0 4px 12px var(--mb-color-shadow);
-  padding: 12px;
+  border-radius: var(--mantine-radius-sm);
+  box-shadow: 0 2px 12px var(--mb-color-shadow);
+  padding: 2px;
 }
 
 .linkInput {
-  min-width: 300px;
+  min-width: 293px;
 }

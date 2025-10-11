@@ -5,12 +5,13 @@ import type { JSONContent, Editor as TiptapEditor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import cx from "classnames";
 import type React from "react";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLatest, usePrevious } from "react-use";
 import { t } from "ttag";
 
 import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
 import CS from "metabase/css/core/index.css";
+import { color } from "metabase/lib/colors";
 import { useSelector, useStore } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Loader } from "metabase/ui";
@@ -100,6 +101,10 @@ export const Editor: React.FC<EditorProps> = ({
 }) => {
   const siteUrl = useSelector((state) => getSetting(state, "site-url"));
   const { getState } = useStore();
+  const [isHoveringLink, setIsHoveringLink] = useState(false);
+  const [hoverPosition, setHoverPosition] = useState({ top: 0, left: 0 });
+  const [hoveredLink, setHoveredLink] = useState<HTMLElement | null>(null);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const extensions = useMemo(
     () => [
@@ -209,6 +214,59 @@ export const Editor: React.FC<EditorProps> = ({
   useCardEmbedsTracking(editor, onCardEmbedsChange);
   useQuestionSelection(editor, onQuestionSelect);
 
+  // Handle link hover to show bubble menu
+  useEffect(() => {
+    if (!editor) {
+      return;
+    }
+
+    const clearHoverTimeout = () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+        hoverTimeoutRef.current = null;
+      }
+    };
+
+    const startHoverTimeout = () => {
+      clearHoverTimeout();
+      hoverTimeoutRef.current = setTimeout(() => {
+        setIsHoveringLink(false);
+        setHoveredLink(null);
+      }, 150); // Longer delay for better UX
+    };
+
+    const handleMouseOver = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (target.tagName === "A") {
+        clearHoverTimeout();
+        const rect = target.getBoundingClientRect();
+        setHoverPosition({
+          top: rect.bottom + 5,
+          left: rect.left,
+        });
+        setHoveredLink(target);
+        setIsHoveringLink(true);
+      }
+    };
+
+    const handleMouseOut = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (target.tagName === "A") {
+        startHoverTimeout();
+      }
+    };
+
+    const editorElement = editor.view.dom;
+    editorElement.addEventListener("mouseover", handleMouseOver);
+    editorElement.addEventListener("mouseout", handleMouseOut);
+
+    return () => {
+      editorElement.removeEventListener("mouseover", handleMouseOver);
+      editorElement.removeEventListener("mouseout", handleMouseOut);
+      clearHoverTimeout();
+    };
+  }, [editor]);
+
   if (!editor) {
     return null;
   }
@@ -257,10 +315,113 @@ export const Editor: React.FC<EditorProps> = ({
         <EditorContent data-testid="document-content" editor={editor} />
 
         {editable && (
-          <EditorBubbleMenu
-            editor={editor}
-            disallowedNodes={BUBBLE_MENU_DISALLOWED_NODES}
-          />
+          <>
+            <EditorBubbleMenu
+              editor={editor}
+              disallowedNodes={BUBBLE_MENU_DISALLOWED_NODES}
+            />
+            {isHoveringLink && hoveredLink && (
+              <div
+                data-hover-menu
+                style={{
+                  position: "fixed",
+                  top: hoverPosition.top,
+                  left: hoverPosition.left,
+                  zIndex: 1000,
+                  background: color("white"),
+                  border: `1px solid ${color("border")}`,
+                  borderRadius: "4px",
+                  padding: "8px",
+                  boxShadow: `0 2px 8px ${color("shadow")}`,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  maxWidth: "300px",
+                }}
+                onMouseEnter={() => {
+                  if (hoverTimeoutRef.current) {
+                    clearTimeout(hoverTimeoutRef.current);
+                    hoverTimeoutRef.current = null;
+                  }
+                  setIsHoveringLink(true);
+                }}
+                onMouseLeave={() => {
+                  if (hoverTimeoutRef.current) {
+                    clearTimeout(hoverTimeoutRef.current);
+                  }
+                  hoverTimeoutRef.current = setTimeout(() => {
+                    setIsHoveringLink(false);
+                    setHoveredLink(null);
+                  }, 150);
+                }}
+              >
+                <a
+                  href={hoveredLink.getAttribute("href") || ""}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    color: color("brand"),
+                    textDecoration: "none",
+                    fontSize: "14px",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    flex: 1,
+                  }}
+                >
+                  {hoveredLink.getAttribute("href")}
+                </a>
+                <button
+                  onClick={() => {
+                    // Hide the hover menu and trigger link editing
+                    setIsHoveringLink(false);
+                    setHoveredLink(null);
+
+                    // Focus the editor and select the link, then trigger link popup
+                    editor.commands.focus();
+                    const pos = editor.view.posAtDOM(hoveredLink, 0);
+                    editor.commands.setTextSelection({
+                      from: pos,
+                      to: pos + (hoveredLink.textContent?.length || 0),
+                    });
+
+                    // Trigger the link popup by dispatching a custom event with position
+                    setTimeout(() => {
+                      const linkRect = hoveredLink.getBoundingClientRect();
+                      const event = new CustomEvent("openLinkPopup", {
+                        detail: {
+                          position: {
+                            top: linkRect.bottom + 8,
+                            left: linkRect.left,
+                          },
+                        },
+                      });
+                      document.dispatchEvent(event);
+                    }, 50);
+                  }}
+                  style={{
+                    background: color("bg-light"),
+                    border: `1px solid ${color("border")}`,
+                    borderRadius: "3px",
+                    padding: "4px 8px",
+                    cursor: "pointer",
+                    fontSize: "12px",
+                    color: color("text-medium"),
+                  }}
+                  onMouseOver={(e) => {
+                    (e.target as HTMLButtonElement).style.background =
+                      color("bg-medium");
+                  }}
+                  onMouseOut={(e) => {
+                    (e.target as HTMLButtonElement).style.background =
+                      color("bg-light");
+                  }}
+                >
+                  {t`Edit`}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </Box>
     </Box>
