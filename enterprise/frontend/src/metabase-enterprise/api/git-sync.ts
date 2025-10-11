@@ -5,6 +5,8 @@ import type {
   UserId,
 } from "metabase-types/api";
 
+import { startTask } from "../git_sync/remote-sync.slice";
+
 import { EnterpriseApi } from "./api";
 import { invalidateTags, tag } from "./tags";
 
@@ -39,9 +41,19 @@ export type CollectionIsDirtyResponse = {
 };
 
 export type ExportChangesResponse = {
-  success: boolean;
   message?: string;
-  conflict?: boolean;
+  task_id?: number;
+};
+
+export type ImportFromBranchResponse = {
+  status?: string;
+  task_id?: number;
+  message?: string;
+};
+
+export type UpdateGitSyncSettingsResponse = {
+  success: boolean;
+  task_id?: number;
 };
 
 export type CurrentTaskStatus =
@@ -93,6 +105,9 @@ export const gitSyncApi = EnterpriseApi.injectEndpoints({
           "force-sync": forceSync,
         },
       }),
+      onQueryStarted: async (_, { dispatch }) => {
+        dispatch(startTask({ taskType: "export" }));
+      },
       invalidatesTags: (_, error) =>
         invalidateTags(error, [
           tag("collection-dirty-entities"),
@@ -103,7 +118,7 @@ export const gitSyncApi = EnterpriseApi.injectEndpoints({
         ]),
     }),
     importFromBranch: builder.mutation<
-      void,
+      ImportFromBranchResponse,
       { branch: string; force?: boolean }
     >({
       query: ({ branch, force }) => ({
@@ -114,6 +129,9 @@ export const gitSyncApi = EnterpriseApi.injectEndpoints({
           force,
         },
       }),
+      onQueryStarted: async (_, { dispatch }) => {
+        dispatch(startTask({ taskType: "import" }));
+      },
       invalidatesTags: () => [
         tag("session-properties"),
         listTag("collection"),
@@ -149,12 +167,18 @@ export const gitSyncApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: () => [tag("collection-is-dirty")],
     }),
-    updateGitSyncSettings: builder.mutation<void, GitSyncSettingsSet>({
+    updateGitSyncSettings: builder.mutation<
+      UpdateGitSyncSettingsResponse,
+      GitSyncSettingsSet
+    >({
       query: (settings) => ({
         method: "PUT",
         url: `/api/ee/remote-sync/settings`,
         body: settings,
       }),
+      onQueryStarted: async (_, { dispatch }) => {
+        dispatch(startTask({ taskType: "import" }));
+      },
       invalidatesTags: (_, error) =>
         invalidateTags(error, [
           tag("session-properties"),

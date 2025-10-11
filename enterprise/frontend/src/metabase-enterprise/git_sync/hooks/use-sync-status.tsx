@@ -1,62 +1,71 @@
 import { useEffect, useState } from "react";
 
 import { useSetting } from "metabase/common/hooks";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useGetCurrentSyncTaskQuery } from "metabase-enterprise/api";
 
 import { SyncProgressModal } from "../components/SyncProgressModal";
+import { dismissTask, selectRemoteSync } from "../remote-sync.slice";
 
 const SYNC_STATUS_POLL_INTERVAL = 3000;
 
 export const useSyncStatus = () => {
   const isRemoteSyncEnabled = useSetting("remote-sync-enabled");
+  const dispatch = useDispatch();
+  const remoteSyncState = useSelector(selectRemoteSync);
+
   const [pollingInterval, setPollingInterval] = useState<number | undefined>(
     undefined,
   );
 
-  const { data } = useGetCurrentSyncTaskQuery(undefined, {
+  useGetCurrentSyncTaskQuery(undefined, {
     pollingInterval,
     skipPollingIfUnfocused: true,
     skip: !isRemoteSyncEnabled,
   });
-  const [wasRunning, setWasRunning] = useState(false);
 
-  const isRunning = data && data.ended_at === null;
-  const isDone = data && data.ended_at !== null;
-  const isError = data?.status === "errored";
-  const isSuccess = data?.status === "successful";
+  const {
+    isSyncing,
+    taskType,
+    taskStatus,
+    progress,
+    errorMessage,
+    wasRunning,
+  } = remoteSyncState;
+
+  const isError = taskStatus === "errored";
+  const isSuccess = taskStatus === "successful";
 
   useEffect(() => {
-    if (isRunning) {
+    if (isSyncing) {
       setPollingInterval(SYNC_STATUS_POLL_INTERVAL);
-      setWasRunning(true);
     } else {
       setPollingInterval(undefined);
     }
-  }, [isRunning]);
+  }, [isSyncing]);
 
-  const taskType = data?.sync_task_type;
-  const progress = data?.progress ?? 0;
-  const errorMessage = data?.error_message ?? "";
+  const handleDismiss = () => {
+    dispatch(dismissTask());
+  };
 
-  const showModal = (isRunning || (isDone && wasRunning)) && taskType;
+  const showModal = (isSyncing || (!isSyncing && wasRunning)) && taskType;
 
   const progressModal = showModal ? (
     <SyncProgressModal
       taskType={taskType}
-      progress={progress}
+      progress={progress ?? 0}
       isError={isError}
       isSuccess={isSuccess}
-      errorMessage={errorMessage}
-      onDismiss={() => setWasRunning(false)}
+      errorMessage={errorMessage ?? ""}
+      onDismiss={handleDismiss}
     />
   ) : null;
 
   return {
-    isIdle: !isRunning,
-    isRunning,
+    isRunning: isSyncing,
     taskType,
-    progress,
-    message: errorMessage,
+    progress: progress ?? 0,
+    message: errorMessage ?? "",
     progressModal,
   };
 };
