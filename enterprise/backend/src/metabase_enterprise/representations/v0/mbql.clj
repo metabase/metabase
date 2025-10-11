@@ -18,38 +18,44 @@
 
 (defn resolve-source-table
   "Resolves refs in the raw MBQL map, replacing them with IDs for import."
-  [mbql-query ref-index]
-  (let [table-ref (:source-table mbql-query)
-        [db-id table-id] (cond
-                           ;; ref to another card/question:
-                           (v0-common/ref? table-ref)
-                           [nil
-                            (->> (v0-common/ref->id table-ref ref-index)
-                                 (str "card__"))]
-                           ;; map with database ref - resolve database and lookup table
-                           (and (map? table-ref) (v0-common/ref? (:database table-ref)))
-                           (let [db-id (v0-common/ref->id (:database table-ref) ref-index)
-                                 table-id (t2/select-one-fn :id :model/Table
-                                                            :db_id db-id
-                                                            :schema (:schema table-ref)
-                                                            :name (:table table-ref))]
-                             (when (nil? table-id)
-                               (throw (ex-info "Could not find matching table."
-                                               {:table-ref table-ref})))
-                             [db-id table-id])
-                           ;; Not a ref -- leave it be
-                           :else
-                           table-ref)]
-    (-> mbql-query
-        (assoc :source-table table-id)
-        (m/assoc-some :database db-id))))
+  [source-table ref-index]
+  (cond
+    ;; ref to another card/question:
+    (v0-common/ref? source-table)
+    (str "card__" (v0-common/ref->id source-table ref-index))
 
-(defn resolve-fields
+    ;; map with database ref - resolve database and lookup table
+    (v0-common/table-ref? source-table)
+    (let [db-id (v0-common/ref->id (:database source-table) ref-index)
+          table-id (t2/select-one-fn :id :model/Table
+                                     :db_id db-id
+                                     :schema (:schema source-table)
+                                     :name (:table source-table))]
+      (when (nil? table-id)
+        (throw (ex-info "Could not find matching table."
+                        {:table-ref source-table})))
+      table-id)
+
+    ;; Not a ref -- leave it be
+    :else
+    source-table))
+
+(defn replace-source-tables
+  "Resolves refs in the raw MBQL map, replacing them with IDs for import."
+  [mbql-query ref-index]
+  (walk/postwalk
+   (fn [node]
+     (if (and (map? node) (:source-table node))
+       (update node :source-table resolve-source-table ref-index)
+       node))
+   mbql-query))
+
+(defn replace-fields
   "Resolves field refs in MBQL, converting maps to [:field id] vectors for import."
   [mbql-query ref-index]
   (walk/postwalk
    (fn [node]
-     (if (and (map? node) (:field node) (:table node))
+     (if (v0-common/field-ref? node)
        ;; It's a field map - resolve it to [:field id]
        (let [db-id (v0-common/ref->id (:database node) ref-index)
              table-id (t2/select-one-fn :id :model/Table
@@ -94,20 +100,23 @@
 (defn ->ref-source-table
   "Convert source_table from IDs to representation refs for export."
   [query]
-  (if-some [st (-> query :query :source-table)]
-    (cond
-      (string? st)
-      (assoc-in query [:query :source-table]
-                (card-ref st))
+  (walk/postwalk
+   (fn [node]
+     (cond
+       (not (and (map? node)
+                 (:source-table node)))
+       node
 
-      (number? st)
-      (assoc-in query [:query :source-table]
-                (table-ref st))
+       (string? (:source-table node))
+       (update node :source-table card-ref)
 
-      :else
-      (throw (ex-info "Unknown source table type" {:query query
-                                                   :source-table st})))
-    query))
+       (number? (:source-table node))
+       (update node :source-table table-ref)
+
+       :else
+       (throw (ex-info "Unknown source table type" {:query query
+                                                    :source-table node}))))
+   query))
 
 (defn ->ref-database
   "Convert database from ID to representation ref for export."
@@ -156,7 +165,7 @@
 (defn import-dataset-query
   "Returns Metabase's dataset_query format, given a representation.
    Converts representation format to Metabase's internal dataset_query structure."
-  [{:keys [query mbql_query database] :as representation} ref-index]
+  [{:keys [query mbql_query lib_query database] :as representation} ref-index]
   (let [database-id (v0-common/ref->id database ref-index)]
     (cond
       ;; Native SQL query - simple case
@@ -167,10 +176,20 @@
 
       ;; MBQL query - check if it's a ref or embedded map
       mbql_query
-      (let [resolved-mbql (-> (resolve-source-table mbql_query ref-index)
-                              (resolve-fields ref-index)
-                              (u/remove-nils))]
-        resolved-mbql)
+      (let [resolved-mbql (-> mbql_query
+                              (replace-source-tables ref-index)
+                              (replace-fields ref-index))]
+        {:type :query
+         :database database-id
+         :query resolved-mbql})
+
+      lib_query
+      (let [resolved-lib (-> lib_query
+                             (replace-source-tables ref-index)
+                             (replace-fields ref-index))]
+        {:lib/type :mbql/query
+         :database database-id
+         :stages resolved-lib})
 
       ;; sanity check
       :else

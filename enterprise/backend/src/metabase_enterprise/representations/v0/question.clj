@@ -6,6 +6,7 @@
    [metabase-enterprise.representations.v0.mbql :as v0-mbql]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -55,6 +56,11 @@
    {:description "MBQL query to execute"}
    any?])
 
+(mr/def ::lib-query
+  [:and
+   {:description "MBQL5 query to execute"}
+   any?])
+
 (mr/def ::database
   [:and
    {:description "Database reference: integer ID, name string, or ref string"}
@@ -79,10 +85,11 @@
     [:database ::database]
     [:query {:optional true} ::query]
     [:mbql_query {:optional true} ::mbql-query]
+    [:lib_query {:optional true} ::lib-query]
     [:collection {:optional true} ::collection]]
    [:fn {:error/message "Must have exactly one of :query or :mbql_query"}
-    (fn [{:keys [query mbql_query]}]
-      (= 1 (count (filter some? [query mbql_query]))))]])
+    (fn [{:keys [query mbql_query lib_query]}]
+      (= 1 (count (filter some? [query mbql_query lib_query]))))]])
 
 ;;; ------------------------------------ Ingestion ------------------------------------
 
@@ -140,6 +147,10 @@
 
       (= :query (:type query))
       (assoc :mbql_query (:query query)
+             :database (:database query))
+
+      (= :mbql/query (:lib/type query))
+      (assoc :lib_query (:stages query)
              :database (:database query))
 
       :always
