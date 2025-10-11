@@ -178,7 +178,8 @@
   pivot-types]
  [lib.equality
   find-column-for-legacy-ref
-  find-matching-column]
+  find-matching-column
+  matching-column-by-source-uuid]
  [lib.expression
   expression
   expressions
