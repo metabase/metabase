@@ -59,6 +59,14 @@ export function EmbeddingNav() {
           label={t`Static`}
           icon="embed_static"
         />
+
+        <Divider mb="sm" />
+
+        <EmbeddingNavItem
+          path="/admin/embedding/security"
+          label={t`Security`}
+          icon="shield_outline"
+        />
       </Stack>
     </AdminNavWrapper>
   );

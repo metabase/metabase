@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports -- legacy component
 import styled from "@emotion/styled";
 
 import Alert from "metabase/common/components/Alert";

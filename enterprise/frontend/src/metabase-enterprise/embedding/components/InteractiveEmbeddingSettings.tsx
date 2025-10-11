@@ -17,7 +17,6 @@ import { useDocsUrl } from "metabase/common/hooks";
 import { Box, Button } from "metabase/ui";
 
 import { EmbeddingAppOriginDescription } from "./EmbeddingAppOriginDescription";
-import { SameSiteSelectWidget } from "./EmbeddingAppSameSiteCookieDescription";
 
 const utmTags = {
   utm_source: "product",
@@ -60,8 +59,6 @@ export function InteractiveEmbeddingSettings() {
           placeholder="https://*.example.com"
           inputType="text"
         />
-
-        <SameSiteSelectWidget />
       </SettingsSection>
 
       <RelatedSettingsSection
