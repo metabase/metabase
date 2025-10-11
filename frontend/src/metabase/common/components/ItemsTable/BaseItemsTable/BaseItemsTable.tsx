@@ -171,6 +171,7 @@ export const BaseItemsTable = ({
           {visibleColumnsMap["lastEditedBy"] && <Columns.LastEditedBy.Col />}
           {visibleColumnsMap["lastEditedAt"] && <Columns.LastEditedAt.Col />}
           {visibleColumnsMap["actionMenu"] && <Columns.ActionMenu.Col />}
+          {visibleColumnsMap["archive"] && <Columns.Archive.Col />}
           <Columns.RightEdge.Col />
         </colgroup>
       )}
@@ -216,6 +217,7 @@ export const BaseItemsTable = ({
               />
             )}
             {visibleColumnsMap["actionMenu"] && <Columns.ActionMenu.Header />}
+            {visibleColumnsMap["archive"] && <Columns.Archive.Header />}
             <Columns.RightEdge.Header />
           </tr>
         </thead>
