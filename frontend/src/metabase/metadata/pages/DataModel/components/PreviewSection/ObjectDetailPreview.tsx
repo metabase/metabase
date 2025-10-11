@@ -1,4 +1,4 @@
-import { memo, useMemo } from "react";
+import { memo, useMemo, useRef } from "react";
 import { t } from "ttag";
 
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
@@ -128,10 +128,13 @@ function getDataSampleQuery(
 }
 
 function useDataSample({ databaseId, field, fieldId, tableId }: Props) {
+  // do not generate a new query when metadata changes
   const metadata = useSelector(getMetadataUnfiltered);
+  const metadataRef = useRef(metadata);
+  metadataRef.current = metadata;
   const query = useMemo(
-    () => getDataSampleQuery(metadata, databaseId, tableId, fieldId),
-    [metadata, databaseId, tableId, fieldId],
+    () => getDataSampleQuery(metadataRef.current, databaseId, tableId, fieldId),
+    [databaseId, tableId, fieldId],
   );
 
   const { data, ...rest } = useGetAdhocQueryQuery(

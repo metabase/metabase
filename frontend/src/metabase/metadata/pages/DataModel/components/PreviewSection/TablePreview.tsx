@@ -1,4 +1,4 @@
-import { memo, useMemo } from "react";
+import { memo, useMemo, useRef } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -84,10 +84,20 @@ function useDataSample({
   pkFields,
   tableId,
 }: Props) {
+  // do not generate a new query when metadata changes
   const metadata = useSelector(getMetadataUnfiltered);
+  const metadataRef = useRef(metadata);
+  metadataRef.current = metadata;
   const query = useMemo(
-    () => getPreviewQuery(metadata, databaseId, tableId, fieldId, pkFields),
-    [metadata, databaseId, tableId, fieldId, pkFields],
+    () =>
+      getPreviewQuery(
+        metadataRef.current,
+        databaseId,
+        tableId,
+        fieldId,
+        pkFields,
+      ),
+    [databaseId, tableId, fieldId, pkFields],
   );
 
   const { data, refetch, ...rest } = useGetAdhocQueryQuery(
