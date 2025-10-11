@@ -55,7 +55,7 @@
   [parameters]
   (into #{}
         (keep (fn [{:keys [target]}]
-                (:stage-number (lib/parameter-target-dimension-options target))))
+                (some-> target lib/parameter-target-dimension-options :stage-number)))
         parameters))
 
 (defn- point-parameters-to-last-stage

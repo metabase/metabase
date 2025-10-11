@@ -173,7 +173,6 @@
 ;; [:= [:field 10 {:temporal-unit :day}] [:absolute-datetime #inst "2018-10-02" :day]]
 (mr/def ::absolute-datetime
   [:multi {:error/message "valid :absolute-datetime clause"
-           :doc/title     [:span [:code ":absolute-datetime"] " clause"]
            :dispatch      (fn [x]
                             (cond
                               (core/not (is-clause? :absolute-datetime x)) :invalid
@@ -271,38 +270,60 @@
   it cannot be empty."
   [:and
    [:merge
+    {:decode/normalize (fn [m]
+                         (when-let [m (lib.schema.ref/normalize-expression-options m)]
+                           (dissoc m :lib/uuid)))}
     ::lib.schema.ref/expression.options
     [:map
-     {:decode/normalize (fn [m]
-                          (when (map? m)
-                            (dissoc m :lib/uuid)))}
      [:lib/uuid {:optional true} ::lib.schema.common/uuid]]]
+   (lib.schema.common/disallowed-keys {:lib/uuid "MBQL 4 refs should not have :lib/uuid"})
    [:fn
-    {:decode/normalize perf/not-empty}
+    {:error/message    "MBQL 4 :expression options should not be empty, use a nil map instead"
+     :decode/normalize perf/not-empty}
     seq]])
 
-(defclause ^{:requires-features #{:expressions}} expression
-  expression-name ::lib.schema.common/non-blank-string
-  options         (optional ::expression.options))
+(mr/def ::expression
+  [:and
+   (helpers/clause
+    :expression
+    "expression-name" ::lib.schema.common/non-blank-string
+    "options"         [:optional ::expression.options])
+   [:fn
+    {:error/message   "Expression should not have empty opts"
+     :decode/normalize (fn [[tag expression-name opts]]
+                         (if (empty? opts)
+                           [tag expression-name]
+                           [tag expression-name opts]))}
+    (fn [[_tag _expression-name opts :as expression-ref]]
+      (core/or (core/= (core/count expression-ref) 2)
+               (seq opts)))]])
+
+(def expression
+  "Schema for an MBQL 4 :expression reference."
+  ^{:clause-name :expression} [:ref ::expression])
 
 (defmethod options-style-method :expression [_tag] ::options-style.last-unless-empty)
 
 (mr/def ::FieldOptions
-  "Options for an MBQL 4 `:field` ref are the same as MBQL 5, except that `:lib/uuid` is not required and it cannot be empty."
+  "Options for an MBQL 4 `:field` ref are the same as MBQL 5, except that `:lib/uuid` is not required and it cannot be
+  empty."
   [:maybe
    [:and
     [:merge
-     ::lib.schema.ref/field.options
+     {:decode/normalize (fn [m]
+                          (when-let [m (lib.schema.ref/normalize-field-options-map m)]
+                            (dissoc m :lib/uuid)))}
+     [:ref ::lib.schema.ref/field.options]
      [:map
-      {:decode/normalize (fn [m]
-                           (when (map? m)
-                             (dissoc m :lib/uuid)))}
       [:lib/uuid {:optional true} ::lib.schema.common/uuid]]]
+    (lib.schema.common/disallowed-keys {:lib/uuid "MBQL 4 refs should not have :lib/uuid"})
     [:fn
-     {:decode/normalize perf/not-empty}
+     {:error/message    "MBQL 4 :field ref options should not be empty, use nil instead"
+      :decode/normalize perf/not-empty}
      seq]]])
 
 (mr/def ::require-base-type-for-field-name
+  "Fields using names rather than integer IDs are required to specify `:base-type`."
   [:fn
    {:error/message ":field clauses using a string field name must specify :base-type."}
    (fn [[_ id-or-name {:keys [base-type]}]]
@@ -314,25 +335,20 @@
 
 (mr/def ::field
   [:and
-   {:doc/title [:span [:code ":field"] " clause"]}
    (helpers/clause
     :field
     "id-or-name" [:or ::lib.schema.id/field :string]
     "options"    [:maybe [:ref ::FieldOptions]])
-   [:ref
-    {:description "Fields using names rather than integer IDs are required to specify `:base-type`."}
-    ::require-base-type-for-field-name]])
+   ::require-base-type-for-field-name])
 
 (def ^{:added "0.39.0"} field
   "Schema for a `:field` clause."
   ^{:clause-name :field} [:ref ::field])
 
 (mr/def ::field-or-expression-ref
-  [:schema
-   {:doc/title "`:field` or `:expression` ref"}
-   (one-of expression field)])
+  (one-of expression field))
 
-(def Field
+(def FieldOrExpressionRef
   "Schema for either a `:field` clause (reference to a Field) or an `:expression` clause (reference to an expression)."
   [:ref ::field-or-expression-ref])
 
@@ -400,7 +416,7 @@
    [:string            :string]
    [:string-expression StringExpression]
    [:value             value]
-   [:else              Field]])
+   [:else              FieldOrExpressionRef]])
 
 (def ^:private StringExpressionArg
   [:ref ::StringExpressionArg])
@@ -472,7 +488,7 @@
    [:aggregation         Aggregation]
    [:value               value]
    [:datetime-expression DatetimeExpression]
-   [:else                [:or [:ref ::DateOrDatetimeLiteral] Field]]])
+   [:else                [:or [:ref ::DateOrDatetimeLiteral] FieldOrExpressionRef]]])
 
 (def ^:private DateTimeExpressionArg
   [:ref ::DateTimeExpressionArg])
@@ -501,7 +517,7 @@
    [:string               :string]
    [:string-expression    StringExpression]
    [:value                value]
-   [:else                 Field]])
+   [:else                 FieldOrExpressionRef]])
 
 (def ^:private ExpressionArg
   [:ref ::ExpressionArg])
@@ -746,7 +762,7 @@
                        :relative-datetime
                        :else))}
    [:relative-datetime relative-datetime]
-   [:else              Field]])
+   [:else              FieldOrExpressionRef]])
 
 (mr/def ::EqualityComparable
   [:maybe
@@ -821,11 +837,11 @@
   lon-max   OrderComparable)
 
 ;; SUGAR CLAUSES: These are rewritten as `[:= <field> nil]` and `[:not= <field> nil]` respectively
-(defclause ^:sugar is-null,  field Field)
-(defclause ^:sugar not-null, field Field)
+(defclause ^:sugar is-null,  field FieldOrExpressionRef)
+(defclause ^:sugar not-null, field FieldOrExpressionRef)
 
 (mr/def ::Emptyable
-  [:or StringExpressionArg Field])
+  [:or StringExpressionArg FieldOrExpressionRef])
 
 (def Emptyable
   "Schema for a valid is-empty or not-empty argument."
@@ -895,7 +911,7 @@
 ;;
 ;; SUGAR: This is automatically rewritten as a filter clause with a relative-datetime value
 (defclause ^:sugar time-interval
-  field   Field
+  field   FieldOrExpressionRef
   n       [:or
            :int
            [:enum :current :last :next]]
@@ -905,12 +921,12 @@
 (defmethod options-style-method :time-interval [_tag] ::options-style.last-unless-empty)
 
 (defclause ^:sugar during
-  field   Field
+  field   FieldOrExpressionRef
   value   [:or ::lib.schema.literal/date ::lib.schema.literal/datetime]
   unit    ::DateTimeUnit)
 
 (defclause ^:sugar relative-time-interval
-  col           Field
+  col           FieldOrExpressionRef
   value         :int
   bucket        [:ref ::RelativeDatetimeUnit]
   offset-value  :int
@@ -952,7 +968,7 @@
    [:boolean  BooleanExpression]
    [:value    value]
    [:segment  segment]
-   [:else     Field]])
+   [:else     FieldOrExpressionRef]])
 
 (def ^:private CaseClause
   [:tuple {:error/message ":case subclause"} Filter ExpressionArg])
@@ -990,7 +1006,6 @@
   `:+` clause or a `:field` or `:value` clause."
   [:multi
    {:error/message ":field or :expression reference or expression"
-    :doc/title     "expression definition"
     :dispatch      (fn [x]
                      (cond
                        (is-clause? numeric-functions x)  :numeric
@@ -1010,7 +1025,7 @@
    [:if       case:if]
    [:offset   offset]
    [:value    value]
-   [:else     Field]])
+   [:else     FieldOrExpressionRef]])
 
 ;;; -------------------------------------------------- Aggregations --------------------------------------------------
 
@@ -1018,8 +1033,8 @@
 
 ;; cum-sum and cum-count are SUGAR because they're implemented in middleware. The clauses are swapped out with
 ;; `count` and `sum` aggregations respectively and summation is done in Clojure-land
-(defclause ^{:requires-features #{:basic-aggregations}} ^:sugar count,     field (optional Field))
-(defclause ^{:requires-features #{:basic-aggregations}} ^:sugar cum-count, field (optional Field))
+(defclause ^{:requires-features #{:basic-aggregations}} ^:sugar count,     field (optional FieldOrExpressionRef))
+(defclause ^{:requires-features #{:basic-aggregations}} ^:sugar cum-count, field (optional FieldOrExpressionRef))
 
 ;; technically aggregations besides count can also accept expressions as args, e.g.
 ;;
@@ -1540,7 +1555,7 @@
 (mr/def ::Fields
   [:schema
    {:error/message "Distinct, non-empty sequence of Field clauses"}
-   (helpers/distinct [:sequential {:min 1} Field])])
+   (helpers/distinct [:sequential {:min 1} FieldOrExpressionRef])])
 
 (mr/def ::OrderBys
   (helpers/distinct [:sequential {:min 1} [:ref ::OrderBy]]))
@@ -1551,7 +1566,7 @@
     [:source-query {:optional true} SourceQuery]
     [:source-table {:optional true} SourceTable]
     [:aggregation  {:optional true} [:sequential {:min 1} Aggregation]]
-    [:breakout     {:optional true} [:sequential {:min 1} Field]]
+    [:breakout     {:optional true} [:sequential {:min 1} FieldOrExpressionRef]]
     [:expressions  {:optional true} [:map-of ::lib.schema.common/non-blank-string [:ref ::FieldOrExpressionDef]]]
     [:fields       {:optional true} Fields]
     [:filter       {:optional true} Filter]
@@ -1596,7 +1611,6 @@
 
 (mr/def ::dimension
   [:and
-   {:doc/title [:span [:code ":dimension"] " clause"]}
    [:fn {:error/message "must be a `:dimension` clause"} (partial helpers/is-clause? :dimension)]
    [:catn
     [:tag [:= :dimension]]

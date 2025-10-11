@@ -28,28 +28,17 @@
 
 (mu/defn field-ref-id :- [:maybe ::lib.schema.id/field]
   "If a `:field` ref uses a Field ID, return that ID."
-  [[_tag id-or-name _opts, :as _field-ref] :- ::lib.schema.ref/field]
+  [[_tag _opts id-or-name, :as _field-ref] :- :mbql.clause/field]
   (when (pos-int? id-or-name)
     id-or-name))
 
 (mu/defn field-ref-name :- [:maybe :string]
   "If a `:field` ref uses a Field name, return that name."
-  [[_tag id-or-name _opts, :as _field-ref] :- ::lib.schema.ref/field]
+  [[_tag _opts id-or-name, :as _field-ref] :- :mbql.clause/field]
   (when (string? id-or-name)
     id-or-name))
-
-(mu/defn field-ref-opts :- [:maybe ::lib.schema.ref/field.options]
-  "Return the options map for a `:field` ref."
-  [[_tag _id-or-name opts, :as _field-ref] :- ::lib.schema.ref/field]
-  opts)
 
 (mu/defn expression-ref-name :- [:maybe :string]
   "Return the expression name from an `:expression` ref."
-  [[_tag id-or-name _opts, :as _expression-ref] :- ::lib.schema.ref/expression]
-  (when (string? id-or-name)
-    id-or-name))
-
-(mu/defn expression-ref-opts :- [:maybe ::lib.schema.ref/expression.options]
-  "Return the options map from an `:expression` ref."
-  [[_tag _id-or-name opts, :as _expression-ref] :- ::lib.schema.ref/expression]
-  opts)
+  [[_tag _opts expression-name, :as _expression-ref] :- :mbql.clause/expression]
+  expression-name)

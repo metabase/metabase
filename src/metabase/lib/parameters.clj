@@ -7,6 +7,7 @@
   See https://metaboat.slack.com/archives/C0645JP1W81/p1760128892249879"
   (:require
    [metabase.lib.convert :as lib.convert]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
@@ -66,7 +67,7 @@
 (mu/defn parameter-target-field-options :- [:maybe ::lib.schema.ref/field.options]
   "If a parameter `:target` wraps a `:field` ref return the ref options map."
   [target :- ::lib.schema.parameter/target]
-  (some-> target parameter-target-field-ref lib.ref/field-ref-opts))
+  (some-> target parameter-target-field-ref lib.options/options))
 
 (mu/defn- parameter-target-legacy-expression-ref :- [:maybe ::target.legacy-expression-ref]
   [target :- ::lib.schema.parameter/target]
@@ -90,7 +91,7 @@
 (mu/defn parameter-target-expression-options :- [:maybe ::lib.schema.ref/expression.options]
   "If a parameter `:target` wraps an `:expression` ref return the ref options map."
   [target :- ::lib.schema.parameter/target]
-  (some-> target parameter-target-expression-ref lib.ref/expression-ref-opts))
+  (some-> target parameter-target-expression-ref lib.options/options))
 
 (mu/defn parameter-target-is-dimension?
   "Whether a parameter `:target` is a `:dimension` psuedo-clause. (Generally, you don't want to check this because it's

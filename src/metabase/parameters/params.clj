@@ -74,7 +74,7 @@
 (mu/defn param-target->field-id :- [:maybe ::lib.schema.id/field]
   "Parse a Card parameter `target` form, which looks something like `[:dimension [:field-id 100]]`, and return the Field
   ID it references (if any)."
-  [target :- ::lib.schema.parameter/target
+  [target
    ;; TODO (Cam 9/25/25) -- `card` should actually be required but I don't have all day to fix broken tests from
    ;; before I schematized this.
    card   :- [:maybe :metabase.queries.schema/card]]

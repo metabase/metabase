@@ -112,6 +112,7 @@
  lib.util/truncate-alias
  lib/->legacy-MBQL
  lib/->metadata-provider
+ lib/normalize
  lib/order-by-clause
  lib/query-from-legacy-inner-query
  lib/raw-native-query
@@ -271,7 +272,7 @@
 
 (def mbql.schema.field
   "mbql.s/field"
-  mbql.s/field)
+  ::mbql.s/field)
 
 (def mbql.schema.FieldOrExpressionDef
   "::mbql.s/FieldOrExpressionDef"

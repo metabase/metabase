@@ -47,7 +47,7 @@
 (deftest ^:parallel field-clause-test
   (testing "Make sure our schema validates `:field` clauses correctly"
     (doseq [[clause expected] {[:field 1 nil]                                                          true
-                               [:field 1 {}]                                                           true
+                               [:field 1 {}]                                                           false
                                [:field 1 {:x true}]                                                    true
                                [:field 1 2]                                                            false
                                [:field "wow" nil]                                                      false
@@ -213,7 +213,7 @@
     ::mbql.s/+       [:+ [:relative-datetime -1 :month] [:interval -2 :month]]))
 
 (deftest ^:parallel filter-test
-  (are [x] (not (me/humanize (mr/explain ::mbql.s/Filter x)))
+  (are [x] (nil? (me/humanize (mr/explain ::mbql.s/Filter x)))
     [:value true nil]
     [:value false nil]
     [:expression "boolexpr"]
@@ -286,3 +286,13 @@
                 :type
                 {:type/text
                  {:percent-json 0.0, :percent-url 0.0, :percent-email 0.0, :percent-state 0.0, :average-length 13.26388888888889}}}}))))))
+
+(deftest ^:parallel lib-normalize-legacy-field-ref-test
+  (is (= [:field 100 nil]
+         (lib/normalize ::mbql.s/field ["field" 100 {"temporal-unit" nil, "lib/uuid" "d01f4c83-0fe5-4329-80f3-2bbea1f27c3b"}]))))
+
+(deftest ^:parallel lib-normalize-legacy-expression-ref-test
+  (is (= [:expression "X"]
+         (lib/normalize ::mbql.s/expression ["expression" "X" {"temporal-unit" nil, "lib/uuid" "d01f4c83-0fe5-4329-80f3-2bbea1f27c3b"}])))
+  (is (= [:expression "X" {:temporal-unit :day}]
+         (lib/normalize ::mbql.s/expression ["expression" "X" {"temporal-unit" "day", "lib/uuid" "d01f4c83-0fe5-4329-80f3-2bbea1f27c3b"}]))))

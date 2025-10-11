@@ -64,7 +64,9 @@
 
 (mr/def ::values-from-card-query.options
   [:map
-   [:query-string {:optional true} [:maybe ms/NonBlankString]]])
+   ;; despite this being called "query string" it can actually be any value because it just gets used in an `:=`
+   ;; filter clause. :eyeroll:
+   [:query-string {:optional true} :any]])
 
 (mu/defn- values-from-card-query :- [:maybe ::lib.schema/query]
   [{query :dataset_query, :keys [id], :as _card} :- [:and
@@ -79,7 +81,7 @@
       (when-let [visible-columns (or (not-empty (lib/visible-columns query))
                                      (log/warnf "Cannot get values from Card %d: Card query has no visible columns"
                                                 id))]
-        (when-let [value-column (or (lib/metadata query field-ref)
+        (when-let [value-column (or (lib/find-matching-column query -1 field-ref visible-columns)
                                     (log/warnf "Cannot get values from Card %d: failed to find column for ref %s\nFound: %s"
                                                id
                                                (pr-str field-ref)
@@ -113,8 +115,8 @@
   {:values          [[\"Red Medicine\"]]
   :has_more_values false}
   "
-  ([card value-field]
-   (values-from-card card value-field nil))
+  ([card field-ref]
+   (values-from-card card field-ref nil))
 
   ([card      :- :metabase.queries.schema/card
     field-ref :- [:or :mbql.clause/field :mbql.clause/expression]
@@ -133,7 +135,7 @@
    query-string                              :- [:maybe ms/NonBlankString]]
   (let [card-id (:card_id config)
         card    (t2/select-one :model/Card :id card-id)]
-    (values-from-card card (:value_field config) {:query-string query-string})))
+    (values-from-card card (lib/->pMBQL (:value_field config)) {:query-string query-string})))
 
 (defn- can-get-card-values?
   [card value-field]

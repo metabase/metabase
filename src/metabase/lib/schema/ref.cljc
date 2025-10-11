@@ -35,6 +35,20 @@
      (contains? units temporal-unit)
      true)))
 
+(defn normalize-field-options-map
+  "Normalize a `:field` ref options map."
+  [m]
+  (when (map? m)
+    (let [m (common/normalize-options-map m)]
+      ;; remove nil values
+      (reduce-kv
+       (fn [m k v]
+         (cond-> m
+           (nil? v)
+           (dissoc k)))
+       m
+       m))))
+
 (mr/def ::field.options
   [:and
    [:merge
@@ -42,7 +56,8 @@
                          (m/filter-keys (fn [k]
                                           (or (simple-keyword? k)
                                               (= (namespace k) "lib")))
-                                        opts))}
+                                        opts))
+     :decode/normalize normalize-field-options-map}
     ::common/options
     [:map
      ;;
@@ -163,8 +178,15 @@
   (or ((some-fn :effective-type :base-type) opts)
       ::expression/type.unknown))
 
+(defn normalize-expression-options
+  "Normalize an expression options map."
+  [m]
+  (when (map? m)
+    (normalize-field-options-map m)))
+
 (mr/def ::expression.options
   [:merge
+   {:decode/normalize normalize-expression-options}
    ::common/options
    [:map
     [:temporal-unit {:optional true} [:ref ::temporal-bucketing/unit]]]])

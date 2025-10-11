@@ -593,12 +593,6 @@
      ;; keep recursing deeper into the query until we get to the same level the aggregation reference was defined at
      (recur {:query (get-in query [:query :source-query])} index (dec nesting-level)))))
 
-(defn unique-name-generator
-  "DEPRECATED: Use [[metabase.lib.util/unique-name-generator-with-options]] going forward."
-  {:deprecated "0.57.0"}
-  [& {:as options}]
-  (lib.util/unique-name-generator-with-options options))
-
 (defn query->max-rows-limit
   "Calculate the absolute maximum number of results that should be returned by this query (MBQL or native), useful for
   doing the equivalent of

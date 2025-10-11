@@ -428,7 +428,6 @@
  [lib.ref
   field-ref-id
   field-ref-name
-  field-ref-opts
   ref]
  [lib.remove-replace
   remove-clause
