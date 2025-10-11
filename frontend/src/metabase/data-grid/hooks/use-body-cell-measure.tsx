@@ -1,8 +1,8 @@
 import type React from "react";
 import { useCallback, useMemo, useRef } from "react";
+import { renderToString } from "react-dom/server";
 
 import { BodyCell } from "metabase/data-grid/components/BodyCell/BodyCell";
-import { reactNodeToHtmlString } from "metabase/lib/react-to-html";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { ThemeProvider } from "metabase/ui";
 
@@ -62,7 +62,7 @@ export const useCellMeasure = (
       if (typeof content === "string") {
         contentCell.textContent = content;
       } else {
-        contentCell.innerHTML = reactNodeToHtmlString(content);
+        contentCell.innerHTML = renderToString(content);
       }
       const boundingRect = rootEl.getBoundingClientRect();
       return {
