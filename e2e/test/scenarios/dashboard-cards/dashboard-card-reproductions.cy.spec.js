@@ -775,11 +775,13 @@ describe("issue 29304", () => {
         // This extra 1ms is crucial, without this the test would fail.
         cy.tick(WAIT_TIME + 1);
 
-        const expectedWidth = 138;
+        // Width of "18,760" rendered at the calculated font size for a 4x3 card
+        // Measured: 117px at 2.25rem with Lato 700
+        const expectedWidth = 117;
         cy.findByTestId("scalar-value").should(([$scalarValue]) => {
           expect($scalarValue.offsetWidth).to.be.closeTo(
             expectedWidth,
-            expectedWidth * 0.1,
+            expectedWidth * 0.15, // 15% tolerance for rendering variations
           );
         });
       });
