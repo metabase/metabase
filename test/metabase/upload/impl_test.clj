@@ -1313,7 +1313,7 @@
         (mt/with-non-admin-groups-no-root-collection-perms
           (is (thrown-with-msg?
                java.lang.Exception
-               #"^You do not have curate permissions for this Collection\.$"
+               #"^You don't have permissions to do that\.$"
                (do-with-uploaded-example-csv!
                 {:user-id (mt/user->id :lucky) :schema-name "public", :table-prefix "uploaded_magic_"}
                 identity)))))

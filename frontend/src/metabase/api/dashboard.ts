@@ -36,6 +36,11 @@ import {
   provideValidDashboardFilterFieldTags,
   tag,
 } from "./tags";
+import {
+  invalidateGitSyncOnCreate,
+  invalidateGitSyncOnDelete,
+  invalidateGitSyncOnUpdate,
+} from "./utils/git-sync-cache-helpers";
 import { handleQueryFulfilled } from "./utils/lifecycle";
 
 export const dashboardApi = Api.injectEndpoints({
@@ -134,6 +139,8 @@ export const dashboardApi = Api.injectEndpoints({
           url: "/api/dashboard",
           body,
         }),
+        onQueryStarted: (_, { dispatch, queryFulfilled }) =>
+          invalidateGitSyncOnCreate(dispatch, queryFulfilled),
         invalidatesTags: (newDashboard, error) =>
           newDashboard
             ? [
@@ -150,6 +157,16 @@ export const dashboardApi = Api.injectEndpoints({
           url: `/api/dashboard/${id}`,
           body,
         }),
+        onQueryStarted: (
+          updateRequest,
+          { dispatch, queryFulfilled, getState },
+        ) => {
+          const state = getState();
+          const oldDashboard = dashboardApi.endpoints.getDashboard.select({
+            id: updateRequest.id,
+          })(state)?.data;
+          invalidateGitSyncOnUpdate(oldDashboard, dispatch, queryFulfilled);
+        },
         invalidatesTags: (_, error, { id }) =>
           invalidateTags(error, [
             listTag("dashboard"),
@@ -163,6 +180,13 @@ export const dashboardApi = Api.injectEndpoints({
           method: "DELETE",
           url: `/api/dashboard/${id}`,
         }),
+        onQueryStarted: (id, { dispatch, getState }) => {
+          const state = getState();
+          const dashboard = dashboardApi.endpoints.getDashboard.select({ id })(
+            state,
+          )?.data;
+          invalidateGitSyncOnDelete(dashboard, dispatch);
+        },
         invalidatesTags: (_, error, id) =>
           invalidateTags(error, [listTag("dashboard"), idTag("dashboard", id)]),
       }),

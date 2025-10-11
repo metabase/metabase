@@ -1,3 +1,8 @@
+import {
+  invalidateGitSyncOnCreate,
+  invalidateGitSyncOnDelete,
+  invalidateGitSyncOnUpdate,
+} from "metabase/api/utils/git-sync-cache-helpers";
 import type {
   CreateDocumentRequest,
   DeleteDocumentRequest,
@@ -27,15 +32,15 @@ export const documentApi = EnterpriseApi.injectEndpoints({
       }),
       invalidatesTags: (_, error) => (error ? [] : [listTag("document")]),
       async onQueryStarted(_props, { dispatch, queryFulfilled }) {
-        await queryFulfilled.then(async ({ data }) => {
-          await dispatch(
-            documentApi.util.upsertQueryData(
-              "getDocument",
-              { id: data.id },
-              data,
-            ),
-          );
-        });
+        invalidateGitSyncOnCreate(dispatch, queryFulfilled);
+        const { data } = await queryFulfilled;
+        await dispatch(
+          documentApi.util.upsertQueryData(
+            "getDocument",
+            { id: data.id },
+            data,
+          ),
+        );
       },
     }),
     updateDocument: builder.mutation<Document, UpdateDocumentRequest>({
@@ -44,6 +49,16 @@ export const documentApi = EnterpriseApi.injectEndpoints({
         url: `/api/ee/document/${document.id}`,
         body: document,
       }),
+      onQueryStarted: (
+        updateRequest,
+        { dispatch, queryFulfilled, getState },
+      ) => {
+        const state = getState();
+        const oldDocument = documentApi.endpoints.getDocument.select({
+          id: updateRequest.id,
+        })(state)?.data;
+        invalidateGitSyncOnUpdate(oldDocument, dispatch, queryFulfilled);
+      },
       invalidatesTags: (_, error, { id }) =>
         !error ? [listTag("document"), idTag("document", id)] : [],
     }),
@@ -52,6 +67,13 @@ export const documentApi = EnterpriseApi.injectEndpoints({
         method: "DELETE",
         url: `/api/ee/document/${document.id}`,
       }),
+      onQueryStarted: (deleteRequest, { dispatch, getState }) => {
+        const state = getState();
+        const document = documentApi.endpoints.getDocument.select({
+          id: deleteRequest.id,
+        })(state)?.data;
+        invalidateGitSyncOnDelete(document, dispatch);
+      },
       invalidatesTags: (_, error, { id }) =>
         !error ? [listTag("document"), idTag("document", id)] : [],
     }),

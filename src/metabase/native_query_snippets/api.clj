@@ -4,6 +4,7 @@
    [clojure.data :as data]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.collections.core :as collections]
    [metabase.models.interface :as mi]
    [metabase.native-query-snippets.models.native-query-snippet :as native-query-snippet]
    [metabase.util :as u]
@@ -17,7 +18,7 @@
 (mu/defn- hydrated-native-query-snippet :- [:maybe (ms/InstanceOf :model/NativeQuerySnippet)]
   [id :- ms/PositiveInt]
   (-> (api/read-check (t2/select-one :model/NativeQuerySnippet :id id))
-      (t2/hydrate :creator)))
+      (t2/hydrate :creator :is_remote_synced)))
 
 (api.macros/defendpoint :get "/"
   "Fetch all snippets"
@@ -27,7 +28,7 @@
   (let [snippets (t2/select :model/NativeQuerySnippet
                             :archived archived
                             {:order-by [[:%lower.name :asc]]})]
-    (t2/hydrate (filter mi/can-read? snippets) :creator)))
+    (t2/hydrate (filter mi/can-read? snippets) :creator :is_remote_synced)))
 
 (api.macros/defendpoint :get "/:id"
   "Fetch native query snippet with ID."
@@ -71,7 +72,9 @@
       (api/update-check snippet changes)
       (when-let [new-name (:name changes)]
         (check-snippet-name-is-unique new-name))
-      (t2/update! :model/NativeQuerySnippet id changes))
+      (t2/with-transaction [_conn]
+        (t2/update! :model/NativeQuerySnippet id changes)
+        (collections/check-for-remote-sync-update snippet)))
     (hydrated-native-query-snippet id)))
 
 (api.macros/defendpoint :put "/:id"

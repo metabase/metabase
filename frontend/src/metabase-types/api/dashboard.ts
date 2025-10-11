@@ -73,6 +73,7 @@ export interface Dashboard {
   >;
   auto_apply_filters: boolean;
   archived: boolean;
+  is_remote_synced?: boolean;
   public_uuid: string | null;
   initially_published_at: string | null;
   embedding_params?: EmbeddingParameters | null;

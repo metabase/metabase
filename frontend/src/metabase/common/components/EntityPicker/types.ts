@@ -1,7 +1,11 @@
 import type { ReactNode } from "react";
 
 import type { IconName } from "metabase/ui";
-import type { SearchResult, SearchResultId } from "metabase-types/api";
+import type {
+  CollectionType,
+  SearchResult,
+  SearchResultId,
+} from "metabase-types/api";
 
 import type { EntityPickerModalOptions } from "./components/EntityPickerModal";
 
@@ -11,6 +15,7 @@ export type TypeWithModel<Id, Model extends string> = {
   name: string;
   can_write?: boolean;
   moderated_status?: "verified" | null;
+  type?: CollectionType;
 };
 
 export type IsFolder<

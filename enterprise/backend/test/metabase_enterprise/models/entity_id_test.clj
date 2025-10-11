@@ -79,6 +79,8 @@
     :model/QueryField
     :model/QueryTable
     :model/RecentViews
+    :model/RemoteSyncObject
+    :model/RemoteSyncTask
     :model/Revision
     :model/SemanticSearchTokenTracking
     :model/SearchIndexMetadata

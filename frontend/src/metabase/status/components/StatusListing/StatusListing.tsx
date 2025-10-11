@@ -2,7 +2,7 @@ import { useBeforeUnload } from "react-use";
 import { t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
+import { PLUGIN_GIT_SYNC, PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
 import { hasActiveUploads } from "metabase/redux/uploads";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { useCheckActiveDownloadsBeforeUnload } from "metabase/status/hooks/use-check-active-downloads-before-unload";
@@ -15,6 +15,7 @@ import { StatusListingRoot } from "./StatusListing.styled";
 
 const StatusListing = () => {
   const isAdmin = useSelector(getUserIsAdmin);
+  const { progressModal } = PLUGIN_GIT_SYNC.useSyncStatus();
 
   const uploadInProgress = useSelector(hasActiveUploads);
 
@@ -26,12 +27,15 @@ const StatusListing = () => {
   useCheckActiveDownloadsBeforeUnload();
 
   return (
-    <StatusListingRoot data-testid="status-root-container">
-      {isAdmin && <DatabaseStatus />}
-      <FileUploadStatus />
-      <DownloadsStatus />
-      {isAdmin && <PLUGIN_UPLOAD_MANAGEMENT.GdriveSyncStatus />}
-    </StatusListingRoot>
+    <>
+      <StatusListingRoot data-testid="status-root-container">
+        {isAdmin && <DatabaseStatus />}
+        <FileUploadStatus />
+        <DownloadsStatus />
+        {isAdmin && <PLUGIN_UPLOAD_MANAGEMENT.GdriveSyncStatus />}
+      </StatusListingRoot>
+      {progressModal}
+    </>
   );
 };
 

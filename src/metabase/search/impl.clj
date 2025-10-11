@@ -363,8 +363,6 @@
 
 (defn- map-collection [collection]
   (cond-> collection
-    (:archived_directly collection)
-    (assoc :location (collection/trash-path))
     :always
     (assoc :type (:collection_type collection))
     :always
