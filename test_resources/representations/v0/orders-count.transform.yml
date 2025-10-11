@@ -5,9 +5,9 @@ target_table: {schema: PUBLIC, table: ORDERS_COUNT}
 type: transform
 version: v0
 mbql_query:
-  source-table: {ref/database: 'ref:database-53', ref/schema: PUBLIC, ref/table: ORDERS}
+  source-table: {database: 'ref:database-53', schema: PUBLIC, table: ORDERS}
   aggregation:
   - [count]
   breakout:
-  - {ref/database: 'ref:database-53', ref/schema: PUBLIC, ref/table: ORDERS, ref/field: CREATED_AT}
+  - {database: 'ref:database-53', schema: PUBLIC, table: ORDERS, field: CREATED_AT}
 database: ref:database-53

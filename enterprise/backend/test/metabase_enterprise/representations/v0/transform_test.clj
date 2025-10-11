@@ -56,10 +56,10 @@
       (testing (str "Importing-Exporting: " filename)
         (let [rep (import/import-yaml filename)
               rep (walk/postwalk-replace {(:database rep)
-                                          (v0-common/->ref (mt/id) :database)}
+                                          (v0-common/->ref 1 :database)}
                                          rep)
-              ref-index {(v0-common/unref (v0-common/->ref (mt/id) :database))
-                         (t2/select-one :model/Database (mt/id))}
+              ref-index {(v0-common/unref (v0-common/->ref 1 :database))
+                         (t2/select-one :model/Database :id 1)}
               persisted (rep/persist! rep ref-index)]
           (is persisted)
           (let [edn (rep/export persisted)
