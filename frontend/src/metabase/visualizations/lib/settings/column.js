@@ -23,6 +23,8 @@ import {
   getDefaultCurrency,
   getDefaultCurrencyInHeader,
   getDefaultCurrencyStyle,
+  getDefaultDataSizeUnitInHeader,
+  getDefaultDataSizeUnitSystem,
   getDefaultNumberSeparators,
   getDefaultNumberStyle,
 } from "metabase/visualizations/shared/settings/column";
@@ -252,6 +254,12 @@ export const NUMBER_COLUMN_SETTINGS = {
           },
           value: "currency",
         },
+        {
+          get name() {
+            return t`Data size`;
+          },
+          value: "datasize",
+        },
       ],
     },
     getDefault: getDefaultNumberStyle,
@@ -321,6 +329,49 @@ export const NUMBER_COLUMN_SETTINGS = {
     },
     readDependencies: ["number_style"],
   },
+  datasize_unit_system: {
+    get title() {
+      return t`Unit system`;
+    },
+    widget: "radio",
+    get props() {
+      return {
+        options: [
+          { name: t`Binary (1 KiB = 1024 bytes)`, value: "binary" },
+          { name: t`Decimal (1 KB = 1000 bytes)`, value: "decimal" },
+        ],
+      };
+    },
+    getDefault: getDefaultDataSizeUnitSystem,
+    getHidden: (column, settings) => settings["number_style"] !== "datasize",
+    readDependencies: ["number_style"],
+  },
+  datasize_unit_in_header: {
+    get title() {
+      return t`Where to display the unit`;
+    },
+    widget: "radio",
+    getProps: (_series, _vizSettings, onChange) => {
+      return {
+        onChange: (value) => onChange(value === true),
+        options: [
+          { name: t`In the column heading`, value: true },
+          { name: t`In every table cell`, value: false },
+        ],
+      };
+    },
+    getDefault: getDefaultDataSizeUnitInHeader,
+    getHidden: (_column, settings, { series, forAdminSettings }) => {
+      if (forAdminSettings === true) {
+        return false;
+      }
+      return (
+        settings["number_style"] !== "datasize" ||
+        series[0].card.display !== "table"
+      );
+    },
+    readDependencies: ["number_style"],
+  },
   number_separators: {
     // uses 1-2 character string to represent decimal and thousands separators
     get title() {
@@ -382,7 +433,13 @@ export const NUMBER_COLUMN_SETTINGS = {
   },
   // Optimization: build a single NumberFormat object that is used by formatting.js
   _numberFormatter: {
-    getValue: (column, settings) => numberFormatterForOptions(settings),
+    getValue: (column, settings) => {
+      // datameasure doesn't use Intl.NumberFormat, so return null
+      if (settings["number_style"] === "datasize") {
+        return null;
+      }
+      return numberFormatterForOptions(settings);
+    },
     // NOTE: make sure to include every setting that affects the number formatter here
     readDependencies: [
       "number_style",
@@ -404,6 +461,11 @@ export const NUMBER_COLUMN_SETTINGS = {
           return getCurrencyNarrowSymbol(settings["currency"]);
         }
         return getCurrency(settings["currency"], settings["currency_style"]);
+      } else if (
+        settings["number_style"] === "datasize" &&
+        settings["datasize_unit_in_header"]
+      ) {
+        return t`Bytes`;
       }
       return null;
     },
@@ -412,6 +474,7 @@ export const NUMBER_COLUMN_SETTINGS = {
       "currency",
       "currency_style",
       "currency_header_only",
+      "datasize_unit_in_header",
     ],
   },
 };
