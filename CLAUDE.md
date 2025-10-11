@@ -8,6 +8,8 @@
 - Run targeted tests, and lint continuously during development
 - Prioritize understanding existing patterns before implementing
 - Don't commit changes, leave it for the user to review and make commits
+- Do not write useless comments: comments are for explaining context, for unconventional decisions and
+  unexpected code/behavior, not for explaining straightforward code
 
 ## Quick Commands
 
@@ -29,8 +31,7 @@
   - Use the linter as a way to know that you are adhering to conventions in place in the codebase
 - **Lint Changes:** `./bin/mage kondo-updated HEAD`
 - **Format:** `./bin/mage cljfmt-files [path]`
-- **Run a test:** `./bin-mage run-tests namespace/test-name`
-- **Run all tests in a namespace:** `./bin-mage run-tests namespace`
+- **Run tests:** `./bin-mage run-tests namespace/test-name` (or a `namespace`, or a `path/to/file.clj`, or a `dir/`)
 - **Check Code Readability** `./bin/mage -check-readable` with optional line-number
   - Run this after every change to Clojure code, only accept readable code
 - **Evaluating Clojure Code** `./bin/mage -repl '<code>'`
