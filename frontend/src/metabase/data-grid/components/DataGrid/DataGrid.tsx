@@ -103,8 +103,7 @@ export const DataGrid = function DataGrid<TData>({
     (element: HTMLElement | null) => {
       rowVirtualizer.measureElement(element);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [rowVirtualizer, columnsReordering],
+    [rowVirtualizer],
   );
 
   const forceUpdate = useForceUpdate();
