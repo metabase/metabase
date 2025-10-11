@@ -468,12 +468,14 @@ export const PLUGIN_REDUCERS: {
   shared: any;
   metabotPlugin: any;
   documents: any;
+  remoteSyncPlugin: any;
 } = {
   applicationPermissionsPlugin: () => null,
   sandboxingPlugin: () => null,
   shared: () => null,
   metabotPlugin: () => null,
   documents: () => null,
+  remoteSyncPlugin: () => null,
 };
 
 export const PLUGIN_ADVANCED_PERMISSIONS = {
@@ -868,7 +870,7 @@ export const PLUGIN_GIT_SYNC: {
   }>;
   GIT_SYNC_INVALIDATION_TAGS: TagDescription<any>[] | null;
   useSyncStatus: () => {
-    isIdle: boolean;
+    isRunning: boolean;
     taskType: any;
     progress: number;
     message: string;
@@ -880,7 +882,7 @@ export const PLUGIN_GIT_SYNC: {
   SyncedCollectionsSidebarSection: PluginPlaceholder,
   GIT_SYNC_INVALIDATION_TAGS: null,
   useSyncStatus: () => ({
-    isIdle: true,
+    isRunning: false,
     taskType: null,
     progress: 0,
     message: "",
