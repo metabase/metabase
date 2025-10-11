@@ -63,6 +63,7 @@ export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   error: ["error"],
   "background-error": ["bg-error"],
   "text-hover": ["text-hover"],
+  focus: ["focus"],
 };
 
 /**
