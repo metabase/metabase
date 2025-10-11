@@ -79,6 +79,7 @@ const baseColors = {
 
   // Orion
   orion: {
+    110: "#050F16",
     100: "hsla(204, 66%, 8%, 1)",
     90: "hsla(204, 34%, 14%, 1)",
     80: "hsla(205, 19%, 23%, 1)",
@@ -251,6 +252,11 @@ export const colorConfig = {
     light: baseColors.octopus[60],
     dark: baseColors.octopus[80],
   },
+
+  "admin-navbar-secondary": {
+    light: baseColors.octopus[80],
+    dark: baseColors.octopus[60],
+  },
   "background-brand": {
     light: baseColors.brand[20],
     dark: baseColors.brand[70],
@@ -291,7 +297,7 @@ export const colorConfig = {
     light: baseColors.lobster[10],
     dark: baseColors.lobster[90],
   },
-  "bg-light": { light: baseColors.orion[5], dark: baseColors.black }, //should be background-secondary
+  "bg-light": { light: baseColors.orion[5], dark: baseColors.orion[110] }, //should be background-secondary
   "bg-medium": { light: baseColors.orion[10], dark: baseColors.orion[80] }, //should be background-tertiary
   "bg-night": { light: baseColors.orion[70], dark: baseColors.orion[30] }, //merge with background-secondary-inverse?
   "bg-white-alpha-15": {

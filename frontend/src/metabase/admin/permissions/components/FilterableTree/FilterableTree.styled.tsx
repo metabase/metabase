@@ -2,7 +2,6 @@
 import styled from "@emotion/styled";
 
 import { Tree } from "metabase/common/components/tree";
-import { lighten } from "metabase/lib/colors";
 import { color } from "metabase/ui/utils/colors";
 
 export const FilterableTreeRoot = styled.div`
@@ -31,12 +30,14 @@ export const EmptyStateContainer = styled.div`
 
 export const AdminTreeNode = styled(Tree.Node)`
   color: ${(props) =>
-    props.isSelected ? color("text-white") : color("text-medium")};
+    props.isSelected ? color("text-primary") : color("text-secondary")};
   background-color: ${(props) =>
-    props.isSelected ? color("filter") : "unset"};
+    props.isSelected ? color("admin-navbar") : "unset"};
 
   &:hover {
     background-color: ${(props) =>
-      props.isSelected ? color("filter") : lighten("filter", 0.6)};
+      props.isSelected
+        ? color("admin-navbar")
+        : color("admin-navbar-secondary")};
   }
 `;

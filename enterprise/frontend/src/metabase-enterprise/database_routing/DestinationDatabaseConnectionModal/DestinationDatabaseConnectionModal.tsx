@@ -115,7 +115,8 @@ export const DestinationDatabaseConnectionModalInner = ({
         <Flex
           py="sm"
           px="md"
-          mb="md"
+          mx="xl"
+          my="md"
           bg="accent-gray-light"
           align="center"
           justify="space-between"
