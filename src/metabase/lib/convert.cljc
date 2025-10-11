@@ -1,5 +1,5 @@
 (ns metabase.lib.convert
-  (:refer-clojure :exclude [mapv some select-keys])
+  (:refer-clojure :exclude [mapv some select-keys #?(:clj doseq) #?(:clj for)])
   (:require
    [clojure.data :as data]
    [clojure.set :as set]
@@ -21,7 +21,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :as perf :refer [mapv some select-keys]])
+   [metabase.util.performance :as perf :refer [mapv some select-keys #?(:clj doseq) #?(:clj for)]])
   #?@(:cljs [(:require-macros [metabase.lib.convert :refer [with-aggregation-list]])]))
 
 (def ^:private ^:dynamic *pMBQL-uuid->legacy-index*

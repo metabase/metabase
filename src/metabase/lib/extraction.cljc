@@ -1,5 +1,7 @@
 (ns metabase.lib.extraction
+  #?(:clj (:refer-clojure :exclude [for]))
   (:require
+   #?(:clj [metabase.util.performance :refer [for]])
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -16,14 +18,14 @@
 (defn- column-extract-temporal-units [column]
   (let [time-units [:hour-of-day]
         date-units [:day-of-month :day-of-week :month-of-year :quarter-of-year :year]]
-    (vec (for [unit (concat (when-not (lib.types.isa/date-without-time? column)
-                              time-units)
-                            (when-not (lib.types.isa/time? column)
-                              date-units))]
-           {:lib/type     ::extraction
-            :tag          unit
-            :column       column
-            :display-name (lib.temporal-bucket/describe-temporal-unit unit)}))))
+    (for [unit (concat (when-not (lib.types.isa/date-without-time? column)
+                         time-units)
+                       (when-not (lib.types.isa/time? column)
+                         date-units))]
+      {:lib/type     ::extraction
+       :tag          unit
+       :column       column
+       :display-name (lib.temporal-bucket/describe-temporal-unit unit)})))
 
 (defn- regex-available? [metadata-providerable]
   (lib.metadata/database-supports? metadata-providerable :regex))
