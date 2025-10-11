@@ -2665,6 +2665,132 @@ describe("scenarios > admin > transforms > runs", () => {
   });
 });
 
+H.describeWithSnowplowEE(
+  "scenarios > admin > transforms > python runner",
+  () => {
+    beforeEach(() => {
+      H.restore("postgres-writable");
+      H.resetTestTable({ type: "postgres", table: "many_schemas" });
+      H.resetSnowplow();
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+      H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
+
+      setPythonRunnerSettings();
+    });
+
+    afterEach(() => {
+      H.expectNoBadSnowplowEvents();
+    });
+
+    it("should be possible to test run a Python script", () => {
+      H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
+        (id) => {
+          createPythonLibrary(
+            "common.py",
+            dedent`
+              def useful_calculation(a, b):
+                return a + b
+            `,
+          );
+
+          createPythonTransform({
+            body: dedent`
+              import pandas as pd
+              import common
+
+
+              def transform(animals):
+                print("Hello, world!")
+                return pd.DataFrame([{"foo": common.useful_calculation(40, 2), "avg_score": animals["score"].agg("mean") }])
+            `,
+            sourceTables: { animals: id },
+            visitTransform: true,
+          });
+        },
+      );
+
+      getTransformPage().findByText("Edit script").click();
+
+      function testInPyodide() {
+        cy.log("running the script in Pyodide should work");
+        runPythonScriptAndWaitForSuccess();
+        H.assertTableData({
+          columns: ["foo", "avg_score"],
+          firstRows: [["42", "20"]],
+        });
+        assertLogs("Hello, world!");
+
+        cy.log("updating the common library should affect the results");
+        createPythonLibrary(
+          "common.py",
+          dedent`
+            def useful_calculation(a, b):
+              return a + b + 1
+          `,
+        );
+        assertLogs("Hello, world!");
+
+        runPythonScriptAndWaitForSuccess();
+        H.assertTableData({
+          columns: ["foo", "avg_score"],
+          firstRows: [["43", "20"]],
+        });
+        assertLogs("Hello, world!");
+      }
+
+      function testInTestRunner() {
+        cy.log("running the script in the test runner should work");
+        createPythonLibrary(
+          "common.py",
+          dedent`
+            def useful_calculation(a, b):
+              return a + b + 2
+          `,
+        );
+
+        getQueryEditor().findByText("Emulate runner in-browser").click();
+
+        runPythonScriptAndWaitForSuccess();
+        H.assertTableData({
+          columns: ["foo", "avg_score"],
+          firstRows: [["44", "20"]],
+        });
+        assertLogs("Hello, world!");
+
+        cy.log("updating the common library should affect the results");
+        createPythonLibrary(
+          "common.py",
+          dedent`
+            def useful_calculation(a, b):
+              return a + b + 3
+          `,
+        );
+
+        runPythonScriptAndWaitForSuccess();
+        H.assertTableData({
+          columns: ["foo", "avg_score"],
+          firstRows: [["45", "20"]],
+        });
+        assertLogs("Hello, world!");
+      }
+
+      testInPyodide();
+      testInTestRunner();
+    });
+
+    function assertLogs(expected: string) {
+      getQueryEditor().findByText("Output").click();
+
+      cy.findByTestId("python-logs")
+        .should("be.visible")
+        .should("contain", expected);
+
+      getQueryEditor().findByText("Results").click();
+    }
+  },
+);
+
 function getTransformListPage() {
   return cy.findByTestId("transform-list-page");
 }
@@ -3011,4 +3137,14 @@ function setPythonRunnerSettings() {
     "http://localstack:4566",
   );
   H.updateEnterpriseSetting("python-storage-s-3-path-style-access", true);
+}
+
+function runPythonScriptAndWaitForSuccess() {
+  getQueryEditor().findByTestId("run-button").click();
+
+  getQueryEditor()
+    .findByTestId("loading-indicator", { timeout: 20000 })
+    .should("not.exist");
+
+  cy.findByTestId("python-results").should("be.visible");
 }

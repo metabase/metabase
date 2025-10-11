@@ -8,6 +8,7 @@ import { Box, Checkbox, Flex, Icon, Stack } from "metabase/ui";
 import { SHARED_LIB_IMPORT_PATH } from "metabase-enterprise/transforms-python/constants";
 import { getPythonLibraryUrl } from "metabase-enterprise/transforms-python/urls";
 
+// Pyodide status is now handled in the Web Worker
 import { PythonEditor } from "../../PythonEditor";
 
 import S from "./PythonEditorBody.module.css";
@@ -49,16 +50,18 @@ export function PythonEditorBody({
         />
 
         {withDebugger && (
-          <Box p="md">
+          <Stack p="md" gap="xs">
             <RunButtonWithTooltip
               disabled={!isRunnable}
               isRunning={isRunning}
               isDirty={isDirty}
               onRun={onRun}
               onCancel={onCancel}
-              getTooltip={() => t`Run Python script`}
+              getTooltip={() => {
+                return t`Run Python script`;
+              }}
             />
-          </Box>
+          </Stack>
         )}
         <SharedLibraryActions source={source} onChange={onChange} />
       </Flex>
