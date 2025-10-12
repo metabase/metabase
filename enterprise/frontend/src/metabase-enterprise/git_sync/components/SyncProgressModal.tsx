@@ -4,10 +4,8 @@ import { useToast } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Button, Group, Modal, Progress, Stack, Text } from "metabase/ui";
-import {
-  type SyncTaskType,
-  useCancelSyncTaskMutation,
-} from "metabase-enterprise/api";
+import { useCancelSyncTaskMutation } from "metabase-enterprise/api";
+import type { SyncTaskType } from "metabase-types/api";
 
 interface SyncProgressModalProps {
   taskType: SyncTaskType;

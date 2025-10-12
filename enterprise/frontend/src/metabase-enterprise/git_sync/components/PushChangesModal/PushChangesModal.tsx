@@ -23,13 +23,12 @@ import {
   Textarea,
   Title,
 } from "metabase/ui";
-import type { Collection } from "metabase-types/api";
+import type { Collection, DirtyEntity } from "metabase-types/api";
 
 import {
-  type DirtyEntity,
   useExportChangesMutation,
   useGetChangedEntitiesQuery,
-} from "../../../api/git-sync";
+} from "../../../api/remote-sync";
 import {
   type CollectionPathSegment,
   type ExportError,

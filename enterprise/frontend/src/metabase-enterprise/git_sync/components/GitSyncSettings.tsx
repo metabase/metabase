@@ -36,12 +36,15 @@ import {
   Tooltip,
 } from "metabase/ui";
 import {
-  type GitSyncSettingsSet,
   useGetChangedEntitiesQuery,
   useImportFromBranchMutation,
   useUpdateGitSyncSettingsMutation,
-} from "metabase-enterprise/api/git-sync";
-import type { EnterpriseSettings, SettingDefinition } from "metabase-types/api";
+} from "metabase-enterprise/api/remote-sync";
+import type {
+  EnterpriseSettings,
+  GitSyncSettingsSet,
+  SettingDefinition,
+} from "metabase-types/api";
 
 import { GIT_SYNC_SCHEMA } from "../constants";
 

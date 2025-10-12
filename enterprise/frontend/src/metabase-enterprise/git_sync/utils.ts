@@ -2,9 +2,7 @@ import { t } from "ttag";
 
 import { getCollectionPathAsString } from "metabase/collections/utils";
 import type { IconName } from "metabase/ui";
-import type { Collection, CollectionId } from "metabase-types/api";
-
-import type { DirtyEntity } from "../api/git-sync";
+import type { Collection, CollectionId, DirtyEntity } from "metabase-types/api";
 
 export type CollectionPathSegment = {
   id: CollectionId;

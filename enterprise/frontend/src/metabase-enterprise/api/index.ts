@@ -8,7 +8,7 @@ export * from "./db-routing";
 export * from "./dependencies";
 export * from "./document";
 export * from "./gdrive";
-export * from "./git-sync";
+export * from "./remote-sync";
 export * from "./metabot";
 export * from "./saml";
 export * from "./scim";
