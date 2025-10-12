@@ -38,11 +38,11 @@ import {
 import {
   useGetChangedEntitiesQuery,
   useImportFromBranchMutation,
-  useUpdateGitSyncSettingsMutation,
+  useUpdateRemoteSyncSettingsMutation,
 } from "metabase-enterprise/api/remote-sync";
 import type {
   EnterpriseSettings,
-  GitSyncSettingsSet,
+  RemoteSyncSettingsSet,
   SettingDefinition,
 } from "metabase-types/api";
 
@@ -57,7 +57,7 @@ export const GitSyncSettings = (): JSX.Element => {
   const dispatch = useDispatch();
   const { data: settingValues } = useGetSettingsQuery();
   const { data: settingDetails } = useGetAdminSettingsDetailsQuery();
-  const [updateGitSyncSettings] = useUpdateGitSyncSettingsMutation();
+  const [updateRemoteSyncSettings] = useUpdateRemoteSyncSettingsMutation();
   const { data: dirtyData } = useGetChangedEntitiesQuery(undefined, {
     refetchOnFocus: true,
     refetchOnMountOrArgChange: true,
@@ -69,8 +69,9 @@ export const GitSyncSettings = (): JSX.Element => {
   const { updateSettings } = useAdminSetting("remote-sync-url");
 
   const handleSubmit = useCallback(
-    (values: GitSyncSettingsSet) => updateGitSyncSettings(values).unwrap(),
-    [updateGitSyncSettings],
+    (values: RemoteSyncSettingsSet) =>
+      updateRemoteSyncSettings(values).unwrap(),
+    [updateRemoteSyncSettings],
   );
 
   const initialValues = useMemo(() => {
@@ -140,7 +141,7 @@ export const GitSyncSettings = (): JSX.Element => {
           </Text>
 
           <FormProvider
-            initialValues={initialValues as GitSyncSettingsSet}
+            initialValues={initialValues as RemoteSyncSettingsSet}
             enableReinitialize
             validationSchema={GIT_SYNC_SCHEMA}
             validationContext={settingValues}

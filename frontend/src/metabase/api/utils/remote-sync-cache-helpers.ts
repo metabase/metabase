@@ -39,7 +39,7 @@ function invalidateRemoteSyncTags(dispatch: Dispatch) {
   }
 }
 
-export async function invalidateGitSyncOnUpdate<
+export async function invalidateRemoteSyncOnUpdate<
   TEntity extends Card | Dashboard | Document,
 >(
   oldEntity: TEntity | undefined,
@@ -52,11 +52,11 @@ export async function invalidateGitSyncOnUpdate<
       invalidateRemoteSyncTags(dispatch);
     }
   } catch (error) {
-    console.warn("Failed to invalidate git sync cache on update:", error);
+    console.warn("Failed to invalidate remote sync cache on update:", error);
   }
 }
 
-export async function invalidateGitSyncOnCreate<
+export async function invalidateRemoteSyncOnCreate<
   TEntity extends Card | Dashboard | Document,
 >(
   dispatch: (action: unknown) => void,
@@ -68,11 +68,11 @@ export async function invalidateGitSyncOnCreate<
       invalidateRemoteSyncTags(dispatch);
     }
   } catch (error) {
-    console.warn("Failed to invalidate git sync cache on create:", error);
+    console.warn("Failed to invalidate remote sync cache on create:", error);
   }
 }
 
-export function invalidateGitSyncOnDelete(
+export function invalidateRemoteSyncOnDelete(
   entity: Card | Dashboard | Document | undefined,
   dispatch: (action: unknown) => void,
 ) {
@@ -81,7 +81,7 @@ export function invalidateGitSyncOnDelete(
   }
 }
 
-export async function invalidateGitSyncOnCollectionUpdate(
+export async function invalidateRemoteSyncOnCollectionUpdate(
   oldCollection: Collection | undefined,
   dispatch: (action: unknown) => void,
   queryFulfilled: Promise<{ data: Collection }>,
@@ -93,13 +93,13 @@ export async function invalidateGitSyncOnCollectionUpdate(
     }
   } catch (error) {
     console.warn(
-      "Failed to invalidate git sync cache on collection update:",
+      "Failed to invalidate remote sync cache on collection update:",
       error,
     );
   }
 }
 
-export async function invalidateGitSyncOnCollectionCreate(
+export async function invalidateRemoteSyncOnCollectionCreate(
   dispatch: (action: unknown) => void,
   queryFulfilled: Promise<{ data: Collection }>,
 ) {
@@ -110,13 +110,13 @@ export async function invalidateGitSyncOnCollectionCreate(
     }
   } catch (error) {
     console.warn(
-      "Failed to invalidate git sync cache on collection create:",
+      "Failed to invalidate remote sync cache on collection create:",
       error,
     );
   }
 }
 
-export function invalidateGitSyncOnCollectionDelete(
+export function invalidateRemoteSyncOnCollectionDelete(
   collection: Collection | undefined,
   dispatch: (action: unknown) => void,
 ) {
@@ -125,6 +125,6 @@ export function invalidateGitSyncOnCollectionDelete(
   }
 }
 
-export function getGitSyncInvalidationTags() {
+export function getRemoteSyncInvalidationTags() {
   return PLUGIN_GIT_SYNC.GIT_SYNC_INVALIDATION_TAGS || [];
 }

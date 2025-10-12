@@ -24,10 +24,10 @@ import {
   provideCollectionTags,
 } from "./tags";
 import {
-  invalidateGitSyncOnCollectionCreate,
-  invalidateGitSyncOnCollectionDelete,
-  invalidateGitSyncOnCollectionUpdate,
-} from "./utils/git-sync-cache-helpers";
+  invalidateRemoteSyncOnCollectionCreate,
+  invalidateRemoteSyncOnCollectionDelete,
+  invalidateRemoteSyncOnCollectionUpdate,
+} from "./utils/remote-sync-cache-helpers";
 
 export const collectionApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -92,7 +92,7 @@ export const collectionApi = Api.injectEndpoints({
         body,
       }),
       onQueryStarted: (_, { dispatch, queryFulfilled }) =>
-        invalidateGitSyncOnCollectionCreate(dispatch, queryFulfilled),
+        invalidateRemoteSyncOnCollectionCreate(dispatch, queryFulfilled),
       invalidatesTags: (collection, error) =>
         collection
           ? invalidateTags(error, [
@@ -115,7 +115,7 @@ export const collectionApi = Api.injectEndpoints({
         const oldCollection = collectionApi.endpoints.getCollection.select({
           id: updateRequest.id,
         })(state)?.data;
-        invalidateGitSyncOnCollectionUpdate(
+        invalidateRemoteSyncOnCollectionUpdate(
           oldCollection,
           dispatch,
           queryFulfilled,
@@ -140,7 +140,7 @@ export const collectionApi = Api.injectEndpoints({
         const collection = collectionApi.endpoints.getCollection.select({
           id: deleteRequest.id,
         })(state)?.data;
-        invalidateGitSyncOnCollectionDelete(collection, dispatch);
+        invalidateRemoteSyncOnCollectionDelete(collection, dispatch);
       },
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [listTag("collection"), idTag("collection", id)]),

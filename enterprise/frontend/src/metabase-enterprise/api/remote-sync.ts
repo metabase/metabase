@@ -7,10 +7,10 @@ import type {
   ExportChangesRequest,
   ExportChangesResponse,
   GetBranchesResponse,
-  GitSyncSettingsSet,
   ImportFromBranchRequest,
   ImportFromBranchResponse,
-  UpdateGitSyncSettingsResponse,
+  RemoteSyncSettingsSet,
+  UpdateRemoteSyncSettingsResponse,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
@@ -88,9 +88,9 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: () => [tag("collection-is-dirty")],
     }),
-    updateGitSyncSettings: builder.mutation<
-      UpdateGitSyncSettingsResponse,
-      GitSyncSettingsSet
+    updateRemoteSyncSettings: builder.mutation<
+      UpdateRemoteSyncSettingsResponse,
+      RemoteSyncSettingsSet
     >({
       query: (settings) => ({
         method: "PUT",
@@ -143,7 +143,7 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
 export const {
   useGetChangedEntitiesQuery,
   useHasChangedEntitiesQuery,
-  useUpdateGitSyncSettingsMutation,
+  useUpdateRemoteSyncSettingsMutation,
   useExportChangesMutation,
   useGetBranchesQuery,
   useCreateBranchMutation,

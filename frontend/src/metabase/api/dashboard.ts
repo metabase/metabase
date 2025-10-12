@@ -36,12 +36,12 @@ import {
   provideValidDashboardFilterFieldTags,
   tag,
 } from "./tags";
-import {
-  invalidateGitSyncOnCreate,
-  invalidateGitSyncOnDelete,
-  invalidateGitSyncOnUpdate,
-} from "./utils/git-sync-cache-helpers";
 import { handleQueryFulfilled } from "./utils/lifecycle";
+import {
+  invalidateRemoteSyncOnCreate,
+  invalidateRemoteSyncOnDelete,
+  invalidateRemoteSyncOnUpdate,
+} from "./utils/remote-sync-cache-helpers";
 
 export const dashboardApi = Api.injectEndpoints({
   endpoints: (builder) => {
@@ -140,7 +140,7 @@ export const dashboardApi = Api.injectEndpoints({
           body,
         }),
         onQueryStarted: (_, { dispatch, queryFulfilled }) =>
-          invalidateGitSyncOnCreate(dispatch, queryFulfilled),
+          invalidateRemoteSyncOnCreate(dispatch, queryFulfilled),
         invalidatesTags: (newDashboard, error) =>
           newDashboard
             ? [
@@ -165,7 +165,7 @@ export const dashboardApi = Api.injectEndpoints({
           const oldDashboard = dashboardApi.endpoints.getDashboard.select({
             id: updateRequest.id,
           })(state)?.data;
-          invalidateGitSyncOnUpdate(oldDashboard, dispatch, queryFulfilled);
+          invalidateRemoteSyncOnUpdate(oldDashboard, dispatch, queryFulfilled);
         },
         invalidatesTags: (_, error, { id }) =>
           invalidateTags(error, [
@@ -185,7 +185,7 @@ export const dashboardApi = Api.injectEndpoints({
           const dashboard = dashboardApi.endpoints.getDashboard.select({ id })(
             state,
           )?.data;
-          invalidateGitSyncOnDelete(dashboard, dispatch);
+          invalidateRemoteSyncOnDelete(dashboard, dispatch);
         },
         invalidatesTags: (_, error, id) =>
           invalidateTags(error, [listTag("dashboard"), idTag("dashboard", id)]),

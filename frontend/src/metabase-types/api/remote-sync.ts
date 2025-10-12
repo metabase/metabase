@@ -63,7 +63,7 @@ export type ImportFromBranchResponse = {
   message?: string;
 };
 
-export type GitSyncSettingsSet = Pick<
+export type RemoteSyncSettingsSet = Pick<
   EnterpriseSettings,
   | "remote-sync-enabled"
   | "remote-sync-url"
@@ -72,9 +72,9 @@ export type GitSyncSettingsSet = Pick<
   | "remote-sync-branch"
 >;
 
-export type UpdateGitSyncSettingsRequest = GitSyncSettingsSet;
+export type UpdateRemoteSyncSettingsRequest = RemoteSyncSettingsSet;
 
-export type UpdateGitSyncSettingsResponse = {
+export type UpdateRemoteSyncSettingsResponse = {
   success: boolean;
   task_id?: number;
 };
