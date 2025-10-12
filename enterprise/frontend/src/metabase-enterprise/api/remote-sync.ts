@@ -1,4 +1,3 @@
-import { listTag } from "metabase/api/tags";
 import type {
   CollectionDirtyResponse,
   CollectionIsDirtyResponse,
@@ -14,7 +13,7 @@ import type {
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
-import { invalidateTags, tag } from "./tags";
+import { tag } from "./tags";
 
 export const remoteSyncApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -31,15 +30,6 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
           "force-sync": forceSync,
         },
       }),
-
-      invalidatesTags: (_, error) =>
-        invalidateTags(error, [
-          tag("collection-dirty-entities"),
-          tag("collection-is-dirty"),
-          tag("remote-sync-current-task"),
-          listTag("collection"),
-          tag("collection-tree"),
-        ]),
     }),
     importFromBranch: builder.mutation<
       ImportFromBranchResponse,
@@ -53,14 +43,6 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
           force,
         },
       }),
-      invalidatesTags: () => [
-        tag("session-properties"),
-        listTag("collection"),
-        tag("collection-tree"),
-        tag("remote-sync-current-task"),
-        tag("collection-dirty-entities"),
-        tag("collection-is-dirty"),
-      ],
     }),
     getChangedEntities: builder.query<CollectionDirtyResponse, void>({
       query: () => ({
@@ -97,13 +79,6 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
         url: `/api/ee/remote-sync/settings`,
         body: settings,
       }),
-      invalidatesTags: (_, error) =>
-        invalidateTags(error, [
-          tag("session-properties"),
-          tag("remote-sync-current-task"),
-          listTag("collection"),
-          tag("collection-tree"),
-        ]),
     }),
     getBranches: builder.query<GetBranchesResponse, void>({
       query: () => ({

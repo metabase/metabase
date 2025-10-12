@@ -468,12 +468,14 @@ export const PLUGIN_REDUCERS: {
   shared: any;
   metabotPlugin: any;
   documents: any;
+  remoteSyncPlugin: any;
 } = {
   applicationPermissionsPlugin: () => null,
   sandboxingPlugin: () => null,
   shared: () => null,
   metabotPlugin: () => null,
   documents: () => null,
+  remoteSyncPlugin: () => null,
 };
 
 export const PLUGIN_ADVANCED_PERMISSIONS = {
