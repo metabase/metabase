@@ -1,4 +1,4 @@
-import { PLUGIN_GIT_SYNC } from "metabase/plugins";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import type { Card, Collection, Dashboard, Document } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
@@ -33,7 +33,7 @@ function shouldInvalidateForCollection(
 }
 
 function invalidateRemoteSyncTags(dispatch: Dispatch) {
-  const tags = PLUGIN_GIT_SYNC.GIT_SYNC_INVALIDATION_TAGS;
+  const tags = PLUGIN_REMOTE_SYNC.REMOTE_SYNC_INVALIDATION_TAGS;
   if (tags) {
     dispatch(Api.util.invalidateTags(tags));
   }
@@ -126,5 +126,5 @@ export function invalidateRemoteSyncOnCollectionDelete(
 }
 
 export function getRemoteSyncInvalidationTags() {
-  return PLUGIN_GIT_SYNC.GIT_SYNC_INVALIDATION_TAGS || [];
+  return PLUGIN_REMOTE_SYNC.REMOTE_SYNC_INVALIDATION_TAGS || [];
 }

@@ -21,7 +21,7 @@ import { isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
-import { PLUGIN_GIT_SYNC } from "metabase/plugins";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import {
   ActionIcon,
   Flex,
@@ -220,7 +220,7 @@ export function MainNavbarView({
           )}
 
           {showSyncGroup && (
-            <PLUGIN_GIT_SYNC.SyncedCollectionsSidebarSection
+            <PLUGIN_REMOTE_SYNC.SyncedCollectionsSidebarSection
               syncedCollections={syncedCollections}
               collectionItem={collectionItem}
               onItemSelect={onItemSelect}

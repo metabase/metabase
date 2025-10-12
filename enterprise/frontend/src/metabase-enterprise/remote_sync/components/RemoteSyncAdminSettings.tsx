@@ -46,14 +46,14 @@ import type {
   SettingDefinition,
 } from "metabase-types/api";
 
-import { GIT_SYNC_SCHEMA } from "../constants";
+import { REMOTE_SYNC_SCHEMA } from "../constants";
 
 const URL_KEY = "remote-sync-url";
 const TOKEN_KEY = "remote-sync-token";
 const TYPE_KEY = "remote-sync-type";
 const BRANCH_KEY = "remote-sync-branch";
 
-export const GitSyncSettings = (): JSX.Element => {
+export const RemoteSyncAdminSettings = (): JSX.Element => {
   const dispatch = useDispatch();
   const { data: settingValues } = useGetSettingsQuery();
   const { data: settingDetails } = useGetAdminSettingsDetailsQuery();
@@ -75,7 +75,9 @@ export const GitSyncSettings = (): JSX.Element => {
   );
 
   const initialValues = useMemo(() => {
-    const values = GIT_SYNC_SCHEMA.cast(settingValues, { stripUnknown: true });
+    const values = REMOTE_SYNC_SCHEMA.cast(settingValues, {
+      stripUnknown: true,
+    });
     const tokenValue =
       settingDetails?.[TOKEN_KEY]?.value ?? settingValues?.[TOKEN_KEY];
     return {
@@ -143,7 +145,7 @@ export const GitSyncSettings = (): JSX.Element => {
           <FormProvider
             initialValues={initialValues as RemoteSyncSettingsSet}
             enableReinitialize
-            validationSchema={GIT_SYNC_SCHEMA}
+            validationSchema={REMOTE_SYNC_SCHEMA}
             validationContext={settingValues}
             onSubmit={handleSubmit}
           >

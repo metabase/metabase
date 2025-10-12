@@ -858,15 +858,15 @@ export const PLUGIN_TRANSFORMS: TransformsPlugin = {
   getAdminRoutes: () => null,
 };
 
-export const PLUGIN_GIT_SYNC: {
+export const PLUGIN_REMOTE_SYNC: {
   LibraryNav: ComponentType;
-  GitSyncSettings: ComponentType;
+  RemoteSyncSettings: ComponentType;
   SyncedCollectionsSidebarSection: ComponentType<{
     syncedCollections: any[];
     collectionItem: any;
     onItemSelect: () => void;
   }>;
-  GIT_SYNC_INVALIDATION_TAGS: TagDescription<any>[] | null;
+  REMOTE_SYNC_INVALIDATION_TAGS: TagDescription<any>[] | null;
   useSyncStatus: () => {
     isIdle: boolean;
     taskType: any;
@@ -876,9 +876,9 @@ export const PLUGIN_GIT_SYNC: {
   };
 } = {
   LibraryNav: PluginPlaceholder,
-  GitSyncSettings: NotFoundPlaceholder,
+  RemoteSyncSettings: NotFoundPlaceholder,
   SyncedCollectionsSidebarSection: PluginPlaceholder,
-  GIT_SYNC_INVALIDATION_TAGS: null,
+  REMOTE_SYNC_INVALIDATION_TAGS: null,
   useSyncStatus: () => ({
     isIdle: true,
     taskType: null,
