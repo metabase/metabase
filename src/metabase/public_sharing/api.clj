@@ -154,11 +154,11 @@
   ;; tries to do the `read-check`, and a second time for when the query is ran (async) so the QP middleware will have
   ;; the correct perms
   (request/as-admin
-    (m/mapply qp.card/process-query-for-card card-id export-format
-              :parameters parameters
-              :context    (export-format->context export-format)
-              :make-run   process-query-for-card-with-id-run-fn
-              options)))
+    (apply qp.card/process-query-for-card card-id export-format
+           :parameters parameters
+           :context    (export-format->context export-format)
+           :make-run   process-query-for-card-with-id-run-fn
+           options)))
 
 (defn ^:private process-query-for-card-with-public-uuid
   "Run query for a *public* Card with UUID. If public sharing is not enabled, this throws an exception. Returns a
