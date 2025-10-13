@@ -1,3 +1,4 @@
+import type { Location } from "history";
 import { useCallback } from "react";
 import type { Route } from "react-router";
 
@@ -71,13 +72,18 @@ export const CreateSegmentForm = ({ route }: { route: Route }) => {
 
 export const SegmentApp = ({
   params,
+  location,
   children,
 }: {
   params: { id: string };
+  location: Location;
   children?: React.ReactNode;
 }) => {
   return (
-    <BenchLayout nav={<SegmentListApp params={params} />} name="segment">
+    <BenchLayout
+      nav={<SegmentListApp params={params} location={location} />}
+      name="segment"
+    >
       {!children ? (
         <Center w="100%" h="100%">
           <NoDataError />
