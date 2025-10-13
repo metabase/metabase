@@ -31,6 +31,13 @@ const TAB_4 = {
   name: "Tab 4",
 };
 
+/**
+ * When keys are pressed too fast redux won't have enough time to update the state,
+ * so conditions in subsequently called event handlers may not have been updated yet.
+ * Give it some time to do so.
+ */
+const REAL_PRESS_DELAY = 1;
+
 describe("command palette", () => {
   beforeEach(() => {
     H.restore();
@@ -680,12 +687,14 @@ H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
     // Sidesheet
     cy.realPress("]");
     cy.findByRole("dialog", { name: "Info" }).should("exist");
+    cy.wait(REAL_PRESS_DELAY);
     cy.realPress("]");
     cy.findByRole("dialog", { name: "Info" }).should("not.exist");
 
     // Viz Settings
     cy.realPress("y");
     cy.findByTestId("chartsettings-sidebar").should("exist");
+    cy.wait(REAL_PRESS_DELAY);
     cy.realPress("y");
     cy.findByTestId("chartsettings-sidebar").should("not.exist");
 
