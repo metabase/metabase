@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase-enterprise.metabot-v3.table-utils :as table-utils]
    [metabase.config.core :as config]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -55,6 +56,14 @@
                                           meta
                                           :api/endpoints)]
     (str "backend:/api/ee/metabot-tools" url)))
+
+(defn- feature-metabot-capabilities
+  "Seq of capabilities from features enabled for this instance's token."
+  []
+  (keep (fn [[feature enabled?]]
+          (when enabled?
+            (str "feature:" (name feature))))
+        (premium-features/token-features)))
 
 (defn- query-for-sql-parsing
   "Given an item in context, return the query if it is a native query or SQL transform that can have table usage parsed
@@ -135,6 +144,11 @@
   [context]
   (update context :capabilities (fnil into #{}) (backend-metabot-capabilities)))
 
+(defn- add-feature-capabilities
+  "Add token-feature capabilities to context, merging with any existing capabilities."
+  [context]
+  (update context :capabilities (fnil into #{}) (feature-metabot-capabilities)))
+
 (defn- set-user-time
   [context {:keys [date-format] :or {date-format DateTimeFormatter/ISO_INSTANT}}]
   (let [offset-time (or (some-> context :current_time_with_timezone OffsetDateTime/parse)
@@ -152,4 +166,5 @@
    (-> context
        enhance-context-with-schema
        add-backend-capabilities
+       add-feature-capabilities
        (set-user-time opts))))
