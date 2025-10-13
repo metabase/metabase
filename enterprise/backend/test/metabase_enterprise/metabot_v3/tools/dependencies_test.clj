@@ -18,20 +18,14 @@
       :model/Transform {transform1-id# :id}
       {:name "Transform 1"
        :source {:type "query"
-                :query {:database (mt/id)
-                        :type "native"
-                        :native {:query "SELECT id, total FROM orders"
-                                 :template-tags {}}}}
+                :query (mt/native-query {:query "SELECT id, total FROM orders"})}
        :target {:type "table"
                 :schema "public"
                 :name "orders_transform_1"}}
       :model/Transform {transform2-id# :id}
       {:name "Transform 2"
        :source {:type "query"
-                :query {:database (mt/id)
-                        :type "native"
-                        :native {:query "SELECT id, total FROM orders_transform_1"
-                                 :template-tags {}}}}
+                :query (mt/native-query {:query "SELECT id, total FROM orders_transform_1"})}
        :target {:type "table"
                 :schema "public"
                 :name "orders_transform_2"}}
@@ -47,10 +41,7 @@
   (testing "removing total field from transform1 breaks transform2"
     (with-dependent-transforms! [transform1-id transform2-id]
       (let [modified-source {:type "query"
-                             :query {:database (mt/id)
-                                     :type "native"
-                                     :native {:query "SELECT id FROM orders"
-                                              :template-tags {}}}}
+                             :query (mt/native-query {:query "SELECT id FROM orders"})}
             result (metabot.dependencies/check-transform-dependencies
                     {:id transform1-id
                      :source modified-source})]
@@ -68,10 +59,7 @@
         [:model/Transform {transform3-id :id}
          {:name "Transform 3"
           :source {:type "query"
-                   :query {:database (mt/id)
-                           :type "native"
-                           :native {:query "SELECT total FROM orders_transform_1"
-                                    :template-tags {}}}}
+                   :query (mt/native-query {:query "SELECT total FROM orders_transform_1"})}
           :target {:type "table"
                    :schema "public"
                    :name "orders_transform_3"}}
@@ -83,10 +71,7 @@
         (testing "when limit is 1, only one broken transform is reported"
           (binding [metabot.dependencies/*max-reported-broken-transforms* 1]
             (let [modified-source {:type "query"
-                                   :query {:database (mt/id)
-                                           :type "native"
-                                           :native {:query "SELECT id FROM orders"
-                                                    :template-tags {}}}}
+                                   :query (mt/native-query {:query "SELECT id FROM orders"})}
                   result (metabot.dependencies/check-transform-dependencies
                           {:id transform1-id
                            :source modified-source})
