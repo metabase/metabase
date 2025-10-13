@@ -14,7 +14,7 @@ import { connect, useDispatch } from "metabase/lib/redux";
 import { Stack } from "metabase/ui";
 
 function SegmentListAppInner({ onCollapse, ...props }) {
-  const { segments, setArchived, location } = props;
+  const { segments, setArchived, location, params } = props;
   const dispatch = useDispatch();
 
   const listSettingsProps = useItemsListQuery({
@@ -44,12 +44,13 @@ function SegmentListAppInner({ onCollapse, ...props }) {
       onAddNewItem={() => dispatch(push("/bench/segment/new"))}
       settings={<ItemsListSettings {...listSettingsProps} />}
       listItems={
-        <Stack>
+        <Stack gap="xs">
           {segments.map((segment) => (
             <SegmentItem
               key={segment.id}
               onRetire={() => setArchived(segment, true)}
               segment={segment}
+              isActive={params.id && +params.id === segment.id}
             />
           ))}
           {segments.length === 0 && (

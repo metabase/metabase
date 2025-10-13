@@ -1,31 +1,27 @@
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import Link from "metabase/common/components/Link";
-import { usePath } from "metabase/common/hooks";
 import { TableBreadcrumbs } from "metabase/metadata/components";
 import { Box, Flex, Group, Icon, NavLink, Stack, Text } from "metabase/ui";
 import type { Segment } from "metabase-types/api";
 
-import SegmentActionSelect from "./SegmentActionSelect";
+import { SegmentActionSelect } from "./SegmentActionSelect";
 
 interface Props {
   segment: Segment;
   onRetire: () => void;
+  isActive?: boolean;
 }
 
-export const SegmentItem = ({ segment, onRetire }: Props) => {
-  const path = usePath();
-
-  const currentPathId = path?.split("/").pop();
-  const isActive = currentPathId === String(segment.id);
-
+export const SegmentItem = ({ segment, onRetire, isActive }: Props) => {
   return (
-    <NavLink
-      component={Link}
-      to={`/bench/segment/${segment.id}`}
-      active={isActive}
-      label={
-        <Flex justify="space-between">
-          <Stack gap="sm">
-            <Link to={`/bench/segment/${segment.id}`}>
+    <Box pos="relative">
+      <NavLink
+        component={Link}
+        to={`/bench/segment/${segment.id}`}
+        active={isActive}
+        label={
+          <Flex justify="space-between" pt="0.125rem">
+            <Stack gap="sm" style={{ overflow: "hidden" }}>
               <Group display="inline-flex" gap="sm" wrap="nowrap">
                 <Box
                   color="text-medium"
@@ -33,28 +29,21 @@ export const SegmentItem = ({ segment, onRetire }: Props) => {
                   flex="0 0 auto"
                   name="segment"
                 />
-                <Box c="text-dark" fw="bold">
+                <Ellipsified c="text-dark" fw="bold" pr="lg">
                   {segment.name}
-                </Box>
+                </Ellipsified>
               </Group>
-            </Link>
-            <Box maw={500} c="text-light">
-              <TableBreadcrumbs tableId={segment.table_id} />
-            </Box>
-
-            <Text c="text-light">
-
-              {segment.definition_description}
-            </Text>
-
-          </Stack>
-          <Box>
-            <Flex justify="center">
-              <SegmentActionSelect object={segment} onRetire={onRetire} />
-            </Flex>
-          </Box>
-        </Flex>
-      }
-    />
+              <Box maw={500} c="text-light">
+                <TableBreadcrumbs tableId={segment.table_id} />
+              </Box>
+              <Text c="text-light">{segment.definition_description}</Text>
+            </Stack>
+          </Flex>
+        }
+      />
+      <Box pos="absolute" right="0.25rem" top="0.25rem">
+        <SegmentActionSelect segment={segment} onRetire={onRetire} />
+      </Box>
+    </Box>
   );
 };
