@@ -116,6 +116,8 @@ export interface Field {
   updated_at: string;
 }
 
+export type FieldName = Field["name"];
+
 export interface FieldFormattingSettings {
   currency?: string;
 }
