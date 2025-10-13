@@ -47,7 +47,7 @@ export function PythonTransformEditor({
   const [source, setSource] = useState(initialSource);
   const [isSourceDirty, setIsSourceDirty] = useState(false);
 
-  const { isRunning, isDirty, cancel, run, executionResult } =
+  const { isRunning, cancel, run, executionResult } =
     useTestPythonTransform(source);
 
   const handleScriptChange = (body: string) => {
@@ -124,7 +124,7 @@ export function PythonTransformEditor({
           <PythonEditorBody
             isRunnable={isRunnable && isPythonTransformSource(source)}
             isRunning={isRunning}
-            isDirty={isDirty}
+            isDirty
             onRun={run}
             onCancel={cancel}
             source={source.body}

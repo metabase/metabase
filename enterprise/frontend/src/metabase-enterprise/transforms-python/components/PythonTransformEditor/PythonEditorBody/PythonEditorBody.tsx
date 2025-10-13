@@ -49,7 +49,7 @@ export function PythonEditorBody({
         />
 
         {withDebugger && (
-          <Box p="md">
+          <Stack p="md" gap="xs">
             <RunButtonWithTooltip
               disabled={!isRunnable}
               isRunning={isRunning}
@@ -58,7 +58,7 @@ export function PythonEditorBody({
               onCancel={onCancel}
               getTooltip={() => t`Run Python script`}
             />
-          </Box>
+          </Stack>
         )}
         <SharedLibraryActions source={source} onChange={onChange} />
       </Flex>
