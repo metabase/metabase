@@ -46,8 +46,8 @@
 (mr/def ::capabilities
   [:set :string])
 
-(defn backend-metabot-capabilities
-  "Set of backend capabilities available to the AI service. Those are determined by the endpoints available to
+(defn- backend-metabot-capabilities
+  "Seq of backend capabilities available to the AI service. Those are determined by the endpoints available to
   ai-service. When an endpoint would change in a non-backward compatible way, we should create a new version of this
   capability."
   []
