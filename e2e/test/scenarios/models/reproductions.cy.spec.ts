@@ -1972,6 +1972,7 @@ describe("issue 50915", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
+    cy.intercept("POST", "api/dataset").as("dataset");
   });
 
   it("should use the model for the data source for drills after the model is created (metabase#50915)", () => {
@@ -1990,10 +1991,12 @@ describe("issue 50915", () => {
     cy.findByTestId("dataset-edit-bar").button("Save").click();
     cy.findByTestId("save-question-modal").button("Save").click();
     H.queryBuilderHeader().should("be.visible");
+    cy.wait("@dataset");
 
     cy.log("immediately after saving, drill-thru");
     H.tableHeaderClick("Discount ($)");
     H.popover().findByText("Distinct values").click();
+    cy.wait("@dataset");
     H.assertTableData({ columns: ["Distinct values of Discount"] });
 
     cy.log("assert that the model is used for the data source");
