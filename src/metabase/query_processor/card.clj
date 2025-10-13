@@ -382,3 +382,19 @@
                              :card-id card-id
                              :query   subset-query})))
           (runner query info))))))
+
+(defn fetch-subset-query-metadata
+  "Given a card-id, parameters and a subset query, first verifies that the query is a valid subset of the card's
+  query, and if so, returns the query metadata. Throws an exception if the query is not a valid subset."
+  [card-id parameters query]
+  (let [card       (api/read-check (t2/select-one :model/Card card-id))
+        card-query (query-for-card card parameters (qp.constraints/default-query-constraints) nil)]
+    (qp.store/with-metadata-provider (:database_id card)
+      (if-let [subset-query (verified-subset-query card-query query)]
+        (queries/batch-fetch-query-metadata [subset-query])
+        (throw (ex-info (tru "Invalid subset query: Card {0} does not allow running {1}."
+                             card-id
+                             (pr-str query))
+                        {:type    qp.error-type/invalid-query
+                         :card-id card-id
+                         :query   query}))))))
