@@ -7,7 +7,7 @@ import { LoadingSpinner } from "metabase/common/components/MetadataInfo/Metadata
 import { isMac } from "metabase/lib/browser";
 import { Box, Flex, Icon, Stack, Text, Title } from "metabase/ui";
 
-import type { ExecutionResult } from "../utils";
+import type { ExecutionResult } from "../hooks";
 
 import { ExecutionOutputTable } from "./ExecutionOutputTable";
 import S from "./PythonEditorResults.module.css";

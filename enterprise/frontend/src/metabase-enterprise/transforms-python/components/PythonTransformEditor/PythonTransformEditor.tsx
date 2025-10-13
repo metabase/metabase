@@ -7,10 +7,10 @@ import type { PythonTransformTableAliases, Table } from "metabase-types/api";
 import { PythonDataPicker } from "./PythonDataPicker";
 import { PythonEditorBody } from "./PythonEditorBody";
 import { PythonEditorResults } from "./PythonEditorResults";
+import { useTestPythonTransform } from "./hooks";
 import {
   isPythonTransformSource,
   updateTransformSignature,
-  useTestPythonTransform,
 } from "./utils";
 
 export function PythonTransformEditor({
