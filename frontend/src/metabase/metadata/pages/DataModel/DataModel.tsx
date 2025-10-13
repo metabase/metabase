@@ -103,7 +103,9 @@ export const DataModel = ({ children, location, params }: Props) => {
     isLoadingCollections;
 
   const modelsTreeData = useMemo(() => {
-    return models && collections ? getTreeItems(collections, models) : [];
+    return models && collections
+      ? getTreeItems(collections, models, "dataset")
+      : [];
   }, [collections, models]);
 
   const handleModelSelect = useCallback(() => {}, []);
