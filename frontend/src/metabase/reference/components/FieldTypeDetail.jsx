@@ -90,6 +90,7 @@ const FieldTypeDetail = ({
                 databaseId={databaseId}
                 field={field}
                 value={foreignKeyFormField.value || field.fk_target_field_id}
+                comboboxProps={{ position: "top-start" }}
                 onChange={(value) => {
                   foreignKeyFormField.onChange({
                     target: {
