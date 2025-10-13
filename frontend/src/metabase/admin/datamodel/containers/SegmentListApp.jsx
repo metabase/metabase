@@ -6,20 +6,43 @@ import _ from "underscore";
 
 import { SegmentItem } from "metabase/admin/datamodel/components/SegmentItem";
 import { ItemsListSection } from "metabase/bench/components/ItemsListSection/ItemsListSection";
+import { ItemsListSettings } from "metabase/bench/components/ItemsListSection/ItemsListSettings";
+import { useItemsListQuery } from "metabase/bench/components/ItemsListSection/useItemsListQuery";
 import CS from "metabase/css/core/index.css";
 import Segments from "metabase/entities/segments";
 import { connect, useDispatch } from "metabase/lib/redux";
 import { Stack } from "metabase/ui";
 
 function SegmentListAppInner({ onCollapse, ...props }) {
-  const { segments, setArchived } = props;
+  const { segments, setArchived, location } = props;
   const dispatch = useDispatch();
+
+  const listSettingsProps = useItemsListQuery({
+    settings: [
+      {
+        name: "display",
+        options: [
+          {
+            label: t`Segment table`,
+            value: "segment-table",
+          },
+          {
+            label: t`Alphabetical`,
+            value: "alphabetical",
+          },
+        ],
+      },
+    ],
+    defaults: { display: "segment-table" },
+    location,
+  });
 
   return (
     <ItemsListSection
       sectionTitle={t`Segments`}
       onCollapse={onCollapse}
       onAddNewItem={() => dispatch(push("/bench/segment/new"))}
+      settings={<ItemsListSettings {...listSettingsProps} />}
       listItems={
         <Stack>
           {segments.map((segment) => (
