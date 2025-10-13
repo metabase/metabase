@@ -77,6 +77,31 @@ def __format_exception():
     `,
   );
 
+  // Disallow importing certain modules
+  await pyodide.runPythonAsync(`
+import sys
+import builtins
+
+def __override():
+  banned_modules = ["js", "builtins", "http", "pyodide"]
+  real_import = builtins.__import__
+
+  def restricted_import(name, globals=None, locals=None, fromlist=(), level=0):
+    if name in banned_modules:
+      raise ImportError(f"Access to the {name} module is disabled.")
+    return real_import(name, globals, locals, fromlist, level)
+
+  # Override the default import builtin to block importing of banned modules
+  builtins.__import__ = restricted_import
+
+  # Remove the imported modules from the global namespace if they were
+  # imported already
+  for name in banned_modules:
+    sys.modules.pop(name, None)
+
+__override()
+  `);
+
   // Signal that worker is ready to accept messages
   send({ type: "ready" });
 }
