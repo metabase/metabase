@@ -60,8 +60,7 @@
         (mt/with-temp [:model/Transform {transform-id :id} {:name        "Test transform"
                                                             :description "A test transform"
                                                             :source      {:type "query"
-                                                                          :query {:database (mt/id)
-                                                                                  :native {:query "SELECT 1"}}}
+                                                                          :query (mt/native-query {:query "SELECT 1"})}
                                                             :target      {:database (mt/id)
                                                                           :table "test_table"}
                                                             :created_at  now
