@@ -3,7 +3,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.context :as context]
-   [metabase-enterprise.metabot-v3.table-utils :as table-utils]))
+   [metabase-enterprise.metabot-v3.table-utils :as table-utils]
+   [metabase.test :as mt]))
 
 (deftest database-tables-for-context-prioritization
   (let [used [{:id 1 :name "used1"} {:id 2 :name "used2"}]
@@ -181,3 +182,21 @@
            (count (->> (context/create-context {})
                        :capabilities
                        (filter #(str/starts-with? % "backend:"))))))))
+
+(deftest ^:parallel capabilities-include-enabled-features
+  (testing "We include enabled features in the capabilities"
+    (let [feature-capabilities (fn []
+                                 (->> (context/create-context {})
+                                      :capabilities
+                                      (filter #(str/starts-with? % "feature:"))
+                                      (into #{})))]
+      (mt/with-premium-features #{}
+        (is (= #{}
+               (feature-capabilities))))
+      (mt/with-premium-features #{:transforms}
+        (is (= #{"feature:transforms"}
+               (feature-capabilities))))
+      (mt/with-premium-features #{:transforms :transforms-python}
+        (is (= #{"feature:transforms"
+                 "feature:transforms-python"}
+               (feature-capabilities)))))))
