@@ -45,6 +45,37 @@
         (is (= "Test Name"
                (#'search.ingestion/searchable-text record)))))))
 
+(deftest embeddable-text-test
+  (testing "embeddable-text with vector format"
+    (let [spec-fn (constantly {:search-terms [:name :description]})
+          record  {:model       "card"
+                   :name        "Sales Dashboard"
+                   :description "Shows quarterly sales data"
+                   :other-field "Other Value"}]
+      (with-redefs [search.spec/spec spec-fn]
+        (is (= "[card]\nname: Sales Dashboard\ndescription: Shows quarterly sales data"
+               (#'search.ingestion/embeddable-text record))))))
+
+  (testing "embeddable-text with map format"
+    (let [spec-fn (constantly {:search-terms {:name        true
+                                              :description true}})
+          record  {:model       "dashboard"
+                   :name        "Test Dashboard"
+                   :description "A test dashboard"}]
+      (with-redefs [search.spec/spec spec-fn]
+        (is (= "[dashboard]\nname: Test Dashboard\ndescription: A test dashboard"
+               (#'search.ingestion/embeddable-text record))))))
+
+  (testing "embeddable-text filters out blank values"
+    (let [spec-fn (constantly {:search-terms [:name :description :empty-field]})
+          record  {:model       "card"
+                   :name        "Test Card"
+                   :description "  "
+                   :empty-field nil}]
+      (with-redefs [search.spec/spec spec-fn]
+        (is (= "[card]\nname: Test Card"
+               (#'search.ingestion/embeddable-text record)))))))
+
 (deftest search-term-columns-test
   (testing "search-term-columns with vector format"
     (is (= #{:name :description}

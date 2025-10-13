@@ -63,6 +63,23 @@
     (->> (into [] xf search-terms)
          (str/join " "))))
 
+(defn- embeddable-text
+  "Generate labeled text for semantic search embeddings.
+  Format:
+    [model]
+    field1: value1
+    field2: value2"
+  [m]
+  (let [search-terms (:search-terms (search.spec/spec (:model m)))
+        field-keys   (cond-> search-terms (map? search-terms) keys)
+        header       (str "[" (:model m) "]")
+        fields        (keep (fn [k]
+                              (let [v (get m k)]
+                                (when (not (str/blank? (str v)))
+                                  (str (name k) ": " (str/trim (str v))))))
+                            field-keys)]
+    (str header "\n" (str/join "\n" fields))))
+
 (defn- search-term-columns
   "Extract column names from search-terms spec for SQL query generation"
   [search-terms]
@@ -107,7 +124,8 @@
                         (assoc
                          :display_data (display-data m)
                          :legacy_input (dissoc m :pinned :view_count :last_viewed_at :native_query)
-                         :searchable_text (searchable-text m)))]
+                         :searchable_text (searchable-text m)
+                         :embeddable_text (embeddable-text m)))]
     (merge fn-results sql-results)))
 
 (defn- attrs->select-items [attrs]
