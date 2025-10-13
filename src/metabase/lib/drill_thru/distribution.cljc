@@ -49,6 +49,7 @@
   [query                  :- ::lib.schema/query
    stage-number           :- :int
    {:keys [column value]} :- ::lib.schema.drill-thru/context]
+  ;; TODO (BT) is this allowed for any stage even if subset-only? is true?
   (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
              column
              (nil? value)
