@@ -763,7 +763,7 @@
                                                   :content_type "application/json+vnd.prose-mirror"}]
               (let [uuid (:public_uuid document)]
                 (testing "Can fetch card data from public document"
-                  (is (= 200
+                  (is (= 202
                          (:status (client/client-full-response :get (str "public/document/" uuid "/card/" card-id))))))
 
                 (testing "Cannot fetch card not embedded in document"
