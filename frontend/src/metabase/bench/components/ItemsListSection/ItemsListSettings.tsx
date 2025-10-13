@@ -30,15 +30,25 @@ export const ItemsListSettings = ({
   return (
     <Group px="md" gap="sm">
       {settings.map((setting) => (
-        <Menu key={setting.name} position="bottom-start" shadow="md">
+        <Menu
+          key={setting.name}
+          position="bottom-start"
+          shadow="md"
+          onOpen={() =>
+            setMenuOpenMap((s) => ({
+              ...s,
+              [setting.name]: true,
+            }))
+          }
+          onClose={() =>
+            setMenuOpenMap((s) => ({
+              ...s,
+              [setting.name]: false,
+            }))
+          }
+        >
           <Menu.Target>
             <Button
-              onClick={() =>
-                setMenuOpenMap((s) => ({
-                  ...s,
-                  [setting.name]: !s[setting.name],
-                }))
-              }
               size="compact-md"
               radius="xl"
               c="filter"
