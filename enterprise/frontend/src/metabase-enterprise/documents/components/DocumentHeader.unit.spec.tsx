@@ -45,11 +45,12 @@ const setup = ({
 
   renderWithProviders(<DocumentHeader {...props} />, {
     storeInitialState: {
-      currentUser: { is_superuser: isAdmin },
+      currentUser: createMockUser({ is_superuser: isAdmin }),
       settings: {
         values: {
           "enable-public-sharing": isPublicSharingEnabled,
-        },
+        } as any,
+        loading: false,
       },
     },
   });
