@@ -228,18 +228,15 @@
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {legacy-mbql? :legacy-mbql
-    :keys        [context]} :- [:map
-                                [:ignore_view         {:optional true} [:maybe :boolean]]
-                                [:context             {:optional true} [:maybe [:enum :collection]]]
-                                [:legacy-mbql {:optional true, :default false} [:maybe :boolean]]]]
+    :keys        []} :- [:map [:legacy-mbql {:optional true, :default false} [:maybe :boolean]]]]
   (let [resolved-id (eid-translation/->id-or-404 :card id)
-        card        (get-card resolved-id)]
-        (cond-> card
-                      legacy-mbql?
-                      (update :dataset_query (fn [query]
-                                               #_{:clj-kondo/ignore [:discouraged-var]}
-                                               (cond-> query
-                                                 (seq query) lib/->legacy-MBQL))))))
+        card (get-card resolved-id)]
+    (cond-> card
+      legacy-mbql?
+      (update :dataset_query (fn [query]
+                               #_{:clj-kondo/ignore [:discouraged-var]}
+                               (cond-> query
+                                 (seq query) lib/->legacy-MBQL))))))
 
 (defn- check-allowed-to-remove-from-existing-dashboards [card]
   (let [dashboards (or (:in_dashboards card)
