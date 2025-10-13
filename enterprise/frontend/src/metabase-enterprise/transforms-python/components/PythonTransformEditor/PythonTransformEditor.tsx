@@ -13,11 +13,11 @@ import type {
 import { PythonDataPicker } from "./PythonDataPicker";
 import { PythonEditorBody } from "./PythonEditorBody";
 import { PythonEditorResults } from "./PythonEditorResults";
+import { useTestPythonTransform } from "./hooks";
 import {
   getValidationResult,
   isPythonTransformSource,
   updateTransformSignature,
-  useTestPythonTransform,
 } from "./utils";
 
 export type PythonTransformSourceDraft = {
