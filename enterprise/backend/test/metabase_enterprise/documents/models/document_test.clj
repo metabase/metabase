@@ -384,18 +384,15 @@
     (let [spec (serdes/make-spec "Document" {})]
       (is (= [:archived :archived_directly :content_type :entity_id :name :collection_position]
              (:copy spec)))
-      (is (= [:view_count :last_viewed_at] (:skip spec)))
+      (is (= [:view_count :last_viewed_at :public_uuid :made_public_by_id] (:skip spec)))
       (is (contains? (:transform spec) :created_at))
       (is (contains? (:transform spec) :document))
       (is (contains? (:transform spec) :updated_at))
       (is (contains? (:transform spec) :collection_id))
       (is (contains? (:transform spec) :creator_id))
-      (is (contains? (:transform spec) :public_uuid))
-      (is (contains? (:transform spec) :made_public_by_id))
       (testing "foreign key transformers are properly configured"
         (is (get-in spec [:transform :collection_id ::serdes/fk]))
-        (is (get-in spec [:transform :creator_id ::serdes/fk]))
-        (is (get-in spec [:transform :made_public_by_id ::serdes/fk]))))))
+        (is (get-in spec [:transform :creator_id ::serdes/fk]))))))
 
 (deftest document-serdes-dependencies-test
   (testing "Document dependencies method works correctly"
