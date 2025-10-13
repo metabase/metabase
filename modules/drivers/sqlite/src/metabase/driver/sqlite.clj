@@ -249,7 +249,7 @@
   [_driver _ expr]
   (h2x/->integer (strftime "%Y" expr)))
 
-(defmethod sql.qp/add-interval-honeysql-form :sqlite
+(defmethod h2x/add-interval-honeysql-form :sqlite
   [_driver hsql-form amount unit]
   (let [[multiplier sqlite-unit] (case unit
                                    :second  [1 "seconds"]

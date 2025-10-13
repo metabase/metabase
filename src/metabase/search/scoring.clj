@@ -3,8 +3,8 @@
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [metabase.app-db.core :as mdb]
-   [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.search.config :as search.config]))
+   [metabase.search.config :as search.config]
+   [metabase.util.honey-sql-2 :as h2x]))
 
 (def ^:private seconds-in-a-day 86400)
 
@@ -66,7 +66,7 @@
 (defn user-recency-expr
   "Expression to select the `:user-recency` timestamp for the `current-user-id`."
   [{:keys [current-user-id]}]
-  (let [one-day-ago (sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -1 :day)]
+  (let [one-day-ago (h2x/add-interval-honeysql-form (mdb/db-type) :%now -1 :day)]
     {:select [[[:case
                 ;; Transforms get a hardcoded 1-day last_viewed_at because we don't track views on them
                 [:= :search_index.model [:inline "transform"]]
