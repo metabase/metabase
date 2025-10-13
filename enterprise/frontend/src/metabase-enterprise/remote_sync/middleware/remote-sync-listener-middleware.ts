@@ -263,9 +263,61 @@ startRemoteSyncListening({
         task.status === "timed-out";
 
       if (isTerminalState && task.ended_at) {
-        listenerApi.dispatch(
-          Api.util.invalidateTags(REMOTE_SYNC_INVALIDATION_TAGS as any),
-        );
+        const isImportTask = task.sync_task_type === "import";
+        const isSuccessful = task.status === "successful";
+
+        if (isImportTask && isSuccessful) {
+          listenerApi.dispatch(
+            Api.util.invalidateTags([
+              "action",
+              "alert",
+              "api-key",
+              "bookmark",
+              "card",
+              "channel",
+              "collection",
+              "collection-tree",
+              "content-translation",
+              "dashboard",
+              "dashboard-question-candidates",
+              "database",
+              "document",
+              "field",
+              "field-values",
+              "glossary",
+              "indexed-entity",
+              "model-index",
+              "notification",
+              "parameter-values",
+              "permissions-group",
+              "persisted-info",
+              "persisted-model",
+              "revision",
+              "schema",
+              "segment",
+              "session-properties",
+              "snippet",
+              "subscription",
+              "subscription-channel",
+              "table",
+              "task",
+              "timeline",
+              "timeline-event",
+              "user",
+              "public-dashboard",
+              "embed-dashboard",
+              "public-card",
+              "embed-card",
+              "public-action",
+              "unique-tasks",
+              "user-key-value",
+            ]),
+          );
+        } else {
+          listenerApi.dispatch(
+            Api.util.invalidateTags(REMOTE_SYNC_INVALIDATION_TAGS as any),
+          );
+        }
       }
     }
   },
