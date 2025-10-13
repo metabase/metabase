@@ -363,9 +363,13 @@
 
 (mr/def ::context
   [:map
-   [:column     [:maybe [:ref ::lib.schema.metadata/column]]]
-   [:column-ref [:maybe [:ref ::lib.schema.ref/ref]]]
-   [:value      [:maybe :any]]
-   [:row        {:optional true} [:ref ::context.row]]
-   [:dimensions {:optional true} [:maybe [:ref ::context.row]]]
-   [:card-id    {:optional true} [:maybe ::lib.schema.id/card]]])
+   [:column       [:maybe [:ref ::lib.schema.metadata/column]]]
+   [:column-ref   [:maybe [:ref ::lib.schema.ref/ref]]]
+   [:value        [:maybe :any]]
+   [:row          {:optional true} [:ref ::context.row]]
+   [:dimensions   {:optional true} [:maybe [:ref ::context.row]]]
+   [:card-id      {:optional true} [:maybe ::lib.schema.id/card]]
+   ;; If this parameter is true, only drills that don't expose more data than the original card query
+   ;; should be made available. The only exception is that aggregations and breakouts from the last stage can be
+   ;; removed.
+   [:subset-only? {:optional true, :default false} :boolean]])

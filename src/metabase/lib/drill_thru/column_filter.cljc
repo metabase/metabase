@@ -87,8 +87,11 @@
   returns a possibly-updated `:query` and `:stage-number` along with a `:column` referencing that later stage."
   [query                             :- ::lib.schema/query
    stage-number                      :- :int
-   {:keys [column column-ref value]} :- ::lib.schema.drill-thru/context]
-  (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
+   {:keys [column column-ref value subset-only?]} :- ::lib.schema.drill-thru/context]
+  (when (and (if subset-only?
+               (lib.util/last-stage? query stage-number)
+               true)
+             (lib.drill-thru.common/mbql-stage? query stage-number)
              column
              (nil? value))
     ;; When the column we would be filtering on is an aggregation, it can't be filtered without adding a stage.

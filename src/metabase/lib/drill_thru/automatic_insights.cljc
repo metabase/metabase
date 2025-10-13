@@ -20,8 +20,9 @@
   There are two forms: X-ray, and \"Compare to the rest\". This is a simple user choice and does not need extra data."
   [query                                        :- ::lib.schema/query
    stage-number                                 :- :int
-   {:keys [column column-ref dimensions value]} :- ::lib.schema.drill-thru/context]
-  (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
+   {:keys [column column-ref dimensions value subset-only?]} :- ::lib.schema.drill-thru/context]
+  (when (and (not subset-only?)
+             (lib.drill-thru.common/mbql-stage? query stage-number)
              (lib.underlying/has-aggregation-or-breakout? query)
              ;; Column with no value is not allowed - that's a column header click. Other combinations are allowed.
              (or (not column) (some? value))
