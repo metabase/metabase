@@ -1,3 +1,4 @@
+import type { Location } from "history";
 import type { ReactNode } from "react";
 
 import { BenchLayout } from "metabase/bench/components/BenchLayout";
@@ -13,17 +14,18 @@ type TransformLayoutPropsParams = {
 
 type TransformLayoutProps = {
   params: TransformLayoutPropsParams;
+  location: Location;
   children?: ReactNode;
 };
-
 
 export function TransformLayout({
   children,
   params,
+  location,
 }: TransformLayoutProps) {
   return (
     <BenchLayout
-      nav={<TransformList params={params} />}
+      nav={<TransformList params={params} location={location} />}
       name="transform"
     >
       {children}
@@ -31,15 +33,9 @@ export function TransformLayout({
   );
 }
 
-export function JobsLayout({
-  children,
-  params,
-}: TransformLayoutProps) {
+export function JobsLayout({ children, params }: TransformLayoutProps) {
   return (
-    <BenchLayout
-      nav={<JobList params={params} />}
-      name="job"
-    >
+    <BenchLayout nav={<JobList params={params} />} name="job">
       {children}
     </BenchLayout>
   );

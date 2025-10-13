@@ -1,11 +1,14 @@
+import type { Location } from "history";
 import { t } from "ttag";
 
 import { ItemsListSection } from "metabase/bench/components/ItemsListSection/ItemsListSection";
+import { ItemsListSettings } from "metabase/bench/components/ItemsListSection/ItemsListSettings";
+import { useItemsListQuery } from "metabase/bench/components/ItemsListSection/useItemsListQuery";
 import Link from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getLocation } from "metabase/selectors/routing";
-import { Box,  NavLink, Text } from "metabase/ui";
+import { Box, NavLink, Text } from "metabase/ui";
 import {
   useListTransformTagsQuery,
   useListTransformsQuery,
@@ -22,9 +25,14 @@ import { hasFilterParams } from "../utils";
 type TransformListProps = {
   params: TransformListParams;
   onCollapse: () => void;
+  location: Location;
 };
 
-export function TransformList({ params, onCollapse }: TransformListProps) {
+export function TransformList({
+  params,
+  onCollapse,
+  location,
+}: TransformListProps) {
   const {
     data: transforms = [],
     isLoading: isLoadingTransforms,
@@ -42,6 +50,26 @@ export function TransformList({ params, onCollapse }: TransformListProps) {
   const isLoading = isLoadingTransforms || isLoadingTags;
   const error = transformsError ?? tagsError;
 
+  const listSettingsProps = useItemsListQuery({
+    settings: [
+      {
+        name: "display",
+        options: [
+          {
+            label: t`Target table`,
+            value: "target",
+          },
+          {
+            label: t`Alphabetical`,
+            value: "alphabetical",
+          },
+        ],
+      },
+    ],
+    defaults: { display: "target" },
+    location,
+  });
+
   if (isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
@@ -58,14 +86,17 @@ export function TransformList({ params, onCollapse }: TransformListProps) {
   return (
     <ItemsListSection
       sectionTitle={t`Transforms`}
-      titleMenuItems={<div />}
       onCollapse={onCollapse}
-      onChangeSorting={() => null}
       AddButton={CreateTransformMenu}
+      settings={<ItemsListSettings {...listSettingsProps} />}
       listItems={
         <Box>
           {transforms.map((transform) => (
-            <TransformListItem key={transform.id} transform={transform} tags={tags} />
+            <TransformListItem
+              key={transform.id}
+              transform={transform}
+              tags={tags}
+            />
           ))}
         </Box>
       }
@@ -73,7 +104,13 @@ export function TransformList({ params, onCollapse }: TransformListProps) {
   );
 }
 
-function TransformListItem({ transform, tags }: { transform: Transform, tags: TransformTag[] }) {
+function TransformListItem({
+  transform,
+  tags,
+}: {
+  transform: Transform;
+  tags: TransformTag[];
+}) {
   const location = useSelector(getLocation);
   // get id off the end
   const id = location?.pathname?.split("/")?.pop();
@@ -94,5 +131,5 @@ function TransformListItem({ transform, tags }: { transform: Transform, tags: Tr
         </Box>
       }
     />
-  )
+  );
 }
