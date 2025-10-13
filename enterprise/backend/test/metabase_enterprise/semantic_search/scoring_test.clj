@@ -19,6 +19,7 @@
   [doc]
   (merge {:id 123
           :searchable_text (:name doc)
+          :embeddable_text (:name doc)
           :created_at #t "2025-01-01T12:00:00Z"
           :creator_id (mt/user->id :rasta)
           :archived false

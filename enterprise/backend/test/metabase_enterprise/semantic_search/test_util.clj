@@ -270,6 +270,7 @@
       :id 123
       :name "Dog Training Guide"
       :searchable_text "Dog Training Guide"
+      :embeddable_text "Dog Training Guide"
       :created_at #t "2025-01-01T12:00:00Z"
       :creator_id 1
       :archived false
@@ -284,6 +285,7 @@
       :id 456
       :name "Elephant Migration"
       :searchable_text "Elephant Migration"
+      :embeddable_text "Elephant Migration"
       :created_at #t "2025-02-01T12:00:00Z"
       :creator_id 2
       :archived true
