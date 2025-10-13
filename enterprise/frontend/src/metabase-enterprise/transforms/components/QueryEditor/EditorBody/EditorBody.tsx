@@ -53,7 +53,7 @@ type EditorBodyProps = {
   onToggleDataReference: () => void;
   onToggleSnippetSidebar: () => void;
   onCancelQuery: () => void;
-  onInsertSnippet: (snippet: NativeQuerySnippet) => void;
+  onInsertSnippet?: (snippet: NativeQuerySnippet) => void;
   modalSnippet?: NativeQuerySnippet | null;
   onChangeModalSnippet: (snippet: NativeQuerySnippet | null) => void;
   onChangeNativeEditorSelection: (range: SelectionRange[]) => void;
