@@ -34,7 +34,6 @@ const TAB_4 = {
 /**
  * When keys are pressed too fast redux won't have enough time to update the state,
  * so conditions in subsequently called event handlers may not have been updated yet.
- * Give it some time to do so.
  */
 const REAL_PRESS_DELAY = 1;
 
