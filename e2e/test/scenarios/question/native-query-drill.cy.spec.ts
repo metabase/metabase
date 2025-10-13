@@ -421,7 +421,7 @@ describe("scenarios > question > native query drill", () => {
         questionDetails: timeseriesLineQuestionDetails,
       }).then(({ body }) => H.visitDashboard(body.dashboard_id));
       H.getDashboardCard().within(() =>
-        applyBrushFilter({ left: 100, right: 300 }),
+        applyBrushFilter({ left: 150, right: 300 }),
       );
       cy.wait("@dataset");
       H.assertQueryBuilderRowCount(4);
@@ -432,7 +432,7 @@ describe("scenarios > question > native query drill", () => {
         questionDetails: numericLineQuestionDetails,
       }).then(({ body }) => H.visitDashboard(body.dashboard_id));
       H.getDashboardCard().within(() =>
-        applyBrushFilter({ left: 100, right: 300 }),
+        applyBrushFilter({ left: 100, right: 320 }),
       );
       cy.wait("@dataset");
       H.assertQueryBuilderRowCount(6);
