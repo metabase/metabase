@@ -3,7 +3,6 @@ import cx from "classnames";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { Sortable } from "metabase/common/components/Sortable";
 import { getColumnIcon } from "metabase/common/utils/columns";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Box, Card, Flex, Icon, Text, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Field } from "metabase-types/api";
@@ -11,6 +10,7 @@ import type { Field } from "metabase-types/api";
 import S from "./SortableFieldItem.module.css";
 
 interface Props {
+  fieldId: string | number;
   active?: boolean;
   disabled?: boolean;
   field: Field;
@@ -18,12 +18,12 @@ interface Props {
 }
 
 export const SortableFieldItem = ({
+  fieldId,
   active,
   disabled,
   field,
   parent,
 }: Props) => {
-  const id = getRawTableFieldId(field);
   const icon = getColumnIcon(Lib.legacyColumnTypeInfo(field));
   const label = field.display_name;
   const draggable = !disabled;
@@ -35,7 +35,7 @@ export const SortableFieldItem = ({
       })}
       disabled={disabled}
       draggingStyle={{ opacity: 0.5 }}
-      id={id}
+      id={fieldId}
     >
       <Card
         aria-label={label}

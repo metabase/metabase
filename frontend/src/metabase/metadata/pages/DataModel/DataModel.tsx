@@ -6,6 +6,7 @@ import _ from "underscore";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
 import {
+  useGetCardQuery,
   useGetTableQueryMetadataQuery,
   useListCollectionsTreeQuery,
   useListDatabasesQuery,
@@ -22,6 +23,7 @@ import { ModelTreeNode } from "metabase/metadata/pages/DataModel/components/mode
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Box, Flex, Stack, Text, Title, rem } from "metabase/ui";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions"; // eslint-disable-line no-restricted-imports
+import type { FieldName } from "metabase-types/api";
 
 import S from "./DataModel.module.css";
 import {
@@ -82,6 +84,10 @@ export const DataModel = ({ children, location, params }: Props) => {
   const { isLoading: isLoadingCollections, data: collections } =
     useListCollectionsTreeQuery({ "exclude-archived": true });
   const models = modelsData?.data;
+  const { isLoading: isLoadingModel, data: modelCard } = useGetCardQuery(
+    { id: modelId },
+    { skip: !modelId },
+  );
 
   const [updateField] = useUpdateFieldMutation();
   const [updateCard] = useUpdateCardMutation();
@@ -100,7 +106,8 @@ export const DataModel = ({ children, location, params }: Props) => {
     isLoadingTables ||
     isLoadingDatabases ||
     isLoadingModels ||
-    isLoadingCollections;
+    isLoadingCollections ||
+    isLoadingModel;
 
   const modelsTreeData = useMemo(() => {
     return models && collections
@@ -119,8 +126,7 @@ export const DataModel = ({ children, location, params }: Props) => {
 
   const handleModelColumnChange = useCallback(
     (update: FieldChangeParams) => {
-      const metadata = table?.fields;
-      const newMetadata = metadata?.map((column) => {
+      const newMetadata = table?.fields?.map((column) => {
         return update.name === column.name ? { ...column, ...update } : column;
       });
 
@@ -130,6 +136,24 @@ export const DataModel = ({ children, location, params }: Props) => {
       });
     },
     [modelId, table?.fields, updateCard],
+  );
+
+  const handleModelColumnsOrderChange = useCallback(
+    (fieldsOrder: FieldName[]) => {
+      const newFields = fieldsOrder.map((fieldName) => ({
+        name: fieldName,
+        enabled: true,
+      }));
+
+      return updateCard({
+        id: modelId,
+        visualization_settings: {
+          ...modelCard.visualization_settings,
+          "table.columns": newFields,
+        },
+      });
+    },
+    [modelCard?.visualization_settings, modelId, updateCard],
   );
 
   useWindowEvent(
@@ -253,9 +277,10 @@ export const DataModel = ({ children, location, params }: Props) => {
                     key={table.id}
                     modelId={modelId}
                     fieldName={fieldName}
-                    table={table}
+                    model={modelCard}
                     onSyncOptionsClick={openSyncModal}
                     onFieldChange={handleModelColumnChange}
+                    onFieldsOrderChange={handleModelColumnsOrderChange}
                   />
                 )}
               </LoadingAndErrorWrapper>
