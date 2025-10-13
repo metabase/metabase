@@ -1081,12 +1081,12 @@
   (api/check-not-archived (api/read-check :model/Dashboard dashboard-id))
   (let [existing-public-uuid (t2/select-one-fn :public_uuid :model/Dashboard :id dashboard-id)
         uuid (or existing-public-uuid
-             (u/prog1 (str (random-uuid))
+                 (u/prog1 (str (random-uuid))
                    (events/publish-event! :event/dashboard-public-link-created
                                           {:object-id dashboard-id
                                            :user-id api/*current-user-id*})
-               (t2/update! :model/Dashboard dashboard-id
-                           {:public_uuid       <>
+                   (t2/update! :model/Dashboard dashboard-id
+                               {:public_uuid       <>
                                 :made_public_by_id api/*current-user-id*})))]
     {:uuid uuid}))
 
