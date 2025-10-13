@@ -2,7 +2,7 @@
   (:require
    [metabase-enterprise.dependencies.core :as dependencies]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
-   [metabase.lib-be.metadata.jvm :as lib-be.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -36,7 +36,7 @@
   (try
     (let [result (if (= (keyword (:type source)) :query)
                    (let [database-id   (-> source :query :database)
-                         base-provider (lib-be.metadata.jvm/application-database-metadata-provider database-id)
+                         base-provider (lib-be/application-database-metadata-provider database-id)
                          original      (lib.metadata/transform base-provider id)
                          transform     (cond-> original
                                          source (assoc :source source))

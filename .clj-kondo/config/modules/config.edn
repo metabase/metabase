@@ -1711,7 +1711,7 @@
   enterprise/dependencies
   {:team "Querying"
    :api  #{metabase-enterprise.dependencies.api
-           #_metabase-enterprise.dependencies.core
+           metabase-enterprise.dependencies.core
            metabase-enterprise.dependencies.init}
    :uses #{analyze
            api
