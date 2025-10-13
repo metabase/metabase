@@ -13,7 +13,7 @@ import {
   provideTimelineEventTags,
   tag,
 } from "./tags";
-import { getGitSyncInvalidationTags } from "./utils/git-sync-cache-helpers";
+import { getRemoteSyncInvalidationTags } from "./utils/remote-sync-cache-helpers";
 
 export const timelineEventApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -37,7 +37,7 @@ export const timelineEventApi = Api.injectEndpoints({
         invalidateTags(error, [
           listTag("timeline-event"),
           ...(event ? [idTag("timeline", event.timeline_id)] : []),
-          ...getGitSyncInvalidationTags(),
+          ...getRemoteSyncInvalidationTags(),
         ]),
     }),
     updateTimelineEvent: builder.mutation<
@@ -54,7 +54,7 @@ export const timelineEventApi = Api.injectEndpoints({
           listTag("timeline-event"),
           idTag("timeline-event", id),
           tag("timeline"),
-          ...getGitSyncInvalidationTags(),
+          ...getRemoteSyncInvalidationTags(),
         ]),
     }),
     deleteTimelineEvent: builder.mutation<TimelineEvent, TimelineEventId>({
@@ -67,7 +67,7 @@ export const timelineEventApi = Api.injectEndpoints({
           listTag("timeline-event"),
           idTag("timeline-event", id),
           tag("timeline"),
-          ...getGitSyncInvalidationTags(),
+          ...getRemoteSyncInvalidationTags(),
         ]),
     }),
   }),

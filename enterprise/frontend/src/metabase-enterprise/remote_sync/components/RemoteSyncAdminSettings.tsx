@@ -36,25 +36,28 @@ import {
   Tooltip,
 } from "metabase/ui";
 import {
-  type GitSyncSettingsSet,
   useGetChangedEntitiesQuery,
   useImportFromBranchMutation,
-  useUpdateGitSyncSettingsMutation,
-} from "metabase-enterprise/api/git-sync";
-import type { EnterpriseSettings, SettingDefinition } from "metabase-types/api";
+  useUpdateRemoteSyncSettingsMutation,
+} from "metabase-enterprise/api/remote-sync";
+import type {
+  EnterpriseSettings,
+  RemoteSyncSettingsSet,
+  SettingDefinition,
+} from "metabase-types/api";
 
-import { GIT_SYNC_SCHEMA } from "../constants";
+import { REMOTE_SYNC_SCHEMA } from "../constants";
 
 const URL_KEY = "remote-sync-url";
 const TOKEN_KEY = "remote-sync-token";
 const TYPE_KEY = "remote-sync-type";
 const BRANCH_KEY = "remote-sync-branch";
 
-export const GitSyncSettings = (): JSX.Element => {
+export const RemoteSyncAdminSettings = (): JSX.Element => {
   const dispatch = useDispatch();
   const { data: settingValues } = useGetSettingsQuery();
   const { data: settingDetails } = useGetAdminSettingsDetailsQuery();
-  const [updateGitSyncSettings] = useUpdateGitSyncSettingsMutation();
+  const [updateRemoteSyncSettings] = useUpdateRemoteSyncSettingsMutation();
   const { data: dirtyData } = useGetChangedEntitiesQuery(undefined, {
     refetchOnFocus: true,
     refetchOnMountOrArgChange: true,
@@ -66,12 +69,15 @@ export const GitSyncSettings = (): JSX.Element => {
   const { updateSettings } = useAdminSetting("remote-sync-url");
 
   const handleSubmit = useCallback(
-    (values: GitSyncSettingsSet) => updateGitSyncSettings(values).unwrap(),
-    [updateGitSyncSettings],
+    (values: RemoteSyncSettingsSet) =>
+      updateRemoteSyncSettings(values).unwrap(),
+    [updateRemoteSyncSettings],
   );
 
   const initialValues = useMemo(() => {
-    const values = GIT_SYNC_SCHEMA.cast(settingValues, { stripUnknown: true });
+    const values = REMOTE_SYNC_SCHEMA.cast(settingValues, {
+      stripUnknown: true,
+    });
     const tokenValue =
       settingDetails?.[TOKEN_KEY]?.value ?? settingValues?.[TOKEN_KEY];
     return {
@@ -137,9 +143,9 @@ export const GitSyncSettings = (): JSX.Element => {
           </Text>
 
           <FormProvider
-            initialValues={initialValues as GitSyncSettingsSet}
+            initialValues={initialValues as RemoteSyncSettingsSet}
             enableReinitialize
-            validationSchema={GIT_SYNC_SCHEMA}
+            validationSchema={REMOTE_SYNC_SCHEMA}
             validationContext={settingValues}
             onSubmit={handleSubmit}
           >

@@ -1,8 +1,8 @@
 import {
-  invalidateGitSyncOnCreate,
-  invalidateGitSyncOnDelete,
-  invalidateGitSyncOnUpdate,
-} from "metabase/api/utils/git-sync-cache-helpers";
+  invalidateRemoteSyncOnCreate,
+  invalidateRemoteSyncOnDelete,
+  invalidateRemoteSyncOnUpdate,
+} from "metabase/api/utils/remote-sync-cache-helpers";
 import type {
   CreateDocumentRequest,
   DeleteDocumentRequest,
@@ -32,7 +32,7 @@ export const documentApi = EnterpriseApi.injectEndpoints({
       }),
       invalidatesTags: (_, error) => (error ? [] : [listTag("document")]),
       async onQueryStarted(_props, { dispatch, queryFulfilled }) {
-        invalidateGitSyncOnCreate(dispatch, queryFulfilled);
+        invalidateRemoteSyncOnCreate(dispatch, queryFulfilled);
         const { data } = await queryFulfilled;
         await dispatch(
           documentApi.util.upsertQueryData(
@@ -57,7 +57,7 @@ export const documentApi = EnterpriseApi.injectEndpoints({
         const oldDocument = documentApi.endpoints.getDocument.select({
           id: updateRequest.id,
         })(state)?.data;
-        invalidateGitSyncOnUpdate(oldDocument, dispatch, queryFulfilled);
+        invalidateRemoteSyncOnUpdate(oldDocument, dispatch, queryFulfilled);
       },
       invalidatesTags: (_, error, { id }) =>
         !error ? [listTag("document"), idTag("document", id)] : [],
@@ -72,7 +72,7 @@ export const documentApi = EnterpriseApi.injectEndpoints({
         const document = documentApi.endpoints.getDocument.select({
           id: deleteRequest.id,
         })(state)?.data;
-        invalidateGitSyncOnDelete(document, dispatch);
+        invalidateRemoteSyncOnDelete(document, dispatch);
       },
       invalidatesTags: (_, error, { id }) =>
         !error ? [listTag("document"), idTag("document", id)] : [],

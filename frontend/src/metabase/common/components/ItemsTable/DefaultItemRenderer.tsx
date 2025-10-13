@@ -2,6 +2,7 @@ import { useCallback } from "react";
 
 import type { ActionMenuProps } from "metabase/collections/components/ActionMenu";
 import type { OnToggleSelectedWithItem } from "metabase/collections/types";
+import { isRootTrashCollection } from "metabase/collections/utils";
 import type { BaseItemsTableProps } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import { Columns } from "metabase/common/components/ItemsTable/Columns";
 import { color } from "metabase/ui/utils/colors";
@@ -38,7 +39,8 @@ export const DefaultItemRenderer = ({
   visibleColumnsMap,
 }: ItemRendererProps) => {
   const canSelect =
-    collection?.can_write && typeof onToggleSelected === "function";
+    (collection?.can_write || isRootTrashCollection(collection)) &&
+    typeof onToggleSelected === "function";
 
   const icon = item.getIcon();
   if (item.model === "card" || item.archived) {

@@ -885,7 +885,7 @@
             ;; grant Permissions for only the *old* collection
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
             ;; now make an API call to move collections. Should fail
-            (is (=? {:message "You do not have curate permissions for this Collection."}
+            (is (=? "You don't have permissions to do that."
                     (mt/user-http-request :rasta :put 403 (str "dashboard/" (u/the-id dash))
                                           {:collection_id (u/the-id new-collection)})))))))))
 
