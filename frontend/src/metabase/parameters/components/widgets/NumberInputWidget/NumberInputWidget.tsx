@@ -13,6 +13,7 @@ import {
   serializeNumberParameterValue,
 } from "metabase/querying/parameters/utils/parsing";
 import { Box, type ComboboxItem, MultiAutocomplete } from "metabase/ui";
+import { getFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import { hasValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Parameter,
@@ -100,7 +101,7 @@ export function NumberInputWidget({
     return (
       <Value
         value={value}
-        column={parameter.fields[0]}
+        column={getFields(parameter)[0]}
         parameter={parameter}
         maximumFractionDigits={20}
       />
