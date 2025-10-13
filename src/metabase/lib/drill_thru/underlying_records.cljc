@@ -61,7 +61,7 @@
   category. Then `column` is nil!"
   [query                                                      :- ::lib.schema/query
    stage-number                                               :- :int
-   {:keys [column column-ref dimensions value], :as _context} :- ::lib.schema.drill-thru/context]
+   {:keys [column column-ref dimensions subset-only? value], :as _context} :- ::lib.schema.drill-thru/context]
   ;; Clicking on breakouts is weird. Clicking on Count(People) by State: Minnesota yields a FE `clicked` with:
   ;; - column is COUNT
   ;; - row[0] has col: STATE, value: "Minnesota"
@@ -85,7 +85,9 @@
   ;; - dimensions holds only the legend's column, eg. Products.CATEGORY.
 
   ;; This function returns the table name and row count, since that's used for pluralization of the name.
-  (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
+  ;; TODO (BT) should this be allowed if subset-only? is true but keeping the :fields clause?
+  (when (and (not subset-only?)
+             (lib.drill-thru.common/mbql-stage? query stage-number)
              (lib.underlying/has-aggregation-or-breakout? query)
              ;; Either we clicked the aggregation, or there are dimensions.
              (or (lib.underlying/aggregation-sourced? query column)

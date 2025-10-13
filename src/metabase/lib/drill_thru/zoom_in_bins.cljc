@@ -104,6 +104,7 @@
   [query                                 :- ::lib.schema/query
    stage-number                         :- :int
    {{:keys [semantic-type] :as column} :column, :keys [value], :as _context}  :- ::lib.schema.drill-thru/context]
+  ;; TODO (BT) is this allowed for any stage even if subset-only? is true?
   (when (and column value (not= value :null)
              (or (not (or (= semantic-type :type/Latitude)
                           (= semantic-type :type/Longitude)))

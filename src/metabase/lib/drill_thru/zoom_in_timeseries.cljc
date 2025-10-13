@@ -114,6 +114,7 @@
    _stage-number                                 :- :int
    {:keys [dimensions], :as _context}            :- ::lib.schema.drill-thru/context]
   ;; For multi-stage queries, we want the stage-number of the underlying stage with breakouts or aggregations.
+  ;; TODO (BT) is this allowed for any stage even if subset-only? is true?
   (let [stage-number (lib.underlying/top-level-stage-number query)]
     (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
                dimensions)
