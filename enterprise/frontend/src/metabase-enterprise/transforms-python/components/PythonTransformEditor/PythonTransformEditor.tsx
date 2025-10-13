@@ -17,7 +17,6 @@ import {
   getValidationResult,
   isPythonTransformSource,
   updateTransformSignature,
-  useShouldShowPythonDebugger,
   useTestPythonTransform,
 } from "./utils";
 
@@ -87,12 +86,7 @@ export function PythonTransformEditor({
     }
   };
 
-  const showDebugger = useShouldShowPythonDebugger();
-
   const handleCmdEnter = () => {
-    if (!showDebugger) {
-      return;
-    }
     if (isRunning) {
       cancel();
     } else if (isRunnable && isPythonTransformSource(source)) {
@@ -135,14 +129,12 @@ export function PythonTransformEditor({
             onCancel={cancel}
             source={source.body}
             onChange={handleScriptChange}
-            withDebugger={showDebugger}
+            withDebugger
           />
-          {showDebugger && (
-            <PythonEditorResults
-              isRunning={isRunning}
-              executionResult={executionResult}
-            />
-          )}
+          <PythonEditorResults
+            isRunning={isRunning}
+            executionResult={executionResult}
+          />
         </Stack>
       </Flex>
     </Stack>

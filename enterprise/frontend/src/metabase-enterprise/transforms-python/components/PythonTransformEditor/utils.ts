@@ -1,5 +1,4 @@
 import { useRef, useState } from "react";
-import { useLocation } from "react-use";
 import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
@@ -218,12 +217,6 @@ export function isPythonTransformSource(
   source: PythonTransformSourceDraft,
 ): source is PythonTransformSource {
   return source.type === "python" && source["source-database"] !== undefined;
-}
-
-export function useShouldShowPythonDebugger() {
-  const location = useLocation();
-  const params = new URLSearchParams(location.search);
-  return params.get("debugger") === "1";
 }
 
 export function getValidationResult(source: PythonTransformSourceDraft) {
