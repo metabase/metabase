@@ -1,7 +1,8 @@
-import { memo } from "react";
+import { type ChangeEvent, memo } from "react";
 import { t } from "ttag";
 
 import { useGetDatabaseQuery } from "metabase/api";
+import { canIndexModelField } from "metabase/entities/model-indexes/utils"; // eslint-disable-line no-restricted-imports
 import {
   FieldValuesTypePicker,
   FieldVisibilityPicker,
@@ -18,11 +19,13 @@ import {
   isFieldJsonUnfolded,
 } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import { Switch } from "metabase/ui";
 import type {
   DatabaseId,
   Field,
   FieldValuesType,
   FieldVisibilityType,
+  Table,
 } from "metabase-types/api";
 
 import { trackMetadataChange } from "../../../analytics";
@@ -34,6 +37,7 @@ interface Props {
   mode: MetadataEditMode;
   databaseId: DatabaseId;
   field: Field;
+  table: Table; // use Table type for models as a temp hack
   onFieldChange: (update: FieldChangeParams) => Promise<{ error?: string }>;
 }
 
@@ -41,6 +45,7 @@ const BehaviorSectionBase = ({
   mode,
   databaseId,
   field,
+  table,
   onFieldChange,
 }: Props) => {
   const fieldIdentity =
@@ -57,6 +62,8 @@ const BehaviorSectionBase = ({
 
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
+
+  const canIndex = canIndexModelField(field, table.fields);
 
   const handleVisibilityChange = async (
     visibilityType: FieldVisibilityType,
@@ -108,6 +115,28 @@ const BehaviorSectionBase = ({
     }
   };
 
+  const handleShouldIndexChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const { error } = await onFieldChange({
+      ...fieldIdentity,
+      should_index: e.target.checked,
+    });
+
+    if (error) {
+      sendErrorToast(t`Failed to update indexing of ${field.display_name}`);
+    } else {
+      sendSuccessToast(
+        t`Indexing of ${field.display_name} updated`,
+        async () => {
+          const { error } = await onFieldChange({
+            ...fieldIdentity,
+            should_index: !e.target.checked,
+          });
+          sendUndoToast(error);
+        },
+      );
+    }
+  };
+
   const handleUnfoldJsonChange = async (
     jsonUnfolding: boolean,
   ): Promise<void> => {
@@ -149,12 +178,14 @@ const BehaviorSectionBase = ({
         onChange={handleVisibilityChange}
       />
 
-      <FieldValuesTypePicker
-        description={t`How this field should be filtered`}
-        label={t`Filtering`}
-        value={field.has_field_values}
-        onChange={handleFilteringChange}
-      />
+      {mode === "table" && (
+        <FieldValuesTypePicker
+          description={t`How this field should be filtered`}
+          label={t`Filtering`}
+          value={field.has_field_values}
+          onChange={handleFilteringChange}
+        />
+      )}
 
       {database != null && (
         <RemappingPicker
@@ -171,6 +202,14 @@ const BehaviorSectionBase = ({
           label={t`Unfold JSON`}
           value={isFieldJsonUnfolded(field, database)}
           onChange={handleUnfoldJsonChange}
+        />
+      )}
+
+      {mode === "model" && canIndex && (
+        <Switch
+          checked={field.should_index ?? false}
+          label={t`Surface individual records in search by matching against this column`}
+          onChange={handleShouldIndexChange}
         />
       )}
     </TitledSection>
