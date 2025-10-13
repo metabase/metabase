@@ -29,7 +29,7 @@ export function RunListPage({ location }: RunListPageProps) {
 
   return (
     <BenchLayout name="transform-runs">
-      <Box p="md">
+      <Box p="lg">
         <Title order={1} mb="sm">{t`Runs`}</Title>
         <Box mb="xl">{t`A list of when each transform ran.`}</Box>
         <RunListPageBody params={params} />
@@ -96,7 +96,7 @@ function RunListPageBody({ params }: RunListPageBodyProps) {
   }
 
   return (
-    <Stack data-testid="run-list-page" style={{ overflow: "auto" }} h="100%">
+    <Stack data-testid="run-list-page">
       <RunFilterList params={params} transforms={transforms} tags={tags} />
       <RunList
         runs={data.data}

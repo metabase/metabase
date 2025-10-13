@@ -125,9 +125,9 @@ export function getRunListUrl({
 
   const queryString = searchParams.toString();
   if (queryString.length > 0) {
-    return `${ROOT_URL}/runs?${queryString}`;
+    return `/bench/runs?${queryString}`;
   } else {
-    return `${ROOT_URL}/runs`;
+    return `/bench/runs`;
   }
 }
 
