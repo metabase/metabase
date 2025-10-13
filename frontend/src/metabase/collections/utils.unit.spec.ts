@@ -102,7 +102,7 @@ describe("Collections > utils", () => {
       expect(canonicalCollectionId("root")).toBe(null);
     });
 
-    it("returns null if the collection id is entity id", () => {
+    it("returns NaN if the collection id is entity id", () => {
       expect(canonicalCollectionId("HPAvJNTD9XTRkwJZUX9Fz")).toBe(NaN);
     });
 
