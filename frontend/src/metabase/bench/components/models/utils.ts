@@ -4,15 +4,20 @@ import {
   type CollectionTreeItem,
   buildCollectionTree,
 } from "metabase/entities/collections";
-import type { Collection, SearchResult } from "metabase-types/api";
+import type {
+  Collection,
+  CollectionContentModel,
+  SearchResult,
+} from "metabase-types/api";
 
 export function getTreeItems(
   collections: Collection[],
   models: SearchResult[],
+  itemType: CollectionContentModel,
 ): ITreeNodeItem[] {
   const collectionTree = buildCollectionTree(
     collections,
-    (m) => m === "dataset",
+    (m) => m === itemType,
   );
 
   function collectionToTreeNode(collection: CollectionTreeItem): ITreeNodeItem {

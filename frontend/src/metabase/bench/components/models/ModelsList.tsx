@@ -76,7 +76,9 @@ function ModelsList({
   });
 
   const treeData = useMemo(() => {
-    return models && collections ? getTreeItems(collections, models) : [];
+    return models && collections
+      ? getTreeItems(collections, models, "dataset")
+      : [];
   }, [collections, models]);
 
   const handleModelSelect = (item: ITreeNodeItem) => {

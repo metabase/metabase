@@ -1,19 +1,21 @@
 import cx from "classnames";
 import type { Location } from "history";
 import type React from "react";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Link } from "react-router";
 import { push } from "react-router-redux";
 import { useMount, usePrevious } from "react-use";
 import { t } from "ttag";
 import { noop } from "underscore";
 
-import { searchApi } from "metabase/api";
+import { searchApi, useListCollectionsTreeQuery } from "metabase/api";
 import { listTag } from "metabase/api/tags";
 import { getIcon } from "metabase/browse/models/utils";
 import ActionButton from "metabase/common/components/ActionButton/ActionButton";
 import Button from "metabase/common/components/Button";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
+import { Tree } from "metabase/common/components/tree/Tree";
+import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { useFetchMetrics } from "metabase/common/hooks/use-fetch-metrics";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -53,7 +55,9 @@ import { BenchLayout } from "../BenchLayout";
 import { BenchPaneHeader } from "../BenchPaneHeader";
 import { ItemsListSection } from "../ItemsListSection/ItemsListSection";
 import { ItemsListSettings } from "../ItemsListSection/ItemsListSettings";
+import { ItemsListTreeNode } from "../ItemsListSection/ItemsListTreeNode";
 import { useItemsListQuery } from "../ItemsListSection/useItemsListQuery";
+import { getTreeItems } from "../models/utils";
 
 function MetricsList({
   activeId,
@@ -65,8 +69,11 @@ function MetricsList({
   location: Location;
 }) {
   const dispatch = useDispatch();
-  const { isLoading, data } = useFetchMetrics();
+  const { isLoading: isLoadingMetrics, data } = useFetchMetrics();
+  const { isLoading: isLoadingCollections, data: collections } =
+    useListCollectionsTreeQuery({ "exclude-archived": true });
   const metrics = data?.data;
+  const isLoading = isLoadingMetrics || isLoadingCollections;
 
   const listSettingsProps = useItemsListQuery({
     location,
@@ -88,6 +95,18 @@ function MetricsList({
     defaults: { display: "collection" },
   });
 
+  const treeData = useMemo(() => {
+    return metrics && collections
+      ? getTreeItems(collections, metrics, "metric")
+      : [];
+  }, [collections, metrics]);
+
+  const handleMetricSelect = (item: ITreeNodeItem) => {
+    if (typeof item.id === "number") {
+      dispatch(push(`/bench/metric/${item.id}`));
+    }
+  };
+
   return (
     <ItemsListSection
       sectionTitle={t`Metrics`}
@@ -105,6 +124,16 @@ function MetricsList({
           <Center>
             <Loader />
           </Center>
+        ) : listSettingsProps.values.display === "collection" ? (
+          <Box mx="-md">
+            <Tree
+              data={treeData}
+              selectedId={activeId ?? undefined}
+              onSelect={handleMetricSelect}
+              emptyState={<Text c="text-light">{t`No models found`}</Text>}
+              TreeNode={ItemsListTreeNode}
+            />
+          </Box>
         ) : (
           metrics.map((metric) => (
             <MetricListItem
