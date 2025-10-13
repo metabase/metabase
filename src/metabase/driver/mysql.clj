@@ -237,7 +237,7 @@
     driver.common/default-advanced-options]
    (into [] (mapcat u/one-or-many))))
 
-(defmethod sql.qp/add-interval-honeysql-form :mysql
+(defmethod h2x/add-interval-honeysql-form :mysql
   [driver hsql-form amount unit]
   ;; MySQL doesn't support `:millisecond` as an option, but does support fractional seconds
   (if (= unit :millisecond)

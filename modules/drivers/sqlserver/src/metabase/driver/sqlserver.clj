@@ -335,7 +335,7 @@
   [_driver _unit expr]
   (date-part :year expr))
 
-(defmethod sql.qp/add-interval-honeysql-form :sqlserver
+(defmethod h2x/add-interval-honeysql-form :sqlserver
   [_ hsql-form amount unit]
   (date-add unit amount hsql-form))
 

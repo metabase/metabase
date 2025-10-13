@@ -323,7 +323,7 @@
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :milliseconds] [_ _ expr] [:to_timestamp_tz expr 3])
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :microseconds] [_ _ expr] [:to_timestamp_tz expr 6])
 
-(defmethod sql.qp/add-interval-honeysql-form :snowflake
+(defmethod h2x/add-interval-honeysql-form :snowflake
   [_driver hsql-form amount unit]
   ;; return type is always the same as expr type, unless expr is a DATE and you're adding something not in a DATE e.g.
   ;; `:seconds`, in which case it returns `timestamp_ntz`. See

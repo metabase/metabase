@@ -422,3 +422,16 @@
     :h2       (with-database-type-info :%now "timestamp")
     :mysql    (with-database-type-info [:now [:inline 6]] "timestamp")
     :postgres (with-database-type-info :%now "timestamptz")))
+
+(defmulti add-interval-honeysql-form
+  "Return a HoneySQL form that represents addition of some temporal interval to the original `hsql-form`.
+  `unit` is one of the units listed in [[metabase.util.date-2/add-units]].
+
+    (add-interval-honeysql-form :my-driver hsql-form 1 :day) -> [:date_add hsql-form 1 (h2x/literal 'day')]
+
+  `amount` is usually an integer, but can be floating-point for units like seconds.
+
+  This multimethod can be extended by drivers in their respective namespaces."
+  {:added "0.34.2" :arglists '([driver hsql-form amount unit])}
+  (fn [driver _hsql-form _amount _unit]
+    (keyword driver)))

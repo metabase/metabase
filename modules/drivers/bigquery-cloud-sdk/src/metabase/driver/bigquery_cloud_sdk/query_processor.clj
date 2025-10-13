@@ -966,7 +966,7 @@
       new-form
       ((get-method ->temporal-type :default) target-type original-form))))
 
-(defmethod sql.qp/add-interval-honeysql-form :bigquery-cloud-sdk
+(defmethod h2x/add-interval-honeysql-form :bigquery-cloud-sdk
   [_ hsql-form amount unit]
   ;; `timestamp_add()` doesn't support month/quarter/year, so cast it to `datetime` so we can use `datetime_add()`
   ;; instead in those cases.

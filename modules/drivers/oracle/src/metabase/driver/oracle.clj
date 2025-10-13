@@ -370,7 +370,7 @@
   (-> [:add_months (cast-to-date-if-needed hsql-form) amount]
       (h2x/with-database-type-info "date")))
 
-(defmethod sql.qp/add-interval-honeysql-form :oracle
+(defmethod h2x/add-interval-honeysql-form :oracle
   [driver hsql-form amount unit]
   ;; use add_months() for months since Oracle will barf if you try to do something like 2022-03-31 + 3 months since
   ;; June 31st doesn't exist. add_months() can figure it out tho.
