@@ -79,7 +79,7 @@ const baseColors = {
 
   // Orion
   orion: {
-    110: "#050F16",
+    110: "hsla(205, 63%, 5%, 1)",
     100: "hsla(204, 66%, 8%, 1)",
     90: "hsla(204, 34%, 14%, 1)",
     80: "hsla(205, 19%, 23%, 1)",
@@ -252,8 +252,11 @@ export const colorConfig = {
     light: baseColors.octopus[60],
     dark: baseColors.octopus[80],
   },
-
   "admin-navbar-secondary": {
+    light: baseColors.octopus[40],
+    dark: baseColors.octopus[60],
+  },
+  "admin-navbar-inverse": {
     light: baseColors.octopus[80],
     dark: baseColors.octopus[60],
   },
@@ -278,7 +281,11 @@ export const colorConfig = {
     light: baseColors.orion[80],
     dark: baseColors.orion[20],
   },
-  "background-light": { light: baseColors.orion[5], dark: baseColors.black }, //should be background-secondary
+  "background-light": {
+    //should be background-secondary
+    light: baseColors.orion[5],
+    dark: baseColors.orion[110],
+  },
   "background-selected": {
     light: baseColors.brand[50],
     dark: baseColors.brand[40],
@@ -452,7 +459,7 @@ export const colorConfig = {
     dark: baseColors.brand[40],
   },
   "text-dark": {
-    /* @deprecated, use text-primary */ light: baseColors.orionAlpha[80],
+    light: baseColors.orionAlpha[80] /* @deprecated, use text-primary */,
     dark: baseColors.orionAlphaInverse[80],
   },
   "text-disabled": {
@@ -477,9 +484,9 @@ export const colorConfig = {
     light: baseColors.orionAlpha[80],
     dark: baseColors.orionAlphaInverse[80],
   },
-  "text-secondary-inverse": {
-    light: baseColors.orionAlphaInverse[60],
-    dark: baseColors.orionAlpha[60],
+  "text-primary-inverse": {
+    light: baseColors.orionAlphaInverse[80],
+    dark: baseColors.orionAlpha[80],
   },
   "text-secondary": {
     light: baseColors.orionAlpha[60],

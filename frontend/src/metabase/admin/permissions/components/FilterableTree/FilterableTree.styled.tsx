@@ -30,7 +30,7 @@ export const EmptyStateContainer = styled.div`
 
 export const AdminTreeNode = styled(Tree.Node)`
   color: ${(props) =>
-    props.isSelected ? color("text-primary") : color("text-secondary")};
+    props.isSelected ? color("text-selected") : color("text-secondary")};
   background-color: ${(props) =>
     props.isSelected ? color("admin-navbar") : "unset"};
 
