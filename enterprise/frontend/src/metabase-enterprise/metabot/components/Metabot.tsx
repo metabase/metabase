@@ -30,7 +30,7 @@ export const MetabotAuthenticated = ({ hide, config }: MetabotProps) => {
 
   useEffect(() => {
     return tinykeys(window, {
-      "$mod+b": (e) => {
+      "$mod+e": (e) => {
         e.preventDefault(); // prevent FF from opening bookmark menu
         if (!visible) {
           trackMetabotChatOpened("keyboard_shortcut");

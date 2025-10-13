@@ -53,7 +53,7 @@ type EditorBodyProps = {
   onToggleDataReference: () => void;
   onToggleSnippetSidebar: () => void;
   onCancelQuery: () => void;
-
+  onInsertSnippet: (snippet: NativeQuerySnippet) => void;
   modalSnippet?: NativeQuerySnippet | null;
   onChangeModalSnippet: (snippet: NativeQuerySnippet | null) => void;
   onChangeNativeEditorSelection: (range: SelectionRange[]) => void;
@@ -81,6 +81,7 @@ export function EditorBody({
   onToggleSnippetSidebar,
   databases,
   modalSnippet,
+  onInsertSnippet,
   onChangeModalSnippet,
   onChangeNativeEditorSelection,
   nativeEditorSelectedText,
@@ -146,6 +147,7 @@ export function EditorBody({
       toggleDataReference={onToggleDataReference}
       toggleSnippetSidebar={onToggleSnippetSidebar}
       modalSnippet={modalSnippet}
+      insertSnippet={onInsertSnippet}
       closeSnippetModal={() => onChangeModalSnippet(null)}
       databaseIsDisabled={(db: Database) => {
         const database = databases.find((database) => database.id === db.id);

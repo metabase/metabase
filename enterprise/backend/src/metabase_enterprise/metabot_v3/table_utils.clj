@@ -5,7 +5,7 @@
    [metabase-enterprise.metabot-v3.query-analyzer :as query-analyzer]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
@@ -100,8 +100,8 @@
                                   (exclude-table-ids (:id %))) fill-tables)
          all-tables (concat priority-tables fill-tables)
          all-tables (take all-tables-limit all-tables)]
-     (lib.metadata.jvm/with-metadata-provider-cache
-       (let [mp (lib.metadata.jvm/application-database-metadata-provider database-id)
+     (lib-be/with-metadata-provider-cache
+       (let [mp (lib-be/application-database-metadata-provider database-id)
              table-ids (map :id all-tables)
              _ (lib.metadata/bulk-metadata mp :metadata/table table-ids)]
          (mapv (fn [{:keys [id name schema description]}]

@@ -531,11 +531,12 @@
   ([query         :- ::lib.schema/query
     stage-number  :- :int
     legacy-filter :- some?]
-   (let [legacy-filter    (mbql.normalize/normalize-fragment [:query :filter] legacy-filter)
+   (let [legacy-filter    #_{:clj-kondo/ignore [:deprecated-var]} (mbql.normalize/normalize-fragment [:query :filter] legacy-filter)
          query-filters    (vec (filters query stage-number))
-         matching-filters (clojure.core/filter #(clojure.core/= (mbql.normalize/normalize-fragment
-                                                                 [:query :filter]
-                                                                 (lib.convert/->legacy-MBQL %))
+         matching-filters (clojure.core/filter #(clojure.core/= #_{:clj-kondo/ignore [:deprecated-var]}
+                                                 (mbql.normalize/normalize-fragment
+                                                  [:query :filter]
+                                                  (lib.convert/->legacy-MBQL %))
                                                                 legacy-filter)
                                                query-filters)]
      (when (seq matching-filters)

@@ -3,7 +3,7 @@ import { match } from "ts-pattern";
 import Question from "metabase-lib/v1/Question";
 import type {
   Card,
-  DatasetQuery,
+  LegacyDatasetQuery,
   PythonTransformSourceDraft,
   QueryTransformSource,
   SuggestedTransform,
@@ -15,7 +15,7 @@ export type InitialTransformSource =
 
 export function getInitialTransformSource(
   card: Card | undefined,
-  type: DatasetQuery["type"] | "python",
+  type: LegacyDatasetQuery["type"] | "python",
   suggestedTransform: SuggestedTransform | undefined,
 ): InitialTransformSource {
   const canUseSuggestedTransform = match({
@@ -39,7 +39,7 @@ export function getInitialTransformSource(
 
 export function getInitialQueryTransformSource(
   card: Card | undefined,
-  type: DatasetQuery["type"] | undefined,
+  type: LegacyDatasetQuery["type"] | undefined,
 ): QueryTransformSource {
   const query =
     card != null

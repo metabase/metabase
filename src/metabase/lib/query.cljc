@@ -165,10 +165,15 @@
   ([database-id           :- ::lib.schema.id/database
     metadata-providerable :- ::lib.schema.metadata/metadata-providerable
     stages]
-   {:lib/type     :mbql/query
-    :lib/metadata (lib.metadata/->metadata-provider metadata-providerable)
-    :database     database-id
-    :stages       stages}))
+   (->> (merge
+         {:lib/type     :mbql/query
+          :lib/metadata (lib.metadata/->metadata-provider metadata-providerable)
+          :stages       stages}
+         ;; this can be nil in the FE with empty metadata providers, don't stomp on existing DB IDs that are
+         ;; not nil.
+         (when database-id
+           {:database database-id}))
+        (lib.normalize/normalize ::lib.schema/query))))
 
 (defn- query-from-legacy-query
   [metadata-providerable legacy-query]
@@ -189,8 +194,7 @@
   "Implementation for [[query]]."
   {:arglists '([metadata-providerable x])}
   (fn [_metadata-providerable x]
-    (or (lib.util/normalized-query-type x)
-        (lib.dispatch/dispatch-value x)))
+    ((some-fn lib.util/normalized-query-type lib.dispatch/dispatch-value) x))
   :hierarchy lib.hierarchy/hierarchy)
 
 (defmethod query-method :query ; legacy MBQL query
@@ -218,29 +222,30 @@
                               (dissoc :lib.convert/converted?)
                               lib.normalize/normalize)
         stages (:stages query)]
-    (cond-> query
-      converted?
-      (assoc
-       :stages
-       (mapv (fn [[stage-number stage]]
-               (-> stage
-                   (add-types-to-fields metadata-provider)
-                   (lib.util.match/replace
-                     [:expression
-                      (opts :guard (every-pred map? (complement (every-pred :base-type :effective-type))))
-                      expression-name]
-                     (let [found-ref (try
-                                       (m/remove-vals
-                                        #(= :type/* %)
-                                        (-> (lib.expression/expression-ref query stage-number expression-name)
-                                            second
-                                            (select-keys [:base-type :effective-type])))
-                                       (catch #?(:clj Exception :cljs :default) _
-                                         ;; This currently does not find expressions defined in join stages
-                                         nil))]
-                       ;; Fallback if metadata is missing
-                       [:expression (merge found-ref opts) expression-name]))))
-             (m/indexed stages))))))
+    (-> query
+        (cond-> converted?
+          (assoc
+           :stages
+           (mapv (fn [[stage-number stage]]
+                   (-> stage
+                       (add-types-to-fields metadata-provider)
+                       (lib.util.match/replace
+                         [:expression
+                          (opts :guard (every-pred map? (complement (every-pred :base-type :effective-type))))
+                          expression-name]
+                         (let [found-ref (try
+                                           (m/remove-vals
+                                            #(= :type/* %)
+                                            (-> (lib.expression/expression-ref query stage-number expression-name)
+                                                second
+                                                (select-keys [:base-type :effective-type])))
+                                           (catch #?(:clj Exception :cljs :default) _
+                                             ;; This currently does not find expressions defined in join stages
+                                             nil))]
+                           ;; Fallback if metadata is missing
+                           [:expression (merge found-ref opts) expression-name]))))
+                 (m/indexed stages))))
+        (->> (lib.normalize/normalize ::lib.schema/query)))))
 
 (defmethod query-method :metadata/table
   [metadata-providerable table-metadata]
@@ -301,7 +306,7 @@
   existing MBQL query or saved question or whatever. If the thing in question does not already include metadata, pass
   it in separately -- metadata is needed for most query manipulation operations."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   x]
+   x :- some?]
   (ensure-cached-metadata-provider (query-method metadata-providerable x)))
 
 (mu/defn ->query :- ::lib.schema/query

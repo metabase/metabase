@@ -14,7 +14,7 @@
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
@@ -717,7 +717,7 @@
 
 ;; Helper function to set up model test fixtures
 (defn- model-test-fixtures []
-  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [mp (lib-be/application-database-metadata-provider (mt/id))
         source-query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
         model-data {:name "Model Model"
                     :description "Model desc"
@@ -1164,69 +1164,68 @@
                                     :with_fields false
                                     :with_metrics false))))))))))
 
-((deftest get-table-details-related-tables-test
-   (mt/with-premium-features #{:metabot-v3}
-     (let [conversation-id (str (random-uuid))
-           ai-token (ai-session-token)
-           request (fn [arguments]
-                     (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-table-details"
-                                           {:request-options {:headers {"x-metabase-session" ai-token}}}
-                                           {:arguments arguments
-                                            :conversation_id conversation-id}))]
-       (testing "Normal call includes related_tables by default"
-         (let [response (request {:table_id (mt/id :orders)})
-               related-tables (get-in response [:structured_output :related_tables])]
-           (is (= [(mt/id :products) (mt/id :people)]
-                  (map :id related-tables))
-               "Should include tables related to Orders by foreign keys")
-           (is (every? #(not (contains? % :related_tables)) related-tables)
-               "Related tables should not have nested related_tables"))
+(deftest get-table-details-related-tables-test
+  (mt/with-premium-features #{:metabot-v3}
+    (let [conversation-id (str (random-uuid))
+          ai-token (ai-session-token)
+          request (fn [arguments]
+                    (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-table-details"
+                                          {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                          {:arguments arguments
+                                           :conversation_id conversation-id}))]
+      (testing "Normal call includes related_tables by default"
+        (let [response (request {:table_id (mt/id :orders)})
+              related-tables (get-in response [:structured_output :related_tables])]
+          (is (= (sort [(mt/id :products) (mt/id :people)])
+                 (sort (map :id related-tables)))
+              "Should include tables related to Orders by foreign keys")
+          (is (every? #(not (contains? % :related_tables)) related-tables)
+              "Related tables should not have nested related_tables")))
+      (testing "Without related tables"
+        (is (nil? (-> (request {:table_id (mt/id :orders)
+                                :with_related_tables false})
+                      (get-in [:structured_output :related_tables]))))))))
 
-         (testing "Without related tables"
-           (is (nil? (-> (request {:table_id (mt/id :orders)
-                                   :with_related_tables false})
-                         (get-in [:structured_output :related_tables]))))))))))
-
-((deftest get-transforms-test
-   (mt/with-premium-features #{:metabot-v3 :transforms}
-     (let [conversation-id (str (random-uuid))
-           rasta-ai-token (ai-session-token)
-           crowberto-ai-token (ai-session-token :crowberto (str (random-uuid)))]
-       (mt/with-temp [:model/Transform t1 {:name "People Transform"
-                                           :description "Simple select on People table"
-                                           :source {:type "query"
-                                                    :query (mt/native-query {:query "SELECT * FROM PEOPLE"})}
-                                           :target {:type "table"
-                                                    :name "t1_table"}}
-                      :model/Transform t2 {:name "MBQL Transform"
-                                           :description "Simple MQBL query on Products table"
-                                           :source {:type "query"
-                                                    :query (mt/mbql-query products)}
-                                           :target {:type "table"
-                                                    :name "t2_table"}}
-                      :model/Transform t3 {:name "Python Transform"
-                                           :description "Simple python transform"
-                                           :source {:type "python"
-                                                    :body "print('hello world')"
-                                                    :source-tables {}}
-                                           :target {:type "table"
-                                                    :name "t2_table"}}]
-         (testing "With insufficient permissions"
-           (is (= "You don't have permissions to do that."
-                  (mt/user-http-request :rasta :post 403 "ee/metabot-tools/get-transforms"
-                                        {:request-options {:headers {"x-metabase-session" rasta-ai-token}}}
-                                        {:conversation_id conversation-id}))))
-         (testing "With superuser permissions"
-           (is (=? {:structured_output [(mt/obj->json->obj (select-keys t1 [:id :entity_id :name :description :source]))
+(deftest get-transforms-test
+  (mt/with-premium-features #{:metabot-v3 :transforms}
+    (let [conversation-id (str (random-uuid))
+          rasta-ai-token (ai-session-token)
+          crowberto-ai-token (ai-session-token :crowberto (str (random-uuid)))]
+      (mt/with-temp [:model/Transform t1 {:name "People Transform"
+                                          :description "Simple select on People table"
+                                          :source {:type "query"
+                                                   :query (mt/native-query {:query "SELECT * FROM PEOPLE"})}
+                                          :target {:type "table"
+                                                   :name "t1_table"}}
+                     :model/Transform t2 {:name "MBQL Transform"
+                                          :description "Simple MQBL query on Products table"
+                                          :source {:type "query"
+                                                   :query (mt/mbql-query products)}
+                                          :target {:type "table"
+                                                   :name "t2_table"}}
+                     :model/Transform t3 {:name "Python Transform"
+                                          :description "Simple python transform"
+                                          :source {:type "python"
+                                                   :body "print('hello world')"
+                                                   :source-tables {}}
+                                          :target {:type "table"
+                                                   :name "t2_table"}}]
+        (testing "With insufficient permissions"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :post 403 "ee/metabot-tools/get-transforms"
+                                       {:request-options {:headers {"x-metabase-session" rasta-ai-token}}}
+                                       {:conversation_id conversation-id}))))
+        (testing "With superuser permissions"
+          (is (=? {:structured_output [(mt/obj->json->obj (select-keys t1 [:id :entity_id :name :description :source]))
                                          ;; note: t2 not included because it's a (non-native) MBQL query
-                                        (mt/obj->json->obj (select-keys t3 [:id :entity_id :name :description :source]))]
-                    :conversation_id conversation-id}
-                   (-> (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-transforms"
-                                             {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
-                                             {:conversation_id conversation-id})
-                       (update :structured_output (fn [output]
-                                                    (filter #(#{(:id t1) (:id t2) (:id t3)} (:id %))
-                                                            output))))))))))))
+                                       (mt/obj->json->obj (select-keys t3 [:id :entity_id :name :description :source]))]
+                   :conversation_id conversation-id}
+                  (-> (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-transforms"
+                                            {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
+                                            {:conversation_id conversation-id})
+                      (update :structured_output (fn [output]
+                                                   (filter #(#{(:id t1) (:id t2) (:id t3)} (:id %))
+                                                           output)))))))))))
 
 (deftest get-transform-test
   (mt/with-premium-features #{:metabot-v3 :transforms}

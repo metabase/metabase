@@ -1,7 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupDatabaseListEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockUser } from "metabase-types/api/mocks";
+import { createMockDatabase, createMockUser } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { GettingStartedSection } from "./GettingStartedSection";
@@ -14,6 +15,9 @@ const setup = ({
   isAdmin?: boolean;
 } = {}) => {
   const onAddDataModalOpen = jest.fn();
+
+  const mockDbs = [createMockDatabase({ id: 1 })];
+  setupDatabaseListEndpoint(mockDbs);
 
   renderWithProviders(
     <GettingStartedSection

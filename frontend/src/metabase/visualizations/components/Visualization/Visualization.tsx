@@ -52,6 +52,7 @@ import {
   type HoveredObject,
   type QueryClickActionsMode,
   type VisualizationDefinition,
+  type VisualizationGridSize,
   type VisualizationPassThroughProps,
   type Visualization as VisualizationType,
   isRegularClickAction,
@@ -69,7 +70,6 @@ import type {
   CardId,
   Dashboard,
   DashboardCard,
-  DatasetQuery,
   RawSeries,
   Series,
   SingleSeries,
@@ -128,10 +128,7 @@ type VisualizationOwnProps = {
     clicked: ClickObject | null,
   ) => Record<string, unknown>;
   getHref?: () => string | undefined;
-  gridSize?: {
-    width: number;
-    height: number;
-  };
+  gridSize?: VisualizationGridSize;
   gridUnit?: number;
   handleVisualizationClick?: (clicked: ClickObject | null) => void;
   headerIcon?: IconProps;
@@ -152,7 +149,7 @@ type VisualizationOwnProps = {
   rawSeries?: (
     | SingleSeries
     | {
-        card: Card<DatasetQuery>;
+        card: Card;
       }
   )[];
   visualizerRawSeries?: RawSeries;
@@ -226,8 +223,9 @@ const isLoading = (series: Series | null) => {
 const deriveStateFromProps = (props: VisualizationProps) => {
   const rawSeriesArray = props.rawSeries || [];
   const firstCard = rawSeriesArray[0]?.card;
-  const isNative = firstCard?.dataset_query?.type === "native";
-  const isNativeView = isNative && props.queryBuilderMode === "view";
+  const firstQuestion = firstCard != null ? new Question(firstCard) : undefined;
+  const isNativeView =
+    props.queryBuilderMode === "view" && firstQuestion?.isNative();
 
   const transformed = props.rawSeries
     ? getVisualizationTransformed(
@@ -611,6 +609,10 @@ class Visualization extends PureComponent<
       onEditSummary,
       queryBuilderMode,
       rawSeries = [],
+      isSelectable,
+      rowChecked,
+      onAllSelectClick,
+      onRowSelectClick,
       visualizerRawSeries,
       renderEmptyMessage,
       renderLoadingView = LoadingView,
@@ -905,6 +907,11 @@ class Visualization extends PureComponent<
                     onHeaderColumnReorder={this.props.onHeaderColumnReorder}
                     titleMenuItems={hasHeader ? undefined : titleMenuItems}
                     tableFooterExtraButtons={tableFooterExtraButtons}
+                    // These props are only used by the table on the Erroring Questions admin page
+                    isSelectable={isSelectable}
+                    rowChecked={rowChecked}
+                    onAllSelectClick={onAllSelectClick}
+                    onRowSelectClick={onRowSelectClick}
                   />
                 </VisualizationRenderedWrapper>
                 {hasDevWatermark && <Watermark card={series[0].card} />}

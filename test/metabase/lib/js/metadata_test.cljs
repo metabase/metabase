@@ -1,6 +1,7 @@
 (ns metabase.lib.js.metadata-test
   (:require
    [clojure.test :refer [deftest is]]
+   [metabase.lib.core :as lib]
    [metabase.lib.js.metadata :as lib.js.metadata]
    [metabase.lib.metadata :as lib.metadata]))
 
@@ -60,3 +61,10 @@
                                  :id       66
                                  :name     "ID [internal remap]"}}
            (lib.metadata/field metadata-provider 33)))))
+
+(deftest ^:parallel do-not-remove-during-normalization-test
+  (let [metadata #js {:fields #js {"36" mock-field-metadata-with-external-remap}}
+        mp       (lib.js.metadata/metadata-provider 1 metadata)
+        query    {:lib/type :mbql/query, :database 1, :lib/metadata mp, :stages [{:lib/type :mbql.stage/mbql, :source-table 2}]}]
+    (is (= query
+           (lib/normalize query)))))

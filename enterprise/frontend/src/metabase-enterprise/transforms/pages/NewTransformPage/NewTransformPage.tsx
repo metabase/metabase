@@ -15,9 +15,9 @@ import { getMetabotSuggestedTransform } from "metabase-enterprise/metabot/state"
 import { useSourceState } from "metabase-enterprise/transforms/hooks/use-source-state";
 import type {
   CardId,
-  DatasetQuery,
   DraftTransform,
   DraftTransformSource,
+  LegacyDatasetQuery,
   Transform,
   TransformSource,
 } from "metabase-types/api";
@@ -40,7 +40,7 @@ type NewTransformPageParams = {
 };
 
 type NewTransformPageParsedParams = {
-  type: DatasetQuery["type"] | "python";
+  type: LegacyDatasetQuery["type"] | "python";
   cardId?: CardId;
 };
 
