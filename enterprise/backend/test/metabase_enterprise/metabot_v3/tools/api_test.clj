@@ -1244,7 +1244,8 @@
                                                    :body "print('hello world')"
                                                    :source-tables {}}
                                           :target {:type "table"
-                                                   :name "t2_table"}}]
+                                                   :name "t2_table"
+                                                   :database (mt/id)}}]
         (testing "With insufficient permissions"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :post 403 "ee/metabot-tools/get-transform-details"

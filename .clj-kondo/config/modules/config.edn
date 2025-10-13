@@ -1076,6 +1076,7 @@
            audit-app
            collections
            config
+           driver
            events
            lib
            lib-be
