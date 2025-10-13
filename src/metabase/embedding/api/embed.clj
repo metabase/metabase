@@ -401,3 +401,22 @@
    query :- [:map
              [:database {:optional true} [:maybe :int]]]]
   (run-query-for-unsigned-token-async (unsign-and-translate-ids token) :api nil {:subset-query query}))
+
+(api.macros/defendpoint :post "/dataset/:token/query_metadata"
+  "Fetch the query metadata of an ad-hoc query that should represent a subset of the query of the Card
+  encoded in the JSON Web Token `token` signed with the `embedding-secret-key`.
+
+   Token should have the following format:
+
+     {:resource {:question <card-id>}
+      :params   <parameters>}"
+  [{:keys [token]} :- [:map
+                       [:token string?]]
+   _query-params
+   query :- [:map
+             [:database {:optional true} [:maybe :int]]]]
+  (let [unsigned-token (unsign-and-translate-ids token)
+        card-id        (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
+        params         (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:params])]
+    (api.embed.common/check-embedding-enabled-for-card card-id)
+    (qp.card/fetch-subset-query-metadata card-id params query)))

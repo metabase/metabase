@@ -14,6 +14,7 @@
    [metabase.embedding.api.common :as api.embed.common]
    [metabase.embedding.jwt :as embed]
    [metabase.embedding.validation :as embedding.validation]
+   [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.request.core :as request]
    [metabase.tiles.api :as api.tiles]
@@ -238,3 +239,21 @@
      :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
      :constraints      {:max-results max-results}
      :subset-query     query)))
+
+(api.macros/defendpoint :post "/dataset/:token/query_metadata"
+  "Fetch the query metadata of an ad-hoc query that should represent a subset of the query of the Card
+  encoded in the JSON Web Token `token` signed with the `embedding-secret-key`.
+
+   Token should have the following format:
+
+     {:resource {:question <card-id>}
+      :params   <parameters>}"
+  [{:keys [token]} :- [:map
+                       [:token string?]]
+   _query-params
+   query :- [:map
+             [:database {:optional true} [:maybe :int]]]]
+  (let [unsigned-token (check-and-unsign token)
+        card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
+        params         (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
+    (qp.card/fetch-subset-query-metadata card-id params query)))
