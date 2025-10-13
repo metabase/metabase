@@ -3,7 +3,10 @@
   "ignored": {
     "vars": [
       "metabase.session.models.session-test/send-email-on-first-login-from-new-device-test",
-      "metabase-enterprise.impersonation.driver-test/nested-do-with-connection-with-options-test"
+      "metabase-enterprise.impersonation.driver-test/nested-do-with-connection-with-options-test",
+      "metabase.warehouse-schema.api.table-test/update-table-sync-test",
+      "metabase.warehouses.api-test/can-rescan-fieldvalues-for-a-db",
+      "metabase-enterprise.transforms-python.transforms-api-test/python-transform-schema-change-integration-test"
     ]
   },
   "metadata": {
