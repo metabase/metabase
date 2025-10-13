@@ -135,6 +135,10 @@ export const translateFieldValuesInSeries = (
     }
     const untranslatedRows = singleSeries.data.rows.concat();
 
+    const defaultFn = () => {
+      return singleSeries.data.rows.map((row) => row.map((value) => tc(value)));
+    };
+
     const translatedRows: RowValue[][] = match(singleSeries.card?.display)
       .with("pie", () => {
         const pieRows =
@@ -164,11 +168,27 @@ export const translateFieldValuesInSeries = (
           }),
         );
       })
-      .otherwise(() => {
+      .with("bar", "line", "row", "combo", "area", "scatter", () => {
+        const seriesSettings =
+          singleSeries.card.visualization_settings?.series_settings;
+
+        if (!seriesSettings) {
+          return defaultFn();
+        }
+
         return singleSeries.data.rows.map((row) =>
-          row.map((value) => tc(value)),
+          row.map((value) => {
+            if (
+              typeof value === "string" &&
+              seriesSettings[value]?.title !== undefined
+            ) {
+              return tc(seriesSettings[value].title);
+            }
+            return tc(value);
+          }),
         );
-      });
+      })
+      .otherwise(defaultFn);
 
     return {
       ...singleSeries,
