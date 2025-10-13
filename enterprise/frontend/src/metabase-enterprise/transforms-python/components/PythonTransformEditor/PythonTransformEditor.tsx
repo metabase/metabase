@@ -8,10 +8,7 @@ import { PythonDataPicker } from "./PythonDataPicker";
 import { PythonEditorBody } from "./PythonEditorBody";
 import { PythonEditorResults } from "./PythonEditorResults";
 import { useTestPythonTransform } from "./hooks";
-import {
-  isPythonTransformSource,
-  updateTransformSignature,
-} from "./utils";
+import { isPythonTransformSource, updateTransformSignature } from "./utils";
 
 export function PythonTransformEditor({
   source,
