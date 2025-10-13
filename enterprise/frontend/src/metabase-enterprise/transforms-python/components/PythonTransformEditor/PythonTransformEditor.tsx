@@ -10,7 +10,6 @@ import { PythonEditorResults } from "./PythonEditorResults";
 import {
   isPythonTransformSource,
   updateTransformSignature,
-  useShouldShowPythonDebugger,
   useTestPythonTransform,
 } from "./utils";
 
@@ -53,12 +52,7 @@ export function PythonTransformEditor({
     onChangeSource(newSource);
   };
 
-  const showDebugger = useShouldShowPythonDebugger();
-
   const handleCmdEnter = () => {
-    if (!showDebugger) {
-      return;
-    }
     if (isRunning) {
       cancel();
     } else if (isPythonTransformSource(source)) {
@@ -85,16 +79,14 @@ export function PythonTransformEditor({
           source={source.body}
           proposedSource={proposedSource?.body}
           onChange={handleScriptChange}
-          withDebugger={showDebugger}
+          withDebugger
           onAcceptProposed={onAcceptProposed}
           onRejectProposed={onRejectProposed}
         />
-        {showDebugger && (
-          <PythonEditorResults
-            isRunning={isRunning}
-            executionResult={executionResult}
-          />
-        )}
+        <PythonEditorResults
+          isRunning={isRunning}
+          executionResult={executionResult}
+        />
       </Stack>
     </Flex>
   );

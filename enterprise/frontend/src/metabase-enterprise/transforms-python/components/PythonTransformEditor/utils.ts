@@ -1,5 +1,4 @@
 import { useRef, useState } from "react";
-import { useLocation } from "react-use";
 import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
@@ -214,8 +213,24 @@ export function isPythonTransformSource(
   return source.type === "python" && source["source-database"] !== undefined;
 }
 
-export function useShouldShowPythonDebugger() {
-  const location = useLocation();
-  const params = new URLSearchParams(location.search);
-  return params.get("debugger") === "1";
+export function getValidationResult(source: PythonTransformSourceDraft) {
+  if (!source["source-database"]) {
+    return { isValid: false, errorMessage: t`Select a source a database` };
+  }
+
+  if (source.body.trim() === "") {
+    return {
+      isValid: false,
+      errorMessage: t`The Python script cannot be empty`,
+    };
+  }
+
+  if (Object.keys(source["source-tables"]).length === 0) {
+    return {
+      isValid: false,
+      errorMessage: t`Select at least one table to alias`,
+    };
+  }
+
+  return { isValid: true };
 }
