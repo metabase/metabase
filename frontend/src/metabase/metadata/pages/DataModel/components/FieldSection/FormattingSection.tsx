@@ -1,8 +1,11 @@
 import { memo, useMemo } from "react";
 import { t } from "ttag";
 
-import { useUpdateFieldMutation } from "metabase/api";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import type {
+  FieldChangeParams,
+  MetadataEditMode,
+} from "metabase/metadata/pages/DataModel/types";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import ColumnSettings from "metabase/visualizations/components/ColumnSettings";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
@@ -16,12 +19,14 @@ import { trackMetadataChange } from "../../analytics";
 import { TitledSection } from "../TitledSection";
 
 interface Props {
+  mode: MetadataEditMode;
   field: Field;
+  onFieldChange: (update: FieldChangeParams) => Promise<{ error?: string }>;
 }
 
-const FormattingSectionBase = ({ field }: Props) => {
-  const id = getRawTableFieldId(field);
-  const [updateField] = useUpdateFieldMutation();
+const FormattingSectionBase = ({ mode, field, onFieldChange }: Props) => {
+  const fieldIdentity =
+    mode === "table" ? { id: getRawTableFieldId(field) } : { name: field.name };
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
   const inheritedSettings = useMemo(() => getGlobalSettingsForColumn(), []);
@@ -32,7 +37,7 @@ const FormattingSectionBase = ({ field }: Props) => {
   }, [field]);
 
   const handleChange = async (settings: FieldSettings) => {
-    const { error } = await updateField({ id, settings });
+    const { error } = await onFieldChange({ ...fieldIdentity, settings });
 
     if (error) {
       sendErrorToast(t`Failed to update formatting of ${field.display_name}`);
@@ -42,8 +47,8 @@ const FormattingSectionBase = ({ field }: Props) => {
       sendSuccessToast(
         t`Formatting of ${field.display_name} updated`,
         async () => {
-          const { error } = await updateField({
-            id,
+          const { error } = await onFieldChange({
+            ...fieldIdentity,
             settings: field.settings ?? {},
           });
           sendUndoToast(error);

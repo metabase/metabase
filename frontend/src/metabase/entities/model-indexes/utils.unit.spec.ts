@@ -3,7 +3,7 @@ import Field from "metabase-lib/v1/metadata/Field";
 import type { Field as FieldAPI } from "metabase-types/api";
 import { createMockCard, createMockField } from "metabase-types/api/mocks";
 
-import { canIndexField } from "./utils";
+import { canIndexModelQuestionField } from "./utils";
 
 const createModelWithResultMetadata = (fields: FieldAPI[]) => {
   return new Question(
@@ -25,7 +25,7 @@ describe("Entities > model-indexes > utils", () => {
         }),
       ]);
 
-      expect(canIndexField(new Field(field), model)).toBe(true);
+      expect(canIndexModelQuestionField(new Field(field), model)).toBe(true);
     });
 
     it("should return false for boolean field in a model with single integer pk", () => {
@@ -40,7 +40,7 @@ describe("Entities > model-indexes > utils", () => {
         }),
       ]);
 
-      expect(canIndexField(new Field(field), model)).toBe(false);
+      expect(canIndexModelQuestionField(new Field(field), model)).toBe(false);
     });
 
     it("should return false for string field in a model without any pk", () => {
@@ -51,7 +51,7 @@ describe("Entities > model-indexes > utils", () => {
         createMockField({ name: "bar", base_type: "type/Integer" }),
       ]);
 
-      expect(canIndexField(new Field(field), model)).toBe(false);
+      expect(canIndexModelQuestionField(new Field(field), model)).toBe(false);
     });
 
     it("should return false for string field in a model with multiple pks", () => {
@@ -71,7 +71,7 @@ describe("Entities > model-indexes > utils", () => {
         }),
       ]);
 
-      expect(canIndexField(new Field(field), model)).toBe(false);
+      expect(canIndexModelQuestionField(new Field(field), model)).toBe(false);
     });
 
     it("should return false for string field in a model with multiple integer pks", () => {
@@ -91,7 +91,7 @@ describe("Entities > model-indexes > utils", () => {
         }),
       ]);
 
-      expect(canIndexField(new Field(field), model)).toBe(false);
+      expect(canIndexModelQuestionField(new Field(field), model)).toBe(false);
     });
 
     it("should return false for a model with a string pk", () => {
@@ -106,7 +106,7 @@ describe("Entities > model-indexes > utils", () => {
         }),
       ]);
 
-      expect(canIndexField(new Field(field), model)).toBe(false);
+      expect(canIndexModelQuestionField(new Field(field), model)).toBe(false);
     });
   });
 });

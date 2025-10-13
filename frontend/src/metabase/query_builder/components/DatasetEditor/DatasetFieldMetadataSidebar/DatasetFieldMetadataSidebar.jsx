@@ -4,7 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import {
-  canIndexField,
+  canIndexModelQuestionField,
   fieldHasIndex,
 } from "metabase/entities/model-indexes/utils";
 import {
@@ -101,7 +101,8 @@ function DatasetFieldMetadataSidebar({
 }) {
   const displayNameInputRef = useRef();
 
-  const canIndex = dataset.isSaved() && canIndexField(field, dataset);
+  const canIndex =
+    dataset.isSaved() && canIndexModelQuestionField(field, dataset);
 
   const initialValues = useMemo(() => {
     const values = {

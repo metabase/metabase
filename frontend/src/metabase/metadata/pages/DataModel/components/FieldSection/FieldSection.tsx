@@ -187,9 +187,14 @@ const FieldSectionBase = ({
           mode={mode}
           databaseId={databaseId}
           field={field}
+          table={table}
           onFieldChange={onFieldChange}
         />
-        <FormattingSection field={field} />
+        <FormattingSection
+          mode={mode}
+          field={field}
+          onFieldChange={onFieldChange}
+        />
       </Stack>
     </Stack>
   );

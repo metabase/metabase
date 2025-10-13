@@ -24,16 +24,15 @@ type Patch = Partial<
 type MetadataSectionProps = {
   mode: MetadataEditMode;
   onFieldChange: (update: FieldChangeParams) => Promise<{ error?: string }>;
+  field: Field;
+  table: Table; // use Table type for models as a temp hack
 } & (
   | {
       mode: "table";
       databaseId: DatabaseId;
-      field: Field;
-      table: Table;
     }
   | {
       mode: "model";
-      field: Field;
     }
 );
 
@@ -46,10 +45,15 @@ const MetadataSectionBase = ({
 }: MetadataSectionProps) => {
   const fieldIdentity =
     mode === "table" ? { id: getRawTableFieldId(field) } : { name: field.name };
-  const { data: idFields = [] } = useListDatabaseIdFieldsQuery({
-    id: databaseId,
-    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
-  });
+  const { data: idFields = [] } = useListDatabaseIdFieldsQuery(
+    {
+      id: databaseId,
+      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+    },
+    {
+      skip: mode !== "table",
+    },
+  );
 
   const semanticTypeError = useMemo(() => {
     return getSemanticTypeError(table, field);

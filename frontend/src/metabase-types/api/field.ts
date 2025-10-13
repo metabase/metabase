@@ -93,6 +93,8 @@ export interface Field {
   remappings?: FieldValue[];
   settings?: FieldFormattingSettings;
 
+  should_index?: boolean; // used in model-indexes
+
   dimensions?: FieldDimension[];
   name_field?: Field;
 
