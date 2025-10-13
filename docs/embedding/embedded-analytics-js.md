@@ -35,7 +35,7 @@ You can also follow the setup guide directly in Metabase in **Admin > Embedding 
 
 ### 2. Create a new embed
 
-1. In Metabase, go to **Admin > Embedding > Setup guide > Embed in your code**, and select **Try it out** next to **Embedded analytics JS**.
+1. In Metabase, go to **Admin > Embedding > Modular embedding**, and select **New embed** next to **Embedded analytics JS**.
 
    If you're planning to embed an existing question or dashboard, you can instead go straight to that question or dashboard, click on the **Share** button, and choose **Embedded Analytics JS**.
 
@@ -73,6 +73,16 @@ You'll get a choice between "Existing Metabase session" and "Single sign-on (SSO
 Metabase will generate a code snippet that you can copy and paste into your app, see [Embed code snippets](#embed-code-snippets) for an example. You can later modify this code snippet to specify additional appearance options or change the behavior of some components.
 
 Add the code snippet into your app, and refresh the page.
+
+## Each end user should have their own Metabase account
+
+Each end-user must have their own Metabase account.
+
+The problem with having end-users share a Metabase account is that, even if you filter data on the client side via the Embedded analytics JS, all end-users will still have access to the session token, which they could use to access Metabase directly via the API to get data they’re not supposed to see.
+
+If each end-user has their own Metabase account, however, you can configure permissions in Metabase and everyone will only have access to the data they should.
+
+In addition to this, we consider shared accounts to be unfair usage. Fair usage of Embedded Analytics JS involves giving each end-user of the embedded analytics their own Metabase account.
 
 ## Embed code snippets
 
