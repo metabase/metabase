@@ -1,3 +1,4 @@
+import type { Location } from "history";
 import { Link } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -9,22 +10,23 @@ import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import { Box, FixedSizeIcon, Indicator, NavLink, Text } from "metabase/ui";
 import { useListTransformJobsQuery } from "metabase-enterprise/api";
-import type { JobListParams } from "metabase-enterprise/transforms/types";
 import type { TransformJob } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
 import { getJobUrl, getNewJobUrl } from "../../../urls";
 import { parseTimestampWithTimezone } from "../../../utils";
-import { hasFilterParams } from "../utils";
+import { getParsedParams, hasFilterParams } from "../utils";
 
 export function JobList({
-  params,
+  params: { jobId } = {},
+  location,
   onCollapse,
 }: {
-  // TODO: Pretty sure `JobListParams` was meant to be the `query` type?
-  params: JobListParams & { jobId?: string };
-  onCollapse: () => void;
+  params?: { jobId?: string };
+  location: Location;
+  onCollapse?: () => void;
 }) {
+  const params = getParsedParams(location);
   const systemTimezone = useSetting("system-timezone");
   const {
     data: jobs = [],
@@ -58,7 +60,7 @@ export function JobList({
               key={job.id}
               job={job}
               systemTimezone={systemTimezone ?? ""}
-              isActive={!!params.jobId && +params.jobId === job.id}
+              isActive={!!jobId && +jobId === job.id}
             />
           ))
         )
