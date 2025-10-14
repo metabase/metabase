@@ -4,7 +4,11 @@ import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponen
 import { useLoadQuestion } from "embedding-sdk-bundle/hooks/private/use-load-question";
 import { transformSdkQuestion } from "embedding-sdk-bundle/lib/transform-question";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
-import { getError, getPlugins } from "embedding-sdk-bundle/store/selectors";
+import {
+  getError,
+  getIsStaticEmbedding,
+  getPlugins,
+} from "embedding-sdk-bundle/store/selectors";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import {
@@ -14,6 +18,7 @@ import {
 import { useSaveQuestion } from "metabase/query_builder/containers/use-save-question";
 import { setEntityTypes } from "metabase/redux/embedding-data-picker";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
+import { EmbeddingSdkAnonymousUserMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkAnonymousUserMode";
 import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
@@ -54,6 +59,7 @@ export const SdkQuestionProvider = ({
   navigateToNewCard: userNavigateToNewCard,
   onVisualizationChange,
 }: SdkQuestionProviderProps) => {
+  const isStaticEmbedding = useSdkSelector(getIsStaticEmbedding);
   const error = useSdkSelector(getError);
 
   const handleCreateQuestion = useCreateQuestion();
@@ -133,7 +139,9 @@ export const SdkQuestionProvider = ({
         question &&
         getEmbeddingMode({
           question,
-          queryMode: EmbeddingSdkMode,
+          queryMode: isStaticEmbedding
+            ? EmbeddingSdkAnonymousUserMode
+            : EmbeddingSdkMode,
           plugins: plugins as InternalMetabasePluginsConfig,
         })
       );

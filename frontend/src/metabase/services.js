@@ -2,6 +2,7 @@ import _ from "underscore";
 
 import { Api } from "metabase/api";
 import {
+  provideAdhocQueryMetadataTags,
   provideCardQueryMetadataTags,
   provideCardTags,
   provideCollectionTags,
@@ -407,6 +408,27 @@ function setCardEndpoints({ base, encodedToken }) {
         }),
         providesTags: (metadata, _error, id) =>
           metadata ? provideCardQueryMetadataTags(id, metadata) : [],
+        onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+          handleQueryFulfilled(queryFulfilled, (data) =>
+            dispatch(updateMetadata(data, QueryMetadataSchema)),
+          ),
+      }),
+      getAdhocQuery: builder.query({
+        query: ({ _refetchDeps, ignore_error, ...body }) => ({
+          method: "POST",
+          url: `${base}/dataset/${encodedToken}`,
+          body,
+          noEvent: ignore_error,
+        }),
+      }),
+      getAdhocQueryMetadata: builder.query({
+        query: (body) => ({
+          method: "POST",
+          url: `${base}/dataset/${encodedToken}/query_metadata`,
+          body,
+        }),
+        providesTags: (metadata) =>
+          metadata ? provideAdhocQueryMetadataTags(metadata) : [],
         onQueryStarted: (_, { queryFulfilled, dispatch }) =>
           handleQueryFulfilled(queryFulfilled, (data) =>
             dispatch(updateMetadata(data, QueryMetadataSchema)),

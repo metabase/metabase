@@ -8,6 +8,7 @@ import { NativeQueryClickFallback } from "../actions/NativeQueryClickFallback";
 export const EmbeddingSdkMode: QueryClickActionsMode = {
   name: "embedding-sdk",
   hasDrills: true,
+  performSubsetOnlyDrills: false,
   availableOnlyDrills: [
     "drill-thru/column-extract",
     "drill-thru/column-filter",
