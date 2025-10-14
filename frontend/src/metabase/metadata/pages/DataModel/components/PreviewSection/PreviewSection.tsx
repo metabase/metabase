@@ -58,7 +58,6 @@ const PreviewSectionBase = ({
 
   return (
     <Card
-      bg="white"
       className={className}
       data-testid="preview-section"
       h="100%"
