@@ -33,9 +33,16 @@ export function TransformLayout({
   );
 }
 
-export function JobsLayout({ children, params }: TransformLayoutProps) {
+export function JobsLayout({
+  children,
+  params,
+  location,
+}: TransformLayoutProps) {
   return (
-    <BenchLayout nav={<JobList params={params} />} name="job">
+    <BenchLayout
+      nav={<JobList params={params} location={location} />}
+      name="job"
+    >
       {children}
     </BenchLayout>
   );
