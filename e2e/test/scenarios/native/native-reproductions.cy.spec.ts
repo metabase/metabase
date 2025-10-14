@@ -818,3 +818,38 @@ describe("issue 59356", () => {
     cy.get("@dataset.all").should("have.length", 2);
   });
 });
+
+describe("issue 63711", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("Completions should be visible when there are a lot of options (metabase#63711)", () => {
+    H.startNewNativeQuestion();
+    H.NativeEditor.type("s");
+
+    cy.log("completions should be scrollable");
+    H.NativeEditor.completions()
+      .findByLabelText("Completions")
+      .then(($el) => {
+        const element = $el[0];
+        cy.wrap(element.scrollHeight).should("be.gt", element.clientHeight);
+      });
+
+    cy.log("completions should not cut off the height of the inner element");
+    H.NativeEditor.completion("SAVEPOINT")
+      .should("be.visible")
+      .then(($outerElement) => {
+        cy.wrap($outerElement)
+          .findByText("AVEPOINT")
+          .should("be.visible")
+          .then(($innerElement) => {
+            cy.wrap($innerElement[0].offsetHeight).should(
+              "be.eq",
+              $outerElement[0].clientHeight,
+            );
+          });
+      });
+  });
+});

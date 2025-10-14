@@ -39,7 +39,7 @@ export const FormDateInput = forwardRef(function FormDateInput(
   const handleChange = useCallback(
     (date: DateValue | undefined) => {
       if (date) {
-        setValue(dayjs(date).toISOString());
+        setValue(dayjs(date).format("YYYY-MM-DD"));
       } else {
         setValue(nullable ? null : undefined);
       }

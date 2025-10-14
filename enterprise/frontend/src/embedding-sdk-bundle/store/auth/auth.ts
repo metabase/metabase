@@ -4,7 +4,7 @@ import {
   jwtDefaultRefreshTokenFunction,
   openSamlLoginPopup,
   samlTokenStorage,
-  validateSessionToken,
+  validateSession,
 } from "embedding/auth-common";
 import * as MetabaseError from "embedding-sdk-bundle/errors";
 import { getIsLocalhost } from "embedding-sdk-bundle/lib/is-localhost";
@@ -114,7 +114,7 @@ export const refreshTokenAsync = createAsyncThunk(
       preferredAuthMethod,
       fetchRequestToken: customGetRefreshToken,
     });
-    validateSessionToken(session);
+    validateSession(session);
 
     return session;
   },

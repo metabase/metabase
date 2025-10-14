@@ -9,7 +9,7 @@
    [metabase.api.util.handlers :as handlers]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.graph.core :as graph]
-   [metabase.lib-be.metadata.jvm :as lib-be.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.native-query-snippets.core :as native-query-snippets]
@@ -21,11 +21,11 @@
    [toucan2.core :as t2]))
 
 (mr/def ::card-body
-  [:map
-   [:id              {:optional false} ms/PositiveInt]
-   [:dataset_query   {:optional true}  [:maybe ms/Map]]
-   [:type            {:optional true}  [:maybe ::queries.schema/card-type]]
-   [:result_metadata {:optional true}  [:maybe analyze/ResultsMetadata]]])
+  [:merge
+   ::queries.schema/card
+   ;; TODO (Cam 10/1/25) -- merge this into `::queries.schema/card` itself
+   [:map
+    [:result_metadata {:optional true} [:maybe analyze/ResultsMetadata]]]])
 
 (defn- broken-cards-response
   [{:keys [card transform]}]
@@ -56,7 +56,7 @@
    _query-params
    body :- ::card-body]
   (let [database-id    (-> body :dataset_query :database)
-        base-provider  (lib-be.metadata.jvm/application-database-metadata-provider database-id)
+        base-provider  (lib-be/application-database-metadata-provider database-id)
         original       (lib.metadata/card base-provider (:id body))
         card           (-> original
                            (assoc :dataset-query (:dataset_query body)
@@ -75,7 +75,11 @@
   [:map
    [:id     {:optional false} ms/PositiveInt]
    [:name   {:optional true}  :string]
-   [:source {:optional true}  [:maybe ms/Map]]
+   ;; TODO (Cam 10/8/25) -- no idea what the correct schema for these is supposed to be -- it was just `map` before --
+   ;; this is my attempt to guess it
+   [:source {:optional true}  [:maybe [:map
+                                       [:type  {:optional true} :keyword]
+                                       [:query {:optional true} ::queries.schema/query]]]]
    [:target {:optional true}  [:maybe ms/Map]]])
 
 (api.macros/defendpoint :post "/check_transform"
@@ -83,15 +87,19 @@
   [_route-params
    _query-params
    {:keys [id source target] :as _body} :- ::transform-body]
-  (let [database-id   (-> source :query :database)
-        base-provider (lib-be.metadata.jvm/application-database-metadata-provider database-id)
-        original      (lib.metadata/transform base-provider id)
-        transform     (-> original
-                          (cond-> #_transform source (assoc :source source))
-                          (cond-> #_transform target (assoc :target target)))
-        edits         {:transform [transform]}
-        breakages     (dependencies/errors-from-proposed-edits base-provider edits)]
-    (broken-cards-response breakages)))
+  (if (= (keyword (:type source))
+         :query)
+    (let [database-id   (-> source :query :database)
+          base-provider (lib-be/application-database-metadata-provider database-id)
+          original      (lib.metadata/transform base-provider id)
+          transform     (-> original
+                            (cond-> #_transform source (assoc :source source))
+                            (cond-> #_transform target (assoc :target target)))
+          edits         {:transform [transform]}
+          breakages     (dependencies/errors-from-proposed-edits base-provider edits)]
+      (broken-cards-response breakages))
+    ;; if this isn't a sql query, just claim it works
+    {:success true}))
 
 (api.macros/defendpoint :post "/check_snippet"
   "Check a proposed edit to a native snippet, and return the cards, etc. which will be broken."

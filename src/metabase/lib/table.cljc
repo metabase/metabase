@@ -32,5 +32,9 @@
   [query _stage-number table-metadata _options]
   (into []
         (comp (map #(assoc % :lib/source :source/table-defaults))
-              (lib.field.util/add-source-and-desired-aliases-xform query))
+              ;; don't truncate column names, if the database says they're ok we should assume they are and we need to
+              ;; refer back to them using their original names anyway. Note that returned columns for a table ARE NOT
+              ;; equal to returned columns for a stage with this source table and nothing else... those SHOULD get
+              ;; truncated desired aliases when they stage returned columns are calculated.
+              (lib.field.util/add-source-and-desired-aliases-xform query (lib.util/non-truncating-unique-name-generator)))
         (lib.metadata/active-fields query (:id table-metadata))))

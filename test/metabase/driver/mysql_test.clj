@@ -25,7 +25,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.string-extracts-test :as string-extracts-test]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata.tables :as sync-tables]
@@ -313,7 +313,7 @@
                    (mt/first-row
                     (qp/process-query
                      (assoc (mt/native-query
-                              {:query (format "SELECT timediff(current_timestamp + INTERVAL %s, current_timestamp)" interval)})
+                             {:query (format "SELECT timediff(current_timestamp + INTERVAL %s, current_timestamp)" interval)})
                             ;; disable the middleware that normally converts `LocalTime` to `Strings` so we can verify
                             ;; our driver is actually doing the right thing
                             :middleware {:format-rows? false})))))))))))

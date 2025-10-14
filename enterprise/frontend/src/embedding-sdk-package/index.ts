@@ -69,6 +69,7 @@ export {
   type InteractiveQuestionComponents,
   type InteractiveQuestionProps,
 } from "embedding-sdk-bundle/components/public/InteractiveQuestion";
+export { type MetabotQuestionProps } from "embedding-sdk-bundle/components/public/MetabotQuestion";
 export {
   type StaticQuestionProps,
   type StaticQuestionComponents,

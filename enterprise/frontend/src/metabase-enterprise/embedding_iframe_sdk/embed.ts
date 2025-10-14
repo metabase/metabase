@@ -2,7 +2,7 @@ import {
   connectToInstanceAuthSso,
   jwtDefaultRefreshTokenFunction,
   openSamlLoginPopup,
-  validateSessionToken,
+  validateSession,
 } from "embedding/auth-common";
 import {
   INVALID_AUTH_METHOD,
@@ -13,6 +13,7 @@ import { debouncedReportAnalytics } from "./analytics";
 import {
   ALLOWED_EMBED_SETTING_KEYS_MAP,
   DISABLE_UPDATE_FOR_KEYS,
+  METABASE_CONFIG_IS_PROXY_FIELD_NAME,
 } from "./constants";
 import type {
   SdkIframeEmbedElementSettings,
@@ -34,9 +35,17 @@ const _activeEmbeds: Set<MetabaseEmbedElement> = new Set();
 // window.metabaseConfig to re-create the proxy if the whole object is replaced,
 // for example if this script is loaded before the customer calls
 // `defineMetabaseConfig` in their code, which replaces the entire object.
-const setupConfigWatcher = () => {
+export const setupConfigWatcher = () => {
   const createProxy = (target: Record<string, unknown>) =>
     new Proxy(target, {
+      get(target, prop, receiver) {
+        // Needed for EmbedJS Wizard to call setupConfigWatcher on the Wizard reinitialization
+        if (prop === METABASE_CONFIG_IS_PROXY_FIELD_NAME) {
+          return true;
+        }
+
+        return Reflect.get(target, prop, receiver);
+      },
       set(metabaseConfig, prop, newValue) {
         metabaseConfig[prop as string] = newValue;
         updateAllEmbeds({ [prop]: newValue });
@@ -441,7 +450,7 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
 
     try {
       const { method, sessionToken } = await this._getMetabaseSessionToken();
-      validateSessionToken(sessionToken);
+      validateSession(sessionToken);
 
       if (sessionToken) {
         this.sendMessage("metabase.embed.submitSessionToken", {
@@ -539,6 +548,7 @@ const MetabaseQuestionElement = createCustomElement("metabase-question", [
   "with-downloads",
   "drills",
   "initial-sql-parameters",
+  "hidden-parameters",
   "is-save-enabled",
   "target-collection",
   "entity-types",
@@ -555,6 +565,10 @@ const MetabaseManageContentElement = createCustomElement("metabase-browser", [
   "read-only",
 ]);
 
+const MetabaseMetabotElement = createCustomElement("metabase-metabot", [
+  "layout",
+]);
+
 // Expose the old API that's still used in the tests, we'll probably remove this api unless customers prefer it
 if (typeof window !== "undefined") {
   (window as any)["metabase.embed"] = {
@@ -566,4 +580,5 @@ export {
   MetabaseDashboardElement,
   MetabaseQuestionElement,
   MetabaseManageContentElement,
+  MetabaseMetabotElement,
 };

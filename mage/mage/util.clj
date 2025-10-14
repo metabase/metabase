@@ -65,7 +65,7 @@
                             (filter (fn [[k _]] (re-find (re-pattern (str "(?i).*" match ".*")) k)))
                             (sort-by first))]
      (println (c/underline
-               (str "Environemnt Variables" (when (not= ".*" match) (str " containing '" match "'")) " :")))
+               (str "Environment Variables" (when (not= ".*" match) (str " containing '" match "'")) " :")))
      (doseq [[setting value] important-env]
        (print (c/yellow setting))
        (print (c/white "="))

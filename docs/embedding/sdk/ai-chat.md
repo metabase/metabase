@@ -24,9 +24,11 @@ You can check out a [demo of the AI chat component](https://embedded-analytics-s
 ```typescript
 {% include_file "{{ dirname }}/snippets/questions/ai-question.tsx" %}
 ```
+
 ## API reference
 
 - [Component](./api/MetabotQuestion.html)
+- [Props](./api/MetabotQuestionProps.html)
 
 ## Setting up AI chat
 
@@ -40,3 +42,11 @@ To configure your embedded AI chat in your Metabase:
 When embedding the Metabot component in your app, you should specify a collection that embedded Metabot is allowed to use for creating queries. Embedded Metabot will only have access to that collection.
 
 For tips and more, see [Metabot settings](../../ai/settings.md).
+
+## Layout
+
+Use the `layout` prop to specify which layout to use for the Metabot component:
+
+- `auto` (default): Metabot uses the `stacked` layout on mobile screens, and a `sidebar` layout on larger screens.
+- `stacked`: the question visualization stacks on top of the chat interface.
+- `sidebar`: the question visualization appears to the left of the chat interface, which is on a sidebar on the right.

@@ -572,11 +572,11 @@
                 (mt/with-temp [:model/Card {card-1-id :id, :as card-1} {:collection_id (u/the-id collection)
                                                                         :dataset_query card-1-query}]
                   (let [card-2-query (mt/native-query
-                                       {:query         "SELECT * FROM {{card}}"
-                                        :template-tags {"card" {:name         "card"
-                                                                :display-name "card"
-                                                                :type         :card
-                                                                :card-id      card-1-id}}})]
+                                      {:query         "SELECT * FROM {{card}}"
+                                       :template-tags {"card" {:name         "card"
+                                                               :display-name "card"
+                                                               :type         :card
+                                                               :card-id      card-1-id}}})]
                     (mt/with-temp [:model/Card card-2 {:collection_id (u/the-id collection)
                                                        :dataset_query card-2-query}]
                       (testing "should be able to read nested-nested Card if we have Collection permissions"
@@ -625,10 +625,10 @@
             (mt/with-temp [:model/Collection collection]
               (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
               (let [card-1-query (mt/native-query
-                                   {:query (str "SELECT id, name, category_id, latitude, longitude, price "
-                                                "FROM venues "
-                                                "ORDER BY id ASC "
-                                                "LIMIT 2")})]
+                                  {:query (str "SELECT id, name, category_id, latitude, longitude, price "
+                                               "FROM venues "
+                                               "ORDER BY id ASC "
+                                               "LIMIT 2")})]
                 (mt/with-temp [:model/Card {card-1-id :id, :as card-1} {:collection_id (u/the-id collection)
                                                                         :dataset_query card-1-query}]
                   (let [card-2-query (mt/mbql-query nil

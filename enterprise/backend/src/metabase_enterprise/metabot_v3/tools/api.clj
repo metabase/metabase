@@ -583,6 +583,7 @@
     [:table_id                              {:optional true}                [:or :int :string]]
     [:with_fields                           {:optional true, :default true} :boolean]
     [:with_field_values                     {:optional true, :default true} :boolean]
+    [:with_related_tables                   {:optional true, :default true} :boolean]
     [:with_metrics                          {:optional true, :default true} :boolean]
     [:with_metric_default_temporal_breakout {:optional true, :default true} :boolean]]
    [:fn {:error/message "Exactly one of model_id and table_id required"}
@@ -592,31 +593,30 @@
                                :table_id                              :table-id
                                :with_fields                           :with-fields?
                                :with_field_values                     :with-field-values?
+                               :with_related_tables                   :with-related-tables?
                                :with_metrics                          :with-metrics?
                                :with_metric_default_temporal_breakout :with-default-temporal-breakout?})}]])
 
-(mr/def ::basic-table
-  [:map
-   [:id :int]
-   [:type [:enum :model :table]]
-   [:name :string]
-   [:display_name :string]
-   [:database_id :int]
-   [:database_schema {:optional true} [:maybe :string]] ; Schema name, if applicable
-   [:fields ::columns]
-   [:description {:optional true} [:maybe :string]]
-   [:metrics {:optional true} [:sequential ::basic-metric]]])
-
-(mr/def ::full-table
-  [:merge
-   ::basic-table
-   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
-    [:queryable_foreign_key_tables {:optional true} [:sequential ::basic-table]]]])
+(mr/def ::table-result
+  [:schema
+   {:registry {::table-result
+               [:map
+                [:id :int]
+                [:type [:enum :model :table]]
+                [:name :string]
+                [:display_name :string]
+                [:database_id :int]
+                [:database_schema {:optional true} [:maybe :string]] ; Schema name, if applicable
+                [:fields ::columns]
+                [:related_tables {:optional true} [:sequential [:ref ::table-result]]]
+                [:description {:optional true} [:maybe :string]]
+                [:metrics {:optional true} [:sequential ::basic-metric]]]}}
+   ::table-result])
 
 (mr/def ::get-table-details-result
   [:or
    [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
-    [:structured_output ::full-table]]
+    [:structured_output ::table-result]]
    [:map [:output :string]]])
 
 (mr/def ::answer-sources-result
@@ -625,7 +625,7 @@
     {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
     [:structured_output [:map
                          [:metrics [:sequential ::full-metric]]
-                         [:models  [:sequential ::full-table]]]]]
+                         [:models  [:sequential ::table-result]]]]]
    [:map [:output :string]]])
 
 (api.macros/defendpoint :post "/answer-sources" :- [:merge ::answer-sources-result ::tool-request]

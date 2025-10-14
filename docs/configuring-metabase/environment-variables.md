@@ -1058,6 +1058,14 @@ Should we sync user attributes when someone logs in via LDAP?
 
 Comma-separated list of user attributes to skip syncing for LDAP users.
 
+### `MB_LDAP_TIMEOUT_SECONDS`
+
+- Type: double
+- Default: `15.0`
+- [Configuration file name](./config-file.md): `ldap-timeout-seconds`
+
+Maximum time, in seconds, to wait for LDAP server before falling back to local authentication.
+
 ### `MB_LDAP_USER_BASE`
 
 - Type: string

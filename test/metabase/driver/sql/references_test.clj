@@ -191,21 +191,13 @@
              :alias nil,
              :type :single-column,
              :source-columns
-             [[{:column "b",
-                :alias nil,
-                :type :single-column,
-                :source-columns [[{:type :all-columns,
-                                   :table {:table "products"}}]]}]]}},
+             [[]]}},
           :returned-fields
           [{:column "a",
             :alias nil,
             :type :single-column,
             :source-columns
-            [[{:column "b",
-               :alias nil,
-               :type :single-column,
-               :source-columns [[{:type :all-columns,
-                                  :table {:table "products"}}]]}]]}]}
+            [[]]}]}
          (->references "select a from (select b from products)"))))
 
 (deftest different-case-nested-query-test
@@ -557,6 +549,33 @@
              [{:type :all-columns, :table {:table "orders"}}]]}]}
          (->references "select (select (select category) from products where products.id = orders.product_id) from orders"))))
 
+(deftest nested-select-subquery-with-direct-match-in-outer-query
+  (is (= {:used-fields
+          #{{:column "a",
+             :alias nil,
+             :type :single-column,
+             :source-columns [[{:type :all-columns, :table {:table "t2"}}]]}
+            {:column "a",
+             :alias nil,
+             :type :single-column,
+             :source-columns
+             [[{:type :all-columns, :table {:table "t1"}}]
+              [{:column "a",
+                :alias nil,
+                :type :single-column,
+                :source-columns [[{:type :all-columns, :table {:table "t2"}}]]}]]}},
+          :returned-fields
+          [{:column "a",
+            :alias nil,
+            :type :single-column,
+            :source-columns
+            [[{:type :all-columns, :table {:table "t1"}}]
+             [{:column "a",
+               :alias nil,
+               :type :single-column,
+               :source-columns [[{:type :all-columns, :table {:table "t2"}}]]}]]}]}
+         (->references "select (select a from t1) from (select a from t2)"))))
+
 (deftest basic-exists-test
   (is (= {:used-fields
           #{{:column "name",
@@ -696,6 +715,65 @@ SELECT * FROM active_users"))))
                              :table {:table "products"}}]}
          (->references "WITH active_users AS (SELECT id, name FROM users WHERE active = true)
 SELECT * FROM products"))))
+
+(deftest shadowed-cte-test
+  (is (= {:used-fields
+          #{{:column "y",
+             :alias "x",
+             :type :single-column,
+             :source-columns [[{:type :all-columns, :table {:table "a"}}]]}
+            {:column "y",
+             :alias "a",
+             :type :single-column,
+             :source-columns [[{:type :all-columns, :table {:table "a"}}]]}
+            {:column "z",
+             :alias "y",
+             :type :single-column,
+             :source-columns [[{:type :all-columns, :table {:table "a"}}]]}
+            {:column "x",
+             :alias "z",
+             :type :single-column,
+             :source-columns [[{:type :all-columns, :table {:table "a"}}]]}
+            {:column "z",
+             :alias "b",
+             :type :single-column,
+             :source-columns [[{:type :all-columns, :table {:table "a"}}]]}
+            {:column "x",
+             :alias "c",
+             :type :single-column,
+             :source-columns [[{:type :all-columns, :table {:table "a"}}]]}},
+          :returned-fields
+          [{:column "y",
+            :alias "a",
+            :type :single-column,
+            :source-columns [[{:type :all-columns, :table {:table "a"}}]]}
+           {:column "z",
+            :alias "b",
+            :type :single-column,
+            :source-columns [[{:type :all-columns, :table {:table "a"}}]]}
+           {:column "x",
+            :alias "c",
+            :type :single-column,
+            :source-columns [[{:type :all-columns, :table {:table "a"}}]]}]}
+         (->references "WITH c AS (
+    WITH b AS (
+        SELECT
+           x as z,
+           y as x,
+           z as y
+        FROM a
+    )
+    SELECT
+       x as a,
+       y as b,
+       z as c
+    FROM b
+)
+SELECT
+    a,
+    b,
+    c
+FROM c;"))))
 
 (deftest recursive-cte-test
   (is (= {:used-fields
@@ -1029,6 +1107,9 @@ ORDER BY
     )
   ) ASC"))))
 
+;; This test is horrifically long and makes cam's eyes bleed because this checks that a complex query compiles to the
+;; right ast.  Hopefully, other tests will catch any error caught by this test, but this is a bit of a failsafe.
+^{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest complicated-test-1
   (is (= {:used-fields
           #{{:column "title",
@@ -1198,6 +1279,9 @@ ORDER BY
   DATE_TRUNC('month', \"source\".\"created_at\") ASC,
   \"source\".\"upper_category\" ASC"))))
 
+;; This test is horrifically long and makes cam's eyes bleed because this checks that a complex query compiles to the
+;; right ast.  Hopefully, other tests will catch any error caught by this test, but this is a bit of a failsafe.
+^{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest complicated-test-2
   (is (= {:used-fields
           #{{:column "created_at",

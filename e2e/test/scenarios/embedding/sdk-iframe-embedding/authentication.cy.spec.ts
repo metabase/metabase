@@ -134,7 +134,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
         (win as any).metabaseConfig = {
           ...(win as any).metabaseConfig,
           fetchRequestToken: async () => {
-            const jwt = await getSignedJwtForUser(USERS.admin);
+            const jwt = await getSignedJwtForUser({ user: USERS.admin });
 
             return { jwt };
           },

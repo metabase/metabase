@@ -1213,7 +1213,7 @@ describe("scenarios > embedding > dashboard appearance", () => {
           cy.findByTestId("dashcard").should(
             "have.css",
             "background-color",
-            "rgb(46, 53, 59)",
+            "rgb(7, 23, 34)",
           );
 
           cy.log("pivot table cell background should be transparent");
@@ -1221,12 +1221,12 @@ describe("scenarios > embedding > dashboard appearance", () => {
             .first()
             .findAllByTestId("pivot-table-cell")
             .first()
-            .should("have.css", "background-color", "rgba(46, 53, 59, 0.1)");
+            .should("have.css", "background-color", "rgba(48, 61, 70, 0.1)");
 
           cy.log("pivot table cell color should be white");
           cy.findByText("Row totals")
             .should("be.visible")
-            .should("have.css", "color", "rgb(255, 255, 255)");
+            .should("have.css", "color", "rgba(255, 255, 255, 0.95)");
         });
       });
     });

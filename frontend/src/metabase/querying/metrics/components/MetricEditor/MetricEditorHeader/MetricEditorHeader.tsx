@@ -2,7 +2,9 @@ import cx from "classnames";
 import { useLayoutEffect, useRef } from "react";
 import { t } from "ttag";
 
-import ActionButton from "metabase/common/components/ActionButton";
+import ActionButton, {
+  type ActionButtonHandle,
+} from "metabase/common/components/ActionButton";
 import Button from "metabase/common/components/Button";
 import EditBar from "metabase/common/components/EditBar";
 import ButtonsS from "metabase/css/components/buttons.module.css";
@@ -29,7 +31,7 @@ export function MetricEditorHeader({
   onSave,
   onCancel,
 }: MetricEditorHeaderProps) {
-  const saveButtonRef = useRef<ActionButton>(null);
+  const saveButtonRef = useRef<ActionButtonHandle>(null);
   const handleCreate = () => onCreate(question);
   const handleSave = () => onSave(question);
 

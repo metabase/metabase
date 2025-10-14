@@ -4,7 +4,7 @@
                        {:discouraged-namespace {metabase.query-processor.store {:level :off}}}}}
   (:require
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]))
 
 ;;; replacement for the old [[metabase.query-processor.store/cached]] macro, deprecated in 57

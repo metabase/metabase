@@ -35,6 +35,11 @@ type SdkQuestionConfig = {
   initialSqlParameters?: SqlParameterValues;
 
   /**
+   * A list of parameters to hide.
+   **/
+  hiddenParameters?: string[];
+
+  /**
    * Enables the ability to download results in the interactive question.
    */
   withDownloads?: boolean;
@@ -128,6 +133,7 @@ export type SdkQuestionContextType = Omit<
     | "targetCollection"
     | "withDownloads"
     | "backToDashboard"
+    | "hiddenParameters"
     | "onVisualizationChange"
   > & {
     plugins: SdkQuestionConfig["componentPlugins"] | null;

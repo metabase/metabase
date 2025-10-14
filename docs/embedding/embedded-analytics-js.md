@@ -9,6 +9,8 @@ summary: Getting started with Embedded Analytics JS for embedding Metabase entit
 
 Embedded analytics JS lets you embed Metabase entities like questions, dashboards, or even the query builder into your own application using customizable components.
 
+{% include shared/in-page-promo-embedding-workshop.html %}
+
 Embedded Analytics JS is a JavaScript library built on top of Metabase's [Embedded Analytics React SDK](./sdk/introduction.md). But it does not require using React or setting up full SDK embedding.
 Unlike with [interactive embedding](./interactive-embedding.md), where you embed the entire Metabase app in an iframe, Embedded Analytics JS lets you choose from a set of predefined components like a single chart, a dashboard with optional drill-through, or query builder, and customize those components.
 
@@ -33,7 +35,7 @@ You can also follow the setup guide directly in Metabase in **Admin > Embedding 
 
 ### 2. Create a new embed
 
-1. In Metabase, go to **Admin > Embedding > Setup guide > Embed in your code**, and select **Try it out** next to **Embedded analytics JS**.
+1. In Metabase, go to **Admin > Embedding > Modular embedding**, and select **New embed** next to **Embedded analytics JS**.
 
    If you're planning to embed an existing question or dashboard, you can instead go straight to that question or dashboard, click on the **Share** button, and choose **Embedded Analytics JS**.
 
@@ -71,6 +73,16 @@ You'll get a choice between "Existing Metabase session" and "Single sign-on (SSO
 Metabase will generate a code snippet that you can copy and paste into your app, see [Embed code snippets](#embed-code-snippets) for an example. You can later modify this code snippet to specify additional appearance options or change the behavior of some components.
 
 Add the code snippet into your app, and refresh the page.
+
+## Each end user should have their own Metabase account
+
+Each end-user must have their own Metabase account.
+
+The problem with having end-users share a Metabase account is that, even if you filter data on the client side via the Embedded analytics JS, all end-users will still have access to the session token, which they could use to access Metabase directly via the API to get data they’re not supposed to see.
+
+If each end-user has their own Metabase account, however, you can configure permissions in Metabase and everyone will only have access to the data they should.
+
+In addition to this, we consider shared accounts to be unfair usage. Fair usage of Embedded Analytics JS involves giving each end-user of the embedded analytics their own Metabase account.
 
 ## Embed code snippets
 

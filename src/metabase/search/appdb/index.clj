@@ -255,8 +255,12 @@
         (if (table-not-found-exception? e)
           ;; If resetting tracking atoms resolves the issue (which is likely happened because of stale tracking data),
           ;; suppress the issue - but throw it all the way to the caller if the issue persists
-          (do (sync-tracking-atoms!)
-              (specialization/batch-upsert! table-name entries))
+          (try
+            (sync-tracking-atoms!)
+            (specialization/batch-upsert! table-name entries)
+            (catch Exception e2
+              (log/error e2 "Error syncing index tracking atoms after table not found exception")
+              (throw e)))
           (throw e))))))
 
 (defn- batch-update!

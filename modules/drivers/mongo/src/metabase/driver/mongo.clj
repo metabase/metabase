@@ -514,8 +514,9 @@
 (defmethod driver/table-rows-sample :mongo
   [_driver table fields rff opts]
   (driver-api/with-metadata-provider (:db_id table)
-    (let [mongo-opts {:limit    table-rows-sample/nested-field-sample-limit
-                      :order-by [[:desc [:field (get-id-field-id table) nil]]]}]
+    (let [id-column  (driver-api/field (driver-api/metadata-provider) (get-id-field-id table))
+          mongo-opts {:limit    table-rows-sample/nested-field-sample-limit
+                      :order-by [(driver-api/order-by-clause id-column :desc)]}]
       (table-rows-sample/table-rows-sample table fields rff (merge mongo-opts opts)))))
 
 (defn- encode-mongo
@@ -695,8 +696,8 @@
             documents (map #(into {} (map vector col-names %))
                            data)]
         (if (> (bounded-count 2 documents) 1)
-          ;; TODO: batch to avoid realizing everything in memory
-          (mongo.util/insert-many collection documents)
+          (doseq [chunk (partition-all (or driver/*insert-chunk-rows* 1000) documents)]
+            (mongo.util/insert-many collection chunk))
           (mongo.util/insert-one collection (first documents)))))))
 
 ;; Following code is using monger. Leaving it here for a reference as it could be transformed when there is need

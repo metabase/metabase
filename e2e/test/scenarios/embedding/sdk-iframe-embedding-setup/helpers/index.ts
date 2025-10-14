@@ -54,7 +54,7 @@ export const assertDashboard = ({ id, name }: { id: number; name: string }) => {
 
 type NavigateToStepOptions =
   | {
-      experience: "exploration";
+      experience: "exploration" | "metabot";
       resourceName?: never;
     }
   | {
@@ -71,24 +71,27 @@ export const navigateToEntitySelectionStep = (
 
   cy.log("select an experience");
 
-  if (experience === "chart") {
-    cy.findByText("Chart").click();
-  } else if (experience === "exploration") {
-    cy.findByText("Exploration").click();
-  } else if (experience === "browser") {
-    cy.findByText("Browser").click();
+  const hasEntitySelection =
+    experience !== "exploration" && experience !== "metabot";
+
+  const labelByExperience = match(experience)
+    .with("chart", () => "Chart")
+    .with("exploration", () => "Exploration")
+    .with("browser", () => "Browser")
+    .with("metabot", () => "Metabot")
+    .otherwise(() => undefined);
+
+  if (labelByExperience) {
+    cy.findByText(labelByExperience).click();
   }
 
-  // exploration template does not have the entity selection step
-  if (experience !== "exploration") {
+  // exploration and metabot experience does not have the entity selection step
+  if (hasEntitySelection && options.resourceName) {
     cy.log("navigate to the entity selection step");
+
     getEmbedSidebar().within(() => {
       cy.findByText("Next").click(); // Entity selection step
     });
-  }
-
-  if (experience !== "exploration") {
-    const { resourceName } = options;
 
     const resourceType = match(experience)
       .with("dashboard", () => "Dashboards")
@@ -103,7 +106,7 @@ export const navigateToEntitySelectionStep = (
 
     entityPickerModal().within(() => {
       cy.findByText(resourceType).click();
-      cy.findAllByText(resourceName).first().click();
+      cy.findAllByText(options.resourceName).first().click();
 
       // Collection picker requires an explicit confirmation.
       if (experience === "browser") {
@@ -113,7 +116,7 @@ export const navigateToEntitySelectionStep = (
 
     cy.log(`${resourceType} title should be visible by default`);
     getEmbedSidebar().within(() => {
-      cy.findByText(resourceName).should("be.visible");
+      cy.findByText(options.resourceName).should("be.visible");
     });
   }
 };
@@ -132,7 +135,7 @@ export const navigateToGetCodeStep = (options: NavigateToStepOptions) => {
 
   cy.log("navigate to get code step");
   getEmbedSidebar().within(() => {
-    cy.findByText("Get Code").click(); // Get code step
+    cy.findByText("Get code").click(); // Get code step
   });
 };
 

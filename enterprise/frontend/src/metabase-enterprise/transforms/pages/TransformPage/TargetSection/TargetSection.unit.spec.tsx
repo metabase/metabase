@@ -1,9 +1,11 @@
 import { Route } from "react-router";
 
+import { setupDatabaseEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { getTransformUrl } from "metabase-enterprise/transforms/urls";
 import type { Transform } from "metabase-types/api";
 import {
+  createMockDatabase,
   createMockTransform,
   createMockTransformRun,
 } from "metabase-types/api/mocks";
@@ -15,6 +17,8 @@ type SetupOpts = {
 };
 
 function setup({ transform = createMockTransform() }: SetupOpts) {
+  setupDatabaseEndpoints(createMockDatabase({ id: 1 }));
+
   renderWithProviders(
     <Route
       path={getTransformUrl(transform.id)}

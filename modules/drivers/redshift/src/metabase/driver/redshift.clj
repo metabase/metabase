@@ -463,15 +463,17 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod sql-jdbc.conn/connection-details->spec :redshift
-  [_ {:keys [host port db], :as opts}]
+  [_ {:keys [host port db dbname], :as opts}]
+  (when (and db dbname)
+    (throw (ex-info "Redshift connection details cannot contain both 'db' and 'dbname' options" {})))
   (sql-jdbc.common/handle-additional-options
    (merge
     {:classname                     "com.amazon.redshift.jdbc42.Driver"
      :subprotocol                   "redshift"
-     :subname                       (str "//" host ":" port "/" db)
+     :subname                       (str "//" host ":" port "/" (or db dbname))
      :ssl                           true
      :OpenSourceSubProtocolOverride false}
-    (dissoc opts :host :port :db))))
+    (dissoc opts :host :port :db :dbname))))
 
 (prefer-method
  sql-jdbc.execute/read-column-thunk

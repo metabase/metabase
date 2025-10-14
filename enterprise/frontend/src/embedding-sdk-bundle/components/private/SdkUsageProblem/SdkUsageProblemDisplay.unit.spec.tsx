@@ -13,7 +13,10 @@ import {
   createMockApiKeyConfig,
   createMockSdkConfig,
 } from "embedding-sdk-bundle/test/mocks/config";
-import { createMockSdkState } from "embedding-sdk-bundle/test/mocks/state";
+import {
+  createMockSdkState,
+  createMockTokenState,
+} from "embedding-sdk-bundle/test/mocks/state";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types";
 import {
   createMockSettings,
@@ -37,9 +40,10 @@ interface Options {
   hasEmbeddingFeature?: boolean;
   isEmbeddingSdkEnabled?: boolean;
   isDevelopmentMode?: boolean;
+  hasExpirationClaim?: boolean;
 }
 
-const setup = (options: Options) => {
+const setup = ({ hasExpirationClaim = true, ...options }: Options) => {
   const tokenFeatures = createMockTokenFeatures({
     embedding_sdk: options.hasEmbeddingFeature ?? true,
     development_mode: options.isDevelopmentMode ?? false,
@@ -50,10 +54,20 @@ const setup = (options: Options) => {
     "enable-embedding-sdk": options.isEmbeddingSdkEnabled ?? true,
   });
 
+  const MINUTE = 60;
   const state = createMockState({
     settings: mockSettings(settingValues),
     currentUser: TEST_USER,
-    sdk: createMockSdkState(),
+    sdk: createMockSdkState({
+      token: createMockTokenState({
+        token: {
+          id: "123",
+          exp: hasExpirationClaim
+            ? Math.round(Date.now() / 1000) + 10 * MINUTE
+            : null,
+        },
+      }),
+    }),
   });
 
   setupSettingsEndpoints([]);
@@ -98,7 +112,7 @@ describe("SdkUsageProblemDisplay", () => {
     ).toBeInTheDocument();
 
     const docsLink = within(card).getByRole("link", {
-      name: /Documentation/,
+      name: "Documentation",
     });
 
     expect(docsLink).toHaveAttribute(
@@ -127,12 +141,12 @@ describe("SdkUsageProblemDisplay", () => {
     ).toBeInTheDocument();
 
     const docsLink = within(card).getByRole("link", {
-      name: /Documentation/,
+      name: "Documentation",
     });
 
     expect(docsLink).toHaveAttribute(
       "href",
-      "https://www.metabase.com/docs/latest/embedding/sdk/authentication#authenticating-people-from-your-server",
+      "https://www.metabase.com/docs/latest/embedding/sdk/authentication#2-add-a-new-endpoint-to-your-backend-to-handle-authentication",
     );
   });
 
@@ -180,7 +194,7 @@ describe("SdkUsageProblemDisplay", () => {
     ).toBeInTheDocument();
 
     const docsLink = within(card).getByRole("link", {
-      name: /Documentation/,
+      name: "Documentation",
     });
 
     expect(docsLink).toHaveAttribute(
@@ -211,12 +225,44 @@ describe("SdkUsageProblemDisplay", () => {
     ).toBeInTheDocument();
 
     const docsLink = within(card).getByRole("link", {
-      name: /Documentation/,
+      name: "Documentation",
     });
 
     expect(docsLink).toHaveAttribute(
       "href",
       "https://www.metabase.com/upgrade",
+    );
+  });
+
+  it('should show a warning when JWT token does not contain the "exp" claim', async () => {
+    setup({
+      authConfig: createMockSdkConfig(),
+      isEmbeddingSdkEnabled: true,
+      isDevelopmentMode: false,
+      hasExpirationClaim: false,
+    });
+
+    await userEvent.click(screen.getByTestId(PROBLEM_INDICATOR_TEST_ID));
+
+    const card = screen.getByTestId(PROBLEM_CARD_TEST_ID);
+
+    expect(
+      within(card).getByText("This embed is powered by the Metabase SDK."),
+    ).toBeInTheDocument();
+
+    expect(
+      within(card).getByText(
+        `The JWT token is missing the "exp" (expiration) claim. We will disallow tokens without "exp" in a future release. Please add "exp" to the token payload.`,
+      ),
+    ).toBeInTheDocument();
+
+    const docsLink = within(card).getByRole("link", {
+      name: "Documentation",
+    });
+
+    expect(docsLink).toHaveAttribute(
+      "href",
+      "https://www.metabase.com/docs/latest/embedding/sdk/authentication#2-add-a-new-endpoint-to-your-backend-to-handle-authentication",
     );
   });
 

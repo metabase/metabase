@@ -19,7 +19,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
@@ -1471,7 +1471,7 @@
                    (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))))
 
 (deftest ^:parallel no-double-coercion-when-joining-coerced-fields-test
-  (testing "Should generate correct SQL when joining a field that has coercion applied"
+  (testing "Should generate correct SQL when joining a field that has coercion applied (#62099)"
     (let [mp    (lib.tu/merged-mock-metadata-provider
                  meta/metadata-provider
                  {:fields [(merge (meta/field-metadata :products :id)
