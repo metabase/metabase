@@ -64,7 +64,7 @@
   [url]
   (if (= url "*")
     {:protocol nil :domain "*" :port "*"}
-    (let [pattern #"^(?:(https?)://)?([^:/]+)(?::(\d+|\*))?$"
+    (let [pattern #"^(?:(https?|app)://)?([^:/]+)(?::(\d+|\*))?$"
           matches (re-matches pattern url)]
       (if-not matches
         (do (log/errorf "Invalid URL: %s" url) nil)
