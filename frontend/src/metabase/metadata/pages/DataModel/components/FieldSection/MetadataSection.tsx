@@ -45,15 +45,10 @@ const MetadataSectionBase = ({
 }: MetadataSectionProps) => {
   const fieldIdentity =
     mode === "table" ? { id: getRawTableFieldId(field) } : { name: field.name };
-  const { data: idFields = [] } = useListDatabaseIdFieldsQuery(
-    {
-      id: databaseId,
-      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
-    },
-    {
-      skip: mode !== "table",
-    },
-  );
+  const { data: idFields = [] } = useListDatabaseIdFieldsQuery({
+    id: databaseId,
+    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+  });
 
   const semanticTypeError = useMemo(() => {
     return getSemanticTypeError(table, field);
