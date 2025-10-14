@@ -492,6 +492,10 @@ export const colorConfig = {
     light: baseColors.orionAlpha[60],
     dark: baseColors.orionAlphaInverse[60],
   },
+  "text-secondary-inverse": {
+    light: baseColors.orionAlphaInverse[60],
+    dark: baseColors.orionAlpha[60],
+  },
   "text-selected": {
     light: baseColors.white,
     dark: baseColors.white,
