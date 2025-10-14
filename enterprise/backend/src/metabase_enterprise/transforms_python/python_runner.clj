@@ -110,8 +110,13 @@
 
 (defn- execute-mbql-query
   [db-id query rff cancel-chan]
-  (binding [qp.pipeline/*canceled-chan* (a/go (a/<! cancel-chan))]
-    (qp/process-query {:type :query :database db-id :query query} rff)))
+  ;; if we have a cancel-chan (a promise channel) for the transform, we'd like for QP to respect it
+  ;; and early exit if a value is delivered, but QP closes it when it's done. So we copy it.
+  (with-bindings* (cond-> {}
+                    cancel-chan
+                    (assoc #'qp.pipeline/*canceled-chan* (a/go (a/<! cancel-chan))))
+    (^:once fn* []
+      (qp/process-query {:type :query :database db-id :query query} rff))))
 
 (defn- throw-if-cancelled [cancel-chan]
   (when (a/poll! cancel-chan)
