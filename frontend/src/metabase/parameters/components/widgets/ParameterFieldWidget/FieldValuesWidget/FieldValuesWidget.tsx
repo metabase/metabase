@@ -1,5 +1,6 @@
 import cx from "classnames";
 import {
+  type ReactNode,
   type StyleHTMLAttributes,
   forwardRef,
   useEffect,
@@ -123,7 +124,7 @@ export interface IFieldValuesWidgetProps {
   placeholder?: string;
   checkedColor?: string;
 
-  valueRenderer?: (value: string | number) => JSX.Element;
+  valueRenderer?: (value: RowValue) => JSX.Element;
   optionRenderer?: (option: FieldValue) => JSX.Element;
   layoutRenderer?: (props: LayoutRendererArgs) => JSX.Element;
 }
@@ -315,7 +316,7 @@ export const FieldValuesWidgetInner = forwardRef<
   };
 
   if (!valueRenderer) {
-    valueRenderer = (value: string | number) => {
+    valueRenderer = (value: RowValue) => {
       const option = options.find((option) => getValue(option) === value);
       return renderValue({
         fields,
@@ -483,6 +484,7 @@ export const FieldValuesWidgetInner = forwardRef<
                 dashboardId={dashboardId}
                 cardId={cardId}
                 value={isNumericParameter ? parseNumericValue(value) : value}
+                renderValue={valueRenderer}
                 tc={tc}
               />
             )}
@@ -711,6 +713,7 @@ type RemappedValueProps = {
   value: ParameterValueOrArray | null;
   dashboardId?: DashboardId;
   cardId?: CardId;
+  renderValue: (value: RowValue | null) => ReactNode;
   tc: ContentTranslationFunction;
 };
 
@@ -720,6 +723,7 @@ function RemappedValue({
   value,
   dashboardId,
   cardId,
+  renderValue = (value) => String(value),
   tc,
 }: RemappedValueProps) {
   const isRemapped =
@@ -758,18 +762,18 @@ function RemappedValue({
 
   const remappedData = dashboardData ?? cardData ?? parameterData;
   if (remappedData == null) {
-    return tc(value);
+    return renderValue(value);
   }
 
   const remappedValue = getValue(remappedData);
   const remappedLabel = getLabel(remappedData);
   if (remappedLabel == null) {
-    return tc(value);
+    return renderValue(value);
   }
 
   return (
     <MultiAutocompleteValue
-      value={String(remappedValue)}
+      value={renderValue(remappedValue)}
       label={tc(String(remappedLabel ?? remappedValue))}
     />
   );
@@ -778,16 +782,25 @@ function RemappedValue({
 type RemappedOptionProps = {
   option: ComboboxItem;
   fields: Field[];
+  renderValue: (value: RowValue | null) => ReactNode;
   tc: ContentTranslationFunction;
 };
 
-function RemappedOption({ option, fields, tc }: RemappedOptionProps) {
+function RemappedOption({
+  option,
+  fields,
+  renderValue,
+  tc,
+}: RemappedOptionProps) {
   const isRemapped = Field.remappedField(fields) != null;
   if (!isRemapped) {
     return tc(option.label);
   }
 
   return (
-    <MultiAutocompleteOption value={option.value} label={tc(option.label)} />
+    <MultiAutocompleteOption
+      value={renderValue(option.value)}
+      label={tc(option.label)}
+    />
   );
 }
