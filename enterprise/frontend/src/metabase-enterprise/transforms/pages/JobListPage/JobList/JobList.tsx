@@ -40,21 +40,26 @@ export function JobList({
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  if (jobs.length === 0) {
-    const hasFilters = hasFilterParams(params);
-    return (
-      <ListEmptyState label={hasFilters ? t`No jobs found` : t`No jobs yet`} />
-    );
-  }
-
   return (
     <ItemsListSection
       sectionTitle={t`Jobs`}
       onCollapse={onCollapse}
       onAddNewItem={() => dispatch(push(getNewJobUrl()))}
-      listItems={jobs.map((job) => (
-        <JobItem key={job.id} job={job} systemTimezone={systemTimezone ?? ""} />
-      ))}
+      listItems={
+        jobs.length === 0 ? (
+          <ListEmptyState
+            label={hasFilterParams(params) ? t`No jobs found` : t`No jobs yet`}
+          />
+        ) : (
+          jobs.map((job) => (
+            <JobItem
+              key={job.id}
+              job={job}
+              systemTimezone={systemTimezone ?? ""}
+            />
+          ))
+        )
+      }
     />
   );
 }
