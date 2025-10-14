@@ -5,8 +5,6 @@ import {
   getSdkBundleScriptElement,
   mountSdkContent,
 } from "e2e/support/helpers/embedding-sdk-component-testing";
-import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
-import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
 import { deleteConflictingCljsGlobals } from "metabase/embedding-sdk/test/delete-conflicting-cljs-globals";
 
 const { H } = cy;
@@ -26,14 +24,6 @@ describe(
     numTestsKeptInMemory: 1,
   },
   () => {
-    beforeEach(() => {
-      signInAsAdminAndEnableEmbeddingSdk();
-
-      cy.signOut();
-
-      mockAuthProviderAndJwtSignIn();
-    });
-
     beforeEach(() => {
       H.clearBrowserCache();
 
