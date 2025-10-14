@@ -2,7 +2,7 @@ import { useAsync } from "react-use";
 import { t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { PLUGIN_APPLICATION_PERMISSIONS } from "metabase/plugins";
 import { Box, Popover, Text, Title } from "metabase/ui";
 
 import { PublicLinkCopyPanel } from "./PublicLinkCopyPanel";
@@ -33,7 +33,9 @@ export const PublicLinkPopover = ({
   setSelectedExtension,
   onCopyLink,
 }: PublicLinkPopoverProps) => {
-  const isAdmin = useSelector(getUserIsAdmin);
+  const canCreatePublicLink = useSelector((state) =>
+    PLUGIN_APPLICATION_PERMISSIONS.selectors.canCreatePublicLink(state),
+  );
 
   const { loading } = useAsync(async () => {
     if (isOpen && !url) {
@@ -48,7 +50,7 @@ export const PublicLinkPopover = ({
   };
 
   const getMinDropdownHeight = () => {
-    if (isAdmin || extensions.length > 0) {
+    if (canCreatePublicLink || extensions.length > 0) {
       return "10rem";
     }
 
@@ -80,7 +82,7 @@ export const PublicLinkPopover = ({
           <PublicLinkCopyPanel
             loading={loading}
             url={url}
-            onRemoveLink={isAdmin ? onRemoveLink : undefined}
+            onRemoveLink={canCreatePublicLink ? onRemoveLink : undefined}
             extensions={extensions}
             selectedExtension={selectedExtension}
             onChangeExtension={setSelectedExtension}

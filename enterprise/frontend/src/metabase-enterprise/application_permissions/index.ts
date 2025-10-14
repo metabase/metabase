@@ -9,7 +9,11 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import applicationPermissionsReducer from "./reducer";
 import getRoutes from "./routes";
-import { canAccessSettings, canManageSubscriptions } from "./selectors";
+import {
+  canAccessSettings,
+  canCreatePublicLink,
+  canManageSubscriptions,
+} from "./selectors";
 import {
   monitoringPermissionAllowedPathGetter,
   settingsPermissionAllowedPathGetter,
@@ -27,6 +31,7 @@ if (hasPremiumFeature("advanced_permissions")) {
   PLUGIN_APPLICATION_PERMISSIONS.selectors = {
     canAccessSettings,
     canManageSubscriptions,
+    canCreatePublicLink,
   };
   PLUGIN_REDUCERS.applicationPermissionsPlugin = applicationPermissionsReducer;
 }

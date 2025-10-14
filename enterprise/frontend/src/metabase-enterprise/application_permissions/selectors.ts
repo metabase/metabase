@@ -42,6 +42,11 @@ export const canAccessSettings = createSelector(
   (user) => user?.permissions?.can_access_setting ?? false,
 );
 
+export const canCreatePublicLink = createSelector(
+  (state: ApplicationPermissionsState) => state.currentUser,
+  (user) => user?.permissions?.can_create_public_link ?? false,
+);
+
 const getApplicationPermission = (
   permissions: ApplicationPermissions,
   groupId: number,
@@ -124,6 +129,13 @@ export const getApplicationPermissionEditor = createSelector(
             defaultGroup,
             "subscription",
           ),
+          getPermission(
+            permissions,
+            isAdmin,
+            group.id,
+            defaultGroup,
+            "public-link",
+          ),
         ],
       };
     });
@@ -138,6 +150,7 @@ export const getApplicationPermissionEditor = createSelector(
           hint: t`This grants access to Tools`,
         },
         { name: t`Subscriptions and Alerts` },
+        { name: t`Public link` },
       ],
       entities,
     };

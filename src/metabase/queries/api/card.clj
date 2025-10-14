@@ -873,7 +873,7 @@
   be enabled."
   [{:keys [card-id]} :- [:map
                          [:card-id ms/PositiveInt]]]
-  (perms/check-has-application-permission :setting)
+  (perms/check-has-application-permission :public-link)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check :model/Card card-id))
   (let [{existing-public-uuid :public_uuid} (t2/select-one [:model/Card :public_uuid :card_schema] :id card-id)]
@@ -887,7 +887,7 @@
   "Delete the publicly-accessible link to this Card."
   [{:keys [card-id]} :- [:map
                          [:card-id ms/PositiveInt]]]
-  (perms/check-has-application-permission :setting)
+  (perms/check-has-application-permission :public-link)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Card :id card-id, :public_uuid [:not= nil])
   (t2/update! :model/Card card-id
