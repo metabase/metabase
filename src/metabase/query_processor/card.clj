@@ -295,32 +295,35 @@
         normalized-card-query   (lib/query mp (dissoc card-query :constraints))
         normalized-subset-query (lib/query mp subset-query)
         base-query (fn [query]
-                     (-> query
-                         qp.params/substitute-parameters
-                         lib/drop-empty-stages
-                         ;; TODO (BT) removing order-by and limit could give access to hidden data
-                         (lib/update-query-stage -1 dissoc :aggregation :breakout :order-by :limit)))
-        base-subset-query (base-query normalized-subset-query)
+                     (some-> query
+                             qp.params/substitute-parameters
+                             lib/drop-empty-stages
+                             ;; TODO (BT) removing order-by and limit could give access to hidden data
+                             (lib/update-query-stage -1 dissoc :aggregation :breakout :order-by :limit)))
         base-card-query   (base-query normalized-card-query)
+        base-subset-query (-> (iterate lib/drop-stage normalized-subset-query)
+                              (nth (- (lib/stage-count normalized-subset-query) (lib/stage-count base-card-query)) nil)
+                              base-query)
         comparable-query (fn [query]
-                           (-> query
-                               (lib/update-query-stage -1 dissoc :filters)
-                               qp.util/select-keys-for-hashing))
+                           (some-> query
+                                   (lib/update-query-stage -1 dissoc :filters :expressions)
+                                   qp.util/select-keys-for-hashing))
         comparable-subset-query (comparable-query base-subset-query)
         comparable-card-query (comparable-query base-card-query)
-        comparable-card-filters (-> base-card-query
-                                    lib/filters
-                                    lib.schema.util/remove-lib-uuids
-                                    set)
-        comparable-subset-filters (-> base-subset-query
-                                      lib/filters
-                                      lib.schema.util/remove-lib-uuids
-                                      set)]
+        comparable-clauses (fn [query clauses-fn]
+                             (some-> query clauses-fn lib.schema.util/remove-lib-uuids set))
+        comparable-card-filters (comparable-clauses base-card-query lib/filters)
+        comparable-subset-filters (comparable-clauses base-subset-query lib/filters)
+        comparable-card-expressions (comparable-clauses base-card-query lib/expressions)
+        comparable-subset-expressions (comparable-clauses base-subset-query lib/expressions)]
     ;; TODO (BT) does the filter-stage require special handling here?
     (when (and (= comparable-subset-query
                   comparable-card-query)
+               ;; TODO (BT) this disables :drill-thru/zoom-in.binning where we _change_ filters
                (set/subset? comparable-card-filters
-                            comparable-subset-filters))
+                            comparable-subset-filters)
+               (set/subset? comparable-card-expressions
+                            comparable-subset-expressions))
       normalized-subset-query)))
 
 (mu/defn process-query-for-card
