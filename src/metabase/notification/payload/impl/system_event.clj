@@ -1,5 +1,6 @@
 (ns metabase.notification.payload.impl.system-event
   (:require
+   [clojure.string :as str]
    [metabase.appearance.core :as appearance]
    [metabase.channel.email.messages :as messages]
    [metabase.notification.payload.core :as notification.payload]
@@ -8,19 +9,23 @@
    [metabase.system.core :as system]
    [metabase.users.models.user :as user]
    [metabase.util.i18n :refer [trs]]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [toucan2.core :as t2]))
 
 (defn- join-url
   [user-id redirect]
   ;; TODO: the reset token should come from the event-info, not generated here!
   (let [reset-token               (user/set-password-reset-token! user-id)
         should-link-to-login-page (and (sso/sso-enabled?)
-                                       (not (session/enable-password-login)))]
+                                       (not (session/enable-password-login)))
+        email (t2/select-one-fn :email [:model/User :email] user-id)]
     (if should-link-to-login-page
       (str (system/site-url) "/auth/login")
       ;; NOTE: the new user join url is a password reset route with an indicator that this is a first time user.
       (str (user/form-password-reset-url reset-token)
-           (when redirect (str "?redirect=" redirect))
+           "?"
+           (str/join "&" (remove nil? [(when redirect (str "redirect=" redirect))
+                                       (when email (str "email=" email))]))
            "#new"))))
 
 (defn- custom-payload
