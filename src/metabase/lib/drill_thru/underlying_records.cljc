@@ -85,7 +85,6 @@
   ;; - dimensions holds only the legend's column, eg. Products.CATEGORY.
 
   ;; This function returns the table name and row count, since that's used for pluralization of the name.
-  ;; TODO (BT) should this be allowed if subset-only? is true but keeping the :fields clause?
   (when (and (not subset-only?)
              (lib.drill-thru.common/mbql-stage? query stage-number)
              (lib.underlying/has-aggregation-or-breakout? query)

@@ -205,7 +205,6 @@
   [query                        :- ::lib.schema/query
    _stage-number                :- :int
    {:keys [value], :as context} :- ::lib.schema.drill-thru/context]
-  ;; TODO (BT) is this allowed for any stage even if subset-only? is true?
   (when (and value (not= value :null))
     (when-let [context (context-with-lat-lon query (lib.underlying/top-level-stage-number query) context)]
       (some (fn [f]
