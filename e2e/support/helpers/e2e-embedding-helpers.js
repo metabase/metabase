@@ -179,7 +179,7 @@ function getIframeUrl() {
  */
 export function getIframeBody(selector = "iframe") {
   cy.frameLoaded(selector);
-  cy.wait(1);
+  cy.wait(1); // unclear why, but the tests are flaky without this
   return cy.iframe(selector);
 }
 
