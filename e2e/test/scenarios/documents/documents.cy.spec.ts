@@ -230,7 +230,7 @@ H.describeWithSnowplowEE("documents", () => {
           const cardEmbed = resizeNode?.content?.[0];
           const clonedCardId = cardEmbed?.attrs?.id;
           cy.request("DELETE", `/api/card/${clonedCardId}`);
-          cy.visit(`/document/${id}`);
+          H.visitDocument(id);
         });
         cy.findByTestId("document-card-embed").should(
           "have.text",
@@ -241,7 +241,7 @@ H.describeWithSnowplowEE("documents", () => {
       it("read only access", () => {
         cy.signIn("readonly");
 
-        cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+        H.visitDocument("@documentId");
 
         H.documentContent()
           .findByRole("textbox")
@@ -254,7 +254,7 @@ H.describeWithSnowplowEE("documents", () => {
       it("no access", () => {
         cy.signIn("nocollection");
 
-        cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+        H.visitDocument("@documentId");
         cy.findByRole("status").should(
           "contain.text",
           "Sorry, you don’t have permission to see that.",
@@ -262,17 +262,17 @@ H.describeWithSnowplowEE("documents", () => {
       });
 
       it("not found", () => {
-        cy.get("@documentId").then((id) =>
-          cy.visit(`/document/${(id as unknown as number) + 1}`),
-        );
+        H.visitDocument(9999);
         H.main().within(() => {
-          cy.findByText("We're a little lost...").should("exist");
-          cy.findByText("The page you asked for couldn't be found.");
+          cy.findByText("We're a little lost...").should("be.visible");
+          cy.findByText("The page you asked for couldn't be found.").should(
+            "be.visible",
+          );
         });
       });
 
       it("should allow you to print", () => {
-        cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+        H.visitDocument("@documentId");
         cy.findByRole("button", { name: "More options" }).click();
 
         // This needs to be *after* the page load to work
@@ -295,7 +295,7 @@ H.describeWithSnowplowEE("documents", () => {
       it("should handle undo/redo properly, resetting the history whenever a different document is viewed", () => {
         const isMac = Cypress.platform === "darwin";
         const metaKey = isMac ? "Meta" : "Control";
-        cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+        H.visitDocument("@documentId");
         H.getDocumentCard("Orders").should("exist");
         H.documentContent().within(() => {
           const originalText = "Lorem Ipsum and some more words";
@@ -326,7 +326,7 @@ H.describeWithSnowplowEE("documents", () => {
 
         const originalText = "Lorem Ipsum and some more words";
         const originalExact = new RegExp(`^${originalText}$`);
-        cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+        H.visitDocument("@documentId");
         cy.findByTestId("document-card-embed").should("contain", "37.65"); // wait for data loading
         H.documentContent().contains(originalExact).click();
 
@@ -364,7 +364,7 @@ H.describeWithSnowplowEE("documents", () => {
     });
 
     it("should support typing with a markdown syntax", () => {
-      cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+      H.visitDocument("@documentId");
       H.documentContent().click();
 
       H.addToDocument("# This is a heading level 1");
@@ -518,7 +518,7 @@ H.describeWithSnowplowEE("documents", () => {
             dashboard_id: id,
           });
         });
-        cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+        H.visitDocument("@documentId");
       });
 
       it("should support keyboard and mouse selection in suggestions without double highlight", () => {
@@ -874,7 +874,7 @@ H.describeWithSnowplowEE("documents", () => {
         document: { type: "doc", content: [] },
         idAlias: "documentId",
       });
-      cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+      H.visitDocument("@documentId");
 
       // make changes and attempt to save
       H.documentContent().click();

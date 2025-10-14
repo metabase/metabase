@@ -22,7 +22,7 @@ describe("documents card embed node custom logic", () => {
         idAlias: "documentId",
       });
 
-      cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+      H.visitDocument("@documentId");
     });
 
     it("should create a flexContainer when dropping one cardEmbed onto another standalone cardEmbed", () => {
@@ -129,7 +129,7 @@ describe("documents card embed node custom logic", () => {
         idAlias: "documentId",
       });
 
-      cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+      H.visitDocument("@documentId");
     });
 
     it("should allow you to resize the cards inside a flex container", () => {
@@ -439,7 +439,7 @@ describe("documents card embed node custom logic", () => {
         idAlias: "documentId",
       });
 
-      cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+      H.visitDocument("@documentId");
 
       // Wait for cards to load
       H.getDocumentCard("Orders")
@@ -483,7 +483,7 @@ describe("documents card embed node custom logic", () => {
         idAlias: "documentId",
       });
 
-      cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+      H.visitDocument("@documentId");
 
       // First create a flexContainer by dropping one card onto another
       H.getDocumentCard("Orders")
