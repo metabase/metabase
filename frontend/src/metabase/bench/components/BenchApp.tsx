@@ -44,11 +44,17 @@ export const BenchApp = ({ children }: { children: React.ReactNode }) => {
       gap={0}
       justify="stretch"
       align="stretch"
+      wrap="nowrap"
     >
       {showBenchNav && (
         <Box
           id="bench-nav"
-          style={{ overflow: "auto", height: "100%", width: rem(240) }}
+          style={{
+            overflow: "auto",
+            height: "100%",
+            width: rem(240),
+            flexShrink: 0,
+          }}
         >
           <BenchNav />
         </Box>
