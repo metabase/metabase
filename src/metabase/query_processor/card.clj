@@ -319,7 +319,7 @@
     ;; TODO (BT) does the filter-stage require special handling here?
     (when (and (= comparable-subset-query
                   comparable-card-query)
-               ;; TODO (BT) this disables :drill-thru/zoom-in.binning where we _change_ filters
+               ;; TODO (BT) this disables :drill-thru/zoom-in.binning when we _change_ filters
                (set/subset? comparable-card-filters
                             comparable-subset-filters)
                (set/subset? comparable-card-expressions
@@ -401,9 +401,10 @@
             (throw (ex-info (tru "Invalid subset query: Card {0} does not allow running {1}."
                                  card-id
                                  (pr-str subset-query))
-                            {:type    qp.error-type/invalid-query
-                             :card-id card-id
-                             :query   subset-query})))
+                            {:type        qp.error-type/invalid-query
+                             :card-id     card-id
+                             :query       subset-query
+                             :status-code 400})))
           (runner query info))))))
 
 (defn fetch-subset-query-metadata
@@ -418,6 +419,7 @@
         (throw (ex-info (tru "Invalid subset query: Card {0} does not allow running {1}."
                              card-id
                              (pr-str query))
-                        {:type    qp.error-type/invalid-query
-                         :card-id card-id
-                         :query   query}))))))
+                        {:type        qp.error-type/invalid-query
+                         :card-id     card-id
+                         :query       query
+                         :status-code 400}))))))
