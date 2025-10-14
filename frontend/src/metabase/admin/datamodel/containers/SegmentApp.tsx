@@ -20,14 +20,16 @@ import type {
 
 import { SegmentForm } from "../components/SegmentForm";
 
-import SegmentListApp from "./SegmentListApp";
+import { SegmentListApp } from "./SegmentListApp";
 
 export const UpdateSegmentForm = ({
   params,
   route,
+  location,
 }: {
   params: { id: string };
   route: Route;
+  location: Location;
 }) => {
   const {
     data: segment,
@@ -53,11 +55,22 @@ export const UpdateSegmentForm = ({
   }
 
   return (
-    <SegmentForm segment={segment} onSubmit={handleSubmit} route={route} />
+    <SegmentForm
+      segment={segment}
+      onSubmit={handleSubmit}
+      route={route}
+      query={location.query}
+    />
   );
 };
 
-export const CreateSegmentForm = ({ route }: { route: Route }) => {
+export const CreateSegmentForm = ({
+  route,
+  location,
+}: {
+  route: Route;
+  location: Location;
+}) => {
   const [createSegment] = useCreateSegmentMutation();
 
   const handleSubmit = useCallback(
@@ -67,7 +80,9 @@ export const CreateSegmentForm = ({ route }: { route: Route }) => {
     [createSegment],
   );
 
-  return <SegmentForm onSubmit={handleSubmit} route={route} />;
+  return (
+    <SegmentForm onSubmit={handleSubmit} route={route} query={location.query} />
+  );
 };
 
 export const SegmentApp = ({
@@ -75,7 +90,7 @@ export const SegmentApp = ({
   location,
   children,
 }: {
-  params: { id: string };
+  params: { id?: string };
   location: Location;
   children?: React.ReactNode;
 }) => {

@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import Modal from "metabase/common/components/Modal";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
-import type { Segment } from "metabase-types/api";
+import type Segment from "metabase-lib/v1/metadata/Segment";
 
 import SegmentRetireModal from "./SegmentRetireModal";
 
@@ -28,12 +28,18 @@ export const SegmentActionSelect = ({
           </ActionIcon>
         </Menu.Target>
         <Menu.Dropdown>
-          <Menu.Item component={Link} to={`/bench/segment/${segment.id}`}>
+          <Menu.Item
+            component={Link}
+            to={(loc) => ({ ...loc, pathname: `/bench/segment/${segment.id}` })}
+          >
             {t`Edit Segment`}
           </Menu.Item>
           <Menu.Item
             component={Link}
-            to={`/bench/segment/${segment.id}/revisions`}
+            to={(loc) => ({
+              ...loc,
+              pathname: `/bench/segment/${segment.id}/revisions`,
+            })}
           >{t`Revision History`}</Menu.Item>
           <Menu.Divider />
           <Menu.Item
