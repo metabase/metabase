@@ -1998,7 +1998,9 @@ describe("issue 50915", () => {
     cy.log("immediately after saving, drill-thru");
     H.tableHeaderClick("Discount ($)");
     H.popover().findByText("Distinct values").click();
-    cy.wait("@dataset");
+    H.queryBuilderMain()
+      .findByText("1,115", { timeout: 10000 })
+      .should("be.visible");
     H.assertTableData({ columns: ["Distinct values of Discount"] });
 
     cy.log("assert that the model is used for the data source");
