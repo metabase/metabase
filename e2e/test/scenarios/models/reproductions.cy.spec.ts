@@ -1991,7 +1991,9 @@ describe("issue 50915", () => {
     cy.findByTestId("dataset-edit-bar").button("Save").click();
     cy.findByTestId("save-question-modal").button("Save").click();
     H.queryBuilderHeader().should("be.visible");
-    cy.wait("@dataset");
+    H.queryBuilderMain()
+      .findByText("37.65", { timeout: 10000 })
+      .should("be.visible");
 
     cy.log("immediately after saving, drill-thru");
     H.tableHeaderClick("Discount ($)");
