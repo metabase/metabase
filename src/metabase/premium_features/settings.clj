@@ -291,6 +291,10 @@
   "Does this instance support the new document entity."
   :documents)
 
+(define-premium-feature ^{:added "0.57.0"} enable-remote-sync?
+  "Does this instance support remote syncing collections."
+  :remote-sync)
+
 (define-premium-feature ^{:added "0.57.0"} enable-transforms?
   "Should we allow users to use transforms?"
   :transforms)
@@ -337,6 +341,7 @@
    :offer_metabase_ai              (offer-metabase-ai?)
    :official_collections           (enable-official-collections?)
    :query_reference_validation     (enable-query-reference-validation?)
+   :remote_sync                    (enable-remote-sync?)
    :sandboxes                      (enable-sandboxes?)
    :scim                           (enable-scim?)
    :semantic_search                (enable-semantic-search?)

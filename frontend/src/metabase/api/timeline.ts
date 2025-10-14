@@ -17,6 +17,7 @@ import {
   provideTimelineTags,
   tag,
 } from "./tags";
+import { getRemoteSyncInvalidationTags } from "./utils/remote-sync-cache-helpers";
 
 export const timelineApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -55,7 +56,11 @@ export const timelineApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error) =>
-        invalidateTags(error, [listTag("timeline"), tag("timeline")]),
+        invalidateTags(error, [
+          listTag("timeline"),
+          tag("timeline"),
+          ...getRemoteSyncInvalidationTags(),
+        ]),
     }),
     updateTimeline: builder.mutation<Timeline, UpdateTimelineRequest>({
       query: ({ id, ...body }) => ({
@@ -68,6 +73,7 @@ export const timelineApi = Api.injectEndpoints({
           listTag("timeline"),
           idTag("timeline", id),
           tag("timeline-event"),
+          ...getRemoteSyncInvalidationTags(),
         ]),
     }),
     deleteTimeline: builder.mutation<Timeline, TimelineId>({
@@ -80,6 +86,7 @@ export const timelineApi = Api.injectEndpoints({
           listTag("timeline"),
           idTag("timeline", id),
           tag("timeline-event"),
+          ...getRemoteSyncInvalidationTags(),
         ]),
     }),
   }),

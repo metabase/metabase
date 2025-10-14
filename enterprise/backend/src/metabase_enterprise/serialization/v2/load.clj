@@ -157,6 +157,23 @@
                               (path-error-data ::load-failure expanding path)
                               e)))))))))
 
+(defn new-context
+  "Given an ingestion create a new context for serialization.
+
+  Arguments:
+    ingestion: Ingestable instance
+
+  Returns:
+    an empty context object that can be passed to load-one!
+  "
+  [ingestion]
+  {:expanding #{}
+   :seen      #{}
+   :circular  #{}
+   :ingestion ingestion
+   :from-ids  (->> ingestion serdes.ingest/ingest-list (m/index-by :id))
+   :errors    []})
+
 (defn load-metabase!
   "Loads in a database export from an ingestion source, which is any Ingestable instance."
   [ingestion & {:keys [backfill? continue-on-error reindex?]
@@ -170,12 +187,7 @@
       (when backfill?
         (serdes.backfill/backfill-ids!))
       (let [contents (serdes.ingest/ingest-list ingestion)
-            ctx      {:expanding #{}
-                      :seen      #{}
-                      :circular  #{}
-                      :ingestion ingestion
-                      :from-ids  (m/index-by :id contents)
-                      :errors    []}]
+            ctx (new-context ingestion)]
         (log/infof "Starting deserialization, total %s documents" (count contents))
         (reduce (fn [ctx item]
                   (try

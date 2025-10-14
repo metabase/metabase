@@ -37,6 +37,11 @@ import {
   tag,
 } from "./tags";
 import { handleQueryFulfilled } from "./utils/lifecycle";
+import {
+  invalidateRemoteSyncOnCreate,
+  invalidateRemoteSyncOnDelete,
+  invalidateRemoteSyncOnUpdate,
+} from "./utils/remote-sync-cache-helpers";
 
 export const dashboardApi = Api.injectEndpoints({
   endpoints: (builder) => {
@@ -134,6 +139,8 @@ export const dashboardApi = Api.injectEndpoints({
           url: "/api/dashboard",
           body,
         }),
+        onQueryStarted: (_, { dispatch, queryFulfilled }) =>
+          invalidateRemoteSyncOnCreate(dispatch, queryFulfilled),
         invalidatesTags: (newDashboard, error) =>
           newDashboard
             ? [
@@ -150,6 +157,16 @@ export const dashboardApi = Api.injectEndpoints({
           url: `/api/dashboard/${id}`,
           body,
         }),
+        onQueryStarted: (
+          updateRequest,
+          { dispatch, queryFulfilled, getState },
+        ) => {
+          const state = getState();
+          const oldDashboard = dashboardApi.endpoints.getDashboard.select({
+            id: updateRequest.id,
+          })(state)?.data;
+          invalidateRemoteSyncOnUpdate(oldDashboard, dispatch, queryFulfilled);
+        },
         invalidatesTags: (_, error, { id }) =>
           invalidateTags(error, [
             listTag("dashboard"),
@@ -163,6 +180,13 @@ export const dashboardApi = Api.injectEndpoints({
           method: "DELETE",
           url: `/api/dashboard/${id}`,
         }),
+        onQueryStarted: (id, { dispatch, getState }) => {
+          const state = getState();
+          const dashboard = dashboardApi.endpoints.getDashboard.select({ id })(
+            state,
+          )?.data;
+          invalidateRemoteSyncOnDelete(dashboard, dispatch);
+        },
         invalidatesTags: (_, error, id) =>
           invalidateTags(error, [listTag("dashboard"), idTag("dashboard", id)]),
       }),

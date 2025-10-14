@@ -15,6 +15,7 @@ import "./collections";
 import "./content_translation";
 import "./content_verification";
 import "./database_routing";
+import "./remote_sync";
 import "./whitelabel";
 import "./embedding";
 import "./embedding-sdk";

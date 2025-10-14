@@ -23,6 +23,11 @@ import {
   provideCollectionListTags,
   provideCollectionTags,
 } from "./tags";
+import {
+  invalidateRemoteSyncOnCollectionCreate,
+  invalidateRemoteSyncOnCollectionDelete,
+  invalidateRemoteSyncOnCollectionUpdate,
+} from "./utils/remote-sync-cache-helpers";
 
 export const collectionApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -50,8 +55,10 @@ export const collectionApi = Api.injectEndpoints({
         url: "/api/collection/tree",
         params,
       }),
-      providesTags: (collections = []) =>
-        provideCollectionListTags(collections),
+      providesTags: (collections = []) => [
+        ...provideCollectionListTags(collections),
+        "collection-tree",
+      ],
     }),
     listCollectionItems: builder.query<
       ListCollectionItemsResponse,
@@ -62,8 +69,10 @@ export const collectionApi = Api.injectEndpoints({
         url: `/api/collection/${id}/items`,
         params,
       }),
-      providesTags: (response, error, { models }) =>
-        provideCollectionItemListTags(response?.data ?? [], models),
+      providesTags: (response, error, { models, id }) => [
+        ...provideCollectionItemListTags(response?.data ?? [], models),
+        { type: "collection", id: `${id}-items` },
+      ],
     }),
     getCollection: builder.query<Collection, getCollectionRequest>({
       query: ({ id, ...params }) => {
@@ -82,6 +91,8 @@ export const collectionApi = Api.injectEndpoints({
         url: "/api/collection",
         body,
       }),
+      onQueryStarted: (_, { dispatch, queryFulfilled }) =>
+        invalidateRemoteSyncOnCollectionCreate(dispatch, queryFulfilled),
       invalidatesTags: (collection, error) =>
         collection
           ? invalidateTags(error, [
@@ -96,6 +107,20 @@ export const collectionApi = Api.injectEndpoints({
         url: `/api/collection/${id}`,
         body,
       }),
+      onQueryStarted: (
+        updateRequest,
+        { dispatch, queryFulfilled, getState },
+      ) => {
+        const state = getState();
+        const oldCollection = collectionApi.endpoints.getCollection.select({
+          id: updateRequest.id,
+        })(state)?.data;
+        invalidateRemoteSyncOnCollectionUpdate(
+          oldCollection,
+          dispatch,
+          queryFulfilled,
+        );
+      },
       invalidatesTags: (_, error, payload) => {
         return invalidateTags(error, [
           listTag("collection"),
@@ -110,6 +135,13 @@ export const collectionApi = Api.injectEndpoints({
         url: `/api/collection/${id}`,
         body,
       }),
+      onQueryStarted: (deleteRequest, { dispatch, getState }) => {
+        const state = getState();
+        const collection = collectionApi.endpoints.getCollection.select({
+          id: deleteRequest.id,
+        })(state)?.data;
+        invalidateRemoteSyncOnCollectionDelete(collection, dispatch);
+      },
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [listTag("collection"), idTag("collection", id)]),
     }),
