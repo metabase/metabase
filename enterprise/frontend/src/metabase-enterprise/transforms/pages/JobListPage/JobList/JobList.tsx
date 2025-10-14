@@ -3,10 +3,11 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { ItemsListSection } from "metabase/bench/components/ItemsListSection/ItemsListSection";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
-import { Box, Flex, NavLink, Text } from "metabase/ui";
+import { Box, FixedSizeIcon, Indicator, NavLink, Text } from "metabase/ui";
 import { useListTransformJobsQuery } from "metabase-enterprise/api";
 import type { JobListParams } from "metabase-enterprise/transforms/types";
 import type { TransformJob } from "metabase-types/api";
@@ -20,7 +21,8 @@ export function JobList({
   params,
   onCollapse,
 }: {
-  params: JobListParams;
+  // TODO: Pretty sure `JobListParams` was meant to be the `query` type?
+  params: JobListParams & { jobId?: string };
   onCollapse: () => void;
 }) {
   const systemTimezone = useSetting("system-timezone");
@@ -56,6 +58,7 @@ export function JobList({
               key={job.id}
               job={job}
               systemTimezone={systemTimezone ?? ""}
+              isActive={!!params.jobId && +params.jobId === job.id}
             />
           ))
         )
@@ -67,36 +70,50 @@ export function JobList({
 const JobItem = ({
   job,
   systemTimezone,
+  isActive,
 }: {
   job: TransformJob;
   systemTimezone: string;
+  isActive?: boolean;
 }) => {
   return (
     <NavLink
       component={Link}
       to={getJobUrl(job.id)}
+      active={isActive}
+      bdrs="lg"
+      leftSection={
+        <Indicator
+          offset={4}
+          disabled={job.last_run?.status !== "failed"}
+          color="error"
+          p="0.75rem"
+          bg="brand-lighter"
+          bdrs="lg"
+          pos="relative"
+          display="flex"
+        >
+          <FixedSizeIcon name="clock" size={24} c="brand" />
+        </Indicator>
+      }
       label={
-        <Box>
+        <Box style={{ overflow: "hidden" }}>
           <Text fw="bold">{job.name}</Text>
-          <Flex align="center" gap="sm">
-            <Box
-              bg={job.last_run?.status === "failed" ? "error" : "success"}
-              px="sm"
-              bdrs="sm"
+          {job.last_run?.start_time && (
+            <Ellipsified
+              ff="monospace"
+              fz="xs"
+              c="text-secondary"
+              showTooltip={false}
             >
-              <Text ff="monospace" fz="xs" opacity={1}>
-                {job.last_run?.status}
-              </Text>
-            </Box>
-            <Box c="text-medium" fz="sm">
-              {job.last_run?.start_time
-                ? parseTimestampWithTimezone(
-                    job.last_run?.start_time,
-                    systemTimezone,
-                  ).format("lll")
-                : null}
-            </Box>
-          </Flex>
+              {job.last_run?.status === "failed" ? t`Failed` : t`Last run`}
+              {": "}
+              {parseTimestampWithTimezone(
+                job.last_run.start_time,
+                systemTimezone,
+              ).format("lll")}
+            </Ellipsified>
+          )}
         </Box>
       }
     />
