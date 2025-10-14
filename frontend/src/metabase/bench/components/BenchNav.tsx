@@ -2,20 +2,11 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import { BenchNavCollapseSection } from "metabase/bench/components/nav/BenchNavCollapseSection";
+import { BenchNavItem } from "metabase/bench/components/nav/BenchNavItem";
 import ExternalLink from "metabase/common/components/ExternalLink";
-import { usePath } from "metabase/common/hooks";
-import {
-  Box,
-  Divider,
-  Group,
-  Icon,
-  type IconName,
-  Menu,
-  NavLink,
-  type NavLinkProps,
-  Stack,
-  Text,
-} from "metabase/ui";
+import LogoIcon from "metabase/common/components/LogoIcon";
+import { Box, Icon, Menu, Stack, Text, UnstyledButton } from "metabase/ui";
 
 export function BenchNav() {
   return (
@@ -26,76 +17,81 @@ export function BenchNav() {
           borderRight: "1px solid var(--mb-color-border)",
         }}
         gap="sm"
-        p="md"
         h="100%"
       >
         <Box data-testid="sidebar-top">
-          <Box px="md" py="sm">
+          <Box px="xl" py="md">
             <BenchNavTitleMenu />
           </Box>
 
-          <Stack px="md" gap="sm">
+          <Stack px="md" gap={0}>
             <BenchNavItem
               url="/bench/overview"
               icon="home"
               label={t`Overview`}
             />
-            <BenchNavItem
-              url="/bench/metadata"
-              icon="database"
-              label={t`Metadata`}
-            />
-            <Divider />
-            <BenchNavItem
-              url="/bench/transforms"
-              icon="sql"
-              label={t`Transforms`}
-            />
-            <Box pl="md">
+
+            <BenchNavCollapseSection title={t`Data structuring`}>
               <BenchNavItem
-                url="/bench/jobs"
-                icon="play_outlined"
-                label={t`Jobs`}
+                url="/bench/transforms"
+                icon="sql"
+                label={t`Transforms`}
               />
-              <BenchNavItem url="/bench/runs" icon="list" label={t`Runs`} />
-            </Box>
-            <BenchNavItem
-              url="/bench/segment"
-              icon="filter"
-              label={t`Segments`}
-            />
-            <Divider />
-            <BenchNavItem url="/bench/model" icon="model" label={t`Models`} />
-            <BenchNavItem
-              url="/bench/metric"
-              icon="metric"
-              label={t`Metrics`}
-            />
-            <BenchNavItem
-              url="/bench/snippet"
-              icon="snippet"
-              label={t`Snippets`}
-            />
-            <BenchNavItem
-              url="/bench/glossary"
-              icon="globe"
-              label={t`Glossary`}
-            />
-            <BenchNavItem
-              url="/bench/dependencies"
-              icon="beaker"
-              label={t`Dependencies`}
-            />
+              <Box pl="md">
+                <BenchNavItem
+                  url="/bench/jobs"
+                  icon="play_outlined"
+                  label={t`Jobs`}
+                />
+                <BenchNavItem url="/bench/runs" icon="list" label={t`Runs`} />
+              </Box>
+            </BenchNavCollapseSection>
+
+            <BenchNavCollapseSection title={t`Library`}>
+              <BenchNavItem
+                url="/bench/metric"
+                icon="metric"
+                label={t`Metrics`}
+              />
+              <BenchNavItem url="/bench/model" icon="model" label={t`Models`} />
+              <Box pl="md">
+                <BenchNavItem
+                  url="/bench/segment"
+                  icon="filter"
+                  label={t`Segments`}
+                />
+              </Box>
+              <BenchNavItem
+                url="/bench/snippet"
+                icon="snippet"
+                label={t`SQL snippets`}
+              />
+              <BenchNavItem
+                url="/bench/library/common.py"
+                icon="code_block"
+                label={t`Python Library`}
+              />
+            </BenchNavCollapseSection>
+
+            <BenchNavCollapseSection title={t`Organization`}>
+              <BenchNavItem
+                url="/bench/metadata"
+                icon="database"
+                label={t`Metadata`}
+              />
+              <BenchNavItem
+                url="/bench/dependencies"
+                icon="beaker"
+                label={t`Dependencies`}
+              />
+              <BenchNavItem
+                url="/bench/glossary"
+                icon="globe"
+                label={t`Glossary`}
+              />
+            </BenchNavCollapseSection>
           </Stack>
         </Box>
-        <Stack data-testid="sidebar-bottom" px="md" gap="sm" mt="auto">
-          <Divider />
-          <BenchNavItem
-            url="/bench/library/common.py"
-            icon="code_block"
-            label={t`Python Library`}
-          />
-        </Stack>
       </Stack>
     </Box>
   );
@@ -116,36 +112,9 @@ function BenchNavTitleMenu() {
       width={200}
     >
       <Menu.Target>
-        <Group
-          style={{
-            cursor: "pointer",
-            userSelect: "none",
-          }}
-          onClick={handleMenuToggle}
-          wrap="nowrap"
-        >
-          <Text
-            size="lg"
-            fw="bold"
-            c="brand"
-            style={{
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {/* eslint-disable-next-line */}
-            {t`Metabase Workbench`}
-          </Text>
-          <Icon
-            name="chevrondown"
-            size={12}
-            style={{
-              transform: isMenuOpen ? "rotate(180deg)" : "rotate(0deg)",
-              transition: "transform 0.2s ease",
-            }}
-          />
-        </Group>
+        <UnstyledButton h="2.25rem" w="1.5rem" onClick={handleMenuToggle}>
+          <LogoIcon size={24} />
+        </UnstyledButton>
       </Menu.Target>
       <Menu.Dropdown>
         <Menu.Item
@@ -200,27 +169,5 @@ function BenchNavTitleMenu() {
         </Menu.Item>
       </Menu.Dropdown>
     </Menu>
-  );
-}
-
-function BenchNavItem({
-  url,
-  icon,
-  label,
-  ...rest
-}: { url: string; icon: IconName } & NavLinkProps) {
-  const pathname = usePath();
-  const isActive = pathname?.includes(url);
-
-  return (
-    <NavLink
-      component={Link}
-      to={url}
-      active={isActive}
-      leftSection={<Icon name={icon} size={16} />}
-      label={label}
-      py="md"
-      {...rest}
-    />
   );
 }
