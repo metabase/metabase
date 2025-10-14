@@ -9,6 +9,7 @@ import RemappedValue from "./RemappedValue";
 
 export const Value = ({
   value: rawValue,
+  column,
   ...rawOptions
 }: {
   value: unknown;
@@ -29,6 +30,8 @@ export const Value = ({
 
   const options = {
     ...rawOptions,
+    ...column?.settings,
+    column,
     displayValue: tc(rawOptions.displayValue),
   };
 
