@@ -59,7 +59,15 @@ export const BenchApp = ({ children }: { children: React.ReactNode }) => {
           <BenchNav />
         </Box>
       )}
-      <Stack gap={0} style={{ flex: 1, height: "100%" }}>
+      <Stack
+        gap={0}
+        style={{
+          flex: 1,
+          height: "100%",
+          width: showBenchNav ? `calc(100% - ${rem(240)})` : "100%",
+          position: "relative",
+        }}
+      >
         <BenchAppBar onSidebarToggle={toggle} isSidebarOpen={showBenchNav} />
         <PanelGroup
           id="workbench-layout"
@@ -67,7 +75,13 @@ export const BenchApp = ({ children }: { children: React.ReactNode }) => {
           direction="horizontal"
           style={{ width: "100%" }}
         >
-          <Panel id="bench-main" order={2}>
+          <Panel
+            id="bench-main"
+            order={2}
+            style={{
+              overflow: "auto",
+            }}
+          >
             {children}
           </Panel>
           <BenchMetabot />
@@ -89,6 +103,7 @@ function BenchMetabot() {
       <Panel
         id="bench-metabot"
         maxSize={30}
+        minSize={10}
         style={{ height: "100%" }}
         order={9}
       >
