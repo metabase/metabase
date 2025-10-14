@@ -178,8 +178,8 @@ function getIframeUrl() {
  * @param {string} [selector]
  */
 export function getIframeBody(selector = "iframe") {
-  cy.frameLoaded();
-  return cy.iframe();
+  cy.frameLoaded(selector);
+  return cy.iframe(selector);
 }
 
 export function getEmbedModalSharingPane() {
