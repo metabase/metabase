@@ -7,44 +7,34 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import { Box, Flex, NavLink, Text } from "metabase/ui";
-import {
-
-  useListTransformJobsQuery,
-  useListTransformTagsQuery,
-} from "metabase-enterprise/api";
+import { useListTransformJobsQuery } from "metabase-enterprise/api";
 import type { JobListParams } from "metabase-enterprise/transforms/types";
 import type { TransformJob } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
-import { getJobUrl } from "../../../urls";
+import { getJobUrl, getNewJobUrl } from "../../../urls";
 import { parseTimestampWithTimezone } from "../../../utils";
 import { hasFilterParams } from "../utils";
 
-
-export function JobList({ params, onCollapse }: { params: JobListParams, onCollapse: () => void }) {
+export function JobList({
+  params,
+  onCollapse,
+}: {
+  params: JobListParams;
+  onCollapse: () => void;
+}) {
   const systemTimezone = useSetting("system-timezone");
   const {
     data: jobs = [],
-    isLoading: isLoadingJobs,
-    error: jobsError,
+    isLoading,
+    error,
   } = useListTransformJobsQuery({
     last_run_start_time: params.lastRunStartTime,
     last_run_statuses: params.lastRunStatuses,
     next_run_start_time: params.nextRunStartTime,
     tag_ids: params.tagIds,
   });
-  const {
-    data: tags = [],
-    isLoading: isLoadingTags,
-    error: tagsError,
-  } = useListTransformTagsQuery();
-  const isLoading = isLoadingJobs || isLoadingTags;
-  const error = jobsError ?? tagsError;
   const dispatch = useDispatch();
-
-  const handleRowClick = (job: TransformJob) => {
-    dispatch(push(getJobUrl(job.id)));
-  };
 
   if (isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -61,43 +51,52 @@ export function JobList({ params, onCollapse }: { params: JobListParams, onColla
     <ItemsListSection
       sectionTitle={t`Jobs`}
       onCollapse={onCollapse}
-      listItems={
-        jobs.map((job) => (
-          <JobItem key={job.id} job={job} systemTimezone={systemTimezone ?? ''} />
-        ))
-      }
+      onAddNewItem={() => dispatch(push(getNewJobUrl()))}
+      listItems={jobs.map((job) => (
+        <JobItem key={job.id} job={job} systemTimezone={systemTimezone ?? ""} />
+      ))}
     />
   );
 }
 
-const JobItem = ({ job, systemTimezone }: { job: TransformJob; systemTimezone: string }) => {
+const JobItem = ({
+  job,
+  systemTimezone,
+}: {
+  job: TransformJob;
+  systemTimezone: string;
+}) => {
   return (
     <NavLink
       component={Link}
       to={getJobUrl(job.id)}
-      label={(
+      label={
         <Box>
           <Text fw="bold">{job.name}</Text>
           <Flex align="center" gap="sm">
-            <Box bg={job.last_run?.status === "failed" ? "error" : "success"} px="sm" bdrs="sm">
+            <Box
+              bg={job.last_run?.status === "failed" ? "error" : "success"}
+              px="sm"
+              bdrs="sm"
+            >
               <Text ff="monospace" fz="xs" opacity={1}>
                 {job.last_run?.status}
               </Text>
             </Box>
             <Box c="text-medium" fz="sm">
               {job.last_run?.start_time
-                  ? parseTimestampWithTimezone(
-                      job.last_run?.start_time,
-                      systemTimezone,
-                    ).format("lll")
-                  : null}
+                ? parseTimestampWithTimezone(
+                    job.last_run?.start_time,
+                    systemTimezone,
+                  ).format("lll")
+                : null}
             </Box>
           </Flex>
         </Box>
-      )}
+      }
     />
   );
-}
+};
 
 // type JobTransformCountProps = {
 //   jobId: TransformJobId;
