@@ -1,8 +1,8 @@
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import Link from "metabase/common/components/Link";
 import { TableBreadcrumbs } from "metabase/metadata/components";
-import { Box, Flex, Group, Icon, NavLink, Stack, Text } from "metabase/ui";
-import type { Segment } from "metabase-types/api";
+import { Box, Flex, Group, Icon, NavLink, Stack } from "metabase/ui";
+import type Segment from "metabase-lib/v1/metadata/Segment";
 
 import { SegmentActionSelect } from "./SegmentActionSelect";
 
@@ -17,7 +17,7 @@ export const SegmentItem = ({ segment, onRetire, isActive }: Props) => {
     <Box pos="relative">
       <NavLink
         component={Link}
-        to={`/bench/segment/${segment.id}`}
+        to={(loc) => ({ ...loc, pathname: `/bench/segment/${segment.id}` })}
         active={isActive}
         label={
           <Flex justify="space-between" pt="0.125rem">
@@ -36,7 +36,6 @@ export const SegmentItem = ({ segment, onRetire, isActive }: Props) => {
               <Box maw={500} c="text-light">
                 <TableBreadcrumbs tableId={segment.table_id} />
               </Box>
-              <Text c="text-light">{segment.definition_description}</Text>
             </Stack>
           </Flex>
         }
