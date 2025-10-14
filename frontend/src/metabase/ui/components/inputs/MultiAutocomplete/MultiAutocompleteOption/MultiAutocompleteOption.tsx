@@ -1,7 +1,9 @@
+import type { ReactNode } from "react";
+
 import { Box } from "metabase/ui";
 
 export type MultiAutocompleteOptionProps = {
-  value: string;
+  value: ReactNode;
   label?: string;
 };
 

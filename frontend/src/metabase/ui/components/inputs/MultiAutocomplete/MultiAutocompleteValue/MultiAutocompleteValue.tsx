@@ -1,7 +1,9 @@
+import type { ReactNode } from "react-markdown/lib/react-markdown";
+
 import { Box } from "metabase/ui";
 
 export type MultiAutocompleteValueProps = {
-  value: string;
+  value: ReactNode;
   label?: string;
 };
 
