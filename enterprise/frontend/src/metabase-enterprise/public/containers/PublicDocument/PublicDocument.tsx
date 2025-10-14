@@ -22,6 +22,8 @@ import { ResizeNode } from "metabase-enterprise/rich_text_editing/tiptap/extensi
 import { SmartLink } from "metabase-enterprise/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
 import type { Document } from "metabase-types/api";
 
+import S from "./PublicDocument.module.css";
+
 interface PublicDocumentProps {
   params: {
     uuid: string;
@@ -114,7 +116,9 @@ export const PublicDocument = ({ params }: PublicDocumentProps) => {
         >
           <Box maw={900} mx="auto" p="xl" w="100%">
             <h1 style={{ marginBottom: "1rem" }}>{document.name}</h1>
-            <EditorContent editor={editor} />
+            <div className={S.editorContent}>
+              <EditorContent editor={editor} />
+            </div>
           </Box>
         </PublicDocumentProvider>
       )}
