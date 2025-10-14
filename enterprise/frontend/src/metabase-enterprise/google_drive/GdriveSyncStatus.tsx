@@ -4,7 +4,8 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
-import { skipToken } from "metabase/api";
+import { Api, skipToken } from "metabase/api";
+import { tag } from "metabase/api/tags";
 import { getErrorMessage } from "metabase/api/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import StatusLarge from "metabase/status/components/StatusLarge";
@@ -60,6 +61,11 @@ export const GdriveSyncStatus = () => {
       setDbId(gdriveFolder?.db_id);
     }
 
+    // refetch tables once the sync completes
+    if (status === "active" && previousStatus === "syncing") {
+      dispatch(Api.util.invalidateTags([tag("table")]));
+    }
+
     if (status === "error" && previousStatus === "syncing") {
       console.error(
         getErrorMessage(
@@ -69,7 +75,7 @@ export const GdriveSyncStatus = () => {
         ),
       );
     }
-  }, [status, previousStatus, gdriveFolder, dbId, apiError]);
+  }, [dispatch, status, previousStatus, gdriveFolder, dbId, apiError]);
 
   if (forceHide || !isCurrentUser) {
     return null;
