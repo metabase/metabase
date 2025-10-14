@@ -104,9 +104,10 @@ function MetricsList({
       : [];
   }, [collections, metrics]);
 
+  const { query } = location;
   const handleMetricSelect = (item: ITreeNodeItem) => {
     if (typeof item.id === "number") {
-      dispatch(push(`/bench/metric/${item.id}`));
+      dispatch(push({ query, pathname: `/bench/metric/${item.id}` }));
     }
   };
 
@@ -122,7 +123,7 @@ function MetricsList({
               mode: "bench",
               cardType: "metric",
             });
-            dispatch(push(url));
+            dispatch(push({ query, pathname: url }));
           }}
         />
       }
@@ -147,6 +148,7 @@ function MetricsList({
               key={metric.id}
               metric={metric}
               active={metric.id === activeId}
+              query={query}
             />
           ))
         )
@@ -158,16 +160,18 @@ function MetricsList({
 function MetricListItem({
   metric,
   active,
+  query,
 }: {
   metric: RecentCollectionItem;
   active?: boolean;
+  query?: Location["query"];
 }) {
   const icon = getIcon({ type: "dataset", ...metric });
   return (
     <Box mb="sm">
       <NavLink
         component={Link}
-        to={`/bench/metric/${metric.id}`}
+        to={{ query, pathname: `/bench/metric/${metric.id}` }}
         active={active}
         label={
           <>

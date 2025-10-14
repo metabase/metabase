@@ -81,16 +81,17 @@ function ModelsList({
       : [];
   }, [collections, models]);
 
+  const { query } = location;
   const handleModelSelect = (item: ITreeNodeItem) => {
     if (typeof item.id === "number") {
-      dispatch(push(`/bench/model/${item.id}`));
+      dispatch(push({ query, pathname: `/bench/model/${item.id}` }));
     }
   };
 
   return (
     <ItemsListSection
       sectionTitle={t`Models`}
-      addButton={<CreateModelMenu />}
+      addButton={<CreateModelMenu query={query} />}
       settings={<ItemsListSettings {...listSettingsProps} />}
       onCollapse={onCollapse}
       listItems={
@@ -114,6 +115,7 @@ function ModelsList({
               key={model.id}
               model={model}
               active={model.id === activeId}
+              query={query}
             />
           ))
         )
@@ -125,16 +127,18 @@ function ModelsList({
 function ModelListItem({
   model,
   active,
+  query,
 }: {
   model: RecentCollectionItem;
   active?: boolean;
+  query: Location["query"];
 }) {
   const icon = getIcon({ type: "dataset", ...model });
   return (
     <Box mb="sm">
       <NavLink
         component={Link}
-        to={`/bench/model/${model.id}`}
+        to={{ query, pathname: `/bench/model/${model.id}` }}
         active={active}
         label={
           <>
