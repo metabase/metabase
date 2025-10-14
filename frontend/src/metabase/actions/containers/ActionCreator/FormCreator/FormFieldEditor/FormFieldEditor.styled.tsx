@@ -67,6 +67,7 @@ export const DragHandle = styled(
 )`
   color: var(--mb-color-text-medium);
   margin-top: 4px;
+  cursor: pointer;
 `;
 
 export const PreviewContainer = styled(ContentContainer)`

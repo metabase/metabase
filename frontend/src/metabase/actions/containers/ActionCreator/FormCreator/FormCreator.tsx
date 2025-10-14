@@ -1,14 +1,15 @@
+import type { DragEndEvent } from "@dnd-kit/core";
+import { DndContext, PointerSensor, useSensor } from "@dnd-kit/core";
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type {
-  DraggableProvided,
-  DropResult,
-  DroppableProvided,
-} from "react-beautiful-dnd";
-import { Draggable, Droppable } from "react-beautiful-dnd";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { DragDropContext } from "metabase/common/components/DragDropContext";
+import { Sortable } from "metabase/common/components/Sortable";
 import { Form, FormProvider } from "metabase/forms";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { Flex, Icon, UnstyledButton } from "metabase/ui";
@@ -56,6 +57,10 @@ export function FormCreator({
   onChange,
   onClose,
 }: FormCreatorProps) {
+  const pointerSensor = useSensor(PointerSensor, {
+    activationConstraint: { distance: 5 },
+  });
+
   const [formSettings, setFormSettings] = useState<ActionFormSettings>(
     passedFormSettings?.fields ? passedFormSettings : getDefaultFormSettings(),
   );
@@ -89,18 +94,33 @@ export function FormCreator({
   );
 
   const handleDragEnd = useCallback(
-    ({ source, destination }: DropResult) => {
-      if (!formSettings.fields) {
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+
+      if (!formSettings.fields || !over || active.id === over.id) {
         return;
       }
 
-      const oldOrder = source.index;
-      const newOrder = destination?.index ?? source.index;
+      // Get the ordered fields to determine indices
+      const fieldsWithIds = _.mapObject(formSettings.fields, (field, key) => ({
+        ...field,
+        id: key,
+      }));
+      const orderedFields = _.sortBy(Object.values(fieldsWithIds), "order");
+
+      const oldIndex = orderedFields.findIndex(
+        (field) => field.id === active.id,
+      );
+      const newIndex = orderedFields.findIndex((field) => field.id === over.id);
+
+      if (oldIndex === -1 || newIndex === -1) {
+        return;
+      }
 
       const reorderedFields = reorderFields(
         formSettings.fields,
-        oldOrder,
-        newOrder,
+        oldIndex,
+        newIndex,
       );
       setFormSettings({
         ...formSettings,
@@ -189,37 +209,39 @@ export function FormCreator({
           onSubmit={ON_SUBMIT_NOOP}
         >
           <Form role="form" data-testid="action-form-editor">
-            <DragDropContext onDragEnd={handleDragEnd}>
-              <Droppable droppableId="action-form-droppable">
-                {(provided: DroppableProvided) => (
-                  <div {...provided.droppableProps} ref={provided.innerRef}>
-                    {form.fields.map((field, index) => (
-                      <Draggable
-                        key={`draggable-${field.name}`}
-                        draggableId={field.name}
-                        isDragDisabled={!isEditable}
-                        index={index}
-                      >
-                        {(provided: DraggableProvided) => (
-                          <FormFieldEditorDragContainer
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            {...provided.dragHandleProps}
-                          >
-                            <FormFieldEditor
-                              field={field}
-                              fieldSettings={fieldSettings[field.name]}
-                              isEditable={isEditable}
-                              onChange={handleChangeFieldSettings}
-                            />
-                          </FormFieldEditorDragContainer>
-                        )}
-                      </Draggable>
-                    ))}
-                  </div>
-                )}
-              </Droppable>
-            </DragDropContext>
+            <DndContext
+              onDragEnd={handleDragEnd}
+              sensors={[pointerSensor]}
+              modifiers={[restrictToVerticalAxis]}
+            >
+              <SortableContext
+                items={form.fields.map((field) => field.name)}
+                strategy={verticalListSortingStrategy}
+              >
+                {form.fields.map((field) => (
+                  <Sortable
+                    key={field.name}
+                    id={field.name}
+                    disabled={!isEditable}
+                    as={FormFieldEditorDragContainer}
+                    draggingStyle={{ opacity: 0.5 }}
+                  >
+                    {({ dragHandleRef, dragHandleListeners }) => (
+                      // <DragOverlay>
+                      <FormFieldEditor
+                        field={field}
+                        fieldSettings={fieldSettings[field.name]}
+                        isEditable={isEditable}
+                        onChange={handleChangeFieldSettings}
+                        dragHandleRef={dragHandleRef}
+                        dragHandleListeners={dragHandleListeners}
+                      />
+                      // </DragOverlay>
+                    )}
+                  </Sortable>
+                ))}
+              </SortableContext>
+            </DndContext>
           </Form>
         </FormProvider>
       </FormContainer>
