@@ -44,7 +44,12 @@ export class Mode {
 
     let actions = [
       ...(mode.hasDrills
-        ? queryDrill(question, clicked, this.isDrillEnabled)
+        ? queryDrill(
+            question,
+            clicked,
+            this.isDrillEnabled,
+            mode.performSubsetOnlyDrills,
+          )
         : []),
       ...(mode.clickActions?.flatMap((drill) => drill(props)) ?? []),
     ];

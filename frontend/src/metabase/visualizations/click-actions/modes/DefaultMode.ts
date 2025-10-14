@@ -9,6 +9,7 @@ import { NativeQueryClickFallback } from "../actions/NativeQueryClickFallback";
 export const DefaultMode: QueryClickActionsMode = {
   name: "default",
   hasDrills: true,
+  performSubsetOnlyDrills: false,
   clickActions: [
     HideColumnAction,
     ColumnFormattingAction,

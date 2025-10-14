@@ -2,6 +2,7 @@ import _ from "underscore";
 
 import { Api } from "metabase/api";
 import {
+  provideAdhocQueryMetadataTags,
   provideCardQueryMetadataTags,
   provideCardTags,
   provideCollectionTags,
@@ -387,6 +388,32 @@ function setCardEndpoints({ base, encodedUuid, encodedToken }) {
   PLUGIN_API.getCardUrl = () => prefix;
 
   // legacy API
+  Api.injectEndpoints({
+    endpoints: (builder) => ({
+      getAdhocQuery: builder.query({
+        query: ({ _refetchDeps, ignore_error, ...body }) => ({
+          method: "POST",
+          url: `${base}/dataset/${encodedToken}`,
+          body,
+          noEvent: ignore_error,
+        }),
+      }),
+      getAdhocQueryMetadata: builder.query({
+        query: (body) => ({
+          method: "POST",
+          url: `${base}/dataset/${encodedToken}/query_metadata`,
+          body,
+        }),
+        providesTags: (metadata) =>
+          metadata ? provideAdhocQueryMetadataTags(metadata) : [],
+        onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+          handleQueryFulfilled(queryFulfilled, (data) =>
+            dispatch(updateMetadata(data, QueryMetadataSchema)),
+          ),
+      }),
+    }),
+    overrideExisting: true,
+  });
   CardApi.query = GET_with(`${prefix}/query`, [
     // Params below are not supported by `/api/embed/card/:cardId/query` endpoint
     "cardId",
