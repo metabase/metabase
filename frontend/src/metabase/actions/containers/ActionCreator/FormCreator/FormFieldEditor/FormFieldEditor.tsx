@@ -1,3 +1,5 @@
+import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
+import type { MutableRefObject } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
@@ -33,6 +35,8 @@ export interface FormFieldEditorProps {
   fieldSettings: FieldSettings;
   isEditable: boolean;
   onChange: (settings: FieldSettings) => void;
+  dragHandleRef?: MutableRefObject<HTMLElement | null>;
+  dragHandleListeners?: SyntheticListenerMap | undefined;
 }
 
 function cleanFieldValue(
@@ -62,6 +66,8 @@ function FormFieldEditor({
   fieldSettings,
   isEditable,
   onChange,
+  dragHandleRef,
+  dragHandleListeners,
 }: FormFieldEditorProps) {
   const fieldTypeOptions = useMemo(getFieldTypes, []);
   const inputTypeOptions = useMemo(getInputTypes, []);
@@ -100,7 +106,15 @@ function FormFieldEditor({
   return (
     <FormFieldContainer data-testid="form-field-container">
       <EditorContainer>
-        <Column>{isEditable && <DragHandle name="grabber" />}</Column>
+        <Column>
+          {isEditable && (
+            <DragHandle
+              name="grabber"
+              ref={dragHandleRef}
+              {...dragHandleListeners}
+            />
+          )}
+        </Column>
         <Column full>
           <Header>
             <Title>{field.title}</Title>
