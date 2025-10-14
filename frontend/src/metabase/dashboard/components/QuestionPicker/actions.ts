@@ -22,7 +22,7 @@ export const getNewQuestionUrl = ({
         } as const)
       : ({
           mode: "query",
-          type: "native",
+          DO_NOT_USE_type: "native",
           creationType: "native_question",
         } as const);
 
