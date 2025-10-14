@@ -14,6 +14,7 @@
    [metabase-enterprise.metabot-v3.table-utils :as table-utils]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription
     :as metabot-v3.tools.create-dashboard-subscription]
+   [metabase-enterprise.metabot-v3.tools.dependencies :as metabot-v3.tools.dependencies]
    [metabase-enterprise.metabot-v3.tools.field-stats :as metabot-v3.tools.field-stats]
    [metabase-enterprise.metabot-v3.tools.filters :as metabot-v3.tools.filters]
    [metabase-enterprise.metabot-v3.tools.find-outliers :as metabot-v3.tools.find-outliers]
@@ -1145,6 +1146,43 @@
         snippet-id (:snippet-id arguments)]
     (doto (-> (mc/decode ::get-snippet-details-result
                          (metabot-v3.tools.snippets/get-snippet-details snippet-id)
+                         (mtx/transformer {:name :tool-api-response}))
+              (assoc :conversation_id conversation_id))
+      (metabot-v3.context/log :llm.log/be->llm))))
+
+(mr/def ::check-transform-dependencies-arguments
+  [:and
+   [:map
+    [:transform_id :int]
+    [:source {:optional true} [:maybe ms/Map]]]
+   [:map {:encode/tool-api-request
+          #(set/rename-keys % {:transform_id :id})}]])
+
+(mr/def ::broken-transform
+  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:id :int]
+   [:name :string]
+   [:description {:optional true} [:maybe :string]]])
+
+(mr/def ::check-transform-dependencies-result
+  [:or
+   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+    [:structured_output [:map
+                         [:success :boolean]
+                         [:bad_transforms [:sequential ::broken-transform]]]]]
+   [:map [:output :string]]])
+
+(api.macros/defendpoint :post "/check-transform-dependencies" :- [:merge ::check-transform-dependencies-result ::tool-request]
+  "Check a proposed edit to a transform and return details of cards or transforms that would be broken by the change."
+  [_route-params
+   _query-params
+   {:keys [arguments conversation_id] :as body} :- [:merge
+                                                    [:map [:arguments ::check-transform-dependencies-arguments]]
+                                                    ::tool-request]]
+  (metabot-v3.context/log (assoc body :api :check-transform-dependencies) :llm.log/llm->be)
+  (let [arguments (mc/encode ::check-transform-dependencies-arguments arguments (mtx/transformer {:name :tool-api-request}))]
+    (doto (-> (mc/decode ::check-transform-dependencies-result
+                         (metabot-v3.tools.dependencies/check-transform-dependencies arguments)
                          (mtx/transformer {:name :tool-api-response}))
               (assoc :conversation_id conversation_id))
       (metabot-v3.context/log :llm.log/be->llm))))

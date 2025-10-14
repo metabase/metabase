@@ -7,7 +7,7 @@
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.driver :as driver]
-   [metabase.lib.core :as lib]
+   [metabase.lib.query :as lib.query]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
@@ -46,8 +46,9 @@
 (defn native-query-transform?
   "Check if this is a native query transform"
   [transform]
-  (and (query-transform? transform)
-       (= :native (lib/normalized-query-type (-> transform :source :query)))))
+  (when (query-transform? transform)
+    (let [query (-> transform :source :query)]
+      (lib.query/native? query))))
 
 (defn python-transform?
   "Check if this is a Python transform."

@@ -1194,7 +1194,7 @@
       (mt/with-temp [:model/Transform t1 {:name "People Transform"
                                           :description "Simple select on People table"
                                           :source {:type "query"
-                                                   :query (mt/native-query {:query "SELECT * FROM PEOPLE"})}
+                                                   :query (lib/native-query (mt/metadata-provider) "SELECT * FROM PEOPLE")}
                                           :target {:type "table"
                                                    :name "t1_table"}}
                      :model/Transform t2 {:name "MBQL Transform"
