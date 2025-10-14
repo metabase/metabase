@@ -4,7 +4,7 @@ import { Link } from "react-router";
 import { Box, Flex, Group, Icon, Stack, UnstyledButton } from "metabase/ui";
 import type { DependencyEntry, DependencyNode } from "metabase-types/api";
 
-import { getNodeId, getNodeViewCount } from "../../utils";
+import { getNodeId, getNodeLink, getNodeViewCount } from "../../utils";
 
 import S from "./ListBody.module.css";
 import {
@@ -43,6 +43,7 @@ type ListItemProps = {
 function ListItem({ node, onEntryChange }: ListItemProps) {
   const titleInfo = getNodeTitleInfo(node);
   const subtitleInfo = getNodeSubtitleInfo(node);
+  const link = getNodeLink(node);
   const viewCount = getNodeViewCount(node);
 
   const handleTitleClick = () => {
@@ -54,7 +55,7 @@ function ListItem({ node, onEntryChange }: ListItemProps) {
       <Group justify="space-between">
         <Flex
           component={UnstyledButton}
-          className={S.itemLink}
+          className={S.textLink}
           gap="sm"
           align="center"
           onClick={handleTitleClick}
@@ -68,21 +69,28 @@ function ListItem({ node, onEntryChange }: ListItemProps) {
           </Box>
         )}
       </Group>
-      {subtitleInfo && (
-        <Flex
-          className={S.itemLink}
-          component={Link}
-          to={subtitleInfo.link}
-          target="_blank"
-          gap="sm"
-          align="center"
-        >
-          <Icon name={subtitleInfo.icon} />
-          <Box fz="sm" lh="h5">
-            {subtitleInfo.label}
-          </Box>
-        </Flex>
-      )}
+      <Group justify={subtitleInfo != null ? "space-between" : "flex-end"}>
+        {subtitleInfo != null && (
+          <Flex
+            className={S.textLink}
+            component={Link}
+            to={subtitleInfo.link}
+            target="_blank"
+            gap="sm"
+            align="center"
+          >
+            <Icon name={subtitleInfo.icon} />
+            <Box fz="sm" lh="h5">
+              {subtitleInfo.label}
+            </Box>
+          </Flex>
+        )}
+        {link != null && (
+          <Link className={S.iconLink} to={link} target="_blank">
+            <Icon name="external" />
+          </Link>
+        )}
+      </Group>
     </Stack>
   );
 }
