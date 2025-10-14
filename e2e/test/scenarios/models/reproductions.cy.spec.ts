@@ -1972,7 +1972,6 @@ describe("issue 50915", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
-    cy.intercept("POST", "api/dataset").as("dataset");
   });
 
   it("should use the model for the data source for drills after the model is created (metabase#50915)", () => {
