@@ -189,8 +189,9 @@
    {:model "dashboard" :name "Whale Communication" :query "marine mammal"}
    {:model "dashboard" :name "Tiger Conservation" :query "endangered species"}
    {:model "dashboard" :name "Loch Ness Stuff" :query "prehistoric monsters"}
-   {:model "table" :name "Species Table" :query "taxonomy"}
-   {:model "table" :name "Monsters Table" :query "monster facts"}])
+   ;; Tables include display_name in their search fields, so include it here as well
+   {:model "table" :name "Species Table" :display_name "Species Table" :query "taxonomy"}
+   {:model "table" :name "Monsters Table" :display_name "Monsters Table" :query "monster facts"}])
 
 (def ^:private base-embedding-vectors
   "Fake 4-dimensional embedding vectors for each document"
