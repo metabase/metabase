@@ -71,9 +71,9 @@
     (with-index-contents!
       [{:model "card" :id 1 :name "orders"}
        {:model "card" :id 2 :name "unrelated"}
-       {:model "card" :id 3 :name "classified" :searchable_text "available only by court order"}
+       {:model "card" :id 3 :name "classified" :searchable_text "available only by court order" :embeddable_text "available only by court order"}
        {:model "card" :id 4 :name "order"}
-       {:model "card" :id 5 :name "orders, invoices, other stuff", :searchable_text "a verbose description"}
+       {:model "card" :id 5 :name "orders, invoices, other stuff", :searchable_text "a verbose description" :embeddable_text "a verbose description"}
        {:model "card" :id 6 :name "ordering"}]
       (with-redefs [semantic.tu/mock-embeddings {"order"      [0.11 -0.33  0.56 -0.77]
                                                  "orders"     [0.12 -0.34  0.57 -0.78]
