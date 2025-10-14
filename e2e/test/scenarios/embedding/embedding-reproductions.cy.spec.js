@@ -963,8 +963,8 @@ describe("issue 40660", () => {
       previewMode: "preview",
     });
 
-    H.getIframeBody().findByText(dashboardDetails.name).should("be.visible");
     H.getIframeBody().within(() => {
+      cy.findByText(dashboardDetails.name).should("be.visible");
       cy.findByTestId("loading-indicator").should("not.exist");
       cy.findAllByText("1018947080336").should("have.length", 3);
       cy.findByTestId("embed-frame").scrollTo("bottom");
