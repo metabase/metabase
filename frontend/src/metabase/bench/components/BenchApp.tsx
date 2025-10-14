@@ -46,11 +46,14 @@ export const BenchApp = ({ children }: { children: React.ReactNode }) => {
       align="stretch"
     >
       {showBenchNav && (
-        <Box id="bench-nav" style={{ overflow: "auto", width: rem(240) }}>
+        <Box
+          id="bench-nav"
+          style={{ overflow: "auto", height: "100%", width: rem(240) }}
+        >
           <BenchNav />
         </Box>
       )}
-      <Stack gap={0} style={{ flex: 1 }}>
+      <Stack gap={0} style={{ flex: 1, height: "100%" }}>
         <BenchAppBar onSidebarToggle={toggle} isSidebarOpen={showBenchNav} />
         <PanelGroup
           id="workbench-layout"
