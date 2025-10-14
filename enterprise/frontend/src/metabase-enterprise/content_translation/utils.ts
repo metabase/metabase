@@ -1,9 +1,10 @@
 import * as I from "icepick";
 import { useCallback, useMemo } from "react";
-import { match } from "ts-pattern";
+import { P, match } from "ts-pattern";
 import _ from "underscore";
 
 import type { ContentTranslationFunction } from "metabase/i18n/types";
+import { isCartesianChart } from "metabase/visualizations";
 import type { HoveredObject } from "metabase/visualizations/types";
 import type {
   DictionaryArray,
@@ -168,7 +169,9 @@ export const translateFieldValuesInSeries = (
           }),
         );
       })
-      .with("bar", "line", "row", "combo", "area", "scatter", () => {
+      .with(P.when(isCartesianChart), () => {
+        // cartesian charts have series settings that can provide display names
+        // for fields, which we should translate if available
         const seriesSettings =
           singleSeries.card.visualization_settings?.series_settings;
 
