@@ -31,7 +31,10 @@ export function BenchNav() {
               label={t`Overview`}
             />
 
-            <BenchNavCollapseSection title={t`Data structuring`}>
+            <BenchNavCollapseSection
+              title={t`Data structuring`}
+              slug="data-structuring"
+            >
               <BenchNavItem
                 url="/bench/transforms"
                 icon="sql"
@@ -47,7 +50,7 @@ export function BenchNav() {
               </Box>
             </BenchNavCollapseSection>
 
-            <BenchNavCollapseSection title={t`Library`}>
+            <BenchNavCollapseSection title={t`Library`} slug="library">
               <BenchNavItem
                 url="/bench/metric"
                 icon="metric"
@@ -73,7 +76,10 @@ export function BenchNav() {
               />
             </BenchNavCollapseSection>
 
-            <BenchNavCollapseSection title={t`Organization`}>
+            <BenchNavCollapseSection
+              title={t`Organization`}
+              slug="organization"
+            >
               <BenchNavItem
                 url="/bench/metadata"
                 icon="database"

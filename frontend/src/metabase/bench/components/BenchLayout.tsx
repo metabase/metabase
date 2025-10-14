@@ -1,10 +1,14 @@
 import { useDisclosure } from "@mantine/hooks";
 import { type ReactElement, type ReactNode, cloneElement, useRef } from "react";
-import { type ImperativePanelHandle, Panel, PanelGroup } from "react-resizable-panels";
+import {
+  type ImperativePanelHandle,
+  Panel,
+  PanelGroup,
+} from "react-resizable-panels";
 import { t } from "ttag";
 
 import { NoDataError } from "metabase/common/components/errors/NoDataError";
-import {  ActionIcon, Box, Center, Flex, Icon } from "metabase/ui";
+import { ActionIcon, Box, Center, Flex, Icon } from "metabase/ui";
 
 import { ResizeHandle } from "./BenchApp";
 import { useAbsoluteSize } from "./utils";
@@ -18,14 +22,16 @@ const CollapsedNav = ({ onClick }: { onClick: () => void }) => (
 );
 
 export const BenchLayout = ({
-  children, nav, name
+  children,
+  nav,
+  name,
 }: {
   children: ReactNode;
   nav?: ReactElement;
   name: string;
 }) => {
   const navPanelRef = useRef<ImperativePanelHandle>(null);
-  const [isCollapsed, {open: expand, close: collapse}] = useDisclosure(false);
+  const [isCollapsed, { open: expand, close: collapse }] = useDisclosure(false);
   const getSize = useAbsoluteSize({ groupId: `${name}-app-layout` });
 
   const expandPanel = () => {
@@ -37,7 +43,11 @@ export const BenchLayout = ({
   };
 
   return (
-    <PanelGroup id={`${name}-app-layout`} autoSaveId={`${name}-app-layout`} direction="horizontal">
+    <PanelGroup
+      id={`${name}-app-layout`}
+      autoSaveId={`${name}-app-layout`}
+      direction="horizontal"
+    >
       {nav && (
         <Panel
           ref={navPanelRef}
@@ -54,7 +64,11 @@ export const BenchLayout = ({
             overflow: "hidden",
           }}
         >
-          {isCollapsed ? cloneElement(nav, { onCollapse: collapsePanel}) : <CollapsedNav onClick={expandPanel} /> }
+          {isCollapsed ? (
+            cloneElement(nav, { onCollapse: collapsePanel })
+          ) : (
+            <CollapsedNav onClick={expandPanel} />
+          )}
         </Panel>
       )}
       <ResizeHandle />
@@ -63,17 +77,23 @@ export const BenchLayout = ({
         order={2}
         style={{
           height: "100%",
-          overflow: "hidden",
+          overflow: "auto",
         }}
       >
-        <Flex direction="column" h="100%" style={{ overflow: "auto", flex: "1" }}>
+        <Flex
+          direction="column"
+          h="100%"
+          style={{ overflow: "auto", flex: "1" }}
+        >
           {children}
         </Flex>
       </Panel>
     </PanelGroup>
-  )
-}
+  );
+};
 
 export const EmptySailboat = () => (
-  <Center w="100%" h="100%"><NoDataError /></Center>
+  <Center w="100%" h="100%">
+    <NoDataError />
+  </Center>
 );

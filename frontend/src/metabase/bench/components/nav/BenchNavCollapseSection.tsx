@@ -1,19 +1,30 @@
 import { useDisclosure } from "@mantine/hooks";
 import type { ReactNode } from "react";
+import { useCallback } from "react";
 
 import CS from "metabase/css/core/index.css";
 import { Collapse, Group, Icon, Text, UnstyledButton } from "metabase/ui";
 
 type BenchNavCollapseSectionProps = {
   title: ReactNode;
+  slug: string;
   children: ReactNode;
 };
 
 export const BenchNavCollapseSection = ({
   title,
+  slug,
   children,
 }: BenchNavCollapseSectionProps) => {
-  const [opened, { toggle }] = useDisclosure(true);
+  const [opened, { toggle }] = useDisclosure(getInitialState(slug));
+
+  const handleToggle = useCallback(() => {
+    const newValue = !opened;
+
+    toggle();
+
+    localStorage.setItem(getItemKey(slug), newValue.toString());
+  }, [opened, slug, toggle]);
 
   return (
     <>
@@ -23,7 +34,7 @@ export const BenchNavCollapseSection = ({
         align="center"
         justify="space-between"
         p="1.5rem 0.5rem 0.75rem"
-        onClick={toggle}
+        onClick={handleToggle}
       >
         <Text size="sm" c="var(--mb-color-text-secondary)">
           {title}
@@ -41,3 +52,18 @@ export const BenchNavCollapseSection = ({
     </>
   );
 };
+
+function getItemKey(slug: string) {
+  return `metabase-bench-nav-section-${slug}-expanded`;
+}
+
+function getInitialState(slug: string) {
+  if (typeof window !== "undefined") {
+    const saved = localStorage.getItem(getItemKey(slug));
+    if (saved === "false") {
+      return false;
+    }
+  }
+
+  return true;
+}
