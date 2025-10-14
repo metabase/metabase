@@ -303,7 +303,9 @@ export const DataModel = ({ children, location, params }: Props) => {
                   <Box flex="1" h="100%" maw={COLUMN_CONFIG.field.max}>
                     <FieldSection
                       mode={isModelMode ? "model" : "table"}
-                      databaseId={databaseId}
+                      databaseId={
+                        isModelMode ? modelCard?.database_id : databaseId
+                      }
                       field={field}
                       /**
                        * Make sure internal component state is reset when changing fields.
