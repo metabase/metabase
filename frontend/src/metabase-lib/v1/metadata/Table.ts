@@ -64,8 +64,8 @@ class Table {
 
   question() {
     return Question.create({
-      databaseId: this.db && this.db.id,
-      tableId: this.id,
+      DO_NOT_USE_databaseId: this.db && this.db.id,
+      DO_NOT_USE_tableId: this.id,
       metadata: this.metadata,
     });
   }

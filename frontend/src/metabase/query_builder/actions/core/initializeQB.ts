@@ -79,7 +79,11 @@ function getCardForBlankQuestion(
   const tableId = options.table ? parseInt(options.table) : undefined;
   const segmentId = options.segment ? parseInt(options.segment) : undefined;
 
-  let question = Question.create({ databaseId, tableId, metadata });
+  let question = Question.create({
+    DO_NOT_USE_databaseId: databaseId,
+    DO_NOT_USE_tableId: tableId,
+    metadata,
+  });
 
   if (databaseId && tableId) {
     if (typeof segmentId === "number") {

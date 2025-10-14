@@ -103,7 +103,7 @@ export const useCommandPaletteBasicActions = ({
           dispatch(
             push(
               Urls.newQuestion({
-                type: "native",
+                DO_NOT_USE_type: "native",
                 creationType: "native_question",
                 cardType: "question",
               }),

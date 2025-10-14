@@ -52,18 +52,18 @@ import { isDimensionTarget } from "metabase-types/guards";
 import type { Query } from "../types";
 
 export type QuestionCreatorOpts = {
-  databaseId?: DatabaseId;
   cardType?: CardType;
-  tableId?: TableId;
   collectionId?: CollectionId;
   dashboardId?: DashboardId;
   metadata?: Metadata;
   parameterValues?: ParameterValuesMap;
-  type?: "query" | "native";
   name?: string;
   display?: CardDisplayType;
   visualization_settings?: VisualizationSettings;
   dataset_query?: DatasetQuery;
+  DO_NOT_USE_type?: "query" | "native";
+  DO_NOT_USE_databaseId?: DatabaseId;
+  DO_NOT_USE_tableId?: TableId;
 };
 
 export type QuestionDashboardProps = {
@@ -460,9 +460,11 @@ class Question {
       return this;
     }
     const query = this.composeQuestion().query();
-    return Question.create({ metadata: this.metadata(), ...options }).setQuery(
-      query,
-    );
+    return Question.create({
+      metadata: this.metadata(),
+      dataset_query: Lib.toJsQuery(query),
+      ...options,
+    });
   }
 
   /**
@@ -911,8 +913,8 @@ class Question {
    * but it would require changing the constructor signature so that `card` is an optional parameter and has a default value
    */
   static create({
-    databaseId,
-    tableId,
+    DO_NOT_USE_databaseId: databaseId,
+    DO_NOT_USE_tableId: tableId,
     collectionId,
     dashboardId,
     metadata,

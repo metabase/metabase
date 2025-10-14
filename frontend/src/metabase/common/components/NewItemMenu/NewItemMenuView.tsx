@@ -65,11 +65,11 @@ const NewItemMenuView = ({
           key="native"
           component={ForwardRefLink}
           to={Urls.newQuestion({
-            type: "native",
+            DO_NOT_USE_type: "native",
             creationType: "native_question",
             collectionId,
             cardType: "question",
-            databaseId: lastUsedDatabaseId || undefined,
+            DO_NOT_USE_databaseId: lastUsedDatabaseId || undefined,
           })}
           leftSection={<Icon name="sql" />}
         >

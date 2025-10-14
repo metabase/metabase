@@ -88,11 +88,11 @@ const NewModelOptions = ({ location }: NewModelOptionsProps) => {
               description={t`You can always fall back to a SQL or native query, which is a bit more manual.`}
               to={Urls.newQuestion({
                 mode: "query",
-                type: "native",
+                DO_NOT_USE_type: "native",
                 creationType: "native_question",
                 cardType: "model",
                 collectionId,
-                databaseId: lastUsedDatabaseId || undefined,
+                DO_NOT_USE_databaseId: lastUsedDatabaseId || undefined,
               })}
               width={180}
             />

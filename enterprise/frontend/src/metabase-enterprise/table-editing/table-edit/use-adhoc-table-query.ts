@@ -53,7 +53,11 @@ export const useAdHocTableQuery = ({
 
   const tableQuestion = useMemo(() => {
     if (table) {
-      let question = Question.create({ databaseId, tableId, metadata });
+      let question = Question.create({
+        DO_NOT_USE_databaseId: databaseId,
+        DO_NOT_USE_tableId: tableId,
+        metadata,
+      });
 
       if (filterQueryParam || sortingQueryParam) {
         const legacyQuery = Lib.toLegacyQuery(
