@@ -333,6 +333,33 @@
                :source-columns [[{:type :all-columns, :table {:table "orders"}}]]}}}]}
          (->references "select sum(total) as sum from orders group by category"))))
 
+(deftest grouping-order-by-test
+  (is (= {:used-fields
+          #{{:alias "cards_created",
+             :type :custom-field,
+             :used-fields
+             #{{:column "creator_id",
+                :alias nil,
+                :type :single-column,
+                :source-columns [[{:type :all-columns, :table {:table "report_card"}}]]}}}
+            {:column "creator_id",
+             :alias nil,
+             :type :single-column,
+             :source-columns [[{:type :all-columns, :table {:table "report_card"}}]]}},
+          :returned-fields
+          [{:column "creator_id",
+            :alias nil,
+            :type :single-column,
+            :source-columns [[{:type :all-columns, :table {:table "report_card"}}]]}
+           {:alias "cards_created",
+            :type :custom-field,
+            :used-fields
+            #{{:column "creator_id",
+               :alias nil,
+               :type :single-column,
+               :source-columns [[{:type :all-columns, :table {:table "report_card"}}]]}}}]}
+         (->references "SELECT creator_id, COUNT(creator_id) AS cards_created FROM report_card GROUP BY creator_id ORDER BY cards_created DESC"))))
+
 (deftest basic-arg-test
   (is (= {:used-fields
           #{{:column "category",
