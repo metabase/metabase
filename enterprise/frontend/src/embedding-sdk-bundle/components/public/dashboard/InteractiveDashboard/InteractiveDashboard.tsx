@@ -1,10 +1,13 @@
 import { useCallback } from "react";
 
+import { useSdkSelector } from "embedding-sdk-bundle/store";
+import { getIsStaticEmbedding } from "embedding-sdk-bundle/store/selectors";
 import { PublicOrEmbeddedDashCardMenu } from "metabase/dashboard/components/DashCard/PublicOrEmbeddedDashCardMenu";
 import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
 import { isQuestionCard } from "metabase/dashboard/utils";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
+import { EmbeddingSdkAnonymousUserMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkAnonymousUserMode";
 import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 
@@ -20,14 +23,18 @@ import { interactiveDashboardSchema } from "./InteractiveDashboard.schema";
 export type InteractiveDashboardProps = SdkDashboardProps;
 
 const InteractiveDashboardInner = (props: InteractiveDashboardProps) => {
+  const isStaticEmbedding = useSdkSelector(getIsStaticEmbedding);
+
   const getClickActionMode: ClickActionModeGetter = useCallback(
     ({ question }) =>
       getEmbeddingMode({
         question,
-        queryMode: EmbeddingSdkMode,
+        queryMode: isStaticEmbedding
+          ? EmbeddingSdkAnonymousUserMode
+          : EmbeddingSdkMode,
         plugins: props.plugins as InternalMetabasePluginsConfig,
       }),
-    [props.plugins],
+    [isStaticEmbedding, props.plugins],
   );
 
   return (

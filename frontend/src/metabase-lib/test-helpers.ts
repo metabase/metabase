@@ -276,6 +276,7 @@ export const queryDrillThru = (
     clickObject.value,
     clickObject.data,
     clickObject.dimensions,
+    false,
   );
   const drill = drills.find((drill) => {
     const drillInfo = Lib.displayInfo(query, stageIndex, drill);
