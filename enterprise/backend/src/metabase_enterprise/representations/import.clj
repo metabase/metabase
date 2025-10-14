@@ -22,7 +22,7 @@
   "Convert a validated representation into data suitable for creating/updating an entity.
    Returns a map with keys matching the Toucan model fields.
    Does NOT insert into the database - just transforms the data.
-   Dispatches on the :type field of the representation."
+   Dispatches on the :version and :type fields of the representation."
   {:arglists '([entity ref-index])}
   (fn [entity _ref-index] ((juxt :version :type) entity)))
 
@@ -128,6 +128,7 @@
   (concat
    [(dissoc collection-yaml :children :databases)]
    (:databases collection-yaml)
+   ;; recursive call
    (mapcat collection-representations (:children collection-yaml))))
 
 (defn import-collection-representations
@@ -216,3 +217,27 @@
             (t2/update! :model/Transform id update-transform))
           (catch Exception e
             (log/errorf e "Failed to ingest representation file %s" (.getName file))))))))
+
+;; inserting and updating
+
+(defn insert!
+  "Insert a representation as a new entity."
+  [representation]
+  (let [representation (normalize-representation representation)]
+    (if-some [model (v0-common/type->model (name (:type representation)))]
+      (let [toucan (yaml->toucan representation)]
+        (t2/insert! model toucan))
+      (throw (ex-info (str "Unknown representation type: " (:type representation))
+                      {:representation representation
+                       :type (:type representation)})))))
+
+(defn update!
+  "Update an existing entity from a representation."
+  [representation id]
+  (let [representation (normalize-representation representation)]
+    (if-some [model (v0-common/type->model (name (:type representation)))]
+      (let [toucan (yaml->toucan representation)]
+        (t2/update! model id toucan))
+      (throw (ex-info (str "Unknown representation type: " (:type representation))
+                      {:representation representation
+                       :type (:type representation)})))))

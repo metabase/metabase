@@ -34,17 +34,9 @@
   {:arglists '[[entity]]}
   representation-type)
 
-(def ^:private type->model
-  {"question"  :model/Card
-   "metric"    :model/Card
-   "model"     :model/Card
-   "database"  :model/Database
-   "transform" :model/Transform
-   "snippet"   :model/NativeQuerySnippet})
-
 (defn- read-from-ref [ref]
   (let [[type id] (str/split ref #"-" 2)]
-    (export-entity (t2/select-one (type->model type) :id (Long/parseLong id)))))
+    (export-entity (t2/select-one (v0-common/type->model type) :id (Long/parseLong id)))))
 
 (defn export-set
   "Returns a transitive set of ref-dependencies"
