@@ -34,7 +34,7 @@
   the only place to get it (the token stored in the DB is an encrypted hash)."
   [new-user-email-address]
   (when-let [[{[{invite-email :content}] :body}] (get @mt/inbox new-user-email-address)]
-    (let [[_ reset-token] (re-find #"/auth/reset_password/(\d+_[\w_-]+)#new" invite-email)]
+    (let [[_ reset-token] (re-find #"/auth/reset_password/(\d+_[\w_-]+)\?.+#new" invite-email)]
       (client/client :post 200 "session/reset_password" {:token    reset-token
                                                          :password "p@ssword1"}))))
 
