@@ -759,7 +759,7 @@
     (qp.store/with-metadata-provider (mt/id)
       (mt/with-report-timezone-id! nil
         (doseq [initial-type [:date :datetime :timestamp]
-                :let         [form (sql.qp/add-interval-honeysql-form
+                :let         [form (h2x/add-interval-honeysql-form
                                     :bigquery-cloud-sdk
                                     (#'bigquery.qp/->temporal-type
                                      initial-type
