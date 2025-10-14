@@ -178,13 +178,8 @@ function getIframeUrl() {
  * @param {string} [selector]
  */
 export function getIframeBody(selector = "iframe") {
-  return cy
-    .get(selector)
-    .its("0.contentDocument")
-    .should("exist")
-    .its("body")
-    .should("not.be.undefined")
-    .then(cy.wrap);
+  cy.frameLoaded();
+  return cy.iframe();
 }
 
 export function getEmbedModalSharingPane() {
