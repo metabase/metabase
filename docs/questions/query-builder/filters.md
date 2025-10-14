@@ -37,7 +37,7 @@ One important thing to understand when filtering on a date column is the differe
 
 ![Filter expression](../images/filter-expression.png)
 
-If you have a more complex filter you're trying to express, you can pick [Custom Expression](./expressions.md) from the add filter menu to create a filter expression. You can use comparison operators like greater than, `>`, or less than ,`<`, as well as spreadsheet-like functions. For example, `[Subtotal] > 100 OR median([Age]) < 40`.
+If you have a more complex filter you're trying to express, you can pick [Custom Expression](./expressions.md) from the add filter menu to create a filter expression. You can use comparison operators like greater than, `>`, or less than ,`<`, boolean expressions like `AND` and `OR`, as well as spreadsheet-like functions. For example, `[Subtotal] > 100 OR median([Age]) < 40`.
 
 Learn more about writing [expressions](./expressions.md) or skip right to the [list of expressions](./expressions-list.md).
 

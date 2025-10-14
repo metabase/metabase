@@ -19,6 +19,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
@@ -285,7 +286,9 @@
                   (merge native-col table-col))))
         original-table-cols))
 
-(mu/defn- apply-sandbox-to-stage :- [:sequential {:min 2} ::lib.schema/stage]
+(mu/defn- apply-sandbox-to-stage :- [:and
+                                     [:sequential {:min 2} ::lib.schema/stage]
+                                     ::lib.schema.util/unique-uuids]
   "Apply a Sandbox to a `stage`, returning a vector of replacement stages."
   [query                            :- ::lib.schema/query
    {:keys [source-table] :as stage} :- ::lib.schema/stage
@@ -293,7 +296,9 @@
   (let [sandbox-query       (sandbox->query query sandbox)
         sandbox-query       (project-only-columns-from-original-table query sandbox-query source-table)
         new-source-stages   (mapv (fn [stage]
-                                    (assoc stage :query-permissions/sandboxed-table source-table))
+                                    (-> stage
+                                        (assoc :query-permissions/sandboxed-table source-table)
+                                        lib/fresh-uuids))
                                   (:stages sandbox-query))
         ;; merge stage metadata in the last source stage if needed
         new-source-stages   (m/update-existing-in new-source-stages

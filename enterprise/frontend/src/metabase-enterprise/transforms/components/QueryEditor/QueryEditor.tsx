@@ -171,6 +171,7 @@ export function QueryEditor({
               onToggleSnippetSidebar={handleToggleSnippetSidebar}
               onOpenModal={handleOpenModal}
               modalSnippet={modalSnippet}
+              onInsertSnippet={handleInsertSnippet}
               onChangeModalSnippet={setModalSnippet}
               onChangeNativeEditorSelection={setSelectionRange}
               nativeEditorSelectedText={selectedText}

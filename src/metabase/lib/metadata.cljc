@@ -1,6 +1,7 @@
 (ns metabase.lib.metadata
   (:refer-clojure :exclude [every?])
   (:require
+   [medley.core :as m]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -90,7 +91,7 @@
                                                       ::lib.schema.metadata/metric
                                                       ::lib.schema.metadata/segment]]]
   "Return active (non-archived) metadatas associated with a particular Table, either Fields, Metrics, or
-   Segments -- `metadata-type` must be one of either `:metadata/column`, `:metadata/metric`, `:metadata/segment`."
+  Segments -- `metadata-type` must be one of either `:metadata/column`, `:metadata/metric`, `:metadata/segment`."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    metadata-type         :- [:enum :metadata/column :metadata/metric :metadata/segment]
    table-id              :- ::lib.schema.id/table]
@@ -120,14 +121,23 @@
     (when-let [remap-field-id (get-in column [:lib/external-remap :field-id])]
       (field metadata-providerable remap-field-id))))
 
-;; TODO: Better schemas for transforms coming out of the metadata provider.
-(mu/defn transform :- [:maybe [:map]]
+(defn- normalize-query [query metadata-providerable]
+  (if (or (and (:lib/type query)
+               (lib.metadata.protocols/metadata-provider? (:lib/metadata query)))
+          (empty? query))
+    query
+    ((#?(:clj requiring-resolve :cljs resolve) 'metabase.lib.query/query)
+     metadata-providerable
+     query)))
+
+(mu/defn transform :- [:maybe ::lib.schema.metadata/transform]
   "Gets a Transform by ID, or nil if it does not exist."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    transform-id          :- :int]
-  (lib.metadata.protocols/transform (->metadata-provider metadata-providerable) transform-id))
+  (some-> (lib.metadata.protocols/transform (->metadata-provider metadata-providerable) transform-id)
+          (m/update-existing-in [:source :query] normalize-query metadata-providerable)))
 
-(mu/defn transforms :- [:maybe [:sequential [:map]]]
+(mu/defn transforms :- [:maybe [:sequential ::lib.schema.metadata/transform]]
   "Gets all Transforms"
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable]
   (lib.metadata.protocols/transforms (->metadata-provider metadata-providerable)))
@@ -142,7 +152,8 @@
   "Get metadata for a Card, aka Saved Question, with `card-id`, if it can be found."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    card-id               :- ::lib.schema.id/card]
-  (lib.metadata.protocols/card (->metadata-provider metadata-providerable) card-id))
+  (some-> (lib.metadata.protocols/card (->metadata-provider metadata-providerable) card-id)
+          (m/update-existing :dataset-query normalize-query metadata-providerable)))
 
 (mu/defn native-query-snippet :- [:maybe ::lib.schema.metadata/native-query-snippet]
   "Get metadata for a NativeQuerySnippet with `snippet-id` if it can be found."

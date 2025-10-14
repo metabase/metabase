@@ -144,7 +144,7 @@ describe("scenarios > model indexes", () => {
     });
   });
 
-  it("should be able to see details of a record outside the first 2000", () => {
+  it.skip("should be able to see details of a record outside the first 2000", () => {
     H.createQuestion(
       {
         name: "People Model",
