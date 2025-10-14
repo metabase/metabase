@@ -73,7 +73,7 @@ export function visitDocument(documentIdOrAlias: DocumentId | string) {
 
   if (typeof documentIdOrAlias === "string") {
     cy.get<string>(documentIdOrAlias).then((id) =>
-      visitDocumentById(Number(id.replace("@", ""))),
+      visitDocumentById(Number(id)),
     );
   }
 }
