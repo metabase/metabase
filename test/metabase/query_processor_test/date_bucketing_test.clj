@@ -1223,10 +1223,10 @@
                                   ;; hardcode the whitelist here.
                                   (not (#{:vertica :bigquery-cloud-sdk} driver/*driver*)))
                            (sql.qp/compiled
-                            (sql.qp/add-interval-honeysql-form driver/*driver*
-                                                               (sql.qp/current-datetime-honeysql-form driver/*driver*)
-                                                               (* i interval-seconds)
-                                                               :second))
+                            (h2x/add-interval-honeysql-form driver/*driver*
+                                                            (sql.qp/current-datetime-honeysql-form driver/*driver*)
+                                                            (* i interval-seconds)
+                                                            :second))
                            (u.date/add :second (* i interval-seconds)))
                   (assert <>))])
              (let [shift (quot intervalCount 2)
