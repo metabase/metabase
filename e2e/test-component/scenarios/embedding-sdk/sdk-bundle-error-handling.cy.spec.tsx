@@ -28,10 +28,6 @@ describe(
       H.clearBrowserCache();
 
       sdkBundleCleanup();
-
-      cy.intercept("GET", "**/app/embedding-sdk.js", {
-        statusCode: 404,
-      });
     });
 
     describe("when the SDK bundle can't be loaded", () => {
@@ -45,7 +41,7 @@ describe(
 
         cy.findByTestId("sdk-error-container").should(
           "contain.text",
-          "Error loading the Embedded Analytics SDK",
+          "Failed to fetch JWT token from http://auth-provider/sso, message: Failed to fetch.",
         );
       });
 
@@ -64,7 +60,7 @@ describe(
 
         cy.findByTestId("sdk-error-container").should(
           "contain.text",
-          "Custom error: Error loading the Embedded Analytics SDK",
+          "Custom error: Failed to fetch JWT token from http://auth-provider/sso, message: Failed to fetch.",
         );
       });
     });
