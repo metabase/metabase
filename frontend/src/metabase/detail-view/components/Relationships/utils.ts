@@ -1,51 +1,92 @@
-import { question } from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls";
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
   ForeignKey,
+  RowValue,
   RowValues,
-  Table,
 } from "metabase-types/api";
+
+type UrlOpts = {
+  columns: DatasetColumn[];
+  fk: ForeignKey;
+  row: RowValues;
+  metadata: Metadata;
+};
 
 export const getUrl = ({
   columns,
   row,
-  table,
   fk,
-}: {
-  columns: DatasetColumn[];
-  fk: ForeignKey;
-  row: RowValues;
-  table: Table;
-}): string | undefined => {
+  metadata,
+}: UrlOpts): string | undefined => {
   const pkIndex = columns.findIndex(isPK);
-
   if (pkIndex === -1) {
-    return undefined;
+    return;
   }
 
   const objectId = row[pkIndex];
-
   if (objectId == null) {
-    return undefined;
+    return;
   }
 
-  if (fk.origin?.table_id) {
-    const card = {
-      type: "question" as const,
-      dataset_query: {
-        type: "query" as const,
-        query: {
-          "source-table": fk.origin.table_id,
-          filter: ["=", ["field", fk.origin.id, null], objectId],
-        },
-        database: fk.origin.table?.db_id || table.db_id,
-      },
-    };
-
-    const questionUrl = question(card, { hash: card as any });
-    return questionUrl;
+  if (fk.origin == null || fk.origin.table == null) {
+    return;
   }
 
-  return undefined;
+  const metadataProvider = Lib.metadataProvider(
+    fk.origin.table.db_id,
+    metadata,
+  );
+  const table = Lib.tableOrCardMetadata(metadataProvider, fk.origin.table_id);
+  const field = Lib.fieldMetadata(metadataProvider, fk.origin_id);
+  if (table == null || field == null) {
+    return;
+  }
+
+  const filter = getFilterClause(field, objectId);
+  if (filter == null) {
+    return;
+  }
+
+  const query = Lib.filter(
+    Lib.queryFromTableOrCardMetadata(metadataProvider, table),
+    0,
+    filter,
+  );
+
+  const question = Question.create({
+    dataset_query: Lib.toJsQuery(query),
+  });
+
+  return Urls.question(question.card(), { hash: question.card() });
 };
+
+function getFilterClause(field: Lib.ColumnMetadata, objectId: RowValue) {
+  switch (typeof objectId) {
+    case "string":
+      return Lib.stringFilterClause({
+        operator: "=",
+        column: field,
+        values: [objectId],
+        options: {},
+      });
+    case "number":
+      return Lib.numberFilterClause({
+        operator: "=",
+        column: field,
+        values: [objectId],
+      });
+    case "boolean":
+      return Lib.booleanFilterClause({
+        operator: "=",
+        column: field,
+        values: [objectId],
+      });
+    default:
+      return undefined;
+  }
+}

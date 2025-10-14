@@ -1,6 +1,8 @@
 import { type ReactNode, useMemo } from "react";
 import { jt, t } from "ttag";
 
+import { useSelector } from "metabase/lib/redux";
+import { getMetadata } from "metabase/selectors/metadata";
 import { type BoxProps, Stack, Text } from "metabase/ui";
 import type {
   DatasetColumn,
@@ -31,7 +33,9 @@ export function Relationships({
   tableForeignKeys,
   onClick,
 }: Props & BoxProps): JSX.Element | null {
-  const sortedForeignTables = useMemo(
+  const metadata = useSelector(getMetadata);
+
+  const sortedForeignKeys = useMemo(
     () =>
       tableForeignKeys.toSorted((a, b) => {
         const aDisplayName = a.origin?.table?.display_name ?? "";
@@ -39,6 +43,15 @@ export function Relationships({
         return aDisplayName.localeCompare(bDisplayName);
       }),
     [tableForeignKeys],
+  );
+
+  const sortedForeignKeysWithUrls = useMemo(
+    () =>
+      sortedForeignKeys.map((fk) => ({
+        fk,
+        url: getUrl({ columns, row, fk, metadata }),
+      })),
+    [columns, row, sortedForeignKeys, metadata],
   );
 
   return (
@@ -58,12 +71,12 @@ export function Relationships({
       </Text>
 
       <Stack gap="md">
-        {sortedForeignTables.map((fk) => {
+        {sortedForeignKeysWithUrls.map(({ fk, url }) => {
           return (
             <Relationship
               key={`${fk.origin_id}-${fk.destination_id}`}
               fk={fk}
-              href={getUrl({ columns, row, table, fk })}
+              href={url}
               rowId={rowId}
               table={table}
               onClick={onClick}
