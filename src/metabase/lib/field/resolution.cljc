@@ -660,7 +660,11 @@
           {:lib/original-ref-style-for-result-metadata-purposes (if (pos-int? id-or-name)
                                                                   :original-ref-style/id
                                                                   :original-ref-style/name)}])
-        (as-> $col (assoc $col :display-name (lib.metadata.calculation/display-name query stage-number $col)))
+        (as-> $col (assoc $col :display-name (lib.metadata.calculation/display-name query stage-number $col))
+          (cond-> $col
+            (and (contains? #{nil :type/*} (:effective-type $col))
+                 (not (contains? #{nil :type/*} (:base-type $col))))
+            (assoc :effective-type (:base-type $col))))
         ;; `:lib/desired-column-alias` needs to be recalculated in the context of the stage where the ref
         ;; appears, go ahead and remove it so we don't accidentally try to use it when it may or may not be
         ;; accurate at all.

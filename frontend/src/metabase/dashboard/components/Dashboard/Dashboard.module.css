@@ -20,7 +20,7 @@
 .DashboardHeaderContainer {
   position: relative;
   z-index: 2;
-  border-bottom: 2px solid var(--mb-color-border);
+  border-bottom: 1px solid var(--mb-color-border);
   transition: var(--transition-theme-change);
 
   &:not(.isEmbeddingSdk) {

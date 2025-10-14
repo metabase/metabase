@@ -14,7 +14,7 @@
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
@@ -717,7 +717,7 @@
 
 ;; Helper function to set up model test fixtures
 (defn- model-test-fixtures []
-  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [mp (lib-be/application-database-metadata-provider (mt/id))
         source-query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
         model-data {:name "Model Model"
                     :description "Model desc"
@@ -1176,13 +1176,12 @@
       (testing "Normal call includes related_tables by default"
         (let [response (request {:table_id (mt/id :orders)})
               related-tables (get-in response [:structured_output :related_tables])]
-          (is (= [(mt/id :products) (mt/id :people)]
-                 (map :id related-tables))
+          (is (= (sort [(mt/id :products) (mt/id :people)])
+                 (sort (map :id related-tables)))
               "Should include tables related to Orders by foreign keys")
           (is (every? #(not (contains? % :related_tables)) related-tables)
-              "Related tables should not have nested related_tables"))
-
-        (testing "Without related tables"
-          (is (nil? (-> (request {:table_id (mt/id :orders)
-                                  :with_related_tables false})
-                        (get-in [:structured_output :related_tables])))))))))
+              "Related tables should not have nested related_tables")))
+      (testing "Without related tables"
+        (is (nil? (-> (request {:table_id (mt/id :orders)
+                                :with_related_tables false})
+                      (get-in [:structured_output :related_tables]))))))))

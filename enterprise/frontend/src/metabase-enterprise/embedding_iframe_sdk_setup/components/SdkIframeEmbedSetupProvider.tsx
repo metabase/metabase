@@ -123,7 +123,7 @@ export const SdkIframeEmbedSetupProvider = ({
     addRecentItem,
     isEmbedSettingsLoaded,
     availableParameters,
-    parameterValuesById: parametersValuesById,
+    parametersValuesById,
   };
 
   return (

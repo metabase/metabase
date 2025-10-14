@@ -18,6 +18,7 @@ import { Box, Button } from "metabase/ui";
 import type { DatasetColumn } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
 
+const { H } = cy;
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const setup = ({ question }: { question: NativeQuestionDetails }) => {
@@ -27,20 +28,6 @@ const setup = ({ question }: { question: NativeQuestionDetails }) => {
 
   cy.signOut();
   mockAuthProviderAndJwtSignIn();
-};
-
-const ensureParameterColumnValue = ({
-  columnName,
-  columnValue,
-}: {
-  columnName: string;
-  columnValue: string;
-}) => {
-  tableInteractiveBody().within(() => {
-    cy.get(`[data-column-id="${columnName}"]`).each((cell) => {
-      cy.wrap(cell).should("have.text", columnValue);
-    });
-  });
 };
 
 describe("scenarios > embedding-sdk > interactive-question > native", () => {
@@ -238,7 +225,7 @@ describe("scenarios > embedding-sdk > interactive-question > native", () => {
           cy.findByPlaceholderText("State").clear().type("NY{enter}");
         });
 
-        ensureParameterColumnValue({
+        H.ensureParameterColumnValue({
           columnName: "STATE",
           columnValue: "NY",
         });
@@ -247,7 +234,7 @@ describe("scenarios > embedding-sdk > interactive-question > native", () => {
           cy.findByPlaceholderText("State").clear().type("AR{enter}");
         });
 
-        ensureParameterColumnValue({
+        H.ensureParameterColumnValue({
           columnName: "STATE",
           columnValue: "AR",
         });
@@ -256,7 +243,7 @@ describe("scenarios > embedding-sdk > interactive-question > native", () => {
           cy.findByPlaceholderText("City").type("El Paso{enter}");
         });
 
-        ensureParameterColumnValue({
+        H.ensureParameterColumnValue({
           columnName: "CITY",
           columnValue: "El Paso",
         });
@@ -277,7 +264,7 @@ describe("scenarios > embedding-sdk > interactive-question > native", () => {
 
         cy.wait("@cardQuery");
 
-        ensureParameterColumnValue({
+        H.ensureParameterColumnValue({
           columnName: "STATE",
           columnValue: "AR",
         });
@@ -286,7 +273,7 @@ describe("scenarios > embedding-sdk > interactive-question > native", () => {
           cy.findByPlaceholderText("City").type("El Paso{enter}");
         });
 
-        ensureParameterColumnValue({
+        H.ensureParameterColumnValue({
           columnName: "CITY",
           columnValue: "El Paso",
         });

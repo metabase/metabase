@@ -1,6 +1,7 @@
 import { Route } from "react-router";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupTokenStatusEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import type { EmbedResource } from "metabase/public/lib/types";
@@ -70,6 +71,10 @@ export function setup(
   if (hasEnterprisePlugins) {
     setupEnterprisePlugins();
   }
+
+  setupTokenStatusEndpoint({
+    valid: true,
+  });
 
   const view = renderWithProviders(
     <Route

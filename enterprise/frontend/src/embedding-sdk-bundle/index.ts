@@ -73,4 +73,5 @@ const sdkBundleExports: MetabaseEmbeddingSdkBundleExports = {
   validateFunctionSchema,
 };
 
+// Define a global export METABASE_EMBEDDING_SDK_BUNDLE for SDK package
 window.METABASE_EMBEDDING_SDK_BUNDLE = sdkBundleExports;

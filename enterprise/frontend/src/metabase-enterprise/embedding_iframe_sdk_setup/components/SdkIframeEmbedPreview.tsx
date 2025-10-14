@@ -189,8 +189,9 @@ export const SdkIframeEmbedPreview = () => {
               : undefined,
           }),
         )
-        // TODO(EMB-869): add Metabot experience to embed flow
-        .with({ componentName: "metabase-metabot" }, () => null)
+        .with({ componentName: "metabase-metabot" }, (s) =>
+          createElement("metabase-metabot", { layout: s.layout }),
+        )
         .exhaustive()}
 
       <EmbedPreviewLoadingOverlay

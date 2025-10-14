@@ -76,8 +76,8 @@ export type StaticQuestionComponents = {
   SqlParametersList: typeof SqlParametersList;
 };
 
-const _StaticQuestion = ({
-  questionId: initialQuestionId,
+const StaticQuestionInner = ({
+  questionId,
   withChartTypeSelector,
   height,
   width,
@@ -105,7 +105,7 @@ const _StaticQuestion = ({
 
   return (
     <SdkQuestion
-      questionId={initialQuestionId}
+      questionId={questionId}
       getClickActionMode={getClickActionMode}
       navigateToNewCard={null}
       initialSqlParameters={initialSqlParameters}
@@ -161,6 +161,8 @@ const subComponents: StaticQuestionComponents = {
   SqlParametersList: SqlParametersList,
 };
 
-export const StaticQuestion = Object.assign(_StaticQuestion, subComponents, {
-  schema: staticQuestionSchema,
-});
+export const StaticQuestion = Object.assign(
+  StaticQuestionInner,
+  subComponents,
+  { schema: staticQuestionSchema },
+);

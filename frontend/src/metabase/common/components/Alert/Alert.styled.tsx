@@ -22,7 +22,7 @@ const colorsByVariant = {
   },
   background: {
     info: "var(--mb-color-bg-light)",
-    error: color("bg-error"),
+    error: color("background-error"),
     warning: lighten("warning", 0.5),
   },
   icon: {

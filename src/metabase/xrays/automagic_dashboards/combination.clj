@@ -163,8 +163,8 @@
   [{:keys [cell-query]}]
   (letfn [(collect-dimensions [[op & args]]
             (case (some-> op qp.util/normalize-token)
-              :and (mapcat collect-dimensions args)
-              :=   (magic.util/collect-field-references args)
+              :and          (mapcat collect-dimensions args)
+              (:between :=) (magic.util/collect-field-references args)
               nil))]
     (->> cell-query
          collect-dimensions
@@ -260,17 +260,3 @@
                    (vals merged-dims)
                    (mapv (comp :filter simple-grounded-filters) card-filters))
            (add-dataset-query base-context))))))
-
-(defn items->str
-  "Convert a seq of items to a string. If more than two items are present, they are separated by commas, including the
-  oxford comma on the final pairing."
-  [[f s :as items]]
-  (condp = (count items)
-    0 ""
-    1 (str f)
-    2 (format "%s and %s" f s)
-    (format "%s, and %s" (str/join ", " (butlast items)) (last items))))
-
-(def dim-name
-  "Name of the dimension. Trying for `:display_name` and falling back to `:name`"
-  (some-fn :display_name :name))

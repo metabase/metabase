@@ -26,3 +26,22 @@
       (mu/disable-enforcement
         (is (= :type/CreationTime
                (lib/normalize ::lib.schema.common/base-type "type/creationtime")))))))
+
+(deftest ^:parallel url-encoded-string-regex-test
+  (are [s] (re-matches lib.schema.common/url-encoded-string-regex s)
+    "a"
+    "Hello%20World"
+    "user%40example.com"
+    "test_string-123.txt"
+    "%3Cscript%3E")
+  (are [s] (not (re-matches lib.schema.common/url-encoded-string-regex s))
+    "a/b"
+    "Hello World"
+    "user@example.com"
+    "<script>"))
+
+(deftest ^:parallel unfussy-sorted-map-test
+  (is (nil? (:lib/type (lib.schema.common/unfussy-sorted-map "a" 1))))
+  (is (nil? (get (lib.schema.common/unfussy-sorted-map :a 1) "lib/type")))
+  (is (= {"a" 1 :b 2}
+         (lib.schema.common/unfussy-sorted-map "a" 1 :b 2))))

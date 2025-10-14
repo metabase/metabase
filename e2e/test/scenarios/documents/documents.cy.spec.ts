@@ -327,6 +327,7 @@ H.describeWithSnowplowEE("documents", () => {
         const originalText = "Lorem Ipsum and some more words";
         const originalExact = new RegExp(`^${originalText}$`);
         cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+        cy.findByTestId("document-card-embed").should("contain", "37.65"); // wait for data loading
         H.documentContent().contains(originalExact).click();
 
         const modification = " etc.";

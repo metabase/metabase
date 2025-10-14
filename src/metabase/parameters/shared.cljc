@@ -9,10 +9,11 @@
    #?@(:cljs
        (["moment" :as moment]))
    [clojure.string :as str]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [metabase.util.time :as time])
   (:import
    #?@(:clj
@@ -280,7 +281,7 @@
    split-text))
 
 (def ^:private optional-block-regex
-  #"\[\[.+\]\]")
+  #"\[\[.+?\]\]")
 
 (def ^:private non-optional-block-regex
   #"\[\[(.+?)\]\]")
@@ -303,14 +304,6 @@
     #?(:clj  tag-names
        :cljs (clj->js tag-names))))
 
-(defn- normalize-parameter
-  "Normalize a single parameter by calling [[mbql.normalize/normalize-fragment]] on it, and converting all string keys
-  to keywords."
-  [parameter]
-  (-> (mbql.normalize/normalize-fragment [:parameters] [parameter])
-      first
-      (update-keys keyword)))
-
 (defn ^:export substitute-tags
   "Given the context of a text dashboard card, replace all template tags in the text with their corresponding values,
   formatted and escaped appropriately if escape-markdown is true. Specifically escape-markdown should be false when the
@@ -321,7 +314,10 @@
    (when text
      (let [tag->param #?(:clj tag->param
                          :cljs (js->clj tag->param))
-           tag->normalized-param (update-vals tag->param normalize-parameter)]
+           tag->normalized-param (try
+                                   (update-vals tag->param parameters.schema/normalize-parameter)
+                                   (catch #?(:clj Throwable :cljs :default) e
+                                     (log/warnf "Unable to substitute tags: invalid parameters: %s" (ex-message e))))]
        ;; Most of the functions in this pipeline are relating to handling optional blocks in the text which use
        ;; the [[ ]] syntax.
        ;; For example, given an input "[[a {{b}}]] [[{{c}}]]", where `b` has no value and `c` = 3:

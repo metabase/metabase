@@ -14,11 +14,9 @@
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [metabase.audit-app.core :as audit]
-   [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.premium-features.core :as premium-features]
-   [metabase.search.config
-    :as search.config
-    :refer [SearchableModel SearchContext]]
+   [metabase.query-processor.parameters.dates :as params.dates]
+   [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
    [metabase.search.in-place.util :as search.util]
    [metabase.search.permissions :as search.permissions]
    [metabase.util.date-2 :as u.date]
@@ -68,7 +66,7 @@
 (mu/defn- search-string-clause-for-model
   [model                :- SearchableModel
    search-context       :- SearchContext
-   search-native-query  :- [:maybe true?]]
+   search-native-query  :- [:maybe :boolean]]
   (when-let [query (:search-string search-context)]
     (into
      [:or]
@@ -148,6 +146,19 @@
 (defmethod build-optional-filter-query [:verified "metric"]
   [filter _model query verified]
   (build-optional-filter-query filter "card" query verified))
+
+(defmethod build-optional-filter-query [:verified "dashboard"]
+  [_filter model query verified]
+  (assert (true? verified) "filter for non-verified dashboards is not supported")
+  (if (premium-features/has-feature? :content-verification)
+    (-> query
+        (sql.helpers/join :moderation_review
+                          [:= :moderation_review.moderated_item_id
+                           (search.config/column-with-model-alias model :id)])
+        (sql.helpers/where [:= :moderation_review.status "verified"]
+                           [:= :moderation_review.moderated_item_type "dashboard"]
+                           [:= :moderation_review.most_recent true]))
+    (sql.helpers/where query false-clause)))
 
 ;; Created at filters
 

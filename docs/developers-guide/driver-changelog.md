@@ -44,6 +44,10 @@ title: Driver interface changelog
 
 - Removed `driver/set-database-used`. Drivers should set default databases in their connection specs instead.
 
+- `metabase.driver.common.table-rows-sample/table-rows-sample`'s optional `:order-by` option should now be something
+  you can pass to [[metabase.lib.core/order-by]] -- for example a Lib `:metadata/column` or an [MBQL 5]
+  `metabase.driver-api.core/order-by-clause`.
+
 ## Metabase 0.56.3
 
 - Added the driver multi-method `driver/describe-database*` that drivers should now implement instead of `driver/describe-database`.

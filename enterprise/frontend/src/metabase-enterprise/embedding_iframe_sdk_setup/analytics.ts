@@ -25,6 +25,7 @@ const EMBED_SETTINGS_TO_TRACK: SdkIframeEmbedSettingKey[] = [
   "withDownloads",
   "isSaveEnabled",
   "readOnly",
+  "layout",
 ];
 
 /**

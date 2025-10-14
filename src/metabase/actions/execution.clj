@@ -9,6 +9,7 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.model-persistence.core :as model-persistence]
    [metabase.queries.models.query :as query]
@@ -30,17 +31,13 @@
   `action` should already be hydrated with its `:card`."
   [{query :dataset_query, model-id :model_id, :as action} :- [:map
                                                               [:model_id      ::lib.schema.id/card]
-                                                              [:dataset_query [:map
-                                                                               [:type   [:= :native]]
-                                                                               [:native [:map
-                                                                                         [:query :string]]]]]]
+                                                              [:dataset_query ::lib.schema/native-only-query]]
    request-parameters]
   (log/tracef "Executing action\n\n%s" (u/pprint-to-str action))
   (try
     (let [parameters (for [parameter (:parameters action)]
                        (assoc parameter :value (get request-parameters (:id parameter))))
           query (-> query
-                    (update :type keyword)
                     (assoc :parameters parameters))]
       (log/debugf "Query (before preprocessing):\n\n%s" (u/pprint-to-str query))
       (binding [qp.perms/*card-id* model-id]
@@ -54,9 +51,9 @@
                         e))))))
 
 (mu/defn- implicit-action-table
-  [card-id :- pos-int?]
-  (let [card (t2/select-one :model/Card :id card-id)
-        {:keys [table-id]} (query/query->database-and-table-ids (:dataset_query card))]
+  [card-id :- ::lib.schema.id/card]
+  (let [query              (t2/select-one-fn :dataset_query :model/Card :id card-id)
+        {:keys [table-id]} (query/query->database-and-table-ids query)]
     (t2/hydrate (t2/select-one :model/Table :id table-id) :fields)))
 
 (defn- execute-custom-action! [action request-parameters]

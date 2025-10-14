@@ -235,3 +235,58 @@ export function getFlexContainerForCard(name: string) {
 export function getResizeHandlesForFlexContianer(element: Cypress.Chainable) {
   return element.findAllByTestId("flex-container-drag-handle");
 }
+
+// Document nodes
+export function getHeading1(name = "Heading 1") {
+  return documentContent().findByRole("heading", {
+    name,
+    level: 1,
+  });
+}
+
+export function getHeading2(name = "Heading 2") {
+  return documentContent().findByRole("heading", {
+    name,
+    level: 2,
+  });
+}
+
+export function getHeading3(name = "Heading 3") {
+  return documentContent().findByRole("heading", {
+    name,
+    level: 3,
+  });
+}
+
+export function getParagraph(text = "Lorem ipsum dolor sit amet.") {
+  return documentContent().findByText(text).parent();
+}
+
+export function getBulletList(
+  text = "Bullet A",
+  container = documentContent(),
+) {
+  return container.findByText(text).closest("ul");
+}
+
+export function getBlockquote(
+  text = "A famous quote",
+  container = documentContent(),
+) {
+  return container.findByText(text).closest("blockquote");
+}
+
+export function getOrderedList(text = "Item 1", container = documentContent()) {
+  return container.findByText(text).closest("ol");
+}
+
+export function getCodeBlock(
+  text = "while (true) {}",
+  container = documentContent(),
+) {
+  return container.findByText(text).closest("pre");
+}
+
+export function getEmbed() {
+  return documentContent().findByTestId("document-card-embed");
+}

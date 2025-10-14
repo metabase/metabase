@@ -13,7 +13,10 @@ import type {
   MetabaseEmbeddingSessionToken,
   MetabaseFetchRequestTokenFn,
 } from "embedding-sdk-bundle/types/refresh-token";
-import type { SdkErrorComponent } from "embedding-sdk-bundle/types/ui";
+import type {
+  SdkErrorComponent,
+  SdkLoadingError,
+} from "embedding-sdk-bundle/types/ui";
 import type { SdkUsageProblem } from "embedding-sdk-bundle/types/usage-problem";
 import { createAsyncThunk } from "metabase/lib/redux";
 
@@ -23,6 +26,7 @@ const SET_METABASE_INSTANCE_VERSION = "sdk/SET_METABASE_INSTANCE_VERSION";
 const SET_METABASE_CLIENT_URL = "sdk/SET_METABASE_CLIENT_URL";
 const SET_LOADER_COMPONENT = "sdk/SET_LOADER_COMPONENT";
 const SET_ERROR_COMPONENT = "sdk/SET_ERROR_COMPONENT";
+const SET_ERROR = "sdk/SET_ERROR";
 const SET_FETCH_REQUEST_TOKEN_FN = "sdk/SET_FETCH_REQUEST_TOKEN_FN";
 
 export const setMetabaseInstanceVersion = createAction<string>(
@@ -37,6 +41,7 @@ export const setLoaderComponent = createAction<null | (() => JSX.Element)>(
 export const setErrorComponent = createAction<null | SdkErrorComponent>(
   SET_ERROR_COMPONENT,
 );
+export const setError = createAction<SdkLoadingError | null>(SET_ERROR);
 export const setFetchRefreshTokenFn =
   createAction<null | MetabaseFetchRequestTokenFn>(SET_FETCH_REQUEST_TOKEN_FN);
 
@@ -110,6 +115,7 @@ const initialState: SdkState = {
     error: null,
   },
   loginStatus: { status: "uninitialized" },
+  error: null,
   plugins: null,
   eventHandlers: null,
   usageProblem: null,
@@ -166,6 +172,10 @@ export const sdk = createReducer(initialState, (builder) => {
 
   builder.addCase(setErrorComponent, (state, action) => {
     state.errorComponent = action.payload;
+  });
+
+  builder.addCase(setError, (state, action) => {
+    state.error = action.payload;
   });
 
   builder.addCase(setMetabaseInstanceVersion, (state, action) => {
