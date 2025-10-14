@@ -2,6 +2,7 @@
   "Code for running a query in the context of a specific Card."
   (:refer-clojure :exclude [mapv select-keys])
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
@@ -16,6 +17,7 @@
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
+   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.queries.core :as queries]
@@ -285,22 +287,40 @@
                             (m/index-by :id))]
     (mapv #(merge (-> % :id id->card-param) %) parameters)))
 
-(mu/defn- verified-subset-query :- ::lib.schema/query
+(mu/defn- verified-subset-query :- [:maybe ::lib.schema/query]
   [card-query   :- ::qp.schema/any-query
    subset-query :- ::qp.schema/any-query]
   (let [mp (qp.store/metadata-provider)
-        normalized-card-query   (lib/query mp card-query)
+        ;; TODO (BT) or should we add the constraints to the subset query?
+        normalized-card-query   (lib/query mp (dissoc card-query :constraints))
         normalized-subset-query (lib/query mp subset-query)
+        base-query (fn [query]
+                     (-> query
+                         qp.params/substitute-parameters
+                         lib/drop-empty-stages
+                         ;; TODO (BT) removing order-by and limit could give access to hidden data
+                         (lib/update-query-stage -1 dissoc :aggregation :breakout :order-by :limit)))
+        base-subset-query (base-query normalized-subset-query)
+        base-card-query   (base-query normalized-card-query)
         comparable-query (fn [query]
                            (-> query
-                               qp.params/substitute-parameters
-                               lib/drop-empty-stages
-                               ;; TODO removing order-by and limit could give access to hidden data
-                               (lib/update-query-stage -1 update dissoc :aggregation :breakout :order-by :limit)
-                               qp.util/select-keys-for-hashing))]
-    ;; TODO does the filter-stage require special handling here?
-    (when (= (comparable-query normalized-subset-query)
-             (comparable-query normalized-card-query))
+                               (lib/update-query-stage -1 dissoc :filters)
+                               qp.util/select-keys-for-hashing))
+        comparable-subset-query (comparable-query base-subset-query)
+        comparable-card-query (comparable-query base-card-query)
+        comparable-card-filters (-> base-card-query
+                                    lib/filters
+                                    lib.schema.util/remove-lib-uuids
+                                    set)
+        comparable-subset-filters (-> base-subset-query
+                                      lib/filters
+                                      lib.schema.util/remove-lib-uuids
+                                      set)]
+    ;; TODO (BT) does the filter-stage require special handling here?
+    (when (and (= comparable-subset-query
+                  comparable-card-query)
+               (set/subset? comparable-card-filters
+                            comparable-subset-filters))
       normalized-subset-query)))
 
 (mu/defn process-query-for-card
@@ -373,7 +393,7 @@
           (qp.results-metadata/store-previous-result-metadata! card))
         (if subset-query
           (if-let [subset-query (verified-subset-query query subset-query)]
-            ;; TODO should :visualization-settings in info be removed?
+            ;; TODO (BT) should :visualization-settings in info be removed?
             (runner subset-query info)
             (throw (ex-info (tru "Invalid subset query: Card {0} does not allow running {1}."
                                  card-id
