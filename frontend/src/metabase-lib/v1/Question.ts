@@ -913,13 +913,13 @@ class Question {
    * but it would require changing the constructor signature so that `card` is an optional parameter and has a default value
    */
   static create({
+    DO_NOT_USE_type: type = "query",
     DO_NOT_USE_databaseId: databaseId,
     DO_NOT_USE_tableId: tableId,
     collectionId,
     dashboardId,
     metadata,
     parameterValues,
-    type = "query",
     name,
     display = "table",
     visualization_settings = {},
