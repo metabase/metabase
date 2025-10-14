@@ -1,8 +1,5 @@
-import { goBack, goForward } from "react-router-redux";
-
-import { useDispatch } from "metabase/lib/redux";
-import { ActionIcon, Box, Group, Icon, TextInput } from "metabase/ui";
-import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
+import { ActionIcon, Box, Group, Icon } from "metabase/ui";
+import { useMetabotAgent } from "metabase-enterprise/metabot/hooks"; // TODO: how to make this work in non-enterprise?
 
 interface BenchToolbarProps {
   onSidebarToggle: () => void;
@@ -14,7 +11,6 @@ export function BenchAppBar({
   isSidebarOpen,
 }: BenchToolbarProps) {
   const metabot = useMetabotAgent();
-  const dispatch = useDispatch();
 
   return (
     <Box
@@ -31,12 +27,6 @@ export function BenchAppBar({
       <Group gap="xs">
         <ActionIcon onClick={onSidebarToggle}>
           <Icon name={isSidebarOpen ? "sidebar_open" : "sidebar_closed"} />
-        </ActionIcon>
-        <ActionIcon variant="subtle" size="sm" onClick={() => dispatch(goBack())}>
-          <Icon name="chevronleft" />
-        </ActionIcon>
-        <ActionIcon variant="subtle" size="sm" onClick={() => dispatch(goForward())}>
-          <Icon name="chevronright" />
         </ActionIcon>
       </Group>
 
