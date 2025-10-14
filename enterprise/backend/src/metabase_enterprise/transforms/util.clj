@@ -46,7 +46,6 @@
 (defn native-query-transform?
   "Check if this is a native query transform"
   [transform]
-  (def transform transform)
   (when (query-transform? transform)
     (let [query (-> transform :source :query)]
       (lib.query/native? query))))

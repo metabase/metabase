@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
+   [metabase.lib.core :as lib]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
@@ -122,9 +123,7 @@
                                                   :table "test_table"}
                                          :name "Test SQL transform"
                                          :source {:type "query"
-                                                  :query {:database (mt/id)
-                                                          :native {:query "SELECT 1"}}}}]
-
+                                                  :query (lib/native-query (mt/metadata-provider) "SELECT 1")}}]
         (let [ingested-transform (ingest-then-fetch! "transform" "Test SQL transform")
               vector-value (.getValue ^PGobject (:with_native_query_vector ingested-transform))]
           (is (string? vector-value))
