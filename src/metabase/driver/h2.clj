@@ -310,7 +310,7 @@
          expr]
         (h2x/with-database-type-info (h2x/database-type expr)))))
 
-(defmethod sql.qp/add-interval-honeysql-form :h2
+(defmethod h2x/add-interval-honeysql-form :h2
   [driver hsql-form amount unit]
   (cond
     (= unit :quarter)
@@ -417,9 +417,9 @@
 
 (defmethod sql.qp/date [:h2 :week]
   [_ _ expr]
-  (sql.qp/add-interval-honeysql-form :h2 (sql.qp/date :h2 :day expr)
-                                     (h2x/- 1 (sql.qp/date :h2 :day-of-week expr))
-                                     :day))
+  (h2x/add-interval-honeysql-form :h2 (sql.qp/date :h2 :day expr)
+                                  (h2x/- 1 (sql.qp/date :h2 :day-of-week expr))
+                                  :day))
 
 (defmethod sql.qp/date [:h2 :week-of-year-iso] [_ _ expr] (extract :iso_week expr))
 

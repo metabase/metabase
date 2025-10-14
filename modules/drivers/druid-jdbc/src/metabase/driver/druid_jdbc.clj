@@ -102,7 +102,7 @@
   [_driver]
   [:raw "CURRENT_TIMESTAMP"])
 
-(defmethod sql.qp/add-interval-honeysql-form :druid-jdbc
+(defmethod h2x/add-interval-honeysql-form :druid-jdbc
   [_driver hsql-form amount unit]
   [:TIMESTAMPADD (h2x/identifier :type-name unit) (h2x/->integer amount) hsql-form])
 

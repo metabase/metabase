@@ -467,7 +467,7 @@
 (defn- interval [amount unit]
   (h2x/with-database-type-info [::interval amount unit] "interval"))
 
-(defmethod sql.qp/add-interval-honeysql-form :postgres
+(defmethod h2x/add-interval-honeysql-form :postgres
   [driver hsql-form amount unit]
   ;; Postgres doesn't support quarter in intervals (#20683)
   (cond
