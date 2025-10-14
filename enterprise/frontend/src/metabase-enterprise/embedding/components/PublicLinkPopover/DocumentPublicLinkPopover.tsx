@@ -1,14 +1,20 @@
-import { PublicLinkPopover } from "metabase/embedding/components/PublicLinkPopover/PublicLinkPopover";
+import { useAsync } from "react-use";
+import { t } from "ttag";
+
 import { publicDocument as getPublicDocumentUrl } from "metabase/lib/urls/documents";
 import {
+  trackPublicEmbedCodeCopied,
   trackPublicLinkCopied,
   trackPublicLinkRemoved,
 } from "metabase/public/lib/analytics";
+import { Box, Popover, Title } from "metabase/ui";
 import {
   useCreateDocumentPublicLinkMutation,
   useDeleteDocumentPublicLinkMutation,
 } from "metabase-enterprise/api";
 import type { Document } from "metabase-types/api";
+
+import { DocumentPublicLinkPopoverContent } from "./DocumentPublicLinkPopoverContent";
 
 export const DocumentPublicLinkPopover = ({
   document,
@@ -28,11 +34,15 @@ export const DocumentPublicLinkPopover = ({
   const [createPublicDocumentLink] = useCreateDocumentPublicLinkMutation();
   const [deletePublicDocumentLink] = useDeleteDocumentPublicLinkMutation();
 
-  const handleCreatePublicDocumentLink = async () => {
-    await createPublicDocumentLink({
-      id: document.id,
-    });
-  };
+  const { loading } = useAsync(async () => {
+    if (isOpen && !url) {
+      return createPublicDocumentLink({
+        id: document.id,
+      });
+    }
+    return null;
+  }, [url, isOpen]);
+
   const handleDeletePublicDocumentLink = () => {
     trackPublicLinkRemoved({
       artifact: "document",
@@ -41,6 +51,7 @@ export const DocumentPublicLinkPopover = ({
     deletePublicDocumentLink({
       id: document.id,
     });
+    onClose();
   };
 
   const onCopyLink = () => {
@@ -49,15 +60,39 @@ export const DocumentPublicLinkPopover = ({
     });
   };
 
+  const onCopyEmbed = () => {
+    trackPublicEmbedCodeCopied({
+      artifact: "document",
+      source: "public-share",
+    });
+  };
+
   return (
-    <PublicLinkPopover
-      target={target}
-      isOpen={isOpen}
-      onClose={onClose}
-      createPublicLink={handleCreatePublicDocumentLink}
-      deletePublicLink={handleDeletePublicDocumentLink}
-      url={url}
-      onCopyLink={onCopyLink}
-    />
+    <Popover
+      opened={isOpen}
+      onChange={isOpen ? onClose : undefined}
+      position="bottom-end"
+    >
+      <Popover.Target>
+        <Box onClick={isOpen ? onClose : undefined}>{target}</Box>
+      </Popover.Target>
+      <Popover.Dropdown>
+        <Box
+          p="lg"
+          w="32rem"
+          data-testid="public-link-popover-content"
+          mih="10rem"
+        >
+          <Title c="text-medium" order={4} mb="md">{t`Public sharing`}</Title>
+          <DocumentPublicLinkPopoverContent
+            url={url}
+            loading={loading}
+            onRemoveLink={handleDeletePublicDocumentLink}
+            onCopyLink={onCopyLink}
+            onCopyEmbed={onCopyEmbed}
+          />
+        </Box>
+      </Popover.Dropdown>
+    </Popover>
   );
 };

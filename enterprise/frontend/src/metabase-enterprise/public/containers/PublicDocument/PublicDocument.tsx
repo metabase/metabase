@@ -3,10 +3,11 @@ import Link from "@tiptap/extension-link";
 import type { JSONContent } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { useEffect, useMemo } from "react";
-import { useAsync } from "react-use";
+import { useAsync, useMount } from "react-use";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
+import { initializeIframeResizer } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { PublicApi } from "metabase/services";
@@ -94,6 +95,11 @@ export const PublicDocument = ({ params }: PublicDocumentProps) => {
       window.document.title = document.name;
     }
   }, [document]);
+
+  useMount(() => {
+    // Initialize iframe resizer for dynamic height adjustment when embedded
+    initializeIframeResizer();
+  });
 
   return (
     <LoadingAndErrorWrapper
