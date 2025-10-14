@@ -87,7 +87,7 @@ export function TransformList({
     <ItemsListSection
       sectionTitle={t`Transforms`}
       onCollapse={onCollapse}
-      AddButton={CreateTransformMenu}
+      addButton={<CreateTransformMenu />}
       settings={<ItemsListSettings {...listSettingsProps} />}
       listItems={
         <Box>

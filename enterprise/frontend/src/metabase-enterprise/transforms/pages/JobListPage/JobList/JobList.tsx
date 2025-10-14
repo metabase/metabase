@@ -3,7 +3,10 @@ import { Link } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { ItemsListSection } from "metabase/bench/components/ItemsListSection/ItemsListSection";
+import {
+  ItemsListAddButton,
+  ItemsListSection,
+} from "metabase/bench/components/ItemsListSection/ItemsListSection";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting } from "metabase/common/hooks";
@@ -48,7 +51,9 @@ export function JobList({
     <ItemsListSection
       sectionTitle={t`Jobs`}
       onCollapse={onCollapse}
-      onAddNewItem={() => dispatch(push(getNewJobUrl()))}
+      addButton={
+        <ItemsListAddButton onClick={() => dispatch(push(getNewJobUrl()))} />
+      }
       listItems={
         jobs.length === 0 ? (
           <ListEmptyState

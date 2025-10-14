@@ -42,7 +42,7 @@ function ModelsList({
   location,
 }: {
   activeId: number;
-  onCollapse: () => void;
+  onCollapse?: () => void;
   location: Location;
 }) {
   const dispatch = useDispatch();
@@ -90,10 +90,9 @@ function ModelsList({
   return (
     <ItemsListSection
       sectionTitle={t`Models`}
-      AddButton={CreateModelMenu}
+      addButton={<CreateModelMenu />}
       settings={<ItemsListSettings {...listSettingsProps} />}
       onCollapse={onCollapse}
-      onAddNewItem={() => {}}
       listItems={
         !models || isLoading ? (
           <Center>
