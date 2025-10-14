@@ -68,7 +68,11 @@
   Format:
     [model]
     field1: value1
-    field2: value2"
+    field2: value2
+
+  Note: Unlike searchable-text, transformation functions in search-terms
+  (e.g., explode-camel-case) are NOT applied. Transformations like camel-case
+  explosion are specific to full-text search optimization."
   [m]
   (let [search-terms (:search-terms (search.spec/spec (:model m)))
         field-keys   (cond-> search-terms (map? search-terms) keys)

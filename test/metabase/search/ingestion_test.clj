@@ -74,7 +74,16 @@
                    :empty-field nil}]
       (with-redefs [search.spec/spec spec-fn]
         (is (= "[card]\nname: Test Card"
-               (#'search.ingestion/embeddable-text record)))))))
+               (#'search.ingestion/embeddable-text record))))))
+
+  (testing "embeddable-text does not apply transform functions"
+    (let [spec-fn (constantly {:search-terms {:name search.spec/explode-camel-case}})
+          record  {:model "table"
+                   :name  "CamelCaseTest"}]
+      (with-redefs [search.spec/spec spec-fn]
+        (is (= "[table]\nname: CamelCaseTest"
+               (#'search.ingestion/embeddable-text record))
+            "Transformation functions should not be applied to embeddable text for semantic search")))))
 
 (deftest search-term-columns-test
   (testing "search-term-columns with vector format"

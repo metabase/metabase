@@ -189,7 +189,9 @@
    {:model "dashboard" :name "Whale Communication" :query "marine mammal"}
    {:model "dashboard" :name "Tiger Conservation" :query "endangered species"}
    {:model "dashboard" :name "Loch Ness Stuff" :query "prehistoric monsters"}
-   ;; Tables include display_name in their search fields, so include it here as well
+   ;; Tables include display_name in their search-terms (see table.clj:387-389), which gets
+   ;; included in embeddable_text as "display_name: Species Table". We must include it here
+   ;; so the mock embeddings match what gets indexed.
    {:model "table" :name "Species Table" :display_name "Species Table" :query "taxonomy"}
    {:model "table" :name "Monsters Table" :display_name "Monsters Table" :query "monster facts"}])
 
