@@ -342,7 +342,7 @@
     "storybook-addon-pseudo-states": "^4.0.2",
     "style-loader": "^4.0.0",
     "stylelint": "^16.2.1",
-    "stylelint-config-css-modules": "^4.4.0",
+    "stylelint-config-css-modules": "^4.5.1",
     "stylelint-config-standard": "^36.0.0",
     "swc-loader": "^0.2.6",
     "ts-morph": "^25.0.0",
