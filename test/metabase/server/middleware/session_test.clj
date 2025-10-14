@@ -9,7 +9,6 @@
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.core.initialization-status :as init-status]
-   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.server.middleware.session :as mw.session]
