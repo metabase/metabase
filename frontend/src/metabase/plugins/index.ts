@@ -516,6 +516,7 @@ export const PLUGIN_APPLICATION_PERMISSIONS = {
   selectors: {
     canAccessSettings: (_state: any) => false,
     canManageSubscriptions: (_state: any) => true,
+    canCreatePublicLink: (_state: any) => false,
   },
 };
 
@@ -525,6 +526,7 @@ export interface UserWithApplicationPermissions extends User {
     can_access_monitoring: boolean;
     can_access_setting: boolean;
     can_access_subscription: boolean;
+    can_create_public_link: boolean;
   };
 }
 
