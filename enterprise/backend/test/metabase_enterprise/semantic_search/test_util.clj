@@ -319,7 +319,8 @@
 (defn filter-for-mock-embeddings
   "Filter results to only include items whose names are keys in mock-embeddings map."
   [results]
-  (filter #(contains? mock-embeddings (:name %)) results))
+  (let [mock-document-names (set (map :name mock-documents-for-embeddings))]
+    (filter #(contains? mock-document-names (:name %)) results)))
 
 (defn closeable ^Closeable [o close-fn]
   (reify
