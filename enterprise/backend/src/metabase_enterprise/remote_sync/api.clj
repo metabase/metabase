@@ -49,7 +49,8 @@
         has-dirty? (remote-sync.object/dirty-global?)]
     (when (and has-dirty? (not force?))
       (throw (ex-info "There are unsaved changes in the Remote Sync collection which will be overwritten by the import. Force the import to discard these changes."
-                      {:status-code 400})))
+                      {:status-code 400
+                       :conflicts true})))
     (if (and (not force?) (= last-imported-version source-version))
       (do (log/infof "Skipping import: source version %s matches last imported version" source-version)
           (settings/remote-sync-branch! branch)
@@ -58,9 +59,16 @@
 
 (defn- async-export!
   [branch message]
-  (run-async! "export" branch (fn [task-id] (impl/export! (source/source-from-settings branch)
-                                                          task-id
-                                                          message))))
+  (let [source (source/source-from-settings branch)
+        last-task-version (remote-sync.task/last-version)
+        current-source-version (source.ingestable/ingestable-version (source.p/->ingestable source {}))]
+    (when (and (some? #p last-task-version) #p (not= last-task-version #p current-source-version))
+      (throw (ex-info "Cannot export changes that will overwrite new changes in the branch."
+                      {:status-code 400
+                       :conflicts true})))
+    (run-async! "export" branch (fn [task-id] (impl/export! source
+                                                            task-id
+                                                            message)))))
 
 (api.macros/defendpoint :post "/import"
   "Reload Metabase content from Git repository source of truth.

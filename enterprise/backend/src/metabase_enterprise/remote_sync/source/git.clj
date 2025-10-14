@@ -166,6 +166,15 @@
 (defn- matches-prefix [path prefixes]
   (some #(or (= % path) (str/starts-with? path %)) prefixes))
 
+(defn default-branch
+  "Return the default branch of the repo"
+  [{:keys [^Git git]}]
+  (let [repo (.getRepository git)
+        head-ref (.findRef repo "HEAD")]
+    (when head-ref
+      (when-let [target-ref (.getTarget head-ref)]
+        (str/replace-first (.getName target-ref) "refs/heads/" "")))))
+
 (defn write-files!
   "Write a seq of files to the repo. `files` should be maps of :path and :content, with path relative to the root of the repository.
   Replaces all files in the branch with the given files, does not preserve files not in the list."
@@ -174,8 +183,7 @@
   (let [repo (.getRepository git)
         branch-ref (qualify-branch commit-ish)
         parent-id (or (.resolve repo branch-ref)
-                      (.resolve repo "refs/heads/main")
-                      (.resolve repo "refs/heads/master"))]
+                      (.resolve repo (qualify-branch (default-branch source))))]
 
     (with-open [inserter (.newObjectInserter repo)]
       (let [index (DirCache/newInCore)
@@ -238,8 +246,7 @@
         base-ref (qualify-branch base-branch)
         new-branch-ref (qualify-branch branch-name)
         base-commit-id (or (.resolve repo base-ref)
-                           (.resolve repo "refs/heads/main")
-                           (.resolve repo "refs/heads/master"))]
+                           (.resolve repo (qualify-branch (default-branch source))))]
     (when-not base-commit-id
       (throw (ex-info (format "Base branch '%s' not found" base-branch)
                       {:base-branch base-branch})))

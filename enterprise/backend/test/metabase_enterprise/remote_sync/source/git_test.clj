@@ -407,3 +407,8 @@
                 source-with-ref (->source! commit-ref remote)]
             (is (= commit-ref (source.p/version source-with-ref))
                 "version should work with explicit commit refs")))))))
+
+(deftest default-branch
+  (mt/with-temp-dir [remote-dir nil]
+    (let [[master _remote] (init-source! "master" remote-dir)]
+      (is (= "master" (git/default-branch master))))))

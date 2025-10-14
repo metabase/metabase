@@ -142,12 +142,13 @@
   "Gets the most recent successful task"
   [task-type]
   (t2/select-one :model/RemoteSyncTask
-                 {:where [:and
-                          [:<> nil :ended_at]
-                          [:= false :cancelled]
-                          [:= nil :error_message]
-                          [:= task-type :sync_task_type]]
-                  :limit 1
+                 {:where    (cond-> [:and
+                                     [:<> nil :ended_at]
+                                     [:= false :cancelled]
+                                     [:= nil :error_message]]
+                              (some? task-type)
+                              (conj [:= task-type :sync_task_type]))
+                  :limit    1
                   :order-by [[:started_at :desc]
                              [:id :desc]]}))
 
@@ -155,6 +156,11 @@
   "Gets the version most recently successfully imported. Or nil if there are no successful imports."
   []
   (:version (most-recent-successful-task "import")))
+
+(defn last-version
+  "Gets the version any changes are built off of. This can be either a successful export or import."
+  []
+  (:version (most-recent-successful-task nil)))
 
 (defn running?
   "Returns truthy iff this is a running task."

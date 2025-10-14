@@ -375,6 +375,7 @@
 (deftest most-recent-successful-task
   (testing "When there are no tasks, most-recent-successful-task returns nil")
   (is (nil? (rst/most-recent-successful-task "import")))
+  (is (nil? (rst/most-recent-successful-task nil)))
   (testing "When there are no successful tasks, most-recent-successful-task returns nil"
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))]
       (rst/fail-sync-task! (:id task) "Test failure")
@@ -394,4 +395,8 @@
       (testing "Returns newer successful tasks"
         (let [new-task (rst/create-sync-task! "import" (mt/user->id :rasta))]
           (rst/complete-sync-task! (:id new-task))
-          (is (=? {:id (:id new-task)} (rst/most-recent-successful-task "import"))))))))
+          (is (=? {:id (:id new-task)} (rst/most-recent-successful-task "import")))))
+      (testing "Passing a nil type finds either type (import or export)"
+        (is (= "import" (:sync_task_type (rst/most-recent-successful-task nil))))
+        (rst/create-sync-task! "export" (mt/user->id :rasta))
+        (is (= "import" (:sync_task_type (rst/most-recent-successful-task nil))))))))

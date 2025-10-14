@@ -7,7 +7,7 @@
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
-   [metabase-enterprise.remote-sync.source.git :as git]
+   [metabase-enterprise.remote-sync.source.ingestable :as source.ingestable]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase.collections.models.collection :as collection]
@@ -162,7 +162,7 @@
                                              :status_changed_at (java.time.OffsetDateTime/now)})
         (with-redefs [source/source-from-settings (constantly mock-main)]
           (is (= "There are unsaved changes in the Remote Sync collection which will be overwritten by the import. Force the import to discard these changes."
-                 (mt/user-http-request :crowberto :post 400 "ee/remote-sync/import" {})))
+                 (:message (mt/user-http-request :crowberto :post 400 "ee/remote-sync/import" {}))))
           (testing "But can force an import"
             (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:force true})
                   completed-task (wait-for-task-completion task_id)]
@@ -284,6 +284,27 @@
             (with-redefs [source/source-from-settings (constantly mock-source)]
               (is (= "Remote sync in progress"
                      (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {}))))))))))
+
+(deftest export-errors-if-external-changes-test
+  (testing "POST /api/ee/remote-sync/export errors when remote is ahead of the last sync"
+    (mt/with-temporary-setting-values [remote-sync-type :development]
+      (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "foo"
+                                              :ended_at       :%now
+                                              :version        "other-version"}]
+        (let [mock-source (test-helpers/create-mock-source)]
+          (mt/with-temporary-setting-values [remote-sync-enabled true
+                                             remote-sync-url "https://github.com/test/repo.git"
+                                             remote-sync-token "test-token"
+                                             remote-sync-branch "main"]
+            (with-redefs [source/source-from-settings          (constantly mock-source)
+                          source.ingestable/ingestable-version (constantly "mock-version")]
+              (is (= "Cannot export changes that will overwrite new changes in the branch."
+                     (:message (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {}))))
+              (testing "Can export when the versions match"
+                (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "foo"
+                                                        :ended_at       :%now
+                                                        :version        "mock-version"}]
+                  (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {}))))))))))
 
 ;;; ------------------------------------------------- Current Task Endpoint -------------------------------------------------
 
