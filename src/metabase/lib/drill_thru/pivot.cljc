@@ -127,7 +127,6 @@
    _stage-number                                 :- :int
    {:keys [column dimensions value] :as context} :- ::lib.schema.drill-thru/context]
   (let [stage-number (lib.underlying/top-level-stage-number query)]
-    ;; TODO (BT) is this allowed for any stage even if subset-only? is true?
     (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
                column
                (some? value)

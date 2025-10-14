@@ -54,7 +54,6 @@
    stage-number                                    :- :int
    {:keys [column column-ref value], :as _context} :- ::lib.schema.drill-thru/context]
   ;; if we have a context with a `:column`, but no `:value`...
-  ;; TODO (BT) is this allowed for any stage even if subset-only? is true?
   (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
              column
              (nil? value)
