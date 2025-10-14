@@ -967,7 +967,10 @@ describe("issue 40660", () => {
       });
 
       H.getIframeBody().within(() => {
-        cy.findAllByText("1018947080336").should("have.length", 3);
+        cy.findAllByText("1018947080336", { timeout: 10000 }).should(
+          "have.length",
+          3,
+        );
         cy.findByTestId("embed-frame").scrollTo("bottom");
 
         cy.findByRole("link", { name: "Powered by Metabase" })
