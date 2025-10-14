@@ -5,7 +5,10 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { SegmentItem } from "metabase/admin/datamodel/components/SegmentItem";
-import { ItemsListSection } from "metabase/bench/components/ItemsListSection/ItemsListSection";
+import {
+  ItemsListAddButton,
+  ItemsListSection,
+} from "metabase/bench/components/ItemsListSection/ItemsListSection";
 import { ItemsListSettings } from "metabase/bench/components/ItemsListSection/ItemsListSettings";
 import { useItemsListQuery } from "metabase/bench/components/ItemsListSection/useItemsListQuery";
 import CS from "metabase/css/core/index.css";
@@ -41,7 +44,11 @@ function SegmentListAppInner({ onCollapse, ...props }) {
     <ItemsListSection
       sectionTitle={t`Segments`}
       onCollapse={onCollapse}
-      onAddNewItem={() => dispatch(push("/bench/segment/new"))}
+      addButton={
+        <ItemsListAddButton
+          onClick={() => dispatch(push("/bench/segment/new"))}
+        />
+      }
       settings={<ItemsListSettings {...listSettingsProps} />}
       listItems={
         <Stack gap="xs">

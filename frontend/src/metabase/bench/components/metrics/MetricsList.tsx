@@ -53,7 +53,10 @@ import type { RawSeries, RecentCollectionItem } from "metabase-types/api";
 
 import { BenchLayout } from "../BenchLayout";
 import { BenchPaneHeader } from "../BenchPaneHeader";
-import { ItemsListSection } from "../ItemsListSection/ItemsListSection";
+import {
+  ItemsListAddButton,
+  ItemsListSection,
+} from "../ItemsListSection/ItemsListSection";
 import { ItemsListSettings } from "../ItemsListSection/ItemsListSettings";
 import { ItemsListTreeNode } from "../ItemsListSection/ItemsListTreeNode";
 import { useItemsListQuery } from "../ItemsListSection/useItemsListQuery";
@@ -65,7 +68,7 @@ function MetricsList({
   location,
 }: {
   activeId: number | null;
-  onCollapse: () => void;
+  onCollapse?: () => void;
   location: Location;
 }) {
   const dispatch = useDispatch();
@@ -112,13 +115,17 @@ function MetricsList({
       sectionTitle={t`Metrics`}
       settings={<ItemsListSettings {...listSettingsProps} />}
       onCollapse={onCollapse}
-      onAddNewItem={() => {
-        const url = newQuestion({
-          mode: "bench",
-          cardType: "metric",
-        });
-        return dispatch(push(url));
-      }}
+      addButton={
+        <ItemsListAddButton
+          onClick={() => {
+            const url = newQuestion({
+              mode: "bench",
+              cardType: "metric",
+            });
+            dispatch(push(url));
+          }}
+        />
+      }
       listItems={
         !metrics || isLoading ? (
           <Center>
