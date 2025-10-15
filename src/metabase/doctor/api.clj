@@ -395,7 +395,7 @@
                  {:error "PostgreSQL stats not available or not using PostgreSQL"}))})
 
 (def ^:private enhanced-analysis-prompt
-  "You are an expert Metabase health diagnostic specialist. Analyze this comprehensive health data and generate a detailed diagnostic report.
+  "You are an expert Metabase health diagnostic specialist. Analyze the provided health data and produce a clear, human-readable Markdown report that highlights problematic areas and performance issues. Focus on actionable insights from metrics and stats.
 
 CRITICAL PATTERNS TO IDENTIFY:
 
@@ -429,9 +429,9 @@ CRITICAL PATTERNS TO IDENTIFY:
 
 ANALYSIS APPROACH:
 
-1. First, identify any CRITICAL issues that could cause immediate crashes or OOMs
-2. Then identify HIGH priority performance issues affecting user experience
-3. Finally, note optimization opportunities for long-term stability
+1. Identify CRITICAL issues that could cause immediate crashes or OOMs
+2. Identify HIGH priority performance issues affecting user experience
+3. Note optimization opportunities for long-term stability
 
 REPORT STRUCTURE:
 
@@ -441,26 +441,124 @@ REPORT STRUCTURE:
 - Overall health score (Critical/Poor/Fair/Good/Excellent)
 - Top 3 critical issues requiring immediate action
 - Risk assessment for OOM/crashes
+- Key metrics: Total queries last 24h, error rate, active users
+
+## 🚨 Problem Areas (Tables)
+IMPORTANT: Only create tables for actual problems found in the data. If no issues exist for a category, skip that table entirely or note 'No issues detected'.
+
+### 🐌 Slowest Queries (>10s)
+From `query-stats.slow-queries`:
+- ONLY show if queries exist with runtime > 10000ms
+- Show top 10 slowest, formatted as:
+| Query/Card | Database | Runtime (s) | Rows Returned | Context |
+|------------|----------|-------------|---------------|---------|
+- Format runtime as seconds with 1 decimal (e.g., 45.2s)
+- Include card names with links: [Card Name](/question/123)
+- If no slow queries exist, show: ✅ No slow queries detected
+
+### ❌ Failed Queries
+From `query-stats.error-queries`:
+- ONLY show if errors exist
+- Group similar errors together, show top patterns:
+| Error Pattern | Count | Example Query/Card | Database | Last Occurred |
+|---------------|-------|-------------------|----------|---------------|
+- For Assert failed errors, group them together
+- For Column not found errors, list affected columns
+- If no errors, show: ✅ No query errors in the past 7 days
+
+### 📉 Failed Tasks
+From `task-stats.failed-tasks` and `task-stats.recurring-failures`:
+- ONLY show tasks that have failed >3 times or are currently stuck (ended_at = nil)
+| Task Type | Database | Failure Count | Status | Action Required |
+|-----------|----------|---------------|--------|-----------------|
+- Mark tasks with >10 failures as 🔴 Critical
+- Mark tasks with 5-10 failures as 🟡 Warning
+- If no failed tasks, show: ✅ All tasks running successfully
+
+### ⚠️ Large Result Queries
+From `query-stats.large-result-queries`:
+- ONLY show queries with result_rows > 100,000
+| Query/Card | Database | Rows Returned | Runtime (s) | Memory Risk |
+|------------|----------|---------------|-------------|-------------|
+- Format row counts with commas (e.g., 1,234,567)
+- Mark >500K rows as 🟡 High Risk
+- Mark >1M rows as 🔴 Critical Risk
+- Calculate estimated memory: rows * 1KB for rough estimate
+- If no large queries, show: ✅ No concerning large result sets
+
+### ⏰ Long-Running Tasks
+From `task-stats.long-running-tasks`:
+- ONLY show tasks with duration > 300000ms (5 minutes)
+| Task | Database | Duration | Status | Impact |
+|------|----------|----------|--------|--------|
+- Format duration in human-readable format (e.g., 12m 30s or 2h 15m)
+- Highlight sync/fingerprint tasks that block metadata updates
+- If no long tasks, skip this section
+
+### 🔄 Problematic Pulses/Subscriptions
+From `pulse-stats`:
+- ONLY show if any of these conditions are met:
+  * Hourly pulses with >5 cards
+  * Any pulse with >15 cards
+  * Recent pulse execution errors
+  * Pulses running every hour (schedule contains asterisk)
+| Type | Name | Issue | Cards | Schedule | Memory Risk |
+|------|------|-------|-------|----------|-------------|
+- Calculate memory risk based on card count * typical result size
+- Mark hourly pulses with >5 cards as 🟡 Warning
+- If no problematic pulses, show: ✅ All pulses configured safely
+
+### 🗄️ Database Health Issues
+From `database-stats`:
+- ONLY show databases meeting ANY of these criteria:
+  * Field count > 50,000
+  * MongoDB with >10,000 fields
+  * Failed sync/fingerprint tasks from task-stats
+  * Fingerprinting completion < 80%
+| Database | Issue Type | Fields | Tables | Action Required |
+|----------|------------|--------|--------|-----------------|
+- Mark databases >100K fields as 🔴 Critical
+- Mark MongoDB >50K fields as 🔴 Critical
+- If all databases healthy, show: ✅ All databases operating normally
+
+### 📊 Query Performance by Context
+From `query-stats.queries-by-context`:
+- ONLY show contexts with:
+  * Error rate > 5%
+  * Average runtime > 5000ms
+  * Maximum runtime > 30000ms
+| Context | Total Queries | Error Rate | Avg Runtime | Max Runtime | Status |
+|---------|---------------|------------|-------------|-------------|--------|
+- Format error rate as percentage
+- Format runtimes in seconds
+- Mark error rate >10% as 🔴 Critical
+- If all contexts healthy, skip this section
+
+### 📈 Hourly Query Volume Patterns
+From `query-stats.hourly-volume`:
+- ONLY show hours with:
+  * Error rate > 10%
+  * Query volume >2x average
+  * Max rows > 500,000
+| Hour | Queries | Errors | Error Rate | Max Rows | Alert |
+|------|---------|--------|------------|----------|-------|
+- Only include problematic hours
+- Format hour in readable format (e.g., 2024-01-15 14:00)
+- If no anomalies, skip this section
 
 ## 🔴 Critical Issues (Immediate Action Required)
 For each critical issue:
 - **Issue**: Clear description
-- **Evidence**: Specific metrics/numbers from the data
+- **Evidence**: Specific metrics/numbers from the data tables above
 - **Impact**: What will happen if not fixed
 - **Root Cause**: Why this is happening
 - **Fix**: Specific actionable steps with exact settings/queries to change
 
 ## 🟡 High Priority Issues (Fix Within 7 Days)
-Similar format as critical issues
+Same format as critical issues
 
 ## 🟢 Medium Priority Optimizations (Fix Within 30 Days)
 Brief list with recommendations
-
-## 📈 Performance Metrics Summary
-- Query performance stats
-- Task execution health
-- Database sync status
-- Error rates and patterns
 
 ## 🎯 Specific Recommendations
 Numbered list of actions in priority order with:
@@ -468,37 +566,19 @@ Numbered list of actions in priority order with:
 2. **How**: Exact steps or SQL/settings changes
 3. **Expected Impact**: What will improve
 
-## 📊 Detailed Metrics Tables
-Include relevant data tables for:
-- Slowest queries
-- Failed tasks
-- Large databases
-- Problematic pulses
-
-Be extremely specific about:
-- Which databases have issues (use DB IDs and names)
-- Which pulses/cards are problematic (use IDs)
-- Exact error messages and their frequencies
-- Time patterns (e.g., 'crashes every hour at XX:00')
-- Memory estimates based on row counts and field counts
-
-Respect this style:
-- Use tables, bullet points, and formatting to make the report scannable and actionable.
-- Include severity indicators: 🔴 Critical, 🟡 Warning, 🟢 Good, ⚠️ Caution
-
-Anywhere in the response, whenever you reference a specific card/query, mention it by name. The name should have a link on it, with no additional text, that points to `/question/{id}`.
-Anywhere in the response, whenever you reference a specific database, mention it by name. The name should have a link on it, with no additional text, that points to `/admin/databases/{id}`.
-
-For example, in raw markdown:
-
-    There is a problem with [QUESTION NAME HERE](/question/123).
-    Database [DATABASE NAME HERE](/admin/databases/123) has issues.")
+PRESENTATION RULES:
+- Tables should only show problematic items, not everything
+- Use severity indicators: 🔴 Critical, 🟡 Warning, 🟢 Good, ⚠️ Caution
+- Format runtimes in seconds with 1 decimal place
+- Format large numbers with commas (e.g., 1,234,567)
+- Link entities: [Card Name](/question/123), [DB Name](/admin/databases/123), [Dashboard](/dashboard/123)
+- If a table would be empty (no problems), note \"✅ No issues detected\" instead of showing empty table")
 
 (defn- call-openai
   "Call OpenAI GPT API with enhanced prompt"
   [prompt data]
   (let [api-key (env/env :openai-api-key)
-        model "gpt-4-turbo-preview"]
+        model (or (env/env :openai-model) "gpt-4o")]
     (when-not api-key
       (throw (ex-info "OpenAI API key not configured" {})))
     (let [response (http/post "https://api.openai.com/v1/chat/completions"
@@ -507,14 +587,14 @@ For example, in raw markdown:
                                :body (json/encode
                                       {:model model
                                        :messages [{:role "system"
-                                                   :content "You are a Metabase health diagnostic expert. Generate detailed, actionable health reports."}
+                                                   :content "You are a Metabase health diagnostic expert. Generate a clear, human‑readable Markdown report with well‑structured tables for pulses, notifications, dashboards, and databases."}
                                                   {:role "user"
                                                    :content (str prompt "\n\n"
                                                                  "Health data:\n```json\n"
                                                                  (json/encode data {:pretty true})
                                                                  "\n```")}]
-                                       :max_tokens 4000
-                                       :temperature 0.3})
+                                       :max_tokens 5000
+                                       :temperature 0.5})
                                :as :json
                                :timeout 30000})]
       (-> response :body :choices first :message :content))))
