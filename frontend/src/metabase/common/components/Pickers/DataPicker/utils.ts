@@ -24,7 +24,6 @@ import type {
   ModelItem,
   QuestionItem,
   TablePickerValue,
-  TransformItem,
 } from "./types";
 
 export const generateKey = (
@@ -153,12 +152,6 @@ export const isTableItem = (
   value: DataPickerValue | undefined,
 ): value is TablePickerValue => {
   return value?.model === "table";
-};
-
-export const isTransformItem = (
-  value: DataPickerValue | undefined,
-): value is TransformItem => {
-  return value?.model === "transform";
 };
 
 export const isValueItem = (

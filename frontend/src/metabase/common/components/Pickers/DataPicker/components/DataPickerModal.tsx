@@ -2,7 +2,6 @@ import { useCallback, useMemo, useState } from "react";
 import { c, t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
-import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { Button, Checkbox, Icon, Popover } from "metabase/ui";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
@@ -34,7 +33,6 @@ import {
   getRecentItemDatabaseId,
   isCollectionItem,
   isTableItem,
-  isTransformItem,
   isValueItem,
 } from "../utils";
 
@@ -91,10 +89,8 @@ export const DataPickerModal = ({
     hasQuestions,
     hasModels,
     hasMetrics,
-    hasTransforms,
     isLoading: isLoadingAvailableData,
   } = useAvailableData({
-    models,
     databaseId,
   });
 
@@ -231,22 +227,6 @@ export const DataPickerModal = ({
             onItemSelect={createQuestionPickerItemSelectHandler(onItemSelect)}
             onPathChange={setQuestionsPath}
             shouldDisableItem={shouldDisableItem}
-          />
-        ),
-      });
-    }
-
-    if (models.includes("transform") && hasTransforms) {
-      computedTabs.push({
-        id: "transforms-tab",
-        displayName: t`Transforms`,
-        models: ["transform"],
-        folderModels: [],
-        icon: "refresh_downstream",
-        render: ({ onItemSelect }) => (
-          <PLUGIN_TRANSFORMS.TransformPicker
-            value={isTransformItem(value) ? value : undefined}
-            onItemSelect={onItemSelect}
           />
         ),
       });
