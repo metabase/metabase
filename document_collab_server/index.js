@@ -3,6 +3,7 @@ import { Webhook, Events } from "@hocuspocus/extension-webhook";
 import { TiptapTransformer } from "@hocuspocus/transformer";
 
 const server = new Server({
+  port: 3005,
   extensions: [
     new Webhook({
       url: "http://localhost:3000/api/ee/documents/webhook",
@@ -11,7 +12,6 @@ const server = new Server({
       events: [Events.onConnect, Events.onCreate, Events.onChange, Events.onDisconnect],
       debounce: 2000,
       debounceMaxWait: 10000,
-      port: 3005,
     }),
   ],
 });
