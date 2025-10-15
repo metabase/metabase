@@ -20,11 +20,13 @@
     :model/CacheConfig                       metabase.cache.models.cache-config
     :model/Card                              metabase.queries.models.card
     :model/CardBookmark                      metabase.bookmarks.models.bookmark
+    :model/CardSnapshot                      metabase.images.models.card-snapshot
     :model/Channel                           metabase.channel.models.channel
     :model/ChannelTemplate                   metabase.channel.models.channel
     :model/CloudMigration                    metabase.cloud-migration.models.cloud-migration
     :model/Collection                        metabase.collections.models.collection
     :model/CollectionBookmark                metabase.bookmarks.models.bookmark
+    :model/CollectionImage                   metabase.images.models.collection-image
     :model/CollectionPermissionGraphRevision metabase.permissions.models.collection-permission-graph-revision
     :model/Comment                           metabase-enterprise.comments.models.comment
     :model/CommentReaction                   metabase-enterprise.comments.models.comment-reaction
@@ -48,6 +50,7 @@
     :model/Glossary                          metabase.glossary.models.glossary
     :model/Sandbox                           metabase-enterprise.sandbox.models.sandbox
     :model/HTTPAction                        metabase.actions.models
+    :model/Image                             metabase.images.models.image
     :model/ImplicitAction                    metabase.actions.models
     :model/LoginHistory                      metabase.login-history.models.login-history
     :model/Metabot                           metabase-enterprise.metabot-v3.models.metabot
