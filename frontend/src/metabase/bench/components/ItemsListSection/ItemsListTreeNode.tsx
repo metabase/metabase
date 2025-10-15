@@ -18,6 +18,7 @@ export const ItemsListTreeNode = forwardRef<HTMLLIElement, TreeNodeProps>(
       hasChildren,
       onSelect,
       onToggleExpand,
+      rightSection,
       ...props
     }: TreeNodeProps,
     ref,
@@ -86,6 +87,7 @@ export const ItemsListTreeNode = forwardRef<HTMLLIElement, TreeNodeProps>(
         >
           {name}
         </TreeNode.NameContainer>
+        {rightSection?.(item)}
       </TreeNode.Root>
     );
   },

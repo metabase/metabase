@@ -22,6 +22,8 @@ import { connect, useDispatch } from "metabase/lib/redux";
 import { Box, Stack } from "metabase/ui";
 import type Segment from "metabase-lib/v1/metadata/Segment";
 
+import { SegmentActionSelect } from "../components/SegmentActionSelect";
+
 interface SegmentListAppProps {
   onCollapse?: () => void;
   segments: Segment[];
@@ -107,6 +109,7 @@ function SegmentListAppInner({ onCollapse, ...props }: SegmentListAppProps) {
         id: segment.id,
         name: segment.name,
         icon: "segment",
+        data: segment,
       });
     });
     const recursiveAlpha = (node: ITreeNodeItem) => {
@@ -137,6 +140,7 @@ function SegmentListAppInner({ onCollapse, ...props }: SegmentListAppProps) {
             <Tree
               data={treeData}
               selectedId={selectedId}
+              initiallyExpanded
               onSelect={(node) => {
                 if (!node.children?.length) {
                   dispatch(
@@ -145,6 +149,17 @@ function SegmentListAppInner({ onCollapse, ...props }: SegmentListAppProps) {
                 }
               }}
               TreeNode={ItemsListTreeNode}
+              rightSection={(node) => {
+                const segment = node.data as Segment;
+                return !segment || node.children?.length ? null : (
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <SegmentActionSelect
+                      segment={segment}
+                      onRetire={() => setArchived(segment, true)}
+                    />
+                  </div>
+                );
+              }}
             />
           </Box>
         ) : (
