@@ -64,16 +64,28 @@ function markdownToDocument(markdownText) {
   // Parse markdown content to ProseMirror JSON using existing parser
   const contentJson = parseMarkdown(content);
 
-  // Build complete representation
-  return {
-    name: frontmatter.title || "Untitled Document",
-    type: "document",
-    version: "v0",
+  // Build complete representation with all frontmatter fields preserved
+  const representation = {
+    name: frontmatter.title || frontmatter.name || "Untitled Document",
+    type: frontmatter.type || "document",
+    version: frontmatter.version || "v0",
     ref: frontmatter.ref || "document",
-    // 'entity-id': generateEntityId(),
     content: contentJson,
-    content_type: "application/json+vnd.prose-mirror",
+    content_type: frontmatter.content_type || "application/json+vnd.prose-mirror",
   };
+
+  // Preserve optional fields if present
+  if (frontmatter.layout) {
+    representation.layout = frontmatter.layout;
+  }
+  if (frontmatter.featured_image) {
+    representation.featured_image = frontmatter.featured_image;
+  }
+  if (frontmatter.dashboard) {
+    representation.dashboard = parseInt(frontmatter.dashboard);
+  }
+
+  return representation;
 }
 
 async function readStdin() {

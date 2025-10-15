@@ -274,7 +274,7 @@ async function readStdin() {
   return Buffer.concat(chunks).toString('utf8');
 }
 
-function serializeProseMirror(jsonText) {
+export function serializeProseMirror(jsonText) {
   const pmJson = JSON.parse(jsonText);
   const doc = PMNode.fromJSON(schema, pmJson);
   return customSerializer.serialize(doc);
@@ -320,4 +320,7 @@ async function main() {
   }
 }
 
-main();
+// Only run main if this file is being executed directly (not imported)
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main();
+}
