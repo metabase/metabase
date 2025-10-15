@@ -186,7 +186,7 @@
     "@storybook/react": "^8.5.0",
     "@storybook/react-webpack5": "^8.5.0",
     "@storybook/test": "^8.5.0",
-    "@svgr/webpack": "^8.0.1",
+    "@svgr/webpack": "^8.1.0",
     "@swc/core": "^1.11.8",
     "@swc/plugin-emotion": "^9.0.0",
     "@testing-library/cypress": "^10.0.2",
