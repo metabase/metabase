@@ -8,7 +8,7 @@ import { EmbeddingHubHomePage } from "metabase/embedding/embedding-hub";
 import { useSelector } from "metabase/lib/redux";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { getLandingPageIllustration } from "metabase/selectors/whitelabel";
-import { Tooltip } from "metabase/ui";
+import { Box, Tooltip } from "metabase/ui";
 
 import { CustomHomePageModal } from "../CustomHomePageModal";
 import { HomeGreeting } from "../HomeGreeting";
@@ -43,15 +43,6 @@ export const HomeLayout = ({ children }: HomeLayoutProps): ReactNode => {
 
   return (
     <LayoutRoot data-testid="home-page">
-      {landingPageIllustration &&
-        (landingPageIllustration.isDefault ? (
-          <LighthouseIllustration />
-        ) : (
-          <LayoutIllustration
-            data-testid="landing-page-illustration"
-            backgroundImageSrc={landingPageIllustration.src}
-          />
-        ))}
       <HomeGreeting />
       {isAdmin && (
         <Tooltip label={t`Pick a dashboard to serve as the homepage`}>
@@ -64,7 +55,19 @@ export const HomeLayout = ({ children }: HomeLayoutProps): ReactNode => {
           </LayoutEditButton>
         </Tooltip>
       )}
-      <LayoutBody>{children}</LayoutBody>
+      <LayoutBody style={{ position: "relative", zIndex: 10 }}>{children}</LayoutBody>
+      <Box
+        style={{
+          position: "fixed",
+          bottom: 0,
+          left: "50%",
+          transform: "translateX(-50%)",
+          zIndex: 1,
+          pointerEvents: "none",
+        }}
+      >
+        <img src="/app/img/rowboat.png" width="500" height="300" />
+      </Box>
       <CustomHomePageModal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
