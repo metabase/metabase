@@ -1,6 +1,7 @@
 (ns metabase-enterprise.documents.api.webhook
   (:require
    [metabase.api.macros :as api.macros]
+   [metabase.events.core :as events]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -18,9 +19,9 @@
   (let [id (parse-long id)]
     (t2/update! :model/Document id {:document document
                                     :ydoc     ydoc})
-    (events/publish-even :event/document-update
-                         {:object  (t2/select-one :model/Document id)
-                          :user-id user-id})))
+    (events/publish-event! :event/document-update
+                           {:object  (t2/select-one :model/Document id)
+                            :user-id user-id})))
 
 (defn- disconnect-event [payload]
   ;; nothing to do here
