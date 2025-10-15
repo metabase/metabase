@@ -17,6 +17,7 @@ export * from "./glossary";
 export * from "./entity-id";
 export * from "./field";
 export * from "./google";
+export * from "./image";
 export * from "./ldap";
 export * from "./login-history";
 export * from "./model-index";
