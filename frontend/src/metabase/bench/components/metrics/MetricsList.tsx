@@ -86,7 +86,7 @@ function MetricsList({
         options: [
           {
             label: t`By collection`,
-            value: "collection",
+            value: "tree",
           },
           {
             label: t`Alphabetical`,
@@ -95,7 +95,7 @@ function MetricsList({
         ],
       },
     ],
-    defaults: { display: "collection" },
+    defaults: { display: "tree" },
   });
 
   const treeData = useMemo(() => {
@@ -132,7 +132,7 @@ function MetricsList({
           <Center>
             <Loader />
           </Center>
-        ) : listSettingsProps.values.display === "collection" ? (
+        ) : listSettingsProps.values.display === "tree" ? (
           <Box mx="-sm">
             <Tree
               data={treeData}
