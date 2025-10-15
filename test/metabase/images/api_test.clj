@@ -42,7 +42,7 @@
       (let [response (mt/user-http-request-full-response :crowberto :get 200 (format "images/%d/contents" image-id))]
         ;; TODO -- this works IRL not sure why the test is failing
         #_(is (=? {"Content-Type" "image/png"}
-                (:headers response)))
+                  (:headers response)))
         (is (instance? java.io.File (:body response)))))))
 
 ;; TODO -- also the comments endpoint
@@ -99,5 +99,14 @@
                                         {:request-options {:headers {"content-type" "multipart/form-data"}}}
                                         {:file test-image}
                                         :collection-id (:id collection-id)))
+
+  (mt/with-temp [:model/Card card {:name          "foo"
+                                   :collection_id (:id (collection/user->personal-collection (mt/user->id :crowberto)))
+                                   :dataset_query (mt/mbql-query :orders)}]
+    (def snapshot-post-res (mt/user-http-request-full-response :crowberto :post (format "images/card/%d/snapshot" (:id card))))
+    (def snapshot-list-res (mt/user-http-request-full-response :crowberto :get (format "images/card/%d/snapshots" (:id card)))))
+
+  snapshot-post-res
+  snapshot-list-res
 
   #_())
