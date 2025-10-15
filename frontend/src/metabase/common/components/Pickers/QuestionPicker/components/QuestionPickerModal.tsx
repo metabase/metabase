@@ -79,11 +79,11 @@ export const QuestionPickerModal = ({
     (item: QuestionPickerItem) => {
       if (options.hasConfirmButtons) {
         setSelectedItem(item);
-      } else if (canSelectItem(item)) {
-        handleOnChange(item);
+      } else if (canSelectItem(item) || models.includes("image")) {
+        handleOnChange(item as any);
       }
     },
-    [handleOnChange, options],
+    [handleOnChange, options, models],
   );
 
   const handleConfirm = () => {

@@ -1,6 +1,7 @@
 (ns metabase.images.api-test
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.collections.models.collection :as collection]
@@ -72,6 +73,10 @@
                  :profile_image_url string?}
                 (m/find-first #(= (:id %) (mt/user->id :crowberto))
                               (:data (mt/user-http-request :crowberto :get "user"))))))
+      (testing "GET /api/current"
+        (is (=? {:profile_image_id  (:id response)
+                 :profile_image_url string?}
+                (mt/user-http-request :crowberto :get "user/current"))))
       (when config/ee-available?
         (testing "GET /api/ee/comment"
           (mt/with-premium-features #{:documents}
@@ -84,6 +89,9 @@
                                              :target_id   doc-id
                                              :content     ((requiring-resolve 'metabase-enterprise.comments.api-test/tiptap) [:p "New comment"])
                                              :html        "<p>New comment</p>"}))))))))))
+
+(def test-image
+  (io/file "resources/frontend_client/app/assets/img/blue_check.png"))
 
 (deftest ^:parallel post-user-id-image-test
   (let [res (mt/user-http-request :crowberto :post "images"
@@ -98,6 +106,25 @@
             res))))
 
 (deftest ^:parallel card-snapshots-test
+  (testing "POST /api/images/card/:card-id/snapshot"
+    (mt/with-temp [:model/Card card {:name          "foo"
+                                     :collection_id (:id (collection/user->personal-collection (mt/user->id :crowberto)))
+                                     :dataset_query (mt/mbql-query :orders)}]
+      (let [res (mt/user-http-request :crowberto :post 200 (format "images/card/%d/snapshot" (:id card)))
+            {:keys [card_snapshot collection_image image]} res
+            {card-snapshot-id :id} card_snapshot
+            {collection-image-id :id} collection_image
+            {image-id :id} image]
+        (is (nat-int? card-snapshot-id))
+        (is (nat-int? collection-image-id))
+        (is (nat-int? image-id))
+        (is (=? {:card_id (:id card)
+                 :collection_image_id collection-image-id}
+                card_snapshot))
+        (is (=? {:image_id image-id
+                 :collection_id (:collection_id card)}
+                collection_image))
+        (is (=? {:title #(str/includes? % (:name card))} image)))))
   (testing "GET /api/images/card/:card-id/snapshots"
     (mt/with-temp [:model/Image           {image-id :id}            {:url (test-image-url)}
                    :model/Card            {card-id :id}             {}
@@ -109,9 +136,6 @@
       (is (=? [{:id  image-id
                 :url #"http://localhost:\d+/api/images/\d+/contents"}]
               (mt/user-http-request :crowberto :get 200 (format "images/card/%d/snapshots" card-id)))))))
-
-(def test-image
-  (io/file "resources/frontend_client/app/assets/img/blue_check.png"))
 
 (comment
 
