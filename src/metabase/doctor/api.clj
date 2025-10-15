@@ -16,18 +16,24 @@
   [days]
   {:total-queries (t2/count :model/QueryExecution
                             {:where [:>= :started_at (t/minus (t/instant) (t/days days))]})
-   :error-queries (t2/select :model/QueryExecution {:select [:query_execution.id :query_execution.database_id :query_execution.running_time :error :context :query_execution.card_id :report_card.name]
+   :error-queries (t2/select :model/QueryExecution {:select [:query_execution.id :query_execution.database_id [:metabase_database.name :database_name] :query_execution.running_time :error :context :query_execution.card_id :report_card.name]
                                                     :from [:query_execution]
-                                                    :left-join [[:report_card] [:= :query_execution.card_id :report_card.id]]
+                                                    :left-join [
+                                                                [:report_card] [:= :query_execution.card_id :report_card.id]
+                                                                [:metabase_database] [:= :query_execution.database_id :metabase_database.id]
+                                                                ]
                                                     :where [:and
                                                             [:>= :started_at (t/minus (t/instant) (t/days days))]
                                                             [:not= :context "ad-hoc"]
                                                             [:not= :error nil]]
                                                     :limit 20
                                                     :order-by [[:query_execution.started_at :desc]]})
-   :slow-queries  (t2/select :model/QueryExecution {:select [:query_execution.id :query_execution.database_id :query_execution.running_time :error :context :query_execution.card_id :report_card.name]
+   :slow-queries  (t2/select :model/QueryExecution {:select [:query_execution.id :query_execution.database_id [:metabase_database.name :database_name] :query_execution.running_time :query_execution.result_rows :error :context :query_execution.card_id :report_card.name]
                                                     :from [:query_execution]
-                                                    :left-join [[:report_card] [:= :query_execution.card_id :report_card.id]]
+                                                    :left-join [
+                                                                [:report_card] [:= :query_execution.card_id :report_card.id]
+                                                                [:metabase_database] [:= :query_execution.database_id :metabase_database.id]
+                                                                ]
                                                     :where [:and
                                                             [:>= :started_at (t/minus (t/instant) (t/days days))]
                                                             [:not= :context "ad-hoc"]
@@ -42,16 +48,18 @@
 (defn- get-task-history-stats
   "Get task execution statistics"
   [days]
-  {:failed-tasks (t2/select :model/TaskHistory {:select [:task :db_id [:%count.* :count]]
+  {:failed-tasks (t2/select :model/TaskHistory {:select [:task :db_id [:metabase_database.name :db_name] [:%count.* :count]]
                                                 :from [:task_history]
+                                                :left-join [[:metabase_database] [:= :task_history.db_id :metabase_database.id]]
                                                 :where [:and
                                                         [:>= :started_at (t/minus (t/instant) (t/days days))]
                                                         [:= :status "failed"]]
-                                                :group-by [:task :db_id]
+                                                :group-by [:task :db_id :db_name]
                                                 :order-by [[:%count.* :desc]]
                                                 :limit 50})
-   :long-running-tasks (t2/select :model/TaskHistory {:select [:task :duration :db_id]
+   :long-running-tasks (t2/select :model/TaskHistory {:select [:task :duration :db_id [:metabase_database.name :db_name]]
                                                       :from [:task_history]
+                                                      :left-join [[:metabase_database] [:= :task_history.db_id :metabase_database.id]]
                                                       :where [:and
                                                               [:>= :started_at (t/minus (t/instant) (t/days days))]
                                                               [:> :duration 300000]]
@@ -235,8 +243,8 @@ Anywhere in the response, whenever you reference a specific database, mention it
 
 For example, in raw markdown:
 
-    There is a problem with [My Question Name](/question/1).
-    Database [My Database Name](/admin/databases/123)] has issues.
+    There is a problem with [QUESTION NAME HERE](/question/1).
+    Database [DATABASE NAME HERE](/admin/databases/123)] has issues.
 ")
 
 (defn- call-openai
