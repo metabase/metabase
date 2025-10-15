@@ -51,6 +51,34 @@
                                                       :order-by [[:duration :desc]]
                                                       :limit 20})})
 
+(defn- _get-pgstats-stats
+  "set a lock with `begin; lock metabase_database in exclusive mode`"
+  [& _args]
+  {:locks
+   (t2/query
+    {:select     [:pg_stat_activity.pid :pg_class.relname :pg_locks.transactionid :pg_locks.granted]
+     :from       [[:pg_stat_activity]
+                  [:pg_locks]]
+     :left-join [:pg_class [:= :pg_locks.relation :pg_class.oid]]
+     :where [:and
+             [:not= :pg_stat_activity.query "<insufficient priviledge>"]
+             [:= :pg_locks.pid :pg_stat_activity.pid]
+             [:= :pg_locks.mode "ExclusiveLock"]
+             [:not= :pg_stat_activity.pid [:call :pg_backend_pid]]]
+     :order-by [:query_start]})
+
+   :long-running
+   (t2/query
+    {:select [:pid
+              [[:- [:now] :pg_stat_activity.xact_start] :duration]
+              :query
+              :state]
+     :from [:pg_stat_activity]
+     :where [:> [[:- [:now] :pg_stat_activity.xact_start]]
+             [:raw "interval '5 minutes'"]]
+     :order-by [[2 :desc]]})})
+
+
 ;; (defn- get-database-stats
 ;;   "Get database metadata statistics"
 ;;   []
@@ -129,7 +157,6 @@ Use tables and formatting to make the report easy to scan.")
         model "gpt-4-turbo-preview"]
     (when-not api-key
       (throw (ex-info "OpenAI API key not configured" {})))
-
     (let [response (http/post "https://api.openai.com/v1/chat/completions"
                               {:headers {"Authorization" (str "Bearer " api-key)
                                          "Content-Type" "application/json"}
