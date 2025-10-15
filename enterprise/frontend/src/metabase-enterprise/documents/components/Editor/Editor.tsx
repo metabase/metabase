@@ -170,7 +170,6 @@ export const Editor: React.FC<EditorProps> = ({
       CollaborationCaret.extend().configure({
         provider,
         render: (user: any) => {
-          console.log("hello");
           const cursor = document.createElement("span");
           cursor.classList.add("collaboration-carets__caret");
           cursor.setAttribute("style", `border-color: ${user.color}`);
@@ -191,19 +190,6 @@ export const Editor: React.FC<EditorProps> = ({
     ],
     [siteUrl, getState, ydoc, provider, currentUser?.common_name],
   );
-
-  // useEffect(() => {
-  //   // Update status changes
-  //   const statusHandler = (event) => {
-  //     setStatus(event.status);
-  //   };
-
-  //   provider.on("status", statusHandler);
-
-  //   return () => {
-  //     provider.off("status", statusHandler);
-  //   };
-  // }, [provider]);
 
   const editor = useEditor(
     {
