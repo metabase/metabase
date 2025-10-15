@@ -1,8 +1,10 @@
 (ns metabase-enterprise.representations.v0.document
   (:require
+   [clojure.java.shell :as sh]
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.v0.common :as v0-common]
+   [metabase-enterprise.representations.yaml :as yaml]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -37,7 +39,8 @@
 (mr/def ::content-type
   [:enum {:decode/json keyword
           :description "Format of the document content"}
-   "application/json+vnd.prose-mirror"])
+   "application/json+vnd.prose-mirror"
+   "text/markdown+vnd.prose-mirror"])
 
 (mr/def ::content
   [:and
@@ -70,18 +73,29 @@
 
 ;;; ------------------------------------ Ingestion ------------------------------------
 
+(defn- markdown->yaml [md]
+  ;; bb hackathon/markdown-parser/cli-test.clj hackathon/markdown-parser/test-files/document-example.md
+  (let [result (sh/sh "node" "hackathon/markdown-parser/parse-markdown.mjs" :in md)]
+    (:out result)))
+
+(comment
+  (markdown->yaml "# hello"))
+
 (defmethod import/yaml->toucan [:v0 :document]
   [{document-name :name
     :keys [_type _ref entity-id content content_type collection] :as representation}
    ref-index]
-  {:entity_id (or entity-id
-                  (v0-common/generate-entity-id representation))
-   :creator_id (or api/*current-user-id*
-                   config/internal-mb-user-id)
-   :name document-name
-   :document content
-   :content_type content_type
-   :collection_id (v0-common/find-collection-id collection)})
+  (let [yaml-content (if (= "text/markdown+vnd.prose-mirror" content_type)
+                       (yaml/parse-string (markdown->yaml content))
+                       content_type)]
+    {:entity_id (or entity-id
+                    (v0-common/generate-entity-id representation))
+     :creator_id (or api/*current-user-id*
+                     config/internal-mb-user-id)
+     :name document-name
+     :document yaml-content
+     :content_type "application/json+vnd.prose-mirror"
+     :collection_id (v0-common/find-collection-id collection)}))
 
 (defmethod import/persist! [:v0 :document]
   [representation ref-index]
