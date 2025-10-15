@@ -180,10 +180,10 @@ export const exportDataset = createAsyncThunk(
     const name = getDatasetFileName(response.headers, opts.type);
     const fileContent = await response.blob();
 
-    if (opts.exportVariant === "download") {
-      openSaveDialog(name, fileContent);
-    } else {
+    if (opts.exportVariant === "copy-to-clipboard") {
       await navigator.clipboard.writeText(await fileContent.text());
+    } else {
+      openSaveDialog(name, fileContent);
     }
 
     return { id, name };
