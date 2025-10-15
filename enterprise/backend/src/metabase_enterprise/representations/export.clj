@@ -168,7 +168,8 @@
                          :document (-> (t2/select-one :model/Document :id child-id)
                                        export-entity)
                          (-> (t2/select-one :model/Card :id child-id :type model-type)
-                             export-entity))))]
+                             export-entity))))
+        child-reps (export-set child-reps)]
     (assoc (export-entity collection)
            :children (map #(dissoc % :databases) child-reps)
            :databases (concat
