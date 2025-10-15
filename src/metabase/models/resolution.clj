@@ -126,7 +126,10 @@
              ;; been required
              (not (isa? x :metabase/model)))
     ;; [[classloader/require]] for thread safety
-    (classloader/require (model->namespace x)))
+    (try
+      (classloader/require (model->namespace x))
+      (catch Throwable e
+        (throw (ex-info "Error resolving model" {:model x, :namespace (model->namespace x)})))))
   x)
 
 (methodical/defmethod t2.model/resolve-model :around clojure.lang.Symbol

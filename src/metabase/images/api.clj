@@ -3,16 +3,30 @@
    [buddy.core.codecs :as buddy-codecs]
    [buddy.core.hash :as buddy-hash]
    [clojure.java.io :as io]
+   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.images.schema :as images.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 (api.macros/defendpoint :get "/:id"
+  "Metadata about an image."
+  [{image-id :id, :as _route-params} :- [:map
+                                         [:id ::images.schema/id]]]
+  (api/check-404 (t2/select-one :model/Image image-id)))
+
+(api.macros/defendpoint :get "/:id/contents"
   "This is our endpoint for serving the contents of an image that we have stored locally somewhere."
-  []
-  {})
+  [{image-id :id, :as _route-params} :- [:map
+                                         [:id ::images.schema/id]]]
+  (let [{:keys [url], content-type :content_type} (api/check-404
+                                                   (t2/select-one [:model/Image :url :content_type] image-id))]
+    {:status  200
+     :body    (java.io.FileOutputStream. url)
+     :headers {"Content-Type" content-type}}))
 
 ;; curl -X POST http://localhost:3000/api/images -H "x-metabase-session: $(cat session.txt)" -F "file=@$(pwd)/duck.jpeg"
 (api.macros/defendpoint :post "/"
