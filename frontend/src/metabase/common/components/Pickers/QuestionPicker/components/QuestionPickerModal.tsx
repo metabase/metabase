@@ -94,6 +94,7 @@ export const QuestionPickerModal = ({
   const [modelsPath, setModelsPath] = useState<QuestionPickerStatePath>();
   const [metricsPath, setMetricsPath] = useState<QuestionPickerStatePath>();
   const [questionsPath, setQuestionsPath] = useState<QuestionPickerStatePath>();
+  const [imagesPath, setImagesPath] = useState<QuestionPickerStatePath>();
 
   const tabs: EntityPickerTab<
     QuestionPickerItem["id"],
@@ -153,6 +154,25 @@ export const QuestionPickerModal = ({
           onInit={onItemSelect}
           onItemSelect={onItemSelect}
           onPathChange={setMetricsPath}
+          shouldDisableItem={shouldDisableItem}
+        />
+      ),
+    },
+    {
+      id: "images-tab",
+      displayName: t`Images`,
+      models: ["image" as const],
+      folderModels: ["collection" as const],
+      icon: "snail",
+      render: ({ onItemSelect }) => (
+        <QuestionPicker
+          initialValue={value}
+          models={["image"]}
+          options={options}
+          path={imagesPath}
+          onInit={onItemSelect}
+          onItemSelect={onItemSelect}
+          onPathChange={setImagesPath}
           shouldDisableItem={shouldDisableItem}
         />
       ),

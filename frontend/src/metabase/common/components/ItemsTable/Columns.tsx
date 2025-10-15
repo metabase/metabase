@@ -47,7 +47,7 @@ const ItemLinkComponent = ({
   item: CollectionItem;
   onClick?: (item: CollectionItem) => void;
 }>) => {
-  if (isEmbeddingSdk()) {
+  if (isEmbeddingSdk() || item.model === "image") {
     return <ItemButton onClick={() => onClick?.(item)}>{children}</ItemButton>;
   }
   return (

@@ -62,9 +62,13 @@ export const ImageBlockNodeView = ({
 
   const uploadFile = useCallback(
     async (file: File) => {
-      await uploadImage({ file, collectionId: doc?.collection_id as any });
+      const { data } = await uploadImage({
+        file,
+        collectionId: doc?.collection_id as any,
+      });
+
       updateAttributes({
-        url: "https://placehold.co/600x400",
+        url: data?.url,
       });
     },
     [uploadImage, doc, updateAttributes],
