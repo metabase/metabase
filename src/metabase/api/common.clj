@@ -583,4 +583,5 @@
    "pulse-card"        {:db-model :model/PulseCard          :alias :pulse-card}
    "pulse-channel"     {:db-model :model/PulseChannel       :alias :pulse-channel}
    "timeline"          {:db-model :model/Timeline           :alias :timeline}
-   "user"              {:db-model :model/User               :alias :user}})
+   "user"              {:db-model :model/User               :alias :user}
+   "image"             {:db-model :model/Image              :alias :image}})

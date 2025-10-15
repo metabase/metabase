@@ -73,7 +73,7 @@
 (def models-search-order
   "The order of this list influences the order of the results: items earlier in the
   list will be ranked higher."
-  (cond-> ["dashboard" "metric" "segment" "indexed-entity" "card" "dataset" "collection" "table" "action"]
+  (cond-> ["dashboard" "metric" "segment" "indexed-entity" "card" "dataset" "collection" "table" "action" "image"]
     config/ee-available? (conj "document")
     :always (conj "database")))
 

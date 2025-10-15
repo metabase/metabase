@@ -1,6 +1,7 @@
 (ns metabase.images.models.image
   (:require
    [metabase.images.schema :as images.schema]
+   [metabase.search.spec :as search.spec]
    [metabase.system.core :as system]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
@@ -26,3 +27,22 @@
                                           :id [:in image-ids]))]
     (for [user users]
       (assoc user :profile_image_url (get id->image-url (:profile_image_id user))))))
+
+(search.spec/define-spec "image"
+  {:model        :model/Image
+   :attrs        {:archived      false
+                  :name          :title
+                  :collection-id  false
+                  :created-at     :created_at}
+   :search-terms [:title]
+   :render-terms {:name                :title
+                  :document-name       :title
+                  :document-id         :id
+                  :collection-position false}})
+
+(comment
+  (into []
+        (comp
+         (filter #(= "image" (:model %)))
+         (take 10))
+        (metabase.search.ingestion/searchable-documents)))
