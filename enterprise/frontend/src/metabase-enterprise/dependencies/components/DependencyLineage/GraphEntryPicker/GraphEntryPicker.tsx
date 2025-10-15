@@ -21,7 +21,6 @@ const PICKER_MODELS: DataPickerValue["model"][] = [
   "card",
   "dataset",
   "metric",
-  "transform",
 ];
 
 type GraphEntryPickerProps = {
