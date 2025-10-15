@@ -3,6 +3,7 @@ import { useCallback, useMemo } from "react";
 import _ from "underscore";
 
 import type { ContentTranslationFunction } from "metabase/i18n/types";
+import { isCartesianChart } from "metabase/visualizations";
 import type { HoveredObject } from "metabase/visualizations/types";
 import type {
   DictionaryArray,
@@ -204,8 +205,11 @@ export const translateFieldValuesInSeries = (
 
     const translatedRows: RowValue[][] = singleSeries.data.rows.map((row) =>
       row.map((value) => {
+        const display = singleSeries.card?.display;
         const translationConfig =
-          visualizationTranslationConfig[singleSeries.card?.display];
+          visualizationTranslationConfig[
+            isCartesianChart(display) ? "bar" : display
+          ];
         if (translationConfig?.isValueInSettings) {
           const setting: any =
             singleSeries.card.visualization_settings[
@@ -276,8 +280,11 @@ function translateVizSettings(
   tc: ContentTranslationFunction,
 ): Series {
   return series.map((singleSeries) => {
+    const display = singleSeries.card?.display;
     const translationConfig =
-      visualizationTranslationConfig[singleSeries.card?.display];
+      visualizationTranslationConfig[
+        isCartesianChart(display) ? "bar" : display
+      ];
 
     if (translationConfig) {
       return I.updateIn(
