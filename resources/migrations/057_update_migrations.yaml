@@ -1966,6 +1966,172 @@ databaseChangeLog:
             SET dataset_query = legacy_query
             WHERE legacy_query IS NOT NULL;
 
+  - changeSet:
+      id: v57.2025-10-15T09:30:00
+      author: camsaul
+      comment: >-
+        Create the image table.
+      changes:
+        - createTable:
+            tableName: image
+            remarks: Uploaded images.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  remarks: >-
+                    URL where the image can be served from
+                  name: url
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Display name of the image
+                  name: title
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  remarks: The timestamp of when the image was uploaded
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              # I think the title of an image is probably the only thing we want to support updating
+              - column:
+                  remarks: The timestamp of when the image was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-10-15T09:30:01
+      author: camsaul
+      comment: >-
+        Create the collection_image table.
+      changes:
+        - createTable:
+            tableName: collection_image
+            remarks: MtM table for Images living in Collections.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: collection_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: image_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: >-
+                    Position of an image in a Collection
+                  name: collection_position
+                  type: int
+                  constraints:
+                    nullable: false
+                    default: 0
+
+  - changeSet:
+      id: v57.2025-10-15T09:30:02
+      author: camsaul
+      comment: >-
+        Add FK from collection_image.collection_id > collection.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: collection_image
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_collection_image_collection_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v57.2025-10-15T09:30:03
+      author: camsaul
+      comment: >-
+        Add FK from collection_image.image_id > image.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: collection_image
+            baseColumnNames: image_id
+            referencedTableName: image
+            referencedColumnNames: id
+            constraintName: fk_collection_image_image_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v57.2025-10-15T09:30:04
+      author: camsaul
+      comment: >-
+        Create the card_snapshot endpoint.
+      changes:
+        - createTable:
+            tableName: card_snapshot
+            remarks: MtM table for CollectionImages that are snapshots of Cards.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: collection_image_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: card_id
+                  type: int
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-10-15T09:30:05
+      author: camsaul
+      comment: >-
+        Add FK from card_snapshot.card_id > card.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: card_snapshot
+            baseColumnNames: card_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_card_snapshot_card_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v57.2025-10-15T09:30:06
+      author: camsaul
+      comment: >-
+        Add FK from card_snapshot.collection_image_id > collection_image.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: card_snapshot
+            baseColumnNames: collection_image_id
+            referencedTableName: collection_image
+            referencedColumnNames: id
+            constraintName: fk_card_snapshot_collection_image_id
+            onDelete: CASCADE
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

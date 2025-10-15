@@ -10,7 +10,9 @@
 
 (api.macros/defendpoint :post "/"
   "Upload an image."
-  []
+  [{:keys [user-id collection-id]} :- [:map
+                                       [:user-id       {:optional true} [:maybe ::lib.schema.id/user]]
+                                       [:collection-id {:optional true} [:maybe ::lib.schema.id/collection]]]]
   {:body #_FileOutputStream nil})
 
 ;; GET /api/collection/:id/items needs to return collection_image
@@ -18,7 +20,7 @@
 ;; GET /api/user + GET /api/user/:id needs to return profile pic URL
 
 ;;; TODO -- not sure bout this =(
-(api.macros/defendpoint :post "/collection/:collection-id"
+(api.macros/defendpoint :post "/"
   "Add an image to a collection (create a new :model/CollectionImage"
   []
   {})
