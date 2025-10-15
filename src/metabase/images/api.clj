@@ -121,14 +121,24 @@
                                                                                   :collection_id (:collection_id card)})
           card-snapshot    (t2/insert-returning-instance! :model/CardSnapshot {:card_id             card-id
                                                                                :collection_image_id (:id collection-image)})]
-      {:status 200
-       :body   {:image            (assoc image :url (models.image/image-id->contents-url (:id image)))
-                :collection_image collection-image
-                :card_snapshot    card-snapshot}})))
+      {:image            (assoc image :url (models.image/image-id->contents-url (:id image)))
+       :collection_image collection-image
+       :card_snapshot    card-snapshot})))
 
 (api.macros/defendpoint :get "/card/:card-id/snapshots"
   "List all snapshots of a Card."
   [{:keys [card-id]} :- [:map
                          [:card-id ::lib.schema.id/card]]]
-  {:status 200
-   :body   (t2/select :model/CardSnapshot :card_id card-id)})
+  (let [images (t2/select :model/Image
+                          {:select    [:image/*]
+                           :from      [[(t2/table-name :model/Image) :image]]
+                           :left-join [[(t2/table-name :model/CollectionImage) :collection_image]
+                                       [:= :collection_image/image_id :image/id]
+                                       [(t2/table-name :model/CardSnapshot) :snapshot]
+                                       [:= :snapshot/collection_image_id :collection_image/id]
+                                       [(t2/table-name :model/Card) :card]
+                                       [:= :card/id :snapshot/card_id]]
+                           :where     [:= :card/id card-id]
+                           :order-by  [[:image/created_at :desc]]})]
+    (for [image images]
+      (assoc image :url (models.image/image-id->contents-url (:id image))))))
