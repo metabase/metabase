@@ -4,8 +4,9 @@
    [environ.core :as env]
    [java-time.api :as t]
    [metabase.api.macros :as api.macros]
-   [metabase.settings.models.setting :as setting]
+   [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -39,7 +40,7 @@
                                                 :from [:task_history]
                                                 :where [:and
                                                         [:>= :started_at (t/minus (t/instant) (t/days days))]
-                                                        [:= :ended_at nil]]
+                                                        [:= :status "failed"]]
                                                 :group-by [:task :db_id]
                                                 :order-by [[:%count.* :desc]]
                                                 :limit 50})
@@ -77,7 +78,6 @@
      :where [:> [[:- [:now] :pg_stat_activity.xact_start]]
              [:raw "interval '5 minutes'"]]
      :order-by [[2 :desc]]})})
-
 
 ;; (defn- get-database-stats
 ;;   "Get database metadata statistics"
@@ -130,16 +130,14 @@
   ;;  :pulse-stats (get-pulse-stats)
   ;;  :cache-settings (get-cache-settings)
 
-
 (def ^:private analysis-prompt
-  "Analyze this Metabase instance health data and generate a comprehensive diagnostic report.
+  "Analyze this Metabase instance health data and generate a comprehensive diagnostic report, but as if it was told by a doctor that makes a bunch of jokes and puns.
 
 Focus on identifying:
 1. Critical issues (potential OOM risks, 100% failure rates, etc)
 2. Performance problems (slow queries, timeouts)
-3. Configuration issues (cache settings, memory)
-4. Failed tasks (sync, fingerprint, pulses)
-5. Database issues (excessive field counts, sync problems)
+3. Failed tasks (sync, fingerprint, pulses)
+4. Database issues (excessive field counts, sync problems)
 
 Generate a markdown report with:
 - Executive Summary with severity indicators (🔴 Critical, 🟡 Warning, 🟢 Good)
