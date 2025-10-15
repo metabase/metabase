@@ -1452,6 +1452,19 @@
                                    (assoc-in [:blueprints :salesforce-transforms] table-ids)))})
       response)))
 
+(defn create-salesforce-collection!
+  "Creates a collection for salesforce blueprints"
+  []
+  (t2/delete! :model/Collection :name "Salesforce Blueprint 📘")
+  (let [effective-namespace nil]
+    (u/prog1 (t2/insert-returning-instance!
+              :model/Collection
+              {:name            "Salesforce Blueprint 📘"
+               :description     "A collection for Salesforce blueprints"
+               :authority_level nil
+               :namespace       effective-namespace})
+      (events/publish-event! :event/collection-touch {:collection-id (:id <>) :user-id api/*current-user-id*}))))
+
 (api.macros/defendpoint :post "/:id/blueprints/:blueprint-type"
   "Create the transforms, cards and dashboard for blueprints."
   [{:keys [id blueprint-type]}
@@ -1468,11 +1481,12 @@
     (cond
       (and (= blueprint-type :salesforce) (:is-salesforce? (:blueprints settings)))
       (let [salesforce-transform-tables (create-salesforce-transforms! db-id)
-            salesforce-cards (blueprints/create-salesforce-cards! db salesforce-transform-tables)
-            salesforce-dashboard (blueprints/create-salesforce-dashboard! db salesforce-cards)]
+            salesforce-collection (create-salesforce-collection!)
+            _salesforce-cards (blueprints/create-salesforce-cards! db salesforce-transform-tables)
+            #_salesforce-dashboard #_(blueprints/create-salesforce-dashboard! db salesforce-cards)]
         {:tables salesforce-transform-tables
-         :collection {}
-         :dashboard salesforce-dashboard
+         :collection salesforce-collection
+         :dashboard {}
          :document {}})
 
       :else
