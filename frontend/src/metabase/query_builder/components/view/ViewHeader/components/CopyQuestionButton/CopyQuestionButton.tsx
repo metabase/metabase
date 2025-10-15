@@ -17,8 +17,16 @@ export const CopyQuestionButton = ({
 
   const handleCopy = useCallback(async () => {
     try {
-      const datasetQuery = question.card().dataset_query;
-      const queryString = JSON.stringify(datasetQuery, null, 2);
+      // Copy all visualization-related properties
+      const dataToCopy = {
+        dataset_query: question.card().dataset_query,
+        display: question.card().display,
+        visualization_settings: question.card().visualization_settings,
+        parameters: question.card().parameters,
+        result_metadata: question.card().result_metadata,
+      };
+
+      const queryString = JSON.stringify(dataToCopy, null, 2);
 
       await navigator.clipboard.writeText(queryString);
 

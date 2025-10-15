@@ -375,28 +375,54 @@ async function reduxUpdateQuestion(
 
 export const updateQuestionWithPastedQuery = createThunkAction(
   "metabase/qb/UPDATE_QUESTION_WITH_PASTED_QUERY",
-  (pastedDatasetQuery: DatasetQuery) =>
-    async (dispatch: Dispatch, getState: GetState) => {
-      const question = getQuestion(getState());
-      if (!question) {
-        return;
-      }
+  (pastedData: any) => async (dispatch: Dispatch, getState: GetState) => {
+    const question = getQuestion(getState());
+    if (!question) {
+      return;
+    }
 
-      // Create new question card with pasted dataset_query
-      const newCard = {
-        ...question.card(),
-        dataset_query: pastedDatasetQuery,
-      };
+    // Extract dataset_query and other properties from pasted data
+    let datasetQuery;
+    let display;
+    let visualizationSettings;
+    let parameters;
+    let resultMetadata;
 
-      // Create new question with pasted query
-      const newQuestion = question.setCard(newCard);
+    if (pastedData.dataset_query) {
+      // New format: { dataset_query, display, visualization_settings, parameters, result_metadata }
+      datasetQuery = pastedData.dataset_query;
+      display = pastedData.display;
+      visualizationSettings = pastedData.visualization_settings;
+      parameters = pastedData.parameters;
+      resultMetadata = pastedData.result_metadata;
+    } else {
+      // Old format: raw dataset_query
+      datasetQuery = pastedData;
+    }
 
-      // Update the question in Redux state
-      dispatch(updateQuestion(newQuestion));
+    // Create new question card with pasted data
+    const newCard = {
+      ...question.card(),
+      dataset_query: datasetQuery,
+      ...(display && { display }),
+      ...(visualizationSettings && {
+        visualization_settings: visualizationSettings,
+      }),
+      ...(parameters && { parameters }),
+      ...(resultMetadata && { result_metadata: resultMetadata }),
+      // Lock the display to prevent auto-selection of "more sensible" visualizations
+      ...(display && { displayIsLocked: true }),
+    };
 
-      // Run the query to get results
-      dispatch(runQuestionQuery());
+    // Create new question with pasted query
+    const newQuestion = question.setCard(newCard);
 
-      return newQuestion;
-    },
+    // Update the question in Redux state
+    dispatch(updateQuestion(newQuestion));
+
+    // Run the query to get results
+    dispatch(runQuestionQuery());
+
+    return newQuestion;
+  },
 );

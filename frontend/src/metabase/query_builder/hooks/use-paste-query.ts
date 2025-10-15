@@ -26,16 +26,21 @@ export const usePasteQuery = ({
           return;
         }
 
-        // The copied data IS the dataset_query itself
-        // Validate it has the expected structure (database, type, query fields)
-        if (!pastedData || typeof pastedData !== "object") {
+        // Check if this is the new format (object with dataset_query property) or old format (raw dataset_query)
+        let datasetQuery;
+        if (pastedData.dataset_query) {
+          // New format: { dataset_query, display, visualization_settings, parameters }
+          datasetQuery = pastedData.dataset_query;
+        } else if (pastedData.database && pastedData.type && pastedData.query) {
+          // Old format: raw dataset_query
+          datasetQuery = pastedData;
+        } else {
           // If it doesn't have the expected structure, silently ignore
           return;
         }
 
-        // Validate it looks like a dataset_query (has database, type, and query)
-        if (!pastedData.database || !pastedData.type || !pastedData.query) {
-          // If it doesn't have the expected structure, silently ignore
+        // Validate the dataset_query has the expected structure
+        if (!datasetQuery || typeof datasetQuery !== "object") {
           return;
         }
 
@@ -48,11 +53,11 @@ export const usePasteQuery = ({
 
         if (hasExistingQuery) {
           // Show confirmation modal for existing queries
-          onOpenModal("paste-query", { pastedDatasetQuery: pastedData });
+          onOpenModal("paste-query", { pastedData: pastedData });
         } else {
           // For empty questions, paste directly without confirmation
           onOpenModal("paste-query", {
-            pastedDatasetQuery: pastedData,
+            pastedData: pastedData,
             skipConfirmation: true,
           });
         }

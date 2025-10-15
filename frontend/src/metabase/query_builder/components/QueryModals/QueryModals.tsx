@@ -38,7 +38,11 @@ interface QueryModalsProps {
   modal: QueryModalType;
   modalContext:
     | number
-    | { pastedDatasetQuery?: any; skipConfirmation?: boolean };
+    | {
+        pastedDatasetQuery?: any;
+        pastedData?: any;
+        skipConfirmation?: boolean;
+      };
   question: Question;
   setQueryBuilderMode: (mode: QueryBuilderMode) => void;
   originalQuestion: Question;
@@ -342,14 +346,14 @@ export function QueryModals({
         <QuestionEmbedWidget card={question._card} onClose={onCloseModal} />
       );
     case MODAL_TYPES.PASTE_QUERY: {
-      const pastedDatasetQuery =
-        typeof modalContext === "object" && modalContext?.pastedDatasetQuery;
+      const pastedData =
+        typeof modalContext === "object" && modalContext?.pastedData;
       const skipConfirmation =
         typeof modalContext === "object" && modalContext?.skipConfirmation;
 
       // If skipConfirmation is true, paste directly without showing modal
-      if (skipConfirmation && pastedDatasetQuery) {
-        dispatch(updateQuestionWithPastedQuery(pastedDatasetQuery));
+      if (skipConfirmation && pastedData) {
+        dispatch(updateQuestionWithPastedQuery(pastedData));
         onCloseModal();
         return <></>;
       }
@@ -358,8 +362,8 @@ export function QueryModals({
         <PasteQueryModal
           opened={true}
           onConfirm={() => {
-            if (pastedDatasetQuery) {
-              dispatch(updateQuestionWithPastedQuery(pastedDatasetQuery));
+            if (pastedData) {
+              dispatch(updateQuestionWithPastedQuery(pastedData));
             }
             onCloseModal();
           }}
