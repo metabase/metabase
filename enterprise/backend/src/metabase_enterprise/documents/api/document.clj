@@ -277,6 +277,21 @@
                   (log/errorf throwable "Error on socket for %s" document-id))})
     {:status 404}))
 
+(defn connect-event [payload])
+(defn create-event [payload])
+(defn change-event [payload])
+(defn disconnect-event [payload])
+
+(api.macros/defendpoint :post "/webhook"
+  [_
+   _
+   {:keys [event payload]}]
+  (case event
+    "connect" (connect-event payload)
+    "create" (create-event payload)
+    "change" (change-event payload)
+    "disconnect" (disconnect-event payload)))
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/document/` routes."
   (api.macros/ns-handler *ns* +auth))
