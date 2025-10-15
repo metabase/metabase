@@ -2,6 +2,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
+   [metabase.collections.models.collection :as collection]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -43,7 +44,17 @@
   (io/file "resources/frontend_client/app/assets/img/blue_check.png"))
 
 (comment
+
   (mt/user-http-request-full-response :crowberto :post "images"
                                       {:request-options {:headers {"content-type" "multipart/form-data"}}}
                                       {:file test-image}
-                                      :user-id (mt/user->id :crowberto)))
+                                      :user-id (mt/user->id :crowberto))
+
+  (let [user-id       (mt/user->id :crowberto)
+        collection-id (collection/user->personal-collection user-id)]
+    (mt/user-http-request-full-response :crowberto :post "images"
+                                        {:request-options {:headers {"content-type" "multipart/form-data"}}}
+                                        {:file test-image}
+                                        :collection-id (:id collection-id)))
+
+  #_())
