@@ -5,9 +5,9 @@
    [clojure.java.io :as io]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.images.models.image :as models.image]
    [metabase.images.schema :as images.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.system.core :as system]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -19,7 +19,8 @@
   "Metadata about an image."
   [{image-id :id, :as _route-params} :- [:map
                                          [:id ::images.schema/id]]]
-  (api/check-404 (t2/select-one :model/Image image-id)))
+  (-> (api/check-404 (t2/select-one :model/Image image-id))
+      (assoc :url (models.image/image-id->contents-url image-id))))
 
 (api.macros/defendpoint :get "/:id/contents"
   "This is our endpoint for serving the contents of an image that we have stored locally somewhere."
@@ -72,7 +73,7 @@
              {:image_id            (:id image)
               :collection_id       collection-id
               :collection_position 0}))
-          (assoc image :url (format "%s/api/images/%d/contents" (system/site-url) (:id image)))))
+          (assoc image :url (models.image/image-id->contents-url (:id image)))))
       (finally
         (io/delete-file tempfile true)))))
 

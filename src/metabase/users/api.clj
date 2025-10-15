@@ -201,24 +201,25 @@
         clauses             (user/filter-clauses status query group-id-clause include_deactivated
                                                  {:limit  (request/limit)
                                                   :offset (request/offset)})]
-    {:data (cond-> (t2/select
-                    (vec (cons :model/User (user-visible-columns)))
-                    (sql.helpers/order-by clauses
-                                          [:%lower.first_name :asc]
-                                          [:%lower.last_name :asc]
-                                          [:id :asc]))
-             ;; For admins also include the IDs of Users' Personal Collections
-             api/*is-superuser?*
-             (t2/hydrate :personal_collection_id)
+    {:data (-> (t2/select
+                (vec (cons :model/User (user-visible-columns)))
+                (sql.helpers/order-by clauses
+                                      [:%lower.first_name :asc]
+                                      [:%lower.last_name :asc]
+                                      [:id :asc]))
+               (cond-> #_user
+                 ;; For admins also include the IDs of Users' Personal Collections
+                 api/*is-superuser?*
+                 (t2/hydrate :personal_collection_id)
 
-             (or api/*is-superuser?*
-                 api/*is-group-manager?*)
-             (t2/hydrate :group_ids)
-             ;; if there is a group_id clause, make sure the list is deduped in case the same user is in multiple gropus
-             group-id-clause
-             distinct)
-     :total  (-> (t2/query
-                  (merge {:select [[[:count [:distinct :core_user.id]] :count]]
+                 (or api/*is-superuser?*
+                     api/*is-group-manager?*)
+                 (t2/hydrate :group_ids)
+                 ;; if there is a group_id clause, make sure the list is deduped in case the same user is in multiple gropus
+                 group-id-clause
+                 distinct)
+               (t2/hydrate :profile_image_url))
+     :total  (-> (t2/query                  (merge {:select [[[:count [:distinct :core_user.id]] :count]]
                           :from   :core_user}
                          (filter-clauses-without-paging clauses)))
                  first
@@ -355,7 +356,7 @@
     (catch clojure.lang.ExceptionInfo _e
       (perms/check-group-manager)))
   (-> (api/check-404 (fetch-user :id id))
-      (t2/hydrate :user_group_memberships)
+      (t2/hydrate :user_group_memberships :profile_image_url)
       add-structured-attributes))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

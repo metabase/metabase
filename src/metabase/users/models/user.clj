@@ -188,7 +188,7 @@
 
 (def ^:private default-user-columns
   "Sequence of columns that are normally returned when fetching a User from the DB."
-  [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_qbnewb :tenant_id])
+  [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_qbnewb :tenant_id :profile_image_id])
 
 (def admin-or-self-visible-columns
   "Sequence of columns that we can/should return for admins fetching a list of all Users, or for the current user
@@ -199,7 +199,7 @@
   "Sequence of columns that we will allow non-admin Users to see when fetching a list of Users. Why can non-admins see
   other Users at all? I honestly would prefer they couldn't, but we need to give them a list of emails to power
   Pulses."
-  [:id :email :first_name :last_name])
+  [:id :email :first_name :last_name :profile_image_url])
 
 (def group-manager-visible-columns
   "Sequence of columns Group Managers can see when fetching a list of Users.."

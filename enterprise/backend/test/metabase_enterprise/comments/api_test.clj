@@ -91,7 +91,9 @@
                              :content     content
                              :target_type "document"
                              :target_id   doc-id
-                             :creator     {:id (mt/user->id :rasta)}
+                             :creator     {:id (mt/user->id :rasta)
+                                           :profile_image_id nil
+                                           :profile_image_url nil}
                              :reactions   []}]
               (is (=? expected1 created))
               (is (=? {:comments [expected1]}
