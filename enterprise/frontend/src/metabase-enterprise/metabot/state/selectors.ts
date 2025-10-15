@@ -146,3 +146,8 @@ export const getNavigateToPath = createSelector(
   getMetabotReactionsState,
   (reactionsState) => reactionsState.navigateToPath,
 );
+
+export const getIsDeepResearch = createSelector(
+  getMetabot,
+  (metabot) => metabot.experimental.deepResearch,
+);

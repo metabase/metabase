@@ -83,7 +83,7 @@ export interface EditorProps {
   onEditorReady?: (editor: TiptapEditor) => void;
   onCardEmbedsChange?: (refs: CardEmbedRef[]) => void;
   initialContent?: JSONContent | null;
-  onChange?: (content: JSONContent) => void;
+  onChange?: (content: JSONContent, textContent: string) => void;
   onQuestionSelect?: (cardId: number | null) => void;
   editable?: boolean;
   isLoading?: boolean;

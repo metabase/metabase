@@ -8,6 +8,7 @@ import { trackMetabotRequestSent } from "../analytics";
 import {
   type MetabotPromptSubmissionResult,
   getAgentErrorMessages,
+  getIsDeepResearch,
   getIsLongMetabotConversation,
   getIsProcessing,
   getLastAgentMessagesByType,
@@ -70,6 +71,10 @@ export const useMetabotAgent = () => {
 
   const profile = useSelector(getProfileOverride as any) as ReturnType<
     typeof getProfileOverride
+  >;
+
+  const isDeepResearch = useSelector(getIsDeepResearch as any) as ReturnType<
+    typeof getIsDeepResearch
   >;
 
   const resetConversation = useCallback(
@@ -167,5 +172,6 @@ export const useMetabotAgent = () => {
     retryMessage,
     toolCalls,
     profile,
+    isDeepResearch,
   };
 };

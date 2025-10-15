@@ -11,6 +11,8 @@ import type {
 } from "metabase/metabot";
 import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 
+import { getIsDeepResearch } from "./state";
+
 export const defaultContext = {
   prompt: "",
   setPrompt: () => {},
@@ -50,6 +52,8 @@ export const MetabotProvider = ({
     const hasDataAccess = getHasDataAccess(databases);
     const hasNativeWrite = getHasNativeWrite(databases);
 
+    const isDeepResearch = getIsDeepResearch(state);
+
     const ctx = {
       user_is_viewing: [],
       current_time_with_timezone: dayjs.tz(dayjs()).format(),
@@ -58,6 +62,7 @@ export const MetabotProvider = ({
         hasDataAccess && "permission:save_questions",
         hasNativeWrite && "permission:write_sql_queries",
       ]),
+      deepResearch: isDeepResearch,
     };
 
     for (const providerFn of providerFns) {

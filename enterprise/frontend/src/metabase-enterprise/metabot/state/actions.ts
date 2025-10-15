@@ -48,6 +48,7 @@ export const {
   toolCallEnd,
   setProfileOverride,
   setMetabotReqIdOverride,
+  toggleDeepResearch,
 } = metabot.actions;
 
 type PromptErrorOutcome = {
@@ -98,6 +99,9 @@ export const executeSlashCommand = createAsyncThunk<void, SlashCommand>(
   "metabase-enterprise/metabot/executeSlashCommand",
   async (slashCommand, { dispatch }) => {
     match(slashCommand)
+      .with({ cmd: "research" }, () => {
+        dispatch(toggleDeepResearch());
+      })
       .with({ cmd: "profile" }, ({ args }) => {
         if (args.length <= 1) {
           dispatch(setProfileOverride(args[0]));

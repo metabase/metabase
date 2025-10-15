@@ -43,6 +43,7 @@ export interface MetabotState {
   reactions: MetabotReactionsState;
   toolCalls: MetabotToolCall[];
   experimental: {
+    deepResearch: boolean;
     metabotReqIdOverride: string | undefined;
     profileOverride: string | undefined;
   };
@@ -61,6 +62,7 @@ export const getMetabotInitialState = (): MetabotState => ({
   },
   toolCalls: [],
   experimental: {
+    deepResearch: false,
     metabotReqIdOverride: undefined,
     profileOverride: undefined,
   },
@@ -175,6 +177,9 @@ export const metabot = createSlice({
       action: PayloadAction<string | undefined>,
     ) => {
       state.experimental.metabotReqIdOverride = action.payload;
+    },
+    toggleDeepResearch: (state) => {
+      state.experimental.deepResearch = !state.experimental.deepResearch;
     },
     setProfileOverride: (state, action: PayloadAction<string | undefined>) => {
       state.experimental.profileOverride = action.payload;
