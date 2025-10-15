@@ -46,12 +46,12 @@ const schema = new Schema({
       parseDOM: [{ tag: 'blockquote' }],
       toDOM() { return ['blockquote', 0]; }
     },
-    horizontal_rule: {
+    horizontalRule: {
       group: 'block',
       parseDOM: [{ tag: 'hr' }],
       toDOM() { return ['hr']; }
     },
-    code_block: {
+    codeBlock: {
       content: 'text*',
       marks: '',
       group: 'block',
@@ -63,15 +63,15 @@ const schema = new Schema({
     text: {
       group: 'inline'
     },
-    hard_break: {
+    hardBreak: {
       inline: true,
       group: 'inline',
       selectable: false,
       parseDOM: [{ tag: 'br' }],
       toDOM() { return ['br']; }
     },
-    ordered_list: {
-      content: 'list_item+',
+    orderedList: {
+      content: 'listItem+',
       group: 'block',
       attrs: { order: { default: 1 } },
       parseDOM: [{
@@ -84,13 +84,13 @@ const schema = new Schema({
         return node.attrs.order === 1 ? ['ol', 0] : ['ol', { start: node.attrs.order }, 0];
       }
     },
-    bullet_list: {
-      content: 'list_item+',
+    bulletList: {
+      content: 'listItem+',
       group: 'block',
       parseDOM: [{ tag: 'ul' }],
       toDOM() { return ['ul', 0]; }
     },
-    list_item: {
+    listItem: {
       content: 'paragraph block*',
       parseDOM: [{ tag: 'li' }],
       toDOM() { return ['li', 0]; },
@@ -170,11 +170,11 @@ const schema = new Schema({
       }],
       toDOM(node) { return ['a', { href: node.attrs.href, title: node.attrs.title }, 0]; }
     },
-    em: {
+    italic: {
       parseDOM: [{ tag: 'i' }, { tag: 'em' }, { style: 'font-style=italic' }],
       toDOM() { return ['em', 0]; }
     },
-    strong: {
+    bold: {
       parseDOM: [
         { tag: 'strong' },
         { tag: 'b', getAttrs: node => node.style.fontWeight !== 'normal' && null },
@@ -192,7 +192,19 @@ const schema = new Schema({
 // Custom serializers for Metabase nodes
 const customSerializer = new MarkdownSerializer(
   {
-    ...defaultMarkdownSerializer.nodes,
+    // Standard nodes (use default serializers but map to our camelCase names)
+    doc: defaultMarkdownSerializer.nodes.doc,
+    paragraph: defaultMarkdownSerializer.nodes.paragraph,
+    heading: defaultMarkdownSerializer.nodes.heading,
+    blockquote: defaultMarkdownSerializer.nodes.blockquote,
+    horizontalRule: defaultMarkdownSerializer.nodes.horizontal_rule,
+    codeBlock: defaultMarkdownSerializer.nodes.code_block,
+    text: defaultMarkdownSerializer.nodes.text,
+    hardBreak: defaultMarkdownSerializer.nodes.hard_break,
+    orderedList: defaultMarkdownSerializer.nodes.ordered_list,
+    bulletList: defaultMarkdownSerializer.nodes.bullet_list,
+    listItem: defaultMarkdownSerializer.nodes.list_item,
+    // Custom Metabase nodes
     cardEmbed(state, node) {
       const { id, name } = node.attrs;
       // id can be number or string (ref:foo)
@@ -210,7 +222,7 @@ const customSerializer = new MarkdownSerializer(
         // Serialize as row
         const { columnWidths } = child.attrs;
         const hasCustomWidths = columnWidths && (columnWidths[0] !== 50 || columnWidths[1] !== 50);
-        
+
         if (hasCustomWidths) {
           const [w1, w2] = columnWidths;
           state.write(`{% row widths="${w1.toFixed(2)}:${w2.toFixed(2)}" %}`);
@@ -218,7 +230,7 @@ const customSerializer = new MarkdownSerializer(
           state.write(`{% row %}`);
         }
         state.ensureNewLine();
-        
+
         // Serialize the two cards inside
         child.forEach(card => {
           const { id, name } = card.attrs;
@@ -229,7 +241,7 @@ const customSerializer = new MarkdownSerializer(
           }
           state.ensureNewLine();
         });
-        
+
         state.write(`{% endrow %}`);
         state.closeBlock(node);
       } else {
@@ -245,7 +257,13 @@ const customSerializer = new MarkdownSerializer(
       });
     }
   },
-  defaultMarkdownSerializer.marks
+  {
+    // Map Tiptap mark names to default serializers
+    link: defaultMarkdownSerializer.marks.link,
+    italic: defaultMarkdownSerializer.marks.em,
+    bold: defaultMarkdownSerializer.marks.strong,
+    code: defaultMarkdownSerializer.marks.code
+  }
 );
 
 async function readStdin() {
