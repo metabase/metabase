@@ -12,12 +12,8 @@ import FormSubmitButton from "metabase/common/components/FormSubmitButton";
 import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import { Box, Flex, Text } from "metabase/ui";
-import type { User } from "metabase-types/api";
 
-import type {
-  MetabaseSessionApiAvailableLocale as LocaleData,
-  MetabaseUsersApiUser,
-} from "../../../../../../../ts-types/hey-api/types.gen";
+import type { MetabaseUsersApiUser } from "../../../../../../../ts-types/hey-api/types.gen";
 import { MetabaseSessionApiAvailableLocale } from "../../../../../../../ts-types/hey-api/types.gen";
 import type { UserProfileData } from "../../types";
 
