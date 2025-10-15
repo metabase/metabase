@@ -145,6 +145,9 @@ Generate a markdown report with:
 - Specific, actionable recommendations
 - Priority ranking of issues to fix
 
+Do not:
+- Generate a title heading
+
 Be specific about which databases, queries, or tasks are problematic.
 Use tables and formatting to make the report easy to scan.")
 
