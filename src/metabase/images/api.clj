@@ -77,9 +77,7 @@
                                           :model/CollectionImage
                                           {:image_id      (:id image)
                                            :collection_id collection-id
-                                           :collection_position {:select [[:max :collection_position]]
-                                                                 :from   [[:collection_image]]
-                                                                 :where  [:= :collection_id collection-id]}})}))]
+                                           :collection_position 0})}))]
           {:status 200
            :body   body}))
       (finally
