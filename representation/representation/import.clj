@@ -12,7 +12,23 @@
   "Read and parse a YAML entity file."
   [filepath]
   (try
-    (yaml/parse-string (slurp filepath))
+    (if (str/ends-with? filepath ".document.md")
+      ;; For markdown documents, parse frontmatter and content
+      (let [markdown-content (slurp filepath)
+            ;; Extract frontmatter and content
+            [_ frontmatter-text content-text] (re-matches #"(?s)^---\n(.*?)\n---\n\n(.*)$" markdown-content)
+            ;; Parse frontmatter (simple key: value pairs)
+            frontmatter-lines (str/split (or frontmatter-text "") #"\n")
+            frontmatter (reduce (fn [acc line]
+                                  (when-let [[_ k v] (re-matches #"([^:]+):\s*(.+)" line)]
+                                    (assoc acc (keyword k) v)))
+                                {}
+                                frontmatter-lines)
+            ;; Reconstruct entity with content
+            entity (assoc frontmatter :content (or content-text ""))]
+        entity)
+      ;; For non-markdown files, parse YAML as before
+      (yaml/parse-string (slurp filepath)))
     (catch Exception e
       (u/debug "Failed to read entity file:" filepath (.getMessage e))
       nil)))

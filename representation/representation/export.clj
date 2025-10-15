@@ -13,11 +13,27 @@
 (defn- write-entity
   "Write an entity to a YAML file."
   [base-path filename entity]
-  (let [file-path (str base-path "/" filename)
-        yaml-str (yaml/generate-string entity)]
-    (u/debug "Writing" file-path)
-    (io/make-parents file-path)
-    (spit file-path yaml-str)))
+  (let [entity-type (entity/determine-entity-type entity)]
+    (if (= entity-type :document)
+      ;; For documents, write as markdown with frontmatter
+      (let [md-filename (str/replace filename #"\.yml$" ".md")
+            file-path (str base-path "/" md-filename)
+            ;; Extract content and build frontmatter
+            content-text (:content entity)
+            frontmatter (dissoc entity :content)
+            ;; Convert frontmatter to YAML format
+            frontmatter-lines (for [[k v] frontmatter]
+                                (str (name k) ": " (if (keyword? v) (name v) v)))
+            markdown (str "---\n" (str/join "\n" frontmatter-lines) "\n---\n\n" content-text)]
+        (u/debug "Writing markdown document" file-path)
+        (io/make-parents file-path)
+        (spit file-path markdown))
+      ;; For non-documents, write YAML as before
+      (let [file-path (str base-path "/" filename)
+            yaml-str (yaml/generate-string entity)]
+        (u/debug "Writing" file-path)
+        (io/make-parents file-path)
+        (spit file-path yaml-str)))))
 
 (defn- write-collection
   "Write a collection and all its children/databases recursively."
