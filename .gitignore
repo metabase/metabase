@@ -163,3 +163,4 @@ CLAUDE.local.md
 
 /logs
 /.clojure-mcp
+/document_collab_server/node_modules/
