@@ -897,6 +897,7 @@
        (.execute stmt query)))))
 
 (defn- shell-load [& params]
+  (log/info "running ./load " (first params) "...")
   (let [{:keys [exit err out]} (apply shell/sh "./load" (concat params [:dir "../netabase"]))]
     (when (= exit 1)
       (throw (ex-info "Load command errored"

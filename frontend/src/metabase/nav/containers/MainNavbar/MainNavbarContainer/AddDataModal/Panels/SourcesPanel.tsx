@@ -51,7 +51,6 @@ export const SourcesPanel = ({
 
       return { success: true };
     } catch (error) {
-      console.error("Error adding source:", error);
       return {
         success: false,
         error:

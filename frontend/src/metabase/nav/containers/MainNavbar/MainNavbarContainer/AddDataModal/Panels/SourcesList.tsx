@@ -16,18 +16,128 @@ import {
 
 import S from "./SourcesList.module.css";
 
+interface DetailField {
+  field: string;
+  label: string;
+  placeholder: string;
+  type?: "text" | "password";
+}
+
 interface Source {
   name: string;
   value: string;
   category: "database" | "application";
+  detailFields: DetailField[];
 }
 
 const SOURCES: Source[] = [
-  { name: "PostgreSQL", value: "postgres", category: "database" },
-  { name: "Snowflake", value: "snowflake", category: "database" },
-  { name: "BigQuery", value: "bigquery-cloud-sdk", category: "database" },
-  { name: "Stripe", value: "stripe", category: "application" },
-  { name: "Pipedrive", value: "pipedrive", category: "application" },
+  {
+    name: "PostgreSQL",
+    value: "postgres",
+    category: "database",
+    detailFields: [
+      {
+        field: "connection_string",
+        label: "Connection string",
+        placeholder: "Enter connection string",
+      },
+    ],
+  },
+  {
+    name: "Snowflake",
+    value: "snowflake",
+    category: "database",
+    detailFields: [
+      {
+        field: "connection_string",
+        label: "Connection string",
+        placeholder: "Enter connection string",
+      },
+    ],
+  },
+  {
+    name: "BigQuery",
+    value: "bigquery-cloud-sdk",
+    category: "database",
+    detailFields: [
+      {
+        field: "connection_string",
+        label: "Connection string",
+        placeholder: "Enter connection string",
+      },
+    ],
+  },
+  {
+    name: "Stripe",
+    value: "stripe",
+    category: "application",
+    detailFields: [
+      {
+        field: "api_key",
+        label: "API key",
+        placeholder: "Enter API key",
+      },
+    ],
+  },
+  {
+    name: "Pipedrive",
+    value: "pipedrive",
+    category: "application",
+    detailFields: [
+      {
+        field: "api_key",
+        label: "API key",
+        placeholder: "Enter API key",
+      },
+    ],
+  },
+  {
+    name: "Google Sheets",
+    value: "google-sheets",
+    category: "application",
+    detailFields: [
+      {
+        field: "spreadsheet_url",
+        label: "Spreadsheet URL",
+        placeholder: "Enter spreadsheet URL",
+      },
+    ],
+  },
+  {
+    name: "Notion",
+    value: "notion",
+    category: "application",
+    detailFields: [
+      {
+        field: "api_key",
+        label: "API key",
+        placeholder: "Enter API key",
+      },
+    ],
+  },
+  {
+    name: "Salesforce",
+    value: "salesforce",
+    category: "application",
+    detailFields: [
+      {
+        field: "username",
+        label: "Username",
+        placeholder: "Enter username",
+      },
+      {
+        field: "password",
+        label: "Password",
+        placeholder: "Enter password",
+        type: "password",
+      },
+      {
+        field: "security_token",
+        label: "Security token",
+        placeholder: "Enter security token",
+      },
+    ],
+  },
 ];
 
 interface SourcesListProps {
@@ -42,10 +152,12 @@ export const SourcesList = ({ onSubmit }: SourcesListProps) => {
   const combobox = useCombobox();
   const [search, setSearch] = useState("");
   const [selectedSource, setSelectedSource] = useState<Source | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string;
+    details: Record<string, string>;
+  }>({
     name: "",
-    connection_string: "",
-    apiKey: "",
+    details: {},
   });
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -58,7 +170,7 @@ export const SourcesList = ({ onSubmit }: SourcesListProps) => {
     const source = SOURCES.find((s) => s.value === sourceKey);
     if (source) {
       setSelectedSource(source);
-      setFormData({ name: "", connection_string: "", apiKey: "" });
+      setFormData({ name: "", details: {} });
       setError(null);
     }
   };
@@ -71,17 +183,10 @@ export const SourcesList = ({ onSubmit }: SourcesListProps) => {
     setError(null);
     setIsSubmitting(true);
 
-    const details: Record<string, string> = {};
-    if (selectedSource.category === "database") {
-      details.connection_string = formData.connection_string;
-    } else {
-      details.apiKey = formData.apiKey;
-    }
-
     const result = await onSubmit({
       name: formData.name,
       source: selectedSource.value,
-      details,
+      details: formData.details,
     });
 
     setIsSubmitting(false);
@@ -93,13 +198,13 @@ export const SourcesList = ({ onSubmit }: SourcesListProps) => {
 
   const isFormValid =
     formData.name.trim() !== "" &&
-    (selectedSource?.category === "database"
-      ? formData.connection_string.trim() !== ""
-      : formData.apiKey.trim() !== "");
+    selectedSource?.detailFields.every(
+      (field) => formData.details[field.field]?.trim() !== "",
+    );
 
   const handleBack = () => {
     setSelectedSource(null);
-    setFormData({ name: "", connection_string: "", apiKey: "" });
+    setFormData({ name: "", details: {} });
     setError(null);
   };
 
@@ -180,30 +285,25 @@ export const SourcesList = ({ onSubmit }: SourcesListProps) => {
               required
             />
 
-            {selectedSource.category === "database" ? (
+            {selectedSource.detailFields.map((detailField) => (
               <TextInput
-                label={t`Connection string`}
-                placeholder={t`Enter connection string`}
-                value={formData.connection_string}
+                key={detailField.field}
+                label={detailField.label}
+                placeholder={detailField.placeholder}
+                type={detailField.type || "text"}
+                value={formData.details[detailField.field] || ""}
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    connection_string: e.target.value,
+                    details: {
+                      ...formData.details,
+                      [detailField.field]: e.target.value,
+                    },
                   })
                 }
                 required
               />
-            ) : (
-              <TextInput
-                label={t`API key`}
-                placeholder={t`Enter API key`}
-                value={formData.apiKey}
-                onChange={(e) =>
-                  setFormData({ ...formData, apiKey: e.target.value })
-                }
-                required
-              />
-            )}
+            ))}
 
             <Button
               onClick={handleSubmit}
