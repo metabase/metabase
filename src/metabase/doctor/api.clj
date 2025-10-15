@@ -1,10 +1,11 @@
 (ns metabase.doctor.api
   (:require
    [clj-http.client :as http]
+   [clojure.core.memoize :as memoize]
    [environ.core :as env]
    [java-time.api :as t]
    [metabase.api.macros :as api.macros]
-   [metabase.settings.models.setting :as setting]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
@@ -17,14 +18,34 @@
     {:total-queries (t2/count :model/QueryExecution
                               {:where [:>= :started_at since]})
 
-     :error-queries (t2/count :model/QueryExecution
-                              {:where [:and
-                                       [:>= :started_at since]
-                                       [:not= :error nil]]})
+     :error-queries (t2/select :model/QueryExecution 
+                                {:select [:query_execution.id 
+                                          :query_execution.database_id 
+                                          [:metabase_database.name :database_name] 
+                                          :query_execution.running_time 
+                                          :error :context 
+                                          :query_execution.card_id 
+                                          :report_card.name]
+                                 :from [:query_execution]
+                                 :left-join [[:report_card] [:= :query_execution.card_id :report_card.id]
+                                             [:metabase_database] [:= :query_execution.database_id :metabase_database.id]]
+                                 :where [:and
+                                         [:>= :started_at since]
+                                         [:not= :error nil]]
+                                 :limit 100
+                                 :order-by [[:query_execution.started_at :desc]]})
 
      ;; Queries with >10 second runtime
      :slow-queries (t2/select :model/QueryExecution
-                               {:select [:id :database_id :card_id :running_time :error :context :result_rows]
+                               {:select [:query_execution.id 
+                                         :query_execution.database_id 
+                                         [:metabase_database.name :database_name]
+                                         :query_execution.card_id 
+                                         :report_card.name
+                                         :running_time :error :context :result_rows]
+                                :from [:query_execution]
+                                :left-join [[:report_card] [:= :query_execution.card_id :report_card.id]
+                                            [:metabase_database] [:= :query_execution.database_id :metabase_database.id]]
                                 :where [:and
                                         [:>= :started_at since]
                                         [:> :running_time 10000]]
@@ -33,7 +54,15 @@
 
      ;; Queries with extremely large result sets
      :large-result-queries (t2/select :model/QueryExecution
-                                       {:select [:id :card_id :database_id :result_rows :running_time :context]
+                                       {:select [:query_execution.id 
+                                                 :query_execution.card_id 
+                                                 :report_card.name
+                                                 :query_execution.database_id
+                                                 [:metabase_database.name :database_name] 
+                                                 :result_rows :running_time :context]
+                                        :from [:query_execution]
+                                        :left-join [[:report_card] [:= :query_execution.card_id :report_card.id]
+                                                    [:metabase_database] [:= :query_execution.database_id :metabase_database.id]]
                                         :where [:and
                                                 [:>= :started_at since]
                                                 [:> :result_rows 100000]]
@@ -75,20 +104,24 @@
   "Get comprehensive task execution statistics"
   [days]
   (let [since (t/minus (t/instant) (t/days days))]
-    {:failed-tasks (t2/select :model/TaskHistory
-                               {:select [:task :db_id [[:count :*] :count]]
+    {:failed-tasks (t2/select :model/TaskHistory 
+                               {:select [:task :db_id [:metabase_database.name :db_name] [:%count.* :count]]
+                                :from [:task_history]
+                                :left-join [[:metabase_database] [:= :task_history.db_id :metabase_database.id]]
                                 :where [:and
                                         [:>= :started_at since]
-                                        [:= :ended_at nil]]
-                                :group-by [:task :db_id]
-                                :order-by [[:count :desc]]
+                                        [:or
+                                         [:= :ended_at nil]
+                                         [:= :status "failed"]]]
+                                :group-by [:task :db_id :db_name]
+                                :order-by [[:%count.* :desc]]
                                 :limit 50})
 
      ;; Tasks that consistently fail
      :recurring-failures (->> (t2/select :model/TaskHistory
                                          {:select [:task :db_id
                                                    [[:count :*] :total_runs]
-                                                   [[:sum [:case [:= :ended_at nil] [:inline 1] :else [:inline 0]]] :failures]]
+                                                   [[:sum [:case [:or [:= :ended_at nil] [:= :status "failed"]] [:inline 1] :else [:inline 0]]] :failures]]
                                           :where [:>= :started_at since]
                                           :group-by [:task :db_id]})
                               (filter #(> (:failures %) 5))
@@ -96,7 +129,9 @@
                               vec)
 
      :long-running-tasks (t2/select :model/TaskHistory
-                                     {:select [:task :duration :db_id]
+                                     {:select [:task :duration :db_id [:metabase_database.name :db_name]]
+                                      :from [:task_history]
+                                      :left-join [[:metabase_database] [:= :task_history.db_id :metabase_database.id]]
                                       :where [:and
                                               [:>= :started_at since]
                                               [:> :duration 300000]]
@@ -115,6 +150,33 @@
                                             [:in :task ["sync" "sync-fields" "fingerprint-fields" "analyze"]]]
                                     :group-by [:db_id :task]
                                     :order-by [[:db_id :asc] [:task :asc]]})}))
+
+(defn- get-pgstats-stats
+  "Get PostgreSQL specific statistics - set a lock with `begin; lock metabase_database in exclusive mode`"
+  [& _args]
+  {:locks
+   (t2/query
+    {:select     [:pg_stat_activity.pid :pg_class.relname :pg_locks.transactionid :pg_locks.granted]
+     :from       [[:pg_stat_activity]
+                  [:pg_locks]]
+     :left-join [:pg_class [:= :pg_locks.relation :pg_class.oid]]
+     :where [:and
+             [:not= :pg_stat_activity.query "<insufficient privilege>"]
+             [:= :pg_locks.pid :pg_stat_activity.pid]
+             [:= :pg_locks.mode "ExclusiveLock"]
+             [:not= :pg_stat_activity.pid [:call :pg_backend_pid]]]
+     :order-by [:query_start]})
+
+   :long-running
+   (t2/query
+    {:select [:pid
+              [[:- [:now] :pg_stat_activity.xact_start] :duration]
+              :query
+              :state]
+     :from [:pg_stat_activity]
+     :where [:> [[:- [:now] :pg_stat_activity.xact_start]]
+             [:raw "interval '5 minutes'"]]
+     :order-by [[2 :desc]]})})
 
 (defn- get-database-stats
   "Get comprehensive database metadata statistics"
@@ -325,8 +387,11 @@
    :pulse-stats (get-pulse-stats)
    :cache-settings (get-cache-settings)
    :system-metrics (get-system-metrics)
-   :oom-indicators (get-oom-indicators)})
-
+   :oom-indicators (get-oom-indicators)
+   :pg-stats (try
+               (get-pgstats-stats)
+               (catch Exception e
+                 {:error "PostgreSQL stats not available or not using PostgreSQL"}))})
 
 (def ^:private enhanced-analysis-prompt
   "You are an expert Metabase health diagnostic specialist. Analyze this comprehensive health data and generate a detailed diagnostic report.
@@ -416,8 +481,17 @@ Be extremely specific about:
 - Time patterns (e.g., 'crashes every hour at XX:00')
 - Memory estimates based on row counts and field counts
 
-Use tables, bullet points, and formatting to make the report scannable and actionable.
-Include severity indicators: 🔴 Critical, 🟡 Warning, 🟢 Good, ⚠️ Caution")
+Respect this style:
+- Use tables, bullet points, and formatting to make the report scannable and actionable.
+- Include severity indicators: 🔴 Critical, 🟡 Warning, 🟢 Good, ⚠️ Caution
+
+Anywhere in the response, whenever you reference a specific card/query, mention it by name. The name should have a link on it, with no additional text, that points to `/question/{id}`.
+Anywhere in the response, whenever you reference a specific database, mention it by name. The name should have a link on it, with no additional text, that points to `/admin/databases/{id}`.
+
+For example, in raw markdown:
+
+    There is a problem with [QUESTION NAME HERE](/question/123).
+    Database [DATABASE NAME HERE](/admin/databases/123) has issues.")
 
 (defn- call-openai
   "Call OpenAI GPT API with enhanced prompt"
@@ -426,7 +500,6 @@ Include severity indicators: 🔴 Critical, 🟡 Warning, 🟢 Good, ⚠️ Caut
         model "gpt-4-turbo-preview"]
     (when-not api-key
       (throw (ex-info "OpenAI API key not configured" {})))
-
     (let [response (http/post "https://api.openai.com/v1/chat/completions"
                               {:headers {"Authorization" (str "Bearer " api-key)
                                          "Content-Type" "application/json"}
@@ -445,14 +518,24 @@ Include severity indicators: 🔴 Critical, 🟡 Warning, 🟢 Good, ⚠️ Caut
                                :timeout 30000})]
       (-> response :body :choices first :message :content))))
 
+;; Memoization for performance - cache results for 30 minutes
+(def ^:private openai-memo
+  (memoize/ttl call-openai :ttl/threshold (u/minutes->ms 30)))
+
+(def ^:private collect-health-metrics-memo
+  (memoize/ttl collect-health-metrics :ttl/threshold (u/minutes->ms 30)))
+
 (api.macros/defendpoint :get "/"
   "Doctor endpoint that performs comprehensive health analysis"
   []
   {:status 200
-   :body   {:reportMarkdown (call-openai enhanced-analysis-prompt (collect-health-metrics 7))}})
+   :body   {:reportMarkdown (openai-memo enhanced-analysis-prompt (collect-health-metrics-memo 7))}})
 
 (api.macros/defendpoint :get "/metrics"
-  "Get raw health metrics for debugging"
+  "Get raw health metrics (also clears memoized cache)"
   []
+  ;; Clear memoized data
+  (memoize/memo-clear! openai-memo)
+  (memoize/memo-clear! collect-health-metrics-memo)
   {:status 200
-   :body   (collect-health-metrics 7)})
+   :body   (collect-health-metrics-memo 7)})

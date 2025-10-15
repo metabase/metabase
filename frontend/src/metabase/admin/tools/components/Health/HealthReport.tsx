@@ -2,9 +2,9 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
+import { HealthReportMarkdownStyled } from "metabase/admin/tools/components/Health/HealthReportMarkdown.styled";
 import { useGetHealthReportQuery } from "metabase/api/health-report";
-import Markdown from "metabase/common/components/Markdown";
-import { Box, Flex, Loader, Stack, Text, Title } from "metabase/ui";
+import { Box, Flex, Loader, Stack, Text } from "metabase/ui";
 import { FC } from "react";
 import { t } from "ttag";
 
@@ -12,14 +12,9 @@ export const HealthReport: FC = () => {
   const { data: { reportMarkdown } = {}, isLoading } =
     useGetHealthReportQuery();
   return (
-    <SettingsPageWrapper title={t`Health`}>
+    <SettingsPageWrapper>
       <SettingsSection>
-        <Stack align="center" gap="lg" my="4.5rem">
-          <Box ta="center">
-            <Title c="text-primary" fz="lg">
-              MetaDoctor says
-            </Title>
-          </Box>
+        <Stack align="center" gap="lg">
           {isLoading || !reportMarkdown ? (
             <Box h={96} pos="relative" ta="center" w={96}>
               <Flex
@@ -45,7 +40,9 @@ export const HealthReport: FC = () => {
             </Box>
           ) : (
             <Text>
-              <Markdown>{reportMarkdown}</Markdown>
+              <HealthReportMarkdownStyled>
+                {reportMarkdown}
+              </HealthReportMarkdownStyled>
             </Text>
           )}
         </Stack>
