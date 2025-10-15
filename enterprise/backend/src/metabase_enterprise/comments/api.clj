@@ -104,7 +104,7 @@
                                               [:= :target_type target_type]
                                               [:= :target_id target_id]]
                                    :order-by [[:created_at :asc]]})
-                       (t2/hydrate :creator :reactions))]
+                       (t2/hydrate [:creator :profile_image_url] :reactions))]
       {:comments (render-comments comments)})))
 
 (defn notify-comment!
@@ -147,7 +147,7 @@
   "Send a notification using only comment id"
   [comment-id]
   (notify-comment! (-> (t2/select-one :model/Comment :id comment-id)
-                       (t2/hydrate :creator :reactions))))
+                       (t2/hydrate [:creator :profile_image_url] :reactions))))
 
 (api.macros/defendpoint :post "/"
   "Create a new comment"
@@ -173,7 +173,7 @@
                                                        :content           content
                                                        :content_html      html
                                                        :creator_id        api/*current-user-id*})
-                       (t2/hydrate :creator)
+                       (t2/hydrate [:creator :profile_image_url])
                        ;; New comments always have empty reactions map
                        (assoc :reactions []))]
     (notify-comment! comment {:entity entity :parent parent})

@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.collections.models.collection :as collection]
+   [metabase.config.core :as config]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -37,9 +38,9 @@
                                          {:request-options {:headers {"content-type" "multipart/form-data"}}}
                                          {:file (mt/file->bytes (io/file (java.net.URI. (test-image-url))))}
                                          :user-id (mt/user->id :crowberto))]
-      (is (=? {:id           pos-int?
-               :url          #"http://localhost:\d+/api/images/\d+/contents"
-               :title        string?
+      (is (=? {:id    pos-int?
+               :url   #"http://localhost:\d+/api/images/\d+/contents"
+               :title string?
                ;; TODO -- fixme
                ;; :content_type "image/png"
                }
@@ -55,9 +56,18 @@
                  :profile_image_url string?}
                 (m/find-first #(= (:id %) (mt/user->id :crowberto))
                               (:data (mt/user-http-request :crowberto :get "user"))))))
-      (testing "GET /api/ee/comment"
-        ;; TODO -- write test for this (EE only)
-        ))))
+      (when config/ee-available?
+        (testing "GET /api/ee/comment"
+          (mt/with-premium-features #{:documents}
+            (mt/with-temp [:model/Document {doc-id :id} {:name       "New Document"
+                                                         :creator_id (mt/user->id :crowberto)}]
+              (is (=? {:creator {:profile_image_id  pos-int?
+                                 :profile_image_url #"http://localhost:\d+/api/images/\d+/contents"}}
+                      (mt/user-http-request :crowberto :post 200 "ee/comment/"
+                                            {:target_type "document"
+                                             :target_id   doc-id
+                                             :content     ((requiring-resolve 'metabase-enterprise.comments.api-test/tiptap) [:p "New comment"])
+                                             :html        "<p>New comment</p>"}))))))))))
 
 (def test-image
   (io/file "resources/frontend_client/app/assets/img/blue_check.png"))

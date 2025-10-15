@@ -21,7 +21,7 @@
   [_model _k users]
   (let [image-ids     (into #{} (keep :profile_image_id) users)
         id->image-url (when (seq image-ids)
-                        (t2/select-fn->fn :id (comp image-id->contents-url :id)
+                        (t2/select-pk->fn (comp image-id->contents-url :id)
                                           [:model/Image :id :url]
                                           :id [:in image-ids]))]
     (for [user users]

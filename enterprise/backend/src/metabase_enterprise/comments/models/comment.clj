@@ -20,7 +20,7 @@
   [_model k comments]
   (mi/instances-with-hydrated-data
    comments k
-   #(t2/select-pk->fn identity [:model/User :id :email :first_name :last_name]
+   #(t2/select-pk->fn identity [:model/User :id :email :first_name :last_name :profile_image_id]
                       :id (keep :creator_id comments))
    :creator_id
    {:default {}}))
