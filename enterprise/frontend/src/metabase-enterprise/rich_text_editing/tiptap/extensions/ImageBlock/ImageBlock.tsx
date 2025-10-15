@@ -75,6 +75,8 @@ export const ImageBlockNodeView = ({
     [uploadImage, doc, updateAttributes],
   );
 
+  const [selectedItem, setSelectedItem] = useState<any>(null);
+
   return (
     <NodeViewWrapper className={cx(S.root)} contentEditable={false}>
       {node.attrs.url ? (
@@ -118,11 +120,18 @@ export const ImageBlockNodeView = ({
           {showPicker && rendered && (
             <QuestionPickerModal
               title={t`Select an image yo`}
+              value={selectedItem}
               models={["image"]}
               onClose={() => setShowPicker(false)}
-              onChange={(item) => {
-                updateAttributes({ url: `/api/images/${item.id}/contents` });
-                setShowPicker(false);
+              onChange={(item: any) => {
+                if (item.id === "root") {
+                  setSelectedItem(null);
+                } else if (item.model === "image") {
+                  updateAttributes({ url: `/api/images/${item.id}/contents` });
+                  setShowPicker(false);
+                } else {
+                  setSelectedItem(item);
+                }
               }}
             />
           )}
