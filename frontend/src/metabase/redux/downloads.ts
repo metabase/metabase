@@ -186,7 +186,7 @@ export const exportDataset = createAsyncThunk(
       openSaveDialog(name, fileContent);
     }
 
-    return { id, name };
+    return { id, name, exportVariant: opts.exportVariant };
   },
 );
 
@@ -412,6 +412,10 @@ const downloads = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(exportDataset.pending, (state, action) => {
+        if (action.meta.arg.opts.exportVariant === "copy-to-clipboard") {
+          return;
+        }
+
         const title = t`Results for ${
           action.meta.arg.opts.question.card().name
         }`;
@@ -422,6 +426,10 @@ const downloads = createSlice({
         });
       })
       .addCase(exportDataset.fulfilled, (state, action) => {
+        if (action.meta.arg.opts.exportVariant === "copy-to-clipboard") {
+          return;
+        }
+
         const download = state.find((item) => item.id === action.meta.arg.id);
         if (download) {
           download.status = "complete";
@@ -429,6 +437,10 @@ const downloads = createSlice({
         }
       })
       .addCase(exportDataset.rejected, (state, action) => {
+        if (action.meta.arg.opts.exportVariant === "copy-to-clipboard") {
+          return;
+        }
+
         const download = state.find((item) => item.id === action.meta.arg.id);
         if (download) {
           download.status = "error";
