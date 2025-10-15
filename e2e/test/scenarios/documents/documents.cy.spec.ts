@@ -827,11 +827,10 @@ H.describeWithSnowplowEE("documents", () => {
           cy.location("pathname").should("equal", `/document/${id}`),
         );
 
-        H.getDocumentCard("Orders, Count, Grouped by Created At (year)").within(
-          () => {
-            H.cartesianChartCircle().eq(1).click();
-          },
+        H.getDocumentCard("Orders, Count, Grouped by Created At (year)").should(
+          "be.visible",
         );
+        H.cartesianChartCircle().eq(1).click();
 
         H.popover().findByText("See these Orders").click();
 
