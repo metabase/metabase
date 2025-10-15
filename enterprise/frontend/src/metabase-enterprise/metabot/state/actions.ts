@@ -1,6 +1,8 @@
 import { type UnknownAction, isRejected } from "@reduxjs/toolkit";
 import { push } from "react-router-redux";
 import { P, match } from "ts-pattern";
+import { micromark } from "micromark";
+import { generateJSON } from "@tiptap/html";
 
 import { createAsyncThunk } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -37,6 +39,7 @@ import {
 } from "./selectors";
 import type { SlashCommand } from "./types";
 import { createMessageId, parseSlashCommand } from "./utils";
+import StarterKit from "@tiptap/starter-kit";
 
 export const {
   addAgentTextDelta,
@@ -279,20 +282,24 @@ export const sendAgentRequest = createAsyncThunk<
         window.setDocumentTitle(
           window.documentContent ? "Final research" : "Research plan",
         );
-        const doc: DocumentContent = {
-          type: "doc",
-          content: [
-            {
-              type: "paragraph",
-              content: [
-                {
-                  type: "text",
-                  text: response.text ?? "",
-                },
-              ],
-            },
-          ],
-        };
+
+        const html = micromark(response.text);
+        const doc = generateJSON(html, [StarterKit]);
+        // const doc: DocumentContent = {
+        //   type: "doc",
+        //   content: [
+        //     {
+        //       type: "paragraph",
+        //       content: [
+        //         {
+        //           type: "text",
+        //           text: response.text ?? "",
+        //         },
+        //       ],
+        //     },
+        //   ],
+        // };
+        //
         (window as any).setDocumentContent(doc);
       }
 
