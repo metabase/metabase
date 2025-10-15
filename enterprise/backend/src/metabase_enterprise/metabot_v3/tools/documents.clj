@@ -92,6 +92,7 @@
     (let [collection-id (ensure-memory-collection! user-id)
           documents (t2/select :model/Document
                                :collection_id collection-id
+                               :archived false
                                {:order-by [[:created_at :desc]]})]
       (mapv document->memory documents))
     (catch Exception _e
