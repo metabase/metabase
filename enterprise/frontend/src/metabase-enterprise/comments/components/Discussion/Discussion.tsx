@@ -2,6 +2,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
+import UserAvatar from "metabase/common/components/UserAvatar";
 import { useToast } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Avatar, Stack, Timeline, rem } from "metabase/ui";
@@ -205,7 +206,7 @@ export const Discussion = ({
         {!comments[0]?.is_resolved && (
           <Timeline.Item
             className={S.commentRoot}
-            bullet={<Avatar name={currentUser.common_name} />}
+            bullet={<UserAvatar user={currentUser} />}
           >
             <CommentEditor
               active={false}

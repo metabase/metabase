@@ -5,6 +5,7 @@ import { useLocation } from "react-use";
 import { t } from "ttag";
 
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
+import UserAvatar from "metabase/common/components/UserAvatar";
 import { useSelector } from "metabase/lib/redux";
 import { Avatar, Box, Group, Icon, Text, Timeline, Tooltip } from "metabase/ui";
 import {
@@ -103,7 +104,7 @@ export function DiscussionComment({
       className={cx(S.commentRoot, {
         [S.target]: isTarget,
       })}
-      bullet={<Avatar name={comment.creator?.common_name} />}
+      bullet={<UserAvatar user={comment.creator} />}
       aria-current={isTarget ? "location" : undefined}
       data-testid="discussion-comment"
       id={getCommentNodeId(comment)}

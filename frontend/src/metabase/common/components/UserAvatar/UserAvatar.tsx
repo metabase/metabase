@@ -1,4 +1,5 @@
 import { isEmail } from "metabase/lib/email";
+import { Avatar as MantineAvatar} from "metabase/ui"
 
 import type { AvatarProps } from "./UserAvatar.styled";
 import { Avatar as StyledAvatar } from "./UserAvatar.styled";
@@ -27,7 +28,9 @@ export default function UserAvatar({
   user,
   ...props
 }: UserAvatarProps | GroupProps) {
-  return <StyledAvatar {...props}>{userInitials(user) || "?"}</StyledAvatar>;
+  const imageUrl = user.image_url ?? "https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExOGI4bTRtdzRvYXMxaHd5aTdvZjF5eGZmNGx2bmM4ZTZkcGk2a2lldSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/vpawfuA6LnYeQ/giphy.gif";
+  const initials = userInitials(user) || "?";
+  return <MantineAvatar {...props} src={imageUrl}>{initials}</MantineAvatar>;
 }
 
 export function Avatar({ children, ...props }: { children: string }) {

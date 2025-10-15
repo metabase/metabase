@@ -7,5 +7,11 @@
   "eslint.options": {
     "rulePaths": ["frontend/lint/eslint-rules/"]
   },
-  "typescript.tsdk": "node_modules/typescript/lib"
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "favorites.resources": [
+    {
+      "filePath": "enterprise/frontend/src/metabase-enterprise/documents/components/Editor/shared/MenuComponents.tsx",
+      "group": "Default"
+    }
+  ]
 }
