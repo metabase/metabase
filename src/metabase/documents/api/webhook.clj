@@ -2,22 +2,31 @@
   (:require
    [metabase.api.macros :as api.macros]))
 
-(defn connect-event [payload]
-  {:user {:id 1 :name "Rasta Toucan"}})
+(defn- connect-event [payload]
+  ;; nothing to do here, FE is initializing the user context on its own
+  )
 
-(defn create-event [payload])
-(defn change-event [payload])
-(defn disconnect-event [payload])
+(defn- create-event [payload]
+  ;; for now we let the FE initialize the document with a manual save
+  )
+
+(defn- change-event [user-id {id :documentName, :keys [document]}]
+
+  )
+
+(defn- disconnect-event [payload]
+  ;; nothing to do here
+  )
 
 (api.macros/defendpoint :post "/webhook"
   [_
    _
-   {:keys [event payload]}]
-  #p p
+   {{user-id :user_id} :context :keys [event payload]}]
+  #p user_id
   (case event
     "connect" (connect-event payload)
     "create" (create-event payload)
-    "change" (change-event payload)
+    "change" (change-event user-id payload)
     "disconnect" (disconnect-event payload)))
 
 (def ^{:arglists '([request respond raise])} routes
