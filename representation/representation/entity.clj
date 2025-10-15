@@ -19,6 +19,7 @@
       (or (= type-str "database") (= type-str "v0/database")) :database
       (or (= type-str "question") (= type-str "v0/question")) :card
       (or (= type-str "model") (= type-str "v0/model")) :card
+      (or (= type-str "document") (= type-str "v0/document")) :document
       :else :unknown)))
 
 (defn entity-filename
@@ -31,6 +32,7 @@
       :collection "collection.yml"
       :database (str (sanitize-filename base-name) ".database.yml")
       :card (str (sanitize-filename base-name) "." type-str ".yml")
+      :document (str (sanitize-filename base-name) ".document.yml")
       "entity.yml")))
 
 (defn parse-entity-filename
@@ -40,6 +42,7 @@
     (= filename "collection.yml") {:type :collection}
     (str/ends-with? filename ".database.yml") {:type :database}
     (str/ends-with? filename ".question.yml") {:type :card :subtype "question"}
+    (str/ends-with? filename ".document.yml") {:type :card :subtype "document"}
     (str/ends-with? filename ".model.yml") {:type :card :subtype "model"}
     :else nil))
 

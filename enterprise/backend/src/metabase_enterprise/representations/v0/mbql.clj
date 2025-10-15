@@ -89,13 +89,17 @@
         tr (table-ref (:table_id field))]
     (assoc tr :field (:name field))))
 
+(defn int->card-ref
+  [id]
+  (let [rep (export/export-entity (t2/select-one :model/Card :id id))]
+    (str "ref:" (:ref rep))))
+
 (defn- card-ref
   "Convert a card reference string (e.g. 'card__123') to a representation ref."
   [s]
   (let [[_type id] (str/split s #"__")
-        id (Long/parseLong id)
-        rep (export/export-entity (t2/select-one :model/Card :id id))]
-    (str "ref:" (:ref rep))))
+        id (Long/parseLong id)]
+    (int->card-ref id)))
 
 (defn ->ref-source-table
   "Convert source_table from IDs to representation refs for export."
@@ -116,6 +120,16 @@
        :else
        (throw (ex-info "Unknown source table type" {:query query
                                                     :source-table node}))))
+   query))
+
+(defn ->ref-source-card
+  "Convert source-card from IDs to representation refs for export."
+  [query]
+  (walk/postwalk
+   (fn [node]
+     (if (and (map? node) (:source-card node))
+       (update node :source-card int->card-ref)
+       node))
    query))
 
 (defn ->ref-database
@@ -160,6 +174,7 @@
   (-> query
       ->ref-database
       ->ref-source-table
+      ->ref-source-card
       ->ref-fields))
 
 (defn import-dataset-query

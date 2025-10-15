@@ -1,9 +1,12 @@
 (ns metabase-enterprise.representations.v0.document
   (:require
+   [cheshire.core :as json]
    [clojure.java.shell :as sh]
+   [clojure.walk :as walk]
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.v0.common :as v0-common]
+   [metabase-enterprise.representations.v0.mbql :as v0-mbql]
    [metabase-enterprise.representations.v0.pm :as v0-pm]
    [metabase-enterprise.representations.yaml :as yaml]
    [metabase.api.common :as api]
@@ -117,6 +120,26 @@
 
 ;;; ------------------------------------ Export ------------------------------------
 
+(defn- patch-refs-for-export
+  [yaml]
+  (walk/postwalk
+   (fn [node]
+     (if-not (and (map? node)
+                  (= "cardEmbed" (:type node)))
+       node
+       (update-in node [:attrs :id] v0-mbql/int->card-ref)))
+   yaml))
+
+(defn- edn->markdown
+  [edn]
+  (let [result (->> (patch-refs-for-export edn)
+                    (json/generate-string)
+                    (sh/sh "node" "hackathon/markdown-parser/serialize-prosemirror.mjs" :in))]
+    (:out result)))
+
+(comment
+  (-> (markdown->yaml "# hello\n\n## Second heading\n\n- Item 1\n- Item 2") (yaml->markdown)))
+
 (defmethod export/export-entity :model/Document [document]
   (let [document-ref (v0-common/unref (v0-common/->ref (:id document) :document))]
     (cond-> {:name (:name document)
@@ -124,7 +147,7 @@
              :version :v0
              :ref document-ref
              :entity-id (:entity_id document)
-             :content (:document document)
+             :content (edn->markdown (:document document))
              :content_type (:content_type document)}
       :always
       u/remove-nils)))
