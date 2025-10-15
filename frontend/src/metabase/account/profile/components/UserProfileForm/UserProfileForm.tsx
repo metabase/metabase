@@ -14,12 +14,9 @@ import * as Errors from "metabase/lib/errors";
 import { Box, Flex, Text } from "metabase/ui";
 import type { User } from "metabase-types/api";
 
-import type { components } from "../../../../../../../ts-types/schema2";
+import type { MetabaseSessionApiAvailableLocale as LocaleData } from "../../../../../../../ts-types/hey-api/types.gen";
 import { MetabaseSessionApiAvailableLocale } from "../../../../../../../ts-types/hey-api/types.gen";
 import type { UserProfileData } from "../../types";
-
-type LocaleData =
-  components["schemas"]["metabase.session.api.available-locales"];
 
 const SSO_PROFILE_SCHEMA = Yup.object({
   locale: Yup.string().nullable().default(null),
@@ -40,7 +37,6 @@ export interface UserProfileFormProps {
 
 const UserProfileForm = ({
   user,
-  locales,
   isSsoUser,
   onSubmit,
 }: UserProfileFormProps): JSX.Element => {
