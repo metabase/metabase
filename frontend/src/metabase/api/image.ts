@@ -12,7 +12,6 @@ export const imageApi = Api.injectEndpoints({
     uploadImage: builder.mutation<{ image_url: string }, UploadImageRequest>({
       query: ({ file, collectionId, userId }) => {
         const bodyFormData = new FormData();
-        console.log(file);
         bodyFormData.append("name", file.name);
         bodyFormData.append("type", file.type);
         bodyFormData.append("file", file);
@@ -31,7 +30,10 @@ export const imageApi = Api.injectEndpoints({
         };
       },
     }),
-    getImageData: builder.query<{ name: string, image_url: string }, { id: number }>({
+    getImageData: builder.query<
+      { name: string; image_url: string },
+      { id: number }
+    >({
       query: ({ id }) => ({
         url: `/api/images/${id}`,
       }),
