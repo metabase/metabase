@@ -105,7 +105,6 @@
                        {k (:name (:target v))})
                      transforms)
               which->table (apply merge x)
-              _ (tap> which->table)
               card (patch-card patch-file db dest-schema which->table {:collection-id collection-id :user-id api/*current-user-id*})]
           (t2/insert! :model/Card card))))))
 
