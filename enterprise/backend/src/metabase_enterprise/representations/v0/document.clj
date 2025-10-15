@@ -1,6 +1,6 @@
 (ns metabase-enterprise.representations.v0.document
   (:require
-   [cheshire.core :as json]
+   [cheshire.core :as cheshire]
    [clojure.java.shell :as sh]
    [clojure.walk :as walk]
    [metabase-enterprise.representations.export :as export]
@@ -133,7 +133,7 @@
 (defn- edn->markdown
   [edn]
   (let [result (->> (patch-refs-for-export edn)
-                    (json/generate-string)
+                    (cheshire/generate-string)
                     (sh/sh "node" "hackathon/markdown-parser/serialize-prosemirror.mjs" :in))]
     (:out result)))
 
@@ -148,7 +148,7 @@
              :ref document-ref
              :entity-id (:entity_id document)
              :content (edn->markdown (:document document))
-             :content_type (:content_type document)}
+             :content_type "text/markdown+vnd.prose-mirror" #_(:content_type document)}
       :always
       u/remove-nils)))
 
