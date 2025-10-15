@@ -11,7 +11,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [ring.adapter.jetty :as ring-jetty]
-   [ring.util.jakarta.servlet :as servlet])
+   [ring.util.jakarta.servlet :as servlet]
+   [ring.websocket :as ring.ws])
   (:import
    (jakarta.servlet AsyncContext)
    (jakarta.servlet.http HttpServletRequest HttpServletResponse)
