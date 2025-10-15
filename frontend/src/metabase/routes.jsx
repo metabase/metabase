@@ -18,6 +18,7 @@ import {
 } from "metabase/browse";
 import { ArchiveCollectionModal } from "metabase/collections/components/ArchiveCollectionModal";
 import CollectionLanding from "metabase/collections/components/CollectionLanding";
+import { ImagePage } from "metabase/collections/components/ImagePage";
 import { MoveCollectionModal } from "metabase/collections/components/MoveCollectionModal";
 import { TrashCollectionLanding } from "metabase/collections/components/TrashCollectionLanding";
 import { Unauthorized } from "metabase/common/components/ErrorPages";
@@ -230,6 +231,8 @@ export const getRoutes = (store) => {
             <ModalRoute path="copy" modal={DashboardCopyModalConnected} />
             <ModalRoute path="archive" modal={ArchiveDashboardModalConnected} />
           </Route>
+
+          <Route path="image/:id" component={ImagePage} />
 
           <Route path="/question">
             <Route

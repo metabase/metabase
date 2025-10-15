@@ -61,14 +61,27 @@
   (let [{user-filename :filename :keys [tempfile size]} file
         imgdir (io/file "/tmp/hack2025")]
     (try
-      (let [filehash (buddy-hash/sha256 tempfile)
-            filename (format "image-%s-%s" (buddy-codecs/bytes->hex filehash) user-filename)
-            file     (io/file imgdir filename)]
+      (let [filehash  (buddy-hash/sha256 tempfile)
+            filename  (format "image-%s-%s" (buddy-codecs/bytes->hex filehash) user-filename)
+            localfile (io/file imgdir filename)]
         (log/infof "Got a cool file with %d bytes with name %s" size filename)
-        (io/make-parents file)
-        (io/copy tempfile file)
-        {:status 200
-         :body   {:message "cool", :url (io/as-url file)}})
+        (io/make-parents localfile)
+        (io/copy tempfile localfile)
+        (let [url              (str (io/as-url localfile))
+              image            (t2/insert-returning-instance! :model/Image {:url url, :title user-filename, :content_type (:content-type localfile)})
+              _                (when user-id (t2/update! :model/User api/*current-user-id* {:profile_image_id (:id image)}))
+              body             (merge {:message "cool", :image image}
+                                      (when collection-id
+                                        {:collection-image
+                                         (t2/insert-returning-instance!
+                                          :model/CollectionImage
+                                          {:image_id      (:id image)
+                                           :collection_id collection-id
+                                           :collection_position {:select [[:max :collection_position]]
+                                                                 :from   [[:collection_image]]
+                                                                 :where  [:= :collection_id collection-id]}})}))]
+          {:status 200
+           :body   body}))
       (finally
         (io/delete-file tempfile true)))))
 
