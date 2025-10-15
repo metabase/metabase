@@ -167,7 +167,7 @@
   [session-key]
   (or (not session-key) (string/valid-uuid? session-key)))
 
-(mu/defn- current-user-info-for-session :- [:maybe ::request.schema/current-user-info]
+(mu/defn current-user-info-for-session :- [:maybe ::request.schema/current-user-info]
   "Return User ID and superuser status for Session with `session-key` if it is valid and not expired."
   [session-key anti-csrf-token]
   (when (and session-key (valid-session-key? session-key) (init-status/complete?))
