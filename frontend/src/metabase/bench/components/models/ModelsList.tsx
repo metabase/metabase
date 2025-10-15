@@ -15,6 +15,7 @@ import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
 import { useDispatch, useSelector } from "metabase/lib/redux/hooks";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import { getQuestion } from "metabase/query_builder/selectors";
+import { getUser } from "metabase/selectors/user";
 import {
   Box,
   Center,
@@ -75,11 +76,12 @@ function ModelsList({
     location,
   });
 
+  const currentUser = useSelector(getUser);
   const treeData = useMemo(() => {
-    return models && collections
-      ? getTreeItems(collections, models, "dataset")
+    return models && collections && currentUser
+      ? getTreeItems(collections, models, "dataset", currentUser.id)
       : [];
-  }, [collections, models]);
+  }, [collections, currentUser, models]);
 
   const { query } = location;
   const handleModelSelect = (item: ITreeNodeItem) => {

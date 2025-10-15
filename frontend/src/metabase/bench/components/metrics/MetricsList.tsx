@@ -40,6 +40,7 @@ import {
 } from "metabase/query_builder/selectors";
 import { MetricEditor as QBMetricEditor } from "metabase/querying/metrics/components/MetricEditor/MetricEditor";
 import { getSetting } from "metabase/selectors/settings";
+import { getUser } from "metabase/selectors/user";
 import {
   Box,
   Center,
@@ -98,11 +99,12 @@ function MetricsList({
     defaults: { display: "tree" },
   });
 
+  const currentUser = useSelector(getUser);
   const treeData = useMemo(() => {
-    return metrics && collections
-      ? getTreeItems(collections, metrics, "metric")
+    return metrics && collections && currentUser
+      ? getTreeItems(collections, metrics, "metric", currentUser.id)
       : [];
-  }, [collections, metrics]);
+  }, [collections, currentUser, metrics]);
 
   const { query } = location;
   const handleMetricSelect = (item: ITreeNodeItem) => {

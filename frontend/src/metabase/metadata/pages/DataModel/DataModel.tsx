@@ -18,9 +18,11 @@ import EmptyState from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Tree } from "metabase/common/components/tree";
 import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
+import { useSelector } from "metabase/lib/redux";
 import { ModelColumnsSection } from "metabase/metadata/pages/DataModel/components/models/ModelColumnsList";
 import { ModelTreeNode } from "metabase/metadata/pages/DataModel/components/models/ModelTreeNode";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import { getUser } from "metabase/selectors/user";
 import { Box, Flex, Stack, Text, Title, rem } from "metabase/ui";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions"; // eslint-disable-line no-restricted-imports
 import type { FieldName } from "metabase-types/api";
@@ -109,11 +111,12 @@ export const DataModel = ({ children, location, params }: Props) => {
     isLoadingCollections ||
     isLoadingModel;
 
+  const currentUser = useSelector(getUser);
   const modelsTreeData = useMemo(() => {
-    return models && collections
-      ? getTreeItems(collections, models, "dataset")
+    return models && collections && currentUser
+      ? getTreeItems(collections, models, "dataset", currentUser.id)
       : [];
-  }, [collections, models]);
+  }, [collections, currentUser, models]);
 
   const handleModelSelect = useCallback(() => {}, []);
 
