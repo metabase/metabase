@@ -39,7 +39,12 @@ export const TablesGrid = ({ tables }: { tables: Table[] }) => {
               >
                 <Text c="text-secondary">
                   {t`Show all`}{" "}
-                  <Icon size={10} ml="xs" name="chevrondown" c="text-secondary" />
+                  <Icon
+                    size={10}
+                    ml="xs"
+                    name="chevrondown"
+                    c="text-secondary"
+                  />
                 </Text>
               </Flex>
             </Menu.Target>
