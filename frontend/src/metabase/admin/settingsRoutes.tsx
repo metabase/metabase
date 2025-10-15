@@ -15,6 +15,7 @@ import { AuthenticationSettingsPage } from "./settings/components/SettingsPages/
 import { CloudSettingsPage } from "./settings/components/SettingsPages/CloudSettingsPage";
 import { EmailSettingsPage } from "./settings/components/SettingsPages/EmailSettingsPage";
 import { GeneralSettingsPage } from "./settings/components/SettingsPages/GeneralSettingsPage";
+import { ImagesSettingsPage } from "./settings/components/SettingsPages/ImagesSettingsPage";
 import { LicenseSettingsPage } from "./settings/components/SettingsPages/LicenseSettingsPage";
 import { LocalizationSettingsPage } from "./settings/components/SettingsPages/LocalizationSettingsPage";
 import { MapsSettingsPage } from "./settings/components/SettingsPages/MapsSettingsPage";
@@ -68,6 +69,7 @@ export const getSettingsRoutes = () => (
     <Route path="public-sharing" component={PublicSharingSettingsPage} />
     <Route path="license" component={LicenseSettingsPage} />
     <Route path="appearance" component={() => <AppearanceSettingsPage />} />
+    <Route path="images" component={ImagesSettingsPage} />
     <Route
       path="whitelabel"
       component={() => <AppearanceSettingsPage tab="branding" />}

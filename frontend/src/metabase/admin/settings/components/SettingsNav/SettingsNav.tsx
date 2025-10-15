@@ -87,6 +87,7 @@ export function SettingsNav() {
           />,
         ]}
       </SettingsNavItem>
+      <SettingsNavItem path="images" label={t`Images`} icon="snail" />
       <NavDivider />
       <SettingsNavItem path="uploads" label={t`Uploads`} icon="upload" />
       {/* Python Runner settings are managed by Metabase Cloud for hosted instances */}
