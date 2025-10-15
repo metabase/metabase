@@ -1966,6 +1966,26 @@ databaseChangeLog:
             SET dataset_query = legacy_query
             WHERE legacy_query IS NOT NULL;
 
+  - changeSet:
+      id: v57.2025-10-15T09:04:00
+      author: christruter
+      comment: Add ydoc column to document table for Y.js document state
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: document
+                columnName: ydoc
+      changes:
+        - addColumn:
+            tableName: document
+            columns:
+              - column:
+                  name: ydoc
+                  type: ${text.type}
+                  remarks: Y.js document state for collaborative editing, in base64
+                  constraints:
+                    nullable: true
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
