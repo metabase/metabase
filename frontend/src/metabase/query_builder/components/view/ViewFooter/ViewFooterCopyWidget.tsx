@@ -4,12 +4,34 @@ import { t } from "ttag";
 import { useToast } from "metabase/common/hooks/use-toast/use-toast";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
+import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import {
   getFirstQueryResult,
   getQuestion,
 } from "metabase/query_builder/selectors";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
-import { getChartImagePngDataUri } from "metabase/visualizations/lib/image-exports";
+import { getDomToCanvas } from "metabase/visualizations/lib/image-exports";
+
+// Custom function that includes theme background support
+const getChartImagePngDataUriWithTheme = async (
+  selector: string,
+): Promise<string | undefined> => {
+  const chartRoot = document.querySelector(selector);
+
+  if (!chartRoot || !(chartRoot instanceof HTMLElement)) {
+    console.warn("No chart element found", selector);
+    return undefined;
+  }
+
+  const canvas = await getDomToCanvas(chartRoot, {
+    onclone: (_doc: Document, node: HTMLElement) => {
+      node.classList.add("saving-dom-image");
+      node.classList.add(EmbedFrameS.WithThemeBackground);
+    },
+  });
+
+  return canvas.toDataURL("image/png");
+};
 
 export const ViewFooterCopyWidget = () => {
   const question = useSelector(getQuestion);
@@ -41,8 +63,8 @@ export const ViewFooterCopyWidget = () => {
         throw new Error("Visualization not found");
       }
 
-      // Use the same image generation as the download functionality
-      const dataUri = await getChartImagePngDataUri(chartSelector);
+      // Use the same image generation as the download functionality but with theme support
+      const dataUri = await getChartImagePngDataUriWithTheme(chartSelector);
 
       if (!dataUri) {
         throw new Error("Failed to generate image");
