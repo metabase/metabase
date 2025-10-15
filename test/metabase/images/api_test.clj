@@ -73,6 +73,10 @@
                  :profile_image_url string?}
                 (m/find-first #(= (:id %) (mt/user->id :crowberto))
                               (:data (mt/user-http-request :crowberto :get "user"))))))
+      (testing "GET /api/current"
+        (is (=? {:profile_image_id  (:id response)
+                 :profile_image_url string?}
+                (mt/user-http-request :crowberto :get "user/current"))))
       (when config/ee-available?
         (testing "GET /api/ee/comment"
           (mt/with-premium-features #{:documents}
