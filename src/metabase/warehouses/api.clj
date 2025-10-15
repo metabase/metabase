@@ -1551,74 +1551,28 @@ where opp.is_deleted = false
                                      (update :sequence conj transform))))
                              {:transforms {}
                               :sequence []}
-                             order)]
-      (let [ts (:sequence transforms)]
-        (reduce (fn [acc t]
-                  (let [t' (t2/insert-returning-instance! :model/Transform t)
-                        start-promise (promise)]
-                    [(transforms.execute/run-mbql-transform! t' {:start-promise start-promise
-                                                                 :run-method :manual})
-                     @start-promise]
-                    (conj acc (let [table (t2/select-one :model/Table
-                                                         :db_id 3
-                                                         :name (-> t' :target :name)
-                                                         :schema (-> t' :target :schema))]
-                                (-> table
-                                    (select-keys [:id :name :schema])
-                                    (assoc :field_names (map :name (t2/select :model/Field :table_id (:id table)))))))))
-                []
-                ts)))))
+                             order)
+          ts (:sequence transforms)
+          response  (reduce (fn [acc t]
+                              (let [t' (t2/insert-returning-instance! :model/Transform t)
+                                    start-promise (promise)]
+                                [(transforms.execute/run-mbql-transform! t' {:start-promise start-promise
+                                                                             :run-method :manual})
+                                 @start-promise]
+                                (conj acc (let [table (t2/select-one :model/Table
+                                                                     :db_id 3
+                                                                     :name (-> t' :target :name)
+                                                                     :schema (-> t' :target :schema))]
+                                            (-> table
+                                                (select-keys [:id :name :schema])
+                                                (assoc :field_names (map :name (t2/select :model/Field :table_id (:id table)))))))))
+                            []
+                            ts)]
+      (t2/update! :model/Database id
+                  {:settings (assoc-in (:settings db)
+                                       [:blueprints :blueprinted] true)})
+      response)))
 
 (comment
-  (map (juxt :schema :name) (t2/select :model/Table :db_id 3))
-  (time
-   (let [source-schema "salesforce"
-         output-schema (str (gensym "transform"))
-         table->fields (into {}
-                             (map (fn [o]
-                                    (let [table-name (name o)
-                                          table-id (t2/select-one-fn :id
-                                                                     :model/Table
-                                                                     :schema source-schema
-                                                                     :name table-name)
-                                          field-names (t2/select :model/Field
-                                                                 :table_id table-id)]
-                                      [table-name (->> field-names (map :name) sort vec)])))
-                             order)
-         transforms (reduce (fn [acc t]
-                              (let [which (name t)
-                                    transform (create-transform which
-                                                                (:transforms acc)
-                                                                (table->fields which)
-                                                                {:source-schema source-schema
-                                                                 :output-schema output-schema})]
-                                (-> acc
-                                    (update :transforms assoc which transform)
-                                    (update :sequence conj transform))))
-                            {:transforms {}
-                             :sequence []}
-                            order)]
-     (let [ts (:sequence transforms)]
-       (reduce (fn [acc t]
-                 (let [t' (t2/insert-returning-instance! :model/Transform t)
-                       start-promise (promise)]
-                   (try
-                     [(transforms.execute/run-mbql-transform! t' {:start-promise start-promise
-                                                                  :run-method :manual})
-                      @start-promise]
-                     (conj acc (let [table (t2/select-one :model/Table
-                                                          :db_id 3
-                                                          :name (-> t' :target :name)
-                                                          :schema (-> t' :target :schema))]
-                                 (-> table
-                                     (select-keys [:id :name :schema])
-                                     (assoc :field_names (map :name (t2/select :model/Field :table_id (:id table)))))))
-                     (catch Exception e
-                       (tap> {:e e :transform t'})
-                       (throw e))))
-                 )
-               []
-               ts))))
-
-  (t2/delete! :model/Transform )
+  (t2/select-one-fn :settings :model/Database :id 3)
   )
