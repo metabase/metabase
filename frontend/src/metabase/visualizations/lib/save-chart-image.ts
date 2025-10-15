@@ -65,11 +65,41 @@ export const saveChartImage = async ({
   fileName,
   includeBranding,
 }: Opts) => {
+  const canvas = await convertDashboardElementToCanvas(
+    selector,
+    includeBranding,
+  );
+
+  canvas.toBlob((blob) => {
+    if (blob) {
+      if (isStorybookActive) {
+        // if we're running storybook we open the image in place
+        // so we can test the export result with loki
+        openImageBlobOnStorybook({ canvas, blob });
+      } else {
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.rel = "noopener";
+        link.download = fileName;
+        link.href = url;
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      }
+    }
+  });
+};
+
+export const convertDashboardElementToCanvas = async (
+  selector: string,
+  includeBranding: boolean,
+) => {
   const node = document.querySelector(selector);
 
   if (!node || !(node instanceof HTMLElement)) {
-    console.warn("No node found for selector", selector);
-    return;
+    throw new Error(
+      "Error copying element to canvas: No node found for selector",
+    );
   }
 
   const contentHeight = node.getBoundingClientRect().height;
@@ -83,7 +113,7 @@ export const saveChartImage = async ({
   const canvasHeight = contentHeight + verticalOffset;
 
   const { default: html2canvas } = await import("html2canvas-pro");
-  const canvas = await html2canvas(node, {
+  return await html2canvas(node, {
     scale: 2,
     useCORS: true,
     height: canvasHeight,
@@ -111,23 +141,23 @@ export const saveChartImage = async ({
       }
     },
   });
+};
 
-  canvas.toBlob((blob) => {
+export const copyChartImageToClipboard = async (
+  selector: string,
+  includeBranding: boolean,
+) => {
+  const canvas = await convertDashboardElementToCanvas(
+    selector,
+    includeBranding,
+  );
+  canvas.toBlob(async (blob) => {
     if (blob) {
-      if (isStorybookActive) {
-        // if we're running storybook we open the image in place
-        // so we can test the export result with loki
-        openImageBlobOnStorybook({ canvas, blob });
-      } else {
-        const link = document.createElement("a");
-        const url = URL.createObjectURL(blob);
-        link.rel = "noopener";
-        link.download = fileName;
-        link.href = url;
-        link.click();
-        link.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 60_000);
-      }
+      await navigator.clipboard.write([
+        new window.ClipboardItem({
+          [blob.type]: blob,
+        }),
+      ]);
     }
-  });
+  }, "image/png");
 };

@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 /* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
 import { useSdkDashboardContext } from "embedding-sdk-bundle/components/public/dashboard/context";
+import { useHasTokenFeature } from "metabase/common/hooks";
 import { editQuestion } from "metabase/dashboard/actions";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
@@ -11,6 +12,8 @@ import { useDispatch } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import { PLUGIN_DASHCARD_MENU } from "metabase/plugins";
 import { Icon, Menu } from "metabase/ui";
+import { copyChartImageToClipboard } from "metabase/visualizations/lib/save-chart-image";
+import { getCardKey } from "metabase/visualizations/lib/utils";
 import type Question from "metabase-lib/v1/Question";
 import type { DashCardId, Dataset } from "metabase-types/api";
 
@@ -36,6 +39,7 @@ export const DashCardMenuItems = ({
   canEdit,
 }: DashCardMenuItemsProps) => {
   const dispatch = useDispatch();
+  const isWhitelabeled = useHasTokenFeature("whitelabel");
 
   const {
     onEditQuestion = (question, mode = "notebook") =>
@@ -104,6 +108,23 @@ export const DashCardMenuItems = ({
       });
     }
 
+    const isCopyToClipboardSupported = !!navigator.clipboard?.writeText;
+
+    if (isCopyToClipboardSupported) {
+      items.push({
+        key: "MB_COPY_TO_CLIPBOARD",
+        iconName: "clipboard",
+        label: t`Copy to Clipboard`,
+        onClick: async () => {
+          const chartSelector =
+            dashcardId != null
+              ? `[data-dashcard-key='${dashcardId}']`
+              : `[data-card-key='${getCardKey(question.id())}']`;
+          copyChartImageToClipboard(chartSelector, isWhitelabeled);
+        },
+      });
+    }
+
     items.push(
       ...PLUGIN_DASHCARD_MENU.dashcardMenuItemGetters
         .map((itemGetter) => itemGetter(question, dashcardId, dispatch))
@@ -140,6 +161,7 @@ export const DashCardMenuItems = ({
     dashcardId,
     dispatch,
     canEdit,
+    isWhitelabeled,
   ]);
 
   return menuItems.map((item) => {
