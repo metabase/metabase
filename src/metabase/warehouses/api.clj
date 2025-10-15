@@ -957,47 +957,7 @@ WITH (
        [:source            ms/NonBlankString]
        [:details           ms/Map]]]
   (api/check-superuser)
-  (add-catalog name source details)
-  (prn "adding" name source details)
-  #_(when cache_ttl
-      (api/check (premium-features/enable-cache-granular-controls?)
-                 [402 (tru (str "The cache TTL database setting is only enabled if you have a premium token with the "
-                                "cache granular controls feature."))]))
-  #_(let [details-or-error (test-connection-details engine details)
-          valid?           (not= (:valid details-or-error) false)]
-      (if valid?
-        ;; no error, proceed with creation. If record is inserted successfully, publish a `:database-create` event.
-        ;; Throw a 500 if nothing is inserted
-        (u/prog1 (api/check-500 (first (t2/insert-returning-instances!
-                                        :model/Database
-                                        (merge
-                                         {:name         name
-                                          :engine       engine
-                                          :details      details-or-error
-                                          :is_full_sync is_full_sync
-                                          :is_on_demand is_on_demand
-                                          :cache_ttl    cache_ttl
-                                          :provider_name provider_name
-                                          :creator_id   api/*current-user-id*}
-                                         (when schedules
-                                           (sync.schedules/schedule-map->cron-strings schedules))
-                                         (when (some? auto_run_queries)
-                                           {:auto_run_queries auto_run_queries})))))
-          (events/publish-event! :event/database-create {:object <> :user-id api/*current-user-id*})
-          (analytics/track-event! :snowplow/database
-                                  {:event        :database-connection-successful
-                                   :database     engine
-                                   :database-id  (u/the-id <>)
-                                   :source       connection_source
-                                   :dbms-version (:version (driver/dbms-version (keyword engine) <>))}))
-        ;; failed to connect, return error
-        (do
-          (analytics/track-event! :snowplow/database
-                                  {:event    :database-connection-failed
-                                   :database engine
-                                   :source   connection_source})
-          {:status 400
-           :body   (dissoc details-or-error :valid)}))))
+  (add-catalog name source details))
 
 (api.macros/defendpoint :post "/validate"
   "Validate that we can connect to a database given a set of details."
