@@ -151,9 +151,9 @@ export const DocumentPage = ({
   }, [documentId]);
 
   const { data: commentsData } = useListCommentsQuery(
-    getListCommentsQuery(documentData),
+    getListCommentsQuery(documentData, {longpoll: true}),
     {
-      pollingInterval: 10000, // Poll every 100ms
+      pollingInterval: 1,
     },
   );
   const hasComments =
