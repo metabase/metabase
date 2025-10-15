@@ -10,7 +10,7 @@
   ;; for now we let the FE initialize the document with a manual save
   )
 
-(defn- change-event [user-id {id :documentName, :keys [document]}]
+(defn- change-event [user-id {id :documentName, {:keys [document ydoc]} :document}]
 
   )
 
@@ -22,7 +22,6 @@
   [_
    _
    {{user-id :user_id} :context :keys [event payload]}]
-  #p user_id
   (case event
     "connect" (connect-event payload)
     "create" (create-event payload)
