@@ -27,10 +27,10 @@
   (t2/with-transaction [_conn nil {:rollback-only true}]
     (let [response (mt/user-http-request :crowberto :post "images"
                                          {:request-options {:headers {"content-type" "multipart/form-data"}}}
-                                         {:file (mt/file->bytes (io/file (test-image-url)))}
+                                         {:file (mt/file->bytes (io/file (java.net.URI. (test-image-url))))}
                                          :user-id (mt/user->id :crowberto))]
       (is (=? {:id           pos-int?
-               :url          #"^file:.*"
+               :url          #"http://localhost:\d+/api/images/\d+/contents"
                :title        string?
                :content_type "image/png"}
               response))

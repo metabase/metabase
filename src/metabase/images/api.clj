@@ -7,6 +7,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.images.schema :as images.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.system.core :as system]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -71,7 +72,7 @@
              {:image_id            (:id image)
               :collection_id       collection-id
               :collection_position 0}))
-          image))
+          (assoc image :url (format "%s/api/images/%d/contents" (system/site-url) (:id image)))))
       (finally
         (io/delete-file tempfile true)))))
 
