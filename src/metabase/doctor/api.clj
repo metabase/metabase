@@ -228,7 +228,16 @@ Be extremely specific about:
 
 Respect this style:
 - Use tables, bullet points, and formatting to make the report scannable and actionable.
-- Include severity indicators: 🔴 Critical, 🟡 Warning, 🟢 Good, ⚠️ Caution")
+- Include severity indicators: 🔴 Critical, 🟡 Warning, 🟢 Good, ⚠️ Caution
+
+Anywhere in the response, whenever you reference a specific card/query, mention it by name. The name should have a link on it, with no additional text, that points to `/question/{id}`.
+Anywhere in the response, whenever you reference a specific database, mention it by name. The name should have a link on it, with no additional text, that points to `/admin/databases/{id}`.
+
+For example, in raw markdown:
+
+    There is a problem with [My Question Name](/question/1).
+    Database [My Database Name](/admin/databases/123)] has issues.
+")
 
 (defn- call-openai
   "Call OpenAI GPT API"
