@@ -24,10 +24,10 @@
   "This is our endpoint for serving the contents of an image that we have stored locally somewhere."
   [{image-id :id, :as _route-params} :- [:map
                                          [:id ::images.schema/id]]]
-  (let [{:keys [url], content-type :content_type} (api/check-404
-                                                   (t2/select-one [:model/Image :url :content_type] image-id))]
+  (let [{:keys [^String url], content-type :content_type} (api/check-404
+                                                           (t2/select-one [:model/Image :url :content_type] image-id))]
     {:status  200
-     :body    (java.io.FileOutputStream. url)
+     :body    (java.io.File. url)
      :headers {"Content-Type" content-type}}))
 
 (defn- assign-image-to-user! [image-id user-id]
