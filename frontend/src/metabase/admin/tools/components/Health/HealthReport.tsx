@@ -11,7 +11,6 @@ import { t } from "ttag";
 export const HealthReport: FC = () => {
   const { data: { reportMarkdown } = {}, isLoading } =
     useGetHealthReportQuery();
-  console.log(reportMarkdown, isLoading, isLoading || !reportMarkdown);
   return (
     <SettingsPageWrapper title={t`Health`}>
       <SettingsSection>
@@ -45,9 +44,9 @@ export const HealthReport: FC = () => {
               </Flex>
             </Box>
           ) : (
-            <Box ta="center">
+            <Text>
               <Markdown>{reportMarkdown}</Markdown>
-            </Box>
+            </Text>
           )}
         </Stack>
       </SettingsSection>

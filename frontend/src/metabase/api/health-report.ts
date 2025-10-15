@@ -7,7 +7,7 @@ export const healthApi = Api.injectEndpoints({
     getHealthReport: builder.query<HealthReportResponse, void>({
       query: () => ({
         method: "GET",
-        url: `/api/health-report`,
+        url: `/api/doctor`,
       }),
     }),
   }),

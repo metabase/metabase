@@ -97,11 +97,11 @@
   {:timestamp (t/instant)
    :period-days days
    :query-stats (get-query-execution-stats days)
-   :task-stats (get-task-history-stats days)
+   :task-stats (get-task-history-stats days)})
   ;;  :database-stats (get-database-stats)
   ;;  :pulse-stats (get-pulse-stats)
   ;;  :cache-settings (get-cache-settings)
-   })
+
 
 (def ^:private analysis-prompt
   "Analyze this Metabase instance health data and generate a comprehensive diagnostic report.
@@ -148,4 +148,5 @@ Use tables and formatting to make the report easy to scan.")
 (api.macros/defendpoint :get "/"
   "Doctor endpoint that calls OpenAI with 'Hello' prompt"
   []
-  (call-openai analysis-prompt (collect-health-metrics 1)))
+  {:status 200
+   :body   {:reportMarkdown (call-openai analysis-prompt (collect-health-metrics 1))}})
