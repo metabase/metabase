@@ -1,5 +1,4 @@
 import cx from "classnames";
-import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -8,16 +7,13 @@ import { Sidebar } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 import {
   ActionIcon,
   Box,
-  Button,
   Flex,
   Icon,
   Paper,
-  Stack,
   Text,
   Textarea,
   Tooltip,
 } from "metabase/ui";
-import { useGetSuggestedMetabotPromptsQuery } from "metabase-enterprise/api";
 import { MetabotResetLongChatButton } from "metabase-enterprise/metabot/components/MetabotChat/MetabotResetLongChatButton";
 
 import { useMetabotAgent, useMetabotChatHandlers } from "../../hooks";
@@ -38,15 +34,6 @@ export const MetabotChat = () => {
   const { scrollContainerRef, headerRef, fillerRef } =
     useScrollManager(hasMessages);
 
-  const suggestedPromptsReq = useGetSuggestedMetabotPromptsQuery({
-    metabot_id: metabot.metabotId,
-    limit: 3,
-    sample: true,
-  });
-  const suggestedPrompts = useMemo(() => {
-    return suggestedPromptsReq.currentData?.prompts ?? [];
-  }, [suggestedPromptsReq.currentData?.prompts]);
-
   const handleClose = () => {
     handleResetInput();
     metabot.setVisible(false);
@@ -55,7 +42,7 @@ export const MetabotChat = () => {
   return (
     <Sidebar
       isOpen={metabot.visible}
-      side="right"
+      side="left"
       width="30rem"
       aria-hidden={!metabot.visible}
     >
@@ -109,27 +96,6 @@ export const MetabotChat = () => {
                   ta="center"
                 >{t`I can help you explore your metrics and models.`}</Text>
               </Flex>
-              {/* empty state with suggested prompts */}
-              <Stack
-                gap="sm"
-                className={Styles.promptSuggestionsContainer}
-                data-testid="metabot-prompt-suggestions"
-              >
-                <>
-                  {suggestedPrompts.map(({ prompt }, index) => (
-                    <Box key={index}>
-                      <Button
-                        fz="sm"
-                        size="xs"
-                        onClick={() => handleSubmitInput(prompt)}
-                        className={Styles.promptSuggestionButton}
-                      >
-                        {prompt}
-                      </Button>
-                    </Box>
-                  ))}
-                </>
-              </Stack>
             </>
           )}
 

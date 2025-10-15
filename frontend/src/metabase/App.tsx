@@ -109,7 +109,7 @@ function App({
             <AppBanner />
             {isAppBarVisible && <AppBar />}
             <AppContentContainer isAdminApp={isAdminApp}>
-              {isNavBarEnabled && <Navbar />}
+              <PLUGIN_METABOT.Metabot hide={isAdminApp} />
               <AppContent ref={setViewportElement}>
                 <ContentViewportContext.Provider
                   value={viewportElement ?? null}
@@ -120,7 +120,7 @@ function App({
               <UndoListing />
               <StatusListing />
               <NewModals />
-              <PLUGIN_METABOT.Metabot hide={isAdminApp} />
+              {isNavBarEnabled && <Navbar />}
             </AppContentContainer>
           </AppContainer>
           <Palette />
