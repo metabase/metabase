@@ -143,8 +143,8 @@ export const DocumentPage = ({
   const { ydoc, provider } = useMemo(() => {
     const ydoc = new Y.Doc();
     const provider = new HocuspocusProvider({
-      url: "http://localhost:3001",
-      name: documentId,
+      url: "ws://localhost:3005",
+      name: String(documentId),
       document: ydoc,
     });
     return { ydoc, provider };
@@ -153,7 +153,7 @@ export const DocumentPage = ({
   const { data: commentsData } = useListCommentsQuery(
     getListCommentsQuery(documentData),
     {
-      pollingInterval: 100, // Poll every 100ms
+      pollingInterval: 10000, // Poll every 100ms
     },
   );
   const hasComments =
