@@ -56,6 +56,12 @@ export const HomeContent = (): JSX.Element | null => {
             value={prompt}
             placeholder={t`What would you like to know?`}
             onChange={(e) => setPrompt(e.target.value)}
+            styles={{
+              input: {
+                fontSize: '16px',
+                padding: '16px',
+              }
+            }}
             onKeyDown={(e) => {
               if (e.nativeEvent.isComposing) {
                 return;

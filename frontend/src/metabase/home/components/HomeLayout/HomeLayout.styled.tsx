@@ -30,14 +30,14 @@ export const LayoutRoot = styled.div`
 
 export const LayoutBody = styled.div`
   position: relative;
-  margin-top: 2.5rem;
+  margin-top: 1rem;
 
   ${breakpointMinMedium} {
-    margin-top: 4rem;
+    margin-top: 1.5rem;
   }
 
   ${breakpointMinLarge} {
-    margin-top: 6rem;
+    margin-top: 2rem;
   }
 `;
 
