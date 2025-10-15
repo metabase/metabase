@@ -1455,12 +1455,12 @@
 (defn create-salesforce-collection!
   "Creates a collection for salesforce blueprints"
   []
-  (t2/delete! :model/Collection :name "Salesforce Blueprint 📘")
+  (t2/delete! :model/Collection :name "Salesforce analytics")
   (let [effective-namespace nil]
     (u/prog1 (t2/insert-returning-instance!
               :model/Collection
-              {:name            "Salesforce Blueprint 📘"
-               :description     "A collection for Salesforce blueprints"
+              {:name            "Salesforce analytics"
+               :description     "Dashboards and charts about Salesforce, made by Metabase"
                :authority_level nil
                :namespace       effective-namespace})
       (events/publish-event! :event/collection-touch {:collection-id (:id <>) :user-id api/*current-user-id*}))))
