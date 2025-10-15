@@ -1,0 +1,26 @@
+name: '[geo] Customer Base by Country'
+display: map
+query_type: query
+dataset_query:
+  database: <<db>>
+  query:
+    aggregation:
+    - - count
+    breakout:
+    - - field
+      - - <<db>>
+        - <<destination_schema>>
+        - <<target.account>>
+        - billing_country
+      - base-type: type/Text
+    source-table:
+    - <<db>>
+    - <<destination_schema>>
+    - <<target.account>>
+  type: query
+visualization_settings:
+  column_settings: null
+  map.region: world_countries
+  map.type: region
+card_schema: 22
+type: question

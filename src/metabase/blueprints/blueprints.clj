@@ -1,6 +1,7 @@
 (ns metabase.blueprints.blueprints
   (:require
    [clj-yaml.core :as yaml]
+   [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
@@ -72,26 +73,42 @@
   {})
 
 (defn patch-card
-  [yaml-file db-name destination-schema collection-id user-id]
+  [yaml-file db-name destination-schema which->table {:keys [collection-id user-id]}]
   (let [card (-> (yaml/parse-string (slurp (io/resource yaml-file)))
-                 (update :dataset_query (fn [query]
-                                          (walk/postwalk (fn [x]
-                                                           (cond (string? x)
-                                                                 ({"<<db>>" db-name
-                                                                   "<<destination_schema>>" destination-schema} x x)
-                                                                 (sequential? x)
-                                                                 (vec x)
-                                                                 :else x))
-                                                         query)))
+                 (update :dataset_query
+                         (fn [query]
+                           (walk/postwalk
+                            (fn [x]
+                              (cond (string? x)
+                                    ;; todo: patch table in new schema
+                                    ({"<<db>>" db-name
+                                      "<<destination_schema>>" destination-schema} x
+                                     (str/replace x #"<<target\.(.*)>>"
+                                                  (fn [[whole which]]
+                                                    (or (which->table which)
+                                                        (throw (ex-info (str "Can't replace " whole) {}))))))
+                                    (sequential? x)
+                                    (vec x)
+                                    :else x))
+                            query
+                            )))
                  (update :dataset_query serdes/import-mbql)
                  (update :visualization_settings serdes/import-visualization-settings)
                  (assoc :collection_id collection-id
-                        :creator_id user-id))]
+                        :creator_id user-id)
+                 )]
     card))
 
 (comment
 
-  (slurp (io/resource "blueprints/salesforce/cards/customer_base_by_country.yaml")))
+  (slurp (io/resource "blueprints/salesforce/cards/customer_base_by_country.yaml"))
+  ;; yaml file
+  (patch-card "blueprints/salesforce/cards/customer_base_by_country.yaml"
+              "analytics local" ;; db name
+              "transform476140" ;; destination schema might need origin schema
+              {"account" "transformed_account"} ;; output table names
+              {:collection-id nil :user-id 1})
+  )
 
 (comment
 
