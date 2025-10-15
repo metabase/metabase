@@ -121,7 +121,7 @@ describe("issue 14636", () => {
     stubPageResponses({ page: 1, alias: "second" });
   });
 
-  it("pagination should work (metabase#14636)", { tags: "@flaky" }, () => {
+  it("pagination should work (metabase#14636)", () => {
     cy.visit("/admin/tools/tasks");
     cy.wait("@first");
 
