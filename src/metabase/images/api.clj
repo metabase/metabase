@@ -38,7 +38,7 @@
                                      :limit 1}))
       (assoc :url (models.image/image-id->contents-url image-id))))
 
-(api.macros/defendpoint :get "/:id/contents" :- bytes?
+(api.macros/defendpoint :get "/:id/contents"
   "This is our endpoint for serving the contents of an image that we have stored locally somewhere."
   [{image-id :id, :as _route-params} :- [:map
                                          [:id ::images.schema/id]]]
