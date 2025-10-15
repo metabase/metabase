@@ -11,6 +11,7 @@ import S from "./AddDataModal.module.css";
 import { CSVPanel } from "./Panels/CSVPanel";
 import { DatabasesPanel } from "./Panels/DatabasesPanel";
 import { PanelsHeader } from "./Panels/PanelsHeader";
+import { SourcesPanel } from "./Panels/SourcesPanel";
 import { trackAddDataEvent } from "./analytics";
 import { useAddDataPermissions } from "./use-add-data-permission";
 import {
@@ -28,7 +29,7 @@ interface AddDataModalProps {
 
 interface Tabs {
   name: string;
-  value: "csv" | "db" | "gsheets";
+  value: "csv" | "db" | "gsheets" | "sources";
   isVisible: boolean;
   iconName: IconName;
 }
@@ -64,6 +65,7 @@ export const AddDataModal = ({
 
     const eventMapping = {
       db: "database_tab_clicked",
+      sources: "sources_tab_clicked",
       csv: "csv_tab_clicked",
       gsheets: "sheets_tab_clicked",
     } as const satisfies Record<AddDataTab, string>;
@@ -75,6 +77,12 @@ export const AddDataModal = ({
   const tabs = useMemo(() => {
     return [
       { name: t`Database`, value: "db", isVisible: true, iconName: "database" },
+      {
+        name: t`Sources`,
+        value: "sources",
+        isVisible: true,
+        iconName: "connections",
+      },
       {
         name: t`CSV`,
         value: "csv",
@@ -153,6 +161,12 @@ export const AddDataModal = ({
             </Tabs.Panel>
             <Tabs.Panel value="db" className={S.panel}>
               <DatabasesPanel canSeeContent={isAdmin} />
+            </Tabs.Panel>
+            <Tabs.Panel value="sources" className={S.panel}>
+              <SourcesPanel
+                canSeeContent={isAdmin}
+                onAddDataModalClose={onClose}
+              />
             </Tabs.Panel>
             <Tabs.Panel value="gsheets" className={S.panel}>
               <PLUGIN_UPLOAD_MANAGEMENT.GdriveAddDataPanel

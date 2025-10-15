@@ -179,7 +179,11 @@ export type AddDataModalOpenedEvent = ValidateEvent<{
 }>;
 
 export type AddDataModalTabEvent = ValidateEvent<{
-  event: "csv_tab_clicked" | "sheets_tab_clicked" | "database_tab_clicked";
+  event:
+    | "csv_tab_clicked"
+    | "sheets_tab_clicked"
+    | "database_tab_clicked"
+    | "sources_tab_clicked";
   triggered_from: "add-data-modal";
 }>;
 

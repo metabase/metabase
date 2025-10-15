@@ -1,7 +1,11 @@
 import { trackSimpleEvent } from "metabase/lib/analytics";
 import type { Engine } from "metabase-types/api";
 export const trackAddDataEvent = (
-  event: "csv_tab_clicked" | "sheets_tab_clicked" | "database_tab_clicked",
+  event:
+    | "csv_tab_clicked"
+    | "sheets_tab_clicked"
+    | "database_tab_clicked"
+    | "sources_tab_clicked",
 ) => {
   trackSimpleEvent({
     event,

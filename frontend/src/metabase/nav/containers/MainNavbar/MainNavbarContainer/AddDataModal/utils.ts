@@ -1,6 +1,6 @@
 import type { Database } from "metabase-types/api";
 
-const validTabArray = ["db", "csv", "gsheets"] as const;
+const validTabArray = ["db", "sources", "csv", "gsheets"] as const;
 const validTabs = new Set<string>(validTabArray);
 
 export type AddDataTab = (typeof validTabArray)[number];
