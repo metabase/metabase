@@ -2,7 +2,7 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import { HealthReportMarkdown } from "metabase/admin/tools/components/Health/HealthReportMarkdown";
+import { HealthReportMarkdownStyled } from "metabase/admin/tools/components/Health/HealthReportMarkdown.styled";
 import { useGetHealthReportQuery } from "metabase/api/health-report";
 import { Box, Flex, Loader, Stack, Text } from "metabase/ui";
 import { FC } from "react";
@@ -12,7 +12,7 @@ export const HealthReport: FC = () => {
   const { data: { reportMarkdown } = {}, isLoading } =
     useGetHealthReportQuery();
   return (
-    <SettingsPageWrapper title={t`Health`}>
+    <SettingsPageWrapper title={t`Health report from MetaDoctor`}>
       <SettingsSection>
         <Stack align="center" gap="lg">
           {isLoading || !reportMarkdown ? (
@@ -40,7 +40,9 @@ export const HealthReport: FC = () => {
             </Box>
           ) : (
             <Text>
-              <HealthReportMarkdown>{reportMarkdown}</HealthReportMarkdown>
+              <HealthReportMarkdownStyled>
+                {reportMarkdown}
+              </HealthReportMarkdownStyled>
             </Text>
           )}
         </Stack>

@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
 import Markdown, { MarkdownProps } from "metabase/common/components/Markdown";
 
-export const HealthReportMarkdown = styled(Markdown)<MarkdownProps>`
+export const HealthReportMarkdownStyled = styled(Markdown)<MarkdownProps>`
+  padding: 0 2rem 0;
   h1 {
     margin: 1.5rem 0;
     text-align: center;
@@ -9,15 +10,9 @@ export const HealthReportMarkdown = styled(Markdown)<MarkdownProps>`
   h2 {
     margin: 1rem 0;
   }
-  h3 {
-    margin: 0.5rem 0;
-  }
-  h4 {
-    margin: 0.5rem 0;
-  }
-  h5 {
-    margin: 0.5rem 0;
-  }
+  h3,
+  h4,
+  h5,
   h6 {
     margin: 0.5rem 0;
   }
@@ -36,6 +31,7 @@ export const HealthReportMarkdown = styled(Markdown)<MarkdownProps>`
     }
   }
   ul {
+    list-style-type: disc;
     margin: 0 0.5rem 0;
   }
   ol {
