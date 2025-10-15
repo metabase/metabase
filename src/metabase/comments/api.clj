@@ -2,7 +2,6 @@
   "`/api/comment/` routes"
   (:require
    [honey.sql.helpers :as sql.helpers]
-   [java-time.api :as t]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -100,24 +99,15 @@
 (api.macros/defendpoint :get "/"
   "Get comments for an entity"
   [_route-params
-   {:keys [target_type
-           target_id
-           longpoll]} :- [:map
-                          [:target_type [:enum "document"]]
-                          [:target_id ms/PositiveInt]
-                          [:longpoll {:optional true} [:maybe :boolean]]]
+   {:keys [target_type target_id]} :- [:map
+                                       [:target_type [:enum "document"]]
+                                       [:target_id ms/PositiveInt]]
    _body
    req]
   (if (analytics/embedding-context? (get-in req [:headers "x-metabase-client"]))
     {:disabled true
      :comments []}
     (let [_entity  (api/read-check (type->model target_type) target_id)
-          t        (t/offset-date-time)
-          _        (loop [res nil]
-                     (when (and longpoll (not res))
-                       (Thread/sleep 100)
-                       (recur (t2/select-one [:model/Comment :id]
-                                             {:where [:>= :created_at t]}))))
           comments (-> (t2/select :model/Comment
                                   {:where    [:and
                                               [:= :target_type target_type]
@@ -125,11 +115,6 @@
                                    :order-by [[:created_at :asc]]})
                        (t2/hydrate :creator :reactions))]
       {:comments (render-comments comments)})))
-
-(defn- pg-notify-comment!
-  [{:keys [target_type target_id id]}]
-  (when id
-    (t2/query (format "NOTIFY comment_%s_%s, '%s'" target_type target_id id))))
 
 (defn notify-comment!
   "Send a notification about comment"
@@ -204,7 +189,6 @@
                        (t2/hydrate :creator)
                        ;; New comments always have empty reactions map
                        (assoc :reactions []))]
-    (pg-notify-comment! comment)
     (notify-comment! comment {:entity entity :parent parent})
     (events/publish-event! :event/comment-create
                            {:object comment
