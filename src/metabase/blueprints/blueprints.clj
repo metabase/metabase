@@ -55,11 +55,21 @@
   [:transform1 :transform2])
 
 (defn create-salesforce-cards! [db tables]
+  ;; get the serialized cards from the salesforce dashboard
+  ;; deserialize them into clojure objects
+  ;; patch them with the db/table references
+  ;; toucan insert them
+  ;; return them for use in dashboard creation
   (tap> "creating salesforce cards")
   [:card1 :card2])
 
 (defn create-salesforce-dashboard! [db cards]
   (tap> "creating salesforce dashboard")
+  ;; get the serialized dashboard?
+  ;; deserialize it into a clojure object
+  ;; patch it with the db/cards references
+  ;; toucan insert it
+  ;; return the id for use in the api response
   [:dashboard1])
 
 (comment
