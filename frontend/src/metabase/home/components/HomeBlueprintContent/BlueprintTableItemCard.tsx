@@ -20,22 +20,32 @@ export const BlueprintTableItemCard = ({ table }: { table: Table }) => {
           border: "1px solid var(--mb-color-border)",
         }}
         direction="row"
+        align={table.description ? undefined : "center"}
       >
         <Icon name="table" size={16} c="rgba(53, 140, 217, 1)" mr="sm" />
         <Flex direction="column">
-          <Title order={4} mb="sm" c="text-primary" fz={14} fw={400} lh="16px">
+          <Title
+            order={4}
+            mb={table.description ? "sm" : undefined}
+            c="text-primary"
+            fz={14}
+            fw={400}
+            lh="16px"
+          >
             {table.name}
           </Title>
-          <Text
-            fz={12}
-            lh="16px"
-            fw={400}
-            c="text-secondary"
-            tt="none"
-            truncate
-          >
-            {table.description}
-          </Text>
+          {table.description && (
+            <Text
+              fz={12}
+              lh="16px"
+              fw={400}
+              c="text-secondary"
+              tt="none"
+              truncate
+            >
+              {table.description}
+            </Text>
+          )}
         </Flex>
       </Flex>
     </Anchor>
