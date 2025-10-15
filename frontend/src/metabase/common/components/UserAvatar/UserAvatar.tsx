@@ -6,7 +6,6 @@ import { Avatar as StyledAvatar } from "./UserAvatar.styled";
 
 interface UserAvatarProps extends AvatarProps {
   user: User;
-  avatarUrl?: string | null;
 }
 
 interface GroupProps {
@@ -27,10 +26,9 @@ interface Group {
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function UserAvatar({
   user,
-  avatarUrl,
   ...props
 }: UserAvatarProps | GroupProps) {
-  const imageUrl = avatarUrl ?? user.profile_image_url;
+  const imageUrl = user.profile_image_url;
   const initials = userInitials(user) || "?";
   return (
     <MantineAvatar {...props} src={imageUrl}>
