@@ -71,8 +71,8 @@
   [:map
    [:id pos-int?]
    [:email ms/Email]
-   [:first_name [:maybe string?]]
-   [:last_name [:maybe string?]]
+   [:first_name  {:optional true} [:maybe string?]]
+   [:last_name {:optional true} [:maybe string?]]
    [:common_name {:optional true} [:maybe string?]]
    [:date_joined :any] ;; Java Time object, serialized to string by middleware
    [:last_login [:maybe :any]] ;; Java Time object or nil

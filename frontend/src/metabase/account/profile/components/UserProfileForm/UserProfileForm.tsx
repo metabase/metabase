@@ -14,7 +14,10 @@ import * as Errors from "metabase/lib/errors";
 import { Box, Flex, Text } from "metabase/ui";
 import type { User } from "metabase-types/api";
 
-import type { MetabaseSessionApiAvailableLocale as LocaleData } from "../../../../../../../ts-types/hey-api/types.gen";
+import type {
+  MetabaseSessionApiAvailableLocale as LocaleData,
+  MetabaseUsersApiUser,
+} from "../../../../../../../ts-types/hey-api/types.gen";
 import { MetabaseSessionApiAvailableLocale } from "../../../../../../../ts-types/hey-api/types.gen";
 import type { UserProfileData } from "../../types";
 
@@ -29,10 +32,9 @@ const LOCAL_PROFILE_SCHEMA = SSO_PROFILE_SCHEMA.shape({
 });
 
 export interface UserProfileFormProps {
-  user: User;
-  locales: LocaleData[] | null;
+  user: MetabaseUsersApiUser;
   isSsoUser: boolean;
-  onSubmit: (user: User, data: UserProfileData) => void;
+  onSubmit: (user: MetabaseUsersApiUser, data: UserProfileData) => void;
 }
 
 const UserProfileForm = ({
