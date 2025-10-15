@@ -20,7 +20,7 @@ parameter_mappings: []
 dataset_query:
   database: My Database
   native:
-    native: select 1
+    query: select 1
   type: native
 result_metadata: null
 visualization_settings:
@@ -35,3 +35,4 @@ dashboard_id: null
 metabase_version: v1.54.4-SNAPSHOT (c6780bb)
 source_card_id: null
 type: model
+document_id: null

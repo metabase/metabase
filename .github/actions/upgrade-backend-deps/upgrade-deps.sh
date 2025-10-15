@@ -59,6 +59,11 @@ for upgrade in $UPGRADES; do
 
     # Commit the dependency update, and link to the diff
     git add deps.edn modules
+
+    # Use an email and name that will pass the CLA check:
+    git config --global user.email "github-automation@metabase.com"
+    git config --global user.name "Metabase Automation"
+
     git commit -m ${TITLE} -m ${BODY} --no-verify
     git push -u origin $BRANCH_NAME
 

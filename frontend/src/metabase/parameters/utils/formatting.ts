@@ -58,7 +58,7 @@ export function formatParameterValue(
   if (isFieldFilterParameter(parameter)) {
     // skip formatting field filter parameters mapped to native query variables
     if (parameter.hasVariableTemplateTagTarget) {
-      return value;
+      return String(value);
     }
 
     // format using the parameter's first targeted field

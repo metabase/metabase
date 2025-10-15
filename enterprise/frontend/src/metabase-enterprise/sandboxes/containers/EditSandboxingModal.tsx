@@ -3,6 +3,7 @@ import { withRouter } from "react-router";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
+import { useListUserAttributesQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getParentPath } from "metabase/hoc/ModalRoute";
 import { connect } from "metabase/lib/redux";
@@ -12,7 +13,10 @@ import {
 } from "metabase-enterprise/sandboxes/selectors";
 import { fetchUserAttributes } from "metabase-enterprise/shared/reducer";
 import { getUserAttributes } from "metabase-enterprise/shared/selectors";
-import type { GroupTableAccessPolicy, UserAttribute } from "metabase-types/api";
+import type {
+  GroupTableAccessPolicy,
+  UserAttributeKey,
+} from "metabase-types/api";
 
 import {
   fetchPolicy,
@@ -24,7 +28,7 @@ import type { GroupTableAccessPolicyParams, SandboxesState } from "../types";
 
 interface EditSandboxingModalContainerProps {
   policy: GroupTableAccessPolicy;
-  attributes: UserAttribute[];
+  attributes: UserAttributeKey[];
   push: (path: string) => void;
   params: GroupTableAccessPolicyParams;
   route: any;
@@ -39,7 +43,6 @@ interface EditSandboxingModalContainerProps {
 
 const EditSandboxingModalContainer = ({
   policy,
-  attributes,
   push,
   params,
   route,
@@ -54,6 +57,7 @@ const EditSandboxingModalContainer = ({
     fetchUserAttributes();
   }, [fetchPolicy, params, fetchUserAttributes]);
 
+  const { data: attributes } = useListUserAttributesQuery();
   const isLoading = policyRequestState?.loading || !attributes;
 
   if (!policyRequestState?.loaded) {
@@ -77,7 +81,7 @@ const EditSandboxingModalContainer = ({
     >
       <EditSandboxingModal
         policy={policy}
-        attributes={attributes}
+        attributes={attributes || []}
         params={params}
         onCancel={close}
         onSave={handleSave}

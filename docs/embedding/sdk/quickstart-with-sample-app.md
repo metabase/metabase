@@ -98,11 +98,11 @@ To enable SSO with JWT when self-hosting, you'll need to [activate your license]
 
 ## Enable embedding in Metabase
 
-From any Metabase page, click on the **gear** icon in the upper right and select **Admin Settings** > **Settings** > **Embedding**.
+From any Metabase page, click on the **gear** icon in the upper right and select **Admin Settings** > **Embedding**.
 
 Turn on:
 
-- Embedded analytics SDK
+- Embedded analytics SDK (it's in in the **Modular** section)
 - Static embedding
 
 Otherwise, this whole thing is hopeless.
@@ -120,10 +120,10 @@ On the card that says **JWT**, click the **Setup** button.
 In **JWT IDENTITY PROVIDER URI** field, paste
 
 ```txt
-localhost:9090/sso/metabase
+http://localhost:9090/sso/metabase
 ```
 
-Or substitute your Cloud URL for `localhost`.
+Or substitute your Cloud URL for `http://localhost`.
 
 ### String used by the JWT signing key
 

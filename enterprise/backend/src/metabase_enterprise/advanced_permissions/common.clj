@@ -163,7 +163,7 @@
                    :group_id group-id)
        (and
         (premium-features/enable-sandboxes?)
-        (t2/exists? :model/GroupTableAccessPolicy
+        (t2/exists? :model/Sandbox
                     :group_id group-id)))
     :blocked
     :unrestricted))
@@ -185,9 +185,9 @@
        (and
         (premium-features/enable-sandboxes?)
         (t2/exists?
-         :model/GroupTableAccessPolicy
+         :model/Sandbox
          {:select [:s.id]
-          :from [[(t2/table-name :model/GroupTableAccessPolicy) :s]]
+          :from [[(t2/table-name :model/Sandbox) :s]]
           :join [[(t2/table-name :model/Table) :t] [:= :t.id :s.table_id]]
           :where [:and
                   [:= :s.group_id group-id]
@@ -213,7 +213,7 @@
                      :db_id db-id)
          (and
           (premium-features/enable-sandboxes?)
-          (t2/exists? :model/GroupTableAccessPolicy
+          (t2/exists? :model/Sandbox
                       :group_id all-users-group-id
                       {:from [[:sandboxes :s]]
                        :join [[:metabase_table :t] [:= :s.table_id :t.id]]

@@ -8,6 +8,10 @@
   background-color: var(--mb-color-bg-light);
 
   :global {
+    .cm-cursor {
+      border-left-color: var(--mb-color-text-secondary);
+    }
+
     .cm-tooltip-autocomplete {
       box-shadow: 0 5px 14px rgba(0, 0, 0, 0.08);
       border-radius: 4px;
@@ -42,6 +46,7 @@
           display: grid;
           gap: 0 1rem;
           grid-template-columns: 1fr;
+          grid-auto-rows: max-content;
 
           &:has(.cm-completionDetail) {
             grid-template-columns: max-content 1fr;

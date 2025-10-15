@@ -1,8 +1,12 @@
 (ns metabase.lib.test-util.macros
   (:require
    [clojure.test :refer [testing]]
+   [metabase.lib.query :as lib.query]
+   [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util.macros.impl :as lib.tu.macros.impl]
-   [metabase.test.data.mbql-query-impl :as mbql-query-impl]))
+   [metabase.test.data.mbql-query-impl :as mbql-query-impl]
+   [metabase.util :as u]
+   [metabase.util.malli :as mu]))
 
 (defn- do-with-bindings [thunk]
   (binding [mbql-query-impl/*id-fn-symb*              'metabase.lib.test-metadata/id
@@ -35,9 +39,53 @@
     #(as-> inner-query <>
        (mbql-query-impl/parse-tokens table-name <>)
        (mbql-query-impl/maybe-add-source-table <> table-name)
-       (mbql-query-impl/wrap-populate-idents <>)
-       (mbql-query-impl/wrap-inner-query <>)
-       (vary-meta <> assoc :type :mbql-query)))))
+       (mbql-query-impl/wrap-inner-query <>)))))
+
+(mu/defn- maybe-add-source-table-mbql5 :- :map
+  [query :- :map
+   table-name]
+  (cond
+    ;; `table-name` is not specified: return query as is
+    (not table-name)
+    query
+
+    ;; already has source table/card in the first stage: return query as is
+    ((some-fn :source-table :source-card) (get-in query [:stages 0]))
+    query
+
+    ;; query is missing `:stages`: add empty vector and recur
+    (not (:stages query))
+    (recur (assoc query :stages [])
+           table-name)
+
+    ;; query is missing first stage: add empty first stage and recur
+    (not (first (:stages query)))
+    (recur (update query :stages #(conj (vec %) {:lib/type :mbql.stage/mbql}))
+           table-name)
+
+    ;; otherwise we're good to go. Add `(meta/id ...)` form for `:source-table` to the first stage
+    :else
+    (assoc-in query [:stages 0 :source-table] (list 'metabase.lib.test-metadata/id (keyword table-name)))))
+
+(defmacro mbql-5-query
+  "Like [[mbql-query]] but for use with MBQL 5 queries. Currently experimental, and maybe need bugfixes!"
+  {:style/indent :defn}
+  ([table-name]
+   `(mbql-5-query ~table-name {}))
+
+  ([table-name query]
+   {:pre [(map? query)]}
+   (do-with-bindings
+    (fn []
+      (binding [mbql-query-impl/*mbql-version* 5]
+        (as-> query $query
+          (mbql-query-impl/parse-tokens table-name $query)
+          (u/assoc-default $query
+                           :lib/type :mbql/query, :database '(metabase.lib.test-metadata/id))
+          (maybe-add-source-table-mbql5 $query table-name)
+          `(lib.query/query
+            meta/metadata-provider
+            ~$query)))))))
 
 (defmacro with-testing-against-standard-queries
   "Tests against a number of named expressions that all produce the same columns through different methods."

@@ -2,7 +2,7 @@
  ["src" "resources-ee"]
 
  :deps
- {com.oracle.database.jdbc/ojdbc17 {:mvn/version "23.8.0.25.04"}}
+ {com.oracle.database.jdbc/ojdbc17 {:mvn/version "23.9.0.25.07"}}
 
  :aliases
  {:oss

@@ -10,7 +10,8 @@ import {
   useGetTableQueryMetadataQuery,
   useUpdateFieldValuesMutation,
 } from "metabase/api";
-import { useToast } from "metabase/common/hooks";
+import { useMetadataToasts } from "metabase/metadata/hooks";
+import { trackMetadataChange } from "metabase/metadata/pages/DataModel/analytics";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { FieldDataSelector } from "metabase/query_builder/components/DataSelector";
@@ -26,7 +27,11 @@ import {
 } from "metabase/ui";
 import type { Database, Field, FieldId } from "metabase-types/api";
 
-import { CustomMappingModal } from "./CustomMappingModal";
+import {
+  type ChangeOptions,
+  CustomMappingModal,
+  type Mapping,
+} from "./CustomMappingModal";
 import {
   DisplayValuesPicker,
   type RemappingValue,
@@ -53,15 +58,15 @@ export const RemappingPicker = ({
   field,
   ...props
 }: Props) => {
-  const [sendToast] = useToast();
+  const { sendErrorToast, sendSuccessToast, sendUndoToast } =
+    useMetadataToasts();
   const [hasChanged, setHasChanged] = useState(false);
   const [isCustomMappingOpen, setIsCustomMappingOpen] = useState(false);
   const [isFkTargetTouched, setIsFkTargetTouched] = useState(false);
+  const [isChoosingDisplayValue, setIsChoosingDisplayValue] = useState(false);
   const [isChoosingInitialFkTarget, setIsChoosingInitialFkTarget] =
     useState(false);
   const id = getRawTableFieldId(field);
-  const { data: fieldValues, error: fieldValuesError } =
-    useGetFieldValuesQuery(id);
   const { data: fkTargetField } = useGetFieldQuery(
     field.fk_target_field_id == null
       ? skipToken
@@ -86,6 +91,13 @@ export const RemappingPicker = ({
   const tables = useMemo(() => [fkTargetTable], [fkTargetTable]);
 
   const value = useMemo(() => getValue(field), [field]);
+  const {
+    data: fieldValues,
+    error: fieldValuesError,
+    isLoading: isLoadingFieldValues,
+  } = useGetFieldValuesQuery(id, {
+    skip: value !== "custom" && !isChoosingDisplayValue,
+  });
   const options = useMemo(() => {
     return getOptions(field, fieldValues?.values, fkTargetTable);
   }, [field, fieldValues, fkTargetTable]);
@@ -106,10 +118,39 @@ export const RemappingPicker = ({
   );
   const fkRemappingField = hasFkMappingValue ? fkRemappingFieldData : undefined;
   const isFieldsAccessRestricted = is403Error(fieldValuesError);
+  const dimension = field.dimensions?.[0];
 
   const [updateFieldValues] = useUpdateFieldValuesMutation();
   const [createFieldDimension] = useCreateFieldDimensionMutation();
   const [deleteFieldDimension] = useDeleteFieldDimensionMutation();
+
+  const sendDefaultToast = (error: unknown) => {
+    if (error) {
+      sendErrorToast(
+        t`Failed to update display values of ${field.display_name}`,
+      );
+    } else {
+      trackMetadataChange("display_values");
+      sendSuccessToast(
+        t`Display values of ${field.display_name} updated`,
+        async () => {
+          if (dimension) {
+            const { error } = await createFieldDimension({
+              id,
+              type: dimension.type,
+              name: dimension.name,
+              human_readable_field_id: dimension.human_readable_field_id,
+            });
+
+            sendUndoToast(error);
+          } else {
+            const { error } = await deleteFieldDimension(id);
+            sendUndoToast(error);
+          }
+        },
+      );
+    }
+  };
 
   const handleDisplayValueChange = async (value: RemappingValue) => {
     setHasChanged(false);
@@ -118,11 +159,9 @@ export const RemappingPicker = ({
     if (value === "original") {
       const { error } = await deleteFieldDimension(id);
 
+      sendDefaultToast(error);
+
       if (!error) {
-        sendToast({
-          icon: "check",
-          message: t`Display values for ${field.display_name} updated`,
-        });
         setHasChanged(false);
       }
     } else if (value === "foreign") {
@@ -137,12 +176,7 @@ export const RemappingPicker = ({
           human_readable_field_id: entityNameFieldId,
         });
 
-        if (!error) {
-          sendToast({
-            icon: "check",
-            message: t`Display values for ${field.display_name} updated`,
-          });
-        }
+        sendDefaultToast(error);
       } else {
         // Enter a special state where we are choosing an initial value for FK target
         setHasChanged(true);
@@ -158,11 +192,9 @@ export const RemappingPicker = ({
         human_readable_field_id: null,
       });
 
+      sendDefaultToast(error);
+
       if (!error) {
-        sendToast({
-          icon: "check",
-          message: t`Display values for ${field.display_name} updated`,
-        });
         setHasChanged(true);
         setIsCustomMappingOpen(true);
       }
@@ -181,19 +213,48 @@ export const RemappingPicker = ({
       human_readable_field_id: fkFieldId,
     });
 
-    if (!error) {
-      sendToast({
-        icon: "check",
-        message: t`Display values for ${field.display_name} updated`,
-      });
+    sendDefaultToast(error);
+  };
+
+  const handleCustomMappingChange = async (
+    remappings: Mapping,
+    options: ChangeOptions | undefined,
+  ) => {
+    const { error } = await updateFieldValues({
+      id,
+      values: Array.from(remappings),
+    });
+
+    if (!options?.isAutomatic) {
+      if (error) {
+        sendErrorToast(
+          t`Failed to update display values of ${field.display_name}`,
+        );
+      } else {
+        sendSuccessToast(
+          t`Display values of ${field.display_name} updated`,
+          async () => {
+            const { error } = await updateFieldValues({
+              id,
+              values: Array.from(mapping),
+            });
+
+            sendUndoToast(error);
+          },
+        );
+      }
     }
   };
 
   return (
     <Stack gap={0}>
       <DisplayValuesPicker
-        options={options}
         value={isFkMapping ? "foreign" : value}
+        options={options}
+        isLoadingFieldValues={isLoadingFieldValues}
+        dropdownOpened={isChoosingDisplayValue}
+        onDropdownOpen={() => setIsChoosingDisplayValue(true)}
+        onDropdownClose={() => setIsChoosingDisplayValue(false)}
         onChange={handleDisplayValueChange}
         {...props}
       />
@@ -261,19 +322,7 @@ export const RemappingPicker = ({
               <CustomMappingModal
                 isOpen={isCustomMappingOpen}
                 value={mapping}
-                onChange={async (remappings, options) => {
-                  const { error } = await updateFieldValues({
-                    id,
-                    values: Array.from(remappings),
-                  });
-
-                  if (!error && !options?.isAutomatic) {
-                    sendToast({
-                      icon: "check",
-                      message: t`Display values for ${field.display_name} updated`,
-                    });
-                  }
-                }}
+                onChange={handleCustomMappingChange}
                 onClose={() => setIsCustomMappingOpen(false)}
               />
 
@@ -282,6 +331,7 @@ export const RemappingPicker = ({
                   p={0}
                   size="compact-xs"
                   variant="subtle"
+                  disabled={isLoadingFieldValues}
                   onClick={() => setIsCustomMappingOpen(true)}
                 >
                   {t`Edit mapping`}

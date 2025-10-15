@@ -2,17 +2,12 @@ import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
-import ColorS from "metabase/css/core/colors.module.css";
+import { DashboardArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner/DashboardArchivedEntityBanner";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import Bookmarks from "metabase/entities/bookmarks";
-import Dashboards from "metabase/entities/dashboards";
-import { useDispatch } from "metabase/lib/redux";
 import { FilterApplyToast } from "metabase/parameters/components/FilterApplyToast";
-import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box, Flex, Loader, Stack, Text } from "metabase/ui";
@@ -35,45 +30,8 @@ import S from "./Dashboard.module.css";
 import { Grid, ParametersList } from "./components";
 
 const DashboardDefaultView = ({ className }: { className?: string }) => {
-  const {
-    dashboard,
-    isEditing,
-    isFullscreen,
-    isSharing,
-    selectedTabId,
-    setSharing,
-    shouldRenderAsNightMode,
-    setArchivedDashboard,
-    moveDashboardToCollection,
-    deletePermanently,
-
-    removeParameter,
-    addCardToDashboard,
-    clickBehaviorSidebarDashcard,
-    onReplaceAllDashCardVisualizationSettings,
-    onUpdateDashCardVisualizationSettings,
-    onUpdateDashCardColumnSettings,
-    setParameterName,
-    setParameterType,
-    setParameterDefaultValue,
-    setParameterIsMultiSelect,
-    setParameterQueryType,
-    setParameterSourceType,
-    setParameterSourceConfig,
-    setParameterFilteringParameters,
-    setParameterRequired,
-    setParameterTemporalUnits,
-    sidebar,
-    closeSidebar,
-  } = useDashboardContext();
-
-  const canWrite = Boolean(dashboard?.can_write);
-  const canRestore = Boolean(dashboard?.can_restore);
-  const canDelete = Boolean(dashboard?.can_delete);
-
-  const dispatch = useDispatch();
-  const invalidateBookmarks = async () =>
-    await dispatch(Bookmarks.actions.invalidateLists());
+  const { dashboard, isEditing, isFullscreen, isSharing, selectedTabId } =
+    useDashboardContext();
 
   const currentTabDashcards = useMemo(() => {
     if (!dashboard || !Array.isArray(dashboard.dashcards)) {
@@ -100,7 +58,9 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
   }
 
   const isEmpty = !dashboardHasCards || (dashboardHasCards && !tabHasCards);
-  const isFullHeight = isEditing || isSharing;
+
+  // Embedding SDK has parent containers that requires dashboard to be full height to avoid double scrollbars.
+  const isFullHeight = isEditing || isSharing || isEmbeddingSdk();
 
   return (
     <Flex
@@ -110,9 +70,6 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
         S.DashboardLoadingAndErrorWrapper,
         {
           [DashboardS.DashboardFullscreen]: isFullscreen,
-          [DashboardS.DashboardNight]: shouldRenderAsNightMode,
-          [ParametersS.DashboardNight]: shouldRenderAsNightMode,
-          [ColorS.DashboardNight]: shouldRenderAsNightMode,
           [S.isFullHeight]: isFullHeight,
         },
       )}
@@ -122,25 +79,7 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
       flex="1 0 auto"
       data-testid="dashboard"
     >
-      {dashboard.archived && (
-        <ArchivedEntityBanner
-          name={dashboard.name}
-          entityType="dashboard"
-          canMove={canWrite}
-          canRestore={canRestore}
-          canDelete={canDelete}
-          onUnarchive={async () => {
-            await setArchivedDashboard(false);
-            await invalidateBookmarks();
-          }}
-          onMove={({ id }) => moveDashboardToCollection({ id })}
-          onDeletePermanently={() => {
-            const { id } = dashboard;
-            const deleteAction = Dashboards.actions.delete({ id });
-            deletePermanently(deleteAction);
-          }}
-        />
-      )}
+      {dashboard.archived && <DashboardArchivedEntityBanner />}
 
       <Box
         component="header"
@@ -150,7 +89,6 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
           {
             [S.isEmbeddingSdk]: isEmbeddingSdk(),
             [S.isFullscreen]: isFullscreen,
-            [S.isNightMode]: shouldRenderAsNightMode,
           },
         )}
         data-element-id="dashboard-header-container"
@@ -186,34 +124,7 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
           </FullWidthContainer>
         </Box>
 
-        <DashboardSidebars
-          dashboard={dashboard}
-          removeParameter={removeParameter}
-          addCardToDashboard={addCardToDashboard}
-          clickBehaviorSidebarDashcard={clickBehaviorSidebarDashcard}
-          onReplaceAllDashCardVisualizationSettings={
-            onReplaceAllDashCardVisualizationSettings
-          }
-          onUpdateDashCardVisualizationSettings={
-            onUpdateDashCardVisualizationSettings
-          }
-          onUpdateDashCardColumnSettings={onUpdateDashCardColumnSettings}
-          setParameterName={setParameterName}
-          setParameterType={setParameterType}
-          setParameterDefaultValue={setParameterDefaultValue}
-          setParameterIsMultiSelect={setParameterIsMultiSelect}
-          setParameterQueryType={setParameterQueryType}
-          setParameterSourceType={setParameterSourceType}
-          setParameterSourceConfig={setParameterSourceConfig}
-          setParameterFilteringParameters={setParameterFilteringParameters}
-          setParameterRequired={setParameterRequired}
-          setParameterTemporalUnits={setParameterTemporalUnits}
-          isFullscreen={isFullscreen}
-          sidebar={sidebar}
-          closeSidebar={closeSidebar}
-          selectedTabId={selectedTabId}
-          onCancel={() => setSharing(false)}
-        />
+        <DashboardSidebars />
       </Flex>
 
       <FilterApplyToast />

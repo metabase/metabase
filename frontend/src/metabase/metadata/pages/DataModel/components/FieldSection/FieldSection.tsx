@@ -2,24 +2,27 @@ import { memo } from "react";
 import { t } from "ttag";
 
 import { useUpdateFieldMutation } from "metabase/api";
-import { useToast } from "metabase/common/hooks";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { NameDescriptionInput } from "metabase/metadata/components";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
+import { Group, Stack, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { DatabaseId, Field } from "metabase-types/api";
+import type { DatabaseId, Field, Table } from "metabase-types/api";
+
+import { ResponsiveButton } from "../ResponsiveButton";
 
 import { BehaviorSection } from "./BehaviorSection";
 import { DataSection } from "./DataSection";
 import S from "./FieldSection.module.css";
 import { FormattingSection } from "./FormattingSection";
 import { MetadataSection } from "./MetadataSection";
+import { useResponsiveButtons } from "./hooks";
 
 interface Props {
   databaseId: DatabaseId;
   field: Field;
-  isPreviewOpen: boolean;
+  table: Table;
   parent?: Field;
   onFieldValuesClick: () => void;
   onPreviewClick: () => void;
@@ -28,95 +31,124 @@ interface Props {
 const FieldSectionBase = ({
   databaseId,
   field,
-  isPreviewOpen,
   parent,
+  table,
   onFieldValuesClick,
   onPreviewClick,
 }: Props) => {
   const id = getRawTableFieldId(field);
   const [updateField] = useUpdateFieldMutation();
-  const [sendToast] = useToast();
+  const { sendErrorToast, sendSuccessToast, sendUndoToast } =
+    useMetadataToasts();
+  const {
+    buttonsContainerRef,
+    showButtonLabel,
+    setFieldValuesButtonWidth,
+    setPreviewButtonWidth,
+  } = useResponsiveButtons();
+
+  const handleNameChange = async (name: string) => {
+    const { error } = await updateField({ id, display_name: name });
+
+    if (error) {
+      sendErrorToast(t`Failed to update name of ${field.display_name}`);
+    } else {
+      sendSuccessToast(t`Name of ${field.display_name} updated`, async () => {
+        const { error } = await updateField({
+          id,
+          display_name: field.display_name,
+        });
+        sendUndoToast(error);
+      });
+    }
+  };
+
+  const handleDescriptionChange = async (description: string) => {
+    const { error } = await updateField({
+      id,
+      // API does not accept empty strings
+      description: description.length === 0 ? null : description,
+    });
+
+    if (error) {
+      sendErrorToast(t`Failed to update description of ${field.display_name}`);
+    } else {
+      sendSuccessToast(
+        t`Description of ${field.display_name} updated`,
+        async () => {
+          const { error } = await updateField({
+            id,
+            description: field.description ?? "",
+          });
+          sendUndoToast(error);
+        },
+      );
+    }
+  };
 
   return (
     <Stack data-testid="field-section" gap={0} pb="xl">
-      <Box
+      <Stack
         bg="accent-gray-light"
         className={S.header}
-        pb="lg"
+        gap="lg"
+        pb={12}
         pos="sticky"
         pt="xl"
         px="xl"
         top={0}
       >
         <NameDescriptionInput
+          description={field.description ?? ""}
+          descriptionPlaceholder={t`Give this field a description`}
           name={field.display_name}
           nameIcon={getColumnIcon(Lib.legacyColumnTypeInfo(field))}
           nameMaxLength={254}
           namePlaceholder={t`Give this field a name`}
           namePrefix={parent?.display_name}
-          onNameChange={async (name) => {
-            await updateField({ id, display_name: name });
-
-            sendToast({
-              icon: "check",
-              message: t`Display name for ${field.display_name} updated`,
-            });
-          }}
-          description={field.description ?? ""}
-          descriptionPlaceholder={t`Give this field a description`}
-          onDescriptionChange={async (description) => {
-            const newDescription = description.trim();
-
-            await updateField({
-              id,
-              // API does not accept empty strings
-              description: newDescription.length === 0 ? null : newDescription,
-            });
-
-            sendToast({
-              icon: "check",
-              message: t`Description for ${field.display_name} updated`,
-            });
-          }}
+          onDescriptionChange={handleDescriptionChange}
+          onNameChange={handleNameChange}
         />
-      </Box>
 
-      <Stack gap={12} mb={12} px="xl">
-        <Group align="center" gap="md" justify="space-between">
+        <Group
+          align="center"
+          gap="md"
+          justify="space-between"
+          miw={0}
+          wrap="nowrap"
+        >
           <Text flex="0 0 auto" fw="bold">{t`Field settings`}</Text>
 
           <Group
-            className={S.buttons}
             flex="1"
             gap="md"
             justify="flex-end"
+            miw={0}
+            ref={buttonsContainerRef}
             wrap="nowrap"
           >
-            {!isPreviewOpen && (
-              <Button
-                leftSection={<Icon name="eye" />}
-                px="sm"
-                py="xs"
-                size="xs"
-                onClick={onPreviewClick}
-              >{t`Preview`}</Button>
-            )}
+            {/* keep this in sync with getRequiredWidth in useResponsiveButtons */}
 
-            <Button
-              h={32}
-              leftSection={<Icon name="gear_settings_filled" />}
-              px="sm"
-              py="xs"
-              size="xs"
+            <ResponsiveButton
+              icon="eye"
+              showLabel={showButtonLabel}
+              onClick={onPreviewClick}
+              onRequestWidth={setPreviewButtonWidth}
+            >{t`Preview`}</ResponsiveButton>
+
+            <ResponsiveButton
+              icon="gear_settings_filled"
+              showLabel={showButtonLabel}
               onClick={onFieldValuesClick}
-            >{t`Field values`}</Button>
+              onRequestWidth={setFieldValuesButtonWidth}
+            >{t`Field values`}</ResponsiveButton>
           </Group>
         </Group>
       </Stack>
 
       <Stack gap="xl" px="xl">
         <DataSection field={field} />
-        <MetadataSection databaseId={databaseId} field={field} />
+        <MetadataSection databaseId={databaseId} field={field} table={table} />
         <BehaviorSection databaseId={databaseId} field={field} />
         <FormattingSection field={field} />
       </Stack>

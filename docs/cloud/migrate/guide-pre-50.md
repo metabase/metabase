@@ -67,7 +67,7 @@ Before executing the migration script, you may need to set the environment varia
 
 The script will upload your application data to your new Metabase Cloud instance. If all goes well, the script will print `Done!`.
 
-If anything goes sideways, follow any prompts the script outputs. If you're still stuck, [send us an email](/help/) and we'll help you troubleshoot.
+If anything goes sideways, follow any prompts the script outputs. If you're still stuck, [send us an email](https://www.metabase.com/help/) and we'll help you troubleshoot.
 
 ## After migrating to Metabase Cloud
 

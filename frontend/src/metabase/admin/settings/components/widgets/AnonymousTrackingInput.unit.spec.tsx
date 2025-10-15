@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
 import {
+  findRequests,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
@@ -57,9 +57,9 @@ describe("AnonymousTrackingInput", () => {
     await userEvent.click(screen.getByRole("switch"));
     expect(trackingFN).toHaveBeenCalledWith(false);
 
-    const [putUrl, putDetails] = await findPut();
-    expect(putUrl).toMatch(/\/api\/setting\/anon-tracking-enabled/);
-    expect(putDetails).toEqual({ value: false });
+    const [{ url, body }] = await findRequests("PUT");
+    expect(url).toMatch(/\/api\/setting\/anon-tracking-enabled/);
+    expect(body).toEqual({ value: false });
 
     expect(await screen.findByRole("switch")).not.toBeChecked();
   });
@@ -68,21 +68,11 @@ describe("AnonymousTrackingInput", () => {
     setup({ value: false });
     await userEvent.click(screen.getByRole("switch"));
 
-    const [putUrl, putDetails] = await findPut();
-    expect(putUrl).toMatch(/\/api\/setting\/anon-tracking-enabled/);
-    expect(putDetails).toEqual({ value: true });
+    const [{ url, body }] = await findRequests("PUT");
+    expect(url).toMatch(/\/api\/setting\/anon-tracking-enabled/);
+    expect(body).toEqual({ value: true });
     expect(trackingFN).toHaveBeenCalledWith(true);
 
     expect(await screen.findByRole("switch")).toBeChecked();
   });
 });
-
-async function findPut() {
-  const calls = fetchMock.calls();
-  const [putUrl, putDetails] =
-    calls.find((call) => call[1]?.method === "PUT") ?? [];
-
-  const body = ((await putDetails?.body) as string) ?? "{}";
-
-  return [putUrl, JSON.parse(body)];
-}

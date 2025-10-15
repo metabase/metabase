@@ -5,6 +5,7 @@ import { currency } from "cljs/metabase.util.currency";
 import {
   displayNameForColumn,
   getCurrency,
+  getCurrencyNarrowSymbol,
   getCurrencyStyleOptions,
   getCurrencySymbol,
   getDateFormatFromStyle,
@@ -17,6 +18,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import { getVisualizationRaw } from "metabase/visualizations";
 import ChartNestedSettingColumns from "metabase/visualizations/components/settings/ChartNestedSettingColumns";
 import { ChartSettingTableColumns } from "metabase/visualizations/components/settings/ChartSettingTableColumns";
+import { getDeduplicatedTableColumnSettings } from "metabase/visualizations/lib/settings/utils";
 import {
   getDefaultCurrency,
   getDefaultCurrencyInHeader,
@@ -42,9 +44,23 @@ import {
 
 import { nestedSettings } from "./nested";
 
+/**
+ * @typedef {import("metabase-types/api").Series} Series
+ * @typedef {import("metabase-types/api").DatasetColumn} DatasetColumn
+ * @typedef {(series: Series, vizSettings) => DatasetColumn[]} GetColumnsFn
+ */
+
+/** @type {GetColumnsFn} */
 const DEFAULT_GET_COLUMNS = (series, vizSettings) =>
   [].concat(...series.map((s) => (s.data && s.data.cols) || []));
 
+/**
+ * @param {Object}        [settings]
+ * @param {GetColumnsFn}  [settings.getColumns]
+ * @param {boolean}       [settings.hidden]
+ * @param {string}        [settings.section]
+ * @param {string[]}      [settings.readDependencies]
+ */
 export function columnSettings({
   getColumns = DEFAULT_GET_COLUMNS,
   hidden,
@@ -58,7 +74,7 @@ export function columnSettings({
     getObjectSettings: getObjectColumnSettings,
     getSettingDefinitionsForObject: getSettingDefinitionsForColumn,
     component: ChartNestedSettingColumns,
-    getInheritedSettingsForObject: getInhertiedSettingsForColumn,
+    getInheritedSettingsForObject: getInheritedSettingsForColumn,
     useRawSeries: true,
     hidden,
     ...def,
@@ -81,7 +97,7 @@ function getLocalSettingsForColumn(column) {
   return column.settings || {};
 }
 
-function getInhertiedSettingsForColumn(column) {
+function getInheritedSettingsForColumn(column) {
   return {
     ...getGlobalSettingsForColumn(),
     ...getLocalSettingsForColumn(column),
@@ -268,7 +284,10 @@ export const NUMBER_COLUMN_SETTINGS = {
     widget: "radio",
     getProps: (column, settings) => {
       return {
-        options: getCurrencyStyleOptions(settings["currency"] || "USD"),
+        options: getCurrencyStyleOptions(
+          settings["currency"] || "USD",
+          settings["currency_style"],
+        ),
       };
     },
     getDefault: getDefaultCurrencyStyle,
@@ -381,6 +400,9 @@ export const NUMBER_COLUMN_SETTINGS = {
         if (settings["currency_style"] === "symbol") {
           return getCurrencySymbol(settings["currency"]);
         }
+        if (settings["currency_style"] === "narrowSymbol") {
+          return getCurrencyNarrowSymbol(settings["currency"]);
+        }
         return getCurrency(settings["currency"], settings["currency_style"]);
       }
       return null;
@@ -481,48 +503,59 @@ export const getTitleForColumn = (column, series, settings) => {
   }
 };
 
-export const tableColumnSettings = {
-  // NOTE: table column settings may be identified by fieldRef (possible not normalized) or column name:
-  //   { name: "COLUMN_NAME", enabled: true }
-  //   { fieldRef: ["field", 2, {"source-field": 1}], enabled: true }
-  "table.columns": {
-    get section() {
-      return t`Columns`;
-    },
-    // title: t`Columns`,
-    widget: ChartSettingTableColumns,
-    getHidden: (series, vizSettings) => vizSettings["table.pivot"],
-    getValue: ([{ data }], vizSettings) => {
-      const { cols } = data;
-      const settings = vizSettings["table.columns"] ?? [];
-      const columnIndexes = findColumnIndexesForColumnSettings(cols, settings);
-      const settingIndexes = findColumnSettingIndexesForColumns(cols, settings);
+export function tableColumnSettings({
+  isShowingDetailsOnlyColumns = false,
+} = {}) {
+  return {
+    "table.columns": {
+      get section() {
+        return t`Columns`;
+      },
+      // title: t`Columns`,
+      widget: ChartSettingTableColumns,
+      getHidden: (series, vizSettings) => vizSettings["table.pivot"],
+      getValue: ([{ data }], vizSettings) => {
+        const { cols } = data;
+        const settings = vizSettings["table.columns"] ?? [];
+        const uniqColumnSettings = getDeduplicatedTableColumnSettings(settings);
 
-      return [
-        // retain settings with matching columns only
-        ...settings.filter(
-          (_, settingIndex) => columnIndexes[settingIndex] >= 0,
-        ),
-        // add columns that do not have matching settings to the end
-        ...cols
-          .filter((_, columnIndex) => settingIndexes[columnIndex] < 0)
-          .map((column) => ({
-            name: column.name,
-            enabled: true,
-          })),
-      ];
-    },
-    getProps: (series, settings) => {
-      const [
-        {
-          data: { cols },
-        },
-      ] = series;
+        const columnIndexes = findColumnIndexesForColumnSettings(
+          cols,
+          uniqColumnSettings,
+        );
+        const settingIndexes = findColumnSettingIndexesForColumns(
+          cols,
+          uniqColumnSettings,
+        );
 
-      return {
-        columns: cols,
-        getColumnName: (column) => getTitleForColumn(column, series, settings),
-      };
+        return [
+          // retain settings with matching columns only
+          ...uniqColumnSettings.filter(
+            (_, settingIndex) => columnIndexes[settingIndex] >= 0,
+          ),
+          // add columns that do not have matching settings to the end
+          ...cols
+            .filter((_, columnIndex) => settingIndexes[columnIndex] < 0)
+            .map((column) => ({
+              name: column.name,
+              enabled: true,
+            })),
+        ];
+      },
+      getProps: (series, settings) => {
+        const [
+          {
+            data: { cols },
+          },
+        ] = series;
+
+        return {
+          columns: cols,
+          isShowingDetailsOnlyColumns,
+          getColumnName: (column) =>
+            getTitleForColumn(column, series, settings),
+        };
+      },
     },
-  },
-};
+  };
+}

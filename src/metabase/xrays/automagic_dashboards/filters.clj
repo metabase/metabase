@@ -4,14 +4,17 @@
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.malli :as mu]
    [metabase.warehouse-schema.models.field :as field]
+   [metabase.xrays.automagic-dashboards.schema :as ads]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
    [toucan2.core :as t2]))
 
 (defn- temporal?
   "Does `field` represent a temporal value, i.e. a date, time, or datetime?"
   [{base-type :base_type, effective-type :effective_type, unit :unit}]
-  ;; TODO -- not sure why we're excluding year here? Is it because we normally returned it as an integer in the past?
+  ;; Excluding :year because it's (currently) both an extraction and truncation unit.
+  ;; For the purposes of this check, :year is an interesting :unit which yields a time interval, not just a number.
   (and (not ((disj u.date/extract-units :year) unit))
        (isa? (or effective-type base-type) :type/Temporal)))
 
@@ -48,8 +51,9 @@
   "Pick out interesting fields and sort them by interestingness."
   [fields]
   (->> fields
-       (filter (fn [{:keys [semantic_type] :as field}]
+       (filter (fn [{:keys [base_type effective_type semantic_type] :as field}]
                  (or (temporal? field)
+                     (isa? (or effective_type base_type) :type/Boolean)
                      (isa? semantic_type :type/Category))))
        sort-by-interestingness))
 
@@ -74,7 +78,7 @@
 (defn- add-filter
   [dashcard filter-id field]
   (let [mappings (->> (conj (:series dashcard) (:card dashcard))
-                      (keep (fn [card]
+                      (keep (mu/fn [card :- [:maybe ::ads/card]]
                               (when-let [target (filter-for-card card field)]
                                 {:parameter_id filter-id
                                  :target       target
@@ -112,10 +116,11 @@
   (partial remove (fn [{:keys [fingerprint]}]
                     (some-> fingerprint :global :distinct-count (< 2)))))
 
-(defn add-filters
+(mu/defn add-filters
   "Add up to `max-filters` filters to dashboard `dashboard`. The `dimensions` argument is a list of fields for which to
   create filters."
-  [dashboard dimensions max-filters]
+  [dashboard :- ::ads/dashboard
+   dimensions max-filters]
   (let [fks (when-let [table-ids (not-empty (set (keep (comp :table_id :card)
                                                        (:dashcards dashboard))))]
               (field/with-targets (t2/select :model/Field
@@ -157,6 +162,7 @@
   [[clause-name, :as filter-clause]]
   (when (seq filter-clause)
     (if (= clause-name :and)
+      #_{:clj-kondo/ignore [:deprecated-var]}
       (rest (mbql.u/simplify-compound-filter filter-clause))
       [filter-clause])))
 
@@ -180,6 +186,7 @@
     (if (seq existing-filters)
       ;; since the filters are programatically generated they won't have passed thru normalization, so make sure we
       ;; normalize them before passing them to `combine-filter-clauses`, which validates its input
+      #_{:clj-kondo/ignore [:deprecated-var]}
       (apply mbql.u/combine-filter-clauses (map (partial mbql.normalize/normalize-fragment [:query :filter])
                                                 (cons refinement existing-filters)))
       refinement)))

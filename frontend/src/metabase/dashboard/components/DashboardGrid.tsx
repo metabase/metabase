@@ -6,11 +6,11 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ExplicitSize from "metabase/common/components/ExplicitSize";
-import type { QuestionPickerValueItem } from "metabase/common/components/QuestionPicker";
 import {
   QuestionPickerModal,
+  type QuestionPickerValueItem,
   getQuestionPickerValue,
-} from "metabase/common/components/QuestionPicker";
+} from "metabase/common/components/Pickers/QuestionPicker";
 import { ContentViewportContext } from "metabase/common/context/ContentViewportContext";
 import DashboardS from "metabase/css/dashboard.module.css";
 import {
@@ -144,7 +144,6 @@ type DashboardGridContext = {
   | "isEditing"
   | "isEditingParameter"
   | "isFullscreen"
-  | "isNightMode"
   | "clickBehaviorSidebarDashcard"
   | "getClickActionMode"
   | "navigateToNewCardFromDashboard"
@@ -715,7 +714,6 @@ const DashboardGrid = forwardRef<
     slowCards,
     isEditing = false,
     isEditingParameter = false,
-    isNightMode = false,
     isFullscreen,
     clickBehaviorSidebarDashcard,
     getClickActionMode,
@@ -740,7 +738,6 @@ const DashboardGrid = forwardRef<
       slowCards={slowCards}
       isEditing={isEditing}
       isEditingParameter={isEditingParameter}
-      isNightMode={isNightMode}
       isFullscreen={isFullscreen}
       clickBehaviorSidebarDashcard={clickBehaviorSidebarDashcard}
       getClickActionMode={getClickActionMode}

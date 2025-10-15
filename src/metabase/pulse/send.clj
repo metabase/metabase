@@ -50,9 +50,10 @@
   [pulse-channel]
   (let [channel      (pc->channel pulse-channel)
         channel-type (:type channel)]
-    {:channel_type channel-type
-     :channel      channel
-     :recipients   (channel-recipients pulse-channel)}))
+    {:channel_type    channel-type
+     :channel         channel
+     :recipients      (channel-recipients pulse-channel)
+     :attachment_only (boolean (get-in pulse-channel [:details :attachment_only]))}))
 
 (defn- maybe-name [x] (some-> x name))
 

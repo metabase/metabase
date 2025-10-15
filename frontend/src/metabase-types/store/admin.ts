@@ -8,6 +8,7 @@ import type {
 export type AdminPathKey =
   | "data-model"
   | "settings"
+  | "embedding"
   | "metabot"
   | "people"
   | "databases"
@@ -17,7 +18,8 @@ export type AdminPathKey =
   | "performance"
   | "performance-models"
   | "performance-dashboards-and-questions"
-  | "performance-databases";
+  | "performance-databases"
+  | "transforms";
 
 export type AdminPath = {
   key: AdminPathKey;

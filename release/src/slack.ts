@@ -220,6 +220,10 @@ export async function sendSlackReply({ channelName, message, messageId, broadcas
     throw new Error(`Could not find channel ${channelName}`);
   }
 
+  if (!messageId) {
+    throw new Error('Message ID is not defined');
+  }
+
   return slack.chat.postMessage({
     channel: channelId,
     text: message,
@@ -491,6 +495,10 @@ async function uploadFileToSlack({
   }
 
   const channelId = await getSlackChannelId(channelName);
+
+  if (!channelId) {
+    throw new Error("channel id not found");
+  }
 
   return slack.files.completeUploadExternal({
     files: [{ id: uploadRequest.file_id, title: fileName }],

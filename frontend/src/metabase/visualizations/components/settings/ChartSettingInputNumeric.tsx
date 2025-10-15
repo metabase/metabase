@@ -1,5 +1,5 @@
 import debounce from "lodash.debounce";
-import { type ChangeEvent, useMemo, useState } from "react";
+import { type ChangeEvent, useEffect, useMemo, useState } from "react";
 import { useLatest } from "react-use";
 
 import { TextInput } from "metabase/ui";
@@ -70,6 +70,10 @@ export const ChartSettingInputNumeric = ({
     }, 400);
   }, [handleChangeRef]);
 
+  useEffect(() => {
+    setInputValue(value?.toString() ?? "");
+  }, [value]);
+
   return (
     <TextInput
       id={id}
@@ -77,7 +81,7 @@ export const ChartSettingInputNumeric = ({
       placeholder={placeholder}
       type="text"
       error={inputValue && isNaN(Number(inputValue))}
-      value={String(inputValue)}
+      value={inputValue}
       onChange={(e: ChangeEvent<HTMLInputElement>) => {
         if (e.target.value.split("").every((ch) => ALLOWED_CHARS.has(ch))) {
           setInputValue(e.target.value);

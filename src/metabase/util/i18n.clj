@@ -67,6 +67,14 @@
     ;; because the locale is normalized before saving (metabase#15657, metabase#16654)
     [(normalized-locale-string locale-name) (.getDisplayName (locale locale-name))]))
 
+(def ^:private included-locales
+  (delay (set (map normalized-locale-string (i18n.impl/available-locale-names)))))
+
+(defn included-locale?
+  "Returns true is this is a locale included in locales.clj instead of just one available on the JVM."
+  [locale]
+  (contains? @included-locales locale))
+
 (defn- translate-site-locale
   "Translate a string with the System locale."
   [format-string args pluralization-opts]
@@ -173,7 +181,8 @@
   "Ensures that `trs`/`tru` isn't called prematurely, during compilation."
   (if *compile-files*
     (fn [& _]
-      (throw (Exception. "Premature i18n string lookup. Is there a top-level call to `trs` or `tru`?")))
+      (throw (Exception. (format "Premature i18n string lookup. Is there a top-level call to `trs` or `tru`? (In: %s)"
+                                 (pr-str *file*)))))
     str))
 
 (defmacro tru-clj

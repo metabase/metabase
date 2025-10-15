@@ -6,13 +6,13 @@
    [metabase.audit-app.core :as audit]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.walk :as lib.walk]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-permissions.core :as query-perms]
-   [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.schema :as qp.schema]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -21,19 +21,6 @@
   "ID of the Card currently being executed, if there is one. Bind this in a Card-execution so we will use
   Card [Collection] perms checking rather than ad-hoc perms checking."
   nil)
-
-(defn perms-exception
-  "Returns an ExceptionInfo instance containing data relevant for a permissions error."
-  ([required-perms]
-   (perms-exception (tru "You do not have permissions to run this query.") required-perms))
-
-  ([message required-perms & [additional-ex-data]]
-   (ex-info message
-            (merge {:type                 qp.error-type/missing-required-permissions
-                    :required-permissions required-perms
-                    :actual-permissions   (perms/permissions-for-user *current-user-id*)
-                    :permissions-error?   true}
-                   additional-ex-data))))
 
 (defenterprise check-block-permissions
   "OSS implementation always returns `nil` because block permissions are an EE-only feature."
@@ -95,59 +82,65 @@
    (fn [_query _path-type _path stage-or-join]
      (dissoc stage-or-join :qp/stage-is-from-source-card))))
 
-(defn remove-gtapped-table-keys
-  "Pre-processing middleware. Removes any instances of the `:query-permissions/gtapped-table` key which is added by the
+(defn remove-sandboxed-table-keys
+  "Pre-processing middleware. Removes any instances of the `:query-permissions/sandboxed-table` key which is added by the
   row-level-restriction middleware when sandboxes are resolved in a query. Since we rely on this for permission
   enforcement, we want to disallow users from passing it in themselves (like the functions above)."
   [query]
   (lib.walk/walk
    query
    (fn [_query _path-type _path stage-or-join]
-     (dissoc stage-or-join :query-permissions/gtapped-table))))
+     (dissoc stage-or-join :query-permissions/sandboxed-table))))
 
 (mu/defn check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
-  [{database-id :database, {gtap-perms :gtaps} ::perms :as outer-query} :- [:map [:database ::lib.schema.id/database]]]
-  (when *current-user-id*
-    (log/tracef "Checking query permissions. Current user permissions = %s"
-                (pr-str (perms/permissions-for-user *current-user-id*)))
-    (when (= audit/audit-db-id database-id)
-      (check-audit-db-permissions outer-query))
-    (check-query-does-not-access-inactive-tables outer-query)
-    (let [required-perms  (query-perms/required-perms-for-query outer-query :already-preprocessed? true)
-          source-card-ids (set/difference (:card-ids required-perms) (:card-ids gtap-perms))]
-      ;; On EE, check block permissions up front for all queries. If block perms are in place, reject all native queries
-      ;; (unless overriden by `gtap-perms`) and any queries that touch blocked tables/DBs
-      (check-block-permissions outer-query)
-      (cond
-        ;; if card-id is bound this means that this is not an ad hoc query and we can just
-        ;; check that the user has permission to read this card
-        *card-id*
-        (query-perms/check-card-read-perms database-id *card-id*)
+  [query :- ::qp.schema/any-query]
+  (if (:lib/type query)
+    (recur (lib/->legacy-MBQL query))
+    (let [{database-id :database, {gtap-perms :gtaps} :query-permissions/perms :as outer-query} query]
+      (when *current-user-id*
+        (log/tracef "Checking query permissions. Current user permissions = %s"
+                    (pr-str (perms/permissions-for-user *current-user-id*)))
+        (when (= audit/audit-db-id database-id)
+          (check-audit-db-permissions outer-query))
+        (check-query-does-not-access-inactive-tables outer-query)
+        (let [required-perms  (query-perms/required-perms-for-query outer-query :already-preprocessed? true)
+              source-card-ids (set/difference (:card-ids required-perms) (:card-ids gtap-perms))]
+          ;; On EE, check block permissions up front for all queries. If block perms are in place, reject all native queries
+          ;; (unless overriden by `gtap-perms`) and any queries that touch blocked tables/DBs
+          (check-block-permissions outer-query)
+          (cond
+            ;; if card-id is bound this means that this is not an ad hoc query and we can just
+            ;; check that the user has permission to read this card
+            *card-id*
+            (do (query-perms/check-card-read-perms database-id *card-id*)
+                (query-perms/check-card-result-metadata-data-perms database-id *card-id*))
 
-        ;; set when querying for field values of dashboard filters, which only require
-        ;; collection perms for the dashboard and not ad-hoc query perms
-        *param-values-query*
-        (when-not (query-perms/has-perm-for-query? outer-query :perms/view-data required-perms)
-          (throw (query-perms/perms-exception required-perms)))
+            ;; set when querying for field values of dashboard filters, which only require
+            ;; collection perms for the dashboard and not ad-hoc query perms
+            *param-values-query*
+            (when-not (query-perms/has-perm-for-query? outer-query :perms/view-data required-perms)
+              (throw (query-perms/perms-exception required-perms)))
 
-        ;; Ad-hoc query (not a saved question)
-        :else
-        (do
-          ;; Check that we permissions for any source cards first, then check that we have requisite data permissions
-          ;; Recursively check permissions for any source Cards
-          (doseq [card-id source-card-ids]
-            (let [{query :dataset-query} (lib.metadata.protocols/card (qp.store/metadata-provider) card-id)]
-              (binding [*card-id* card-id]
-                (check-query-permissions* query))))
+            ;; Ad-hoc query (not a saved question)
+            :else
+            (do
+              ;; Check that we permissions for any source cards first, then check that we have requisite data permissions
+              ;; Recursively check permissions for any source Cards
+              (doseq [card-id source-card-ids]
+                (query-perms/check-card-read-perms database-id card-id))
 
-          ;; Check that we have the data permissions to run this card
-          (query-perms/check-data-perms outer-query required-perms :throw-exceptions? true)
+              ;; Check that we have the data permissions to run this card
+              (query-perms/check-data-perms outer-query required-perms :throw-exceptions? true)
 
-          ;; Recursively check permissions for any Cards referenced by this query via template tags
-          (doseq [{query :dataset-query} (lib/template-tags-referenced-cards
-                                          (lib/query (qp.store/metadata-provider) outer-query))]
-            (check-query-permissions* query)))))))
+              ;; Check that all columns from source cards result_metadata are accessible
+              (doseq [card-id source-card-ids]
+                (query-perms/check-card-result-metadata-data-perms database-id card-id))
+
+              ;; Recursively check permissions for any Cards referenced by this query via template tags
+              (doseq [{query :dataset-query} (lib/template-tags-referenced-cards
+                                              (lib/query (qp.store/metadata-provider) outer-query))]
+                (check-query-permissions* query)))))))))
 
 (defn check-query-permissions
   "Middleware that check that the current user has permissions to run the current query. This only applies if
@@ -164,23 +157,23 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (mu/defn check-query-action-permissions*
-  "Check that User with `user-id` has permissions to run query action `query`, or throw an exception."
-  [{database-id :database, :as outer-query} :- [:map
-                                                [:database ::lib.schema.id/database]
-                                                [:type [:enum :query :native]]]]
+  "Check that User with `user-id` has permissions to run query action `query`, or throw an exception. Takes
+  as [[metabase.actions.args/action-arg-map-schema]]."
+  [{database-id :database, :as query} :- ::lib.schema/query]
   (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
   (when *card-id*
     (query-perms/check-card-read-perms database-id *card-id*))
   (when-not (query-perms/check-data-perms
-             outer-query
-             (query-perms/required-perms-for-query outer-query :already-preprocessed? true)
+             query
+             (query-perms/required-perms-for-query query :already-preprocessed? true)
              :throw-exceptions? false)
-    (check-block-permissions outer-query)))
+    (check-block-permissions query)))
 
-(defn check-query-action-permissions
+(mu/defn check-query-action-permissions :- ::qp.schema/qp
   "Middleware that check that the current user has permissions to run the current query action."
-  [qp]
-  (fn [query rff]
+  [qp :- ::qp.schema/qp]
+  (mu/fn [query :- ::lib.schema/native-only-query
+          rff   :- ::qp.schema/rff]
     (check-query-action-permissions* query)
     (qp query rff)))
 
@@ -205,4 +198,4 @@
   to native.)"
   [{database-id :database, :as query}]
   (when-not (current-user-has-adhoc-native-query-perms? query)
-    (throw (perms-exception {database-id {:perms/create-queries :query-builder-and-native}}))))
+    (throw (query-perms/perms-exception {database-id {:perms/create-queries :query-builder-and-native}}))))

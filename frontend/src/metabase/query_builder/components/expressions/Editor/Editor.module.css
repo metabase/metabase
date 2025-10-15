@@ -33,8 +33,8 @@
   margin-right: calc(28px + var(--mantine-spacing-sm));
 
   :global {
-    .cm-gutter {
-      background-color: var(--mb-color-bg-light);
+    .cm-gutters {
+      border-top-left-radius: var(--mantine-radius-sm);
     }
 
     .cm-tooltip-autocomplete {

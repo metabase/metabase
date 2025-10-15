@@ -4,6 +4,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { HACK_getParentCollectionFromEntityUpdateAction } from "metabase/archive/utils";
+import { trackCollectionItemBookmarked } from "metabase/collections/analytics";
 import type {
   CreateBookmark,
   DeleteBookmark,
@@ -113,8 +114,13 @@ function ActionMenu({
     if (!createBookmark && !deleteBookmark) {
       return undefined;
     }
+
     const handler = () => {
       const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
+
+      if (!isBookmarked) {
+        trackCollectionItemBookmarked(item);
+      }
       toggleBookmark?.(item.id.toString(), normalizeItemModel(item));
     };
     return handler;

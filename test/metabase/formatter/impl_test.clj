@@ -1,9 +1,11 @@
 (ns metabase.formatter.impl-test
   (:refer-clojure :exclude [format])
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.formatter.impl :as formatter]
-   [metabase.models.visualization-settings :as mb.viz]))
+   [metabase.models.visualization-settings :as mb.viz]
+   [metabase.test :as mt]))
 
 (defn- format-with-field-id
   [value viz]
@@ -244,3 +246,41 @@
                          value)))]
       (is (= "variant works"
              (format "variant works" {}))))))
+
+(deftest global-settings-should-not-override-column-settings-test
+  (testing "Column settings should take precedence over global currency settings"
+    (mt/with-temporary-setting-values [custom-formatting {:type/Currency {:currency "AUD"
+                                                                          :currency-style "symbol"
+                                                                          :number-style "currency"}}]
+      (let [column {:id 1
+                    :name "SUBTOTAL"
+                    :field_ref [:field 1 nil]
+                    :effective_type :type/Currency}
+            viz-settings {::mb.viz/column-settings
+                          {{::mb.viz/field-id 1} {::mb.viz/currency "GBP"
+                                                  ::mb.viz/currency-style "symbol"
+                                                  ::mb.viz/number-style "currency"
+                                                  ::mb.viz/currency-in-header false}}
+                          ::mb.viz/global-column-settings {:type/Currency {::mb.viz/currency "AUD"
+                                                                           ::mb.viz/currency-style "symbol"}}}
+            formatter-fn (formatter/number-formatter column viz-settings)
+            result (str (formatter-fn 1234.56))]
+        (testing "Should use column-specific GBP currency, not global AUD currency"
+          (is (str/starts-with? result "£")
+              (str "Expected GBP symbol (£) but got: " result)))))))
+
+(deftest scalar-flag-inserts-currency-inline
+  (testing "When the scalar flag is passed to `number-formatter` it puts the currency inline"
+    (let [column {:id 1
+                  :name "SUBTOTAL"
+                  :field_ref [:field 1 nil]
+                  :effective_type :type/Currency}
+          viz-settings {::mb.viz/column-settings
+                        {{::mb.viz/field-id 1} {::mb.viz/currency "GBP"
+                                                ::mb.viz/currency-style "symbol"
+                                                ::mb.viz/number-style "currency"}}}
+          formatter-fn (formatter/number-formatter column viz-settings true)
+          result (str (formatter-fn 1234.56))]
+      (testing "Should use column-specific GBP currency, not global AUD currency"
+        (is (str/starts-with? result "£")
+            (str "Expected GBP symbol (£) but got: " result))))))

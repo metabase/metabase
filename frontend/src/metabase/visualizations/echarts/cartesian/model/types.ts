@@ -14,7 +14,7 @@ import type {
   RowValue,
 } from "metabase-types/api";
 
-export type BreakoutValue = RowValue;
+export type BreakoutValue = Exclude<RowValue, object>;
 export type ColumnName = string;
 
 export type SeriesDataKey =

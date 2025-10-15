@@ -98,11 +98,11 @@ export const Onboarding = () => {
   );
 
   const newNativeQuestionUrl = Urls.newQuestion({
-    type: "native",
+    DEPRECATED_RAW_MBQL_type: "native",
     creationType: "native_question",
     collectionId: "root",
     cardType: "question",
-    databaseId: lastUsedDatabaseId || undefined,
+    DEPRECATED_RAW_MBQL_databaseId: lastUsedDatabaseId || undefined,
   });
 
   const [lastItemOpened, setLastItemOpened] = useTempStorage(
@@ -119,7 +119,7 @@ export const Onboarding = () => {
     });
   };
 
-  // Scroll the last opened item into view when the user navigates back go this page
+  // Scroll the last opened item into view when the user navigates back to this page
   useEffect(() => {
     if (isValidItemKey(lastItemOpened)) {
       const item = itemRefs[lastItemOpened].current;
@@ -515,7 +515,7 @@ export const Onboarding = () => {
                         <Link
                           className={CS.link}
                           key="subscription-email"
-                          to="/admin/settings/email/smtp"
+                          to="/admin/settings/email"
                         >{t`Set up email`}</Link>
                       )} or ${(
                         <Link
@@ -579,7 +579,7 @@ export const Onboarding = () => {
                         <Link
                           className={CS.link}
                           key="alert-email"
-                          to="/admin/settings/email/smtp"
+                          to="/admin/settings/email"
                         >{t`Set up email`}</Link>
                       )} or ${(
                         <Link
@@ -593,8 +593,8 @@ export const Onboarding = () => {
                   <Text>
                     {jt`Go to a question and click on the ${(
                       <Icon
-                        key="sharing-icon"
-                        name="share"
+                        key="more-icon"
+                        name="ellipsis"
                         className={S.inlineIcon}
                       />
                     )} icon on the top bar, then ${(

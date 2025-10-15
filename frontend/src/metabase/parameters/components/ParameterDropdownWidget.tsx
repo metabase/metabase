@@ -46,8 +46,8 @@ export const ParameterDropdownWidget = ({
   placeholder,
   onFocusChanged,
   parameters,
-  question,
-  dashboard,
+  cardId,
+  dashboardId,
   enableRequiredBehavior,
 }: ParameterDropdownWidgetProps) => {
   const normalizedValue = Array.isArray(value)
@@ -151,8 +151,8 @@ export const ParameterDropdownWidget = ({
       <ParameterFieldWidget
         parameter={parameter}
         parameters={parameters}
-        question={question}
-        dashboard={dashboard}
+        cardId={cardId}
+        dashboardId={dashboardId}
         value={normalizedValue}
         fields={parameter.fields}
         setValue={setValueOrDefault}
@@ -175,9 +175,10 @@ export const ParameterDropdownWidget = ({
   );
 };
 
-function isTextWidget(parameter: UiParameter) {
+export function isTextWidget(parameter: UiParameter) {
   const canQuery = getQueryType(parameter) !== "none";
-  return parameter.hasVariableTemplateTagTarget && !canQuery;
+  const isMultiSelect = getIsMultiSelect(parameter);
+  return parameter.hasVariableTemplateTagTarget && !canQuery && !isMultiSelect;
 }
 
 function isFieldWidget(

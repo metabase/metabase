@@ -55,7 +55,6 @@ const PreviewSectionBase = ({
 
   return (
     <Card
-      bg="white"
       className={className}
       data-testid="preview-section"
       h="100%"
@@ -104,6 +103,7 @@ const PreviewSectionBase = ({
         {previewType === "filtering" && (
           <FilteringPreview
             databaseId={databaseId}
+            field={field}
             fieldId={fieldId}
             /**
              * Make sure internal component state is reset when changing any field settings.

@@ -34,6 +34,7 @@
                               :expression-literals       true
                               :now                       true
                               :identifiers-with-spaces   true
+                              :uuid-type                 true
                               :percentile-aggregations   false
                               :test/jvm-timezone-setting false
                               :database-routing          false}]
@@ -56,6 +57,7 @@
     :Numeric                   :type/Decimal
     :Double                    :type/Decimal
     :Float                     :type/Float
+    :Uuid                      :type/UUID
     :Date                      :type/Date
     :Time                      :type/Time
     :TimeTz                    :type/TimeWithLocalTZ
@@ -292,9 +294,9 @@
        (catch Throwable e
          (log/error e "Failed to fetch materialized views for this database"))))
 
-(defmethod driver/describe-database :vertica
+(defmethod driver/describe-database* :vertica
   [driver database]
-  (-> ((get-method driver/describe-database :sql-jdbc) driver database)
+  (-> ((get-method driver/describe-database* :sql-jdbc) driver database)
       (update :tables set/union (materialized-views database))))
 
 (defmethod driver/db-default-timezone :vertica

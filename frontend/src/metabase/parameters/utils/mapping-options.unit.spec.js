@@ -197,7 +197,6 @@ describe("parameters/utils/mapping-options", () => {
           joins: [
             {
               alias: "Product",
-              ident: "Y_wEKVMtSNd3v5I4vYs05",
               fields: "all",
               "source-table": PRODUCTS_ID,
               condition: [
@@ -480,6 +479,131 @@ describe("parameters/utils/mapping-options", () => {
     it("should return empty array if link URL is undefined", () => {
       const options = getLinkOptions(undefined);
       expect(options).toEqual([]);
+    });
+  });
+
+  describe("parameterDashcard filtering", () => {
+    it("should return empty array when parameterDashcard is from a different tab", () => {
+      const card = structured({ "source-table": ORDERS_ID });
+      const question = new Question(card, metadata);
+      const dashcard = createMockDashboardCard({ dashboard_tab_id: 1 });
+      const parameterDashcard = createMockDashboardCard({
+        dashboard_tab_id: 2,
+      });
+
+      const options = getParameterMappingOptions(
+        question,
+        { type: "date/single" },
+        card,
+        dashcard,
+        parameterDashcard,
+      );
+
+      expect(options).toEqual([]);
+    });
+
+    it("should return normal options when parameterDashcard is on same tab", () => {
+      const card = structured({ "source-table": ORDERS_ID });
+      const question = new Question(card, metadata);
+      const dashcard = createMockDashboardCard({ dashboard_tab_id: 1 });
+      const parameterDashcard = createMockDashboardCard({
+        dashboard_tab_id: 1,
+      });
+
+      const options = getParameterMappingOptions(
+        question,
+        { type: "date/single" },
+        card,
+        dashcard,
+        parameterDashcard,
+      );
+
+      expect(options.length).toBeGreaterThan(0);
+    });
+
+    it("should return empty array when inline parameter on question card tries to map to different card", () => {
+      const card = structured({ "source-table": ORDERS_ID });
+      const question = new Question(card, metadata);
+      const dashcard = createMockDashboardCard({
+        id: 1,
+        dashboard_tab_id: 1,
+        card_id: 123,
+      });
+      const parameterDashcard = createMockDashboardCard({
+        id: 2,
+        dashboard_tab_id: 1,
+        card_id: 456,
+      });
+
+      const options = getParameterMappingOptions(
+        question,
+        { type: "date/single" },
+        card,
+        dashcard,
+        parameterDashcard,
+      );
+
+      expect(options).toEqual([]);
+    });
+
+    it("should return normal options when inline parameter on question card maps to its own card", () => {
+      const card = structured({ "source-table": ORDERS_ID });
+      const question = new Question(card, metadata);
+      const dashcard = createMockDashboardCard({
+        id: 1,
+        dashboard_tab_id: 1,
+        card_id: 123,
+      });
+      const parameterDashcard = createMockDashboardCard({
+        id: 1,
+        dashboard_tab_id: 1,
+        card_id: 123,
+      });
+
+      const options = getParameterMappingOptions(
+        question,
+        { type: "date/single" },
+        card,
+        dashcard,
+        parameterDashcard,
+      );
+
+      expect(options.length).toBeGreaterThan(0);
+    });
+
+    it("should return options when inline parameter on question card has existing connection to different card", () => {
+      const card = { ...structured({ "source-table": ORDERS_ID }), id: 123 };
+      const question = new Question(card, metadata);
+      const parameterId = "param123";
+      const parameter = { id: parameterId, type: "date/single" };
+      const dashcard = createMockDashboardCard({
+        id: 1,
+        dashboard_tab_id: 1,
+        card_id: 123,
+        parameter_mappings: [
+          {
+            parameter_id: parameterId,
+            card_id: 123,
+            target: ["dimension", ["field", ORDERS.CREATED_AT, null]],
+          },
+        ],
+      });
+      const parameterDashcard = createMockDashboardCard({
+        id: 2,
+        dashboard_tab_id: 1,
+        card_id: 456,
+      });
+
+      const options = getParameterMappingOptions(
+        question,
+        parameter,
+        card,
+        dashcard,
+        parameterDashcard,
+      );
+
+      // Should return options to allow users to see and potentially disconnect existing connections
+      expect(options.length).toBeGreaterThan(0);
     });
   });
 });

@@ -397,53 +397,63 @@ describe(
       },
     );
 
-    it.skip("should work for a nested GUI question (metabase#40557)", () => {
-      H.withDatabase(
-        MONGO_DB_ID,
-        ({ PRODUCTS_ID }: { PRODUCTS_ID: number }) => {
-          H.createQuestion({
-            name: "Mongo Source",
-            query: {
-              "source-table": PRODUCTS_ID,
-              limit: 1,
-            },
-            database: MONGO_DB_ID,
-          }).then(({ body: { id: sourceId } }) => {
-            H.createQuestion(
-              {
-                name: "Mongo Nested",
-                query: {
-                  "source-table": `card__${sourceId}`,
-                },
-                database: MONGO_DB_ID,
+    it(
+      "should work for a nested GUI question (metabase#40557)",
+      { tags: "@skip" },
+      () => {
+        H.withDatabase(
+          MONGO_DB_ID,
+          ({ PRODUCTS_ID }: { PRODUCTS_ID: number }) => {
+            H.createQuestion({
+              name: "Mongo Source",
+              query: {
+                "source-table": PRODUCTS_ID,
+                limit: 1,
               },
-              { visitQuestion: true },
-            );
-          });
-        },
-      );
+              database: MONGO_DB_ID,
+            }).then(({ body: { id: sourceId } }) => {
+              H.createQuestion(
+                {
+                  name: "Mongo Nested",
+                  query: {
+                    "source-table": `card__${sourceId}`,
+                  },
+                  database: MONGO_DB_ID,
+                },
+                { visitQuestion: true },
+              );
+            });
+          },
+        );
 
-      cy.get("[data-testid=cell-data]").should("contain", "Small Marble Shoes");
-      H.openNotebook();
-      cy.findByLabelText("View native query").click();
+        cy.get("[data-testid=cell-data]").should(
+          "contain",
+          "Small Marble Shoes",
+        );
+        H.openNotebook();
+        cy.findByLabelText("View native query").click();
 
-      cy.findByTestId("native-query-preview-sidebar").within(() => {
-        cy.findByText("Native query for this question").should("exist");
-        H.NativeEditor.get()
-          .should("be.visible")
-          .and("contain", "$project")
-          .and("contain", "$limit")
-          .and("not.contain", "BsonString")
-          .and("not.contain", "BsonInt32");
+        cy.findByTestId("native-query-preview-sidebar").within(() => {
+          cy.findByText("Native query for this question").should("exist");
+          H.NativeEditor.get()
+            .should("be.visible")
+            .and("contain", "$project")
+            .and("contain", "$limit")
+            .and("not.contain", "BsonString")
+            .and("not.contain", "BsonInt32");
 
-        cy.button("Convert this question to a native query").click();
-      });
+          cy.button("Convert this question to a native query").click();
+        });
 
-      cy.log("Database and table should be pre-selected (metabase#40557)");
-      cy.findByTestId("selected-database").should("have.text", MONGO_DB_NAME);
-      cy.findByTestId("selected-table").should("have.text", "Products");
-      cy.get("[data-testid=cell-data]").should("contain", "Small Marble Shoes");
-    });
+        cy.log("Database and table should be pre-selected (metabase#40557)");
+        cy.findByTestId("selected-database").should("have.text", MONGO_DB_NAME);
+        cy.findByTestId("selected-table").should("have.text", "Products");
+        cy.get("[data-testid=cell-data]").should(
+          "contain",
+          "Small Marble Shoes",
+        );
+      },
+    );
   },
 );
 

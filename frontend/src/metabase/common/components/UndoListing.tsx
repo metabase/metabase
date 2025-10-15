@@ -125,15 +125,33 @@ function UndoToast({
           {undo.icon && (
             <CardIcon
               name={undo.icon}
-              color="var(--mb-color-text-secondary-inverse)"
+              color={undo.iconColor ?? "var(--mb-color-text-secondary-inverse)"}
             />
           )}
-          <Ellipsified showTooltip={false}>{renderMessage(undo)}</Ellipsified>
+          {undo.renderChildren ? (
+            undo.renderChildren(undo)
+          ) : (
+            <Ellipsified showTooltip={false}>{renderMessage(undo)}</Ellipsified>
+          )}
         </CardContentSide>
         <ControlsCardContent>
           {undo.actions && undo.actions.length > 0 && (
             <UndoButton role="button" onClick={onUndo} to="">
               {undo.actionLabel ?? t`Undo`}
+            </UndoButton>
+          )}
+          {undo.extraAction && (
+            <UndoButton
+              role="button"
+              onClick={() => {
+                undo.extraAction?.action();
+                if (undo.canDismiss) {
+                  onDismiss();
+                }
+              }}
+              to=""
+            >
+              {undo.extraAction.label}
             </UndoButton>
           )}
           {undo.canDismiss && (
@@ -160,7 +178,10 @@ export function UndoListing() {
     <UndoListOverlay
       undos={undos}
       onUndo={(undo) => dispatch(performUndo(undo.id))}
-      onDismiss={(undo) => dispatch(dismissUndo({ undoId: undo.id }))}
+      onDismiss={(undo) => {
+        undo.onDismiss?.(undo.id);
+        dispatch(dismissUndo({ undoId: undo.id }));
+      }}
     />
   );
 }

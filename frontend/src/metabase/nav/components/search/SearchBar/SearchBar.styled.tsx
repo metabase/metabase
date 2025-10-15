@@ -19,6 +19,7 @@ export const SearchBarRoot = styled.div`
   width: 100%;
 
   ${breakpointMinSmall} {
+    max-width: 14.5rem;
     position: relative;
   }
 `;
@@ -38,6 +39,7 @@ export const SearchInputContainer = styled.div<{
     }
     return css`
       background-color: var(--mb-color-bg-white);
+
       &:hover {
         background-color: var(--mb-color-bg-light);
       }

@@ -9,9 +9,7 @@ export function getFilterChangeDescription(
   currentValues: Record<string, unknown>,
   draftValues: Record<string, unknown>,
 ): string {
-  let added = 0;
-  let removed = 0;
-  let updated = 0;
+  let changedCount = 0;
 
   const allParameterIds = _.union(
     Object.keys(currentValues),
@@ -26,42 +24,28 @@ export function getFilterChangeDescription(
     const isDraftEmpty = isParameterValueEmpty(draftValue);
 
     if (isCurrentEmpty && !isDraftEmpty) {
-      added++;
+      // Filter was added
+      changedCount++;
     } else if (!isCurrentEmpty && isDraftEmpty) {
-      removed++;
+      // Filter was removed
+      changedCount++;
     } else if (
       !isCurrentEmpty &&
       !isDraftEmpty &&
       !_.isEqual(currentValue, draftValue)
     ) {
-      updated++;
+      // Filter was updated
+      changedCount++;
     }
   }
 
-  const changes = [];
-  if (added > 0) {
-    changes.push(
-      ngettext(msgid`${added} filter added`, `${added} filters added`, added),
-    );
-  }
-  if (updated > 0) {
-    changes.push(
-      ngettext(
-        msgid`${updated} filter updated`,
-        `${updated} filters updated`,
-        updated,
-      ),
-    );
-  }
-  if (removed > 0) {
-    changes.push(
-      ngettext(
-        msgid`${removed} filter removed`,
-        `${removed} filters removed`,
-        removed,
-      ),
-    );
+  if (changedCount === 0) {
+    return "";
   }
 
-  return changes.join(", ");
+  return ngettext(
+    msgid`${changedCount} filter changed`,
+    `${changedCount} filters changed`,
+    changedCount,
+  );
 }

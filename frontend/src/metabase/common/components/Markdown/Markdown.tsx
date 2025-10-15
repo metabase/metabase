@@ -2,6 +2,8 @@ import type { ComponentPropsWithRef } from "react";
 import type ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
+import type { ColorName } from "metabase/lib/colors/types";
+
 import { MarkdownRoot } from "./Markdown.styled";
 
 const REMARK_PLUGINS = [remarkGfm];
@@ -14,6 +16,8 @@ export interface MarkdownProps
   unstyleLinks?: boolean;
   children: string;
   lineClamp?: number;
+  c?: ColorName;
+  components?: Record<string, any>;
 }
 
 const Markdown = ({
@@ -22,6 +26,7 @@ const Markdown = ({
   dark,
   disallowHeading = false,
   unstyleLinks = false,
+  c,
   ...rest
 }: MarkdownProps): JSX.Element => {
   const additionalOptions = {
@@ -38,6 +43,7 @@ const Markdown = ({
       remarkPlugins={REMARK_PLUGINS}
       linkTarget={"_blank"}
       unstyleLinks={unstyleLinks}
+      c={c}
       {...additionalOptions}
       {...rest}
     >

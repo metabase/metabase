@@ -64,7 +64,7 @@ You can use the columns holding your "labels" to:
 
 - Apply [business definitions or business logic][business-logic] to your datasets.
 - [Power a filter][filter-learn].
-- [Segment data for data sandboxing][data-sandboxing-docs].
+- [Segment data for row and column security](../../../permissions/row-and-column-security.md).
 
 ## Aggregating data based on conditions from multiple columns
 
@@ -334,7 +334,6 @@ case([Has Wings] = TRUE  AND [Has Face] = TRUE,  "Bird",
 [custom-expressions-doc]: ../expressions.md
 [custom-expressions-list]: ../expressions-list.md
 [custom-expressions-learn]: https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions
-[data-sandboxing-docs]: ../../../permissions/data-sandboxes.md
 [data-types]: https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types
 [filter-learn]: https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/searching-tables
 [notebook-editor-def]: https://www.metabase.com/glossary/notebook-editor

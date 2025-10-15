@@ -1,5 +1,6 @@
 (ns metabase.driver.sql.query-processor
   "The Query Processor is responsible for translating the Metabase Query Language into HoneySQL SQL forms."
+  (:refer-clojure :exclude [some mapv every? select-keys])
   (:require
    [clojure.core.match :refer [match]]
    [clojure.string :as str]
@@ -18,15 +19,10 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf :refer [some mapv every? select-keys]]
    [toucan2.pipeline :as t2.pipeline])
   (:import
-   (java.time
-    LocalDate
-    LocalDateTime
-    LocalTime
-    OffsetDateTime
-    OffsetTime
-    ZonedDateTime)
+   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.util UUID)))
 
 (set! *warn-on-reflection* true)
@@ -526,15 +522,15 @@
 
 (defmethod unix-timestamp->honeysql [:sql :milliseconds]
   [driver _ expr]
-  (unix-timestamp->honeysql driver :seconds (h2x// expr 1000)))
+  (unix-timestamp->honeysql driver :seconds (h2x// expr 1000.0)))
 
 (defmethod unix-timestamp->honeysql [:sql :microseconds]
   [driver _ expr]
-  (unix-timestamp->honeysql driver :seconds (h2x// expr 1000000)))
+  (unix-timestamp->honeysql driver :seconds (h2x// expr 1000000.0)))
 
 (defmethod unix-timestamp->honeysql [:sql :nanoseconds]
   [driver _ expr]
-  (unix-timestamp->honeysql driver :seconds (h2x// expr 1000000000)))
+  (unix-timestamp->honeysql driver :seconds (h2x// expr 1000000000.0)))
 
 (defmulti cast-temporal-byte
   "Cast a byte field"
@@ -748,7 +744,7 @@
        driver
        "metabase.driver.sql.query-processor/cast-field-id-needed with a legacy (snake_cased) :model/Field"
        "0.48.0")
-      (recur driver (update-keys field u/->kebab-case-en) honeysql-form))
+      (recur driver (perf/update-keys field u/->kebab-case-en) honeysql-form))
     (u/prog1 (match [base-type coercion-strategy]
                [(:isa? :type/Number) (:isa? :Coercion/UNIXTime->Temporal)]
                (unix-timestamp->honeysql driver
@@ -778,20 +774,20 @@
         (log/tracef "Applied casting\n=>\n%s" (u/pprint-to-str <>))))))
 
 (defmethod ->honeysql [:sql :datetime]
-  [driver [_ value mode]]
+  [driver [_ value {:keys [mode]}]]
   (let [honeysql-form (->honeysql driver value)
         coercion-strategy (case (or mode :iso)
                             ;; String
                             :iso              :Coercion/ISO8601->DateTime
                             :simple           :Coercion/YYYYMMDDHHMMSSString->Temporal
                             ;; Binary
-                            :isobytes         :Coercion/ISO8601Bytes->Temporal
-                            :simplebytes      :Coercion/YYYYMMDDHHMMSSBytes->Temporal
+                            :iso-bytes         :Coercion/ISO8601Bytes->Temporal
+                            :simple-bytes      :Coercion/YYYYMMDDHHMMSSBytes->Temporal
                             ;; Number
-                            :unixmilliseconds :Coercion/UNIXMilliSeconds->DateTime
-                            :unixseconds      :Coercion/UNIXSeconds->DateTime
-                            :unixmicroseconds :Coercion/UNIXMicroSeconds->DateTime
-                            :unixnanoseconds  :Coercion/UNIXNanoSeconds->DateTime)]
+                            :unix-milliseconds :Coercion/UNIXMilliSeconds->DateTime
+                            :unix-seconds      :Coercion/UNIXSeconds->DateTime
+                            :unix-microseconds :Coercion/UNIXMicroSeconds->DateTime
+                            :unix-nanoseconds  :Coercion/UNIXNanoSeconds->DateTime)]
     (cond
       (isa? coercion-strategy :Coercion/UNIXTime->Temporal)
       (unix-timestamp->honeysql driver
@@ -869,10 +865,10 @@
         (:name (driver-api/field (driver-api/metadata-provider) id-or-name)))))
 
 (defn- field-nfc-path
-  [[_field id-or-name opts]]
-  (or (get opts driver-api/qp.add.nfc-path)
-      (when (integer? id-or-name)
-        (:nfc-path (driver-api/field (driver-api/metadata-provider) id-or-name)))))
+  [[_field _id-or-name opts]]
+  ;; ignore nfc paths for fields that don't come from a source table
+  (when (pos-int? (get opts driver-api/qp.add.source-table))
+    (get opts driver-api/qp.add.nfc-path)))
 
 (defmethod ->honeysql [:sql ::nfc-path]
   [_driver [_ _nfc-path]]
@@ -891,6 +887,8 @@
           field-metadata       (when (integer? id-or-name)
                                  (driver-api/field (driver-api/metadata-provider) id-or-name))
           allow-casting?       (and field-metadata
+                                    (or (pos-int? (driver-api/qp.add.source-table options))
+                                        (:qp/allow-coercion-for-columns-without-integer-qp.add.source-table options))
                                     (not (:qp/ignore-coercion options)))
           ;; preserve metadata attached to the original field clause, for example BigQuery temporal type information.
           identifier           (-> (apply h2x/identifier :field
@@ -1287,13 +1285,15 @@
 ;;  aggregation REFERENCE e.g. the ["aggregation" 0] fields we allow in order-by
 (defmethod ->honeysql [:sql :aggregation]
   [driver [_ index]]
-  (driver-api/match-one
-    (nth (:aggregation *inner-query*) index)
+  (driver-api/match-one (nth (:aggregation *inner-query*) index)
+    [:aggregation-options ag (options :guard driver-api/qp.add.source-alias)]
+    (->honeysql driver (h2x/identifier :field-alias (driver-api/qp.add.source-alias options)))
+
     [:aggregation-options ag (options :guard :name)]
     (->honeysql driver (h2x/identifier :field-alias (:name options)))
 
-    [:aggregation-options ag _]
-    #_:clj-kondo/ignore
+    [:aggregation-options ag options]
+    #_{:clj-kondo/ignore [:invalid-arity]}
     (recur ag)
 
     ;; For some arcane reason we name the results of a distinct aggregation "count", everything else is named the
@@ -1329,6 +1329,10 @@
 (defmethod ->honeysql [:sql :text]
   [driver [_ value]]
   (->honeysql driver [::cast-to-text value]))
+
+(defmethod ->honeysql [:sql :today]
+  [driver [_]]
+  (->honeysql driver [:date [:now]]))
 
 (mu/defmethod ->honeysql [:sql :relative-datetime] :- some?
   [driver [_ amount unit]]
@@ -1743,7 +1747,7 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod join-source :sql
-  [driver {:keys [source-table source-query]}]
+  [driver {:keys [source-table source-query], :as _join}]
   (cond
     (and source-query (:native source-query))
     (sql-source-query (:native source-query) (:params source-query))
@@ -1903,7 +1907,8 @@
                            ;; Honey SQL 2 = [expr [alias]]
                            (first (second from))
                            from)
-        [raw-identifier] (format-honeysql driver table-identifier)
+        [raw-identifier] (when table-identifier
+                           (format-honeysql driver table-identifier))
         expr             (if (seq raw-identifier)
                            [:raw (format "%s.*" raw-identifier)]
                            :*)]
@@ -2045,14 +2050,17 @@
 
 (mu/defn mbql->honeysql :- [:or :map [:tuple [:= :inline] :map]]
   "Build the HoneySQL form we will compile to SQL and execute."
-  [driver               :- :keyword
-   {inner-query :query} :- :map]
-  (binding [driver/*driver* driver]
-    (let [inner-query (preprocess driver inner-query)]
-      (log/tracef "Compiling MBQL query\n%s" (u/pprint-to-str 'magenta inner-query))
-      (u/prog1 (apply-clauses driver {} inner-query)
-        (log/debugf "\nHoneySQL Form: %s\n%s" (u/emoji "🍯") (u/pprint-to-str 'cyan <>))
-        (driver-api/debug> (list '🍯 <>))))))
+  [driver :- :keyword
+   query  :- :map]
+  (if (:lib/type query)
+    (recur driver (driver-api/->legacy-MBQL query))
+    (let [{inner-query :query} query]
+      (binding [driver/*driver* driver]
+        (let [inner-query (preprocess driver inner-query)]
+          (log/tracef "Compiling MBQL query\n%s" (u/pprint-to-str 'magenta inner-query))
+          (u/prog1 (apply-clauses driver {} inner-query)
+            (log/debugf "\nHoneySQL Form: %s\n%s" (u/emoji "🍯") (u/pprint-to-str 'cyan <>))
+            (driver-api/debug> (list '🍯 <>))))))))
 
 ;;;; MBQL -> Native
 
@@ -2066,3 +2074,15 @@
   (let [honeysql-form (mbql->honeysql driver outer-query)
         [sql & args]  (format-honeysql driver honeysql-form)]
     {:query sql, :params args}))
+
+;;;; Transforms
+
+(defmethod driver/compile-transform :sql
+  [driver {:keys [query output-table]}]
+  (format-honeysql driver
+                   {:create-table-as [(keyword output-table)]
+                    :raw query}))
+
+(defmethod driver/compile-drop-table :sql
+  [driver table]
+  (format-honeysql driver {:drop-table [:if-exists (keyword table)]}))

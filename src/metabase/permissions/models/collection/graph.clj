@@ -87,7 +87,6 @@
 
 (defn- calculate-perm-groups [collection-namespace group-id->perms collection-ids]
   (into {}
-        #_:clj-kondo/ignore
         (cp/with-shutdown! [pool (+ 2 (cp/ncpus))]
           (doall (cp/upmap pool
                            (fn [group-id]

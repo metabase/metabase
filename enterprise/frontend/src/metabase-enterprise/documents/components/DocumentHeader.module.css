@@ -1,0 +1,20 @@
+.titleInput {
+  border: none !important;
+  padding: 0 !important;
+  font-size: 2rem !important;
+  font-weight: bold !important;
+}
+
+.titleContainer {
+  flex: 1;
+  min-width: 0;
+}
+
+.actionsContainer {
+  flex-shrink: 0;
+
+  .commentsIcon:hover {
+    color: var(--mb-color-text-hover);
+    background-color: var(--mb-color-background-hover);
+  }
+}

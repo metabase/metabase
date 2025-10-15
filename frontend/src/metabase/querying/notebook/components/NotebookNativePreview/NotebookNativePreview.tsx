@@ -82,7 +82,7 @@ export const NotebookNativePreview = (): JSX.Element => {
   const showEmptySidebar = !canRun;
 
   const newQuestion = createNativeQuestion(question, data);
-  const newQuery = newQuestion.query();
+  const newQuery = newQuestion!.query();
 
   // Get the SQL text for copying
   const sqlText = data?.query || "";
@@ -90,7 +90,7 @@ export const NotebookNativePreview = (): JSX.Element => {
   const { isCopied, copying, handleCopy } = useCopyButton(sqlText, sendToast);
 
   const handleConvertClick = useCallback(() => {
-    dispatch(updateQuestion(newQuestion, { shouldUpdateUrl: true, run: true }));
+    dispatch(updateQuestion(newQuestion!, { shouldUpdateUrl: true, run: true }));
     dispatch(setUIControls({ isNativeEditorOpen: true }));
   }, [newQuestion, dispatch]);
 

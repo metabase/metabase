@@ -31,7 +31,7 @@ export function getUpdateButtonProps(
     if (isDefaultValue || isEmpty) {
       return {
         label: getResetLabel(),
-        isDisabled: isDefaultValue,
+        isDisabled: isUnchanged,
       };
     }
 

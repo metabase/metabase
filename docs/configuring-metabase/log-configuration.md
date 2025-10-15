@@ -11,7 +11,7 @@ Metabase logs quite a bit of information by default. Metabase uses [Log4j 2](htt
 
 ## View and download Metabase logs
 
-You can find Metabase logs in **Admin settings** > **Troubleshooting** > **Logs**. You can filter the logs by keywords (for example, "sync") and download them as a text file.
+You can find Metabase logs in **Admin settings** > **Tools** > **Logs**. You can filter the logs by keywords (for example, "sync") and download them as a text file.
 
 If you're running self-hosted Metabase, you'll also be able see the logs in the terminal.
 
@@ -25,7 +25,7 @@ Metabase uses [log4j](https://logging.apache.org/log4j/2.x/)for logging configur
 
 ### Temporary override logging configuration
 
-To temporarily adjust the logging configuration, go to **Admin settings** > **Troubleshooting** > **Logs** and click on **Customize log levels**.
+To temporarily adjust the logging configuration, go to **Admin settings** > **Tools** > **Logs** and click on **Customize log levels**.
 
 You can select from log level presets for common troubleshooting tasks (for example, troubleshooting sync issues), or provide your own configuration as a JSON. For example, here's an override configuration that increases logging for troubleshooting linked filters:
 

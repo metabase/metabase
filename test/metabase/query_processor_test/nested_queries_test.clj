@@ -10,7 +10,6 @@
    [metabase.collections.models.collection :as collection]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -25,7 +24,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -72,7 +71,7 @@
                ;; https://github.com/aws/amazon-redshift-jdbc-driver/issues/118 ... not really important here anyway
                :cols (mapv (fn [col-name]
                              (-> (qp.test-util/native-query-col :venues col-name)
-                                 (dissoc :database_type :lib/type :lib/source :ident)))
+                                 (dissoc :database_type :lib/type :lib/source)))
                            [:id :longitude :category_id :price :name :latitude])}
               (mt/format-rows-by
                [int 4.0 int int str 4.0]
@@ -207,8 +206,6 @@
                                                               [:aggregation-options
                                                                [:max $rating]
                                                                {:name "max"}]]
-                                                :aggregation-idents {0 "VghddL-up6ZVkpUNkE9H_"
-                                                                     1 "O7xQpRu8mQfVAnjroblU2"}
                                                 :breakout    [$category]
                                                 :order-by    [[:asc $category]]})])
             (is (partial= {:data {:cols [{:name "sum" :display_name "Sum of Sum of Price"}
@@ -227,9 +224,7 @@
                                                                                 {:name "sum"}]
                                                                                [:aggregation-options
                                                                                 [:count]
-                                                                                {:name "count"}]]
-                                                                :aggregation-idents {0 "VghddL-up6ZVkpUNkE9H_"
-                                                                                     1 "q0awK8v8lIp1iW_ZhSS_E"}}}
+                                                                                {:name "count"}]]}}
                                                     (when model?
                                                       {:info {:metadata/model-metadata
                                                               (:result-metadata (lib.metadata/card (qp.store/metadata-provider) 1))}}))))))))))))
@@ -247,16 +242,16 @@
                   :breakout     [*price]}))))))))
 
 (defn- query-with-source-card
-  ([card]
-   {:database lib.schema.id/saved-questions-virtual-database-id
+  ([card db-id]
+   {:database db-id
     :type     :query
     :query    {:source-table (str "card__" (u/the-id card))}})
 
-  ([card m]
-   (update (query-with-source-card card) :query #(merge (get m :query m) %)))
+  ([card db-id m]
+   (update (query-with-source-card card db-id) :query #(merge (get m :query m) %)))
 
-  ([card k v & {:as more}]
-   (query-with-source-card card (merge {k v} more))))
+  ([card db-id k v & {:as more}]
+   (query-with-source-card card db-id (merge {k v} more))))
 
 (deftest ^:parallel multilevel-nested-questions-with-joins
   (testing "Multilevel nested questions with joins work (#22859)"
@@ -267,18 +262,16 @@
                                              {:fields [$id]
                                               :joins  [{:source-table $$products
                                                         :alias        "P"
-                                                        :ident        "Zh421ECf3-b2l2Ml7s_3P"
                                                         :fields       [&P.products.id &P.products.ean]
                                                         :condition    [:= $product_id &P.products.id]}]})
                                            (mt/mbql-query orders
                                              {:fields [$id]
                                               :joins  [{:source-table "card__1"
                                                         :alias        "RP"
-                                                        :ident        "FGuqyLkhyOtYbUCeFSpfl"
                                                         :fields       [&RP.reviews.id &RP.products.id &RP.products.ean]
                                                         :condition    [:= $product_id &RP.products.id]}]})])
           (is (=? {:status :completed}
-                  (qp/process-query (query-with-source-card 2 :limit 1)))))))))
+                  (qp/process-query (query-with-source-card 2 lib.schema.id/saved-questions-virtual-database-id :limit 1)))))))))
 
 (deftest ^:parallel source-card-id-test
   (testing "Make sure we can run queries using source table `card__id` format."
@@ -293,6 +286,7 @@
                   [int int]
                   (qp/process-query
                    (query-with-source-card 1
+                                           lib.schema.id/saved-questions-virtual-database-id
                                            (mt/mbql-query venues
                                              {:aggregation [:count]
                                               :breakout    [$price]})))))))))))
@@ -316,7 +310,7 @@
                                             :breakout    [[:expression "Price level"]]
                                             :expressions {"Price level" [:case [[[:> $price 2] "expensive"]] {:default "budget"}]}
                                             :limit       2})])
-        (let [query (query-with-source-card 1)]
+        (let [query (query-with-source-card 1 lib.schema.id/saved-questions-virtual-database-id)]
           (mt/with-native-query-testing-context query
             (is (= [["budget"    81]
                     ["expensive" 19]]
@@ -336,9 +330,10 @@
                (mt/format-rows-by
                 [int int]
                 (qp/process-query
-                 (query-with-source-card 1 (mt/mbql-query venues
-                                             {:aggregation [:count]
-                                              :breakout    [*price]})))))))]
+                 (query-with-source-card 1 lib.schema.id/saved-questions-virtual-database-id
+                                         (mt/mbql-query venues
+                                           {:aggregation [:count]
+                                            :breakout    [*price]})))))))]
       (is (=? (breakout-results :has-source-metadata? false :native-source? true)
               (run-native-query native-sub-query))
           "make sure `card__id`-style queries work with native source queries as well")
@@ -356,19 +351,17 @@
        (catch Exception _ nil)))
 
 (deftest card-id-native-source-query-with-long-alias-test
-  (testing "nested card with native query and long column alias (metabase##47584)"
+  (testing "nested card with native query and long column alias (#47584)"
     (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :nested-queries)
                                        (descendants driver/hierarchy :sql))
       (let [coun-col-name      "coun"
             long-col-full-name "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
-
             ;; Truncate the long column to something the driver can actually execute.
             long-col-name      (subs long-col-full-name
                                      0
                                      (if-let [col-max (col-max-for-driver driver/*driver*)]
                                        (min col-max (count long-col-full-name))
                                        (count long-col-full-name)))
-
             ;; Disable truncate-alias when compiling the native query to ensure we don't further truncate the column.
             ;; We want to simulate a user-defined query where the column name is long, but valid for the driver.
             native-sub-query   (with-redefs [lib.util/truncate-alias
@@ -382,8 +375,7 @@
                                         :limit        5})
                                      qp.compile/compile
                                      :query))
-
-            query              (query-with-source-card 1)]
+            query              (query-with-source-card 1 lib.schema.id/saved-questions-virtual-database-id)]
         (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
                                           [(mt/native-query {:query native-sub-query})])
           (mt/with-native-query-testing-context query
@@ -605,7 +597,7 @@
                      [:id :name :category_id :latitude :longitude :price])
                 ;; todo: i don't know why the results don't have the information
                 (mt/cols
-                 (qp/process-query (query-with-source-card 1)))))))))
+                 (qp/process-query (query-with-source-card 1 lib.schema.id/saved-questions-virtual-database-id)))))))))
 
 (deftest ^:parallel correct-column-metadata-test-2
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
@@ -617,6 +609,7 @@
                 (mt/cols
                  (qp/process-query
                   (query-with-source-card 1
+                                          lib.schema.id/saved-questions-virtual-database-id
                                           (mt/mbql-query venues
                                             {:aggregation [[:count]]
                                              :breakout    [$price]}))))))))))
@@ -636,10 +629,10 @@
                (qp.test-util/aggregate-col :count)]
               (mt/cols
                (qp/process-query
-                (query-with-source-card 1 (mt/mbql-query checkins
-                                            {:aggregation [[:count]]
-                                             :aggregation-idents {0 "vX12AxUR50eQNFNZgdG0m"}
-                                             :breakout    [!day.*date]})))))))))
+                (query-with-source-card 1 lib.schema.id/saved-questions-virtual-database-id
+                                        (mt/mbql-query checkins
+                                          {:aggregation [[:count]]
+                                           :breakout    [!day.*date]})))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::breakout-year-test]
   [_driver _feature _database]
@@ -664,7 +657,7 @@
           (let [[date-col count-col] (for [col (mt/cols (qp/process-query source-query))]
                                        (as-> col col
                                          (assoc col :source :fields)
-                                         (dissoc col :position :ident)
+                                         (dissoc col :position)
                                          (m/filter-keys simple-keyword? col)))]
             ;; since the bucketing is happening in the source query rather than at this level, the field ref should
             ;; return temporal unit `:default` rather than the upstream bucketing unit. You wouldn't want to re-apply
@@ -672,9 +665,9 @@
             ;; include the unit; however `:unit` is still `:year` so the frontend can use the correct formatting to
             ;; display values of the column.
             (is (=? [(assoc date-col  :field_ref [:field (mt/id :checkins :date) nil], :unit :year)
-                     (assoc count-col :field_ref [:field "count" {:base-type :type/Integer}])]
+                     (assoc count-col :field_ref [:field "count" {:base-type keyword?}])]
                     (mt/cols
-                     (qp/process-query (query-with-source-card 1)))))))))))
+                     (qp/process-query (query-with-source-card 1 lib.schema.id/saved-questions-virtual-database-id)))))))))))
 
 (defn- completed-status [{:keys [status], :as results}]
   (if (= status :completed)
@@ -687,6 +680,7 @@
       (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
                                         [(mt/mbql-query checkins)])
         (let [query (query-with-source-card 1
+                                            lib.schema.id/saved-questions-virtual-database-id
                                             (mt/$ids checkins
                                               {:filter [:time-interval *date -30 :day]}))]
           (mt/with-native-query-testing-context query
@@ -700,9 +694,9 @@
                                         [(mt/mbql-query checkins)])
         (is (= :completed
                (-> (query-with-source-card 1
+                                           lib.schema.id/saved-questions-virtual-database-id
                                            (mt/mbql-query checkins
                                              {:aggregation [[:count]]
-                                              :aggregation-idents {0 "D8bJ476ZFWsYM5G159Ndc"}
                                               :filter      [:= !quarter.*date "2014-01-01T08:00:00.000Z"]
                                               :breakout    [!month.*date]}))
                    qp/process-query
@@ -715,6 +709,7 @@
                                         [(mt/mbql-query checkins)])
         (is (= :completed
                (-> (query-with-source-card 1
+                                           lib.schema.id/saved-questions-virtual-database-id
                                            (mt/mbql-query checkins
                                              {:aggregation [[:count]]
                                               :breakout    [!week.*date]
@@ -725,7 +720,7 @@
 (deftest ^:parallel macroexpansion-test
   (testing "Make sure that macro expansion works inside of a neested query, when using a compound filter clause (#5974)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
-      (qp.store/with-metadata-provider (-> (mt/application-database-metadata-provider (mt/id))
+      (qp.store/with-metadata-provider (-> (mt/metadata-provider)
                                            (lib.tu/mock-metadata-provider
                                             {:segments [{:id         1
                                                          :name       "Segment 1"
@@ -739,8 +734,8 @@
                 [int]
                 (qp/process-query
                  (query-with-source-card 1
-                                         {:aggregation [:count]
-                                          :aggregation-idents {0 "ApWqC4pOyxysqqeiuiPeS"}})))))))))
+                                         lib.schema.id/saved-questions-virtual-database-id
+                                         {:aggregation [:count]})))))))))
 
 (deftest ^:parallel card-perms-test
   (testing "perms for a Card with a SQL source query\n"
@@ -749,7 +744,9 @@
                                            (lib.tu/metadata-provider-with-cards-for-queries [{}])
                                            (lib.tu/merged-mock-metadata-provider {:cards [{:id 1, :collection-id 1000}]}))
         (is (= {:paths #{(perms/collection-read-path (t2/instance :model/Collection {:id 1000}))}}
-               (query-perms/required-perms-for-query (query-with-source-card 1 :aggregation [:count]))))))))
+               (query-perms/required-perms-for-query (query-with-source-card 1
+                                                                             lib.schema.id/saved-questions-virtual-database-id
+                                                                             :aggregation [:count]))))))))
 
 (deftest ^:parallel card-perms-test-2
   (testing "perms for a Card with a SQL source query\n"
@@ -758,7 +755,9 @@
       (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
                                         [(mt/native-query {:query "SELECT * FROM VENUES"})])
         (is (= {:paths #{(perms/collection-read-path collection/root-collection)}}
-               (query-perms/required-perms-for-query (query-with-source-card 1 :aggregation [:count]))))))))
+               (query-perms/required-perms-for-query (query-with-source-card 1
+                                                                             lib.schema.id/saved-questions-virtual-database-id
+                                                                             :aggregation [:count]))))))))
 
 (deftest card-perms-test-3
   (testing "perms for Card -> Card -> MBQL Source query\n"
@@ -768,6 +767,8 @@
           (mt/with-no-data-perms-for-all-users!
             (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
             (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
+            ;; allowing `with-temp` here since we need it to make Collections
+            #_{:clj-kondo/ignore [:discouraged-var]}
             (mt/with-temp [:model/Collection collection {}
                            :model/Card       card-1 {:collection_id (u/the-id collection)
                                                      :dataset_query (mt/mbql-query venues {:order-by [[:asc $id]] :limit 2})}
@@ -812,6 +813,8 @@
   using Rasta. Use this to test how the API endpoint behaves based on certain permissions grants for the `All Users`
   group."
   [expected-status-code db-or-id source-collection-or-id-or-nil dest-collection-or-id-or-nil]
+  ;; allowing `with-temp` here since we hit the REST API
+  #_{:clj-kondo/ignore [:discouraged-var]}
   (mt/with-temp [:model/Card card {:collection_id (some-> source-collection-or-id-or-nil u/the-id)
                                    :dataset_query {:database (u/the-id db-or-id)
                                                    :type     :native
@@ -821,7 +824,7 @@
                            :collection_id          (some-> dest-collection-or-id-or-nil u/the-id)
                            :display                "scalar"
                            :visualization_settings {}
-                           :dataset_query          (query-with-source-card card
+                           :dataset_query          (query-with-source-card card (u/the-id db-or-id)
                                                                            :aggregation [:count])})))
 
 (deftest save-card-with-source-query-via-api-test
@@ -829,6 +832,8 @@
     (mt/with-temp-copy-of-db
       (testing (str "To save a Card that uses another Card as its source, you only need read permissions for the Collection "
                     "the Source Card is in, and write permissions for the Collection you're trying to save the new Card in")
+        ;; allowing `with-temp` here since we need it to make Collections
+        #_{:clj-kondo/ignore [:discouraged-var]}
         (mt/with-temp [:model/Collection source-card-collection {}
                        :model/Collection dest-card-collection   {}]
           (perms/grant-collection-read-permissions!      (perms/all-users-group) source-card-collection)
@@ -838,12 +843,16 @@
       (testing (str "however, if we do *not* have read permissions for the source Card's collection we shouldn't be "
                     "allowed to save the query. This API call should fail")
         (testing "Card in the Root Collection"
+          ;; allowing `with-temp` here since we need it to make Collections
+          #_{:clj-kondo/ignore [:discouraged-var]}
           (mt/with-temp [:model/Collection dest-card-collection]
             (perms/grant-collection-readwrite-permissions! (perms/all-users-group) dest-card-collection)
             (is (=? {:message  "You cannot save this Question because you do not have permissions to run its query."}
                     (save-card-via-API-with-native-source-query! 403 (mt/db) nil dest-card-collection)))))
 
         (testing "Card in a different Collection for which we do not have perms"
+          ;; allowing `with-temp` here since we need it to make Collections
+          #_{:clj-kondo/ignore [:discouraged-var]}
           (mt/with-temp [:model/Collection source-card-collection {}
                          :model/Collection dest-card-collection   {}]
             (perms/grant-collection-readwrite-permissions! (perms/all-users-group) dest-card-collection)
@@ -852,12 +861,16 @@
 
         (testing "similarly, if we don't have *write* perms for the dest collection it should also fail"
           (testing "Try to save in the Root Collection"
+            ;; allowing `with-temp` here since we need it to make Collections
+            #_{:clj-kondo/ignore [:discouraged-var]}
             (mt/with-temp [:model/Collection source-card-collection]
               (perms/grant-collection-read-permissions! (perms/all-users-group) source-card-collection)
               (is (=? {:message "You do not have curate permissions for this Collection."}
                       (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection nil)))))
 
           (testing "Try to save in a different Collection for which we do not have perms"
+            ;; allowing `with-temp` here since we need it to make Collections
+            #_{:clj-kondo/ignore [:discouraged-var]}
             (mt/with-temp [:model/Collection source-card-collection {}
                            :model/Collection dest-card-collection   {}]
               (perms/grant-collection-read-permissions! (perms/all-users-group) source-card-collection)
@@ -1001,7 +1014,7 @@
                               {:source-table "card__1"}))))
           (testing "if source query with expression literals is from a Model"
             (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
-                                              (mt/application-database-metadata-provider (mt/id))
+                                              (mt/metadata-provider)
                                               {:cards [{:id 1
                                                         :type :model
                                                         :name "Model 1"
@@ -1059,30 +1072,30 @@
                (mt/formatted-rows
                 [str str int]
                 results)))
-        (is (= (mt/$ids venues
-                 [{:name         (mt/format-name "name")
-                   :display_name "Name"
-                   :id           %name
-                   :field_ref    $name
-                   :base_type    :type/Text}
-                  {:name         (mt/format-name "name_2")
-                   :display_name "c → Name"
-                   :id           %categories.name
-                   :field_ref    &c.categories.name
-                   :base_type    :type/Text}
-                  {:name         "count"
-                   :display_name "Count"
-                   :field_ref    [:field "count" {:base-type :type/Integer}]
-                   :base_type    (:base_type (qp.test-util/aggregate-col :count))}])
-               (for [col (mt/cols results)]
-                 (select-keys col [:name :display_name :id :field_ref :base_type]))))))))
+        (is (=? (mt/$ids venues
+                  [{:name         (mt/format-name "name")
+                    :display_name "Name"
+                    :id           %name
+                    :field_ref    $name
+                    :base_type    :type/Text}
+                   {:name         (mt/format-name "name_2")
+                    :display_name "c → Name"
+                    :id           %categories.name
+                    :field_ref    &c.categories.name
+                    :base_type    :type/Text}
+                   {:name         "count"
+                    :display_name "Count"
+                    :field_ref    [:field "count" {:base-type keyword?}]
+                    :base_type    (:base_type (qp.test-util/aggregate-col :count))}])
+                (for [col (mt/cols results)]
+                  (select-keys col [:name :display_name :id :field_ref :base_type]))))))))
 
 (deftest ^:parallel remapped-fks-test
   (testing "Should be able to use a question with remapped FK columns as a Saved Question (#10474)"
     (mt/dataset test-data
       ;; Add column remapping from Orders Product ID -> Products.Title
       (let [provider              (lib.tu/remap-metadata-provider
-                                   (mt/application-database-metadata-provider (mt/id))
+                                   (mt/metadata-provider)
                                    (mt/id :orders :product_id)
                                    (mt/id :products :title))
             card-results-metadata (qp.store/with-metadata-provider provider
@@ -1134,14 +1147,15 @@
                    4.0 "2017-12-31T14:41:56.87Z"]
                   (first (mt/rows results))))))
         (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
-                                          (mt/application-database-metadata-provider (mt/id))
+                                          (mt/metadata-provider)
                                           (mt/id :orders :product_id)
                                           (mt/id :products :title))
           (do-test
            (fn [results]
-             (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes" ; <- Extra remapped col
+             (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2
                      14 "8833419218504" "Awesome Concrete Shoes" "Widget" "McClure-Lockman" 25.1
-                     4.0 "2017-12-31T14:41:56.87Z"]
+                     4.0 "2017-12-31T14:41:56.87Z"
+                     "Awesome Concrete Shoes"] ; <- additional remap of ORDERS.PRODUCT_ID => PRODUCTS.TITLE
                     (first (mt/rows results)))))))))))
 
 (deftest ^:parallel inception-metadata-test
@@ -1165,7 +1179,8 @@
                               :limit        10})]
             (doseq [level (range 4)]
               (testing (format "%d level(s) of nesting" level)
-                (let [query (mt/nest-query base-query level)]
+                ;; existing usage, do not use this going forward
+                (let [query #_{:clj-kondo/ignore [:deprecated-var]} (mt/nest-query base-query level)]
                   (testing (format "\nQuery = %s" (u/pprint-to-str query))
                     (is (= (mt/$ids products
                              {:name         "EAN"
@@ -1186,15 +1201,17 @@
       (doseq [level (range 0 4)]
         (testing (format "with %d level(s) of nesting" level)
           (letfn [(run-query []
-                    (let [query (-> (mt/mbql-query orders
-                                      {:source-table $$orders
-                                       :joins        [{:fields       :all
-                                                       :source-table $$products
-                                                       :condition    [:= $product_id &Products.products.id]
-                                                       :alias        "Products"}]
-                                       :order-by     [[:asc $id]]
-                                       :limit        2})
-                                    (mt/nest-query level))]
+                    (let [query (-> (lib/query
+                                     (mt/metadata-provider)
+                                     (mt/mbql-query orders
+                                       {:source-table $$orders
+                                        :joins        [{:fields       :all
+                                                        :source-table $$products
+                                                        :condition    [:= $product_id &Products.products.id]
+                                                        :alias        "Products"}]
+                                        :order-by     [[:asc $id]]
+                                        :limit        2}))
+                                    (as-> $query (nth (iterate lib/append-stage $query) level)))]
                       (qp/process-query query)))]
             (testing "with no FK remappings"
               (let [result (run-query)]
@@ -1206,7 +1223,7 @@
                         "2017-12-31T14:41:56.87Z"]
                        (mt/first-row result)))))
             (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
-                                              (mt/application-database-metadata-provider (mt/id))
+                                              (mt/metadata-provider)
                                               (mt/id :orders :product_id)
                                               (mt/id :products :title))
               (let [result (run-query)]
@@ -1222,7 +1239,6 @@
                          "ORDERS.DISCOUNT"
                          "ORDERS.CREATED_AT"
                          "ORDERS.QUANTITY"
-                         "PRODUCTS.TITLE"
                          "PRODUCTS.ID"
                          "PRODUCTS.EAN"
                          "PRODUCTS.TITLE"
@@ -1230,11 +1246,13 @@
                          "PRODUCTS.VENDOR"
                          "PRODUCTS.PRICE"
                          "PRODUCTS.RATING"
-                         "PRODUCTS.CREATED_AT"]
+                         "PRODUCTS.CREATED_AT"
+                         "PRODUCTS.TITLE"] ; <- extra remapped column
                         (mapv (comp field-id->name :id) (get-in result [:data :cols]))))
-                (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes" ; <- extra remapped col
+                (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2
                         14 "8833419218504" "Awesome Concrete Shoes" "Widget" "McClure-Lockman"
-                        25.1 4.0 "2017-12-31T14:41:56.87Z"]
+                        25.1 4.0 "2017-12-31T14:41:56.87Z"
+                        "Awesome Concrete Shoes"] ; <- extra remapped col
                        (mt/first-row result)))))))))))
 
 (deftest ^:parallel handle-unwrapped-joined-fields-correctly-test
@@ -1326,7 +1344,7 @@
                                {:source-query (:query query)})
                        metadata (assoc-in [:query :source-metadata] metadata))))
                   (test-card-source-query [metadata]
-                    (qp.store/with-metadata-provider (-> (mt/application-database-metadata-provider (mt/id))
+                    (qp.store/with-metadata-provider (-> (mt/metadata-provider)
                                                          (lib.tu/metadata-provider-with-cards-for-queries [query])
                                                          (lib.tu/merged-mock-metadata-provider
                                                           {:cards [{:id 1, :result-metadata metadata}]}))
@@ -1504,7 +1522,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "A nested query with a Metric should work as expected (#12507)"
       (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
-                                        (mt/application-database-metadata-provider (mt/id))
+                                        (mt/metadata-provider)
                                         {:cards [{:id 1
                                                   :type :metric
                                                   :name "Metric 1"
@@ -1541,13 +1559,13 @@
                                               :breakout    [!month.created_at]
                                               :limit       2})])
           (let [query (mt/native-query
-                        {:query         "SELECT * FROM {{#1}} x"
-                         :template-tags {"#1"
-                                         {:id           "5aa37572-058f-14f6-179d-a158ad6c029d"
-                                          :name         "#1"
-                                          :display-name "#1"
-                                          :type         :card
-                                          :card-id      1}}})]
+                       {:query         "SELECT * FROM {{#1}} x"
+                        :template-tags {"#1"
+                                        {:id           "5aa37572-058f-14f6-179d-a158ad6c029d"
+                                         :name         "#1"
+                                         :display-name "#1"
+                                         :type         :card
+                                         :card-id      1}}})]
             (is (= [["2016-04-01T00:00:00Z" 1]
                     ["2016-05-01T00:00:00Z" 5]]
                    (mt/formatted-rows
@@ -1572,7 +1590,8 @@
                                        :condition    [:= *products.id &Reviews.reviews.product_id]
                                        :alias        "Reviews"}]
                        :order-by     [[:asc $product_id->products.id]
-                                      [:asc &Reviews.products.id]]
+                                      [:asc &Reviews.reviews.product_id]
+                                      [:asc &Reviews.reviews.id]]
                        :limit        1})]
           (sql.qp-test-util/with-native-query-testing-context query
             (testing "results"
@@ -1664,7 +1683,7 @@
                     (mt/normal-drivers-with-feature :left-join))
     (mt/dataset
       crazy-names
-      (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (let [mp (mt/metadata-provider)
             query (as-> (lib/query mp (lib.metadata/table mp (mt/id "space table"))) $q
                     (lib/join $q (-> (lib/join-clause (lib.metadata/table mp (mt/id "space table")))
                                      (lib/with-join-alias "Space Table Alias")
@@ -1686,7 +1705,7 @@
   (mt/test-drivers (set/intersection
                     (mt/normal-drivers-with-feature :identifiers-with-spaces)
                     (mt/normal-drivers-with-feature :left-join))
-    (let [mp              (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [mp              (mt/metadata-provider)
           card-query      (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                               (lib/order-by (lib.metadata/field mp (mt/id :orders :created_at)))
                               (lib/limit 1)
@@ -1725,7 +1744,7 @@
 
 (deftest ^:parallel multiple-bucketings-of-a-column-test
   (testing "Multiple bucketings of a column in a nested query should be returned (#46644)"
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [mp (mt/metadata-provider)
           created-at-field (lib.metadata/field mp (mt/id :orders :created_at))
           base-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                          (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total))))

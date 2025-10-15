@@ -455,7 +455,7 @@ describe("Dashboard > Dashboard Questions", () => {
       );
       H.commandPalette()
         .findByText("Total Orders Dashboard Question")
-        .parent()
+        .closest("a")
         .findByText(/Orders in a dashboard/)
         .should("be.visible");
       H.closeCommandPalette();
@@ -858,12 +858,12 @@ describe("Dashboard > Dashboard Questions", () => {
 
       // overlay the quantity series in the purple dashboard
       H.showDashcardVisualizerModal(0, {
-        buttonText: "Visualize another way",
+        isVisualizerCard: false,
       });
 
       H.modal().within(() => {
         H.switchToAddMoreData();
-        H.addDataset("Average Quantity by Month Question");
+        H.selectDataset("Average Quantity by Month Question");
         cy.button("Save").click();
       });
 

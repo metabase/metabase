@@ -85,7 +85,7 @@
    (catch-exceptions run {}))
 
   ([run query]
-   (let [query    (merge {:type :query} query)
+   (let [query    (merge {:type :query, :database 1} query)
          metadata {}
          rows     []
          qp       (fn [query rff]

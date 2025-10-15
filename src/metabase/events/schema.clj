@@ -115,7 +115,8 @@
    [:object [:fn #(t2/instance-of? :model/Database %)]]
    [:previous-object {:optional true} [:fn #(t2/instance-of? :model/Database %)]]
    [:details {:optional true} :map]
-   [:user-id pos-int?]])
+   [:user-id pos-int?]
+   [:details-changed? {:optional true} [:maybe :boolean]]])
 
 (mr/def :event/database-create ::database)
 (mr/def :event/database-update ::database)
@@ -160,3 +161,13 @@
   [:map {:closed true}
    [:user-id [:maybe pos-int?]]
    [:model [:or :keyword :string]]])
+
+;; snippet events
+
+(mr/def ::snippet
+  [:map {:closed true}
+   [:object [:fn #(t2/instance-of? :model/NativeQuerySnippet %)]]])
+
+(mr/def :event/snippet-create ::snippet)
+(mr/def :event/snippet-update ::snippet)
+(mr/def :event/snippet-delete ::snippet)

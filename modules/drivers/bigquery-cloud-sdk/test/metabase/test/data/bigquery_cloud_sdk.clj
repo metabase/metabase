@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase-enterprise.transforms.test-util :as transforms.test-util]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.ddl.interface :as ddl.i]
@@ -63,11 +64,8 @@
     (str "sha_" (tx/hash-dataset db-def) "_" (normalize-name database-name))))
 
 (defn- test-db-details []
-  (reduce
-   (fn [acc env-var]
-     (assoc acc env-var (tx/db-test-env-var :bigquery-cloud-sdk env-var)))
-   {}
-   [:project-id :service-account-json]))
+  {:project-id (tx/db-test-env-var :bigquery-cloud-sdk :project-id)
+   :service-account-json (tx/db-test-env-var :bigquery-cloud-sdk :service-account-json)})
 
 (defn- bigquery
   "Get an instance of a `Bigquery` client."
@@ -426,7 +424,7 @@
       (tx/tracking-access-note)])))
 
 (defmethod tx/create-db! :bigquery-cloud-sdk
-  [_ {:keys [database-name table-definitions] :as db-def} & _]
+  [driver {:keys [database-name table-definitions options] :as db-def} & _]
   {:pre [(seq database-name) (sequential? table-definitions)]}
   (delete-old-datasets-if-needed!)
   (let [dataset-id (test-dataset-id db-def)]
@@ -438,6 +436,8 @@
         ;; now create tables and load data.
         (doseq [tabledef table-definitions]
           (load-tabledef! dataset-id tabledef))
+        (doseq [native-ddl (:native-ddl options)]
+          (apply execute! (sql.tx/compile-native-ddl driver native-ddl)))
         (log/info (u/format-color 'green "Successfully created %s." (pr-str dataset-id)))
         (catch Throwable e
           (log/error (u/format-color 'red  "Failed to load BigQuery dataset %s." (pr-str dataset-id)))
@@ -473,6 +473,9 @@
   [driver database view-name options]
   (apply execute! (sql.tx/drop-view-sql driver database view-name options)))
 
+(defmethod transforms.test-util/delete-schema! :bigquery-cloud-sdk [_driver _db schema]
+  (destroy-dataset! schema))
+
 (comment
   "REPL utilities for static datasets"
   (setup-tracking-dataset!)
@@ -483,3 +486,11 @@
 
   (execute! "select name from `%s`.metabase_test_tracking.datasets order by accessed_at" (project-id))
   (database-exists?! (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'test-data))))
+
+(defn ^:private get-test-data-name
+  []
+  (test-dataset-id
+   (tx/get-dataset-definition (or data.impl/*dbdef-used-to-create-db*
+                                  (tx/default-dataset :bigquery-cloud-sdk)))))
+
+(defmethod sql.tx/session-schema :bigquery-cloud-sdk [_driver] (get-test-data-name))

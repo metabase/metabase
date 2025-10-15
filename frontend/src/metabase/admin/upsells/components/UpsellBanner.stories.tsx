@@ -83,6 +83,25 @@ export const Secondary = {
   render: SecondaryTemplate,
 };
 
+export const WithInternalLink = {
+  render: DefaultTemplate,
+  args: {
+    ...args,
+    internalLink: "/internal-link",
+    buttonText: "Internal link text",
+  },
+};
+
+export const WithOnClick = {
+  render: (args: UpsellBannerProps) => (
+    <ReduxProvider>
+      <Box>
+        <_UpsellBanner {...args} onClick={action("clicked")} />
+      </Box>
+    </ReduxProvider>
+  ),
+};
+
 export const Dismissible = {
   render: (args: UpsellBannerProps) => (
     <ReduxProvider>
@@ -95,4 +114,9 @@ export const Dismissible = {
     ...args,
     onDismiss: action("dismiss"),
   },
+};
+
+export const Large = {
+  render: DefaultTemplate,
+  args: { ...args, large: true },
 };

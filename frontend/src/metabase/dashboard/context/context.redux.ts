@@ -55,6 +55,7 @@ import {
   undoDeleteTab,
 } from "metabase/dashboard/actions/tabs";
 import { connect } from "metabase/lib/redux";
+import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import {
   canManageSubscriptions,
   getUserIsAdmin,
@@ -117,6 +118,7 @@ export const mapStateToProps = (state: State) => ({
   isNavigatingBackToDashboard: getIsNavigatingBackToDashboard(state),
   isLoading: getIsLoading(state),
   isLoadingWithoutCards: getIsLoadingWithoutCards(state),
+  isEmbeddingIframe: getIsEmbeddingIframe(state),
 });
 
 export const mapDispatchToProps = {
@@ -173,6 +175,8 @@ export const mapDispatchToProps = {
   undoDeleteTab,
 };
 
-export const connector = connect(mapStateToProps, mapDispatchToProps);
+export const connector = connect(mapStateToProps, mapDispatchToProps, null, {
+  forwardRef: true,
+});
 
 export type ReduxProps = ConnectedProps<typeof connector>;

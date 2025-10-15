@@ -1,4 +1,5 @@
 import cx from "classnames";
+import { useMemo } from "react";
 
 import { Loader, Stack, Text, Transition } from "metabase/ui";
 import type { MetabotToolCall } from "metabase-enterprise/metabot/state";
@@ -48,15 +49,23 @@ const ThoughtProcess = ({ toolCalls }: { toolCalls: MetabotToolCall[] }) => {
 
 export const MetabotThinking = ({
   toolCalls,
-  hideLoader = false,
+  hasStartedResponse,
 }: {
   toolCalls: MetabotToolCall[];
-  hideLoader: boolean;
+  hasStartedResponse: boolean;
 }) => {
+  const toolCallsWithMsgs = useMemo(() => {
+    return toolCalls.filter((tc) => !!tc.message);
+  }, [toolCalls]);
+
+  const showLoader =
+    (!hasStartedResponse && toolCalls.length === 0) ||
+    (toolCalls.length > 0 && toolCallsWithMsgs.length === 0);
+
   return (
     <Stack gap="xs">
-      <ThoughtProcess toolCalls={toolCalls} />
-      {!hideLoader && (
+      <ThoughtProcess toolCalls={toolCallsWithMsgs} />
+      {showLoader && (
         <Loader
           color="brand"
           type="dots"

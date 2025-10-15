@@ -34,7 +34,7 @@
         translations (if (empty? translations)
                        sample-translations
                        translations)
-        csv-data (cons ["Language" "String" "Translation"]
+        csv-data (cons ["Locale Code" "String" "Translation"]
                        (map (fn [{:keys [locale msgid msgstr]}]
                               [locale msgid msgstr])
                             translations))]
@@ -66,8 +66,7 @@
                       {:status-code http-status-content-too-large})))
     (when-not (instance? java.io.File file)
       (throw (ex-info (tru "No file provided") {:status-code 400})))
-    (let [[_header & rows] (dictionary/read-csv file)]
-      (dictionary/import-translations! rows))
+    (dictionary/read-and-import-csv! file)
     {:success true}))
 
 (api.macros/defendpoint :get "/dictionary/:token"

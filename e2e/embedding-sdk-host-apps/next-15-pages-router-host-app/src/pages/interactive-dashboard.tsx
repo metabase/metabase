@@ -1,4 +1,4 @@
-import { InteractiveDashboard } from "@metabase/embedding-sdk-react/nextjs";
+import { InteractiveDashboard } from "@metabase/embedding-sdk-react";
 import { useSearchParams } from "next/navigation";
 import { useMemo } from "react";
 

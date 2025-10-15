@@ -50,12 +50,9 @@
 (defn- find-and-sync-new-table
   [database table-name schema-name]
   (let [driver (driver.u/database->driver database)
-        {db-tables :tables} (driver/describe-database driver database)]
-    (if-let [table (some (fn [table-in-db]
-                           (when (and (= schema-name (:schema table-in-db))
-                                      (= table-name (:name table-in-db)))
-                             table-in-db))
-                         db-tables)]
+        table  {:name   table-name
+                :schema schema-name}]
+    (if (driver/table-exists? driver database table)
       (let [created (sync-tables/create-or-reactivate-table! database table)]
         (doto created
           sync/sync-table!

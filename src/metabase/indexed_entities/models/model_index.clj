@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.lib.ident :as lib.ident]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
@@ -30,8 +29,11 @@
 #_(derive :model/ModelIndex :hook/search-index)
 
 (t2/deftransforms :model/ModelIndex
-  {:pk_ref    mi/transform-field-ref
-   :value_ref mi/transform-field-ref})
+  ;; TODO (Cam 10/1/25) -- update these to normalize to MBQL 5 Field refs (or stop storing field refs like this in the
+  ;; first place!) on the way out
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  {:pk_ref    mi/transform-legacy-field-ref
+   :value_ref mi/transform-legacy-field-ref})
 
 (t2/define-before-delete :model/ModelIndex
   [model-index]
@@ -84,11 +86,11 @@
         pk-ref    (-> model-index :pk_ref (fix :type/Integer))]
     (try
       [nil (->> (qp/process-query
+                 ;; TODO (Cam 10/1/25) -- update this to generate the query using Lib
                  {:database (:database_id model)
                   :type     :query
                   :query    {:source-table (format "card__%d" (:id model))
                              :breakout     [pk-ref value-ref]
-                             :breakout-idents (lib.ident/indexed-idents 2)
                              :limit        (inc max-indexed-values)}})
                 :data :rows (filter valid-tuples?))]
       (catch Exception e

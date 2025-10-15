@@ -5,10 +5,10 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.models.interface :as mi]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.malli.registry :as mr]
+   [metabase.xrays.automagic-dashboards.util :as magic.util]
    [toucan2.core :as t2]))
 
 (def ^:private ^Long max-best-matches        3)
@@ -26,17 +26,13 @@
            qp.util/normalize-token)]]
    [:* :any]])
 
-(defn- strip-idents [clause]
-  (cond-> clause
-    (mbql.u/is-clause? :field clause) (update 2 dissoc :ident)))
-
 (defn- collect-context-bearing-forms
   [form]
-  (let [form (mbql.normalize/normalize-fragment [:query :filter] form)]
+  ;; legacy usage, temporary until we convert X-Rays to Lib
+  (let [form #_{:clj-kondo/ignore [:deprecated-var]} (mbql.normalize/normalize-fragment [:query :filter] form)]
     (into #{}
           (comp (filter (mr/validator ContextBearingForm))
-                (map #(update % 0 qp.util/normalize-token))
-                (map strip-idents))
+                (map #(update % 0 qp.util/normalize-token)))
           (tree-seq sequential? identity form))))
 
 (defmulti definition
@@ -53,8 +49,7 @@
   [card]
   (-> card
       :dataset_query
-      :query
-      ((juxt :breakout :aggregation :expressions :fields))))
+      (magic.util/do-with-legacy-query #(-> % :query ((juxt :breakout :aggregation :expressions :fields))))))
 
 (defmethod definition :model/Segment
   [segment]

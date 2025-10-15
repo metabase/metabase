@@ -1072,47 +1072,55 @@ describe("issue 19893", () => {
     cy.signInAsAdmin();
   });
 
-  it.skip("should display correct join source table when joining visited questions (metabase#19893)", () => {
-    H.createQuestion(QUESTION_1, {
-      wrapId: true,
-      idAlias: "questionId1",
-      visitQuestion: true,
-    });
-    H.createQuestion(QUESTION_2, {
-      wrapId: true,
-      idAlias: "questionId2",
-      visitQuestion: true,
-    });
+  it(
+    "should display correct join source table when joining visited questions (metabase#19893)",
+    { tags: "@skip" },
+    () => {
+      H.createQuestion(QUESTION_1, {
+        wrapId: true,
+        idAlias: "questionId1",
+        visitQuestion: true,
+      });
+      H.createQuestion(QUESTION_2, {
+        wrapId: true,
+        idAlias: "questionId2",
+        visitQuestion: true,
+      });
 
-    cy.then(function () {
-      const { questionId1, questionId2 } = this;
+      cy.then(function () {
+        const { questionId1, questionId2 } = this;
 
-      createQ1PlusQ2Question(questionId1, questionId2).then(
-        ({ body: question }) => {
-          cy.visit(`/question/${question.id}/notebook`);
-        },
-      );
-    });
+        createQ1PlusQ2Question(questionId1, questionId2).then(
+          ({ body: question }) => {
+            cy.visit(`/question/${question.id}/notebook`);
+          },
+        );
+      });
 
-    assertQ1PlusQ2Joins();
-  });
+      assertQ1PlusQ2Joins();
+    },
+  );
 
-  it.skip("should display correct join source table when joining non-visited questions (metabase#19893)", () => {
-    H.createQuestion(QUESTION_1, { wrapId: true, idAlias: "questionId1" });
-    H.createQuestion(QUESTION_2, { wrapId: true, idAlias: "questionId2" });
+  it(
+    "should display correct join source table when joining non-visited questions (metabase#19893)",
+    { tags: "@skip" },
+    () => {
+      H.createQuestion(QUESTION_1, { wrapId: true, idAlias: "questionId1" });
+      H.createQuestion(QUESTION_2, { wrapId: true, idAlias: "questionId2" });
 
-    cy.then(function () {
-      const { questionId1, questionId2 } = this;
+      cy.then(function () {
+        const { questionId1, questionId2 } = this;
 
-      createQ1PlusQ2Question(questionId1, questionId2).then(
-        ({ body: question }) => {
-          cy.visit(`/question/${question.id}/notebook`);
-        },
-      );
-    });
+        createQ1PlusQ2Question(questionId1, questionId2).then(
+          ({ body: question }) => {
+            cy.visit(`/question/${question.id}/notebook`);
+          },
+        );
+      });
 
-    assertQ1PlusQ2Joins();
-  });
+      assertQ1PlusQ2Joins();
+    },
+  );
 });
 
 const createQ1PlusQ2Question = (questionId1, questionId2) => {
@@ -1155,7 +1163,7 @@ const assertQ1PlusQ2Joins = () => {
 
     cy.findByLabelText("Right column").within(() => {
       cy.findByText(QUESTION_2.name).should("exist");
-      cy.findByText("Category").should("exist");
+      cy.findByText("Q2 - Category → Category").should("exist");
     });
   });
 };

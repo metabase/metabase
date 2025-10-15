@@ -1,7 +1,6 @@
 const { H } = cy;
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { moveDnDKitListElement } from "e2e/support/helpers";
 import { PIVOT_TABLE_BODY_LABEL } from "metabase/visualizations/visualizations/PivotTable/constants";
 
 const {
@@ -131,7 +130,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     assertOnPivotSettings();
 
     // Drag the second aggregate (Product category) from table columns to table rows
-    moveDnDKitListElement("drag-handle", {
+    H.moveDnDKitListElement("drag-handle", {
       startIndex: 1,
       dropIndex: 0,
     });
@@ -681,16 +680,6 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
           assertOnPivotFields();
         });
 
-        // Skipped to avoid flake
-        it.skip("should display pivot table in an embed preview", () => {
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText(/Embed in your application/).click();
-          // we use preview endpoints when MB is iframed in itself
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText(test.subject);
-          H.getIframeBody().within(assertOnPivotFields);
-        });
-
         it("should display pivot table in an embed URL", () => {
           cy.findByTestId("pivot-table").should("be.visible");
           if (test.case === "question") {
@@ -743,7 +732,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     H.popover().findByText(HINT_TEXT).should("not.exist");
   });
 
-  it.skip("should work for user without data permissions (metabase#14989)", () => {
+  it("should work for user without data permissions (metabase#14989)", () => {
     cy.request("POST", "/api/card", {
       name: "14989",
       dataset_query: {
@@ -764,13 +753,9 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       cy.signIn("nodata");
       H.visitQuestion(QUESTION_ID);
     });
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Grand totals");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Row totals");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("200");
+    cy.findAllByTestId("pivot-table-cell").contains("Grand totals");
+    cy.findAllByTestId("pivot-table-cell").contains("Row totals");
+    cy.findAllByTestId("pivot-table-cell").contains("200");
   });
 
   it("should work with custom mapping of display values (metabase#14985)", () => {
@@ -1304,7 +1289,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
     it("correctly filters the query when zooming in on a **row** header (metabase#38265)", () => {
       cy.findByTestId("pivot-table").findByText("KS").click();
-      H.popover().findByText("Zoom in").click();
+      H.popover().findByText("Zoom in: State").click();
 
       cy.log("Filter pills");
       cy.findByTestId("filter-pill").should("have.text", "User → State is KS");

@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 export const StepDescription = styled.div`
   color: var(--mb-color-text-medium);
@@ -40,6 +40,7 @@ export const LocaleButton = styled.span<LocaleContainerProps>`
   background-color: ${(props) =>
     props.checked ? color("brand") : color("bg-white")};
   font-weight: 700;
+  border: 2px solid var(--mb-color-white);
 
   &:hover {
     color: var(--mb-color-text-white);
@@ -47,7 +48,7 @@ export const LocaleButton = styled.span<LocaleContainerProps>`
   }
 
   ${LocaleInput}:focus + & {
-    outline: 2px solid var(--mb-color-focus);
+    outline: 2px solid var(--mb-color-brand);
   }
 
   ${LocaleInput}:focus:not(:focus-visible) + & {

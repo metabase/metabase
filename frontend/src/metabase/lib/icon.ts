@@ -9,6 +9,8 @@ import type {
   SearchModel,
 } from "metabase-types/api";
 
+import type { ColorName } from "./colors/types";
+
 export type IconModel = SearchModel | CollectionItemModel | "schema";
 
 export type ObjectWithModel = {
@@ -35,11 +37,12 @@ export const modelIconMap: Record<IconModel, IconName> = {
   segment: "segment",
   metric: "metric",
   snippet: "unknown",
+  document: "document",
 };
 
 export type IconData = {
   name: IconName;
-  color?: string;
+  color?: ColorName;
 };
 
 /** get an Icon for any entity object, doesn't depend on the entity system */

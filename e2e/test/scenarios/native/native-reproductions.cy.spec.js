@@ -311,7 +311,7 @@ describe("issue 20044", () => {
   });
 });
 
-describe("issue 20625", { tags: "@quarantine" }, () => {
+describe("issue 20625", { tags: "@skip" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -639,13 +639,13 @@ describe("issue 30680", () => {
     cy.signInAsAdmin();
   });
 
-  it("should not render native editor buttons when 'Metadata' tab is open (metabase#30680)", () => {
+  it("should not render native editor buttons when 'Columns' tab is open (metabase#30680)", () => {
     H.startNewNativeModel({ query: "select 1" });
-    cy.findByTestId("editor-tabs-metadata").should("be.disabled");
+    cy.findByTestId("editor-tabs-columns").should("be.disabled");
 
     H.runNativeQuery();
-    cy.findByTestId("editor-tabs-metadata").should("not.be.disabled");
-    cy.findByTestId("editor-tabs-metadata-name").click();
+    cy.findByTestId("editor-tabs-columns").should("not.be.disabled");
+    cy.findByTestId("editor-tabs-columns-name").click();
 
     cy.findByTestId("sidebar-content").should("exist");
     cy.findByTestId("native-query-editor-action-buttons").should("not.exist");

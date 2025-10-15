@@ -61,7 +61,9 @@ For example, to add the attribute "First name":
 
 ## Setting up synchronize group membership
 
-1. In Google Admin, setup a multi-value [custom user attribute](https://support.google.com/a/answer/6208725?hl=en#zippy=%2Cadd-a-new-custom-attribute) for your users (recommended if you manage multiple SAML app permissions in Google or do not have existing Google Groups that align with your desired Metabase groups) OR [map to existing Google Groups](https://support.google.com/a/answer/11143403?hl=en).
+1. In Google Admin, you can EITHER:
+   - Set up a multi-value [custom user attribute](https://support.google.com/a/answer/6208725?hl=en#zippy=%2Cadd-a-new-custom-attribute) for your users. Recommended if you manage multiple SAML app permissions in Google or if you lack existing Google Groups that align with your desired Metabase groups.
+   - [Map to existing Google Groups](https://support.google.com/a/answer/11143403?hl=en).
 2. Follow the instructions for [Configuring the group schema](./authenticating-with-saml.md#configuring-the-group-schema-in-metabase) using the `App attribute` that you used in Google as the Group attribute name in Metabase.
 
 ## Troubleshooting SAML issues

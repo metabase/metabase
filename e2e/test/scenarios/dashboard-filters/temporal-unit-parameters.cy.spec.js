@@ -469,7 +469,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       H.popover().findByText("Quarter").click();
       H.getDashboardCard().within(() => {
         cy.findByText("Q1 2023").should("be.visible");
-        cy.findByText("Question 1").click();
+        cy.findAllByTestId("legend-item").contains("Question 1").click();
       });
       H.appBar()
         .should("contain.text", "Started from")
@@ -481,7 +481,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
 
       H.getDashboardCard().within(() => {
         cy.findByText("Q1 2023").should("be.visible");
-        cy.findByText("Question 2").click();
+        cy.findAllByTestId("legend-item").contains("Question 2").click();
       });
       H.appBar()
         .should("contain.text", "Started from")
@@ -1039,7 +1039,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
           query: `
         SELECT
           count(*),
-          {{mb.time_grouping("unit", "created_at")}} as unit
+          {{unit}} as unit
         FROM
           ORDERS
         GROUP BY
@@ -1051,6 +1051,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
               name: "unit",
               id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
               "display-name": "Unit",
+              dimension: ["field", ORDERS.CREATED_AT, null],
               required: true,
             },
           },
@@ -1085,7 +1086,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
           query: `
         SELECT
           count(*),
-          {{mb.time_grouping("unit", "created_at")}} as unit
+          {{unit}} as unit
         FROM
           ORDERS
         GROUP BY
@@ -1097,6 +1098,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
               name: "unit",
               id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
               "display-name": "Unit",
+              dimension: ["field", ORDERS.CREATED_AT, null],
               required: true,
             },
           },

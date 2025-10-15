@@ -180,11 +180,13 @@
     (testing "updating coercion strategies"
       (mt/with-temp [:model/Field {field-id :id} {:name "Field Test"}]
         (testing "When not a valid strategy does not change the coercion or effective type"
-          (is (= ["type/Text" nil]
-                 ((juxt :effective_type :coercion_strategy)
-                  (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id)
+          (is (=? {:message "Incompatible coercion strategy."
+                   :base-type "type/Text"
+                   :coercion-strategy "Coercion/UNIXMicroSeconds->DateTime"
+                   :effective-type "type/Instant"}
+                  (mt/user-http-request :crowberto :put 400 (format "field/%d" field-id)
                                         ;; unix is an integer->Temporal conversion
-                                        {:coercion_strategy :Coercion/UNIXMicroSeconds->DateTime})))))))))
+                                        {:coercion_strategy :Coercion/UNIXMicroSeconds->DateTime}))))))))
 
 (deftest update-field-test-2c
   (testing "PUT /api/field/:id"
@@ -733,6 +735,22 @@
              (-> (mt/user-http-request :crowberto :get 200 (format "field/%d" (u/the-id field)))
                  :settings))))))
 
+(deftest ^:parallel search-values-test-everything
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "must supply a limit if value is omitted"
+      (is (mt/user-http-request :crowberto :get 400 (format "field/%d/search/%d"
+                                                            (mt/id :venues :id)
+                                                            (mt/id :venues :name)))))
+    (testing "return the first N results if value is omitted"
+      (is (= [[1 "Red Medicine"]
+              [2 "Stout Burgers & Beers"]
+              [3 "The Apple Pan"]]
+             (mt/format-rows-by
+              [int str]
+              (mt/user-http-request :crowberto :get 200 (format "field/%d/search/%d?limit=3"
+                                                                (mt/id :venues :id)
+                                                                (mt/id :venues :name)))))))))
+
 (deftest field-values-remapped-fields-test
   (testing "GET /api/field/:id/values"
     (testing "Should return tuples of [original remapped] for a remapped Field (#13235)"
@@ -849,3 +867,18 @@
                     (set-json-unfolding-for-db! false)
                     (sync/sync-database! (get-database))
                     (is (empty? (nested-fields)))))))))))))
+
+(deftest coercion-strategy-is-respected-after-follow-up-request-test
+  (testing "Coercion is not erased on follow-up requests (#60483)"
+    (mt/with-temp-copy-of-db
+      (mt/user-http-request :crowberto :put 200 (str "field/" (mt/id :venues :price))
+                            {:coercion_strategy "Coercion/UNIXSeconds->DateTime"})
+      (let [field (t2/select-one :model/Field :id (mt/id :venues :price))]
+        (is (= :Coercion/UNIXSeconds->DateTime (:coercion_strategy field)))
+        (is (isa? (:effective_type field) :type/DateTime)))
+      (mt/user-http-request :crowberto :put 200 (str "field/" (mt/id :venues :price))
+                            {:settings {:time_enabled "minutes"}})
+      (let [field (t2/select-one :model/Field :id (mt/id :venues :price))]
+        (is (= :Coercion/UNIXSeconds->DateTime (:coercion_strategy field)))
+        (is (isa? (:effective_type field) :type/DateTime))
+        (is (= "minutes" (-> field :settings :time_enabled)))))))

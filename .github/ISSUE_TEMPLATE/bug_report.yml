@@ -63,7 +63,8 @@ body:
     attributes:
       label: Information about your Metabase installation
       description: |
-        Copy and paste the JSON from `Admin -> Troubleshooting`.
+        For versions >= 56, copy and paste the Diagnostic info from `Admin -> Tools -> Help`.
+        For versions < 56, copy and paste the Diagnostic info from `Admin -> Troubleshooting`.
         _This will be automatically formatted into code, so no need for backticks._
       placeholder: |
         {"browser-info": {

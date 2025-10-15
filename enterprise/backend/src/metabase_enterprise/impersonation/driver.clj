@@ -88,7 +88,7 @@
         (when (not-empty role-attributes)
           (let [conn-impersonation (first conn-impersonations)
                 role-attribute     (:attribute conn-impersonation)
-                user-attributes    (:login_attributes @api/*current-user*)
+                user-attributes    (api/current-user-attributes)
                 role               (get user-attributes role-attribute)]
             (cond
               (nil? role)

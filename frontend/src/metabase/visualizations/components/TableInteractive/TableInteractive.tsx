@@ -47,7 +47,6 @@ import { useTranslateContent } from "metabase/i18n/hooks";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 import { useDispatch } from "metabase/lib/redux";
-import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { setUIControls } from "metabase/query_builder/actions";
 import { Flex, type MantineTheme } from "metabase/ui";
 import {
@@ -64,6 +63,7 @@ import type { ClickObject, OrderByDirection } from "metabase-lib/types";
 import type Question from "metabase-lib/v1/Question";
 import { isFK, isID, isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
+  ColumnSettings,
   DatasetColumn,
   RowValue,
   RowValues,
@@ -78,6 +78,16 @@ import {
 import { MiniBarCell } from "./cells/MiniBarCell";
 import { useObjectDetail } from "./hooks/use-object-detail";
 import { useResetWidthsOnColumnsChange } from "./hooks/use-reset-widths-on-columns-change";
+import { tableThemeToDataGridTheme } from "./utils/table-theme-to-data-grid-theme";
+
+const shouldWrap = (
+  settings: VisualizationSettings,
+  columnSettings: ColumnSettings = {},
+) => {
+  return (
+    !settings["table.pagination"] && Boolean(columnSettings["text_wrapping"])
+  );
+};
 
 const getBodyCellVariant = (column: DatasetColumn): BodyCellVariant => {
   const isPill = isPK(column) || isFK(column);
@@ -101,11 +111,13 @@ interface TableProps extends VisualizationProps {
   scrollToLastColumn?: boolean;
   theme: MantineTheme;
   renderEmptyMessage?: boolean;
+  zoomedRowIndex?: number;
   getColumnTitle: (columnIndex: number) => string;
   getColumnSortDirection: (columnIndex: number) => OrderByDirection | undefined;
   renderTableHeader: HeaderCellWithColumnInfoProps["renderTableHeader"];
   onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
   onZoomRow?: (objectId: number | string) => void;
+  tableFooterExtraButtons?: React.ReactNode;
 }
 
 const getColumnOrder = (cols: DatasetColumn[], hasIndexColumn: boolean) => {
@@ -142,7 +154,6 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     settings,
     width,
     isPivoted = false,
-    isNightMode,
     question,
     clicked,
     hasMetadataPopovers = true,
@@ -152,18 +163,19 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     renderEmptyMessage,
     queryBuilderMode,
     isDashboard,
+    isDocument,
     isSettings,
     isRawTable,
     isEmbeddingSdk,
     scrollToLastColumn,
-    token,
-    uuid,
     getColumnTitle,
     renderTableHeader,
     visualizationIsClickable,
     getColumnSortDirection: getServerColumnSortDirection,
     onVisualizationClick,
     onUpdateVisualizationSettings,
+    zoomedRowIndex,
+    tableFooterExtraButtons,
   }: TableProps,
   ref: Ref<HTMLDivElement>,
 ) {
@@ -242,6 +254,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     return cols.map((col) => {
       const columnSettings = settings.column?.(col);
       const columnIndex = cols.findIndex((c) => c.name === col.name);
+      const wrap = shouldWrap(settings, columnSettings);
 
       const rich: CellFormatter<RowValue> = memoize(
         (untranslatedValue, rowIndex) => {
@@ -255,6 +268,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
             jsx: true,
             rich: true,
             clicked,
+            collapseNewlines: !wrap,
           });
         },
       );
@@ -467,9 +481,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     return cols.map((col, columnIndex) => {
       const columnSettings = settings.column?.(col) ?? {};
 
-      const wrap =
-        !settings["table.pagination"] &&
-        Boolean(columnSettings["text_wrapping"]);
+      const wrap = shouldWrap(settings, columnSettings);
       const isMinibar = columnSettings["show_mini_bar"];
       const cellVariant = getBodyCellVariant(col);
       const isImage = columnSettings["view_as"] === "image";
@@ -610,7 +622,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     [cols, isDashcardViewTable, onUpdateVisualizationSettings, settings],
   );
 
-  const rowId: RowIdColumnOptions | undefined = useMemo(() => {
+  const rowId = useMemo<RowIdColumnOptions | undefined>(() => {
     const getBackgroundColor = memoize((rowIndex: number) =>
       settings["table._cell_background_getter"]?.(null, rowIndex),
     );
@@ -621,8 +633,13 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     const isNotebookPreview = queryBuilderMode === "notebook";
     const isModelEditor = queryBuilderMode === "dataset";
     const hasObjectDetail =
-      !(isPivoted || hasAggregation || isNotebookPreview || isModelEditor) &&
-      !isEmbeddingSdk;
+      !(
+        isPivoted ||
+        hasAggregation ||
+        isNotebookPreview ||
+        isModelEditor ||
+        isDocument
+      ) && !isEmbeddingSdk;
 
     const shouldShowRowIndex =
       settings["table.row_index"] && !isNotebookPreview && !isModelEditor;
@@ -635,6 +652,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         ? {
             variant: "index",
             getBackgroundColor,
+            expandedIndex: undefined,
           }
         : undefined;
     }
@@ -642,6 +660,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     return {
       variant: shouldShowRowIndex ? "indexExpand" : "expandButton",
       getBackgroundColor,
+      expandedIndex: zoomedRowIndex,
     };
   }, [
     cols,
@@ -650,33 +669,14 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     queryBuilderMode,
     settings,
     isDashboard,
+    isDocument,
+    zoomedRowIndex,
   ]);
 
-  const backgroundColor = useMemo(() => {
-    if (!isNightMode) {
-      return "transparent";
-    }
-
-    const isPublicOrStaticEmbedding = token != null || uuid != null;
-    return isPublicOrStaticEmbedding
-      ? "var(--mb-color-bg-black)"
-      : "var(--mb-color-bg-night)";
-  }, [isNightMode, token, uuid]);
-
-  const dataGridTheme: DataGridTheme = useMemo(() => {
-    return {
-      stickyBackgroundColor: tableTheme.stickyBackgroundColor,
-      fontSize: tableTheme.cell.fontSize,
-      cell: {
-        backgroundColor: tableTheme.cell.backgroundColor ?? backgroundColor,
-        textColor: tableTheme.cell.textColor,
-      },
-      pillCell: {
-        backgroundColor: tableTheme.idColumn?.backgroundColor,
-        textColor: tableTheme.idColumn?.textColor,
-      },
-    };
-  }, [tableTheme, backgroundColor]);
+  const dataGridTheme: DataGridTheme = useMemo(
+    () => tableThemeToDataGridTheme(tableTheme),
+    [tableTheme],
+  );
 
   const dataGridStyles: DataGridStylesProps["styles"] = useMemo(() => {
     return {
@@ -785,24 +785,21 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   return (
     <div
       ref={ref}
-      className={cx(
-        S.root,
-        DashboardS.fullscreenNormalText,
-        DashboardS.fullscreenNightText,
-        EmbedFrameS.fullscreenNightText,
-        className,
-      )}
+      className={cx(S.root, DashboardS.fullscreenNormalText, className)}
     >
       <DataGrid
         {...tableProps}
         styles={dataGridStyles}
         showRowsCount={isDashboard}
+        rowsTruncated={data.rows_truncated}
         isColumnReorderingDisabled={isColumnReorderingDisabled}
         emptyState={emptyState}
+        zoomedRowIndex={zoomedRowIndex}
         onBodyCellClick={handleBodyCellClick}
         onAddColumnClick={handleAddColumnButtonClick}
         onHeaderCellClick={handleHeaderCellClick}
         onWheel={handleWheel}
+        tableFooterExtraButtons={tableFooterExtraButtons}
       />
     </div>
   );

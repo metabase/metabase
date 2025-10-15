@@ -59,3 +59,7 @@ You'll still be able to access your original, automatically provisioned domain (
 ## Change the name of your Metabase (your DNS alias)
 
 Log in to your Metabase Store account and go to **Instances** > **DNS Alias**, where you can update your alias.
+
+## Custom SMTP server
+
+By default, Metabase Cloud manages an SMTP server for you. But if you want to change the address Metabase uses to send email, you can bring your own [custom SMTP server](../configuring-metabase/email.md#custom-smtp-server-on-metabase-cloud).

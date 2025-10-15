@@ -112,7 +112,7 @@ export const assertIndicatorVisible = async () => {
 };
 
 export const assertIndicatorHidden = async () => {
-  await fetchMock.flush();
+  await fetchMock.callHistory.flush();
   await waitFor(() =>
     expect(screen.queryByTestId("thing-is-loading")).not.toBeInTheDocument(),
   );

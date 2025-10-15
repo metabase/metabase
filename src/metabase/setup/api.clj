@@ -5,10 +5,8 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.appearance.core :as appearance]
-   [metabase.channel.settings :as channel.settings]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
-   [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
    [metabase.session.models.session :as session]
    [metabase.settings.core :as setting]
@@ -17,7 +15,6 @@
    [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru]]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -61,24 +58,6 @@
       ;; return user ID, session ID, and the Session object itself
       {:session-key (:key session), :user-id user-id, :session session})))
 
-(defn- setup-maybe-create-and-invite-user! [{:keys [email] :as user}, invitor]
-  (when email
-    (if-not (channel.settings/email-configured?)
-      (log/error "Could not invite user because email is not configured.")
-      (u/prog1 (user/insert-new-user! user)
-        (user/set-permissions-groups! <> [(perms/all-users-group) (perms/admin-group)])
-        (events/publish-event! :event/user-invited
-                               {:object
-                                (assoc <>
-                                       :is_from_setup true
-                                       :invite_method "email"
-                                       :sso_source    (:sso_source <>))
-                                :details {:invitor (select-keys invitor [:email :first_name])}})
-        (analytics/track-event! :snowplow/invite
-                                {:event           :invite-sent
-                                 :invited-user-id (u/the-id <>)
-                                 :source          "setup"})))))
-
 (defn- setup-set-settings! [{:keys [email site-name site-locale]}]
   ;; set a couple preferences
   (appearance/site-name! site-name)
@@ -90,14 +69,10 @@
 
 (api.macros/defendpoint :post "/"
   "Special endpoint for creating the first user during setup. This endpoint both creates the user AND logs them in and
-  returns a session ID. This endpoint can also be used to add a database, create and invite a second admin, and/or
-  set specific settings from the setup flow."
+  returns a session ID. This endpoint can also be used to set specific settings from the setup flow."
   [_route-params
    _query-params
    {{first-name :first_name, last-name :last_name, :keys [email password]} :user
-    {invited-first-name :first_name
-     invited-last-name  :last_name
-     invited-email      :email} :invite
     {site-name :site_name
      site-locale :site_locale} :prefs}
    :- [:map
@@ -107,10 +82,6 @@
                [:password   ms/ValidPassword]
                [:first_name {:optional true} [:maybe ms/NonBlankString]]
                [:last_name  {:optional true} [:maybe ms/NonBlankString]]]]
-       [:invite {:optional true} [:map
-                                  [:first_name {:optional true} [:maybe ms/NonBlankString]]
-                                  [:last_name  {:optional true} [:maybe ms/NonBlankString]]
-                                  [:email      {:optional true} [:maybe ms/Email]]]]
        [:prefs [:map
                 [:site_name   ms/NonBlankString]
                 [:site_locale {:optional true} [:maybe ms/ValidLocale]]]]]
@@ -123,10 +94,6 @@
                                                      :last-name last-name
                                                      :password password
                                                      :device-info (request/device-info request)})]
-                  (setup-maybe-create-and-invite-user! {:email invited-email
-                                                        :first_name invited-first-name
-                                                        :last_name invited-last-name}
-                                                       {:email email, :first_name first-name})
                   (setup-set-settings! {:email email :site-name site-name :site-locale site-locale})
                   user-info))
               (catch Throwable e

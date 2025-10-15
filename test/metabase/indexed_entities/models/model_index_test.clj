@@ -187,8 +187,8 @@
                                                 [:concat $title "custom"]}})
                         [[[:expression "inc-id"] [:expression "full-name"]]]]
                        [:native (mt/native-query
-                                  (qp.compile/compile
-                                   (mt/mbql-query products {:fields [$id $title]})))]
+                                 (qp.compile/compile
+                                  (mt/mbql-query products {:fields [$id $title]})))]
                        (when (driver.u/supports? (:engine (mt/db)) :left-join (mt/db))
                          [:join (mt/mbql-query people
                                   {:joins [{:fields       :all,

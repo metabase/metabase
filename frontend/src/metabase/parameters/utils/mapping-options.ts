@@ -3,7 +3,11 @@ import _ from "underscore";
 
 import { tag_names } from "cljs/metabase.parameters.shared";
 import { getColumnIcon } from "metabase/common/utils/columns";
-import { isActionDashCard, isVirtualDashCard } from "metabase/dashboard/utils";
+import {
+  isActionDashCard,
+  isQuestionDashCard,
+  isVirtualDashCard,
+} from "metabase/dashboard/utils";
 import { getGroupName } from "metabase/querying/filters/utils/groups";
 import { getAllowedIframeAttributes } from "metabase/visualizations/visualizations/IFrameViz/utils";
 import * as Lib from "metabase-lib";
@@ -132,7 +136,37 @@ export function getParameterMappingOptions(
   parameter: Parameter | null | undefined = null,
   card: Card | VirtualCard,
   dashcard: BaseDashboardCard | null | undefined = null,
+  parameterDashcard: BaseDashboardCard | null | undefined = null,
 ): ParameterMappingOption[] {
+  const isInlineParameterOnCardFromOtherTab =
+    parameterDashcard != null &&
+    parameterDashcard.dashboard_tab_id !== dashcard?.dashboard_tab_id;
+  if (isInlineParameterOnCardFromOtherTab) {
+    return [];
+  }
+
+  const isInlineParameterOfAnotherQuestionCard =
+    parameterDashcard != null &&
+    isQuestionDashCard(parameterDashcard) &&
+    parameterDashcard.id !== dashcard?.id;
+
+  // Check if there's an existing connection between this parameter and this specific dashcard/card combo
+  const hasExistingConnection =
+    parameter != null &&
+    dashcard != null &&
+    isQuestionDashCard(dashcard) &&
+    "id" in card &&
+    dashcard.parameter_mappings?.some(
+      (mapping) =>
+        mapping.parameter_id === parameter.id && mapping.card_id === card.id,
+    );
+
+  // Only block if it's an inline parameter of another card AND there's no existing connection
+  // to allow users to see and potentially disconnect existing connections
+  if (isInlineParameterOfAnotherQuestionCard && !hasExistingConnection) {
+    return [];
+  }
+
   if (dashcard && isVirtualDashCard(dashcard)) {
     if (["heading", "text"].includes(card.display)) {
       const tagNames = tag_names(dashcard.visualization_settings.text || "");

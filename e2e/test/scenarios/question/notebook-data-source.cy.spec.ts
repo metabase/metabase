@@ -6,6 +6,7 @@ import {
   ORDERS_MODEL_ID,
   SECOND_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import type { StructuredQuestionDetails } from "e2e/support/helpers";
 import { checkNotNull } from "metabase/lib/types";
 
 const { ORDERS_ID, REVIEWS_ID } = SAMPLE_DATABASE;
@@ -78,6 +79,34 @@ describe("scenarios > notebook > data source", () => {
       H.entityPickerModal().within(() => {
         H.shouldDisplayTabs(["Tables", "Collections"]);
       });
+    });
+
+    it("should include dashboard questions when computing which tabs to show (metabase#56887)", () => {
+      const QUESTION_NAME = "Find me";
+
+      H.createDashboard({
+        name: "Test Dashboard",
+      }).then((dashboard) => {
+        H.createQuestionAndAddToDashboard(
+          {
+            name: QUESTION_NAME,
+            dashboard_id: dashboard.body.id,
+            query: {
+              "source-table": ORDERS_ID,
+            },
+          },
+          dashboard.body.id,
+        );
+      });
+
+      H.startNewQuestion();
+
+      H.entityPickerModal().should("exist");
+      H.tabsShouldBe("Tables", ["Tables", "Collections"]);
+
+      H.entityPickerModalTab("Collections").click();
+      H.entityPickerModalItem(1, "Test Dashboard").click();
+      H.entityPickerModalItem(2, QUESTION_NAME).should("exist");
     });
   });
 
@@ -208,7 +237,7 @@ describe("scenarios > notebook > data source", () => {
   });
 
   describe("saved entity as a source (aka the virtual table)", () => {
-    const modelDetails: H.StructuredQuestionDetails = {
+    const modelDetails: StructuredQuestionDetails = {
       name: "GUI Model",
       query: { "source-table": REVIEWS_ID, limit: 1 },
       display: "table",
@@ -407,7 +436,9 @@ describe("issue 28106", () => {
           .findByTestId("scroll-container")
           .as("schemasList");
 
-        scrollAllTheWayDown();
+        H.entityPickerModalLevel(2).should("contain", "Animals");
+
+        cy.get("@schemasList").scrollTo("bottom");
 
         // assert scrolling worked and the last item is visible
         H.entityPickerModalItem(1, "Schema Z").should("be.visible");
@@ -426,23 +457,6 @@ describe("issue 28106", () => {
       });
     },
   );
-
-  // The list is virtualized and the scrollbar height changes during scrolling (metabase#44966)
-  // that's why we need to scroll and wait multiple times.
-  function scrollAllTheWayDown() {
-    cy.get("@schemasList").realMouseWheel({ deltaY: 100 });
-    cy.wait(100);
-
-    cy.get("@schemasList").then(($element) => {
-      const list = $element[0];
-      const isScrolledAllTheWayDown =
-        list.scrollHeight - list.scrollTop === list.clientHeight;
-
-      if (!isScrolledAllTheWayDown) {
-        scrollAllTheWayDown();
-      }
-    });
-  }
 });
 
 // Needs to be OSS because EE will always have models due to instance analytics

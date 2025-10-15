@@ -1,4 +1,5 @@
 (ns metabase.driver.bigquery-cloud-sdk.query-processor
+  (:refer-clojure :exclude [select-keys some])
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]
@@ -8,6 +9,7 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
    [metabase.driver.common :as driver.common]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
@@ -16,7 +18,8 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [select-keys some]])
   (:import
    (com.google.cloud.bigquery
     Field
@@ -34,6 +37,8 @@
    (metabase.driver.common.parameters FieldFilter)))
 
 (set! *warn-on-reflection* true)
+
+(comment metabase.driver.common.parameters/keep-me)
 
 (defn- valid-project-identifier?
   "Is String `s` a valid BigQuery project identifier (a.k.a. project-id)? Identifiers are only allowed to contain
@@ -544,6 +549,10 @@
         (with-temporal-type :timestamp)
         (h2x/with-database-type-info "timestamp")
         (with-temporal-type :timestamp))))
+
+(defmethod sql.qp/unix-timestamp->honeysql [:bigquery-cloud-sdk :nanoseconds]
+  [driver _ expr]
+  (sql.qp/unix-timestamp->honeysql driver :microseconds [:div expr 1000]))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]

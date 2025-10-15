@@ -4,6 +4,7 @@
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
+   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -56,6 +57,7 @@
                                                :lang_code (i18n/site-locale-string)
                                                :status     :pending
                                                :index_name (name index-name)})
+       (log/infof "Inserted new pending table %s" index-name)
        true
        (catch Exception _
          ;; We assume that failure corresponds to a unique index conflict (a pending entry already exists)

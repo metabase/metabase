@@ -8,11 +8,14 @@
    [metabase.session.models.session :as session]
    [metabase.system.core :as system]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.malli.schema :as ms]
    [metabase.util.string :as string]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db :test-users))
 
 (def ^:private test-uuid #uuid "092797dd-a82a-4748-b393-697d7bb9ab65")
 (def ^:private test-id "abcde12345")
@@ -77,16 +80,15 @@
                     :timestamp #t "2021-04-02T15:52:00-07:00[US/Pacific]"
                     :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML  like Gecko) Chrome/89.0.4389.86 Safari/537.36"})
 
-                  (is (malli= [:map-of [:= email]
-                               [:sequential
-                                [:map {:closed true}
-                                 [:from ms/Email]
-                                 [:to [:= [email]]]
-                                 [:subject [:= (format "We've Noticed a New Metabase Login, %s" first-name)]]
-                                 [:body [:sequential [:map
-                                                      [:type [:= "text/html; charset=utf-8"]]
-                                                      [:content :string]]]]]]]
-                              @mt/inbox))
+                  (is (malli= [:sequential {:min 1}
+                               [:map {:closed true}
+                                [:from ms/Email]
+                                [:to [:= [email]]]
+                                [:subject [:= (format "We've Noticed a New Metabase Login, %s" first-name)]]
+                                [:body [:sequential [:map
+                                                     [:type [:= "text/html; charset=utf-8"]]
+                                                     [:content :string]]]]]]
+                              (get @mt/inbox email)))
                   (let [message  (-> @mt/inbox (get email) first :body first :content)
                         site-url (system/site-url)]
                     (testing (format "\nMessage = %s\nsite-url = %s" (pr-str message) (pr-str site-url))
@@ -120,7 +122,7 @@
 (deftest login-email-fall-back-name-test
   (mt/test-helpers-set-global-values!
     (let [original-maybe-send (var-get #'metabase.login-history.record/maybe-send-login-from-new-device-email)
-          new-login-email (fn [user-id]
+          new-login-email (fn [user-id email]
                             (mt/with-fake-inbox
                               (with-redefs [request/geocode-ip-addresses (fn [ip-addresses]
                                                                            (into {} (for [ip-address ip-addresses]
@@ -143,25 +145,24 @@
                                       :device_id device
                                       :timestamp #t "2021-04-02T15:52:00-07:00[US/Pacific]"
                                       :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML  like Gecko) Chrome/89.0.4389.86 Safari/537.36"})
-                                    (ffirst (vals @mt/inbox)))))))]
+                                    (mt/email-subjects email))))))]
       (testing "Use first name if exists"
-        (mt/with-temp [:model/User {user-id :id} {:first_name "Ngoc"
-                                                  :last_name  "Khuat"}]
-          (is (= "We've Noticed a New Metabase Login, Ngoc"
-                 (:subject (new-login-email user-id))))))
+        (mt/with-temp [:model/User {user-id :id
+                                    email :email} {:first_name "Ngoc"
+                                                   :last_name  "Khuat"}]
+          (is (contains? (new-login-email user-id email) "We've Noticed a New Metabase Login, Ngoc"))))
 
       (testing "fallback to last name if user has no first_name"
-        (mt/with-temp [:model/User {user-id :id} {:first_name nil
-                                                  :last_name  "Khuat"}]
-          (is (= "We've Noticed a New Metabase Login, Khuat"
-                 (:subject (new-login-email user-id))))))
+        (mt/with-temp [:model/User {user-id :id email :email} {:first_name nil :last_name  "Khuat"}]
+          (is (contains? (new-login-email user-id email)
+                         "We've Noticed a New Metabase Login, Khuat"))))
 
       (testing "Else Use email if both first_name and last_name are null"
-        (mt/with-temp [:model/User {user-id :id} {:first_name nil
-                                                  :last_name  nil
-                                                  :email      "cto@metabase.com"}]
-          (is (= "We've Noticed a New Metabase Login, cto@metabase.com"
-                 (:subject (new-login-email user-id)))))))))
+        (mt/with-temp [:model/User {user-id :id email :email} {:first_name nil
+                                                               :last_name  nil
+                                                               :email      "cto@metabase.com"}]
+          (is (contains? (new-login-email user-id email)
+                         "We've Noticed a New Metabase Login, cto@metabase.com")))))))
 
 (deftest create-session-test
   (mt/with-temp [:model/User {user-id :id}]
