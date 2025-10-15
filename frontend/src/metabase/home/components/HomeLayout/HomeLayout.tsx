@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
+import { useListDatabasesQuery } from "metabase/api/database";
 import { LighthouseIllustration } from "metabase/common/components/LighthouseIllustration";
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { EmbeddingHubHomePage } from "metabase/embedding/embedding-hub";
@@ -11,6 +12,8 @@ import { getLandingPageIllustration } from "metabase/selectors/whitelabel";
 import { Box, Loader, Tooltip } from "metabase/ui";
 
 import { CustomHomePageModal } from "../CustomHomePageModal";
+import { HomeBlueprintContent } from "../HomeBlueprintContent/HomeBlueprintContent";
+import { hasAvailableBlueprints } from "../HomeBlueprintContent/utils";
 import { HomeGreeting } from "../HomeGreeting";
 
 import {
@@ -19,15 +22,6 @@ import {
   LayoutIllustration,
   LayoutRoot,
 } from "./HomeLayout.styled";
-import { HomeBlueprintContent } from "../HomeBlueprintContent/HomeBlueprintContent";
-import { useListDatabasesQuery } from "metabase/api/database";
-import { Database, DATABASE_BLUEPRINTS } from "metabase-types/api";
-
-const hasAvailableBlueprints = (databases: Database[]) => {
-  return databases.some((database) =>
-    DATABASE_BLUEPRINTS.some((key) => database.settings?.blueprints?.[key]),
-  );
-};
 
 interface HomeLayoutProps {
   children?: ReactNode;
