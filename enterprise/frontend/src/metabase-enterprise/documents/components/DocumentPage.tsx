@@ -1,15 +1,23 @@
+import { HocuspocusProvider } from "@hocuspocus/provider";
 import { useForceUpdate } from "@mantine/hooks";
 import type { JSONContent, Editor as TiptapEditor } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import dayjs from "dayjs";
 import type { Location } from "history";
-import { type ReactNode, useCallback, useEffect, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import type { Route } from "react-router";
 import { push, replace } from "react-router-redux";
 import { usePrevious, useUnmount } from "react-use";
 import useBeforeUnload from "react-use/lib/useBeforeUnload";
 import { t } from "ttag";
 import _ from "underscore";
+import * as Y from "yjs";
 
 import {
   skipToken,
@@ -131,6 +139,16 @@ export const DocumentPage = ({
   if (documentId !== documentData?.id) {
     documentData = undefined;
   }
+
+  const { ydoc, provider } = useMemo(() => {
+    const ydoc = new Y.Doc();
+    const provider = new HocuspocusProvider({
+      url: "http://localhost:3001",
+      name: documentId,
+      document: ydoc,
+    });
+    return { ydoc, provider };
+  }, [documentId]);
 
   const { data: commentsData } = useListCommentsQuery(
     getListCommentsQuery(documentData),
@@ -432,6 +450,8 @@ export const DocumentPage = ({
               hasComments={hasComments}
             />
             <Editor
+              ydoc={ydoc}
+              provider={provider}
               onEditorReady={setEditorInstance}
               onCardEmbedsChange={updateCardEmbeds}
               onQuestionSelect={handleQuestionSelect}

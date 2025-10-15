@@ -5,7 +5,7 @@ import type { JSONContent, Editor as TiptapEditor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import cx from "classnames";
 import type React from "react";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLatest, usePrevious } from "react-use";
 import { t } from "ttag";
 
@@ -44,6 +44,8 @@ import { createSuggestionRenderer } from "metabase-enterprise/rich_text_editing/
 import S from "./Editor.module.css";
 import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
 import type { CardEmbedRef } from "./types";
+import Collaboration from "@tiptap/extension-collaboration";
+import CollaborationCaret from "@tiptap/extension-collaboration-caret";
 
 const BUBBLE_MENU_DISALLOWED_NODES: string[] = [
   CardEmbed.name,
@@ -87,6 +89,8 @@ export interface EditorProps {
   onQuestionSelect?: (cardId: number | null) => void;
   editable?: boolean;
   isLoading?: boolean;
+  ydoc?: Y.Doc;
+  provider?: TiptapCollabProvider;
 }
 
 export const Editor: React.FC<EditorProps> = ({
@@ -97,9 +101,12 @@ export const Editor: React.FC<EditorProps> = ({
   editable = true,
   onQuestionSelect,
   isLoading = false,
+  ydoc,
+  provider,
 }) => {
   const siteUrl = useSelector((state) => getSetting(state, "site-url"));
   const { getState } = useStore();
+  const [status, setStatus] = useState("connecting");
 
   const extensions = useMemo(
     () => [
@@ -155,12 +162,32 @@ export const Editor: React.FC<EditorProps> = ({
       }),
       ResizeNode,
       HandleEditorDrop,
+      Collaboration.extend().configure({
+        document: ydoc,
+      }),
+      CollaborationCaret.extend().configure({
+        provider,
+      }),
     ],
-    [siteUrl, getState],
+    [siteUrl, getState, ydoc, provider],
   );
+
+  useEffect(() => {
+    // Update status changes
+    const statusHandler = (event) => {
+      setStatus(event.status);
+    };
+
+    provider.on("status", statusHandler);
+
+    return () => {
+      provider.off("status", statusHandler);
+    };
+  }, [provider]);
 
   const editor = useEditor(
     {
+      enableContentCheck: true,
       extensions,
       content: initialContent || "",
       autofocus: false,
@@ -171,6 +198,16 @@ export const Editor: React.FC<EditorProps> = ({
           const currentContent = editor.getJSON();
           onChange(currentContent);
         }
+      },
+      onContentError: ({ disableCollaboration }) => {
+        disableCollaboration();
+      },
+      onCreate: ({ editor: currentEditor }) => {
+        provider.on("synced", () => {
+          if (currentEditor.isEmpty) {
+            currentEditor.commands.setContent(initialContent || "");
+          }
+        });
       },
     },
     [],
