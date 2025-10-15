@@ -15,6 +15,33 @@
 
 (set! *warn-on-reflection* true)
 
+(api.macros/defendpoint :post "/document"
+  "Upsert a yaml representation of a document."
+  [{:keys []}
+   _query-params
+   _body-params
+   request]
+  (let [yaml-string (slurp (:body request))
+        representation (rep-yaml/parse-string yaml-string)]
+    (rep/normalize-representation representation)
+    (rep/persist! representation)
+    ""))
+
+(api.macros/defendpoint :get "/document/:id"
+  "Download a yaml representation of a document."
+  [{:keys [id]}
+   _query-params
+   _body-params
+   _request]
+  (let [id (Long/parseLong id)
+        document (api/check-404 (t2/select-one :model/Document :id id))
+        rep (rep/export document)]
+    (try
+      ;;(rep/normalize-representation rep)
+      (catch Exception e
+        (log/error e "Does not validate.")))
+    (rep-yaml/generate-string rep)))
+
 (api.macros/defendpoint :get "/database/:id"
   "Download a yaml representation of a database."
   [{:keys [id]}

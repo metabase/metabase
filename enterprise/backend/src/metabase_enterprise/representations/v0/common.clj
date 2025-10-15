@@ -13,6 +13,7 @@
   {"question" :model/Card
    "metric" :model/Card
    "model" :model/Card
+   "document" :model/Document
    "database" :model/Database
    "transform" :model/Transform
    "snippet" :model/NativeQuerySnippet})

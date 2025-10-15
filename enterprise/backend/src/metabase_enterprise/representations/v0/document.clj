@@ -1,7 +1,15 @@
 (ns metabase-enterprise.representations.v0.document
   (:require
+   [metabase-enterprise.representations.export :as export]
+   [metabase-enterprise.representations.import :as import]
+   [metabase-enterprise.representations.v0.common :as v0-common]
+   [metabase.api.common :as api]
+   [metabase.config.core :as config]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util :as u]
+   [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]
+   [toucan2.core :as t2]))
 
 ;;; ------------------------------------ Schema Definitions ------------------------------------
 
@@ -29,7 +37,7 @@
 (mr/def ::content-type
   [:enum {:decode/json keyword
           :description "Format of the document content"}
-   :markdown :html :text])
+   "application/json+vnd.prose-mirror"])
 
 (mr/def ::content
   [:and
@@ -37,7 +45,7 @@
                   Markdown format supports:
                   - {{card:card-ref}} for embedding cards
                   - [link text](card:card-ref) for linking to cards"}
-   :string])
+   :any])
 
 (mr/def ::collection
   [:and
@@ -56,3 +64,57 @@
    [:content_type ::content-type]
    [:content ::content]
    [:collection {:optional true} ::collection]])
+
+(defmethod import/type->schema [:v0 :document] [_]
+  ::document)
+
+;;; ------------------------------------ Ingestion ------------------------------------
+
+(defmethod import/yaml->toucan [:v0 :document]
+  [{document-name :name
+    :keys [_type _ref entity-id content content_type collection] :as representation}
+   ref-index]
+  {:entity_id (or entity-id
+                  (v0-common/generate-entity-id representation))
+   :creator_id (or api/*current-user-id*
+                   config/internal-mb-user-id)
+   :name document-name
+   :document content
+   :content_type content_type
+   :collection_id (v0-common/find-collection-id collection)})
+
+(defmethod import/persist! [:v0 :document]
+  [representation ref-index]
+  (let [document-data (import/yaml->toucan representation ref-index)
+        entity-id (:entity_id document-data)
+        existing (when entity-id
+                   (t2/select-one :model/Document :entity_id entity-id))]
+    (if existing
+      (do
+        (log/info "Updating existing document" (:name document-data) "with ref" (:ref representation))
+        (t2/update! :model/Document (:id existing) (dissoc document-data :entity_id))
+        (t2/select-one :model/Document :id (:id existing)))
+      (do
+        (log/info "Creating new document" (:name document-data))
+        (first (t2/insert-returning-instances! :model/Document document-data))))))
+
+;;; ------------------------------------ Export ------------------------------------
+
+(defmethod export/export-entity :model/Document [document]
+  (let [document-ref (v0-common/unref (v0-common/->ref (:id document) :document))]
+    (cond-> {:name (:name document)
+             :type :document
+             :version :v0
+             :ref document-ref
+             :entity-id (:entity_id document)
+             :content (:document document)
+             :content_type (:content_type document)}
+      :always
+      u/remove-nils)))
+
+(comment
+  (def d (t2/select-one :model/Document 1))
+
+  (def dd (export/export-entity d))
+
+  (import/normalize-representation dd))
