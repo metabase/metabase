@@ -2,11 +2,11 @@
 /* eslint-env node */
 /* eslint-disable import/no-commonjs */
 const fs = require("fs");
+const path = require("path");
 
 const rspack = require("@rspack/core");
 const ReactRefreshPlugin = require("@rspack/plugin-react-refresh");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
-const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
 const WebpackNotifierPlugin = require("webpack-notifier");
 
 const {
@@ -247,6 +247,7 @@ const config = {
       ),
       "sdk-ee-plugins": resolveEnterprisePathOrNoop("/sdk-plugins"),
       "sdk-specific-imports": SRC_PATH + "/lib/noop",
+      crypto: path.join(SRC_PATH, "/lib/crypto-polyfill.js"),
     },
   },
   optimization: {
@@ -315,7 +316,6 @@ const config = {
       template: __dirname + "/resources/frontend_client/index_template.html",
     }),
     new rspack.BannerPlugin(getBannerOptions(LICENSE_TEXT)),
-    new NodePolyfillPlugin(), // for crypto, among others
     new rspack.EnvironmentPlugin({
       WEBPACK_BUNDLE: "development",
       MB_LOG_ANALYTICS: "false",
