@@ -31,7 +31,7 @@
   (let [^java.nio.file.Path path  (.toPath file)
         object-key                (str (.getFileName path))
         ^PutObjectRequest request (.build (doto (PutObjectRequest/builder)
-                                            (.bucket (images.settings/image-upload-s3-bucket))
+                                            (.bucket (images.settings/image-upload-bucket))
                                             (.key object-key)))]
     (.putObject (client) request path)
-    (format "s3://%s/%s" (images.settings/image-upload-s3-bucket) object-key)))
+    (format "s3://%s/%s" (images.settings/image-upload-bucket) object-key)))

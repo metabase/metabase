@@ -3,7 +3,7 @@
    [metabase.settings.core :as settings]
    [metabase.util.i18n :as i18n]))
 
-(settings/defsetting image-upload-s3-bucket
+(settings/defsetting image-upload-bucket
   (i18n/deferred-tru "S3 bucket to upload images to.")
   :type :string
   :visibility :admin

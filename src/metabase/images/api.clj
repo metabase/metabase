@@ -87,7 +87,7 @@
         (log/infof "Got a cool file with %d bytes with name %s" size filename)
         (io/make-parents localfile)
         (io/copy tempfile localfile)
-        (let [url (if (images.settings/image-upload-s3-bucket)
+        (let [url (if (images.settings/image-upload-bucket)
                     (images.s3/upload-image! localfile)
                     (str (io/as-url localfile)))
               image (t2/insert-returning-instance! :model/Image {:url url, :title user-filename, :content_type (:content-type file)})]
