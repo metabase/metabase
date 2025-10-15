@@ -337,6 +337,24 @@
                     (update :archived_directly api/bit->boolean)))
               :can_write :can_restore :can_delete))
 
+(defmethod collection-children-query :image
+  [_ collection {:keys [pinned-state]}]
+  (-> {:select [:ci.id
+                ["??" :name]
+                :ci.collection_id
+                :ci.collection_position
+                [false :archived]
+                [false :archived_directly]
+                [nil   :last_edit_user]
+                [nil   :last_edit_email]
+                [nil   :last_edit_first_name]
+                [nil   :last_edit_last_name]
+                [:ci.created_at :last_edit_timestamp]
+                [(h2x/literal "image") :model]]
+       :from [[:collection_image :ci]]
+       :where [:= :ci.collection_id (:id collection)]}
+      (sql.helpers/where (pinned-state->clause pinned-state :document.collection_position))))
+
 (defmethod collection-children-query :document
   [_ collection {:keys [archived? pinned-state]}]
   (-> {:select [:document.id
@@ -757,6 +775,7 @@
     :metric     :model/Card
     :dashboard  :model/Dashboard
     :document   :model/Document
+    :image      :model/CollectionImage
     :pulse      :model/Pulse
     :snippet    :model/NativeQuerySnippet
     :timeline   :model/Timeline))
@@ -945,7 +964,9 @@
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models], :as options}                     :- CollectionChildrenOptions]
-  (let [valid-models (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline]
+  (let [valid-models (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard
+                                             #_:image
+                                             :pulse :snippet :timeline]
                                       (premium-features/enable-documents?) (conj :document))
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty
                            :when    (or (empty? models) (contains? models model-kw))
