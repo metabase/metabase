@@ -1,3 +1,5 @@
+import Collaboration from "@tiptap/extension-collaboration";
+import CollaborationCaret from "@tiptap/extension-collaboration-caret";
 import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
 import { Placeholder } from "@tiptap/extension-placeholder";
@@ -44,8 +46,8 @@ import { createSuggestionRenderer } from "metabase-enterprise/rich_text_editing/
 import S from "./Editor.module.css";
 import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
 import type { CardEmbedRef } from "./types";
-import Collaboration from "@tiptap/extension-collaboration";
-import CollaborationCaret from "@tiptap/extension-collaboration-caret";
+import { colors } from "./collab";
+import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 
 const BUBBLE_MENU_DISALLOWED_NODES: string[] = [
   CardEmbed.name,
@@ -106,7 +108,7 @@ export const Editor: React.FC<EditorProps> = ({
 }) => {
   const siteUrl = useSelector((state) => getSetting(state, "site-url"));
   const { getState } = useStore();
-  const [status, setStatus] = useState("connecting");
+  const currentUser = useSelector(getCurrentUser);
 
   const extensions = useMemo(
     () => [
@@ -167,23 +169,46 @@ export const Editor: React.FC<EditorProps> = ({
       }),
       CollaborationCaret.extend().configure({
         provider,
+        user: {
+          name: currentUser?.common_name,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          render: (user: any) => {
+            console.log("hello");
+            const cursor = document.createElement("span");
+            cursor.classList.add("collaboration-carets__caret");
+            cursor.setAttribute("style", `border-color: ${user.color}`);
+
+            const label = document.createElement("div");
+            label.classList.add("collaboration-carets__label");
+            label.setAttribute(
+              "style",
+              `background-color: ${user.color}; border: 1px solid red;`,
+            );
+            label.insertBefore(document.createTextNode(user.name), null);
+
+            debugger;
+            cursor.insertBefore(label, null);
+            return cursor;
+          },
+          // color: "red",
+        },
       }),
     ],
-    [siteUrl, getState, ydoc, provider],
+    [siteUrl, getState, ydoc, provider, currentUser?.common_name],
   );
 
-  useEffect(() => {
-    // Update status changes
-    const statusHandler = (event) => {
-      setStatus(event.status);
-    };
+  // useEffect(() => {
+  //   // Update status changes
+  //   const statusHandler = (event) => {
+  //     setStatus(event.status);
+  //   };
 
-    provider.on("status", statusHandler);
+  //   provider.on("status", statusHandler);
 
-    return () => {
-      provider.off("status", statusHandler);
-    };
-  }, [provider]);
+  //   return () => {
+  //     provider.off("status", statusHandler);
+  //   };
+  // }, [provider]);
 
   const editor = useEditor(
     {

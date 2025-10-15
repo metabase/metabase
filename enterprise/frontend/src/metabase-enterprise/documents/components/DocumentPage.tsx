@@ -143,7 +143,7 @@ export const DocumentPage = ({
   const { ydoc, provider } = useMemo(() => {
     const ydoc = new Y.Doc();
     const provider = new HocuspocusProvider({
-      url: `${location.protocol === 'https' ? 'wss' : 'ws'}://${location.host}:3005/`,
+      url: `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.hostname}:3005/`,
       name: String(documentId),
       document: ydoc,
     });
