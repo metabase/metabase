@@ -1,8 +1,10 @@
 # Markdown Parser for Metabase Documents
 
-Converts Markdown (with Metabase extensions) to ProseMirror JSON for Documents.
+Bidirectional converter between Markdown (with Metabase extensions) and ProseMirror JSON.
 
 ## Usage
+
+### Markdown → ProseMirror JSON
 
 ```bash
 # Parse a file
@@ -14,6 +16,27 @@ echo "# Test" | node parse-markdown.mjs
 
 # Verbose mode (diagnostics to stderr)
 node parse-markdown.mjs --verbose file.md
+```
+
+### ProseMirror JSON → Markdown
+
+```bash
+# Serialize a file
+node serialize-prosemirror.mjs document.json
+
+# Serialize from stdin
+cat document.json | node serialize-prosemirror.mjs
+echo '{"type":"doc","content":[...]}' | node serialize-prosemirror.mjs
+
+# Verbose mode
+node serialize-prosemirror.mjs --verbose document.json
+```
+
+### Round-trip Test
+
+```bash
+# Verify markdown → json → markdown produces identical output
+node parse-markdown.mjs file.md | node serialize-prosemirror.mjs | diff - file.md
 ```
 
 ### With jq for analysis
@@ -121,6 +144,8 @@ Sample markdown files in `test-files/`:
 
 ## From Clojure
 
+### Parsing (Markdown → JSON)
+
 ```clojure
 (require '[metabase-enterprise.documents.import.markdown :as md-import])
 
@@ -129,6 +154,18 @@ Sample markdown files in `test-files/`:
 
 ;; Parse markdown file
 (md-import/markdown-file->prosemirror-json "path/to/file.md")
+```
+
+### Serializing (JSON → Markdown)
+
+```clojure
+(require '[metabase-enterprise.documents.import.markdown :as md-import])
+
+;; Serialize ProseMirror JSON to markdown
+(md-import/prosemirror-json->markdown {:type "doc" :content [...]})
+
+;; Serialize document file
+(md-import/prosemirror-file->markdown "path/to/document.json")
 ```
 
 See `enterprise/backend/src/metabase_enterprise/documents/import/markdown.clj` for implementation.
