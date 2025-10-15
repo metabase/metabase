@@ -191,7 +191,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
 
     it(
       "should be possible to create and run a Python transform",
-      { tags: ["@transforms-python"] },
+      { tags: ["@python"] },
       () => {
         setPythonRunnerSettings();
         cy.log("create a new transform");
@@ -1661,7 +1661,7 @@ LIMIT
   describe("python > common library", () => {
     it(
       "should be possible to edit and save the common library",
-      { tags: ["@transforms-python"] },
+      { tags: ["@python"] },
       () => {
         visitCommonLibrary();
 
@@ -1699,7 +1699,7 @@ LIMIT
 
     it(
       "should be possible to use the common library",
-      { tags: ["@transforms-python"] },
+      { tags: ["@python"] },
       () => {
         setPythonRunnerSettings();
         createPythonLibrary(
