@@ -42,7 +42,9 @@
         ;; match requests that are js/css and have a cache-busting hex string
         (re-matches #"^/app/dist/.+\.[a-f0-9]+\.(js|css)$" uri)
         ;; any resource that is named as a cache-busting hex string (e.g. fonts, images)
-        (re-matches #"^/app/dist/[a-f0-9]+.*$" uri))))
+        (re-matches #"^/app/dist/[a-f0-9]+.*$" uri)
+        ;; image requests
+        (re-matches #"^/api/images/\d+/contents" uri))))
 
 (defn https?
   "True if the original request made by the frontend client (i.e., browser) was made over HTTPS.
