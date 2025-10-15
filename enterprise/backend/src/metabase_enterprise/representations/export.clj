@@ -163,8 +163,10 @@
         child-reps (for [child children]
                      (let [child-id (:id child)
                            model-type (model->card-type child)]
-                       (if (= model-type :collection)
-                         (export-entire-collection child-id)
+                       (case model-type
+                         :collection (export-entire-collection child-id)
+                         :document (-> (t2/select-one :model/Document :id child-id)
+                                       export-entity)
                          (-> (t2/select-one :model/Card :id child-id :type model-type)
                              export-entity))))]
     (assoc (export-entity collection)
