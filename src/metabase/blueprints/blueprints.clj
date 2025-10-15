@@ -105,7 +105,13 @@
   (slurp (io/resource "blueprints/salesforce/cards/customer_base_by_country.yaml"))
   ;; yaml file
   (doseq [y ["blueprints/salesforce/cards/customer_base_by_country.yaml"
-             "blueprints/salesforce/cards/trend__total___of_weighted_open_pipeline_expected__close_date_this_q.yaml"]
+             "blueprints/salesforce/cards/trend__total___of_weighted_open_pipeline_expected__close_date_this_q.yaml"
+             "blueprints/salesforce/cards/expected_deals_this_quarter.yaml"
+             "blueprints/salesforce/cards/bar_customer_logo_over_time.yaml"
+             "blueprints/salesforce/cards/current_quarter_cw_amount.yaml"
+             "blueprints/salesforce/cards/pivot_pipeline.yaml"
+             "blueprints/salesforce/cards/monthly_cw_deal_trend.yaml"
+             "blueprints/salesforce/cards/monthly_pipeline.yaml"]
           :let [db (t2/select-one :model/Database :id 3)]]
     (t2/insert! :model/Card
                 (patch-card y db

@@ -1,0 +1,159 @@
+name: '[combo] Monthly CW Deal trend'
+display: combo
+query_type: query
+database_id: <<db>>
+dataset_query:
+  database: <<db>>
+  query:
+    aggregation:
+    - - sum
+      - - field
+        - - <<db>>
+          - <<destination_schema>>
+          - <<target.opportunity>>
+          - amount
+        - base-type: type/Decimal
+    - - count
+    breakout:
+    - - field
+      - - <<db>>
+        - <<destination_schema>>
+        - <<target.opportunity>>
+        - close_date
+      - base-type: type/Date
+        temporal-unit: month
+    expressions:
+      Close At Quarter:
+      - case
+      - - - - not-empty
+            - - field
+              - - <<db>>
+                - <<destination_schema>>
+                - <<target.opportunity>>
+                - close_date
+              - base-type: type/Date
+          - - date
+            - - concat
+              - - get-year
+                - - field
+                  - - <<db>>
+                    - <<destination_schema>>
+                    - <<target.opportunity>>
+                    - close_date
+                  - base-type: type/Date
+              - '-'
+              - - case
+                - - - - between
+                      - - get-month
+                        - - field
+                          - - <<db>>
+                            - <<destination_schema>>
+                            - <<target.opportunity>>
+                            - close_date
+                          - base-type: type/Date
+                      - 1
+                      - 3
+                    - 1
+                - default:
+                  - case
+                  - - - - between
+                        - - get-month
+                          - - field
+                            - - <<db>>
+                              - <<destination_schema>>
+                              - <<target.opportunity>>
+                              - close_date
+                            - base-type: type/Date
+                        - 4
+                        - 6
+                      - 4
+                  - default:
+                    - case
+                    - - - - between
+                          - - get-month
+                            - - field
+                              - - <<db>>
+                                - <<destination_schema>>
+                                - <<target.opportunity>>
+                                - close_date
+                              - base-type: type/Date
+                          - 7
+                          - 9
+                        - 7
+                    - default:
+                      - case
+                      - - - - between
+                            - - get-month
+                              - - field
+                                - - <<db>>
+                                  - <<destination_schema>>
+                                  - <<target.opportunity>>
+                                  - close_date
+                                - base-type: type/Date
+                            - 10
+                            - 12
+                          - 10
+              - '-01'
+      Closed at day of quater:
+      - datetime-diff
+      - - expression
+        - Close At Quarter
+        - base-type: type/Date
+      - - field
+        - - <<db>>
+          - <<destination_schema>>
+          - <<target.opportunity>>
+          - close_date
+        - base-type: type/Date
+      - day
+      Days Since Begin of Q:
+      - datetime-diff
+      - - relative-datetime
+        - 0
+        - quarter
+      - - now
+      - day
+    filter:
+    - and
+    - - =
+      - - field
+        - - <<db>>
+          - <<destination_schema>>
+          - <<target.opportunity>>
+          - status
+        - base-type: type/Text
+      - won
+    - - time-interval
+      - - field
+        - - <<db>>
+          - <<destination_schema>>
+          - <<target.opportunity>>
+          - close_date
+        - base-type: type/Date
+      - -6
+      - month
+      - include-current: true
+    source-table:
+    - <<db>>
+    - <<destination_schema>>
+    - <<target.opportunity>>
+  type: query
+visualization_settings:
+  column_settings:
+    '["name","sum"]':
+      currency_style: symbol
+      decimals: 0
+      number_style: currency
+  graph.dimensions:
+  - close_date
+  graph.label_value_formatting: compact
+  graph.metrics:
+  - sum
+  - count
+  graph.show_values: true
+  graph.x_axis.scale: timeseries
+  series_settings:
+    sum:
+      title: Closed Won Amount
+card_schema: 22
+type: question
