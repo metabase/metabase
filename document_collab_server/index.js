@@ -9,7 +9,7 @@ const server = new Server({
       url: "http://localhost:3000/api/ee/document/webhook",
       secret: "459824aaffa928e05f5b1caec411ae5f",
       transformer: TiptapTransformer,
-      events: [Events.onChange],
+      events: [Events.onConnect, Events.onCreate, Events.onChange, Events.onDisconnect],
       debounce: 2000,
       debounceMaxWait: 10000,
     }),
