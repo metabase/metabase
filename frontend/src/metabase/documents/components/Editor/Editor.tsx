@@ -10,6 +10,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLatest, usePrevious } from "react-use";
 import { t } from "ttag";
 
+import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
 import { getMentionsCache } from "metabase/documents/selectors";
 import { isMetabotBlock } from "metabase/documents/utils/editorNodeUtils";
@@ -40,13 +41,13 @@ import { SupportingText } from "metabase/rich_text_editing/tiptap/extensions/Sup
 import { DROP_ZONE_COLOR } from "metabase/rich_text_editing/tiptap/extensions/shared/constants";
 import { createSuggestionRenderer } from "metabase/rich_text_editing/tiptap/extensions/suggestionRenderer";
 import { getSetting } from "metabase/selectors/settings";
-import { Box, Loader } from "metabase/ui";
+import { Avatar, Box, Flex, Loader } from "metabase/ui";
 import type { State } from "metabase-types/store";
 import type { CardEmbedRef } from "metabase-types/store/documents";
 
 import S from "./Editor.module.css";
-import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
 import { colors } from "./collab";
+import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 
 const BUBBLE_MENU_DISALLOWED_NODES: string[] = [
@@ -115,6 +116,10 @@ export const Editor: React.FC<EditorProps> = ({
   const siteUrl = useSelector((state) => getSetting(state, "site-url"));
   const { getState } = useStore();
   const currentUser = useSelector(getCurrentUser);
+  const [userCount, setUserCount] = useState(0);
+  const [activeUsers, setActiveUsers] = useState<
+    Array<{ name: string; color: string }>
+  >([]);
 
   const extensions = useMemo(
     () => [
@@ -187,6 +192,7 @@ export const Editor: React.FC<EditorProps> = ({
           label.insertBefore(document.createTextNode(user.name), null);
 
           cursor.insertBefore(label, null);
+
           return cursor;
         },
         user: {
@@ -242,6 +248,35 @@ export const Editor: React.FC<EditorProps> = ({
     }
   }, [editor, initialContent, previousContentRef]);
 
+  // Track collaboration users every 100ms
+  useEffect(() => {
+    if (!editor) {
+      return;
+    }
+
+    const updateUsers = () => {
+      const users = editor.storage?.collaborationCaret?.users;
+      if (users) {
+        setUserCount(users.length);
+        // Extract user data with names and colors
+        const userData = Object.values(users).map((user: any) => ({
+          name: user.name || "Unknown",
+          color: user.color || "",
+        }));
+        setActiveUsers(userData);
+      }
+    };
+
+    // Initial update
+    updateUsers();
+
+    // Set up interval to check every 100ms
+    const interval = setInterval(updateUsers, 100);
+    return () => {
+      clearInterval(interval);
+    };
+  }, [editor]);
+
   // Notify parent when editor is ready
   useEffect(() => {
     if (editor && onEditorReady) {
@@ -273,11 +308,31 @@ export const Editor: React.FC<EditorProps> = ({
 
   return (
     <Box className={cx(S.editor, DND_IGNORE_CLASS_NAME)}>
+      {/* Active users display */}
+      <Box className={S.userCountDisplay}>
+        <Flex align="center" gap="xs">
+          <span>{userCount}</span>
+          <span>{t`active user(s):`}</span>
+          <Flex gap="xs">
+            {activeUsers.map((user, index) => (
+              <Avatar
+                key={index}
+                name={user.name}
+                color={user.color}
+                size="sm"
+                radius="xl"
+              />
+            ))}
+          </Flex>
+        </Flex>
+      </Box>
+
       <Box
         className={S.editorContent}
         ref={editorContainerRef}
         onClick={(e) => {
           // Focus editor when clicking on empty space
+
           const target = e.target as HTMLElement;
           if (
             target.classList.contains(S.editorContent) ||

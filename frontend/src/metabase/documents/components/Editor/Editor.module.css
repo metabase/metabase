@@ -4,6 +4,18 @@
   flex-direction: column;
 }
 
+.userCountDisplay {
+  background-color: var(--mb-color-bg-light);
+  border-bottom: 1px solid var(--mb-color-border);
+  color: var(--mb-color-text-medium);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 8px 16px;
+  display: flex;
+  justify-content: right;
+  align-items: right;
+}
+
 .editorContent {
   flex: 1;
   cursor: text;
