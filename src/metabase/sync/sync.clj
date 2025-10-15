@@ -9,6 +9,7 @@
    In the near future these steps will be scheduled individually, meaning those functions will
    be called directly instead of calling the [[sync-database!]] function to do all three at once."
   (:require
+   [metabase.blueprints.blueprints :as blueprints]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.sync.analyze :as analyze]
@@ -34,15 +35,18 @@
      [:name       :string]
      [:steps      [:maybe [:sequential sync-util/StepNameWithMetadata]]]]]])
 
+;; TODO(rileythomp): determine when these are called, and remove if not relevant for blueprints
+
 (def ^:private phase->fn
   {:metadata     sync-metadata/sync-db-metadata!
    :analyze      analyze/analyze-db!
-   :field-values sync.field-values/update-field-values!})
+   :field-values sync.field-values/update-field-values!
+   :identify-blueprint blueprints/identify-blueprints!})
 
 (defn- scan-phases [scan]
   (if (not= :full scan)
     [:metadata]
-    [:metadata :analyze :field-values]))
+    [:metadata :analyze :field-values :identify-blueprint]))
 
 (defn- do-phase! [database phase]
   (let [f      (phase->fn phase)

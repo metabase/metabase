@@ -1048,7 +1048,8 @@
          (fn []
            (database-routing/with-database-routing-off
              (sync/sync-db-metadata! db)
-             (sync/analyze-db! db))))
+             (sync/analyze-db! db)
+             (sync/identify-blueprints! db))))
         {:status :ok}))))
 
 (api.macros/defendpoint :post "/:id/dismiss_spinner"

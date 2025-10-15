@@ -2,6 +2,7 @@
   "API namespace for the `sync` module. Sync is in charge of taking a connected Database and recording metadata about it
   -- Tables and Fields."
   (:require
+   [metabase.blueprints.blueprints :as blueprints]
    [metabase.sync.analyze]
    [metabase.sync.field-values]
    [metabase.sync.sync]
@@ -33,4 +34,6 @@
  [metabase.sync.sync-metadata.fields
   sync-fields-for-table!]
  [metabase.sync.sync-metadata.tables
-  create-table!])
+  create-table!]
+ [metabase.blueprints.blueprints
+  identify-blueprints!])
