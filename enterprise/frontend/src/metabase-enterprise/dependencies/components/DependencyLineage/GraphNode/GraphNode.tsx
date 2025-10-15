@@ -4,6 +4,7 @@ import {
   Position,
   useNodeConnections,
 } from "@xyflow/react";
+import cx from "classnames";
 import { memo, useContext } from "react";
 import { t } from "ttag";
 
@@ -21,6 +22,7 @@ import { GraphContext } from "../GraphContext";
 import type { NodeType } from "../types";
 import { getNodeIcon, getNodeLabel } from "../utils";
 
+import S from "./GraphNode.module.css";
 import type { DependentGroup } from "./types";
 import { getDependentGroupLabel, getDependentGroups } from "./utils";
 
@@ -79,8 +81,7 @@ function DependencyGroupButton({ node, group }: DependencyGroupButtonProps) {
     <Pill
       key={group.type}
       component={UnstyledButton}
-      c={isSelected ? "white" : "text-primary"}
-      bg={isSelected ? "brand" : "bg-medium"}
+      className={cx(S.pill, { [S.selected]: isSelected })}
       fw="normal"
       onClick={() => setSelection({ node, groupType: group.type })}
     >
