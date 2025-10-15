@@ -35,6 +35,8 @@ import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 import QuestionActionsS from "./QuestionActions.module.css";
 import { QuestionAlertsMenuItem } from "./QuestionAlertsMenuItem";
 import { useSnapshotCardMutation } from "metabase/api";
+import { useToast } from "metabase/common/hooks";
+import { card } from "metabase/query_builder/reducers-typed";
 
 const ADD_TO_DASH_TESTID = "add-to-dashboard-button";
 const MOVE_TESTID = "move-button";
@@ -119,10 +121,16 @@ export const QuestionMoreActionsMenu = ({
     : t`Move, trash, and more…`;
 
   const [snapshotCard] = useSnapshotCardMutation();
+  const [sendToast] = useToast();
 
   const handleSnapshot = async () => {
     try {
-      const { url } = await snapshotCard({ cardId: question.id() }).unwrap();
+      sendToast({ message: c("toast").t`Taking snapshot...`, type: "info" });
+      const response = await snapshotCard({ cardId: question.id() }).unwrap();
+      if (response?.image?.url) {
+        sendToast({ message: c("toast").t`Snapshotted ${question.displayName()}`, type: "success" });
+      }
+
     } catch (e) {
       console.error("Failed to snapshot card", e);
     }

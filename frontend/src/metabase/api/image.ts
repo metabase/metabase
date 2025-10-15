@@ -53,12 +53,12 @@ export const imageApi = Api.injectEndpoints({
         method: "POST",
         url: `/api/images/card/${cardId}/snapshot`,
       }),
-      invalidatesTags: (_, error, { id: cardId}, { collection_id }) => {
+      invalidatesTags: ({ collection_id }, error, { id: cardId}) => {
         console.log("Invalidating snapshot tags for card", cardId, "in collection", collection_id);
-        return [
+        return invalidateTags(error, [
           idTag("card-snapshot-list", cardId),
           idTag(`collection-item-list`, collection_id ?? 0),
-        ]
+        ]);
       },
     }),
     getCardSnapshots: builder.query<
