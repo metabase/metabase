@@ -27,7 +27,12 @@ export const imageApi = Api.injectEndpoints({
         };
       },
     }),
+    getImageData: builder.query<{ name: string, image_url: string }, { id: number }>({
+      query: ({ id }) => ({
+        url: `/api/image-data/${id}`,
+      }),
+    }),
   }),
 });
 
-export const { useUploadImageMutation } = imageApi;
+export const { useUploadImageMutation, useGetImageDataQuery } = imageApi;
