@@ -421,6 +421,11 @@
            warehouse-schema
            xrays}}
 
+  doctor
+  {:team "DevEx"
+   :api  #{metabase.doctor.api}
+   :uses #{api}}
+
   database-routing
   {:team "UX West"
    :api  #{metabase.database-routing.core}

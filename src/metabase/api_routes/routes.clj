@@ -19,6 +19,7 @@
    [metabase.collections.api]
    [metabase.config.core :as config]
    [metabase.dashboards.api]
+   [metabase.doctor.api]
    [metabase.eid-translation.api]
    [metabase.embedding.api]
    [metabase.geojson.api]
@@ -68,6 +69,7 @@
          metabase.cloud-migration.api/keep-me
          metabase.collections.api/keep-me
          metabase.dashboards.api/keep-me
+         metabase.doctor.api/keep-me
          metabase.eid-translation.api/keep-me
          metabase.geojson.api/keep-me
          metabase.glossary.api/keep-me
@@ -144,6 +146,7 @@
    "/collection"           (+auth 'metabase.collections.api)
    "/dashboard"            (+auth 'metabase.dashboards.api)
    "/database"             (+auth 'metabase.warehouses.api)
+   "/doctor"               (+auth 'metabase.doctor.api)
    "/dataset"              (+auth 'metabase.query-processor.api)
    "/docs"                 (metabase.api.docs/make-routes #'routes)
    "/eid-translation"      'metabase.eid-translation.api
