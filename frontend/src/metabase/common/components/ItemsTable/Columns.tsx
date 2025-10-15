@@ -53,7 +53,7 @@ const ItemLinkComponent = ({
 
   if (item.model === "image") {
     return (
-      <ItemLink to={`/api/images/${item.id}/contents`} target="_blank">
+      <ItemLink to={`/image/${item.id}`} target="_blank">
         {children}
       </ItemLink>
     );
