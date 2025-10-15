@@ -501,16 +501,16 @@ export const DocumentPage = ({
           // `key` remounts this modal when navigating between different documents or to a new document.
           // The `route` doesn't change in that scenario which prevents the modal from closing when you confirm you want to discard your changes.
           key={location.key}
-          isEnabled={hasUnsavedChanges() && !isNavigationScheduled}
+          // isEnabled={hasUnsavedChanges() && !isNavigationScheduled}
+          isEnabled={isNewDocument && !isNavigationScheduled}
           route={route}
         />
 
         <LeaveConfirmModal
           // only applies when going from /new -> /new
           opened={
-            hasUnsavedChanges() &&
-            isNewDocument &&
-            location.key !== previousLocationKey
+            // hasUnsavedChanges() &&
+            isNewDocument && location.key !== previousLocationKey
           }
           onConfirm={resetDocument}
           onClose={() => forceUpdate()}

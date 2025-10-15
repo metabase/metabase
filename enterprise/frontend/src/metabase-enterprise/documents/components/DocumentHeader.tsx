@@ -114,24 +114,26 @@ export const DocumentHeader = ({
         )}
       </Flex>
       <Flex gap="md" align="center" className={S.actionsContainer}>
-        <Transition
-          mounted={showSaveButton}
-          transition={saveButtonTransition}
-          duration={200}
-          keepMounted
-        >
-          {(style) => (
-            <Box
-              style={
-                style.display === "none" ? saveButtonTransition.out : style
-              }
-            >
-              <Button onClick={onSave} variant="filled" data-hide-on-print>
-                {t`Save`}
-              </Button>
-            </Box>
-          )}
-        </Transition>
+        {!isNewDocument ? null : (
+          <Transition
+            mounted={showSaveButton}
+            transition={saveButtonTransition}
+            duration={200}
+            keepMounted
+          >
+            {(style) => (
+              <Box
+                style={
+                  style.display === "none" ? saveButtonTransition.out : style
+                }
+              >
+                <Button onClick={onSave} variant="filled" data-hide-on-print>
+                  {t`Save`}
+                </Button>
+              </Box>
+            )}
+          </Transition>
+        )}
         {!isNewDocument && hasComments && !isWithinIframe() && (
           <Tooltip label={t`Show all comments`}>
             <Box>
