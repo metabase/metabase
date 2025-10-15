@@ -829,7 +829,7 @@ H.describeWithSnowplowEE("documents", () => {
 
         H.getDocumentCard("Orders, Count, Grouped by Created At (year)").within(
           () => {
-            H.cartesianChartCircle().eq(1).click();
+            H.cartesianChartCircle().eq(1).click({ force: true });
           },
         );
 
