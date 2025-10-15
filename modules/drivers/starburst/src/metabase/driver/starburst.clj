@@ -489,7 +489,8 @@
   [driver ^Connection conn]
   (with-open [stmt (.createStatement conn)]
     (let [rs (sql-jdbc.execute/execute-statement! driver stmt "SHOW CATALOGS")]
-      (into [] (map (fn [{:keys [catalog] :as _full}] catalog))
+      (into [] (comp (map (fn [{:keys [catalog] :as _full}] catalog))
+                     (filter (fn [catalog] (not (contains? #{"tpch" "system"} catalog)))))
             (jdbc/reducible-result-set rs {})))))
 
 (defmethod driver/describe-database* :starburst
