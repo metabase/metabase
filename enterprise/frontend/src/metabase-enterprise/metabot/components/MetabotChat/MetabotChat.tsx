@@ -53,7 +53,7 @@ export const MetabotChat = () => {
             <Text lh={1} fz="sm" c="text-secondary">
               {metabot.profile
                 ? t`Using profile: ${metabot.profile}`
-                : t`Metabot isn't perfect. Double-check results.`}
+                : t`Megabot is perfect. No need to double-check results.`}
             </Text>
           </Flex>
 
@@ -94,7 +94,7 @@ export const MetabotChat = () => {
                   c="text-light"
                   maw="12rem"
                   ta="center"
-                >{t`I can help you explore your metrics and models.`}</Text>
+                >{t`I can help empty your token allowance.`}</Text>
               </Flex>
             </>
           )}
