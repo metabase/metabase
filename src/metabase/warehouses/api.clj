@@ -886,12 +886,21 @@
                (map #(let [[key val] (str/split % #"=")]
                        [(keyword key) val]))))))
 
+(defn- execute-query [driver database query]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   database
+   nil
+   (fn [^java.sql.Connection conn]
+     (with-open [stmt (.createStatement conn)]
+       (.execute stmt query)))))
+
 (defn- add-catalog [name source details]
   (let [database (t2/select-one :model/Database :name "Trino")
-        driver (:engine database)
-        params (get-connection-details (:connection_string details))]
+        driver (:engine database)]
     (case source
-      "snowflake" (let [query (format "CREATE CATALOG %s
+      "snowflake" (let [params (get-connection-details (:connection_string details))
+                        query (format "CREATE CATALOG %s
 USING snowflake
 WITH (
   \"connection-url\" = '%s',
@@ -912,13 +921,30 @@ WITH (
                                       (:database params)
                                       (:role params)
                                       (:warehouse params))]
-                    (sql-jdbc.execute/do-with-connection-with-options
-                     driver
-                     database
-                     nil
-                     (fn [^java.sql.Connection conn]
-                       (with-open [stmt (.createStatement conn)]
-                         (.execute stmt query))))))
+                    (execute-query driver database query))
+      "postgres" (let [params (get-connection-details (:connection_string details))
+                       query (format "CREATE CATALOG %s
+USING postgresql
+WITH (
+  \"connection-url\" = '%s',
+  \"connection-user\" = '%s',
+  \"connection-password\" = '%s'
+)"
+                                     name
+                                     (:host params)
+                                     (:user params)
+                                     (:password params))]
+                   (execute-query driver database query))
+      "bigquery" (let [query (format "CREATE CATALOG %s
+USING bigquery
+WITH (
+  \"bigquery.project-id\" = '%s',
+  \"bigquery.credentials-key\" = '%s'
+)"
+                                     name
+                                     (:project_id details)
+                                     (:credentials_key details))]
+                   (execute-query driver database query)))
     (sync/sync-database! database {:scan :schema})))
 
 (api.macros/defendpoint :post "/source"
