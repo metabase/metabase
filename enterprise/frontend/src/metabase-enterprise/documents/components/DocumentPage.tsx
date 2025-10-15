@@ -153,7 +153,7 @@ export const DocumentPage = ({
   const { data: commentsData } = useListCommentsQuery(
     getListCommentsQuery(documentData),
     {
-      pollingInterval: 10000, // Poll every 100ms
+      pollingInterval: 1000,
     },
   );
   const hasComments =

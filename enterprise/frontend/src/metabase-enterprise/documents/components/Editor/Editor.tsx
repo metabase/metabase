@@ -17,7 +17,7 @@ import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
 import CS from "metabase/css/core/index.css";
 import { useSelector, useStore } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
-import { Avatar, Box, Flex, Loader } from "metabase/ui";
+import { Avatar, Box, Flex, Loader, Tooltip } from "metabase/ui";
 import { getMentionsCache } from "metabase-enterprise/documents/selectors";
 import type { DocumentsStoreState } from "metabase-enterprise/documents/types";
 import { isMetabotBlock } from "metabase-enterprise/documents/utils/editorNodeUtils";
@@ -58,6 +58,8 @@ const BUBBLE_MENU_DISALLOWED_NODES: string[] = [
   FlexContainer.name,
   "codeBlock",
 ];
+
+const MAX_ACTIVE_USERS = 5;
 
 const getMetabotPromptSerializer =
   (getState: () => DocumentsStoreState): PromptSerializer =>
@@ -303,23 +305,29 @@ export const Editor: React.FC<EditorProps> = ({
   return (
     <Box className={cx(S.editor, DND_IGNORE_CLASS_NAME)}>
       {/* Active users display */}
-      <Box className={S.userCountDisplay}>
-        <Flex align="center" gap="xs">
-          <span>{userCount}</span>
-          <span>{t`active user(s):`}</span>
-          <Flex gap="xs">
-            {activeUsers.map((user, index) => (
-              <Avatar
-                key={index}
-                name={user.name}
-                color={user.color}
-                size="sm"
-                radius="xl"
-              />
-            ))}
+      {activeUsers.length > 0 && (
+        <Box className={S.userCountDisplay}>
+          <Flex align="center" gap="xs">
+            <span>{userCount}</span>
+            <span>{t`active users:`}</span>
+            <Flex gap="xs" className={S.usersList}>
+              {activeUsers.slice(0, MAX_ACTIVE_USERS).map((user, index) => (
+                <Tooltip key={index} label={user.name} withArrow position="top">
+                  <Avatar
+                    name={user.name}
+                    color={user.color}
+                    size="md"
+                    // radius="xl"
+                  />
+                </Tooltip>
+              ))}
+              {activeUsers.length > MAX_ACTIVE_USERS && (
+                <span>{t`+ ${activeUsers.length - MAX_ACTIVE_USERS} more`}</span>
+              )}
+            </Flex>
           </Flex>
-        </Flex>
-      </Box>
+        </Box>
+      )}
 
       <Box
         className={S.editorContent}
