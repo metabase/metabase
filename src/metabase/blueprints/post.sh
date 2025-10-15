@@ -1,0 +1,17 @@
+curl 'http://localhost:3000/api/database/2576/blueprints/salesforce' \
+  -X 'POST' \
+  -H 'Accept: application/json' \
+  -H 'Accept-Language: en-US,en;q=0.9' \
+  -H 'Connection: keep-alive' \
+  -H 'Content-Type: application/json' \
+  -b 'metabase.DEVICE=2e82b500-91ae-4158-8dc1-eca0f3c06195; metabase.TIMEOUT=alive; ajs_anonymous_id=%2275917aa9-8b1f-4f6a-9244-1479115803f4%22; metabase.SESSION=324bb78e-624d-4e89-a657-e77f7a429eec' \
+  -H 'If-Modified-Since: Wed, 15 Oct 2025 08:45:23 GMT' \
+  -H 'Referer: http://localhost:3000/admin/databases/2576' \
+  -H 'Sec-Fetch-Dest: empty' \
+  -H 'Sec-Fetch-Mode: cors' \
+  -H 'Sec-Fetch-Site: same-origin' \
+  -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36' \
+  -H 'sec-ch-ua: "Not;A=Brand";v="99", "Google Chrome";v="139", "Chromium";v="139"' \
+  -H 'sec-ch-ua-mobile: ?0' \
+  -H 'sec-ch-ua-platform: "macOS"' \
+  -d '{}'

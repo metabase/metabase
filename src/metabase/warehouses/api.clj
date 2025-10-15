@@ -7,6 +7,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
+   [metabase.blueprints.blueprints :as blueprints]
    [metabase.classloader.core :as classloader]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
@@ -1342,3 +1343,29 @@
                     [:id ms/PositiveInt]]]
   (let [database (api/read-check (get-database id))]
     {:settings (database-local-settings database)}))
+
+;;; ---------- blueprints ---------
+
+(api.macros/defendpoint :post "/:id/blueprints/:blueprint-type"
+  "Create the transforms, cards and dashboard for blueprints."
+  [{:keys [id blueprint-type]}
+   _query-params
+   _body]
+  ;; 1. create the transforms
+  ;; 2. create the cards based on the transforms
+  ;; 3. create the dashboard based on the cards
+  ;; 4. return dashboard id and transform tables
+  (let [db-id (Integer/parseInt id)
+        blueprint-type (keyword blueprint-type)
+        db (t2/select-one :model/Database db-id)
+        settings (:settings db)]
+    (cond
+      (and (= blueprint-type :salesforce) (:is-salesforce? (:blueprints settings)))
+      (let [salesforce-transform-tables (blueprints/create-salesforce-transforms! db)
+            salesforce-cards (blueprints/create-salesforce-cards! db salesforce-transform-tables)
+            salesforce-dashboard-id (blueprints/create-salesforce-dashboard! db salesforce-cards)]
+        {:transform-tables salesforce-transform-tables
+         :dashboard-id salesforce-dashboard-id})
+
+      :else
+      nil)))

@@ -43,11 +43,24 @@
   [db]
   (let [db-id (:id db)
         schema->tables (group-by :schema (t2/select :model/Table :db_id db-id))]
-    (doseq [[_schema tables] schema->tables]
+    (doseq [[schema tables] schema->tables]
       (let [table-names (set (map :name tables))]
         (when (is-salesforce-tables? table-names)
           (t2/update! :model/Database db-id {:settings (merge (:settings db)
-                                                              {:blueprints {:is-salesforce? true}})}))))))
+                                                              {:blueprints {:is-salesforce? true
+                                                                            :salesforce-schema schema}})}))))))
+
+(defn create-salesforce-transforms! [db]
+  (tap> "creating salesforce transforms")
+  [:transform1 :transform2])
+
+(defn create-salesforce-cards! [db tables]
+  (tap> "creating salesforce cards")
+  [:card1 :card2])
+
+(defn create-salesforce-dashboard! [db cards]
+  (tap> "creating salesforce dashboard")
+  [:dashboard1])
 
 (comment
 
