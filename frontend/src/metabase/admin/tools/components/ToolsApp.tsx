@@ -49,7 +49,7 @@ export function ToolsApp({ children }: { children: React.ReactNode }) {
             <ToolsNavItem
               label={t`Health`}
               path="/admin/tools/health"
-              icon="alert"
+              icon="stetoscope"
             />
           </AdminNavWrapper>
         }

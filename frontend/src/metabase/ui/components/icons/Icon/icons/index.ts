@@ -400,6 +400,8 @@ import star_filled_component from "./star_filled.svg?component";
 import star_filled_source from "./star_filled.svg?source";
 import stepped_component from "./stepped.svg?component";
 import stepped_source from "./stepped.svg?source";
+import stetoscope_component from "./stetoscope.svg?component";
+import stetoscope_source from "./stetoscope.svg?source";
 import stop_component from "./stop.svg?component";
 import stop_source from "./stop.svg?source";
 import store_component from "./store.svg?component";
@@ -1287,6 +1289,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: star_component,
       source: star_source,
     },
+    stetoscope: {
+      component: stetoscope_component,
+      source: stetoscope_source,
+    },
     stop: {
       component: stop_component,
       source: stop_source,
@@ -1637,6 +1643,7 @@ export type IconName =
   | "subscription"
   | "straight"
   | "stepped"
+  | "stetoscope"
   | "sort"
   | "sort_arrows"
   | "sum"
