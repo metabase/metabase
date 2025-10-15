@@ -10,8 +10,6 @@ import {
 } from "metabase-enterprise/documents/components/Editor/shared/MenuComponents";
 import type { SearchResult } from "metabase-types/api";
 
-import { IMAGE_SEARCH_MODELS } from "./constants";
-
 interface EntitySearchSectionProps {
   menuItems: MenuItem[];
   selectedIndex: number;
@@ -62,14 +60,6 @@ export function EntitySearchSection({
 
       {modal === "question-picker" && (
         <QuestionPickerModal onChange={onModalSelect} onClose={onModalClose} />
-      )}
-
-      {modal === "image-picker" && (
-        <QuestionPickerModal
-          models={IMAGE_SEARCH_MODELS as any}
-          onChange={onModalSelect}
-          onClose={onModalClose}
-        />
       )}
     </>
   );
