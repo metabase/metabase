@@ -1,4 +1,5 @@
 import { Api } from "./api";
+import { idTag, invalidateTags } from "./tags";
 
 type UploadImageRequest = {
   file: File;
@@ -34,6 +35,8 @@ export const imageApi = Api.injectEndpoints({
           fetch: true,
         };
       },
+      invalidatesTags: (_, error, { collectionId }) =>
+        [idTag(`collection-item-list`, collectionId ?? 0)]
     }),
     getImageData: builder.query<
       ImageResponse,
@@ -43,7 +46,23 @@ export const imageApi = Api.injectEndpoints({
         url: `/api/images/${id}`,
       }),
     }),
+    snapshotCard: builder.mutation<{ url: string }, { cardId: number }>({
+      query: ({ cardId }) => ({
+        method: "POST",
+        url: `/api/images/card/${cardId}/snapshot`,
+      }),
+      invalidatesTags: (_, error, { id: cardId}, { collection_id }) => {
+        return [
+          idTag("card-snapshot-list", cardId),
+          idTag(`collection-item-list`, collection_id ?? 0),
+        ]
+      },
+    }),
   }),
 });
 
-export const { useUploadImageMutation, useGetImageDataQuery } = imageApi;
+export const {
+  useUploadImageMutation,
+  useSnapshotCardMutation,
+  useGetImageDataQuery,
+} = imageApi;
