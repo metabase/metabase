@@ -11,6 +11,7 @@
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -64,6 +65,7 @@
                               :convert-timezone                true
                               :connection/multiple-databases   true
                               :metadata/key-constraints        false
+                              :transforms/table                true
                               :now                             true
                               :database-routing                true}]
   (defmethod driver/database-supports? [:starburst feature] [_ _ _] supported?))
@@ -433,7 +435,7 @@
 
 (defmethod sql-jdbc.sync.interface/have-select-privilege? :starburst
   [driver ^Connection conn table-schema table-name]
-  (let [[catalog table-schema] #p (str/split table-schema #"\.")]
+  (let [[catalog table-schema] (str/split table-schema #"\.")]
     (try
      ;; Both Hive and Iceberg plugins for Trino expose one another's tables
      ;; at the metadata level, even though they are not queryable through that catalog.
@@ -571,19 +573,38 @@
        (sql-jdbc.execute/set-best-transaction-level! driver conn)
        (let [underlying-conn (pooled-conn->starburst-conn conn)]
          (when-not (str/blank? (get options :session-timezone))
-            ;; set session time zone if defined
+           ;; set session time zone if defined
            (.setTimeZoneId underlying-conn (get options :session-timezone))))
        (try
-         (.setReadOnly conn true)
+         (cond
+           (:write? options)
+           (.setAutoCommit conn true)
+
+           :else
+           (.setReadOnly conn true))
          (catch Throwable e
            (log/warn e "Error setting starburst connection to read-only")))
-          ;; as with statement and prepared-statement, cannot set holdability on the connection level
+
+       ;; as with statement and prepared-statement, cannot set holdability on the connection level
        conn
        (catch Throwable e
          (.close conn)
          (throw e)))
      (f conn))))
 
+(defmethod driver/execute-raw-queries! :starburst
+  [driver conn-spec queries]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   conn-spec
+   {:write? true}
+   (fn [^Connection conn]
+     (try
+       (doall (for [[sql params] queries]
+                (#'sql-jdbc.execute/create-and-execute-statement! driver conn sql params)))
+       (catch Throwable t
+         (.rollback conn)
+         (throw t))))))
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Reading Columns from Result Set                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -716,6 +737,12 @@
                    (remove-impersonation conn)
                    rs)
                  (catch Throwable e (handle-execution-error e))))
+             (executeUpdate []
+               (try
+                 (let [rs (.executeUpdate stmt)]
+                   (remove-impersonation conn)
+                   rs)
+                 (catch Throwable e (handle-execution-error e))))
              (setMaxRows [nb] (.setMaxRows stmt nb))
              (setObject
                ([index obj] (.setObject stmt index obj))
@@ -755,6 +782,12 @@
     (executeQuery []
       (try
         (let [rs (.executeQuery stmt)]
+          (remove-impersonation conn)
+          rs)
+        (catch Throwable e (handle-execution-error e))))
+    (executeUpdate []
+      (try
+        (let [rs (.executeUpdate stmt)]
           (remove-impersonation conn)
           rs)
         (catch Throwable e (handle-execution-error e))))
@@ -803,6 +836,12 @@
       (catch Throwable e
         (log/debug e "Error setting statement fetch direction to FETCH_FORWARD")))
     (proxy [java.sql.Statement] []
+      (executeUpdate [sql]
+        (try
+          (let [rs (.executeUpdate stmt sql)]
+            (remove-impersonation conn)
+            rs)
+          (catch Throwable e (handle-execution-error e))))
       (execute [sql]
         (try
           (let [rs (.execute stmt sql)]
@@ -1044,3 +1083,18 @@
 (defmethod sql.qp/->honeysql [:starburst ::sql.qp/cast-to-text]
   [driver [_ expr]]
   (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar"]))
+
+(defmethod sql-jdbc/impl-table-known-to-not-exist? :starburst
+  [_ e]
+  (= 46 (.getErrorCode e)))
+
+(defmethod driver/compile-transform :sql
+  [driver {:keys [query output-table]}]
+
+  (sql.qp/format-honeysql driver
+                          {:create-table-as (str/join "." [(namespace output-table) (name output-table)])
+                           :raw query}))
+
+(defmethod driver/compile-drop-table :starburst
+  [_ table]
+  [(format "DROP TABLE IF EXISTS %s" (str/join "." [(namespace table) (name table)]))])
