@@ -57,6 +57,8 @@ export type DatabaseFeature =
   | "transforms/python"
   | "transforms/table";
 
+export type DatabaseBlueprint = "salesforce" | "stripe";
+
 export interface Database extends DatabaseData {
   id: DatabaseId;
   is_saved_questions: boolean;
@@ -77,6 +79,7 @@ export interface Database extends DatabaseData {
   is_attached_dwh?: boolean;
   router_database_id?: number | null;
   router_user_attribute?: string | null;
+  blueprints?: DatabaseBlueprint[];
 
   // Only appears in  GET /api/database/:id
   "can-manage"?: boolean;

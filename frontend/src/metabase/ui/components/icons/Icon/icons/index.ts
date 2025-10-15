@@ -350,6 +350,8 @@ import rocket_component from "./rocket.svg?component";
 import rocket_source from "./rocket.svg?source";
 import ruler_component from "./ruler.svg?component";
 import ruler_source from "./ruler.svg?source";
+import salesforce_component from "./salesforce.svg?component";
+import salesforce_source from "./salesforce.svg?source";
 import sankey_component from "./sankey.svg?component";
 import sankey_source from "./sankey.svg?source";
 import schema_component from "./schema.svg?component";
@@ -408,6 +410,8 @@ import straight_component from "./straight.svg?component";
 import straight_source from "./straight.svg?source";
 import string_component from "./string.svg?component";
 import string_source from "./string.svg?source";
+import stripe_component from "./stripe.svg?component";
+import stripe_source from "./stripe.svg?source";
 import subscription_component from "./subscription.svg?component";
 import subscription_source from "./subscription.svg?source";
 import sum_component from "./sum.svg?component";
@@ -1459,6 +1463,8 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     beaker: { component: formula_component, source: formula_source },
     test_tube: { component: test_tube_component, source: test_tube_source },
     eye_filled: { component: eye_component, source: eye_source },
+    salesforce: { component: salesforce_component, source: salesforce_source },
+    stripe: { component: stripe_component, source: stripe_source },
   };
 
 /**
@@ -1712,7 +1718,9 @@ export type IconName =
   | "collection"
   | "beaker"
   | "test_tube"
-  | "eye_filled";
+  | "eye_filled"
+  | "salesforce"
+  | "stripe";
 
 export const iconNames = Object.keys(Icons) as unknown as IconName[];
 

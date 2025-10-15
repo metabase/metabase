@@ -12,6 +12,7 @@ import type { PopularItem, RecentItem, User } from "metabase-types/api";
 import { getIsXrayEnabled } from "../../selectors";
 import { isWithinWeeks } from "../../utils";
 import { EmbedHomepage } from "../EmbedHomepage";
+import { HomeBlueprintsSection } from "../HomeBlueprintsSection";
 import { HomePopularSection } from "../HomePopularSection";
 import { HomeRecentSection, recentsFilter } from "../HomeRecentSection";
 import { HomeXraySection } from "../HomeXraySection";
@@ -53,6 +54,15 @@ export const HomeContent = (): JSX.Element | null => {
 
   if (isRecentSection(user, recentItems)) {
     return <HomeRecentSection />;
+  }
+
+  // FIXME: remove this once we have a real implementation
+  if (databases != null && databases[0] != null) {
+    databases[0].blueprints = ["salesforce"];
+  }
+
+  if (databases != null && isBlueprintsSection(databases)) {
+    return <HomeBlueprintsSection databases={databases} />;
   }
 
   if (isXraySection(databases, isXrayEnabled)) {
@@ -102,4 +112,13 @@ const isXraySection = (
   isXrayEnabled: boolean,
 ): boolean => {
   return databases.some(isSyncCompleted) && isXrayEnabled;
+};
+
+const isBlueprintsSection = (databases: Database[] = []): boolean => {
+  return databases.some(
+    (database) =>
+      isSyncCompleted(database) &&
+      database.blueprints != null &&
+      database.blueprints.length > 0,
+  );
 };
