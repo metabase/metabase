@@ -12,13 +12,6 @@ driver:
     - merge:
         - port
         - default: 8080
-    - merge:
-        - dbname
-        - name: catalog
-          placeholder: tpch
-          display-name: Catalog
-          required: true
-          helper-text: Starburst Catalogs contain schemas and reference data sources via a connector.
     - name: schema
       display-name: Schema (optional)
       required: false
