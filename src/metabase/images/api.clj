@@ -16,7 +16,8 @@
 (api.macros/defendpoint :post "/"
   "Upload an image."
   {:multipart true}
-  [{:keys [user-id collection-id]} :- [:and
+  [_route-params
+   {:keys [user-id collection-id]} :- [:and
                                        [:map
                                         [:user-id       {:optional true} [:maybe ::lib.schema.id/user]]
                                         [:collection-id {:optional true} [:maybe ::lib.schema.id/collection]]]
@@ -26,9 +27,8 @@
                                        [:fn
                                         {:error/message "You cannot specify both :user-id and :collection-id"}
                                         (not (every-pred :user-id :collection-id))]]
-   _
-   _
-   {{:strs [file]} :multipart-params}
+   _body
+   {{:strs [file]} :multipart-params, :as _request}
    :- [:map
        [:multipart-params
         [:map
