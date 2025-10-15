@@ -94,16 +94,6 @@
       (finally
         (io/delete-file tempfile true)))))
 
-;; GET /api/collection/:id/items needs to return collection_image
-
-;; GET /api/user + GET /api/user/:id needs to return profile pic URL
-
-;;; TODO -- not sure bout this =(
-(api.macros/defendpoint :post "/add-to-collection"
-  "Add an image to a collection (create a new :model/CollectionImage"
-  []
-  {})
-
 (api.macros/defendpoint :post "/card/:card-id/snapshot"
   "Snapshot a Card. This will create a new CollectionImage."
   [{:keys [card-id]} :- [:map
