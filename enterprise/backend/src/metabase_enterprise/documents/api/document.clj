@@ -251,8 +251,8 @@
 
 (defrecord WSResponse [handler]
   metabase.api.common.internal/EndpointResponse
-  (wrap-response-if-needed [this]
-    #p {::ring.ws/listener handler}))
+  (wrap-response-if-needed [_]
+    {::ring.ws/listener handler}))
 
 (api.macros/defendpoint :get "/:document-id/collab"
   [{:keys [document-id]} :- [:map [:document-id ms/PositiveInt]] _ _ req]
