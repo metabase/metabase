@@ -54,13 +54,13 @@ export const HomeContent = (): JSX.Element | null => {
             maxRows={20}
             autoFocus
             value={prompt}
-            placeholder={t`What would you like to know?`}
+            placeholder={t`What would you like to learn about your data?`}
             onChange={(e) => setPrompt(e.target.value)}
             styles={{
               input: {
-                fontSize: '16px',
-                padding: '16px',
-              }
+                fontSize: "16px",
+                padding: "16px",
+              },
             }}
             onKeyDown={(e) => {
               if (e.nativeEvent.isComposing) {
