@@ -537,7 +537,7 @@ export class UnconnectedDataSelector extends Component {
   // for steps where there's a single option sometimes we want to automatically select it
   // if `useOnlyAvailable*` prop is provided
   skipSteps() {
-    const { readOnly } = this.props;
+    const { readOnly, databaseIsDisabled } = this.props;
     const { activeStep } = this.state;
 
     if (readOnly) {
@@ -550,13 +550,11 @@ export class UnconnectedDataSelector extends Component {
       this.props.selectedDatabaseId == null
     ) {
       const databases = this.getDatabases();
-      if (
-        databases &&
-        databases.length === 1 &&
-        (!this.props.databaseIsDisabled ||
-          !this.props.databaseIsDisabled(databases[0]))
-      ) {
-        this.onChangeDatabase(databases[0]);
+      const enabledDatabases = databases.filter(
+        (db) => !databaseIsDisabled?.(db),
+      );
+      if (enabledDatabases.length >= 1) {
+        this.onChangeDatabase(enabledDatabases[0]);
       }
     }
     if (
