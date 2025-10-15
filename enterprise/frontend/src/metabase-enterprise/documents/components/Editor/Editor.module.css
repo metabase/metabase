@@ -232,7 +232,7 @@
 .userCountDisplay {
   position: absolute;
   top: 0;
-  right: 0;
+  left: 100%;
   transform: translate(-100%, -100%);
   /* background-color: var(--mb-color-bg-light);
   border-bottom: 1px solid var(--mb-color-border);
@@ -248,6 +248,7 @@
 .usersList {
   display: flex;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .usersList > div {
