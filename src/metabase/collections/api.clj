@@ -232,6 +232,7 @@
     "dataset"                           ; Model. TODO : update this
     "document"
     "metric"
+    "image"
     "collection"
     "dashboard"
     "pulse"                             ; I think the only kinds of Pulses we still have are Alerts?
