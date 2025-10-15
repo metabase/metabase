@@ -41,6 +41,17 @@ const NewItemMenuView = ({
   const menuItems = useMemo(() => {
     const items = [];
 
+    items.push(
+      <Menu.Item
+        key="research"
+        component={ForwardRefLink}
+        to={Urls.newResearch()}
+        leftSection={<Icon name="metabot" />}
+      >
+        {t`Megabot`}
+      </Menu.Item>,
+    );
+
     if (hasDataAccess) {
       items.push(
         <Menu.Item

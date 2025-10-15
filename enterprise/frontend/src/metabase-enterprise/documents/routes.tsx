@@ -17,15 +17,18 @@ const DocumentPageOuter = (props: ComponentProps<typeof DocumentPage>) => {
 };
 
 export const getRoutes = () => (
-  <Route path="document/:entityId" component={DocumentPageOuter}>
-    <ModalRoute
-      path="comments/:childTargetId"
-      modal={CommentsSidesheet}
-      noWrap
-      modalProps={{
-        enableTransition: false,
-        closeOnClickOutside: false,
-      }}
-    />
+  <Route>
+    <Route path="megabot/:entityId" component={DocumentPageOuter} />
+    <Route path="document/:entityId" component={DocumentPageOuter}>
+      <ModalRoute
+        path="comments/:childTargetId"
+        modal={CommentsSidesheet}
+        noWrap
+        modalProps={{
+          enableTransition: false,
+          closeOnClickOutside: false,
+        }}
+      />
+    </Route>
   </Route>
 );
