@@ -1,5 +1,5 @@
 import type { Path } from "history";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Dropzone from "react-dropzone";
 import { t } from "ttag";
 
@@ -50,11 +50,17 @@ export const AccountHeader = ({
 
   const [uploadImage] = useUploadImageMutation();
 
-  const handleUpload = (files: File[]) => {
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  const handleUpload = async (files: File[]) => {
     if (files.length > 0) {
       const file = files[0];
 
-      uploadImage({ file, userId: user.id });
+      const { data } = await uploadImage({ file, userId: user.id });
+
+      if (data?.url) {
+        setAvatarUrl(data.url);
+      }
     }
   };
 
@@ -70,7 +76,7 @@ export const AccountHeader = ({
             >
               <input {...getInputProps()} />
               <Icon name="pencil" pos="absolute" right="-10px" bottom="20px" />
-              <HeaderAvatar user={user} />
+              <HeaderAvatar user={user} avatarUrl={avatarUrl} />
             </Box>
           )}
         </Dropzone>

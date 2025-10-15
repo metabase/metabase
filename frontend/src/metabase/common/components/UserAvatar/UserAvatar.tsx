@@ -1,11 +1,12 @@
 import { isEmail } from "metabase/lib/email";
-import { Avatar as MantineAvatar} from "metabase/ui"
+import { Avatar as MantineAvatar } from "metabase/ui";
 
 import type { AvatarProps } from "./UserAvatar.styled";
 import { Avatar as StyledAvatar } from "./UserAvatar.styled";
 
 interface UserAvatarProps extends AvatarProps {
   user: User;
+  avatarUrl?: string | null;
 }
 
 interface GroupProps {
@@ -26,11 +27,16 @@ interface Group {
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function UserAvatar({
   user,
+  avatarUrl,
   ...props
 }: UserAvatarProps | GroupProps) {
-  const imageUrl = user.profile_image_url;
+  const imageUrl = avatarUrl ?? user.profile_image_url;
   const initials = userInitials(user) || "?";
-  return <MantineAvatar {...props} src={imageUrl}>{initials}</MantineAvatar>;
+  return (
+    <MantineAvatar {...props} src={imageUrl}>
+      {initials}
+    </MantineAvatar>
+  );
 }
 
 export function Avatar({ children, ...props }: { children: string }) {

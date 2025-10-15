@@ -37,13 +37,11 @@ export const imageApi = Api.injectEndpoints({
           fetch: true,
         };
       },
-      invalidatesTags: (_, error, { collectionId }) =>
-        [idTag(`collection-item-list`, collectionId ?? 0)]
+      invalidatesTags: (_, error, { collectionId }) => [
+        idTag(`collection-item-list`, collectionId ?? 0),
+      ],
     }),
-    getImageData: builder.query<
-      ImageResponse,
-      { id: number }
-    >({
+    getImageData: builder.query<ImageResponse, { id: number }>({
       query: ({ id }) => ({
         url: `/api/images/${id}`,
       }),
@@ -53,8 +51,13 @@ export const imageApi = Api.injectEndpoints({
         method: "POST",
         url: `/api/images/card/${cardId}/snapshot`,
       }),
-      invalidatesTags: ({ collection_id }, error, { id: cardId}) => {
-        console.log("Invalidating snapshot tags for card", cardId, "in collection", collection_id);
+      invalidatesTags: ({ collection_id }, error, { id: cardId }) => {
+        console.log(
+          "Invalidating snapshot tags for card",
+          cardId,
+          "in collection",
+          collection_id,
+        );
         return invalidateTags(error, [
           idTag("card-snapshot-list", cardId),
           idTag(`collection-item-list`, collection_id ?? 0),
