@@ -387,36 +387,70 @@
 
 ;;; ----------------------------------------------- Ad-hoc queries ------------------------------------------------
 
-(api.macros/defendpoint :post "/dataset/:token"
-  "Fetch the results of running the ad-hoc query `auery` that should represent a subset of the query of the Card
-  encoded in the JSON Web Token `token` signed with the `embedding-secret-key`.
+(defn- decode-card-id
+  [unsigned-token original-question-id]
+  (if original-question-id
+    (u/prog1 (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
+      (api.embed.common/check-embedding-enabled-for-dashboard <>)
+      (api.embed.common/check-card-belongs-to-dashboard original-question-id <>))
+    (u/prog1 (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
+      (api.embed.common/check-embedding-enabled-for-card <>))))
 
-   Token should have the following format:
+(api.macros/defendpoint :post "/dataset/:token"
+  "Fetch the results of running the ad-hoc query `query` that should represent a subset of the query of the card
+  either encoded in the JSON Web Token `token` signed with the `embedding-secret-key` or provided by
+  the query parameter `original-question-id` and belonging to the dashboard encoded in the JSON Web Token
+  `token` signed with the `embedding-secret-key`.
+
+   Token should have the following format for cards, when `original-question-id` is not provided:
 
      {:resource {:question <card-id>}
+      :params   <parameters>}
+
+   Token should have the following format for dashboards, when `original-question-id` is provided:
+
+     {:resource {:dashboard <dashboard-id>}
       :params   <parameters>}"
   [{:keys [token]} :- [:map
                        [:token string?]]
-   _query-params
+   {:keys [original-question-id]} :- [:map
+                                      [:original-question-id {:optional true} [:maybe ms/PositiveInt]]]
    query :- [:map
              [:database {:optional true} [:maybe :int]]]]
-  (run-query-for-unsigned-token-async (unsign-and-translate-ids token) :api nil {:subset-query query}))
+  (run-query-for-unsigned-token-async (unsign-and-translate-ids token) :api nil {:subset-query query})
+  (let [unsigned-token (unsign-and-translate-ids token)
+        card-id (decode-card-id unsigned-token original-question-id)]
+    (api.embed.common/check-embedding-enabled-for-card card-id)
+    (api.embed.common/process-query-for-card-with-params
+     :export-format    :api
+     :card-id          card-id
+     :token-params     (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:params])
+     :embedding-params (t2/select-one-fn :embedding_params :model/Card :id card-id)
+     :constraints      (qp.constraints/default-query-constraints)
+     :subset-query     query)))
 
 (api.macros/defendpoint :post "/dataset/:token/query_metadata"
-  "Fetch the query metadata of an ad-hoc query that should represent a subset of the query of the Card
-  encoded in the JSON Web Token `token` signed with the `embedding-secret-key`.
+  "Fetch the query metadata of an ad-hoc query that should represent a subset of the query of the card
+  either encoded in the JSON Web Token `token` signed with the `embedding-secret-key` or provided by
+  the query parameter `original-question-id` and belonging to the dashboard encoded in the JSON Web Token
+  `token` signed with the `embedding-secret-key`.
 
-   Token should have the following format:
+   Token should have the following format for cards, when `original-question-id` is not provided:
 
      {:resource {:question <card-id>}
+      :params   <parameters>}
+
+   Token should have the following format for dashboards, when `original-question-id` is provided:
+
+     {:resource {:dashboard <dashboard-id>}
       :params   <parameters>}"
   [{:keys [token]} :- [:map
                        [:token string?]]
-   _query-params
+   {:keys [original-question-id]} :- [:map
+                                      [:original-question-id {:optional true} [:maybe ms/PositiveInt]]]
    query :- [:map
              [:database {:optional true} [:maybe :int]]]]
   (let [unsigned-token (unsign-and-translate-ids token)
-        card-id        (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
-        params         (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:params])]
-    (api.embed.common/check-embedding-enabled-for-card card-id)
+        card-id (decode-card-id unsigned-token original-question-id)
+        params (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:params])]
     (qp.card/fetch-subset-query-metadata card-id params query)))
