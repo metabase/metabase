@@ -61,12 +61,12 @@ describe("GettingStartedSection", () => {
 
   it("should render the 'Add data' button", () => {
     setup();
-    expect(screen.getByLabelText("Add data")).toBeInTheDocument();
+    expect(screen.getByLabelText("Add your data")).toBeInTheDocument();
   });
 
   it("should not render the 'Add data' button if the user is not an admin", () => {
     setup({ isAdmin: false });
-    expect(screen.queryByLabelText("Add data")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Add your data")).not.toBeInTheDocument();
   });
 
   it("should trigger the modal on 'Add data' click", async () => {
