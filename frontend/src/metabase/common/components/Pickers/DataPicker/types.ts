@@ -5,6 +5,7 @@ import type {
   DatabaseId,
   SchemaName,
   TableId,
+  TransformId,
 } from "metabase-types/api";
 
 import type { EntityPickerModalOptions } from "../../EntityPicker";
@@ -45,6 +46,12 @@ export type QuestionItem = {
   database_id: DatabaseId;
 };
 
+export type TransformItem = {
+  id: TransformId;
+  name: string;
+  model: "transform";
+};
+
 export type DashboardItem = {
   id: DashboardId;
   name: string;
@@ -77,7 +84,8 @@ export type DataPickerValue =
   | TablePickerValue
   | QuestionItem
   | ModelItem
-  | MetricItem;
+  | MetricItem
+  | TransformItem;
 
 export type DataPickerFolderItem =
   | CollectionItem
@@ -89,7 +97,8 @@ export type DataPickerValueItem =
   | TableItem
   | QuestionItem
   | ModelItem
-  | MetricItem;
+  | MetricItem
+  | TransformItem;
 
 export type DataPickerItem = DataPickerFolderItem | DataPickerValueItem;
 

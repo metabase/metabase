@@ -15,10 +15,10 @@ import { skipToken } from "metabase/api";
 import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
 import type { DependencyEntry } from "metabase-types/api";
 
-import { DataPicker } from "./DataPicker";
 import S from "./DependencyLineage.module.css";
 import { DependencyList } from "./DependencyList";
 import { GraphContext } from "./GraphContext";
+import { GraphEntryPicker } from "./GraphEntryPicker";
 import { GraphNode } from "./GraphNode";
 import { MAX_ZOOM, MIN_ZOOM } from "./constants";
 import type { GraphSelection, NodeType } from "./types";
@@ -72,7 +72,7 @@ export function DependencyLineage({
         <Controls />
         <GraphNodeLayout />
         <Panel position="top-left">
-          <DataPicker
+          <GraphEntryPicker
             graph={graph}
             entry={entry}
             isFetching={isFetching}

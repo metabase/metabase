@@ -8,6 +8,7 @@
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.search.spec :as search.spec]
    [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -134,6 +135,21 @@
                         {:transform_id transform-id
                          :tag_id       tag-id
                          :position     (get new-positions tag-id)})))))))
+
+;;; ----------------------------------------------- Search ----------------------------------------------------------
+
+(search.spec/define-spec "transform"
+  {:model :model/Transform
+   :attrs {:archived      false
+           :collection-id false
+           :creator-id    false
+           :database-id   false
+           :view-count    false
+           :created-at    true
+           :updated-at    true}
+   :search-terms [:name]
+   :render-terms {:transform-name :name
+                  :transform-id :id}})
 
 ;;; ------------------------------------------------- Serialization ------------------------------------------------
 
