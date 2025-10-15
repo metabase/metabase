@@ -46,7 +46,7 @@
 (defn- scan-phases [scan]
   (if (not= :full scan)
     [:metadata]
-    [:metadata :analyze :field-values :identify-blueprint]))
+    [:metadata :identify-blueprint :analyze :field-values]))
 
 (defn- do-phase! [database phase]
   (let [f      (phase->fn phase)
