@@ -1,4 +1,5 @@
 import dayjs from "dayjs";
+import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
 import * as ML from "cljs/metabase.lib.js";
 import type { CardId } from "metabase-types/api";
@@ -161,8 +162,8 @@ export function specificDateFilterParts(
   }
   return {
     ...filterParts,
-    values: filterParts.values.map((value: dayjs.Dayjs) =>
-      value.local().toDate(),
+    values: filterParts.values.map((value: Moment) =>
+      value.local(true).toDate(),
     ),
   };
 }
@@ -233,7 +234,7 @@ export function timeFilterParts(
   }
   return {
     ...filterParts,
-    values: filterParts.values.map((value: dayjs.Dayjs) => value.toDate()),
+    values: filterParts.values.map((value: Moment) => value.toDate()),
   };
 }
 
