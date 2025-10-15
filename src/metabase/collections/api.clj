@@ -349,11 +349,12 @@
                 [nil   :last_edit_email]
                 [nil   :last_edit_first_name]
                 [nil   :last_edit_last_name]
-                [:ci.created_at :last_edit_timestamp]
+                [:i.created_at :last_edit_timestamp]
                 [(h2x/literal "image") :model]]
        :from [[:collection_image :ci]]
+       :join  [[:image :i] [:= :i.id :ci.image_id]]
        :where [:= :ci.collection_id (:id collection)]}
-      (sql.helpers/where (pinned-state->clause pinned-state :document.collection_position))))
+      (sql.helpers/where (pinned-state->clause pinned-state :ci.collection_position))))
 
 (defmethod collection-children-query :document
   [_ collection {:keys [archived? pinned-state]}]
@@ -965,7 +966,8 @@
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models], :as options}                     :- CollectionChildrenOptions]
   (let [valid-models (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard
-                                             #_:image
+                                             ;; hackathon 2025
+                                             :image
                                              :pulse :snippet :timeline]
                                       (premium-features/enable-documents?) (conj :document))
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty
