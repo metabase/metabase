@@ -1,11 +1,44 @@
 import { Server } from "@hocuspocus/server";
 import { Webhook, Events } from "@hocuspocus/extension-webhook";
 import { TiptapTransformer } from "@hocuspocus/transformer";
+import * as Y from "yjs";
+
+class WebhookWithBin extends Webhook {
+    async onChange(data) {
+		if (!this.configuration.events.includes(Events.onChange)) {
+			return;
+		}
+
+		const save = async () => {
+			try {
+				await this.sendRequest(Events.onChange, {
+					document: this.configuration.transformer.fromYdoc(data.document),
+                    ydoc: Buffer.from(Y.encodeStateAsUpdate(data.document)).toString("base64"),
+					documentName: data.documentName,
+					context: data.context,
+					requestHeaders: data.requestHeaders,
+					requestParameters: Object.fromEntries(
+						data.requestParameters.entries(),
+					),
+				});
+			} catch (e) {
+				console.error(`Caught error in extension-webhook: ${e}`);
+			}
+		};
+
+		if (!this.configuration.debounce) {
+			return save();
+		}
+
+		this.debounce(data.documentName, save);
+        
+    }
+}
 
 const server = new Server({
   port: 3005,
   extensions: [
-    new Webhook({
+    new WebhookWithBin({
       url: "http://localhost:3000/api/ee/document/webhook",
       secret: "459824aaffa928e05f5b1caec411ae5f",
       transformer: TiptapTransformer,
