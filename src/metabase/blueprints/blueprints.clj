@@ -1,9 +1,12 @@
 (ns metabase.blueprints.blueprints
   (:require
+   [clj-yaml.core :as yaml]
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [metabase-enterprise.transforms.execute :as transforms.execute]
+   [metabase.models.serialization :as serdes]
    [toucan2.core :as t2]))
 
 (def salesforce-tables
@@ -104,6 +107,31 @@
               :name (format "transformed_%s" which)
               :schema output-schema
               :database db-id}}))
+
+(defn patch-card
+  [yaml-file db-name destination-schema collection-id user-id]
+  (let [card (-> (yaml/parse-string (slurp (io/resource yaml-file)))
+                 (update :dataset_query (fn [query]
+                                          (walk/postwalk (fn [x]
+                                                           (cond (string? x)
+                                                                 ({"<<db>>" db-name
+                                                                   "<<destination_schema>>" destination-schema} x x)
+                                                                 (sequential? x)
+                                                                 (vec x)
+                                                                 :else x))
+                                                         query
+                                                         )))
+                 (update :dataset_query serdes/import-mbql)
+                 (update :visualization_settings serdes/import-visualization-settings)
+                 (assoc :collection_id collection-id
+                        :creator_id user-id)
+                 )]
+    card))
+
+(comment
+
+  (slurp (io/resource "blueprints/salesforce/cards/customer_base_by_country.yaml"))
+  )
 
 (defn create-salesforce-transforms! [id]
   (let [db (t2/select-one :model/Database :id id)]
