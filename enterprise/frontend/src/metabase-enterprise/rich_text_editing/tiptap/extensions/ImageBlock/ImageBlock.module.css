@@ -2,7 +2,11 @@
   border: 1px solid var(--mb-color-border-secondary);
   border-radius: 6px;
   padding: var(--mantine-spacing-md);
-  background-color: var(--mb-color-background);
+  background-color: var(--mb-color-bg-light);
+
+  &.selected {
+    background-color: var(--mb-color-bg-medium);
+  }
 }
 
 .uploadWrapper {

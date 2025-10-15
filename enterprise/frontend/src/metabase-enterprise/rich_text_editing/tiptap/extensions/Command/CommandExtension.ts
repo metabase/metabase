@@ -177,7 +177,6 @@ export const CommandExtension = Extension.create<CommandOptions>({
             case "imageBlock":
               editor
                 .chain()
-                .focus()
                 .deleteRange(range)
                 .insertContent({
                   type: "imageBlock",
