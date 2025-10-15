@@ -12,6 +12,7 @@
   []
   {})
 
+;; curl -X POST http://localhost:3000/api/images -H "x-metabase-session: $(cat session.txt)" -F "file=@$(pwd)/duck.jpeg"
 (api.macros/defendpoint :post "/"
   "Upload an image."
   {:multipart true}
@@ -24,6 +25,11 @@
         [:map
          ["file" (mu/with ms/File {:description "image data"})]]]]]
   (let [{:keys [tempfile size]} file]
+    ;; file like
+    #_{:filename "duck.jpeg",
+       :content-type "image/jpeg",
+       :tempfile #object [java.io.File 0x56903864 "/var/folders/5m/qrb4zmxd0wqgn9bk9n3gj3400000gn/T/ring-multipart-4499052190200448033.tmp"],
+       :size 8669}
     (try
       (log/infof "Got a cool file with %d bytes" size)
       (io/copy tempfile (doto (io/file "/tmp/hack2025/duck.png") (io/make-parents)))
