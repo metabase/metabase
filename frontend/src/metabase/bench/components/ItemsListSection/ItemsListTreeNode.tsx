@@ -2,6 +2,7 @@ import cx from "classnames";
 import { forwardRef } from "react";
 import { isObject } from "underscore";
 
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { TreeNode } from "metabase/common/components/tree/TreeNode";
 import type { TreeNodeProps } from "metabase/common/components/tree/types";
 import { Icon } from "metabase/ui";
@@ -85,7 +86,7 @@ export const ItemsListTreeNode = forwardRef<HTMLLIElement, TreeNodeProps>(
           data-testid="tree-item-name"
           className={S.nameContainer}
         >
-          {name}
+          <Ellipsified>{name}</Ellipsified>
         </TreeNode.NameContainer>
         {rightSection?.(item)}
       </TreeNode.Root>

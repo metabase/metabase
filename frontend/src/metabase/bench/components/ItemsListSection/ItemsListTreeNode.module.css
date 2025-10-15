@@ -14,4 +14,5 @@
 
 .nameContainer {
   font-weight: normal;
+  overflow: hidden;
 }
