@@ -20,6 +20,7 @@ import type { Dataset } from "metabase-types/api";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 
 import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";
+import { CopyQuestionButton } from "../CopyQuestionButton";
 import { ExploreResultsLink } from "../ExploreResultsLink";
 import { FilterHeaderButton } from "../FilterHeaderButton";
 import { QuestionActions } from "../QuestionActions";
@@ -201,6 +202,10 @@ export function ViewTitleHeaderRightSide({
         question,
         queryBuilderMode,
       }) && <ToggleNativeQueryPreview question={question} />}
+      {CopyQuestionButton.shouldRender({
+        question,
+        queryBuilderMode,
+      }) && <CopyQuestionButton question={question} />}
       {hasExploreResultsLink && <ExploreResultsLink question={question} />}
       {hasRunButton && !isShowingNotebook && (
         <Box className={ViewTitleHeaderS.ViewHeaderIconButtonContainer}>
