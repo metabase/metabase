@@ -291,8 +291,8 @@ describe("Question", () => {
     describe("Question.create(...)", () => {
       const question = Question.create({
         metadata,
-        databaseId: SAMPLE_DB_ID,
-        tableId: ORDERS_ID,
+        DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
+        DEPRECATED_RAW_MBQL_tableId: ORDERS_ID,
       });
 
       it("defaults to table display", () => {
@@ -563,24 +563,24 @@ describe("Question", () => {
 
       it("questions that differ only by randomized idents are considered equal", () => {
         const question1 = Question.create({
-          databaseId: SAMPLE_DB_ID,
-          tableId: ORDERS_ID,
+          DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
+          DEPRECATED_RAW_MBQL_tableId: ORDERS_ID,
         });
         const question2 = Question.create({
-          databaseId: SAMPLE_DB_ID,
-          tableId: ORDERS_ID,
+          DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
+          DEPRECATED_RAW_MBQL_tableId: ORDERS_ID,
         });
         expect(question1.isDirtyComparedTo(question2)).toBe(false);
       });
 
       it("questions that differ by query only are not considered equal", () => {
         const question1 = Question.create({
-          databaseId: SAMPLE_DB_ID,
-          tableId: PRODUCTS_ID,
+          DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
+          DEPRECATED_RAW_MBQL_tableId: PRODUCTS_ID,
         });
         const question2 = Question.create({
-          databaseId: SAMPLE_DB_ID,
-          tableId: ORDERS_ID,
+          DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
+          DEPRECATED_RAW_MBQL_tableId: ORDERS_ID,
         });
         expect(question1.isDirtyComparedTo(question2)).toBe(true);
       });

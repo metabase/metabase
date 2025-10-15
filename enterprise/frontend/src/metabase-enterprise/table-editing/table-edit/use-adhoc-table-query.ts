@@ -8,6 +8,7 @@ import { loadMetadataForTable } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
+import type { OpaqueDatasetQuery } from "metabase-types/api";
 
 type UseAdHocTableQueryProps = {
   tableId: number;
@@ -26,7 +27,7 @@ export const useAdHocTableQuery = ({
   const queryParam = useMemo(
     () =>
       location.query?.query
-        ? JSON.parse(b64url_to_utf8(location.query.query))
+        ? deserializeQueryFromUrl(location.query.query)
         : null,
     [location.query.query],
   );
@@ -70,10 +71,7 @@ export const useAdHocTableQuery = ({
       // don't set the query string param if there are no filters or sorting
       if (newFilters.length > 0 || newOrderBys.length > 0) {
         const searchParams = new URLSearchParams();
-        searchParams.set(
-          "query",
-          utf8_to_b64url(JSON.stringify(Lib.toJsQuery(newQuery))),
-        );
+        searchParams.set("query", serializeQueryToUrl(Lib.toJsQuery(newQuery)));
         dispatch(
           push(`${window.location.pathname}?${searchParams.toString()}`),
         );
@@ -96,3 +94,11 @@ export const useAdHocTableQuery = ({
     handleTableQuestionChange,
   };
 };
+
+function serializeQueryToUrl(query: OpaqueDatasetQuery) {
+  return utf8_to_b64url(JSON.stringify(query));
+}
+
+function deserializeQueryFromUrl(query: string): OpaqueDatasetQuery {
+  return JSON.parse(b64url_to_utf8(query));
+}
