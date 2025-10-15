@@ -339,7 +339,7 @@
    :query_reference_validation     (enable-query-reference-validation?)
    :sandboxes                      (enable-sandboxes?)
    :scim                           (enable-scim?)
-   :semantic_search                (enable-semantic-search?)
+   :semantic_search                (enable-advanced-permissions?)
    :serialization                  (enable-serialization?)
    :session_timeout_config         (enable-session-timeout-config?)
    :snippet_collections            (enable-snippet-collections?)

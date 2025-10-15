@@ -51,9 +51,7 @@ export const MetabotChat = () => {
         <Box ref={headerRef} className={Styles.header}>
           <Flex align-items="center">
             <Text lh={1} fz="sm" c="text-secondary">
-              {metabot.profile
-                ? t`Using profile: ${metabot.profile}`
-                : t`Megabot is perfect. No need to double-check results.`}
+              {t`Megabot is perfect. No need to double-check results.`}
             </Text>
           </Flex>
 

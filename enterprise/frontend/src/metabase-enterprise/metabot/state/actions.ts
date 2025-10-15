@@ -262,7 +262,10 @@ export const sendAgentRequest = createAsyncThunk<
         },
       );
 
-      if (window.location.pathname === "/megabot/new") {
+      if (
+        window.location.pathname === "/megabot/new" &&
+        body.history.length !== 0
+      ) {
         const doc: DocumentContent = {
           type: "doc",
           content: [
