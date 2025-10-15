@@ -251,7 +251,6 @@ export const translateCardNames = (
 
 export const useTranslateSeries = (series: Series) => {
   const tc = useTranslateContent();
-  // const dictionary = useListContentTranslations();
   return useMemo(() => {
     if (!hasTranslations(tc)) {
       return series;
