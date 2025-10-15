@@ -12,9 +12,14 @@ import FormSubmitButton from "metabase/common/components/FormSubmitButton";
 import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import { Box, Flex, Text } from "metabase/ui";
-import type { LocaleData, User } from "metabase-types/api";
+import type { User } from "metabase-types/api";
 
+import type { components } from "../../../../../../../ts-types/schema2";
+import { MetabaseSessionApiAvailableLocales } from "../../../../../../../ts-types/schema3.d.ts/types.gen";
 import type { UserProfileData } from "../../types";
+
+type LocaleData =
+  components["schemas"]["metabase.session.api.available-locales"];
 
 const SSO_PROFILE_SCHEMA = Yup.object({
   locale: Yup.string().nullable().default(null),
@@ -45,9 +50,13 @@ const UserProfileForm = ({
     return schema.cast(user, { stripUnknown: true });
   }, [user, schema]);
 
-  const localeOptions = useMemo(() => {
-    return getLocaleOptions(locales);
-  }, [locales]);
+  // const localeOptions = useMemo(() => {
+  //   return getLocaleOptions(locales);
+  // }, [locales]);
+
+  const localeOptions = getLocaleOptions(
+    Object.values(MetabaseSessionApiAvailableLocales).map((x) => [x[0], x[1]]),
+  );
 
   const handleSubmit = useCallback(
     (values: UserProfileData) => onSubmit(user, values),
@@ -106,7 +115,7 @@ const UserProfileForm = ({
   );
 };
 
-const getLocaleOptions = (locales: LocaleData[] | null) => {
+const getLocaleOptions = (locales: [string, string][] | null) => {
   const options = _.chain(locales ?? [["en", "English"]])
     .map(([value, name]) => ({ name, value }))
     .sortBy(({ name }) => name)
