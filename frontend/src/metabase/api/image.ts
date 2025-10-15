@@ -1,3 +1,5 @@
+import { getCard } from "metabase/query_builder/selectors";
+
 import { Api } from "./api";
 import { idTag, invalidateTags } from "./tags";
 
@@ -52,17 +54,30 @@ export const imageApi = Api.injectEndpoints({
         url: `/api/images/card/${cardId}/snapshot`,
       }),
       invalidatesTags: (_, error, { id: cardId}, { collection_id }) => {
+        console.log("Invalidating snapshot tags for card", cardId, "in collection", collection_id);
         return [
           idTag("card-snapshot-list", cardId),
           idTag(`collection-item-list`, collection_id ?? 0),
         ]
       },
     }),
+    getCardSnapshots: builder.query<
+      { id: number; url: string; created_at: string }[],
+      { cardId: number }
+    >({
+      query: ({ cardId }) => ({
+        url: `/api/images/card/${cardId}/snapshots`,
+      }),
+      providesTags: (response, error, { cardId }) => [
+        idTag("card-snapshot-list", cardId),
+      ],
+    }),
   }),
 });
 
 export const {
+  useGetImageDataQuery,
   useUploadImageMutation,
   useSnapshotCardMutation,
-  useGetImageDataQuery,
+  useGetCardSnapshotsQuery,
 } = imageApi;
