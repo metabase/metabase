@@ -31,16 +31,20 @@ interface QuestionListProps {
   searchText: string;
   collectionId: CollectionId;
   onSelect: BaseSelectListItemProps["onSelect"];
+  onSelectImage?: (imageId: number) => void;
   hasCollections: boolean;
   showOnlyPublicCollections: boolean;
+  showImages?: boolean;
 }
 
 export function QuestionList({
   searchText,
   collectionId,
   onSelect,
+  onSelectImage,
   hasCollections,
   showOnlyPublicCollections,
+  showImages,
 }: QuestionListProps) {
   const [queryOffset, setQueryOffset] = useState(0);
   const { handleNextPage, handlePreviousPage, page, setPage } = usePagination();
@@ -69,6 +73,10 @@ export function QuestionList({
     handlePreviousPage();
   };
 
+  const models = showImages
+    ? (["card", "dataset", "image"] as const)
+    : (["card", "dataset"] as const);
+
   const {
     data: searchData,
     error: searchError,
@@ -81,8 +89,8 @@ export function QuestionList({
             filter_items_in_personal_collection: "exclude" as const,
           }),
           models: isEmbeddingSdk() // FIXME(sdk): remove this logic when v51 is released
-            ? ["card", "dataset"] // ignore "metric" as SDK is used with v50 (or below) now, where we don't have this entity type
-            : ["card", "dataset", "metric"],
+            ? [...models] // ignore "metric" as SDK is used with v50 (or below) now, where we don't have this entity type
+            : [...models, "metric"],
           offset: queryOffset,
           limit: DEFAULT_SEARCH_LIMIT,
         }
@@ -97,8 +105,8 @@ export function QuestionList({
       ? {
           id: collectionId,
           models: isEmbeddingSdk() // FIXME(sdk): remove this logic when v51 is released
-            ? ["card", "dataset"] // ignore "metric" as SDK is used with v50 (or below) now, where we don't have this entity type
-            : ["card", "dataset", "metric"],
+            ? [...models] // ignore "metric" as SDK is used with v50 (or below) now, where we don't have this entity type
+            : [...models, "metric"],
           offset: queryOffset,
           limit: DEFAULT_SEARCH_LIMIT,
         }
@@ -143,33 +151,35 @@ export function QuestionList({
                 label: S.QuestionListItemLabel,
               }}
               className={S.QuestionListItem}
-              name={item.getName()}
+              name={item.model === "image" ? item.name : item.getName()}
               icon={{
-                name: item.getIcon().name,
+                name: item.model === "image" ? "snail" : item.getIcon().name,
                 size: item.model === "dataset" ? 18 : 16,
                 className: S.QuestionListItemIcon,
               }}
-              onSelect={onSelect}
+              onSelect={item.model === "image" ? onSelectImage : onSelect}
               rightIcon={PLUGIN_MODERATION.getStatusIcon(
                 item.moderated_status ?? undefined,
               )}
             />
-            <Tooltip label={t`Visualize another way`}>
-              <ActionIcon
-                className={S.VisualizerButton}
-                size="41px"
-                aria-label={t`Visualize another way`}
-                onClick={() => {
-                  trackSimpleEvent({
-                    event: "visualize_another_way_clicked",
-                    triggered_from: "question-list",
-                  });
-                  setVisualizerModalCardId(Number(item.id));
-                }}
-              >
-                <Icon name="lineandbar" />
-              </ActionIcon>
-            </Tooltip>
+            {item.model !== "image" ? (
+              <Tooltip label={t`Visualize another way`}>
+                <ActionIcon
+                  className={S.VisualizerButton}
+                  size="41px"
+                  aria-label={t`Visualize another way`}
+                  onClick={() => {
+                    trackSimpleEvent({
+                      event: "visualize_another_way_clicked",
+                      triggered_from: "question-list",
+                    });
+                    setVisualizerModalCardId(Number(item.id));
+                  }}
+                >
+                  <Icon name="lineandbar" />
+                </ActionIcon>
+              </Tooltip>
+            ) : null}
           </Flex>
         ))}
       </SelectList>

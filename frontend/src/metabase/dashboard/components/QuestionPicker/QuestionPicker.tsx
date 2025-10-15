@@ -27,12 +27,14 @@ import { addDashboardQuestion } from "./actions";
 
 interface QuestionPickerInnerProps {
   onSelect: BaseSelectListItemProps["onSelect"];
+  onSelectImage?: (imageId: number) => void;
   collectionsById: Record<CollectionId, Collection>;
   getCollectionIcon: (collection: Collection) => IconProps;
 }
 
 function QuestionPickerInner({
   onSelect,
+  onSelectImage,
   collectionsById,
   getCollectionIcon,
 }: QuestionPickerInnerProps) {
@@ -150,7 +152,9 @@ function QuestionPickerInner({
         searchText={debouncedSearchText}
         collectionId={currentCollectionId}
         onSelect={onSelect}
+        onSelectImage={onSelectImage}
         showOnlyPublicCollections={showOnlyPublicCollections}
+        showImages
       />
     </div>
   );

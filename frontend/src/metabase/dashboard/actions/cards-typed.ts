@@ -77,6 +77,9 @@ import { getExistingDashCards } from "./utils";
 export type NewDashCardOpts = {
   dashId: DashboardId;
   tabId: DashboardTabId | null;
+  markdownContent?: string;
+  size_x?: number;
+  size_y?: number;
 };
 
 export type AddDashCardOpts = NewDashCardOpts & {
@@ -205,13 +208,18 @@ export const addHeadingDashCardToDashboard =
   };
 
 export const addMarkdownDashCardToDashboard =
-  ({ dashId, tabId }: NewDashCardOpts) =>
+  ({ dashId, tabId, markdownContent, size_x, size_y }: NewDashCardOpts) =>
   (dispatch: Dispatch) => {
     trackCardCreated("text", dashId);
     const card = createVirtualCard("text");
     const dashcardOverrides = {
       card,
-      visualization_settings: { virtual_card: card },
+      visualization_settings: {
+        virtual_card: card,
+        text: markdownContent,
+      },
+      size_x,
+      size_y,
     };
     dispatch(addDashCardToDashboard({ dashId, tabId, dashcardOverrides }));
   };

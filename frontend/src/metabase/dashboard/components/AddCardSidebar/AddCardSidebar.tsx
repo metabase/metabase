@@ -7,8 +7,13 @@ import type { CardId } from "metabase-types/api";
 import { QuestionPicker } from "../QuestionPicker";
 
 export function AddCardSidebar() {
-  const { dashboard, selectedTabId, addCardToDashboard, closeSidebar } =
-    useDashboardContext();
+  const {
+    dashboard,
+    selectedTabId,
+    addCardToDashboard,
+    closeSidebar,
+    addMarkdownDashCardToDashboard,
+  } = useDashboardContext();
 
   const handleAddCard = useCallback(
     (cardId: CardId) => {
@@ -23,9 +28,27 @@ export function AddCardSidebar() {
     [addCardToDashboard, dashboard, selectedTabId],
   );
 
+  const handleAddImage = useCallback(
+    (imageId: CardId) => {
+      if (dashboard) {
+        addMarkdownDashCardToDashboard({
+          dashId: dashboard.id,
+          tabId: selectedTabId,
+          markdownContent: `![Image](/api/images/${imageId}/contents)`,
+          size_x: 6,
+          size_y: 6,
+        });
+      }
+    },
+    [addMarkdownDashCardToDashboard, dashboard, selectedTabId],
+  );
   return (
     <Sidebar data-testid="add-card-sidebar">
-      <QuestionPicker onSelect={handleAddCard} onClose={closeSidebar} />
+      <QuestionPicker
+        onSelect={handleAddCard}
+        onSelectImage={handleAddImage}
+        onClose={closeSidebar}
+      />
     </Sidebar>
   );
 }
