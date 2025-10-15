@@ -80,7 +80,16 @@ export const ImageBlockNodeView = ({
   return (
     <NodeViewWrapper className={cx(S.root)} contentEditable={false}>
       {node.attrs.url ? (
-        <img src={node.attrs.url} className={S.image} />
+        <img
+          src={node.attrs.url}
+          style={{
+            maxWidth: "100%",
+            maxHeight: "50vh",
+            padding: 8,
+            border: "1px solid var(--mb-color-border-secondary)",
+          }}
+          className={S.image}
+        />
       ) : (
         <Flex
           gap="xs"
