@@ -3,6 +3,7 @@ import { useCallback, useMemo } from "react";
 import _ from "underscore";
 
 import type { ContentTranslationFunction } from "metabase/i18n/types";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type { HoveredObject } from "metabase/visualizations/types";
 import type {
   DictionaryArray,
@@ -239,20 +240,28 @@ function translateVizSettings(
   series: Series,
   tc: ContentTranslationFunction,
 ): Series {
+  const settings = series.some((singleSeries) => singleSeries.card !== null)
+    ? getComputedSettingsForSeries(series)
+    : undefined;
   return series.map((singleSeries) => {
     const translationConfig =
       visualizationTranslationConfig[singleSeries.card?.display];
 
     if (translationConfig) {
-      return I.updateIn(
+      return I.setIn(
         singleSeries,
         [
           "card",
           "visualization_settings",
           translationConfig.visualizationSettings.key,
         ],
-        (settingsValue) =>
-          translationConfig.visualizationSettings.updater(settingsValue, tc),
+        translationConfig.visualizationSettings.updater(
+          settings
+            ? // Type here is union of all possible setting properties, but we know each type in the translationConfig, so we can relax the type here.
+              (settings[translationConfig.visualizationSettings.key] as any)
+            : undefined,
+          tc,
+        ),
       );
     }
 
