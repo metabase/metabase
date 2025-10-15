@@ -69,6 +69,16 @@ export const HomeBlueprintContent = ({
                 name: "Table 6",
                 description: "Description 6",
               }),
+              createMockTable({
+                id: 7,
+                name: "Table 7",
+                description: "Description 7",
+              }),
+              createMockTable({
+                id: 8,
+                name: "Table 8",
+                description: "Description 8",
+              }),
             ]}
           />
         ) : (
