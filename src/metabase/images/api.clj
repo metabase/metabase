@@ -30,12 +30,6 @@
      :body    (java.io.File. url)
      :headers {"Content-Type" content-type}}))
 
-(defn- assign-image-to-user! [image-id user-id]
-  (t2/update! :model/User user-id {:profile_image_id image-id}))
-
-(defn- add-image-to-collection! [image-id collection-id]
-  (t2/insert! :model/CollectionImage :image_id image-id, :collection_id collection-id))
-
 ;; curl -X POST http://localhost:3000/api/images -H "x-metabase-session: $(cat session.txt)" -F "file=@$(pwd)/duck.jpeg"
 (api.macros/defendpoint :post "/"
   "Upload an image."
@@ -67,19 +61,17 @@
         (log/infof "Got a cool file with %d bytes with name %s" size filename)
         (io/make-parents localfile)
         (io/copy tempfile localfile)
-        (let [url              (str (io/as-url localfile))
-              image            (t2/insert-returning-instance! :model/Image {:url url, :title user-filename, :content_type (:content-type localfile)})
-              _                (when user-id (t2/update! :model/User api/*current-user-id* {:profile_image_id (:id image)}))
-              body             (merge {:message "cool", :image image}
-                                      (when collection-id
-                                        {:collection-image
-                                         (t2/insert-returning-instance!
-                                          :model/CollectionImage
-                                          {:image_id      (:id image)
-                                           :collection_id collection-id
-                                           :collection_position 0})}))]
-          {:status 200
-           :body   body}))
+        (let [url   (str (io/as-url localfile))
+              image (t2/insert-returning-instance! :model/Image {:url url, :title user-filename, :content_type (:content-type file)})]
+          (when user-id
+            (t2/update! :model/User user-id {:profile_image_id (:id image)}))
+          (when collection-id
+            (t2/insert!
+             :model/CollectionImage
+             {:image_id            (:id image)
+              :collection_id       collection-id
+              :collection_position 0}))
+          image))
       (finally
         (io/delete-file tempfile true)))))
 
