@@ -48,4 +48,8 @@ export const TOOL_CALL_MESSAGES: Record<string, string | undefined> = {
   get search_metabase_documentation() {
     return t`Consulting the docs`;
   },
+
+  get write_memory_entry() {
+    return t`Remembering...`;
+  },
 };
