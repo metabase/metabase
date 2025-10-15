@@ -30,7 +30,7 @@ export function DateRangePickerBody({
   const [startDate, endDate] = value;
   const [inProgressDateRange, setInProgressDateRange] =
     useState<DatesRangeValue | null>(value);
-  const [date, setDate] = useState(startDate);
+  const [displayedDate, setDisplayedDate] = useState(startDate);
 
   const handleRangeChange = (newDateRange: DatesRangeValue) => {
     const [newStartDate, newEndDate] = newDateRange;
@@ -49,7 +49,7 @@ export function DateRangePickerBody({
     const newStartDate = setDatePart(startDate, newDate);
     onChange([newStartDate, endDate]);
     setInProgressDateRange(null);
-    setDate(newStartDate);
+    setDisplayedDate(newStartDate);
   };
 
   const handleEndDateChange = (newDate: Date) => {
@@ -57,7 +57,7 @@ export function DateRangePickerBody({
     onChange([startDate, newEndDate]);
     setInProgressDateRange(null);
     // substract 1 month because we want the end date to be shown in the 2nd column
-    setDate(dayjs(newEndDate).subtract(1, "month").toDate());
+    setDisplayedDate(dayjs(newEndDate).subtract(1, "month").toDate());
   };
 
   const handleStartTimeChange = (newTime: Date | null) => {
@@ -65,7 +65,7 @@ export function DateRangePickerBody({
       const newStartDate = setTimePart(startDate, newTime);
       onChange([newStartDate, endDate]);
       setInProgressDateRange(null);
-      setDate(newStartDate);
+      setDisplayedDate(newStartDate);
     }
   };
 
@@ -75,7 +75,7 @@ export function DateRangePickerBody({
       onChange([startDate, newEndDate]);
       setInProgressDateRange(null);
       // substract 1 month because we want the end date to be shown in the 2nd column
-      setDate(dayjs(newEndDate).subtract(1, "month").toDate());
+      setDisplayedDate(dayjs(newEndDate).subtract(1, "month").toDate());
     }
   };
 
@@ -118,11 +118,11 @@ export function DateRangePickerBody({
       <DatePicker
         type="range"
         value={inProgressDateRange ?? value}
-        date={date}
+        date={displayedDate}
         numberOfColumns={2}
         allowSingleDateInRange
         onChange={handleRangeChange}
-        onDateChange={(value) => setDate(dayjs(value).toDate())}
+        onDateChange={(value) => setDisplayedDate(dayjs(value).toDate())}
       />
     </Stack>
   );
