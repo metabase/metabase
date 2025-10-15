@@ -62,15 +62,14 @@ describe("issue 14636", () => {
     cy.intercept(
       "GET",
       `/api/task?limit=${limit}&offset=${offset}&sort_column=started_at&sort_direction=desc`,
-      (req) => {
-        req.reply((res) => {
-          res.body = {
-            data: stubPageRows(page),
-            limit,
-            offset,
-            total,
-          };
-        });
+      {
+        status: 200,
+        body: {
+          data: stubPageRows(page),
+          limit,
+          offset,
+          total,
+        },
       },
     ).as(alias);
   }
