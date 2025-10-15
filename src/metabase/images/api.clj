@@ -1,5 +1,7 @@
 (ns metabase.images.api
   (:require
+   [buddy.core.codecs :as buddy-codecs]
+   [buddy.core.hash :as buddy-hash]
    [clojure.java.io :as io]
    [metabase.api.macros :as api.macros]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -33,15 +35,12 @@
        [:multipart-params
         [:map
          ["file" (mu/with ms/File {:description "image data"})]]]]]
-  (let [{:keys [tempfile size]} file]
-    ;; file like
-    #_{:filename "duck.jpeg",
-       :content-type "image/jpeg",
-       :tempfile #object [java.io.File 0x56903864 "/var/folders/5m/qrb4zmxd0wqgn9bk9n3gj3400000gn/T/ring-multipart-4499052190200448033.tmp"],
-       :size 8669}
+  (let [{user-filename :filename :keys [tempfile size]} file]
     (try
-      (log/infof "Got a cool file with %d bytes" size)
-      (io/copy tempfile (doto (io/file "/tmp/hack2025/duck.png") (io/make-parents)))
+      (let [filehash (buddy-hash/sha256 tempfile)
+            filename (format "image-%s-%s" (buddy-codecs/bytes->hex filehash) user-filename)]
+        (log/infof "Got a cool file with %d bytes with name %s" size filename)
+        (io/copy tempfile (doto (io/file "/tmp/hack2025/duck.png") (io/make-parents))))
       {:status 200
        :body   {:message "cool"}}
       (finally
