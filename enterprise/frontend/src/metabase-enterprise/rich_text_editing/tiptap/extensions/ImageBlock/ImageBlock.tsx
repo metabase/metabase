@@ -10,11 +10,12 @@ import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { useUploadImageMutation } from "metabase/api";
+import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker";
+import { useSelector } from "metabase/lib/redux";
 import { Button, Flex, Icon, Text } from "metabase/ui";
+import { getCurrentDocument } from "metabase-enterprise/documents/selectors";
 
 import S from "./ImageBlock.module.css";
-import { useSelector } from "metabase/lib/redux";
-import { getCurrentDocument } from "metabase-enterprise/documents/selectors";
 
 export const ImageBlock = Node.create({
   name: "imageBlock",
@@ -29,16 +30,27 @@ export const ImageBlock = Node.create({
     ];
   },
 
+  addAttributes() {
+    return {
+      url: {
+        default: null,
+      },
+    };
+  },
+
   addNodeView() {
     return ReactNodeViewRenderer(ImageBlockNodeView);
   },
 });
 
-export const ImageBlockNodeView = ({ node }: NodeViewProps) => {
+export const ImageBlockNodeView = ({
+  updateAttributes,
+  node,
+}: NodeViewProps) => {
   const [rendered, setRendered] = useState(false); // floating ui wrongly positions things without this
   const doc = useSelector(getCurrentDocument);
 
-  const [url, setUrl] = useState<string | null>(null);
+  const [showPicker, setShowPicker] = useState(false);
 
   useEffect(() => {
     if (!rendered) {
@@ -51,15 +63,17 @@ export const ImageBlockNodeView = ({ node }: NodeViewProps) => {
   const uploadFile = useCallback(
     async (file: File) => {
       await uploadImage({ file, collectionId: doc?.collection_id as any });
-      setUrl("https://placehold.co/600x400");
+      updateAttributes({
+        url: "https://placehold.co/600x400",
+      });
     },
-    [uploadImage, doc],
+    [uploadImage, doc, updateAttributes],
   );
 
   return (
     <NodeViewWrapper className={cx(S.root, {})}>
-      {url ? (
-        <img src={url} className={S.image} />
+      {node.attrs.url ? (
+        <img src={node.attrs.url} className={S.image} />
       ) : (
         <Flex
           gap="sm"
@@ -89,7 +103,19 @@ export const ImageBlockNodeView = ({ node }: NodeViewProps) => {
             leftSection={<Icon name="folder" size={16} />}
             variant="outline"
             size="xs"
+            onClick={() => setShowPicker(true)}
           >{t`Browse collections`}</Button>
+          {showPicker && rendered && (
+            <QuestionPickerModal
+              title={t`Select an image yo`}
+              models={["image"]}
+              onClose={() => setShowPicker(false)}
+              onChange={(item) => {
+                console.log(item);
+                setShowPicker(false);
+              }}
+            />
+          )}
         </Flex>
       )}
     </NodeViewWrapper>
