@@ -1,0 +1,12 @@
+name: Trainers
+type: question
+ref: question-115
+mbql_query:
+  source-table: 1jMA113BUeZB09g75qOCy
+  filter:
+  - =
+  - - field
+    - supertype
+    - {base-type: type/Text}
+  - Trainer
+database: Postgres

@@ -1,0 +1,5 @@
+# REQUIRED file that defines the collection for this representations directory
+type: collection
+ref: analytics-reports
+name: Analytics Reports
+description: Monthly and quarterly analytics reports with key business metrics

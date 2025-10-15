@@ -1,0 +1,51 @@
+type: v0/model
+ref: trainers-facts
+name: Trainers Facts Model
+description: Aggregated trainer statistics by subtypes
+database: Postgres
+mbql_query:
+  database: 2
+  type: query
+  query:
+    source-table: "card__115"
+    breakout:
+      - - field
+        - subtype1
+        - base-type: type/Text
+      - - field
+        - subtype2
+        - base-type: type/Text
+    aggregation:
+      - - count
+      - - avg
+        - - field
+          - hp
+          - base-type: type/BigInteger
+    filter:
+      - not-empty
+      - - field
+        - subtype2
+        - base-type: type/Text
+columns:
+  - name: subtype1
+    display_name: Subtype1
+    description: Primary subtype category
+    base_type: type/Text
+    semantic_type: type/Category
+
+  - name: subtype2
+    display_name: Subtype2
+    description: Secondary subtype category
+    base_type: type/Text
+    semantic_type: type/Category
+
+  - name: count
+    display_name: Count
+    description: Number of records in this category
+    base_type: type/BigInteger
+    semantic_type: type/Quantity
+
+  - name: avg_hp
+    display_name: Average of Hp
+    description: Average HP value for this category
+    base_type: type/Decimal

@@ -1,0 +1,11 @@
+#!/bin/bash
+
+if [ $# -lt 3 ]; then
+    echo "Usage: $0 <api-key> <collection-id> <path-to-yml-file>"
+    exit 1
+fi
+
+curl -X POST "https://pr63598.coredev.metabase.com/api/ee/representation/load/$2" \
+    -H "X-API-KEY: $1" \
+    -H 'Content-Type: text/plain' \
+    --data-binary "@$3"
