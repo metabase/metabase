@@ -79,7 +79,11 @@ function getCardForBlankQuestion(
   const tableId = options.table ? parseInt(options.table) : undefined;
   const segmentId = options.segment ? parseInt(options.segment) : undefined;
 
-  let question = Question.create({ databaseId, tableId, metadata });
+  let question = Question.create({
+    DEPRECATED_RAW_MBQL_databaseId: databaseId,
+    DEPRECATED_RAW_MBQL_tableId: tableId,
+    metadata,
+  });
 
   if (databaseId && tableId) {
     if (typeof segmentId === "number") {
