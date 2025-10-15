@@ -1,7 +1,8 @@
 import cx from "classnames";
 import type { Location } from "history";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { push } from "react-router-redux";
+import { useAsync } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -36,10 +37,12 @@ function SegmentListAppInner({ onCollapse, ...props }: SegmentListAppProps) {
   const { segments, setArchived, location, params } = props;
   const dispatch = useDispatch();
 
-  useEffect(() => {
+  const { loading: isLoadingTables } = useAsync(() => {
     const tableIds = new Set(segments.map((s) => s.table_id));
-    tableIds.forEach((id) =>
-      dispatch(tableApi.endpoints.getTable.initiate({ id })),
+    return Promise.all(
+      [...tableIds].map((id) =>
+        dispatch(tableApi.endpoints.getTable.initiate({ id })),
+      ),
     );
   }, [dispatch, segments]);
 
@@ -66,6 +69,9 @@ function SegmentListAppInner({ onCollapse, ...props }: SegmentListAppProps) {
   const { query } = location;
 
   const treeData = useMemo((): ITreeNodeItem[] => {
+    if (isLoadingTables) {
+      return [];
+    }
     type Tier<T> = (s: T) => ITreeNodeItem;
     const tiers: Tier<Segment>[] = [
       (s) => ({
@@ -118,7 +124,7 @@ function SegmentListAppInner({ onCollapse, ...props }: SegmentListAppProps) {
       return node;
     };
     return recursiveAlpha(root).children || [];
-  }, [segments]);
+  }, [isLoadingTables, segments]);
 
   const selectedId = params.id ? +params.id : undefined;
 

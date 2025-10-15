@@ -24,6 +24,12 @@ class RevisionHistoryApp extends Component {
     this.props.fetchSegmentRevisions(id);
   }
 
+  componentDidUpdate(prevProps) {
+    if (this.props.id !== prevProps.id) {
+      this.props.fetchSegmentRevisions(this.props.id);
+    }
+  }
+
   render() {
     return <SegmentRevisionHistory {...this.props} />;
   }
