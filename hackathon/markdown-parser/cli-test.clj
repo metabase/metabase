@@ -57,7 +57,6 @@
 (defn print-json
   "Pretty print the ProseMirror JSON"
   [pm-doc]
-  (println "\n=== ProseMirror JSON ===")
   (println (json/generate-string pm-doc {:pretty true})))
 
 (defn main [args]
@@ -66,22 +65,22 @@
     (println "\nTest files:")
     (println "  hackathon/markdown-parser/test-files/basic.md")
     (println "  hackathon/markdown-parser/test-files/metabase.md")
+    (println "  hackathon/markdown-parser/test-files/document-example.md")
     (println "  hackathon/markdown-parser/test-files/cards-only.md")
     (println "  hackathon/markdown-parser/test-files/links-only.md")
     (System/exit 1))
 
   (let [file-path (first args)
-        show-json? (some #{"--json"} args)]
+        show-summary? (some #{"--verbose"} args)]
 
-    (println "Parsing:" file-path)
-    (println "File size:" (.length (io/file file-path)) "bytes")
+    (when show-summary?
+      (println "Parsing:" file-path)
+      (println "File size:" (.length (io/file file-path)) "bytes"))
 
     (let [pm-doc (markdown-file->json file-path)]
-      (print-summary pm-doc)
-      (when show-json?
-        (print-json pm-doc))
-
-      (println "\n✓ Parsing complete!"))))
+      (when show-summary?
+        (print-summary pm-doc))
+      (print-json pm-doc))))
 
 ;; Run main
 (main *command-line-args*)
