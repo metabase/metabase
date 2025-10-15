@@ -1,12 +1,15 @@
-import { Flex, Box } from "metabase/ui";
-import { HomeGreeting } from "../HomeGreeting";
-import { t } from "ttag";
-import {
-  Database,
-  DATABASE_BLUEPRINTS,
-  DatabaseBlueprint,
-} from "metabase-types/api";
 import { useMemo } from "react";
+import { t } from "ttag";
+
+import { Box, Flex } from "metabase/ui";
+import {
+  DATABASE_BLUEPRINTS,
+  type Database,
+  type DatabaseBlueprint,
+} from "metabase-types/api";
+
+import { HomeGreeting } from "../HomeGreeting";
+
 import { BlueprintCardPrompt } from "./BlueprintCardPrompt";
 
 const SERVICE_NAME_BY_BLUEPRINT: Record<DatabaseBlueprint, string> = {
@@ -40,7 +43,7 @@ export const HomeBlueprintContent = ({
         <BlueprintCardPrompt
           onConfirm={() => {}}
           onHide={() => {
-            alert("no, you have to create some nicer tables");
+            alert("Sorry, you must create some nicer tables");
           }}
         />
         {/* <BlueprintCard blueprint={blueprint} state="loading" /> */}

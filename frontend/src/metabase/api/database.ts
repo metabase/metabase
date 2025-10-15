@@ -19,6 +19,7 @@ import type {
   ListDatabasesRequest,
   ListDatabasesResponse,
   ListVirtualDatabaseTablesRequest,
+  RunBlueprintResponse,
   SchemaName,
   Table,
   UpdateDatabaseRequest,
@@ -74,6 +75,17 @@ export const databaseApi = Api.injectEndpoints({
       }),
       // invalidate health check in the case db connection info changes
       providesTags: (_, __, id) => [idTag("database", id)],
+    }),
+    runBlueprint: builder.mutation<
+      RunBlueprintResponse,
+      { id: DatabaseId; blueprint: "salesforce" | "stripe" }
+    >({
+      query: ({ id, blueprint }) => ({
+        method: "POST",
+        url: `/api/database/${id}/blueprints/${blueprint}`,
+      }),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [idTag("database", id)]),
     }),
     getDatabaseMetadata: builder.query<Database, GetDatabaseMetadataRequest>({
       query: ({ id, ...params }) => ({
@@ -314,6 +326,7 @@ export const {
   useLazyListDatabaseSchemaTablesQuery,
   useListVirtualDatabaseTablesQuery,
   useListDatabaseIdFieldsQuery,
+  useRunBlueprintMutation,
   useCreateDatabaseMutation,
   useUpdateDatabaseMutation,
   useDeleteDatabaseMutation,

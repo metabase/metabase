@@ -1,7 +1,7 @@
 import type { ScheduleSettings } from "./settings";
 import type { Table } from "./table";
 
-import type { ISO8601Time, LongTaskStatus } from ".";
+import type { Dashboard, ISO8601Time, LongTaskStatus } from ".";
 
 export type DatabaseId = number;
 
@@ -12,7 +12,11 @@ export const DATABASE_BLUEPRINTS = ["is-salesforce?", "is-stripe?"] as const;
 export type DatabaseSettings = {
   [key: string]: any;
   "database-enable-actions"?: boolean;
-  blueprints: { "is-salesforce?": boolean; "is-stripe?": boolean };
+  blueprints: {
+    "is-salesforce?": boolean;
+    "is-stripe?": boolean;
+    blueprinted: boolean;
+  };
 };
 
 export type DatabaseFeature =
@@ -155,6 +159,11 @@ export interface ListDatabasesRequest {
 export interface ListDatabasesResponse {
   data: Database[];
   total: number;
+}
+
+export interface RunBlueprintResponse {
+  dashboard: Dashboard;
+  tables: Table[];
 }
 
 export interface ListDatabaseIdFieldsRequest {
