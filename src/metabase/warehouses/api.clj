@@ -1,8 +1,10 @@
 (ns metabase.warehouses.api
   "/api/database endpoints."
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -1346,6 +1348,110 @@
 
 ;;; ---------- blueprints ---------
 
+(def order [:account :contact :opportunity :lead])
+
+(defn transforms
+  [which]
+  (slurp (io/resource (format "blueprints/salesforce/models/%s.sql" which))))
+
+(defn- macro [schema table-name columns]
+  (let [custom-column? (fn [c] (str/ends-with? c "_c"))
+        supplemental-column? (fn [all c]
+                               (and (custom-column? c)
+                                    (contains? (set all) (str/replace c "_c$" ""))))]
+    (format "with cte as (select \n  %s \n from %s.%s) \n "
+            (str/join "  , "
+                      (for [c (sort columns)
+                            :when (or (not (custom-column? c))
+                                      (and (custom-column? c)
+                                           (supplemental-column? columns c)))
+                            :let [column-name (if (custom-column? c)
+                                                (str/replace c #"_c$" "_custom")
+                                                c)]]
+                        (format "%s as %s\n" c column-name)))
+            schema
+            table-name)))
+
+(defn replace-table-references
+  [sql-snippet ts source-schema]
+  (-> sql-snippet
+      (str/replace #"<<source\.(.*)>>" (str source-schema ".$1"))
+      (str/replace #"<<transformed\.(.*)>>" (fn [[_full table]]
+                                              (format "%s.%s"
+                                                      (-> (get ts table) :target :schema)
+                                                      (-> (get ts table) :target :name))))))
+
+(defn create-transform
+  [which ts field-names {:keys [source-schema output-schema db-id]}]
+  ;; todo: include database id
+  (let [cte (macro source-schema which field-names)
+        sql (-> (transforms which)
+                (str/replace "<<CTE>>" cte)
+                (replace-table-references ts source-schema))]
+    {:name (format "%s transform" which)
+     :description nil
+     :source {:type "query"
+              :query {:lib/type "mbql/query"
+                      :stages [{:lib/type "mbql.stage/native"
+                                :template-tags {}
+                                :native sql}]
+                      :database db-id}}
+     :target {:type "table"
+              :name (format "transformed_%s" which)
+              :schema output-schema
+              :database db-id}}))
+
+(defn- create-salesforce-transforms! [id]
+  (let [db (t2/select-one :model/Database :id id)]
+    (when-not (-> db :settings :blueprints :is-salesforce?)
+      (throw (ex-info "Not a salesforce database" (:settings db))))
+    (let [source-schema (-> db :settings :blueprints :salesforce-schema)
+          output-schema (str (gensym "transform"))
+          table->fields (into {}
+                              (map (fn [o]
+                                     (let [table-name (name o)
+                                           table-id (t2/select-one-fn :id
+                                                                      :model/Table
+                                                                      :schema source-schema
+                                                                      :name table-name)
+                                           field-names (t2/select :model/Field
+                                                                  :table_id table-id)]
+                                       [table-name (->> field-names (map :name) sort vec)])))
+                              order)
+          transforms (reduce (fn [acc t]
+                               (let [which (name t)
+                                     transform (create-transform which
+                                                                 (:transforms acc)
+                                                                 (table->fields which)
+                                                                 {:source-schema source-schema
+                                                                  :output-schema output-schema
+                                                                  :db-id id})]
+                                 (-> acc
+                                     (update :transforms assoc which transform)
+                                     (update :sequence conj transform))))
+                             {:transforms {}
+                              :sequence []}
+                             order)
+          ts (:sequence transforms)
+          response  (reduce (fn [acc t]
+                              (let [t' (t2/insert-returning-instance! :model/Transform t)
+                                    start-promise (promise)]
+                                [(transforms.execute/run-mbql-transform! t' {:start-promise start-promise
+                                                                             :run-method :manual})
+                                 @start-promise]
+                                (conj acc (t2/select-one :model/Table
+                                                         :db_id id
+                                                         :name (-> t' :target :name)
+                                                         :schema (-> t' :target :schema)))))
+                            []
+                            ts)]
+      (t2/update! :model/Database id
+                  {:settings (let [table-ids (map :id response)]
+                               (-> (:settings db)
+                                   (assoc-in [:blueprints :blueprinted] true)
+                                   (assoc-in [:blueprints :salesforce-transforms] table-ids)))})
+      response)))
+
 (api.macros/defendpoint :post "/:id/blueprints/:blueprint-type"
   "Create the transforms, cards and dashboard for blueprints."
   [{:keys [id blueprint-type]}
@@ -1361,10 +1467,11 @@
         settings (:settings db)]
     (cond
       (and (= blueprint-type :salesforce) (:is-salesforce? (:blueprints settings)))
-      (let [salesforce-transform-tables (blueprints/create-salesforce-transforms! db-id)
+      (let [salesforce-transform-tables (create-salesforce-transforms! db-id)
             salesforce-cards (blueprints/create-salesforce-cards! db salesforce-transform-tables)
             salesforce-dashboard (blueprints/create-salesforce-dashboard! db salesforce-cards)]
         {:tables salesforce-transform-tables
+         :collection {}
          :dashboard salesforce-dashboard
          :document {}})
 
