@@ -5,9 +5,11 @@
    [malli.transform :as mtx]
    [medley.core :as m]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
+   [metabase-enterprise.metabot-v3.context :as context]
    [metabase-enterprise.metabot-v3.dummy-tools :as metabot-v3.tools.dummy-tools]
    [metabase-enterprise.metabot-v3.tools.api :as metabot-v3.tools.api]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription :as metabot-v3.tools.create-dashboard-subscription]
+   [metabase-enterprise.metabot-v3.tools.documents :as documents]
    [metabase-enterprise.metabot-v3.tools.filters :as metabot-v3.tools.filters]
    [metabase-enterprise.metabot-v3.tools.find-outliers :as metabot-v3.tools.find-outliers]
    [metabase-enterprise.metabot-v3.tools.generate-insights :as metabot-v3.tools.generate-insights]
@@ -26,7 +28,7 @@
 
 (deftest column-decode-test
   (let [base-col {:field_id "fid", :name "fname"}]
-    (doseq [{:keys [test-case type-value]} [{:test-case "known type",   :type-value :boolean}
+    (doseq [{:keys [test-case type-value]} [{:test-case "known type", :type-value :boolean}
                                             {:test-case "unknown type", :type-value nil}]]
       (testing test-case
         (let [col (assoc base-col :type type-value)
@@ -51,17 +53,17 @@
                       {:output output})]
         (let [response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/create-dashboard-subscription"
                                              {:request-options {:headers {"x-metabase-session" ai-token}}}
-                                             {:arguments       {:dashboard_id 1
-                                                                :email        "user@example.com"
-                                                                :schedule     {:frequency "monthly"
-                                                                               :hour 15
-                                                                               :day_of_month "middle-of-month"}}
+                                             {:arguments {:dashboard_id 1
+                                                          :email "user@example.com"
+                                                          :schedule {:frequency "monthly"
+                                                                     :hour 15
+                                                                     :day_of_month "middle-of-month"}}
                                               :conversation_id conversation-id})]
           (is (= [{:dashboard-id 1
-                   :email        "user@example.com"
-                   :schedule     {:frequency :monthly
-                                  :hour 15
-                                  :day-of-month :middle-of-month}}]
+                   :email "user@example.com"
+                   :schedule {:frequency :monthly
+                              :hour 15
+                              :day-of-month :middle-of-month}}]
                  @tool-requests))
           (is (=? {:output output
                    :conversation_id conversation-id}
@@ -74,12 +76,12 @@
           table-id (mt/id :people)
           response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/field-values"
                                          {:request-options {:headers {"x-metabase-session" ai-token}}}
-                                         {:arguments       {:entity_type "table"
-                                                            :entity_id   table-id
-                                                            :field_id    (-> table-id
-                                                                             metabot-v3.tools.u/table-field-id-prefix
-                                                                             (str 4)) ; name
-                                                            :limt        15}
+                                         {:arguments {:entity_type "table"
+                                                      :entity_id table-id
+                                                      :field_id (-> table-id
+                                                                    metabot-v3.tools.u/table-field-id-prefix
+                                                                    (str 4)) ; name
+                                                      :limt 15}
                                           :conversation_id conversation-id})]
       (is (=? {:structured_output {:statistics
                                    {:distinct_count 2499,
@@ -118,8 +120,8 @@
                          {:field_id "q2a/6", :operation "year-equals", :value 2008}]
                 response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/filter-records"
                                                {:request-options {:headers {"x-metabase-session" ai-token}}}
-                                               {:arguments       {:data_source data-source
-                                                                  :filters     filters}
+                                               {:arguments {:data_source data-source
+                                                            :filters filters}
                                                 :conversation_id conversation-id})]
             (is (=? [{:data-source (metabot-v3.u/recursive-update-keys data-source u/->kebab-case-en)}]
                     @tool-requests))
@@ -147,7 +149,7 @@
                         {:structured-output output})]
           (let [response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/find-outliers"
                                                {:request-options {:headers {"x-metabase-session" ai-token}}}
-                                               {:arguments       {:data_source data-source}
+                                               {:arguments {:data_source data-source}
                                                 :conversation_id conversation-id})]
             (is (=? {:structured_output output
                      :conversation_id conversation-id}
@@ -169,14 +171,14 @@
                         (swap! tool-requests conj arguments)
                         {:output output
                          :reactions [{:type :metabot.reaction/redirect
-                                      :url  redirect-url}]})]
+                                      :url redirect-url}]})]
           (let [response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/generate-insights"
                                                {:request-options {:headers {"x-metabase-session" ai-token}}}
-                                               {:arguments       {:for data-source}
+                                               {:arguments {:for data-source}
                                                 :conversation_id conversation-id})]
             (is (=? {:output output
                      :reactions [{:type "metabot.reaction/redirect"
-                                  :url  redirect-url}]
+                                  :url redirect-url}]
                      :conversation_id conversation-id}
                     response))))))))
 
@@ -204,9 +206,9 @@
                          {:field_id "c2/6", :field_granularity "day"}]
               response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/query-metric"
                                              {:request-options {:headers {"x-metabase-session" ai-token}}}
-                                             {:arguments       {:metric_id 1
-                                                                :filters   filters
-                                                                :group_by  breakouts}
+                                             {:arguments {:metric_id 1
+                                                          :filters filters
+                                                          :group_by breakouts}
                                               :conversation_id conversation-id})]
           (is (= {:structured_output {:type "query"
                                       :query_id output
@@ -231,9 +233,9 @@
       (mt/with-temp [:model/Card {metric-id :id} metric-data]
         (let [fid #(format "c%d/%d" metric-id %)
               filters [{:field_id (fid 0), :operation "number-greater-than", :value 50} ; ID
-                       {:field_id (fid 2), :operation "equals", :values ["3" "4"]}      ; Title
-                       {:field_id (fid 6), :operation "not-equals", :values [3 4]}      ; Rating
-                       {:field_id (fid 7), :operation "month-equals", :values [4 5 9]}  ; Created At
+                       {:field_id (fid 2), :operation "equals", :values ["3" "4"]} ; Title
+                       {:field_id (fid 6), :operation "not-equals", :values [3 4]} ; Rating
+                       {:field_id (fid 7), :operation "month-equals", :values [4 5 9]} ; Created At
                        {:field_id (fid 7), :bucket "day-of-month" :operation "not-equals", :values [14 15 19]}
                        {:field_id (fid 7), :bucket "day-of-week" :operation "equals", :values [1 7]}
                        {:field_id (fid 7), :operation "year-equals", :value 2008}]
@@ -241,9 +243,9 @@
                          {:field_id (fid 7), :field_granularity "day"}]
               response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/query-metric"
                                              {:request-options {:headers {"x-metabase-session" ai-token}}}
-                                             {:arguments       {:metric_id metric-id
-                                                                :filters   filters
-                                                                :group_by  breakouts}
+                                             {:arguments {:metric_id metric-id
+                                                          :filters filters
+                                                          :group_by breakouts}
                                               :conversation_id conversation-id})
               query-id (-> response :structured_output :query_id)]
           (is (=? {:structured_output
@@ -308,11 +310,11 @@
                          {:field_id "c2/6", :field_granularity "day"}]
               response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/query-model"
                                              {:request-options {:headers {"x-metabase-session" ai-token}}}
-                                             {:arguments       {:model_id     1
-                                                                :fields       fields
-                                                                :filters      filters
-                                                                :aggregations aggregations
-                                                                :group_by     breakouts}
+                                             {:arguments {:model_id 1
+                                                          :fields fields
+                                                          :filters filters
+                                                          :aggregations aggregations
+                                                          :group_by breakouts}
                                               :conversation_id conversation-id})]
           (is (= {:structured_output {:type "query"
                                       :query_id output
@@ -340,9 +342,9 @@
               filters [{:field_id "c2/7", :operation "number-greater-than", :value 50}]
               response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/query-model"
                                              {:request-options {:headers {"x-metabase-session" ai-token}}}
-                                             {:arguments       {:model_id     1
-                                                                :fields       fields
-                                                                :filters      filters}
+                                             {:arguments {:model_id 1
+                                                          :fields fields
+                                                          :filters filters}
                                               :conversation_id conversation-id})]
           (is (= {:structured_output {:type "query"
                                       :query_id "query-id"
@@ -379,11 +381,11 @@
                       :type :model}]
       (mt/with-temp [:model/Collection {collection-id :id} {:name "Test Metabot Collection"}
                      :model/Card {metric-id :id} (assoc metric-data :collection_id collection-id)
-                     :model/Card _ignored        (assoc metric-data :collection_id collection-id :archived true)
-                     :model/Card _ignored        (assoc model-data :collection_id collection-id :archived true)
-                     :model/Card _ignored        metric-data
-                     :model/Card _ignored        model-data
-                     :model/Card {model-id :id}  (assoc model-data  :collection_id collection-id)
+                     :model/Card _ignored (assoc metric-data :collection_id collection-id :archived true)
+                     :model/Card _ignored (assoc model-data :collection_id collection-id :archived true)
+                     :model/Card _ignored metric-data
+                     :model/Card _ignored model-data
+                     :model/Card {model-id :id} (assoc model-data :collection_id collection-id)
                      :model/Metabot {metabot-eid :entity_id} {:name "Test Metabot"
                                                               :collection_id collection-id}]
         (with-redefs [metabot-v3.tools.dummy-tools/verified-review? (constantly true)]
@@ -459,10 +461,10 @@
                       response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/answer-sources"
                                                      {:request-options {:headers {"x-metabase-session" ai-token}}}
                                                      {:metabot_id metabot-eid
-                                                      :arguments {:with_model_fields                     false
-                                                                  :with_model_metrics                    false
+                                                      :arguments {:with_model_fields false
+                                                                  :with_model_metrics false
                                                                   :with_metric_default_temporal_breakout false
-                                                                  :with_metric_queryable_dimensions      false}
+                                                                  :with_metric_queryable_dimensions false}
                                                       :conversation_id conversation-id})]
                   (is (=? {:structured_output
                            {:metrics [(-> metric-data
@@ -605,7 +607,7 @@
                                                                         :field_values missing-value)
                                                                 expected-fields)))
                      :conversation_id conversation-id}
-                    (request {:metric_id         metric-id
+                    (request {:metric_id metric-id
                               :with_field_values false}))))
           (testing "Default time dimension only"
             (is (=? {:structured_output (-> metric-data
@@ -616,7 +618,7 @@
                                                    :default_time_dimension_field_id (format "c%d/%d" metric-id 7)
                                                    :queryable_dimensions missing-value))
                      :conversation_id conversation-id}
-                    (request {:metric_id                 metric-id
+                    (request {:metric_id metric-id
                               :with_queryable_dimensions false}))))
           (testing "Minimal call"
             (is (=? {:structured_output (-> metric-data
@@ -627,9 +629,9 @@
                                                    :default_time_dimension_field_id nil
                                                    :queryable_dimensions missing-value))
                      :conversation_id conversation-id}
-                    (request {:metric_id                      metric-id
+                    (request {:metric_id metric-id
                               :with_default_temporal_breakout false
-                              :with_queryable_dimensions      false})))))))))
+                              :with_queryable_dimensions false})))))))))
 
 (deftest ^:parallel get-query-details-test
   (mt/with-premium-features #{:metabot-v3}
@@ -792,7 +794,7 @@
     (let [{:keys [model-data metric-data expected-core-fields expected-related-tables]} (model-test-fixtures)
           conversation-id (str (random-uuid))
           ai-token (ai-session-token)]
-      (mt/with-temp [:model/Card {model-id :id}  model-data
+      (mt/with-temp [:model/Card {model-id :id} model-data
                      :model/Card {metric-id :id} (assoc metric-data :dataset_query
                                                         (mt/mbql-query orders
                                                           {:source-table (str "card__" model-id)
@@ -830,7 +832,7 @@
     (let [{:keys [model-data metric-data expected-core-fields expected-related-tables]} (model-test-fixtures)
           conversation-id (str (random-uuid))
           ai-token (ai-session-token)]
-      (mt/with-temp [:model/Card {model-id :id}  model-data
+      (mt/with-temp [:model/Card {model-id :id} model-data
                      :model/Card {metric-id :id} (assoc metric-data :dataset_query
                                                         (mt/mbql-query orders
                                                           {:source-table (str "card__" model-id)
@@ -871,7 +873,7 @@
     (let [{:keys [model-data metric-data expected-related-tables]} (model-test-fixtures)
           conversation-id (str (random-uuid))
           ai-token (ai-session-token)]
-      (mt/with-temp [:model/Card {model-id :id}  model-data
+      (mt/with-temp [:model/Card {model-id :id} model-data
                      :model/Card {metric-id :id} (assoc metric-data :dataset_query
                                                         (mt/mbql-query orders
                                                           {:source-table (str "card__" model-id)
@@ -906,7 +908,7 @@
     (let [{:keys [model-data metric-data expected-related-tables]} (model-test-fixtures)
           conversation-id (str (random-uuid))
           ai-token (ai-session-token)]
-      (mt/with-temp [:model/Card {model-id :id}  model-data
+      (mt/with-temp [:model/Card {model-id :id} model-data
                      :model/Card {metric-id :id} (assoc metric-data :dataset_query
                                                         (mt/mbql-query orders
                                                           {:source-table (str "card__" model-id)
@@ -943,7 +945,7 @@
     (let [{:keys [model-data expected-related-tables]} (model-test-fixtures)
           conversation-id (str (random-uuid))
           ai-token (ai-session-token)]
-      (mt/with-temp [:model/Card {model-id :id}  model-data
+      (mt/with-temp [:model/Card {model-id :id} model-data
                      :model/Card {_metric-id :id} (assoc (:metric-data (model-test-fixtures)) :dataset_query
                                                          (mt/mbql-query orders
                                                            {:source-table (str "card__" model-id)
@@ -977,7 +979,7 @@
     (let [{:keys [model-data]} (model-test-fixtures)
           conversation-id (str (random-uuid))
           ai-token (ai-session-token)]
-      (mt/with-temp [:model/Card {model-id :id}  model-data
+      (mt/with-temp [:model/Card {model-id :id} model-data
                      :model/Card {_metric-id :id} (assoc (:metric-data (model-test-fixtures)) :dataset_query
                                                          (mt/mbql-query orders
                                                            {:source-table (str "card__" model-id)
@@ -1015,11 +1017,11 @@
                                          {:request-options {:headers {"x-metabase-session" ai-token}}}
                                          {:arguments
                                           {:entity_type "table"
-                                           :entity_id   table-id
-                                           :field_id    (-> table-id
-                                                            metabot-v3.tools.u/table-field-id-prefix
-                                                            (str 8)) ; quantity
-                                           :limt        15}
+                                           :entity_id table-id
+                                           :field_id (-> table-id
+                                                         metabot-v3.tools.u/table-field-id-prefix
+                                                         (str 8)) ; quantity
+                                           :limt 15}
                                           :conversation_id conversation-id})]
       (is (=? {:structured_output {:values int-sequence?}
                :conversation_id conversation-id}
@@ -1185,3 +1187,225 @@
         (is (nil? (-> (request {:table_id (mt/id :orders)
                                 :with_related_tables false})
                       (get-in [:structured_output :related_tables]))))))))
+
+;;; ----------------------------------------------------------------------------------------------------------------
+;;; Tests - Memory Endpoints
+;;; ----------------------------------------------------------------------------------------------------------------
+
+(deftest create-memory-test
+  (testing "POST /api/ee/metabot-tools/create-memory"
+    (mt/with-premium-features #{:metabot-v3}
+      (let [conversation-id (str (random-uuid))
+            ai-token (ai-session-token)]
+        (testing "creates a new memory entry successfully"
+          (let [response (-> (mt/user-http-request :rasta :post 200 "ee/metabot-tools/create-memory"
+                                                   {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                                   {:arguments {:name "Test Memory"
+                                                                :content "This is test content"}
+                                                    :conversation_id conversation-id})
+                             :structured_output)]
+            (is (map? response))
+            (is (= "Test Memory" (:name response)))
+            (is (= "This is test content" (:content response)))
+            (is (int? (:id response)))))
+
+        (t2/delete! :model/Document :creator_id (mt/user->id :rasta))))))
+
+(deftest list-memories-test
+  (testing "POST /api/ee/metabot-tools/list-memories"
+    (mt/with-premium-features #{:metabot-v3}
+      (let [conversation-id (str (random-uuid))
+            ai-token (ai-session-token :rasta)]
+        (testing "returns empty list when no memories exist"
+          (let [response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/list-memories"
+                                               {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                               {:conversation_id conversation-id})]
+            (is (= [] (:structured_output response)))
+            (is (= conversation-id (:conversation_id response)))))
+
+        (testing "returns all memories for the user"
+          ;; Create some test memories using create-memory endpoint
+          (mt/user-http-request :rasta :post 200 "ee/metabot-tools/create-memory"
+                                {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                {:arguments {:name "Memory 1" :content "Content 1"}
+                                 :conversation_id conversation-id})
+          (mt/user-http-request :rasta :post 200 "ee/metabot-tools/create-memory"
+                                {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                {:arguments {:name "Memory 2" :content "Content 2"}
+                                 :conversation_id conversation-id})
+          (mt/user-http-request :rasta :post 200 "ee/metabot-tools/create-memory"
+                                {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                {:arguments {:name "Memory 3" :content "Content 3"}
+                                 :conversation_id conversation-id})
+
+          ;; List memories using list-memories endpoint
+          (let [response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/list-memories"
+                                               {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                               {:conversation_id conversation-id})
+                memories (:structured_output response)]
+            (is (= 3 (count memories)))
+            (is (every? #(contains? % :id) memories))
+            (is (every? #(contains? % :name) memories))
+            (is (every? #(contains? % :content) memories))
+            (is (every? #(contains? % :created_at) memories))
+            (is (every? #(contains? % :updated_at) memories))
+            (is (= conversation-id (:conversation_id response)))))
+
+        (t2/delete! :model/Document :creator_id (mt/user->id :rasta))
+
+        (testing "returns memories ordered by created_at descending"
+          ;; Create memories with slight delays
+          (mt/user-http-request :rasta :post 200 "ee/metabot-tools/create-memory"
+                                {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                {:arguments {:name "First Memory" :content "Created first"}
+                                 :conversation_id conversation-id})
+          (Thread/sleep 100)
+          (mt/user-http-request :rasta :post 200 "ee/metabot-tools/create-memory"
+                                {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                {:arguments {:name "Second Memory" :content "Created second"}
+                                 :conversation_id conversation-id})
+          (Thread/sleep 100)
+          (mt/user-http-request :rasta :post 200 "ee/metabot-tools/create-memory"
+                                {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                {:arguments {:name "Third Memory" :content "Created third"}
+                                 :conversation_id conversation-id})
+
+          ;; List memories
+          (let [response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/list-memories"
+                                               {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                               {:conversation_id conversation-id})
+                memories (:structured_output response)
+                names (map :name memories)]
+            ;; Most recent should be first
+            (is (= "Third Memory" (first names)))))
+
+        (t2/delete! :model/Document :creator_id (mt/user->id :rasta))
+
+        (testing "only returns memories for the authenticated user"
+          ;; Create memory for rasta
+          (mt/user-http-request :rasta :post 200 "ee/metabot-tools/create-memory"
+                                {:request-options {:headers {"x-metabase-session" (ai-session-token :rasta (str (random-uuid)))}}}
+                                {:arguments {:name "Rasta's Memory" :content "Rasta's content"}
+                                 :conversation_id conversation-id})
+
+          ;; Create memory for crowberto
+          (let [crowberto-token (ai-session-token :crowberto (str (random-uuid)))]
+            (mt/user-http-request :crowberto :post 200 "ee/metabot-tools/create-memory"
+                                  {:request-options {:headers {"x-metabase-session" crowberto-token}}}
+                                  {:arguments {:name "Crowberto's Memory" :content "Private content"}
+                                   :conversation_id conversation-id})
+
+            ;; Rasta should not see Crowberto's memory
+            (let [rasta-response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/list-memories"
+                                                       {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                                       {:conversation_id conversation-id})
+                  rasta-memories (:structured_output rasta-response)]
+              (is (not-any? #(= "Crowberto's Memory" (:name %)) rasta-memories)))
+
+            ;; Crowberto should see their own memory
+            (let [crowberto-response (mt/user-http-request :crowberto :post 200 "ee/metabot-tools/list-memories"
+                                                           {:request-options {:headers {"x-metabase-session" crowberto-token}}}
+                                                           {:conversation_id conversation-id})
+                  crowberto-memories (:structured_output crowberto-response)]
+              (is (some #(= "Crowberto's Memory" (:name %)) crowberto-memories)))))
+        (t2/delete! :model/Document :creator_id (mt/user->id :rasta))
+        (t2/delete! :model/Document :creator_id (mt/user->id :crowberto))))))
+
+(deftest get-memory-by-id-test
+  (testing "GET /api/ee/metabot-tools/memory/:id"
+    (mt/with-premium-features #{:metabot-v3}
+      (let [conversation-id (str (random-uuid))
+            ai-token (ai-session-token)]
+        (testing "retrieves a specific memory by ID"
+          ;; Create a memory
+          (let [create-response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/create-memory"
+                                                      {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                                      {:arguments {:name "Specific Memory"
+                                                                   :content "Specific Content"}
+                                                       :conversation_id conversation-id})
+                memory-id (-> create-response :structured_output :id)
+                get-response (-> (mt/user-http-request :rasta :post 200 (str "ee/metabot-tools/read-memory")
+                                                       {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                                       {:arguments {:id memory-id}
+                                                        :conversation_id conversation-id})
+                                 :structured_output)]
+            (is (= memory-id (:id get-response)))
+            (is (= "Specific Memory" (:name get-response)))
+            (is (= "Specific Content" (:content get-response)))
+            ;; Should not include user_id field
+            (is (not (contains? get-response :user_id)))))
+
+        (t2/delete! :model/Document :creator_id (mt/user->id :rasta))
+
+        (testing "returns 404 for non-existent memory"
+          (is (= "Memory not found with ID: 999999"
+                 (-> (mt/user-http-request :rasta :post 200 "ee/metabot-tools/read-memory"
+                                           {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                           {:arguments {:id 999999}
+                                            :conversation_id conversation-id})
+                     :output))))
+
+        (testing "returns 404 when accessing another user's memory"
+          ;; Create memory as rasta
+          (let [rasta-response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/create-memory"
+                                                     {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                                     {:arguments {:name "Rasta's Private Memory"
+                                                                  :content "Private to Rasta"}
+                                                      :conversation_id conversation-id})
+                memory-id (-> rasta-response :structured_output :id)
+                crowberto-token (ai-session-token :crowberto (str (random-uuid)))]
+            ;; Try to access as crowberto
+            (is (=? #"Memory not found with ID: .*"
+                    (-> (mt/user-http-request :crowberto :post 200 (str "ee/metabot-tools/read-memory")
+                                              {:request-options {:headers {"x-metabase-session" crowberto-token}}}
+                                              {:arguments {:id memory-id}
+                                               :conversation_id conversation-id})
+                        :output)))))
+        (t2/delete! :model/Document :creator_id (mt/user->id :rasta))))))
+
+(deftest memory-workflow-integration-test
+  (testing "Full memory workflow"
+    (mt/with-premium-features #{:metabot-v3}
+      (let [conversation-id (str (random-uuid))
+            ai-token (ai-session-token)
+            ;; Create first memory
+            create1-response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/memory"
+                                                   {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                                   {:arguments {:name "User Preference 1"
+                                                                :content "Prefers dark mode"}
+                                                    :conversation_id conversation-id})
+            memory1-id (:id create1-response)
+
+            ;; Create second memory
+            create2-response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/memory"
+                                                   {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                                   {:arguments {:name "User Preference 2"
+                                                                :content "Wants weekly reports"}
+                                                    :conversation_id conversation-id})
+            memory2-id (:id create2-response)
+
+            ;; List all memories
+            list-response (mt/user-http-request :rasta :get 200 "ee/metabot-tools/memory"
+                                                {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                                {:conversation_id conversation-id})
+            memories (:memories list-response)
+
+            ;; Get specific memory
+            get-response (mt/user-http-request :rasta :get 200 (str "ee/metabot-tools/memory/" memory1-id)
+                                               {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                               {:conversation_id conversation-id})]
+
+        ;; Verify creation
+        (is (int? memory1-id))
+        (is (int? memory2-id))
+        (is (not= memory1-id memory2-id))
+
+        ;; Verify list contains both
+        (is (= 2 (count memories)))
+        (is (some #(= memory1-id (:id %)) memories))
+        (is (some #(= memory2-id (:id %)) memories))
+
+        ;; Verify get returns correct memory
+        (is (= memory1-id (:id get-response)))
+        (is (= "User Preference 1" (:name get-response)))
+        (is (= "Prefers dark mode" (:content get-response)))))))

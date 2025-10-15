@@ -15,12 +15,14 @@
    [metabase-enterprise.metabot-v3.table-utils :as table-utils]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription
     :as metabot-v3.tools.create-dashboard-subscription]
+   [metabase-enterprise.metabot-v3.tools.documents :as metabot-v3.tools.documents]
    [metabase-enterprise.metabot-v3.tools.field-stats :as metabot-v3.tools.field-stats]
    [metabase-enterprise.metabot-v3.tools.filters :as metabot-v3.tools.filters]
    [metabase-enterprise.metabot-v3.tools.find-outliers :as metabot-v3.tools.find-outliers]
    [metabase-enterprise.metabot-v3.tools.generate-insights :as metabot-v3.tools.generate-insights]
    [metabase-enterprise.metabot-v3.tools.search :as metabot-v3.tools.search]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
+   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.response :as api.response]
    [metabase.api.routes.common :as api.routes.common]
@@ -909,6 +911,53 @@
               (assoc :conversation_id conversation_id))
       (metabot-v3.context/log :llm.log/be->llm))))
 
+;;; Memory API Schemas
+
+(mr/def ::create-memory-arguments
+  "Schema for creating a memory entry."
+  [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}
+   [:name [:string {:min 1}]]
+   [:content [:string {:min 1}]]])
+
+(mr/def ::memory-detail
+  "Schema for full memory entry."
+  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:id :int]
+   [:name :string]
+   [:content :string]
+   [:created_at :string]
+   [:updated_at :string]])
+
+(mr/def ::list-memories-result
+  "Schema for list memories response."
+  [:or
+   [:map
+    {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+    [:structured_output [:map
+                         [:memories [:sequential ::memory-detail]]]]]
+   [:map [:output :string]]])
+
+(mr/def ::create-memory-result
+  "Schema for create memory response."
+  [:or
+   [:map
+    {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+    [:structured_output ::memory-detail]]
+   [:map [:output :string]]])
+
+(mr/def ::read-memory-arguments
+  "Schema for reading a memory entry."
+  [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}
+   [:id :int]])
+
+(mr/def ::read-memory-result
+  "Schema for get memory response."
+  [:or
+   [:map
+    {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+    [:structured_output ::memory-detail]]
+   [:map [:output :string]]])
+
 (mr/def ::search-arguments
   [:and
    [:map
@@ -973,6 +1022,87 @@
     (catch Exception e
       (log/error e "Error in search")
       (doto (-> {:output (str "Search failed: " (or (ex-message e) "Unknown error"))}
+                (assoc :conversation_id conversation_id))
+        (metabot-v3.context/log :llm.log/be->llm)))))
+
+;;; Memory API Endpoints
+
+(api.macros/defendpoint :post "/create-memory" :- [:merge ::create-memory-result ::tool-request]
+  "Create a new memory entry for the authenticated user.
+
+   Stores memories as documents in the user's personal memory collection.
+   Collection path: __METABOT_MEMORY__/KVCACHE/<username>"
+  [_route-params
+   _query-params
+   {:keys [conversation_id arguments] :as body} :- [:merge
+                                                    [:map [:arguments ::create-memory-arguments]]
+                                                    ::tool-request]]
+  (metabot-v3.context/log (assoc body :api :create-memory) :llm.log/llm->be)
+  (try
+    (let [args (mc/encode ::create-memory-arguments arguments (mtx/transformer {:name :tool-api-request}))
+          result (metabot-v3.tools.documents/create-memory!
+                  (assoc args :user-id api/*current-user-id*))]
+      (doto (-> (mc/decode ::create-memory-result
+                           {:structured_output result}
+                           (mtx/transformer {:name :tool-api-response}))
+                (assoc :conversation_id conversation_id))
+        (metabot-v3.context/log :llm.log/be->llm)))
+    (catch Exception e
+      (log/error e "Error creating memory")
+      (doto (-> {:output (str "Failed to create memory: " (or (ex-message e) "Unknown error"))}
+                (assoc :conversation_id conversation_id))
+        (metabot-v3.context/log :llm.log/be->llm)))))
+
+(api.macros/defendpoint :post "/list-memories" :- [:merge ::list-memories-result ::tool-request]
+  "List all memory entries for the authenticated user with full details.
+
+   Returns all memories from the user's personal memory collection ordered by created_at descending."
+  [_route-params
+   _query-params
+   {:keys [conversation_id] :as body} :- ::tool-request]
+  (metabot-v3.context/log (assoc body :api :list-memories) :llm.log/llm->be)
+  (try
+    (let [memories #p (metabot-v3.tools.documents/list-memories api/*current-user-id*)
+          result memories]
+      (doto (-> (mc/decode ::list-memories-result
+                           {:structured_output result}
+                           (mtx/transformer {:name :tool-api-response}))
+                (assoc :conversation_id conversation_id))
+        (metabot-v3.context/log :llm.log/be->llm)))
+    (catch Exception e
+      (log/error e "Error listing memories")
+      (doto (-> {:output (str "Failed to list memories: " (or (ex-message e) "Unknown error"))}
+                (assoc :conversation_id conversation_id))
+        (metabot-v3.context/log :llm.log/be->llm)))))
+
+(api.macros/defendpoint :post "/read-memory" :- [:merge ::read-memory-result ::tool-request]
+  "Get a specific memory entry by ID with full content.
+
+   Returns 404 if the memory doesn't exist or belongs to another user."
+  [_route-params
+   _query-params
+   {:keys [conversation_id arguments] :as body} :- [:merge
+                                                    [:map [:arguments ::read-memory-arguments]]
+                                                    ::tool-request]]
+  (metabot-v3.context/log (assoc body :api :get-memory) :llm.log/llm->be)
+  (try
+    (let [args (mc/encode ::read-memory-arguments arguments (mtx/transformer {:name :tool-api-request}))
+          id (:id args)
+          memory (metabot-v3.tools.documents/get-memory id api/*current-user-id*)]
+      (if memory
+        (doto (-> (mc/decode ::read-memory-result
+                             {:structured_output memory}
+                             (mtx/transformer {:name :tool-api-response}))
+                  (assoc :conversation_id conversation_id))
+          (metabot-v3.context/log :llm.log/be->llm))
+        (do
+          (log/warn "Memory not found or unauthorized" {:id id :user-id api/*current-user-id*})
+          (doto (-> {:output (str "Memory not found with ID: " id)}
+                    (assoc :conversation_id conversation_id))
+            (metabot-v3.context/log :llm.log/be->llm)))))
+    (catch Exception e
+      (log/error e "Error getting memory")
+      (doto (-> {:output (str "Failed to get memory: " (or (ex-message e) "Unknown error"))}
                 (assoc :conversation_id conversation_id))
         (metabot-v3.context/log :llm.log/be->llm)))))
 
