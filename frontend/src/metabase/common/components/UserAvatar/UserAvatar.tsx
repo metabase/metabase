@@ -28,7 +28,7 @@ export default function UserAvatar({
   user,
   ...props
 }: UserAvatarProps | GroupProps) {
-  const imageUrl = user.image_url ?? "https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExOGI4bTRtdzRvYXMxaHd5aTdvZjF5eGZmNGx2bmM4ZTZkcGk2a2lldSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/vpawfuA6LnYeQ/giphy.gif";
+  const imageUrl = user.profile_image_url;
   const initials = userInitials(user) || "?";
   return <MantineAvatar {...props} src={imageUrl}>{initials}</MantineAvatar>;
 }

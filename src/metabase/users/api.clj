@@ -209,7 +209,7 @@
                                       [:id :asc]))
                (cond-> #_user
                  ;; For admins also include the IDs of Users' Personal Collections
-                 api/*is-superuser?*
+                api/*is-superuser?*
                  (t2/hydrate :personal_collection_id)
 
                  (or api/*is-superuser?*
@@ -220,8 +220,8 @@
                  distinct)
                (t2/hydrate :profile_image_url))
      :total  (-> (t2/query                  (merge {:select [[[:count [:distinct :core_user.id]] :count]]
-                          :from   :core_user}
-                         (filter-clauses-without-paging clauses)))
+                                                    :from   :core_user}
+                                                   (filter-clauses-without-paging clauses)))
                  first
                  :count)
      :limit  (request/limit)
@@ -340,7 +340,7 @@
   "Fetch the current `User`."
   []
   (-> (api/check-404 @api/*current-user*)
-      (t2/hydrate :personal_collection_id :group_ids :is_installer :has_invited_second_user)
+      (t2/hydrate :personal_collection_id :group_ids :is_installer :has_invited_second_user :profile_image_url)
       add-has-question-and-dashboard
       add-first-login
       maybe-add-advanced-permissions

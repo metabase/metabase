@@ -34,6 +34,7 @@ import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 
 import QuestionActionsS from "./QuestionActions.module.css";
 import { QuestionAlertsMenuItem } from "./QuestionAlertsMenuItem";
+import { useSnapshotCardMutation } from "metabase/api";
 
 const ADD_TO_DASH_TESTID = "add-to-dashboard-button";
 const MOVE_TESTID = "move-button";
@@ -117,7 +118,24 @@ export const QuestionMoreActionsMenu = ({
     ? t`Move, duplicate, and more…`
     : t`Move, trash, and more…`;
 
+  const [snapshotCard] = useSnapshotCardMutation();
+
+  const handleSnapshot = async () => {
+    try {
+      const { url } = await snapshotCard({ cardId: question.id() }).unwrap();
+    } catch (e) {
+      console.error("Failed to snapshot card", e);
+    }
+  };
+
   const menuItems = [
+    <Menu.Item
+      onClick={handleSnapshot}
+      leftSection={<Icon name="snail" />}
+      key="snapshot"
+    >
+      {t`Snapshot this question`}
+    </Menu.Item>,
     (isStandaloneQuestion || isMetric) && (
       <Menu.Item
         key="add_to_dash"

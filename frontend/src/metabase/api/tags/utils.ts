@@ -9,6 +9,7 @@ import type {
   CardId,
   CardQueryMetadata,
   Collection,
+  CollectionId,
   CollectionItem,
   CollectionItemModel,
   Dashboard,
@@ -211,8 +212,10 @@ export function provideCloudMigrationTags(
 export function provideCollectionItemListTags(
   items: CollectionItem[],
   models: CollectionItemModel[] = Array.from(COLLECTION_ITEM_MODELS),
+  collectionId: CollectionId,
 ): TagDescription<TagType>[] {
   return [
+    idTag(`collection-item-list`, collectionId),
     ...models.map((model) => listTag(TAG_TYPE_MAPPING[model])),
     ...items.flatMap(provideCollectionItemTags),
   ];

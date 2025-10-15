@@ -46,6 +46,9 @@ export const ImagePage = ({ params: { id }}: { params: { id: number }}) => {
           src={url}
           alt={title}
           bdrs="md"
+          mah="70vh"
+          style={{ objectFit: "contain" }}
+          mx="auto"
         />
       </Box>
     </Box>
