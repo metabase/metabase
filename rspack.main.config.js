@@ -279,18 +279,18 @@ const config = {
   },
 
   plugins: [
-    new TsCheckerRspackPlugin({
-      devServer: true,
-      async: false,
-      typescript: {
-        configFile: __dirname + "/tsconfig.json",
-        memoryLimit: 4096, // Increase memory limit to 4GB
-        diagnosticOptions: {
-          semantic: true,
-          syntactic: true,
-        },
-      },
-    }),
+    // new TsCheckerRspackPlugin({
+    //   devServer: true,
+    //   async: false,
+    //   typescript: {
+    //     configFile: __dirname + "/tsconfig.json",
+    //     memoryLimit: 4096, // Increase memory limit to 4GB
+    //     diagnosticOptions: {
+    //       semantic: true,
+    //       syntactic: true,
+    //     },
+    //   },
+    // }),
     // Extracts initial CSS into a standard stylesheet that can be loaded in parallel with JavaScript
     new rspack.CssExtractRspackPlugin({
       filename: isDevMode ? "[name].css" : "[name].[contenthash].css",
@@ -358,10 +358,11 @@ if (shouldEnableHotRefresh) {
     hot: true,
     client: {
       progress: false,
-      overlay: {
-        errors: true,
-        warnings: false,
-      },
+      // overlay: {
+      //   errors: true,
+      //   warnings: false,
+      // },
+      overlay: false,
     },
     headers: {
       "Access-Control-Allow-Origin": "*",

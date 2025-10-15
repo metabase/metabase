@@ -72,6 +72,7 @@
    [:id pos-int?]
    [:email ms/Email]
    [:first_name  {:optional true} [:maybe string?]]
+  ;;  [:middle_name  {:optional true} [:maybe string?]]
    [:last_name {:optional true} [:maybe string?]]
    [:common_name {:optional true} [:maybe string?]]
    [:date_joined :any] ;; Java Time object, serialized to string by middleware

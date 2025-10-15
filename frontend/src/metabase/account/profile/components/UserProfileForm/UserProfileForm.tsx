@@ -99,6 +99,7 @@ const UserProfileForm = ({
                   <CommunityLocalizationNotice isAdminView={false} />
                 }
               />
+              {/* {user.middle_name} */}
             </div>
             <FormSubmitButton title={t`Update`} disabled={!dirty} primary />
             <FormErrorMessage />
