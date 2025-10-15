@@ -1,12 +1,48 @@
 (ns metabase.api.docs
   "OpenAPI documentation for our API."
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [compojure.core :refer [GET]]
    [metabase.api.open-api :as open-api]
    [metabase.api.util.handlers :as handlers]
+   [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [ring.middleware.content-type :as content-type]
    [ring.util.response :as response]))
+
+(set! *warn-on-reflection* true)
+
+(def openapi-file-path
+  "Path to the local OpenAPI specification file."
+  "openapi.json")
+
+(defn write-openapi-spec-to-file!
+  "Generate and write the OpenAPI specification to a local file.
+  Takes the root handler and generates the complete OpenAPI spec, writing it to [[openapi-file-path]]."
+  [root-handler]
+  (try
+    (let [spec (merge
+                (open-api/root-open-api-object root-handler)
+                {:servers [{:url         ""
+                            :description "Metabase API"}]})
+          file (io/file openapi-file-path)]
+      (json/encode-to spec (io/writer file) nil)
+      (log/info "OpenAPI specification written to" openapi-file-path))
+    (catch Throwable e
+      (log/error e "Failed to write OpenAPI specification to file"))))
+
+(defn- read-openapi-spec-from-file
+  "Read the OpenAPI specification from the local file.
+  Returns the parsed JSON content, or nil if the file doesn't exist or can't be read."
+  []
+  (try
+    (let [file (io/file openapi-file-path)]
+      (when (.exists ^java.io.File file)
+        (json/decode+kw (io/reader file))))
+    (catch Throwable e
+      (log/error e "Failed to read OpenAPI specification from file")
+      nil)))
 
 (defn- index-handler
   "OpenAPI 3.1.0 JSON and UI
@@ -29,15 +65,20 @@
        (raise e)))))
 
 (defn- json-handler
-  "Given the [[metabase.api-routes.core/routes]] handler, return a Ring handler that returns `openapi.json`."
+  "Given the [[metabase.api-routes.core/routes]] handler, return a Ring handler that returns `openapi.json`.
+  Attempts to read from the local file first; if not available, generates on-the-fly."
   [root-handler]
   (fn handler*
     ([_request]
-     {:status 200
-      :body  (merge
-              (open-api/root-open-api-object root-handler)
-              {:servers [{:url         ""
-                          :description "Metabase API"}]})})
+     (let [spec (or (read-openapi-spec-from-file)
+                    (do
+                      (log/warn "OpenAPI spec file not found, generating on-the-fly")
+                      (merge
+                       (open-api/root-open-api-object root-handler)
+                       {:servers [{:url         ""
+                                   :description "Metabase API"}]})))]
+       {:status 200
+        :body   spec}))
 
     ([request respond raise]
      (try

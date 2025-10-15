@@ -710,7 +710,14 @@
                  (update metadata :api/endpoints update-api-endpoints))
                (rebuild-handler [metadata]
                  (assoc metadata :api/handler (build-ns-handler (:api/endpoints metadata))))]
-         (-> metadata update-info rebuild-handler))))))
+         (-> metadata update-info rebuild-handler))))
+    ;; Trigger OpenAPI regeneration in dev mode when endpoints change
+    (when config/is-dev?
+      (try
+        (when-let [regenerate-fn (requiring-resolve 'metabase.api-routes.routes/regenerate-with-debounce!)]
+          (regenerate-fn))
+        (catch Throwable e
+          (log/debug e "Failed to trigger OpenAPI regeneration"))))))
 
 (defn- quote-parsed-args
   "Quote the appropriate parts of the parsed [[defendpoint]] args (body and param bindings) so they can be emitted in
