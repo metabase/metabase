@@ -3,11 +3,14 @@
    [buddy.core.codecs :as buddy-codecs]
    [buddy.core.hash :as buddy-hash]
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.channel.render.core :as channel.render]
    [metabase.images.models.image :as models.image]
+   [metabase.images.s3 :as images.s3]
    [metabase.images.schema :as images.schema]
+   [metabase.images.settings :as images.settings]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor :as qp]
    [metabase.util.log :as log]
@@ -44,7 +47,9 @@
   (let [{:keys [^String url], content-type :content_type} (api/check-404
                                                            (t2/select-one [:model/Image :url :content_type] image-id))]
     {:status  200
-     :body    (io/input-stream (io/as-url url))
+     :body    (if (str/starts-with? url "s3")
+                (images.s3/fetch-image url)
+                (io/input-stream (io/as-url url)))
      :headers {"Content-Type" content-type}}))
 
 (def imgdir (io/file "/tmp/hack2025"))
@@ -82,7 +87,9 @@
         (log/infof "Got a cool file with %d bytes with name %s" size filename)
         (io/make-parents localfile)
         (io/copy tempfile localfile)
-        (let [url   (str (io/as-url localfile))
+        (let [url (if (images.settings/image-upload-s3-bucket)
+                    (images.s3/upload-image! localfile)
+                    (str (io/as-url localfile)))
               image (t2/insert-returning-instance! :model/Image {:url url, :title user-filename, :content_type (:content-type file)})]
           (when user-id
             (t2/update! :model/User user-id {:profile_image_id (:id image)}))
