@@ -6,13 +6,10 @@ import { DelayedLoadingSpinner } from "metabase/common/components/EntityPicker/c
 import { useToast } from "metabase/common/hooks/use-toast/use-toast";
 import { color } from "metabase/lib/colors";
 import { getEngineNativeType } from "metabase/lib/engine";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/lib/types";
-import { setUIControls, updateQuestion } from "metabase/query_builder/actions";
 import { CodeMirrorEditor as Editor } from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor";
-import { getQuestion } from "metabase/query_builder/selectors";
 import { Box, Button, Flex, Icon, Tooltip, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 
 import { createNativeQuestion } from "./utils";
 
@@ -63,17 +60,22 @@ const BUTTON_TITLE = {
   },
 };
 
-export const NotebookNativePreview = (): JSX.Element => {
-  const dispatch = useDispatch();
-  const question = checkNotNull(useSelector(getQuestion));
-
+export const NotebookNativePreview = ({
+  question,
+  onConvertClick,
+  buttonTitle,
+}: {
+  question: Question;
+  onConvertClick: (newQuestion: Question) => void;
+  buttonTitle?: string;
+}) => {
   const database = question.database();
   const engine = database?.engine;
   const engineType = getEngineNativeType(engine);
 
   const sourceQuery = question.query();
   const canRun = Lib.canRun(sourceQuery, question.type());
-  const payload = Lib.toLegacyQuery(sourceQuery);
+  const payload = Lib.toJsQuery(sourceQuery);
   const { data, error, isFetching } = useGetNativeDatasetQuery(payload);
 
   const showLoader = isFetching;
@@ -82,22 +84,23 @@ export const NotebookNativePreview = (): JSX.Element => {
   const showEmptySidebar = !canRun;
 
   const newQuestion = createNativeQuestion(question, data);
-  const newQuery = newQuestion!.query();
+  const newQuery = newQuestion?.query();
 
   // Get the SQL text for copying
   const sqlText = data?.query || "";
   const [sendToast] = useToast();
   const { isCopied, copying, handleCopy } = useCopyButton(sqlText, sendToast);
 
-  const handleConvertClick = useCallback(() => {
-    dispatch(updateQuestion(newQuestion!, { shouldUpdateUrl: true, run: true }));
-    dispatch(setUIControls({ isNativeEditorOpen: true }));
-  }, [newQuestion, dispatch]);
-
   const getErrorMessage = (error: unknown) =>
     typeof error === "string" ? error : undefined;
 
   const borderStyle = "1px solid var(--mb-color-border)";
+
+  const handleConvertClick = useCallback(() => {
+    if (newQuestion) {
+      onConvertClick(newQuestion);
+    }
+  }, [newQuestion, onConvertClick]);
 
   return (
     <Box
@@ -175,7 +178,7 @@ export const NotebookNativePreview = (): JSX.Element => {
             <Box mt="sm">{getErrorMessage(error)}</Box>
           </Flex>
         )}
-        {showQuery && <Editor query={newQuery} readOnly />}
+        {showQuery && newQuery != null && <Editor query={newQuery} readOnly />}
       </Flex>
       <Box ta="end" p="1.5rem">
         <Button
@@ -184,7 +187,7 @@ export const NotebookNativePreview = (): JSX.Element => {
           onClick={handleConvertClick}
           disabled={!showQuery}
         >
-          {BUTTON_TITLE[engineType]}
+          {buttonTitle ?? BUTTON_TITLE[engineType]}
         </Button>
       </Box>
     </Box>
