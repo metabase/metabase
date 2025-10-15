@@ -1875,19 +1875,6 @@
    :uses #{premium-features
            util}}
 
-  enterprise/representations
-  {:team "Querying"
-   :api #{metabase-enterprise.representations.core
-          metabase-enterprise.representations.api
-          metabase-enterprise.representations.init}
-   :uses #{api
-           collections
-           config
-           driver
-           lib
-           models
-           util}}
-
   enterprise/sandbox
   {:team "UX West"
    :api  #{metabase-enterprise.sandbox.api.routes
