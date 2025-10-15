@@ -381,3 +381,22 @@
                               (:status response) (:reason-phrase response))
                       {:request (assoc options :body body)
                        :response response})))))
+
+(defn- enahnce-user-url []
+  (str (metabot-v3.settings/ai-service-base-url) "/v1/profile-generation/users"))
+
+(defn enhance-user-profile
+  [uid md]
+  (let [body {:users [{:user_id uid
+                       :context md}]}
+        opts @(def oos (build-request-options body))
+        response @(def rex (post! (enahnce-user-url) opts))]
+    (post! (enahnce-user-url) opts)
+    (if (= (:status response) 200)
+      (:body response)
+      (throw (ex-info (format "Error in ~generation users request to AI service: unexpected status: %d %s"
+                              (:status response) (:reason-phrase response))
+                      {:request (assoc opts :body body)
+                       :response response})))))
+(comment
+  (enhance-user-profile (first xix) (second xix)))

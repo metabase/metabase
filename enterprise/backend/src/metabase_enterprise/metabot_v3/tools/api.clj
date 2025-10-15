@@ -6,6 +6,7 @@
    [clojure.set :as set]
    [malli.core :as mc]
    [malli.transform :as mtx]
+   [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase-enterprise.metabot-v3.dummy-tools :as metabot-v3.dummy-tools]
@@ -736,6 +737,8 @@
               (assoc :conversation_id conversation_id))
       (metabot-v3.context/log :llm.log/be->llm))))
 
+;; danger zone -- multiple approaches simul
+
 (api.macros/defendpoint :post "/get-current-user" :- [:merge ::get-current-user-result ::tool-request]
   "Get information about user that started the conversation."
   [_route-params
@@ -744,15 +747,21 @@
   (metabot-v3.context/log (assoc body :api :get-current-user) :llm.log/llm->be)
   (let [cu (metabot-v3.dummy-tools/get-current-user) #_(metabase.request.session/with-current-user 3 (metabot-v3.dummy-tools/get-current-user))
         u-id (get-in cu [:structured-output :id])
+        ;; slop way
         org-prof (profile-builder/build-organization-profile-cached nil)
-        u-prof (profile-builder/build-user-profile nil u-id)]
+        ;; slop
+        u-prof (profile-builder/build-user-profile nil u-id)
+        ;; enahncements -- TODO: next level is using Thomas' query!
+        u-prof-enh-raw (metabot-v3.client/enhance-user-profile u-id u-prof)
+        u-prof-enh (-> u-prof-enh-raw :profiles first :profile)]
     ;; debug
+    (def uuu [u-id u-prof])
     (doto @(def rere (-> (mc/decode ::get-current-user-result
                                     cu
                                     (mtx/transformer {:name :tool-api-response}))
                          (assoc :conversation_id conversation_id)
                          (assoc-in [:structured_output :company_profile] org-prof)
-                         (assoc-in [:structured_output :user_profile] u-prof)))
+                         (assoc-in [:structured_output :user_profile] u-prof-enh)))
       (metabot-v3.context/log :llm.log/be->llm))))
 
 (api.macros/defendpoint :post "/get-dashboard-details" :- [:merge ::get-dashboard-details-result ::tool-request]
