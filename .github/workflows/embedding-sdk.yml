@@ -38,6 +38,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
+      - name: Disable TypeScript annotations
+        run: echo "::remove-matcher owner=tsc::"
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
