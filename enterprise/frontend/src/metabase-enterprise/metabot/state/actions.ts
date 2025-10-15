@@ -13,6 +13,7 @@ import {
   getInflightRequestsForUrl,
 } from "metabase-enterprise/api/ai-streaming";
 import type {
+  DocumentContent,
   MetabotAgentRequest,
   MetabotAgentResponse,
   MetabotChatContext,
@@ -254,6 +255,22 @@ export const sendAgentRequest = createAsyncThunk<
           onError: (part) => (error = part),
         },
       );
+
+      const doc: DocumentContent = {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "text",
+                text: response.text ?? "",
+              },
+            ],
+          },
+        ],
+      };
+      (window as any).setDocumentContent(doc);
 
       if (error) {
         throw error;

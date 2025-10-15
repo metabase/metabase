@@ -154,6 +154,8 @@ export const DocumentPage = ({
     updateCardEmbeds,
   } = useDocumentState(documentData);
 
+  (window as any).setDocumentContent = setDocumentContent;
+
   // This is important as it will affect collection breadcrumbs in the appbar
   useUnmount(() => {
     dispatch(resetDocuments());
