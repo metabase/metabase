@@ -91,7 +91,6 @@
   (let [parsed           (mu.fn/parse-fn-tail fn-tail)
         cosmetic-name    (gensym (munge (str fn-name)))
         {attr-map :meta} (:values parsed)
-        docstring        (annotated-docstring parsed)
         attr-map         (merge
                           {:arglists (list 'quote (deparameterized-arglists parsed))
                            :schema   (mu.fn/fn-schema parsed {:target :target/metadata})}
@@ -99,7 +98,7 @@
                           ;; Don't include docstrings in CLJS to prevent them slipping into release build and
                           ;; inflating the bundle.
                           (macros/case
-                            :clj  {:doc docstring}
+                            :clj  {:doc (or (-> parsed :values :doc) "")}
                             :cljs nil))
         instrument?      (mu.fn/instrument-ns? *ns*)]
     `(def ~(vary-meta fn-name merge attr-map)

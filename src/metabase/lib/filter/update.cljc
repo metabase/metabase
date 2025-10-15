@@ -236,7 +236,7 @@
     stage-number                                 :- :int
     latitude-column                              :- ::lib.schema.metadata/column
     longitude-column                             :- :some
-    {:keys [north east south west], :as _bounds} :- [:ref ::lat-lon.bounds]]
+    {:keys [north east south west], :as _bounds} :- [:schema [:ref ::lat-lon.bounds]]]
    (-> query
        (remove-existing-filters-against-column-checking-subclauses stage-number latitude-column)
        (remove-existing-filters-against-column-checking-subclauses stage-number longitude-column)

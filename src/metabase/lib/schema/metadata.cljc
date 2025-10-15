@@ -753,7 +753,7 @@
 (mr/def ::metadata-providerable
   "Something that can be used to get a MetadataProvider. Either a MetadataProvider, or a map with a MetadataProvider in
   the key `:lib/metadata` (i.e., a query)."
-  [:ref :metabase.lib.metadata.protocols/metadata-providerable])
+  [:schema [:ref :metabase.lib.metadata.protocols/metadata-providerable]])
 
 (mr/def ::stage
   "Metadata about the columns returned by a particular stage of a pMBQL query. For example a single-stage native query
