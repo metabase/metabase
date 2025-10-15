@@ -2132,6 +2132,22 @@ databaseChangeLog:
             constraintName: fk_card_snapshot_collection_image_id
             onDelete: CASCADE
 
+  - changeSet:
+      id: v57.2025-10-15T09:30:07
+      author: camsaul
+      comment: >-
+        Add content_type to image
+      changes:
+        - addColumn:
+            tableName: image
+            columns:
+              - column:
+                  name: content_type
+                  type: ${text.type}
+                  remarks: >-
+                    Content type the image was uploaded with
+
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
