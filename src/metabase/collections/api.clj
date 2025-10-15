@@ -340,7 +340,7 @@
 (defmethod collection-children-query :image
   [_ collection {:keys [pinned-state]}]
   (-> {:select [:ci.id
-                ["??" :name]
+                [:i.title :name]
                 :ci.collection_id
                 :ci.collection_position
                 [false :archived]
