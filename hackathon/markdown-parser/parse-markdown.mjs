@@ -24,16 +24,21 @@ const schema = new Schema({
   nodes: baseSchema.spec.nodes
     .addBefore('image', 'cardEmbed', {
       attrs: {
-        id: { default: null },
+        id: { default: null }, // Can be number or string (ref:foo)
         name: { default: null }
       },
       group: 'block',
       parseDOM: [{
         tag: 'div[data-card-embed]',
-        getAttrs: (dom) => ({
-          id: parseInt(dom.getAttribute('data-id')),
-          name: dom.getAttribute('data-name')
-        })
+        getAttrs: (dom) => {
+          const idStr = dom.getAttribute('data-id');
+          // Keep ref: as string, parse numeric strings to numbers
+          const id = idStr && idStr.startsWith('ref:') ? idStr : parseInt(idStr);
+          return {
+            id,
+            name: dom.getAttribute('data-name')
+          };
+        }
       }],
       toDOM: (node) => ['div', {
         'data-card-embed': '',
@@ -90,15 +95,15 @@ function cardEmbedPlugin(md) {
     const max = state.eMarks[startLine];
     const lineText = state.src.slice(pos, max);
     
-    // Match: {% card id=123 %} or {% card id=123 name="Title" %}
-    const match = lineText.match(/^\{%\s*card\s+id=(\d+)(?:\s+name="([^"]*)")?\s*%\}$/);
+    // Match: {% card id=123 %} or {% card id=ref:my-chart %} with optional name
+    const match = lineText.match(/^\{%\s*card\s+id=(ref:[a-zA-Z0-9_-]+|\d+)(?:\s+name="([^"]*)")?\s*%\}$/);
     
     if (!match) return false;
     if (silent) return true;
     
     const token = state.push('card_embed', '', 0);
     token.attrs = [
-      ['id', match[1]],
+      ['id', match[1]], // Keep as-is (string for ref:, string for numeric)
       ['name', match[2] || null]
     ];
     token.block = true;
@@ -138,10 +143,10 @@ function rowPlugin(md) {
       }
       
       // Check for card
-      const cardMatch = nextLineText.match(/^\{%\s*card\s+id=(\d+)(?:\s+name="([^"]*)")?\s*%\}$/);
+      const cardMatch = nextLineText.match(/^\{%\s*card\s+id=(ref:[a-zA-Z0-9_-]+|\d+)(?:\s+name="([^"]*)")?\s*%\}$/);
       if (cardMatch) {
         cards.push({
-          id: cardMatch[1],
+          id: cardMatch[1], // Keep as-is (string for ref:, string for numeric)
           name: cardMatch[2] || null
         });
       }
@@ -245,10 +250,15 @@ const customParser = new MarkdownParser(
     ...defaultMarkdownParser.tokens,
     card_embed: {
       node: 'cardEmbed',
-      getAttrs: (tok) => ({
-        id: parseInt(tok.attrGet('id')),
-        name: tok.attrGet('name')
-      })
+      getAttrs: (tok) => {
+        const idStr = tok.attrGet('id');
+        // Keep ref: as string, parse numeric strings to numbers
+        const id = idStr.startsWith('ref:') ? idStr : parseInt(idStr);
+        return {
+          id,
+          name: tok.attrGet('name')
+        };
+      }
     },
     resize_node: {
       block: 'resizeNode',

@@ -68,12 +68,19 @@ All standard CommonMark elements are supported:
 ### Card Embeds
 
 ```markdown
-# Single card
+# Single card with numeric ID
 {% card id=123 %}
+
+# Card with ref (for Representations)
+{% card id=ref:my-chart %}
 
 # Card with custom title
 {% card id=456 name="My Custom Title" %}
 ```
+
+**ID Format:**
+- Numeric: `id=123` → JSON has `"id": 123` (number)
+- Ref: `id=ref:my-chart` → JSON has `"id": "ref:my-chart"` (string)
 
 **Output:** `resizeNode` containing `cardEmbed`
 
@@ -114,6 +121,14 @@ All standard CommonMark elements are supported:
       "content": [{
         "type": "cardEmbed",
         "attrs": {"id": 123, "name": null}
+      }]
+    },
+    {
+      "type": "resizeNode",
+      "attrs": {"height": 442, "minHeight": 280},
+      "content": [{
+        "type": "cardEmbed",
+        "attrs": {"id": "ref:my-chart", "name": null}
       }]
     },
     {

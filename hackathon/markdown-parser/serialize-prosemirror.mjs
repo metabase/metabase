@@ -195,6 +195,7 @@ const customSerializer = new MarkdownSerializer(
     ...defaultMarkdownSerializer.nodes,
     cardEmbed(state, node) {
       const { id, name } = node.attrs;
+      // id can be number or string (ref:foo)
       if (name) {
         state.write(`{% card id=${id} name="${name}" %}`);
       } else {
