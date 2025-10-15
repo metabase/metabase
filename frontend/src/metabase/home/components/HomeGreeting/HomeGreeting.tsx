@@ -5,7 +5,7 @@ import _ from "underscore";
 import styles from "metabase/css/core/animation.module.css";
 import { useSelector } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
-import { Flex, Tooltip } from "metabase/ui";
+import { Box, Flex, Tooltip } from "metabase/ui";
 
 import { getHasMetabotLogo } from "../../selectors";
 
@@ -25,7 +25,11 @@ export const HomeGreeting = (): JSX.Element => {
   return (
     <GreetingRoot>
       <Flex w="640" ml="auto" mr="auto" align="center" mt="xxl">
-        <Beaker />
+        <Tooltip label={t`Hey great job you finally found the science`}>
+          <Box>
+            <Beaker />
+          </Box>
+        </Tooltip>
         <GreetingMessage data-testid="greeting-message" showLogo={showLogo}>
           {message}
         </GreetingMessage>
