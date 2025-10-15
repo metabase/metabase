@@ -37,18 +37,12 @@ export const documentMetabotSuggestionItem = (name: RegExp | string) =>
 export const commandSuggestionItem = (name: RegExp | string) =>
   commandSuggestionDialog().findByRole("option", { name });
 
-export const getDocumentCard = (name: string, expectCardExists = true) => {
-  const cardsResult = documentContent()
+export const getDocumentCard = (name: string) => {
+  return documentContent()
     .findAllByTestId("card-embed-title")
-    .filter((index, el) => {
-      // Filter elements based on custom logic, e.g., text content, class, etc.
-      return el.innerText === name;
-    })
-    .should("have.length", expectCardExists ? 1 : 0);
-
-  return expectCardExists
-    ? cardsResult.closest('[data-testid="document-card-embed"]')
-    : cardsResult;
+    .filter((_index, element) => element.innerText === name)
+    .should("have.length", 1)
+    .closest('[data-testid="document-card-embed"]');
 };
 
 export const getDocumentCardResizeContainer = (name: string) =>
