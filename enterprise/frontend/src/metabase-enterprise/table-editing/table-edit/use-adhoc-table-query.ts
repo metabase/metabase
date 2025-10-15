@@ -54,8 +54,8 @@ export const useAdHocTableQuery = ({
   const tableQuestion = useMemo(() => {
     if (table) {
       let question = Question.create({
-        DO_NOT_USE_databaseId: databaseId,
-        DO_NOT_USE_tableId: tableId,
+        DEPRECATED_RAW_MBQL_databaseId: databaseId,
+        DEPRECATED_RAW_MBQL_tableId: tableId,
         metadata,
       });
 

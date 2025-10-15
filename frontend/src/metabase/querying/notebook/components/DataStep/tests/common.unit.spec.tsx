@@ -53,7 +53,9 @@ function setup(opts: SetupOpts = {}) {
 }
 
 const setupEmptyQuery = () => {
-  const question = Question.create({ DO_NOT_USE_databaseId: SAMPLE_DB_ID });
+  const question = Question.create({
+    DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
+  });
   const query = question.query();
   return setup({ step: createMockNotebookStep({ query }) });
 };

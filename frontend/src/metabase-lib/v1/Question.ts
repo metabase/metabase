@@ -61,9 +61,9 @@ export type QuestionCreatorOpts = {
   display?: CardDisplayType;
   visualization_settings?: VisualizationSettings;
   dataset_query?: DatasetQuery;
-  DO_NOT_USE_type?: "query" | "native";
-  DO_NOT_USE_databaseId?: DatabaseId;
-  DO_NOT_USE_tableId?: TableId;
+  DEPRECATED_RAW_MBQL_type?: "query" | "native";
+  DEPRECATED_RAW_MBQL_databaseId?: DatabaseId;
+  DEPRECATED_RAW_MBQL_tableId?: TableId;
 };
 
 export type QuestionDashboardProps = {
@@ -913,9 +913,9 @@ class Question {
    * but it would require changing the constructor signature so that `card` is an optional parameter and has a default value
    */
   static create({
-    DO_NOT_USE_type: type = "query",
-    DO_NOT_USE_databaseId: databaseId,
-    DO_NOT_USE_tableId: tableId,
+    DEPRECATED_RAW_MBQL_type: type = "query",
+    DEPRECATED_RAW_MBQL_databaseId: databaseId,
+    DEPRECATED_RAW_MBQL_tableId: tableId,
     collectionId,
     dashboardId,
     metadata,

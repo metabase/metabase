@@ -80,8 +80,8 @@ function getCardForBlankQuestion(
   const segmentId = options.segment ? parseInt(options.segment) : undefined;
 
   let question = Question.create({
-    DO_NOT_USE_databaseId: databaseId,
-    DO_NOT_USE_tableId: tableId,
+    DEPRECATED_RAW_MBQL_databaseId: databaseId,
+    DEPRECATED_RAW_MBQL_tableId: tableId,
     metadata,
   });
 

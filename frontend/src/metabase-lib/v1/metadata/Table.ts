@@ -64,8 +64,8 @@ class Table {
 
   question() {
     return Question.create({
-      DO_NOT_USE_databaseId: this.db && this.db.id,
-      DO_NOT_USE_tableId: this.id,
+      DEPRECATED_RAW_MBQL_databaseId: this.db && this.db.id,
+      DEPRECATED_RAW_MBQL_tableId: this.id,
       metadata: this.metadata,
     });
   }

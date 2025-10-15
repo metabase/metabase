@@ -98,11 +98,11 @@ export const Onboarding = () => {
   );
 
   const newNativeQuestionUrl = Urls.newQuestion({
-    DO_NOT_USE_type: "native",
+    DEPRECATED_RAW_MBQL_type: "native",
     creationType: "native_question",
     collectionId: "root",
     cardType: "question",
-    DO_NOT_USE_databaseId: lastUsedDatabaseId || undefined,
+    DEPRECATED_RAW_MBQL_databaseId: lastUsedDatabaseId || undefined,
   });
 
   const [lastItemOpened, setLastItemOpened] = useTempStorage(
