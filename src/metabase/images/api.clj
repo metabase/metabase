@@ -28,6 +28,12 @@
      :body    (java.io.FileOutputStream. url)
      :headers {"Content-Type" content-type}}))
 
+(defn- assign-image-to-user! [image-id user-id]
+  (t2/update! :model/User user-id {:profile_image_id image-id}))
+
+(defn- add-image-to-collection! [image-id collection-id]
+  (t2/insert! :model/CollectionImage :image_id image-id, :collection_id collection-id))
+
 ;; curl -X POST http://localhost:3000/api/images -H "x-metabase-session: $(cat session.txt)" -F "file=@$(pwd)/duck.jpeg"
 (api.macros/defendpoint :post "/"
   "Upload an image."
