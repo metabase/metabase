@@ -10,6 +10,7 @@ import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useLatest, usePrevious } from "react-use";
 import { t } from "ttag";
+import { HocuspocusProvider } from "@hocuspocus/provider";
 
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
@@ -92,7 +93,7 @@ export interface EditorProps {
   editable?: boolean;
   isLoading?: boolean;
   ydoc?: Y.Doc;
-  provider?: TiptapCollabProvider;
+  provider?: HocuspocusProvider;
 }
 
 export const Editor: React.FC<EditorProps> = ({
