@@ -1401,6 +1401,26 @@
               :schema output-schema
               :database db-id}}))
 
+(defn- table-display-name
+  "Returns a clean display name for a transformed table."
+  [table-name]
+  (case table-name
+    "transformed_account" "Account"
+    "transformed_contact" "Contact"
+    "transformed_opportunity" "Opportunity"
+    "transformed_lead" "Lead"
+    (str/capitalize (str/replace table-name #"^transformed_" ""))))
+
+(defn- table-description
+  "Returns a description for a transformed table."
+  [table-name]
+  (case table-name
+    "transformed_account" "Companies and organizations in your Salesforce CRM"
+    "transformed_contact" "Individual people associated with your accounts"
+    "transformed_opportunity" "Potential revenue-generating deals in your sales pipeline"
+    "transformed_lead" "Prospective customers who have shown interest in your products or services"
+    nil))
+
 (defn- create-salesforce-transforms! [id]
   (let [db (t2/select-one :model/Database :id id)]
     (when-not (-> db :settings :blueprints :is-salesforce?)
@@ -1439,10 +1459,15 @@
                                 [(transforms.execute/run-mbql-transform! t' {:start-promise start-promise
                                                                              :run-method :manual})
                                  @start-promise]
-                                (conj acc (t2/select-one :model/Table
-                                                         :db_id id
-                                                         :name (-> t' :target :name)
-                                                         :schema (-> t' :target :schema)))))
+                                (let [table (t2/select-one :model/Table
+                                                           :db_id id
+                                                           :name (-> t' :target :name)
+                                                           :schema (-> t' :target :schema))
+                                      table-name (:name table)]
+                                  (t2/update! :model/Table (:id table)
+                                              {:display_name (table-display-name table-name)
+                                               :description (table-description table-name)})
+                                  (conj acc (t2/select-one :model/Table :id (:id table))))))
                             []
                             ts)]
       (t2/update! :model/Database id
