@@ -101,3 +101,28 @@
     animation: none;
   }
 }
+
+@keyframes bubble-rise {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-14px);
+    opacity: 0;
+  }
+}
+
+.bubble {
+  animation: bubble-rise 1.8s ease-in infinite;
+}
+
+.bubble1 {
+  animation-delay: 0s;
+}
+.bubble2 {
+  animation-delay: 0.5s;
+}
+.bubble3 {
+  animation-delay: 1s;
+}

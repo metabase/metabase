@@ -5,7 +5,7 @@ import _ from "underscore";
 import styles from "metabase/css/core/animation.module.css";
 import { useSelector } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
-import { Tooltip } from "metabase/ui";
+import { Flex, Tooltip } from "metabase/ui";
 
 import { getHasMetabotLogo } from "../../selectors";
 
@@ -24,11 +24,75 @@ export const HomeGreeting = (): JSX.Element => {
 
   return (
     <GreetingRoot>
-      {showLogo && <MetabotGreeting />}
-      <GreetingMessage data-testid="greeting-message" showLogo={showLogo}>
-        {message}
-      </GreetingMessage>
+      <Flex w="640" ml="auto" mr="auto" align="center" mt="xxl">
+        <Beaker />
+        <GreetingMessage data-testid="greeting-message" showLogo={showLogo}>
+          {message}
+        </GreetingMessage>
+      </Flex>
     </GreetingRoot>
+  );
+};
+
+const Beaker = () => {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 16 16"
+      width="36"
+      height="36"
+    >
+      <path
+        d="M 5.5 9 L 5.5 11 C 5.5 11.8 6.2 12.5 7 12.5 L 9 12.5 C 9.8 12.5 10.5 11.8 10.5 11 L 10.5 9 Z"
+        fill="currentcolor"
+      />
+
+      <path
+        d="M 5 4 L 5 11 C 5 12.1 6 13 7 13 L 9 13 C 10 13 11 12.1 11 11 L 11 4"
+        fill="none"
+        stroke="currentcolor"
+        strokeWidth="1.25"
+        strokeLinecap="round"
+      />
+
+      <line
+        x1="4"
+        y1="4"
+        x2="12"
+        y2="4"
+        stroke="currentcolor"
+        strokeWidth="1.25"
+        strokeLinecap="round"
+      />
+
+      <circle
+        className="bubble bubble1"
+        cx="7"
+        cy="8"
+        r="0.8"
+        fill="none"
+        stroke="currentcolor"
+        strokeWidth="1"
+      />
+      <circle
+        className="bubble bubble2"
+        cx="9"
+        cy="8.5"
+        r="0.8"
+        fill="none"
+        stroke="currentcolor"
+        strokeWidth="1"
+      />
+      <circle
+        className="bubble bubble3"
+        cx="8"
+        cy="7.5"
+        r="0.6"
+        fill="none"
+        stroke="currentcolor"
+        strokeWidth="1"
+      />
+    </svg>
   );
 };
 

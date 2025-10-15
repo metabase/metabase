@@ -1,4 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { Box, Flex, Icon, Paper, Textarea } from "metabase/ui";
+import { t } from "ttag";
 
 import { useListPopularItemsQuery, useListRecentsQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -21,6 +23,8 @@ export const HomeContent = (): JSX.Element | null => {
   const embeddingHomepage = useSetting("embedding-homepage");
   const isXrayEnabled = useSelector(getIsXrayEnabled);
 
+  const [prompt, setPrompt] = useState("");
+
   const { data: databases, error: databasesError } = useDatabaseListQuery();
   const { data: recentItemsRaw, error: recentItemsError } = useListRecentsQuery(
     undefined,
@@ -33,6 +37,39 @@ export const HomeContent = (): JSX.Element | null => {
   const recentItems = useMemo(
     () => (recentItemsRaw && recentsFilter(recentItemsRaw)) ?? [],
     [recentItemsRaw],
+  );
+
+  return (
+    <Box>
+      <Flex align="center" justify="center">
+        <Paper w="640">
+          <Textarea
+            id="metabot-chat-input"
+            data-testid="metabot-chat-input"
+            w="100%"
+            autosize
+            minRows={10}
+            maxRows={20}
+            autoFocus
+            value={prompt}
+            placeholder={t`What would you like to know?`}
+            onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.nativeEvent.isComposing) {
+                return;
+              }
+              const isModifiedKeyPress =
+                e.shiftKey || e.ctrlKey || e.metaKey || e.altKey;
+              if (e.key === "Enter" && !isModifiedKeyPress) {
+                // prevent event from inserting new line + interacting with other content
+                e.preventDefault();
+                e.stopPropagation();
+              }
+            }}
+          />
+        </Paper>
+      </Flex>
+    </Box>
   );
 
   if (error) {
