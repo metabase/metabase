@@ -44,7 +44,9 @@ export function getTreeItems(
   }
 
   return [
-    ...collectionTree.map(collectionToTreeNode),
+    ...collectionTree
+      .map(collectionToTreeNode)
+      .filter((collectionItem) => collectionItem.children?.length > 0),
     ...models
       .filter((m) => !m.collection.id)
       .map((m) => ({
