@@ -423,7 +423,7 @@
 
 (def excluded-schemas
   "The set of schemas that should be excluded when querying all schemas."
-  #{"information_schema"})
+  #{"information_schema" "system" "pg_catalog"})
 
 (defmethod sql-jdbc.sync/database-type->base-type :starburst
   [_ field-type]
