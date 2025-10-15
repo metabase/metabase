@@ -122,7 +122,13 @@ export const NotebookNativePreview = (): JSX.Element => {
         <Box>{TITLE[engineType]}</Box>
         {showQuery && sqlText && (
           <Tooltip
-            label={isCopied ? t`Copied!` : copying ? t`Copying…` : t`Copy SQL`}
+            label={
+              isCopied
+                ? t`Copied!`
+                : copying
+                  ? t`Copying…`
+                  : t`Copy to clipboard`
+            }
             opened={isCopied}
           >
             <Button
@@ -135,10 +141,18 @@ export const NotebookNativePreview = (): JSX.Element => {
                 <Icon name={copying ? "hourglass" : "copy"} size="1rem" />
               }
               aria-label={
-                isCopied ? t`Copied!` : copying ? t`Copying…` : t`Copy SQL`
+                isCopied
+                  ? t`Copied!`
+                  : copying
+                    ? t`Copying…`
+                    : t`Copy to clipboard`
               }
             >
-              {isCopied ? t`Copied!` : copying ? t`Copying…` : t`Copy SQL`}
+              {isCopied
+                ? t`Copied!`
+                : copying
+                  ? t`Copying…`
+                  : t`Copy to clipboard`}
             </Button>
           </Tooltip>
         )}

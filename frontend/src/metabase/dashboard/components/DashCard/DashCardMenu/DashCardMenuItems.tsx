@@ -152,7 +152,7 @@ export const DashCardMenuItems = ({
             ? t`Copied!`
             : copying
               ? t`Copying…`
-              : t`Copy to Clipboard`,
+              : t`Copy to clipboard`,
           onClick: async () => {
             setCopying(true);
             try {
