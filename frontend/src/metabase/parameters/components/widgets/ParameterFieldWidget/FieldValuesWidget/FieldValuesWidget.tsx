@@ -28,6 +28,7 @@ import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
+import type { OptionsType } from "metabase/lib/formatting";
 import { parseNumber } from "metabase/lib/number";
 import { connect, useDispatch } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
@@ -320,11 +321,14 @@ export const FieldValuesWidgetInner = forwardRef<
   };
 
   if (!valueRenderer) {
-    valueRenderer = (value: RowValue) => {
+    valueRenderer = (value: RowValue, extraOptions?: OptionsType) => {
       const option = options.find((option) => getValue(option) === value);
       return renderValue({
         fields,
-        formatOptions,
+        formatOptions: {
+          ...formatOptions,
+          ...extraOptions,
+        },
         value,
         parameter,
         cardId,
@@ -722,7 +726,7 @@ type RemappedValueProps = {
   value: ParameterValueOrArray | null;
   dashboardId?: DashboardId;
   cardId?: CardId;
-  renderValue: (value: RowValue | null) => ReactNode;
+  renderValue: (value: RowValue | null, options?: OptionsType) => ReactNode;
   tc: ContentTranslationFunction;
 };
 
@@ -782,7 +786,7 @@ function RemappedValue({
 
   return (
     <MultiAutocompleteValue
-      value={renderValue(remappedValue)}
+      value={renderValue(remappedValue, { remap: false })}
       label={tc(String(remappedLabel ?? remappedValue))}
     />
   );
@@ -791,15 +795,15 @@ function RemappedValue({
 type RemappedOptionProps = {
   option: ComboboxItem;
   fields: Field[];
-  renderValue: (value: RowValue | null) => ReactNode;
   tc: ContentTranslationFunction;
+  renderValue: (value: RowValue | null, options?: OptionsType) => ReactNode;
 };
 
 function RemappedOption({
   option,
   fields,
-  renderValue,
   tc,
+  renderValue,
 }: RemappedOptionProps) {
   const isRemapped = Field.remappedField(fields) != null;
   if (!isRemapped) {
@@ -808,7 +812,7 @@ function RemappedOption({
 
   return (
     <MultiAutocompleteOption
-      value={renderValue(option.value)}
+      value={renderValue(option.value, { remap: false })}
       label={tc(option.label)}
     />
   );

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react-markdown/lib/react-markdown";
+import type { ReactNode } from "react";
 
 import { Box } from "metabase/ui";
 
