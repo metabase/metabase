@@ -17,12 +17,12 @@ export const ImagePage = ({ params: { id }}: { params: { id: number }}) => {
 
 
   return (
-    <Box p="xl">
+    <Box p="xl" px="3rem">
       <Flex
         mb="lg" align="center" justify="space-between" gap="md" pb="lg"
         style={{ borderBottom: "1px solid var(--mb-color-border)" }}
       >
-        <Title order={3}>{name}</Title>
+        <Title order={3}>{title}</Title>
         <Menu position="bottom-end">
           <Menu.Target>
             <Button variant="subtle">
@@ -41,9 +41,10 @@ export const ImagePage = ({ params: { id }}: { params: { id: number }}) => {
         </Menu>
       </Flex>
       <Box>
+        {/** if this had a card id, link to the card */}
         <Image
-          src={image_url}
-          alt={name}
+          src={url}
+          alt={title}
           bdrs="md"
         />
       </Box>
