@@ -1,6 +1,7 @@
 (ns metabase.warehouses.api
   "/api/database endpoints."
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.transforms.execute :as transforms.execute]
@@ -1373,99 +1374,15 @@
 
 (def order [:account :contact :opportunity :lead])
 
-(def transforms
-  {"account" "
-<<CTE>>
+(comment
+  (doseq [o order]
+    (spit (format "resources/blueprints/salesforce/models/%s.sql" (name o))
+          (get transforms (name o))))
+  )
 
-SELECT
-	account.*
-    , parent_account.name as parent_account_name
-    , owner.name as owner_name
-    , creator.name as created_by_name
-	, modifier.name as modified_by_name
-FROM cte account
-LEFT JOIN <<source.account>> parent_account
-	ON account.parent_id = parent_account.id
-LEFT JOIN <<source.user>> creator
-	ON account.created_by_id = creator.id
-LEFT JOIN <<source.user>> owner
-	ON account.owner_id = owner.id
-LEFT JOIN <<source.user>> modifier
-	ON account.last_modified_by_id = modifier.id
-WHERE NOT(account._fivetran_deleted)
-AND account.is_deleted = false
-
-"
-   "contact" "
-<<CTE>>
-
-  select
-	contact.*
-    , owner.name as owner_name
-    , creator.name as created_by_name
-	, modifier.name as modified_by_name
-  from cte as contact
-  left join <<transformed.account>> as account
-    on contact.account_id = account.id
-  left join <<source.user>> as owner
-    on contact.owner_id = owner.id
-  left join <<source.user>> as creator
-    on contact.created_by_id = creator.id
-  left join <<source.user>> as modifier
-    on contact.last_modified_by_id = modifier.id
-  where contact.is_deleted = false
-"
-
-   "opportunity" "
-<<CTE>>
-
-select
-	opp.*
-	, case when stage_name in ('Closed Won') then 'won'
-			when stage_name in ('Closed Lost') then 'lost'
-			else 'open' end as status
-	, account.name as account_name
-    , owner.name as owner_name
-    , creator.name as created_by_name
-	, modifier.name as modified_by_name
-from cte opp
-left join <<transformed.account>> account
-	on opp.account_id = account.id
-left join <<source.record_type>> as record_type
-	on opp.record_type_id = record_type.id
-left join <<source.user>> as owner
-	on opp.owner_id = owner.id
-left join <<source.user>> as creator
-	on opp.created_by_id = creator.id
-left join <<source.user>> as modifier
-	on opp.last_modified_by_id = modifier.id
-where opp.is_deleted = false
-"
-   "lead" "
-<<CTE>>
-
- select
- 	lead.*
-	, owner.name as owner_name
-    , creator.name as created_by_name
-	, modifier.name as modified_by_name
- from cte as lead
-  left join <<transformed.account>> as account
-    on lead.account_id_custom = account.id
-  left join <<source.user>> as owner
-    on lead.owner_id = owner.id
-  left join <<source.user>> as creator
-    on lead.created_by_id = creator.id
-  left join <<source.user>> as modifier
-    on lead.last_modified_by_id = modifier.id
-  left join <<transformed.account>> as converted_account
-      on lead.converted_account_id = converted_account.id
-  left join <<transformed.contact>> as converted_contact
-      on lead.converted_contact_id = converted_contact.id
-  left join <<transformed.opportunity>> as converted_opportunity
-      on lead.converted_opportunity_id = converted_opportunity.id
-  where lead.is_deleted = false
-"})
+(defn transforms
+  [which]
+  (slurp (io/resource (format "blueprints/salesforce/models/%s.sql" which))))
 
 (defn- macro [schema table-name columns]
   (let [custom-column? (fn [c] (str/ends-with? c "_c"))
