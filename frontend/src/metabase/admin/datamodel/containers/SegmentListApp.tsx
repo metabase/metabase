@@ -53,7 +53,7 @@ function SegmentListAppInner({ onCollapse, ...props }: SegmentListAppProps) {
         options: [
           {
             label: t`Segment table`,
-            value: "segment-table",
+            value: "tree",
           },
           {
             label: t`Alphabetical`,
@@ -62,7 +62,7 @@ function SegmentListAppInner({ onCollapse, ...props }: SegmentListAppProps) {
         ],
       },
     ],
-    defaults: { display: "segment-table" },
+    defaults: { display: "tree" },
     location,
   });
 
@@ -72,7 +72,7 @@ function SegmentListAppInner({ onCollapse, ...props }: SegmentListAppProps) {
     if (isLoadingTables) {
       return [];
     }
-    type Tier<T> = (s: T) => ITreeNodeItem;
+    type Tier<T> = (t: T) => ITreeNodeItem;
     const tiers: Tier<Segment>[] = [
       (s) => ({
         id: `database-${s.table?.db_id}`,
@@ -141,7 +141,7 @@ function SegmentListAppInner({ onCollapse, ...props }: SegmentListAppProps) {
       }
       settings={<ItemsListSettings {...listSettingsProps} />}
       listItems={
-        listSettingsProps.values.display === "segment-table" ? (
+        listSettingsProps.values.display === "tree" ? (
           <Box mx="-sm">
             <Tree
               data={treeData}

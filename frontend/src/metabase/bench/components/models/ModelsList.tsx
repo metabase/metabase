@@ -62,7 +62,7 @@ function ModelsList({
         options: [
           {
             label: t`By collection`,
-            value: "collection",
+            value: "tree",
           },
           {
             label: t`Alphabetical`,
@@ -71,7 +71,7 @@ function ModelsList({
         ],
       },
     ],
-    defaults: { display: "collection" },
+    defaults: { display: "tree" },
     location,
   });
 
@@ -99,7 +99,7 @@ function ModelsList({
           <Center>
             <Loader />
           </Center>
-        ) : listSettingsProps.values.display === "collection" ? (
+        ) : listSettingsProps.values.display === "tree" ? (
           <Box mx="-sm">
             <Tree
               data={treeData}
