@@ -4,6 +4,8 @@
   padding: var(--mantine-spacing-md);
   background-color: var(--mb-color-bg-light);
 
+  display: flex;
+
   &.selected {
     background-color: var(--mb-color-bg-medium);
   }

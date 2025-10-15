@@ -87,6 +87,7 @@ export const ImageBlockNodeView = ({
             maxHeight: "50vh",
             padding: 8,
             border: "1px solid var(--mb-color-border-secondary)",
+            margin: "0 auto",
           }}
           className={S.image}
         />
