@@ -47,9 +47,18 @@ const ItemLinkComponent = ({
   item: CollectionItem;
   onClick?: (item: CollectionItem) => void;
 }>) => {
-  if (isEmbeddingSdk() || item.model === "image") {
+  if (isEmbeddingSdk()) {
     return <ItemButton onClick={() => onClick?.(item)}>{children}</ItemButton>;
   }
+
+  if (item.model === "image") {
+    return (
+      <ItemLink to={`/api/images/${item.id}/contents`} target="_blank">
+        {children}
+      </ItemLink>
+    );
+  }
+
   return (
     <ItemLink to={item.getUrl()} onClick={() => onClick?.(item)}>
       {children}
