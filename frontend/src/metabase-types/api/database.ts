@@ -7,9 +7,12 @@ export type DatabaseId = number;
 
 export type InitialSyncStatus = LongTaskStatus;
 
+export const DATABASE_BLUEPRINTS = ["is-salesforce?", "is-stripe?"] as const;
+
 export type DatabaseSettings = {
   [key: string]: any;
   "database-enable-actions"?: boolean;
+  blueprints: { "is-salesforce?": boolean; "is-stripe?": boolean };
 };
 
 export type DatabaseFeature =
@@ -57,7 +60,7 @@ export type DatabaseFeature =
   | "transforms/python"
   | "transforms/table";
 
-export type DatabaseBlueprint = "salesforce" | "stripe";
+export type DatabaseBlueprint = (typeof DATABASE_BLUEPRINTS)[number];
 
 export interface Database extends DatabaseData {
   id: DatabaseId;
@@ -79,7 +82,6 @@ export interface Database extends DatabaseData {
   is_attached_dwh?: boolean;
   router_database_id?: number | null;
   router_user_attribute?: string | null;
-  blueprints?: DatabaseBlueprint[];
 
   // Only appears in  GET /api/database/:id
   "can-manage"?: boolean;
