@@ -950,10 +950,10 @@ WITH (
                    (execute-query driver database query))
 
       ("stripe" "pipedrive" "notion")
-      #p (shell/sh "../netabase/load" source name (:api_key details))
+      (shell/sh "./load" source name (:api_key details) :dir "../netabase")
 
-      "google-sheets" #p (shell/sh "../netabase/load" source name (:spreadsheet_url details))
-      "salesforce" #p (shell/sh "../netabase/load" source name (:username details) (:password details) (:security_token details)))
+      "google-sheets" (shell/sh "./load" source name (:spreadsheet_url details) :dir "../netabase")
+      "salesforce" (shell/sh "./load" source name (:username details) (:password details) (:security_token details) :dir "../netabase"))
     (sync/sync-database! database {:scan :schema})
     {:id (:id database)}))
 
