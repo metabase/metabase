@@ -100,7 +100,7 @@ function ModelsList({
             <Loader />
           </Center>
         ) : listSettingsProps.values.display === "collection" ? (
-          <Box mx="-md">
+          <Box mx="-sm">
             <Tree
               data={treeData}
               selectedId={activeId}

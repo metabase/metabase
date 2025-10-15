@@ -12,13 +12,14 @@ import {
   ItemsListSection,
 } from "metabase/bench/components/ItemsListSection/ItemsListSection";
 import { ItemsListSettings } from "metabase/bench/components/ItemsListSection/ItemsListSettings";
+import { ItemsListTreeNode } from "metabase/bench/components/ItemsListSection/ItemsListTreeNode";
 import { useItemsListQuery } from "metabase/bench/components/ItemsListSection/useItemsListQuery";
 import { Tree } from "metabase/common/components/tree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import CS from "metabase/css/core/index.css";
 import Segments from "metabase/entities/segments";
 import { connect, useDispatch } from "metabase/lib/redux";
-import { Stack } from "metabase/ui";
+import { Box, Stack } from "metabase/ui";
 import type Segment from "metabase-lib/v1/metadata/Segment";
 
 interface SegmentListAppProps {
@@ -132,17 +133,20 @@ function SegmentListAppInner({ onCollapse, ...props }: SegmentListAppProps) {
       settings={<ItemsListSettings {...listSettingsProps} />}
       listItems={
         listSettingsProps.values.display === "segment-table" ? (
-          <Tree
-            data={treeData}
-            selectedId={selectedId}
-            onSelect={(node) => {
-              if (!node.children?.length) {
-                dispatch(
-                  push({ query, pathname: `/bench/segment/${node.id}` }),
-                );
-              }
-            }}
-          />
+          <Box mx="-sm">
+            <Tree
+              data={treeData}
+              selectedId={selectedId}
+              onSelect={(node) => {
+                if (!node.children?.length) {
+                  dispatch(
+                    push({ query, pathname: `/bench/segment/${node.id}` }),
+                  );
+                }
+              }}
+              TreeNode={ItemsListTreeNode}
+            />
+          </Box>
         ) : (
           <Stack gap="xs">
             {segments.map((segment) => (

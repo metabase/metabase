@@ -52,7 +52,9 @@ export const ItemsListTreeNode = forwardRef<HTMLLIElement, TreeNodeProps>(
         tabIndex={0}
         onClick={onClick}
         {...props}
-        className={cx(S.treeNode, props.className, props.classNames?.root)}
+        className={cx(S.treeNode, props.className, props.classNames?.root, {
+          [S.isSelected]: isSelected,
+        })}
         depth={depth}
         isSelected={isSelected}
         aria-expanded={isExpanded}
@@ -66,7 +68,7 @@ export const ItemsListTreeNode = forwardRef<HTMLLIElement, TreeNodeProps>(
           <TreeNode.ExpandToggleIcon
             isExpanded={isExpanded}
             name="chevronright"
-            size={12}
+            size={10}
           />
         </TreeNode.ExpandToggleButton>
 
