@@ -52,7 +52,7 @@
                                                       :order-by [[:duration :desc]]
                                                       :limit 20})})
 
-(defn- get-pgstats-stats
+(defn- _get-pgstats-stats
   "set a lock with `begin; lock metabase_database in exclusive mode`"
   [& _args]
   {:locks
@@ -126,7 +126,8 @@
    :period-days days
    :query-stats (get-query-execution-stats days)
    :task-stats (get-task-history-stats days)
-   :pg-stats   (get-pgstats-stats)})
+   ;; :pg-stats   (get-pgstats-stats)
+   })
   ;;  :database-stats (get-database-stats)
   ;;  :pulse-stats (get-pulse-stats)
   ;;  :cache-settings (get-cache-settings)
