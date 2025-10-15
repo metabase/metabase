@@ -73,15 +73,16 @@
   {})
 
 (defn patch-card
-  [yaml-file db-name destination-schema which->table {:keys [collection-id user-id]}]
+  [yaml-file db destination-schema which->table {:keys [collection-id user-id]}]
   (let [card (-> (yaml/parse-string (slurp (io/resource yaml-file)))
+                 (assoc :database_id (:id db))
                  (update :dataset_query
                          (fn [query]
                            (walk/postwalk
                             (fn [x]
                               (cond (string? x)
                                     ;; todo: patch table in new schema
-                                    ({"<<db>>" db-name
+                                    ({"<<db>>" (:name db)
                                       "<<destination_schema>>" destination-schema} x
                                      (str/replace x #"<<target\.(.*)>>"
                                                   (fn [[whole which]]
@@ -103,11 +104,16 @@
 
   (slurp (io/resource "blueprints/salesforce/cards/customer_base_by_country.yaml"))
   ;; yaml file
-  (patch-card "blueprints/salesforce/cards/customer_base_by_country.yaml"
-              "analytics local" ;; db name
-              "transform476140" ;; destination schema might need origin schema
-              {"account" "transformed_account"} ;; output table names
-              {:collection-id nil :user-id 1})
+  (doseq [y ["blueprints/salesforce/cards/customer_base_by_country.yaml"
+             "blueprints/salesforce/cards/trend__total___of_weighted_open_pipeline_expected__close_date_this_q.yaml"]
+          :let [db (t2/select-one :model/Database :id 3)]]
+    (t2/insert! :model/Card
+                (patch-card y db
+                            "transform476140" ;; destination schema might need origin schema
+                            {"account" "transformed_account"
+                             "opportunity" "transformed_opportunity"} ;; output table names
+                            {:collection-id nil :user-id 1})))
+  (t2/insert! :model/Card *1)
   )
 
 (comment
