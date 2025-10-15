@@ -7,7 +7,7 @@ import { Box, Flex, Icon, Input, Stack, rem } from "metabase/ui";
 
 import { Results } from "./Results";
 import S from "./TablePicker.module.css";
-import type { ChangeOptions, TreePath } from "./types";
+import type { ChangeOptions, DatabaseNode, TreePath } from "./types";
 import { flatten, useExpandedState, useSearch, useTableLoader } from "./utils";
 
 export function TablePicker({
@@ -19,25 +19,28 @@ export function TablePicker({
   className?: string;
   onChange: (path: TreePath, options?: ChangeOptions) => void;
 }) {
-  const [query, setQuery] = useState("");
-  const deferredQuery = useDeferredValue(query);
+  // const [query, setQuery] = useState("");
+  // const deferredQuery = useDeferredValue(query);
 
+  // TODO: add search back
   return (
     <Stack data-testid="table-picker" mih={rem(200)} className={className}>
-      <Box p="xl" pb={0}>
-        <Input
-          leftSection={<Icon name="search" />}
-          placeholder={t`Search tables`}
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-        />
-      </Box>
+      {/*<Box p="xl" pb={0}>*/}
+      {/*  <Input*/}
+      {/*    leftSection={<Icon name="search" />}*/}
+      {/*    placeholder={t`Search tables`}*/}
+      {/*    value={query}*/}
+      {/*    onChange={(event) => setQuery(event.target.value)}*/}
+      {/*  />*/}
+      {/*</Box>*/}
 
-      {deferredQuery === "" ? (
-        <Tree path={path} onChange={onChange} />
-      ) : (
-        <Search query={deferredQuery} path={path} onChange={onChange} />
-      )}
+      {/*{deferredQuery === "" ? (*/}
+      {/*  <Tree path={path} onChange={onChange} />*/}
+      {/*) : (*/}
+      {/*  <Search query={deferredQuery} path={path} onChange={onChange} />*/}
+      {/*)}*/}
+
+      <Tree path={path} onChange={onChange} />
     </Stack>
   );
 }
@@ -62,7 +65,9 @@ function Tree({
 
   useEffect(() => {
     // When we detect only one database, we automatically select and expand it.
-    const databases = tree.children.filter((node) => node.type === "database");
+    const databases = tree.children.filter(
+      (node) => (node as DatabaseNode).type === "database",
+    );
 
     if (databases.length !== 1) {
       return;

@@ -17,6 +17,7 @@ export function parseRouteParams(params: RouteParams): ParsedRouteParams {
     fieldId: Urls.extractEntityId(params.fieldId),
     modelId: Urls.extractEntityId(params.modelId),
     fieldName: params.fieldName,
+    collectionId: params.collectionId,
   };
 }
 

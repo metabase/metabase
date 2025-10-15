@@ -4,6 +4,7 @@ import _ from "underscore";
 
 import {
   skipToken,
+  useLazyListCollectionsTreeQuery,
   useLazyListDatabaseSchemaTablesQuery,
   useLazyListDatabaseSchemasQuery,
   useLazyListDatabasesQuery,
@@ -16,6 +17,7 @@ import type { DatabaseId, SchemaName } from "metabase-types/api";
 import { getUrl as getUrl_ } from "../../utils";
 
 import type {
+  CollectionNode,
   DatabaseNode,
   ExpandedState,
   FlatItem,
@@ -51,6 +53,10 @@ export function getUrl(value: TreePath) {
     tableId: undefined,
     databaseId: undefined,
     schemaName: undefined,
+
+    modelId: undefined,
+    fieldName: undefined,
+    collectionId: undefined,
     ...value,
   });
 }
@@ -70,9 +76,13 @@ export function useTableLoader(path: TreePath) {
   const [fetchDatabases, databases] = useLazyListDatabasesQuery();
   const [fetchSchemas, schemas] = useLazyListDatabaseSchemasQuery();
   const [fetchTables, tables] = useLazyListDatabaseSchemaTablesQuery();
+  const [fetchCollections, collections] = useLazyListCollectionsTreeQuery();
+  // const [fetchModels, models] = useLazyListCollectionModelsQuery();
+
   const databasesRef = useLatest(databases);
   const schemasRef = useLatest(schemas);
   const tablesRef = useLatest(tables);
+  const collectionsRef = useLatest(collections);
 
   const [tree, setTree] = useState<TreeNode>(rootNode());
 
@@ -183,17 +193,39 @@ export function useTableLoader(path: TreePath) {
     [fetchSchemas, getTables, schemasRef],
   );
 
+  const getCollections = useCallback(async () => {
+    const response = await fetchCollections({ "exclude-archived": true }, true);
+
+    if (collectionsRef.current.isError) {
+      // Do not refetch when this call failed previously.
+      // This is to prevent infinite data-loading loop as RTK query does not cache error responses.
+      return [];
+    }
+
+    return (
+      response.data?.map((collection) =>
+        node<CollectionNode>({
+          type: "collection",
+          label: collection.name,
+          value: { collectionId: collection.id },
+        }),
+      ) ?? []
+    );
+  }, [fetchCollections, collectionsRef]);
+
   const load = useCallback(
     async function (path: TreePath) {
-      const { databaseId, schemaName } = path;
-      const [databases, schemas, tables] = await Promise.all([
+      const { databaseId, schemaName, collectionId } = path;
+      const [databases, schemas, tables, collections] = await Promise.all([
         getDatabases(),
-        getSchemas(path.databaseId),
-        getTables(path.databaseId, path.schemaName),
+        getSchemas(databaseId),
+        getTables(databaseId, schemaName),
+        getCollections(),
+        // getModels(modelId),
       ]);
 
-      const newTree: TreeNode = rootNode(
-        databases.map((database) => ({
+      const newTree: TreeNode = rootNode([
+        ...databases.map((database) => ({
           ...database,
           children:
             database.value.databaseId !== databaseId
@@ -206,13 +238,20 @@ export function useTableLoader(path: TreePath) {
                       : tables,
                 })),
         })),
-      );
+        ...collections.map((collection) => ({
+          ...collection,
+          children:
+            collection.value.collectionId !== collectionId
+              ? collection.children
+              : [],
+        })),
+      ]);
       setTree((current) => {
         const merged = merge(current, newTree);
         return _.isEqual(current, merged) ? current : merged;
       });
     },
-    [getDatabases, getSchemas, getTables],
+    [getCollections, getDatabases, getSchemas, getTables],
   );
 
   useDeepCompareEffect(() => {
@@ -221,9 +260,10 @@ export function useTableLoader(path: TreePath) {
     load,
     path,
     // When a table is modified, e.g. we change display_name with PUT /api/table/:id
-    // we need to manually call the lazy RTK hooks, so that the the updated table
+    // we need to manually call the lazy RTK hooks, so that the updated table
     // is refetched here. We detect this modification with tables.isFetching.
     tables.isFetching,
+    // models.isFetching,
   ]);
 
   return { tree, reload: load };
@@ -317,13 +357,21 @@ export function useSearch(query: string) {
 export function useExpandedState(path: TreePath) {
   const [state, setState] = useState(expandPath({}, path));
 
-  const { databaseId, schemaName, tableId } = path;
+  const { databaseId, schemaName, tableId, collectionId, modelId } = path;
 
   useEffect(() => {
-    // When the path changes, this means a user has navigated throught the browser back
+    // When the path changes, this means a user has navigated through the browser back
     // button, ensure the path is completely expanded.
-    setState((state) => expandPath(state, { databaseId, schemaName, tableId }));
-  }, [databaseId, schemaName, tableId]);
+    setState((state) =>
+      expandPath(state, {
+        databaseId,
+        schemaName,
+        tableId,
+        collectionId,
+        modelId,
+      }),
+    );
+  }, [databaseId, schemaName, tableId, collectionId, modelId]);
 
   const isExpanded = useCallback(
     (path: string | TreePath) => {
