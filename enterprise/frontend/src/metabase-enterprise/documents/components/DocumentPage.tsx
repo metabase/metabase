@@ -419,7 +419,7 @@ export const DocumentPage = ({
               documentTitle={documentTitle}
               isNewDocument={isNewDocument}
               canWrite={canWrite ?? false}
-              showSaveButton={showSaveButton ?? false}
+              showSaveButton={false}
               isBookmarked={isBookmarked}
               onTitleChange={setDocumentTitle}
               onSave={() => {
