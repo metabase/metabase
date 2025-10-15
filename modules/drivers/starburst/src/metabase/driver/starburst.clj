@@ -385,7 +385,7 @@
     [#"(?i)decimal.*"                         :type/Decimal]
     [#"(?i)varchar.*"                         :type/Text]
     [#"(?i)char.*"                            :type/Text]
-    [#"(?i)json"                              :type/Text]
+    [#"(?i)json"                              :type/JSON]
     [#"(?i)date"                              :type/Date]
     [#"(?i)^timestamp$"                       :type/DateTime]
     [#"(?i)^timestamp\(\d+\)$"                :type/DateTime]
