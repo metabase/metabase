@@ -1,12 +1,14 @@
 import type { Path } from "history";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import Dropzone from "react-dropzone";
 import { t } from "ttag";
 
 import { useUploadImageMutation } from "metabase/api";
 import Radio from "metabase/common/components/Radio";
+import { useDispatch } from "metabase/lib/redux";
 import { getFullName } from "metabase/lib/user";
 import { PLUGIN_IS_PASSWORD_USER } from "metabase/plugins";
+import { refreshCurrentUser } from "metabase/redux/user";
 import { Box, Icon } from "metabase/ui";
 import type { User } from "metabase-types/api";
 
@@ -34,6 +36,8 @@ export const AccountHeader = ({
     [user],
   );
 
+  const dispatch = useDispatch();
+
   const tabs = useMemo(
     () => [
       { name: t`Profile`, value: "/account/profile" },
@@ -50,17 +54,13 @@ export const AccountHeader = ({
 
   const [uploadImage] = useUploadImageMutation();
 
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-
   const handleUpload = async (files: File[]) => {
     if (files.length > 0) {
       const file = files[0];
 
-      const { data } = await uploadImage({ file, userId: user.id });
+      await uploadImage({ file, userId: user.id });
 
-      if (data?.url) {
-        setAvatarUrl(data.url);
-      }
+      dispatch(refreshCurrentUser());
     }
   };
 
@@ -76,7 +76,7 @@ export const AccountHeader = ({
             >
               <input {...getInputProps()} />
               <Icon name="pencil" pos="absolute" right="-10px" bottom="20px" />
-              <HeaderAvatar user={user} avatarUrl={avatarUrl} />
+              <HeaderAvatar user={user} />
             </Box>
           )}
         </Dropzone>
