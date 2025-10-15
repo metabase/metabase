@@ -12,6 +12,8 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (api.macros/defendpoint :get "/:id"
   "Metadata about an image."
   [{image-id :id, :as _route-params} :- [:map

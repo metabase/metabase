@@ -2147,6 +2147,34 @@ databaseChangeLog:
                   remarks: >-
                     Content type the image was uploaded with
 
+  - changeSet:
+      id: v57.2025-10-15T09:30:08
+      author: camsaul
+      comment: >-
+        Add profile_image_id to user
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: profile_image_id
+                  type: int
+                  remarks: >-
+                    FK from User to Image; profile image for a User
+
+  - changeSet:
+      id: v57.2025-10-15T09:30:09
+      author: camsaul
+      comment: >-
+        Add user.profile_image_id FK constraint
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: core_user
+            baseColumnNames: profile_image_id
+            referencedTableName: image
+            referencedColumnNames: id
+            constraintName: fk_user_profile_image_id
+            onDelete: CASCADE
 
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
