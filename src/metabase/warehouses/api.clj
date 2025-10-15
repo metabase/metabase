@@ -13,6 +13,7 @@
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -878,7 +879,49 @@
         {:status 400
          :body   (dissoc details-or-error :valid)}))))
 
-(api.macros/defendpoint :post "/source/"
+(defn- get-connection-details [s]
+  (let [[host param-str] (str/split s #"\?")]
+    (->> (str/split param-str #"&")
+         (into {:host host}
+               (map #(let [[key val] (str/split % #"=")]
+                       [(keyword key) val]))))))
+
+(defn- add-catalog [name source details]
+  (let [database (t2/select-one :model/Database :name "Trino")
+        driver (:engine database)
+        params (get-connection-details (:connection_string details))]
+    (case source
+      "snowflake" (let [query (format "CREATE CATALOG %s
+USING snowflake
+WITH (
+  \"connection-url\" = '%s',
+  \"connection-user\" = '%s',
+  \"connection-password\" = '%s',
+  \"snowflake.account\" = '%s',
+  \"snowflake.database\" = '%s',
+  \"snowflake.role\" = '%s',
+  \"snowflake.warehouse\" = '%s'
+)"
+                                      name
+                                      (:host params)
+                                      (:user params)
+                                      (:password params)
+                                      (-> (subs (:host params) 17)
+                                          (str/split #"\.snowflakecomputing\.com")
+                                          first)
+                                      (:database params)
+                                      (:role params)
+                                      (:warehouse params))]
+                    (sql-jdbc.execute/do-with-connection-with-options
+                     driver
+                     database
+                     nil
+                     (fn [^java.sql.Connection conn]
+                       (with-open [stmt (.createStatement conn)]
+                         (.execute stmt query))))))
+    (sync/sync-database! database {:scan :schema})))
+
+(api.macros/defendpoint :post "/source"
   "Add a new `Source`."
   [_route-params
    _query-params
@@ -888,6 +931,7 @@
        [:source            ms/NonBlankString]
        [:details           ms/Map]]]
   (api/check-superuser)
+  (add-catalog name source details)
   (prn "adding" name source details)
   #_(when cache_ttl
       (api/check (premium-features/enable-cache-granular-controls?)
