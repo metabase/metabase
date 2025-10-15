@@ -38,4 +38,11 @@ export const HealthReportMarkdown = styled(Markdown)<MarkdownProps>`
   ul {
     margin: 0 0.5rem 0;
   }
+  ol {
+    list-style-type: decimal;
+    margin: 0 1rem 0;
+  }
+  p {
+    margin: 0.25rem 0;
+  }
 `;
