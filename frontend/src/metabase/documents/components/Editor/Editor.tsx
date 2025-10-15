@@ -9,6 +9,7 @@ import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useLatest, usePrevious } from "react-use";
 import { t } from "ttag";
+import { HocuspocusProvider } from "@hocuspocus/provider";
 
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
@@ -98,7 +99,7 @@ export interface EditorProps {
   /** Ref to the editor container for external access (e.g., anchor scrolling) */
   editorContainerRef?: React.RefObject<HTMLDivElement>;
   ydoc?: Y.Doc;
-  provider?: TiptapCollabProvider;
+  provider?: HocuspocusProvider;
 }
 
 export const Editor: React.FC<EditorProps> = ({
