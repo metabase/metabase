@@ -41,6 +41,7 @@ const canSelectItem = (
     item != null &&
     (item.model === "card" ||
       item.model === "dataset" ||
+      item.model === "image" ||
       item.model === "metric")
   );
 };

@@ -115,7 +115,7 @@ export const ImageBlockNodeView = ({
               models={["image"]}
               onClose={() => setShowPicker(false)}
               onChange={(item) => {
-                console.log(item);
+                updateAttributes({ url: `/api/images/${item.id}/contents` });
                 setShowPicker(false);
               }}
             />
