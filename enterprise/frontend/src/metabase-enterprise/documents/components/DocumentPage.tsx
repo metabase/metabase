@@ -455,7 +455,6 @@ export const DocumentPage = ({
               onEditorReady={setEditorInstance}
               onCardEmbedsChange={updateCardEmbeds}
               onQuestionSelect={handleQuestionSelect}
-              initialContent={documentContent}
               onChange={handleChange}
               editable={canWrite}
               isLoading={isDocumentLoading}
