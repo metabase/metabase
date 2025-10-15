@@ -1955,7 +1955,7 @@
     js-yaml "^4.1.0"
     lodash "^4.17.21"
 
-"@hey-api/openapi-ts@^0.85.2":
+"@hey-api/openapi-ts@0.85.2":
   version "0.85.2"
   resolved "https://registry.yarnpkg.com/@hey-api/openapi-ts/-/openapi-ts-0.85.2.tgz#31978f413fae9ae7795ef8c6a217b53c3ec961a8"
   integrity sha512-pNu+DOtjeXiGhMqSQ/mYadh6BuKR/QiucVunyA2P7w2uyxkfCJ9sHS20Y72KHXzB3nshKJ9r7JMirysoa50SJg==

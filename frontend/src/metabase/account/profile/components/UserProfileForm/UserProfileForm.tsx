@@ -15,7 +15,7 @@ import { Box, Flex, Text } from "metabase/ui";
 import type { User } from "metabase-types/api";
 
 import type { components } from "../../../../../../../ts-types/schema2";
-import { MetabaseSessionApiAvailableLocales } from "../../../../../../../ts-types/schema3.d.ts/types.gen";
+import { MetabaseSessionApiAvailableLocale } from "../../../../../../../ts-types/hey-api/types.gen";
 import type { UserProfileData } from "../../types";
 
 type LocaleData =
@@ -55,7 +55,7 @@ const UserProfileForm = ({
   // }, [locales]);
 
   const localeOptions = getLocaleOptions(
-    Object.values(MetabaseSessionApiAvailableLocales).map((x) => [x[0], x[1]]),
+    Object.values(MetabaseSessionApiAvailableLocale).map((x) => [x[0], x[1]]),
   );
 
   const handleSubmit = useCallback(

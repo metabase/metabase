@@ -274,7 +274,9 @@
                        [:token ms/NonBlankString]]]
   {:valid (boolean (valid-reset-token->user token))})
 
-(mr/def ::available-locales (into [:enum] (u.i18n/available-locales-with-names)))
+(mr/def ::available-locale (into [:enum] (u.i18n/available-locales-with-names)))
+
+(mr/def ::available-locales [:sequential ::available-locale])
 
 (api.macros/defendpoint :get "/properties" :- [:map
                                                [:available-locales ::available-locales]]
