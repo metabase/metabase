@@ -39,7 +39,7 @@ export const BlueprintTableItemCard = ({ table }: { table: Table }) => {
             fw={400}
             lh="16px"
           >
-            <Ellipsified lines={1}>
+            <Ellipsified lines={1} showTooltip={false}>
               {table.display_name ?? table.name}
             </Ellipsified>
           </Title>
