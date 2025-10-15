@@ -23,6 +23,7 @@
    [metabase.embedding.api]
    [metabase.geojson.api]
    [metabase.glossary.api]
+   [metabase.images.api]
    [metabase.indexed-entities.api]
    [metabase.logger.api]
    [metabase.login-history.api]
@@ -71,6 +72,7 @@
          metabase.eid-translation.api/keep-me
          metabase.geojson.api/keep-me
          metabase.glossary.api/keep-me
+         metabase.images.api/keep-me
          metabase.indexed-entities.api/keep-me
          metabase.logger.api/keep-me
          metabase.login-history.api/keep-me
@@ -153,6 +155,7 @@
    "/geojson"              'metabase.geojson.api
    "/glossary"             (+auth 'metabase.glossary.api)
    "/google"               (+auth metabase.sso.api/google-auth-routes)
+   "/images"               (+auth 'metabase.images.api)
    "/ldap"                 (+auth metabase.sso.api/ldap-routes)
    "/logger"               (+auth 'metabase.logger.api)
    "/login-history"        (+auth 'metabase.login-history.api)
