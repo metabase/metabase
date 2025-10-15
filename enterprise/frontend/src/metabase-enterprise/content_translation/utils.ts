@@ -150,6 +150,7 @@ type SpecificTranslationConfig = {
 const visualizationTranslationConfig: Partial<
   Record<VisualizationDisplay, SpecificTranslationConfig>
 > = {
+  // Represents all cartesian charts
   pie: {
     settingsKey: "pie.rows",
     isValueInSettings: (pieRows = [], value) => {
