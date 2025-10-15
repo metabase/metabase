@@ -68,7 +68,7 @@
 
 (mr/def ::User
   "Schema for a User object returned by the API."
-  [:map
+  [:map {:closed false}
    [:id pos-int?]
    [:email ms/Email]
    [:first_name  {:optional true} [:maybe string?]]

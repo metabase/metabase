@@ -1,7 +1,8 @@
 import type { RouterState } from "react-router-redux";
 
 import type { Api } from "metabase/api/api";
-import type { User } from "metabase-types/api";
+
+import type { MetabaseUsersApiUser } from "../../../../ts-types/hey-api/types.gen";
 
 import type { AdminState } from "./admin";
 import type { AppState } from "./app";
@@ -28,7 +29,7 @@ export interface State {
   admin: AdminState;
   app: AppState;
   auth: AuthState;
-  currentUser: User | null;
+  currentUser: MetabaseUsersApiUser | null;
   dashboard: DashboardState;
   embed: EmbedState;
   embeddingDataPicker: EmbeddingDataPickerState;
