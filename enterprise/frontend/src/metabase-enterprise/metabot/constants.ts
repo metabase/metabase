@@ -1,5 +1,7 @@
 import { t } from "ttag";
 
+let i = 0;
+
 export const LONG_CONVO_MSG_LENGTH_THRESHOLD = 120000;
 
 // NOTE: this is not ideal, but will get fixed w/ BOT-189 allowing us to use fixed entity_ids
@@ -37,13 +39,25 @@ export const TOOL_CALL_MESSAGES: Record<string, string | undefined> = {
     return t`Inspecting the visualization`;
   },
   get list_available_fields() {
-    return undefined;
+    return t`Inspecting some data`;
   },
   get search_data_sources() {
     return t`Checking available data sources`;
   },
+  get create_research_plan() {
+    return t`Creating a plan`;
+  },
   get search() {
-    return t`Searching`;
+    const values = [
+      t`Boiling the ocean`,
+      t`Searching far and wide`,
+      t`Digging into something`,
+      t`Ooooooh what's this I see???`,
+    ];
+
+    const result = values[i % values.length] ?? t`Searching`;
+    i++;
+    return result;
   },
   get search_metabase_documentation() {
     return t`Consulting the docs`;
