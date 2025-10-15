@@ -1511,7 +1511,7 @@
             #_salesforce-dashboard #_(blueprints/create-salesforce-dashboard! db salesforce-cards)]
         {:tables salesforce-transform-tables
          :collection salesforce-collection
-         :dashboard {}
+         :dashboard nil
          :document {}})
 
       :else
@@ -1531,7 +1531,7 @@
       (let [salesforce-tables (map (fn [id] (t2/select-one :model/Table id))
                                    (-> blueprints :salesforce-transforms))]
         {:tables salesforce-tables
-         :dashboard {}
+         :dashboard nil
          :document {}})
 
       :else
