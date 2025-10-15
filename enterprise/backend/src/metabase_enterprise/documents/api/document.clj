@@ -1,9 +1,11 @@
 (ns metabase-enterprise.documents.api.document
   "`/api/ee/document/` routes"
   (:require
+   [compojure.response :as resp]
    [metabase-enterprise.documents.models.document :as m.document]
    [metabase-enterprise.documents.prose-mirror :as prose-mirror]
    [metabase.api.common :as api]
+   [metabase.api.common.internal]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.collections.models.collection :as collection]
@@ -13,8 +15,13 @@
    [metabase.query-permissions.core :as query-perms]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.jvm :as jvm]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [ring.util.response :as ring.resp]
+   [ring.websocket :as ring.ws]
+   [ring.websocket :as ws]
    [toucan2.core :as t2]))
 
 (def ^:private CardCreateSchema
@@ -238,6 +245,37 @@
                            {:object document
                             :user-id api/*current-user-id*})
     api/generic-204-no-content))
+
+(defonce docid->ws
+  (atom {}))
+
+(defrecord WSResponse [handler]
+  metabase.api.common.internal/EndpointResponse
+  (wrap-response-if-needed [this]
+    #p {::ring.ws/listener handler}))
+
+(api.macros/defendpoint :get "/:document-id/collab"
+  [{:keys [document-id]} :- [:map [:document-id ms/PositiveInt]] _ _ req]
+  (log/infof "Upgradable? %s" (ring.ws/upgrade-request? req))
+  (if (ring.ws/upgrade-request? req)
+    (->WSResponse
+     {:on-open (fn on-open [ws]
+                 (log/infof "Openning socket for %s" document-id)
+                 (swap! docid->ws assoc document-id ws)
+                 (jvm/in-virtual-thread*
+                  (while (ring.ws/open? ws)
+                    (ws/ping ws nil)
+                    (Thread/sleep 1000))))
+      :on-close (fn on-close [_ status-code reason]
+                  (log/infof "Closing socket for %s; status=%s; reason=%s" document-id status-code reason)
+                  (swap! docid->ws dissoc document-id))
+      :on-message (fn on-text [_ws text-message]
+                    (log/info "received msg:" text-message))
+      :on-pong (fn on-pong [_ _]
+                 (log/debug "pong"))
+      :on-error (fn on-error [_ throwable]
+                  (log/errorf throwable "Error on socket for %s" document-id))})
+    {:status 404}))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/document/` routes."
