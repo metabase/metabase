@@ -507,9 +507,10 @@
                     #{}
                     (mapcat
                      (fn [catalog]
-                       (if schema
-                         #{(describe-schema driver conn catalog schema)}
-                         (all-schemas driver conn catalog)))
+                       (let [schema (if (= catalog "snowflake") "analytics" schema)]
+                         (if schema
+                           #{(describe-schema driver conn catalog schema)}
+                           (all-schemas driver conn catalog))))
                      catalogs))]
        {:tables (reduce set/union #{} schemas)}))))
 
