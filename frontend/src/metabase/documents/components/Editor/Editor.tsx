@@ -124,6 +124,7 @@ export const Editor: React.FC<EditorProps> = ({
           width: 2,
           class: DropCursorS.dropCursor,
         },
+        undoRedo: false,
       }),
       Image.configure({
         inline: false,
