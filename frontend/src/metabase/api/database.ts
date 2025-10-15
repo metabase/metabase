@@ -108,9 +108,11 @@ export const databaseApi = Api.injectEndpoints({
               createMockTable({
                 id: 1,
                 db_id: id,
-                name: "Accounts",
-                display_name: "Accounts",
-                // description: "Customer account information",
+                name: "Accounts Accounts Accounts Accounts Accounts Accounts Accounts",
+                display_name:
+                  "Accounts AccountsAccountsAc countsAccountsAccountsAccounts Accounts",
+                description:
+                  "Customer account information Customer account informationCustomer account information",
               }),
               createMockTable({
                 id: 2,

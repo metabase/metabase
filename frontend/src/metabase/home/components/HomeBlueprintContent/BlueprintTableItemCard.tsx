@@ -22,8 +22,14 @@ export const BlueprintTableItemCard = ({ table }: { table: Table }) => {
         direction="row"
         align={table.description ? undefined : "center"}
       >
-        <Icon name="table" size={16} c="rgba(53, 140, 217, 1)" mr="sm" />
-        <Flex direction="column">
+        <Icon
+          name="table"
+          size={16}
+          c="rgba(53, 140, 217, 1)"
+          mr="sm"
+          style={{ flexShrink: 0 }}
+        />
+        <Flex direction="column" style={{ minWidth: 0, flex: 1 }}>
           <Title
             order={4}
             mb={table.description ? "sm" : undefined}
@@ -31,6 +37,7 @@ export const BlueprintTableItemCard = ({ table }: { table: Table }) => {
             fz={14}
             fw={400}
             lh="16px"
+            lineClamp={1}
           >
             {table.name}
           </Title>
@@ -41,7 +48,7 @@ export const BlueprintTableItemCard = ({ table }: { table: Table }) => {
               fw={400}
               c="text-secondary"
               tt="none"
-              truncate
+              lineClamp={1}
             >
               {table.description}
             </Text>
