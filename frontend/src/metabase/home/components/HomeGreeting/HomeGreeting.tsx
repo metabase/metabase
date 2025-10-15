@@ -102,6 +102,7 @@ const Beaker = () => {
 
 const getMessage = (name: string | null | undefined): string => {
   const namePart = name ? `, ${name}` : "";
+  return `Ready to research ${namePart}?`;
   const options = [
     t`Hey there${namePart}`,
     t`How's it going${namePart}?`,
