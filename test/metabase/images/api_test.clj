@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
+   [metabase.images.models.image :as models.image]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -83,6 +84,18 @@
                                              :target_id   doc-id
                                              :content     ((requiring-resolve 'metabase-enterprise.comments.api-test/tiptap) [:p "New comment"])
                                              :html        "<p>New comment</p>"}))))))))))
+
+(deftest ^:parallel post-user-id-image-test
+  (let [res (mt/user-http-request :crowberto :post "images"
+                                  {:request-options {:headers {"content-type" "multipart/form-data"}}}
+                                  {:file test-image}
+                                  :user-id (mt/user->id :crowberto))
+        id  (:id res)]
+    (is (nat-int? id))
+    (is (=? {:id id
+             :title "blue_check.png"
+             :url (models.image/image-id->contents-url id)}
+            res))))
 
 (def test-image
   (io/file "resources/frontend_client/app/assets/img/blue_check.png"))

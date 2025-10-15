@@ -5,12 +5,11 @@
    [clojure.java.io :as io]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.images.models.image :as models.image]
    [metabase.channel.render.core :as channel.render]
+   [metabase.images.models.image :as models.image]
    [metabase.images.schema :as images.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor :as qp]
-   [metabase.system.core :as system]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -115,15 +114,17 @@
         url           (str (io/as-url localfile))]
     (io/make-parents localfile)
     (io/copy png-bytes localfile)
-    (let [image-id            (t2/insert-returning-pk! :model/Image {:url          url
-                                                                     :title        (format "%s (%d)" (:name card) card-id)
-                                                                     :content_type "image/png"})
-          collection-image-id (t2/insert-returning-pk! :model/CollectionImage {:image_id      image-id
-                                                                               :collection_id (:collection_id card)})
-          card-snapshot       (t2/insert-returning-instance! :model/CardSnapshot {:card_id             card-id
-                                                                                  :collection_image_id collection-image-id})]
+    (let [image            (t2/insert-returning-instance! :model/Image {:url          url
+                                                                        :title        (format "%s (%d)" (:name card) card-id)
+                                                                        :content_type "image/png"})
+          collection-image (t2/insert-returning-instance! :model/CollectionImage {:image_id      (:id image)
+                                                                                  :collection_id (:collection_id card)})
+          card-snapshot    (t2/insert-returning-instance! :model/CardSnapshot {:card_id             card-id
+                                                                               :collection_image_id (:id collection-image)})]
       {:status 200
-       :body   {:card_snapshot card-snapshot}})))
+       :body   {:image            (assoc image :url (models.image/image-id->contents-url (:id image)))
+                :collection_image collection-image
+                :card_snapshot    card-snapshot}})))
 
 (api.macros/defendpoint :get "/card/:card-id/snapshots"
   "List all snapshots of a Card."
