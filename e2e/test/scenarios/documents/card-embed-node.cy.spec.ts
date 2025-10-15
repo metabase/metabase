@@ -463,7 +463,10 @@ describe("documents card embed node custom logic", () => {
       cy.realPress("Backspace");
 
       // Verify the Orders card has been deleted
-      H.getDocumentCard("Orders", false).should("not.exist");
+      H.documentContent()
+        .findAllByTestId("card-embed-title")
+        .filter((_index, element) => element.innerText === "Orders")
+        .should("not.exist");
 
       // Verify only one card remains
       H.documentContent()
@@ -517,7 +520,10 @@ describe("documents card embed node custom logic", () => {
       cy.realPress("Backspace");
 
       // Verify the Orders card has been deleted from the flexContainer
-      H.getDocumentCard("Orders", false).should("not.exist");
+      H.documentContent()
+        .findAllByTestId("card-embed-title")
+        .filter((_index, element) => element.innerText === "Orders")
+        .should("not.exist");
 
       H.documentContent()
         .findAllByTestId("document-card-embed")
