@@ -16,9 +16,9 @@ import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
 import type { DependencyEntry } from "metabase-types/api";
 
 import S from "./DependencyLineage.module.css";
-import { DependencyList } from "./DependencyList";
 import { GraphContext } from "./GraphContext";
-import { GraphEntryPicker } from "./GraphEntryPicker";
+import { GraphDependencyPanel } from "./GraphDependencyPanel";
+import { GraphEntryInput } from "./GraphEntryInput";
 import { GraphNode } from "./GraphNode";
 import { MAX_ZOOM, MIN_ZOOM } from "./constants";
 import type { GraphSelection, NodeType } from "./types";
@@ -72,7 +72,7 @@ export function DependencyLineage({
         <Controls />
         <GraphNodeLayout />
         <Panel position="top-left">
-          <GraphEntryPicker
+          <GraphEntryInput
             graph={graph}
             entry={entry}
             isFetching={isFetching}
@@ -81,7 +81,7 @@ export function DependencyLineage({
         </Panel>
         {selection && (
           <Panel className={S.dependencyPanel} position="top-right">
-            <DependencyList
+            <GraphDependencyPanel
               selection={selection}
               onEntryChange={onEntryChange}
               onSelectionChange={setSelection}

@@ -10,7 +10,7 @@ import type { DependencyEntry } from "metabase-types/api";
 
 import type { GraphSelection } from "../types";
 
-import S from "./DependencyList.module.css";
+import S from "./GraphDependencyPanel.module.css";
 import { ListBody } from "./ListBody";
 import { ListHeader } from "./ListHeader";
 import type { FilterOption } from "./types";
@@ -22,17 +22,17 @@ import {
   getVisibleNodes,
 } from "./utils";
 
-type DependencyListProps = {
+type GraphDependencyPanelProps = {
   selection: GraphSelection;
   onEntryChange: (entry: DependencyEntry) => void;
   onSelectionChange: (selection?: GraphSelection) => void;
 };
 
-export function DependencyList({
+export function GraphDependencyPanel({
   selection,
   onEntryChange,
   onSelectionChange,
-}: DependencyListProps) {
+}: GraphDependencyPanelProps) {
   const {
     data: nodes = [],
     isFetching,

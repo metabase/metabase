@@ -23,19 +23,19 @@ const PICKER_MODELS: DataPickerValue["model"][] = [
   "metric",
 ];
 
-type GraphEntryPickerProps = {
+type GraphEntryInputProps = {
   graph: DependencyGraph | undefined;
   entry: DependencyEntry | undefined;
   isFetching: boolean;
   onEntryChange: (entry: DependencyEntry) => void;
 };
 
-export function GraphEntryPicker({
+export function GraphEntryInput({
   graph,
   entry,
   isFetching,
   onEntryChange,
-}: GraphEntryPickerProps) {
+}: GraphEntryInputProps) {
   const node =
     graph != null && entry != null ? findNode(graph, entry) : undefined;
   const [isOpened, { open, close }] = useDisclosure();
