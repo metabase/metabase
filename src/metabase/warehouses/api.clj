@@ -896,6 +896,13 @@
      (with-open [stmt (.createStatement conn)]
        (.execute stmt query)))))
 
+(defn- shell-load [& params]
+  (let [{:keys [exit err out]} (apply shell/sh "./load" (concat params [:dir "../netabase"]))]
+    (when (= exit 1)
+      (throw (ex-info "Load command errored"
+                      {:err err
+                       :out out})))))
+
 (defn- add-catalog [name source details]
   (let [database (t2/select-one :model/Database :name "Sources")
         driver (:engine database)]
@@ -948,12 +955,9 @@ WITH (
                                      (:project_id details)
                                      (:credentials_key details))]
                    (execute-query driver database query))
-
-      ("stripe" "pipedrive" "notion")
-      (shell/sh "./load" source name (:api_key details) :dir "../netabase")
-
-      "google-sheets" (shell/sh "./load" source name (:spreadsheet_url details) :dir "../netabase")
-      "salesforce" (shell/sh "./load" source name (:username details) (:password details) (:security_token details) :dir "../netabase"))
+      ("stripe" "pipedrive" "notion") (shell-load source name (:api_key details))
+      "google-sheets" (shell-load source name (:spreadsheet_url details))
+      "salesforce" (shell-load source name (:username details) (:password details) (:security_token details)))
     (sync/sync-database! database {:scan :schema})
     {:id (:id database)}))
 
