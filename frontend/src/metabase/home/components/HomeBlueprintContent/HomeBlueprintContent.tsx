@@ -31,6 +31,7 @@ export const HomeBlueprintContent = ({
       <Box mt="lg">
         {data ? (
           <BlueprintContentCard
+            document={data.document}
             dashboard={data.dashboard}
             tables={data.tables}
           />

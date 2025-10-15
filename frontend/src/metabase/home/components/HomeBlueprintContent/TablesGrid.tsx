@@ -12,55 +12,60 @@ export const TablesGrid = ({ tables }: { tables: Table[] }) => {
 
   return (
     <Stack gap="md" pt="md">
-      <Flex gap="md">
+      <Flex gap="md" align="stretch">
         {topRow.map((table) => (
-          <BlueprintTableItemCard key={table.id} table={table} />
+          <Flex key={table.id} style={{ flex: 1 }}>
+            <BlueprintTableItemCard table={table} />
+          </Flex>
         ))}
       </Flex>
-      <Flex gap="md">
+      <Flex gap="md" align="stretch">
         {bottomRow.map((table) => (
-          <BlueprintTableItemCard key={table.id} table={table} />
+          <Flex key={table.id} style={{ flex: 1 }}>
+            <BlueprintTableItemCard table={table} />
+          </Flex>
         ))}
         {hasCollapsedTables && (
-          <Menu position="bottom">
-            <Menu.Target>
-              <Flex
-                bdrs="12px"
-                w="100%"
-                h="70px"
-                bg="rgba(7, 23, 34, 0.02)"
-                style={{
-                  border: "1px solid var(--mb-color-border)",
-                  cursor: "pointer",
-                }}
-                direction="row"
-                align="center"
-                justify="center"
-              >
-                <Text c="text-secondary">
-                  {t`Show all`}{" "}
-                  <Icon
-                    size={10}
-                    ml="xs"
-                    name="chevrondown"
-                    c="text-secondary"
-                  />
-                </Text>
-              </Flex>
-            </Menu.Target>
-            <Menu.Dropdown>
-              {collapsedTables.map((table) => (
-                <Menu.Item
-                  key={table.id}
-                  component="a"
-                  href={Urls.tableRowsQuery(table.db_id, table.id)}
-                  leftSection={<Icon name="table" size={16} />}
+          <Flex style={{ flex: 1 }}>
+            <Menu position="bottom">
+              <Menu.Target>
+                <Flex
+                  bdrs="12px"
+                  w="100%"
+                  bg="rgba(7, 23, 34, 0.02)"
+                  style={{
+                    border: "1px solid var(--mb-color-border)",
+                    cursor: "pointer",
+                  }}
+                  direction="row"
+                  align="center"
+                  justify="center"
                 >
-                  {table.name}
-                </Menu.Item>
-              ))}
-            </Menu.Dropdown>
-          </Menu>
+                  <Text c="text-secondary">
+                    {t`Show all`}{" "}
+                    <Icon
+                      size={10}
+                      ml="xs"
+                      name="chevrondown"
+                      c="text-secondary"
+                    />
+                  </Text>
+                </Flex>
+              </Menu.Target>
+              <Menu.Dropdown>
+                {collapsedTables.map((table) => (
+                  <Menu.Item
+                    key={table.id}
+                    component="a"
+                    href={Urls.tableRowsQuery(table.db_id, table.id)}
+                    leftSection={<Icon name="table" size={16} />}
+                  >
+                    {table.name}
+                  </Menu.Item>
+                ))}
+              </Menu.Dropdown>
+            </Menu>
+          </Flex>
         )}
       </Flex>
     </Stack>

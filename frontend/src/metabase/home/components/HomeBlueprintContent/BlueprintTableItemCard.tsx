@@ -4,9 +4,15 @@ import * as Urls from "metabase/lib/urls";
 
 export const BlueprintTableItemCard = ({ table }: { table: Table }) => {
   return (
-    <Anchor href={Urls.tableRowsQuery(table.db_id, table.id)} td="none" w="100%">
+    <Anchor
+      href={Urls.tableRowsQuery(table.db_id, table.id)}
+      td="none"
+      w="100%"
+      h="100%"
+    >
       <Flex
         w="100%"
+        h="100%"
         bg="bg-white"
         p="md"
         bdrs="12px"
@@ -20,7 +26,14 @@ export const BlueprintTableItemCard = ({ table }: { table: Table }) => {
           <Title order={4} mb="sm" c="text-primary" fz={14} fw={400} lh="16px">
             {table.name}
           </Title>
-          <Text fz={12} lh="16px" fw={400} c="text-secondary" tt="none">
+          <Text
+            fz={12}
+            lh="16px"
+            fw={400}
+            c="text-secondary"
+            tt="none"
+            truncate
+          >
             {table.description}
           </Text>
         </Flex>

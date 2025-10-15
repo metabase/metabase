@@ -24,7 +24,11 @@ import type {
   Table,
   UpdateDatabaseRequest,
 } from "metabase-types/api";
-import { createMockDashboard, createMockTable } from "metabase-types/api/mocks";
+import {
+  createMockDashboard,
+  createMockDocument,
+  createMockTable,
+} from "metabase-types/api/mocks";
 
 import { Api } from "./api";
 import {
@@ -96,13 +100,17 @@ export const databaseApi = Api.injectEndpoints({
               description:
                 "Here's a description of the metrics that are in here.",
             }),
+            document: createMockDocument({
+              id: 1,
+              name: `Starter ${blueprint} document`,
+            }),
             tables: [
               createMockTable({
                 id: 1,
                 db_id: id,
                 name: "Accounts",
                 display_name: "Accounts",
-                description: "Customer account information",
+                // description: "Customer account information",
               }),
               createMockTable({
                 id: 2,

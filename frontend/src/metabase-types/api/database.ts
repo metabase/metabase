@@ -1,7 +1,7 @@
 import type { ScheduleSettings } from "./settings";
 import type { Table } from "./table";
 
-import type { Dashboard, ISO8601Time, LongTaskStatus } from ".";
+import type { Dashboard, Document, ISO8601Time, LongTaskStatus } from ".";
 
 export type DatabaseId = number;
 
@@ -163,7 +163,8 @@ export interface ListDatabasesResponse {
 }
 
 export interface RunBlueprintResponse {
-  dashboard: Dashboard;
+  document?: Document;
+  dashboard?: Dashboard;
   tables: Table[];
 }
 
