@@ -2699,6 +2699,27 @@ databaseChangeLog:
             where dataset_query = '{}' and legacy_query is not null;
       rollback: # nothing to undo
 
+  - changeSet:
+      id: v57.2025-12-09T13:00:00
+      author: christruter
+      comment: Add ydoc column to document table for Y.js document state
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: document
+                columnName: ydoc
+      changes:
+        - addColumn:
+            tableName: document
+            columns:
+              - column:
+                  name: ydoc
+                  type: ${text.type}
+                  remarks: Y.js document state for collaborative editing, in base64
+                  constraints:
+                    nullable: true
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
