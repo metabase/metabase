@@ -50,6 +50,7 @@ export type PublicExports = {
   InteractiveQuestion: InternalComponent<typeof InteractiveQuestion>;
   ComponentProvider: InternalComponent<typeof ComponentProvider>;
   MetabotQuestion: InternalComponent<typeof MetabotQuestion>;
+  CSVMetabotQuestion: InternalComponent<typeof CSVMetabotQuestion>;
   SdkDebugInfo: InternalComponent<typeof SdkDebugInfo>;
   StaticDashboard: InternalComponent<typeof StaticDashboard>;
   StaticQuestion: InternalComponent<typeof StaticQuestion>;

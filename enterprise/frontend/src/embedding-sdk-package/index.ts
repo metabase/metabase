@@ -21,6 +21,7 @@ export { InteractiveQuestion } from "./components/public/InteractiveQuestion";
 export { StaticQuestion } from "./components/public/StaticQuestion";
 export { MetabaseProvider } from "./components/public/MetabaseProvider";
 export { MetabotQuestion } from "./components/public/MetabotQuestion";
+export { CSVMetabotQuestion } from "./components/public/CSVMetabotQuestion";
 export * from "./components/public/debug/SdkDebugInfo";
 
 export { useApplicationName } from "./hooks/public/use-application-name";

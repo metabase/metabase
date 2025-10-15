@@ -23,6 +23,7 @@ import { CreateQuestion } from "./components/public/CreateQuestion";
 import { InteractiveQuestion } from "./components/public/InteractiveQuestion";
 import { ComponentProvider } from "./components/public/ComponentProvider";
 import { MetabotQuestion } from "./components/public/MetabotQuestion";
+import { CSVMetabotQuestion } from "./components/public/CSVMetabotQuestion";
 import { StaticQuestion } from "./components/public/StaticQuestion";
 import {
   EditableDashboard,
@@ -59,6 +60,7 @@ const sdkBundleExports: MetabaseEmbeddingSdkBundleExports = {
   InteractiveQuestion,
   ComponentProvider,
   MetabotQuestion,
+  CSVMetabotQuestion,
   SdkDebugInfo,
   StaticDashboard,
   StaticQuestion,
