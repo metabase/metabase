@@ -42,7 +42,7 @@ import { SupportingText } from "metabase/rich_text_editing/tiptap/extensions/Sup
 import { DROP_ZONE_COLOR } from "metabase/rich_text_editing/tiptap/extensions/shared/constants";
 import { createSuggestionRenderer } from "metabase/rich_text_editing/tiptap/extensions/suggestionRenderer";
 import { getSetting } from "metabase/selectors/settings";
-import { Avatar, Box, Flex, Loader } from "metabase/ui";
+import { Avatar, Box, Flex, Loader, Tooltip } from "metabase/ui";
 import type { State } from "metabase-types/store";
 import type { CardEmbedRef } from "metabase-types/store/documents";
 
@@ -62,6 +62,8 @@ const BUBBLE_MENU_DISALLOWED_NODES: string[] = [
 const BUBBLE_MENU_DISALLOWED_FULLY_SELECTED_NODES: string[] = [
   SupportingText.name,
 ];
+
+const MAX_ACTIVE_USERS = 5;
 
 const getMetabotPromptSerializer =
   (getState: () => State): PromptSerializer =>
@@ -310,23 +312,29 @@ export const Editor: React.FC<EditorProps> = ({
   return (
     <Box className={cx(S.editor, DND_IGNORE_CLASS_NAME)}>
       {/* Active users display */}
-      <Box className={S.userCountDisplay}>
-        <Flex align="center" gap="xs">
-          <span>{userCount}</span>
-          <span>{t`active user(s):`}</span>
-          <Flex gap="xs">
-            {activeUsers.map((user, index) => (
-              <Avatar
-                key={index}
-                name={user.name}
-                color={user.color}
-                size="sm"
-                radius="xl"
-              />
-            ))}
+      {activeUsers.length > 0 && (
+        <Box className={S.userCountDisplay}>
+          <Flex align="center" gap="xs">
+            <span>{userCount}</span>
+            <span>{t`active users:`}</span>
+            <Flex gap="xs" className={S.usersList}>
+              {activeUsers.slice(0, MAX_ACTIVE_USERS).map((user, index) => (
+                <Tooltip key={index} label={user.name} withArrow position="top">
+                  <Avatar
+                    name={user.name}
+                    color={user.color}
+                    size="md"
+                    // radius="xl"
+                  />
+                </Tooltip>
+              ))}
+              {activeUsers.length > MAX_ACTIVE_USERS && (
+                <span>{t`+ ${activeUsers.length - MAX_ACTIVE_USERS} more`}</span>
+              )}
+            </Flex>
           </Flex>
-        </Flex>
-      </Box>
+        </Box>
+      )}
 
       <Box
         className={S.editorContent}

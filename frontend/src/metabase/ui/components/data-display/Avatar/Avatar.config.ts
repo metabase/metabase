@@ -18,7 +18,8 @@ export const avatarOverrides = {
   Avatar: Avatar.extend({
     defaultProps: {
       allowedInitialsColors: avatarColors,
-      color: "initials",
+      // color: "initials",
+      color: "",
       size: rem(24),
       variant: "filled",
     },
