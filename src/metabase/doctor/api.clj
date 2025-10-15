@@ -1,12 +1,12 @@
 (ns metabase.doctor.api
   (:require
    [clj-http.client :as http]
+   [clojure.core.memoize :as memoize]
    [environ.core :as env]
    [java-time.api :as t]
    [metabase.api.macros :as api.macros]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -16,15 +16,21 @@
   [days]
   {:total-queries (t2/count :model/QueryExecution
                             {:where [:>= :started_at (t/minus (t/instant) (t/days days))]})
-
-   :error-queries (t2/count :model/QueryExecution
-                            {:where [:and
-                                     [:>= :started_at (t/minus (t/instant) (t/days days))]
-                                     [:not= :error nil]]})
-   :slow-queries  (t2/select :model/QueryExecution {:select [:id :database_id :running_time :error :context]
+   :error-queries (t2/select :model/QueryExecution {:select [:query_execution.id :query_execution.database_id :query_execution.running_time :error :context :query_execution.card_id :report_card.name]
                                                     :from [:query_execution]
+                                                    :left-join [[:report_card] [:= :query_execution.card_id :report_card.id]]
                                                     :where [:and
                                                             [:>= :started_at (t/minus (t/instant) (t/days days))]
+                                                            [:not= :context "ad-hoc"]
+                                                            [:not= :error nil]]
+                                                    :limit 20
+                                                    :order-by [[:query_execution.started_at :desc]]})
+   :slow-queries  (t2/select :model/QueryExecution {:select [:query_execution.id :query_execution.database_id :query_execution.running_time :error :context :query_execution.card_id :report_card.name]
+                                                    :from [:query_execution]
+                                                    :left-join [[:report_card] [:= :query_execution.card_id :report_card.id]]
+                                                    :where [:and
+                                                            [:>= :started_at (t/minus (t/instant) (t/days days))]
+                                                            [:not= :context "ad-hoc"]
                                                             [:> :running_time 60000]]
                                                     :limit 20
                                                     :order-by [[:running_time :desc]]})
@@ -126,7 +132,7 @@
    :period-days days
    :query-stats (get-query-execution-stats days)
    :task-stats (get-task-history-stats days)
-   ;; :pg-stats   (get-pgstats-stats)
+  ;;  :pg-stats   (get-pgstats-stats)
    })
   ;;  :database-stats (get-database-stats)
   ;;  :pulse-stats (get-pulse-stats)
@@ -246,8 +252,22 @@ Respect this style:
                                :as :json})]
       (-> response :body :choices first :message :content))))
 
+(def ^:private openai-memo
+  (memoize/ttl call-openai :ttl/threshold (u/minutes->ms 30)))
+
+(def ^:private collect-health-metrics-memo
+  (memoize/ttl collect-health-metrics :ttl/threshold (u/minutes->ms 30)))
+
 (api.macros/defendpoint :get "/"
   "Doctor endpoint that calls OpenAI with 'Hello' prompt"
   []
   {:status 200
-   :body   {:reportMarkdown (call-openai analysis-prompt (collect-health-metrics 1))}})
+   :body   {:reportMarkdown (openai-memo analysis-prompt (collect-health-metrics-memo 1))}})
+
+(api.macros/defendpoint :get "/metrics"
+  "Clear memoized data and return success status"
+  []
+  (memoize/memo-clear! openai-memo)
+  (memoize/memo-clear! collect-health-metrics-memo)
+  {:status 200
+   :body   (collect-health-metrics-memo 1)})
