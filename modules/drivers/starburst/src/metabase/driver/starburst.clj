@@ -433,44 +433,44 @@
 
 (defmethod sql-jdbc.sync.interface/have-select-privilege? :starburst
   [driver ^Connection conn table-schema table-name]
-  true
-  #_(try
-      ;; Both Hive and Iceberg plugins for Trino expose one another's tables
-      ;; at the metadata level, even though they are not queryable through that catalog.
-      ;; So rather than using SHOW TABLES, we will DESCRIBE the table to check for
-      ;; queryability. If the table is not queryable for this reason, we will return
-      ;; false. It's a slight stretch of the concept of "permissions," but it is true
-      ;; that we cannot query these tables...
-      (let [catalog (some-> conn .getCatalog)
-            sql (describe-table-sql driver catalog table-schema table-name)]
+  (let [[catalog table-schema] #p (str/split table-schema #"\.")]
+    (try
+     ;; Both Hive and Iceberg plugins for Trino expose one another's tables
+     ;; at the metadata level, even though they are not queryable through that catalog.
+     ;; So rather than using SHOW TABLES, we will DESCRIBE the table to check for
+     ;; queryability. If the table is not queryable for this reason, we will return
+     ;; false. It's a slight stretch of the concept of "permissions," but it is true
+     ;; that we cannot query these tables...
+      (let [sql (describe-table-sql driver catalog table-schema table-name)]
         (with-open [stmt (.prepareStatement conn sql)
                     rs (.executeQuery stmt)]
           (.next rs)))
       (catch SQLException e
-        ;; The actual exception thrown is TrinoException with error code UNSUPPORTED_TABLE_TYPE (133001),
-        ;; but we can't check the type directly since the relevant io.trino.spi.* classes are not
-        ;; included in trino-jdbc. We check the vendor-specific error code instead.
-        ;; See HiveMetadata.java and UnknownTableTypeException.java in trinodb/trino
+       ;; The actual exception thrown is TrinoException with error code UNSUPPORTED_TABLE_TYPE (133001),
+       ;; but we can't check the type directly since the relevant io.trino.spi.* classes are not
+       ;; included in trino-jdbc. We check the vendor-specific error code instead.
+       ;; See HiveMetadata.java and UnknownTableTypeException.java in trinodb/trino
         (if (= 133001 (.getErrorCode e))
           (do
             (log/debugf e "Table %s.%s is not accessible through this catalog (mixed catalog table type)"
                         table-schema table-name)
             false)
-          (throw e)))))
+          (throw e))))))
 
 (defn- describe-schema
   "Gets a set of maps for all tables in the given `catalog` and `schema`."
   [driver ^Connection conn catalog schema]
   (with-open [stmt (.createStatement conn)]
     (let [sql (describe-schema-sql driver catalog schema)
-          rs (sql-jdbc.execute/execute-statement! driver stmt sql)]
+          rs (sql-jdbc.execute/execute-statement! driver stmt sql)
+          schema (format "%s.%s" catalog schema)]
       (into
        #{}
        (comp (filter (fn [{table-name :table :as _full}]
                        (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table-name)))
              (map (fn [{table-name :table}]
                     {:name        table-name
-                     :schema      (format "%s.%s" catalog schema)})))
+                     :schema      schema})))
        (jdbc/reducible-result-set rs {})))))
 
 (defn- all-schemas
