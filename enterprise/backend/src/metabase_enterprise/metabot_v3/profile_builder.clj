@@ -27,12 +27,12 @@
 
 (defn metabase-link
   "Create a metabase:// link with descriptive name
-   
+
    Args:
      type: dashboard, question, metric, model, table, or chart
      id: The resource ID
      name: Display name for the link
-     
+
    Returns:
      Markdown link string"
   [type id name]
@@ -180,13 +180,13 @@
   (str/join "\n"
             (remove str/blank?
                     [(format-company-settings (:COMPANY_SETTINGS profile-data))
-                     (format-databases (:DATABASES profile-data))
-                     (format-metrics (:METRICS profile-data))
+                     #_(format-databases (:DATABASES profile-data))
+                     #_(format-metrics (:METRICS profile-data))
                      (format-glossary (:GLOSSARY profile-data))
-                     (format-popular-dashboards (:POPULAR_DASHBOARDS profile-data))
-                     (format-popular-questions (:POPULAR_QUESTIONS profile-data))
-                     (format-query-snippets (:QUERY_SNIPPETS profile-data))
-                     (format-common-fields (:COMMON_FIELDS profile-data))])))
+                     #_(format-popular-dashboards (:POPULAR_DASHBOARDS profile-data))
+                     #_(format-popular-questions (:POPULAR_QUESTIONS profile-data))
+                     #_(format-query-snippets (:QUERY_SNIPPETS profile-data))
+                     #_(format-common-fields (:COMMON_FIELDS profile-data))])))
 
 ;;; ============================================
 ;;; User Profile to Markdown
@@ -346,10 +346,10 @@
 
 (defn build-organization-profile
   "Build organization profile and convert to Markdown
-   
+
    Args:
      db-spec: Database connection spec
-     
+
    Returns:
      Markdown string with organization context and metabase:// links"
   [db-spec]
@@ -361,11 +361,11 @@
 
 (defn build-user-profile
   "Build user profile and convert to Markdown
-   
+
    Args:
      db-spec: Database connection spec
      user-id: User ID to build profile for
-     
+
    Returns:
      Markdown string with user context and metabase:// links"
   [db-spec user-id]
@@ -378,12 +378,12 @@
 
 (defn build-combined-context
   "Build complete context combining organization and user profiles
-   
+
    Args:
      db-spec: Database connection spec
      user-id: User ID to build profile for
      org-profile-cache: Optional cached organization profile
-     
+
    Returns:
      Combined Markdown string ready for LLM with metabase:// links"
   [db-spec user-id & {:keys [org-profile-cache]}]
@@ -487,7 +487,7 @@
   ;; ## POPULAR DASHBOARDS
   ;;   - [Sales Overview Dashboard](metabase://dashboard/42) (150 views): Monthly sales metrics
   ;;   - [User Analytics](metabase://dashboard/43) (89 views)
-  ;; 
+  ;;
   ;; ## FAVORITE QUESTIONS
   ;;   - [Revenue by Region](metabase://question/101) [Sales Collection]
   ;;   - [Active Users Count](metabase://question/102) [Analytics Collection]

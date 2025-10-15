@@ -16,7 +16,7 @@
    [metabase-enterprise.metabot-v3.table-utils :as table-utils]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription
     :as metabot-v3.tools.create-dashboard-subscription]
-   [metabase-enterprise.metabot-v3.tools.documents :as metabot-v3.tools.documents]
+   [metabase-enterprise.metabot-v3.tools.documents :as metabot-v3.tools.documents :refer [get-user-profile]]
    [metabase-enterprise.metabot-v3.tools.field-stats :as metabot-v3.tools.field-stats]
    [metabase-enterprise.metabot-v3.tools.filters :as metabot-v3.tools.filters]
    [metabase-enterprise.metabot-v3.tools.find-outliers :as metabot-v3.tools.find-outliers]
@@ -750,18 +750,18 @@
         ;; slop way
         org-prof (profile-builder/build-organization-profile-cached nil)
         ;; slop
-        u-prof (profile-builder/build-user-profile nil u-id)
+        u-prof (get-user-profile u-id) #_(profile-builder/build-user-profile nil u-id)
         ;; enahncements -- TODO: next level is using Thomas' query!
-        u-prof-enh-raw (metabot-v3.client/enhance-user-profile u-id u-prof)
-        u-prof-enh (-> u-prof-enh-raw :profiles first :profile)]
+        #_#_u-prof-enh-raw (metabot-v3.client/enhance-user-profile u-id u-prof)
+        #_#_u-prof-enh (-> u-prof-enh-raw :profiles first :profile)]
     ;; debug
-    (def uuu [u-id u-prof])
+    #_(def uuu [u-id u-prof])
     (doto @(def rere (-> (mc/decode ::get-current-user-result
                                     cu
                                     (mtx/transformer {:name :tool-api-response}))
                          (assoc :conversation_id conversation_id)
                          (assoc-in [:structured_output :company_profile] org-prof)
-                         (assoc-in [:structured_output :user_profile] u-prof-enh)))
+                         (assoc-in [:structured_output :user_profile] u-prof)))
       (metabot-v3.context/log :llm.log/be->llm))))
 
 (api.macros/defendpoint :post "/get-dashboard-details" :- [:merge ::get-dashboard-details-result ::tool-request]
