@@ -133,26 +133,96 @@
   ;;  :cache-settings (get-cache-settings)
 
 (def ^:private analysis-prompt
-  "Analyze this Metabase instance health data and generate a comprehensive diagnostic report, but as if it was told by a doctor that makes a bunch of jokes and puns.
+  "You are an expert Metabase health diagnostic specialist. Analyze this comprehensive health data and generate a detailed diagnostic report.
 
-Focus on identifying:
-1. Critical issues (potential OOM risks, 100% failure rates, etc)
-2. Performance problems (slow queries, timeouts)
-3. Failed tasks (sync, fingerprint, pulses)
-4. Database issues (excessive field counts, sync problems)
+CRITICAL PATTERNS TO IDENTIFY:
 
-Generate a markdown report with:
-- Executive Summary with severity indicators (🔴 Critical, 🟡 Warning, 🟢 Good)
-- Detailed findings for each issue category, each started by a heading
-- Specific, actionable recommendations
-- Priority ranking of issues to fix
+1. **OOM (Out of Memory) Risk Indicators**
+   - Notification-send task crashes (especially hourly patterns)
+   - Queries returning >100K rows (especially >1M rows)
+   - Hourly pulses with large card counts or result sets
+   - MongoDB databases with >100K fields causing fingerprinting crashes
+   - Concurrent pulse execution at the same time
+   - Sync/fingerprint tasks failing repeatedly on specific databases
 
-Use this style:
-- Do not use `#` level 1 headings
-- Do not generate a page title
+2. **Performance Degradation Patterns**
+   - Queries taking >10 seconds (identify patterns by context)
+   - Dashboard queries with high error rates
+   - Cache configuration issues (especially query-caching-max-kb < 200)
+   - Failed sync operations blocking metadata updates
+   - Large field counts (>100K) in databases slowing operations
 
-Be specific about which databases, queries, or tasks are problematic.
-Use tables and formatting to make the report easy to scan.")
+3. **Error Patterns**
+   - Join alias errors ('Column with source :source/implicitly-joinable')
+   - Assert failures indicating null value issues
+   - Column not found errors suggesting schema changes
+   - Recurring task failures (fingerprint-fields, analyze, sync-fks)
+   - Error spikes at specific hours indicating scheduled job issues
+
+4. **Resource Consumption Issues**
+   - Peak hourly query volumes exceeding normal patterns
+   - Large result sets being loaded into memory
+   - Multiple databases with excessive field counts
+   - Concurrent heavy operations (syncs + pulses + queries)
+
+ANALYSIS APPROACH:
+
+1. First, identify any CRITICAL issues that could cause immediate crashes or OOMs
+2. Then identify HIGH priority performance issues affecting user experience
+3. Finally, note optimization opportunities for long-term stability
+
+REPORT STRUCTURE:
+
+# 🏥 Metabase Instance Health Diagnostic Report
+
+## 📊 Executive Summary
+- Overall health score (Critical/Poor/Fair/Good/Excellent)
+- Top 3 critical issues requiring immediate action
+- Risk assessment for OOM/crashes
+
+## 🔴 Critical Issues (Immediate Action Required)
+For each critical issue:
+- **Issue**: Clear description
+- **Evidence**: Specific metrics/numbers from the data
+- **Impact**: What will happen if not fixed
+- **Root Cause**: Why this is happening
+- **Fix**: Specific actionable steps with exact settings/queries to change
+
+## 🟡 High Priority Issues (Fix Within 7 Days)
+Similar format as critical issues
+
+## 🟢 Medium Priority Optimizations (Fix Within 30 Days)
+Brief list with recommendations
+
+## 📈 Performance Metrics Summary
+- Query performance stats
+- Task execution health
+- Database sync status
+- Error rates and patterns
+
+## 🎯 Specific Recommendations
+Numbered list of actions in priority order with:
+1. **Action**: What to do
+2. **How**: Exact steps or SQL/settings changes
+3. **Expected Impact**: What will improve
+
+## 📊 Detailed Metrics Tables
+Include relevant data tables for:
+- Slowest queries
+- Failed tasks
+- Large databases
+- Problematic pulses
+
+Be extremely specific about:
+- Which databases have issues (use DB IDs and names)
+- Which pulses/cards are problematic (use IDs)
+- Exact error messages and their frequencies
+- Time patterns (e.g., 'crashes every hour at XX:00')
+- Memory estimates based on row counts and field counts
+
+Respect this style:
+- Use tables, bullet points, and formatting to make the report scannable and actionable.
+- Include severity indicators: 🔴 Critical, 🟡 Warning, 🟢 Good, ⚠️ Caution")
 
 (defn- call-openai
   "Call OpenAI GPT API"

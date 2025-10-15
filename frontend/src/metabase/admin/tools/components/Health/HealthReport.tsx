@@ -12,7 +12,7 @@ export const HealthReport: FC = () => {
   const { data: { reportMarkdown } = {}, isLoading } =
     useGetHealthReportQuery();
   return (
-    <SettingsPageWrapper title={t`Health report from MetaDoctor`}>
+    <SettingsPageWrapper>
       <SettingsSection>
         <Stack align="center" gap="lg">
           {isLoading || !reportMarkdown ? (
