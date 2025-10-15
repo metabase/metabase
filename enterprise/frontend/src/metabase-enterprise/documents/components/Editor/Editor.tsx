@@ -117,6 +117,7 @@ export const Editor: React.FC<EditorProps> = ({
           color: DROP_ZONE_COLOR,
           width: 2,
         },
+        undoRedo: false,
       }),
       Image.configure({
         inline: false,
