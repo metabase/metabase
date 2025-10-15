@@ -62,7 +62,7 @@ export const MetabotProvider = ({
         hasDataAccess && "permission:save_questions",
         hasNativeWrite && "permission:write_sql_queries",
       ]),
-      deepResearch: isDeepResearch,
+      deep_research: isDeepResearch,
     };
 
     for (const providerFn of providerFns) {
