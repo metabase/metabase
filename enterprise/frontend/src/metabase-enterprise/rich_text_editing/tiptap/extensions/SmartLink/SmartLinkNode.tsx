@@ -5,6 +5,7 @@ import {
   ReactNodeViewRenderer,
 } from "@tiptap/react";
 import { memo, useEffect } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import {
@@ -201,9 +202,14 @@ export const SmartLink = Node.create<{
   },
 
   renderText({ node }) {
-    const { entityId, model } = node.attrs;
+    const { entityId, model, label } = node.attrs;
 
-    return `{% entity id="${entityId}" model="${model}" %}`;
+    const niceModel = match(model)
+      .with("dataset", () => "model")
+      .with("card", () => "question")
+      .otherwise((m) => m);
+
+    return `[${label}](metabase://${niceModel}/${entityId})`;
   },
 
   addPasteRules() {

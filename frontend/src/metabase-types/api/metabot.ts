@@ -130,7 +130,8 @@ export type MetabotAdhocQueryInfo = {
 
 export type MetabotDocumentInfo = {
   type: "document";
-  id: number;
+  id?: number;
+  body: string;
 };
 
 export type MetabotEntityInfo =

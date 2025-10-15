@@ -169,7 +169,8 @@ export const Editor: React.FC<EditorProps> = ({
       onUpdate: ({ editor }) => {
         if (onChange) {
           const currentContent = editor.getJSON();
-          onChange(currentContent);
+          const currentText = editor.getText();
+          onChange(currentContent, currentText);
         }
       },
     },

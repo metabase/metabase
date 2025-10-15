@@ -159,7 +159,8 @@ export const DocumentPage = ({
     dispatch(resetDocuments());
   });
 
-  useRegisterDocumentMetabotContext();
+  const [content, setContent] = useState<string>("");
+  useRegisterDocumentMetabotContext(content);
   useBeforeUnload(() => {
     // warn if you try to navigate away with unsaved changes
     return hasUnsavedChanges();
@@ -224,7 +225,8 @@ export const DocumentPage = ({
   const showSaveButton = hasUnsavedChanges() && canWrite && !isSaving;
 
   const handleChange = useCallback(
-    (content: JSONContent) => {
+    (content: JSONContent, textContent: string) => {
+      setContent(textContent);
       // For new documents, any content means changes
       if (isNewDocument) {
         // when navigating to `/new`, handleChange is fired but the editor instance hasn't been set yet
