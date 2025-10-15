@@ -946,8 +946,14 @@ WITH (
                                      (:project_id details)
                                      (:credentials_key details))]
                    (execute-query driver database query))
-      "github" (prn (shell/sh "ls")))
-    (sync/sync-database! database {:scan :schema})))
+
+      ("stripe" "pipedrive" "notion")
+      #p (shell/sh "../netabase/load" source name (:api_key details))
+
+      "google-sheets" #p (shell/sh "../netabase/load" source name (:spreadsheet_url details))
+      "salesforce" #p (shell/sh "../netabase/load" source name (:username details) (:password details) (:security_token details)))
+    (sync/sync-database! database {:scan :schema})
+    {:id (:id database)}))
 
 (api.macros/defendpoint :post "/source"
   "Add a new `Source`."
