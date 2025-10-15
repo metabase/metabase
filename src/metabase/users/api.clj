@@ -64,6 +64,58 @@
     {:optional true, :description "Only relevant if `advanced-permissions` is enabled. If it is, you should always include this key."}
     :boolean]])
 
+;;; ------------------------------------------ Response Schemas ----------------------------------------------------------
+
+(mr/def ::User
+  "Schema for a User object returned by the API."
+  [:map
+   [:id pos-int?]
+   [:email ms/Email]
+   [:first_name [:maybe string?]]
+   [:last_name [:maybe string?]]
+   [:common_name {:optional true} [:maybe string?]]
+   [:date_joined :any] ;; Java Time object, serialized to string by middleware
+   [:last_login [:maybe :any]] ;; Java Time object or nil
+   [:is_active {:optional true} :boolean]
+   [:is_qbnewb {:optional true} :boolean]
+   [:is_superuser :boolean]
+   [:locale {:optional true} [:maybe ms/ValidLocale]]
+   [:updated_at {:optional true} :any] ;; Java Time object, serialized to string by middleware
+   [:personal_collection_id {:optional true} [:maybe pos-int?]]
+   [:group_ids {:optional true} [:maybe [:set pos-int?]]] ;; Set, not sequential
+   [:user_group_memberships {:optional true} [:maybe [:sequential ::user-group-membership]]]
+   [:login_attributes {:optional true} [:maybe users.schema/LoginAttributes]]
+   [:jwt_attributes {:optional true} [:maybe users.schema/LoginAttributes]]
+   [:structured_attributes {:optional true} [:maybe :map]]
+   [:sso_source {:optional true} [:maybe [:enum :google :ldap :jwt :saml]]]
+   [:is_installer {:optional true} [:maybe :boolean]]
+   [:has_invited_second_user {:optional true} [:maybe :boolean]]
+   [:has_question_and_dashboard {:optional true} [:maybe :boolean]]
+   [:has_model {:optional true} [:maybe :boolean]]
+   [:first_login {:optional true} [:maybe :any]] ;; Java Time object or nil
+   [:custom_homepage {:optional true} [:maybe [:map [:dashboard_id pos-int?]]]]
+   [:is_datasetnewb {:optional true} [:maybe :boolean]]
+   [:tenant_id {:optional true} [:maybe pos-int?]]])
+
+(mr/def ::PaginatedUsers
+  "Schema for paginated user list responses."
+  [:map
+   [:data [:sequential ::User]]
+   [:total integer?]
+   [:limit [:maybe integer?]]
+   [:offset [:maybe integer?]]])
+
+(mr/def ::SuccessResponse
+  "Schema for simple success responses."
+  [:map
+   [:success [:= true]]])
+
+(mr/def ::PasswordUpdateResponse
+  "Schema for password update response."
+  [:map
+   [:success [:maybe [:= true]]]
+   [:session_id {:optional true} [:maybe string?]]])
+
 (mu/defn- maybe-set-user-group-memberships!
   [user-or-id
    new-user-group-memberships :- [:maybe [:sequential ::user-group-membership]]
@@ -169,7 +221,7 @@
   [clauses]
   (dissoc clauses :order-by :limit :offset))
 
-(api.macros/defendpoint :get "/"
+(api.macros/defendpoint :get "/" :- ::PaginatedUsers
   "Fetch a list of `Users` for admins or group managers.
   By default returns only active users for admins and only active users within groups that the group manager is managing for group managers.
 
@@ -240,7 +292,7 @@
                            :where [:and [:= :permissions_group_membership.user_id user-id]
                                    [:not= :permissions_group_membership.group_id (:id (perms/all-users-group))]]}]})))
 
-(api.macros/defendpoint :get "/recipients"
+(api.macros/defendpoint :get "/recipients" :- ::PaginatedUsers
   "Fetch a list of `Users`. Returns only active users. Meant for non-admins unlike GET /api/user.
 
    - If user-visibility is :all or the user is an admin, include all users.
@@ -335,7 +387,7 @@
     (assoc user
            :custom_homepage (when valid? {:dashboard_id id}))))
 
-(api.macros/defendpoint :get "/current"
+(api.macros/defendpoint :get "/current" :- ::User
   "Fetch the current `User`."
   []
   (-> (api/check-404 @api/*current-user*)
@@ -346,7 +398,7 @@
       maybe-add-sso-source
       add-custom-homepage-info))
 
-(api.macros/defendpoint :get "/:id"
+(api.macros/defendpoint :get "/:id" :- ::User
   "Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group Manager."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
@@ -384,7 +436,7 @@
       (-> (fetch-user :id new-user-id)
           (t2/hydrate :user_group_memberships)))))
 
-(api.macros/defendpoint :post "/"
+(api.macros/defendpoint :post "/" :- ::User
   "Create a new `User`, return a 400 if the email address is already taken"
   [_route-params
    _query-params
@@ -422,7 +474,7 @@
    (= (get user name-key) new-name)
    (not sso_source)))
 
-(api.macros/defendpoint :put "/:id"
+(api.macros/defendpoint :put "/:id" :- ::User
   "Update an existing, active `User`.
   Self or superusers can update user info and groups.
   Group Managers can only add/remove users from groups they are manager of."
@@ -497,7 +549,7 @@
   ;; now return the existing user whether they were originally active or not
   (fetch-user :id (u/the-id existing-user)))
 
-(api.macros/defendpoint :put "/:id/reactivate"
+(api.macros/defendpoint :put "/:id/reactivate" :- ::User
   "Reactivate user at `:id`"
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
@@ -517,13 +569,14 @@
 ;;; |                               Updating a Password -- PUT /api/user/:id/password                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(api.macros/defendpoint :put "/:id/password"
+(api.macros/defendpoint :put "/:id/password" :- ::PasswordUpdateResponse
   "Update a user's password."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
    {:keys [password old_password]} :- [:map
-                                       [:password ms/ValidPassword]]
+                                       [:password ms/ValidPassword]
+                                       [:old_password {:optional true} [:maybe :string]]]
    request]
   (check-self-or-superuser id)
   (api/let-404 [user (t2/select-one [:model/User :id :last_login :password_salt :password],
@@ -548,7 +601,7 @@
 ;;; |                             Deleting (Deactivating) a User -- DELETE /api/user/:id                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(api.macros/defendpoint :delete "/:id"
+(api.macros/defendpoint :delete "/:id" :- ::SuccessResponse
   "Disable a `User`.  This does not remove the `User` from the DB, but instead disables their account."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
@@ -565,10 +618,11 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; TODO - This could be handled by PUT /api/user/:id, we don't need a separate endpoint
-(api.macros/defendpoint :put "/:id/modal/:modal"
+(api.macros/defendpoint :put "/:id/modal/:modal" :- ::SuccessResponse
   "Indicate that a user has been informed about the vast intricacies of 'the' Query Builder."
   [{:keys [id modal]} :- [:map
-                          [:id ms/PositiveInt]]]
+                          [:id ms/PositiveInt]
+                          [:modal :string]]]
   (check-self-or-superuser id)
   (check-not-internal-user id)
   (let [k (or (get {"qbnewb"      :is_qbnewb
