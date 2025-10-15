@@ -10,7 +10,6 @@
    [metabase-enterprise.remote-sync.source.ingestable :as source.ingestable]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
-   [metabase.collections.models.collection :as collection]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -558,36 +557,6 @@
     (let [response (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
                                          {:remote-sync-url "invalid-url"})]
       (is (= "Unable to connect to git repository with the provided settings" (:error response))))))
-
-(deftest settings-creates-sync-collection
-  (testing "PUT /api/ee/remote-sync/settings creates remote sync collection if none exists"
-    (with-redefs [settings/check-git-settings (constantly nil)
-                  api/async-import! (constantly nil)]
-      (mt/with-empty-h2-app-db!
-        (testing "production mode doesn't create the collection"
-          (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                {:remote-sync-enabled true
-                                 :remote-sync-type :production
-                                 :remote-sync-branch "main"
-                                 :remote-sync-url "https://github.com/test/repo.git"
-                                 :remote-sync-token "test-token"})
-          (is (nil? (collection/remote-synced-collection))))
-        (testing "dev mode mode does create the collection"
-          (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                {:remote-sync-enabled true
-                                 :remote-sync-type :development
-                                 :remote-sync-branch "main"
-                                 :remote-sync-url "https://github.com/test/repo.git"
-                                 :remote-sync-token "test-token"})
-          (is (some? (collection/remote-synced-collection))))
-        (testing "if the collection already exists, it doesn't create a second one"
-          (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                {:remote-sync-enabled true
-                                 :remote-sync-type :development
-                                 :remote-sync-branch "main"
-                                 :remote-sync-url "https://github.com/test/repo2.git"
-                                 :remote-sync-token "test-token"})
-          (is (= 1 (t2/count :model/Collection :type collection/remote-synced-collection-type :location "/"))))))))
 
 (deftest settings-cannot-change-with-dirty-data
   (testing "PUT /api/ee/remote-sync/settings doesn't allow loosing dirty data"

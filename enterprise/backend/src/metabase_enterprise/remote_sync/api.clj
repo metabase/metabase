@@ -42,27 +42,27 @@
     task-id))
 
 (defn- async-import!
-  [branch force?]
-  (let [ingestable-source (source.p/->ingestable (source/source-from-settings branch) {:path-filters [#"collections/.*"]})
-        source-version (source.ingestable/ingestable-version ingestable-source)
+  [branch force? & import-args]
+  (let [ingestable-source     (source.p/->ingestable (source/source-from-settings branch) {:path-filters [#"collections/.*"]})
+        source-version        (source.ingestable/ingestable-version ingestable-source)
         last-imported-version (remote-sync.task/last-import-version)
-        has-dirty? (remote-sync.object/dirty-global?)]
+        has-dirty?            (remote-sync.object/dirty-global?)]
     (when (and has-dirty? (not force?))
       (throw (ex-info "There are unsaved changes in the Remote Sync collection which will be overwritten by the import. Force the import to discard these changes."
                       {:status-code 400
-                       :conflicts true})))
+                       :conflicts   true})))
     (if (and (not force?) (= last-imported-version source-version))
       (do (log/infof "Skipping import: source version %s matches last imported version" source-version)
           (settings/remote-sync-branch! branch)
           nil)
-      (run-async! "import" branch (fn [task-id] (impl/import! ingestable-source task-id))))))
+      (run-async! "import" branch (fn [task-id] (impl/import! ingestable-source task-id import-args))))))
 
 (defn- async-export!
   [branch message]
   (let [source (source/source-from-settings branch)
         last-task-version (remote-sync.task/last-version)
         current-source-version (source.ingestable/ingestable-version (source.p/->ingestable source {}))]
-    (when (and (some? #p last-task-version) #p (not= last-task-version #p current-source-version))
+    (when (and (some? last-task-version) (not= last-task-version current-source-version))
       (throw (ex-info "Cannot export changes that will overwrite new changes in the branch."
                       {:status-code 400
                        :conflicts true})))
@@ -177,15 +177,19 @@
       (throw (ex-info "Invalid git settings"
                       {:error       (.getMessage e)
                        :status-code 400} e))))
-  (when (and (= :development (settings/remote-sync-type))
-             (true? (settings/remote-sync-enabled))
+  (cond (and (settings/remote-sync-enabled)
+             (= :production (settings/remote-sync-type)))
+        {:success true
+         :task_id (async-import! (settings/remote-sync-branch) true)}
+
+        (and (settings/remote-sync-enabled)
+             (= :development (settings/remote-sync-type))
              (nil? (collection/remote-synced-collection)))
-    (collection/create-remote-synced-collection!))
-  (if (and (settings/remote-sync-enabled)
-           (= :production (settings/remote-sync-type)))
-    {:success true
-     :task_id (async-import! (settings/remote-sync-branch) true)}
-    {:success true}))
+        {:success true
+         :task_id (async-import! (settings/remote-sync-branch) false {:create-collection? true})}
+
+        :else
+        {:success true}))
 
 (api.macros/defendpoint :get "/branches"
   "Get list of branches from the configured git source.
@@ -242,7 +246,7 @@
        :message (format "Branch '%s' created from '%s'" name base-branch)}
       (catch Exception e
         (throw (ex-info (format "Failed to create branch: %s" (.getMessage e))
-                        {:status-code 400} #p e))))))
+                        {:status-code 400} e))))))
 
 (api.macros/defendpoint :post "/stash"
   "Stashes changes to a new branch, and changes the current branch to it.

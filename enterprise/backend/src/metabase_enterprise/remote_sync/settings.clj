@@ -20,8 +20,7 @@
   :type :string
   :visibility :admin
   :encryption :no
-  :export? false
-  :default "main")
+  :export? false)
 
 (defsetting remote-sync-token
   (deferred-tru "A GH token")
@@ -81,10 +80,11 @@
   :default (* 1000 60 60))
 
 (defn check-git-settings
-  "Check that the given settings are valid and update if they are. Throws exception if they are not."
-  [{:keys [remote-sync-url remote-sync-token remote-sync-branch]}]
+  "Check that the given settings are valid and update if they are. Throws exception if they are not.
+  Returns the default branch of the repo if successful."
+  [{:keys [remote-sync-url remote-sync-token]}]
   (try
-    (git/git-source remote-sync-url remote-sync-branch remote-sync-token)
+    (git/default-branch (git/git-source remote-sync-url "HEAD" remote-sync-token))
     (catch Exception e
       (throw (ex-info "Unable to connect to git repository with the provided settings" {:cause (.getMessage e)} e)))))
 
@@ -95,9 +95,11 @@
   [{:keys [remote-sync-token] :as settings}]
   (let [current-token (setting/get :remote-sync-token)
         obfuscated? (= remote-sync-token (setting/obfuscate-value current-token))
-        token-to-check (if obfuscated? current-token remote-sync-token)]
-    (check-git-settings (assoc settings :remote-sync-token token-to-check))
+        token-to-check (if obfuscated? current-token remote-sync-token)
+        default-branch (check-git-settings (assoc settings :remote-sync-token token-to-check))]
     (t2/with-transaction [_conn]
       (doseq [k [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-enabled :remote-sync-auto-import]]
         (when (not (and (= k :remote-sync-token) obfuscated?))
-          (setting/set! k (k settings)))))))
+          (setting/set! k (k settings))))
+      (when (nil? (setting/get :remote-sync-branch))
+        (setting/set! :remote-sync-branch default-branch)))))

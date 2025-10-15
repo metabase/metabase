@@ -278,10 +278,14 @@
   (version [this]
     (->commit-id this)))
 
-(def git-source
-  "Create a new git source"
+(def ^:private get-repo
   (memoize
-   (fn [url commit-ish token]
-     (->GitSource (clone-repository! {:url   url
-                                      :token token})
-                  url commit-ish token))))
+   (fn [url token]
+     (clone-repository! {:url   url
+                         :token token}))))
+
+(defn git-source
+  "Create a new git source"
+  [url commit-ish token]
+  (->GitSource (get-repo url token)
+               url commit-ish token))

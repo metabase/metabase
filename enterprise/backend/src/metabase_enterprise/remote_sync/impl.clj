@@ -8,6 +8,7 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.serialization.core :as serialization]
    [metabase.analytics.core :as analytics]
+   [metabase.collections.models.collection :as collection]
    [metabase.models.serialization :as serdes]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -88,7 +89,7 @@
 
 (defn import!
   "Reloads the Metabase entities from the git repo"
-  [ingestable-source task-id]
+  [ingestable-source task-id & {:keys [create-collection?]}]
   (log/info "Reloading remote entities from the remote source")
   (analytics/inc! :metabase-remote-sync/imports)
   (let [sync-timestamp (t/instant)]
@@ -106,7 +107,9 @@
           (remote-sync.task/update-progress! task-id 0.8)
           (t2/with-transaction [_conn]
             (clean-synced! (affected-collections) imported-entities)
-            (sync-objects! sync-timestamp imported-entities))
+            (sync-objects! sync-timestamp imported-entities)
+            (when (and create-collection? (nil? (collection/remote-synced-collection)))
+              (collection/create-remote-synced-collection!)))
           (remote-sync.task/update-progress! task-id 0.95))
         (remote-sync.task/set-version!
          task-id
