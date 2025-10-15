@@ -117,11 +117,7 @@ describe("issue 41765", { tags: "@external" }, () => {
 
   it("re-syncing a database should invalidate the table cache (metabase#41765)", () => {
     cy.visit("/");
-
-    H.queryWritableDB(
-      `ALTER TABLE ${TEST_TABLE} ADD ${COLUMN_NAME} text;`,
-      "postgres",
-    );
+    cy.findByTestId("loading-indicator").should("not.exist");
 
     openWritableDatabaseQuestion();
 
@@ -132,8 +128,13 @@ describe("issue 41765", { tags: "@external" }, () => {
 
     H.appBar().findByText("Databases").click();
     cy.findAllByRole("link").contains(WRITABLE_DB_DISPLAY_NAME).click();
-    cy.button("Sync database schema").click();
 
+    H.queryWritableDB(
+      `ALTER TABLE ${TEST_TABLE} ADD ${COLUMN_NAME} text;`,
+      "postgres",
+    );
+
+    cy.button("Sync database schema").click();
     H.waitForSyncToFinish({
       iteration: 0,
       dbId: WRITABLE_DB_ID,
