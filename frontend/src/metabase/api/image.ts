@@ -7,9 +7,14 @@ type UploadImageRequest = {
   | { userId: number; collectionId?: never }
 );
 
+type ImageResponse = {
+  url: string;
+  title: string;
+};
+
 export const imageApi = Api.injectEndpoints({
   endpoints: (builder) => ({
-    uploadImage: builder.mutation<{ image_url: string }, UploadImageRequest>({
+    uploadImage: builder.mutation<ImageResponse, UploadImageRequest>({
       query: ({ file, collectionId, userId }) => {
         const bodyFormData = new FormData();
         bodyFormData.append("name", file.name);
@@ -31,7 +36,7 @@ export const imageApi = Api.injectEndpoints({
       },
     }),
     getImageData: builder.query<
-      { name: string; image_url: string },
+      ImageResponse,
       { id: number }
     >({
       query: ({ id }) => ({
