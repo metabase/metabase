@@ -16,9 +16,10 @@
    [metabase.system.core :as system]
    [metabase.users.models.user :as user]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :as u.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
    [throttle.core :as throttle]
@@ -273,7 +274,10 @@
                        [:token ms/NonBlankString]]]
   {:valid (boolean (valid-reset-token->user token))})
 
-(api.macros/defendpoint :get "/properties"
+(mr/def ::available-locales (into [:enum] (u.i18n/available-locales-with-names)))
+
+(api.macros/defendpoint :get "/properties" :- [:map
+                                               [:available-locales ::available-locales]]
   "Get all properties and their values. These are the specific `Settings` that are readable by the current user, or are
   public if no user is logged in."
   []
