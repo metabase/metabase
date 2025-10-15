@@ -60,6 +60,7 @@ export const LayoutEditButton = styled(Button)`
   position: absolute;
   top: 0.75rem;
   right: 1rem;
+  display: none;
 
   &:hover {
     color: var(--mb-color-brand);
