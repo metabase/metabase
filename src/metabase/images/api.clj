@@ -29,7 +29,7 @@
   (let [{:keys [^String url], content-type :content_type} (api/check-404
                                                            (t2/select-one [:model/Image :url :content_type] image-id))]
     {:status  200
-     :body    (java.io.File. url)
+     :body    (io/input-stream (io/as-url url))
      :headers {"Content-Type" content-type}}))
 
 ;; curl -X POST http://localhost:3000/api/images -H "x-metabase-session: $(cat session.txt)" -F "file=@$(pwd)/duck.jpeg"
