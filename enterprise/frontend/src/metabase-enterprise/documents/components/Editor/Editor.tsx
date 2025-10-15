@@ -54,6 +54,7 @@ const BUBBLE_MENU_DISALLOWED_NODES: string[] = [
   Image.name,
   FlexContainer.name,
   "codeBlock",
+  "imageBlock",
 ];
 
 const getMetabotPromptSerializer =

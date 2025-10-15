@@ -46,6 +46,7 @@ export const ImageBlock = Node.create({
 export const ImageBlockNodeView = ({
   updateAttributes,
   node,
+  selected,
 }: NodeViewProps) => {
   const [rendered, setRendered] = useState(false); // floating ui wrongly positions things without this
   const doc = useSelector(getCurrentDocument);
@@ -75,24 +76,29 @@ export const ImageBlockNodeView = ({
   );
 
   return (
-    <NodeViewWrapper className={cx(S.root, {})}>
+    <NodeViewWrapper className={cx(S.root)} contentEditable={false}>
       {node.attrs.url ? (
         <img src={node.attrs.url} className={S.image} />
       ) : (
         <Flex
-          gap="sm"
+          gap="xs"
           align="center"
           direction="row"
-          className={S.imageBlockContainer}
+          className={cx(S.imageBlockContainer, {
+            [S.selected]: selected,
+          })}
         >
-          <Text style={{ userSelect: "none" }}>{t`Add an image`}</Text>
+          <Icon name="snail" size={16} color="var(--mb-color-text-light)" />
+          <Text
+            style={{ userSelect: "none", color: "var(--mb-color-text-light)" }}
+          >{t`Add an image`}</Text>
           <label className={S.uploadWrapper} htmlFor="file-upload-input">
             <Button
               onClick={() => {
                 document.getElementById("file-upload-input")?.click();
               }}
               leftSection={<Icon name="upload" size={16} />}
-              variant="outline"
+              variant="subtle"
               size="xs"
             >{t`Upload new`}</Button>
             <input
@@ -105,7 +111,7 @@ export const ImageBlockNodeView = ({
 
           <Button
             leftSection={<Icon name="folder" size={16} />}
-            variant="outline"
+            variant="subtle"
             size="xs"
             onClick={() => setShowPicker(true)}
           >{t`Browse collections`}</Button>
