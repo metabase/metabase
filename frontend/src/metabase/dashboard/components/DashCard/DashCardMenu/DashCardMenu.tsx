@@ -70,7 +70,7 @@ export const DashCardMenu = ({
   const dashcardId = dashcard.id;
   const { dashboard, dashboardId, dashcardMenu, downloadsEnabled } =
     useDashboardContext();
-  const [{ loading: isDownloadingData }, handleDownload] = useDownloadData({
+  const [{ loading: isDownloadingData }, handleExport] = useDownloadData({
     question,
     result,
     dashboardId: checkNotNull(dashboardId),
@@ -108,7 +108,11 @@ export const DashCardMenu = ({
           result={result}
           onDownload={(opts) => {
             close();
-            handleDownload(opts);
+            handleExport(opts);
+          }}
+          onCopy={(opts) => {
+            close();
+            handleExport({ ...opts, exportVariant: "copy-to-clipboard" });
           }}
         />
       );
