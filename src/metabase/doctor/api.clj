@@ -5,6 +5,7 @@
    [environ.core :as env]
    [java-time.api :as t]
    [metabase.api.macros :as api.macros]
+   [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -18,13 +19,13 @@
     {:total-queries (t2/count :model/QueryExecution
                               {:where [:>= :started_at since]})
 
-     :error-queries (t2/select :model/QueryExecution 
-                                {:select [:query_execution.id 
-                                          :query_execution.database_id 
-                                          [:metabase_database.name :database_name] 
-                                          :query_execution.running_time 
-                                          :error :context 
-                                          :query_execution.card_id 
+     :error-queries (t2/select :model/QueryExecution
+                                {:select [:query_execution.id
+                                          :query_execution.database_id
+                                          [:metabase_database.name :database_name]
+                                          :query_execution.running_time
+                                          :error :context
+                                          :query_execution.card_id
                                           :report_card.name]
                                  :from [:query_execution]
                                  :left-join [[:report_card] [:= :query_execution.card_id :report_card.id]
@@ -37,10 +38,10 @@
 
      ;; Queries with >10 second runtime
      :slow-queries (t2/select :model/QueryExecution
-                               {:select [:query_execution.id 
-                                         :query_execution.database_id 
+                               {:select [:query_execution.id
+                                         :query_execution.database_id
                                          [:metabase_database.name :database_name]
-                                         :query_execution.card_id 
+                                         :query_execution.card_id
                                          :report_card.name
                                          :running_time :error :context :result_rows]
                                 :from [:query_execution]
@@ -54,11 +55,11 @@
 
      ;; Queries with extremely large result sets
      :large-result-queries (t2/select :model/QueryExecution
-                                       {:select [:query_execution.id 
-                                                 :query_execution.card_id 
+                                       {:select [:query_execution.id
+                                                 :query_execution.card_id
                                                  :report_card.name
                                                  :query_execution.database_id
-                                                 [:metabase_database.name :database_name] 
+                                                 [:metabase_database.name :database_name]
                                                  :result_rows :running_time :context]
                                         :from [:query_execution]
                                         :left-join [[:report_card] [:= :query_execution.card_id :report_card.id]
@@ -89,22 +90,22 @@
                                       :where [:>= :started_at since]
                                       :group-by [:context]})
 
-    ;; Hourly query volume
-    :hourly-volume (t2/select :model/QueryExecution
-                               {:select [[[:date_trunc [:inline "hour"] :started_at] :hour]
-                                         [:%count.* :queries]
-                                         [[:sum [:case [:not= :error nil] [:inline 1] :else [:inline 0]]] :errors]
-                                         [:%max.result_rows :max_rows]]
-                                :where [:>= :started_at (t/minus (t/instant) (t/days 2))]
-                                :group-by [[:date_trunc [:inline "hour"] :started_at]]
-                                :order-by [[:hour :desc]]
-                                :limit 48})}))
+     ;; Hourly query volume
+     :hourly-volume (t2/select :model/QueryExecution
+                                {:select [[[:date_trunc [:inline "hour"] :started_at] :hour]
+                                          [:%count.* :queries]
+                                          [[:sum [:case [:not= :error nil] [:inline 1] :else [:inline 0]]] :errors]
+                                          [:%max.result_rows :max_rows]]
+                                 :where [:>= :started_at (t/minus (t/instant) (t/days 2))]
+                                 :group-by [[:date_trunc [:inline "hour"] :started_at]]
+                                 :order-by [[:hour :desc]]
+                                 :limit 48})}))
 
 (defn- get-task-history-stats
   "Get comprehensive task execution statistics"
   [days]
   (let [since (t/minus (t/instant) (t/days days))]
-    {:failed-tasks (t2/select :model/TaskHistory 
+    {:failed-tasks (t2/select :model/TaskHistory
                                {:select [:task :db_id [:metabase_database.name :db_name] [:%count.* :count]]
                                 :from [:task_history]
                                 :left-join [[:metabase_database] [:= :task_history.db_id :metabase_database.id]]
@@ -194,10 +195,10 @@
      :high-field-databases (filter #(> (:field_count %) 100000) db-field-counts)
      :mongodb-databases (filter #(= (:engine %) "mongo") db-field-counts)
      :total-field-count (reduce + 0 (map :field_count db-field-counts))
-    :fingerprinting-status (->> (t2/query {:select [:f.table_id
-                                                    [[:count :*] :total_fields]
-                                                    [[:sum [:case [:not= :f.fingerprint nil] [:inline 1] :else [:inline 0]]] :fingerprinted]
-                                                    [[:sum [:case [:not= :f.last_analyzed nil] [:inline 1] :else [:inline 0]]] :analyzed]]
+     :fingerprinting-status (->> (t2/query {:select [:f.table_id
+                                                     [[:count :*] :total_fields]
+                                                     [[:sum [:case [:not= :f.fingerprint nil] [:inline 1] :else [:inline 0]]] :fingerprinted]
+                                                     [[:sum [:case [:not= :f.last_analyzed nil] [:inline 1] :else [:inline 0]]] :analyzed]]
                                             :from [[:metabase_field :f]]
                                             :join [[:metabase_table :t] [:= :f.table_id :t.id]]
                                             :where [:and
@@ -250,9 +251,9 @@
                                             :where [:and
                                                     [:= :archived false]
                                                     [:not= :dashboard_id nil]]})
-                                 first
-                                 :count
-                                 (or 0))
+                                first
+                                :count
+                                (or 0))
 
    ;; Recent pulse execution errors
    :recent-pulse-errors (t2/query {:select [:task :task_details :started_at]
@@ -288,8 +289,8 @@
                          :count
                          (or 0))
    :total-cards (-> (t2/query {:select [[[:count :*] :count]]
-                              :from [[:report_card]]
-                              :where [:= :archived false]})
+                               :from [[:report_card]]
+                               :where [:= :archived false]})
                     first
                     :count
                     (or 0))
@@ -356,25 +357,25 @@
                              (or 0))
 
    :concurrent-hourly-pulses (-> (t2/query {:select [[[:count [:distinct :p.id]] :count]]
-                                             :from [[:pulse :p]]
-                                             :join [[:pulse_channel :pchan] [:= :p.id :pchan.pulse_id]]
-                                             :where [:and
-                                                     [:= :p.archived false]
-                                                     [:or
-                                                      [:like :pchan.schedule_type "hourly"]
-                                                      [:like [:cast :pchan.schedule_hour :text] "%*%"]]]})
-                                  first
-                                  :count
-                                  (or 0))
+                                            :from [[:pulse :p]]
+                                            :join [[:pulse_channel :pchan] [:= :p.id :pchan.pulse_id]]
+                                            :where [:and
+                                                    [:= :p.archived false]
+                                                    [:or
+                                                     [:like :pchan.schedule_type "hourly"]
+                                                     [:like [:cast :pchan.schedule_hour :text] "%*%"]]]})
+                                 first
+                                 :count
+                                 (or 0))
 
    :databases-over-100k-fields (->> (t2/query {:select [:d.id
                                                          [[:count :f.id] :field_count]]
-                                                 :from [[:metabase_database :d]]
-                                                 :join [[:metabase_table :t] [:= :d.id :t.db_id]
-                                                        [:metabase_field :f] [:= :t.id :f.table_id]]
-                                                 :group-by [:d.id]})
-                                     (filter #(> (:field_count %) 100000))
-                                     count)})
+                                               :from [[:metabase_database :d]]
+                                               :join [[:metabase_table :t] [:= :d.id :t.db_id]
+                                                      [:metabase_field :f] [:= :t.id :f.table_id]]
+                                               :group-by [:d.id]})
+                                    (filter #(> (:field_count %) 100000))
+                                    count)})
 
 (defn- collect-health-metrics
   "Collect all health metrics for comprehensive analysis"
