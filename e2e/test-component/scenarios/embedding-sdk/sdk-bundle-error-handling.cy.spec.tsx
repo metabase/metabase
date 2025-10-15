@@ -5,6 +5,8 @@ import {
   getSdkBundleScriptElement,
   mountSdkContent,
 } from "e2e/support/helpers/embedding-sdk-component-testing";
+import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
+import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
 import { deleteConflictingCljsGlobals } from "metabase/embedding-sdk/test/delete-conflicting-cljs-globals";
 
 const { H } = cy;
@@ -25,9 +27,21 @@ describe(
   },
   () => {
     beforeEach(() => {
+      signInAsAdminAndEnableEmbeddingSdk();
+
+      cy.signOut();
+
+      mockAuthProviderAndJwtSignIn();
+    });
+
+    beforeEach(() => {
       H.clearBrowserCache();
 
       sdkBundleCleanup();
+
+      cy.intercept("GET", "**/app/embedding-sdk.js", {
+        statusCode: 404,
+      });
     });
 
     describe("when the SDK bundle can't be loaded", () => {
@@ -41,7 +55,7 @@ describe(
 
         cy.findByTestId("sdk-error-container").should(
           "contain.text",
-          "Failed to fetch JWT token from http://auth-provider/sso, message: Failed to fetch.",
+          "Error loading the Embedded Analytics SDK",
         );
       });
 
@@ -60,7 +74,7 @@ describe(
 
         cy.findByTestId("sdk-error-container").should(
           "contain.text",
-          "Custom error: Failed to fetch JWT token from http://auth-provider/sso, message: Failed to fetch.",
+          "Custom error: Error loading the Embedded Analytics SDK",
         );
       });
     });
