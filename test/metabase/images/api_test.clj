@@ -22,6 +22,20 @@
                :url #"http://localhost:\d+/api/images/\d+/contents"}
               (mt/user-http-request :crowberto :get 200 (format "images/%d" image-id)))))))
 
+(deftest ^:parallel card-metadata-test
+  (testing "GET /api/images/:id"
+    (mt/with-temp [:model/Image           {image-id :id}            {:url (test-image-url)}
+                   :model/Card            {card-id :id}             {}
+                   :model/Collection      {collection-id :id}       {}
+                   :model/CollectionImage {collection-image-id :id} {:collection_id collection-id
+                                                                     :image_id      image-id}
+                   :model/CardSnapshot    {}                        {:card_id             card-id
+                                                                     :collection_image_id collection-image-id}]
+      (is (=? {:id      image-id
+               :card_id card-id
+               :url     #"http://localhost:\d+/api/images/\d+/contents"}
+              (mt/user-http-request :crowberto :get 200 (format "images/%d" image-id)))))))
+
 (deftest ^:parallel fetch-image-test
   (testing "GET /api/images/:id/contents"
     (mt/with-temp [:model/Image {image-id :id} {:url (test-image-url)}]

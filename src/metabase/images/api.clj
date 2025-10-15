@@ -19,7 +19,17 @@
   "Metadata about an image."
   [{image-id :id, :as _route-params} :- [:map
                                          [:id ::images.schema/id]]]
-  (-> (api/check-404 (t2/select-one :model/Image image-id))
+  (-> (api/check-404 (t2/select-one :model/Image
+                                    {:select [:image/* :snapshot/card_id]
+                                     :from  [[(t2/table-name :model/Image) :image]]
+                                     :left-join [[(t2/table-name :model/CollectionImage) :collection_image]
+                                                 [:= :collection_image/image_id :image/id]
+                                                 [(t2/table-name :model/CardSnapshot) :snapshot]
+                                                 [:= :snapshot/collection_image_id :collection_image/id]
+                                                 [(t2/table-name :model/Card) :card]
+                                                 [:= :card/id :snapshot/card_id]]
+                                     :where [:= :image/id image-id]
+                                     :limit 1}))
       (assoc :url (models.image/image-id->contents-url image-id))))
 
 (api.macros/defendpoint :get "/:id/contents"
