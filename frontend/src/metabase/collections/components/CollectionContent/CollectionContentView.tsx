@@ -4,6 +4,7 @@ import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { useUploadImageMutation } from "metabase/api";
 import { deletePermanently } from "metabase/archive/actions";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import { trackCollectionBookmarked } from "metabase/collections/analytics";
@@ -138,6 +139,8 @@ const CollectionContentViewInner = ({
     [visibleColumns],
   );
 
+  const [uploadImage] = useUploadImageMutation();
+
   const onDrop = (acceptedFiles: File[]) => {
     if (!acceptedFiles.length) {
       dispatch(
@@ -149,6 +152,11 @@ const CollectionContentViewInner = ({
       );
       return;
     }
+    const fileType = acceptedFiles[0].type;
+    console.log({ fileType });
+    if (fileType.startsWith("image/")) {
+      return uploadImage({ file: acceptedFiles[0], collectionId: Number(collection.id) });
+    }
     saveFile(acceptedFiles[0]);
   };
 
@@ -157,7 +165,8 @@ const CollectionContentViewInner = ({
     maxFiles: 1,
     noClick: true,
     noDragEventsBubbling: true,
-    accept: { "text/csv": [".csv"], "text/tab-separated-values": [".tsv"] },
+    accept: {
+      "text/csv": [".csv"], "text/tab-separated-values": [".tsv"], "image/*": [".jpg", ".jpeg", ".png", ".gif"] },
   });
 
   const handleMove = (selectedItems: CollectionItem[]) => {
