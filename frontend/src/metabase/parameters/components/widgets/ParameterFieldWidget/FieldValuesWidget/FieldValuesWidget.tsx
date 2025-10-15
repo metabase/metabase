@@ -493,7 +493,12 @@ export const FieldValuesWidgetInner = forwardRef<
               />
             )}
             renderOption={({ option }) => (
-              <RemappedOption option={option} fields={fields} tc={tc} />
+              <RemappedOption
+                option={option}
+                fields={fields}
+                tc={tc}
+                renderValue={valueRenderer}
+              />
             )}
             onChange={(values) => {
               if (isNumericParameter) {
