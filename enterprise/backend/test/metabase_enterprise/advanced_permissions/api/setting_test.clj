@@ -202,7 +202,7 @@
                 (get-embeddable-dashboards user 200))
               (testing "and `public-link` permission for deleting a public dashboard"
                 (perms/grant-application-permissions! group :public-link)
-                (delete-public-dashboard! user 204))))))))
+                (delete-public-dashboard! user 204)))))))))
 
 (deftest action-api-test
   (testing "/api/action"
