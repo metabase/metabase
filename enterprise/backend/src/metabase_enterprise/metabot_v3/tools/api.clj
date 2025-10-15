@@ -9,6 +9,7 @@
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase-enterprise.metabot-v3.dummy-tools :as metabot-v3.dummy-tools]
+   [metabase-enterprise.metabot-v3.profile-builder :as profile-builder]
    [metabase-enterprise.metabot-v3.reactions]
    [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
    [metabase-enterprise.metabot-v3.table-utils :as table-utils]
@@ -459,7 +460,10 @@
                          [:id :int]
                          [:type [:= :user]]
                          [:name :string]
-                         [:email_address :string]]]]
+                         [:email_address :string]
+                         [:company_profile :any]
+                         [:user_profile :any]
+                         [:glossary :any]]]]
    [:map [:output :string]]])
 (mr/def ::get-dashboard-details-result
   [:or
@@ -736,11 +740,18 @@
    _query-params
    {:keys [conversation_id] :as body} :- ::tool-request]
   (metabot-v3.context/log (assoc body :api :get-current-user) :llm.log/llm->be)
-  (doto (-> (mc/decode ::get-current-user-result
-                       (metabot-v3.dummy-tools/get-current-user)
-                       (mtx/transformer {:name :tool-api-response}))
-            (assoc :conversation_id conversation_id))
-    (metabot-v3.context/log :llm.log/be->llm)))
+  (let [cu (metabot-v3.dummy-tools/get-current-user) #_(metabase.request.session/with-current-user 3 (metabot-v3.dummy-tools/get-current-user))
+        u-id (get-in cu [:structured-output :id])
+        org-prof (profile-builder/build-organization-profile-cached nil)
+        u-prof (profile-builder/build-user-profile nil u-id)]
+    ;; debug
+    (doto @(def rere (-> (mc/decode ::get-current-user-result
+                                    cu
+                                    (mtx/transformer {:name :tool-api-response}))
+                         (assoc :conversation_id conversation_id)
+                         (assoc-in [:structured_output :company_profile] org-prof)
+                         (assoc-in [:structured_output :user_profile] u-prof)))
+      (metabot-v3.context/log :llm.log/be->llm))))
 
 (api.macros/defendpoint :post "/get-dashboard-details" :- [:merge ::get-dashboard-details-result ::tool-request]
   "Get information about a given dashboard."
