@@ -142,12 +142,12 @@ Focus on identifying:
 
 Generate a markdown report with:
 - Executive Summary with severity indicators (🔴 Critical, 🟡 Warning, 🟢 Good)
-- Detailed findings for each issue category
+- Detailed findings for each issue category, each started by a heading
 - Specific, actionable recommendations
 - Priority ranking of issues to fix
 
 Do not:
-- Generate a title heading
+- Generate a page title
 
 Be specific about which databases, queries, or tasks are problematic.
 Use tables and formatting to make the report easy to scan.")
