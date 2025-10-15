@@ -60,13 +60,17 @@
 (defn refs
   "Returns all refs present in the entity-map, recursively walking to discover them."
   [entity]
-  (let [v (volatile! [])]
-    (walk/postwalk (fn [node]
-                     (when (ref? node)
-                       (vswap! v conj node))
-                     node)
-                   (dissoc entity :ref))
-    (set (map unref @v))))
+  (case (:type entity)
+    :document
+    (let [refs (re-seq #"ref:\S+" (:content entity))]
+      (set (map unref refs)))
+    (let [v (volatile! [])]
+      (walk/postwalk (fn [node]
+                       (when (ref? node)
+                         (vswap! v conj node))
+                       node)
+                     (dissoc entity :ref))
+      (set (map unref @v)))))
 
 (defn ->ref
   "Constructs a ref with the shape \"ref:<type>-<id>\""

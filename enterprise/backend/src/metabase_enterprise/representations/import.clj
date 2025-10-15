@@ -67,7 +67,12 @@
             ready (filter #(set/subset? (v0-common/refs %) done)
                           remaining)
             acc' (into acc ready)]
-        (recur acc' (set/difference remaining (set acc')))))))
+        (if (empty? ready)
+          (throw (ex-info "Dangling references or a cycle on representation import"
+                          {:accumulated acc
+                           :ready ready
+                           :done done}))
+          (recur acc' (set/difference remaining (set acc'))))))))
 
 (defn- file->collection-id
   [file]
