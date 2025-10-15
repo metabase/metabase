@@ -2,8 +2,16 @@
 /**
  * Markdown to ProseMirror parser using prosemirror-markdown
  * 
- * Usage: node parse-markdown.mjs <markdown-file>
+ * Usage: 
+ *   node parse-markdown.mjs <markdown-file>
+ *   node parse-markdown.mjs < input.md
+ *   echo "# Test" | node parse-markdown.mjs
+ *   node parse-markdown.mjs --verbose < input.md
+ * 
  * Output: ProseMirror JSON to stdout
+ * 
+ * Options:
+ *   --verbose    Show diagnostic messages on stderr
  */
 
 import { readFileSync } from 'fs';
@@ -269,21 +277,44 @@ function parseMarkdown(markdownText) {
   return doc.toJSON();
 }
 
-function main() {
+async function readStdin() {
+  const chunks = [];
+  for await (const chunk of process.stdin) {
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks).toString('utf8');
+}
+
+async function main() {
   const args = process.argv.slice(2);
+  let markdownText;
+  let verbose = false;
   
-  if (args.length === 0) {
-    console.error('Usage: node parse-markdown.mjs <markdown-file>');
-    process.exit(1);
+  // Check for --verbose flag
+  const verboseIndex = args.indexOf('--verbose');
+  if (verboseIndex !== -1) {
+    verbose = true;
+    args.splice(verboseIndex, 1);
   }
   
-  const filePath = args[0];
-  
   try {
-    const markdownText = readFileSync(filePath, 'utf8');
+    // Read from stdin if no file provided or if '-' is specified
+    if (args.length === 0 || args[0] === '-') {
+      if (verbose) {
+        console.error('Reading from stdin...');
+      }
+      markdownText = await readStdin();
+    } else {
+      const filePath = args[0];
+      if (verbose) {
+        console.error(`Reading from file: ${filePath}`);
+      }
+      markdownText = readFileSync(filePath, 'utf8');
+    }
+    
     const pmDoc = parseMarkdown(markdownText);
     
-    // Output JSON to stdout
+    // Output JSON to stdout (always)
     console.log(JSON.stringify(pmDoc, null, 2));
   } catch (error) {
     console.error('Error parsing markdown:', error.message);

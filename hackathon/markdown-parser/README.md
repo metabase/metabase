@@ -1,8 +1,22 @@
 # Markdown Parser for Metabase Documents
 
-Phase 0 - Development Setup Complete ✓
+**Status:** Phase 2 Complete ✅ (Card Embeds + Row Layout)
 
 ## Quick Start
+
+### Direct Node.js Usage
+
+```bash
+# Parse a file
+node hackathon/markdown-parser/parse-markdown.mjs test-files/basic.md
+
+# Parse from stdin
+cat test-files/basic.md | node hackathon/markdown-parser/parse-markdown.mjs
+echo "# Test" | node hackathon/markdown-parser/parse-markdown.mjs
+
+# Verbose mode (diagnostics to stderr)
+node hackathon/markdown-parser/parse-markdown.mjs --verbose test-files/basic.md
+```
 
 ### Test from CLI (Babashka)
 
@@ -52,13 +66,43 @@ bb hackathon/markdown-parser/cli-test.clj hackathon/markdown-parser/test-files/l
                   (md/markdown-file->prosemirror-json "hackathon/markdown-parser/test-files/basic.md")'
 ```
 
+## Metabase Markdown Syntax
+
+### Card Embeds
+
+```markdown
+# Single card
+{% card id=123 %}
+
+# Card with custom title
+{% card id=456 name="My Custom Title" %}
+
+# Two cards side by side
+{% row widths="75:25" %}
+{% card id=789 %}
+{% card id=999 %}
+{% endrow %}
+
+# Two cards with default 50:50 split
+{% row %}
+{% card id=111 %}
+{% card id=222 %}
+{% endrow %}
+```
+
+### Output Structure
+
+**Single card** → `resizeNode` containing `cardEmbed`
+**Row** → `resizeNode` containing `flexContainer` with 2 `cardEmbed` nodes
+
 ## Test Files
 
 Created sample markdown files in `test-files/`:
 
 - **basic.md** - Standard markdown elements (headings, lists, code, links)
-- **metabase.md** - Full example with card embeds and smart links
+- **document-example.md** - Full example matching actual Document structure
 - **cards-only.md** - Focus on `{% card %}` syntax variations
+- **metabase.md** - Full example with card embeds and smart links
 - **links-only.md** - Focus on `metabase:model/id` links
 
 ## Directory Structure
@@ -106,30 +150,37 @@ Documents use this JSON structure:
 }
 ```
 
-## Next Steps
-
-### Phase 1: Basic Markdown Parsing (Next)
-- Implement actual markdown-it parsing
-- Handle standard CommonMark elements
-- Test round-trip conversion
-
-### Phase 2: Card Embed Parser
-- Add `{% card id=X %}` syntax support
-- Generate cardEmbed nodes
-- Extract id and name attributes
-
-### Phase 3: Smart Link Parser
-- Add `metabase:model/id` link support
-- Generate smartLink nodes
-- Handle all entity types
-
 ## Current Status
 
-✓ Phase 0 Complete
+✅ **Phase 0: Setup** - Complete
 - [x] Directory structure created
 - [x] Test files created
-- [x] Placeholder parser namespace created
 - [x] CLI test utility created
-- [x] REPL test examples documented
+- [x] REPL integration documented
 
-⏳ Phase 1 Next (Basic Markdown Parsing)
+✅ **Phase 1: Basic Markdown Parsing** - Complete
+- [x] Using prosemirror-markdown via Node.js
+- [x] Parses all standard CommonMark elements
+- [x] Headings, paragraphs, lists, code blocks, links, emphasis
+- [x] Clojure wrapper with shell integration
+
+✅ **Phase 2: Card Embed Parser** - Complete
+- [x] `{% card id=X %}` syntax support
+- [x] `{% card id=X name="Title" %}` with custom names
+- [x] `{% row %}...{% endrow %}` for side-by-side layout
+- [x] Wraps standalone cards in `resizeNode`
+- [x] Wraps rows in `resizeNode` → `flexContainer`
+- [x] Custom column widths: `{% row widths="75:25" %}`
+
+⏳ **Phase 3: Smart Link Parser** - Next
+- [ ] Add `[text](metabase:model/id)` link support
+- [ ] Generate smartLink nodes
+- [ ] Handle all entity types (card, dashboard, collection, etc.)
+
+## Next Steps
+
+### Phase 3: Smart Link Parser (2 hours)
+- Extend link token handler to detect `metabase:` protocol
+- Create smartLink mark/node in schema
+- Parse model and entityId from URL
+- Test with links-only.md
