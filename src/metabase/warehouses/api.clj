@@ -1,6 +1,7 @@
 (ns metabase.warehouses.api
   "/api/database endpoints."
   (:require
+   [clojure.java.shell :as shell]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
@@ -944,7 +945,8 @@ WITH (
                                      name
                                      (:project_id details)
                                      (:credentials_key details))]
-                   (execute-query driver database query)))
+                   (execute-query driver database query))
+      "github" (prn (shell/sh "ls")))
     (sync/sync-database! database {:scan :schema})))
 
 (api.macros/defendpoint :post "/source"
