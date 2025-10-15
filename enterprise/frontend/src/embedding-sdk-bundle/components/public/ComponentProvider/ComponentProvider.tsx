@@ -19,7 +19,6 @@ import { useInstanceLocale } from "metabase/common/hooks/use-instance-locale";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { setOptions } from "metabase/redux/embed";
-import { setEmbedCommonEndpoints } from "metabase/services";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { MetabotProvider } from "metabase-enterprise/metabot/context";
 
@@ -55,10 +54,6 @@ export const ComponentProviderInternal = ({
 
   useEffect(() => {
     reduxStore.dispatch(setIsStaticEmbedding(isStatic || false));
-
-    if (isStatic) {
-      setEmbedCommonEndpoints();
-    }
   }, [reduxStore, isStatic]);
 
   useEffect(() => {

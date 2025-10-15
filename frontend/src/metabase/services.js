@@ -354,9 +354,33 @@ export function setPublicDashboardEndpoints(uuid) {
   });
 }
 
-export function setEmbedCommonEndpoints() {
-  MetabaseApi.dataset = POST(`${embedBase}/dataset`);
-  MetabaseApi.dataset_pivot = POST(`${embedBase}/dataset/pivot`);
+export function setEmbedCommonEndpoints({ base, encodedToken }) {
+  Api.injectEndpoints({
+    endpoints: (builder) => ({
+      getAdhocQuery: builder.query({
+        query: ({ _refetchDeps, ignore_error, ...body }) => ({
+          method: "POST",
+          url: `${base}/dataset/${encodedToken}`,
+          body,
+          noEvent: ignore_error,
+        }),
+      }),
+      getAdhocQueryMetadata: builder.query({
+        query: (body) => ({
+          method: "POST",
+          url: `${base}/dataset/${encodedToken}/query_metadata`,
+          body,
+        }),
+        providesTags: (metadata) =>
+          metadata ? provideAdhocQueryMetadataTags(metadata) : [],
+        onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+          handleQueryFulfilled(queryFulfilled, (data) =>
+            dispatch(updateMetadata(data, QueryMetadataSchema)),
+          ),
+      }),
+    }),
+    overrideExisting: true,
+  });
 }
 
 /**
@@ -364,6 +388,7 @@ export function setEmbedCommonEndpoints() {
  */
 export function setEmbedQuestionEndpoints(token) {
   const encodedToken = encodeURIComponent(token);
+  setEmbedCommonEndpoints({ base: embedBase, encodedToken });
   setCardEndpoints({ base: embedBase, encodedToken });
   PLUGIN_CONTENT_TRANSLATION.setEndpointsForStaticEmbedding(encodedToken);
 }
@@ -373,6 +398,7 @@ export function setEmbedQuestionEndpoints(token) {
  */
 export function setEmbedDashboardEndpoints(token) {
   const encodedToken = encodeURIComponent(token);
+  setEmbedCommonEndpoints({ base: embedBase, encodedToken });
   setDashboardEndpoints({ base: embedBase, encodedToken });
   PLUGIN_CONTENT_TRANSLATION.setEndpointsForStaticEmbedding(encodedToken);
 }
@@ -408,27 +434,6 @@ function setCardEndpoints({ base, encodedToken }) {
         }),
         providesTags: (metadata, _error, id) =>
           metadata ? provideCardQueryMetadataTags(id, metadata) : [],
-        onQueryStarted: (_, { queryFulfilled, dispatch }) =>
-          handleQueryFulfilled(queryFulfilled, (data) =>
-            dispatch(updateMetadata(data, QueryMetadataSchema)),
-          ),
-      }),
-      getAdhocQuery: builder.query({
-        query: ({ _refetchDeps, ignore_error, ...body }) => ({
-          method: "POST",
-          url: `${base}/dataset/${encodedToken}`,
-          body,
-          noEvent: ignore_error,
-        }),
-      }),
-      getAdhocQueryMetadata: builder.query({
-        query: (body) => ({
-          method: "POST",
-          url: `${base}/dataset/${encodedToken}/query_metadata`,
-          body,
-        }),
-        providesTags: (metadata) =>
-          metadata ? provideAdhocQueryMetadataTags(metadata) : [],
         onQueryStarted: (_, { queryFulfilled, dispatch }) =>
           handleQueryFulfilled(queryFulfilled, (data) =>
             dispatch(updateMetadata(data, QueryMetadataSchema)),
