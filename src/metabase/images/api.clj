@@ -26,7 +26,7 @@
   (let [{:keys [tempfile size]} file]
     (try
       (log/infof "Got a cool file with %d bytes" size)
-      (io/copy tempfile (io/file "/tmp/hack2025/duck.png"))
+      (io/copy tempfile (doto (io/file "/tmp/hack2025/duck.png") (io/make-parents)))
       {:status 200
        :body   {:message "cool"}}
       (finally
