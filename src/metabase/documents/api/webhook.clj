@@ -2,8 +2,11 @@
   (:require
    [metabase-enterprise.documents.api.document :as document.api]
    [metabase-enterprise.documents.prose-mirror :as prose-mirror]
+   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.events.core :as events]
+   [metabase.models.interface :as mi]
+   [metabase.request.core :as request]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -11,12 +14,14 @@
   ;; nothing to do here, FE is initializing the user context on its own
   )
 
-(defn- load-event [{id :documentName}]
+(defn- load-event [user-id {id :documentName}]
   ;; Return the ydoc and the extracted version
-  (let [id (parse-long id)
-        {:keys [document ydoc]} (t2/select-one [:model/Document :document :ydoc] id)]
-    {:document {:default document}
-     :ydoc ydoc}))
+  (let [id (parse-long id)]
+    (request/with-current-user user-id
+      (let [document (t2/select-one :model/Document id)]
+        (api/check-403 (mi/can-write? document))
+        {:document {:default (:document document)}
+         :ydoc    (:ydoc document)}))))
 
 (defn- change-event [user-id {id :documentName, :keys [ydoc document]}]
   ;; work whether we have the new transformer to pass through the base64 ydoc too, or not
@@ -31,18 +36,25 @@
   ;; nothing to do here
   )
 
+(def ^:private yuck-regex #"metabase\.SESSION=([^ ;]*)")
+
 (api.macros/defendpoint :post "/webhook"
   [_
    _
-   {{user-id :user_id} :context :keys [event payload]}]
-  #p event
-  (case event
-    "connect"    (connect-event payload)
-    "load"       (load-event payload)
-    "change"     (change-event user-id payload)
-    "disconnect" (disconnect-event payload)
+   {:keys [event _context payload]}]
+  (let [cookies-str (get-in payload [:requestHeaders :cookie])
+        session-key (second (re-find yuck-regex cookies-str))
+        user-id     (:metabase-user-id (metabase.server.middleware.session/current-user-info-for-session session-key nil))]
 
-    (log/warn "Unexpected event" {:event event :payload payload})))
+    ;; #p [event payload _context]
+
+    (case event
+      "connect"    (connect-event payload)
+      "load"       (load-event user-id payload)
+      "change"     (change-event user-id payload)
+      "disconnect" (disconnect-event payload)
+
+      (log/warn "Unexpected event" {:event event :payload payload}))))
 
 (api.macros/defendpoint :post "/copy-cards"
   [_ _ {document-id :document_id document :document}]
