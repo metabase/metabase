@@ -92,14 +92,12 @@
       :else (throw e))))
 
 (defmethod driver/can-connect? :starburst
-  [driver {:keys [catalog], :as details}]
+  [driver details]
   (try
     ((get-method driver/can-connect? :sql-jdbc) driver details)
     (sql-jdbc.conn/with-connection-spec-for-testing-connection [spec [driver details]]
       ;; jdbc/query is used to see if we throw, we want to ignore the results
-      (let [query (format "SHOW CATALOGS LIKE '%s'" catalog)
-            response (jdbc/query spec query)]
-        (= [{:catalog catalog}] response)))
+      (some? (jdbc/query spec "SHOW CATALOGS")))
     (catch Throwable e
       (handle-execution-error-details e details))))
 
@@ -435,29 +433,30 @@
 
 (defmethod sql-jdbc.sync.interface/have-select-privilege? :starburst
   [driver ^Connection conn table-schema table-name]
-  (try
-    ;; Both Hive and Iceberg plugins for Trino expose one another's tables
-    ;; at the metadata level, even though they are not queryable through that catalog.
-    ;; So rather than using SHOW TABLES, we will DESCRIBE the table to check for
-    ;; queryability. If the table is not queryable for this reason, we will return
-    ;; false. It's a slight stretch of the concept of "permissions," but it is true
-    ;; that we cannot query these tables...
-    (let [catalog (some-> conn .getCatalog)
-          sql (describe-table-sql driver catalog table-schema table-name)]
-      (with-open [stmt (.prepareStatement conn sql)
-                  rs (.executeQuery stmt)]
-        (.next rs)))
-    (catch SQLException e
-      ;; The actual exception thrown is TrinoException with error code UNSUPPORTED_TABLE_TYPE (133001),
-      ;; but we can't check the type directly since the relevant io.trino.spi.* classes are not
-      ;; included in trino-jdbc. We check the vendor-specific error code instead.
-      ;; See HiveMetadata.java and UnknownTableTypeException.java in trinodb/trino
-      (if (= 133001 (.getErrorCode e))
-        (do
-          (log/debugf e "Table %s.%s is not accessible through this catalog (mixed catalog table type)"
-                      table-schema table-name)
-          false)
-        (throw e)))))
+  true
+  #_(try
+      ;; Both Hive and Iceberg plugins for Trino expose one another's tables
+      ;; at the metadata level, even though they are not queryable through that catalog.
+      ;; So rather than using SHOW TABLES, we will DESCRIBE the table to check for
+      ;; queryability. If the table is not queryable for this reason, we will return
+      ;; false. It's a slight stretch of the concept of "permissions," but it is true
+      ;; that we cannot query these tables...
+      (let [catalog (some-> conn .getCatalog)
+            sql (describe-table-sql driver catalog table-schema table-name)]
+        (with-open [stmt (.prepareStatement conn sql)
+                    rs (.executeQuery stmt)]
+          (.next rs)))
+      (catch SQLException e
+        ;; The actual exception thrown is TrinoException with error code UNSUPPORTED_TABLE_TYPE (133001),
+        ;; but we can't check the type directly since the relevant io.trino.spi.* classes are not
+        ;; included in trino-jdbc. We check the vendor-specific error code instead.
+        ;; See HiveMetadata.java and UnknownTableTypeException.java in trinodb/trino
+        (if (= 133001 (.getErrorCode e))
+          (do
+            (log/debugf e "Table %s.%s is not accessible through this catalog (mixed catalog table type)"
+                        table-schema table-name)
+            false)
+          (throw e)))))
 
 (defn- describe-schema
   "Gets a set of maps for all tables in the given `catalog` and `schema`."
@@ -471,7 +470,7 @@
                        (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table-name)))
              (map (fn [{table-name :table}]
                     {:name        table-name
-                     :schema      schema})))
+                     :schema      (format "%s.%s" catalog schema)})))
        (jdbc/reducible-result-set rs {})))))
 
 (defn- all-schemas
@@ -486,27 +485,41 @@
                      (describe-schema driver conn catalog schema))))
             (jdbc/reducible-result-set rs {})))))
 
+(defn- all-catalogs
+  [driver ^Connection conn]
+  (with-open [stmt (.createStatement conn)]
+    (let [rs (sql-jdbc.execute/execute-statement! driver stmt "SHOW CATALOGS")]
+      (into [] (map (fn [{:keys [catalog] :as _full}] catalog))
+            (jdbc/reducible-result-set rs {})))))
+
 (defmethod driver/describe-database* :starburst
-  [driver {{:keys [catalog schema] :as _details} :details :as database}]
+  [driver {{:keys [schema] :as _details} :details :as database}]
   (sql-jdbc.execute/do-with-connection-with-options
    driver
    database
    nil
    (fn [^Connection conn]
-     (let [schemas (if schema
-                     #{(describe-schema driver conn catalog schema)}
-                     (all-schemas driver conn catalog))]
+     (let [catalogs (all-catalogs driver conn)
+           schemas (into
+                    #{}
+                    (mapcat
+                     (fn [catalog]
+                       (if schema
+                         #{(describe-schema driver conn catalog schema)}
+                         (all-schemas driver conn catalog)))
+                     catalogs))]
        {:tables (reduce set/union #{} schemas)}))))
 
 (defmethod driver/describe-table :starburst
-  [driver {{:keys [catalog] :as _details} :details :as database} {schema :schema, table-name :name}]
+  [driver database {schema :schema, table-name :name}]
   (sql-jdbc.execute/do-with-connection-with-options
    driver
    database
    nil
    (fn [^Connection conn]
      (with-open [stmt (.createStatement conn)]
-       (let [sql (describe-table-sql driver catalog schema table-name)
+       (let [[catalog schema] (str/split schema #"\.")
+             sql (describe-table-sql driver catalog schema table-name)
              rs (sql-jdbc.execute/execute-statement! driver stmt sql)]
          {:schema schema
           :name   table-name
