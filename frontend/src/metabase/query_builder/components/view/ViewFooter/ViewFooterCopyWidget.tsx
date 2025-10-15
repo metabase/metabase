@@ -99,6 +99,11 @@ export const ViewFooterCopyWidget = () => {
     return null;
   }
 
+  // Don't show copy button for tables and pivot tables since they only show visible rows
+  if (question.display() === "table" || question.display() === "pivot") {
+    return null;
+  }
+
   return (
     <Tooltip
       label={copied ? t`Copied!` : copying ? t`Copying…` : t`Copy to clipboard`}

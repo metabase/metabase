@@ -143,8 +143,12 @@ export const DashCardMenuItems = ({
         closeMenuOnClick: false,
       });
       // Add Copy as image menu item after Download results
-      // Disable for tables since they only show visible rows
-      if (cardRootRef?.current && question.display() !== "table") {
+      // Disable for tables and pivot tables since they only show visible rows
+      if (
+        cardRootRef?.current &&
+        question.display() !== "table" &&
+        question.display() !== "pivot"
+      ) {
         items.push({
           key: "MB_COPY_AS_IMAGE",
           iconName: copying ? "hourglass" : "copy",
