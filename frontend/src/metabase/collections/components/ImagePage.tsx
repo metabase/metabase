@@ -4,19 +4,17 @@ import { skipToken, useGetImageDataQuery } from "metabase/api";
 export const ImagePage = ({ params: { id }}: { params: { id: number }}) => {
   const { data, isLoading } = useGetImageDataQuery(id ? { id } : skipToken);
 
-  // if (isLoading || !data || !data?.image_url) {
-  //   return (
-  //     <Box p="xl">
-  //       <Center>
-  //         <Loader />
-  //       </Center>
-  //     </Box>
-  //   );
-  // }
-  // const { image_url, name } = data;
+  if (isLoading || !data || !data?.url) {
+    return (
+      <Box p="xl">
+        <Center>
+          <Loader />
+        </Center>
+      </Box>
+    );
+  }
+  const { url, title } = data;
 
-  const image_url = "https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExOGI4bTRtdzRvYXMxaHd5aTdvZjF5eGZmNGx2bmM4ZTZkcGk2a2lldSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/vpawfuA6LnYeQ/giphy.gif";
-  const name = "Vamsi's profile picture";
 
   return (
     <Box p="xl">

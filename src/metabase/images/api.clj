@@ -72,7 +72,7 @@
              :model/CollectionImage
              {:image_id            (:id image)
               :collection_id       collection-id
-              :collection_position 0}))
+              :collection_position nil}))
           (assoc image :url (models.image/image-id->contents-url (:id image)))))
       (finally
         (io/delete-file tempfile true)))))

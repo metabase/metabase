@@ -33,4 +33,5 @@ export const ALL_MODELS: CollectionItemModel[] = [
   "snippet",
   "collection",
   "document",
+  "image",
 ];

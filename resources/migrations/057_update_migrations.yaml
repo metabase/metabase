@@ -2176,6 +2176,17 @@ databaseChangeLog:
             constraintName: fk_user_profile_image_id
             onDelete: CASCADE
 
+  - changeSet:
+      id: v57.2025-10-15T09:30:10
+      author: wotbrew
+      comment: >-
+        Make collection_position column nullable in collection_image table
+      changes:
+        - dropNotNullConstraint:
+            tableName: collection_image
+            columnName: collection_position
+            columnDataType: int
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

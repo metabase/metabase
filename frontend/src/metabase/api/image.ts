@@ -7,29 +7,40 @@ type UploadImageRequest = {
   | { userId: number; collectionId?: never }
 );
 
+type ImageResponse = {
+  url: string;
+  title: string;
+};
+
 export const imageApi = Api.injectEndpoints({
   endpoints: (builder) => ({
-    uploadImage: builder.mutation<{ image_url: string }, UploadImageRequest>({
+    uploadImage: builder.mutation<ImageResponse, UploadImageRequest>({
       query: ({ file, collectionId, userId }) => {
         const bodyFormData = new FormData();
+        bodyFormData.append("name", file.name);
+        bodyFormData.append("type", file.type);
         bodyFormData.append("file", file);
         const queryParams = userId
-          ? `?user_id=${userId}`
-          : `?collection_id=${collectionId}`;
+          ? `?user-id=${userId}`
+          : `?collection-id=${collectionId}`;
         return {
           url: `/api/images${queryParams}`,
           method: "POST",
           headers: {
             "Content-Type": "multipart/form-data;",
           },
-          body: bodyFormData,
+          body: { formData: bodyFormData },
           formData: true,
+          fetch: true,
         };
       },
     }),
-    getImageData: builder.query<{ name: string, image_url: string }, { id: number }>({
+    getImageData: builder.query<
+      ImageResponse,
+      { id: number }
+    >({
       query: ({ id }) => ({
-        url: `/api/image-data/${id}`,
+        url: `/api/images/${id}`,
       }),
     }),
   }),

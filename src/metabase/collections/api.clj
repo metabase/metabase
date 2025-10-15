@@ -232,6 +232,7 @@
     "dataset"                           ; Model. TODO : update this
     "document"
     "metric"
+    "image"
     "collection"
     "dashboard"
     "pulse"                             ; I think the only kinds of Pulses we still have are Alerts?
@@ -354,7 +355,7 @@
        :from [[:collection_image :ci]]
        :join  [[:image :i] [:= :i.id :ci.image_id]]
        :where [:= :ci.collection_id (:id collection)]}
-      (sql.helpers/where (pinned-state->clause pinned-state :ci.collection_position))))
+      (sql.helpers/where (poison-when-pinned-clause pinned-state))))
 
 (defmethod collection-children-query :document
   [_ collection {:keys [archived? pinned-state]}]
