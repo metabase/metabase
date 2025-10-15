@@ -517,6 +517,7 @@
                    (m/filter-keys
                     (fn [setting-name]
                       (try
+                        ;; TODO(rileythomp): ensure blueprints setting is returned properly
                         (if (= setting-name :blueprints)
                           true
                           (setting/can-read-setting? setting-name
