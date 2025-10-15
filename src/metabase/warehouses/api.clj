@@ -1512,9 +1512,7 @@
             salesforce-collection (create-salesforce-collection!)
             coll-id (:id salesforce-collection)
             _salesforce-cards (blueprints/create-salesforce-cards! db salesforce-transform-tables coll-id transforms)
-            document (blueprints/document-for-collection salesforce-collection api/*current-user-id*)
-            #__ #_(t2/update! :model/Database db-id {:settings (-> (:settings db)
-                                                                   (assoc-in [:blueprints :salesforce-document] (:id document)))})
+            document (blueprints/document-for-collection (:id salesforce-collection) api/*current-user-id*)
             #_salesforce-dashboard #_(blueprints/create-salesforce-dashboard! db salesforce-cards)]
         {:tables salesforce-transform-tables
          :collection salesforce-collection
