@@ -12,7 +12,7 @@
   ;; Return the ydoc and the extracted version
   (let [id (parse-long id)]
     #p
-     (t2/select [:model/Document :document :ydoc] id)))
+     (t2/select-one [:model/Document :document :ydoc] id)))
 
 (defn- change-event [user-id {id :documentName, :keys [ydoc document]}]
   ;; work whether we have the new transformer to pass through the base64 ydoc too, or not
@@ -32,6 +32,7 @@
   [_
    _
    {{user-id :user_id} :context :keys [event payload]}]
+  #p event
   (case event
     "connect" (connect-event payload)
     "load" (load-event payload)
