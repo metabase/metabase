@@ -254,7 +254,9 @@ export const sendAgentRequest = createAsyncThunk<
               .exhaustive();
           },
           onTextPart: (part) => {
-            dispatch(addAgentTextDelta(String(part)));
+            if (body.history.length === 0) {
+              dispatch(addAgentTextDelta(String(part)));
+            }
           },
           onToolCallPart: (part) => dispatch(toolCallStart(part)),
           onToolResultPart: (part) => dispatch(toolCallEnd(part)),
@@ -266,6 +268,17 @@ export const sendAgentRequest = createAsyncThunk<
         window.location.pathname === "/megabot/new" &&
         body.history.length !== 0
       ) {
+        // TODO: set t
+        dispatch(
+          addAgentTextDelta(
+            window.documentContent
+              ? `I've finished my research, take a look!`
+              : `Edit the plan with any feedback you have! When you're ready, I'll start researching.`,
+          ),
+        );
+        window.setDocumentTitle(
+          window.documentContent ? "Final research" : "Research plan",
+        );
         const doc: DocumentContent = {
           type: "doc",
           content: [
