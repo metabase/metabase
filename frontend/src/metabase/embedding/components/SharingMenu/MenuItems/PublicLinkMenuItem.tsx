@@ -4,7 +4,7 @@ import Link from "metabase/common/components/Link";
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_APPLICATION_PERMISSIONS } from "metabase/plugins";
+import { canCreatePublicLink as selectCanCreatePublicLink } from "metabase/selectors/user";
 import { Button, Icon, Menu } from "metabase/ui";
 
 export function PublicLinkMenuItem({
@@ -15,9 +15,7 @@ export function PublicLinkMenuItem({
   onClick: () => void;
 }) {
   const isPublicSharingEnabled = useSetting("enable-public-sharing");
-  const canCreatePublicLink = useSelector((state) =>
-    PLUGIN_APPLICATION_PERMISSIONS.selectors.canCreatePublicLink(state),
-  );
+  const canCreatePublicLink = useSelector(selectCanCreatePublicLink);
 
   if (canCreatePublicLink) {
     return (

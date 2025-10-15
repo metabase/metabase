@@ -2,7 +2,7 @@ import { useAsync } from "react-use";
 import { t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_APPLICATION_PERMISSIONS } from "metabase/plugins";
+import { canCreatePublicLink as selectCanCreatePublicLink } from "metabase/selectors/user";
 import { Box, Popover, Text, Title } from "metabase/ui";
 
 import { PublicLinkCopyPanel } from "./PublicLinkCopyPanel";
@@ -33,9 +33,7 @@ export const PublicLinkPopover = ({
   setSelectedExtension,
   onCopyLink,
 }: PublicLinkPopoverProps) => {
-  const canCreatePublicLink = useSelector((state) =>
-    PLUGIN_APPLICATION_PERMISSIONS.selectors.canCreatePublicLink(state),
-  );
+  const canCreatePublicLink = useSelector(selectCanCreatePublicLink);
 
   const { loading } = useAsync(async () => {
     if (isOpen && !url) {
