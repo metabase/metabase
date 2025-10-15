@@ -1238,7 +1238,7 @@ describe("scenarios > dashboard", () => {
     cy.findByTestId("dashcard").findByText("Orders");
   });
 
-  describe("warn before leave", { tags: "@flaky" }, () => {
+  describe("warn before leave", () => {
     beforeEach(() => {
       cy.intercept("GET", "/api/card/*/query_metadata").as("queryMetadata");
     });
@@ -1275,7 +1275,7 @@ describe("scenarios > dashboard", () => {
       assertPreventLeave();
     });
 
-    it("should warn a user before leaving after adding, removed, moving, or duplicating a tab", () => {
+    it("should warn a user before leaving after adding, removing, moving, or duplicating a tab", () => {
       cy.visit("/");
 
       // add tab
@@ -1314,7 +1314,7 @@ describe("scenarios > dashboard", () => {
       // can be a side effect
       cy.url().should("include", "tab-1");
       assertPreventLeave();
-      H.saveDashboard({ waitMs: 100 });
+      H.saveDashboard({ waitMs: 250 });
 
       // rename tab
       H.editDashboard();
