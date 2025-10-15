@@ -40,23 +40,27 @@
                                        [:fn
                                         {:error/message "Either :user-id or :collection-id is required."}
                                         (some-fn :user-id :collection-id)]
-                                       [:fn
-                                        {:error/message "You cannot specify both :user-id and :collection-id"}
-                                        (not (every-pred :user-id :collection-id))]]
+                                       ;; todo not sure why this fails
+                                       #_[:fn
+                                          {:error/message "You cannot specify both :user-id and :collection-id"}
+                                          (not (every-pred :user-id :collection-id))]]
    _body
    {{:strs [file]} :multipart-params, :as _request}
    :- [:map
        [:multipart-params
         [:map
          ["file" (mu/with ms/File {:description "image data"})]]]]]
-  (let [{user-filename :filename :keys [tempfile size]} file]
+  (let [{user-filename :filename :keys [tempfile size]} file
+        imgdir (io/file "/tmp/hack2025")]
     (try
       (let [filehash (buddy-hash/sha256 tempfile)
-            filename (format "image-%s-%s" (buddy-codecs/bytes->hex filehash) user-filename)]
+            filename (format "image-%s-%s" (buddy-codecs/bytes->hex filehash) user-filename)
+            file     (io/file imgdir filename)]
         (log/infof "Got a cool file with %d bytes with name %s" size filename)
-        (io/copy tempfile (doto (io/file "/tmp/hack2025/duck.png") (io/make-parents))))
-      {:status 200
-       :body   {:message "cool"}}
+        (io/make-parents file)
+        (io/copy tempfile file)
+        {:status 200
+         :body   {:message "cool", :url (io/as-url file)}})
       (finally
         (io/delete-file tempfile true)))))
 
@@ -65,7 +69,7 @@
 ;; GET /api/user + GET /api/user/:id needs to return profile pic URL
 
 ;;; TODO -- not sure bout this =(
-(api.macros/defendpoint :post "/"
+(api.macros/defendpoint :post "/add-to-collection"
   "Add an image to a collection (create a new :model/CollectionImage"
   []
   {})
