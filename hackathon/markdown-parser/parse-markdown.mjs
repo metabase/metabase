@@ -279,12 +279,56 @@ const customParser = new MarkdownParser(
   }
 );
 
+// Transform ProseMirror node/mark types to Tiptap naming convention
+function transformToTiptapFormat(node) {
+  if (!node || typeof node !== 'object') {
+    return node;
+  }
+
+  // Map node types from ProseMirror defaults to Tiptap names
+  const typeMap = {
+    'strong': 'bold',
+    'em': 'italic',
+    'code_block': 'codeBlock',
+    'bullet_list': 'bulletList',
+    'ordered_list': 'orderedList',
+    'list_item': 'listItem',
+    'horizontal_rule': 'horizontalRule',
+    'hard_break': 'hardBreak'
+  };
+
+  const transformedNode = { ...node };
+
+  // Update node type if it needs mapping
+  if (transformedNode.type && typeMap[transformedNode.type]) {
+    transformedNode.type = typeMap[transformedNode.type];
+  }
+
+  // Transform marks
+  if (transformedNode.marks) {
+    transformedNode.marks = transformedNode.marks.map(mark => ({
+      ...mark,
+      type: typeMap[mark.type] || mark.type
+    }));
+  }
+
+  // Recursively transform content
+  if (transformedNode.content && Array.isArray(transformedNode.content)) {
+    transformedNode.content = transformedNode.content.map(transformToTiptapFormat);
+  }
+
+  return transformedNode;
+}
+
 export function parseMarkdown(markdownText) {
   // Use the custom parser
   const doc = customParser.parse(markdownText);
 
   // Convert to JSON
-  return doc.toJSON();
+  const pmDoc = doc.toJSON();
+
+  // Transform to Tiptap format
+  return transformToTiptapFormat(pmDoc);
 }
 
 async function readStdin() {
