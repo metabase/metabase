@@ -6,6 +6,11 @@ databaseChangeLog:
       validCheckSum: 8:a59595109e74e7a2678a1b0dfd25f74a
       author: qnkhuat
       comment: Initialze metabase
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - tableExists: ## Have to manually check since the changest ids don't always match
+              tableName: core_user
       changes:
         - sqlFile:
             dbms: postgresql
