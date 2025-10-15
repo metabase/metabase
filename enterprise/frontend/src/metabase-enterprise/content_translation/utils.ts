@@ -3,13 +3,13 @@ import { useCallback, useMemo } from "react";
 import _ from "underscore";
 
 import type { ContentTranslationFunction } from "metabase/i18n/types";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type { HoveredObject } from "metabase/visualizations/types";
 import type {
   DictionaryArray,
   MaybeTranslatedSeries,
   RowValue,
   Series,
+  SeriesSettings,
   VisualizationDisplay,
   VisualizationSettingKey,
   VisualizationSettings,
@@ -128,12 +128,16 @@ export const useTranslateFieldValuesInHoveredObject = (
 interface TranslationConfig<
   T extends VisualizationSettingKey = VisualizationSettingKey,
 > {
-  value: "translate" | "ignore";
+  settingsKey: T;
+  // Only translate if the value is not already in the settings
+  isValueInSettings?: (
+    settingsValue: VisualizationSettings[T],
+    value: RowValue,
+  ) => boolean;
   visualizationSettings: {
-    key: T;
     updater: (
       settingsValue: VisualizationSettings[T],
-      tc: (message: string) => string,
+      tc: ContentTranslationFunction,
     ) => VisualizationSettings[T];
   };
 }
@@ -146,9 +150,11 @@ const visualizationTranslationConfig: Partial<
   Record<VisualizationDisplay, SpecificTranslationConfig>
 > = {
   pie: {
-    value: "ignore",
+    settingsKey: "pie.rows",
+    isValueInSettings: (pieRows = [], value) => {
+      return pieRows.some((row) => row.originalName === value);
+    },
     visualizationSettings: {
-      key: "pie.rows",
       updater: (pieRows, tc) => {
         if (!pieRows) {
           return pieRows;
@@ -156,6 +162,27 @@ const visualizationTranslationConfig: Partial<
           return pieRows.map((row) => {
             return I.updateIn(row, ["name"], (name) => tc(name));
           });
+        }
+      },
+    },
+  },
+  bar: {
+    settingsKey: "series_settings",
+    isValueInSettings: (seriesSettings = {}, value) => {
+      return typeof value === "string" && value in seriesSettings;
+    },
+    visualizationSettings: {
+      updater: (seriesSettings, tc) => {
+        if (!seriesSettings) {
+          return seriesSettings;
+        } else {
+          const newSetting = _.mapObject(seriesSettings, (value) => {
+            return {
+              ...value,
+              title: tc(value.title),
+            };
+          }) as Record<string, SeriesSettings>;
+          return newSetting;
         }
       },
     },
@@ -179,8 +206,15 @@ export const translateFieldValuesInSeries = (
       row.map((value) => {
         const translationConfig =
           visualizationTranslationConfig[singleSeries.card?.display];
-        if (translationConfig) {
-          return translationConfig.value === "translate" ? tc(value) : value;
+        if (translationConfig?.isValueInSettings) {
+          const setting: any =
+            singleSeries.card.visualization_settings[
+              translationConfig.settingsKey
+            ];
+          // Only translate if the value is not already in the settings
+          return translationConfig.isValueInSettings(setting, value)
+            ? value
+            : tc(value);
         }
 
         return tc(value);
@@ -212,6 +246,7 @@ export const translateCardNames = (
 
 export const useTranslateSeries = (series: Series) => {
   const tc = useTranslateContent();
+  // const dictionary = useListContentTranslations();
   return useMemo(() => {
     if (!hasTranslations(tc)) {
       return series;
@@ -240,28 +275,16 @@ function translateVizSettings(
   series: Series,
   tc: ContentTranslationFunction,
 ): Series {
-  const settings = series.some((singleSeries) => singleSeries.card !== null)
-    ? getComputedSettingsForSeries(series)
-    : undefined;
   return series.map((singleSeries) => {
     const translationConfig =
       visualizationTranslationConfig[singleSeries.card?.display];
 
     if (translationConfig) {
-      return I.setIn(
+      return I.updateIn(
         singleSeries,
-        [
-          "card",
-          "visualization_settings",
-          translationConfig.visualizationSettings.key,
-        ],
-        translationConfig.visualizationSettings.updater(
-          settings
-            ? // Type here is union of all possible setting properties, but we know each type in the translationConfig, so we can relax the type here.
-              (settings[translationConfig.visualizationSettings.key] as any)
-            : undefined,
-          tc,
-        ),
+        ["card", "visualization_settings", translationConfig.settingsKey],
+        (settings) =>
+          translationConfig.visualizationSettings.updater(settings, tc),
       );
     }
 
