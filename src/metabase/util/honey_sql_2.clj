@@ -154,7 +154,10 @@
    & components    :- [:* {:min 1} [:maybe [:or :keyword ms/NonBlankString [:fn identifier?]]]]]
   [::identifier
    identifier-type
-   (vec (for [component components
+   (vec (for [component (if (string? (first components))
+                          (clojure.core/concat (str/split (first components)  #"\.")
+                                               (rest components))
+                          components)
               component (if (identifier? component)
                           (last component)
                           [component])
