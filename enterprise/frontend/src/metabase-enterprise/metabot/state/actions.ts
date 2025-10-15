@@ -3,6 +3,7 @@ import { push } from "react-router-redux";
 import { P, match } from "ts-pattern";
 
 import { createAsyncThunk } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { addUndo } from "metabase/redux/undo";
 import { getIsEmbedding } from "metabase/selectors/embed";
 import { getUser } from "metabase/selectors/user";
@@ -256,21 +257,25 @@ export const sendAgentRequest = createAsyncThunk<
         },
       );
 
-      const doc: DocumentContent = {
-        type: "doc",
-        content: [
-          {
-            type: "paragraph",
-            content: [
-              {
-                type: "text",
-                text: response.text ?? "",
-              },
-            ],
-          },
-        ],
-      };
-      (window as any).setDocumentContent(doc);
+      if (window.location.pathname === "/megabot/new") {
+        const doc: DocumentContent = {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [
+                {
+                  type: "text",
+                  text: response.text ?? "",
+                },
+              ],
+            },
+          ],
+        };
+        (window as any).setDocumentContent(doc);
+      } else {
+        dispatch(push(Urls.newResearch()) as any);
+      }
 
       if (error) {
         throw error;

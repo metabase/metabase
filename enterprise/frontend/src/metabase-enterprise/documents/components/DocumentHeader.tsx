@@ -89,7 +89,7 @@ export const DocumentHeader = ({
               onTitleChange(value);
             }
           }}
-          placeholder={t`New document`}
+          placeholder={t`New plan`}
           readOnly={!canWrite}
           maxLength={DOCUMENT_TITLE_MAX_LENGTH}
           classNames={{ input: S.titleInput }}

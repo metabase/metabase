@@ -62,7 +62,7 @@ export const getMetabotInitialState = (): MetabotState => ({
   },
   toolCalls: [],
   experimental: {
-    deepResearch: false,
+    deepResearch: true,
     metabotReqIdOverride: undefined,
     profileOverride: undefined,
   },
