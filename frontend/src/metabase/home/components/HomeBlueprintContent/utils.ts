@@ -29,23 +29,25 @@ export const getAvailableBlueprint = (
 ): {
   database: Database;
   service: DatabaseBlueprintName;
+  isAlreadyBlueprinted: boolean;
 } => {
   const database = databases.find((database) =>
     DATABASE_BLUEPRINTS.some((key) => {
       const blueprintsData = database.settings?.blueprints;
       const blueprint = blueprintsData?.[key];
 
-      return blueprint != null && !blueprintsData?.["blueprinted"];
+      return blueprint != null;
     }),
+  )!;
+
+  const blueprintsData = database?.settings?.blueprints;
+  const blueprintKey = DATABASE_BLUEPRINTS.find(
+    (key) => blueprintsData?.[key],
   )!;
 
   return {
     database,
-    service:
-      SERVICE_BY_BLUEPRINT_KEY[
-        DATABASE_BLUEPRINTS.find(
-          (key) => database?.settings?.blueprints?.[key],
-        )!
-      ],
+    service: SERVICE_BY_BLUEPRINT_KEY[blueprintKey],
+    isAlreadyBlueprinted: !!blueprintsData?.["blueprinted"],
   };
 };

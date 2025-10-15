@@ -162,11 +162,13 @@ export interface ListDatabasesResponse {
   total: number;
 }
 
-export interface RunBlueprintResponse {
+export interface GetBlueprintResponse {
   document?: Document;
   dashboard?: Dashboard;
   tables: Table[];
 }
+
+export interface RunBlueprintResponse extends GetBlueprintResponse {}
 
 export interface ListDatabaseIdFieldsRequest {
   id: DatabaseId;

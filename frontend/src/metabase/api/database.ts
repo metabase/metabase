@@ -9,6 +9,7 @@ import type {
   Database,
   DatabaseId,
   Field,
+  GetBlueprintResponse,
   GetDatabaseHealthResponse,
   GetDatabaseMetadataRequest,
   GetDatabaseRequest,
@@ -81,92 +82,101 @@ export const databaseApi = Api.injectEndpoints({
       // invalidate health check in the case db connection info changes
       providesTags: (_, __, id) => [idTag("database", id)],
     }),
+    getBlueprint: builder.query<
+      GetBlueprintResponse,
+      { id: DatabaseId; blueprint: "salesforce" | "stripe" }
+    >({
+      query: ({ id, blueprint }) => ({
+        method: "GET",
+        url: `/api/database/${id}/blueprints/${blueprint}`,
+      }),
+    }),
     runBlueprint: builder.mutation<
       RunBlueprintResponse,
       { id: DatabaseId; blueprint: "salesforce" | "stripe" }
     >({
-      // query: ({ id, blueprint }) => ({
-      //   method: "POST",
-      //   url: `/api/database/${id}/blueprints/${blueprint}`,
-      // }),
-      queryFn: async ({ id, blueprint }) => {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+      query: ({ id, blueprint }) => ({
+        method: "POST",
+        url: `/api/database/${id}/blueprints/${blueprint}`,
+      }),
+      // queryFn: async ({ id, blueprint }) => {
+      //   await new Promise((resolve) => setTimeout(resolve, 1000));
 
-        return {
-          data: {
-            dashboard: createMockDashboard({
-              id: 1,
-              name: `Starter ${blueprint} dashboard`,
-              description:
-                "Here's a description of the metrics that are in here.",
-            }),
-            document: createMockDocument({
-              id: 1,
-              name: `Starter ${blueprint} document`,
-            }),
-            tables: [
-              createMockTable({
-                id: 1,
-                db_id: id,
-                name: "Accounts Accounts Accounts Accounts Accounts Accounts Accounts",
-                display_name:
-                  "Accounts AccountsAccountsAc countsAccountsAccountsAccounts Accounts",
-                description:
-                  "Customer account information Customer account informationCustomer account information",
-              }),
-              createMockTable({
-                id: 2,
-                db_id: id,
-                name: "Opportunities",
-                display_name: "Opportunities",
-                description: "Sales opportunities and deals",
-              }),
-              createMockTable({
-                id: 3,
-                db_id: id,
-                name: "Contacts",
-                display_name: "Contacts",
-                description: "Contact information",
-              }),
-              createMockTable({
-                id: 4,
-                db_id: id,
-                name: "Leads",
-                display_name: "Leads",
-                description: "Potential customers",
-              }),
-              createMockTable({
-                id: 5,
-                db_id: id,
-                name: "Cases",
-                display_name: "Cases",
-                description: "Customer support cases",
-              }),
-              createMockTable({
-                id: 6,
-                db_id: id,
-                name: "Products",
-                display_name: "Products",
-                description: "Product catalog",
-              }),
-              createMockTable({
-                id: 7,
-                db_id: id,
-                name: "Campaigns",
-                display_name: "Campaigns",
-                description: "Marketing campaigns",
-              }),
-              createMockTable({
-                id: 8,
-                db_id: id,
-                name: "Tasks",
-                display_name: "Tasks",
-                description: "Task tracking",
-              }),
-            ],
-          },
-        };
-      },
+      //   return {
+      //     data: {
+      //       dashboard: createMockDashboard({
+      //         id: 1,
+      //         name: `Starter ${blueprint} dashboard`,
+      //         description:
+      //           "Here's a description of the metrics that are in here.",
+      //       }),
+      //       document: createMockDocument({
+      //         id: 1,
+      //         name: `Starter ${blueprint} document`,
+      //       }),
+      //       tables: [
+      //         createMockTable({
+      //           id: 1,
+      //           db_id: id,
+      //           name: "Accounts Accounts Accounts Accounts Accounts Accounts Accounts",
+      //           display_name:
+      //             "Accounts AccountsAccountsAc countsAccountsAccountsAccounts Accounts",
+      //           description:
+      //             "Customer account information Customer account informationCustomer account information",
+      //         }),
+      //         createMockTable({
+      //           id: 2,
+      //           db_id: id,
+      //           name: "Opportunities",
+      //           display_name: "Opportunities",
+      //           description: "Sales opportunities and deals",
+      //         }),
+      //         createMockTable({
+      //           id: 3,
+      //           db_id: id,
+      //           name: "Contacts",
+      //           display_name: "Contacts",
+      //           description: "Contact information",
+      //         }),
+      //         createMockTable({
+      //           id: 4,
+      //           db_id: id,
+      //           name: "Leads",
+      //           display_name: "Leads",
+      //           description: "Potential customers",
+      //         }),
+      //         createMockTable({
+      //           id: 5,
+      //           db_id: id,
+      //           name: "Cases",
+      //           display_name: "Cases",
+      //           description: "Customer support cases",
+      //         }),
+      //         createMockTable({
+      //           id: 6,
+      //           db_id: id,
+      //           name: "Products",
+      //           display_name: "Products",
+      //           description: "Product catalog",
+      //         }),
+      //         createMockTable({
+      //           id: 7,
+      //           db_id: id,
+      //           name: "Campaigns",
+      //           display_name: "Campaigns",
+      //           description: "Marketing campaigns",
+      //         }),
+      //         createMockTable({
+      //           id: 8,
+      //           db_id: id,
+      //           name: "Tasks",
+      //           display_name: "Tasks",
+      //           description: "Task tracking",
+      //         }),
+      //       ],
+      //     },
+      //   };
+      // },
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [idTag("database", id)]),
     }),
@@ -409,6 +419,7 @@ export const {
   useLazyListDatabaseSchemaTablesQuery,
   useListVirtualDatabaseTablesQuery,
   useListDatabaseIdFieldsQuery,
+  useGetBlueprintQuery,
   useRunBlueprintMutation,
   useCreateDatabaseMutation,
   useUpdateDatabaseMutation,

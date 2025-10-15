@@ -39,7 +39,7 @@ export const BlueprintTableItemCard = ({ table }: { table: Table }) => {
             lh="16px"
             lineClamp={1}
           >
-            {table.name}
+            {table.display_name ?? table.name}
           </Title>
           {table.description && (
             <Text

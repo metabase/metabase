@@ -9,7 +9,7 @@ import { HomeGreeting } from "../HomeGreeting";
 import { BlueprintCardPrompt } from "./BlueprintCardPrompt";
 import { getAvailableBlueprint } from "./utils";
 import { capitalize } from "metabase/lib/formatting";
-import { useRunBlueprintMutation } from "metabase/api";
+import { useRunBlueprintMutation, useGetBlueprintQuery } from "metabase/api";
 import { BlueprintContentCard } from "./BlueprintContentCard";
 
 export const HomeBlueprintContent = ({
@@ -17,23 +17,42 @@ export const HomeBlueprintContent = ({
 }: {
   databases: Database[];
 }) => {
-  const { database, service } = useMemo(() => {
+  const { database, service, isAlreadyBlueprinted } = useMemo(() => {
     return getAvailableBlueprint(databases);
   }, [databases]);
 
-  const [runBlueprint, { isLoading, data }] = useRunBlueprintMutation();
+  const { data: existingBlueprintData, isLoading: isFetchingBlueprint } =
+    useGetBlueprintQuery(
+      {
+        id: database?.id!,
+        blueprint: service,
+      },
+      {
+        skip: !isAlreadyBlueprinted || !database?.id || !service,
+      },
+    );
+
+  const [runBlueprint, { isLoading: isCreatingBlueprint, data: newBlueprintData }] =
+    useRunBlueprintMutation();
+
+  const blueprintData = isAlreadyBlueprinted
+    ? existingBlueprintData
+    : newBlueprintData;
+  const isLoading = isAlreadyBlueprinted
+    ? isFetchingBlueprint
+    : isCreatingBlueprint;
 
   return (
     <Flex direction="column" gap="md" maw="760px" mx="auto">
       <HomeGreeting
-        messageOverride={t`It's a beautiful day to look at some ${capitalize(service)} data.`}
+        messageOverride={t`It's a beautiful day to look at some ${service ? capitalize(service) : ""} data.`}
       />
       <Box mt="lg">
-        {data ? (
+        {blueprintData ? (
           <BlueprintContentCard
-            document={data.document}
-            dashboard={data.dashboard}
-            tables={data.tables}
+            document={blueprintData.document}
+            dashboard={blueprintData.dashboard}
+            tables={blueprintData.tables}
           />
         ) : (
           <BlueprintCardPrompt
