@@ -134,6 +134,9 @@ export const DocumentPage = ({
 
   const { data: commentsData } = useListCommentsQuery(
     getListCommentsQuery(documentData),
+    {
+      pollingInterval: 100, // Poll every 100ms
+    },
   );
   const hasComments =
     !!commentsData?.comments && commentsData.comments.length > 0;
