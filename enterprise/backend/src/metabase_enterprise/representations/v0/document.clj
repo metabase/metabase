@@ -10,6 +10,7 @@
    [metabase.config.core :as config]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -88,14 +89,14 @@
    ref-index]
   (let [yaml-content (if (= "text/markdown+vnd.prose-mirror" content_type)
                        (yaml/parse-string (markdown->yaml content))
-                       content_type)
+                       content)
         yaml-content (v0-pm/replace-refs yaml-content ref-index)]
     {:entity_id (or entity-id
                     (v0-common/generate-entity-id representation))
      :creator_id (or api/*current-user-id*
                      config/internal-mb-user-id)
      :name document-name
-     :document yaml-content
+     :document (json/encode yaml-content)
      :content_type "application/json+vnd.prose-mirror"
      :collection_id (v0-common/find-collection-id collection)}))
 
