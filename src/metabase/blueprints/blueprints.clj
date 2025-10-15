@@ -5,6 +5,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [metabase.api.common :as api]
    [metabase.models.serialization :as serdes]
    [toucan2.core :as t2]))
 
@@ -54,24 +55,6 @@
                                                               {:blueprints {:is-salesforce? true
                                                                             :salesforce-schema schema}})}))))))
 
-(defn create-salesforce-cards! [db tables]
-  ;; get the serialized cards from the salesforce dashboard
-  ;; deserialize them into clojure objects
-  ;; patch them with the db/table references
-  ;; toucan insert them
-  ;; return them for use in dashboard creation
-  (tap> "creating salesforce cards")
-  [:card1 :card2])
-
-(defn create-salesforce-dashboard! [db cards]
-  (tap> "creating salesforce dashboard")
-  ;; get the serialized dashboard?
-  ;; deserialize it into a clojure object
-  ;; patch it with the db/cards references
-  ;; toucan insert it
-  ;; return the id for use in the api response
-  {})
-
 (defn patch-card
   [yaml-file db destination-schema which->table {:keys [collection-id user-id]}]
   (let [card (-> (yaml/parse-string (slurp (io/resource yaml-file)))
@@ -84,23 +67,71 @@
                                     ;; todo: patch table in new schema
                                     ({"<<db>>" (:name db)
                                       "<<destination_schema>>" destination-schema} x
-                                     (str/replace x #"<<target\.(.*)>>"
-                                                  (fn [[whole which]]
-                                                    (or (which->table which)
-                                                        (throw (ex-info (str "Can't replace " whole) {}))))))
+                                                                                   (str/replace x #"<<target\.(.*)>>"
+                                                                                                (fn [[whole which]]
+                                                                                                  (or (which->table which)
+                                                                                                      (throw (ex-info (str "Can't replace " whole) {}))))))
                                     (sequential? x)
                                     (vec x)
                                     :else x))
-                            query
-                            )))
+                            query)))
                  (update :dataset_query serdes/import-mbql)
                  (update :visualization_settings serdes/import-visualization-settings)
                  (assoc :collection_id collection-id
-                        :creator_id user-id)
-                 )]
+                        :creator_id user-id))]
     card))
 
+(defn create-salesforce-cards! [db tables collection-id transforms]
+  ;; get the serialized cards from the salesforce dashboard
+  ;; deserialize them into clojure objects
+  ;; patch them with the db/table references
+  ;; toucan insert them
+  ;; return them for use in dashboard creation
+  ;; (tap> transforms)
+  ;; (tap> (keys transforms))
+  ;; (tap> tables)
+  (let [salesforce-folder "blueprints/salesforce/cards/"
+        salesforce-files (-> (io/resource salesforce-folder)
+                             io/file
+                             file-seq)]
+    (doseq [file salesforce-files]
+      (when (not= (.getName file) "cards")
+        (let [file-name (.getName file)
+              patch-file (str salesforce-folder file-name)
+              dest-schema (:schema (first tables))
+              x (map (fn [[k v]]
+                      ;;  (tap> {:k k})
+                      ;;  (tap> {:v v})
+                       {k (:name (:target v))})
+                     transforms)
+              which->table (apply merge x)
+              _ (tap> which->table)
+              card (patch-card patch-file db dest-schema which->table {:collection-id collection-id :user-id api/*current-user-id*})]
+          (t2/insert! :model/Card card))))))
+
 (comment
+
+  (let [salesforce-folder "blueprints/salesforce/cards/"
+        salesforce-files (-> (io/resource salesforce-folder)
+                             io/file
+                             file-seq)]
+    (doseq [file salesforce-files]
+      (when (not= (.getName file) "cards")
+        (tap> (.getPath file)))))
+
+  (let [salesforce-folder "blueprints/salesforce/cards/"
+        salesforce-files (-> (io/resource salesforce-folder)
+                             io/file
+                             file-seq)]
+    (doseq [file salesforce-files]
+      (when (not= (.getName file) "cards")
+        (let [file-name (.getName file)
+              patch-file (str salesforce-folder file-name)
+              dest-schema (:schema (first tables))
+              which->table {"account" "transformed_account"
+                            "opportunity" "transformed_opportunity"}
+              card (patch-card patch-file db dest-schema which->table {:collection-id collection-id :user-id api/*current-user-id*})]
+          (tap> card)))))
 
   (slurp (io/resource "blueprints/salesforce/cards/customer_base_by_country.yaml"))
   ;; yaml file
@@ -119,8 +150,25 @@
                             {"account" "transformed_account"
                              "opportunity" "transformed_opportunity"} ;; output table names
                             {:collection-id nil :user-id 1})))
+
   (t2/insert! :model/Card *1)
-  )
+
+  (patch-card "blueprints/salesforce/cards/customer_base_by_country.yaml"
+              "analytics local" ;; db name
+              "transform476140" ;; destination schema might need origin schema
+              {"account" "transformed_account"} ;; output table names
+              {:collection-id nil :user-id 1})
+
+  (tap> 1))
+
+(defn create-salesforce-dashboard! [db cards]
+  (tap> "creating salesforce dashboard")
+  ;; get the serialized dashboard?
+  ;; deserialize it into a clojure object
+  ;; patch it with the db/cards references
+  ;; toucan insert it
+  ;; return the id for use in the api response
+  {})
 
 (comment
 

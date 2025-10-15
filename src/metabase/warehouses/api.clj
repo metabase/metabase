@@ -1450,7 +1450,8 @@
                                (-> (:settings db)
                                    (assoc-in [:blueprints :blueprinted] true)
                                    (assoc-in [:blueprints :salesforce-transforms] table-ids)))})
-      response)))
+      {:tables response
+       :transforms transforms})))
 
 (defn create-salesforce-collection!
   "Creates a collection for salesforce blueprints"
@@ -1480,9 +1481,12 @@
         settings (:settings db)]
     (cond
       (and (= blueprint-type :salesforce) (:is-salesforce? (:blueprints settings)))
-      (let [salesforce-transform-tables (create-salesforce-transforms! db-id)
+      (let [resp (create-salesforce-transforms! db-id)
+            transforms (:transforms (:transforms resp))
+            salesforce-transform-tables (:tables resp)
             salesforce-collection (create-salesforce-collection!)
-            _salesforce-cards (blueprints/create-salesforce-cards! db salesforce-transform-tables)
+            coll-id (:id salesforce-collection)
+            _salesforce-cards (blueprints/create-salesforce-cards! db salesforce-transform-tables coll-id transforms)
             #_salesforce-dashboard #_(blueprints/create-salesforce-dashboard! db salesforce-cards)]
         {:tables salesforce-transform-tables
          :collection salesforce-collection
