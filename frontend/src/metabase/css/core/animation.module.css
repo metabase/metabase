@@ -91,17 +91,6 @@
   transform-origin: center center;
 }
 
-/* This improves a11y and helps e2e testing */
-@media (prefers-reduced-motion: reduce) {
-  .ProgressBarAnimation,
-  .popInFromBottom,
-  .slideLeft,
-  .popToast,
-  .fadeIn {
-    animation: none;
-  }
-}
-
 @keyframes bubble-rise {
   0% {
     transform: translateY(0);
@@ -125,4 +114,16 @@
 }
 .bubble3 {
   animation-delay: 1s;
+}
+
+/* This improves a11y and helps e2e testing */
+@media (prefers-reduced-motion: reduce) {
+  .ProgressBarAnimation,
+  .popInFromBottom,
+  .slideLeft,
+  .popToast,
+  .fadeIn,
+  .bubble {
+    animation: none;
+  }
 }

@@ -66,7 +66,7 @@ const Beaker = () => {
       />
 
       <circle
-        className="bubble bubble1"
+        className={`${styles.bubble} ${styles.bubble1}`}
         cx="7"
         cy="8"
         r="0.8"
@@ -75,7 +75,7 @@ const Beaker = () => {
         strokeWidth="1"
       />
       <circle
-        className="bubble bubble2"
+        className={`${styles.bubble} ${styles.bubble2}`}
         cx="9"
         cy="8.5"
         r="0.8"
@@ -84,7 +84,7 @@ const Beaker = () => {
         strokeWidth="1"
       />
       <circle
-        className="bubble bubble3"
+        className={`${styles.bubble} ${styles.bubble3}`}
         cx="8"
         cy="7.5"
         r="0.6"
