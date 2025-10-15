@@ -3,11 +3,11 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 /* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
-import { useSdkDashboardContext } from "embedding-sdk/components/public/dashboard/context";
-/* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
-import { transformSdkQuestion } from "embedding-sdk/lib/transform-question";
+import { useToast } from "metabase/common/hooks/use-toast/use-toast";
+import { useSdkDashboardContext } from "embedding-sdk-bundle/components/public/dashboard/context";
 import { editQuestion } from "metabase/dashboard/actions";
 import { useDashboardContext } from "metabase/dashboard/context";
+import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
 import type { DashboardCardCustomMenuItem } from "metabase/embedding-sdk/types/plugins";
 import { color } from "metabase/lib/colors";
 import { useDispatch } from "metabase/lib/redux";
@@ -25,6 +25,7 @@ import { canDownloadResults, canEditQuestion } from "./utils";
 // eslint-disable-next-line no-color-literals
 const BROWSER_TRANSPARENT = "rgba(0, 0, 0, 0)";
 const TRANSPARENT_LITERAL = color("transparent");
+
 function getEffectiveBackgroundColor(element: HTMLElement): string | undefined {
   let el: HTMLElement | null = element;
   while (el) {
@@ -60,6 +61,7 @@ type DashCardMenuItemsProps = {
   onEditVisualization?: () => void;
   dashcardId?: DashCardId;
   cardRootRef?: React.RefObject<HTMLElement>;
+  canEdit?: boolean;
 };
 export const DashCardMenuItems = ({
   question,
@@ -69,10 +71,12 @@ export const DashCardMenuItems = ({
   onEditVisualization,
   dashcardId,
   cardRootRef,
+  canEdit,
 }: DashCardMenuItemsProps) => {
   const dispatch = useDispatch();
   const [copied, setCopied] = useState(false);
   const [copying, setCopying] = useState(false);
+  const [sendToast] = useToast();
 
   const {
     onEditQuestion = (question, mode = "notebook") =>
@@ -95,14 +99,14 @@ export const DashCardMenuItems = ({
       key: string;
     })[] = [];
 
-    if (withEditLink && onEditVisualization) {
+    if (withEditLink && canEdit && onEditVisualization) {
       items.push({
         key: "MB_EDIT_VISUALIZER_QUESTION",
         iconName: "lineandbar",
         label: t`Edit visualization`,
         onClick: onEditVisualization,
       });
-    } else if (withEditLink && canEditQuestion(question)) {
+    } else if (withEditLink && canEdit && canEditQuestion(question)) {
       const type = question.type();
       if (type === "question") {
         items.push({
@@ -140,11 +144,20 @@ export const DashCardMenuItems = ({
         closeMenuOnClick: false,
       });
       // Add Copy as image menu item after Download results
-      if (cardRootRef?.current) {
+      // Disable for tables and pivot tables since they only show visible rows
+      if (
+        cardRootRef?.current &&
+        question.display() !== "table" &&
+        question.display() !== "pivot"
+      ) {
         items.push({
           key: "MB_COPY_AS_IMAGE",
-          iconName: "clipboard",
-          label: copied ? t`Copied!` : copying ? t`Copying…` : t`Copy as image`,
+          iconName: copying ? "hourglass" : "copy",
+          label: copied
+            ? t`Copied!`
+            : copying
+              ? t`Copying…`
+              : t`Copy to clipboard`,
           onClick: async () => {
             setCopying(true);
             try {
@@ -169,14 +182,27 @@ export const DashCardMenuItems = ({
                       }),
                     ]);
                     setCopied(true);
+                    sendToast({
+                      message: t`Chart copied to clipboard`,
+                      icon: "check",
+                      timeout: 3000,
+                    });
                     setTimeout(() => setCopied(false), 2000);
                   } catch (err) {
-                    alert(
-                      "Failed to copy image to clipboard. Your browser may not support this feature.",
-                    );
+                    sendToast({
+                      message: t`Failed to copy image to clipboard. Your browser may not support this feature.`,
+                      icon: "warning",
+                      timeout: 5000,
+                    });
                   }
                 }
               }, "image/png");
+            } catch (error) {
+              sendToast({
+                message: t`Failed to generate image. Please try again.`,
+                icon: "warning",
+                timeout: 5000,
+              });
             } finally {
               setCopying(false);
             }
@@ -224,6 +250,8 @@ export const DashCardMenuItems = ({
     cardRootRef,
     copied,
     copying,
+    sendToast,
+    canEdit,
   ]);
 
   return menuItems.map((item) => {

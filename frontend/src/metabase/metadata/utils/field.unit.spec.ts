@@ -87,7 +87,7 @@ describe("getFieldCurrency", () => {
       },
     });
 
-    expect(getFieldCurrency(field)).toBe("EUR");
+    expect(getFieldCurrency(field.settings)).toBe("EUR");
   });
 
   it("returns currency from global settings when field settings are not available", () => {
@@ -99,7 +99,7 @@ describe("getFieldCurrency", () => {
 
     const field = createMockField();
 
-    expect(getFieldCurrency(field)).toBe("GBP");
+    expect(getFieldCurrency(field.settings)).toBe("GBP");
   });
 
   it("returns USD as default when no currency is specified", () => {
@@ -107,7 +107,7 @@ describe("getFieldCurrency", () => {
 
     const field = createMockField();
 
-    expect(getFieldCurrency(field)).toBe("USD");
+    expect(getFieldCurrency(field.settings)).toBe("USD");
   });
 
   it("prioritizes field settings over global settings", () => {
@@ -123,7 +123,7 @@ describe("getFieldCurrency", () => {
       },
     });
 
-    expect(getFieldCurrency(field)).toBe("JPY");
+    expect(getFieldCurrency(field.settings)).toBe("JPY");
   });
 });
 
@@ -132,7 +132,7 @@ describe("getFieldDisplayName", () => {
     const field = createMockField({
       name: "Name",
       display_name: "My field",
-      dimensions: [{ type: "internal", name: "Dimension Name" }],
+      dimensions: [{ id: 1, type: "internal", name: "Dimension Name" }],
     });
 
     expect(getFieldDisplayName(field)).toBe("Dimension Name");

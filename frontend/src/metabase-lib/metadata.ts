@@ -1,6 +1,6 @@
 import * as ML from "cljs/metabase.lib.js";
-import * as ML_MetadataCalculation from "cljs/metabase.lib.metadata.calculation";
 import type {
+  Field as ApiField,
   CardId,
   CardType,
   DatabaseId,
@@ -54,13 +54,6 @@ export function metadataProvider(
   metadata: Metadata,
 ): MetadataProvider {
   return ML.metadataProvider(databaseId, metadata);
-}
-
-/**
- * @deprecated use displayInfo instead
- */
-export function displayName(query: Query, clause: Clause): string {
-  return ML_MetadataCalculation.display_name(query, clause);
 }
 
 declare function DisplayInfoFn(
@@ -194,7 +187,7 @@ export function returnedColumns(
 export function fromLegacyColumn(
   query: Query,
   stageIndex: number,
-  columnOrField: DatasetColumn | Field,
+  columnOrField: DatasetColumn | Field | ApiField,
 ): ColumnMetadata {
   return ML.legacy_column__GT_metadata(query, stageIndex, columnOrField);
 }

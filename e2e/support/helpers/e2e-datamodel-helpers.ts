@@ -7,6 +7,7 @@ import type {
 
 export const DataModel = {
   visit,
+  get: getDataModel,
   TablePicker: {
     get: getTablePicker,
     getDatabase: getTablePickerDatabase,
@@ -21,7 +22,9 @@ export const DataModel = {
     get: getTableSection,
     getNameInput: getTableNameInput,
     getDescriptionInput: getTableDescriptionInput,
+    getQueryBuilderLink: getTableQueryBuilderLink,
     getSortButton: getTableSortButton,
+    getSortDoneButton: getTableSortDoneButton,
     getSortOrderInput: getTableSortOrderInput,
     getSyncOptionsButton: getTableSyncOptionsButton,
     getField: getTableSectionField,
@@ -50,6 +53,8 @@ export const DataModel = {
     getDisplayValuesFkTargetInput: getFieldDisplayValuesFkTargetInput,
     getUnfoldJsonInput: getFieldUnfoldJsonInput,
     getStyleInput: getFieldStyleInput,
+    getMiniBarChartToggle: getFieldMiniBarChartToggle,
+    getMultiplyByNumberInput: getFieldMultiplyByNumberInput,
     getPrefixInput: getFieldPrefixInput,
     getSuffixInput: getFieldSuffixInput,
   },
@@ -64,11 +69,13 @@ function visit({
   schemaId,
   tableId,
   fieldId,
+  skipWaiting = false,
 }: {
   databaseId?: DatabaseId;
   fieldId?: FieldId;
   schemaId?: SchemaId;
   tableId?: TableId;
+  skipWaiting?: boolean;
 } = {}) {
   cy.intercept("GET", "/api/database").as("datamodel/visit/databases");
   cy.intercept("GET", "/api/database/*").as("datamodel/visit/database");
@@ -90,13 +97,16 @@ function visit({
       `/admin/datamodel/database/${databaseId}/schema/${schemaId}/table/${tableId}/field/${fieldId}`,
     );
 
-    cy.wait([
-      "@datamodel/visit/databases",
-      "@datamodel/visit/database",
-      "@datamodel/visit/schemas",
-      "@datamodel/visit/schema",
-      "@datamodel/visit/metadata",
-    ]);
+    if (!skipWaiting) {
+      cy.wait([
+        "@datamodel/visit/databases",
+        "@datamodel/visit/database",
+        "@datamodel/visit/schemas",
+        "@datamodel/visit/schema",
+        "@datamodel/visit/metadata",
+      ]);
+    }
+
     return;
   }
 
@@ -104,37 +114,52 @@ function visit({
     cy.visit(
       `/admin/datamodel/database/${databaseId}/schema/${schemaId}/table/${tableId}`,
     );
-    cy.wait([
-      "@datamodel/visit/databases",
-      "@datamodel/visit/schemas",
-      "@datamodel/visit/schema",
-      "@datamodel/visit/metadata",
-    ]);
+
+    if (!skipWaiting) {
+      cy.wait([
+        "@datamodel/visit/databases",
+        "@datamodel/visit/schemas",
+        "@datamodel/visit/schema",
+        "@datamodel/visit/metadata",
+      ]);
+    }
+
     return;
   }
 
   if (databaseId != null && schemaId != null) {
     cy.visit(`/admin/datamodel/database/${databaseId}/schema/${schemaId}`);
-    cy.wait([
-      "@datamodel/visit/databases",
-      "@datamodel/visit/schemas",
-      "@datamodel/visit/schema",
-    ]);
+
+    if (!skipWaiting) {
+      cy.wait([
+        "@datamodel/visit/databases",
+        "@datamodel/visit/schemas",
+        "@datamodel/visit/schema",
+      ]);
+    }
     return;
   }
 
   if (databaseId != null) {
     cy.visit(`/admin/datamodel/database/${databaseId}`);
-    cy.wait([
-      "@datamodel/visit/databases",
-      "@datamodel/visit/schemas",
-      "@datamodel/visit/schema",
-    ]);
+
+    if (!skipWaiting) {
+      cy.wait([
+        "@datamodel/visit/databases",
+        "@datamodel/visit/schemas",
+        "@datamodel/visit/schema",
+      ]);
+    }
+
     return;
   }
 
   cy.visit("/admin/datamodel");
   cy.wait(["@datamodel/visit/databases"]);
+}
+
+function getDataModel() {
+  return cy.findByTestId("data-model");
 }
 
 /** table picker helpers */
@@ -190,6 +215,10 @@ function getTableNameInput() {
   return getTableSection().findByPlaceholderText("Give this table a name");
 }
 
+function getTableQueryBuilderLink() {
+  return getTableSection().findByLabelText("Go to this table");
+}
+
 function getTableDescriptionInput() {
   return getTableSection().findByPlaceholderText(
     "Give this table a description",
@@ -198,6 +227,10 @@ function getTableDescriptionInput() {
 
 function getTableSortButton() {
   return getTableSection().button(/Sorting/);
+}
+
+function getTableSortDoneButton() {
+  return getTableSection().button(/Done/);
 }
 
 function getTableSortOrderInput() {
@@ -307,6 +340,14 @@ function getFieldUnfoldJsonInput() {
   return getFieldSection().findByPlaceholderText(
     "Select whether to unfold JSON",
   );
+}
+
+function getFieldMiniBarChartToggle() {
+  return getFieldSection().findByLabelText("Show a mini bar chart");
+}
+
+function getFieldMultiplyByNumberInput() {
+  return getFieldSection().findByLabelText("Multiply by a number");
 }
 
 function getFieldStyleInput() {

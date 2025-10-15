@@ -8,7 +8,7 @@ import FormField from "metabase/common/components/FormField";
 import {
   QuestionPickerModal,
   getQuestionPickerValue,
-} from "metabase/common/components/QuestionPicker";
+} from "metabase/common/components/Pickers/QuestionPicker";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { Button, Icon } from "metabase/ui";
 

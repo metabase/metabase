@@ -19,7 +19,6 @@ import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Card,
   Dataset,
-  DatasetQuery,
   ParameterId,
   ParameterValuesMap,
   RawSeries,
@@ -28,7 +27,7 @@ import type {
 
 export interface PublicOrEmbeddedQuestionViewProps {
   initialized: boolean;
-  card: Card<DatasetQuery> | null;
+  card: Card | null;
   metadata: Metadata;
   result: Dataset | null;
   uuid: string;
@@ -41,7 +40,7 @@ export interface PublicOrEmbeddedQuestionViewProps {
   hide_parameters: string | null;
   theme: DisplayTheme | undefined;
   titled: boolean;
-  setCard: Dispatch<SetStateAction<Card<DatasetQuery> | null>>;
+  setCard: Dispatch<SetStateAction<Card | null>>;
   downloadsEnabled: EmbedResourceDownloadOptions;
 }
 
@@ -64,20 +63,23 @@ export function PublicOrEmbeddedQuestionView({
 }: PublicOrEmbeddedQuestionViewProps) {
   const question = new Question(card, metadata);
 
+  const isTable = question.display() === "table";
+  const downloadInFooter = !titled && isTable;
+
   const questionResultDownloadButton =
     result && downloadsEnabled.results ? (
       <PublicOrEmbeddedQuestionDownloadPopover
         className={cx(
           CS.m1,
-          CS.textMediumHover,
-          CS.hoverChild,
-          CS.hoverChildSmooth,
+          !downloadInFooter && CS.textMediumHover,
+          !downloadInFooter && CS.hoverChild,
+          !downloadInFooter && CS.hoverChildSmooth,
         )}
         question={question}
         result={result}
         uuid={uuid}
         token={token}
-        floating={!titled}
+        floating={!titled && !isTable}
       />
     ) : null;
 
@@ -102,7 +104,7 @@ export function PublicOrEmbeddedQuestionView({
       hide_parameters={hide_parameters}
       theme={theme}
       titled={titled}
-      headerButtons={questionResultDownloadButton}
+      headerButtons={downloadInFooter ? null : questionResultDownloadButton}
       // We don't support PDF downloads on questions
       pdfDownloadsEnabled={false}
     >
@@ -114,7 +116,6 @@ export function PublicOrEmbeddedQuestionView({
       >
         {() => (
           <Visualization
-            isNightMode={theme === "night"}
             error={result?.error?.toString()}
             rawSeries={rawSeries}
             className={cx(CS.full, CS.flexFull, CS.z1)}
@@ -140,6 +141,9 @@ export function PublicOrEmbeddedQuestionView({
             onChangeCardAndRun={() => {}}
             token={token}
             uuid={uuid}
+            tableFooterExtraButtons={
+              downloadInFooter ? questionResultDownloadButton : null
+            }
           />
         )}
       </LoadingAndErrorWrapper>

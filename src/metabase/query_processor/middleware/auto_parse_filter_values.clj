@@ -2,9 +2,10 @@
   "Middleware that parses filter clause values that come in as strings (e.g. from the API) to the appropriate type. E.g.
   a String value in a filter clause against a `:type/Integer` Field should get parsed into an integer.
 
-  Note that logic for automatically parsing temporal values lives in the `wrap-values-literals` middleware for
-  historic reasons. When time permits it should be moved into this middleware since it's really a separate
-  transformation from wrapping the value literals themselves."
+  Note that logic for automatically parsing temporal values lives in
+  the [[metabase.query-processor.middleware.wrap-value-literals]] middleware for historic reasons. When time permits
+  it should be moved into this middleware since it's really a separate transformation from wrapping the value literals
+  themselves."
   (:require
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -37,17 +38,17 @@
                       e)))))
 
 ;;; I guess we probably want this to work on join conditions as well as normal stage filters.
-(defn- auto-parse-filter-values-this-stage-or-join
-  [_query _path-type _path stage-or-join]
-  (lib.util.match/replace stage-or-join
+(defn- auto-parse-filter-values-in-clause
+  [_query _path-type _path clause]
+  (lib.util.match/match-lite clause
     [:value
-     (info :guard (fn [{:keys [effective-type], :as _value-options}]
+     (opts :guard (let [{:keys [effective-type]} opts]
                     (and effective-type
                          (not (isa? effective-type :type/Text)))))
      (v :guard string?)]
-    [:value info (parse-value-for-base-type v (:effective-type info))]))
+    [:value opts (parse-value-for-base-type v (:effective-type opts))]))
 
 (mu/defn auto-parse-filter-values :- ::lib.schema/query
   "Automatically parse String filter clause values to the appropriate type."
   [query :- ::lib.schema/query]
-  (lib.walk/walk query auto-parse-filter-values-this-stage-or-join))
+  (lib.walk/walk-clauses query auto-parse-filter-values-in-clause))

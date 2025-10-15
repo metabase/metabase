@@ -51,7 +51,7 @@
                               :set-timezone                    true
                               :standard-deviation-aggregations true
                               :test/jvm-timezone-setting       false
-                              :database-routing                false}]
+                              :database-routing                true}]
   (defmethod driver/database-supports? [:databricks feature] [_driver _feature _db] supported?))
 
 (defmethod sql-jdbc.sync/database-type->base-type :databricks
@@ -120,7 +120,7 @@
                        [:not [:startswith :t.table_catalog [:inline "__databricks"]]]]}
               :dialect (sql.qp/quote-style driver)))
 
-(defmethod driver/describe-database :databricks
+(defmethod driver/describe-database* :databricks
   [driver database]
   (try
     {:tables

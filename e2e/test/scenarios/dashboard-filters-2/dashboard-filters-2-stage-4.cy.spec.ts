@@ -282,9 +282,8 @@ describe("scenarios > dashboard > filters > query stages", () => {
           QSHelpers.getDashboardId().then((dashboardId) =>
             H.visitPublicDashboard(dashboardId),
           );
-          QSHelpers.waitForPublicDashboardData();
+          QSHelpers.waitForPublicDashboardData(4);
           QSHelpers.apply1stStageExplicitJoinFilter();
-          QSHelpers.waitForPublicDashboardData();
 
           H.getDashboardCard(0).within(() => {
             H.assertTableRowsCount(953);
@@ -300,9 +299,9 @@ describe("scenarios > dashboard > filters > query stages", () => {
               params: {},
             });
           });
-          QSHelpers.waitForEmbeddedDashboardData();
+          QSHelpers.waitForEmbeddedDashboardData(4);
           QSHelpers.apply1stStageExplicitJoinFilter();
-          QSHelpers.waitForEmbeddedDashboardData();
+          QSHelpers.waitForEmbeddedDashboardData(2);
 
           H.getDashboardCard(0).within(() => {
             H.assertTableRowsCount(953);
@@ -330,8 +329,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
           });
         });
 
-        // TODO: https://github.com/metabase/metabase/issues/46774
-        it.skip("1st stage implicit join (joined data source)", () => {
+        it("1st stage implicit join (joined data source)", () => {
           QSHelpers.setup1stStageImplicitJoinFromJoinFilter();
 
           QSHelpers.verifyDashcardRowsCount({
@@ -385,8 +383,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
           });
         });
 
-        // TODO: https://github.com/metabase/metabase/issues/46774
-        it.skip("1st stage breakout", () => {
+        it("1st stage breakout", () => {
           QSHelpers.setup1stStageBreakoutFilter();
 
           QSHelpers.verifyDashcardRowsCount({
@@ -445,9 +442,9 @@ describe("scenarios > dashboard > filters > query stages", () => {
           QSHelpers.getDashboardId().then((dashboardId) =>
             H.visitPublicDashboard(dashboardId),
           );
-          QSHelpers.waitForPublicDashboardData();
+          QSHelpers.waitForPublicDashboardData(4);
           QSHelpers.apply2ndStageCustomColumnFilter();
-          QSHelpers.waitForPublicDashboardData();
+          QSHelpers.waitForPublicDashboardData(2);
 
           H.getDashboardCard(0).within(() => {
             H.assertTableRowsCount(31);
@@ -463,9 +460,9 @@ describe("scenarios > dashboard > filters > query stages", () => {
               params: {},
             });
           });
-          QSHelpers.waitForEmbeddedDashboardData();
+          QSHelpers.waitForEmbeddedDashboardData(4);
           QSHelpers.apply2ndStageCustomColumnFilter();
-          QSHelpers.waitForEmbeddedDashboardData();
+          QSHelpers.waitForEmbeddedDashboardData(2);
 
           H.getDashboardCard(0).within(() => {
             H.assertTableRowsCount(31);
@@ -514,9 +511,9 @@ describe("scenarios > dashboard > filters > query stages", () => {
           QSHelpers.getDashboardId().then((dashboardId) =>
             H.visitPublicDashboard(dashboardId),
           );
-          QSHelpers.waitForPublicDashboardData();
+          QSHelpers.waitForPublicDashboardData(4);
           QSHelpers.apply2ndStageAggregationFilter();
-          QSHelpers.waitForPublicDashboardData();
+          QSHelpers.waitForPublicDashboardData(2);
 
           H.getDashboardCard(0).within(() => {
             H.assertTableRowsCount(6);
@@ -538,9 +535,9 @@ describe("scenarios > dashboard > filters > query stages", () => {
               params: {},
             });
           });
-          QSHelpers.waitForEmbeddedDashboardData();
+          QSHelpers.waitForEmbeddedDashboardData(4);
           QSHelpers.apply2ndStageAggregationFilter();
-          QSHelpers.waitForEmbeddedDashboardData();
+          QSHelpers.waitForEmbeddedDashboardData(2);
 
           H.getDashboardCard(0).within(() => {
             H.assertTableRowsCount(6);
@@ -595,9 +592,9 @@ describe("scenarios > dashboard > filters > query stages", () => {
           QSHelpers.getDashboardId().then((dashboardId) =>
             H.visitPublicDashboard(dashboardId),
           );
-          QSHelpers.waitForPublicDashboardData();
+          QSHelpers.waitForPublicDashboardData(4);
           QSHelpers.apply2ndStageBreakoutFilter();
-          QSHelpers.waitForPublicDashboardData();
+          QSHelpers.waitForPublicDashboardData(2);
 
           H.getDashboardCard(0).within(() => {
             H.assertTableRowsCount(1077);
@@ -619,9 +616,9 @@ describe("scenarios > dashboard > filters > query stages", () => {
               params: {},
             });
           });
-          QSHelpers.waitForEmbeddedDashboardData();
+          QSHelpers.waitForEmbeddedDashboardData(4);
           QSHelpers.apply2ndStageBreakoutFilter();
-          QSHelpers.waitForEmbeddedDashboardData();
+          QSHelpers.waitForEmbeddedDashboardData(2);
 
           H.getDashboardCard(0).within(() => {
             H.assertTableRowsCount(1077);

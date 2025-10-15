@@ -155,12 +155,14 @@ export class UnconnectedDataSelector extends Component {
     useOnlyAvailableSchema: PropTypes.bool,
     isInitiallyOpen: PropTypes.bool,
     tableFilter: PropTypes.func,
+    fieldFilter: PropTypes.func,
     canChangeDatabase: PropTypes.bool,
     containerClassName: PropTypes.string,
     canSelectModel: PropTypes.bool,
     canSelectTable: PropTypes.bool,
     canSelectMetric: PropTypes.bool,
     canSelectSavedQuestion: PropTypes.bool,
+    databaseIsDisabled: PropTypes.func,
 
     // from search entity list loader
     allError: PropTypes.bool,
@@ -218,7 +220,7 @@ export class UnconnectedDataSelector extends Component {
   // asynchronously loaded
   //
   _getComputedState(props, state) {
-    const { metadata, tableFilter } = props;
+    const { metadata, tableFilter, fieldFilter } = props;
     const {
       selectedDatabaseId,
       selectedSchemaId,
@@ -292,6 +294,10 @@ export class UnconnectedDataSelector extends Component {
 
     if (tables && tableFilter) {
       tables = tables.filter(tableFilter);
+    }
+
+    if (fields && fieldFilter) {
+      fields = fields.filter(fieldFilter);
     }
 
     return {
@@ -895,6 +901,7 @@ export class UnconnectedDataSelector extends Component {
       onBack: hasPreviousStep ? this.previousStep : null,
       hasFiltering: true,
       hasInitialFocus: true,
+      databaseIsDisabled: this.props.databaseIsDisabled,
     };
 
     switch (this.state.activeStep) {

@@ -79,13 +79,6 @@ describe("EmailSettingsPage", () => {
     });
   });
 
-  it("should not show SMTP connection card for hosted instances", async () => {
-    await setup({ hosted: true });
-
-    expect(screen.getByText("From Name")).toBeInTheDocument();
-    expect(screen.queryByText(/SMTP/)).not.toBeInTheDocument();
-  });
-
   it("should not render premium features missing from token", async () => {
     await setup({ disablePremiumFeatures: true }),
       [

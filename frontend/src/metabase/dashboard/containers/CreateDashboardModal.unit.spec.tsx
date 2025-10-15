@@ -57,7 +57,7 @@ function setup({ mockCreateDashboardResponse = true } = {}) {
   const settings = mockSettings({});
 
   if (mockCreateDashboardResponse) {
-    fetchMock.post(`path:/api/dashboard`, (url, options) => options.body);
+    fetchMock.post(`path:/api/dashboard`, (call) => call?.options.body);
   }
   const collections = Object.values(COLLECTION);
   setupCollectionsEndpoints({

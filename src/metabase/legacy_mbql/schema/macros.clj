@@ -1,7 +1,9 @@
 (ns metabase.legacy-mbql.schema.macros
+  (:refer-clojure :exclude [run!])
   (:require
    [metabase.legacy-mbql.schema.helpers]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [run!]]))
 
 (defn- stringify-names [arg-names-and-schemas]
   (into []
@@ -34,7 +36,7 @@
                                   clause-name
                                   [clause-name clause-name])
         clause-name-kw          (keyword clause-name)
-        clause-registry-name    (keyword "metabase.legacy-mbql.schema" (name symb-name))]
+        clause-registry-name    (keyword "metabase.legacy-mbql.schema" (name clause-name))]
     `(do
        (mr/register! ~clause-registry-name
                      (metabase.legacy-mbql.schema.helpers/clause ~clause-name-kw ~@(stringify-names arg-names-and-schemas)))

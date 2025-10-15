@@ -4,15 +4,15 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { space } from "metabase/styled-components/theme";
-import { Icon } from "metabase/ui";
 
 interface ScalarContainerProps {
   isClickable: boolean;
 }
 
-export const ScalarContainer = styled(Ellipsified)<ScalarContainerProps>`
-  padding: 0 ${space(1)};
+export const ScalarContainer = styled(Ellipsified, {
+  shouldForwardProp: (prop) => prop !== "isClickable",
+})<ScalarContainerProps>`
+  padding: 0 var(--mantine-spacing-sm);
   max-width: 100%;
   box-sizing: border-box;
 
@@ -25,9 +25,4 @@ export const ScalarContainer = styled(Ellipsified)<ScalarContainerProps>`
         color: var(--mb-color-brand);
       }
     `}
-`;
-
-export const LabelIcon = styled(Icon)`
-  color: var(--mb-color-text-light);
-  margin-top: 0.2rem;
 `;

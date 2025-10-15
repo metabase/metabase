@@ -3,8 +3,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
-   [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.test :as mt]))
 
 (deftest diagnostic-info-capture-test
   (mt/test-drivers (mt/driver-select {:+parent :sql-jdbc})
@@ -30,6 +29,6 @@
             ;; the diag info driver should match the current one
             (is (= driver/*driver* driver))
             ;; the diag info database-id should also match the current one
-            (is (= (u/the-id (mt/db)) database-id))
+            (is (= (mt/id) database-id))
             ;; the active connections may be between 0 and total-connections (inclusive)
             (is (<= 0 active-connections total-connections))))))))

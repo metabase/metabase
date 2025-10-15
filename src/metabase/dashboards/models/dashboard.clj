@@ -9,9 +9,12 @@
    [metabase.config.core :as config]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
+   [metabase.dashboards.schema :as dashboards.schema]
    [metabase.events.core :as events]
+   [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.parameters.core :as parameters]
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
@@ -66,7 +69,7 @@
   #{:last_viewed_at})
 
 (t2/deftransforms :model/Dashboard
-  {:parameters       mi/transform-card-parameters-list
+  {:parameters       parameters/transform-parameters
    :embedding_params mi/transform-json})
 
 (t2/define-before-delete :model/Dashboard
@@ -78,7 +81,7 @@
 (t2/define-before-insert :model/Dashboard
   [dashboard]
   (let [defaults  {:parameters []}
-        dashboard (merge defaults dashboard)]
+        dashboard (lib/normalize ::dashboards.schema/dashboard (merge defaults dashboard))]
     (u/prog1 dashboard
       (params/assert-valid-parameters dashboard)
       (collection/check-collection-namespace :model/Dashboard (:collection_id dashboard)))))
@@ -90,7 +93,9 @@
 
 (t2/define-before-update :model/Dashboard
   [dashboard]
-  (let [changes (t2/changes dashboard)]
+  (let [changes   (t2/changes dashboard)
+        dashboard (lib/normalize ::dashboards.schema/dashboard dashboard)
+        changes   (lib/normalize ::dashboards.schema/dashboard changes)]
     (u/prog1 (maybe-populate-initially-published-at dashboard)
       (params/assert-valid-parameters dashboard)
       (when (:parameters changes)
@@ -99,7 +104,7 @@
       (when (:archived changes)
         (t2/delete! :model/Pulse :dashboard_id (u/the-id dashboard))))))
 
-(defn- migrate-parameter [p]
+(mu/defn- migrate-parameter [p :- ::parameters.schema/parameter]
   (cond-> p
     ;; It was previously possible for parameters to have empty strings for :name and
     ;; :slug, but these are now required to be non-blank strings. (metabase#24500)
@@ -111,7 +116,7 @@
      ;; but it was previously possible to set :values_source_type to "static-list" or "card" and still
      ;; have linked filters. (metabase#33892)
      (some? (:values_source_type p))
-     (= (:values_query_type p) "none"))
+     (= (:values_query_type p) :none))
      ;; linked filters don't do anything when parameters have values_query_type="none" (aka "Input box"),
      ;; but it was previously possible to set :values_query_type to "none" and still have linked filters.
      ;; (metabase#34657)
@@ -341,7 +346,7 @@
   [:map
    [:id ms/NonBlankString]
    [:name ms/NonBlankString]
-   [:mappings [:maybe [:set dashboard-card/ParamMapping]]]])
+   [:mappings [:maybe [:set ::parameters.schema/parameter-mapping]]]])
 
 (mu/defn- dashboard->resolved-params :- [:map-of ms/NonBlankString ParamWithMapping]
   [dashboard :- [:map [:parameters [:maybe [:sequential :map]]]]]
@@ -464,6 +469,7 @@
                   :last-edited-at :r.timestamp
                   :last-viewed-at true
                   :pinned         [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
+                  :verified       [:= "verified" :mr.status]
                   :view-count     true
                   :created-at     true
                   :updated-at     true}

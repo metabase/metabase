@@ -1,14 +1,27 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { skipToken, useListRecentsQuery, useSearchQuery } from "metabase/api";
+import { useListRecentsQuery, useSearchQuery } from "metabase/api";
+import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { getDashboard } from "metabase/dashboard/selectors";
 import { trackSimpleEvent } from "metabase/lib/analytics";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
-import { Flex, Loader } from "metabase/ui";
-import { getDataSources } from "metabase/visualizer/selectors";
-import { createDataSource } from "metabase/visualizer/utils";
+import { Box, Flex, Skeleton } from "metabase/ui";
+import { isCartesianChart } from "metabase/visualizations";
+import {
+  getDataSources,
+  getDatasets,
+  getVisualizationColumns,
+  getVisualizationType,
+  getVisualizerComputedSettings,
+  getVisualizerComputedSettingsForFlatSeries,
+  getVisualizerDatasetColumns,
+} from "metabase/visualizer/selectors";
+import {
+  createDataSource,
+  partitionTimeDimensions,
+} from "metabase/visualizer/utils";
 import {
   addDataSource,
   removeDataSource,
@@ -20,7 +33,8 @@ import type {
   VisualizerDataSourceId,
 } from "metabase-types/api";
 
-import { DatasetsListItem } from "./DatasetsListItem";
+import { DatasetsListItem, type Item } from "./DatasetsListItem";
+import { getIsCompatible } from "./getIsCompatible";
 
 function shouldIncludeDashboardQuestion(
   searchItem: SearchResult,
@@ -35,11 +49,19 @@ interface DatasetsListProps {
     sourceId: VisualizerDataSourceId,
     collapsed: boolean,
   ) => void;
+  style?: React.CSSProperties;
+  /**
+   * If true, the component will not render anything but simply load data
+   * so next time it is rendered, it will show the data immediately.
+   */
+  muted?: boolean;
 }
 
 export function DatasetsList({
   search,
   setDataSourceCollapsed,
+  style,
+  muted,
 }: DatasetsListProps) {
   const dashboardId = useSelector(getDashboard)?.id;
   const dispatch = useDispatch();
@@ -48,6 +70,18 @@ export function DatasetsList({
     () => new Set(dataSources.map((s) => s.id)),
     [dataSources],
   );
+
+  // Get current visualization context
+  const visualizationType = useSelector(getVisualizationType);
+  const visualizationColumns = useSelector(getVisualizationColumns);
+
+  // Get data needed for compatibility checking
+  const columns = useSelector(getVisualizerDatasetColumns);
+  const settings = useSelector(getVisualizerComputedSettings);
+  const computedSettings = useSelector(
+    getVisualizerComputedSettingsForFlatSeries,
+  );
+  const datasets = useSelector(getDatasets);
 
   const handleAddDataSource = useCallback(
     (source: VisualizerDataSource) => {
@@ -77,6 +111,52 @@ export function DatasetsList({
     [dispatch, setDataSourceCollapsed],
   );
 
+  const { data: allRecents, isFetching: isListRecentsFetching } =
+    useListRecentsQuery(
+      { include_metadata: true },
+      {
+        refetchOnMountOrArgChange: true,
+      },
+    );
+
+  const { timeDimensions, otherDimensions } = useMemo(() => {
+    return partitionTimeDimensions(visualizationColumns || []);
+  }, [visualizationColumns]);
+
+  const nonTemporalDimIds = useMemo(() => {
+    return otherDimensions
+      .map((dim) => dim.id)
+      .filter(isNotNull)
+      .sort() as number[];
+  }, [otherDimensions]);
+
+  const { data: visualizationSearchResult, isFetching: isSearchFetching } =
+    useSearchQuery(
+      {
+        q: search.length > 0 ? search : undefined,
+        limit: 50,
+        models: ["card", "dataset", "metric"],
+        include_dashboard_questions: true,
+        include_metadata: true,
+        ...(visualizationType &&
+          isCartesianChart(visualizationType) &&
+          search.length === 0 && {
+            has_temporal_dim: timeDimensions.length > 0,
+            non_temporal_dim_ids: JSON.stringify(nonTemporalDimIds),
+          }),
+      },
+      {
+        skip: muted,
+        refetchOnMountOrArgChange: true,
+      },
+    );
+
+  const debouncedIsFetching = useDebouncedValue(
+    isSearchFetching || isListRecentsFetching,
+    300, // Adjust debounce duration as needed
+    (_lastValue, newValue) => newValue === true, // We want instant updates when loading ends
+  );
+
   const handleSwapDataSources = useCallback(
     (item: VisualizerDataSource) => {
       trackSimpleEvent({
@@ -93,96 +173,118 @@ export function DatasetsList({
     [dataSources, handleAddDataSource, handleRemoveDataSource],
   );
 
-  const { data: searchResult, isFetching: isSearchLoading } = useSearchQuery(
-    search.length > 0
-      ? {
-          q: search,
-          limit: 10,
-          models: ["card", "dataset", "metric"],
-          include_dashboard_questions: true,
-          include_metadata: true,
-        }
-      : skipToken,
-    {
-      refetchOnMountOrArgChange: true,
-    },
-  );
+  const items: Item[] | undefined = useMemo(() => {
+    if (!search && dataSources.length === 0) {
+      if (!allRecents) {
+        return;
+      }
 
-  const { data: allRecents = [], isLoading: isListRecentsLoading } =
-    useListRecentsQuery(
-      { include_metadata: true },
-      {
-        refetchOnMountOrArgChange: true,
-      },
-    );
-
-  const items = useMemo(() => {
-    if (search.length > 0) {
-      return (searchResult ? searchResult.data : [])
-        .map((item) =>
-          typeof item.id === "number" &&
-          shouldIncludeDashboardQuestion(item, dashboardId)
-            ? {
-                ...createDataSource("card", item.id, item.name),
-                result_metadata: item.result_metadata,
-                display: item.display,
-              }
-            : null,
+      return allRecents
+        .filter((maybeCard) =>
+          ["card", "dataset", "metric"].includes(maybeCard.model),
         )
-        .filter(isNotNull);
+        .map((card) => ({
+          ...createDataSource("card", card.id, card.name),
+          display: card.display,
+          result_metadata: card.result_metadata,
+          notRecommended: false,
+        }));
     }
 
-    return allRecents
-      .filter((maybeCard) =>
-        ["card", "dataset", "metric"].includes(maybeCard.model),
+    if (!visualizationSearchResult?.data) {
+      return;
+    }
+
+    const isCompatible = (item: Item) => {
+      if (!item.display || !item.result_metadata) {
+        return item;
+      }
+
+      return getIsCompatible({
+        currentDataset: {
+          display: visualizationType ?? null,
+          columns,
+          settings,
+          computedSettings,
+        },
+        targetDataset: {
+          fields: item.result_metadata,
+        },
+        datasets,
+      });
+    };
+
+    let results = visualizationSearchResult.data
+      .filter(
+        (maybeCard) =>
+          ["card", "dataset", "metric"].includes(maybeCard.model) &&
+          shouldIncludeDashboardQuestion(maybeCard, dashboardId),
       )
       .map((card) => ({
-        ...createDataSource("card", card.id, card.name),
+        ...createDataSource("card", +card.id, card.name),
         display: card.display,
         result_metadata: card.result_metadata,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    if (search.length > 0) {
+      results = results.map((item) => ({
+        ...item,
+        notRecommended: !isCompatible(item),
       }));
-  }, [searchResult, allRecents, search, dashboardId]);
+    } else {
+      results = results.filter(isCompatible);
+    }
 
-  if (isListRecentsLoading || isSearchLoading) {
-    return (
-      <Flex
-        gap="xs"
-        direction="column"
-        align="center"
-        justify="center"
-        style={{ height: "100%" }}
-      >
-        <Loader />
-      </Flex>
-    );
-  }
+    return results;
+  }, [
+    visualizationSearchResult,
+    dashboardId,
+    visualizationType,
+    columns,
+    settings,
+    computedSettings,
+    datasets,
+    allRecents,
+    search,
+    dataSources.length,
+  ]);
 
-  if (items.length === 0) {
-    return (
-      <Flex
-        gap="xs"
-        direction="column"
-        align="center"
-        justify="center"
-        style={{ height: "100%" }}
-      >
-        <p>{t`No results`}</p>
-      </Flex>
-    );
+  if (muted) {
+    return null;
   }
 
   return (
-    <Flex gap="xs" direction="column" data-testid="datasets-list">
-      {items.map((item, index) => (
-        <DatasetsListItem
-          key={index}
-          item={item}
-          onSwap={handleSwapDataSources}
-          onToggle={handleAddDataSource}
-          onRemove={handleRemoveDataSource}
-          selected={dataSourceIds.has(item.id)}
-        />
-      ))}
+    <Flex
+      gap="xs"
+      direction="column"
+      data-testid="datasets-list"
+      style={{ overflow: "auto", ...style }}
+    >
+      {debouncedIsFetching && (
+        <>
+          <Skeleton height={30} radius="sm" />
+          <Skeleton height={30} mt={6} radius="sm" />
+          <Skeleton height={30} mt={6} radius="sm" />
+          <Skeleton height={30} mt={6} radius="sm" />
+          <Skeleton height={30} mt={6} radius="sm" />
+        </>
+      )}
+      {items && items.length === 0 && (
+        <Box m="auto">{t`No compatible results`}</Box>
+      )}
+      {items && !debouncedIsFetching
+        ? items.map((item, index) => (
+            <DatasetsListItem
+              key={index}
+              item={item}
+              onSwap={handleSwapDataSources}
+              onToggle={handleAddDataSource}
+              onRemove={handleRemoveDataSource}
+              selected={dataSourceIds.has(item.id)}
+            />
+          ))
+        : null}
     </Flex>
   );
 }

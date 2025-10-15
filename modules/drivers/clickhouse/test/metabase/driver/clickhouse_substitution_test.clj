@@ -44,10 +44,10 @@
           [(t/format "yyyy-MM-dd HH:mm:ss" ldt)])
         (get-test-table
           [rows native-type]
-          ["test_table"
-           [{:field-name "d"
-             :base-type {:native native-type}}]
-           (map ->clickhouse-input rows)])
+          [["test_table"
+            [{:field-name "d"
+              :base-type {:native native-type}}]
+            (map ->clickhouse-input rows)]])
         (->iso-str
           [^LocalDateTime ldt]
           (t/format "yyyy-MM-dd'T'HH:mm:ss'Z'" ldt))]
@@ -171,10 +171,10 @@
           [(t/format "yyyy-MM-dd" ld)])
         (get-test-table
           [rows native-type]
-          ["test_table"
-           [{:field-name "d"
-             :base-type {:native native-type}}]
-           (map ->clickhouse-input rows)])
+          [["test_table"
+            [{:field-name "d"
+              :base-type {:native native-type}}]
+            (map ->clickhouse-input rows)]])
         (->iso-str
           [^LocalDate ld]
           (str (t/format "yyyy-MM-dd" ld) "T00:00:00Z"))]
@@ -270,19 +270,19 @@
         (let [db         "mb_vars_null_dates"
               now-ld     (local-date-now)
               now-ldt    (local-date-time-now)
-              table      ["test_table"
-                          [{:field-name "d"
-                            :base-type {:native "Nullable(Date)"}}
-                           {:field-name "d32"
-                            :base-type {:native "Nullable(Date32)"}}
-                           {:field-name "dt"
-                            :base-type {:native "Nullable(DateTime)"}}
-                           {:field-name "dt64"
-                            :base-type {:native "Nullable(DateTime64)"}}]
-                          [;; row 1
-                           [(->input-ld now-ld) nil (->input-ldt now-ldt) nil]
-                          ;; row 2
-                           [nil (->input-ld now-ld) nil (->input-ldt now-ldt)]]]
+              table      [["test_table"
+                           [{:field-name "d"
+                             :base-type {:native "Nullable(Date)"}}
+                            {:field-name "d32"
+                             :base-type {:native "Nullable(Date32)"}}
+                            {:field-name "dt"
+                             :base-type {:native "Nullable(DateTime)"}}
+                            {:field-name "dt64"
+                             :base-type {:native "Nullable(DateTime64)"}}]
+                           [;; row 1
+                            [(->input-ld now-ld) nil (->input-ldt now-ldt) nil]
+                            ;; row 2
+                            [nil (->input-ld now-ld) nil (->input-ldt now-ldt)]]]]
               first-row  [[(->iso-str-ld now-ld) nil (->iso-str-ldt now-ldt) nil]]
               second-row [[nil (->iso-str-ld now-ld) nil (->iso-str-ldt now-ldt)]]]
           (mt/dataset
@@ -342,14 +342,14 @@
           uuid-2 (random-uuid)]
       (mt/dataset
         (mt/dataset-definition "uuid_filter_db"
-                               ["uuid_filter_table"
-                                [{:field-name "uuid"
-                                  :base-type {:native "UUID"}
-                                  :semantic-type :type/PK}
-                                 {:field-name "value"
-                                  :base-type :type/Integer}]
-                                [[uuid-1 10]
-                                 [uuid-2 20]]])
+                               [["uuid_filter_table"
+                                 [{:field-name "uuid"
+                                   :base-type {:native "UUID"}
+                                   :semantic-type :type/PK}
+                                  {:field-name "value"
+                                   :base-type :type/Integer}]
+                                 [[uuid-1 10]
+                                  [uuid-2 20]]]])
         (let [query {:database   (mt/id)
                      :type       :native
                      :native     {:query         "select sum(value) from `uuid_filter_db`.`uuid_filter_table` where {{uuid}}"

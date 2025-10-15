@@ -3,6 +3,8 @@ import { useCallback, useMemo } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
+import ExternalLink from "metabase/common/components/ExternalLink/ExternalLink";
+import { useLearnUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useClickBehaviorData } from "metabase/dashboard/hooks";
@@ -19,7 +21,6 @@ import { duration } from "metabase/lib/formatting";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
-import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { getSetting } from "metabase/selectors/settings";
 import {
   Box,
@@ -91,6 +92,22 @@ const DashCardLoadingView = ({
   expectedDuration,
   display,
 }: LoadingViewProps & { display?: CardDisplayType }) => {
+  const { url, showMetabaseLinks } = useLearnUrl(
+    "metabase-basics/administration/administration-and-operation/making-dashboards-faster",
+  );
+  const getPreamble = () => {
+    if (isSlow === "usually-fast") {
+      return t`This usually loads immediately, but is currently taking longer.`;
+    }
+    if (expectedDuration) {
+      return jt`This usually takes around ${(
+        <span key="duration" className={CS.textNoWrap}>
+          {duration(expectedDuration)}
+        </span>
+      )}.`;
+    }
+  };
+
   return (
     <div
       data-testid="loading-indicator"
@@ -110,27 +127,29 @@ const DashCardLoadingView = ({
           <Box style={styles} className={CS.absolute} left={12} bottom={12}>
             <HoverCard width={288} offset={4} position="bottom-start">
               <HoverCard.Target>
-                <Button
-                  w={24}
-                  h={24}
-                  p={0}
-                  classNames={{ root: S.invertInNightMode, label: cx(CS.flex) }}
-                >
+                <Button w={24} h={24} p={0} classNames={{ label: cx(CS.flex) }}>
                   <Icon name="snail" size={12} d="flex" />
                 </Button>
               </HoverCard.Target>
-              <HoverCard.Dropdown ml={-8} className={EmbedFrameS.dropdown}>
+              <HoverCard.Dropdown ml={-8}>
                 <div className={cx(CS.p2, CS.textCentered)}>
                   <Text fw="bold">{t`Waiting for your data`}</Text>
-                  <Text lh="1.5">
-                    {isSlow === "usually-slow"
-                      ? jt`This usually takes an average of ${(
-                          <span className={CS.textNoWrap}>
-                            {duration(expectedDuration ?? 0)}
-                          </span>
-                        )}, but is currently taking longer.`
-                      : t`This usually loads immediately, but is currently taking longer.`}
+                  <Text lh="1.5" mt={4}>
+                    {getPreamble()}{" "}
+                    {t`You can use caching to speed up question loading.`}
                   </Text>
+                  {showMetabaseLinks && (
+                    <Button
+                      mt={12}
+                      variant="subtle"
+                      size="compact-md"
+                      rightSection={<Icon name="external" />}
+                      component={ExternalLink}
+                      href={url}
+                    >
+                      {t`Making dashboards faster`}
+                    </Button>
+                  )}
                 </div>
               </HoverCard.Dropdown>
             </HoverCard>
@@ -185,7 +204,7 @@ interface DashCardVisualizationProps {
 
 export function DashCardVisualization({
   dashcard,
-  series: untranslatedRawSeries,
+  series: rawSeries,
   question,
   metadata,
   getHref,
@@ -212,10 +231,8 @@ export function DashCardVisualization({
     cardTitled,
     dashboard,
     dashcardMenu,
-    editingParameter,
     getClickActionMode,
     isEditing = false,
-    shouldRenderAsNightMode,
     isFullscreen = false,
     isEditingParameter,
     onChangeLocation,
@@ -225,10 +242,6 @@ export function DashCardVisualization({
 
   const inlineParameters = useSelector((state) =>
     getDashCardInlineValuePopulatedParameters(state, dashcard.id),
-  );
-
-  const rawSeries = PLUGIN_CONTENT_TRANSLATION.useTranslateSeries(
-    untranslatedRawSeries,
   );
 
   const visualizerErrMsg = useMemo(() => {
@@ -251,7 +264,7 @@ export function DashCardVisualization({
     }
   }, [dashcard, rawSeries]);
 
-  const series = useMemo(() => {
+  const untranslatedSeries = useMemo(() => {
     if (
       !dashcard ||
       !rawSeries ||
@@ -294,27 +307,22 @@ export function DashCardVisualization({
     );
     const card = extendCardWithDashcardSettings(
       {
+        // Visualizer click handling code expect visualizer cards not to have card.id
+        name: dashcard.card.name,
+        description: dashcard.card.description,
         display,
-        name: settings["card.title"],
         visualization_settings: settings,
       } as Card,
       _.omit(dashcard.visualization_settings, "visualization"),
     ) as Card;
 
     if (!didEveryDatasetLoad) {
-      return [{ card }];
+      return [{ card }] as RawSeries;
     }
+
     const series: RawSeries = [
       {
-        card: extendCardWithDashcardSettings(
-          {
-            display,
-            name: settings["card.title"],
-            visualization_settings: settings,
-          } as Card,
-          _.omit(dashcard.visualization_settings, "visualization"),
-        ) as Card,
-
+        card,
         data: mergeVisualizerData({
           columns,
           columnValuesMapping,
@@ -347,6 +355,9 @@ export function DashCardVisualization({
 
     return series;
   }, [rawSeries, dashcard, datasets]);
+
+  const series =
+    PLUGIN_CONTENT_TRANSLATION.useTranslateSeries(untranslatedSeries);
 
   const handleOnUpdateVisualizationSettings = useCallback(
     (settings: VisualizationSettings) => {
@@ -490,20 +501,15 @@ export function DashCardVisualization({
       return null;
     }
 
-    const effectiveParameters = editingParameter
-      ? inlineParameters.filter((param) => param.id === editingParameter.id)
-      : inlineParameters;
-
     return (
-      <Group mr="sm">
-        {effectiveParameters.length > 0 && (
+      <Group>
+        {inlineParameters.length > 0 && (
           <CollapsibleDashboardParameterList
             className={S.InlineParametersList}
             triggerClassName={S.InlineParametersMenuTrigger}
-            parameters={effectiveParameters}
+            parameters={inlineParameters}
             isCollapsed={shouldCollapseList}
             isSortable={false}
-            widgetsVariant="subtle"
             widgetsPopoverPosition="bottom-end"
             ref={parameterListRef}
           />
@@ -513,6 +519,7 @@ export function DashCardVisualization({
             question={question}
             result={result}
             dashcard={dashcard}
+            canEdit={!isVisualizerDashboardCard(dashcard)}
             onEditVisualization={onEditVisualization}
             openUnderlyingQuestionItems={
               onChangeCardAndRun && (cardTitle ? undefined : titleMenuItems)
@@ -528,7 +535,6 @@ export function DashCardVisualization({
     dashcard,
     dashcardMenu,
     isEditing,
-    editingParameter,
     inlineParameters,
     onChangeCardAndRun,
     onEditVisualization,
@@ -557,7 +563,6 @@ export function DashCardVisualization({
     >
       <Visualization
         className={cx(CS.flexFull, {
-          [S.isNightMode]: shouldRenderAsNightMode,
           [CS.overflowAuto]: visualizationOverlay,
           [CS.overflowHidden]: !visualizationOverlay,
         })}
@@ -582,7 +587,6 @@ export function DashCardVisualization({
         isDashboard
         isSlow={isSlow}
         isFullscreen={isFullscreen}
-        isNightMode={shouldRenderAsNightMode}
         isEditing={isEditing}
         isPreviewing={isPreviewing}
         isEditingParameter={isEditingParameter}

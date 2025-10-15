@@ -7,6 +7,6 @@ import { SdkIframeEmbedRoute } from "./components/SdkIframeEmbedRoute";
 // This should always be usable on an EE instance regardless of license.
 PLUGIN_EMBEDDING_IFRAME_SDK.SdkIframeEmbedRoute = SdkIframeEmbedRoute;
 
-if (hasPremiumFeature("embedding_iframe_sdk")) {
+if (hasPremiumFeature("embedding_simple")) {
   PLUGIN_EMBEDDING_IFRAME_SDK.hasValidLicense = () => true;
 }

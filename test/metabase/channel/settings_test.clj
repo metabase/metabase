@@ -40,3 +40,44 @@
         (testing invalid-name
           (is (thrown-with-msg? ExceptionInfo #"Invalid special character included."
                                 (channel.settings/email-from-name! invalid-name))))))))
+
+(deftest email-smtp-port-override
+  (mt/with-temporary-setting-values [email-smtp-port-override nil]
+    (mt/with-premium-features []
+      (testing "requires cloud-custom-smtp feature to be enabled"
+        (is (thrown-with-msg? Exception #"Setting email-smtp-port-override is not enabled because feature :cloud-custom-smtp is not available"
+                              (channel.settings/email-smtp-port-override! 465)))))
+    (mt/with-premium-features [:cloud-custom-smtp]
+      (testing "invalid port is not allowed"
+        (is (thrown-with-msg? AssertionError #"Invalid custom email-smtp-port"
+                              (channel.settings/email-smtp-port-override! 25))))
+      (testing "correctly sets the setting"
+        (channel.settings/email-smtp-port-override! 465)
+        (is (= 465 (channel.settings/email-smtp-port-override)))))))
+
+(deftest email-smtp-security-override
+  (mt/with-temporary-setting-values [email-smtp-security-override nil]
+    (mt/with-premium-features []
+      (testing "requires cloud-custom-smtp feat´ure to be enabled"
+        (is (thrown-with-msg? Exception #"Setting email-smtp-security-override is not enabled because feature :cloud-custom-smtp is not available"
+                              (channel.settings/email-smtp-security-override! "ssl")))))
+    (mt/with-premium-features [:cloud-custom-smtp]
+      (testing "'none' is not allowed"
+        (is (thrown-with-msg? AssertionError #"Invalid email-smtp-security-override"
+                              (channel.settings/email-smtp-security-override! "none"))))
+      (testing "correctly sets the setting"
+        (channel.settings/email-smtp-security-override! "ssl")
+        (is (= :ssl (channel.settings/email-smtp-security-override)))))))
+
+(deftest smtp-override-enabled
+  (mt/with-premium-features [:cloud-custom-smtp]
+
+    (testing "cannot enable cloud-smtp without hostname set"
+      (mt/with-temporary-setting-values [smtp-override-enabled nil
+                                         email-smtp-host-override nil]
+        (is (thrown-with-msg? Exception #"Cannot enable smtp-override when it is not configured."
+                              (channel.settings/smtp-override-enabled! true)))))
+    (testing "can enable cloud-smtp with hostname set"
+      (mt/with-temporary-setting-values [smtp-override-enabled nil
+                                         email-smtp-host-override "localhost"]
+        (is (= "true" (channel.settings/smtp-override-enabled! true)))))))

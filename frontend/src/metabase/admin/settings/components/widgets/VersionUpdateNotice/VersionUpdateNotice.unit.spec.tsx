@@ -6,7 +6,7 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
-import type { SettingKey, UpdateChannel } from "metabase-types/api";
+import type { SettingKey } from "metabase-types/api";
 import {
   createMockSettingDefinition,
   createMockSettings,
@@ -15,11 +15,7 @@ import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { VersionUpdateNotice } from "./VersionUpdateNotice";
 
-const setup = (props: {
-  updateChannel: UpdateChannel;
-  isHosted: boolean;
-  versionTag: string;
-}) => {
+const setup = (props: { isHosted: boolean; versionTag: string }) => {
   const versionNoticeSettings = {
     version: {
       date: "2025-03-19",
@@ -27,7 +23,6 @@ const setup = (props: {
       tag: props.versionTag,
       hash: "4742ea1",
     },
-    "update-channel": props.updateChannel,
     "is-hosted?": props.isHosted,
   };
 
@@ -37,20 +32,10 @@ const setup = (props: {
   setupSettingEndpoint({
     settingKey: "version-info",
     settingValue: {
-      beta: {
-        version: "v1.54.0-beta",
-        released: "2025-03-24",
-        highlights: [],
-      },
       latest: {
-        version: "v1.53.8",
+        version: "v1.53.9",
         released: "2025-03-25",
         patch: true,
-        highlights: [],
-      },
-      nightly: {
-        version: "v1.52.3",
-        released: "2024-12-16",
         highlights: [],
       },
     },
@@ -77,19 +62,19 @@ const setup = (props: {
 
 describe("VersionUpdateNotice", () => {
   it("should tell the user if they're on the latest version", async () => {
-    setup({ isHosted: false, versionTag: "v1.53.8", updateChannel: "latest" });
+    setup({ isHosted: false, versionTag: "v1.53.9" });
     expect(
       await screen.findByText(
-        "You're running Metabase 1.53.8 which is the latest and greatest!",
+        "You're running Metabase 1.53.9 which is the latest and greatest!",
       ),
     ).toBeInTheDocument();
   });
 
   it("should tell the user if there's a new version", async () => {
-    setup({ isHosted: false, versionTag: "v1.53.8", updateChannel: "beta" });
+    setup({ isHosted: false, versionTag: "v1.53.8" });
     expect(
       await screen.findByText(
-        "Metabase 1.54.0-beta is available. You're running 1.53.8.",
+        "Metabase 1.53.9 is available. You're running 1.53.8.",
       ),
     ).toBeInTheDocument();
   });
@@ -98,7 +83,6 @@ describe("VersionUpdateNotice", () => {
     setup({
       isHosted: false,
       versionTag: "notaversion",
-      updateChannel: "beta",
     });
     expect(
       await screen.findByText("You're running Metabase notaversion"),

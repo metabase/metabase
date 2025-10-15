@@ -2,15 +2,15 @@ import { c, t } from "ttag";
 import _ from "underscore";
 
 import { useGetCollectionQuery } from "metabase/api";
-import type { CollectionPickerItem } from "metabase/common/components/CollectionPicker";
 import Link from "metabase/common/components/Link";
 import { MoveModal } from "metabase/common/components/MoveModal";
+import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
-import { color } from "metabase/lib/colors";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Flex, Icon } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 import type { CollectionId, Dashboard, DashboardId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -71,12 +71,13 @@ const DashboardMoveToast = ({
       <Icon
         name="collection"
         style={{ marginInlineEnd: "0.25rem" }}
-        color="text-white"
+        c="text-white"
       />
       {c("{0} is a location where the dashboard was moved to")
         .jt`Dashboard moved to ${
         collection ? (
           <Link
+            key="link"
             className={S.CollectionLink}
             to={Urls.collection(collection)}
             style={{ marginInlineStart: ".25em" }}

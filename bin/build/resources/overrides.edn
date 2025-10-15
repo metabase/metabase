@@ -37,6 +37,7 @@
                                 "jersey-client"  {:resource "apache2_0.txt"}
                                 "jersey-servlet" {:resource "GPL1_1.txt"}}
  "com.sun.jersey.contribs"     {"jersey-guice" {:resource "GPL1_1.txt"}}
+ "com.sun.mail"                {"jakarta.mail" {:resource "EPL_2.txt"}}
  "com.thoughtworks.paranamer"  {"paranamer" {:resource "BSD.txt"}}
  "de.rototor.pdfbox"           {"graphics2d" {:resource "apache2_0.txt"}}
  "hiccup"                      {"hiccup" {:resource "EPL.txt"}}

@@ -52,7 +52,7 @@ export function createQuery({
   query = DEFAULT_QUERY,
 }: QueryOpts = {}) {
   const metadataProvider = createMetadataProvider({ databaseId, metadata });
-  return Lib.fromLegacyQuery(databaseId, metadataProvider, query);
+  return Lib.fromJsQuery(metadataProvider, query);
 }
 
 export const columnFinder =
@@ -179,7 +179,7 @@ interface BreakoutClauseOpts {
   binningStrategyName?: string;
 }
 
-interface ExpressionClauseOpts {
+export interface ExpressionClauseOpts {
   name: string;
   operator: Lib.ExpressionOperator;
   args: (Lib.ExpressionArg | Lib.ExpressionClause)[];

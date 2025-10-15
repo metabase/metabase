@@ -1,7 +1,6 @@
-import fetchMock from "fetch-mock";
-
 import {
   setupDatabasesEndpoints,
+  setupEmbeddingDataPickerDecisionEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
@@ -35,19 +34,7 @@ export function setup({
 }: SetupOpts = {}) {
   const query = createEmptyQuery();
 
-  fetchMock.get(
-    {
-      name: "entity-count",
-      url: "path:/api/search",
-      query: {
-        models: ["dataset", "table"],
-        limit: 0,
-      },
-    },
-    {
-      total: 100,
-    },
-  );
+  setupEmbeddingDataPickerDecisionEndpoints("staged");
 
   if (hasModels) {
     setupSearchEndpoints(createSearchResults());

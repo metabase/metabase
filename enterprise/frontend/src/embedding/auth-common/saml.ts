@@ -1,5 +1,5 @@
-import * as MetabaseError from "embedding-sdk/errors";
-import type { MetabaseEmbeddingSessionToken } from "embedding-sdk/types/refresh-token";
+import * as MetabaseError from "embedding-sdk-bundle/errors";
+import type { MetabaseEmbeddingSessionToken } from "embedding-sdk-bundle/types/refresh-token";
 
 /*
  * For the markup for the popup (nice rhyme), visit

@@ -7,15 +7,12 @@ export function setupModelIndexEndpoints(
   modelId: CardId,
   indexes: ModelIndex[] = [],
 ) {
-  fetchMock.get(
-    {
-      url: `path:/api/model-index`,
-      query: { model_id: modelId },
-      overwriteRoutes: false,
-    },
-    indexes,
-    { name: `getModelIndexes-${modelId}` },
-  );
+  fetchMock.get({
+    url: `path:/api/model-index`,
+    query: { model_id: modelId },
+    response: indexes,
+    name: `getModelIndexes-${modelId}`,
+  });
 
   indexes.forEach((index) => {
     fetchMock.delete(`path:/api/model-index/${index.id}`, 200, {
@@ -25,8 +22,8 @@ export function setupModelIndexEndpoints(
 
   fetchMock.post(
     `path:/api/model-index`,
-    async (url) => {
-      const lastCall = fetchMock.lastCall(url);
+    async (call) => {
+      const lastCall = fetchMock.callHistory.lastCall(call.url);
       return createMockModelIndex(await lastCall?.request?.json());
     },
     { name: `createModelIndex` },

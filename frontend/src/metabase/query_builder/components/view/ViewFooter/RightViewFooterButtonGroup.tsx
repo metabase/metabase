@@ -2,12 +2,13 @@ import cx from "classnames";
 
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
+import { ViewFooterCopyWidget } from "metabase/query_builder/components/view/ViewFooter/ViewFooterCopyWidget";
 import { ViewFooterDownloadWidget } from "metabase/query_builder/components/view/ViewFooter/ViewFooterDownloadWidget";
 import {
   getFirstQueryResult,
-  getIsObjectDetail,
   getIsTimeseries,
 } from "metabase/query_builder/selectors";
+import { getIsObjectDetail } from "metabase/query_builder/selectors/mode";
 import { Group } from "metabase/ui";
 
 import { ExecutionTime } from "../ExecutionTime";
@@ -38,6 +39,7 @@ export const RightViewFooterButtonGroup = () => {
             result={result}
           />
         )}
+        <ViewFooterCopyWidget />
         <ViewFooterDownloadWidget />
         {QuestionTimelineWidget.shouldRender({ isTimeseries }) && (
           <QuestionTimelineWidget className={cx(CS.hide, CS.smShow)} />

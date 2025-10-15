@@ -164,7 +164,7 @@ export function ObjectDetailView({
   });
 
   useEffect(() => {
-    if (hasNotFoundError) {
+    if (hasNotFoundError || !showControls) {
       return;
     }
 
@@ -185,6 +185,7 @@ export function ObjectDetailView({
     return () => window.removeEventListener("keydown", onKeyDown, true);
   }, [
     hasNotFoundError,
+    showControls,
     viewPreviousObjectDetail,
     viewNextObjectDetail,
     closeObjectDetail,
@@ -197,7 +198,7 @@ export function ObjectDetailView({
       const pkField = passedData.cols[pkIndex];
       const query = question?.query();
       const datasetQuery = query
-        ? Lib.toLegacyQuery(filterByPk(query, pkField, zoomedRowID))
+        ? Lib.toJsQuery(filterByPk(query, pkField, zoomedRowID))
         : undefined;
 
       MetabaseApi.dataset(datasetQuery)
@@ -361,7 +362,7 @@ export function ObjectDetailView({
               />
             )}
             <ObjectDetailBody
-              data={data}
+              columns={passedData.cols}
               objectName={objectName}
               zoomedRow={zoomedRow ?? []}
               settings={settings}

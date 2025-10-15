@@ -14,14 +14,10 @@
       outline: none;
     }
 
-    .cm-scroller {
-      padding-top: 4px;
-      padding-bottom: 4px;
-    }
-
     .cm-content {
       color: var(--mb-color-text-dark);
       background: none;
+      padding-block: 8px;
     }
 
     .cm-line {
@@ -65,7 +61,7 @@
       border-left-width: 1.6px;
     }
 
-    .cm-tooltip {
+    .cm-tooltip:not(.cm-tooltip-autocomplete) {
       border: none !important;
       background: none !important;
     }

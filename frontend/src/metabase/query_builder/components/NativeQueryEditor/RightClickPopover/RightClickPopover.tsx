@@ -10,7 +10,7 @@ interface RightClickPopoverProps {
   canSaveSnippets: boolean;
   target: () => Element | null | undefined;
   runQuery: () => void;
-  openSnippetModalWithSelectedText: () => void;
+  openSnippetModalWithSelectedText?: () => void;
 }
 
 export const RightClickPopover = ({
@@ -26,7 +26,7 @@ export const RightClickPopover = ({
         <Icon mr="sm" name="play" size={16} />
         <h4>{t`Run selection`}</h4>
       </a>
-      {canSaveSnippets && (
+      {canSaveSnippets && openSnippetModalWithSelectedText && (
         <a
           className={RightClickPopoverS.Anchor}
           onClick={openSnippetModalWithSelectedText}

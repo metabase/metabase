@@ -54,7 +54,9 @@ const ChartSettingLinkUrlInput = ({
 
   const handleBlur = () => {
     setIsFocused(false);
-    onChange(focusedValue);
+    if (focusedValue !== (value ?? "")) {
+      onChange(focusedValue);
+    }
   };
 
   return (

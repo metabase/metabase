@@ -655,6 +655,7 @@ export function setup2ndStageBreakoutFilter() {
   H.popover().within(() => {
     getPopoverItem("Product → Category", 1).scrollIntoView().click();
   });
+  closeToasts();
 
   H.getDashboardCard(1).findByText("Select…").click();
   H.popover().within(() => {
@@ -663,15 +664,23 @@ export function setup2ndStageBreakoutFilter() {
 
   H.getDashboardCard(2).findByText("Select…").click();
   H.popover().within(() => {
-    getPopoverItem("Product → Category").click();
+    getPopoverItem("Product → Category").scrollIntoView().click();
   });
+
+  closeToasts();
 
   H.getDashboardCard(3).findByText("Select…").click();
   H.popover().within(() => {
-    getPopoverItem("Product → Category").click();
+    getPopoverItem("Product → Category").scrollIntoView().click();
   });
 
   H.saveDashboard({ waitMs: 250 });
+}
+
+function closeToasts() {
+  H.undoToast().each((toast) => {
+    cy.wrap(toast).icon("close").click();
+  });
 }
 
 export function apply2ndStageBreakoutFilter() {
@@ -721,24 +730,12 @@ export function getDashboardId(): Cypress.Chainable<number> {
     .then((dashboardId) => dashboardId as unknown as number);
 }
 
-export function waitForPublicDashboardData() {
-  // tests with public dashboards always have 4 dashcards
-  cy.wait([
-    "@publicDashboardData",
-    "@publicDashboardData",
-    "@publicDashboardData",
-    "@publicDashboardData",
-  ]);
+export function waitForPublicDashboardData(requestCount: number) {
+  cy.wait(Array(requestCount).fill("@publicDashboardData"));
 }
 
-export function waitForEmbeddedDashboardData() {
-  // tests with embedded dashboards always have 4 dashcards
-  cy.wait([
-    "@embeddedDashboardData",
-    "@embeddedDashboardData",
-    "@embeddedDashboardData",
-    "@embeddedDashboardData",
-  ]);
+export function waitForEmbeddedDashboardData(requestCount: number) {
+  cy.wait(Array(requestCount).fill("@embeddedDashboardData"));
 }
 
 export function verifyDashcardMappingOptions(
@@ -755,8 +752,10 @@ export function verifyNoDashcardMappingOptions(dashcardIndex: number) {
     .findByText("No valid fields")
     .should("be.visible");
 
-  H.getDashboardCard(dashcardIndex).findByText("No valid fields").realHover();
-  cy.findByRole("tooltip")
+  H.getDashboardCard(dashcardIndex)
+    .findByText("No valid fields")
+    .trigger("mouseenter");
+  H.tooltip()
     .findByText(
       "This card doesn't have any fields or parameters that can be mapped to this parameter type.",
     )
@@ -777,6 +776,13 @@ export function verifyPopoverMappingOptions(sections: MappingSection[]) {
   H.popover().within(() => {
     getPopoverItems().then(($items) => {
       let index = 0;
+      let offsetForSearch = 0;
+
+      if (index === 0 && $items[index].querySelector("input")) {
+        // Skip search box if it is the first item
+        ++index;
+        offsetForSearch = 1;
+      }
 
       for (const [sectionName, columnNames] of sections) {
         if (sectionName) {
@@ -796,7 +802,7 @@ export function verifyPopoverMappingOptions(sections: MappingSection[]) {
         }
       }
 
-      expect($items.length).to.eq(expectedItemsCount);
+      expect($items.length).to.eq(expectedItemsCount + offsetForSearch);
     });
   });
 }

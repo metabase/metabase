@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
-import { getStoreUrl } from "metabase/selectors/settings";
+import { useSetting, useStoreUrl } from "metabase/common/hooks";
 import { Alert, Anchor, Icon, Text } from "metabase/ui";
 
 export function DevInstanceBanner() {
@@ -13,7 +12,7 @@ export function DevInstanceBanner() {
   }
 
   return (
-    <Alert icon={<Icon name="info_filled" />}>
+    <Alert icon={<Icon name="info" />}>
       {isHosted && (
         <BannerBody
           copyText={t`This instance is in development mode and can be used for development or testing purposes only.`}
@@ -37,10 +36,11 @@ function BannerBody({
   linkText: string;
   copyText: string;
 }) {
+  const storeUrl = useStoreUrl();
   return (
     <Text lh="1.25rem">
       {copyText}{" "}
-      <Anchor fw="bold" href={getStoreUrl()} target="_blank">
+      <Anchor fw="bold" href={storeUrl} target="_blank">
         {linkText}
       </Anchor>
     </Text>

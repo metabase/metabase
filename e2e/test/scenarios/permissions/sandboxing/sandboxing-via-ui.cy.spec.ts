@@ -6,12 +6,9 @@ import type { CollectionItem, Dashboard } from "metabase-types/api";
 import {
   assertAllResultsAndValuesAreSandboxed,
   assertNoResultsOrValuesAreSandboxed,
-  assertResponseFailsClosed,
   assignAttributeToUser,
   configureSandboxPolicy,
   createSandboxingDashboardAndQuestions,
-  getFieldValuesForProductCategories,
-  getParameterValuesForProductCategories,
   gizmoViewer,
   modelCustomView,
   questionCustomView,
@@ -81,9 +78,14 @@ describe(
       H.restore("sandboxing-snapshot" as any);
     });
 
-    it("shows all data before sandboxing policy is applied", () => {
+    it("shows all data before sandboxing policy is applied - gizmoViewer", () => {
       signInAs(gizmoViewer);
       assertNoResultsOrValuesAreSandboxed(dashboard, sandboxableQuestions);
+    });
+
+    // this test looks like it could be merged with the previous one,
+    // but then it flakes at a very high rate
+    it("shows all data before sandboxing policy is applied - widgetViewer", () => {
       signInAs(widgetViewer);
       assertNoResultsOrValuesAreSandboxed(dashboard, sandboxableQuestions);
     });
@@ -161,8 +163,8 @@ describe(
       });
     });
 
-    // Custom columns currently don't work. These tests ensure that the sandboxing policy fails closed.
-    describe("we expect an error - and no data to be shown - when applying a sandbox policy...", () => {
+    // Custom columns currently DO work.
+    describe("should work when applying a sandbox policy...", () => {
       (
         [
           ["Question", "booleanExpr", "true"],
@@ -192,24 +194,20 @@ describe(
             filterColumn: `my_${customColumnType}`,
           });
           signInAs(gizmoViewer);
+
           H.visitDashboard(checkNotNull(dashboard).id);
 
-          cy.log("Should not return any data, and return an error");
-          cy.wait(
-            new Array(sandboxableQuestions.length).fill("@dashcardQuery"),
-          ).then((interceptions) => {
-            interceptions.forEach(({ response }) => {
-              assertResponseFailsClosed(response);
+          H.getDashboardCard(0).within(() => {
+            cy.findByText("Question showing all products").should("be.visible");
+            cy.findByText("20 rows").should("be.visible");
+          });
+
+          H.getDashboardCard(1)
+            .scrollIntoView()
+            .within(() => {
+              cy.findByText("Model showing all products").should("be.visible");
+              cy.findByText("20 rows").should("be.visible");
             });
-          });
-
-          getFieldValuesForProductCategories().then((response) => {
-            expect(response.body.values).to.have.length(0);
-          });
-
-          getParameterValuesForProductCategories().then((response) => {
-            expect(response.body.values).to.have.length(0);
-          });
         });
       });
     });
@@ -295,14 +293,18 @@ describe(
         );
         cy.findByRole("menuitem", { name: /People/ }).click();
         cy.log("Modify the sandboxing policy for the 'data' group");
-        H.modifyPermission("data", 0, "Sandboxed");
+        H.modifyPermission("data", 0, "Row and column security");
 
         H.modal().within(() => {
-          cy.findByText(/Change access to this database to .*Sandboxed.*?/);
+          cy.findByText(
+            /Change access to this database to .*Row and column security.*?/,
+          );
           cy.button("Change").click();
         });
 
-        H.modal().findByText(/Restrict access to this table/);
+        H.modal().findByText(
+          /Configure row and column security for this table/,
+        );
         cy.findByRole("radio", {
           name: /Filter by a column in the table/,
         }).should("be.checked");
@@ -311,7 +313,7 @@ describe(
           .click();
         cy.findByRole("option", { name: "State" }).click();
         H.modal()
-          .findByRole("button", { name: /Pick a user attribute/ })
+          .findByPlaceholderText(/Pick a user attribute/)
           .click();
         cy.findByRole("option", { name: "state" }).click();
         cy.log("Save the sandboxing modal");

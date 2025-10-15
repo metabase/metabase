@@ -73,7 +73,6 @@ dataset_query:
           - full_name
         - base-type: type/Text
           join-alias: People - User
-      ident: join_xrgv7nzXe_v8ORWIbq839@0__People - User
       source-table: 0wVIfjBJWclD0lKeABYYl
       strategy: left-join
     - alias: Content - Entity Qualified
@@ -93,7 +92,6 @@ dataset_query:
         - base-type: type/Text
           join-alias: Content - Entity Qualified
       fields: none
-      ident: join_xrgv7nzXe_v8ORWIbq839@0__Content - Entity Qualified
       source-table: AxSackBiyXVRUzM_TyyQY
       strategy: left-join
     - alias: Group Members - User
@@ -113,7 +111,6 @@ dataset_query:
         - base-type: type/Integer
           join-alias: Group Members - User
       fields: none
-      ident: join_xrgv7nzXe_v8ORWIbq839@0__Group Members - User
       source-table: lTp-ATFsCUFEr9I0fMEaO
       strategy: left-join
     order-by:

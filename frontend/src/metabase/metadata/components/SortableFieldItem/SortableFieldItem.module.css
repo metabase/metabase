@@ -3,6 +3,10 @@
   border-radius: var(--default-border-radius);
 }
 
+.active {
+  border-color: var(--mb-color-brand) !important;
+}
+
 .card {
   box-shadow: 0 2px 4px 0 hsla(0, 0%, 0%, 0.05) !important;
 
@@ -12,7 +16,7 @@
 
   &:hover {
     &:not(.active) {
-      background-color: var(--mb-color-background-light) !important;
+      background-color: var(--mb-color-brand-lighter) !important;
     }
 
     .grabber {

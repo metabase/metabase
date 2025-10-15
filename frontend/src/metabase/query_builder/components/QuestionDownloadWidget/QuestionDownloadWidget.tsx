@@ -2,6 +2,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { ExportSettingsWidget } from "metabase/common/components/ExportSettingsWidget";
+import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
 import Link from "metabase/common/components/Link";
 import { useDocsUrl, useUserSetting } from "metabase/common/hooks";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
@@ -16,6 +17,7 @@ import {
   Box,
   Button,
   Flex,
+  Group,
   Icon,
   Stack,
   type StackProps,
@@ -32,6 +34,11 @@ type QuestionDownloadWidgetProps = {
   question: Question;
   result: Dataset;
   onDownload: (opts: {
+    type: string;
+    enableFormatting: boolean;
+    enablePivot: boolean;
+  }) => void;
+  onCopy?: (opts: {
     type: string;
     enableFormatting: boolean;
     enablePivot: boolean;
@@ -64,6 +71,7 @@ const getInitialFormat = (
 export const QuestionDownloadWidget = ({
   question,
   result,
+  onCopy,
   onDownload,
   disabled = false,
   formatPreference: formatPreferenceOverride,
@@ -146,6 +154,14 @@ export const QuestionDownloadWidget = ({
     !dismissedExcelPivotExportsBanner &&
     showMetabaseLinks;
 
+  const handleCopy = () => {
+    onCopy?.({
+      type: format,
+      enableFormatting: isFormatted,
+      enablePivot: isPivoted,
+    });
+  };
+
   return (
     <Stack {...stackProps} w={336} p="0.75rem" gap="lg">
       <Title order={5}>{t`Download data`}</Title>
@@ -203,19 +219,26 @@ export const QuestionDownloadWidget = ({
             mb="1rem"
           >{t`Your answer has a large number of rows so it could take a while to download.`}</Text>
 
-          <Text size="sm" c="text-medium">
-            {limitedDownloadSizeText}
-          </Text>
+          {format === "xlsx" && (
+            <Text size="sm" c="text-medium">
+              {limitedDownloadSizeText}
+            </Text>
+          )}
         </Box>
       )}
-      <Button
-        data-testid="download-results-button"
-        mt="auto"
-        ml="auto"
-        variant="filled"
-        onClick={handleDownload}
-        disabled={disabled}
-      >{t`Download`}</Button>
+      <Group justify="flex-end" ml="auto" mt="auto">
+        {onCopy && format !== "xlsx" && (
+          <IconButtonWrapper onClick={handleCopy} title={t`Copy to clipboard`}>
+            <Icon name="copy" />
+          </IconButtonWrapper>
+        )}
+        <Button
+          data-testid="download-results-button"
+          variant="filled"
+          onClick={handleDownload}
+          disabled={disabled}
+        >{t`Download`}</Button>
+      </Group>
     </Stack>
   );
 };

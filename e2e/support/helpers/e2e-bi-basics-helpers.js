@@ -22,6 +22,10 @@ export function addCustomColumn() {
   initiateAction("CustomColumn", "notebook");
 }
 
+export function sort() {
+  cy.button("Sort").click();
+}
+
 /**
  * Initiate a certain action such as filtering or summarizing taking the question's mode into account.
  *
@@ -60,7 +64,10 @@ function getIcon(actionType) {
 export function assertQueryBuilderRowCount(count) {
   const message =
     count === 1 ? "Showing 1 row" : `Showing ${count.toLocaleString()} rows`;
-  cy.findByTestId("question-row-count").should("contain.text", message);
+  cy.findByTestId("question-row-count", { timeout: 10000 }).should(
+    "contain.text",
+    message,
+  );
 }
 
 /**

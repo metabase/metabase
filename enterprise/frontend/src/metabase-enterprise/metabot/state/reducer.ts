@@ -3,11 +3,11 @@ import _ from "underscore";
 
 import { logout } from "metabase/auth/actions";
 import { uuid } from "metabase/lib/uuid";
-import type { MetabotHistory, MetabotStateContext } from "metabase-types/api";
+import type { MetabotHistory } from "metabase-types/api";
 
 import { TOOL_CALL_MESSAGES } from "../constants";
 
-import { sendAgentRequest, sendStreamedAgentRequest } from "./actions";
+import { sendAgentRequest } from "./actions";
 import { createMessageId } from "./utils";
 
 export type MetabotChatMessage = {
@@ -24,12 +24,15 @@ export type MetabotErrorMessage = {
 export type MetabotToolCall = {
   id: string;
   name: string;
-  message: string;
+  message: string | undefined;
   status: "started" | "ended";
 };
 
+export type MetabotReactionsState = {
+  navigateToPath: string | null;
+};
+
 export interface MetabotState {
-  useStreaming: boolean;
   isProcessing: boolean;
   conversationId: string;
   messages: MetabotChatMessage[];
@@ -37,11 +40,15 @@ export interface MetabotState {
   visible: boolean;
   history: MetabotHistory;
   state: any;
+  reactions: MetabotReactionsState;
   toolCalls: MetabotToolCall[];
+  experimental: {
+    metabotReqIdOverride: string | undefined;
+    profileOverride: string | undefined;
+  };
 }
 
 export const getMetabotInitialState = (): MetabotState => ({
-  useStreaming: true,
   isProcessing: false,
   conversationId: uuid(),
   messages: [],
@@ -49,16 +56,20 @@ export const getMetabotInitialState = (): MetabotState => ({
   visible: false,
   history: [],
   state: {},
+  reactions: {
+    navigateToPath: null,
+  },
   toolCalls: [],
+  experimental: {
+    metabotReqIdOverride: undefined,
+    profileOverride: undefined,
+  },
 });
 
 export const metabot = createSlice({
   name: "metabase-enterprise/metabot",
   initialState: getMetabotInitialState(),
   reducers: {
-    toggleStreaming: (state) => {
-      state.useStreaming = !state.useStreaming;
-    },
     addUserMessage: (
       state,
       action: PayloadAction<Omit<MetabotChatMessage, "role">>,
@@ -67,10 +78,7 @@ export const metabot = createSlice({
 
       state.errorMessages = [];
       state.messages.push({ id, role: "user", message });
-
-      if (state.useStreaming) {
-        state.history.push({ id, role: "user", content: message });
-      }
+      state.history.push({ id, role: "user", content: message });
     },
     addAgentMessage: (
       state,
@@ -106,23 +114,17 @@ export const metabot = createSlice({
 
       state.toolCalls = hasToolCalls ? [] : state.toolCalls;
     },
-    setStateContext: (state, action: PayloadAction<MetabotStateContext>) => {
-      state.state = action.payload;
-    },
     toolCallStart: (
       state,
       action: PayloadAction<{ toolCallId: string; toolName: string }>,
     ) => {
       const { toolCallId, toolName } = action.payload;
-      const toolCallMessage = TOOL_CALL_MESSAGES[toolName];
-      if (toolCallMessage) {
-        state.toolCalls.push({
-          id: toolCallId,
-          name: toolName,
-          message: toolCallMessage,
-          status: "started",
-        });
-      }
+      state.toolCalls.push({
+        id: toolCallId,
+        name: toolName,
+        message: TOOL_CALL_MESSAGES[toolName],
+        status: "started",
+      });
     },
     toolCallEnd: (state, action: PayloadAction<{ toolCallId: string }>) => {
       state.toolCalls = state.toolCalls.map((tc) =>
@@ -142,7 +144,7 @@ export const metabot = createSlice({
       }
 
       const historyIndex = state.history.findLastIndex((h) => id === h.id);
-      if (state.useStreaming && historyIndex > -1) {
+      if (historyIndex > -1) {
         state.history = state.history.slice(0, historyIndex);
       }
     },
@@ -154,6 +156,7 @@ export const metabot = createSlice({
       state.isProcessing = false;
       state.toolCalls = [];
       state.conversationId = uuid();
+      state.experimental.metabotReqIdOverride = undefined;
     },
     resetConversationId: (state) => {
       state.conversationId = uuid();
@@ -161,29 +164,26 @@ export const metabot = createSlice({
     setIsProcessing: (state, action: PayloadAction<boolean>) => {
       state.isProcessing = action.payload;
     },
+    setNavigateToPath: (state, action: PayloadAction<string>) => {
+      state.reactions.navigateToPath = action.payload;
+    },
     setVisible: (state, action: PayloadAction<boolean>) => {
       state.visible = action.payload;
+    },
+    setMetabotReqIdOverride: (
+      state,
+      action: PayloadAction<string | undefined>,
+    ) => {
+      state.experimental.metabotReqIdOverride = action.payload;
+    },
+    setProfileOverride: (state, action: PayloadAction<string | undefined>) => {
+      state.experimental.profileOverride = action.payload;
     },
   },
   extraReducers: (builder) => {
     builder
       .addCase(logout.pending, getMetabotInitialState)
       // streamed response handlers
-      .addCase(sendStreamedAgentRequest.pending, (state) => {
-        state.isProcessing = true;
-        state.errorMessages = [];
-      })
-      .addCase(sendStreamedAgentRequest.fulfilled, (state, action) => {
-        state.history = action.payload?.history?.slice() ?? [];
-        state.state = { ...(action.payload?.state ?? {}) };
-        state.toolCalls = [];
-        state.isProcessing = false;
-      })
-      .addCase(sendStreamedAgentRequest.rejected, (state) => {
-        state.toolCalls = [];
-        state.isProcessing = false;
-      })
-      // non-streamed response handlers
       .addCase(sendAgentRequest.pending, (state) => {
         state.isProcessing = true;
         state.errorMessages = [];
@@ -191,9 +191,11 @@ export const metabot = createSlice({
       .addCase(sendAgentRequest.fulfilled, (state, action) => {
         state.history = action.payload?.history?.slice() ?? [];
         state.state = { ...(action.payload?.state ?? {}) };
+        state.toolCalls = [];
         state.isProcessing = false;
       })
       .addCase(sendAgentRequest.rejected, (state) => {
+        state.toolCalls = [];
         state.isProcessing = false;
       });
   },

@@ -113,13 +113,13 @@
           (dotimes [_ num-requests]
             (future (http/post url request)))
           (Thread/sleep 100)
-          (let [start-time-ms (System/currentTimeMillis)]
+          (let [timer (u/start-timer)]
             (is (= {:status "ok"} (client/client :get 200 "health")))
             (testing "Health endpoint should complete before the first round of queries completes"
               (is (> @remaining (inc (- num-requests thread-pool-size)))))
             (testing "Health endpoint should complete in under 500ms regardless of how many queries are running"
               (testing "(Usually this is under 100ms but might be a little over if CircleCI is being slow)"
-                (let [elapsed-ms (- (System/currentTimeMillis) start-time-ms)]
+                (let [elapsed-ms (u/since-ms timer)]
                   (is (< elapsed-ms 500)))))))))))
 
 (deftest cancelation-test

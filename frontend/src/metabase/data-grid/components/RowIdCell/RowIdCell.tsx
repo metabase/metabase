@@ -13,17 +13,22 @@ export interface RowIdCellProps {
   value?: React.ReactNode;
   backgroundColor?: string;
   canExpand?: boolean;
+  expanded?: boolean;
 }
 
 export const RowIdCell = memo(function RowIdCell({
   value,
   backgroundColor,
   canExpand = true,
+  expanded,
 }: RowIdCellProps) {
   const hasValue = value != null;
 
   return (
-    <Tooltip label={t`View details`} disabled={!canExpand}>
+    <Tooltip
+      label={expanded ? t`Hide details` : t`View details`}
+      disabled={!canExpand}
+    >
       <span>
         <BaseCell
           data-testid="row-id-cell"
@@ -45,7 +50,9 @@ export const RowIdCell = memo(function RowIdCell({
               h={24}
               className={cx(DataGridS.rowHoverVisible, S.expandButton)}
               size="compact-md"
-              leftSection={<Icon name="expand" size={14} />}
+              leftSection={
+                <Icon name={expanded ? "sidebar_closed" : "sidebar_open"} />
+              }
             />
           )}
         </BaseCell>

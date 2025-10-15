@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import type { Dataset } from "metabase-types/api";
+import type { Dataset, Field } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
 export function getPreviewTypeData() {
@@ -11,7 +11,7 @@ export function getPreviewTypeData() {
   ];
 }
 
-export function getErrorMessage(data: Dataset): string {
+export function getDataErrorMessage(data: Dataset): string {
   const error = typeof data.error === "string" ? data.error : data.error?.data;
 
   if (data.error_type === "invalid-query") {
@@ -27,4 +27,11 @@ export function getErrorMessage(data: Dataset): string {
 
 export function is403Error(error: unknown): boolean {
   return isObject(error) && error.status === 403;
+}
+
+export function isFieldHidden(field: Field) {
+  return (
+    field.visibility_type === "sensitive" ||
+    field.visibility_type === "details-only"
+  );
 }

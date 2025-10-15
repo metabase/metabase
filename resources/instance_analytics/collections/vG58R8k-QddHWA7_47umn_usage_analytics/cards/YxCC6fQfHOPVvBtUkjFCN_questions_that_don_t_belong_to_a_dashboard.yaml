@@ -23,8 +23,6 @@ parameter_mappings: []
 dataset_query:
   database: Internal Metabase Database
   query:
-    expression-idents:
-      Days since last view: expression_YxCC6fQfHOPVvBtUkjFCN@0__Days since last view
     expressions:
       Days since last view:
       - datetime-diff
@@ -102,7 +100,6 @@ dataset_query:
         - base-type: type/Text
           join-alias: Last content viewed at - Entity Qualified
       fields: none
-      ident: join_YxCC6fQfHOPVvBtUkjFCN@0__Last content viewed at - Entity Qualified
       source-table: tKEl86EXMyTDIoO9nyFTV
       strategy: left-join
     - alias: Dashboard cards - Entity Qualified
@@ -122,7 +119,6 @@ dataset_query:
         - base-type: type/Text
           join-alias: Dashboard cards - Entity Qualified
       fields: none
-      ident: join_YxCC6fQfHOPVvBtUkjFCN@0__Dashboard cards - Entity Qualified
       source-table: pKdvc0pwu1zDi8NqnyJkt
       strategy: left-join
     limit: 100

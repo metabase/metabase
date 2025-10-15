@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*]]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -17,7 +16,7 @@
 ;;; ---------------------------------------------- Permissions Checking ----------------------------------------------
 
 (defn- card []
-  {:dataset_query {:database (mt/id), :type "native"}})
+  {:dataset_query {:database (mt/id), :type :native, :native {:query "SELECT 1;"}}})
 
 (defn- card-in-collection [collection-or-id]
   (assoc (card) :collection_id (u/the-id collection-or-id)))
@@ -28,52 +27,41 @@
       (mt/with-temp [:model/Card card (card)]
         (binding [*current-user-permissions-set* (delay #{})]
           (is (not (mi/can-read? card)))))
-
       (testing "...or one in a Collection either!"
         (mt/with-temp [:model/Card card (card-in-collection collection)]
           (binding [*current-user-permissions-set* (delay #{})]
             (is (not (mi/can-read? card)))))))
-
     (testing "*should* be allowed to read a Card not in a Collection if you have Root collection perms"
       (mt/with-temp [:model/Card card (card)]
         (binding [*current-user-permissions-set* (delay #{"/collection/root/read/"})]
           (is (mi/can-read? card)))
-
         (testing "...but not if you have perms for some other Collection"
           (binding [*current-user-permissions-set* (delay #{"/collection/1337/read/"})]
             (is (not (mi/can-read? card)))))))
-
     (testing "should be allowed to *read* a Card in a Collection if you have read perms for that Collection"
       (mt/with-temp [:model/Card card (card-in-collection collection)]
         (binding [*current-user-permissions-set* (delay #{(permissions.path/collection-read-path collection)})]
           (is (mi/can-read? card)))
-
         (testing "...but not if you only have Root Collection perms"
           (binding [*current-user-permissions-set* (delay #{"/collection/root/read/"})]
             (is (not (mi/can-read? card)))))))
-
     (testing "to *write* a Card not in a Collection you need Root Collection Write Perms"
       (mt/with-temp [:model/Card card (card)]
         (binding [*current-user-permissions-set* (delay #{"/collection/root/"})]
           (is (mi/can-write? card)))
-
         (testing "...root Collection Read Perms shouldn't work"
           (binding [*current-user-permissions-set* (delay #{"/collection/root/read/"})]
             (is (not (mi/can-write? card))))
-
           (testing "...nor should write perms for another collection"
             (binding [*current-user-permissions-set* (delay #{"/collection/1337/"})]
               (is (not (mi/can-write? card))))))))
-
     (testing "to *write* a Card *in* a Collection you need Collection Write Perms"
       (mt/with-temp [:model/Card card (card-in-collection collection)]
         (binding [*current-user-permissions-set* (delay #{(permissions.path/collection-readwrite-path collection)})]
           (is (mi/can-write? card)))
-
         (testing "...Collection read perms shouldn't work"
           (binding [*current-user-permissions-set* (delay #{(permissions.path/collection-read-path collection)})]
             (is (not (mi/can-write? card))))
-
           (testing "...nor should write perms for the Root Collection"
             (binding [*current-user-permissions-set* (delay #{"/collection/root/"})]
               (is (not (mi/can-write? card))))))))))
@@ -258,7 +246,7 @@
 
 (deftest ^:parallel pmbql-query-test
   (testing "Should be able to calculate permissions for a pMBQL query (#39024)"
-    (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [metadata-provider (mt/metadata-provider)
           venues            (lib.metadata/table metadata-provider (mt/id :venues))
           query             (lib/query metadata-provider venues)]
       (is (= {:perms/view-data      {(mt/id :venues) :unrestricted}
@@ -267,7 +255,7 @@
 
 (deftest ^:parallel pmbql-native-query-test
   (testing "Should be able to calculate permissions for a pMBQL native query (#39024)"
-    (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [metadata-provider (mt/metadata-provider)
           query             (lib/query metadata-provider {:lib/type :mbql.stage/native
                                                           :native   "SELECT *;"})]
       (is (= {:perms/view-data :unrestricted
@@ -297,7 +285,6 @@
                             :query    {:source-query {:native "SELECT * FROM (SELECT * FROM whatever);"
                                                       :query-permissions/referenced-card-ids #{card-1-id}}
                                        :joins        [{:alias        "J"
-                                                       :ident        (u/generate-nano-id)
                                                        :source-query {:native "SELECT * FROM (SELECT * FROM whatever);"
                                                                       :query-permissions/referenced-card-ids #{card-2-id}}
                                                        :condition    [:= true false]}]}}]
@@ -312,7 +299,7 @@
                     :paths                #{(format "/collection/%d/read/" collection-1-id)
                                             (format "/collection/%d/read/" collection-2-id)}}
                    (query-perms/required-perms-for-query
-                    (lib/query (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                    (lib/query (mt/metadata-provider)
                                (lib/->pMBQL native-query)))))))))))
 
 (deftest ^:parallel native-query-source-card-id-join-permissions-test

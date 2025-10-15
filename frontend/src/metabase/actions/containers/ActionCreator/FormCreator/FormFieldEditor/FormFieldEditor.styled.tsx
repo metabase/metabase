@@ -5,7 +5,6 @@ import { forwardRef } from "react";
 import FormField from "metabase/common/components/FormField";
 import Radio from "metabase/common/components/Radio";
 import { darken } from "metabase/lib/colors";
-import { space } from "metabase/styled-components/theme";
 import { Icon, type IconProps } from "metabase/ui";
 
 const DRAG_HANDLE_SIZE = 12;
@@ -13,19 +12,19 @@ const DRAG_HANDLE_SIZE = 12;
 export const FormFieldContainer = styled.div`
   background-color: var(--mb-color-bg-white);
   border: 1px solid var(--mb-color-border);
-  border-radius: ${space(1)};
+  border-radius: var(--mantine-spacing-sm);
   overflow: hidden;
 `;
 
 const ContentContainer = styled.div`
   display: flex;
-  gap: ${space(1)};
+  gap: var(--mantine-spacing-sm);
 `;
 
 export const EditorContainer = styled(ContentContainer)`
   display: flex;
   padding: 1rem 1rem 0.85rem 0.85rem;
-  gap: ${space(1)};
+  gap: var(--mantine-spacing-sm);
 
   ${Radio.RadioGroupVariants.join(", ")} {
     margin-top: 10px;

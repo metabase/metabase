@@ -42,7 +42,7 @@ describe("SyncTableSchemaButton", () => {
 
     await userEvent.click(button);
     expect(
-      fetchMock.calls(`path:/api/table/${table.id}/sync_schema`, {
+      fetchMock.callHistory.calls(`path:/api/table/${table.id}/sync_schema`, {
         method: "POST",
       }),
     ).toHaveLength(1);
@@ -64,7 +64,7 @@ describe("SyncTableSchemaButton", () => {
 
     await userEvent.click(button);
     expect(
-      fetchMock.calls(`path:/api/table/${table.id}/sync_schema`, {
+      fetchMock.callHistory.calls(`path:/api/table/${table.id}/sync_schema`, {
         method: "POST",
       }),
     ).toHaveLength(1);
@@ -79,7 +79,7 @@ describe("SyncTableSchemaButton", () => {
     expect(button).toHaveTextContent("Sync triggered!");
     await userEvent.click(button);
     expect(
-      fetchMock.calls(`path:/api/table/${table.id}/sync_schema`, {
+      fetchMock.callHistory.calls(`path:/api/table/${table.id}/sync_schema`, {
         method: "POST",
       }),
     ).toHaveLength(2);
@@ -100,18 +100,16 @@ describe("SyncTableSchemaButton", () => {
   it("should show error message toast", async () => {
     const { table } = setup();
 
-    fetchMock.post(
-      `path:/api/table/${table.id}/sync_schema`,
-      { status: 500 },
-      { overwriteRoutes: true },
-    );
+    fetchMock.modifyRoute(`table-${table.id}-sync-schema`, {
+      response: { status: 500 },
+    });
 
     const button = screen.getByRole("button");
     expect(button).toHaveTextContent("Sync table schema");
 
     await userEvent.click(button);
     expect(
-      fetchMock.calls(`path:/api/table/${table.id}/sync_schema`, {
+      fetchMock.callHistory.calls(`path:/api/table/${table.id}/sync_schema`, {
         method: "POST",
       }),
     ).toHaveLength(1);

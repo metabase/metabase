@@ -33,35 +33,64 @@ export const ContactAdminAlert = ({ reason }: { reason: ContactReason }) => {
   const adminEmail = useSelector((state) => getSetting(state, "admin-email"));
   const adminEmailElement = <b key="admin-email">{adminEmail}</b>;
 
-  const getAlertCopy = match(reason)
+  const hasAdminEmail = !!adminEmail;
+
+  const getAlertCopy = match({ reason, hasAdminEmail })
     .with(
-      "add-database",
+      { reason: "add-database", hasAdminEmail: true },
       () =>
         c("{0} is admin's email address")
           .jt`To add a new database, please contact your administrator at ${adminEmailElement}.`,
     )
     .with(
-      "enable-csv-upload",
+      { reason: "add-database", hasAdminEmail: false },
+      () => t`To add a new database, please contact your administrator.`,
+    )
+    .with(
+      { reason: "enable-csv-upload", hasAdminEmail: true },
       () =>
         c("{0} is admin's email address")
           .jt`To enable CSV file upload, please contact your administrator at ${adminEmailElement}.`,
     )
     .with(
-      "obtain-csv-upload-permission",
+      { reason: "enable-csv-upload", hasAdminEmail: false },
+      () => t`To enable CSV file upload, please contact your administrator.`,
+    )
+    .with(
+      {
+        reason: "obtain-csv-upload-permission",
+        hasAdminEmail: true,
+      },
       () =>
         c("{0} is admin's email address")
           .jt`You are not permitted to upload CSV files. To get proper permissions, please contact your administrator at ${adminEmailElement}.`,
     )
     .with(
-      "enable-google-sheets",
+      {
+        reason: "obtain-csv-upload-permission",
+        hasAdminEmail: false,
+      },
+      () =>
+        t`You are not permitted to upload CSV files. To get proper permissions, please contact your administrator.`,
+    )
+    .with(
+      {
+        reason: "enable-google-sheets",
+        hasAdminEmail: true,
+      },
       () =>
         c("{0} is admin's email address")
           .jt`To enable Google Sheets import, please contact your administrator at ${adminEmailElement}.`,
     )
+    .with(
+      { reason: "enable-google-sheets", hasAdminEmail: false },
+      () =>
+        t`To enable Google Sheets import, please contact your administrator.`,
+    )
     .exhaustive();
 
   return (
-    <Alert icon={<Icon name="info_filled" />} maw={CONTENT_MAX_WIDTH}>
+    <Alert icon={<Icon name="info" />} maw={CONTENT_MAX_WIDTH}>
       <Text fz="md" lh="lg">
         {getAlertCopy}
       </Text>
@@ -146,6 +175,11 @@ export const CSVPanelEmptyState = ({
       contactAdminReason: ContactReason;
       upsell?: never;
     }) => {
+  const text = (
+    <Text component="span" td="underline">{c(
+      "in the sentence 'To work with CSVs, enable file uploads in your database.'",
+    ).t`your database`}</Text>
+  );
   const ctaSubtitle = c("{0} refers to the string 'your database'")
     .jt`To work with CSVs, enable file uploads in ${(
     <Tooltip
@@ -155,7 +189,7 @@ export const CSVPanelEmptyState = ({
       label={t`PostgreSQL, MySQL, Redshift, and ClickHouse databases are supported for file storage.`}
       key="database-tooltip"
     >
-      <Text component="span" td="underline">{t`your database`}</Text>
+      {text}
     </Tooltip>
   )}.`;
 

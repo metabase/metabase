@@ -11,7 +11,7 @@ const minimatch = require("minimatch");
 
 const PATTERN = "{enterprise/,}frontend/src/**/*.{js,jsx,ts,tsx}";
 
-// after webpack.config.js
+// after rspack.main.config.js
 const ALIAS = {
   metabase: "frontend/src/metabase",
   "metabase-lib": "frontend/src/metabase-lib",

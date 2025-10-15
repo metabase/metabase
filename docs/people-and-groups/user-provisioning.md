@@ -25,7 +25,7 @@ Click on the **User provisioning** tab.
 
 To set up user provisioning with SCIM, hit the toggle to enable it. Metabase will tell you the SCIM endpoint URL and SCIM token to share with your identity provider.
 
-> If you've previously set up user provisioning with SAML, Metabase will turn that setting off and use the SCIM setup instead.
+> SAML user provisioning is always disabled when SCIM is enabled.
 
 ## SCIM endpoint URL
 
@@ -56,10 +56,6 @@ NOTE: the authentication mode you need to set is "HTTP Header"
 Once you've enabled SCIM in Metabase and gotten your SCIM endpoint URL and SCIM token, follow the docs for [Setting up SCIM in Microsoft Entra ID](https://learn.microsoft.com/en-us/entra/identity/app-provisioning/configure-automatic-user-provisioning-portal).
 
 With Microsoft Entra ID, Metabase only supports user provisioning (groups aren't created or populated).
-
-## Notify admins of new users provisioned from SSO
-
-If you're not using SCIM to provision user accounts, you can optionally have Metabase send an email to admins whenever someone signs in to Metabase via SSO for the first time (which creates a Metabase account). This setting doesn't require you to set up SCIM.
 
 ## Further reading
 

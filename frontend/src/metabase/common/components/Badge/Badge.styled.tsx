@@ -7,8 +7,8 @@ import type { HTMLAttributes } from "react";
 import type { LinkProps } from "metabase/common/components/Link";
 import Link from "metabase/common/components/Link";
 import { doNotForwardProps } from "metabase/common/utils/doNotForwardProps";
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 
 interface RawMaybeLinkProps {
   to?: string;
@@ -51,6 +51,7 @@ export const BadgeIcon = styled(
   doNotForwardProps("hasMargin", "targetOffsetX"),
 )<{ hasMargin: boolean }>`
   margin-right: ${(props) => (props.hasMargin ? "5px" : 0)};
+  flex-shrink: 0;
 `;
 
 export const BadgeText = styled.span<{ isSingleLine: boolean }>`

@@ -1,21 +1,21 @@
 (ns metabase.driver.mongo.parameters
   (:require
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [java-time.api :as t]
    [metabase.driver-api.core :as driver-api]
-   [metabase.driver.common.parameters :as params]
-   [metabase.driver.common.parameters.dates :as params.dates]
-   [metabase.driver.common.parameters.operators :as params.ops]
-   [metabase.driver.common.parameters.parse :as params.parse]
-   [metabase.driver.common.parameters.values :as params.values]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.dates :as params.dates]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.operators :as params.ops]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.parse :as params.parse]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.values :as params.values]
    [metabase.driver.mongo.query-processor :as mongo.qp]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf])
   (:import
    (java.time ZoneOffset)
    (java.time.temporal Temporal)
@@ -128,10 +128,11 @@
       (let [no-value? (= (:value v) params/no-value)]
         (cond
           (params.ops/operator? (get-in v [:value :type]))
+          #_{:clj-kondo/ignore [:deprecated-var]}
           (let [param (:value v)
                 compiled-clause (-> (assoc param
                                            :target
-                                           [:template-tag
+                                           [:dimension
                                             [:field (field->name (:field v) false)
                                              {:base-type (get-in v [:field :base-type])}]])
                                     params.ops/to-clause
@@ -211,4 +212,4 @@
   "Implementation of [[metabase.driver/substitute-native-parameters]] for MongoDB."
   [_driver inner-query]
   (let [param->value (params.values/query->params-map inner-query)]
-    (update inner-query :query (partial walk/postwalk (partial parse-and-substitute param->value)))))
+    (update inner-query :query (partial perf/postwalk (partial parse-and-substitute param->value)))))

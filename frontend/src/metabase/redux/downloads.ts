@@ -2,13 +2,17 @@ import { createSlice } from "@reduxjs/toolkit";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import api, { GET, POST } from "metabase/lib/api";
 import { isWithinIframe, openSaveDialog } from "metabase/lib/dom";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import { getTokenFeature } from "metabase/setup/selectors";
-import { saveChartImage } from "metabase/visualizations/lib/save-chart-image";
+import {
+  convertElementToCanvas,
+  saveChartImage,
+} from "metabase/visualizations/lib/save-chart-image";
 import { getCardKey } from "metabase/visualizations/lib/utils";
 import type Question from "metabase-lib/v1/Question";
 import type {
@@ -21,7 +25,7 @@ import type { DownloadsState, State } from "metabase-types/store";
 
 import { trackDownloadResults } from "./downloads-analytics";
 
-export interface DownloadQueryResultsOpts {
+export interface ExportQueryResultsOpts {
   type: string;
   question: Question;
   result: Dataset;
@@ -30,9 +34,10 @@ export interface DownloadQueryResultsOpts {
   dashboardId?: DashboardId;
   dashcardId?: DashCardId;
   uuid?: string;
-  token?: string;
+  token?: string | null;
   params?: Record<string, unknown>;
   visualizationSettings?: VisualizationSettings;
+  exportVariant?: "download" | "copy-to-clipboard";
 }
 
 interface DownloadQueryResultsParams {
@@ -61,12 +66,12 @@ const getDownloadedResourceType = ({
   uuid,
   token,
   question,
-}: Partial<DownloadQueryResultsOpts>): DownloadedResourceInfo => {
+}: Partial<ExportQueryResultsOpts>): DownloadedResourceInfo => {
   const cardId = question?.id();
 
   const isInIframe = isWithinIframe();
 
-  const defaultAccessedVia = process.env.EMBEDDING_SDK_VERSION
+  const defaultAccessedVia = isEmbeddingSdk()
     ? "sdk-embed"
     : isInIframe
       ? "interactive-iframe-embed"
@@ -108,9 +113,9 @@ const getDownloadedResourceType = ({
   };
 };
 
-export const downloadQueryResults = createAsyncThunk(
+export const exportQueryResults = createAsyncThunk(
   "metabase/downloads/downloadQueryResults",
-  async (opts: DownloadQueryResultsOpts, { dispatch, getState }) => {
+  async (opts: ExportQueryResultsOpts, { dispatch, getState }) => {
     const { resourceType, accessedVia } = getDownloadedResourceType(opts);
     trackDownloadResults({
       resourceType,
@@ -121,18 +126,18 @@ export const downloadQueryResults = createAsyncThunk(
     if (opts.type === Urls.exportFormatPng) {
       const isWhitelabeled = getTokenFeature(getState(), "whitelabel");
       const includeBranding = !isWhitelabeled;
-      downloadChart({ opts, includeBranding });
+      return exportChart({ opts, includeBranding });
     } else {
-      dispatch(downloadDataset({ opts, id: Date.now() }));
+      await dispatch(exportDataset({ opts, id: Date.now() })).unwrap();
     }
   },
 );
 
-const downloadChart = async ({
+const exportChart = async ({
   opts,
   includeBranding,
 }: {
-  opts: DownloadQueryResultsOpts;
+  opts: ExportQueryResultsOpts;
   includeBranding: boolean;
 }) => {
   const { question, dashcardId } = opts;
@@ -141,23 +146,48 @@ const downloadChart = async ({
     dashcardId != null
       ? `[data-dashcard-key='${dashcardId}']`
       : `[data-card-key='${getCardKey(question.id())}']`;
-  await saveChartImage({
-    selector: chartSelector,
-    fileName,
-    includeBranding,
-  });
+
+  if (opts.exportVariant === "copy-to-clipboard") {
+    const canvas = await convertElementToCanvas(chartSelector, includeBranding);
+    canvas?.toBlob(async (blob) => {
+      if (blob) {
+        try {
+          await navigator.clipboard.write([
+            new window.ClipboardItem({
+              [blob.type]: blob,
+            }),
+          ]);
+        } catch (err) {
+          alert(
+            "Failed to copy image to clipboard. Your browser may not support this feature.",
+          );
+        }
+      }
+    }, "image/png");
+  } else {
+    await saveChartImage({
+      selector: chartSelector,
+      fileName,
+      includeBranding,
+    });
+  }
 };
 
-export const downloadDataset = createAsyncThunk(
+export const exportDataset = createAsyncThunk(
   "metabase/downloads/downloadDataset",
-  async ({ opts, id }: { opts: DownloadQueryResultsOpts; id: number }) => {
+  async ({ opts, id }: { opts: ExportQueryResultsOpts; id: number }) => {
     const params = getDatasetParams(opts);
     const response = await getDatasetResponse(params);
     const name = getDatasetFileName(response.headers, opts.type);
     const fileContent = await response.blob();
-    openSaveDialog(name, fileContent);
 
-    return { id, name };
+    if (opts.exportVariant === "copy-to-clipboard") {
+      await navigator.clipboard.writeText(await fileContent.text());
+    } else {
+      openSaveDialog(name, fileContent);
+    }
+
+    return { id, name, exportVariant: opts.exportVariant };
   },
 );
 
@@ -173,7 +203,7 @@ const getDatasetParams = ({
   params = {},
   result,
   visualizationSettings,
-}: DownloadQueryResultsOpts): DownloadQueryResultsParams => {
+}: ExportQueryResultsOpts): DownloadQueryResultsParams => {
   const cardId = question.id();
 
   const exportParams = {
@@ -382,7 +412,11 @@ const downloads = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      .addCase(downloadDataset.pending, (state, action) => {
+      .addCase(exportDataset.pending, (state, action) => {
+        if (action.meta.arg.opts.exportVariant === "copy-to-clipboard") {
+          return;
+        }
+
         const title = t`Results for ${
           action.meta.arg.opts.question.card().name
         }`;
@@ -392,14 +426,22 @@ const downloads = createSlice({
           status: "in-progress",
         });
       })
-      .addCase(downloadDataset.fulfilled, (state, action) => {
+      .addCase(exportDataset.fulfilled, (state, action) => {
+        if (action.meta.arg.opts.exportVariant === "copy-to-clipboard") {
+          return;
+        }
+
         const download = state.find((item) => item.id === action.meta.arg.id);
         if (download) {
           download.status = "complete";
           download.title = action.payload.name;
         }
       })
-      .addCase(downloadDataset.rejected, (state, action) => {
+      .addCase(exportDataset.rejected, (state, action) => {
+        if (action.meta.arg.opts.exportVariant === "copy-to-clipboard") {
+          return;
+        }
+
         const download = state.find((item) => item.id === action.meta.arg.id);
         if (download) {
           download.status = "error";

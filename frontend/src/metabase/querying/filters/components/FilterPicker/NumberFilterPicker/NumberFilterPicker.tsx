@@ -19,14 +19,17 @@ import { COMBOBOX_PROPS, WIDTH } from "../constants";
 import type { FilterChangeOpts, FilterPickerWidgetProps } from "../types";
 
 export function NumberFilterPicker({
+  autoFocus,
   query,
   stageIndex,
   column,
   filter,
   isNew,
   withAddButton,
+  withSubmitButton,
   onChange,
   onBack,
+  readOnly,
 }: FilterPickerWidgetProps) {
   const columnInfo = useMemo(
     () => Lib.displayInfo(query, stageIndex, column),
@@ -82,6 +85,7 @@ export function NumberFilterPicker({
       <FilterPickerHeader
         columnName={columnInfo.longDisplayName}
         onBack={onBack}
+        readOnly={readOnly}
       >
         <FilterOperatorPicker
           value={operator}
@@ -91,6 +95,7 @@ export function NumberFilterPicker({
       </FilterPickerHeader>
       <div>
         <NumberValueInput
+          autoFocus={autoFocus}
           query={query}
           stageIndex={stageIndex}
           column={column}
@@ -103,6 +108,7 @@ export function NumberFilterPicker({
           isNew={isNew}
           isValid={isValid}
           withAddButton={withAddButton}
+          withSubmitButton={withSubmitButton}
           onAddButtonClick={handleAddButtonClick}
         />
       </div>
@@ -111,6 +117,7 @@ export function NumberFilterPicker({
 }
 
 interface NumberValueInputProps {
+  autoFocus: boolean;
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
@@ -121,6 +128,7 @@ interface NumberValueInputProps {
 }
 
 function NumberValueInput({
+  autoFocus,
   query,
   stageIndex,
   column,
@@ -137,7 +145,7 @@ function NumberValueInput({
           stageIndex={stageIndex}
           column={column}
           values={values.filter(isNotNull)}
-          autoFocus
+          autoFocus={autoFocus}
           comboboxProps={COMBOBOX_PROPS}
           onChange={onChange}
         />
@@ -151,7 +159,7 @@ function NumberValueInput({
         <NumberFilterInput
           value={values[0]}
           placeholder={t`Enter a number`}
-          autoFocus
+          autoFocus={autoFocus}
           w="100%"
           aria-label={t`Filter value`}
           onChange={(newValue) => onChange([newValue])}
@@ -166,7 +174,7 @@ function NumberValueInput({
         <NumberFilterInput
           value={values[0]}
           placeholder={t`Min`}
-          autoFocus
+          autoFocus={autoFocus}
           onChange={(newValue) => onChange([newValue, values[1]])}
         />
         <Text mx="sm">{t`and`}</Text>

@@ -1,12 +1,13 @@
 import { isNotNull } from "metabase/lib/types";
 import type {
   Card,
+  Dataset,
   DatasetColumn,
   RawSeries,
   VisualizerColumnReference,
   VisualizerDataSource,
 } from "metabase-types/api";
-import type { VisualizerVizDefinitionWithColumns } from "metabase-types/store/visualizer";
+import type { VisualizerVizDefinitionWithColumnsAndFallbacks } from "metabase-types/store/visualizer";
 
 import {
   copyColumn,
@@ -61,7 +62,7 @@ function mapColumnVizSettings(
 function processColumnsForDataSource(
   dataSource: VisualizerDataSource,
   columns: DatasetColumn[],
-  state: VisualizerVizDefinitionWithColumns,
+  state: VisualizerVizDefinitionWithColumnsAndFallbacks,
 ): ColumnInfo[] {
   const columnInfos: ColumnInfo[] = [];
 
@@ -94,11 +95,18 @@ function processColumnsForDataSource(
 export function getInitialStateForMultipleSeries(rawSeries: RawSeries) {
   const mainCard = rawSeries[0].card;
 
-  const state: VisualizerVizDefinitionWithColumns = {
+  const state: VisualizerVizDefinitionWithColumnsAndFallbacks = {
     display: mainCard.display,
     columns: [],
     columnValuesMapping: {},
     settings: {},
+    datasetFallbacks: rawSeries.reduce(
+      (acc, s) => {
+        acc[s.card.id] = s as unknown as Dataset;
+        return acc;
+      },
+      {} as Record<number, Dataset | null | undefined>,
+    ),
   };
 
   const dataSources = rawSeries.map(({ card }) =>
@@ -159,7 +167,6 @@ export function getInitialStateForMultipleSeries(rawSeries: RawSeries) {
       columnsToRefs,
     ),
     ...mergedSettings,
-    "card.title": mainCard.name,
   };
 
   return state;

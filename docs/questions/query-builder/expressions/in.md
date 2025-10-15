@@ -23,8 +23,8 @@ For example,
 ```
 in([Category], "Gadget", "Widget")
 ```
-would return rows where `[Category]` is either `Gadget` or `Widget`. 
 
+would return rows where `[Category]` is either `Gadget` or `Widget`.
 
 You can choose multiple columns. For example, let's say you wanted to find records where `[Title]` or `[Category]` fields are equal to `Gadget`. You could write:
 

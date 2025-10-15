@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
 import { act, screen } from "__support__/ui";
 import type { SetupOpts } from "metabase/admin/performance/components/test-utils";
@@ -28,10 +27,6 @@ function setup(opts: SetupOpts = {}) {
 describe("StrategyEditorForDatabases", () => {
   beforeEach(() => {
     setup();
-  });
-
-  afterEach(() => {
-    fetchMock.restore();
   });
 
   it("lets user override root strategy on enterprise instance", async () => {

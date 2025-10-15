@@ -5,7 +5,7 @@
   we can have a uniform interface both via the API and code"
   (:require
    [metabase-enterprise.sso.api.interface :as sso.i]
-   [metabase-enterprise.sso.integrations.jwt]
+   [metabase-enterprise.sso.integrations.jwt :as jwt]
    [metabase-enterprise.sso.integrations.saml]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.macros :as api.macros]
@@ -15,6 +15,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [saml20-clj.core :as saml]
    [stencil.core :as stencil]
    [toucan2.core :as t2]))
@@ -22,7 +23,8 @@
 (set! *warn-on-reflection* true)
 
 ;; load the SSO integrations so their implementations for the multimethods below are available.
-(comment metabase-enterprise.sso.integrations.jwt/keep-me
+;; `jwt` is actually used here, but keeping it below to document the requirement in case it's removed someday
+(comment jwt/keep-me
          metabase-enterprise.sso.integrations.saml/keep-me)
 
 ;; GET /auth/sso
@@ -89,6 +91,19 @@
         :user-email email
         :relay-state (u/encode-base64
                       (str (urls/site-url) metabase-slo-redirect-url))))}))
+
+;; POST /auth/sso/to_session
+(api.macros/defendpoint :post "/to_session"
+  "If a user wants to simply convert a JWT to a session token (which they'll manage)
+  this provides a path for them to do so."
+  [_route-params
+   _query-params
+   {:keys [jwt]} :- [:map [:jwt ms/NonBlankString]]
+   request]
+  (when-not (sso-settings/jwt-enabled)
+    (throw (ex-info "JWT authentication is not enabled"
+                    {:status-code 400})))
+  {:session_token (jwt/jwt->session jwt request)})
 
 ;; POST /auth/sso/handle_slo
 (api.macros/defendpoint :post "/handle_slo"

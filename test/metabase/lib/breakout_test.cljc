@@ -53,10 +53,10 @@
         first-stage (lib.util/query-stage query 0)
         first-join (first (lib/joins query 0))]
     (is (= 1 (count (:stages query))))
-    (is (not (contains? first-stage :fields)))
+    (is (contains? first-stage :fields))
     (is (not (contains? first-stage :order-by)))
     (is (= 1 (count (lib/joins query 0))))
-    (is (not (contains? first-join :fields))))
+    (is (contains? first-join :fields)))
   (testing "Already summarized query should be left alone"
     (let [query (-> (lib.tu/venues-query)
                     (lib/breakout (meta/field-metadata :venues :category-id))
@@ -66,6 +66,19 @@
           first-stage (lib.util/query-stage query 0)]
       (is (= 2 (count (:stages query))))
       (is (contains? first-stage :order-by)))))
+
+(deftest ^:parallel breakout-should-preserve-fields
+  (testing "adding and removing an aggregation keeps original fields"
+    (let [orig-query (-> (lib.tu/venues-query)
+                         (lib/with-fields [(meta/field-metadata :venues :price)])
+                         (lib/join (-> (lib/join-clause (meta/table-metadata :categories)
+                                                        [(lib/=
+                                                          (meta/field-metadata :venues :category-id)
+                                                          (lib/with-join-alias (meta/field-metadata :categories :id) "Cat"))])
+                                       (lib/with-join-fields [(meta/field-metadata :categories :id)]))))
+          breakout-query (lib/breakout orig-query (meta/field-metadata :venues :category-id))
+          query (lib/remove-clause breakout-query (first (lib/breakouts breakout-query)))]
+      (is (= orig-query query)))))
 
 (deftest ^:parallel breakoutable-columns-test
   (let [query (lib.tu/venues-query)]
@@ -537,15 +550,15 @@
 
 (deftest ^:parallel breakoutable-columns-include-all-visible-columns-test
   (testing "Include all visible columns, not just projected ones (#31233)"
-    (is (= ["ID"
-            "NAME"
-            "CATEGORY_ID"
-            "LATITUDE"
-            "LONGITUDE"
-            "PRICE"
-            "Categories__ID" ; this column is not projected, but should still be returned.
-            "Categories__NAME"]
-           (map :lib/desired-column-alias
+    (is (= [[nil          "ID"]
+            [nil          "NAME"]
+            [nil          "CATEGORY_ID"]
+            [nil          "LATITUDE"]
+            [nil          "LONGITUDE"]
+            [nil          "PRICE"]
+            ["Categories" "ID"] ; this column is not projected, but should still be returned.
+            ["Categories" "NAME"]]
+           (map (juxt :metabase.lib.join/join-alias :lib/source-column-alias)
                 (-> (lib.tu/venues-query)
                     (lib/join (-> (lib/join-clause
                                    (meta/table-metadata :categories)
@@ -561,16 +574,14 @@
                                  ;; contain type info, shouldn't matter tho.
                                  "correct ref but missing :base-type/:effective-type"
                                  [:field {:lib/uuid   (str (random-uuid))
-                                          :join-alias "Categories"
-                                          :ident      (u/generate-nano-id)}
+                                          :join-alias "Categories"}
                                   (meta/id :categories :name)]
 
                                  ;; this is a busted Field ref, it's referring to a Field from a joined Table but
                                  ;; does not include `:join-alias`. It should still work anyway.
                                  "busted ref"
                                  [:field {:lib/uuid  (str (random-uuid))
-                                          :base-type :type/Text
-                                          :ident     (u/generate-nano-id)}
+                                          :base-type :type/Text}
                                   (meta/id :categories :name)]}]
       (testing (str \newline message " ref = " (pr-str field-ref))
         (let [query (-> (lib.tu/venues-query)
@@ -590,7 +601,7 @@
                                 (lib/breakoutable-columns query)))))))))
 
 (defn legacy-query-with-broken-breakout []
-  (-> (lib.tu.mocks-31368/query-with-legacy-source-card true)
+  (-> (lib.tu.mocks-31368/query-with-legacy-source-card #_has-result-metadata? true)
       ;; this is a bad field reference, it does not contain a `:join-alias`. For some reason the FE is generating
       ;; these in drill thrus (in MLv1). We need to figure out how to make stuff work anyway even tho this is
       ;; technically wrong.

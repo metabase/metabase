@@ -15,15 +15,14 @@
    [metabase.driver :as driver]
    [metabase.driver.test-util :as driver.tu]
    [metabase.driver.util :as driver.u]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
-   [metabase.lib.core :as lib]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test.data :as data]
    [metabase.test.data.env :as tx.env]
@@ -392,7 +391,16 @@
   (contains? #{:oracle :redshift} driver))
 
 (defn nest-query
-  "Nest an MBQL/native query by `n-levels`. Useful for testing how nested queries behave."
+  "Nest an MBQL/native query by `n-levels`. Useful for testing how nested queries behave.
+
+  DEPRECATED: prefer MBQL 5 queries and [[metabase.lib.core/append-stage]] going forward.
+
+  You can do
+
+    (nth (iterate lib/append-stage query) n-levels)
+
+  to nest it multiple times."
+  {:deprecated "0.57.0"}
   [outer-query n-levels]
   (if-not (pos? n-levels)
     outer-query
@@ -407,6 +415,7 @@
                    (assoc outer-query :query {:source-query (:query outer-query)}))]
       (recur nested (dec n-levels)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (deftest ^:parallel nest-query-test
   (testing "MBQL"
     (is (= {:database 1, :type :query, :query {:source-table 2}}
@@ -437,7 +446,7 @@
   "A mock metadata provider composed with the application database metadata provider that adds FK relationships
   for Tables that would normally have them in drivers that have formal FK constraints."
   ([]
-   (mock-fks-application-database-metadata-provider (lib.metadata.jvm/application-database-metadata-provider (data/id))))
+   (mock-fks-application-database-metadata-provider (lib-be/application-database-metadata-provider (data/id))))
 
   ([parent-metadata-provider]
    (lib.tu/merged-mock-metadata-provider
@@ -468,13 +477,7 @@
     {:dataset_query   query
      :entity_id       entity-id
      :result_metadata (-> query
-                          (assoc-in [:info :card-entity-id] entity-id)
                           actual-query-results)}))
-
-(defn- as-model [result-metadata entity-id]
-  (for [col result-metadata]
-    (cond-> col
-      (not (lib/valid-model-ident? col entity-id)) (lib/add-model-ident entity-id))))
 
 (defn card-with-metadata
   "Given a (partial) Card, such as might be passed to `with-temp`, fill in its `:result_metadata` based on the query."
@@ -483,9 +486,7 @@
     (assoc card
            :entity_id       entity-id
            :result_metadata (-> dataset_query
-                                (assoc-in [:info :card-entity-id] entity-id)
-                                actual-query-results
-                                (cond-> (= (:type card) :model) (as-model entity-id))))))
+                                actual-query-results))))
 
 (defn card-with-updated-metadata
   "Like [[card-with-metadata]] but takes an extra argument: a function `(f column-metadata card) => column-metadata`.
@@ -501,25 +502,29 @@
   in `queries`. Cards do not include result metadata. Cards have IDs starting at `1` and increasing sequentially."
   ([queries]
    (metadata-provider-with-cards-for-queries
-    (lib.metadata.jvm/application-database-metadata-provider (data/id))
+    (lib-be/application-database-metadata-provider (data/id))
     queries))
 
   ([parent-metadata-provider :- ::lib.schema.metadata/metadata-provider
     queries                  :- [:sequential {:min 1} :map]]
    (lib.tu/metadata-provider-with-cards-for-queries parent-metadata-provider queries)))
 
-(mu/defn metadata-provider-with-cards-with-metadata-for-queries :- ::lib.schema.metadata/metadata-provider
+(mu/defn metadata-provider-with-cards-with-transformed-metadata-for-queries :- ::lib.schema.metadata/metadata-provider
   "Like [[metadata-provider-with-cards-for-queries]], but includes the results
   of [[metabase.query-processor.preprocess/query->expected-cols]] as `:result-metadata` for each Card. The metadata
   provider is built up progressively, meaning metadata for previous Cards is available when calculating metadata for
-  subsequent Cards."
-  ([queries]
-   (metadata-provider-with-cards-with-metadata-for-queries
-    (lib.metadata.jvm/application-database-metadata-provider (data/id))
-    queries))
+  subsequent Cards.
+   `transforms` can be a map of `card-id` to a function that accepts `metadata-provider` and `result-metadata`"
+  ([queries :- [:sequential {:min 1} :map]
+    transforms]
+   (metadata-provider-with-cards-with-transformed-metadata-for-queries
+    (lib-be/application-database-metadata-provider (data/id))
+    queries
+    transforms))
 
   ([parent-metadata-provider :- ::lib.schema.metadata/metadata-provider
-    queries                  :- [:sequential {:min 1} :map]]
+    queries :- [:sequential {:min 1} :map]
+    transforms :- [:maybe :map]]
    (transduce
     (map-indexed (fn [i {database-id :database, :as query}]
                    {:id            (inc i)
@@ -530,23 +535,39 @@
                     :entity-id     (u/generate-nano-id)
                     :dataset-query query}))
     (completing
-     (fn [metadata-provider {query :dataset-query, eid :entity-id, :as card}]
-       (let [query (assoc-in query [:info :card-entity-id] eid)]
-         (qp.store/with-metadata-provider metadata-provider
-           (let [result-metadata (if (= (:type query) :query)
-                                   (qp.preprocess/query->expected-cols query)
-                                   (actual-query-results query))
-                 card            (assoc card :result-metadata result-metadata)]
-             (lib.tu/mock-metadata-provider metadata-provider {:cards [card]}))))))
+     (fn [metadata-provider {query :dataset-query, card-id :id :as card}]
+       (qp.store/with-metadata-provider metadata-provider
+         (let [result-metadata (if (= (:type query) :query)
+                                 (qp.preprocess/query->expected-cols query)
+                                 (actual-query-results query))
+               transform       (get transforms card-id)
+               card            (assoc card :result-metadata (cond->> result-metadata
+                                                              transform (transform metadata-provider)))]
+           (lib.tu/mock-metadata-provider metadata-provider {:cards [card]})))))
     parent-metadata-provider
     queries)))
+
+(mu/defn metadata-provider-with-cards-with-metadata-for-queries :- ::lib.schema.metadata/metadata-provider
+  "Like [[metadata-provider-with-cards-for-queries]], but includes the results
+  of [[metabase.query-processor.preprocess/query->expected-cols]] as `:result-metadata` for each Card. The metadata
+  provider is built up progressively, meaning metadata for previous Cards is available when calculating metadata for
+  subsequent Cards."
+  ([queries]
+   (metadata-provider-with-cards-with-metadata-for-queries
+    (lib-be/application-database-metadata-provider (data/id))
+    queries))
+
+  ([parent-metadata-provider :- ::lib.schema.metadata/metadata-provider
+    queries                  :- [:sequential {:min 1} :map]]
+   (metadata-provider-with-cards-with-transformed-metadata-for-queries parent-metadata-provider queries nil)))
 
 (deftest ^:parallel metadata-provider-with-cards-with-metadata-for-queries-test
   (let [provider (metadata-provider-with-cards-with-metadata-for-queries
                   [(data/mbql-query venues)])]
     (is (partial= {:id              1
                    :name            "Card 1"
-                   :dataset-query   {:type :query}
+                   :dataset-query   {:lib/type :mbql/query
+                                     :stages   [{:lib/type :mbql.stage/mbql}]}
                    :result-metadata [{:name "ID"}
                                      {:name "NAME"}
                                      {:name "CATEGORY_ID"}
@@ -560,7 +581,7 @@
                   [(data/native-query (qp.compile/compile (data/mbql-query venues)))])]
     (is (partial= {:id              1
                    :name            "Card 1"
-                   :dataset-query   {:type :native}
+                   :dataset-query   {:stages [{:lib/type :mbql.stage/native}]}
                    :result-metadata [{:name "ID"}
                                      {:name "NAME"}
                                      {:name "CATEGORY_ID"}
@@ -637,7 +658,5 @@
 
   If the optional `entity_id` is provided, it will be used for the `:ident`s. If missing, a placeholder ident will
   be used instead, as is done for ad-hoc native queries."
-  ([metadata]
-   (metadata->native-form metadata (lib/placeholder-card-entity-id-for-adhoc-query)))
-  ([metadata _card-entity-id]
-   (mapv #(dissoc % :id :ident :source) metadata)))
+  [metadata]
+  (mapv #(dissoc % :id :source) metadata))

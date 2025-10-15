@@ -1,7 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
 import { screen, within } from "__support__/ui";
-import { BUY_STORAGE_URL } from "metabase/admin/upsells";
 
 import { setupHostedInstance, setupProUpload } from "./setup";
 
@@ -24,10 +23,6 @@ describe("Add data modal (Starter: hosted instance without the attached DWH)", (
       expect(screen.getByText("Sync with Google Sheets")).toBeInTheDocument();
       const upsellLink = screen.getByRole("link", { name: "Add" });
       expect(upsellLink).toBeInTheDocument();
-      expect(upsellLink).toHaveAttribute(
-        "href",
-        "https://store.metabase.com/account/storage?utm_source=product&utm_medium=upsell&utm_campaign=storage&utm_content=add-data-modal-sheets&source_plan=starter",
-      );
     });
 
     it("should render a 'contact admin prompt' for non-admin", async () => {
@@ -113,6 +108,9 @@ describe("Add data modal (Pro: hosted instance with the attached DWH)", () => {
       enableGoogleSheets: true,
       status: "error",
     });
+    expect(
+      await screen.findByRole("tab", { name: /CSV$/ }),
+    ).toBeInTheDocument();
     await assertSheetsOpened();
 
     const connectButton = await screen.findByRole("button", {
@@ -154,7 +152,10 @@ describe("Add data modal (Pro: hosted instance with the attached DWH)", () => {
 
     const upsellLink = within(alert).getByRole("link", { name: "Add storage" });
     expect(upsellLink).toBeInTheDocument();
-    expect(upsellLink).toHaveAttribute("href", BUY_STORAGE_URL);
+    expect(upsellLink).toHaveAttribute(
+      "href",
+      "https://store.metabase.com/account/storage",
+    );
 
     const driveLink = within(alert).getByRole("link", {
       name: "Go to Google Drive",

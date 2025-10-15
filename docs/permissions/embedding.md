@@ -23,7 +23,7 @@ If all your customer data is in the same schema and on the same tables (often re
 
 You could use:
 
-- [Data sandboxing](./data-sandboxes.md) to restrict rows and columns.
+- [Row and column security](./row-and-column-security.md) to restrict rows and columns.
 - [Connection impersonation](./impersonation.md) to mimic roles set by your database. Impersonation is a good choice if you want to grant native SQL access to your data.
 
 ### Restricting rows based on tenant ID
@@ -36,15 +36,15 @@ Let's say you have a table called **Data** that looks like this:
 | B         | ...     | ...      |
 | C         | ...     | ...      |
 
-To display a filtered version of **Data** to different tenants based on a `Tenant_ID`, you can create a [basic sandbox](./data-sandboxes.md#types-of-data-sandboxes).
+To display a filtered version of **Data** to different tenants based on a `Tenant_ID`, you can apply [row and column security](./row-and-column-security.md).
 
 That means Tenant A will see the rows where `Tenant_ID = A`, and Tenant B will see the rows where `Tenant_ID = B`.
 
-Here's how the basic sandbox will work:
+Here's how the basic row-level security will work:
 
-1. **Create a group**, for example "Sandboxed Tenants", and add people's Metabase accounts to that group.
+1. **Create a group**, for example "Restricted Tenants", and add people's Metabase accounts to that group.
 2. **Add a user attribute**. For each person's account, [add a user attribute](../people-and-groups/managing.md#adding-a-user-attribute) like `Tenant_ID`, with the user attribute value set to "A", "B", or "C".
-3. **Sandbox the table** for the group to apply the [row-level security based on user attributes](./data-sandboxes.md#types-of-data-sandboxes).
+3. **Add row-level security** to the table for that group. See [row and column security](./row-and-column-security.md)
 
 ### Restricting columns based on tenancy
 
@@ -56,10 +56,10 @@ Let's say your **Insights** column is a premium feature, and Tenant B is the onl
 | B         | ...     | ...                               |
 | C         | ...     | {% include svg-icons/cross.svg %} |
 
-To keep A and C from viewing the `Insights` column, you can create a [custom sandbox](./data-sandboxes.md#types-of-data-sandboxes) to restrict both the rows and columns they see when they view the table.
+To keep A and C from viewing the `Insights` column, you can add [column-level security](./row-and-column-security.md) to restrict both the rows and columns they see when they view the table.
 
 1. **Create a group** called "Metrics-Only Tenants".
-2. **Add Tenants A and C to the group**. Note that when you're sandboxing the **Data** table in different ways for different groups, make sure that each Metabase account only belongs to a single group.
+2. **Add Tenants A and C to the group**. When restricting data, make sure that each Metabase account only belongs to a single group.
 3. [Add a user attribute](../people-and-groups/managing.md#adding-a-user-attribute) like `Tenant_ID`, with the user attribute value set to "A" or "C".
 4. Next, you'll create a SQL question using the **Data** table like this:
 
@@ -70,7 +70,7 @@ To keep A and C from viewing the `Insights` column, you can create a [custom san
    ```
 
 5. Save the SQL question as "Customer Metrics".
-6. [Create a custom sandbox](./data-sandboxes.md#types-of-data-sandboxes) using the "Metrics-Only Tenants" group and "Customer Metrics" SQL question.
+6. [Add row and column security](./row-and-column-security.md#custom-row-and-column-security-use-a-sql-question-to-create-a-custom-view-of-a-table) using the "Metrics-Only Tenants" group and "Customer Metrics" SQL question.
 
 When, for example, Tenant A logs in, they'll only see the `Tenant_ID` and `Metrics` columns, and only the rows where `Tenant_ID = A`.
 
@@ -86,7 +86,7 @@ If each of your customers has their own database, you can use [database routing]
 
 For database routing to work, however, the schemas in each database must be identical.
 
-For more fine-grained control over what individuals can see, even within the same tenants, you can also use the other tools Metabase provides, like [data sandboxing](./data-sandboxes.md) and [connection impersonation](./impersonation.md), in combination with database routing.
+For more fine-grained control over what individuals can see, even within the same tenants, you can also use the other tools Metabase provides, like [row and column security](./row-and-column-security.md) and [connection impersonation](./impersonation.md), in combination with database routing.
 
 ## Multiple schemas (one schema per customer)
 
@@ -113,7 +113,7 @@ You could:
 - [Grant self-service or view-only access to a schema](#granting-customers-self-service-or-view-only-access-to-their-schema).
 - [Grant native SQL access to a schema](#granting-customers-native-sql-access-to-their-schema).
 
-Unlike commingled data, one-schema-per-customer data is incompatible with data sandboxes, because a sandbox can only assign permissions at the row and column level, not the schema level.
+Unlike commingled data, one-schema-per-customer data is incompatible with row and column security, because it works at the table level, not the schema level.
 
 ### Granting customers self-service or view-only access to their schema
 

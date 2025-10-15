@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { c, t } from "ttag";
+import { t } from "ttag";
 
 import {
   SettingsPageWrapper,
@@ -12,6 +12,7 @@ import CS from "metabase/css/core/index.css";
 
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
 import { VersionUpdateNotice } from "../widgets/VersionUpdateNotice";
+import { NewVersionInfo } from "../widgets/VersionUpdateNotice/VersionUpdateNotice";
 
 export function UpdatesSettingsPage() {
   const isHosted = useSetting("is-hosted?");
@@ -30,30 +31,6 @@ export function UpdatesSettingsPage() {
           inputType="boolean"
         />
         {checkForUpdates && (
-          <AdminSettingInput
-            name="update-channel"
-            title={t`Types of releases to check for`}
-            options={[
-              {
-                label: c("describes a set of software version releases")
-                  .t`Stable releases`,
-                value: "latest",
-              },
-              {
-                label: c("describes a set of software version releases")
-                  .t`Beta releases`,
-                value: "beta",
-              },
-              {
-                label: c("describes a set of software version releases")
-                  .t`Nightly builds`,
-                value: "nightly",
-              },
-            ]}
-            inputType="select"
-          />
-        )}
-        {checkForUpdates && (
           <div
             className={cx(CS.pt3, CS.px2, {
               [CS.borderTop]: !isHosted,
@@ -62,6 +39,7 @@ export function UpdatesSettingsPage() {
             <VersionUpdateNotice />
           </div>
         )}
+        <NewVersionInfo />
       </SettingsSection>
       <UpsellHostingBanner location="settings-updates-migrate_to_cloud" />
     </SettingsPageWrapper>

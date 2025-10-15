@@ -16,6 +16,10 @@ Here you can [sync the database schema and rescan field values](../sync-scan.md)
 
 You can edit these settings at any time (and remember to save your changes).
 
+### Connection string
+
+Paste a connection string here to pre-fill the remaining fields below.
+
 ### Display name
 
 The display name for the database in the Metabase interface.
@@ -208,6 +212,14 @@ If Metabase also needs to create tables, you'll need additional AWS Glue permiss
 ## Model features
 
 There aren't (yet) any model features available for Athena.
+
+## Database routing
+
+With database routing, an admin can build a question once using a single data connection, and the question will run its query against a different data connection with the same schema depending on who is viewing the question.
+
+Admittedly, the name "database routing" is misleading for Athena, because the term "database" in Athena is closer to "schema" in other databases. You _can't_ use database routing to route queries between different _databases_ in Athena, but you _can_ route between different data _connections_, e.g., different regions or buckets, or different IAM users, or different data sources/catalogs.
+
+See [Database routing](../../permissions/database-routing.md).
 
 ## Danger zone
 

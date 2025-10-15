@@ -4,6 +4,13 @@ title: API changelog
 
 # Breaking changes to the API interface
 
+## Metabase 0.57.0
+
+- MBQL queries (in Cards and elsewhere) are now serialized as MBQL 5 as opposed to MBQL 4 (aka legacy MBQL) in the
+  application database and in REST API responses. While we do not officially support editing or introspection of MBQL
+  via the REST API (please treat it as an opaque object), to support existing usages the `GET /api/card/:id` endpoint
+  can return the Card `dataset_query` as MBQL 4 if you include the query parameter `?legacy-mbql=true`.
+
 ## Metabase 0.55.0
 
 - `POST /api/card/from-csv` has been renamed to `POST /api/upload/csv`.
@@ -24,13 +31,14 @@ title: API changelog
   thing.
 
 - `GET /api/util/diagnostic_info/connection_pool_info` has been renamed to `GET
-  /api/bug-reporting/connection-pool-details`.
+/api/bug-reporting/connection-pool-details`.
 
 ## Metabase 0.54.0
 
 - The alert system has been migrated from the legacy pulse infrastructure to the new notification system. This migration includes the following changes:
 
   - The majority of `/api/alert` endpoints have been removed in favor of the new `/api/notification` endpoints. For backward compatibility, these endpoints will remain available until the next release:
+
     - `GET /api/alert`
     - `GET /api/alert/:id`
     - `DELETE /api/alert/:id/subscription`

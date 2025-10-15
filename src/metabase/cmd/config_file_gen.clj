@@ -23,7 +23,7 @@
    but we exclude them from the config file template."
   []
   (->> (dox/get-settings)
-       dox/filter-env-vars))
+       dox/remove-env-vars-we-should-not-document))
 
 (defn get-name-and-default
   "Get a setting's name and its default."

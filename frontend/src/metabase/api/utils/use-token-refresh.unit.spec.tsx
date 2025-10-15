@@ -27,7 +27,11 @@ const waitForElevenSeconds = async () => {
   await screen.findByText("Test");
 };
 
-const setupRefreshableProperties = (hasRefresh = true) => {
+const setupRefreshableProperties = ({
+  hasRefresh,
+}: {
+  hasRefresh: boolean;
+}) => {
   const settings = createMockSettings({
     "site-name": "Test",
     "token-status": {
@@ -40,7 +44,7 @@ const setupRefreshableProperties = (hasRefresh = true) => {
 };
 
 const setup = async (hasRefresh = true) => {
-  setupRefreshableProperties(hasRefresh);
+  setupRefreshableProperties({ hasRefresh });
   renderWithProviders(<TestComponent />);
   await screen.findByText("Loading...");
   await screen.findByText("Test");
@@ -84,7 +88,7 @@ describe("useTokenRefresh", () => {
     await waitForElevenSeconds();
     await waitForGets(2);
 
-    setupRefreshableProperties(false); // remove the refresh flag
+    setupRefreshableProperties({ hasRefresh: false }); // remove the refresh flag
     await waitForElevenSeconds();
     await waitForGets(3); // should get one more
 

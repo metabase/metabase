@@ -46,18 +46,6 @@
   position: relative;
 }
 
-.TabHintToastContainer {
-  position: fixed;
-  bottom: 16px;
-  left: 24px;
-  transform: translateY(200%);
-  transition: all 0.4s;
-
-  &.isVisible {
-    transform: translateY(0);
-  }
-}
-
 .Root {
   --edit-bar-height: 49px;
 

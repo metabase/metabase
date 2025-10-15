@@ -84,7 +84,7 @@ export function ActionDashcardSettings({
     });
 
   return (
-    <ActionSettingsWrapper>
+    <ActionSettingsWrapper data-testid="action-dashcard-settings">
       <ActionSettingsLeft>
         <h4 className={CS.pb2}>{t`Action Library`}</h4>
         <ConnectedActionPicker currentAction={action} onClick={setAction} />

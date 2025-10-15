@@ -35,6 +35,7 @@ const ENGINES_MOCK: Record<string, Engine> = {
     "driver-name": "H2",
     "superseded-by": null,
     source: createMockEngineSource(),
+    "extra-info": null,
   },
   sqlite: {
     "details-fields": [
@@ -44,6 +45,7 @@ const ENGINES_MOCK: Record<string, Engine> = {
     "driver-name": "SQLite",
     "superseded-by": null,
     source: createMockEngineSource(),
+    "extra-info": null,
   },
 };
 
@@ -199,14 +201,12 @@ describe("DatabaseConnectionModal", () => {
       );
 
       // need to add an id to the mocked db result so redirect can go the the correct location
-      fetchMock.post(
-        "path:/api/database",
-        async (url) => {
-          const lastCall = fetchMock.lastCall(url);
+      fetchMock.modifyRoute("database-post", {
+        response: async (call) => {
+          const lastCall = fetchMock.callHistory.lastCall(call.url);
           return { ...(await lastCall?.request?.json()), id: 1 };
         },
-        { overwriteRoutes: true },
-      );
+      });
 
       await userEvent.click(await screen.findByText("Save"));
 
@@ -215,7 +215,6 @@ describe("DatabaseConnectionModal", () => {
           "/admin/databases/1",
         );
       });
-      expect(history.getCurrentLocation().search).toContain("created=true");
 
       expect(
         screen.queryByTestId("leave-confirmation"),

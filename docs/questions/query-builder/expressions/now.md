@@ -76,7 +76,7 @@ Different ways to do the same thing, because while you'd love to use custom expr
 
 ### SQL
 
-When you run a question using the [query builder](https://www.metabase.com/glossary/query_builder), Metabase will convert your query builder settings (filters, summaries, etc.) into a SQL query, and run that query against your database to get your results.
+When you run a question using the [query builder](https://www.metabase.com/glossary/query-builder), Metabase will convert your query builder settings (filters, summaries, etc.) into a SQL query, and run that query against your database to get your results.
 
 By default, `now` uses your Metabase's [report time zone](../../../configuring-metabase/localization.md#report-timezone). If your admin hasn't set a report time zone, `now` will use your database's time zone.
 

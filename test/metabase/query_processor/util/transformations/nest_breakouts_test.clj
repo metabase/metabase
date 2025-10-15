@@ -6,16 +6,14 @@
    [metabase.driver.impl :as driver.impl]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.query :as lib.query]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.query-processor.util.transformations.nest-breakouts :as nest-breakouts]))
 
-(deftest cumulative-aggregation-with-filter-and-temporal-bucketed-breakout-test
-  (with-redefs [driver/escape-alias (fn [_ s] (driver.impl/truncate-alias s 30))]
+(deftest ^:parallel cumulative-aggregation-with-filter-and-temporal-bucketed-breakout-test
+  (binding [add/*escape-alias-fn* (fn [_ s] (driver.impl/truncate-alias s 30))]
     (testing "Query with a filter and a temporally bucketed breakout should work (#41791)"
       (let [orders            (meta/table-metadata :orders)
             orders-quantity   (meta/field-metadata :orders :quantity)
@@ -36,8 +34,8 @@
                            :limit 5}]}
                 (nest-breakouts/nest-breakouts-in-stages-with-window-aggregation query)))))))
 
-(deftest nest-breakouts-test
-  (with-redefs [driver/escape-alias (fn [_ s] (driver.impl/truncate-alias s 30))]
+(deftest ^:parallel nest-breakouts-test
+  (binding [add/*escape-alias-fn* (fn [_ s] (driver.impl/truncate-alias s 30))]
     (let [metadata-provider meta/metadata-provider
           orders            (lib.metadata/table metadata-provider (meta/id :orders))
           orders-created-at (lib.metadata/field metadata-provider (meta/id :orders :created-at))
@@ -83,10 +81,10 @@
                          :limit       3}]}
               (nest-breakouts/nest-breakouts-in-stages-with-window-aggregation query))))))
 
-(deftest escape-identifiers-correctly-test
-  (testing (str "Refs in the second stage need to get escaped using [[metabase.driver/escape-alias]]."
+(deftest ^:parallel escape-identifiers-correctly-test
+  (testing (str "Refs in the second stage should get escaped correctly when running results thru `add-alias-info`."
                 " Simulate Oracle behavior here, which truncates all identifiers to 30 characters.")
-    (with-redefs [driver/escape-alias (fn [_ s] (driver.impl/truncate-alias s 30))]
+    (binding [add/*escape-alias-fn* (fn [_ s] (driver.impl/truncate-alias s 30))]
       (let [metadata-provider (lib.tu/merged-mock-metadata-provider
                                meta/metadata-provider
                                {:database {}
@@ -99,9 +97,9 @@
                                             :schema "mb_test"
                                             :name   "test_data_products"}]
                                 :fields   [{:id (meta/id :orders :created-at), :name "created_at"}
-                                           {:id (meta/id :orders :id),         :name "id"}
+                                           {:id (meta/id :orders :id), :name "id"}
                                            {:id (meta/id :orders :product-id), :name "product_id"}
-                                           {:id (meta/id :products :id),       :name "id"}
+                                           {:id (meta/id :products :id), :name "id"}
                                            {:id (meta/id :products :category), :name "category"}]})
             orders            (lib.metadata/table metadata-provider (meta/id :orders))
             orders-created-at (lib.metadata/field metadata-provider (meta/id :orders :created-at))
@@ -116,39 +114,61 @@
                                   (lib/aggregate (lib/cum-count))
                                   (lib/breakout (lib/with-temporal-bucket orders-created-at :year))
                                   (lib/breakout products-category))
-            preprocessed     (qp.store/with-metadata-provider metadata-provider
-                               (lib.query/query metadata-provider (driver/with-driver :h2
-                                                                    (add/add-alias-info (qp.preprocess/preprocess query)))))
-            actual (nest-breakouts/nest-breakouts-in-stages-with-window-aggregation
-                    preprocessed)]
+            preprocessed      (driver/with-driver :h2
+                                (add/add-alias-info
+                                 (qp.preprocess/preprocess
+                                  (lib/query metadata-provider query))))
+            actual            (driver/with-driver :h2
+                                (-> (nest-breakouts/nest-breakouts-in-stages-with-window-aggregation preprocessed)
+                                    add/add-alias-info))]
         (is (=? {:stages [{;; join alias is escaped:
                            ;;
                            ;;    (metabase.driver/escape-alias :oracle "test_data_products__via__product_id")
                            ;;    =>
                            ;;    "test_data_products__v_af2712b9"
-                           :joins [{::add/alias "test_data_products__v_af2712b9"
-                                    :stages     [{:lib/type :mbql.stage/mbql, :source-table pos-int?}]
-                                    :conditions [[:=
-                                                  {}
-                                                  [:field {} pos-int?]
-                                                  [:field
-                                                   {::add/source-table "test_data_products__v_af2712b9"}
-                                                   pos-int?]]]}]
-                           :fields [[:field {} pos-int?]
-                                    [:field {::add/source-table "test_data_products__v_af2712b9"} pos-int?]]
+                           :joins   [{::add/alias "test_data_products__v_af2712b9"
+                                      :stages     [{:lib/type :mbql.stage/mbql, :source-table pos-int?}]
+                                      :conditions [[:=
+                                                    {}
+                                                    [:field {} pos-int?]
+                                                    [:field
+                                                     {::add/source-table "test_data_products__v_af2712b9"}
+                                                     pos-int?]]]}]
+                           :fields  [[:field {} pos-int?]
+                                     [:field {::add/source-table "test_data_products__v_af2712b9"} pos-int?]]
                            :filters [[:>
                                       {}
                                       [:field {} pos-int?]
                                       [:value {} 5000]]]}
-                          ;; new second stage. Source column names are escaped:
+                          ;; new second stage. Source column names ONLY GET ESCAPED WHEN RAN THRU `add-alias-info`,
+                          ;; which should always be done after using this transformation:
                           ;;
                           ;;    (metabase.driver/escape-alias :oracle "test_data_products__v_af2712b9__category")
                           ;;    =>
                           ;;    "test_data_products__v_f48e965c"
-                          {:breakout [[:field {} "created_at"]
-                                      [:field {:join-alias   (symbol "nil #_\"key is not present.\"")
-                                               :source-field (symbol "nil #_\"key is not present.\"")}
-                                       "test_data_products__v_d795ff70"]]
-                           :aggregation [[:count {:name "count"}]
-                                         [:cum-count {:name "count_2"}]]}]}
+                          {:breakout    [[:field {} "created_at"]
+                                         [:field {:join-alias         (symbol "nil #_\"key is not present.\"")
+                                                  :source-field       (symbol "nil #_\"key is not present.\"")
+                                                  ::add/source-alias  "test_data_products__v_d795ff70"
+                                                  ::add/desired-alias "test_data_products__v_d795ff70"}
+                                          "test_data_products__via__product_id__category"]]
+                           :aggregation [[:count {::add/desired-alias "count"}]
+                                         [:cum-count {::add/desired-alias "count_2"}]]}]}
                 actual))))))
+
+(deftest ^:parallel cumulative-count-offset-day-of-year-test
+  (testing "day is finer than day-of-year (GROUP BY should preserve breakout order; add ORDER BY day-of-year, day)"
+    (let [mp         meta/metadata-provider
+          created-at (meta/field-metadata :orders :created-at)]
+      (is (=? {:breakout [[:field {:inherited-temporal-unit :day}         "CREATED_AT"]
+                          [:field {:inherited-temporal-unit :day-of-year} "CREATED_AT_2"]]
+               :order-by [[:asc {} [:field {:inherited-temporal-unit :day-of-year} "CREATED_AT_2"]]
+                          [:asc {} [:field {:inherited-temporal-unit :day}         "CREATED_AT"]]]}
+              (-> (lib/query mp (meta/table-metadata :orders))
+                  (lib/breakout (lib/with-temporal-bucket created-at :day))
+                  (lib/breakout (lib/with-temporal-bucket created-at :day-of-year))
+                  (lib/aggregate (lib/count))
+                  (lib/aggregate (lib/offset (lib/count) -1))
+                  nest-breakouts/nest-breakouts-in-stages-with-window-aggregation
+                  :stages
+                  second))))))

@@ -1,4 +1,3 @@
-import type React from "react";
 import { useCallback } from "react";
 import { push } from "react-router-redux";
 import _ from "underscore";
@@ -13,6 +12,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals";
 import { updateQuestionWithPastedQuery } from "metabase/query_builder/actions/core/core";
+import { QuestionAlertListModal } from "metabase/notifications/modals";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
 import { NewDatasetModal } from "metabase/query_builder/components/NewDatasetModal";
 import { PasteQueryModal } from "metabase/query_builder/components/PasteQueryModal";
@@ -72,7 +72,7 @@ export function QueryModals({
   setQueryBuilderMode,
   originalQuestion,
   onChangeLocation,
-}: QueryModalsProps): React.JSX.Element {
+}: QueryModalsProps) {
   const dispatch = useDispatch();
 
   const initialCollectionId = useGetDefaultCollectionId();
@@ -238,10 +238,7 @@ export function QueryModals({
       );
     case MODAL_TYPES.CREATE_ALERT:
       return (
-        <CreateOrEditQuestionAlertModal
-          onAlertCreated={onCloseModal}
-          onClose={onCloseModal}
-        />
+        <QuestionAlertListModal question={question} onClose={onCloseModal} />
       );
     case MODAL_TYPES.SAVE_QUESTION_BEFORE_EMBED:
       return (
@@ -336,11 +333,7 @@ export function QueryModals({
         </Modal>
       );
     case MODAL_TYPES.PREVIEW_QUERY:
-      return (
-        <Modal fit onClose={onCloseModal}>
-          <PreviewQueryModal onClose={onCloseModal} />
-        </Modal>
-      );
+      return <PreviewQueryModal onClose={onCloseModal} />;
     case MODAL_TYPES.QUESTION_EMBED:
       return (
         <QuestionEmbedWidget card={question._card} onClose={onCloseModal} />

@@ -59,16 +59,11 @@ export type FieldValuesType = "list" | "search" | "none";
 export type FieldDimensionType = "internal" | "external";
 
 export type FieldDimension = {
+  id: number;
   type: FieldDimensionType;
   name: string;
   human_readable_field_id?: FieldId;
   human_readable_field?: Field;
-};
-
-export type FieldDimensionOption = {
-  name: string;
-  mbql: unknown[] | null;
-  type: string;
 };
 
 export interface Field {
@@ -99,8 +94,6 @@ export interface Field {
   settings?: FieldFormattingSettings;
 
   dimensions?: FieldDimension[];
-  default_dimension_option?: FieldDimensionOption;
-  dimension_options?: FieldDimensionOption[];
   name_field?: Field;
 
   max_value?: number;
@@ -155,7 +148,7 @@ export interface GetFieldValuesResponse {
 export interface SearchFieldValuesRequest {
   fieldId: FieldId;
   searchFieldId: FieldId;
-  value: string;
+  value?: string;
   limit: number;
 }
 

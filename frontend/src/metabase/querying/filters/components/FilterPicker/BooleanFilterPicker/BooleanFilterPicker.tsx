@@ -17,7 +17,9 @@ export function BooleanFilterPicker({
   column,
   filter,
   isNew,
+  readOnly,
   withAddButton,
+  withSubmitButton,
   onBack,
   onChange,
 }: FilterPickerWidgetProps) {
@@ -57,6 +59,7 @@ export function BooleanFilterPicker({
         <FilterPickerHeader
           columnName={columnInfo.longDisplayName}
           onBack={onBack}
+          readOnly={readOnly}
         />
       )}
       <BooleanPicker value={value} withEmptyOptions onChange={setValue} />
@@ -64,6 +67,7 @@ export function BooleanFilterPicker({
         isNew={isNew}
         isValid
         withAddButton={withAddButton}
+        withSubmitButton={withSubmitButton}
         onAddButtonClick={handleAddButtonClick}
       />
     </Box>

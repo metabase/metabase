@@ -5,6 +5,14 @@ inputs:
   name:
     description: The name of the artifact to fetch
     required: true
+  output-name:
+    description: Optional custom name for the output jar file (defaults to metabase.jar)
+    required: false
+    default: "metabase.jar"
+  extract-path:
+    description: Directory path where the jar should be extracted (defaults to current directory)
+    required: false
+    default: "."
 
 runs:
   using: "composite"
@@ -25,7 +33,7 @@ runs:
           });
 
           if (!artifacts.data?.artifacts?.[0]?.id) {
-            throw new Error(`No artifacts found for ${{ inputs.commit }}`);
+            throw new Error(`No artifacts found for ${{ inputs.name }}`);
           }
 
           const artifact_id = artifacts.data.artifacts[0].id;
@@ -39,25 +47,59 @@ runs:
 
           fs.writeFileSync(`${process.env.GITHUB_WORKSPACE}/mb.zip`, Buffer.from(download.data));
 
-    - name: unzip uberjar artifact
-      shell: bash
-      run: unzip mb.zip
-    - name: Move the Uberjar
+    - name: Extract and rename JAR
       shell: bash
       run: | # bash
-        if [ -e "metabase.jar" ]; then
-          echo "metabase.jar is already in the right place"
-        elif [ -e "target/uberjar/metabase.jar" ]; then
-            echo "moving metabase.jar to current directory"
-          mv target/uberjar/metabase.jar metabase.jar
+        OUTPUT_NAME="${{ inputs.output-name }}"
+        EXTRACT_PATH="${{ inputs.extract-path }}"
+
+        # Create a temporary directory for extraction to avoid conflicts
+        TEMP_DIR=$(mktemp -d)
+
+        # Extract to temporary directory
+        unzip mb.zip -d "$TEMP_DIR"
+
+        # Create target directory
+        mkdir -p "$EXTRACT_PATH"
+
+        # Find the jar and move all files from its directory
+        if [ -e "$TEMP_DIR/metabase.jar" ]; then
+          # Move all files to extract path
+          mv "$TEMP_DIR"/* "$EXTRACT_PATH/" 2>/dev/null || true
+          # Rename the jar to custom name if different
+          if [ "$OUTPUT_NAME" != "metabase.jar" ]; then
+            mv "$EXTRACT_PATH/metabase.jar" "$EXTRACT_PATH/$OUTPUT_NAME"
+          fi
+        elif [ -e "$TEMP_DIR/target/uberjar/metabase.jar" ]; then
+          # Move all files from uberjar directory to extract path
+          mv "$TEMP_DIR/target/uberjar"/* "$EXTRACT_PATH/" 2>/dev/null || true
+          # Rename the jar to custom name if different
+          if [ "$OUTPUT_NAME" != "metabase.jar" ]; then
+            mv "$EXTRACT_PATH/metabase.jar" "$EXTRACT_PATH/$OUTPUT_NAME"
+          fi
         else
-          echo "Could not find the metabase.jar file"
+          echo "Could not find metabase.jar in extracted files"
           exit 1
+        fi
+
+        # Clean up temporary directory
+        rm -rf "$TEMP_DIR"
+
+        # Set the JAR_PATH environment variable
+        if [ "$EXTRACT_PATH" == "." ]; then
+          echo "JAR_PATH=$OUTPUT_NAME" >> $GITHUB_ENV
+        else
+          echo "JAR_PATH=$EXTRACT_PATH/$OUTPUT_NAME" >> $GITHUB_ENV
         fi
 
     - name: Verify that this is a valid JAR file
       shell: bash
-      run: file --mime-type ./metabase.jar
+      run: |
+        echo "Verifying JAR at: $JAR_PATH"
+        file --mime-type "$JAR_PATH"
+
     - name: Reveal its version.properties
       shell: bash
-      run: jar xf metabase.jar version.properties && cat version.properties
+      run: |
+        echo "Extracting version.properties from: $JAR_PATH"
+        jar xf "$JAR_PATH" version.properties && cat version.properties

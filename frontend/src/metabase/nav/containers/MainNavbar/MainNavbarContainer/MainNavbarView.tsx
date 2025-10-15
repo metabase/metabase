@@ -10,7 +10,7 @@ import {
   isRootTrashCollection,
 } from "metabase/collections/utils";
 import { Tree } from "metabase/common/components/tree";
-import { useUserSetting } from "metabase/common/hooks";
+import { useSetting, useUserSetting } from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import {
   getCanAccessOnboardingPage,
@@ -134,6 +134,10 @@ export function MainNavbarView({
   const canAccessOnboarding = useSelector(getCanAccessOnboardingPage);
   const shouldDisplayGettingStarted = isNewInstance && canAccessOnboarding;
 
+  const activeUsersCount = useSetting("active-users-count");
+  const areThereOtherUsers = (activeUsersCount ?? 0) > 1;
+  const showOtherUsersCollections = isAdmin && areThereOtherUsers;
+
   return (
     <ErrorBoundary>
       <SidebarContentRoot>
@@ -203,7 +207,7 @@ export function MainNavbarView({
                 role="tree"
                 aria-label="collection-tree"
               />
-              {isAdmin && (
+              {showOtherUsersCollections && (
                 <PaddedSidebarLink
                   icon="group"
                   url={OTHER_USERS_COLLECTIONS_URL}

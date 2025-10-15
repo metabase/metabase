@@ -202,12 +202,9 @@ async function setup({
   }
 
   if (unauthorizedField) {
-    setupUnauthorizedFieldEndpoint(unauthorizedField, {
-      overwriteRoutes: true,
-    });
+    setupUnauthorizedFieldEndpoint(unauthorizedField);
     setupUnauthorizedFieldValuesEndpoints(
       getRawTableFieldId(unauthorizedField),
-      { overwriteRoutes: true },
     );
   }
 
@@ -297,19 +294,16 @@ describe("DataModel", () => {
 
     it("should allow to search for a table", async () => {
       await setup();
-      setupSearchEndpoints(
-        [
-          createMockSearchResult({
-            id: getNextId(),
-            model: "table",
-            name: ORDERS_TABLE.display_name,
-            table_name: ORDERS_TABLE.display_name,
-            table_schema: "public",
-            database_name: SAMPLE_DB.name,
-          }),
-        ],
-        { overwriteRoutes: true },
-      );
+      setupSearchEndpoints([
+        createMockSearchResult({
+          id: getNextId(),
+          model: "table",
+          name: ORDERS_TABLE.display_name,
+          table_name: ORDERS_TABLE.display_name,
+          table_schema: "public",
+          database_name: SAMPLE_DB.name,
+        }),
+      ]);
 
       const searchValue = ORDERS_TABLE.name.substring(0, 3);
       await userEvent.type(getTableSearchInput(), searchValue);
@@ -711,7 +705,9 @@ describe("DataModel", () => {
 
       await waitFor(() => {
         const path = `path:/api/table/${ORDERS_TABLE.id}/rescan_values`;
-        expect(fetchMock.called(path, { method: "POST" })).toBeTruthy();
+        expect(
+          fetchMock.callHistory.called(path, { method: "POST" }),
+        ).toBeTruthy();
       });
     });
 
@@ -733,7 +729,9 @@ describe("DataModel", () => {
 
       await waitFor(() => {
         const path = `path:/api/table/${ORDERS_TABLE.id}/discard_values`;
-        expect(fetchMock.called(path, { method: "POST" })).toBeTruthy();
+        expect(
+          fetchMock.callHistory.called(path, { method: "POST" }),
+        ).toBeTruthy();
       });
     });
   });
@@ -876,11 +874,13 @@ describe("DataModel", () => {
         hasFieldValuesAccess: false,
         unauthorizedField: ORDERS_QUANTITY_FIELD,
       });
-      setupDatabaseIdFieldsEndpoints(SAMPLE_DB, { overwriteRoutes: true });
+      setupDatabaseIdFieldsEndpoints({
+        database: SAMPLE_DB,
+      });
 
       expect(screen.getByText("Custom mapping")).toBeInTheDocument();
       expect(
-        screen.getByText(
+        await screen.findByText(
           "You need unrestricted data access on this table to map custom display values.",
         ),
       ).toBeInTheDocument();
@@ -905,7 +905,9 @@ describe("DataModel", () => {
 
       await waitFor(() => {
         const path = `path:/api/field/${ORDERS_ID_FIELD.id}/rescan_values`;
-        expect(fetchMock.called(path, { method: "POST" })).toBeTruthy();
+        expect(
+          fetchMock.callHistory.called(path, { method: "POST" }),
+        ).toBeTruthy();
       });
     });
 
@@ -928,7 +930,9 @@ describe("DataModel", () => {
 
       await waitFor(() => {
         const path = `path:/api/field/${ORDERS_ID_FIELD.id}/discard_values`;
-        expect(fetchMock.called(path, { method: "POST" })).toBeTruthy();
+        expect(
+          fetchMock.callHistory.called(path, { method: "POST" }),
+        ).toBeTruthy();
       });
     });
   });

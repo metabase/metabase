@@ -56,13 +56,19 @@ const series1 = {
   seriesKey: "x",
   seriesName: "Series 1",
   xAccessor: (datum: GroupedDatum) => datum.metrics["x"],
-  yAccessor: (datum: GroupedDatum) => datum.dimensionValue,
+  yAccessor: (datum: GroupedDatum) =>
+    typeof datum.dimensionValue === "object"
+      ? JSON.stringify(datum.dimensionValue)
+      : datum.dimensionValue,
 };
 const series2 = {
   seriesKey: "x1",
   seriesName: "Series 2",
   xAccessor: (datum: GroupedDatum) => datum.metrics["x1"],
-  yAccessor: (datum: GroupedDatum) => datum.dimensionValue,
+  yAccessor: (datum: GroupedDatum) =>
+    typeof datum.dimensionValue === "object"
+      ? JSON.stringify(datum.dimensionValue)
+      : datum.dimensionValue,
 };
 
 const barData: BarData<GroupedDatum> = {
