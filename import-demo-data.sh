@@ -26,6 +26,7 @@ export PGPASSWORD="${PGPASSWORD:-password}"
 
 DEFAULT_APP_SQL="${AI_SERVICE_REPO}/benchmarks/environment/data/default_app.sql"
 ADVENTUREWORKS_SQL="${AI_SERVICE_REPO}/benchmarks/environment/data/adventureworks2014.sql"
+PSQL=${PSQL:-psql}
 
 echo "Checking for SQL files..."
 if [[ ! -f "$DEFAULT_APP_SQL" ]]; then
@@ -42,33 +43,33 @@ echo "Connecting to Postgres at ${PGHOST}:${PGPORT} as user ${PGUSER}..."
 
 # Terminate existing connections to databases we're about to drop
 echo "Terminating existing database connections..."
-psql -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname IN ('metabase', 'AdventureWorks2014') AND pid <> pg_backend_pid();" 2>/dev/null || true
+$PSQL -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname IN ('metabase', 'AdventureWorks2014') AND pid <> pg_backend_pid();" 2>/dev/null || true
 
 # Drop databases first (before dropping the user who owns them)
 echo "Dropping existing databases..."
-psql -d postgres -c "DROP DATABASE IF EXISTS metabase;" 2>/dev/null || true
-psql -d postgres -c "DROP DATABASE IF EXISTS \"AdventureWorks2014\";" 2>/dev/null || true
+$PSQL -d postgres -c "DROP DATABASE IF EXISTS metabase;" 2>/dev/null || true
+$PSQL -d postgres -c "DROP DATABASE IF EXISTS \"AdventureWorks2014\";" 2>/dev/null || true
 
 # Drop and recreate the metabase user with password 'metabase' (matching Dockerfile)
 echo "Recreating metabase user..."
-psql -d postgres -c "DROP USER IF EXISTS metabase;" 2>/dev/null || true
-psql -d postgres -c "CREATE USER metabase WITH PASSWORD 'metabase';"
+$PSQL -d postgres -c "DROP USER IF EXISTS metabase;" 2>/dev/null || true
+$PSQL -d postgres -c "CREATE USER metabase WITH PASSWORD 'metabase';"
 
 # Create metabase database
 echo "Creating metabase database..."
-psql -d postgres -c "CREATE DATABASE metabase OWNER metabase;"
+$PSQL -d postgres -c "CREATE DATABASE metabase OWNER metabase;"
 
 # Create AdventureWorks2014 database
 echo "Creating AdventureWorks2014 database..."
-psql -d postgres -c "CREATE DATABASE \"AdventureWorks2014\" OWNER metabase;"
+$PSQL -d postgres -c "CREATE DATABASE \"AdventureWorks2014\" OWNER metabase;"
 
 # Import default app data into metabase database
 echo "Importing default app data into metabase database..."
-PGUSER=metabase PGPASSWORD=metabase psql -d metabase -f "$DEFAULT_APP_SQL"
+PGUSER=metabase PGPASSWORD=metabase $PSQL -d metabase -f "$DEFAULT_APP_SQL"
 
 # Import AdventureWorks data
 echo "Importing AdventureWorks2014 data..."
-PGUSER=metabase PGPASSWORD=metabase psql -d AdventureWorks2014 -f "$ADVENTUREWORKS_SQL"
+PGUSER=metabase PGPASSWORD=metabase $PSQL -d AdventureWorks2014 -f "$ADVENTUREWORKS_SQL"
 
 echo ""
 echo "✅ Demo data import completed successfully!"
