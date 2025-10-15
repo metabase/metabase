@@ -61,7 +61,7 @@
                   [:pg_locks]]
      :left-join [:pg_class [:= :pg_locks.relation :pg_class.oid]]
      :where [:and
-             [:not= :pg_stat_activity.query "<insufficient priviledge>"]
+             [:not= :pg_stat_activity.query "<insufficient privilege>"]
              [:= :pg_locks.pid :pg_stat_activity.pid]
              [:= :pg_locks.mode "ExclusiveLock"]
              [:not= :pg_stat_activity.pid [:call :pg_backend_pid]]]
