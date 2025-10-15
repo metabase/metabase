@@ -1512,11 +1512,12 @@
             salesforce-collection (create-salesforce-collection!)
             coll-id (:id salesforce-collection)
             _salesforce-cards (blueprints/create-salesforce-cards! db salesforce-transform-tables coll-id transforms)
+            document (blueprints/document-for-collection salesforce-collection api/*current-user-id*)
             #_salesforce-dashboard #_(blueprints/create-salesforce-dashboard! db salesforce-cards)]
         {:tables salesforce-transform-tables
          :collection salesforce-collection
          :dashboard nil
-         :document {}})
+         :document document})
 
       :else
       nil)))
