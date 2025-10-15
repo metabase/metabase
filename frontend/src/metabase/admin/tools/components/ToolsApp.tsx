@@ -46,6 +46,11 @@ export function ToolsApp({ children }: { children: React.ReactNode }) {
               path="/admin/tools/model-caching"
               icon="database"
             />
+            <ToolsNavItem
+              label={t`Health`}
+              path="/admin/tools/health"
+              icon="alert"
+            />
           </AdminNavWrapper>
         }
       >

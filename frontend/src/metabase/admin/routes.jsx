@@ -30,6 +30,7 @@ import { JobInfoApp } from "metabase/admin/tools/components/JobInfoApp";
 import { JobTriggersModal } from "metabase/admin/tools/components/JobTriggersModal";
 import { LogLevelsModal } from "metabase/admin/tools/components/LogLevelsModal";
 import { Logs } from "metabase/admin/tools/components/Logs";
+import { HealthReport } from "metabase/admin/tools/components/Health";
 import {
   ModelCachePage,
   ModelCacheRefreshJobModal,
@@ -273,6 +274,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
               }}
             />
           </Route>
+          <Route path="health" component={HealthReport} />
         </Route>
       </Route>
     </Route>
