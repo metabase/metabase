@@ -202,8 +202,8 @@
 
 /* Give a remote user a caret */
 :global(.collaboration-carets__caret) {
-  border-left: 1px solid #0d0d0d;
-  border-right: 1px solid #0d0d0d;
+  border-left: 1px solid var(--mb-color-text-dark);
+  border-right: 1px solid var(--mb-color-text-dark);
   margin-left: -1px;
   margin-right: -1px;
   pointer-events: none;
@@ -215,7 +215,7 @@
 :global(.collaboration-carets__label) {
   display: flex;
   border-radius: 3px 3px 3px 0;
-  color: #0d0d0d;
+  color: var(--mb-color-text-dark);
   font-size: 14px;
   font-style: normal;
   font-weight: 600;
