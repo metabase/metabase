@@ -15,7 +15,7 @@
 
 (def openapi-file-path
   "Path to the local OpenAPI specification file."
-  "openapi.json")
+  "ts-types/openapi.json")
 
 (defn write-openapi-spec-to-file!
   "Generate and write the OpenAPI specification to a local file.
@@ -27,6 +27,9 @@
                 {:servers [{:url         ""
                             :description "Metabase API"}]})
           file (io/file openapi-file-path)]
+      ;; Create parent directory if it doesn't exist
+      (when-let [parent-dir (.getParentFile file)]
+        (.mkdirs parent-dir))
       (json/encode-to spec (io/writer file) nil)
       (log/info "OpenAPI specification written to" openapi-file-path))
     (catch Throwable e
