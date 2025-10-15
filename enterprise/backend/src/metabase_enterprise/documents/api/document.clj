@@ -61,8 +61,8 @@
   (query-perms/check-run-permissions-for-query query)
   (card/create-card! (assoc card :type :question :dashboard_id nil) creator))
 
-(mu/defn- update-cards-in-ast :- [:map [:document :any]
-                                  [:content_type :string]]
+(mu/defn update-cards-in-ast :- [:map [:document :any]
+                                 [:content_type :string]]
 
   [document :- [:map
                 [:document :any]
@@ -76,7 +76,7 @@
                              (fn update-card-id [embed]
                                (update-in embed [:attrs :id] card-id-map)))))
 
-(mu/defn- create-cards-for-document! :- [:map-of ms/NegativeInt ms/PositiveInt]
+(mu/defn create-cards-for-document! :- [:map-of ms/NegativeInt ms/PositiveInt]
   "Creates cards for a document from the cards map.
    Returns a mapping from the original negative integer keys to the newly created card IDs.
 
@@ -107,7 +107,7 @@
      {}
      cards-to-create)))
 
-(mu/defn- clone-cards-in-document! :- [:map-of ms/PositiveInt ms/PositiveInt]
+(mu/defn clone-cards-in-document! :- [:map-of ms/PositiveInt ms/PositiveInt]
   "Finds all cards in the document that are not associated with the document and clones the cards.
 
   Args:
