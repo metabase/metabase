@@ -123,9 +123,21 @@ export const getMetabotRequestId = createSelector(
     (isEmbedding ? METABOT_REQUEST_IDS.EMBEDDED : undefined),
 );
 
+export const getNavigateToPath = createSelector(
+  getMetabotReactionsState,
+  (reactionsState) => reactionsState.navigateToPath,
+);
+
+export const getIsDeepResearch = createSelector(
+  getMetabot,
+  (metabot) => metabot.experimental.deepResearch,
+);
+
 export const getProfileOverride = createSelector(
   getMetabot,
-  (metabot) => metabot.experimental.profileOverride,
+  getIsDeepResearch,
+  (metabot, isDeepResearch) =>
+    isDeepResearch ? "hackathon" : metabot.experimental.profileOverride,
 );
 
 export const getAgentRequestMetadata = createSelector(
@@ -140,14 +152,4 @@ export const getAgentRequestMetadata = createSelector(
     ),
     ...(profileId ? { profile_id: profileId } : {}),
   }),
-);
-
-export const getNavigateToPath = createSelector(
-  getMetabotReactionsState,
-  (reactionsState) => reactionsState.navigateToPath,
-);
-
-export const getIsDeepResearch = createSelector(
-  getMetabot,
-  (metabot) => metabot.experimental.deepResearch,
 );
