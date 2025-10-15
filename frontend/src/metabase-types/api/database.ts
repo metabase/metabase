@@ -64,7 +64,8 @@ export type DatabaseFeature =
   | "transforms/python"
   | "transforms/table";
 
-export type DatabaseBlueprint = (typeof DATABASE_BLUEPRINTS)[number];
+export type DatabaseBlueprintKey = (typeof DATABASE_BLUEPRINTS)[number];
+export type DatabaseBlueprintName = "salesforce" | "stripe";
 
 export interface Database extends DatabaseData {
   id: DatabaseId;
