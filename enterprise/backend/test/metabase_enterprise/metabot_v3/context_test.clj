@@ -133,6 +133,46 @@
           (is (= 0 @call-count)
               "Should not call database-tables-for-context for MBQL queries"))))))
 
+(deftest enhance-context-with-schema-python-transform
+  (testing "Enhances context with schema for Python transforms"
+    (let [mock-tables [{:id 24 :name "orders" :schema "public"}
+                       {:id 31 :name "products" :schema "public"}]]
+      (with-redefs [context/python-transform-tables-for-context
+                    (fn [_] mock-tables)]
+        (let [input {:user_is_viewing [{:type "transform"
+                                        :source {:type "python"
+                                                 :source-database 2
+                                                 :source-tables {:orders 24
+                                                                 :products 31}}}]}
+              result (#'context/enhance-context-with-schema input)
+              used-tables (get-in result [:user_is_viewing 0 :used_tables])]
+          (is (= mock-tables used-tables)))))))
+
+(deftest enhance-context-with-schema-python-transform-no-source-tables
+  (testing "Handles Python transform without source-tables"
+    (let [called? (atom false)]
+      (with-redefs [context/python-transform-tables-for-context
+                    (fn [_] (reset! called? true) nil)]
+        (let [input {:user_is_viewing [{:type "transform"
+                                        :source {:type "python"
+                                                 :source-database 2
+                                                 :source-tables {}}}]}
+              result (#'context/enhance-context-with-schema input)]
+          (is (nil? (get-in result [:user_is_viewing 0 :used_tables])))
+          (is (false? @called?)))))))
+
+(deftest enhance-context-with-schema-python-transform-no-source-database
+  (testing "Handles Python transform without source-database"
+    (let [called? (atom false)]
+      (with-redefs [context/python-transform-tables-for-context
+                    (fn [_] (reset! called? true) nil)]
+        (let [input {:user_is_viewing [{:type "transform"
+                                        :source {:type "python"
+                                                 :source-tables {:orders 24}}}]}
+              result (#'context/enhance-context-with-schema input)]
+          (is (nil? (get-in result [:user_is_viewing 0 :used_tables])))
+          (is (false? @called?)))))))
+
 (deftest capabilities-signalling
   (testing "We signal our capabilities to ai-service"
     (is (= (count (-> (the-ns 'metabase-enterprise.metabot-v3.tools.api)

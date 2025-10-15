@@ -206,6 +206,54 @@
               (is (>= (count tables) 1))  ; At least the recognized table
               (is (some #(= table1-id (:id %)) tables)))))))))
 
+(deftest used-tables-from-ids-test
+  (testing "used-tables-from-ids function"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Database {other-db-id :id} {}
+                   :model/Table {table1-id :id} {:db_id db-id, :name "users", :schema "public", :active true, :visibility_type nil}
+                   :model/Table {table2-id :id} {:db_id db-id, :name "orders", :schema "public", :active true, :visibility_type nil}
+                   :model/Table {table3-id :id} {:db_id db-id, :name "products", :schema "inventory", :active true, :visibility_type nil}
+                   :model/Table {inactive-id :id} {:db_id db-id, :name "old_data", :schema "public", :active false, :visibility_type nil}
+                   :model/Table {hidden-id :id} {:db_id db-id, :name "sensitive", :schema "public", :active true, :visibility_type :hidden}
+                   :model/Table {other-db-table-id :id} {:db_id other-db-id, :name "other_table", :schema "public", :active true, :visibility_type nil}]
+
+      (testing "returns tables with correct structure for valid table-ids"
+        (mt/with-current-user (mt/user->id :crowberto)
+          (is (= [{:id table1-id :name "users" :schema "public"}
+                  {:id table3-id :name "products" :schema "inventory"}]
+                 (table-utils/used-tables-from-ids db-id [table1-id table3-id])))))
+
+      (testing "handles empty table-ids collection"
+        (mt/with-current-user (mt/user->id :crowberto)
+          (is (empty? (table-utils/used-tables-from-ids db-id [])))))
+
+      (testing "filters by database-id"
+        (mt/with-current-user (mt/user->id :crowberto)
+          (is (= [{:id table1-id :name "users" :schema "public"}]
+                 (table-utils/used-tables-from-ids db-id [table1-id other-db-table-id])))))
+
+      (testing "filters out inactive tables"
+        (mt/with-current-user (mt/user->id :crowberto)
+          (is (= [{:id table1-id :name "users" :schema "public"}]
+                 (table-utils/used-tables-from-ids db-id [table1-id inactive-id])))))
+
+      (testing "filters out hidden tables"
+        (mt/with-current-user (mt/user->id :crowberto)
+          (is (= [{:id table1-id :name "users" :schema "public"}]
+                 (table-utils/used-tables-from-ids db-id [table1-id hidden-id])))))
+
+      (testing "handles non-existent table-ids"
+        (mt/with-current-user (mt/user->id :crowberto)
+          (let [fake-id 999999]
+            (is (empty? (table-utils/used-tables-from-ids db-id [fake-id]))))))
+
+      (testing "handles mix of valid and invalid table-ids"
+        (mt/with-current-user (mt/user->id :crowberto)
+          (let [fake-id 999999]
+            (is (= [{:id table1-id :name "users" :schema "public"}
+                    {:id table2-id :name "orders" :schema "public"}]
+                   (table-utils/used-tables-from-ids db-id [table1-id fake-id table2-id])))))))))
+
 ;; ======================================
 ;; Edge Cases and Error Handling
 ;; ======================================

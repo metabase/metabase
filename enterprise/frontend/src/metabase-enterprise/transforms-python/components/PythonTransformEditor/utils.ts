@@ -7,12 +7,11 @@ import { useExecutePythonMutation } from "metabase-enterprise/api/transform-pyth
 import type {
   ExecutePythonTransformResponse,
   PythonTransformSource,
+  PythonTransformSourceDraft,
   PythonTransformTableAliases,
   Table,
   TableId,
 } from "metabase-types/api";
-
-import type { PythonTransformSourceDraft } from "./PythonTransformEditor";
 
 export function updateTransformSignature(
   script: string,

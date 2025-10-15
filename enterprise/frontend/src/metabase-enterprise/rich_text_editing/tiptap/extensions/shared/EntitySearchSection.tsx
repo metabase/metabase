@@ -11,6 +11,7 @@ import {
 import type { SearchResult } from "metabase-types/api";
 
 interface EntitySearchSectionProps {
+  canBrowseAll: boolean;
   menuItems: MenuItem[];
   selectedIndex: number;
   onItemSelect: (index: number) => void;
@@ -21,6 +22,7 @@ interface EntitySearchSectionProps {
   onModalSelect: (item: QuestionPickerValueItem) => void;
   onModalClose: () => void;
   onItemHover: (index: number) => void;
+  selectedSearchModelName?: string;
 }
 
 export function EntitySearchSection({
@@ -34,9 +36,18 @@ export function EntitySearchSection({
   onModalSelect,
   onModalClose,
   onItemHover,
+  selectedSearchModelName,
+  canBrowseAll,
 }: EntitySearchSectionProps) {
   return (
     <>
+      {selectedSearchModelName && (
+        <Box py="xs">
+          <Text size="sm" c="text-light" fw="bold">
+            {selectedSearchModelName}
+          </Text>
+        </Box>
+      )}
       {menuItems.map((item, index) => (
         <MenuItemComponent
           key={index}
@@ -46,20 +57,31 @@ export function EntitySearchSection({
           onMouseEnter={() => onItemHover(index)}
         />
       ))}
-      {query.length > 0 && searchResults.length === 0 ? (
+      {query.length > 0 &&
+      menuItems.length === 0 &&
+      searchResults.length === 0 ? (
         <Box p="sm" ta="center">
           <Text size="md" c="text-medium">{t`No results found`}</Text>
         </Box>
       ) : null}
-      {menuItems.length > 0 && <Divider my="sm" mx="sm" />}
-      <SearchResultsFooter
-        isSelected={selectedIndex === menuItems.length}
-        onClick={onFooterClick}
-        onMouseEnter={() => onItemHover(menuItems.length)}
-      />
 
-      {modal === "question-picker" && (
-        <QuestionPickerModal onChange={onModalSelect} onClose={onModalClose} />
+      {canBrowseAll && (
+        <>
+          {menuItems.length > 0 && <Divider my="sm" mx="sm" />}
+
+          <SearchResultsFooter
+            isSelected={selectedIndex === menuItems.length}
+            onClick={onFooterClick}
+            onMouseEnter={() => onItemHover(menuItems.length)}
+          />
+
+          {modal === "question-picker" && (
+            <QuestionPickerModal
+              onChange={onModalSelect}
+              onClose={onModalClose}
+            />
+          )}
+        </>
       )}
     </>
   );

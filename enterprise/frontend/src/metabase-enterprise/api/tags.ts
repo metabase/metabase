@@ -19,7 +19,6 @@ export const ENTERPRISE_TAG_TYPES = [
   "gsheets-status",
   "document",
   "comment",
-  "transform",
   "transform-tag",
   "transform-job",
   "transform-job-via-tag",

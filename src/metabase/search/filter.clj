@@ -40,7 +40,11 @@
           (remove nil?)
           (for [search-model (:models search-ctx)
                 :let [spec (search.spec/spec search-model)]]
-            (when (and (visible-to? search-ctx spec) (every? (:attrs spec) required))
+            (when (and (visible-to? search-ctx spec)
+                       (every? (:attrs spec) required)
+                       ;; Exclude transforms from non-metabot contexts
+                       (or (not= "transform" search-model)
+                           (#{:metabot :unknown} (:context search-ctx))))
               (:name spec))))))
 
 (defn models-without-collection

@@ -7,9 +7,11 @@ import { useLazyListDatabasesQuery } from "metabase/api";
 import { useStore } from "metabase/lib/redux";
 import type {
   ChatContextProviderFn,
+  MetabotChatInputRef,
   MetabotContext as MetabotCtx,
 } from "metabase/metabot";
 import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
+import { getUserIsAdmin } from "metabase/selectors/user";
 
 export const defaultContext = {
   prompt: "",
@@ -26,6 +28,8 @@ export const defaultContext = {
 
 export const MetabotContext = createContext<MetabotCtx>(defaultContext);
 
+export type MetabotPromptInputRef = { focus: () => void };
+
 export const MetabotProvider = ({
   children,
 }: {
@@ -33,7 +37,7 @@ export const MetabotProvider = ({
 }) => {
   /* Metabot input */
   const [prompt, setPrompt] = useState("");
-  const promptInputRef = useRef<HTMLTextAreaElement>(null);
+  const promptInputRef = useRef<MetabotChatInputRef>(null);
 
   /* Metabot context */
   const providerFnsRef = useRef<Set<ChatContextProviderFn>>(new Set());
@@ -49,6 +53,7 @@ export const MetabotProvider = ({
     const databases = dbData?.data ?? [];
     const hasDataAccess = getHasDataAccess(databases);
     const hasNativeWrite = getHasNativeWrite(databases);
+    const isAdmin = getUserIsAdmin(state);
 
     const ctx = {
       user_is_viewing: [],
@@ -57,6 +62,7 @@ export const MetabotProvider = ({
         "frontend:navigate_user_v1",
         hasDataAccess && "permission:save_questions",
         hasNativeWrite && "permission:write_sql_queries",
+        isAdmin && "permission:write_transforms",
       ]),
     };
 

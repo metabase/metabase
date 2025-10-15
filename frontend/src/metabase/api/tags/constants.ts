@@ -33,6 +33,7 @@ export const TAG_TYPES = [
   "snippet",
   "subscription",
   "subscription-channel",
+  "transform",
   "table",
   "task",
   "timeline",
@@ -62,4 +63,5 @@ export const TAG_TYPE_MAPPING = {
   metric: "card",
   snippet: "snippet",
   pulse: "subscription",
+  transform: "transform",
 } as const;

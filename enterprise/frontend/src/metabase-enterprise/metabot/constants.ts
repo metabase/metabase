@@ -48,4 +48,28 @@ export const TOOL_CALL_MESSAGES: Record<string, string | undefined> = {
   get search_metabase_documentation() {
     return t`Consulting the docs`;
   },
+  get write_transform_python() {
+    return t`Writing Python`;
+  },
+  get write_transform_sql() {
+    return t`Writing SQL`;
+  },
+  get todo_write() {
+    return t`Planning`;
+  },
+  get todo_read() {
+    return t`Planning`;
+  },
+  get search_transforms() {
+    return t`Searching transforms`;
+  },
+  get get_transform_details() {
+    return t`Getting transform details`;
+  },
+  get get_field_values() {
+    return t`Retrieving table metadata`;
+  },
+  get search_tables() {
+    return t`Searching database tables`;
+  },
 };

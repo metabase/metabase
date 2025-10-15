@@ -1,3 +1,4 @@
+import type { LegacyRef } from "react";
 import { t } from "ttag";
 
 import { useSdkDispatch } from "embedding-sdk-bundle/store";
@@ -64,7 +65,7 @@ export function MetabotChatInput() {
         autosize
         minRows={1}
         maxRows={4}
-        ref={metabot.promptInputRef}
+        ref={metabot.promptInputRef as LegacyRef<HTMLTextAreaElement>}
         autoFocus
         value={metabot.prompt}
         disabled={metabot.isDoingScience}

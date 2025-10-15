@@ -7,12 +7,13 @@ import { useMetabotContext } from "metabase/metabot";
 import { trackMetabotRequestSent } from "../analytics";
 import {
   type MetabotPromptSubmissionResult,
+  type MetabotUserChatMessage,
   getAgentErrorMessages,
   getIsLongMetabotConversation,
   getIsProcessing,
-  getLastAgentMessagesByType,
   getMessages,
   getMetabotId,
+  getMetabotReactionsState,
   getMetabotRequestId,
   getMetabotVisible,
   getProfileOverride,
@@ -36,9 +37,6 @@ export const useMetabotAgent = () => {
   const messages = useSelector(getMessages as any) as ReturnType<
     typeof getMessages
   >;
-  const lastAgentMessages = useSelector(
-    getLastAgentMessagesByType as any,
-  ) as ReturnType<typeof getLastAgentMessagesByType>;
 
   const errorMessages = useSelector(getAgentErrorMessages as any) as ReturnType<
     typeof getAgentErrorMessages
@@ -68,8 +66,12 @@ export const useMetabotAgent = () => {
     [dispatch],
   );
 
-  const profile = useSelector(getProfileOverride as any) as ReturnType<
+  const profileOverride = useSelector(getProfileOverride as any) as ReturnType<
     typeof getProfileOverride
+  >;
+
+  const reactions = useSelector(getMetabotReactionsState as any) as ReturnType<
+    typeof getMetabotReactionsState
   >;
 
   const resetConversation = useCallback(
@@ -88,18 +90,27 @@ export const useMetabotAgent = () => {
   );
 
   const submitInput = useCallback(
-    async (prompt: string) => {
+    async (prompt: string | Omit<MetabotUserChatMessage, "id" | "role">) => {
       if (!visible) {
         setVisible(true);
       }
 
       const context = await getChatContext();
       const action = await dispatch(
-        submitInputAction({
-          message: prompt,
-          context,
-          metabot_id: metabotRequestId,
-        }),
+        submitInputAction(
+          typeof prompt === "string"
+            ? {
+                type: "text",
+                message: prompt,
+                context,
+                metabot_id: metabotRequestId,
+              }
+            : {
+                ...prompt,
+                context,
+                metabot_id: metabotRequestId,
+              },
+        ),
       );
 
       trackMetabotRequestSent();
@@ -157,7 +168,6 @@ export const useMetabotAgent = () => {
     metabotId,
     visible,
     messages,
-    lastAgentMessages,
     errorMessages,
     isLongConversation,
     resetConversation,
@@ -166,6 +176,7 @@ export const useMetabotAgent = () => {
     submitInput,
     retryMessage,
     toolCalls,
-    profile,
+    profileOverride,
+    reactions,
   };
 };

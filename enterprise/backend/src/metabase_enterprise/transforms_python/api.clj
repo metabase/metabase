@@ -14,14 +14,19 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]))
 
-(api.macros/defendpoint :get "/library/:path"
-  "Get the Python library for user modules."
-  [{:keys [path]} :- [:map [:path :string]]
-   _query-params]
+(defn get-python-library-by-path
+  "Get Python library details by path for use by other APIs."
+  [path]
   (api/check-superuser)
   (-> (python-library/get-python-library-by-path path)
       api/check-404
       (select-keys [:source :path :created_at :updated_at])))
+
+(api.macros/defendpoint :get "/library/:path"
+  "Get the Python library for user modules."
+  [{:keys [path]} :- [:map [:path :string]]
+   _query-params]
+  (get-python-library-by-path path))
 
 (api.macros/defendpoint :put "/library/:path"
   "Update the Python library source code for user modules."

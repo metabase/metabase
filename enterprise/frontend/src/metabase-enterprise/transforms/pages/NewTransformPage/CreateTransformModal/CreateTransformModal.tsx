@@ -28,14 +28,25 @@ import type {
   TransformSource,
 } from "metabase-types/api";
 
+const NEW_TRANSFORM_SCHEMA = Yup.object({
+  name: Yup.string().required(Errors.required),
+  description: Yup.string().nullable(),
+  targetName: Yup.string().required(Errors.required),
+  targetSchema: Yup.string().nullable(),
+});
+
+export type NewTransformValues = Yup.InferType<typeof NEW_TRANSFORM_SCHEMA>;
+
 type CreateTransformModalProps = {
   source: TransformSource;
+  initValues?: Partial<NewTransformValues>;
   onCreate: (transform: Transform) => void;
   onClose: () => void;
 };
 
 export function CreateTransformModal({
   source,
+  initValues,
   onCreate,
   onClose,
 }: CreateTransformModalProps) {
@@ -44,6 +55,7 @@ export function CreateTransformModal({
       <FocusTrap.InitialFocus />
       <CreateTransformForm
         source={source}
+        initValues={initValues}
         onCreate={onCreate}
         onClose={onClose}
       />
@@ -53,26 +65,14 @@ export function CreateTransformModal({
 
 type CreateTransformFormProps = {
   source: TransformSource;
+  initValues?: Partial<NewTransformValues>;
   onCreate: (transform: Transform) => void;
   onClose: () => void;
 };
 
-type NewTransformValues = {
-  name: string;
-  description: string | null;
-  targetName: string;
-  targetSchema: string | null;
-};
-
-const NEW_TRANSFORM_SCHEMA = Yup.object({
-  name: Yup.string().required(Errors.required),
-  description: Yup.string().nullable(),
-  targetName: Yup.string().required(Errors.required),
-  targetSchema: Yup.string().nullable(),
-});
-
 function CreateTransformForm({
   source,
+  initValues,
   onCreate,
   onClose,
 }: CreateTransformFormProps) {
@@ -100,8 +100,8 @@ function CreateTransformForm({
   const supportsSchemas = database && hasFeature(database, "schemas");
 
   const initialValues: NewTransformValues = useMemo(
-    () => getInitialValues(schemas),
-    [schemas],
+    () => getInitialValues(schemas, initValues),
+    [schemas, initValues],
   );
 
   if (isLoading || error != null) {
@@ -165,12 +165,16 @@ function CreateTransformForm({
   );
 }
 
-function getInitialValues(schemas: string[]): NewTransformValues {
+function getInitialValues(
+  schemas: string[],
+  initValues?: Partial<NewTransformValues>,
+): NewTransformValues {
   return {
     name: "",
     description: null,
     targetName: "",
     targetSchema: schemas?.[0] || null,
+    ...initValues,
   };
 }
 
@@ -186,7 +190,7 @@ function getCreateRequest(
     target: {
       type: "table",
       name: targetName,
-      schema: targetSchema,
+      schema: targetSchema ?? null,
       database: databaseId,
     },
   };

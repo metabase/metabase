@@ -13,6 +13,7 @@ type Props = {
   lineNumbers?: boolean;
   readOnly?: boolean;
   value: string;
+  proposedValue?: string;
   onChange?: (value: string) => void;
   extensions?: Extension[];
   "data-testid"?: string;
@@ -26,6 +27,7 @@ export function CodeEditor({
   lineNumbers = true,
   readOnly,
   value,
+  proposedValue,
   onChange,
   extensions: externalExtensions,
   ...rest
@@ -33,6 +35,8 @@ export function CodeEditor({
   const extensions = useExtensions({
     language,
     extensions: externalExtensions,
+    originalValue: proposedValue ? value : undefined,
+    proposedValue,
   });
 
   return (
@@ -47,7 +51,7 @@ export function CodeEditor({
       extensions={extensions}
       id={id}
       readOnly={readOnly}
-      value={value}
+      value={proposedValue ?? value}
       onChange={onChange}
       highlightRanges={highlightRanges}
       {...rest}
