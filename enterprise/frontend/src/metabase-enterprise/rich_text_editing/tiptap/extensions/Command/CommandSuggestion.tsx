@@ -35,7 +35,11 @@ import { getCurrentDocument } from "metabase-enterprise/documents/selectors";
 import type { SearchResult } from "metabase-types/api";
 
 import { EntitySearchSection } from "../shared/EntitySearchSection";
-import { EMBED_SEARCH_MODELS, LINK_SEARCH_MODELS } from "../shared/constants";
+import {
+  EMBED_SEARCH_MODELS,
+  IMAGE_SEARCH_MODELS,
+  LINK_SEARCH_MODELS,
+} from "../shared/constants";
 import { useEntitySuggestions } from "../shared/useEntitySuggestions";
 
 import type { CommandProps } from "./CommandExtension";
@@ -111,6 +115,7 @@ export const CommandSuggestion = forwardRef<
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [showLinkSearch, setShowLinkSearch] = useState(false);
   const [showEmbedSearch, setShowEmbedSearch] = useState(false);
+  const [showImageSearch, setShowImageSearch] = useState(false);
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const allCommandSections: CommandSection[] = useMemo(
@@ -135,6 +140,16 @@ export const CommandSuggestion = forwardRef<
             icon: "link",
             label: t`Link`,
             command: "linkTo",
+          },
+          // {
+          //   icon: "snail",
+          //   label: t`Image`,
+          //   command: "insertImage",
+          // },
+          {
+            icon: "snail",
+            label: t`Image`,
+            command: "imageBlock",
           },
         ],
       },
@@ -230,7 +245,11 @@ export const CommandSuggestion = forwardRef<
     editor,
     onSelectEntity: onSelectLinkEntity,
     enabled: true,
-    searchModels: showLinkSearch ? LINK_SEARCH_MODELS : EMBED_SEARCH_MODELS,
+    searchModels: showLinkSearch
+      ? LINK_SEARCH_MODELS
+      : showImageSearch
+        ? IMAGE_SEARCH_MODELS
+        : EMBED_SEARCH_MODELS,
   });
 
   const {
@@ -273,13 +292,18 @@ export const CommandSuggestion = forwardRef<
       return;
     }
 
+    if (commandName === "insertImage") {
+      setShowImageSearch(true);
+      return;
+    }
+
     command({
       command: commandName,
     });
   };
 
   const currentItems = useMemo(() => {
-    if (showLinkSearch || showEmbedSearch) {
+    if (showLinkSearch || showEmbedSearch || showImageSearch) {
       return searchMenuItems;
     }
 
@@ -290,17 +314,24 @@ export const CommandSuggestion = forwardRef<
     }
 
     return commandOptions;
-  }, [showLinkSearch, showEmbedSearch, query, searchMenuItems, commandOptions]);
+  }, [
+    showLinkSearch,
+    showEmbedSearch,
+    query,
+    searchMenuItems,
+    commandOptions,
+    showImageSearch,
+  ]);
   let totalItems = currentItems.length;
 
-  if (showLinkSearch || showEmbedSearch) {
+  if (showLinkSearch || showEmbedSearch || showImageSearch) {
     totalItems = searchMenuItems.length + 1;
   } else if (currentItems.length === 0 && query) {
     totalItems = 1; // Just the browse all footer
   }
 
   const selectItem = (index: number) => {
-    if (showLinkSearch || showEmbedSearch) {
+    if (showLinkSearch || showEmbedSearch || showImageSearch) {
       entityHandlers.selectItem(index);
     } else {
       // When searching in command mode, handle both entity results and commands
@@ -344,6 +375,7 @@ export const CommandSuggestion = forwardRef<
     currentItems.length,
     showLinkSearch,
     showEmbedSearch,
+    showImageSearch,
     searchMenuItems.length,
   ]);
 
@@ -356,7 +388,7 @@ export const CommandSuggestion = forwardRef<
 
   useImperativeHandle(ref, () => ({
     onKeyDown: ({ event }: { event: KeyboardEvent }) => {
-      if (showLinkSearch || showEmbedSearch) {
+      if (showLinkSearch || showEmbedSearch || showImageSearch) {
         return entityHandlers.onKeyDown({ event });
       }
 
@@ -379,13 +411,16 @@ export const CommandSuggestion = forwardRef<
     },
   }));
 
-  if ((showLinkSearch || showEmbedSearch) && isSearchLoading) {
+  if (
+    (showLinkSearch || showEmbedSearch || showImageSearch) &&
+    isSearchLoading
+  ) {
     return <LoadingSuggestionPaper aria-label={t`Command Dialog`} />;
   }
 
   return (
     <SuggestionPaper aria-label={t`Command Dialog`}>
-      {showLinkSearch || showEmbedSearch ? (
+      {showLinkSearch || showEmbedSearch || showImageSearch ? (
         <EntitySearchSection
           menuItems={searchMenuItems}
           selectedIndex={entitySelectedIndex}

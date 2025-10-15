@@ -174,6 +174,16 @@ export const CommandExtension = Extension.create<CommandOptions>({
             case "codeBlock":
               editor.chain().focus().deleteRange(range).toggleCodeBlock().run();
               break;
+            case "imageBlock":
+              editor
+                .chain()
+                .focus()
+                .deleteRange(range)
+                .insertContent({
+                  type: "imageBlock",
+                })
+                .run();
+              break;
           }
         },
         selectItem: ({

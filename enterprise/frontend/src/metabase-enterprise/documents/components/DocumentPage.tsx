@@ -436,6 +436,7 @@ export const DocumentPage = ({
               onChange={handleChange}
               editable={canWrite}
               isLoading={isDocumentLoading}
+              collectionId={documentData?.collection_id ?? null}
             />
           </Box>
         </Box>
