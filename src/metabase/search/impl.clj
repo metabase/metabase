@@ -61,6 +61,13 @@
          (can-write? search-ctx instance)
          true)))
 
+(defmethod check-permissions-for-model :transform
+  [search-ctx instance]
+  (and (premium-features/enable-transforms?)
+       (if (:archived? search-ctx)
+         (can-write? search-ctx instance)
+         true)))
+
 ;; TODO: remove this implementation now that we check permissions in the SQL, leaving it in for now to guard against
 ;; issue with new pure sql implementation
 (defmethod check-permissions-for-model :table
