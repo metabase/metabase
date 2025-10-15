@@ -29,6 +29,7 @@ import { CustomStarterKit } from "metabase-enterprise/rich_text_editing/tiptap/e
 import { DisableMetabotSidebar } from "metabase-enterprise/rich_text_editing/tiptap/extensions/DisableMetabotSidebar";
 import { FlexContainer } from "metabase-enterprise/rich_text_editing/tiptap/extensions/FlexContainer/FlexContainer";
 import { HandleEditorDrop } from "metabase-enterprise/rich_text_editing/tiptap/extensions/HandleEditorDrop/HandleEditorDrop";
+import { ImageBlock } from "metabase-enterprise/rich_text_editing/tiptap/extensions/ImageBlock/ImageBlock";
 import { MentionExtension } from "metabase-enterprise/rich_text_editing/tiptap/extensions/Mention/MentionExtension";
 import { MentionSuggestion } from "metabase-enterprise/rich_text_editing/tiptap/extensions/Mention/MentionSuggestion";
 import {
@@ -40,6 +41,7 @@ import { MetabotMentionSuggestion } from "metabase-enterprise/rich_text_editing/
 import { ResizeNode } from "metabase-enterprise/rich_text_editing/tiptap/extensions/ResizeNode/ResizeNode";
 import { SmartLink } from "metabase-enterprise/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
 import { createSuggestionRenderer } from "metabase-enterprise/rich_text_editing/tiptap/extensions/suggestionRenderer";
+import type { CollectionId } from "metabase-types/api";
 
 import S from "./Editor.module.css";
 import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
@@ -87,6 +89,7 @@ export interface EditorProps {
   onQuestionSelect?: (cardId: number | null) => void;
   editable?: boolean;
   isLoading?: boolean;
+  collectionId?: CollectionId | null;
 }
 
 export const Editor: React.FC<EditorProps> = ({
@@ -109,6 +112,7 @@ export const Editor: React.FC<EditorProps> = ({
           width: 2,
         },
       }),
+      ImageBlock,
       Image.configure({
         inline: false,
         HTMLAttributes: {
