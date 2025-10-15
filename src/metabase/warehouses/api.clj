@@ -896,7 +896,7 @@
        (.execute stmt query)))))
 
 (defn- add-catalog [name source details]
-  (let [database (t2/select-one :model/Database :name "Trino")
+  (let [database (t2/select-one :model/Database :name "Sources")
         driver (:engine database)]
     (case source
       "snowflake" (let [params (get-connection-details (:connection_string details))
