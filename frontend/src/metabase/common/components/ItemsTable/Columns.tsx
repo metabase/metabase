@@ -52,11 +52,7 @@ const ItemLinkComponent = ({
   }
 
   if (item.model === "image") {
-    return (
-      <ItemLink to={`/image/${item.id}`} target="_blank">
-        {children}
-      </ItemLink>
-    );
+    return <ItemLink to={`/image/${item.id}`}>{children}</ItemLink>;
   }
 
   return (
