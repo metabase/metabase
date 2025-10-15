@@ -6,7 +6,7 @@ const server = new Server({
   port: 3005,
   extensions: [
     new Webhook({
-      url: "http://localhost:3000/api/ee/documents/webhook",
+      url: "http://localhost:3000/api/ee/document/webhook",
       secret: "459824aaffa928e05f5b1caec411ae5f",
       transformer: TiptapTransformer,
       events: [Events.onConnect, Events.onCreate, Events.onChange, Events.onDisconnect],
