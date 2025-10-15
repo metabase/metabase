@@ -226,7 +226,7 @@ export interface ColumnSettings {
   [key: string]: any;
 }
 
-export type VisualizationSettings = {
+type TypedVisualizationSettings = {
   "graph.show_values"?: boolean;
   "stackable.stack_type"?: StackType;
   "graph.show_stack_values"?: StackValuesDisplay;
@@ -329,15 +329,16 @@ export type VisualizationSettings = {
   // List view settings
   "list.columns"?: ListViewColumns;
   "list.entity_icon"?: string;
+};
 
-  [key: string]: any;
-} & EmbedVisualizationSettings;
+export type VisualizationSettings = TypedVisualizationSettings &
+  EmbedVisualizationSettings & { [key: string]: any };
 
 export type EmbedVisualizationSettings = {
   iframe?: string;
 };
 
-export type VisualizationSettingKey = keyof VisualizationSettings;
+export type VisualizationSettingKey = keyof TypedVisualizationSettings;
 
 export type CardId = number;
 

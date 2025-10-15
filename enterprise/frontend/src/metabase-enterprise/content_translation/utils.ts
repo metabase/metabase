@@ -1,6 +1,5 @@
 import * as I from "icepick";
 import { useCallback, useMemo } from "react";
-import { match } from "ts-pattern";
 import _ from "underscore";
 
 import type { ContentTranslationFunction } from "metabase/i18n/types";
@@ -10,6 +9,9 @@ import type {
   MaybeTranslatedSeries,
   RowValue,
   Series,
+  VisualizationDisplay,
+  VisualizationSettingKey,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 import { hasTranslations, useTranslateContent } from "./use-translate-content";
@@ -122,6 +124,43 @@ export const useTranslateFieldValuesInHoveredObject = (
   }, [obj, tc]);
 };
 
+interface TranslationConfig<
+  T extends VisualizationSettingKey = VisualizationSettingKey,
+> {
+  value: "translate" | "ignore";
+  visualizationSettings: {
+    key: T;
+    updater: (
+      settingsValue: VisualizationSettings[T],
+      tc: (message: string) => string,
+    ) => VisualizationSettings[T];
+  };
+}
+
+type SpecificTranslationConfig = {
+  [K in VisualizationSettingKey]: TranslationConfig<K>;
+}[VisualizationSettingKey];
+
+const visualizationTranslationConfig: Partial<
+  Record<VisualizationDisplay, SpecificTranslationConfig>
+> = {
+  pie: {
+    value: "ignore",
+    visualizationSettings: {
+      key: "pie.rows",
+      updater: (pieRows, tc) => {
+        if (!pieRows) {
+          return pieRows;
+        } else {
+          return pieRows.map((row) => {
+            return I.updateIn(row, ["name"], (name) => tc(name));
+          });
+        }
+      },
+    },
+  },
+};
+
 export const translateFieldValuesInSeries = (
   series: Series,
   tc: ContentTranslationFunction,
@@ -135,40 +174,17 @@ export const translateFieldValuesInSeries = (
     }
     const untranslatedRows = singleSeries.data.rows.concat();
 
-    const translatedRows: RowValue[][] = match(singleSeries.card?.display)
-      .with("pie", () => {
-        const pieRows =
-          singleSeries.card.visualization_settings?.["pie.rows"] ?? [];
-        const keyToNameMap = Object.fromEntries(
-          pieRows.map((row) => [row.key, row.name]),
-        );
+    const translatedRows: RowValue[][] = singleSeries.data.rows.map((row) =>
+      row.map((value) => {
+        const translationConfig =
+          visualizationTranslationConfig[singleSeries.card?.display];
+        if (translationConfig) {
+          return translationConfig.value === "translate" ? tc(value) : value;
+        }
 
-        // The pie chart relies on the rows to generate its legend,
-        // which is why we need to translate them too
-        // They're in the format of:
-        // [
-        //   ["Doohickey", 123],
-        //   ["Widget", 456],
-        //   ...
-        // ]
-        //
-        return singleSeries.data.rows.map((row) =>
-          row.map((value) => {
-            if (
-              typeof value === "string" &&
-              keyToNameMap[value] !== undefined
-            ) {
-              return tc(keyToNameMap[value]);
-            }
-            return tc(value);
-          }),
-        );
-      })
-      .otherwise(() => {
-        return singleSeries.data.rows.map((row) =>
-          row.map((value) => tc(value)),
-        );
-      });
+        return tc(value);
+      }),
+    );
 
     return {
       ...singleSeries,
@@ -212,9 +228,37 @@ export const useTranslateSeries = (series: Series) => {
       return withTranslatedCardNames;
     }
 
-    return translateFieldValuesInSeries(withTranslatedCardNames, tc);
+    return translateFieldValuesInSeries(
+      translateVizSettings(withTranslatedCardNames, tc),
+      tc,
+    );
   }, [series, tc]);
 };
+
+function translateVizSettings(
+  series: Series,
+  tc: ContentTranslationFunction,
+): Series {
+  return series.map((singleSeries) => {
+    const translationConfig =
+      visualizationTranslationConfig[singleSeries.card?.display];
+
+    if (translationConfig) {
+      return I.updateIn(
+        singleSeries,
+        [
+          "card",
+          "visualization_settings",
+          translationConfig.visualizationSettings.key,
+        ],
+        (settingsValue) =>
+          translationConfig.visualizationSettings.updater(settingsValue, tc),
+      );
+    }
+
+    return singleSeries;
+  });
+}
 
 /** Returns a function that can be used to sort user-generated strings in an
  * array by their translations. */
