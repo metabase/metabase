@@ -49,30 +49,22 @@ const ThoughtProcess = ({ toolCalls }: { toolCalls: MetabotToolCall[] }) => {
 
 export const MetabotThinking = ({
   toolCalls,
-  hasStartedResponse,
 }: {
   toolCalls: MetabotToolCall[];
-  hasStartedResponse: boolean;
 }) => {
   const toolCallsWithMsgs = useMemo(() => {
     return toolCalls.filter((tc) => !!tc.message);
   }, [toolCalls]);
 
-  const showLoader =
-    (!hasStartedResponse && toolCalls.length === 0) ||
-    (toolCalls.length > 0 && toolCallsWithMsgs.length === 0);
-
   return (
     <Stack gap="xs">
       <ThoughtProcess toolCalls={toolCallsWithMsgs} />
-      {showLoader && (
-        <Loader
-          color="brand"
-          type="dots"
-          size="lg"
-          data-testid="metabot-response-loader"
-        />
-      )}
+      <Loader
+        color="brand"
+        type="dots"
+        size="lg"
+        data-testid="metabot-response-loader"
+      />
     </Stack>
   );
 };

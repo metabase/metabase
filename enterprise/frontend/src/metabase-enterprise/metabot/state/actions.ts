@@ -226,6 +226,11 @@ export const sendAgentRequest = createAsyncThunk<
       let state = {};
       let error: unknown = undefined;
 
+      if (window.location.pathname !== "/megabot/new") {
+        dispatch(setVisible(true));
+        dispatch(push(Urls.newResearch()) as any);
+      }
+
       const response = await aiStreamingQuery(
         {
           url: "/api/ee/metabot-v3/agent-streaming",
@@ -273,8 +278,6 @@ export const sendAgentRequest = createAsyncThunk<
           ],
         };
         (window as any).setDocumentContent(doc);
-      } else {
-        dispatch(push(Urls.newResearch()) as any);
       }
 
       if (error) {

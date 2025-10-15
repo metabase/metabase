@@ -17,6 +17,7 @@ import { EmbedHomepage } from "../EmbedHomepage";
 import { HomePopularSection } from "../HomePopularSection";
 import { HomeRecentSection, recentsFilter } from "../HomeRecentSection";
 import { HomeXraySection } from "../HomeXraySection";
+import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
 export const HomeContent = (): JSX.Element | null => {
   const user = useSelector(getUser);
@@ -24,6 +25,7 @@ export const HomeContent = (): JSX.Element | null => {
   const isXrayEnabled = useSelector(getIsXrayEnabled);
 
   const [prompt, setPrompt] = useState("");
+  const metabot = useMetabotAgent();
 
   const { data: databases, error: databasesError } = useDatabaseListQuery();
   const { data: recentItemsRaw, error: recentItemsError } = useListRecentsQuery(
@@ -64,6 +66,7 @@ export const HomeContent = (): JSX.Element | null => {
                 // prevent event from inserting new line + interacting with other content
                 e.preventDefault();
                 e.stopPropagation();
+                metabot.submitInput(e.target.value);
               }
             }}
           />

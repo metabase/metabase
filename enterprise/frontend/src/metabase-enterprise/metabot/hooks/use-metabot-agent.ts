@@ -94,9 +94,9 @@ export const useMetabotAgent = () => {
 
   const submitInput = useCallback(
     async (prompt: string) => {
-      if (!visible) {
-        setVisible(true);
-      }
+      // if (!visible) {
+      //   setVisible(true);
+      // }
 
       const context = await getChatContext();
       const action = await dispatch(

@@ -247,6 +247,7 @@ export const getIsNavbarOpen: Selector<State, boolean> = createSelector(
     (state: State) => state.app.isNavbarOpen,
   ],
   (isEmbeddingIframe, embedOptions, isAppBarVisible, isNavbarOpen) => {
+    return false;
     // in an embedded instance, when the app bar is hidden, but the nav bar is not
     // we need to force the sidebar to be open or else it will be totally inaccessible
     if (
