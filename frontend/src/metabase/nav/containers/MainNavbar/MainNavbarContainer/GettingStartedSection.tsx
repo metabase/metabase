@@ -48,7 +48,7 @@ export const GettingStartedSection = ({
       >
         {canPerformMeaningfulActions && (
           <PaddedSidebarLink icon="add_data" onClick={onAddDataModalOpen}>
-            {t`Add data`}
+            {t`Add your data`}
           </PaddedSidebarLink>
         )}
 
