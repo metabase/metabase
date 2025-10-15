@@ -11,6 +11,7 @@ const server = new Server({
       events: [Events.onConnect, Events.onCreate, Events.onChange, Events.onDisconnect],
       debounce: 2000,
       debounceMaxWait: 10000,
+      port: 3005,
     }),
   ],
 });
