@@ -18,7 +18,10 @@
 
 (set! *warn-on-reflection* true)
 
-(api.macros/defendpoint :get "/:id"
+(api.macros/defendpoint :get "/:id" :- [:merge
+                                        ::images.schema/image
+                                        [:map
+                                         [:card_id [:maybe ::lib.schema.id/card]]]]
   "Metadata about an image."
   [{image-id :id, :as _route-params} :- [:map
                                          [:id ::images.schema/id]]]
@@ -35,7 +38,7 @@
                                      :limit 1}))
       (assoc :url (models.image/image-id->contents-url image-id))))
 
-(api.macros/defendpoint :get "/:id/contents"
+(api.macros/defendpoint :get "/:id/contents" :- bytes?
   "This is our endpoint for serving the contents of an image that we have stored locally somewhere."
   [{image-id :id, :as _route-params} :- [:map
                                          [:id ::images.schema/id]]]
