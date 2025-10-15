@@ -134,6 +134,12 @@ describe("issue 41765", { tags: "@external" }, () => {
     cy.findAllByRole("link").contains(WRITABLE_DB_DISPLAY_NAME).click();
     cy.button("Sync database schema").click();
 
+    H.waitForSyncToFinish({
+      iteration: 0,
+      dbId: WRITABLE_DB_ID,
+      tableName: TEST_TABLE,
+    });
+
     exitAdmin();
     openWritableDatabaseQuestion();
 
