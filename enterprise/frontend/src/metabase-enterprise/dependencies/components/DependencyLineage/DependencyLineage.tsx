@@ -12,6 +12,7 @@ import {
 import { useEffect, useLayoutEffect, useState } from "react";
 
 import { skipToken } from "metabase/api";
+import { Group } from "metabase/ui";
 import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
 import type { DependencyEntry } from "metabase-types/api";
 
@@ -20,6 +21,7 @@ import { GraphContext } from "./GraphContext";
 import { GraphDependencyPanel } from "./GraphDependencyPanel";
 import { GraphEntryInput } from "./GraphEntryInput";
 import { GraphNode } from "./GraphNode";
+import { GraphSelectInput } from "./GraphSelectionInput";
 import { MAX_ZOOM, MIN_ZOOM } from "./constants";
 import type { GraphSelection, NodeType } from "./types";
 import { getInitialGraph, getNodesWithPositions } from "./utils";
@@ -72,12 +74,15 @@ export function DependencyLineage({
         <Controls />
         <GraphNodeLayout />
         <Panel position="top-left">
-          <GraphEntryInput
-            graph={graph}
-            entry={entry}
-            isFetching={isFetching}
-            onEntryChange={onEntryChange}
-          />
+          <Group>
+            <GraphEntryInput
+              graph={graph}
+              entry={entry}
+              isFetching={isFetching}
+              onEntryChange={onEntryChange}
+            />
+            <GraphSelectInput />
+          </Group>
         </Panel>
         {selection && (
           <Panel className={S.dependencyPanel} position="top-right">
