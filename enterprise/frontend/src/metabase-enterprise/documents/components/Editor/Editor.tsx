@@ -169,28 +169,23 @@ export const Editor: React.FC<EditorProps> = ({
       }),
       CollaborationCaret.extend().configure({
         provider,
+        render: (user: any) => {
+          console.log("hello");
+          const cursor = document.createElement("span");
+          cursor.classList.add("collaboration-carets__caret");
+          cursor.setAttribute("style", `border-color: ${user.color}`);
+
+          const label = document.createElement("div");
+          label.classList.add("collaboration-carets__label");
+          label.setAttribute("style", `background-color: ${user.color};`);
+          label.insertBefore(document.createTextNode(user.name), null);
+
+          cursor.insertBefore(label, null);
+          return cursor;
+        },
         user: {
           name: currentUser?.common_name,
           color: colors[Math.floor(Math.random() * colors.length)],
-          render: (user: any) => {
-            console.log("hello");
-            const cursor = document.createElement("span");
-            cursor.classList.add("collaboration-carets__caret");
-            cursor.setAttribute("style", `border-color: ${user.color}`);
-
-            const label = document.createElement("div");
-            label.classList.add("collaboration-carets__label");
-            label.setAttribute(
-              "style",
-              `background-color: ${user.color}; border: 1px solid red;`,
-            );
-            label.insertBefore(document.createTextNode(user.name), null);
-
-            debugger;
-            cursor.insertBefore(label, null);
-            return cursor;
-          },
-          // color: "red",
         },
       }),
     ],

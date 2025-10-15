@@ -149,10 +149,10 @@
                                    (map (partial format "'sha256-%s'") inline-js-hashes)))
                   :child-src    ["'self'"
                                  "https://accounts.google.com"]
-                  :style-src    ["'self'"
+                  :style-src    ["'self' 'unsafe-inline'"
                                  ;; See [[generate-nonce]]
-                                 (when nonce
-                                   (format "'nonce-%s'" nonce))
+                                 ;; (when nonce
+                                 ;;   (format "'nonce-%s'" nonce))
                                  ;; for webpack hot reloading
                                  (when config/is-dev?
                                    frontend-address)
