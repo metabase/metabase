@@ -1,6 +1,7 @@
-import { Flex, Icon, Title, Text, Anchor } from "metabase/ui";
+import { Flex, Icon, Title, Anchor } from "metabase/ui";
 import { Table } from "metabase-types/api";
 import * as Urls from "metabase/lib/urls";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 
 export const BlueprintTableItemCard = ({ table }: { table: Table }) => {
   return (
@@ -37,21 +38,21 @@ export const BlueprintTableItemCard = ({ table }: { table: Table }) => {
             fz={14}
             fw={400}
             lh="16px"
-            lineClamp={1}
           >
-            {table.display_name ?? table.name}
+            <Ellipsified lines={1} showTooltip={false}>
+              {table.display_name ?? table.name}
+            </Ellipsified>
           </Title>
           {table.description && (
-            <Text
+            <Ellipsified
               fz={12}
               lh="16px"
               fw={400}
               c="text-secondary"
-              tt="none"
-              lineClamp={1}
+              lines={1}
             >
               {table.description}
-            </Text>
+            </Ellipsified>
           )}
         </Flex>
       </Flex>

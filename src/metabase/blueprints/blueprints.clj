@@ -109,7 +109,29 @@
               card (patch-card patch-file db dest-schema which->table {:collection-id collection-id :user-id api/*current-user-id*})]
           (t2/insert! :model/Card card))))))
 
+(defn document-for-collection
+  "this is basically an xray"
+  [collection-id creator-id]
+  (let [cards (t2/select :model/Card :collection_id collection-id)]
+    (t2/insert! :model/Document
+                {:name "Hiro in a Box™®"
+                 :creator_id creator-id
+                 :content_type "application/json+vnd.prose-mirror",
+                 :collection_id collection-id
+                 :document {:type "doc"
+                            :content (into [{:type "paragraph",
+                                             :content [{:type "text",
+                                                        :text "What is going on in our company?"}]}]
+                                           (map (fn [card]
+                                                  {:type "resizeNode",
+                                                   :attrs {:height 442, :minHeight 280},
+                                                   :content [{:type "cardEmbed",
+                                                              :attrs {:id (:id card),
+                                                                      :name nil}}]}))
+                                           cards)}})))
+
 (comment
+  (document-for-collection nil 1)
 
   (let [salesforce-folder "blueprints/salesforce/cards/"
         salesforce-files (-> (io/resource salesforce-folder)
