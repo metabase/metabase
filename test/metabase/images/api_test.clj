@@ -7,12 +7,14 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- test-image-path []
-  (.getAbsolutePath (io/file (io/resource "frontend_client/app/assets/img/lightbulb.png"))))
+(defn- test-image-url []
+  (str (.. (io/resource "frontend_client/app/assets/img/lightbulb.png")
+           toURI
+           toURL)))
 
 (deftest ^:parallel fetch-image-test
   (testing "GET /api/images/:id/contents"
-    (mt/with-temp [:model/Image {image-id :id} {:url (test-image-path)}]
+    (mt/with-temp [:model/Image {image-id :id} {:url (test-image-url)}]
       (let [response (mt/user-http-request-full-response :crowberto :get 200 (format "images/%d/contents" image-id))]
         ;; TODO -- this works IRL not sure why the test is failing
         #_(is (=? {"Content-Type" "image/png"}
@@ -24,15 +26,18 @@
   (t2/with-transaction [_conn nil {:rollback-only true}]
     (let [response (mt/user-http-request :crowberto :post "images"
                                          {:request-options {:headers {"content-type" "multipart/form-data"}}}
-                                         {:file (mt/file->bytes (io/file (test-image-path)))}
+                                         {:file (mt/file->bytes (io/file (test-image-url)))}
                                          :user-id (mt/user->id :crowberto))]
       (is (=? {:id           pos-int?
-               :url          string?
+               :url          #"^file:.*"
                :title        string?
                :content_type "image/png"}
               response))
       (is (= (:id response)
-             (t2/select-one-fn :profile_image_id :model/User (mt/user->id :crowberto)))))))
+             (t2/select-one-fn :profile_image_id :model/User (mt/user->id :crowberto))))
+      (is (=? {:profile_image_id  (:id response)
+               :profile_image_url string?}
+              (mt/user-http-request :crowberto :get (format "user/%d" (mt/user->id :crowberto))))))))
 
 (def test-image
   (io/file "resources/frontend_client/app/assets/img/blue_check.png"))
