@@ -146,8 +146,9 @@ Generate a markdown report with:
 - Specific, actionable recommendations
 - Priority ranking of issues to fix
 
-Do not:
-- Generate a page title
+Use this style:
+- Do not use `#` level 1 headings
+- Do not generate a page title
 
 Be specific about which databases, queries, or tasks are problematic.
 Use tables and formatting to make the report easy to scan.")
