@@ -167,17 +167,13 @@
         collection-name (:name collection-rep)
         ;; Select ONLY top-level collections with the name:
         existing-collections (t2/select :model/Collection :name collection-name :location "/")]
-    (cond (> (count existing-collections) 1)
-          (throw (ex-info (str "Multiple collections found with name: " collection-name)
-                          {:collection-name collection-name
-                           :count (count existing-collections)}))
-          (= (count existing-collections) 1)
-          (let [existing (first existing-collections)
-                archived-name (str collection-name " (archived)")]
-            (log/info "Renaming existing collection" collection-name "to" archived-name)
-            (t2/update! :model/Collection (:id existing) {:name archived-name})))
-    (let [new-collection (persist! collection-rep {})
-          collection-id (:id new-collection)
+    (when (> (count existing-collections) 1)
+      (throw (ex-info (str "Multiple collections found with name: " collection-name)
+                      {:collection-name collection-name
+                       :count (count existing-collections)})))
+    (let [the-collection (or (first existing-collections)
+                             (persist! collection-rep {}))
+          collection-id (:id the-collection)
           representations (flatten-collection-children bundle)
           normalized (map normalize-representation representations)
           ordered (order-representations normalized)]
@@ -190,7 +186,7 @@
                     (dissoc index (:ref entity)))))
               {}
               ordered)
-      new-collection)))
+      the-collection)))
 
 ;;;;;;;;;;;;;;;;
 ;; Transforms ;;

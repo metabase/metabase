@@ -4,6 +4,7 @@
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.v0.common :as v0-common]
+   [metabase-enterprise.representations.v0.pm :as v0-pm]
    [metabase-enterprise.representations.yaml :as yaml]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
@@ -87,7 +88,8 @@
    ref-index]
   (let [yaml-content (if (= "text/markdown+vnd.prose-mirror" content_type)
                        (yaml/parse-string (markdown->yaml content))
-                       content_type)]
+                       content_type)
+        yaml-content (v0-pm/replace-refs yaml-content ref-index)]
     {:entity_id (or entity-id
                     (v0-common/generate-entity-id representation))
      :creator_id (or api/*current-user-id*
