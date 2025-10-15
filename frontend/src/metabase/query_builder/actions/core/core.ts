@@ -372,3 +372,31 @@ async function reduxUpdateQuestion(
   );
   return question.setCard(Questions.HACK_getObjectFromAction(action));
 }
+
+export const updateQuestionWithPastedQuery = createThunkAction(
+  "metabase/qb/UPDATE_QUESTION_WITH_PASTED_QUERY",
+  (pastedDatasetQuery: DatasetQuery) =>
+    async (dispatch: Dispatch, getState: GetState) => {
+      const question = getQuestion(getState());
+      if (!question) {
+        return;
+      }
+
+      // Create new question card with pasted dataset_query
+      const newCard = {
+        ...question.card(),
+        dataset_query: pastedDatasetQuery,
+      };
+
+      // Create new question with pasted query
+      const newQuestion = question.setCard(newCard);
+
+      // Update the question in Redux state
+      dispatch(updateQuestion(newQuestion));
+
+      // Run the query to get results
+      dispatch(runQuestionQuery());
+
+      return newQuestion;
+    },
+);

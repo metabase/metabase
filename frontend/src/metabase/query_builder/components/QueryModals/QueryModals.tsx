@@ -12,8 +12,10 @@ import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals";
+import { updateQuestionWithPastedQuery } from "metabase/query_builder/actions/core/core";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
 import { NewDatasetModal } from "metabase/query_builder/components/NewDatasetModal";
+import { PasteQueryModal } from "metabase/query_builder/components/PasteQueryModal";
 import { QuestionEmbedWidget } from "metabase/query_builder/components/QuestionEmbedWidget";
 import { PreviewQueryModal } from "metabase/query_builder/components/view/PreviewQueryModal";
 import type { QueryModalType } from "metabase/query_builder/constants";
@@ -34,7 +36,9 @@ type OnCreateOptions = { dashboardTabId?: DashboardTabId | undefined };
 
 interface QueryModalsProps {
   modal: QueryModalType;
-  modalContext: number;
+  modalContext:
+    | number
+    | { pastedDatasetQuery?: any; skipConfirmation?: boolean };
   question: Question;
   setQueryBuilderMode: (mode: QueryBuilderMode) => void;
   originalQuestion: Question;
@@ -337,5 +341,31 @@ export function QueryModals({
       return (
         <QuestionEmbedWidget card={question._card} onClose={onCloseModal} />
       );
+    case MODAL_TYPES.PASTE_QUERY: {
+      const pastedDatasetQuery =
+        typeof modalContext === "object" && modalContext?.pastedDatasetQuery;
+      const skipConfirmation =
+        typeof modalContext === "object" && modalContext?.skipConfirmation;
+
+      // If skipConfirmation is true, paste directly without showing modal
+      if (skipConfirmation && pastedDatasetQuery) {
+        dispatch(updateQuestionWithPastedQuery(pastedDatasetQuery));
+        onCloseModal();
+        return <></>;
+      }
+
+      return (
+        <PasteQueryModal
+          opened={true}
+          onConfirm={() => {
+            if (pastedDatasetQuery) {
+              dispatch(updateQuestionWithPastedQuery(pastedDatasetQuery));
+            }
+            onCloseModal();
+          }}
+          onClose={onCloseModal}
+        />
+      );
+    }
   }
 }

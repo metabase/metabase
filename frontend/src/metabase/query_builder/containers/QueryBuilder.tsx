@@ -40,6 +40,7 @@ import type { QueryBuilderUIControls, State } from "metabase-types/store";
 import * as actions from "../actions";
 import { View } from "../components/view/View";
 import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
+import { usePasteQuery } from "../hooks/use-paste-query";
 import {
   getCard,
   getDataReferenceStack,
@@ -311,6 +312,14 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
 
   const handleSave = useSaveQuestion({ scheduleCallback });
 
+  const { handlePaste } = usePasteQuery({
+    question,
+    updateQuestion: props.updateQuestion,
+    onOpenModal: (modalType: string, context?: any) => {
+      openModal(modalType as any, context);
+    },
+  });
+
   useMount(() => {
     initializeQB(location, params);
   });
@@ -439,6 +448,18 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
 
   useHotkeys([["mod+Enter", handleCmdEnter]], []);
 
+  // Handle paste with keyboard shortcut
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === "v") {
+        handlePaste();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [handlePaste]);
+
   return (
     <>
       <View
@@ -446,6 +467,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
         modal={uiControls.modal}
         recentlySaved={uiControls.recentlySaved}
         onOpenModal={openModal}
+        onPasteQuery={handlePaste}
         onCloseModal={closeModal}
         onSave={handleSave}
         onCreate={handleCreate}

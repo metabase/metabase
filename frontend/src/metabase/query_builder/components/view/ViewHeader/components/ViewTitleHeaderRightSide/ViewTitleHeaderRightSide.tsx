@@ -20,8 +20,10 @@ import type { Dataset } from "metabase-types/api";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 
 import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";
+import { CopyQuestionButton } from "../CopyQuestionButton";
 import { ExploreResultsLink } from "../ExploreResultsLink";
 import { FilterHeaderButton } from "../FilterHeaderButton";
+import { PasteQueryButton } from "../PasteQueryButton";
 import { QuestionActions } from "../QuestionActions";
 import { QuestionNotebookButton } from "../QuestionNotebookButton";
 import { QuestionSummarizeWidget } from "../QuestionSummarizeWidget";
@@ -48,6 +50,7 @@ interface ViewTitleHeaderRightSideProps {
   }) => void;
   cancelQuery: () => void;
   onOpenModal: (modalType: QueryModalType) => void;
+  onPasteQuery: () => void;
   onEditSummary: () => void;
   onCloseSummary: () => void;
   setQueryBuilderMode: (
@@ -84,6 +87,7 @@ export function ViewTitleHeaderRightSide({
   runQuestionQuery,
   cancelQuery,
   onOpenModal,
+  onPasteQuery,
   onEditSummary,
   onCloseSummary,
   setQueryBuilderMode,
@@ -201,6 +205,20 @@ export function ViewTitleHeaderRightSide({
         question,
         queryBuilderMode,
       }) && <ToggleNativeQueryPreview question={question} />}
+      {CopyQuestionButton.shouldRender({
+        question,
+        queryBuilderMode,
+      }) && <CopyQuestionButton question={question} />}
+      {PasteQueryButton.shouldRender({
+        question,
+        queryBuilderMode,
+      }) && (
+        <PasteQueryButton
+          question={question}
+          onPaste={onPasteQuery}
+          queryBuilderMode={queryBuilderMode}
+        />
+      )}
       {hasExploreResultsLink && <ExploreResultsLink question={question} />}
       {hasRunButton && !isShowingNotebook && (
         <Box className={ViewTitleHeaderS.ViewHeaderIconButtonContainer}>
