@@ -29,8 +29,12 @@
   [driver          :- :keyword
    identifier-type :- h2x/IdentifierType
    & components]
-  (first
-   (sql.qp/format-honeysql driver (apply h2x/identifier identifier-type components))))
+  (let [components (if (and (= :table identifier-type)
+                            (= :starburst driver))
+                     (concat (str/split (first components) #"\.") (rest components))
+                     components)]
+    (first
+     (sql.qp/format-honeysql driver (apply h2x/identifier identifier-type components)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Deduplicate Field Aliases                                            |
