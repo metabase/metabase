@@ -1,16 +1,18 @@
 (ns metabase-enterprise.documents.api.webhook
   (:require
    [metabase.api.macros :as api.macros]
-   [metabase.events.core :as events]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (defn- connect-event [payload]
   ;; nothing to do here, FE is initializing the user context on its own
   )
 
-(defn- create-event [payload]
-  ;; for now, we let the FE initialize the document with a manual save
-  )
+(defn- load-event [{id :documentName}]
+  ;; Return the ydoc and the extracted version
+  (let [id (parse-long id)]
+    #p
+     (t2/select [:model/Document :document :ydoc] id)))
 
 (defn- change-event [user-id {id :documentName, :keys [ydoc document]}]
   ;; work whether we have the new transformer to pass through the base64 ydoc too, or not
@@ -32,9 +34,11 @@
    {{user-id :user_id} :context :keys [event payload]}]
   (case event
     "connect" (connect-event payload)
-    "create" (create-event payload)
+    "load" (load-event payload)
     "change" (change-event user-id payload)
-    "disconnect" (disconnect-event payload)))
+    "disconnect" (disconnect-event payload)
+
+    (log/warn "Unexpected event" {:event event :payload payload})))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/document/` routes."
