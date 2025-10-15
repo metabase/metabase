@@ -79,10 +79,13 @@
 
 (defn- check-embedding-enabled-for-object
   "Check that embedding is enabled, that `object` exists, and embedding for `object` is enabled."
-  ([entity id]
+  ([entity id] (check-embedding-enabled-for-object entity id nil))
+  ([entity id {:keys [skip-object-enabled-check?]}]
    (api/check (pos-int? id)
               [400 (tru "{0} id should be a positive integer." (name entity))])
-   (check-embedding-enabled-for-object (t2/select-one [entity :enable_embedding] :id id)))
+   (check-embedding-enabled-for-object (cond-> (t2/select-one [entity :enable_embedding] :id id)
+                                         skip-object-enabled-check?
+                                         (assoc :enable_embedding true))))
 
   ([object]
    (embedding.validation/check-embedding-enabled)
@@ -91,13 +94,17 @@
    (api/check (:enable_embedding object)
               [400 (tru "Embedding is not enabled for this object.")])))
 
-(def ^{:arglists '([card-id])} check-embedding-enabled-for-card
+(defn check-embedding-enabled-for-card
   "Runs check-embedding-enabled-for-object for a given Card id"
-  (partial check-embedding-enabled-for-object :model/Card))
+  ([card-id] (check-embedding-enabled-for-object card-id nil))
+  ([card-id opts]
+   (check-embedding-enabled-for-object :model/Card card-id opts)))
 
-(def ^{:arglists '([dashboard-id])} check-embedding-enabled-for-dashboard
+(defn check-embedding-enabled-for-dashboard
   "Runs check-embedding-enabled-for-object for a given Dashboard id"
-  (partial check-embedding-enabled-for-object :model/Dashboard))
+  ([dashboard-id] (check-embedding-enabled-for-object dashboard-id nil))
+  ([dashboard-id opts]
+   (check-embedding-enabled-for-object :model/Dashboard dashboard-id opts)))
 
 (defn- resolve-card-parameters
   "Returns parameters for a card (HUH?)" ; TODO - better docstring
@@ -618,3 +625,11 @@
      (binding [api/*current-user-permissions-set* (atom #{"/"})
                api/*is-superuser?* true]
        (queries/batch-fetch-dashboard-metadata [dashboard])))))
+
+(mu/defn check-card-belongs-to-dashboard :- :nil
+  "If the card with `card-id` doesn't belong to the dashboard with `dashboard-id`, throws an exception."
+  [card-id :- ms/PositiveInt
+   dashboard-id :- ms/PositiveInt]
+  (when-not (t2/exists? :model/DashboardCard :dashboard_id dashboard-id, :card_id card-id)
+    (throw (ex-info (tru "Card {0} does not belong to dashboard {1}" card-id dashboard-id)
+                    {:status-code 404}))))
