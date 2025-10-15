@@ -269,10 +269,10 @@ const customParser = new MarkdownParser(
   }
 );
 
-function parseMarkdown(markdownText) {
+export function parseMarkdown(markdownText) {
   // Use the custom parser
   const doc = customParser.parse(markdownText);
-  
+
   // Convert to JSON
   return doc.toJSON();
 }
@@ -322,4 +322,7 @@ async function main() {
   }
 }
 
-main();
+// Only run main if this file is being executed directly (not imported)
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main();
+}
