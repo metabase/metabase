@@ -910,7 +910,9 @@ WITH (
   \"snowflake.account\" = '%s',
   \"snowflake.database\" = '%s',
   \"snowflake.role\" = '%s',
-  \"snowflake.warehouse\" = '%s'
+  \"snowflake.warehouse\" = '%s',
+  \"case-insensitive-name-matching\" = 'true',
+  \"case-insensitive-name-matching.cache-ttl\" = '1h'
 )"
                                       name
                                       (:host params)
