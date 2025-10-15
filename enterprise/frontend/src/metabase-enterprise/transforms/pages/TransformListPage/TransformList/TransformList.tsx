@@ -6,8 +6,6 @@ import { ItemsListSettings } from "metabase/bench/components/ItemsListSection/It
 import { useItemsListQuery } from "metabase/bench/components/ItemsListSection/useItemsListQuery";
 import Link from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useSelector } from "metabase/lib/redux";
-import { getLocation } from "metabase/selectors/routing";
 import { Box, NavLink, Text } from "metabase/ui";
 import {
   useListTransformTagsQuery,
@@ -24,14 +22,16 @@ import { hasFilterParams } from "../utils";
 
 type TransformListProps = {
   params: TransformListParams;
-  onCollapse: () => void;
   location: Location;
+  selectedId?: Transform["id"];
+  onCollapse?: () => void;
 };
 
 export function TransformList({
   params,
-  onCollapse,
   location,
+  selectedId,
+  onCollapse,
 }: TransformListProps) {
   const {
     data: transforms = [],
@@ -96,6 +96,7 @@ export function TransformList({
               key={transform.id}
               transform={transform}
               tags={tags}
+              isActive={transform.id === selectedId}
             />
           ))}
         </Box>
@@ -107,14 +108,12 @@ export function TransformList({
 function TransformListItem({
   transform,
   tags,
+  isActive,
 }: {
   transform: Transform;
   tags: TransformTag[];
+  isActive?: boolean;
 }) {
-  const location = useSelector(getLocation);
-  // get id off the end
-  const id = location?.pathname?.split("/")?.pop();
-  const isActive = id === String(transform.id);
   return (
     <NavLink
       component={Link}
