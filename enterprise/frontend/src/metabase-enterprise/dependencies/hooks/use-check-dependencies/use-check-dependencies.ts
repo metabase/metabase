@@ -23,14 +23,12 @@ type UseCheckDependenciesProps<TChange, TRequest> = {
   getCheckDependenciesRequest: (change: TChange) => TRequest;
   useLazyCheckDependenciesQuery: () => UseCheckDependenciesQueryResult<TRequest>;
   onSave: (change: TChange) => Promise<void>;
-  onError: (error: unknown) => void;
 };
 
 export function useCheckDependencies<TChange, TRequest>({
   getCheckDependenciesRequest,
   useLazyCheckDependenciesQuery,
   onSave,
-  onError,
 }: UseCheckDependenciesProps<
   TChange,
   TRequest
@@ -46,7 +44,8 @@ export function useCheckDependencies<TChange, TRequest>({
         getCheckDependenciesRequest(change),
       );
       if (error != null) {
-        onError(error);
+        console.error("Error when checking dependencies.", error);
+        await onSave(change);
       } else if (data != null && !data.success) {
         setChange(change);
         setIsConfirmationShown(true);
@@ -54,7 +53,7 @@ export function useCheckDependencies<TChange, TRequest>({
         await onSave(change);
       }
     },
-    [getCheckDependenciesRequest, checkDependencies, onSave, onError],
+    [getCheckDependenciesRequest, checkDependencies, onSave],
   );
 
   const handleCloseConfirmation = useCallback(() => {
