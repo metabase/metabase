@@ -162,15 +162,19 @@
                          [token base-url site-uuid])}
    (fn [token base-url site-uuid]
      (log/infof "Checking with the MetaStore to see whether token '%s' is valid..." (u.str/mask token))
-     (let [{:keys [body status] :as resp} (some-> (token-status-url token base-url)
-                                                  (http/get {:query-params     (merge (stats-for-token-request)
-                                                                                      {:site-uuid  site-uuid
-                                                                                       :mb-version (:tag config/mb-version-info)})
-                                                             :throw-exceptions false}))]
+     (let [{:keys [body status headers] :as resp} (some-> (token-status-url token base-url)
+                                                   (http/get {:query-params     (merge (stats-for-token-request)
+                                                                                       {:site-uuid  site-uuid
+                                                                                        :mb-version (:tag config/mb-version-info)})
+                                                              :throw-exceptions false}))]
        (cond
          (http/success? resp) (some-> body json/decode+kw)
 
-         (<= 400 status 499) (some-> body json/decode+kw)
+         (and (<= 400 status 499)
+              (some-> (get headers "content-type")
+                      (u/lower-case-en)
+                      (str/starts-with? "application/json")))
+         (some-> body json/decode+kw)
 
          ;; exceptions are not cached.
          :else (throw (ex-info "An unknown error occurred when validating token." {:status status
