@@ -108,11 +108,6 @@ jobs:
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
 
-      - name: Prepare back-end environment
-        if: ${{ inputs.test_suite == 'component' }}
-        uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "cljs"
       - name: Build Embedding SDK package
         if: ${{ inputs.test_suite == 'component' }}
         run: yarn build-embedding-sdk-package
