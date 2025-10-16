@@ -159,7 +159,7 @@ export function TransformList({
       });
       prev.children?.push({
         id: transform.id,
-        name: transform.name,
+        name: transform.target.name,
         icon: "table2",
         data: transform,
       });

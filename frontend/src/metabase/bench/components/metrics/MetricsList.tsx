@@ -50,7 +50,7 @@ import {
   NavLink,
   Text,
 } from "metabase/ui";
-import type { RawSeries, RecentCollectionItem } from "metabase-types/api";
+import type { RawSeries, SearchResult } from "metabase-types/api";
 
 import { BenchLayout } from "../BenchLayout";
 import { BenchPaneHeader } from "../BenchPaneHeader";
@@ -73,10 +73,16 @@ function MetricsList({
   location: Location;
 }) {
   const dispatch = useDispatch();
-  const { isLoading: isLoadingMetrics, data } = useFetchMetrics();
+  const { isLoading: isLoadingMetrics, data: metricsData } = useFetchMetrics();
   const { isLoading: isLoadingCollections, data: collections } =
     useListCollectionsTreeQuery({ "exclude-archived": true });
-  const metrics = data?.data;
+  const metrics = useMemo(
+    () =>
+      metricsData?.data
+        ? [...metricsData.data].sort((a, b) => a.name.localeCompare(b.name))
+        : [],
+    [metricsData?.data],
+  );
   const isLoading = isLoadingMetrics || isLoadingCollections;
 
   const listSettingsProps = useItemsListQuery({
@@ -164,7 +170,7 @@ function MetricListItem({
   active,
   query,
 }: {
-  metric: RecentCollectionItem;
+  metric: SearchResult;
   active?: boolean;
   query?: Location["query"];
 }) {

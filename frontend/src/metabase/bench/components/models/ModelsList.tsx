@@ -26,7 +26,7 @@ import {
   Text,
 } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
-import type { RecentCollectionItem } from "metabase-types/api";
+import type { SearchResult } from "metabase-types/api";
 
 import { BenchLayout } from "../BenchLayout";
 import { BenchPaneHeader } from "../BenchPaneHeader";
@@ -53,7 +53,13 @@ function ModelsList({
   const { isLoading: isLoadingCollections, data: collections } =
     useListCollectionsTreeQuery({ "exclude-archived": true });
 
-  const models = modelsData?.data;
+  const models = useMemo(
+    () =>
+      modelsData?.data
+        ? [...modelsData.data].sort((a, b) => a.name.localeCompare(b.name))
+        : [],
+    [modelsData],
+  );
   const isLoading = isLoadingModels || isLoadingCollections;
 
   const listSettingsProps = useItemsListQuery({
@@ -131,7 +137,7 @@ function ModelListItem({
   active,
   query,
 }: {
-  model: RecentCollectionItem;
+  model: SearchResult;
   active?: boolean;
   query: Location["query"];
 }) {
