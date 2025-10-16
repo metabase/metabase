@@ -2009,8 +2009,11 @@
   {:public_uuid       (str (random-uuid))
    :made_public_by_id (mt/user->id :crowberto)})
 
-(defn- test-document-with-public-link
-  "Helper to create test document data with optional overrides. Merges base document data with a public link."
+(defn- document-with-public-link
+  "Create test Document data including a public UUID and made_public_by_id.
+
+  Accepts an `overrides` map to customize the returned Document attributes. Base attributes include
+  `:name`, `:document` (ProseMirror AST), `:public_uuid`, and `:made_public_by_id`."
   [overrides]
   (merge {:name "Test Document"
           :document (text->prose-mirror-ast "Test content")}
@@ -2051,12 +2054,12 @@
   (testing "DELETE /api/ee/document/:id/public_link"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (testing "Test that we can unshare a Document"
-        (mt/with-temp [:model/Document document (test-document-with-public-link {})]
+        (mt/with-temp [:model/Document document (document-with-public-link {})]
           (mt/user-http-request :crowberto :delete 204 (format "ee/document/%d/public_link" (:id document)))
           (is (not (t2/exists? :model/Document :id (:id document), :public_uuid (:public_uuid document))))))
 
       (testing "Test that we *cannot* unshare a Document if we are not admins"
-        (mt/with-temp [:model/Document document (test-document-with-public-link {})]
+        (mt/with-temp [:model/Document document (document-with-public-link {})]
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :delete 403 (format "ee/document/%d/public_link" (:id document)))))))
 
@@ -2070,12 +2073,11 @@
         (is (= "Not found."
                (mt/user-http-request :crowberto :delete 404 (format "ee/document/%d/public_link" Integer/MAX_VALUE))))))))
 
-;;
 (deftest fetch-public-documents-test
   (testing "GET /api/ee/document/public"
     (mt/with-temporary-setting-values [enable-public-sharing true]
-      (mt/with-temp [:model/Document _document (test-document-with-public-link {:name "Public Document"
-                                                                                :document (text->prose-mirror-ast "Public content")})]
+      (mt/with-temp [:model/Document _document (document-with-public-link {:name "Public Document"
+                                                                           :document (text->prose-mirror-ast "Public content")})]
         (testing "Test that it requires superuser"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 "ee/document/public"))))
@@ -2090,8 +2092,8 @@
   (testing "GET /api/public/document/:uuid"
     (testing "Test that we can fetch a public Document"
       (mt/with-temporary-setting-values [enable-public-sharing true]
-        (mt/with-temp [:model/Document document (test-document-with-public-link {:name "Public Test Document"
-                                                                                 :document (text->prose-mirror-ast "Public test content")})]
+        (mt/with-temp [:model/Document document (document-with-public-link {:name "Public Test Document"
+                                                                            :document (text->prose-mirror-ast "Public test content")})]
           (is (partial= {:name "Public Test Document"
                          :document (text->prose-mirror-ast "Public test content")
                          :id (:id document)}
@@ -2100,8 +2102,8 @@
 (deftest public-document-returns-only-safe-fields-test
   (testing "GET /api/public/document/:uuid should only return safe fields"
     (mt/with-temporary-setting-values [enable-public-sharing true]
-      (mt/with-temp [:model/Document document (test-document-with-public-link {:name "Public Test Document"
-                                                                               :document (text->prose-mirror-ast "Public test content")})]
+      (mt/with-temp [:model/Document document (document-with-public-link {:name "Public Test Document"
+                                                                          :document (text->prose-mirror-ast "Public test content")})]
         (let [result (mt/client :get 200 (str "public/document/" (:public_uuid document)))]
           (testing "Should include safe fields"
             (is (contains? result :id))
@@ -2119,7 +2121,7 @@
   (testing "GET /api/public/document/:uuid"
     (testing "Shouldn't be able to fetch a public Document if public sharing is disabled"
       (mt/with-temporary-setting-values [enable-public-sharing false]
-        (mt/with-temp [:model/Document document (test-document-with-public-link {})]
+        (mt/with-temp [:model/Document document (document-with-public-link {})]
           (is (= "API endpoint does not exist."
                  (mt/client :get 404 (str "public/document/" (:public_uuid document))))))))
 
@@ -2140,16 +2142,16 @@
 (deftest unshare-archived-document-test
   (testing "DELETE /api/ee/document/:id/public_link should not work for archived documents"
     (mt/with-temporary-setting-values [enable-public-sharing true]
-      (mt/with-temp [:model/Document document (test-document-with-public-link {:name "Archived Shared Document"
-                                                                               :document (text->prose-mirror-ast "Archived shared content")
-                                                                               :archived true})]
+      (mt/with-temp [:model/Document document (document-with-public-link {:name "Archived Shared Document"
+                                                                          :document (text->prose-mirror-ast "Archived shared content")
+                                                                          :archived true})]
         (is (= "Not found."
                (mt/user-http-request :crowberto :delete 404 (format "ee/document/%d/public_link" (:id document)))))))))
 
 (deftest public-document-not-accessible-when-archived-test
   (testing "GET /api/public/document/:uuid should not work for archived documents"
     (mt/with-temporary-setting-values [enable-public-sharing true]
-      (mt/with-temp [:model/Document document (test-document-with-public-link {})]
+      (mt/with-temp [:model/Document document (document-with-public-link {})]
         (let [uuid (:public_uuid document)]
           (testing "Document is accessible when not archived"
             (is (= 200
@@ -2162,11 +2164,11 @@
 (deftest public-document-listing-excludes-archived-test
   (testing "GET /api/ee/document/public should not include archived documents"
     (mt/with-temporary-setting-values [enable-public-sharing true]
-      (mt/with-temp [:model/Document active-doc (test-document-with-public-link {:name "Active Public Document"
-                                                                                 :document (text->prose-mirror-ast "Active content")})
-                     :model/Document _archived-doc (test-document-with-public-link {:name "Archived Public Document"
-                                                                                    :document (text->prose-mirror-ast "Archived content")
-                                                                                    :archived true})]
+      (mt/with-temp [:model/Document active-doc (document-with-public-link {:name "Active Public Document"
+                                                                            :document (text->prose-mirror-ast "Active content")})
+                     :model/Document _archived-doc (document-with-public-link {:name "Archived Public Document"
+                                                                               :document (text->prose-mirror-ast "Archived content")
+                                                                               :archived true})]
         (let [public-docs (mt/user-http-request :crowberto :get 200 "ee/document/public")
               public-doc-ids (set (map :id public-docs))]
           (testing "Active document should be in the list"

@@ -226,6 +226,17 @@
 
 (defn- document-with-uuid [uuid] (public-document :public_uuid uuid))
 
+(defn- document-card-ids
+  "Get the set of Card IDs embedded in a public Document with the given UUID.
+
+  Returns a set of Card IDs that are embedded in the Document's ProseMirror content. Throws a 404
+  if the Document doesn't exist, is archived, or doesn't have a public UUID."
+  [uuid]
+  (let [document (api/check-404 (t2/select-one :model/Document :public_uuid uuid :archived false))
+        prose-mirror-content-type @(requiring-resolve 'metabase-enterprise.documents.prose-mirror/prose-mirror-content-type)]
+    (when (= prose-mirror-content-type (:content_type document))
+      (set ((requiring-resolve 'metabase-enterprise.documents.prose-mirror/card-ids) document)))))
+
 (api.macros/defendpoint :get "/document/:uuid"
   "Fetch a publicly-accessible Document. Does not require auth credentials. Public sharing must be enabled."
   [{:keys [uuid]} :- [:map
@@ -245,10 +256,7 @@
                             [:parameters {:optional true} [:maybe ms/JSONString]]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-404 (t2/select-one-pk :model/Card :id card-id :archived false))
-  (let [document (api/check-404 (t2/select-one :model/Document :public_uuid uuid :archived false))
-        prose-mirror-content-type @(requiring-resolve 'metabase-enterprise.documents.prose-mirror/prose-mirror-content-type)
-        card-ids (when (= prose-mirror-content-type (:content_type document))
-                   (set ((requiring-resolve 'metabase-enterprise.documents.prose-mirror/card-ids) document)))]
+  (let [card-ids (document-card-ids uuid)]
     ;; Make sure this card is actually in the document — we don't want people using this endpoint to query arbitrary cards
     (api/check-404 (contains? card-ids card-id))
     ;; Run the query as admin since public documents are available to everyone anyway
@@ -272,10 +280,7 @@
                                                       [:parameters    {:optional true} [:maybe ms/JSONString]]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-404 (t2/select-one-pk :model/Card :id card-id :archived false))
-  (let [document (api/check-404 (t2/select-one :model/Document :public_uuid uuid :archived false))
-        prose-mirror-content-type @(requiring-resolve 'metabase-enterprise.documents.prose-mirror/prose-mirror-content-type)
-        card-ids (when (= prose-mirror-content-type (:content_type document))
-                   (set ((requiring-resolve 'metabase-enterprise.documents.prose-mirror/card-ids) document)))]
+  (let [card-ids (document-card-ids uuid)]
     ;; Make sure this card is actually in the document — we don't want people using this endpoint to query arbitrary cards
     (api/check-404 (contains? card-ids card-id))
     (process-query-for-card-with-id

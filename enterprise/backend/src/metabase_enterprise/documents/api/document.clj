@@ -243,8 +243,15 @@
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
 (api.macros/defendpoint :post "/:document-id/public_link" :- [:map [:uuid ms/UUIDString]]
-  "Generate a public link for this Document. If it's already public, we'll return the existing link instead of making
-   a new one. Public sharing must be enabled."
+  "Generate a publicly-accessible UUID for a Document.
+
+  Creates a public link that allows viewing the Document without authentication. If the Document already has
+  a public UUID, returns the existing one rather than generating a new one. This enables sharing the Document
+  via `GET /api/public/document/:uuid`.
+
+  Returns a map containing `:uuid` (the public UUID string).
+
+  Requires superuser permissions. Public sharing must be enabled via the `enable-public-sharing` setting."
   [{:keys [document-id]} :- [:map
                              [:document-id ms/PositiveInt]]]
   (api/check-superuser)
@@ -259,7 +266,15 @@
                             :made_public_by_id api/*current-user-id*})))})
 
 (api.macros/defendpoint :delete "/:document-id/public_link"
-  "Remove the public link for this Document."
+  "Remove the public link for a Document.
+
+  Deletes the public UUID from the Document, making it no longer accessible via the public sharing endpoint.
+  This revokes public access to the Document - the existing public link will no longer work.
+
+  Returns a 204 No Content response on success.
+
+  Requires superuser permissions. Public sharing must be enabled via the `enable-public-sharing` setting.
+  Throws a 404 if the Document doesn't exist, is archived, or doesn't have a public link."
   [{:keys [document-id]} :- [:map
                              [:document-id ms/PositiveInt]]]
   (api/check-superuser)
@@ -274,7 +289,15 @@
                                                         [:name :string]
                                                         [:id ms/PositiveInt]
                                                         [:public_uuid ms/UUIDString]]]
-  "List all Documents that have public links. They're only actually accessible if public sharing is enabled."
+  "List all Documents that have public links.
+
+  Returns a sequence of Documents that have been publicly shared. Each Document includes its `:id`, `:name`,
+  and `:public_uuid`. Documents are only actually accessible via the public endpoint if public sharing is
+  currently enabled. Archived Documents are excluded from the results.
+
+  This endpoint is used to populate the public links listing in the Admin settings UI.
+
+  Requires superuser permissions. Public sharing must be enabled via the `enable-public-sharing` setting."
   []
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
