@@ -163,15 +163,26 @@ export function versionIsLatest({
 export const isEEBuild = () => PLUGIN_IS_EE_BUILD.isEEBuild();
 
 // Extract entity id from signed JWT token used in Static Embedding
-export const extractEntityIdFromJwtToken = (jwtToken: string) => {
+export const extractEntityIdFromJwtToken = (
+  jwtToken: string,
+): {
+  entityType: "question" | "dashboard" | null;
+  entityId: string | null;
+} => {
   try {
     const parts = jwtToken.split(".");
     const payload = JSON.parse(atob(parts[1]));
     const resource = payload.resource;
-    const entityId = resource.dashboard || resource.question;
 
-    return entityId;
+    const entityType = resource.dashboard
+      ? "dashboard"
+      : resource.question
+        ? "question"
+        : null;
+    const entityId = entityType ? resource[entityType] : null;
+
+    return { entityType, entityId };
   } catch {
-    return null;
+    return { entityType: null, entityId: null };
   }
 };

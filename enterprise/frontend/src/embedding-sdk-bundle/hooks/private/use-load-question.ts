@@ -31,7 +31,6 @@ export interface LoadQuestionHookResult {
   question?: Question;
   originalQuestion?: Question;
   parameterValues?: ParameterValuesMap;
-  token?: string | null;
 
   queryResults?: any[];
 
@@ -62,6 +61,7 @@ export interface LoadQuestionHookResult {
 export function useLoadQuestion({
   questionId,
   token,
+  originalCardId,
   options,
   // Passed when navigating from `InteractiveDashboard` or `EditableDashboard`
   deserializedCard,
@@ -73,7 +73,7 @@ export function useLoadQuestion({
   // Keep track of the latest question and query results.
   // They can be updated from the below actions.
   const [questionState, mergeQuestionState] = useReducer(questionReducer, {});
-  const { question, originalQuestion, token, queryResults, parameterValues } =
+  const { question, originalQuestion, queryResults, parameterValues } =
     questionState;
 
   const isStaticEmbedding = useSdkSelector(getIsStaticEmbedding);
@@ -116,6 +116,7 @@ export function useLoadQuestion({
           deserializedCard,
           questionId,
           token,
+          originalCardId,
           initialSqlParameters,
           targetDashboardId,
         }),
@@ -127,6 +128,7 @@ export function useLoadQuestion({
         question: questionState.question,
         isStaticEmbedding,
         originalQuestion: questionState.originalQuestion,
+        originalCardId,
         parameterValues: questionState.parameterValues,
         cancelDeferred: deferred(),
       });
@@ -164,6 +166,7 @@ export function useLoadQuestion({
   }, [
     dispatch,
     options,
+    originalCardId,
     deserializedCard,
     isStaticEmbedding,
     sqlParameterKey,
@@ -181,6 +184,7 @@ export function useLoadQuestion({
       question,
       isStaticEmbedding,
       originalQuestion,
+      originalCardId,
       parameterValues,
       cancelDeferred: deferred(),
     });
@@ -193,6 +197,7 @@ export function useLoadQuestion({
     question,
     isStaticEmbedding,
     originalQuestion,
+    originalCardId,
     parameterValues,
   ]);
 
@@ -209,6 +214,7 @@ export function useLoadQuestion({
           nextQuestion,
           previousQuestion: question,
           originalQuestion,
+          originalCardId,
           nextParameterValues: parameterValues ?? {},
           cancelDeferred: deferred(),
           optimisticUpdateQuestion: (question) =>
@@ -221,7 +227,14 @@ export function useLoadQuestion({
 
       mergeQuestionState(state);
     },
-    [dispatch, question, originalQuestion, parameterValues, isStaticEmbedding],
+    [
+      dispatch,
+      question,
+      originalQuestion,
+      originalCardId,
+      parameterValues,
+      isStaticEmbedding,
+    ],
   );
 
   const [updateParameterValuesState, updateParameterValues] = useAsyncFn(
@@ -239,6 +252,7 @@ export function useLoadQuestion({
           nextQuestion: question,
           previousQuestion: question,
           originalQuestion,
+          originalCardId,
           nextParameterValues,
           cancelDeferred: deferred(),
           optimisticUpdateQuestion: (question) =>
@@ -251,7 +265,14 @@ export function useLoadQuestion({
 
       mergeQuestionState(state);
     },
-    [dispatch, question, originalQuestion, parameterValues, isStaticEmbedding],
+    [
+      dispatch,
+      question,
+      originalQuestion,
+      originalCardId,
+      parameterValues,
+      isStaticEmbedding,
+    ],
   );
 
   const [navigateToNewCardState, navigateToNewCard] = useAsyncFn(
@@ -261,6 +282,7 @@ export function useLoadQuestion({
           ...params,
           isStaticEmbedding,
           originalQuestion,
+          originalCardId,
           parameterValues,
           cancelDeferred: deferred(),
           onQuestionChange: (question) => mergeQuestionState({ question }),
@@ -274,7 +296,13 @@ export function useLoadQuestion({
 
       mergeQuestionState(state);
     },
-    [dispatch, originalQuestion, isStaticEmbedding, parameterValues],
+    [
+      dispatch,
+      originalQuestion,
+      originalCardId,
+      isStaticEmbedding,
+      parameterValues,
+    ],
   );
 
   const isQueryRunning =
@@ -290,7 +318,6 @@ export function useLoadQuestion({
     question,
     originalQuestion,
     parameterValues,
-    token,
 
     queryResults,
 

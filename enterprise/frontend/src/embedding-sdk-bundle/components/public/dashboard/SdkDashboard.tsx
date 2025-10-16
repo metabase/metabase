@@ -119,6 +119,7 @@ export type SdkDashboardInnerProps = SdkDashboardProps &
   Partial<
     Pick<
       DashboardContextProps,
+      | "token"
       | "getClickActionMode"
       | "dashboardActions"
       | "dashcardMenu"
@@ -162,6 +163,7 @@ const SdkDashboardInner = ({
     tokenError,
   } = useExtractEntityIdFromJwtToken({
     isStaticEmbedding,
+    entityType: "dashboard",
     entityId: rawDashboardId,
     token: rawToken ?? undefined,
   });
@@ -188,6 +190,7 @@ const SdkDashboardInner = ({
   });
 
   const {
+    originalCardId,
     adhocQuestionUrl,
     onNavigateBackToDashboard,
     onEditQuestion,
@@ -356,6 +359,8 @@ const SdkDashboardInner = ({
         .with({ finalRenderMode: "question" }, () => (
           <SdkDashboardStyledWrapperWithRef className={className} style={style}>
             <SdkAdHocQuestion
+              token={token}
+              originalCardId={originalCardId}
               // `adhocQuestionUrl` would have value if renderMode is "question"
               questionPath={adhocQuestionUrl!}
               onNavigateBack={onNavigateBackToDashboard}

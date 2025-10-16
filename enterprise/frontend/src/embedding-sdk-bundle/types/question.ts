@@ -49,6 +49,11 @@ export type LoadSdkQuestionParams = {
 
   /**
    * @internal
+   */
+  originalCardId?: number | null;
+
+  /**
+   * @internal
    * The ID of the dashboard to save the question to. If provided, the question will be saved to this dashboard instead of the target collection or dashboards.
    * And the collection and dashboard picker will not be shown.
    */

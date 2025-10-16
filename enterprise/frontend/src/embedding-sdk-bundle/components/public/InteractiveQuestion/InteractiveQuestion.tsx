@@ -36,7 +36,11 @@ import { interactiveQuestionSchema } from "./InteractiveQuestion.schema";
  */
 export type InteractiveQuestionProps = Omit<
   SdkQuestionProps,
-  "token" | "getClickActionMode" | "navigateToNewCard" | "backToDashboard"
+  | "token"
+  | "originalCardId"
+  | "getClickActionMode"
+  | "navigateToNewCard"
+  | "backToDashboard"
 >;
 
 /**

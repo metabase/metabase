@@ -14,6 +14,7 @@ import type { Dispatch, GetState } from "metabase-types/store";
 
 interface RunQuestionOnNavigateParams extends NavigateToNewCardParams {
   originalQuestion?: Question;
+  originalCardId?: number | null;
   parameterValues?: ParameterValuesMap;
   isStaticEmbedding: boolean;
   onQuestionChange: (question: Question) => void;
@@ -31,6 +32,7 @@ export const runQuestionOnNavigateSdk =
       nextCard,
       previousCard,
       originalQuestion,
+      originalCardId,
       parameterValues,
       cancelDeferred,
       onQuestionChange,
@@ -56,11 +58,12 @@ export const runQuestionOnNavigateSdk =
     // Optimistic update the UI before we re-fetch the query metadata.
     onQuestionChange(new Question(nextCard, getMetadata(getState())));
 
-    await dispatch(loadMetadataForCard(nextCard));
+    await dispatch(loadMetadataForCard(nextCard, { originalCardId }));
 
     const state = await runQuestionQuerySdk({
       question: new Question(nextCard, getMetadata(getState())),
       originalQuestion,
+      originalCardId,
       parameterValues,
       cancelDeferred,
       isStaticEmbedding,

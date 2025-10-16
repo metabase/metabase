@@ -20,6 +20,7 @@ export const loadQuestionSdk =
     deserializedCard,
     questionId: initQuestionId,
     token,
+    originalCardId,
     initialSqlParameters,
     targetDashboardId,
   }: LoadSdkQuestionParams) =>
@@ -43,7 +44,7 @@ export const loadQuestionSdk =
       deserializedCard,
     });
 
-    await dispatch(loadMetadataForCard(card));
+    await dispatch(loadMetadataForCard(card, { originalCardId }));
 
     const metadata = getMetadata(getState());
 

@@ -119,6 +119,13 @@ export type SdkQuestionProviderProps = PropsWithChildren<
       token?: SdkEntityToken | null;
 
       /**
+       * An id of an original card in the case of an ad-hoc question
+       *
+       * @internal
+       */
+      originalCardId?: number | null;
+
+      /**
        * @internal
        */
       getClickActionMode?: ClickActionModeGetter | undefined;

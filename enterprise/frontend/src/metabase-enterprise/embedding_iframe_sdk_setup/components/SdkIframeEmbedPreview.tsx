@@ -184,9 +184,6 @@ const SdkIframeEmbedPreviewInner = () => {
             "hidden-parameters": s.hiddenParameters
               ? JSON.stringify(s.hiddenParameters)
               : undefined,
-            ...(!isStaticEmbedding && {
-              "is-save-enabled": s.isSaveEnabled,
-            }),
           }),
         )
         .with({ componentName: "metabase-dashboard" }, (s) =>
