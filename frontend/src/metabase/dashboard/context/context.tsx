@@ -42,6 +42,9 @@ import type {
 } from "../types";
 
 import { type ReduxProps, connector } from "./context.redux";
+import { useSelector } from "metabase/lib/redux";
+import { getDashboard, getDashcards } from "../selectors";
+import { dashcards } from "embedding-sdk-bundle/components/public/dashboard/tests/setup";
 
 export type DashboardContextErrorState = {
   error: unknown | null;
@@ -141,7 +144,7 @@ const DashboardContextProviderInner = forwardRef(
       withFooter = true,
 
       // redux selectors
-      dashboard,
+      // dashboard,
       selectedTabId,
       isEditing,
       isNavigatingBackToDashboard,
@@ -170,10 +173,55 @@ const DashboardContextProviderInner = forwardRef(
     const previousIsLoading = usePrevious(isLoading);
     const previousIsLoadingWithoutCards = usePrevious(isLoadingWithoutCards);
 
+    const _dashboard = useSelector(getDashboard);
+    const dashcards = useSelector(getDashcards);
+
+    const dashboard = useMemo(() => {
+      if (!_dashboard) {
+        return null;
+      }
+
+      const orderedDashcards = _dashboard.dashcards
+        .map((id) => dashcards[id])
+        .filter((dc) => !dc.isRemoved)
+        .sort((a, b) => {
+          const rowDiff = a.row - b.row;
+
+          // sort by y position first
+          if (rowDiff !== 0) {
+            return rowDiff;
+          }
+
+          // for items on the same row, sort by x position
+          return a.col - b.col;
+        });
+
+      return (
+        _dashboard && {
+          ..._dashboard,
+          dashcards: orderedDashcards,
+        }
+      );
+    }, [_dashboard?.id]);
+
     const previousDashboard = usePrevious(dashboard);
     const previousDashboardId = usePrevious(dashboardId);
     const previousTabId = usePrevious(selectedTabId);
     const previousParameterValues = usePrevious(parameterValues);
+
+    const dashboardIncomplete = useSelector(getDashboard);
+
+    useEffect(() => {
+      console.log("bare _dashboard rerendered", _dashboard);
+    }, [_dashboard]);
+
+    useEffect(() => {
+      console.log("complete dashboard rerendered", dashboard);
+    }, [dashboard]);
+
+    useEffect(() => {
+      console.log("dashboardIncomplete rerendered", dashboardIncomplete);
+    }, [dashboardIncomplete]);
 
     const { refreshDashboardCardData } = useRefreshDashboard({
       dashboardId,
@@ -333,13 +381,13 @@ const DashboardContextProviderInner = forwardRef(
     // so we have a filter function here to remove those. We can/will also add this
     // functionality in the SDK in the future, which is why it's a generic prop
     const dashboardWithFilteredCards = useMemo(() => {
-      if (dashboard && isDashcardVisible) {
-        return assoc(
-          dashboard,
-          "dashcards",
-          dashboard.dashcards.filter(isDashcardVisible),
-        );
-      }
+      // if (dashboard && isDashcardVisible) {
+      //   return assoc(
+      //     dashboard,
+      //     "dashcards",
+      //     dashboard.dashcards.filter(isDashcardVisible),
+      //   );
+      // }
       return dashboard;
     }, [dashboard, isDashcardVisible]);
 

@@ -91,7 +91,7 @@ import {
 } from "../selectors";
 
 export const mapStateToProps = (state: State) => ({
-  dashboard: getDashboardComplete(state),
+  // dashboard: getDashboardComplete(state),
   parameters: getParameters(state),
   headerParameters: getDashboardHeaderParameters(state),
   tabs: getTabs(state),
