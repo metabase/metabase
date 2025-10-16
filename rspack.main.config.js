@@ -386,7 +386,7 @@ if (isDevMode) {
   // replace minified files with un-minified versions
   const aliases = config.resolve.alias || {};
 
-  Object.entries(aliases || {}).forEach(([name, minified]) => {
+  Object.entries(aliases).forEach(([name, minified]) => {
     if (typeof minified !== "string") {
       return;
     }
