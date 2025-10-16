@@ -70,7 +70,7 @@ function DataPermissionsPage({
     params.databaseId !== undefined
       ? {
           dbId: params.databaseId,
-          include_hidden: true,
+          include_hidden: false,
           remove_inactive: true,
           skip_fields: true,
         }
