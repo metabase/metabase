@@ -82,3 +82,74 @@
               (is (= 2 (get-in result [:structured_output :bad_transform_count])))
               ;; ...but only one should be reported due to the limit.
               (is (= 1 (count bad-transforms))))))))))
+
+(deftest check-transform-dependencies-with-cards-test
+  (testing "removing field from transform breaks dependent card"
+    (with-dependent-transforms! [transform1-id _]
+      (mt/with-temp
+        [:model/Card {card-id :id}
+         {:name "Card using Transform 1"
+          :database_id (mt/id)
+          :table_id (mt/id :orders)
+          :dataset_query {:type "native"
+                          :database (mt/id)
+                          :native {:query "SELECT total FROM orders_transform_1"}}}
+         :model/Dependency {}
+         {:from_entity_type "card"
+          :from_entity_id card-id
+          :to_entity_type "transform"
+          :to_entity_id transform1-id}]
+        (let [modified-source {:type "query"
+                               :query (lib/native-query (mt/metadata-provider) "SELECT id FROM orders")}
+              result (metabot.dependencies/check-transform-dependencies
+                      {:id transform1-id
+                       :source modified-source})]
+          (is (false? (get-in result [:structured_output :success])))
+          (is (= 1 (get-in result [:structured_output :bad_card_count])))
+          (let [bad-cards (get-in result [:structured_output :bad_cards])]
+            (is (= 1 (count bad-cards)))
+            (is (= card-id (get-in (first bad-cards) [:card :id])))
+            (is (= "Card using Transform 1" (get-in (first bad-cards) [:card :name])))
+            (is (some? (:errors (first bad-cards))))))))))
+
+(deftest check-transform-dependencies-card-limit-test
+  (testing "max-reported-broken-transforms limit applies to cards"
+    (with-dependent-transforms! [transform1-id _]
+      (mt/with-temp
+        [:model/Card {card1-id :id}
+         {:name "Card 1 using Transform 1"
+          :database_id (mt/id)
+          :table_id (mt/id :orders)
+          :dataset_query {:type "native"
+                          :database (mt/id)
+                          :native {:query "SELECT total FROM orders_transform_1"}}}
+         :model/Dependency {}
+         {:from_entity_type "card"
+          :from_entity_id card1-id
+          :to_entity_type "transform"
+          :to_entity_id transform1-id}
+         :model/Card {card2-id :id}
+         {:name "Card 2 using Transform 1"
+          :database_id (mt/id)
+          :table_id (mt/id :orders)
+          :dataset_query {:type "native"
+                          :database (mt/id)
+                          :native {:query "SELECT total FROM orders_transform_1"}}}
+         :model/Dependency {}
+         {:from_entity_type "card"
+          :from_entity_id card2-id
+          :to_entity_type "transform"
+          :to_entity_id transform1-id}]
+        (testing "when limit is 1, only one broken card is reported"
+          (binding [metabot.dependencies/*max-reported-broken-transforms* 1]
+            (let [modified-source {:type "query"
+                                   :query (lib/native-query (mt/metadata-provider) "SELECT id FROM orders")}
+                  result (metabot.dependencies/check-transform-dependencies
+                          {:id transform1-id
+                           :source modified-source})
+                  bad-cards (get-in result [:structured_output :bad_cards])]
+              ;; Two cards should be broken...
+              (is (false? (get-in result [:structured_output :success])))
+              (is (= 2 (get-in result [:structured_output :bad_card_count])))
+              ;; ...but only one should be reported due to the limit.
+              (is (= 1 (count bad-cards))))))))))
