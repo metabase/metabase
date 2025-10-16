@@ -250,7 +250,9 @@
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Document :id document-id, :archived false)
+  ;; Return existing UUID if already public, otherwise generate and save a new one
   {:uuid (or (t2/select-one-fn :public_uuid :model/Document :id document-id)
+             ;; prog1 returns the UUID and <> refers to that UUID in the update
              (u/prog1 (str (random-uuid))
                (t2/update! :model/Document document-id
                            {:public_uuid       <>
