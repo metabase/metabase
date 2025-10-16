@@ -749,3 +749,15 @@
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :oracle
   [_ ^SQLException e]
   (= (.getErrorCode e) 942))
+
+(defmethod driver.sql/resolve-field [:oracle :single-column]
+  [driver metadata-provider col-spec]
+  (let [parent-method (get-method driver.sql/resolve-field [:sql :single-column])]
+    (if (= (:column col-spec) "rownum")
+      [{:base-type :type/Integer
+        :name "rownum"
+        :lib/desired-column-alias (or (:alias col-spec) "rownum")
+        :display-name "Row Num"
+        :effective-type :type/Integer
+        :semantic-type :Semantic/*}]
+      (parent-method driver metadata-provider col-spec))))
