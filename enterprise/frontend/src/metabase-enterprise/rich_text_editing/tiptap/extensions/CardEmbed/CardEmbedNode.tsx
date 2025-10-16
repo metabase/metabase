@@ -57,6 +57,7 @@ import CS from "../extensions.module.css";
 import styles from "./CardEmbedNode.module.css";
 import { ModifyQuestionModal } from "./ModifyQuestionModal";
 import { NativeQueryModal } from "./NativeQueryModal";
+import { PublicDocumentCardMenu } from "./PublicDocumentCardMenu";
 
 export const DROP_ZONE_COLOR = "var(--mb-color-brand)";
 const DRAG_LEAVE_TIMEOUT = 300;
@@ -642,83 +643,94 @@ export const CardEmbedComponent = memo(
                         />
                       </Box>
                     )}
-                  {!isEditingTitle && (
-                    <Menu withinPortal position="bottom-end" data-hide-on-print>
-                      <Menu.Target>
-                        <Flex
-                          component="button"
-                          p="0.25rem"
-                          align="center"
-                          justify="center"
-                          className={styles.menuButton}
-                          onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                        >
-                          <Icon
-                            name="ellipsis"
-                            size={16}
-                            color="var(--mb-color-text-medium)"
-                          />
-                        </Flex>
-                      </Menu.Target>
-                      <Menu.Dropdown>
-                        {!isWithinIframe() && (
-                          <Menu.Item
-                            leftSection={<Icon name="add_comment" size={14} />}
-                            component={ForwardRefLink}
-                            to={
-                              // If no existing unresolved comments comments, add query param to auto-open new comment form
-                              unresolvedCommentsCount > 0
-                                ? commentsPath
-                                : `${commentsPath}?new=true`
+                  {!isEditingTitle &&
+                    (isPublicDocument && dataset ? (
+                      <PublicDocumentCardMenu card={card} dataset={dataset} />
+                    ) : (
+                      <Menu
+                        withinPortal
+                        position="bottom-end"
+                        data-hide-on-print
+                      >
+                        <Menu.Target>
+                          <Flex
+                            component="button"
+                            p="0.25rem"
+                            align="center"
+                            justify="center"
+                            className={styles.menuButton}
+                            onClick={(e: React.MouseEvent) =>
+                              e.stopPropagation()
                             }
-                            // actually stop the navigation from happening
-                            onClick={(e) => {
-                              if (!commentsPath || hasUnsavedChanges) {
-                                e.preventDefault();
-                              }
-                            }}
-                            // purely for presentation
-                            disabled={!commentsPath || hasUnsavedChanges}
                           >
-                            {t`Comment`}
-                          </Menu.Item>
-                        )}
-                        <Menu.Item
-                          onClick={handleEditVisualizationSettings}
-                          disabled={!canWrite}
-                          leftSection={<Icon name="palette" size={14} />}
-                        >
-                          {t`Edit Visualization`}
-                        </Menu.Item>
-                        <Menu.Item
-                          onClick={() => setIsModifyModalOpen(true)}
-                          disabled={!canWrite}
-                          leftSection={
                             <Icon
-                              name={isNativeQuestion ? "sql" : "notebook"}
-                              size={14}
+                              name="ellipsis"
+                              size={16}
+                              color="var(--mb-color-text-medium)"
                             />
-                          }
-                        >
-                          {t`Edit Query`}
-                        </Menu.Item>
-                        <Menu.Item
-                          onClick={handleReplaceQuestion}
-                          disabled={!canWrite}
-                          leftSection={<Icon name="refresh" size={14} />}
-                        >
-                          {t`Replace`}
-                        </Menu.Item>
-                        <Menu.Item
-                          onClick={handleRemoveNode}
-                          disabled={!canWrite}
-                          leftSection={<Icon name="trash" size={14} />}
-                        >
-                          {t`Remove Chart`}
-                        </Menu.Item>
-                      </Menu.Dropdown>
-                    </Menu>
-                  )}
+                          </Flex>
+                        </Menu.Target>
+                        <Menu.Dropdown>
+                          {!isWithinIframe() && (
+                            <Menu.Item
+                              leftSection={
+                                <Icon name="add_comment" size={14} />
+                              }
+                              component={ForwardRefLink}
+                              to={
+                                // If no existing unresolved comments comments, add query param to auto-open new comment form
+                                unresolvedCommentsCount > 0
+                                  ? commentsPath
+                                  : `${commentsPath}?new=true`
+                              }
+                              // actually stop the navigation from happening
+                              onClick={(e) => {
+                                if (!commentsPath || hasUnsavedChanges) {
+                                  e.preventDefault();
+                                }
+                              }}
+                              // purely for presentation
+                              disabled={!commentsPath || hasUnsavedChanges}
+                            >
+                              {t`Comment`}
+                            </Menu.Item>
+                          )}
+                          <Menu.Item
+                            onClick={handleEditVisualizationSettings}
+                            disabled={!canWrite}
+                            leftSection={<Icon name="palette" size={14} />}
+                          >
+                            {t`Edit Visualization`}
+                          </Menu.Item>
+                          <Menu.Item
+                            onClick={() => setIsModifyModalOpen(true)}
+                            disabled={!canWrite}
+                            leftSection={
+                              <Icon
+                                name={isNativeQuestion ? "sql" : "notebook"}
+                                size={14}
+                              />
+                            }
+                          >
+                            {t`Edit Query`}
+                          </Menu.Item>
+                          <Menu.Item
+                            onClick={handleReplaceQuestion}
+                            disabled={!canWrite}
+                            leftSection={<Icon name="refresh" size={14} />}
+                          >
+                            {t`Replace`}
+                          </Menu.Item>
+                          <Menu.Item
+                            onClick={handleRemoveNode}
+                            disabled={!canWrite}
+                            leftSection={<Icon name="trash" size={14} />}
+                          >
+                            {t`Remove Chart`}
+                          </Menu.Item>
+                        </Menu.Dropdown>
+                      </Menu>
+                    ))}
                 </Flex>
               </Box>
             )}

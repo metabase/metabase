@@ -256,6 +256,34 @@
               :constraints (qp.constraints/default-query-constraints))
       (events/publish-event! :event/card-read {:object-id card-id :user-id api/*current-user-id* :context :question}))))
 
+(api.macros/defendpoint :get "/document/:uuid/card/:card-id/:export-format"
+  "Fetch a Card embedded in a public Document and return query results in the specified format. Does not require auth
+  credentials. Public sharing must be enabled."
+  [{:keys [uuid card-id export-format]} :- [:map
+                                            [:uuid          ms/UUIDString]
+                                            [:card-id       ms/PositiveInt]
+                                            [:export-format ::qp.schema/export-format]]
+   {:keys [parameters format_rows pivot_results]} :- [:map
+                                                      [:format_rows   {:default false} :boolean]
+                                                      [:pivot_results {:default false} :boolean]
+                                                      [:parameters    {:optional true} [:maybe ms/JSONString]]]]
+  (public-sharing.validation/check-public-sharing-enabled)
+  (api/check-404 (t2/select-one-pk :model/Card :id card-id :archived false))
+  (let [document (api/check-404 (t2/select-one :model/Document :public_uuid uuid :archived false))
+        card-ids (when (= "application/json+vnd.prose-mirror" (:content_type document))
+                   (set ((requiring-resolve 'metabase-enterprise.documents.prose-mirror/card-ids) document)))]
+    ;; Make sure this card is actually in the document — we don't want people using this endpoint to query arbitrary cards
+    (api/check-404 (contains? card-ids card-id))
+    (process-query-for-card-with-id
+     card-id
+     export-format
+     (json/decode+kw parameters)
+     :constraints nil
+     :middleware {:process-viz-settings? true
+                  :js-int-to-string?     false
+                  :format-rows?          format_rows
+                  :pivot?                pivot_results})))
+
 ;;; ----------------------------------------------- Public Dashboards ------------------------------------------------
 
 (def ^:private action-public-keys
