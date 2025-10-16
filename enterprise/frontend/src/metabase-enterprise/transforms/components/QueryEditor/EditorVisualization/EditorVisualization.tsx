@@ -37,6 +37,7 @@ export function EditorVisualization({
         isRunnable={isRunnable}
         isRunning={isRunning}
         isDirty
+        isTransform
         isResultDirty={isResultDirty}
         isNativeEditorOpen={isNative}
         runQuestionQuery={onRunQuery}

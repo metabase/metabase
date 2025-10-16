@@ -139,6 +139,7 @@ type VisualizationOwnProps = {
   isDocument?: boolean;
   isMobile?: boolean;
   isRunning?: boolean;
+  isTransform?: boolean;
   isShowingSummarySidebar?: boolean;
   isSlow?: CardSlownessStatus;
   isVisible?: boolean;
@@ -654,6 +655,7 @@ class Visualization extends PureComponent<
       isObjectDetail,
       isPreviewing,
       isRawTable,
+      isTransform,
       isQueryBuilder,
       isRunning,
       isSettings,
@@ -917,6 +919,7 @@ class Visualization extends PureComponent<
                     isObjectDetail={isObjectDetail}
                     isPreviewing={isPreviewing}
                     isRawTable={isRawTable}
+                    isTransform={!!isTransform}
                     isQueryBuilder={!!isQueryBuilder}
                     isSettings={!!isSettings}
                     isShowingDetailsOnlyColumns={isShowingDetailsOnlyColumns}
