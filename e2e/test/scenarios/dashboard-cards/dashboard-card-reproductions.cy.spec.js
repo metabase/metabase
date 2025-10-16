@@ -1594,7 +1594,7 @@ describe("issue 63416", () => {
     });
   });
 
-  it("should download visualized dashboard without additional dataset with proper parameter values (metabase#63416)", () => {
+  it("should download visualizer dashboard card without additional dataset with proper parameter values (metabase#63416)", () => {
     H.editDashboard();
 
     H.showDashcardVisualizerModalSettings(0, {
