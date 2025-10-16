@@ -287,7 +287,7 @@
 (mr/def ::legacy-query
   [:map
    {:error/message "legacy query"}
-   [:type [:enum :native :query]]])
+   [:type [:enum :native :query :internal]]])
 
 (mr/def ::mbql5-query
   [:map
@@ -308,7 +308,8 @@
     query
     (case (:type query)
       :native (native-query->pipeline query)
-      :query  (mbql-query->pipeline query))))
+      :query  (mbql-query->pipeline query)
+      :internal (mbql-query->pipeline query))))
 
 (mu/defn canonical-stage-index :- [:int {:min 0}]
   "If `stage-number` index is a negative number e.g. `-1` convert it to a positive index so we can use `nth` on

@@ -58,6 +58,9 @@
        (lib/cached-metadata-provider-with-cache? (:lib/metadata query))
        (lib/normalize ::lib.schema/query query)
 
+       (#{:internal "internal"} (:type query))
+       query
+
        :else
        (->> query
             (lib-be.bootstrap/resolve-database (when (lib/metadata-provider? metadata-providerable)
