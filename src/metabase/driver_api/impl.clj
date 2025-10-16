@@ -3,9 +3,11 @@
                        ;; this is actually ok here since this is a drivers namespace
                        {:discouraged-namespace {metabase.query-processor.store {:level :off}}}}}
   (:require
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 ;;; replacement for the old [[metabase.query-processor.store/cached]] macro, deprecated in 57
 ;;;
@@ -31,3 +33,23 @@
       (qp.store/metadata-provider)
       ~ks
       (fn [] ~@body))))
+
+(defn dispatch-by-clause-name-or-class
+  "Dispatch function perfect for use with multimethods that dispatch off elements of an MBQL query. If `x` is an MBQL
+  clause, dispatches off the clause name; otherwise dispatches off `x`'s class."
+  ([x]
+   (letfn [(clause-type [x]
+             (when (mbql.u/mbql-clause? x)
+               (first x)))
+           (mbql5-lib-type [x]
+             (when (map? x)
+               (:lib/type x)))
+           (model-type [x]
+             (t2/model x))]
+     (or
+      (clause-type x)
+      (mbql5-lib-type x)
+      (model-type x)
+      (type x))))
+  ([x _]
+   (dispatch-by-clause-name-or-class x)))

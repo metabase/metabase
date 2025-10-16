@@ -4,8 +4,9 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.util :as mbql.u]
+   ;; legacy usages, do not use legacy MBQL stuff in new code.
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
+   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
@@ -50,10 +51,14 @@
 
 (def ^{:arglists '([metric])} saved-metric?
   "Is metric a saved (V2) metric? (Note that X-Rays do not currently know how to handle Saved V2 Metrics.)"
+  ;; legacy usage, do not use legacy MBQL stuff in new code.
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (partial mbql.u/is-clause? :metric))
 
 (def ^{:arglists '([metric])} custom-expression?
   "Is this a custom expression?"
+  ;; legacy usage, do not use legacy MBQL stuff in new code.
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (partial mbql.u/is-clause? :aggregation-options))
 
 (def ^{:arglists '([metric])} adhoc-metric?

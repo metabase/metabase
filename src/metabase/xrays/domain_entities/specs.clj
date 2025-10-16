@@ -3,9 +3,9 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.util :as mbql.u]
+   ;; legacy usages, do not use legacy MBQL stuff in new code.
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -17,7 +17,8 @@
    {:decode/domain-entity-spec mbql.normalize/normalize
     :decode/transform-spec     mbql.normalize/normalize
     :error/message             "valid MBQL clause"}
-   mbql.u/mbql-clause?])
+   ;;; TODO (Cam 10/10/25) -- update this to use [[metabase.lib.core/clause?]] once we convert X-Rays to MBQL 5
+   #(and (vector? %) (keyword? (first %)))])
 
 ;;; TODO (Cam 9/29/25) -- these decoding rules are BUSTED because it ends up creating totally nonsensical types like
 ;;; `:type/AvgPrice` which is not a real type at all. We should probably just leave the field names as strings.

@@ -3,7 +3,6 @@
   (:require
    #?@(:clj  ([metabase.test.util.i18n])
        :cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.string :as str]
    [clojure.test :as t]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.types.core]))
@@ -613,59 +612,6 @@
       (t/is (= expected
                (apply mbql.u/aggregation-at-index query-with-some-nesting input))))))
 
-(t/deftest ^:parallel uniquify-names
-  (t/testing "can we generate unique names?"
-    (t/is (= ["count" "sum" "count_2" "count_3"]
-             (mbql.u/uniquify-names ["count" "sum" "count" "count"]))))
-
-  (t/testing "what if we try to trick it by using a name it would have generated?"
-    (t/is (= ["count" "count_2" "count_2_2"]
-             (mbql.u/uniquify-names ["count" "count" "count_2"]))))
-
-  (t/testing (str "for wacky DBMSes like SQL Server that return blank column names sometimes let's make sure we handle "
-                  "those without exploding")
-    (t/is (= ["" "_2"]
-             (mbql.u/uniquify-names ["" ""])))))
-
-(t/deftest ^:parallel unique-name-generator-test
-  (t/testing "Can we get a simple unique name generator"
-    (t/is (= ["count" "sum" "count_2" "count_2_2"]
-             (map (mbql.u/unique-name-generator) ["count" "sum" "count" "count_2"])))))
-
-(t/deftest ^:parallel unique-name-generator-test-2
-  (t/testing "Can we get an idempotent unique name generator"
-    (t/is (= ["count" "sum" "count" "count_2"]
-             (map (mbql.u/unique-name-generator) [:x :y :x :z] ["count" "sum" "count" "count_2"])))))
-
-(t/deftest ^:parallel unique-name-generator-test-3
-  (t/testing "Can the same object have multiple aliases"
-    (t/is (= ["count" "sum" "count" "count_2"]
-             (map (mbql.u/unique-name-generator) [:x :y :x :x] ["count" "sum" "count" "count_2"])))))
-
-(t/deftest ^:parallel unique-name-generator-idempotence-test
-  (t/testing "idempotence (2-arity calls to generated function) (#40994)"
-    (let [unique-name (mbql.u/unique-name-generator)]
-      (t/is (= ["A" "B" "A" "A_2" "A_2"]
-               [(unique-name :x "A")
-                (unique-name :x "B")
-                (unique-name :x "A")
-                (unique-name :y "A")
-                (unique-name :y "A")])))))
-
-(t/deftest ^:parallel unique-name-generator-options-test
-  (t/testing "options"
-    (t/testing :name-key-fn
-      (let [f (mbql.u/unique-name-generator :name-key-fn #_{:clj-kondo/ignore [:discouraged-var]} str/lower-case)]
-        (t/is (= ["x" "X_2" "X_3"]
-                 (map f ["x" "X" "X"])))))))
-
-(t/deftest ^:parallel unique-name-generator-options-test-2
-  (t/testing "options"
-    (t/testing :unique-alias-fn
-      (let [f (mbql.u/unique-name-generator :unique-alias-fn (fn [x y] (str y "~~" x)))]
-        (t/is (= ["x" "2~~x"]
-                 (map f ["x" "x"])))))))
-
 ;;; --------------------------------------------- query->max-rows-limit ----------------------------------------------
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -881,3 +827,11 @@
   (t/testing "If this gets called incorrectly with a base type keyword then handle it gracefully"
     (t/is (= :type/Text
              (mbql.u/normalize-token "type/Text")))))
+
+(t/deftest ^:parallel wrap-field-id-if-needed-test
+  (doseq [[x expected] {10                                      [:field 10 nil]
+                        [:field 10 nil]                         [:field 10 nil]
+                        [:field "name" {:base-type :type/Text}] [:field "name" {:base-type :type/Text}]}]
+    (t/testing x
+      (t/is (= expected
+               (mbql.u/wrap-field-id-if-needed x))))))

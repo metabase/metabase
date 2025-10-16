@@ -214,9 +214,7 @@
                 ;; TODO (Cam 9/9/25) -- we should switch to saving Lib-style metadata in the app DB instead of legacy
                 ;; style in the near future
                 (t2/update! :model/Card card-id {:result_metadata cols}))
-              (assoc-in query [:stages 0 :lib/stage-metadata] (->> cols
-                                                                   lib.util/->stage-metadata
-                                                                   (lib/normalize ::lib.schema.metadata/stage)))))))
+              (lib/update-query-stage query 0 assoc :lib/stage-metadata (lib/->normalized-stage-metadata cols))))))
       query))
 
 (mu/defn- sandbox->query :- ::lib.schema/query

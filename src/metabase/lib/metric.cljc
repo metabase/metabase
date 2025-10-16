@@ -3,7 +3,7 @@
   stuff is TBH.)"
   (:refer-clojure :exclude [select-keys])
   (:require
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.join :as lib.join]
