@@ -1251,6 +1251,7 @@ describe("scenarios > dashboard", () => {
 
     it("should warn a user before leaving after adding, editing, or removing a card on a dashboard", () => {
       cy.visit("/");
+      cy.findByTestId("loading-indicator").should("not.exist");
 
       cy.findByTestId("home-page").should(
         "contain",
@@ -1284,6 +1285,7 @@ describe("scenarios > dashboard", () => {
 
     it("should warn a user before leaving after adding, removing, moving, or duplicating a tab", () => {
       cy.visit("/");
+      cy.findByTestId("loading-indicator").should("not.exist");
 
       // add tab
       createNewDashboard();
