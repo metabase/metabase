@@ -176,15 +176,6 @@ export function TransformList({
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  if (transforms.length === 0) {
-    const hasFilters = hasFilterParams(params);
-    return (
-      <ListEmptyState
-        label={hasFilters ? t`No transforms found` : t`No transforms yet`}
-      />
-    );
-  }
-
   return (
     <ItemsListSection
       sectionTitle={t`Transforms`}
@@ -192,7 +183,15 @@ export function TransformList({
       addButton={<CreateTransformMenu />}
       settings={<ItemsListSettings {...listSettingsProps} />}
       listItems={
-        listSettingsProps.values.display === "tree" ? (
+        transforms.length === 0 ? (
+          <ListEmptyState
+            label={
+              hasFilterParams(params)
+                ? t`No transforms found`
+                : t`No transforms yet`
+            }
+          />
+        ) : listSettingsProps.values.display === "tree" ? (
           <Box mx="-sm">
             <Tree
               initiallyExpanded
