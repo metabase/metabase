@@ -38,6 +38,7 @@ H.describeWithSnowplow(
         "CREATE TABLE empty_uploads.empty_table ();",
         "postgres",
       );
+      // Make sure to resync the db because otherwise "public" schema sometimes is there but sometimes is not
       H.resyncDatabase({ dbId: WRITABLE_DB_ID });
 
       cy.request("POST", "/api/collection", {
