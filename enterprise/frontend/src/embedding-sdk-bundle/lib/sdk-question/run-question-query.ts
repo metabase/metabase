@@ -11,6 +11,7 @@ interface RunQuestionQueryParams {
   question: Question;
   isStaticEmbedding: boolean;
   originalQuestion?: Question;
+  originalCardId?: number | null;
   parameterValues?: ParameterValuesMap;
   cancelDeferred?: Deferred;
 }
@@ -22,6 +23,7 @@ export async function runQuestionQuerySdk(
     question,
     isStaticEmbedding,
     originalQuestion,
+    originalCardId,
     parameterValues,
     cancelDeferred,
   } = params;
@@ -40,7 +42,7 @@ export async function runQuestionQuerySdk(
 
   let queryResults;
 
-  if (shouldRunCardQuery(question, isStaticEmbedding)) {
+  if (shouldRunCardQuery({ question, isStaticEmbedding })) {
     const parameters = getParameterValuesBySlug(
       question.card().parameters,
       parameterValues,
@@ -53,6 +55,7 @@ export async function runQuestionQuerySdk(
       cancelDeferred,
       ignoreCache: false,
       isDirty: isQueryDirty,
+      originalCardId,
       ...(isStaticEmbedding && {
         queryParamsOverride: {
           parameters: JSON.stringify(filteredParameters),
@@ -76,10 +79,15 @@ export async function runQuestionQuerySdk(
   return { question, queryResults };
 }
 
-export function shouldRunCardQuery(
-  question: Question,
-  isStaticEmbedding: boolean | null,
-): boolean {
+export function shouldRunCardQuery({
+  question,
+  isStaticEmbedding,
+}: {
+  question: Question;
+  isStaticEmbedding: boolean | null;
+}): boolean {
+  // Static embedding questions have some fields missing, and it forces the this.legacyNativeQuery().canRun() to return `false`
+  // To avoid it we just force-return true for static embedding
   if (isStaticEmbedding) {
     return true;
   }

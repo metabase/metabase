@@ -44,6 +44,7 @@ export type StaticQuestionProps = PropsWithChildren<
   Pick<
     SdkQuestionProps,
     | "questionId"
+    | "token"
     | "withChartTypeSelector"
     | "height"
     | "width"
@@ -78,8 +79,9 @@ export type StaticQuestionComponents = {
   SqlParametersList: typeof SqlParametersList;
 };
 
-const _StaticQuestion = ({
-  questionId: initialQuestionId,
+const StaticQuestionInner = ({
+  questionId,
+  token,
   withChartTypeSelector,
   height,
   width,
@@ -109,7 +111,8 @@ const _StaticQuestion = ({
 
   return (
     <SdkQuestion
-      questionId={initialQuestionId}
+      questionId={questionId}
+      token={token}
       getClickActionMode={getClickActionMode}
       navigateToNewCard={null}
       initialSqlParameters={initialSqlParameters}
@@ -171,6 +174,8 @@ const subComponents: StaticQuestionComponents = {
   SqlParametersList: SqlParametersList,
 };
 
-export const StaticQuestion = Object.assign(_StaticQuestion, subComponents, {
-  schema: staticQuestionSchema,
-});
+export const StaticQuestion = Object.assign(
+  StaticQuestionInner,
+  subComponents,
+  { schema: staticQuestionSchema },
+);

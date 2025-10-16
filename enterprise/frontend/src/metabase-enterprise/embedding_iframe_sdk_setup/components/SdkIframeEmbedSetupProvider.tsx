@@ -159,7 +159,7 @@ export const SdkIframeEmbedSetupProvider = ({
     isEmbedSettingsLoaded,
     availableParameters,
     initialEmbeddingParameters,
-    parameterValuesById: parametersValuesById,
+    parametersValuesById,
     previewParameterValuesBySlug,
     embeddingParameters,
     onEmbeddingParametersChange,

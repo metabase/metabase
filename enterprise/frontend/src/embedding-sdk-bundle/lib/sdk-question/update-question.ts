@@ -18,6 +18,7 @@ interface UpdateQuestionParams {
   previousQuestion: Question;
   nextQuestion: Question;
   originalQuestion?: Question;
+  originalCardId?: number | null;
   nextParameterValues: ParameterValuesMap;
 
   /**
@@ -50,6 +51,7 @@ export const updateQuestionSdk =
       previousQuestion,
       nextQuestion,
       originalQuestion,
+      originalCardId,
       nextParameterValues,
       shouldStartAdHocQuestion,
       cancelDeferred,
@@ -109,7 +111,9 @@ export const updateQuestionSdk =
     );
 
     if (!_.isEqual(currentDependencies, nextDependencies)) {
-      await dispatch(loadMetadataForCard(nextQuestion.card()));
+      await dispatch(
+        loadMetadataForCard(nextQuestion.card(), { originalCardId }),
+      );
     }
 
     const metadata = getMetadata(getState());
@@ -125,6 +129,7 @@ export const updateQuestionSdk =
       return runQuestionQuerySdk({
         question: nextQuestion,
         originalQuestion,
+        originalCardId,
         parameterValues: nextParameterValues,
         cancelDeferred,
         isStaticEmbedding,

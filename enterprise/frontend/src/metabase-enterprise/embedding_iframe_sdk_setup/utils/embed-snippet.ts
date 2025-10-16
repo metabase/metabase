@@ -82,10 +82,10 @@ export function getEmbedCustomElementSnippet({
       const questionSettings = settings as SdkIframeQuestionEmbedSettings;
 
       return {
-        ...settings,
-        questionId: !settings.isStatic
-          ? settings.questionId
-          : staticEmbeddingSignedToken,
+        ..._.omit(settings, "questionId", "token"),
+        ...(isStaticEmbedding
+          ? { token: staticEmbeddingSignedToken }
+          : { questionId: settings?.questionId }),
         initialSqlParameters: getVisibleParameters(
           questionSettings.initialSqlParameters,
           questionSettings.lockedParameters,
@@ -108,10 +108,10 @@ export function getEmbedCustomElementSnippet({
       const dashboardSettings = settings as SdkIframeDashboardEmbedSettings;
 
       return {
-        ...settings,
-        dashboardId: !settings.isStatic
-          ? settings.dashboardId
-          : staticEmbeddingSignedToken,
+        ..._.omit(settings, "dashboardId", "token"),
+        ...(isStaticEmbedding
+          ? { token: staticEmbeddingSignedToken }
+          : { dashboardId: settings?.dashboardId }),
         initialParameters: getVisibleParameters(
           dashboardSettings.initialParameters,
           dashboardSettings.lockedParameters,
@@ -134,7 +134,7 @@ export function getEmbedCustomElementSnippet({
     staticEmbeddingSignedToken
       ? `<!--\nTHIS IS THE EXAMPLE!\nNEVER HARDCODE THIS JWT TOKEN DIRECTLY IN YOUR HTML!\n\nFetch the JWT token from your backend and programmatically pass it to the '${elementName}'.\n-->`
       : "",
-    `<${elementName} ${attributes}></${elementName}>`,
+    `<${elementName}${attributes ? ` ${attributes}` : ""}></${elementName}>`,
   ].filter(Boolean);
 
   return customElementSnippetParts.join("\n");
@@ -197,10 +197,11 @@ export function getMetabaseConfigSnippet({
   );
 
   const cleanedConfig = {
-    ..._.omit(config, ["useExistingUserSession"]),
+    ..._.omit(config, ["isStatic", "useExistingUserSession"]),
 
-    // Only include useExistingUserSession if it is true.
+    // Only include settings below when they are true.
     ...(config.useExistingUserSession ? { useExistingUserSession: true } : {}),
+    ...(isStaticEmbedding ? { isStatic: true } : {}),
 
     // Append these settings that can't be controlled by users.
     instanceUrl,

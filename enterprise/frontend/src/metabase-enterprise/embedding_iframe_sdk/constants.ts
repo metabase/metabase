@@ -2,6 +2,7 @@ import type {
   BrowserEmbedOptions,
   DashboardEmbedOptions,
   ExplorationEmbedOptions,
+  MetabotEmbedOptions,
   QuestionEmbedOptions,
   SdkIframeEmbedBaseSettings,
   SdkIframeEmbedSettingKey,
@@ -72,6 +73,7 @@ export const ALLOWED_STATIC_EMBED_SETTING_KEYS_MAP = {
   ] satisfies (keyof SdkIframeEmbedBaseSettings)[],
   dashboard: [
     "dashboardId",
+    "token",
     "withTitle",
     "withDownloads",
     "initialParameters",
@@ -79,6 +81,7 @@ export const ALLOWED_STATIC_EMBED_SETTING_KEYS_MAP = {
   ] satisfies (keyof DashboardEmbedOptions)[],
   chart: [
     "questionId",
+    "token",
     "withTitle",
     "withDownloads",
     "entityTypes",
@@ -87,6 +90,7 @@ export const ALLOWED_STATIC_EMBED_SETTING_KEYS_MAP = {
   ] satisfies (keyof QuestionEmbedOptions)[],
   exploration: [] satisfies (keyof ExplorationEmbedOptions)[],
   browser: [] satisfies (keyof BrowserEmbedOptions)[],
+  metabot: [] satisfies (keyof MetabotEmbedOptions)[],
 } as const;
 
 // This file is used by embed.js, so we shouldn't import external dependencies.
@@ -100,8 +104,18 @@ export const ALLOWED_EMBED_SETTING_KEYS = uniq([
   ...ALLOWED_EMBED_SETTING_KEYS_MAP.browser,
 ]) satisfies SdkIframeEmbedSettingKey[];
 
-export type AllowedEmbedSettingKey =
-  (typeof ALLOWED_EMBED_SETTING_KEYS)[number];
+export const ALLOWED_STATIC_EMBED_SETTING_KEYS = uniq([
+  ...ALLOWED_STATIC_EMBED_SETTING_KEYS_MAP.base,
+  ...ALLOWED_STATIC_EMBED_SETTING_KEYS_MAP.dashboard,
+  ...ALLOWED_STATIC_EMBED_SETTING_KEYS_MAP.chart,
+  ...ALLOWED_STATIC_EMBED_SETTING_KEYS_MAP.exploration,
+  ...ALLOWED_STATIC_EMBED_SETTING_KEYS_MAP.browser,
+]) satisfies SdkIframeEmbedSettingKey[];
+
+export type AllowedEmbedSettingKey = (
+  | typeof ALLOWED_EMBED_SETTING_KEYS
+  | typeof ALLOWED_STATIC_EMBED_SETTING_KEYS
+)[number];
 
 /** Prevent updating these fields with `embed.updateSettings()` after the embed is created. */
 export const DISABLE_UPDATE_FOR_KEYS = [

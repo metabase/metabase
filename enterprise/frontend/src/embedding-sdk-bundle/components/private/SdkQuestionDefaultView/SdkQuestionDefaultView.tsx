@@ -127,7 +127,7 @@ export const SdkQuestionDefaultView = ({
   // When visualizing a question for the first time, there is no query result yet.
   const isQueryResultLoading =
     question &&
-    shouldRunCardQuery(question, isStaticEmbedding) &&
+    shouldRunCardQuery({ question, isStaticEmbedding }) &&
     !queryResults;
 
   useEffect(() => {

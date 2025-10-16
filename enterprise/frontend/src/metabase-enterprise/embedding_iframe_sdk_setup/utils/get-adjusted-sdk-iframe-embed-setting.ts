@@ -1,8 +1,8 @@
 import { match } from "ts-pattern";
 
 import {
-  DISABLE_STATIC_EMBEDDING_SETTINGS,
-  ENABLE_STATIC_EMBEDDING_SETTINGS,
+  GET_DISABLE_STATIC_EMBEDDING_SETTINGS,
+  GET_ENABLE_STATIC_EMBEDDING_SETTINGS,
 } from "metabase-enterprise/embedding_iframe_sdk_setup/constants";
 
 import type { SdkIframeEmbedSetupSettings } from "../types";
@@ -22,7 +22,7 @@ export const getAdjustedSdkIframeEmbedSetting = ({
       },
       ({ settings }) => ({
         ...settings,
-        ...ENABLE_STATIC_EMBEDDING_SETTINGS,
+        ...GET_ENABLE_STATIC_EMBEDDING_SETTINGS(),
       }),
     )
     .with(
@@ -32,7 +32,7 @@ export const getAdjustedSdkIframeEmbedSetting = ({
       },
       ({ settings }) => ({
         ...settings,
-        ...DISABLE_STATIC_EMBEDDING_SETTINGS,
+        ...GET_DISABLE_STATIC_EMBEDDING_SETTINGS(),
         useExistingUserSession: settings.useExistingUserSession,
       }),
     )

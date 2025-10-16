@@ -25,6 +25,7 @@ export const useCommonDashboardParams = ({
   const store = useSdkStore();
 
   const [adhocQuestionUrl, setAdhocQuestionUrl] = useState<string | null>(null);
+  const [originalCardId, setOriginalCardId] = useState<number | null>(null);
 
   const previousDashboardId = usePrevious(dashboardId);
 
@@ -77,6 +78,7 @@ export const useCommonDashboardParams = ({
             },
           });
           setAdhocQuestionUrl(url);
+          setOriginalCardId(previousCard.id);
         }
       }
     },
@@ -110,12 +112,14 @@ export const useCommonDashboardParams = ({
           },
         });
         setAdhocQuestionUrl(Urls.question(question.card()));
+        setOriginalCardId(question.card().id);
       }
     },
     [dashboardId, dispatch, store],
   );
 
   return {
+    originalCardId,
     adhocQuestionUrl,
     onNavigateBackToDashboard: handleNavigateBackToDashboard,
     onEditQuestion,

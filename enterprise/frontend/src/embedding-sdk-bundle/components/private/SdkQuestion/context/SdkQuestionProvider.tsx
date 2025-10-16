@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useMemo } from "react";
+import { t } from "ttag";
 
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
+import { useExtractEntityIdFromJwtToken } from "embedding-sdk-bundle/hooks/private/use-extract-entity-id-from-jwt-token";
 import { useLoadQuestion } from "embedding-sdk-bundle/hooks/private/use-load-question";
 import { transformSdkQuestion } from "embedding-sdk-bundle/lib/transform-question";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
@@ -38,7 +40,9 @@ export const SdkQuestionContext = createContext<
 const DEFAULT_OPTIONS = {};
 
 export const SdkQuestionProvider = ({
-  questionId,
+  questionId: rawQuestionId,
+  token: rawToken,
+  originalCardId,
   options = DEFAULT_OPTIONS,
   deserializedCard,
   componentPlugins,
@@ -60,6 +64,20 @@ export const SdkQuestionProvider = ({
   onVisualizationChange,
 }: SdkQuestionProviderProps) => {
   const isStaticEmbedding = useSdkSelector(getIsStaticEmbedding);
+
+  const {
+    entityId: questionId,
+    token,
+    tokenError,
+  } = useExtractEntityIdFromJwtToken({
+    isStaticEmbedding,
+    entityType: "question",
+    entityId: rawQuestionId,
+    token: rawToken ?? undefined,
+  });
+
+  const isNewQuestion = questionId === "new";
+
   const error = useSdkSelector(getError);
 
   const handleCreateQuestion = useCreateQuestion();
@@ -105,7 +123,6 @@ export const SdkQuestionProvider = ({
     question,
     originalQuestion,
     parameterValues,
-    token,
 
     queryResults,
 
@@ -120,6 +137,8 @@ export const SdkQuestionProvider = ({
     navigateToNewCard,
   } = useLoadQuestion({
     questionId,
+    token,
+    originalCardId,
     options,
     deserializedCard,
     initialSqlParameters,
@@ -191,6 +210,16 @@ export const SdkQuestionProvider = ({
   useEffect(() => {
     dispatch(setEntityTypes(entityTypes));
   }, [dispatch, entityTypes]);
+
+  if (isStaticEmbedding && isNewQuestion) {
+    return (
+      <SdkError message={t`You can't save questions in anonymous embedding`} />
+    );
+  }
+
+  if (tokenError) {
+    return <SdkError message={tokenError} />;
+  }
 
   if (error) {
     return <SdkError message={error.message} />;

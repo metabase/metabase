@@ -160,9 +160,12 @@ const SdkIframeEmbedPreviewInner = () => {
         )
         .with({ componentName: "metabase-question" }, (s) =>
           createElement("metabase-question", {
-            "question-id": !isStaticEmbedding
-              ? s.questionId
-              : staticEmbeddingSignedToken,
+            ...(isStaticEmbedding
+              ? { token: staticEmbeddingSignedToken }
+              : {
+                  "question-id": s.questionId,
+                  "is-save-enabled": s.isSaveEnabled,
+                }),
             "with-title": s.withTitle,
             drills: s.drills,
             "with-downloads": s.withDownloads,
@@ -181,16 +184,15 @@ const SdkIframeEmbedPreviewInner = () => {
             "hidden-parameters": s.hiddenParameters
               ? JSON.stringify(s.hiddenParameters)
               : undefined,
-            ...(!isStaticEmbedding && {
-              "is-save-enabled": s.isSaveEnabled,
-            }),
           }),
         )
         .with({ componentName: "metabase-dashboard" }, (s) =>
           createElement("metabase-dashboard", {
-            "dashboard-id": !isStaticEmbedding
-              ? s.dashboardId
-              : staticEmbeddingSignedToken,
+            ...(isStaticEmbedding
+              ? { token: staticEmbeddingSignedToken }
+              : {
+                  "dashboard-id": s.dashboardId,
+                }),
             "with-title": s.withTitle,
             drills: s.drills,
             "with-downloads": s.withDownloads,

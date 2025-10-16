@@ -135,12 +135,13 @@ const SdkIframeEmbedView = ({
         // Embedding based on a token (anonymous) with default/disabled drills
         {
           componentName: "metabase-dashboard",
-          dashboardId: P.nonNullable,
+          token: P.nonNullable,
           drills: P.optional(false),
         },
         (settings) => (
           <StaticDashboard
             dashboardId={settings.dashboardId ?? null}
+            token={settings.token}
             withTitle={settings.withTitle}
             withDownloads={settings.withDownloads}
             initialParameters={settings.initialParameters}
@@ -159,12 +160,13 @@ const SdkIframeEmbedView = ({
         // Embedding based on a token (anonymous) with enabled drills
         {
           componentName: "metabase-dashboard",
-          dashboardId: P.nonNullable,
+          token: P.nonNullable,
           drills: true,
         },
         (settings) => (
           <InteractiveDashboard
             dashboardId={settings.dashboardId ?? null}
+            token={settings.token}
             withTitle={settings.withTitle}
             withDownloads={settings.withDownloads}
             initialParameters={settings.initialParameters}
@@ -185,13 +187,14 @@ const SdkIframeEmbedView = ({
         // Embedding based on a token (anonymous) with default/disabled drills
         {
           componentName: "metabase-question",
-          questionId: P.nonNullable,
+          token: P.nonNullable,
           drills: P.optional(false),
         },
         (settings) => (
           <StaticQuestion
             key={rerenderKey}
             questionId={settings.questionId ?? null}
+            token={settings.token}
             withDownloads={settings.withDownloads}
             height="100%"
             initialSqlParameters={settings.initialSqlParameters}
@@ -211,13 +214,14 @@ const SdkIframeEmbedView = ({
         // Embedding based on a token (anonymous) with enabled drills
         {
           componentName: "metabase-question",
-          questionId: P.nonNullable,
+          token: P.nonNullable,
           drills: true,
         },
         (settings) => (
           <SdkQuestion
             key={rerenderKey}
             questionId={settings.questionId ?? null}
+            token={settings.token}
             withDownloads={settings.withDownloads}
             height="100%"
             initialSqlParameters={settings.initialSqlParameters}

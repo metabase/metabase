@@ -19,6 +19,7 @@ import {
 import { SdkAdHocQuestion } from "embedding-sdk-bundle/components/private/SdkAdHocQuestion";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
 import { useDashboardLoadHandlers } from "embedding-sdk-bundle/hooks/private/use-dashboard-load-handlers";
+import { useExtractEntityIdFromJwtToken } from "embedding-sdk-bundle/hooks/private/use-extract-entity-id-from-jwt-token";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
 import {
   type SdkDashboardDisplayProps,
@@ -118,6 +119,7 @@ export type SdkDashboardInnerProps = SdkDashboardProps &
   Partial<
     Pick<
       DashboardContextProps,
+      | "token"
       | "getClickActionMode"
       | "dashboardActions"
       | "dashcardMenu"
@@ -126,7 +128,8 @@ export type SdkDashboardInnerProps = SdkDashboardProps &
   >;
 
 const SdkDashboardInner = ({
-  dashboardId,
+  dashboardId: rawDashboardId,
+  token: rawToken,
   initialParameters = {},
   withTitle = true,
   withCardTitle = true,
@@ -154,11 +157,22 @@ const SdkDashboardInner = ({
 }: SdkDashboardInnerProps) => {
   const isStaticEmbedding = useSdkSelector(getIsStaticEmbedding);
 
+  const {
+    entityId: dashboardId,
+    token,
+    tokenError,
+  } = useExtractEntityIdFromJwtToken({
+    isStaticEmbedding,
+    entityType: "dashboard",
+    entityId: rawDashboardId,
+    token: rawToken ?? undefined,
+  });
+
   useEffect(() => {
     if (isStaticEmbedding) {
-      setEmbedDashboardEndpoints(dashboardId.toString());
+      setEmbedDashboardEndpoints(token ?? "");
     }
-  }, [dashboardId, isStaticEmbedding]);
+  }, [isStaticEmbedding, token]);
 
   const { handleLoad, handleLoadWithoutCards } = useDashboardLoadHandlers({
     onLoad,
@@ -176,6 +190,7 @@ const SdkDashboardInner = ({
   });
 
   const {
+    originalCardId,
     adhocQuestionUrl,
     onNavigateBackToDashboard,
     onEditQuestion,
@@ -245,6 +260,14 @@ const SdkDashboardInner = ({
     );
   }
 
+  if (tokenError) {
+    return (
+      <SdkDashboardStyledWrapper className={className} style={style}>
+        <SdkError message={tokenError} />;
+      </SdkDashboardStyledWrapper>
+    );
+  }
+
   if (isStaticEntityLoadingError(errorPage)) {
     return (
       <SdkDashboardStyledWrapper className={className} style={style}>
@@ -280,6 +303,7 @@ const SdkDashboardInner = ({
     <DashboardContextProvider
       ref={dashboardContextProviderRef}
       dashboardId={dashboardId}
+      token={token}
       isStaticEmbedding={isStaticEmbedding}
       parameterQueryParams={initialParameters}
       navigateToNewCardFromDashboard={
@@ -331,10 +355,12 @@ const SdkDashboardInner = ({
       }}
       autoScrollToDashcardId={autoScrollToDashcardId}
     >
-      {match(finalRenderMode)
-        .with("question", () => (
+      {match({ finalRenderMode, isStaticEmbedding })
+        .with({ finalRenderMode: "question" }, () => (
           <SdkDashboardStyledWrapperWithRef className={className} style={style}>
             <SdkAdHocQuestion
+              token={token}
+              originalCardId={originalCardId}
               // `adhocQuestionUrl` would have value if renderMode is "question"
               questionPath={adhocQuestionUrl!}
               onNavigateBack={onNavigateBackToDashboard}
@@ -345,7 +371,7 @@ const SdkDashboardInner = ({
             </SdkAdHocQuestion>
           </SdkDashboardStyledWrapperWithRef>
         ))
-        .with("dashboard", () => (
+        .with({ finalRenderMode: "dashboard" }, () => (
           <SdkDashboardProvider
             plugins={plugins}
             onEditQuestion={onEditQuestion}
@@ -360,20 +386,28 @@ const SdkDashboardInner = ({
             )}
           </SdkDashboardProvider>
         ))
-        .with("queryBuilder", () => (
-          <DashboardQueryBuilder
-            onCreate={(question) => {
-              setNewDashboardQuestionId(question.id);
-              setRenderMode("dashboard");
-              dashboardContextProviderRef.current?.refetchDashboard();
-            }}
-            onNavigateBack={() => {
-              setRenderMode("dashboard");
-            }}
-            dataPickerProps={dataPickerProps}
-            onVisualizationChange={onVisualizationChange}
-          />
-        ))
+        .with({ finalRenderMode: "queryBuilder" }, ({ isStaticEmbedding }) =>
+          isStaticEmbedding ? (
+            <SdkDashboardStyledWrapper className={className} style={style}>
+              <SdkError
+                message={t`You can't save questions in anonymous embedding`}
+              />
+            </SdkDashboardStyledWrapper>
+          ) : (
+            <DashboardQueryBuilder
+              onCreate={(question) => {
+                setNewDashboardQuestionId(question.id);
+                setRenderMode("dashboard");
+                dashboardContextProviderRef.current?.refetchDashboard();
+              }}
+              onNavigateBack={() => {
+                setRenderMode("dashboard");
+              }}
+              dataPickerProps={dataPickerProps}
+              onVisualizationChange={onVisualizationChange}
+            />
+          ),
+        )
         .exhaustive()}
       {modalContent}
     </DashboardContextProvider>
