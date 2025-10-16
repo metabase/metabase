@@ -1426,7 +1426,7 @@
   (testing "Can we trigger a metadata sync for a DB?"
     (let [sync-called?    (promise)
           analyze-called? (promise)
-          db-ids-synced (atom #{})]
+          db-ids-synced (atom {})]
       (mt/with-premium-features #{:audit-app}
         (mt/with-temp [:model/Database {db-id :id} {:engine "h2", :details (:details (mt/db))}]
           (binding [api.database/*debug-quick-task-call* db-ids-synced]
@@ -1436,25 +1436,31 @@
                 (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" db-id))
                 ;; Block waiting for the promises from sync and analyze to be delivered. Should be delivered instantly,
                 ;; however if something went wrong, don't hang forever, eventually timeout and fail
-                (let [timeout (+ (System/currentTimeMillis) 120000)]
+                (testing "quick task is scheduled"
+                  (is (contains? @db-ids-synced db-id)))
+                (let [timeout (+ (System/currentTimeMillis) long-timeout)]
                   (while (and (not (contains? @db-ids-synced db-id))
                               (< (System/currentTimeMillis) timeout))
                     (Thread/sleep 50)))
-                (testing "quick task is executed"
-                  (is (contains? @db-ids-synced db-id)))
-                (testing "sync called?"
-                  (is (true?
-                       (deref sync-called? long-timeout :sync-never-called))))
-                (testing "analyze called?"
-                  (is (true?
-                       (deref analyze-called? long-timeout :analyze-never-called))))
-                (testing "audit log entry generated"
-                  (is (= db-id
-                         (:model_id (mt/latest-audit-log-entry "database-manual-sync")))))
-                (testing "triggers snowplow event"
-                  (is (=?
-                       {"event" "database_manual_sync", "target_id" db-id}
-                       (:data (last (snowplow-test/pop-event-data-and-user-id!))))))))))))))
+                (let [futur ^java.util.concurrent.Future (get @db-ids-synced db-id)]
+                  (testing "quick task is created"
+                    (is (future? futur)))
+                  (when (future? futur)
+                    (.get futur long-timeout java.util.concurrent.TimeUnit/MILLISECONDS)
+                    (testing "quick task is executed successfully"
+                      (is (= java.util.concurrent.Future$State/SUCCESS (.state futur))))
+                    (when (= java.util.concurrent.Future$State/SUCCESS (.state futur))
+                      (testing "sync called?"
+                        (is (true? @sync-called?)))
+                      (testing "analyze called?"
+                        (is (true? @analyze-called?)))
+                      (testing "audit log entry generated"
+                        (is (= db-id
+                               (:model_id (mt/latest-audit-log-entry "database-manual-sync")))))
+                      (testing "triggers snowplow event"
+                        (is (=?
+                             {"event" "database_manual_sync", "target_id" db-id}
+                             (:data (last (snowplow-test/pop-event-data-and-user-id!)))))))))))))))))
 
 (deftest ^:parallel dismiss-spinner-test
   (testing "Can we dismiss the spinner? (#20863)"

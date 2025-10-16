@@ -1026,8 +1026,8 @@
 ;;; ------------------------------------------ POST /api/database/:id/sync_schema -------------------------------------------
 
 (def ^:dynamic *debug-quick-task-call*
-  "If set, it should be an atom containing a collection, and the id of the db getting synced is conj'd to it when the
-  quick task executes."
+  "If set, it should be an atom containing a map, and the id of the db getting synced will be mapped to the Future
+  representing the sync task."
   nil)
 
 ;; Should somehow trigger sync-database/sync-database!
@@ -1049,13 +1049,13 @@
       (throw (ex-info (ex-message ex) {:status-code 422}))
       (do
         (analytics/track-event! :snowplow/simple_event {:event "database_manual_sync" :target_id id})
-        (quick-task/submit-task!
-         (fn []
-           (when *debug-quick-task-call*
-             (swap! *debug-quick-task-call* conj id))
-           (database-routing/with-database-routing-off
-             (sync/sync-db-metadata! db)
-             (sync/analyze-db! db))))
+        (let [futur (quick-task/submit-task!
+                     (fn []
+                       (database-routing/with-database-routing-off
+                         (sync/sync-db-metadata! db)
+                         (sync/analyze-db! db))))]
+          (when *debug-quick-task-call*
+            (swap! *debug-quick-task-call* assoc id futur)))
         {:status :ok}))))
 
 (api.macros/defendpoint :post "/:id/dismiss_spinner"
