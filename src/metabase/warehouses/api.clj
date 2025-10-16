@@ -1051,6 +1051,25 @@
              (sync/analyze-db! db))))
         {:status :ok}))))
 
+(api.macros/defendpoint :post "/:id/field/:field-id/refingerprint"
+  "Refingerprint a specific field by ID."
+  [{:keys [id field-id]} :- [:map
+                              [:id ms/PositiveInt]
+                              [:field-id ms/PositiveInt]]]
+  (api/let-404 [field (t2/select-one :model/Field :id field-id)]
+    (sync/refingerprint-field! field)
+    {:success true}))
+
+(api.macros/defendpoint :post "/:id/table/:table-id/refingerprint"
+  "Refingerprint all fields in a specific table by ID."
+  [{:keys [id table-id]} :- [:map
+                              [:id ms/PositiveInt]
+                              [:table-id ms/PositiveInt]]]
+  (api/let-404 [table (t2/select-one :model/Table :id table-id)]
+    (doseq [field (t2/select :model/Field :table_id table-id)]
+      (sync/refingerprint-field! field))
+    {:success true}))
+
 (api.macros/defendpoint :post "/:id/dismiss_spinner"
   "Manually set the initial sync status of the `Database` and corresponding
   tables to be `complete` (see #20863)"
