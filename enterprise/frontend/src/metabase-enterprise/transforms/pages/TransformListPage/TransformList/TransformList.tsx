@@ -127,12 +127,12 @@ export function TransformList({
         id: `database-${target.database}`,
         name:
           databaseData.data.find((d) => d.id === target.database)?.name ||
-          t`Unknown`,
+          t`Unknown database`,
         icon: "database",
       }),
       ({ target }) => ({
-        id: `schema-${target.schema}`,
-        name: target.schema || t`Unknown`,
+        id: `schema-${target.database}-${target.schema}`,
+        name: target.schema || t`Unknown schema`,
         icon: "folder",
       }),
     ];
