@@ -1,5 +1,4 @@
 import { useDisclosure } from "@mantine/hooks";
-import { t } from "ttag";
 
 import {
   ActionIcon,
@@ -8,7 +7,6 @@ import {
   FixedSizeIcon,
   Popover,
   Stack,
-  Tooltip,
 } from "metabase/ui";
 import type { DependencyGroupType } from "metabase-types/api";
 
@@ -33,11 +31,9 @@ export function FilterOptionsPicker({
   return (
     <Popover opened={isOpened} onDismiss={close}>
       <Popover.Target>
-        <Tooltip label={t`Filter`}>
-          <ActionIcon onClick={toggle}>
-            <FixedSizeIcon c="text-primary" name="filter" />
-          </ActionIcon>
-        </Tooltip>
+        <ActionIcon onClick={toggle}>
+          <FixedSizeIcon c="text-primary" name="filter" />
+        </ActionIcon>
       </Popover.Target>
       <Popover.Dropdown>
         <FilterOptionsPopover

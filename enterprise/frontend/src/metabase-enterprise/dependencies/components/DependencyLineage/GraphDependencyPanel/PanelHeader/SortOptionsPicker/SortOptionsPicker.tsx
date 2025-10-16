@@ -8,7 +8,6 @@ import {
   Radio,
   SegmentedControl,
   Stack,
-  Tooltip,
 } from "metabase/ui";
 import type { DependencyGroupType } from "metabase-types/api";
 
@@ -33,11 +32,9 @@ export function SortOptionsPicker({
   return (
     <Popover opened={isOpened} onDismiss={close}>
       <Popover.Target>
-        <Tooltip label={t`Sort`}>
-          <ActionIcon onClick={toggle}>
-            <FixedSizeIcon c="text-primary" name="sort" />
-          </ActionIcon>
-        </Tooltip>
+        <ActionIcon onClick={toggle}>
+          <FixedSizeIcon c="text-primary" name="sort" />
+        </ActionIcon>
       </Popover.Target>
       <Popover.Dropdown>
         <SortOptionsPopover

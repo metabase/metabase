@@ -1,5 +1,4 @@
 import { useDisclosure } from "@mantine/hooks";
-import { t } from "ttag";
 
 import {
   ActionIcon,
@@ -8,10 +7,10 @@ import {
   FixedSizeIcon,
   Popover,
   Stack,
-  Tooltip,
 } from "metabase/ui";
 import type { SearchModel } from "metabase-types/api";
 
+import S from "./SearchModelPicker.module.css";
 import { getSearchModelItems } from "./utils";
 
 type SearchModelPickerProps = {
@@ -26,13 +25,11 @@ export function SearchModelPicker({
   const [isOpened, { toggle, close }] = useDisclosure();
 
   return (
-    <Popover opened={isOpened} onDismiss={close}>
+    <Popover opened={isOpened} position="right" onDismiss={close}>
       <Popover.Target>
-        <Tooltip label={t`Filter`}>
-          <ActionIcon onClick={toggle}>
-            <FixedSizeIcon c="text-primary" name="filter" />
-          </ActionIcon>
-        </Tooltip>
+        <ActionIcon className={S.button} onClick={toggle}>
+          <FixedSizeIcon c="text-primary" name="filter" />
+        </ActionIcon>
       </Popover.Target>
       <Popover.Dropdown>
         <SearchModelPopover
