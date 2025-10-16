@@ -38,7 +38,7 @@ export function DependencyLineage({
   entry,
   onEntryChange,
 }: DependencyLineageProps) {
-  const { data: graph, isFetching } = useGetDependencyGraphQuery(
+  const { currentData: graph, isFetching } = useGetDependencyGraphQuery(
     entry ?? skipToken,
   );
   const [nodes, setNodes, onNodesChange] = useNodesState<NodeType>([]);

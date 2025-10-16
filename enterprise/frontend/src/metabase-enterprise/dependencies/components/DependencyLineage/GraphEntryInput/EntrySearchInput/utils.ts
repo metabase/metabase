@@ -10,7 +10,7 @@ import type {
   SearchResultId,
 } from "metabase-types/api";
 
-import type { SearchSelectOption } from "./types";
+import type { ItemSelectOption } from "./types";
 
 function getDependencyId(id: SearchResultId): DependencyId {
   if (typeof id === "number") {
@@ -69,8 +69,9 @@ function getDependencyEntry(
 
 export function getSelectOptions(
   searchResults: SearchResult[],
-): SearchSelectOption[] {
+): ItemSelectOption[] {
   return searchResults.map((result) => ({
+    type: "search",
     value: `${result.id}-${result.model}`,
     label: result.name,
     icon: getDependencyIcon(result.model, result.display),

@@ -1,7 +1,7 @@
 import type { DependencyEntry, DependencyNode } from "metabase-types/api";
 
 import { EntryButton } from "./EntryButton";
-import { SearchInput } from "./SearchInput";
+import { EntrySearchInput } from "./EntrySearchInput";
 
 type GraphEntryInputProps = {
   node: DependencyNode | undefined;
@@ -17,6 +17,6 @@ export function GraphEntryInput({
   return node != null ? (
     <EntryButton node={node} onEntryChange={onEntryChange} />
   ) : (
-    <SearchInput isFetching={isFetching} onEntryChange={onEntryChange} />
+    <EntrySearchInput isFetching={isFetching} onEntryChange={onEntryChange} />
   );
 }

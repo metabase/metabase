@@ -5,16 +5,12 @@ import { t } from "ttag";
 import { useSearchQuery } from "metabase/api";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { FixedSizeIcon, Loader, Select } from "metabase/ui";
-import type {
-  DependencyEntry,
-  SearchModel,
-  SearchResult,
-} from "metabase-types/api";
+import type { DependencyEntry, SearchModel } from "metabase-types/api";
 
 import { SearchModelPicker } from "./SearchModelPicker";
 import { getSelectOptions } from "./utils";
 
-type SearchInputProps = {
+type EntrySearchInputProps = {
   isFetching: boolean;
   onEntryChange: (entry: DependencyEntry) => void;
 };
@@ -27,35 +23,31 @@ const SEARCH_MODELS: SearchModel[] = [
   "transform",
 ];
 
-const EMPTY_SEARCH_RESULTS: SearchResult[] = [];
-
-export function SearchInput({
+export function EntrySearchInput({
   isFetching: isGraphFetching,
   onEntryChange,
-}: SearchInputProps) {
+}: EntrySearchInputProps) {
   const [searchModels, setSearchModels] = useState(SEARCH_MODELS);
   const [searchValue, setSearchValue] = useState("");
   const [searchQuery] = useDebouncedValue(
     searchValue.trim(),
     SEARCH_DEBOUNCE_DURATION,
   );
-  const isEnabled = searchQuery.length > 0;
+  const isSearchEnabled = searchQuery.length > 0;
 
-  const { data: response, isFetching: isSearchFetching } = useSearchQuery(
+  const { data: searchResponse, isFetching: isSearchFetching } = useSearchQuery(
     {
       q: searchQuery,
       models: searchModels,
     },
     {
-      skip: !isEnabled,
+      skip: !isSearchEnabled,
     },
   );
 
-  const searchResults =
-    response != null && isEnabled ? response.data : EMPTY_SEARCH_RESULTS;
   const searchOptions = useMemo(
-    () => getSelectOptions(searchResults),
-    [searchResults],
+    () => (isSearchEnabled ? getSelectOptions(searchResponse?.data ?? []) : []),
+    [searchResponse, isSearchEnabled],
   );
 
   const handleChange = (value: string | null) => {
@@ -71,7 +63,9 @@ export function SearchInput({
       data={searchOptions}
       searchValue={searchValue}
       placeholder={t`Find something…`}
-      nothingFoundMessage={isEnabled ? `Didn't find any results` : undefined}
+      nothingFoundMessage={
+        isSearchEnabled ? `Didn't find any results` : undefined
+      }
       leftSection={<FixedSizeIcon name="search" />}
       rightSection={
         isSearchFetching || isGraphFetching ? (
