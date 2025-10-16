@@ -98,7 +98,6 @@ const EntityLink = ({ entity }: EntityLinkProps) => {
   });
 
   const url = useMemo(() => modelToUrl(entity), [entity]);
-
   if (url == null) {
     return null;
   }

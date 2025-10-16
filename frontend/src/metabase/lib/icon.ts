@@ -11,7 +11,11 @@ import type {
 
 import type { ColorName } from "./colors/types";
 
-export type IconModel = SearchModel | CollectionItemModel | "schema";
+export type IconModel =
+  | SearchModel
+  | CollectionItemModel
+  | "schema"
+  | "timeline";
 
 export type ObjectWithModel = {
   id?: unknown;
@@ -38,6 +42,7 @@ export const modelIconMap: Record<IconModel, IconName> = {
   metric: "metric",
   snippet: "unknown",
   document: "document",
+  timeline: "calendar",
 };
 
 export type IconData = {
