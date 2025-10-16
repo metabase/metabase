@@ -11,23 +11,18 @@ import { SearchModelPicker } from "./SearchModelPicker";
 import { getSelectOptions } from "./utils";
 
 type EntrySearchInputProps = {
-  isFetching: boolean;
+  searchModels: SearchModel[];
+  isGraphFetching: boolean;
   onEntryChange: (entry: DependencyEntry) => void;
+  onSearchModelsChange: (searchModels: SearchModel[]) => void;
 };
 
-const SEARCH_MODELS: SearchModel[] = [
-  "card",
-  "dataset",
-  "metric",
-  "table",
-  "transform",
-];
-
 export function EntrySearchInput({
-  isFetching: isGraphFetching,
+  searchModels,
+  isGraphFetching,
   onEntryChange,
+  onSearchModelsChange,
 }: EntrySearchInputProps) {
-  const [searchModels, setSearchModels] = useState(SEARCH_MODELS);
   const [searchValue, setSearchValue] = useState("");
   const [searchQuery] = useDebouncedValue(
     searchValue.trim(),
@@ -73,7 +68,7 @@ export function EntrySearchInput({
         ) : (
           <SearchModelPicker
             searchModels={searchModels}
-            onSearchModelsChange={setSearchModels}
+            onSearchModelsChange={onSearchModelsChange}
           />
         )
       }

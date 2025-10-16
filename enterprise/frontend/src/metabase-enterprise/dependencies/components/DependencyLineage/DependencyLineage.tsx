@@ -96,7 +96,7 @@ export function DependencyLineage({
           <Group>
             <GraphEntryInput
               node={entryNode?.data}
-              isFetching={isFetching}
+              isGraphFetching={isFetching}
               onEntryChange={onEntryChange}
             />
             {nodes.length > 1 && (
