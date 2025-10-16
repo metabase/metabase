@@ -4,11 +4,24 @@ inputs:
   metabase-automation-token:
     description: Token for accessing the python-runner repository
     required: true
+  python-runner-version:
+    description: Git tag or commit of the python-runner repository to checkout
+    required: false
+    default: 'v0.0.1'
 runs:
   using: composite
   steps:
-    - name: Setup python-runner
-      run: ./.github/scripts/setup-python-runner.sh
+    - name: Clone and setup python-runner
+      run: |
+        echo "Cloning python-runner repository..."
+        git clone --depth 1 --branch ${{ inputs.python-runner-version }} \
+          https://${{ inputs.metabase-automation-token }}@github.com/metabase/python-runner-container.git python-runner
+
+        echo "Starting python-runner..."
+        cd python-runner
+        make run-ci 1> ../python-runner.out.log 2> ../python-runner.err.log
+        make logs 1>> ../python-runner.out.log 2>> ../python-runner.err.log &
+        cd ..
       shell: bash
       env:
         METABASE_AUTOMATION_USER_TOKEN: ${{ inputs.metabase-automation-token }}
