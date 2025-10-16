@@ -6,6 +6,7 @@ import { useSelector } from "metabase/lib/redux";
 import { getPublicEmbedHTMLWithResizer } from "metabase/public/lib/code-templates";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
+  Anchor,
   Box,
   Code,
   Group,
@@ -16,8 +17,6 @@ import {
   TextInput,
   Tooltip,
 } from "metabase/ui";
-
-import { RemoveLinkAnchor } from "./DocumentPublicLinkPopoverContent.styled";
 
 interface DocumentPublicLinkPopoverContentProps {
   url: string | null;
@@ -142,15 +141,22 @@ export const DocumentPublicLinkPopoverContent = ({
               </Text>
             }
           >
-            <RemoveLinkAnchor
+            <Anchor
               component="button"
               fz="sm"
               c="error"
               fw={700}
               onClick={onRemoveLink}
+              style={{ cursor: "pointer" }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.textDecoration = "underline";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.textDecoration = "none";
+              }}
             >
               {t`Remove public link`}
-            </RemoveLinkAnchor>
+            </Anchor>
           </Tooltip>
         </Group>
       )}
