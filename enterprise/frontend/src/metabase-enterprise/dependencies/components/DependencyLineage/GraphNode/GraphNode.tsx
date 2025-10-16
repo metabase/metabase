@@ -10,10 +10,10 @@ import { t } from "ttag";
 
 import {
   Box,
-  Card,
   FixedSizeIcon,
   Group,
   Pill,
+  Stack,
   UnstyledButton,
 } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
@@ -44,12 +44,10 @@ export const GraphNode = memo(function ItemNode({
 
   return (
     <>
-      <Card
+      <Stack
         className={cx(S.card, { [S.selected]: isSelected })}
         p="md"
-        miw="10rem"
-        shadow="none"
-        withBorder
+        gap="sm"
         onClick={handleClick}
       >
         <Group gap="sm">
@@ -70,7 +68,7 @@ export const GraphNode = memo(function ItemNode({
             ))}
           </>
         )}
-      </Card>
+      </Stack>
       {sources.length > 0 && (
         <Handle type="source" position={Position.Left} isConnectable={false} />
       )}

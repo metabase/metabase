@@ -34,6 +34,7 @@ function getNodes(nodes: DependencyNode[]): NodeType[] {
       type: "node",
       data: node,
       position: { x: 0, y: 0 },
+      selectable: false,
       draggable: false,
       deletable: false,
     };
