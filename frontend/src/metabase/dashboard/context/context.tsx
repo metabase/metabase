@@ -115,6 +115,8 @@ type FetchOption = {
   forceRefetch?: boolean;
 };
 
+const defaultDownloadsEnabled = { pdf: true, results: true };
+
 const DashboardContextProviderInner = forwardRef(
   function DashboardContextProviderInner(
     {
@@ -136,7 +138,7 @@ const DashboardContextProviderInner = forwardRef(
       titled = true,
       font = null,
       hideParameters: hide_parameters = null,
-      downloadsEnabled = { pdf: true, results: true },
+      downloadsEnabled = defaultDownloadsEnabled,
       autoScrollToDashcardId = undefined,
       reportAutoScrolledToDashcard = noop,
       cardTitled = true,
@@ -165,7 +167,67 @@ const DashboardContextProviderInner = forwardRef(
       reset,
       closeDashboard,
       navigateToNewCardFromDashboard,
-      ...reduxProps
+      headerParameters,
+      tabs,
+      canManageSubscriptions,
+      isAdmin,
+      isSharing,
+      dashboardBeforeEditing,
+      isEditingParameter,
+      editingParameter,
+      isDirty,
+      slowCards,
+      draftParameterValues,
+      loadingStartTime,
+      clickBehaviorSidebarDashcard,
+      isAddParameterPopoverOpen,
+      sidebar,
+      isRunning,
+      isLoadingComplete,
+      isHeaderVisible,
+      isAdditionalInfoVisible,
+      addHeadingDashCardToDashboard,
+      addMarkdownDashCardToDashboard,
+      addLinkDashCardToDashboard,
+      setDashboardAttributes,
+      setSharing,
+      closeSidebar,
+      addParameter,
+      setParameterName,
+      setParameterType,
+      setParameterValue,
+      setParameterIndex,
+      setParameterValueToDefault,
+      setEditingParameter,
+      setParameterDefaultValue,
+      setParameterRequired,
+      setParameterTemporalUnits,
+      setParameterIsMultiSelect,
+      setParameterQueryType,
+      setParameterSourceType,
+      setParameterSourceConfig,
+      setParameterFilteringParameters,
+      showAddParameterPopover,
+      removeParameter,
+      onReplaceAllDashCardVisualizationSettings,
+      onUpdateDashCardVisualizationSettings,
+      onUpdateDashCardColumnSettings,
+      updateDashboardAndCards,
+      updateDashboard,
+      setSidebar,
+      hideAddParameterPopover,
+      onChangeLocation,
+      setArchivedDashboard,
+      deletePermanently,
+      moveDashboardToCollection,
+      createNewTab,
+      deleteTab,
+      duplicateTab,
+      moveTab,
+      renameTab,
+      selectTab,
+      undoDeleteTab,
+      onAddQuestion,
     }: PropsWithChildren<ContextProps>,
     ref,
   ) {
@@ -396,63 +458,548 @@ const DashboardContextProviderInner = forwardRef(
         ? initDashboardActions({ isEditing, downloadsEnabled })
         : (initDashboardActions ?? null);
 
+    // Track individual Redux state fields from mapStateToProps
+    useEffect(() => {
+      console.log("📊 [Redux State] parameters");
+    }, [parameters]);
+
+    useEffect(() => {
+      console.log("📊 [Redux State] headerParameters");
+    }, [headerParameters]);
+
+    useEffect(() => {
+      console.log("📊 [Redux State] tabs");
+    }, [tabs]);
+
+    useEffect(() => {
+      console.log("📊 [Redux State] canManageSubscriptions");
+    }, [canManageSubscriptions]);
+
+    useEffect(() => {
+      console.log("📊 [Redux State] isAdmin");
+    }, [isAdmin]);
+
+    useEffect(() => {
+      console.log("📊 [Redux State] isEditing");
+    }, [isEditing]);
+
+    useEffect(() => {
+      console.log("📊 [Redux State] isSharing");
+    }, [isSharing]);
+
+    useEffect(() => {
+      console.log("📊 [Redux State] dashboardBeforeEditing");
+    }, [dashboardBeforeEditing]);
+
+    useEffect(() => {
+      console.log("📊 [Redux State] isEditingParameter");
+    }, [isEditingParameter]);
+
+    useEffect(() => {
+      console.log("📊 [Redux State] editingParameter");
+    }, [editingParameter]);
+
+    useEffect(() => {
+      console.log("📊 [Redux State] isDirty");
+    }, [isDirty]);
+
+    useEffect(() => {
+      console.log("📊 [Redux State] slowCards");
+    }, [slowCards]);
+
+    useEffect(() => {
+      console.log("📊 [Redux State] parameterValues");
+    }, [parameterValues]);
+
+    useEffect(() => {
+      console.log("📊 [Redux State] draftParameterValues");
+    }, [draftParameterValues]);
+
+    useEffect(() => {
+      console.log("📊 [Redux State] loadingStartTime");
+    }, [loadingStartTime]);
+
+    useEffect(() => {
+      console.log("📊 [Redux State] clickBehaviorSidebarDashcard");
+    }, [clickBehaviorSidebarDashcard]);
+
+    useEffect(() => {
+      console.log("📊 [Redux State] isAddParameterPopoverOpen");
+    }, [isAddParameterPopoverOpen]);
+
+    useEffect(() => {
+      console.log("📊 [Redux State] sidebar");
+    }, [sidebar]);
+
+    useEffect(() => {
+      console.log("📊 [Redux State] isRunning");
+    }, [isRunning]);
+
+    useEffect(() => {
+      console.log("📊 [Redux State] isLoadingComplete");
+    }, [isLoadingComplete]);
+
+    useEffect(() => {
+      console.log("📊 [Redux State] isHeaderVisible");
+    }, [isHeaderVisible]);
+
+    useEffect(() => {
+      console.log("📊 [Redux State] isAdditionalInfoVisible");
+    }, [isAdditionalInfoVisible]);
+
+    useEffect(() => {
+      console.log("📊 [Redux State] selectedTabId");
+    }, [selectedTabId]);
+
+    useEffect(() => {
+      console.log("📊 [Redux State] isNavigatingBackToDashboard");
+    }, [isNavigatingBackToDashboard]);
+
+    useEffect(() => {
+      console.log("📊 [Redux State] isLoading");
+    }, [isLoading]);
+
+    useEffect(() => {
+      console.log("📊 [Redux State] isLoadingWithoutCards");
+    }, [isLoadingWithoutCards]);
+
+    useEffect(() => {
+      console.log("📊 [Redux State] isEmbeddingIframe");
+    }, [isEmbeddingIframe]);
+
+    // Track individual Redux action creators from mapDispatchToProps
+    useEffect(() => {
+      console.log("⚡ [Redux Action] initialize");
+    }, [initialize]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] cancelFetchDashboardCardData");
+    }, [cancelFetchDashboardCardData]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] addCardToDashboard");
+    }, [addCardToDashboard]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] addHeadingDashCardToDashboard");
+    }, [addHeadingDashCardToDashboard]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] addMarkdownDashCardToDashboard");
+    }, [addMarkdownDashCardToDashboard]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] addLinkDashCardToDashboard");
+    }, [addLinkDashCardToDashboard]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] setEditingDashboard");
+    }, [setEditingDashboard]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] setDashboardAttributes");
+    }, [setDashboardAttributes]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] setSharing");
+    }, [setSharing]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] toggleSidebar");
+    }, [toggleSidebar]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] closeSidebar");
+    }, [closeSidebar]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] addParameter");
+    }, [addParameter]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] setParameterName");
+    }, [setParameterName]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] setParameterType");
+    }, [setParameterType]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] setParameterValue");
+    }, [setParameterValue]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] setParameterIndex");
+    }, [setParameterIndex]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] setParameterValueToDefault");
+    }, [setParameterValueToDefault]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] setEditingParameter");
+    }, [setEditingParameter]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] setParameterDefaultValue");
+    }, [setParameterDefaultValue]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] setParameterRequired");
+    }, [setParameterRequired]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] setParameterTemporalUnits");
+    }, [setParameterTemporalUnits]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] setParameterIsMultiSelect");
+    }, [setParameterIsMultiSelect]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] setParameterQueryType");
+    }, [setParameterQueryType]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] setParameterSourceType");
+    }, [setParameterSourceType]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] setParameterSourceConfig");
+    }, [setParameterSourceConfig]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] setParameterFilteringParameters");
+    }, [setParameterFilteringParameters]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] showAddParameterPopover");
+    }, [showAddParameterPopover]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] removeParameter");
+    }, [removeParameter]);
+
+    useEffect(() => {
+      console.log(
+        "⚡ [Redux Action] onReplaceAllDashCardVisualizationSettings",
+      );
+    }, [onReplaceAllDashCardVisualizationSettings]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] onUpdateDashCardVisualizationSettings");
+    }, [onUpdateDashCardVisualizationSettings]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] onUpdateDashCardColumnSettings");
+    }, [onUpdateDashCardColumnSettings]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] updateDashboardAndCards");
+    }, [updateDashboardAndCards]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] updateDashboard");
+    }, [updateDashboard]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] setSidebar");
+    }, [setSidebar]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] hideAddParameterPopover");
+    }, [hideAddParameterPopover]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] fetchDashboard");
+    }, [fetchDashboard]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] fetchDashboardCardData");
+    }, [fetchDashboardCardData]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] onChangeLocation");
+    }, [onChangeLocation]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] reset");
+    }, [reset]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] closeDashboard");
+    }, [closeDashboard]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] setArchivedDashboard");
+    }, [setArchivedDashboard]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] deletePermanently");
+    }, [deletePermanently]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] moveDashboardToCollection");
+    }, [moveDashboardToCollection]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] createNewTab");
+    }, [createNewTab]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] deleteTab");
+    }, [deleteTab]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] duplicateTab");
+    }, [duplicateTab]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] moveTab");
+    }, [moveTab]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] renameTab");
+    }, [renameTab]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] selectTab");
+    }, [selectTab]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] undoDeleteTab");
+    }, [undoDeleteTab]);
+
+    useEffect(() => {
+      console.log("⚡ [Redux Action] onAddQuestion");
+    }, [onAddQuestion]);
+
+    const contextValue = useMemo(() => {
+      return {
+        dashboardId,
+        dashboard: dashboardWithFilteredCards,
+        parameterQueryParams,
+        onLoad,
+        onError,
+        dashcardMenu,
+        dashboardActions,
+        onNewQuestion,
+
+        navigateToNewCardFromDashboard,
+        isLoading,
+        isLoadingWithoutCards,
+        error,
+
+        isFullscreen,
+        onFullscreenChange,
+        fullscreenRef,
+        refreshPeriod,
+        setRefreshElapsedHook,
+        onRefreshPeriodChange,
+        theme,
+        background,
+        bordered,
+        titled,
+        font,
+        hideParameters,
+        downloadsEnabled,
+        autoScrollToDashcardId,
+        reportAutoScrolledToDashcard,
+        cardTitled,
+        getClickActionMode,
+        withFooter,
+
+        // redux selectors
+        selectedTabId,
+        isEditing,
+        isNavigatingBackToDashboard,
+        parameters,
+        parameterValues,
+        isEmbeddingIframe,
+
+        // redux actions
+        addCardToDashboard,
+        cancelFetchDashboardCardData,
+        fetchDashboard,
+        fetchDashboardCardData,
+        initialize,
+        setEditingDashboard,
+        toggleSidebar,
+        reset,
+        closeDashboard,
+        headerParameters,
+        tabs,
+        canManageSubscriptions,
+        isAdmin,
+        isSharing,
+        dashboardBeforeEditing,
+        isEditingParameter,
+        editingParameter,
+        isDirty,
+        slowCards,
+        draftParameterValues,
+        loadingStartTime,
+        clickBehaviorSidebarDashcard,
+        isAddParameterPopoverOpen,
+        sidebar,
+        isRunning,
+        isLoadingComplete,
+        isHeaderVisible,
+        isAdditionalInfoVisible,
+        addHeadingDashCardToDashboard,
+        addMarkdownDashCardToDashboard,
+        addLinkDashCardToDashboard,
+        setDashboardAttributes,
+        setSharing,
+        closeSidebar,
+        addParameter,
+        setParameterName,
+        setParameterType,
+        setParameterValue,
+        setParameterIndex,
+        setParameterValueToDefault,
+        setEditingParameter,
+        setParameterDefaultValue,
+        setParameterRequired,
+        setParameterTemporalUnits,
+        setParameterIsMultiSelect,
+        setParameterQueryType,
+        setParameterSourceType,
+        setParameterSourceConfig,
+        setParameterFilteringParameters,
+        showAddParameterPopover,
+        removeParameter,
+        onReplaceAllDashCardVisualizationSettings,
+        onUpdateDashCardVisualizationSettings,
+        onUpdateDashCardColumnSettings,
+        updateDashboardAndCards,
+        updateDashboard,
+        setSidebar,
+        hideAddParameterPopover,
+        onChangeLocation,
+        setArchivedDashboard,
+        deletePermanently,
+        moveDashboardToCollection,
+        createNewTab,
+        deleteTab,
+        duplicateTab,
+        moveTab,
+        renameTab,
+        selectTab,
+        undoDeleteTab,
+        onAddQuestion,
+      };
+    }, [
+      dashboardId,
+      dashboardWithFilteredCards,
+      parameterQueryParams,
+      onLoad,
+      onError,
+      dashcardMenu,
+      dashboardActions,
+      onNewQuestion,
+      navigateToNewCardFromDashboard,
+      isLoading,
+      isLoadingWithoutCards,
+      error,
+      isFullscreen,
+      onFullscreenChange,
+      fullscreenRef,
+      refreshPeriod,
+      setRefreshElapsedHook,
+      onRefreshPeriodChange,
+      theme,
+      background,
+      bordered,
+      titled,
+      font,
+      hideParameters,
+      downloadsEnabled,
+      autoScrollToDashcardId,
+      reportAutoScrolledToDashcard,
+      cardTitled,
+      getClickActionMode,
+      withFooter,
+      selectedTabId,
+      isEditing,
+      isNavigatingBackToDashboard,
+      parameters,
+      parameterValues,
+      isEmbeddingIframe,
+      addCardToDashboard,
+      cancelFetchDashboardCardData,
+      fetchDashboard,
+      fetchDashboardCardData,
+      initialize,
+      setEditingDashboard,
+      toggleSidebar,
+      reset,
+      closeDashboard,
+      headerParameters,
+      tabs,
+      canManageSubscriptions,
+      isAdmin,
+      isSharing,
+      dashboardBeforeEditing,
+      isEditingParameter,
+      editingParameter,
+      isDirty,
+      slowCards,
+      draftParameterValues,
+      loadingStartTime,
+      clickBehaviorSidebarDashcard,
+      isAddParameterPopoverOpen,
+      sidebar,
+      isRunning,
+      isLoadingComplete,
+      isHeaderVisible,
+      isAdditionalInfoVisible,
+      addHeadingDashCardToDashboard,
+      addMarkdownDashCardToDashboard,
+      addLinkDashCardToDashboard,
+      setDashboardAttributes,
+      setSharing,
+      closeSidebar,
+      addParameter,
+      setParameterName,
+      setParameterType,
+      setParameterValue,
+      setParameterIndex,
+      setParameterValueToDefault,
+      setEditingParameter,
+      setParameterDefaultValue,
+      setParameterRequired,
+      setParameterTemporalUnits,
+      setParameterIsMultiSelect,
+      setParameterQueryType,
+      setParameterSourceType,
+      setParameterSourceConfig,
+      setParameterFilteringParameters,
+      showAddParameterPopover,
+      removeParameter,
+      onReplaceAllDashCardVisualizationSettings,
+      onUpdateDashCardVisualizationSettings,
+      onUpdateDashCardColumnSettings,
+      updateDashboardAndCards,
+      updateDashboard,
+      setSidebar,
+      hideAddParameterPopover,
+      onChangeLocation,
+      setArchivedDashboard,
+      deletePermanently,
+      moveDashboardToCollection,
+      createNewTab,
+      deleteTab,
+      duplicateTab,
+      moveTab,
+      renameTab,
+      selectTab,
+      undoDeleteTab,
+      onAddQuestion,
+    ]);
+
     return (
-      <DashboardContext.Provider
-        value={{
-          dashboardId,
-          dashboard: dashboardWithFilteredCards,
-          parameterQueryParams,
-          onLoad,
-          onError,
-          dashcardMenu,
-          dashboardActions,
-          onNewQuestion,
-
-          navigateToNewCardFromDashboard,
-          isLoading,
-          isLoadingWithoutCards,
-          error,
-
-          isFullscreen,
-          onFullscreenChange,
-          fullscreenRef,
-          refreshPeriod,
-          setRefreshElapsedHook,
-          onRefreshPeriodChange,
-          theme,
-          background,
-          bordered,
-          titled,
-          font,
-          hideParameters,
-          downloadsEnabled,
-          autoScrollToDashcardId,
-          reportAutoScrolledToDashcard,
-          cardTitled,
-          getClickActionMode,
-          withFooter,
-
-          // redux selectors
-          selectedTabId,
-          isEditing,
-          isNavigatingBackToDashboard,
-          parameters,
-          parameterValues,
-          isEmbeddingIframe,
-
-          // redux actions
-          addCardToDashboard,
-          cancelFetchDashboardCardData,
-          fetchDashboard,
-          fetchDashboardCardData,
-          initialize,
-          setEditingDashboard,
-          toggleSidebar,
-          reset,
-          closeDashboard,
-          ...reduxProps,
-        }}
-      >
+      <DashboardContext.Provider value={contextValue}>
         {children}
       </DashboardContext.Provider>
     );

@@ -188,14 +188,9 @@ export const getDashboardById = (state: State, dashboardId: DashboardId) => {
   return dashboards[dashboardId];
 };
 
-export const getDashboardComplete = createSelector(
-  [getDashboard, getDashcards],
-  (dashboard, dashcards) => {
-    if (!dashboard) {
-      return null;
-    }
-
-    const orderedDashcards = dashboard.dashcards
+const getOrderedDashcards = _.memoize(
+  (cards, dashcards) => {
+    const orderedDashcards = cards
       .map((id) => dashcards[id])
       .filter((dc) => !dc.isRemoved)
       .sort((a, b) => {
@@ -210,12 +205,36 @@ export const getDashboardComplete = createSelector(
         return a.col - b.col;
       });
 
+    return orderedDashcards;
+  },
+  (cards, dashcards) => cards.map((id) => dashcards[id]).join("-"),
+);
+
+const getDashboardMemoized = _.memoize(
+  (dashboard, dashcards) => {
+    const orderedDashcards = getOrderedDashcards(
+      dashboard.dashcards,
+      dashcards,
+    );
+
     return (
       dashboard && {
         ...dashboard,
         dashcards: orderedDashcards,
       }
     );
+  },
+  (dashboard, dashcards) => dashboard.id,
+);
+
+export const getDashboardComplete = createSelector(
+  [getDashboard, getDashcards],
+  (dashboard, dashcards) => {
+    if (!dashboard) {
+      return null;
+    }
+
+    return getDashboardMemoized(dashboard, dashcards);
   },
 );
 

@@ -132,6 +132,7 @@
                                  ["'self'"
                                   "https://maps.google.com"
                                   "https://accounts.google.com"
+                                  "https://unpkg.com/react-scan/dist/auto.global.js"
                                   (when (analytics/anon-tracking-enabled)
                                     "https://www.google-analytics.com")
                                   ;; for webpack hot reloading

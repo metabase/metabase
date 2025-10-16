@@ -635,8 +635,6 @@ export const fetchDashboard = createAsyncThunk(
     },
     { getState, dispatch, rejectWithValue },
   ) => {
-    debugger;
-
     if (fetchDashboardCancellation) {
       fetchDashboardCancellation.resolve();
     }
