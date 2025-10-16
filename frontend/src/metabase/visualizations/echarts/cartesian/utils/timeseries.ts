@@ -6,6 +6,10 @@ import { parseTimestamp } from "metabase/lib/time-dayjs";
 import { isNotNull } from "metabase/lib/types";
 import type { TimeSeriesInterval } from "metabase/visualizations/echarts/cartesian/model/types";
 import {
+  coerceAnnualFromMonthly,
+  coerceYear,
+} from "metabase/visualizations/echarts/cartesian/option/utils";
+import {
   multipleTimezoneWarning,
   unexpectedTimezoneWarning,
 } from "metabase/visualizations/lib/warnings";
@@ -55,9 +59,11 @@ export const TIMESERIES_INTERVALS: (TimeSeriesInterval & {
   { unit: "day", count: 1, testFn: (d: Dayjs) => d.hour() }, // (13) 1 day
   { unit: "week", count: 1, testFn: (d: Dayjs) => d.day() }, // (14) 1 week
   { unit: "month", count: 1, testFn: (d: Dayjs) => d.date() }, // (15) 1 month
-  { unit: "quarter", count: 1, testFn: (d: Dayjs) => d.month() % 3 }, // (16) 3 months / 1 quarter
+  { unit: "quarter", count: 1, testFn: (d: Dayjs) => d.month() % 3 }, // (17) 3 months / 1 quarter
   { unit: "year", count: 1, testFn: (d: Dayjs) => d.month() }, // (17) 1 year
   { unit: "year", count: 2, testFn: (d: Dayjs) => d.year() % 2 }, // (18) 2 year
+  { unit: "month", count: 4, testFn: (d: Dayjs) => d.month() % 4 }, // (18) 4 months
+  { unit: "month", count: 6, testFn: (d: Dayjs) => d.month() % 6 }, // (19) 6 months
   { unit: "year", count: 10, testFn: (d: Dayjs) => d.year() % 10 }, // (19) 10 year
   { unit: "year", count: 50, testFn: (d: Dayjs) => d.year() % 50 }, // (20) 50 year
   { unit: "year", count: 100, testFn: (d: Dayjs) => d.year() % 100 }, // (21) 100 year
@@ -103,6 +109,11 @@ export function computeTimeseriesDataInterval(
     return TIMESERIES_INTERVALS.find((i) => i.unit === "day");
   }
 
+  const dates: Date[] = xValues
+    .map((x) => parseTimestamp(x))
+    .filter((d) => d.isValid())
+    .map((d) => d.toDate());
+
   // run each interval's test function on each value
   const valueLists = xValues.map((xValue) => {
     const parsed = parseTimestamp(xValue);
@@ -125,11 +136,13 @@ export function computeTimeseriesDataInterval(
 
   // if we ran off the end of intervals, return the last one
   if (index === -1) {
-    return TIMESERIES_INTERVALS[TIMESERIES_INTERVALS.length - 1];
+    const iv = TIMESERIES_INTERVALS[TIMESERIES_INTERVALS.length - 1];
+    return coerceYear(coerceAnnualFromMonthly(dates, iv));
   }
 
   // index currently points to the first item with multiple values, so move it to the previous interval
-  return TIMESERIES_INTERVALS[index - 1];
+  const iv = TIMESERIES_INTERVALS[Math.max(index - 1, 0)];
+  return coerceYear(coerceAnnualFromMonthly(dates, iv));
 }
 
 // ------------------------- Computing the TIMESERIES_INTERVALS entry to use for a chart ------------------------- //
@@ -144,7 +157,7 @@ export function getTimeSeriesIntervalDuration(interval: TimeSeriesInterval) {
 
 /// Return the number of ticks we can expect to see over a time range using the TIMESERIES_INTERVALS entry interval.
 /// for example a "5 seconds" interval over a time range of a minute should have an expected tick count of 20.
-function expectedTickCount(
+export function expectedTickCount(
   interval: TimeSeriesInterval,
   timeRangeMilliseconds: number,
 ) {
@@ -200,7 +213,7 @@ function timeseriesTicksInterval(
 }
 
 /// return the maximum number of ticks to show for a timeseries chart of a given width
-function maxTicksForChartWidth(
+export function maxTicksForChartWidth(
   chartWidth: number,
   tickFormat: (value: RowValue) => string,
 ) {
@@ -232,10 +245,12 @@ export function computeTimeseriesTicksInterval(
   chartWidth: number,
   tickFormat: (value: RowValue) => string,
 ) {
-  return timeseriesTicksInterval(
-    xInterval,
-    timeRangeMilliseconds(xDomain),
-    maxTicksForChartWidth(chartWidth, tickFormat),
+  return coerceYear(
+    timeseriesTicksInterval(
+      xInterval,
+      timeRangeMilliseconds(xDomain),
+      maxTicksForChartWidth(chartWidth, tickFormat),
+    ),
   );
 }
 
