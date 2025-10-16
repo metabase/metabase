@@ -3,6 +3,14 @@ name: E2E Stress Test Flake Fix
 on:
   workflow_dispatch:
     inputs:
+      test_suite:
+        description: "The test suite to run"
+        type: string
+        required: true
+        default: "e2e"
+        options:
+          - e2e
+          - component
       spec:
         description: "Relative path of the target spec"
         type: string
@@ -119,7 +127,7 @@ jobs:
         env:
           GREP: ${{ github.event.inputs.grep }}
         run: |
-          node e2e/runner/run_cypress_ci.js e2e \
+          node e2e/runner/run_cypress_ci.js ${{ github.event.inputs.test_suite }} \
           --spec '${{ github.event.inputs.spec }}' \
           --env burn=${{ github.event.inputs.burn_in }} \
           --config-file e2e/support/cypress-stress-test.config.js \
