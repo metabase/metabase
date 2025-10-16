@@ -21,7 +21,7 @@ import { Route } from "metabase/hoc/Title";
 import { checkNotNull } from "metabase/lib/types";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
-import SegmentApp from "./SegmentApp";
+import { SegmentApp } from "./SegmentApp";
 
 const TestHome = () => <div />;
 
