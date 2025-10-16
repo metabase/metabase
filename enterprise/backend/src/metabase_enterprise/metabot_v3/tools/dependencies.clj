@@ -11,9 +11,10 @@
 
 (defn- format-broken-transforms
   "Format the breakages into a response suitable for Metabot."
-  [edited-transform-id {transform-errors :transform}]
+  [edited-transform-id {transform-errors :transform
+                        card-errors      :card}]
   (let [broken-transform-ids (set (keys transform-errors))
-        ;; Limit the number of broken transforms we report back to avoid overwhelming context
+        ;; Limit the number of broken transforms/cards we report back to avoid overwhelming context
         transforms-to-report (if (contains? transform-errors edited-transform-id)
                                (concat [edited-transform-id]
                                        (take (dec *max-reported-broken-transforms*)
@@ -21,13 +22,22 @@
                                (take *max-reported-broken-transforms* broken-transform-ids))
         broken-transforms    (when (seq broken-transform-ids)
                                (t2/select [:model/Transform :id :name] :id [:in transforms-to-report]))
-        transforms-by-id     (u/index-by :id broken-transforms)]
+        ; transforms-by-id     (u/index-by :id broken-transforms)
+        broken-card-ids      (set (keys card-errors))
+        cards-to-report      (take *max-reported-broken-transforms* broken-card-ids)
+        broken-cards         (when (seq broken-card-ids)
+                               (t2/select [:model/Card :id :name] :id [:in cards-to-report]))]
     {:success             (empty? broken-transform-ids)
      :bad_transform_count (count broken-transform-ids)
      :bad_transforms      (mapv
-                           (fn [[transform-id transform]]
-                             {:transform transform :errors (get transform-errors transform-id)})
-                           transforms-by-id)}))
+                           (fn [transform]
+                             {:transform transform :errors (get transform-errors (:id transform))})
+                           broken-transforms)
+     :bad_card_count     (count broken-card-ids)
+     :bad_cards          (when (seq broken-card-ids)
+                           (mapv (fn [card]
+                                   {:card card :errors (get card-errors (:id card))})
+                                 broken-cards))}))
 
 (defn check-transform-dependencies
   "Check a proposed edit to a SQL transform, and return transforms that will break in a format
