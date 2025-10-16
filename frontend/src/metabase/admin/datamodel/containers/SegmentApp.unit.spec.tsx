@@ -21,12 +21,12 @@ import { Route } from "metabase/hoc/Title";
 import { checkNotNull } from "metabase/lib/types";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
-import { SegmentApp } from "./SegmentApp";
+import { CreateSegmentForm, UpdateSegmentForm } from "./SegmentApp";
 
 const TestHome = () => <div />;
 
-const SEGMENTS_URL = "/admin/datamodel/segments";
-const FORM_URL = "/admin/datamodel/segment/create";
+const SEGMENTS_URL = "/bench/segment";
+const FORM_URL = "/bench/segment/new";
 
 interface SetupOpts {
   initialRoute?: string;
@@ -47,8 +47,10 @@ const setup = ({ initialRoute = FORM_URL }: SetupOpts = {}) => {
   const { history } = renderWithProviders(
     <>
       <Route path="/" component={TestHome} />
-      <Route path={SEGMENTS_URL} component={TestHome} />
-      <Route path={FORM_URL} component={SegmentApp} />
+      <Route path={SEGMENTS_URL}>
+        <Route path="new" component={CreateSegmentForm} />
+        <Route path=":id" component={UpdateSegmentForm} />
+      </Route>
     </>,
     {
       initialRoute,
@@ -72,7 +74,7 @@ describe("SegmentApp", () => {
   it("should have beforeunload event when user makes edits to a segment", async () => {
     const { mockEventListener } = setup();
 
-    await userEvent.type(screen.getByLabelText("Name Your Segment"), "Name");
+    await userEvent.type(screen.getByText("Name your segment"), "Name");
 
     const mockEvent = await waitFor(() => {
       return callMockEvent(mockEventListener, "beforeunload");
@@ -108,10 +110,7 @@ describe("SegmentApp", () => {
       history.push(FORM_URL);
     });
 
-    await userEvent.type(
-      await screen.findByLabelText("Name Your Segment"),
-      "Name",
-    );
+    await userEvent.type(await screen.findByText("Name your segment"), "Name");
 
     act(() => {
       history.goBack();
@@ -137,9 +136,9 @@ describe("SegmentApp", () => {
     await userEvent.click(screen.getByText("ID"));
     await userEvent.type(screen.getByPlaceholderText("Enter an ID"), "1");
     await userEvent.click(screen.getByText("Add filter"));
-    await userEvent.type(screen.getByLabelText("Name Your Segment"), "Name");
+    await userEvent.type(screen.getByText("Name your segment"), "Name");
     await userEvent.type(
-      screen.getByLabelText("Describe Your Segment"),
+      screen.getByText("Describe your segment"),
       "Description",
     );
 
