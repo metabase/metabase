@@ -54,6 +54,7 @@ jobs:
         run: |
           echo '**Inputs:**' >> $GITHUB_STEP_SUMMARY
           echo '' >> $GITHUB_STEP_SUMMARY
+          echo '- `test_suite`: ${{ inputs.test_suite }}' >> $GITHUB_STEP_SUMMARY
           echo '- `branch`: ${{ github.ref_name }}' >> $GITHUB_STEP_SUMMARY
           echo '- `spec`: ${{ inputs.spec }}' >> $GITHUB_STEP_SUMMARY
           echo '- `burn_in`: ${{ inputs.burn_in }}' >> $GITHUB_STEP_SUMMARY
