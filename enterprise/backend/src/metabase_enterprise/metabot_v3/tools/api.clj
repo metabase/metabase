@@ -28,6 +28,7 @@
    [metabase.api.routes.common :as api.routes.common]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -1154,7 +1155,9 @@
   [:and
    [:map
     [:transform_id :int]
-    [:source {:optional true} [:maybe ms/Map]]]
+    [:source {:optional true} [:maybe [:map
+                                       [:type {:optional true} :keyword]
+                                       [:query {:optional true} ::queries.schema/query]]]]]
    [:map {:encode/tool-api-request
           #(set/rename-keys % {:transform_id :id})}]])
 
