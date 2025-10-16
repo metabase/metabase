@@ -313,17 +313,13 @@
         comparable-clauses (fn [query clauses-fn]
                              (some-> query clauses-fn lib.schema.util/remove-lib-uuids set))
         comparable-card-filters (comparable-clauses base-card-query lib/filters)
-        comparable-subset-filters (comparable-clauses base-subset-query lib/filters)
-        comparable-card-expressions (comparable-clauses base-card-query lib/expressions)
-        comparable-subset-expressions (comparable-clauses base-subset-query lib/expressions)]
+        comparable-subset-filters (comparable-clauses base-subset-query lib/filters)]
     ;; TODO (BT) does the filter-stage require special handling here?
     (when (and (= comparable-subset-query
                   comparable-card-query)
                ;; TODO (BT) this disables :drill-thru/zoom-in.binning when we _change_ filters
                (set/subset? comparable-card-filters
-                            comparable-subset-filters)
-               (set/subset? comparable-card-expressions
-                            comparable-subset-expressions))
+                            comparable-subset-filters))
       normalized-subset-query)))
 
 (mu/defn process-query-for-card
