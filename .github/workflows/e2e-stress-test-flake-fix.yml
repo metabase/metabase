@@ -5,7 +5,7 @@ on:
     inputs:
       test_suite:
         description: "The test suite to run"
-        type: string
+        type: choice
         required: true
         default: "e2e"
         options:
