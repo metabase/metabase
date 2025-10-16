@@ -56,7 +56,8 @@ export function PythonTransformEditor({
 
   useRegisterMetabotTransformContext(transform, proposedSource ?? source);
 
-  const { isRunning, isDirty, cancel, run } = useTestPythonTransform(source);
+  const { isRunning, isDirty, cancel, run, executionResult } =
+    useTestPythonTransform(source);
 
   const handleScriptChange = (body: string) => {
     const newSource = {
@@ -144,30 +145,22 @@ export function PythonTransformEditor({
         onChange={handleDataChange}
       />
       <PythonEditorBody
+        isRunnable={isRunnable && isPythonTransformSource(source)}
         isRunning={isRunning}
-        isRunnable={isRunnable}
         isDirty={isDirty}
         onRun={run}
         onCancel={cancel}
         source={source.body}
         proposedSource={proposedSource?.body}
-        onAcceptProposed={handleAcceptProposed}
-        onRejectProposed={onRejectProposed}
         onChange={handleScriptChange}
         withDebugger={showDebugger}
+        onAcceptProposed={handleAcceptProposed}
+        onRejectProposed={onRejectProposed}
       />
       {showDebugger && (
         <PythonEditorResults
           isRunning={isRunning}
-          isDirty={isDirty}
-          onRun={run}
-          onCancel={cancel}
-          source={source.body}
-          proposedSource={proposedSource?.body}
-          onChange={handleScriptChange}
-          withDebugger={showDebugger}
-          onAcceptProposed={handleAcceptProposed}
-          onRejectProposed={onRejectProposed}
+          executionResult={executionResult}
         />
       )}
     </Stack>
