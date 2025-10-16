@@ -170,49 +170,6 @@ export const DashboardApp = ({
     [dispatch],
   );
 
-  // Track changes to all DashboardContextProvider props
-  useEffect(() => {
-    console.log("🔵 dashboardId changed:", dashboardId);
-  }, [dashboardId]);
-
-  useEffect(() => {
-    console.log("🟢 parameterQueryParams changed:", parameterQueryParams);
-  }, [parameterQueryParams]);
-
-  useEffect(() => {
-    console.log("🟡 autoScrollToDashcardId changed:", autoScrollToDashcardId);
-  }, [autoScrollToDashcardId]);
-
-  useEffect(() => {
-    console.log(
-      "🟠 reportAutoScrolledToDashcard changed:",
-      reportAutoScrolledToDashcard,
-    );
-  }, [reportAutoScrolledToDashcard]);
-
-  useEffect(() => {
-    console.log("🔴 onLoadDashboard changed:", onLoadDashboard);
-  }, [onLoadDashboard]);
-
-  useEffect(() => {
-    console.log("🟣 onError changed:", onError);
-  }, [onError]);
-
-  useEffect(() => {
-    console.log(
-      "🟤 navigateToNewCardFromDashboardCallback changed:",
-      navigateToNewCardFromDashboardCallback,
-    );
-  }, [navigateToNewCardFromDashboardCallback]);
-
-  useEffect(() => {
-    console.log("⚫ onNewQuestion changed:", onNewQuestion);
-  }, [onNewQuestion]);
-
-  useEffect(() => {
-    console.log("⚪ onAddQuestion changed:", onAddQuestion);
-  }, [onAddQuestion]);
-
   return (
     <ErrorBoundary message={error}>
       <DashboardContextProvider
