@@ -35,9 +35,8 @@ export function GraphSelectInput({
       value={null}
       data={data}
       placeholder={t`Jump to an item on the graph`}
-      leftSection={<FixedSizeIcon name="search" />}
-      rightSection={<div />}
       nothingFoundMessage={t`Didn't find any results`}
+      leftSection={<FixedSizeIcon name="search" />}
       w="20rem"
       searchable
       onChange={handleChange}

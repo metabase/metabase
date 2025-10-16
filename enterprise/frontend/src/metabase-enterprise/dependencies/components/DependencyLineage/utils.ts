@@ -17,7 +17,7 @@ import type {
 import type { EdgeId, GraphData, NodeId, NodeType } from "./types";
 
 export function getNodeId(id: DependencyId, type: DependencyType): NodeId {
-  return `${type}-${id}`;
+  return `${id}-${type}`;
 }
 
 export function getEdgeId(sourceId: NodeId, targetId: NodeId): EdgeId {

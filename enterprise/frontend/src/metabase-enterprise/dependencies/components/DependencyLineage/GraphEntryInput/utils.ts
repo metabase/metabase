@@ -1,48 +1,72 @@
-import type { DataPickerValue } from "metabase/common/components/Pickers/DataPicker";
-import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import type { IconName } from "metabase/ui";
+import visualizations from "metabase/visualizations";
 import type {
-  CardType,
   DependencyEntry,
-  DependencyNode,
-  TableId,
+  DependencyId,
+  DependencyType,
+  SearchModel,
+  SearchResult,
+  SearchResultId,
 } from "metabase-types/api";
 
-function getDataPickerModel(type: CardType) {
-  switch (type) {
-    case "question":
+import type { SearchSelectOption } from "./types";
+
+function getDependencyId(id: SearchResultId): DependencyId {
+  if (typeof id === "number") {
+    return id;
+  } else {
+    throw new TypeError(`Unsupported search result id: ${id}`);
+  }
+}
+
+function getDependencyType(model: SearchModel): DependencyType {
+  switch (model) {
+    case "card":
+    case "dataset":
+    case "metric":
       return "card";
-    case "model":
-      return "dataset";
+    case "table":
+      return "table";
+    case "transform":
+      return "transform";
+    default:
+      throw new TypeError(`Unsupported search result model: ${model}`);
+  }
+}
+
+export function getDependencyIcon(result: SearchResult): IconName {
+  switch (result.model) {
+    case "card":
+      return result.display != null
+        ? (visualizations.get(result.display)?.iconName ?? "table2")
+        : "table2";
+    case "dataset":
+      return "model";
     case "metric":
       return "metric";
-  }
-}
-
-export function getDataPickerValue(
-  node: DependencyNode,
-): DataPickerValue | undefined {
-  switch (node.type) {
     case "table":
-      return {
-        id: node.id,
-        model: "table",
-        name: node.data.name,
-        db_id: node.data.db_id,
-        schema: node.data.schema ?? "",
-      };
-    case "card":
-      return {
-        id: node.id,
-        model: getDataPickerModel(node.data.type),
-        name: node.data.name,
-        database_id: node.data.database_id ?? 0,
-      };
+      return "table";
+    case "transform":
+      return "refresh_downstream";
+    default:
+      throw new TypeError(`Unsupported search result model: ${result.model}`);
   }
 }
 
-export function getDependencyEntry(tableId: TableId): DependencyEntry {
-  const cardId = getQuestionIdFromVirtualTableId(tableId);
-  return cardId != null
-    ? { id: cardId, type: "card" }
-    : { id: Number(tableId), type: "table" };
+export function getDependencyEntry(result: SearchResult): DependencyEntry {
+  return {
+    id: getDependencyId(result.id),
+    type: getDependencyType(result.model),
+  };
+}
+
+export function getSelectOptions(
+  results: SearchResult[],
+): SearchSelectOption[] {
+  return results.map((result) => ({
+    value: `${result.id}-${result.model}`,
+    label: result.name,
+    icon: getDependencyIcon(result),
+    result: result,
+  }));
 }

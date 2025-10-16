@@ -1,27 +1,18 @@
-import { useDisclosure } from "@mantine/hooks";
+import { useDebouncedValue } from "@mantine/hooks";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import {
-  DataPickerModal,
-  type DataPickerValue,
-} from "metabase/common/components/Pickers/DataPicker";
-import { Button, FixedSizeIcon } from "metabase/ui";
+import { useSearchQuery } from "metabase/api";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
+import { FixedSizeIcon, Loader, Select } from "metabase/ui";
 import type {
   DependencyEntry,
   DependencyNode,
-  TableId,
+  SearchModel,
+  SearchResult,
 } from "metabase-types/api";
 
-import { getNodeIcon, getNodeLabel } from "../utils";
-
-import { getDataPickerValue, getDependencyEntry } from "./utils";
-
-const PICKER_MODELS: DataPickerValue["model"][] = [
-  "table",
-  "card",
-  "dataset",
-  "metric",
-];
+import { getDependencyEntry, getSelectOptions } from "./utils";
 
 type GraphEntryInputProps = {
   node: DependencyNode | undefined;
@@ -29,36 +20,55 @@ type GraphEntryInputProps = {
   onEntryChange: (entry: DependencyEntry) => void;
 };
 
-export function GraphEntryInput({
-  node,
-  isFetching,
-  onEntryChange,
-}: GraphEntryInputProps) {
-  const [isOpened, { open, close }] = useDisclosure();
+const MODELS: SearchModel[] = [
+  "card",
+  "dataset",
+  "metric",
+  "table",
+  "transform",
+];
 
-  const handleChange = (tableId: TableId) => {
-    onEntryChange(getDependencyEntry(tableId));
+const EMPTY_RESULTS: SearchResult[] = [];
+
+export function GraphEntryInput({ onEntryChange }: GraphEntryInputProps) {
+  const [searchValue, setSearchValue] = useState("");
+  const [searchQuery] = useDebouncedValue(
+    searchValue.trim(),
+    SEARCH_DEBOUNCE_DURATION,
+  );
+
+  const { data: response, isLoading } = useSearchQuery(
+    {
+      q: searchQuery,
+      models: MODELS,
+    },
+    {
+      skip: searchQuery.length === 0,
+    },
+  );
+
+  const results = response?.data ?? EMPTY_RESULTS;
+  const options = useMemo(() => getSelectOptions(results), [results]);
+
+  const handleChange = (value: string | null) => {
+    const option = options.find((option) => option.value === value);
+    if (option != null) {
+      onEntryChange(getDependencyEntry(option.result));
+    }
   };
 
   return (
-    <>
-      <Button
-        variant={node ? "default" : "filled"}
-        loading={isFetching}
-        leftSection={node ? <FixedSizeIcon name={getNodeIcon(node)} /> : null}
-        onClick={open}
-      >
-        {node ? getNodeLabel(node) : t`Pick your starting data`}
-      </Button>
-      {isOpened && (
-        <DataPickerModal
-          title={t`Pick your starting data`}
-          value={node ? getDataPickerValue(node) : undefined}
-          models={PICKER_MODELS}
-          onChange={handleChange}
-          onClose={close}
-        />
-      )}
-    </>
+    <Select
+      data={options}
+      searchValue={searchValue}
+      placeholder={t`Find something…`}
+      nothingFoundMessage={t`Didn't find any results`}
+      leftSection={<FixedSizeIcon name="search" />}
+      rightSection={isLoading ? <Loader size="sm" /> : undefined}
+      w="20rem"
+      searchable
+      onChange={handleChange}
+      onSearchChange={setSearchValue}
+    />
   );
 }

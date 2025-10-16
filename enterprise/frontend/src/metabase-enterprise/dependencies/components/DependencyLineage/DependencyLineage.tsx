@@ -95,7 +95,12 @@ export function DependencyLineage({
               isFetching={isFetching}
               onEntryChange={onEntryChange}
             />
-            <GraphSelectInput nodes={nodes} onSelectionChange={setSelection} />
+            {nodes.length > 1 && (
+              <GraphSelectInput
+                nodes={nodes}
+                onSelectionChange={setSelection}
+              />
+            )}
           </Group>
         </Panel>
         {selection != null && selectedNode != null && (
