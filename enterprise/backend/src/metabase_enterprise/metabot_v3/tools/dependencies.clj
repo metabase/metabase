@@ -4,7 +4,6 @@
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (def ^:private ^:dynamic *max-reported-broken-transforms* 10)
@@ -22,7 +21,6 @@
                                (take *max-reported-broken-transforms* broken-transform-ids))
         broken-transforms    (when (seq broken-transform-ids)
                                (t2/select [:model/Transform :id :name] :id [:in transforms-to-report]))
-        ; transforms-by-id     (u/index-by :id broken-transforms)
         broken-card-ids      (set (keys card-errors))
         cards-to-report      (take *max-reported-broken-transforms* broken-card-ids)
         broken-cards         (when (seq broken-card-ids)
