@@ -615,6 +615,36 @@ LIMIT
       H.popover().should("be.visible");
     });
 
+    it("not show the 'Show details' buttons in ID columns (metabase#64473)", () => {
+      const databaseId = WRITABLE_DB_ID;
+      const sourceTable = SOURCE_TABLE;
+      const nameColumn = "name";
+
+      H.getTableId({ databaseId, name: sourceTable }).then((tableId) => {
+        H.getFieldId({ tableId, name: nameColumn }).then((nameColumnId) => {
+          // Make name a key
+          cy.request("PUT", `/api/field/${nameColumnId}`, {
+            semantic_type: "type/PK",
+          });
+        });
+      });
+
+      createMbqlTransform({
+        databaseId,
+        sourceTable,
+        visitTransform: true,
+      });
+
+      getTransformPage().findByText("Edit query").click();
+
+      getQueryEditor().within(() => {
+        cy.findByTestId("run-button").eq(0).click();
+        cy.findByTestId("loading-indicator").should("not.exist");
+
+        cy.findAllByTestId("detail-shortcut").should("not.exist");
+      });
+    });
+
     it("should not be possible to create a transform from a question or a model that is based of an unsupported database", () => {
       function testCardSource({
         type,
