@@ -364,6 +364,8 @@ export const TOOLTIP_SETTINGS = {
       return getAvailableAdditionalColumns(rawSeries, vizSettings).length === 0;
     },
     getProps: (rawSeries, vizSettings) => {
+      console.log("getProps", { rawSeries, vizSettings });
+
       const isAggregatedChart = rawSeries[0].card.display !== "scatter";
       const options = getAvailableAdditionalColumns(
         rawSeries,
