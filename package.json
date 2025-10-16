@@ -103,7 +103,7 @@
     "mustache": "^2.3.2",
     "normalizr": "^3.0.2",
     "ora": "^8.0.1",
-    "password-generator": "^2.0.1",
+    "password-generator": "^2.3.2",
     "process": "^0.11.10",
     "prop-types": "^15.5.7",
     "re-reselect": "^4.0.1",
