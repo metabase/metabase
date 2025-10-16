@@ -8,7 +8,7 @@ export function getInitialQueryTransformSource(
   const query =
     card != null
       ? card.dataset_query
-      : Question.create({ type }).datasetQuery();
+      : Question.create({ DEPRECATED_RAW_MBQL_type: type }).datasetQuery();
 
   return { type: "query" as const, query };
 }
