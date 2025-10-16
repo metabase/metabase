@@ -476,6 +476,8 @@ export const getDashboardHeaderValuePopulatedParameters = createSelector(
   (parameters, values) => _getValuePopulatedParameters({ parameters, values }),
 );
 
+const DEFAULT_INLINE_PARAMS: ReturnType<typeof _getValuePopulatedParameters> =
+  [];
 export const getDashCardInlineValuePopulatedParameters = createSelector(
   [
     getDashcards,
@@ -486,7 +488,7 @@ export const getDashCardInlineValuePopulatedParameters = createSelector(
   (dashcards, parameters, parameterValues, dashcardId) => {
     const dashcard = dashcards[dashcardId];
     if (!dashcard || !hasInlineParameters(dashcard)) {
-      return [];
+      return DEFAULT_INLINE_PARAMS;
     }
     const inlineParameters = dashcard.inline_parameters
       .map((parameterId) => parameters.find((p) => p.id === parameterId))
