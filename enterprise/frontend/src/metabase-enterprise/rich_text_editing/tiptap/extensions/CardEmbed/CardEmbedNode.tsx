@@ -605,9 +605,11 @@ export const CardEmbedComponent = memo(
                           size="md"
                           color="text-dark"
                           fw={700}
-                          c="pointer"
+                          c={isPublicDocument ? undefined : "pointer"}
                           truncate="end"
-                          onClick={handleTitleClick}
+                          onClick={
+                            isPublicDocument ? undefined : handleTitleClick
+                          }
                         >
                           {displayName}
                         </Text>
@@ -740,7 +742,9 @@ export const CardEmbedComponent = memo(
                   <Visualization
                     rawSeries={series}
                     metadata={metadata}
-                    onChangeCardAndRun={handleChangeCardAndRun}
+                    onChangeCardAndRun={
+                      isPublicDocument ? undefined : handleChangeCardAndRun
+                    }
                     getExtraDataForClick={() => ({})}
                     isEditing={false}
                     isDashboard={false}
