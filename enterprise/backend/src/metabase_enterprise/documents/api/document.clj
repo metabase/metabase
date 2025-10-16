@@ -242,7 +242,7 @@
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
-(api.macros/defendpoint :post "/:document-id/public_link"
+(api.macros/defendpoint :post "/:document-id/public_link" :- [:map [:uuid ms/UUIDString]]
   "Generate a public link for this Document. If it's already public, we'll return the existing link instead of making
    a new one. Public sharing must be enabled."
   [{:keys [document-id]} :- [:map
@@ -268,7 +268,10 @@
                :made_public_by_id nil})
   api/generic-204-no-content)
 
-(api.macros/defendpoint :get "/public"
+(api.macros/defendpoint :get "/public" :- [:sequential [:map
+                                                        [:name :string]
+                                                        [:id ms/PositiveInt]
+                                                        [:public_uuid ms/UUIDString]]]
   "List all Documents that have public links. They're only actually accessible if public sharing is enabled."
   []
   (api/check-superuser)
