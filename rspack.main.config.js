@@ -7,6 +7,7 @@ const path = require("path");
 const rspack = require("@rspack/core");
 const ReactRefreshPlugin = require("@rspack/plugin-react-refresh");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
+const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
 const WebpackNotifierPlugin = require("webpack-notifier");
 
 const {
@@ -291,6 +292,10 @@ const config = {
       ignoreOrder: true,
     }),
     new OnScriptError(),
+    new NodePolyfillPlugin(),
+    //   {
+    //   onlyAliases: ["buffer"],
+    // }
     new HtmlWebpackPlugin({
       filename: "../../index.html",
       chunksSortMode: "manual",
@@ -316,6 +321,9 @@ const config = {
       template: __dirname + "/resources/frontend_client/index_template.html",
     }),
     new rspack.BannerPlugin(getBannerOptions(LICENSE_TEXT)),
+    new NodePolyfillPlugin({
+      onlyAliases: ["Buffer"],
+    }),
     new rspack.EnvironmentPlugin({
       WEBPACK_BUNDLE: "development",
       MB_LOG_ANALYTICS: "false",
