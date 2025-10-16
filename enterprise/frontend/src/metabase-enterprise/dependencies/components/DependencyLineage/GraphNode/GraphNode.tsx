@@ -39,7 +39,7 @@ export const GraphNode = memo(function ItemNode({
     selection != null && isSameNode(node, selection.id, selection.type);
 
   const handleClick = () => {
-    setSelection({ id: node.id, type: node.type });
+    setSelection({ id: node.id, type: node.type, withInfo: true });
   };
 
   return (
@@ -99,7 +99,12 @@ function DependencyGroupButton({
 
   const handleClick = (event: MouseEvent) => {
     event.stopPropagation();
-    onSelectionChange({ id: node.id, type: node.type, groupType: group.type });
+    onSelectionChange({
+      id: node.id,
+      type: node.type,
+      groupType: group.type,
+      withInfo: true,
+    });
   };
 
   return (

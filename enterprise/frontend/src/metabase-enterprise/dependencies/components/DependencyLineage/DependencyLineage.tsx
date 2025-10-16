@@ -65,11 +65,12 @@ export function DependencyLineage({
         getInitialGraph(graph);
       setNodes(initialNodes);
       setEdges(initialEdges);
+      setSelection(entry);
     } else {
       setNodes([]);
       setEdges([]);
+      setSelection(undefined);
     }
-    setSelection(undefined);
   }, [graph, entry, setNodes, setEdges]);
 
   const handlePanelClose = () => {
@@ -106,7 +107,7 @@ export function DependencyLineage({
             )}
           </Group>
         </Panel>
-        {selection != null && selectedNode != null && (
+        {selection != null && selection.withInfo && selectedNode != null && (
           <Flex
             component={Panel}
             position="top-right"
