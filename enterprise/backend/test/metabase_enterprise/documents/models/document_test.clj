@@ -14,15 +14,13 @@
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
 (deftest public-sharing-test
-  (testing "test that a Document's :public_uuid comes back if public sharing is enabled..."
-    (tu/with-temporary-setting-values [enable-public-sharing true]
-      (mt/with-temp [:model/Document document {:public_uuid (str (random-uuid))}]
-        (is (=? u/uuid-regex
-                (:public_uuid document)))))))
-
-(deftest public-sharing-test-2
-  (testing "test that a Document's :public_uuid comes back if public sharing is enabled..."
-    (testing "...but if public sharing is *disabled* it should come back as `nil`"
+  (testing "Document's :public_uuid visibility based on public sharing setting"
+    (testing "comes back if public sharing is enabled"
+      (tu/with-temporary-setting-values [enable-public-sharing true]
+        (mt/with-temp [:model/Document document {:public_uuid (str (random-uuid))}]
+          (is (=? u/uuid-regex
+                  (:public_uuid document))))))
+    (testing "comes back as nil if public sharing is disabled"
       (tu/with-temporary-setting-values [enable-public-sharing false]
         (mt/with-temp [:model/Document document {:public_uuid (str (random-uuid))}]
           (is (= nil

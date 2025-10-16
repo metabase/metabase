@@ -244,7 +244,7 @@
 
 (api.macros/defendpoint :post "/:document-id/public_link"
   "Generate a public link for this Document. If it's already public, we'll return the existing link instead of making
-  a new one. Public sharing must be enabled."
+   a new one. Public sharing must be enabled."
   [{:keys [document-id]} :- [:map
                              [:document-id ms/PositiveInt]]]
   (api/check-superuser)
