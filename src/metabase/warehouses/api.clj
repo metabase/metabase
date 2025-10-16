@@ -1025,11 +1025,6 @@
 
 ;;; ------------------------------------------ POST /api/database/:id/sync_schema -------------------------------------------
 
-(def ^:dynamic *debug-quick-task-call*
-  "If set, it should be an atom containing a collection, and the id of the db getting synced is conj'd to it when the
-  quick task executes."
-  nil)
-
 ;; Should somehow trigger sync-database/sync-database!
 (api.macros/defendpoint :post "/:id/sync_schema"
   "Trigger a manual update of the schema metadata for this `Database`."
@@ -1051,8 +1046,6 @@
         (analytics/track-event! :snowplow/simple_event {:event "database_manual_sync" :target_id id})
         (quick-task/submit-task!
          (fn []
-           (when *debug-quick-task-call*
-             (swap! *debug-quick-task-call* conj id))
            (database-routing/with-database-routing-off
              (sync/sync-db-metadata! db)
              (sync/analyze-db! db))))
