@@ -20,6 +20,7 @@ H.describeWithSnowplow(
       const EMPTY_SCHEMA_NAME = "empty_uploads";
 
       cy.intercept("PUT", "/api/setting/*").as("saveSettings");
+      cy.intercept("GET", "/api/database/*/schemas?*").as("schemaList");
       cy.intercept("GET", "/api/database").as("databaseList");
 
       H.restore("postgres-writable");
@@ -41,6 +42,7 @@ H.describeWithSnowplow(
         cy.wrap(collectionId).as("collectionId");
       });
       cy.visit("/admin/settings/uploads");
+      cy.findByTestId("loading-indicator").should("not.exist");
 
       cy.findByLabelText("Upload Settings Form")
         .findByPlaceholderText("Select a database")
@@ -85,6 +87,7 @@ H.describeWithSnowplow(
       cy.findByRole("link", { name: "Table Metadata" }).click();
 
       H.DataModel.TablePicker.getDatabase("Writable Postgres12").click();
+      cy.wait("@schemaList"); // prevent flakiness
       H.DataModel.TablePicker.getSchema(EMPTY_SCHEMA_NAME).click();
       H.DataModel.TablePicker.getTables().should("have.length", 1);
       H.DataModel.TablePicker.getTable("Dog Breeds").should("be.visible");
