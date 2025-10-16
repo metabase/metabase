@@ -95,6 +95,7 @@ export const datasetApi = Api.injectEndpoints({
 
 export const {
   useGetAdhocQueryQuery,
+  useLazyGetAdhocQueryQuery,
   useGetAdhocPivotQueryQuery,
   useGetAdhocQueryMetadataQuery,
   useLazyGetAdhocQueryMetadataQuery,

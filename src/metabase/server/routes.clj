@@ -2,11 +2,14 @@
   "Main Compojure routes tables. See https://github.com/weavejester/compojure/wiki/Routes-In-Detail for details about
    how these work. `/api/` routes are in [[metabase.api-routes.routes]]."
   (:require
-   [compojure.core :as compojure :refer #_{:clj-kondo/ignore [:discouraged-var]} [context defroutes GET OPTIONS]]
+   [clj-http.client :as http]
+   [compojure.core :as compojure :refer #_{:clj-kondo/ignore [:discouraged-var]} [context defroutes GET OPTIONS ANY]]
    [compojure.route :as route]
+   [environ.core :as env]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
    [metabase.appearance.core :as appearance]
+   [metabase.config.core :as config]
    [metabase.core.initialization-status :as init-status]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.server.auth-wrapper :as auth-wrapper]
@@ -60,10 +63,35 @@
   ([_request respond _raise]
    (respond (health-handler))))
 
+(def ^:private frontend-dev-port
+  (or (env/env :mb-frontend-dev-port) "8080"))
+
+(defn ^:private proxy-dev-server [request]
+  "Proxy the rspack dev server, so all assets are served from the same origin."
+  (let [proxied-url (str "http://localhost:"
+                         frontend-dev-port
+                         (:uri request)
+                         (when-some [qs (:query-string request)]
+                           (str "?" qs)))
+        response (http/request {:method (:request-method request)
+                                :url proxied-url
+                                :headers (dissoc (:headers request) "host")
+                                :body (:body request)
+                                :as :stream
+                                :throw-exceptions false})]
+    {:status (:status response)
+     :headers (:headers response)
+     :body (:body response)}))
+
 #_{:clj-kondo/ignore [:discouraged-var]}
 (defroutes ^:private static-files-handler
   (GET "/embedding-sdk.js" request
     ((mw.embedding-sdk-bundle/serve-bundle-handler) request))
+
+  ;; proxy the rspack dev server
+  (if config/is-dev?
+    (ANY "/dist/*" req (proxy-dev-server req))
+    (route/resources "/dist/" {:root "frontend_client/app/dist"}))
 
   ;; fall back to serving _all_ other files under /app
   (route/resources "/" {:root "frontend_client/app"})
