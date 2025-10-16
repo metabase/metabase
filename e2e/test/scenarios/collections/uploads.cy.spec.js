@@ -34,6 +34,7 @@ H.describeWithSnowplow(
         "CREATE SCHEMA IF NOT EXISTS empty_uploads;",
         "postgres",
       );
+      H.resyncDatabase({ dbId: WRITABLE_DB_ID });
 
       cy.request("POST", "/api/collection", {
         name: "Uploads Collection",
