@@ -60,16 +60,16 @@ export function DependencyLineage({
   }, [nodes, selection]);
 
   useLayoutEffect(() => {
-    if (graph != null && entry != null) {
+    if (entry == null) {
+      setNodes([]);
+      setEdges([]);
+      setSelection(undefined);
+    } else if (graph != null) {
       const { nodes: initialNodes, edges: initialEdges } =
         getInitialGraph(graph);
       setNodes(initialNodes);
       setEdges(initialEdges);
       setSelection(entry);
-    } else {
-      setNodes([]);
-      setEdges([]);
-      setSelection(undefined);
     }
   }, [graph, entry, setNodes, setEdges]);
 
