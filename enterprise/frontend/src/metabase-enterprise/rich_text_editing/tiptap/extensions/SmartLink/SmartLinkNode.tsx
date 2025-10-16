@@ -27,7 +27,6 @@ import {
   useGetDocumentQuery,
   useListMentionsQuery,
 } from "metabase-enterprise/api";
-import type { SuggestionModel } from "metabase-enterprise/documents/components/Editor/types";
 import { updateMentionsCache } from "metabase-enterprise/documents/documents.slice";
 import type {
   Card,
@@ -44,6 +43,7 @@ import {
   entityToUrlableModel,
   isMentionableUser,
 } from "../shared/suggestionUtils";
+import type { SuggestionModel } from "../shared/types";
 
 import styles from "./SmartLinkNode.module.css";
 
@@ -229,7 +229,7 @@ export const SmartLink = Node.create<{
   },
 });
 
-const useEntityData = (
+export const useEntityData = (
   entityId: number | null,
   model: SuggestionModel | null,
 ) => {
@@ -335,17 +335,27 @@ const useEntityData = (
 
 export const SmartLinkComponent = memo(
   ({ node }: NodeViewProps) => {
-    const { entityId, model } = node.attrs;
-    const { entity, isLoading, error } = useEntityData(entityId, model);
+    const { entityId, model, label } = node.attrs;
+
+    const {
+      entity: networkEntity,
+      isLoading,
+      error,
+    } = useEntityData(entityId, model);
+    const cachedEntity = { id: parseInt(entityId, 10), model, name: label };
+    const entity = networkEntity || cachedEntity;
 
     const dispatch = useDispatch();
     useEffect(() => {
-      if (entity?.name) {
-        dispatch(updateMentionsCache({ entityId, model, name: entity.name }));
+      if (entity) {
+        const name =
+          "display_name" in entity ? entity.display_name : entity?.name;
+        dispatch(updateMentionsCache({ entityId, model, name }));
       }
-    }, [dispatch, entity?.name, entityId, model]);
+    }, [dispatch, entity, entityId, model]);
 
-    if (isLoading) {
+    const showLoading = isLoading && !entity;
+    if (showLoading) {
       return (
         <NodeViewWrapper as="span">
           <span className={styles.smartLink}>
@@ -382,7 +392,15 @@ export const SmartLinkComponent = memo(
     const entityUrlableModel = entityToUrlableModel(entity, model);
     const entityUrl = modelToUrl(entityUrlableModel);
 
-    const iconData = getIcon(entityToObjectWithModel(entity, model));
+    const iconData =
+      entity === cachedEntity
+        ? getIcon(cachedEntity)
+        : getIcon(
+            entityToObjectWithModel(
+              entity as NonNullable<typeof networkEntity>,
+              model,
+            ),
+          );
 
     return (
       <NodeViewWrapper as="span">
@@ -428,7 +446,7 @@ function entityToObjectWithModel(
   };
 }
 
-function getName(entity: SmartLinkEntity) {
+function getName(entity: { name?: string; display_name?: string }) {
   if ("display_name" in entity && entity.display_name !== "") {
     return entity.display_name;
   }

@@ -7,22 +7,23 @@ import {
   LoadingSuggestionPaper,
   SuggestionPaper,
 } from "metabase-enterprise/documents/components/Editor/shared/SuggestionPaper";
-import type { SuggestionModel } from "metabase-enterprise/documents/components/Editor/types";
 import { getCurrentDocument } from "metabase-enterprise/documents/selectors";
 import type { SearchResult } from "metabase-types/api";
 
 import { EntitySearchSection } from "../shared/EntitySearchSection";
+import type { SuggestionModel } from "../shared/types";
 import { useEntitySuggestions } from "../shared/useEntitySuggestions";
 
 import type { MentionCommandProps } from "./MentionExtension";
 
-interface MentionSuggestionProps {
+export interface MentionSuggestionProps {
   items: SearchResult[];
   command: (item: MentionCommandProps) => void;
   editor: Editor;
   range: Range;
   query: string;
   searchModels?: SuggestionModel[];
+  canBrowseAll?: boolean;
 }
 
 interface SuggestionRef {
@@ -33,7 +34,15 @@ const MentionSuggestionComponent = forwardRef<
   SuggestionRef,
   MentionSuggestionProps
 >(function MentionSuggestionComponent(
-  { items: _items, command, editor, range: _range, query, searchModels },
+  {
+    items: _items,
+    command,
+    editor,
+    range,
+    query,
+    searchModels,
+    canBrowseAll = true,
+  },
   ref,
 ) {
   const document = useSelector(getCurrentDocument);
@@ -49,7 +58,7 @@ const MentionSuggestionComponent = forwardRef<
         model: item.model,
         label: item.label,
         href: item.href,
-        document,
+        document, // currently only used for analytics tracking purposes
       });
     },
     [command, document],
@@ -61,12 +70,15 @@ const MentionSuggestionComponent = forwardRef<
     searchResults,
     selectedIndex,
     modal,
+    selectedSearchModelName,
     handlers,
   } = useEntitySuggestions({
     query,
     editor,
+    range,
     searchModels,
     onSelectEntity,
+    canBrowseAll,
   });
 
   useImperativeHandle(ref, () => ({
@@ -78,7 +90,10 @@ const MentionSuggestionComponent = forwardRef<
   }
 
   return (
-    <SuggestionPaper aria-label={t`Mention Dialog`}>
+    <SuggestionPaper
+      aria-label={t`Mention Dialog`}
+      key={selectedSearchModelName}
+    >
       <EntitySearchSection
         menuItems={menuItems}
         selectedIndex={selectedIndex}
@@ -90,6 +105,8 @@ const MentionSuggestionComponent = forwardRef<
         onModalSelect={handlers.handleModalSelect}
         onModalClose={handlers.handleModalClose}
         onItemHover={handlers.hoverHandler}
+        selectedSearchModelName={selectedSearchModelName}
+        canBrowseAll={canBrowseAll}
       />
     </SuggestionPaper>
   );
@@ -99,15 +116,22 @@ export const MentionSuggestion = MentionSuggestionComponent;
 
 export const createMentionSuggestion = ({
   searchModels,
+  canBrowseAll,
 }: {
   searchModels: SuggestionModel[];
+  canBrowseAll?: boolean;
 }) => {
   return forwardRef<
     SuggestionRef,
     Omit<MentionSuggestionProps, "searchModels">
   >(function MentionSuggestionWrapper(props, ref) {
     return (
-      <MentionSuggestion {...props} ref={ref} searchModels={searchModels} />
+      <MentionSuggestion
+        {...props}
+        ref={ref}
+        searchModels={searchModels}
+        canBrowseAll={canBrowseAll}
+      />
     );
   });
 };
