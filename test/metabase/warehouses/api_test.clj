@@ -36,6 +36,7 @@
    [metabase.util.cron :as u.cron]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.quick-task :as quick-task]
    [metabase.util.random :as u.random]
    [metabase.warehouse-schema.table :as schema.table]
    [metabase.warehouses.api :as api.database]
@@ -1430,7 +1431,8 @@
       (mt/with-premium-features #{:audit-app}
         (mt/with-temp [:model/Database {db-id :id} {:engine "h2", :details (:details (mt/db))}]
           (binding [api.database/*debug-quick-task-call* db-ids-synced]
-            (with-redefs [sync-metadata/sync-db-metadata! (deliver-when-db sync-called? db-id)
+            (with-redefs [quick-task/submit-task!         future-call
+                          sync-metadata/sync-db-metadata! (deliver-when-db sync-called? db-id)
                           analyze/analyze-db!             (deliver-when-db analyze-called? db-id)]
               (snowplow-test/with-fake-snowplow-collector
                 (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" db-id))
