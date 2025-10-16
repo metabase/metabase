@@ -6,9 +6,11 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { Box, Card } from "metabase/ui";
 import { useListNodeDependentsQuery } from "metabase-enterprise/api";
-import type { DependencyEntry } from "metabase-types/api";
-
-import type { GraphSelection } from "../types";
+import type {
+  DependencyEntry,
+  DependencyGroupType,
+  DependencyNode,
+} from "metabase-types/api";
 
 import S from "./GraphDependencyPanel.module.css";
 import { ListBody } from "./ListBody";
@@ -23,26 +25,28 @@ import {
 } from "./utils";
 
 type GraphDependencyPanelProps = {
-  selection: GraphSelection;
+  node: DependencyNode;
+  groupType: DependencyGroupType;
   onEntryChange: (entry: DependencyEntry) => void;
-  onSelectionChange: (selection?: GraphSelection) => void;
+  onClose: () => void;
 };
 
 export function GraphDependencyPanel({
-  selection,
+  node,
+  groupType,
   onEntryChange,
-  onSelectionChange,
+  onClose,
 }: GraphDependencyPanelProps) {
   const {
     data: nodes = [],
     isFetching,
     error,
-  } = useListNodeDependentsQuery(getListRequest(selection));
+  } = useListNodeDependentsQuery(getListRequest(node, groupType));
   const [searchText, setSearchText] = useState("");
   const [searchQuery] = useDebouncedValue(searchText, SEARCH_DEBOUNCE_DURATION);
   const [filterOptions, setFilterOptions] = useState<FilterOption[]>([]);
   const [sortOptions, setSortOptions] = useState(() =>
-    getDefaultSortOptions(selection.groupType),
+    getDefaultSortOptions(groupType),
   );
   const visibleNodes = useMemo(
     () => getVisibleNodes(nodes, { searchQuery, filterOptions, sortOptions }),
@@ -50,8 +54,6 @@ export function GraphDependencyPanel({
   );
 
   useLayoutEffect(() => {
-    const groupType = selection.groupType;
-
     if (filterOptions.some((option) => !canFilterByOption(groupType, option))) {
       setFilterOptions([]);
     }
@@ -59,19 +61,20 @@ export function GraphDependencyPanel({
     if (!canSortByColumn(groupType, sortOptions.column)) {
       setSortOptions(getDefaultSortOptions(groupType));
     }
-  }, [selection.groupType, filterOptions, sortOptions]);
+  }, [groupType, filterOptions, sortOptions]);
 
   return (
     <Card className={S.root} shadow="none" withBorder>
       <ListHeader
-        selection={selection}
+        node={node}
+        groupType={groupType}
         searchText={searchText}
         filterOptions={filterOptions}
         sortOptions={sortOptions}
-        onSelectionChange={onSelectionChange}
         onSearchTextChange={setSearchText}
         onFilterOptionsChange={setFilterOptions}
         onSortOptionsChange={setSortOptions}
+        onClose={onClose}
       />
       {isFetching || error != null ? (
         <LoadingAndErrorWrapper loading={isFetching} error={error} />

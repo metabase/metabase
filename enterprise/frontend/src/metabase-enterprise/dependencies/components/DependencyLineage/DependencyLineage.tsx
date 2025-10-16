@@ -9,14 +9,13 @@ import {
   useNodesState,
   useReactFlow,
 } from "@xyflow/react";
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useLayoutEffect, useMemo, useState } from "react";
 
 import { skipToken } from "metabase/api";
-import { Group } from "metabase/ui";
+import { Flex, Group } from "metabase/ui";
 import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
 import type { DependencyEntry } from "metabase-types/api";
 
-import S from "./DependencyLineage.module.css";
 import { GraphContext } from "./GraphContext";
 import { GraphDependencyPanel } from "./GraphDependencyPanel";
 import { GraphEntryInput } from "./GraphEntryInput";
@@ -24,7 +23,7 @@ import { GraphNode } from "./GraphNode";
 import { GraphSelectInput } from "./GraphSelectionInput";
 import { MAX_ZOOM, MIN_ZOOM } from "./constants";
 import type { GraphSelection, NodeType } from "./types";
-import { getInitialGraph, getNodesWithPositions } from "./utils";
+import { getInitialGraph, getNodesWithPositions, isSameNode } from "./utils";
 
 const NODE_TYPES = {
   node: GraphNode,
@@ -32,7 +31,7 @@ const NODE_TYPES = {
 
 type DependencyLineageProps = {
   entry: DependencyEntry | undefined;
-  onEntryChange: (entry: DependencyEntry) => void;
+  onEntryChange: (entry: DependencyEntry | undefined) => void;
 };
 
 export function DependencyLineage({
@@ -46,15 +45,27 @@ export function DependencyLineage({
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [selection, setSelection] = useState<GraphSelection>();
 
-  useEffect(() => {
+  const entryNode = useMemo(() => {
+    return entry != null
+      ? nodes.find((node) => isSameNode(node.data, entry.id, entry.type))
+      : undefined;
+  }, [nodes, entry]);
+
+  const selectedNode = useMemo(() => {
+    return selection != null
+      ? nodes.find((node) =>
+          isSameNode(node.data, selection.id, selection.type),
+        )
+      : undefined;
+  }, [nodes, selection]);
+
+  useLayoutEffect(() => {
     if (graph != null && entry != null) {
-      const { nodes: initialNodes, edges: initialEdges } = getInitialGraph(
-        graph,
-        entry,
-      );
+      const { nodes: initialNodes, edges: initialEdges } =
+        getInitialGraph(graph);
       setNodes(initialNodes);
       setEdges(initialEdges);
-      setSelection(undefined);
+      setSelection({ id: entry.id, type: entry.type });
     }
   }, [graph, entry, setNodes, setEdges]);
 
@@ -76,22 +87,27 @@ export function DependencyLineage({
         <Panel position="top-left">
           <Group>
             <GraphEntryInput
-              graph={graph}
-              entry={entry}
+              node={entryNode?.data}
               isFetching={isFetching}
               onEntryChange={onEntryChange}
             />
-            <GraphSelectInput />
+            <GraphSelectInput nodes={nodes} onSelectionChange={setSelection} />
           </Group>
         </Panel>
-        {selection && (
-          <Panel className={S.dependencyPanel} position="top-right">
+        {selectedNode != null && selection?.groupType != null && (
+          <Flex
+            component={Panel}
+            position="top-right"
+            direction="column"
+            bottom={0}
+          >
             <GraphDependencyPanel
-              selection={selection}
+              node={selectedNode.data}
+              groupType={selection.groupType}
               onEntryChange={onEntryChange}
-              onSelectionChange={setSelection}
+              onClose={() => setSelection(undefined)}
             />
-          </Panel>
+          </Flex>
         )}
       </ReactFlow>
     </GraphContext.Provider>

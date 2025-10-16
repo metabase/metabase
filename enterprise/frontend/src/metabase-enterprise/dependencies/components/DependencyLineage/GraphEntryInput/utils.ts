@@ -3,16 +3,9 @@ import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/
 import type {
   CardType,
   DependencyEntry,
-  DependencyGraph,
   DependencyNode,
   TableId,
 } from "metabase-types/api";
-
-export function findNode(graph: DependencyGraph, entry: DependencyEntry) {
-  return graph.nodes.find(
-    (node) => node.id === entry.id && node.type === entry.type,
-  );
-}
 
 function getDataPickerModel(type: CardType) {
   switch (type) {

@@ -8,13 +8,13 @@ import {
 import { Button, FixedSizeIcon } from "metabase/ui";
 import type {
   DependencyEntry,
-  DependencyGraph,
+  DependencyNode,
   TableId,
 } from "metabase-types/api";
 
 import { getNodeIcon, getNodeLabel } from "../utils";
 
-import { findNode, getDataPickerValue, getDependencyEntry } from "./utils";
+import { getDataPickerValue, getDependencyEntry } from "./utils";
 
 const PICKER_MODELS: DataPickerValue["model"][] = [
   "table",
@@ -24,20 +24,16 @@ const PICKER_MODELS: DataPickerValue["model"][] = [
 ];
 
 type GraphEntryInputProps = {
-  graph: DependencyGraph | undefined;
-  entry: DependencyEntry | undefined;
+  node: DependencyNode | undefined;
   isFetching: boolean;
   onEntryChange: (entry: DependencyEntry) => void;
 };
 
 export function GraphEntryInput({
-  graph,
-  entry,
+  node,
   isFetching,
   onEntryChange,
 }: GraphEntryInputProps) {
-  const node =
-    graph != null && entry != null ? findNode(graph, entry) : undefined;
   const [isOpened, { open, close }] = useDisclosure();
 
   const handleChange = (tableId: TableId) => {

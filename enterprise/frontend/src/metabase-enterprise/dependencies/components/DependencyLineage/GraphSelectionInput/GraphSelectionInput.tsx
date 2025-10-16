@@ -1,27 +1,33 @@
-import { useNodes, useReactFlow } from "@xyflow/react";
+import { useReactFlow } from "@xyflow/react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
 import { Icon, Select } from "metabase/ui";
 
-import type { NodeType } from "../types";
+import type { GraphSelection, NodeType } from "../types";
 import { getNodeIcon, getNodeLabel } from "../utils";
 
-export function GraphSelectInput() {
-  const nodes = useNodes<NodeType>();
-  const { setNodes, fitView } = useReactFlow();
+type GraphSelectInputProps = {
+  nodes: NodeType[];
+  onSelectionChange: (selection: GraphSelection | undefined) => void;
+};
+
+export function GraphSelectInput({
+  nodes,
+  onSelectionChange,
+}: GraphSelectInputProps) {
+  const { fitView } = useReactFlow();
   const data = useMemo(() => getSelectItems(nodes), [nodes]);
 
   const handleChange = (value: string | null) => {
     const selectedNode = nodes.find((node) => node.id === value);
-    if (selectedNode == null) {
-      return;
+    if (selectedNode != null) {
+      fitView({ nodes: [selectedNode] });
+      onSelectionChange({
+        id: selectedNode.data.id,
+        type: selectedNode.data.type,
+      });
     }
-
-    setNodes((nodes) =>
-      nodes.map((node) => ({ ...node, selected: node.id === selectedNode.id })),
-    );
-    fitView({ nodes: [selectedNode] });
   };
 
   return (

@@ -8,7 +8,6 @@ import visualizations from "metabase/visualizations";
 import type {
   CardType,
   DependencyEdge,
-  DependencyEntry,
   DependencyGraph,
   DependencyGroupType,
   DependencyId,
@@ -16,7 +15,6 @@ import type {
   DependencyType,
 } from "metabase-types/api";
 
-import S from "./DependencyLineage.module.css";
 import type { EdgeId, GraphData, NodeId, NodeType } from "./types";
 
 export function getNodeId(id: DependencyId, type: DependencyType): NodeId {
@@ -27,17 +25,15 @@ export function getEdgeId(sourceId: NodeId, targetId: NodeId): EdgeId {
   return `${sourceId}-${targetId}`;
 }
 
-function getNodes(nodes: DependencyNode[], entry: DependencyEntry): NodeType[] {
+function getNodes(nodes: DependencyNode[]): NodeType[] {
   return nodes.map((node) => {
     const nodeId = getNodeId(node.id, node.type);
 
     return {
       id: nodeId,
-      className: S.node,
       type: "node",
       data: node,
       position: { x: 0, y: 0 },
-      selected: node.id === entry.id && node.type === entry.type,
       draggable: false,
       deletable: false,
     };
@@ -60,12 +56,9 @@ function getEdges(edges: DependencyEdge[]): Edge[] {
   });
 }
 
-export function getInitialGraph(
-  { nodes, edges }: DependencyGraph,
-  entry: DependencyEntry,
-): GraphData {
+export function getInitialGraph({ nodes, edges }: DependencyGraph): GraphData {
   return {
-    nodes: getNodes(nodes, entry),
+    nodes: getNodes(nodes),
     edges: getEdges(edges),
   };
 }
@@ -101,6 +94,14 @@ export function getNodesWithPositions(
       },
     };
   });
+}
+
+export function isSameNode(
+  node: DependencyNode,
+  id: DependencyId,
+  type: DependencyType,
+) {
+  return node.id === id && node.type === type;
 }
 
 export function getNodeLabel(node: DependencyNode) {
@@ -150,12 +151,15 @@ export function getNodeLocationLabel(node: DependencyNode): string | undefined {
       return node.data.collection.name;
     }
   }
+
+  return undefined;
 }
 
 export function getNodeViewCount(node: DependencyNode): number | undefined {
   if (node.type === "card") {
     return node.data.view_count;
   }
+  return undefined;
 }
 
 export function getCardType(

@@ -6,7 +6,6 @@ import type {
   ListNodeDependentsRequest,
 } from "metabase-types/api";
 
-import type { GraphSelection } from "../types";
 import {
   getCardType,
   getDependencyType,
@@ -27,13 +26,14 @@ import type {
 } from "./types";
 
 export function getListRequest(
-  selection: GraphSelection,
+  node: DependencyNode,
+  groupType: DependencyGroupType,
 ): ListNodeDependentsRequest {
   return {
-    id: selection.node.id,
-    type: selection.node.type,
-    dependent_type: getDependencyType(selection.groupType),
-    dependent_card_type: getCardType(selection.groupType),
+    id: node.id,
+    type: node.type,
+    dependent_type: getDependencyType(groupType),
+    dependent_card_type: getCardType(groupType) ?? undefined,
   };
 }
 

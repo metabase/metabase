@@ -1,13 +1,17 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import type { GraphSelection } from "../../types";
+import type { DependencyGroupType, DependencyNode } from "metabase-types/api";
+
 import { getNodeLabel } from "../../utils";
 
-export function getHeaderLabel(selection: GraphSelection) {
-  const nodeLabel = getNodeLabel(selection.node);
+export function getHeaderLabel(
+  node: DependencyNode,
+  groupType: DependencyGroupType,
+) {
+  const nodeLabel = getNodeLabel(node);
 
-  return match(selection.groupType)
+  return match(groupType)
     .with("question", () => t`Questions that use ${nodeLabel}`)
     .with("model", () => t`Models that use ${nodeLabel}`)
     .with("metric", () => t`Metrics that use ${nodeLabel}`)
