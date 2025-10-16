@@ -18,13 +18,19 @@ export function GlossaryContainer() {
   const [deleteGlossary] = useDeleteGlossaryMutation();
 
   return (
-    <Stack w="100%" h="100%" align="center" py="xl" px="lg" maw="60rem" mx="auto">
-      <Text fw="bold" fz="1.5rem" mb="lg" component="div" w="100%">{t`Glossary`}</Text>
-      <Stack
-        w="100%"
-        gap={0}
-        m={0}
-      >
+    <Stack
+      w="100%"
+      h="100%"
+      align="center"
+      py="xl"
+      px="lg"
+      maw="60rem"
+      mx="auto"
+    >
+      <Text fw="bold" fz="1.5rem" mb="lg" component="div" w="100%">
+        {t`Glossary`}
+      </Text>
+      <Stack w="100%" gap={0} m={0}>
         <Card pb="sm" withBorder shadow="none">
           <GlossaryTable
             className={S.table}
