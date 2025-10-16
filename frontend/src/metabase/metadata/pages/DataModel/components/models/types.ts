@@ -1,4 +1,4 @@
-import type { CardId, Field, type SearchResult } from "metabase-types/api";
+import type { CardId, Field, SearchResult } from "metabase-types/api";
 
 export type ModelColumnUpdate = {
   name: string;
