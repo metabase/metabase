@@ -1,4 +1,5 @@
 .card {
+  min-width: 10rem;
   border: 1px solid var(--mb-color-border);
   border-radius: var(--mantine-radius-md);
   background-color: var(--mb-color-bg-white);
