@@ -25,7 +25,7 @@
     (let [unique-id (rand)]
       (is (= 1 (with-returning-cache-miss-count
                  (mr/validate [:and {:id unique-id} :string [:re #"\d{4}"]] "1234"))))
-      (let [validator-key-set (set (keys (:validator @@#'mr/cache)))]
+      (let [validator-key-set (set (keep (fn [[[k s] _]] (when (= k :validator) s)) @@#'mr/cache))]
         (is (contains? validator-key-set
                        (#'mr/schema-cache-key [:and {:id unique-id} :string [:re #"\d{4}"]])))
         (is (not (contains? validator-key-set
