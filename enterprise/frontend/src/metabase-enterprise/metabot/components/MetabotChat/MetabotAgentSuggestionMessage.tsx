@@ -29,6 +29,8 @@ import {
   activateSuggestedTransform,
   getIsSuggestedTransformActive,
 } from "metabase-enterprise/metabot/state";
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
 import type {
   MetabotTransformInfo,
   SuggestedTransform,
@@ -227,10 +229,16 @@ function getSourceCode(
   transform: Pick<MetabotTransformInfo, "source">,
 ): string {
   return match(transform)
-    .with(
-      { source: { type: "query", query: { type: "native" } } },
-      (t) => t.source.query.native.query,
-    )
+    .with({ source: { type: "query" } }, (t) => {
+      // Is there a better way to convert a DatsetQuery to an opaque Lib query?
+      const question = Question.create({ dataset_query: t.source.query });
+      const query = question.query();
+      if (Lib.queryDisplayInfo(query).isNative) {
+        return Lib.rawNativeQuery(query);
+      } else {
+        return "";
+      }
+    })
     .with({ source: { type: "python" } }, (t) => t.source.body)
     .otherwise(() => "");
 }
