@@ -258,6 +258,7 @@
     "crypto-browserify": "^3.12.0",
     "css-loader": "^6.10.0",
     "cypress": "^14.5.3",
+    "cypress-iframe": "^1.0.1",
     "cypress-multi-reporters": "^1.6.4",
     "cypress-on-fix": "^1.1.0",
     "cypress-real-events": "^1.14.0",
