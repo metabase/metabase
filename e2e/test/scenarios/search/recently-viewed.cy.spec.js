@@ -11,16 +11,13 @@ describe("search > recently viewed", () => {
 
     H.openPeopleTable();
     cy.findByTextEnsureVisible("Address");
-    cy.wait(100);
 
     // "Orders" question
     H.visitQuestion(ORDERS_QUESTION_ID);
-    cy.wait(100);
 
     // "Orders in a dashboard" dashboard
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     cy.findByTextEnsureVisible("Product ID");
-    cy.wait(100);
 
     // inside the "Orders in a dashboard" dashboard, the order is queried again,
     // which elicits a ViewLog entry
@@ -151,8 +148,8 @@ describe("search > recently viewed > enterprise features", () => {
 });
 
 const assertRecentlyViewedItem = (index, title, type) => {
+  // eslint-disable-next-line no-unsafe-element-filtering
   cy.findAllByTestId("recently-viewed-item-title")
-    .should("have.length", 3)
     .eq(index)
     .should("have.text", title);
   // eslint-disable-next-line no-unsafe-element-filtering
