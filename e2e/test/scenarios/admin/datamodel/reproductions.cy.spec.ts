@@ -446,6 +446,7 @@ describe("issue 55619", () => {
       cy.findByText("Orders").click();
     });
     H.runButtonOverlay().click();
+    H.tableInteractive().should("contain", "37.65");
     cy.findByTestId("editor-tabs-columns-name").click();
     H.openColumnOptions("Discount");
     cy.findByTestId("sidebar-content")
