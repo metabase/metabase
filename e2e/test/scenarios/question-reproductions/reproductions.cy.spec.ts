@@ -119,11 +119,9 @@ describe("issue 39487", () => {
     },
   );
 
-  // broken after migration away from filter modal
-  // see https://github.com/metabase/metabase/issues/55688
   it(
-    "calendar has constant size when using date range picker filter (metabase#39487)",
-    { viewportHeight: 1000, tags: "@skip" },
+    "calendar has constant size when using date range picker filter, and text inputs are in sync with the calendar inputs (metabase#39487, metabase#64602)",
+    { viewportHeight: 1000 },
     () => {
       createTimeSeriesQuestionWithFilter([
         "between",
@@ -141,11 +139,35 @@ describe("issue 39487", () => {
       cy.findByTestId("filter-pill").click();
       checkDateRangeFilter();
 
-      cy.log("filter modal");
+      cy.log("filter dropdown");
       cy.button(/Filter/).click();
-      H.modal().findByText("May 1 – Jun 1, 2024").click();
+      H.popover().findByText("Created At").click();
+      H.popover().findByText("Fixed date range…").click();
+      H.popover().within(() => {
+        cy.log(
+          "changing text input values should navigate the calendars (metabase#64602)",
+        );
+        cy.findAllByRole("textbox").first().clear().type("2024/05/01");
+        cy.findByText("May 2024").should("be.visible");
+        cy.findByLabelText("1 May 2024").should(
+          "have.attr",
+          "data-first-in-range",
+          "true",
+        );
+
+        cy.findAllByRole("textbox")
+          .should("have.length", 2)
+          .last()
+          .clear()
+          .type("2024/06/01");
+        cy.findAllByLabelText("1 June 2024")
+          .filter(":visible")
+          .should("have.length", 1)
+          .and("have.attr", "data-last-in-range", "true");
+      });
+      previousButton().click();
       checkDateRangeFilter();
-      H.modal().button("Close").click();
+      cy.realPress("Escape");
 
       cy.log("filter drill");
       cy.findByLabelText("Switch to data").click();
@@ -153,8 +175,12 @@ describe("issue 39487", () => {
       H.popover().findByText("Filter by this column").click();
       H.popover().findByText("Fixed date range…").click();
       H.popover().findAllByRole("textbox").first().clear().type("2024/05/01");
-      // eslint-disable-next-line no-unsafe-element-filtering
-      H.popover().findAllByRole("textbox").last().clear().type("2024/06/01");
+      H.popover()
+        .findAllByRole("textbox")
+        .should("have.length", 2)
+        .last()
+        .clear()
+        .type("2024/06/01");
       previousButton().click();
       checkDateRangeFilter();
 

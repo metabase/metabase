@@ -921,7 +921,6 @@ export type CheckDependenciesModalProps = {
 
 export type UseCheckDependenciesProps<TChange> = {
   onSave: (change: TChange) => Promise<void>;
-  onError: (error: unknown) => void;
 };
 
 export type UseCheckDependenciesResult<TChange> = {
