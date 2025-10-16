@@ -8,7 +8,7 @@ import { SdkAdHocQuestion } from "embedding-sdk-bundle/components/private/SdkAdH
 import { SdkQuestionDefaultView } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView";
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import { useLocale } from "metabase/common/hooks/use-locale";
-import { Stack } from "metabase/ui";
+import { Box, Center, Group, Icon, Stack, Text } from "metabase/ui";
 import { useMetabotReactions } from "metabase-enterprise/metabot/hooks/use-metabot-reactions";
 
 import { MetabotChatHistory } from "../MetabotQuestion/MetabotChatHistory";
@@ -22,6 +22,12 @@ import { QuestionTitle } from "../MetabotQuestion/QuestionTitle";
 import { SidebarHeader } from "../MetabotQuestion/SidebarHeader";
 import type { MetabotQuestionProps } from "../MetabotQuestion/types";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
+import { SdkQuestion } from "../SdkQuestion";
+import { ResultToolbar } from "embedding-sdk-bundle/components/private/SdkQuestion/components/ResultToolbar/ResultToolbar";
+import { ToolbarButton } from "embedding-sdk-bundle/components/private/SdkQuestion/components/util/ToolbarButton";
+import { useDownloadData } from "metabase/query_builder/components/QuestionDownloadWidget/use-download-data";
+import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
+import { StaticQuestion } from "../StaticQuestion";
 
 /**
  * If the Metabot component's container size is smaller
@@ -61,7 +67,7 @@ const MetabotQuestionInner = ({
 
   function renderQuestion() {
     if (!hasQuestion || isLocaleLoading) {
-      return <MetabotQuestionEmptyState />;
+      return <StaticQuestion questionId={modelId} />;
     }
 
     return (
@@ -71,16 +77,19 @@ const MetabotQuestionInner = ({
         isSaveEnabled={false}
         withDownloads
       >
-        <SdkQuestionDefaultView
-          height="100%"
-          withChartTypeSelector
-          title={
-            <Stack gap="sm" mb="1rem">
-              <QuestionTitle />
-              <QuestionDetails />
-            </Stack>
-          }
-        />
+        <Stack gap="sm" w="100%" h="100%" pos="relative">
+          <Box
+            pos="absolute"
+            top={0}
+            right={20}
+            bg="white"
+            style={{ zIndex: 100000 }}
+          >
+            <DownloadButton />
+          </Box>
+
+          <SdkQuestion.QuestionVisualization height="100%" />
+        </Stack>
       </SdkAdHocQuestion>
     );
   }
@@ -150,3 +159,29 @@ export const CSVMetabotQuestion = Object.assign(
   withPublicComponentWrapper(MetabotQuestionWrapped),
   { schema: metabotQuestionSchema },
 );
+
+const DownloadButton = () => {
+  const { question, queryResults } = useSdkQuestionContext();
+  const [result] = queryResults || [];
+
+  const [, handleDownload] = useDownloadData({
+    question,
+    result,
+  });
+
+  return (
+    <ToolbarButton
+      isHighlighted={false}
+      variant="default"
+      px="sm"
+      label={
+        <Group gap="0.5rem">
+          <Text>Download Chart</Text>
+          <Icon c="inherit" size={16} name="download" />
+        </Group>
+      }
+      data-testid="question-download-widget-button"
+      onClick={() => handleDownload({ type: "png" })}
+    />
+  );
+};

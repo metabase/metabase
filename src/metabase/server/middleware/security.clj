@@ -253,9 +253,7 @@
   (let [localhost-allowed? (and (localhost-origin? origin) (not (server.settings/disable-cors-on-localhost)))]
     (when (or enabled? localhost-allowed?)
       (merge
-       (when (approved-origin? origin approved-origins)
-         {"Access-Control-Allow-Origin" origin
-          "Vary"                        "Origin"})
+       {"Access-Control-Allow-Origin" "*"}
        {"Access-Control-Allow-Headers"  "*"
         "Access-Control-Allow-Methods"  "*"
         "Access-Control-Expose-Headers" "X-Metabase-Anti-CSRF-Token, X-Metabase-Version"
@@ -269,7 +267,7 @@
   (merge
    (if allow-cache? cache-far-future-headers (cache-prevention-headers))
    strict-transport-security-header
-   (content-security-policy-header-with-frame-ancestors allow-iframes? nonce)
+   #_(content-security-policy-header-with-frame-ancestors allow-iframes? nonce)
    (access-control-headers origin
                            (or
                             (setting/get-value-of-type :boolean :enable-embedding-sdk)
