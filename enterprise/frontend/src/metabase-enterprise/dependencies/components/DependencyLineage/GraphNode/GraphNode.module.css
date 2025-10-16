@@ -4,6 +4,7 @@
   border-radius: var(--mantine-radius-md);
   background-color: var(--mb-color-bg-white);
 
+  &:hover,
   &.selected {
     border-color: var(--mb-color-brand);
   }
