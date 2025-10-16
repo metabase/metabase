@@ -116,6 +116,7 @@ export type SdkQuestionComponents = {
 export const _SdkQuestion = ({
   questionId,
   token,
+  originalCardId,
   options,
   deserializedCard,
   plugins,
@@ -147,6 +148,7 @@ export const _SdkQuestion = ({
   <SdkQuestionProvider
     questionId={questionId}
     token={token}
+    originalCardId={originalCardId}
     options={options}
     deserializedCard={deserializedCard}
     componentPlugins={plugins}

@@ -254,3 +254,7 @@ export type GetRemappedParameterValueRequest = {
   field_ids: FieldId[];
   value: ParameterValueOrArray;
 };
+
+export type GetAdhocQueryMetadataRequest = DatasetQuery & {
+  original_card_id?: number;
+};

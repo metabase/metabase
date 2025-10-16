@@ -13,7 +13,9 @@ interface SdkAdHocQuestionProps {
 }
 
 export const SdkAdHocQuestion = ({
+  token,
   questionPath,
+  originalCardId,
   withResetButton = true,
   title,
   plugins,
@@ -35,6 +37,8 @@ export const SdkAdHocQuestion = ({
 }: SdkAdHocQuestionProps &
   Pick<
     SdkQuestionProps,
+    | "token"
+    | "originalCardId"
     | "withResetButton"
     | "title"
     | "plugins"
@@ -70,7 +74,9 @@ export const SdkAdHocQuestion = ({
 
   return (
     <SdkQuestion
+      token={token}
       questionId={questionId}
+      originalCardId={originalCardId}
       options={options}
       deserializedCard={deserializedCard}
       plugins={plugins}

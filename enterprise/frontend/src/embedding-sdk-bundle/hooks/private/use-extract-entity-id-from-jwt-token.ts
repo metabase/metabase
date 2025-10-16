@@ -6,10 +6,12 @@ import { extractEntityIdFromJwtToken, isJWT } from "metabase/lib/utils";
 
 export const useExtractEntityIdFromJwtToken = <TEntityId>({
   isStaticEmbedding,
+  entityType,
   entityId,
   token,
 }: {
   isStaticEmbedding: boolean;
+  entityType: "question" | "dashboard";
   entityId: TEntityId | undefined;
   token: SdkEntityToken | undefined;
 }): {
@@ -46,7 +48,14 @@ export const useExtractEntityIdFromJwtToken = <TEntityId>({
         };
       }
 
-      return { entityId: extractEntityIdFromJwtToken(token), token };
+      const { entityType: extractedEntityType, entityId: extractedEntityId } =
+        extractEntityIdFromJwtToken(token);
+      const isValidEntityType = extractedEntityType === entityType;
+
+      return {
+        entityId: isValidEntityType ? (extractedEntityId as TEntityId) : null,
+        token,
+      };
     }
 
     if (entityId) {
@@ -60,5 +69,5 @@ export const useExtractEntityIdFromJwtToken = <TEntityId>({
       entityId: null,
       token: null,
     };
-  }, [entityId, isStaticEmbedding, token]);
+  }, [entityId, entityType, isStaticEmbedding, token]);
 };

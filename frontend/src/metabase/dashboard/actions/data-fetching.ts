@@ -695,7 +695,6 @@ export const fetchDashboard = createAsyncThunk(
         result = response;
         result = {
           ...result,
-          id: dashId,
           dashcards: result.dashcards.map((dc: DashboardCard) => ({
             ...dc,
             dashboard_id: dashId,

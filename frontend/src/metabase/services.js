@@ -4,7 +4,6 @@ import { Api } from "metabase/api";
 import {
   provideAdhocQueryMetadataTags,
   provideCardQueryMetadataTags,
-  provideCardTags,
   provideCollectionTags,
   provideDashboardQueryMetadataTags,
 } from "metabase/api/tags";
@@ -13,7 +12,7 @@ import api, { DELETE, GET, POST, PUT } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { updateMetadata } from "metabase/lib/redux/metadata";
 import { PLUGIN_API, PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
-import { QueryMetadataSchema, QuestionSchema } from "metabase/schema";
+import { QueryMetadataSchema } from "metabase/schema";
 import Question from "metabase-lib/v1/Question";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { isNative } from "metabase-lib/v1/queries/utils/card";
@@ -103,6 +102,7 @@ export async function runQuestionQuery(
     isDirty = false,
     ignoreCache = false,
     collectionPreview = false,
+    originalCardId,
     // Ability to override or add extra query params to the request, used by Embedding SDK
     queryParamsOverride = {},
   } = {},
@@ -138,13 +138,17 @@ export async function runQuestionQuery(
   }
 
   const getDatasetQueryResult = (datasetQuery) => {
-    const datasetQueryWithParameters = { ...datasetQuery, parameters };
+    const extendedDatasetQuery = {
+      ...datasetQuery,
+      parameters,
+      original_card_id: question.card().original_card_id ?? originalCardId,
+    };
     return maybeUsePivotEndpoint(
       MetabaseApi.dataset,
       card,
       question.metadata(),
     )(
-      datasetQueryWithParameters,
+      extendedDatasetQuery,
       cancelDeferred
         ? {
             cancelled: cancelDeferred.promise,
@@ -353,6 +357,9 @@ export function setPublicDashboardEndpoints(uuid) {
 }
 
 export function setEmbedCommonEndpoints({ base, encodedToken }) {
+  MetabaseApi.dataset = POST(`${base}/dataset/${encodedToken}`);
+  MetabaseApi.dataset_pivot = POST(`${base}/dataset/pivot/${encodedToken}`);
+
   Api.injectEndpoints({
     endpoints: (builder) => ({
       getAdhocQuery: builder.query({

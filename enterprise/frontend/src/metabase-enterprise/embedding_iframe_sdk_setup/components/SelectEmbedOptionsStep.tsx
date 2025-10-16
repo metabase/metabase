@@ -75,7 +75,7 @@ const AuthenticationSection = () => {
   const isSsoEnabledAndConfigured =
     (isJwtEnabled && isJwtConfigured) || (isSamlEnabled && isSamlConfigured);
 
-  const authType = settings.isStatic
+  const authType = isStaticEmbedding
     ? "no-user"
     : settings.useExistingUserSession
       ? "user-session"
@@ -212,13 +212,15 @@ const BehaviorSection = () => {
               }
             />
 
-            <Checkbox
-              label={t`Allow people to save new questions`}
-              checked={settings.isSaveEnabled}
-              onChange={(e) =>
-                updateSettings({ isSaveEnabled: e.target.checked })
-              }
-            />
+            {!settings.isStatic && (
+              <Checkbox
+                label={t`Allow people to save new questions`}
+                checked={settings.isSaveEnabled}
+                onChange={(e) =>
+                  updateSettings({ isSaveEnabled: e.target.checked })
+                }
+              />
+            )}
           </Stack>
         ),
       )

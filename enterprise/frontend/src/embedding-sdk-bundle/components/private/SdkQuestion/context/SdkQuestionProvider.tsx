@@ -42,6 +42,7 @@ const DEFAULT_OPTIONS = {};
 export const SdkQuestionProvider = ({
   questionId: rawQuestionId,
   token: rawToken,
+  originalCardId,
   options = DEFAULT_OPTIONS,
   deserializedCard,
   componentPlugins,
@@ -70,6 +71,7 @@ export const SdkQuestionProvider = ({
     tokenError,
   } = useExtractEntityIdFromJwtToken({
     isStaticEmbedding,
+    entityType: "question",
     entityId: rawQuestionId,
     token: rawToken ?? undefined,
   });
@@ -121,7 +123,6 @@ export const SdkQuestionProvider = ({
     question,
     originalQuestion,
     parameterValues,
-    token,
 
     queryResults,
 
@@ -137,6 +138,7 @@ export const SdkQuestionProvider = ({
   } = useLoadQuestion({
     questionId,
     token,
+    originalCardId,
     options,
     deserializedCard,
     initialSqlParameters,

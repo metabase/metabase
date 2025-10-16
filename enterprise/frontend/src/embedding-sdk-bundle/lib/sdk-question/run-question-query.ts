@@ -11,6 +11,7 @@ interface RunQuestionQueryParams {
   question: Question;
   isStaticEmbedding: boolean;
   originalQuestion?: Question;
+  originalCardId?: number | null;
   parameterValues?: ParameterValuesMap;
   cancelDeferred?: Deferred;
 }
@@ -22,6 +23,7 @@ export async function runQuestionQuerySdk(
     question,
     isStaticEmbedding,
     originalQuestion,
+    originalCardId,
     parameterValues,
     cancelDeferred,
   } = params;
@@ -53,6 +55,7 @@ export async function runQuestionQuerySdk(
       cancelDeferred,
       ignoreCache: false,
       isDirty: isQueryDirty,
+      originalCardId,
       ...(isStaticEmbedding && {
         queryParamsOverride: {
           parameters: JSON.stringify(filteredParameters),
