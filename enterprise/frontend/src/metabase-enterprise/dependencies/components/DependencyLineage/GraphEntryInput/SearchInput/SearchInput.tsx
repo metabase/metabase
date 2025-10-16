@@ -15,6 +15,7 @@ import { SearchModelPicker } from "./SearchModelPicker";
 import { getDependencyEntry, getSelectOptions } from "./utils";
 
 type SearchInputProps = {
+  isFetching: boolean;
   onEntryChange: (entry: DependencyEntry) => void;
 };
 
@@ -28,13 +29,14 @@ const SEARCH_MODELS: SearchModel[] = [
 
 const EMPTY_SEARCH_RESULTS: SearchResult[] = [];
 
-export function SearchInput({ onEntryChange }: SearchInputProps) {
+export function SearchInput({ isFetching, onEntryChange }: SearchInputProps) {
   const [searchModels, setSearchModels] = useState(SEARCH_MODELS);
   const [searchValue, setSearchValue] = useState("");
   const [searchQuery] = useDebouncedValue(
     searchValue.trim(),
     SEARCH_DEBOUNCE_DURATION,
   );
+  const isEnabled = searchQuery.length > 0;
 
   const { data: response, isLoading } = useSearchQuery(
     {
@@ -42,11 +44,12 @@ export function SearchInput({ onEntryChange }: SearchInputProps) {
       models: searchModels,
     },
     {
-      skip: searchQuery.length === 0,
+      skip: !isEnabled,
     },
   );
 
-  const searchResults = response?.data ?? EMPTY_SEARCH_RESULTS;
+  const searchResults =
+    response != null && isEnabled ? response.data : EMPTY_SEARCH_RESULTS;
   const searchOptions = useMemo(
     () => getSelectOptions(searchResults),
     [searchResults],
@@ -61,13 +64,14 @@ export function SearchInput({ onEntryChange }: SearchInputProps) {
 
   return (
     <Select
+      value={null}
       data={searchOptions}
       searchValue={searchValue}
       placeholder={t`Find something…`}
-      nothingFoundMessage={t`Didn't find any results`}
+      nothingFoundMessage={isEnabled ? `Didn't find any results` : undefined}
       leftSection={<FixedSizeIcon name="search" />}
       rightSection={
-        isLoading ? (
+        isLoading || isFetching ? (
           <Loader size="sm" />
         ) : (
           <SearchModelPicker
@@ -78,6 +82,7 @@ export function SearchInput({ onEntryChange }: SearchInputProps) {
       }
       w="20rem"
       searchable
+      autoFocus
       onChange={handleChange}
       onSearchChange={setSearchValue}
     />

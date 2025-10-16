@@ -17,7 +17,7 @@ export function DependencyLineagePage({ params }: DependencyLineagePageProps) {
   const { entry } = parseParams(params);
   const dispatch = useDispatch();
 
-  const handleEntryChange = (newEntry: DependencyEntry) => {
+  const handleEntryChange = (newEntry: DependencyEntry | undefined) => {
     dispatch(push(getDependencyLineageUrl({ entry: newEntry })));
   };
 

@@ -65,8 +65,11 @@ export function DependencyLineage({
         getInitialGraph(graph);
       setNodes(initialNodes);
       setEdges(initialEdges);
-      setSelection(undefined);
+    } else {
+      setNodes([]);
+      setEdges([]);
     }
+    setSelection(undefined);
   }, [graph, entry, setNodes, setEdges]);
 
   const handlePanelClose = () => {
