@@ -11,13 +11,14 @@ import type {
   SearchResult,
 } from "metabase-types/api";
 
+import { SearchModelPicker } from "./SearchModelPicker";
 import { getDependencyEntry, getSelectOptions } from "./utils";
 
 type SearchInputProps = {
   onEntryChange: (entry: DependencyEntry) => void;
 };
 
-const MODELS: SearchModel[] = [
+const SEARCH_MODELS: SearchModel[] = [
   "card",
   "dataset",
   "metric",
@@ -25,9 +26,10 @@ const MODELS: SearchModel[] = [
   "transform",
 ];
 
-const EMPTY_RESULTS: SearchResult[] = [];
+const EMPTY_SEARCH_RESULTS: SearchResult[] = [];
 
 export function SearchInput({ onEntryChange }: SearchInputProps) {
+  const [searchModels, setSearchModels] = useState(SEARCH_MODELS);
   const [searchValue, setSearchValue] = useState("");
   const [searchQuery] = useDebouncedValue(
     searchValue.trim(),
@@ -37,18 +39,21 @@ export function SearchInput({ onEntryChange }: SearchInputProps) {
   const { data: response, isLoading } = useSearchQuery(
     {
       q: searchQuery,
-      models: MODELS,
+      models: searchModels,
     },
     {
       skip: searchQuery.length === 0,
     },
   );
 
-  const results = response?.data ?? EMPTY_RESULTS;
-  const options = useMemo(() => getSelectOptions(results), [results]);
+  const searchResults = response?.data ?? EMPTY_SEARCH_RESULTS;
+  const searchOptions = useMemo(
+    () => getSelectOptions(searchResults),
+    [searchResults],
+  );
 
   const handleChange = (value: string | null) => {
-    const option = options.find((option) => option.value === value);
+    const option = searchOptions.find((option) => option.value === value);
     if (option != null) {
       onEntryChange(getDependencyEntry(option.result));
     }
@@ -56,12 +61,21 @@ export function SearchInput({ onEntryChange }: SearchInputProps) {
 
   return (
     <Select
-      data={options}
+      data={searchOptions}
       searchValue={searchValue}
       placeholder={t`Find something…`}
       nothingFoundMessage={t`Didn't find any results`}
       leftSection={<FixedSizeIcon name="search" />}
-      rightSection={isLoading ? <Loader size="sm" /> : undefined}
+      rightSection={
+        isLoading ? (
+          <Loader size="sm" />
+        ) : (
+          <SearchModelPicker
+            searchModels={searchModels}
+            onSearchModelsChange={setSearchModels}
+          />
+        )
+      }
       w="20rem"
       searchable
       onChange={handleChange}
