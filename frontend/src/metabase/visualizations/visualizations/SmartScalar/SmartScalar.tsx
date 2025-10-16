@@ -85,12 +85,18 @@ export function SmartScalar({
   const isClickable = onVisualizationClick != null;
 
   const handleClick = () => {
+    if (scalarRef.current == null) {
+      return;
+    }
+
+    const clickData = { ...clicked, element: scalarRef.current };
+
     if (
       scalarRef.current &&
       onVisualizationClick &&
-      visualizationIsClickable(clicked)
+      visualizationIsClickable(clickData)
     ) {
-      onVisualizationClick({ ...clicked, element: scalarRef.current });
+      onVisualizationClick(clickData);
     }
   };
 
