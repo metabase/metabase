@@ -19,7 +19,7 @@
                                                            org.bouncycastle/bcprov-jdk18on]}
   buddy/buddy-sign                          {:mvn/version "3.6.1-359"}          ; JSON Web Tokens; High-Level message signing library
   camel-snake-kebab/camel-snake-kebab       {:mvn/version "0.4.3"}              ; util functions for converting between camel, snake, and kebob case
-  cheshire/cheshire                         {:mvn/version "6.0.0"}             ; fast JSON encoding (used by Ring JSON middleware)
+  cheshire/cheshire                         {:mvn/version "6.1.0"}             ; fast JSON encoding (used by Ring JSON middleware)
   clj-bom/clj-bom                           {:mvn/version "0.1.2"}              ; handle BOMs in imported CSVs
   clj-commons/clj-yaml                      {:mvn/version "1.0.29"}             ; Clojure wrapper for YAML library SnakeYAML
   clj-commons/iapetos                       {:mvn/version "0.1.14"}             ; prometheus metrics
