@@ -241,14 +241,14 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
   [
     {
       targetCollectionId: "personal",
-      requestedCollectionId: ADMIN_PERSONAL_COLLECTION_ID,
+      respondedCollectionId: ADMIN_PERSONAL_COLLECTION_ID,
     },
     {
       targetCollectionId: FIRST_COLLECTION_ENTITY_ID,
-      requestedCollectionId: FIRST_COLLECTION_ENTITY_ID,
+      respondedCollectionId: FIRST_COLLECTION_ID,
     },
-  ].forEach(({ targetCollectionId, requestedCollectionId }) => {
-    it("can create a question in a collection passing an entity id as a target collection id (metabase#64584)", () => {
+  ].forEach(({ targetCollectionId, respondedCollectionId }) => {
+    it(`can create a question in a collection passing the \`${targetCollectionId}\` as a target collection id (metabase#64584)`, () => {
       cy.signOut();
       mockAuthProviderAndJwtSignIn();
       cy.intercept("POST", "/api/card").as("createCard");
@@ -281,7 +281,7 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
         expect(response?.statusCode).to.equal(200);
         expect(response?.body.name).to.equal("My Orders");
         expect(response?.body?.dashboard_id).to.equal(null);
-        expect(response?.body?.collection_id).to.equal(requestedCollectionId);
+        expect(response?.body?.collection_id).to.equal(respondedCollectionId);
       });
 
       // The question title's header should be updated.
