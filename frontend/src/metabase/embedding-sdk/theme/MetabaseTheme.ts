@@ -88,6 +88,9 @@ export interface MetabaseColors {
   /** Color used to indicate dangerous actions and negative values/trends */
   negative?: string;
 
+  /** Color used to outline elements in focus */
+  focus?: string;
+
   /** Color used for white text */
   "text-white"?: string;
 
