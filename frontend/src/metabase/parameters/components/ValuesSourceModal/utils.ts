@@ -1,11 +1,15 @@
-import { parse } from "csv-parse/browser/esm/sync";
-import { stringify } from "csv-stringify/browser/esm/sync";
-
 import type { ParameterValue } from "metabase-types/api";
 
-export const getValuesText = (
+// Lazy load CSV libraries to reduce initial bundle size
+const loadParse = () =>
+  import("csv-parse/browser/esm/sync").then((module) => module.parse);
+const loadStringify = () =>
+  import("csv-stringify/browser/esm/sync").then((module) => module.stringify);
+
+export const getValuesText = async (
   values: (string | ParameterValue)[] = [],
-): string => {
+): Promise<string> => {
+  const stringify = await loadStringify();
   return stringify(
     values.map(toRow).filter(([value]) => value !== null),
     {
@@ -17,8 +21,11 @@ export const getValuesText = (
   ).trim();
 };
 
-export const getStaticValues = (value: string): ParameterValue[] => {
+export const getStaticValues = async (
+  value: string,
+): Promise<ParameterValue[]> => {
   try {
+    const parse = await loadParse();
     const strings = parse(value, {
       delimiter: [","],
       skip_empty_lines: true,

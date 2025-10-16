@@ -209,10 +209,11 @@ const FieldSourceModal = ({
     onFetchParameterValues,
   });
 
-  const valuesText = useMemo(
-    () => getValuesText(getSourceValues(values)),
-    [values],
-  );
+  const [valuesText, setValuesText] = useState("");
+
+  useLayoutEffect(() => {
+    getValuesText(getSourceValues(values)).then(setValuesText);
+  }, [values]);
 
   const hasEmptyValues = !isLoading && values.length === 0;
 
@@ -282,10 +283,11 @@ const CardSourceModal = ({
     onFetchParameterValues,
   });
 
-  const valuesText = useMemo(
-    () => getValuesText(getSourceValues(values)),
-    [values],
-  );
+  const [valuesText, setValuesText] = useState("");
+
+  useLayoutEffect(() => {
+    getValuesText(getSourceValues(values)).then(setValuesText);
+  }, [values]);
 
   const handleFieldChange = useCallback(
     (event: SelectChangeEvent<Field>) => {
@@ -404,9 +406,17 @@ const ListSourceModal = ({
   onChangeSourceType,
   onChangeSourceConfig,
 }: ListSourceModalProps) => {
+  const [defaultValuesText, setDefaultValuesText] = useState("");
+
+  useLayoutEffect(() => {
+    getValuesText(sourceConfig.values).then(setDefaultValuesText);
+  }, [sourceConfig.values]);
+
   const handleValuesChange = useCallback(
     (event: ChangeEvent<HTMLTextAreaElement>) => {
-      onChangeSourceConfig({ values: getStaticValues(event.target.value) });
+      getStaticValues(event.target.value).then((values) => {
+        onChangeSourceConfig({ values });
+      });
     },
     [onChangeSourceConfig],
   );
@@ -432,7 +442,7 @@ const ListSourceModal = ({
       </ModalPane>
       <ModalMain>
         <ModalTextArea
-          defaultValue={getValuesText(sourceConfig.values)}
+          defaultValue={defaultValuesText}
           fullWidth
           onChange={handleValuesChange}
         />

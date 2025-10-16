@@ -7,15 +7,7 @@ import {
   useCombobox,
 } from "@mantine/core";
 import { useWindowEvent } from "@mantine/hooks";
-import { parse } from "csv-parse/browser/esm/sync";
-import {
-  type ChangeEvent,
-  type ClipboardEvent,
-  type MouseEvent,
-  type KeyboardEvent as ReactKeyboardEvent,
-  useMemo,
-  useState,
-} from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const DELIMITERS = [",", "\t", "\n"];
 const QUOTE_CHAR = '"';
@@ -23,6 +15,36 @@ const ESCAPE_CHAR = "\\";
 const QUOTED_CHARS = /["\\,]/;
 const ESCAPED_CHARS = /["\\]/g;
 const FIELD_PLACEHOLDER = null;
+
+// Lazy load CSV parse library to reduce initial bundle size
+type ParseFunction = (
+  input: string,
+  options: {
+    delimiter: string[];
+    skip_empty_lines: boolean;
+    relax_column_count: boolean;
+    relax_quotes: boolean;
+    trim: boolean;
+    quote: string;
+    escape: string;
+  },
+) => string[][];
+
+let parseFunction: ParseFunction | null = null;
+let parsePromise: Promise<ParseFunction> | null = null;
+
+const loadParse = (): Promise<ParseFunction> => {
+  if (parseFunction) {
+    return Promise.resolve(parseFunction);
+  }
+  if (!parsePromise) {
+    parsePromise = import("csv-parse/browser/esm/sync").then((module) => {
+      parseFunction = module.parse;
+      return module.parse;
+    });
+  }
+  return parsePromise;
+};
 
 type UseMultiAutocompleteProps = {
   values: string[];
@@ -77,6 +99,11 @@ export function useMultiAutocomplete({
   const searchValue = useMemo(() => getSearchValue(fieldValue), [fieldValue]);
   const options = useMemo(() => getParsedComboboxData(data), [data]);
 
+  useEffect(() => {
+    // Preload the CSV lib
+    loadParse();
+  }, []);
+
   const setFieldState = ({
     fieldValue,
     fieldSelection,
@@ -119,13 +146,13 @@ export function useMultiAutocomplete({
     combobox.openDropdown();
   };
 
-  const handleFieldChange = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleFieldChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const newFieldValue = event.target.value;
     const newParsedValues = parseCsv(newFieldValue);
     handleFieldInput(newFieldValue, newParsedValues);
   };
 
-  const handleFieldPaste = (event: ClipboardEvent<HTMLInputElement>) => {
+  const handleFieldPaste = (event: React.ClipboardEvent<HTMLInputElement>) => {
     const { selectionStart, selectionEnd } = event.currentTarget;
     const clipboardData = event.clipboardData.getData("text");
     const newParsedValues = parseCsv(clipboardData);
@@ -144,7 +171,7 @@ export function useMultiAutocomplete({
     }
   };
 
-  const handleFieldKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
+  const handleFieldKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.nativeEvent.isComposing) {
       return;
     }
@@ -187,7 +214,7 @@ export function useMultiAutocomplete({
   };
 
   const handlePillClick = (
-    event: MouseEvent<HTMLDivElement>,
+    event: React.MouseEvent<HTMLDivElement>,
     valueIndex: number,
   ) => {
     const selectedValue = values[valueIndex];
@@ -207,13 +234,13 @@ export function useMultiAutocomplete({
     resetFieldState();
   };
 
-  const handlePillGroupClick = (event: MouseEvent<HTMLDivElement>) => {
+  const handlePillGroupClick = (event: React.MouseEvent<HTMLDivElement>) => {
     if (event.target === event.currentTarget) {
       resetFieldState();
     }
   };
 
-  const handlePillsInputClick = (event: MouseEvent<HTMLDivElement>) => {
+  const handlePillsInputClick = (event: React.MouseEvent<HTMLDivElement>) => {
     if (event.target === event.currentTarget) {
       resetFieldState();
     }
@@ -417,8 +444,13 @@ function getParsedValuesCombinedWithFieldValue(
 }
 
 function parseCsv(rawValue: string): string[] {
+  // Use cached parse function if available, otherwise return empty array
+  // The parse function should be loaded by the time user interacts with the component
+  if (!parseFunction) {
+    return [];
+  }
   try {
-    return parse(rawValue, {
+    return parseFunction(rawValue, {
       delimiter: DELIMITERS,
       skip_empty_lines: true,
       relax_column_count: true,

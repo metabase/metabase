@@ -252,7 +252,7 @@ const config = {
     splitChunks: {
       cacheGroups: {
         vendors: {
-          test: /[\\/]node_modules[\\/](?!(sql-formatter|jspdf|html2canvas-pro)[\\/])/,
+          test: /[\\/]node_modules[\\/](?!(sql-formatter|jspdf|html2canvas-pro|csv-parse|csv-stringify)[\\/])/,
           chunks: "all",
           name: "vendor",
         },
@@ -270,6 +270,18 @@ const config = {
           test: /[\\/]node_modules[\\/]html2canvas-pro[\\/]/,
           chunks: "all",
           name: "html2canvas",
+        },
+        csvParse: {
+          test: /[\\/]node_modules[\\/]csv-parse[\\/]/,
+          chunks: "async",
+          name: "csv-parse",
+          priority: 10,
+        },
+        csvStringify: {
+          test: /[\\/]node_modules[\\/]csv-stringify[\\/]/,
+          chunks: "async",
+          name: "csv-stringify",
+          priority: 10,
         },
       },
     },
