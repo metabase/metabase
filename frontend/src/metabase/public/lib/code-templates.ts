@@ -244,14 +244,20 @@ export const getPugSource = ({ iframeUrl }: { iframeUrl: string }) =>
     allowtransparency
 )`;
 
-export const getPublicEmbedHTMLWithResizer = (iframeUrl: string): string =>
-  `<iframe
+export const getPublicEmbedHTMLWithResizer = (iframeUrl: string): string => {
+  // Extract the site URL (origin) from the iframe URL
+  // iframeUrl is typically a JSON string like "\"https://metabase.example.com/public/document/uuid\""
+  const urlMatch = iframeUrl.match(/https?:\/\/[^/]+/);
+  const siteUrl = urlMatch ? urlMatch[0] : "";
+
+  return `<iframe
     src=${iframeUrl}
     frameborder="0"
     width="800"
     allowtransparency
 ></iframe>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/iframe-resizer/4.3.2/iframeResizer.min.js"></script>
+<script src="${siteUrl}/app/iframeResizer.js"></script>
 <script>
   iFrameResize({}, 'iframe');
 </script>`;
+};
