@@ -42,7 +42,7 @@
     task-id))
 
 (defn- async-import!
-  [branch force? & import-args]
+  [branch force? import-args]
   (let [ingestable-source     (source.p/->ingestable (source/source-from-settings branch) {:path-filters [#"collections/.*"]})
         source-version        (source.ingestable/ingestable-version ingestable-source)
         last-imported-version (remote-sync.task/last-import-version)
@@ -88,7 +88,7 @@
   (when-not (settings/remote-sync-enabled)
     (throw (ex-info "Git sync is paused. Please resume it to perform import operations."
                     {:status-code 400})))
-  (let [task-id (async-import! (or branch (settings/remote-sync-branch)) force)]
+  (let [task-id (async-import! (or branch (settings/remote-sync-branch)) force {})]
     {:status :success
      :task_id task-id
      :message (when-not task-id "No changes since last import")}))
@@ -180,7 +180,7 @@
   (cond (and (settings/remote-sync-enabled)
              (= :production (settings/remote-sync-type)))
         {:success true
-         :task_id (async-import! (settings/remote-sync-branch) true)}
+         :task_id (async-import! (settings/remote-sync-branch) true {})}
 
         (and (settings/remote-sync-enabled)
              (= :development (settings/remote-sync-type))
