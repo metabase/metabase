@@ -1156,6 +1156,9 @@ describe("issue 27521", () => {
     H.getNotebookStep("data").button("Pick columns").click();
     H.popover().findByText("Select all").click();
 
+    cy.log("close popover");
+    H.getNotebookStep("data").click();
+
     H.join();
 
     H.entityPickerModal().within(() => {
