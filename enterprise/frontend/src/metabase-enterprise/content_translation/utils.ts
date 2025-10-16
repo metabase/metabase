@@ -173,11 +173,7 @@ export const translateFieldValuesInSeries = (
         // cartesian charts have series settings that can provide display names
         // for fields, which we should translate if available
         const seriesSettings =
-          singleSeries.card.visualization_settings?.series_settings;
-
-        if (!seriesSettings) {
-          return defaultFn();
-        }
+          singleSeries.card.visualization_settings?.series_settings ?? {};
 
         return singleSeries.data.rows.map((row) =>
           row.map((value) => {
