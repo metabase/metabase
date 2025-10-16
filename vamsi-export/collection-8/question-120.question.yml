@@ -1,0 +1,22 @@
+name: Sales Data 2025 with Ratings
+type: question
+ref: question-120
+mbql_query:
+  joins:
+  - fields:
+    - - field
+      - [Sample Database, PUBLIC, PRODUCTS, RATING]
+      - {base-type: type/Float, join-alias: Products - Products → Category}
+    strategy: left-join
+    alias: Products - Products → Category
+    condition:
+    - =
+    - - field
+      - Products__CATEGORY
+      - {base-type: type/Text}
+    - - field
+      - [Sample Database, PUBLIC, PRODUCTS, CATEGORY]
+      - {base-type: type/Text, join-alias: Products - Products → Category}
+    source-table: [Sample Database, PUBLIC, PRODUCTS]
+  source-table: _2TXeckeO81fzxtL83UTk
+database: Sample Database

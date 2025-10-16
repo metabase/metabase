@@ -1,0 +1,16 @@
+type: question
+ref: trainers
+name: Trainers
+description: Pokemon cards filtered to show only Trainer type cards
+database: Postgres
+mbql_query:
+  database: 2
+  type: query
+  query:
+    source-table: "card__114"
+    filter:
+      - "="
+      - - field
+        - supertype
+        - base-type: type/Text
+      - "Trainer"
