@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import {
   ActionIcon,
-  Icon,
+  FixedSizeIcon,
   Popover,
   Radio,
   SegmentedControl,
@@ -35,7 +35,7 @@ export function SortOptionsPicker({
       <Popover.Target>
         <Tooltip label={t`Sort`}>
           <ActionIcon onClick={toggle}>
-            <Icon c="text-primary" name="sort" />
+            <FixedSizeIcon c="text-primary" name="sort" />
           </ActionIcon>
         </Tooltip>
       </Popover.Target>

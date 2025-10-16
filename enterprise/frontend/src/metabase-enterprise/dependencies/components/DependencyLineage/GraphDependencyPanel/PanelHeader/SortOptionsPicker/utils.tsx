@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Icon } from "metabase/ui";
+import { FixedSizeIcon } from "metabase/ui";
 
 import type { SortColumnItem, SortDirectionItem } from "./types";
 
@@ -25,11 +25,11 @@ export function getSortDirectionItems(): SortDirectionItem[] {
   return [
     {
       value: "asc",
-      label: <Icon name="arrow_up" />,
+      label: <FixedSizeIcon name="arrow_up" />,
     },
     {
       value: "desc",
-      label: <Icon name="arrow_down" />,
+      label: <FixedSizeIcon name="arrow_down" />,
     },
   ];
 }

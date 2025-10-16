@@ -5,7 +5,7 @@ import {
   ActionIcon,
   Box,
   Checkbox,
-  Icon,
+  FixedSizeIcon,
   Popover,
   Stack,
   Tooltip,
@@ -35,7 +35,7 @@ export function FilterOptionsPicker({
       <Popover.Target>
         <Tooltip label={t`Filter`}>
           <ActionIcon onClick={toggle}>
-            <Icon c="text-primary" name="filter" />
+            <FixedSizeIcon c="text-primary" name="filter" />
           </ActionIcon>
         </Tooltip>
       </Popover.Target>

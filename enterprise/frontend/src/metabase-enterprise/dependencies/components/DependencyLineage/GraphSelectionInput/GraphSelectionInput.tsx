@@ -2,7 +2,7 @@ import { useReactFlow } from "@xyflow/react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { Icon, Select } from "metabase/ui";
+import { FixedSizeIcon, Select } from "metabase/ui";
 
 import type { GraphSelection, NodeType } from "../types";
 import { getNodeIcon, getNodeLabel } from "../utils";
@@ -35,7 +35,8 @@ export function GraphSelectInput({
       value={null}
       data={data}
       placeholder={t`Jump to an item on the graph`}
-      leftSection={<Icon name="search" />}
+      leftSection={<FixedSizeIcon name="search" />}
+      rightSection={<div />}
       nothingFoundMessage={t`Didn't find any results`}
       w="20rem"
       searchable

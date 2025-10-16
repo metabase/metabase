@@ -1,6 +1,14 @@
 import { t } from "ttag";
 
-import { ActionIcon, Group, Icon, Stack, TextInput, Title } from "metabase/ui";
+import {
+  ActionIcon,
+  FixedSizeIcon,
+  Group,
+  Stack,
+  TextInput,
+  Title,
+  rem,
+} from "metabase/ui";
 import type { DependencyGroupType, DependencyNode } from "metabase-types/api";
 
 import type { FilterOption, SortOptions } from "../types";
@@ -10,7 +18,7 @@ import { FilterOptionsPicker } from "./FilterOptionsPicker";
 import { SortOptionsPicker } from "./SortOptionsPicker";
 import { getHeaderLabel } from "./utils";
 
-type ListHeaderProps = {
+type PanelHeaderProps = {
   node: DependencyNode;
   groupType: DependencyGroupType;
   searchText: string;
@@ -22,7 +30,7 @@ type ListHeaderProps = {
   onClose: () => void;
 };
 
-export function ListHeader({
+export function PanelHeader({
   node,
   groupType,
   searchText,
@@ -32,7 +40,7 @@ export function ListHeader({
   onFilterOptionsChange,
   onSortOptionsChange,
   onClose,
-}: ListHeaderProps) {
+}: PanelHeaderProps) {
   const hasFilterPicker = canFilter(groupType);
 
   return (
@@ -41,14 +49,14 @@ export function ListHeader({
         <Title flex={1} order={5}>
           {getHeaderLabel(node, groupType)}
         </Title>
-        <ActionIcon onClick={onClose}>
-          <Icon name="close" />
+        <ActionIcon m={rem(-6)} onClick={onClose}>
+          <FixedSizeIcon name="close" />
         </ActionIcon>
       </Group>
       <TextInput
         value={searchText}
         placeholder={t`Search`}
-        leftSection={<Icon name="search" />}
+        leftSection={<FixedSizeIcon name="search" />}
         rightSection={
           <Group gap={0}>
             <SortOptionsPicker

@@ -1,27 +1,36 @@
 import { memo } from "react";
 import { Link } from "react-router";
 
-import { Box, Flex, Group, Icon, Stack, UnstyledButton } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  FixedSizeIcon,
+  Flex,
+  Group,
+  Stack,
+  UnstyledButton,
+  rem,
+} from "metabase/ui";
 import type { DependencyEntry, DependencyNode } from "metabase-types/api";
 
 import { getNodeId, getNodeLink, getNodeViewCount } from "../../utils";
 
-import S from "./ListBody.module.css";
+import S from "./PanelBody.module.css";
 import {
   getNodeSubtitleInfo,
   getNodeTitleInfo,
   getNodeViewCountLabel,
 } from "./utils";
 
-type ListBodyProps = {
+type PanelBodyProps = {
   nodes: DependencyNode[];
   onEntryChange: (entry: DependencyEntry) => void;
 };
 
-export const ListBody = memo(function ListBody({
+export const PanelBody = memo(function ListBody({
   nodes,
   onEntryChange,
-}: ListBodyProps) {
+}: PanelBodyProps) {
   return (
     <div className={S.body}>
       {nodes.map((node) => (
@@ -60,7 +69,7 @@ function ListItem({ node, onEntryChange }: ListItemProps) {
           align="center"
           onClick={handleTitleClick}
         >
-          <Icon name={titleInfo.icon} />
+          <FixedSizeIcon name={titleInfo.icon} />
           <Box lh="h4">{titleInfo.label}</Box>
         </Flex>
         {viewCount != null && (
@@ -79,16 +88,16 @@ function ListItem({ node, onEntryChange }: ListItemProps) {
             gap="sm"
             align="center"
           >
-            <Icon name={subtitleInfo.icon} />
+            <FixedSizeIcon name={subtitleInfo.icon} />
             <Box fz="sm" lh="h5">
               {subtitleInfo.label}
             </Box>
           </Flex>
         )}
         {link != null && (
-          <Link className={S.iconLink} to={link} target="_blank">
-            <Icon name="external" />
-          </Link>
+          <ActionIcon component={Link} to={link} target="_blank" m={rem(-6)}>
+            <FixedSizeIcon name="external" />
+          </ActionIcon>
         )}
       </Group>
     </Stack>

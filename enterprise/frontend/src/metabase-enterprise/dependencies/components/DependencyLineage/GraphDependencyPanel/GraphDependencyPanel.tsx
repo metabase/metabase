@@ -13,8 +13,8 @@ import type {
 } from "metabase-types/api";
 
 import S from "./GraphDependencyPanel.module.css";
-import { ListBody } from "./ListBody";
-import { ListHeader } from "./ListHeader";
+import { PanelBody } from "./PanelBody";
+import { PanelHeader } from "./PanelHeader";
 import type { FilterOption } from "./types";
 import {
   canFilterByOption,
@@ -65,7 +65,7 @@ export function GraphDependencyPanel({
 
   return (
     <Card className={S.root} shadow="none" withBorder>
-      <ListHeader
+      <PanelHeader
         node={node}
         groupType={groupType}
         searchText={searchText}
@@ -83,7 +83,7 @@ export function GraphDependencyPanel({
           {t`Didn't find any results`}
         </Box>
       ) : (
-        <ListBody nodes={visibleNodes} onEntryChange={onEntryChange} />
+        <PanelBody nodes={visibleNodes} onEntryChange={onEntryChange} />
       )}
     </Card>
   );

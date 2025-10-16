@@ -5,9 +5,7 @@ import {
   Panel,
   ReactFlow,
   useEdgesState,
-  useNodesInitialized,
   useNodesState,
-  useReactFlow,
 } from "@xyflow/react";
 import { useLayoutEffect, useMemo, useState } from "react";
 
@@ -19,11 +17,13 @@ import type { DependencyEntry } from "metabase-types/api";
 import { GraphContext } from "./GraphContext";
 import { GraphDependencyPanel } from "./GraphDependencyPanel";
 import { GraphEntryInput } from "./GraphEntryInput";
+import { GraphInfoPanel } from "./GraphInfoPanel";
 import { GraphNode } from "./GraphNode";
+import { GraphNodeLayout } from "./GraphNodeLayout";
 import { GraphSelectInput } from "./GraphSelectionInput";
 import { MAX_ZOOM, MIN_ZOOM } from "./constants";
 import type { GraphSelection, NodeType } from "./types";
-import { getInitialGraph, getNodesWithPositions, isSameNode } from "./utils";
+import { getInitialGraph, isSameNode } from "./utils";
 
 const NODE_TYPES = {
   node: GraphNode,
@@ -65,9 +65,13 @@ export function DependencyLineage({
         getInitialGraph(graph);
       setNodes(initialNodes);
       setEdges(initialEdges);
-      setSelection({ id: entry.id, type: entry.type });
+      setSelection(undefined);
     }
   }, [graph, entry, setNodes, setEdges]);
+
+  const handlePanelClose = () => {
+    setSelection(undefined);
+  };
 
   return (
     <GraphContext.Provider value={{ selection, setSelection }}>
@@ -94,39 +98,29 @@ export function DependencyLineage({
             <GraphSelectInput nodes={nodes} onSelectionChange={setSelection} />
           </Group>
         </Panel>
-        {selectedNode != null && selection?.groupType != null && (
+        {selection != null && selectedNode != null && (
           <Flex
             component={Panel}
             position="top-right"
             direction="column"
             bottom={0}
           >
-            <GraphDependencyPanel
-              node={selectedNode.data}
-              groupType={selection.groupType}
-              onEntryChange={onEntryChange}
-              onClose={() => setSelection(undefined)}
-            />
+            {selection.groupType != null ? (
+              <GraphDependencyPanel
+                node={selectedNode.data}
+                groupType={selection.groupType}
+                onEntryChange={onEntryChange}
+                onClose={handlePanelClose}
+              />
+            ) : (
+              <GraphInfoPanel
+                node={selectedNode.data}
+                onClose={handlePanelClose}
+              />
+            )}
           </Flex>
         )}
       </ReactFlow>
     </GraphContext.Provider>
   );
-}
-
-function GraphNodeLayout() {
-  const { getNodes, getEdges, setNodes, fitView } = useReactFlow<NodeType>();
-  const isInitialized = useNodesInitialized();
-
-  useLayoutEffect(() => {
-    if (isInitialized) {
-      const nodes = getNodes();
-      const edges = getEdges();
-      const newNodes = getNodesWithPositions(nodes, edges);
-      setNodes(newNodes);
-      fitView({ nodes: newNodes });
-    }
-  }, [isInitialized, getNodes, getEdges, setNodes, fitView]);
-
-  return null;
 }
