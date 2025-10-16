@@ -20,7 +20,6 @@ H.describeWithSnowplow(
       const EMPTY_SCHEMA_NAME = "empty_uploads";
 
       cy.intercept("PUT", "/api/setting/*").as("saveSettings");
-      cy.intercept("GET", "/api/database/*/schemas?*").as("schemaList");
       cy.intercept("GET", "/api/database").as("databaseList");
 
       H.restore("postgres-writable");
@@ -32,6 +31,11 @@ H.describeWithSnowplow(
       );
       H.queryWritableDB(
         "CREATE SCHEMA IF NOT EXISTS empty_uploads;",
+        "postgres",
+      );
+      // create a table because H.resyncDatabase has a check relying on tables count > 0
+      H.queryWritableDB(
+        "CREATE TABLE empty_uploads.empty_table ();",
         "postgres",
       );
       H.resyncDatabase({ dbId: WRITABLE_DB_ID });
@@ -88,9 +92,7 @@ H.describeWithSnowplow(
       cy.findByRole("link", { name: "Table Metadata" }).click();
 
       H.DataModel.TablePicker.getDatabase("Writable Postgres12").click();
-      cy.wait("@schemaList"); // prevent flakiness
-      H.DataModel.TablePicker.getSchema(EMPTY_SCHEMA_NAME).click();
-      H.DataModel.TablePicker.getTables().should("have.length", 1);
+      H.DataModel.TablePicker.getTables().should("have.length", 2);
       H.DataModel.TablePicker.getTable("Dog Breeds").should("be.visible");
     });
 
