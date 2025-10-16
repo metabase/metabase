@@ -1968,8 +1968,10 @@
                         :else
                         (apply-clauses driver {} source-query))
         ;; TODO: Use MLv2 here to get source and desired-aliases
-        alias-info (mapv (fn [{[_ desired-ref-name] :field_ref source-name :name}]
-                           [source-name desired-ref-name])
+        alias-info (mapv (fn [col]
+                           (let [source-name      ((some-fn :lib/source-column-alias :name) col)
+                                 desired-ref-name ((some-fn :lib/desired-column-alias #(second (:field_ref %))) col)]
+                             [source-name desired-ref-name]))
                          source-metadata)
         source-aliases (mapv first alias-info)
         desired-aliases (mapv second alias-info)

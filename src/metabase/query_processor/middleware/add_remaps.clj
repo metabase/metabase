@@ -594,7 +594,8 @@
   added and each row flowing through needs to include the remapped data for the new column. For external remappings
   the column information needs to be updated with what it's being remapped from and the user specified name for the
   remapped column."
-  [{:keys [internal-only-dims]} :- ::internal-columns-info rf]
+  [{:keys [internal-only-dims]} :- ::internal-columns-info
+   rf]
   (if-let [remap-fn (make-row-map-fn internal-only-dims)]
     ((map remap-fn) rf)
     rf))

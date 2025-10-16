@@ -897,8 +897,7 @@
                      :source-metadata [{:name         "CATEGORY"
                                         :display_name "Category"
                                         :base_type    :type/Number
-                                        :id           %category
-                                        :field_ref    $orders.product-id->category}]})]
+                                        :id           %category}]})]
         (is (=? query (add-implicit-joins query)))))))
 
 (deftest ^:parallel metadata-join-alias-test-1b
@@ -944,8 +943,7 @@
                                                                    :strategy     :left-join
                                                                    :condition    [:= $orders.product-id &PRODUCTS__via__PRODUCT_ID.$id]
                                                                    :source-table $$products
-                                                                   :fk-field-id  %orders.product-id}]}
-                                 :source-metadata [{:field_ref &PRODUCTS__via__PRODUCT_ID.$orders.product-id->category}]}]})
+                                                                   :fk-field-id  %orders.product-id}]}}]})
               (add-implicit-joins
                (lib.tu.macros/mbql-query products
                  {:source-table $$products
@@ -1093,7 +1091,7 @@
           stage (get-in query path)]
       (is (=? {:joins [{:alias "CATEGORIES__via__CATEGORY_ID"}
                        {:alias "CATEGORIES__via__ID"}]}
-              (#'qp.add-implicit-joins/resolve-implicit-joins-this-level query path stage))))))
+              (#'qp.add-implicit-joins/resolve-implicit-joins query path stage))))))
 
 (deftest ^:parallel implicit-join-from-much-earlier-stage-test
   (testing "if a join in stage 1 is used in stage 2, the field should propagate through stage 1 (#63245)"
