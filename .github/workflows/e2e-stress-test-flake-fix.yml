@@ -3,14 +3,6 @@ name: E2E Stress Test Flake Fix
 on:
   workflow_dispatch:
     inputs:
-      test_suite:
-        description: "The test suite to run"
-        type: choice
-        required: true
-        default: "e2e"
-        options:
-          - e2e
-          - component
       spec:
         description: "Relative path of the target spec"
         type: string
@@ -52,11 +44,17 @@ jobs:
     steps:
       - name: Generate workflow summary
         run: |
+          SPEC='${{ inputs.spec }}'
+          if [[ "$SPEC" == e2e/test-component/scenarios/embedding-sdk/* ]]; then
+            SUITE="component"
+          else
+            SUITE="e2e"
+          fi
           echo '**Inputs:**' >> $GITHUB_STEP_SUMMARY
           echo '' >> $GITHUB_STEP_SUMMARY
-          echo '- `test_suite`: ${{ inputs.test_suite }}' >> $GITHUB_STEP_SUMMARY
           echo '- `branch`: ${{ github.ref_name }}' >> $GITHUB_STEP_SUMMARY
           echo '- `spec`: ${{ inputs.spec }}' >> $GITHUB_STEP_SUMMARY
+          echo '- `test_suite` (inferred): '"$SUITE" >> $GITHUB_STEP_SUMMARY
           echo '- `burn_in`: ${{ inputs.burn_in }}' >> $GITHUB_STEP_SUMMARY
           echo '- `grep`: "${{ inputs.grep }}"' >> $GITHUB_STEP_SUMMARY
           echo '- `qa_db`: "${{ inputs.qa_db }}"' >> $GITHUB_STEP_SUMMARY
@@ -108,13 +106,22 @@ jobs:
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
 
+      - name: Determine test suite
+        id: suite
+        run: |
+          SPEC='${{ inputs.spec }}'
+          if [[ "$SPEC" == e2e/test-component/scenarios/embedding-sdk/* ]]; then
+            echo "name=component" >> $GITHUB_OUTPUT
+          else
+            echo "name=e2e" >> $GITHUB_OUTPUT
+          fi
       - name: Prepare back-end environment
-        if: ${{ inputs.test_suite == 'component' }}
+        if: ${{ steps.suite.outputs.name == 'component' }}
         uses: ./.github/actions/prepare-backend
         with:
           m2-cache-key: "cljs"
       - name: Build Embedding SDK package
-        if: ${{ inputs.test_suite == 'component' }}
+        if: ${{ steps.suite.outputs.name == 'component' }}
         run: yarn build-embedding-sdk-package
 
       - name: Prepare JDK 21
@@ -135,9 +142,9 @@ jobs:
       - name: Stress-test ${{ github.event.inputs.spec }} ${{ github.event.inputs.burn_in }} times
         env:
           GREP: ${{ github.event.inputs.grep }}
-          CYPRESS_IS_EMBEDDING_SDK: ${{ github.event.inputs.test_suite == 'component' }}
+          CYPRESS_IS_EMBEDDING_SDK: ${{ steps.suite.outputs.name == 'component' }}
         run: |
-          node e2e/runner/run_cypress_ci.js ${{ github.event.inputs.test_suite }} \
+          node e2e/runner/run_cypress_ci.js ${{ steps.suite.outputs.name }} \
           --spec '${{ github.event.inputs.spec }}' \
           --env burn=${{ github.event.inputs.burn_in }} \
           --config-file e2e/support/cypress-stress-test.config.js \
