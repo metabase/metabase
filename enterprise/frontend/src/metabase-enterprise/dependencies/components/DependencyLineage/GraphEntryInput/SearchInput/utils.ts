@@ -1,6 +1,7 @@
 import type { IconName } from "metabase/ui";
 import visualizations from "metabase/visualizations";
 import type {
+  CardDisplayType,
   DependencyEntry,
   DependencyId,
   DependencyType,
@@ -9,7 +10,7 @@ import type {
   SearchResultId,
 } from "metabase-types/api";
 
-import type { SearchSelectOption } from "./types";
+import type { EntrySelectOption } from "./types";
 
 function getDependencyId(id: SearchResultId): DependencyId {
   if (typeof id === "number") {
@@ -34,11 +35,14 @@ function getDependencyType(model: SearchModel): DependencyType {
   }
 }
 
-export function getDependencyIcon(result: SearchResult): IconName {
-  switch (result.model) {
+function getDependencyIcon(
+  model: SearchModel,
+  display?: CardDisplayType | null,
+): IconName {
+  switch (model) {
     case "card":
-      return result.display != null
-        ? (visualizations.get(result.display)?.iconName ?? "table2")
+      return display != null
+        ? (visualizations.get(display)?.iconName ?? "table2")
         : "table2";
     case "dataset":
       return "model";
@@ -49,24 +53,27 @@ export function getDependencyIcon(result: SearchResult): IconName {
     case "transform":
       return "refresh_downstream";
     default:
-      throw new TypeError(`Unsupported search result model: ${result.model}`);
+      throw new TypeError(`Unsupported search result model: ${model}`);
   }
 }
 
-export function getDependencyEntry(result: SearchResult): DependencyEntry {
+function getDependencyEntry(
+  id: SearchResultId,
+  model: SearchModel,
+): DependencyEntry {
   return {
-    id: getDependencyId(result.id),
-    type: getDependencyType(result.model),
+    id: getDependencyId(id),
+    type: getDependencyType(model),
   };
 }
 
 export function getSelectOptions(
-  results: SearchResult[],
-): SearchSelectOption[] {
-  return results.map((result) => ({
+  searchResults: SearchResult[],
+): EntrySelectOption[] {
+  return searchResults.map((result) => ({
     value: `${result.id}-${result.model}`,
     label: result.name,
-    icon: getDependencyIcon(result),
-    result: result,
+    icon: getDependencyIcon(result.model, result.display),
+    entry: getDependencyEntry(result.id, result.model),
   }));
 }

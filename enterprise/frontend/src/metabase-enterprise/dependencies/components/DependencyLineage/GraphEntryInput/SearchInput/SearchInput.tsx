@@ -12,7 +12,7 @@ import type {
 } from "metabase-types/api";
 
 import { SearchModelPicker } from "./SearchModelPicker";
-import { getDependencyEntry, getSelectOptions } from "./utils";
+import { getSelectOptions } from "./utils";
 
 type SearchInputProps = {
   isFetching: boolean;
@@ -29,7 +29,10 @@ const SEARCH_MODELS: SearchModel[] = [
 
 const EMPTY_SEARCH_RESULTS: SearchResult[] = [];
 
-export function SearchInput({ isFetching, onEntryChange }: SearchInputProps) {
+export function SearchInput({
+  isFetching: isGraphFetching,
+  onEntryChange,
+}: SearchInputProps) {
   const [searchModels, setSearchModels] = useState(SEARCH_MODELS);
   const [searchValue, setSearchValue] = useState("");
   const [searchQuery] = useDebouncedValue(
@@ -38,7 +41,7 @@ export function SearchInput({ isFetching, onEntryChange }: SearchInputProps) {
   );
   const isEnabled = searchQuery.length > 0;
 
-  const { data: response, isLoading } = useSearchQuery(
+  const { data: response, isFetching: isSearchFetching } = useSearchQuery(
     {
       q: searchQuery,
       models: searchModels,
@@ -58,7 +61,7 @@ export function SearchInput({ isFetching, onEntryChange }: SearchInputProps) {
   const handleChange = (value: string | null) => {
     const option = searchOptions.find((option) => option.value === value);
     if (option != null) {
-      onEntryChange(getDependencyEntry(option.result));
+      onEntryChange(option.entry);
     }
   };
 
@@ -71,7 +74,7 @@ export function SearchInput({ isFetching, onEntryChange }: SearchInputProps) {
       nothingFoundMessage={isEnabled ? `Didn't find any results` : undefined}
       leftSection={<FixedSizeIcon name="search" />}
       rightSection={
-        isLoading || isFetching ? (
+        isSearchFetching || isGraphFetching ? (
           <Loader size="sm" />
         ) : (
           <SearchModelPicker

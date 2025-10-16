@@ -1,6 +1,6 @@
 import type { SelectOption } from "metabase/ui";
-import type { SearchResult } from "metabase-types/api";
+import type { DependencyEntry } from "metabase-types/api";
 
-export type SearchSelectOption = SelectOption & {
-  result: SearchResult;
+export type EntrySelectOption = SelectOption & {
+  entry: DependencyEntry;
 };
