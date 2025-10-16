@@ -447,6 +447,11 @@ H.describeWithSnowplowEE("documents", () => {
             role: "code",
           },
           {
+            button: /link/,
+            role: "link",
+            special: "link", // Special handling for link button
+          },
+          {
             button: /H1/,
             role: "heading",
           },
@@ -487,16 +492,50 @@ H.describeWithSnowplowEE("documents", () => {
 
         H.documentFormattingMenu().should("exist");
 
-        formatTests.forEach(({ button, role, revert = true }) => {
-          H.documentFormattingMenu()
-            .findByRole("button", { name: button })
-            .click();
-          H.documentContent().findByRole(role).should("contain.text", content);
-          if (revert) {
+        formatTests.forEach(({ button, role, revert = true, special }) => {
+          if (special === "link") {
+            // Special handling for link button with popup
             H.documentFormattingMenu()
               .findByRole("button", { name: button })
               .click();
-            assertUnformatted();
+
+            // Enter URL in the popup
+            cy.findByPlaceholderText("Enter URL...").type(
+              "https://example.com",
+            );
+            cy.findByRole("button", { name: "OK" }).click();
+
+            // Check that the text is now a link
+            H.documentContent()
+              .findByRole(role)
+              .should("contain.text", content);
+            H.documentContent()
+              .findByRole("link", { name: content })
+              .should("have.attr", "href", "https://example.com");
+
+            // Revert by clicking the link button again and clearing the URL
+            if (revert) {
+              cy.realPress(["Shift", "{home}"]); // Re-select text
+              H.documentFormattingMenu()
+                .findByRole("button", { name: button })
+                .click();
+              cy.findByPlaceholderText("Enter URL...").clear();
+              cy.findByRole("button", { name: "OK" }).click();
+              assertUnformatted();
+            }
+          } else {
+            H.documentFormattingMenu()
+              .findByRole("button", { name: button })
+              .click();
+            H.documentContent()
+              .findByRole(role)
+              .should("contain.text", content);
+            if (revert) {
+              H.documentFormattingMenu()
+                .findByRole("button", { name: button })
+                .click();
+              assertUnformatted();
+            }
           }
         });
       });
