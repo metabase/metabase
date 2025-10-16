@@ -740,6 +740,9 @@
     ;; Does this driver support "temporal-unit" template tags in native queries?
     :native-temporal-units
 
+    ;; Does this driver support creating tables on their own without adding data?
+    :test/create-table-without-data
+
     ;; Does this driver support transforms with a table as the target?
     :transforms/table
 
@@ -778,7 +781,16 @@
     :metadata/table-writable-check
 
     ;; Does this driver support creating a java.sql.Statement via a Connection?
-    :jdbc/statements})
+    :jdbc/statements
+
+    ;; Does this driver provide :database-default on (describe-fields) or (describe-table)
+    :describe-default-expr
+
+    ;; Does this driver provide :database-is-nullable on (describe-fields) or (describe-table)
+    :describe-is-nullable
+
+    ;; Does this driver provide :database-is-generated on (describe-fields) or (describe-table)
+    :describe-is-generated})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -820,6 +832,7 @@
                               :fingerprint                            true
                               :upload-with-auto-pk                    true
                               :saved-question-sandboxing              true
+                              :test/create-table-without-data         true
                               :test/dynamic-dataset-loading           true
                               :test/uuids-in-create-table-statements  true
                               :metadata/table-existence-check         false

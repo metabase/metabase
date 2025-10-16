@@ -305,3 +305,5 @@
                                 (filter #(tx/qualified-by-db-name? physical-db-name (:name %)))
                                 tables))))
     (original-describe-database driver database)))
+
+(defmethod sql.tx/generated-column-sql :vertica [_ _] nil)
