@@ -26,6 +26,28 @@
         (t2/update! :model/Card (:id object)
                     {:dependency_analysis_version models.dependency/current-dependency-analysis-version})))))
 
+(derive ::cards-deps :metabase/event)
+(derive :event/cards-create ::cards-deps)
+(derive :event/cards-update ::cards-deps)
+
+(methodical/defmethod events/publish-event! ::cards-deps
+  [_ events]
+  (when (premium-features/has-feature? :dependencies)
+    (t2/with-transaction [_conn]
+      (models.dependency/replace-dependencies-bulk! :card
+                                                    (map (fn [{{:as object id :id} :object}]
+                                                           {:entity-id id
+                                                            :dependencies-by-type (deps.calculation/upstream-deps:card object)})
+                                                         events))
+      (when-let [ids-to-update (->> events
+                                    (map :object)
+                                    (remove #(= (:dependency_analysis_version %)
+                                                models.dependency/current-dependency-analysis-version))
+                                    (map :id)
+                                    seq)]
+        (t2/update! :model/Card [:in :id ids-to-update]
+                    {:dependency_analysis_version models.dependency/current-dependency-analysis-version})))))
+
 (derive ::card-delete :metabase/event)
 (derive :event/card-delete ::card-delete)
 

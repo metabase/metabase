@@ -18,6 +18,15 @@
   [topic event]
   (audit-log/record-event! topic event))
 
+(derive ::cards-event ::event)
+(derive :event/cards-create ::cards-event)
+(derive :event/cards-update ::cards-event)
+(derive :event/cards-delete ::cards-event)
+
+(methodical/defmethod events/publish-event! ::cards-event
+  [topic events]
+  (audit-log/record-events! topic events))
+
 (derive ::dashboard-event ::event)
 (derive :event/dashboard-create ::dashboard-event)
 (derive :event/dashboard-delete ::dashboard-event)
@@ -25,6 +34,14 @@
 (methodical/defmethod events/publish-event! ::dashboard-event
   [topic event]
   (audit-log/record-event! topic event))
+
+(derive ::dashboards-event ::event)
+(derive :event/dashboards-create ::dashboards-event)
+(derive :event/dashboards-delete ::dashboards-event)
+
+(methodical/defmethod events/publish-event! ::dashboards-event
+  [topic events]
+  (audit-log/record-event! topic events))
 
 (derive ::dashboard-card-event ::event)
 (derive :event/dashboard-add-cards ::dashboard-card-event)
