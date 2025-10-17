@@ -190,6 +190,51 @@
         (recur (conj acc (add-revision-details model r1 r2))
                (conj more r2))))))
 
+(mu/defn push-revisions!
+  "Record multiple new Revisions with a single batch insert.
+
+  Takes a collection of revision data maps, each with the same structure as `push-revision!`:
+  - `:id`: the ID of the object being revised
+  - `:entity`: the model keyword (e.g. `:model/Card`)
+  - `:user-id`: the user ID creating the revision
+  - `:object`: the current state of the object
+  - `:previous-object`: the previous state (nil for creation)
+  - `:is-creation?`: whether this is a creation (optional, default false)
+  - `:message`: optional revision message
+
+  Returns a collection of objects that were actually revised (objects that didn't change are filtered out)."
+  [revisions :- [:sequential [:map {:closed true}
+                              [:id                            pos-int?]
+                              [:object                        :map]
+                              [:previous-object               [:maybe :map]]
+                              [:entity                        [:fn toucan-model?]]
+                              [:user-id                       pos-int?]
+                              [:is-creation? {:optional true} [:maybe :boolean]]
+                              [:message      {:optional true} [:maybe :string]]]]]
+  (when (seq revisions)
+    (let [revision-rows
+          (for [{:keys [id entity user-id object previous-object is-creation? message]
+                 :or {is-creation? false}} revisions
+                :let [entity-name (name entity)
+                      serialized-object (serialize-instance entity id (dissoc object :message))
+                      previous-object-for-comparison (cond-> previous-object
+                                                       (= entity :model/Card) (dissoc :card_schema))]
+                :when (and (map? serialized-object)
+                           (or (nil? previous-object)
+                               (not= (json/encode serialized-object)
+                                     (json/encode previous-object-for-comparison))))]
+            {:model        entity-name
+             :model_id     id
+             :user_id      user-id
+             :object       serialized-object
+             :is_creation  is-creation?
+             :is_reversion false
+             :message      message
+             :_object      object})]
+      (when (seq revision-rows)
+        (t2/insert! :model/Revision (map #(dissoc % :_object) revision-rows))
+        (map :_object revision-rows)))))
+
 (mu/defn push-revision!
   "Record a new Revision for `entity` with `id` if it's changed compared to the previous object.
   Returns `object` or `nil` if the object does not changed.
@@ -205,31 +250,13 @@
                                         [:user-id                       pos-int?]
                                         [:is-creation? {:optional true} [:maybe :boolean]]
                                         [:message      {:optional true} [:maybe :string]]]]
-  (let [entity-name (name entity)
-        serialized-object (serialize-instance entity id (dissoc object :message))
-        ;; For Card entities, ensure :card_schema is excluded from comparison
-        ;; Old revisions might have :card_schema added by after-select, but this field
-        ;; shouldn't trigger new revisions as it's a technical/internal field
-        previous-object-for-comparison (cond-> previous-object
-                                         (= entity :model/Card) (dissoc :card_schema))]
-    ;; make sure we still have a map after calling out serialization function
-    (assert (map? serialized-object))
-    ;; the previous-object could have nested object, e.g: Dashboard can have multiple Card in it,
-    ;; even though we call `post-select` on the `object`, the nested object might not be transformed correctly
-    ;; E.g: Cards inside Dashboard will not be transformed
-    ;; so to be safe, we'll just compare them as string
-    (when (or (nil? previous-object)
-              (not= (json/encode serialized-object)
-                    (json/encode previous-object-for-comparison)))
-      (t2/insert! :model/Revision
-                  :model        entity-name
-                  :model_id     id
-                  :user_id      user-id
-                  :object       serialized-object
-                  :is_creation  is-creation?
-                  :is_reversion false
-                  :message      message)
-      object)))
+  (push-revisions! [{:id              id
+                     :entity          entity
+                     :user-id         user-id
+                     :object          object
+                     :previous-object previous-object
+                     :is-creation?    is-creation?
+                     :message         message}]))
 
 (mu/defn revert!
   "Revert `entity` with `id` to a given Revision."

@@ -214,3 +214,121 @@
           (let [card (card/create-card! (basic-orders) user)]
             (is (= deps.graph/current-dependency-analysis-version
                    (t2/select-one-fn :dependency_analysis_version :model/Card :id (:id card))))))))))
+
+(deftest replace-dependencies-bulk-test
+  (testing "replace-dependencies-bulk! updates dependencies for multiple entities efficiently"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/Card card1 {:dataset_query (mt/mbql-query orders)}
+                     :model/Card card2 {:dataset_query (mt/mbql-query products)}
+                     :model/Card card3 {:dataset_query (mt/mbql-query orders)}]
+        (let [card1-id (:id card1)
+              card2-id (:id card2)
+              card3-id (:id card3)]
+          (testing "can set initial dependencies for multiple cards at once"
+            (deps.graph/replace-dependencies-bulk!
+             :card
+             [{:entity-id card1-id
+               :dependencies-by-type {:table #{(mt/id :orders)}}}
+              {:entity-id card2-id
+               :dependencies-by-type {:table #{(mt/id :products)}}}
+              {:entity-id card3-id
+               :dependencies-by-type {:table #{(mt/id :orders) (mt/id :products)}}}])
+
+            (is (=? #{(depends-on-> :card card1-id :table (mt/id :orders))}
+                    (upstream-of :card card1-id)))
+            (is (=? #{(depends-on-> :card card2-id :table (mt/id :products))}
+                    (upstream-of :card card2-id)))
+            (is (=? #{(depends-on-> :card card3-id :table (mt/id :orders))
+                      (depends-on-> :card card3-id :table (mt/id :products))}
+                    (upstream-of :card card3-id))))
+
+          (testing "can update dependencies for multiple cards at once"
+            (deps.graph/replace-dependencies-bulk!
+             :card
+             [{:entity-id card1-id
+               :dependencies-by-type {:table #{(mt/id :products)}}}
+              {:entity-id card2-id
+               :dependencies-by-type {:table #{(mt/id :orders)}}}
+              {:entity-id card3-id
+               :dependencies-by-type {:table #{(mt/id :orders)}}}])
+
+            (is (=? #{(depends-on-> :card card1-id :table (mt/id :products))}
+                    (upstream-of :card card1-id)))
+            (is (=? #{(depends-on-> :card card2-id :table (mt/id :orders))}
+                    (upstream-of :card card2-id)))
+            (is (=? #{(depends-on-> :card card3-id :table (mt/id :orders))}
+                    (upstream-of :card card3-id))))
+
+          (testing "can remove all dependencies for some cards while updating others"
+            (deps.graph/replace-dependencies-bulk!
+             :card
+             [{:entity-id card1-id
+               :dependencies-by-type {}}
+              {:entity-id card2-id
+               :dependencies-by-type {:table #{(mt/id :products) (mt/id :orders)}}}
+              {:entity-id card3-id
+               :dependencies-by-type {}}])
+
+            (is (nil? (upstream-of :card card1-id)))
+            (is (=? #{(depends-on-> :card card2-id :table (mt/id :products))
+                      (depends-on-> :card card2-id :table (mt/id :orders))}
+                    (upstream-of :card card2-id)))
+            (is (nil? (upstream-of :card card3-id)))))))))
+
+(deftest replace-dependencies-bulk-with-cards-test
+  (testing "replace-dependencies-bulk! handles card-to-card dependencies"
+    (mt/with-premium-features #{:dependencies}
+
+      (mt/with-temp [:model/Card card1 {:dataset_query (mt/mbql-query orders)}
+                     :model/Card card2 {:dataset_query (mt/mbql-query products)}
+                     :model/Card card3 {:dataset_query (mt/mbql-query orders)}
+                     :model/Card card4 {:dataset_query (mt/mbql-query products)}]
+        (let [card1-id (:id card1)
+              card2-id (:id card2)
+              card3-id (:id card3)
+              card4-id (:id card4)]
+          (testing "can set card and table dependencies together"
+            (deps.graph/replace-dependencies-bulk!
+             :card
+             [{:entity-id card3-id
+               :dependencies-by-type {:card #{card1-id}
+                                      :table #{(mt/id :orders)}}}
+              {:entity-id card4-id
+               :dependencies-by-type {:card #{card2-id card1-id}
+                                      :table #{(mt/id :products)}}}])
+
+            (is (=? #{(depends-on-> :card card3-id :card card1-id)
+                      (depends-on-> :card card3-id :table (mt/id :orders))}
+                    (upstream-of :card card3-id)))
+            (is (=? #{(depends-on-> :card card4-id :card card1-id)
+                      (depends-on-> :card card4-id :card card2-id)
+                      (depends-on-> :card card4-id :table (mt/id :products))}
+                    (upstream-of :card card4-id)))))))))
+
+(deftest replace-dependencies-single-vs-bulk-equivalence-test
+  (testing "replace-dependencies! (single) delegates to bulk version correctly"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/Card card1 {:dataset_query (mt/mbql-query orders)}
+                     :model/Card card2 {:dataset_query (mt/mbql-query products)}]
+        (let [card1-id (:id card1)
+              card2-id (:id card2)]
+          (testing "single-entity function produces same result as bulk"
+            (deps.graph/replace-dependencies! :card card1-id {:table #{(mt/id :orders)}})
+            (deps.graph/replace-dependencies-bulk! :card [{:entity-id card2-id
+                                                           :dependencies-by-type {:table #{(mt/id :products)}}}])
+
+            (is (=? #{(depends-on-> :card card1-id :table (mt/id :orders))}
+                    (upstream-of :card card1-id)))
+            (is (=? #{(depends-on-> :card card2-id :table (mt/id :products))}
+                    (upstream-of :card card2-id)))
+
+            (testing "can update via single-entity function"
+              (deps.graph/replace-dependencies! :card card1-id {:table #{(mt/id :products)}})
+              (is (=? #{(depends-on-> :card card1-id :table (mt/id :products))}
+                      (upstream-of :card card1-id))))))))))
+
+(deftest replace-dependencies-bulk-empty-input-test
+  (testing "replace-dependencies-bulk! handles empty input gracefully"
+    (mt/with-premium-features #{:dependencies}
+      (testing "empty collection does nothing"
+        (is (nil? (deps.graph/replace-dependencies-bulk! :card [])))))))

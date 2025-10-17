@@ -55,7 +55,7 @@
                 :model    "Card"
                 :model_id card-id
                 :details  {:name "Test card"}}
-               (t2/select-one :model/AuditLog :model_id card-id)))))
+               (t2/select-one :model/AuditLog :model "Card" :model_id card-id)))))
 
       (testing "Test that `record-event!` succesfully records basic card events with the user, model, and model ID specified"
         (mt/with-temp [:model/Card {card-id :id :as card} {:name "Test card"}]
@@ -70,7 +70,7 @@
                 :model    "Card"
                 :model_id card-id
                 :details  {:name "Test card"}}
-               (t2/select-one :model/AuditLog :model_id card-id)))))
+               (t2/select-one :model/AuditLog :model "Card" :model_id card-id)))))
 
       (testing "Test that `record-event!` records an event with arbitrary data and no model specified"
         (audit-log/record-event! :event/test-event {:details {:foo "bar"}})
@@ -81,3 +81,71 @@
               :model_id nil
               :details {:foo "bar"}}
              (t2/select-one :model/AuditLog :topic :test-event)))))))
+
+(deftest record-events-bulk-test
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-test-user :rasta
+      (testing "Test that `record-events!` records multiple events in one call"
+        (mt/with-temp [:model/Card {card1-id :id :as card1} {:name "Card 1"}
+                       :model/Card {card2-id :id :as card2} {:name "Card 2"}
+                       :model/Card {card3-id :id :as card3} {:name "Card 3"}]
+          (let [result (audit-log/record-events! :event/card-create
+                                                 [{:object card1}
+                                                  {:object card2}
+                                                  {:object card3}])]
+            (testing "Returns count of inserted rows"
+              (is (= 3 result)))
+
+            (testing "All events are recorded correctly"
+              (is (partial=
+                   {:topic :card-create
+                    :user_id (mt/user->id :rasta)
+                    :model "Card"
+                    :model_id card1-id
+                    :details {:name "Card 1"}}
+                   (t2/select-one :model/AuditLog :model "Card" :model_id card1-id)))
+              (is (partial=
+                   {:topic :card-create
+                    :user_id (mt/user->id :rasta)
+                    :model "Card"
+                    :model_id card2-id
+                    :details {:name "Card 2"}}
+                   (t2/select-one :model/AuditLog :model "Card" :model_id card2-id)))
+              (is (partial=
+                   {:topic :card-create
+                    :user_id (mt/user->id :rasta)
+                    :model "Card"
+                    :model_id card3-id
+                    :details {:name "Card 3"}}
+                   (t2/select-one :model/AuditLog :model "Card" :model_id card3-id)))))))
+
+      (testing "Test that `record-events!` handles mixed user IDs"
+        (mt/with-temp [:model/Card {card1-id :id :as card1} {:name "Card A"}
+                       :model/Card {card2-id :id :as card2} {:name "Card B"}]
+          (audit-log/record-events! :event/card-create
+                                    [{:object card1 :user-id (mt/user->id :crowberto)}
+                                     {:object card2}])
+          (is (partial=
+               {:topic :card-create
+                :user_id (mt/user->id :crowberto)
+                :model_id card1-id}
+               (t2/select-one :model/AuditLog :model "Card" :model_id card1-id)))
+          (is (partial=
+               {:topic :card-create
+                :user_id (mt/user->id :rasta)
+                :model_id card2-id}
+               (t2/select-one :model/AuditLog :model "Card" :model_id card2-id)))))
+
+      (testing "Test that `record-events!` handles empty input"
+        (is (nil? (audit-log/record-events! :event/card-create []))))
+
+      (testing "Test that single `record-event!` delegates to bulk version correctly"
+        (mt/with-temp [:model/Card {card-id :id :as card} {:name "Single card"}]
+          (audit-log/record-event! :event/card-create {:object card})
+          (is (partial=
+               {:topic :card-create
+                :user_id (mt/user->id :rasta)
+                :model "Card"
+                :model_id card-id
+                :details {:name "Single card"}}
+               (t2/select-one :model/AuditLog :model "Card" :model_id card-id))))))))
