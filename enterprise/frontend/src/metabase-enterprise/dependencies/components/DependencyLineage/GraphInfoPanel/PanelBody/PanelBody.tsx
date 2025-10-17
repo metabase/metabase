@@ -69,11 +69,10 @@ function CreatorAndEditorInfo({ node }: CreatorAndEditorInfoProps) {
   const createdBy = getNodeCreatedBy(node);
   const editedAt = getNodeLastEditedAt(node);
   const editedBy = getNodeLastEditedBy(node);
+  const hasCreatedInfo = createdAt != null && createdBy != null;
+  const hasEditedInfo = editedAt != null && editedBy != null;
 
-  if (
-    (createdAt == null || createdBy == null) &&
-    (editedAt == null || editedBy == null)
-  ) {
+  if (!hasCreatedInfo && !hasEditedInfo) {
     return null;
   }
 
