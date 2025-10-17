@@ -249,6 +249,9 @@ const config = {
       "sdk-specific-imports": SRC_PATH + "/lib/noop",
       crypto: path.join(SRC_PATH, "/lib/crypto-polyfill.js"),
     },
+    fallback: {
+      buffer: "buffer/",
+    },
   },
   optimization: {
     runtimeChunk: "single",
