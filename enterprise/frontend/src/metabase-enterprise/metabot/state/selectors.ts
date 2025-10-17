@@ -34,6 +34,11 @@ export const getActiveToolCalls = createSelector(
   (metabot) => metabot.activeToolCalls,
 );
 
+export const getDebugMode = createSelector(
+  getMetabot,
+  (metabot) => metabot.debugMode,
+);
+
 export const getLastMessage = createSelector(getMessages, (messages) =>
   _.last(messages),
 );

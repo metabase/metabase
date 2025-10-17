@@ -113,6 +113,7 @@ export interface MetabotState {
   state: any;
   reactions: MetabotReactionsState;
   activeToolCalls: MetabotToolCall[];
+  debugMode: boolean;
   experimental: {
     metabotReqIdOverride: string | undefined;
     profileOverride: string | undefined;
@@ -132,6 +133,7 @@ export const getMetabotInitialState = (): MetabotState => ({
     suggestedTransforms: [],
   },
   activeToolCalls: [],
+  debugMode: false,
   experimental: {
     metabotReqIdOverride: undefined,
     profileOverride: undefined,
@@ -292,6 +294,9 @@ export const metabot = createSlice({
     },
     setProfileOverride: (state, action: PayloadAction<string | undefined>) => {
       state.experimental.profileOverride = action.payload;
+    },
+    setDebugMode: (state, action: PayloadAction<boolean>) => {
+      state.debugMode = action.payload;
     },
     addSuggestedTransform: (
       state,
