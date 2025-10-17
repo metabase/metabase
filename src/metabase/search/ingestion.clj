@@ -7,6 +7,7 @@
    [metabase.analytics.prometheus :as prometheus]
    [metabase.app-db.core :as mdb]
    [metabase.search.engine :as search.engine]
+   [metabase.search.impl :as search.impl]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -204,7 +205,7 @@
 (defn update!
   "Update all active engines' existing indexes with the given documents. Passed remove-documents will be deleted from the index."
   [documents-reducible removed-models-reducible]
-  (doseq [e (seq (search.engine/active-engines))]
+  (doseq [e (seq (search.impl/active-engines))]
     ;; We are partitioning the documents into batches at this level and sending each batch to all the engines
     ;; to avoid having to retain the head of the sequences as we work through all the documents.
     ;; Individual engines may also partition the documents further if they prefer
@@ -248,7 +249,7 @@
 (defn bulk-ingest!
   "Process the given search model updates."
   [updates]
-  (if (seq (search.engine/active-engines))
+  (if (seq (search.impl/active-engines))
     (let [documents (->> (for [[search-model where-clauses] (u/group-by first second updates)]
                            (spec-index-reducible search-model (into [:or] (distinct where-clauses))))
                          ;; init collection is only for clj-kondo, as we know that the list is non-empty
@@ -292,7 +293,7 @@
 (defn start-listener!
   "Starts the ingestion listener on the queue"
   []
-  (when (seq (search.engine/active-engines))
+  (when (seq (search.impl/active-engines))
     (queue/listen! listener-name queue bulk-ingest!
                    {:success-handler     (fn [_result _duration _]
                                            (track-queue-size!))

@@ -72,7 +72,7 @@
   []
   (api/check-superuser)
   (if (search/supports-index?)
-    {:message (search/init-index! {:force-reset? true})}
+    {:message (search/init-engines! {:force-reset? true})}
     (throw (ex-info "Search index is not supported for this installation." {:status-code 501}))))
 
 (api.macros/defendpoint :post "/force-reindex"

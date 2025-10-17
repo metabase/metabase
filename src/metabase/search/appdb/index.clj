@@ -47,9 +47,6 @@
 
 (def ^:private ^:dynamic *mocking-tables* false)
 
-(defmethod search.engine/reset-tracking! :search.engine/appdb [_]
-  (reset! *indexes* nil))
-
 (declare exists?)
 
 (defn- sync-tracking-atoms! []

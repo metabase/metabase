@@ -40,7 +40,8 @@
  [search.impl
   search
   ;; We could avoid exposing this by wrapping `query-model-set` and `search` with it.
-  search-context]
+  search-context
+  fallback-engine-priority]
 
  [search.ingestion
   bulk-ingest!
@@ -75,7 +76,7 @@
 
 (defmethod analytics/known-labels :metabase-search/engine-active
   [_]
-  (for [e (search.engine/known-engines)]
+  (for [e (search.impl/known-engines)]
     {:engine (name e)}))
 
 (defmethod analytics/initial-value :metabase-search/engine-default
@@ -89,19 +90,19 @@
 (defn supports-index?
   "Does this instance support a search index, of any sort?"
   []
-  (seq (search.engine/active-engines)))
+  (seq (search.impl/active-engines)))
 
-(defn init-index!
+(defn init-engines!
   "Ensure there is an index ready to be populated."
   [& {:as opts}]
   (when (supports-index?)
-    (log/info "Initializing search indexes")
+    (log/info "Initializing search engines")
     ;; If there are multiple indexes, return the peak inserted for each type. In practice, they should all be the same.
     (try
       (let [timer (u/start-timer)
             report (reduce (partial merge-with max)
                            nil
-                           (for [e (search.engine/active-engines)]
+                           (for [e (search.impl/active-engines)]
                              (search.engine/init! e opts)))
             duration (u/since-ms timer)]
         (if (seq report)
@@ -124,7 +125,7 @@
       (let [timer (u/start-timer)
             report (reduce (partial merge-with max)
                            nil
-                           (for [e (search.engine/active-engines)]
+                           (for [e (search.impl/active-engines)]
                              (search.engine/reindex! e opts)))
             duration (u/since-ms timer)]
         (analytics/inc! :metabase-search/index-reindex-ms duration)
@@ -138,25 +139,17 @@
         (throw e)))))
 
 (defn reindex!
-  "Populate a new index, and make it active. Simultaneously updates the current index.
+  "Rebuilds all active engines. Engines should avoid 'downtime' during reindexing.
   Returns a future that will complete when the reindexing is done.
-  Respects `search.ingestion/*force-sync*` and waits for the future if it's true.
-  Alternately, if `:async?` is false, it will also run synchronously."
+  If `:async?` is false OR `search.ingestion/*force-sync*` is true, wait for the future before returning."
   [& {:keys [async?] :or {async? true} :as opts}]
   (let [f #(reindex-logic! opts)]
     (if (or search.ingestion/*force-sync* (not async?))
       (doto (promise) (deliver (f)))
       (future (f)))))
 
-(defn reset-tracking!
-  "Stop tracking the current indexes. Used when resetting the appdb."
-  []
-  (when (supports-index?)
-    (doseq [e (search.engine/active-engines)]
-      (search.engine/reset-tracking! e))))
-
 (defn update!
-  "Given a new or updated instance, put all the corresponding search entries if needed in the queue."
+  "Given a new or updated instance, update all engines."
   [instance & [always?]]
   (when (supports-index?)
     (when-let [updates (->> (search.spec/search-models-to-update instance always?)
@@ -166,10 +159,10 @@
       (search.ingestion/ingest-maybe-async! updates))))
 
 (defn delete!
-  "Given a model and a list of model's ids, remove corresponding search entries."
+  "Given a model and a list of model's ids, remove corresponding search entries in all the engines."
   [model ids]
   (when (supports-index?)
-    (doseq [e            (search.engine/active-engines)
+    (doseq [e            (search.impl/active-engines)
             search-model (->> (vals (search.spec/specifications))
                               (filter (comp #{model} :model))
                               (map :name))]
