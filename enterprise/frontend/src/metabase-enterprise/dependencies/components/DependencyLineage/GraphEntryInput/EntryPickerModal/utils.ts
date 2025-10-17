@@ -3,6 +3,7 @@ import type {
   TablePickerItem,
   TablePickerValue,
 } from "metabase/common/components/Pickers/TablePicker";
+import type { TransformPickerItem } from "metabase/plugins";
 import type {
   CardType,
   DependencyEntry,
@@ -68,10 +69,28 @@ export function getQuestionPickerItem(
   };
 }
 
+export function getTransformPickerItem(
+  node: DependencyNode,
+): TransformPickerItem | undefined {
+  if (node.type !== "transform") {
+    return;
+  }
+
+  return {
+    id: node.id,
+    name: node.data.name,
+    model: "transform",
+  };
+}
+
 export function getEntryPickerItem(
   node: DependencyNode,
 ): EntryPickerItem | undefined {
-  return getTablePickerItem(node) ?? getQuestionPickerItem(node);
+  return (
+    getTablePickerItem(node) ??
+    getQuestionPickerItem(node) ??
+    getTransformPickerItem(node)
+  );
 }
 
 export function getEntryPickerValue(
@@ -88,6 +107,8 @@ export function getEntryPickerValue(
     case "dataset":
     case "metric":
       return { id: item.id, type: "card" };
+    case "transform":
+      return { id: item.id, type: "transform" };
   }
 }
 

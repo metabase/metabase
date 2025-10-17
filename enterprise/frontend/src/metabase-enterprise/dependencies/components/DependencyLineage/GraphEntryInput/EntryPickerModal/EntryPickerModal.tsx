@@ -17,6 +17,7 @@ import {
   TablePicker,
   type TablePickerStatePath,
 } from "metabase/common/components/Pickers/TablePicker/TablePicker";
+import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import {
   type DependencyEntry,
   type DependencyNode,
@@ -31,6 +32,7 @@ import {
   getEntryPickerValue,
   getQuestionPickerItem,
   getTablePickerValue,
+  getTransformPickerItem,
 } from "./utils";
 
 type EntryPickerModalProps = {
@@ -84,6 +86,20 @@ export function EntryPickerModal({
           path={tablesPath}
           onItemSelect={onItemSelect}
           onPathChange={setTablesPath}
+        />
+      ),
+    });
+
+    computedTabs.push({
+      id: "transforms-tab",
+      displayName: t`Transforms`,
+      models: ["transform"],
+      folderModels: [],
+      icon: "refresh_downstream",
+      render: ({ onItemSelect }) => (
+        <PLUGIN_TRANSFORMS.TransformPicker
+          value={value ? getTransformPickerItem(value) : undefined}
+          onItemSelect={onItemSelect}
         />
       ),
     });
