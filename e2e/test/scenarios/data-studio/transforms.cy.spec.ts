@@ -1569,12 +1569,6 @@ LIMIT
         H.PythonEditor.value().should("contain", "import common");
 
         cy.findByTestId("python-data-picker")
-          .findByText("Select a database")
-          .click();
-
-        H.popover().findByText(DB_NAME).click();
-
-        cy.findByTestId("python-data-picker")
           .findByText("Select a table…")
           .click();
 
@@ -2317,7 +2311,7 @@ describe("scenarios > admin > transforms > runs", () => {
   });
 });
 
-H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
+describe("scenarios > admin > transforms", () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
@@ -2332,7 +2326,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
   it("should not pick the only database when it is disabled in SQL editor", () => {
     cy.log("create a new transform");
     visitTransformListPage();
-    getTransformListPage().button("Create a transform").click();
+    cy.button("Create a transform").click();
     H.popover().findByText("SQL query").click();
 
     cy.findByTestId("gui-builder-data")
@@ -2343,7 +2337,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
   it("should not pick the only database when it is disabled in Python editor", () => {
     cy.log("create a new transform");
     visitTransformListPage();
-    getTransformListPage().button("Create a transform").click();
+    cy.button("Create a transform").click();
     H.popover().findByText("Python script").click();
 
     getPythonDataPicker().findByText("Select a database").should("be.visible");
@@ -2352,10 +2346,6 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
 
 function getTransformsNavLink() {
   return H.DataStudio.nav().findByRole("link", { name: "Transforms" });
-}
-
-function getTransformListPage() {
-  return cy.findByTestId("transform-list-page");
 }
 
 function getRunsNavLink() {
