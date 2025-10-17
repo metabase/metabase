@@ -1,5 +1,4 @@
-import fetchMock from "fetch-mock";
-
+import { setupBugReportingDetailsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
 import type { HelpLinkSetting } from "metabase-types/api";
@@ -45,7 +44,7 @@ const premiumHelpLink =
 
 describe("useHelpLink", () => {
   beforeEach(() => {
-    fetchMock.get("path:/api/bug-reporting/details", "");
+    setupBugReportingDetailsEndpoint();
   });
 
   describe("metabase help link", () => {
