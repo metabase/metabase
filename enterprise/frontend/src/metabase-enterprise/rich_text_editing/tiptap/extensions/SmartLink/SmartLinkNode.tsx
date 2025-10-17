@@ -176,6 +176,45 @@ export const SmartLink = Node.create<{
       {
         tag: 'span[data-type="smart-link"]',
       },
+      {
+        tag: 'a[href^="metabase://"]',
+        getAttrs: (node) => {
+          if (typeof node === "string") {
+            return false;
+          }
+          const href = node.getAttribute("href");
+          if (!href) {
+            return false;
+          }
+
+          const match = href.match(
+            /metabase:\/\/(question|model|dashboard|collection|table|database|document)\/(\d+)/,
+          );
+          if (!match) {
+            return false;
+          }
+
+          const model = match[1];
+          const entityId = parseInt(match[2], 10);
+
+          // Map model names to SuggestionModel types
+          const modelMap: Record<string, SuggestionModel> = {
+            question: "card",
+            model: "dataset",
+            dashboard: "dashboard",
+            collection: "collection",
+            table: "table",
+            database: "database",
+            document: "document",
+          };
+
+          return {
+            entityId,
+            model: modelMap[model] || model,
+            label: node.textContent,
+          };
+        },
+      },
     ];
   },
 
@@ -214,6 +253,7 @@ export const SmartLink = Node.create<{
 
   addPasteRules() {
     return [
+      // Handle https?:// URLs
       nodePasteRule({
         find: /https?:\/\/[^\s]+/g,
         type: this.type,
@@ -229,6 +269,31 @@ export const SmartLink = Node.create<{
           }
 
           return null; // Return null to prevent node creation
+        },
+      }),
+      // Handle metabase:// protocol links
+      nodePasteRule({
+        find: /metabase:\/\/(question|model|dashboard|collection|table|database|document)\/(\d+)/g,
+        type: this.type,
+        getAttributes: (match) => {
+          const model = match[1];
+          const entityId = parseInt(match[2], 10);
+
+          // Map model names to SuggestionModel types
+          const modelMap: Record<string, SuggestionModel> = {
+            question: "card",
+            model: "dataset",
+            dashboard: "dashboard",
+            collection: "collection",
+            table: "table",
+            database: "database",
+            document: "document",
+          };
+
+          return {
+            entityId,
+            model: modelMap[model] || model,
+          };
         },
       }),
     ];

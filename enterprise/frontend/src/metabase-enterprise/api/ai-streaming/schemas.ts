@@ -6,11 +6,16 @@ export const dataPartSchema = Yup.object({
   value: Yup.mixed(),
 });
 
-export const knownDataPartTypes = ["state", "navigate_to"];
+export const knownDataPartTypes = ["state", "navigate_to", "document_update"];
 
 export type KnownDataPart =
   | { type: "state"; version: 1; value: Record<string, any> }
-  | { type: "navigate_to"; version: 1; value: string };
+  | { type: "navigate_to"; version: 1; value: string }
+  | {
+      type: "document_update";
+      version: 1;
+      value: { title: string; content: string; replace: boolean };
+    };
 
 export const toolCallPartSchema = Yup.object({
   toolCallId: Yup.string().required(),

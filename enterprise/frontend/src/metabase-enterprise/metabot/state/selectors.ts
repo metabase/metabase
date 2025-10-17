@@ -137,7 +137,7 @@ export const getProfileOverride = createSelector(
   getMetabot,
   getIsDeepResearch,
   (metabot, isDeepResearch) =>
-    isDeepResearch ? "hackathon" : metabot.experimental.profileOverride,
+    isDeepResearch ? "deep_research" : metabot.experimental.profileOverride,
 );
 
 export const getAgentRequestMetadata = createSelector(
@@ -152,4 +152,14 @@ export const getAgentRequestMetadata = createSelector(
     ),
     ...(profileId ? { profile_id: profileId } : {}),
   }),
+);
+
+export const getMetabotDocumentTitle = createSelector(
+  getMetabot,
+  (metabot) => metabot.document.title,
+);
+
+export const getMetabotDocumentContent = createSelector(
+  getMetabot,
+  (metabot) => metabot.document.content,
 );

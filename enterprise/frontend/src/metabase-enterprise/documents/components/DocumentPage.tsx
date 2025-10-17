@@ -36,6 +36,10 @@ import {
   useListCommentsQuery,
   useUpdateDocumentMutation,
 } from "metabase-enterprise/api";
+import {
+  getMetabotDocumentContent,
+  getMetabotDocumentTitle,
+} from "metabase-enterprise/metabot/state/selectors";
 import type {
   Card,
   CollectionId,
@@ -154,9 +158,24 @@ export const DocumentPage = ({
     updateCardEmbeds,
   } = useDocumentState(documentData);
 
-  (window as any).documentContent = documentContent;
-  (window as any).setDocumentContent = setDocumentContent;
-  (window as any).setDocumentTitle = setDocumentTitle;
+  // Get metabot document updates from Redux
+  const metabotDocumentTitle = useSelector(getMetabotDocumentTitle);
+  const metabotDocumentContent = useSelector(getMetabotDocumentContent);
+
+  // Update local document state when metabot sends document updates
+  useEffect(() => {
+    if (metabotDocumentTitle) {
+      setDocumentTitle(metabotDocumentTitle);
+    }
+  }, [metabotDocumentTitle, setDocumentTitle]);
+
+  useEffect(() => {
+    if (metabotDocumentContent) {
+      setDocumentContent(metabotDocumentContent);
+      // Mark as having changes so user can save
+      dispatch(setHasUnsavedChanges(true));
+    }
+  }, [metabotDocumentContent, setDocumentContent, dispatch]);
 
   // This is important as it will affect collection breadcrumbs in the appbar
   useUnmount(() => {
@@ -226,7 +245,6 @@ export const DocumentPage = ({
   ]);
 
   const isSaving = isCreating || isUpdating;
-  const showSaveButton = hasUnsavedChanges() && canWrite && !isSaving;
 
   const handleChange = useCallback(
     (content: JSONContent, textContent: string) => {

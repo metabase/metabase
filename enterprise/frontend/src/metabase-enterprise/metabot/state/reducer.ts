@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import { logout } from "metabase/auth/actions";
 import { uuid } from "metabase/lib/uuid";
-import type { MetabotHistory } from "metabase-types/api";
+import type { DocumentContent, MetabotHistory } from "metabase-types/api";
 
 import { TOOL_CALL_MESSAGES } from "../constants";
 
@@ -42,6 +42,10 @@ export interface MetabotState {
   state: any;
   reactions: MetabotReactionsState;
   toolCalls: MetabotToolCall[];
+  document: {
+    title: string | null;
+    content: DocumentContent | null;
+  };
   experimental: {
     deepResearch: boolean;
     metabotReqIdOverride: string | undefined;
@@ -61,6 +65,10 @@ export const getMetabotInitialState = (): MetabotState => ({
     navigateToPath: null,
   },
   toolCalls: [],
+  document: {
+    title: null,
+    content: null,
+  },
   experimental: {
     deepResearch: true,
     metabotReqIdOverride: undefined,
@@ -158,6 +166,8 @@ export const metabot = createSlice({
       state.isProcessing = false;
       state.toolCalls = [];
       state.conversationId = uuid();
+      state.document.title = null;
+      state.document.content = null;
       state.experimental.metabotReqIdOverride = undefined;
     },
     resetConversationId: (state) => {
@@ -183,6 +193,26 @@ export const metabot = createSlice({
     },
     setProfileOverride: (state, action: PayloadAction<string | undefined>) => {
       state.experimental.profileOverride = action.payload;
+    },
+    setDocumentTitle: (state, action: PayloadAction<string>) => {
+      state.document.title = action.payload;
+    },
+    setDocumentContent: (
+      state,
+      action: PayloadAction<{ content: DocumentContent; replace: boolean }>,
+    ) => {
+      const { content, replace } = action.payload;
+      if (replace) {
+        state.document.content = content;
+      } else {
+        // For now, replace is the only supported mode
+        // Append logic can be added later if needed
+        state.document.content = content;
+      }
+    },
+    clearDocument: (state) => {
+      state.document.title = null;
+      state.document.content = null;
     },
   },
   extraReducers: (builder) => {

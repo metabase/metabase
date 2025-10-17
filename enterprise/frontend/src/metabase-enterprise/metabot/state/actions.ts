@@ -1,13 +1,16 @@
 import { type UnknownAction, isRejected } from "@reduxjs/toolkit";
+import Link from "@tiptap/extension-link";
+import { generateJSON } from "@tiptap/html";
+import StarterKit from "@tiptap/starter-kit";
+import { micromark } from "micromark";
 import { push } from "react-router-redux";
 import { P, match } from "ts-pattern";
-import { micromark } from "micromark";
-import { generateJSON } from "@tiptap/html";
 
 import { createAsyncThunk } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { addUndo } from "metabase/redux/undo";
 import { getIsEmbedding } from "metabase/selectors/embed";
+import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
 import { EnterpriseApi } from "metabase-enterprise/api";
 import {
@@ -15,8 +18,8 @@ import {
   aiStreamingQuery,
   getInflightRequestsForUrl,
 } from "metabase-enterprise/api/ai-streaming";
+import { SmartLink } from "metabase-enterprise/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
 import type {
-  DocumentContent,
   MetabotAgentRequest,
   MetabotAgentResponse,
   MetabotChatContext,
@@ -39,7 +42,6 @@ import {
 } from "./selectors";
 import type { SlashCommand } from "./types";
 import { createMessageId, parseSlashCommand } from "./utils";
-import StarterKit from "@tiptap/starter-kit";
 
 export const {
   addAgentTextDelta,
@@ -54,6 +56,8 @@ export const {
   setProfileOverride,
   setMetabotReqIdOverride,
   toggleDeepResearch,
+  setDocumentTitle,
+  setDocumentContent,
 } = metabot.actions;
 
 type PromptErrorOutcome = {
@@ -254,54 +258,57 @@ export const sendAgentRequest = createAsyncThunk<
                   dispatch(push(part.value) as UnknownAction);
                 }
               })
+              .with({ type: "document_update" }, (part) => {
+                // Pre-process: Convert metabase:// markdown links to HTML anchors
+                // micromark doesn't recognize metabase:// as a valid protocol and strips it
+                const metabaseLinkPattern =
+                  /\[([^\]]+)\]\((metabase:\/\/(?:question|model|dashboard|collection|table|database|document)\/\d+)\)/g;
+
+                const contentWithHtmlLinks = part.value.content.replace(
+                  metabaseLinkPattern,
+                  (_, linkText, href) => `<a href="${href}">${linkText}</a>`,
+                );
+
+                // Convert markdown to HTML (with metabase:// links already as HTML)
+                // allowDangerousHtml preserves HTML tags instead of escaping them
+                const html = micromark(contentWithHtmlLinks, {
+                  allowDangerousHtml: true,
+                });
+
+                // Get siteUrl for SmartLink extension
+                const siteUrl = getSetting(getState() as any, "site-url");
+
+                // Convert HTML to Tiptap JSON
+                // Use StarterKit without Link, then add SmartLink (priority 1000) and Link
+                const doc = generateJSON(html, [
+                  StarterKit.configure({
+                    // Disable link since SmartLink needs to handle metabase:// links first
+                    link: false,
+                  }),
+                  SmartLink.configure({
+                    siteUrl,
+                  }),
+                  Link,
+                ]);
+
+                dispatch(setDocumentTitle(part.value.title));
+                dispatch(
+                  setDocumentContent({
+                    content: doc,
+                    replace: part.value.replace,
+                  }),
+                );
+              })
               .exhaustive();
           },
           onTextPart: (part) => {
-            if (body.history.length === 0) {
-              dispatch(addAgentTextDelta(String(part)));
-            }
+            dispatch(addAgentTextDelta(String(part)));
           },
           onToolCallPart: (part) => dispatch(toolCallStart(part)),
           onToolResultPart: (part) => dispatch(toolCallEnd(part)),
           onError: (part) => (error = part),
         },
       );
-
-      if (
-        window.location.pathname === "/megabot/new" &&
-        body.history.length !== 0
-      ) {
-        // TODO: set t
-        dispatch(
-          addAgentTextDelta(
-            window.documentContent
-              ? `I've finished my research, take a look!`
-              : `Edit the plan with any feedback you have! When you're ready, I'll start researching.`,
-          ),
-        );
-        window.setDocumentTitle(
-          window.documentContent ? "Final research" : "Research plan",
-        );
-
-        const html = micromark(response.text);
-        const doc = generateJSON(html, [StarterKit]);
-        // const doc: DocumentContent = {
-        //   type: "doc",
-        //   content: [
-        //     {
-        //       type: "paragraph",
-        //       content: [
-        //         {
-        //           type: "text",
-        //           text: response.text ?? "",
-        //         },
-        //       ],
-        //     },
-        //   ],
-        // };
-        //
-        (window as any).setDocumentContent(doc);
-      }
 
       if (error) {
         throw error;
