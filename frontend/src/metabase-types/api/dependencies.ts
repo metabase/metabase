@@ -43,6 +43,10 @@ export type CardDependencyNodeData = Pick<
   | "collection"
   | "dashboard_id"
   | "dashboard"
+  | "result_metadata"
+  | "creator"
+  | "created_at"
+  | "last-edit-info"
   | "moderation_reviews"
 > & {
   view_count?: number;
