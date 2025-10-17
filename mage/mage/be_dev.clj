@@ -38,7 +38,7 @@
     (java.net.Socket. host port)
     (catch java.net.ConnectException _
       (println
-       (str "Could not connect to the REPL server on port: " (c/red port) " (found port number in .nrepl-port).\n"
+       (str "Could not connect to the REPL server on host: " (c/red host) " port: " (c/red port) " (found port number in .nrepl-port).\n"
             "Is the Metabase backend running?\n\n"
             "To start it, run:\n"
             (c/green "  clj -M:dev:ee:ee-dev:drivers:drivers-dev:dev-start\n\n")
@@ -97,7 +97,16 @@
         (if (some #{"done"} (get response "status"))
           (some->> @final-value
                    (println "\n=> "))
-          (recur))))))
+          (recur))))
+    final-value))
+
+(defn nrepl-open? []
+  (let [result (atom false)]
+    (with-out-str
+      (when (try (= "10" @(nrepl-eval "user" (pr-str '(+ 1 2 3 4))))
+                 (catch Exception _ false))
+        (reset! result true)))
+    @result))
 
 (comment
 
