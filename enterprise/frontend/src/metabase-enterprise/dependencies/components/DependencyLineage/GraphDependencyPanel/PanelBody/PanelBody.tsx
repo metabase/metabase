@@ -148,7 +148,7 @@ function ListItemLink({ link }: ListItemLinkProps) {
       component={Link}
       to={link}
       target="_blank"
-      m={rem(ACTION_ICON_PADDING)}
+      m={rem(-ACTION_ICON_PADDING)}
       aria-label={t`Open in a new tab`}
     >
       <FixedSizeIcon name="external" />

@@ -20,7 +20,7 @@ export function PanelHeader({ node, onClose }: PanelHeaderProps) {
       <Title flex={1} order={5}>
         {getNodeLabel(node)}
       </Title>
-      <Box m={rem(ACTION_ICON_PADDING)}>
+      <Box m={rem(-ACTION_ICON_PADDING)}>
         {link != null && (
           <ActionIcon
             component={Link}

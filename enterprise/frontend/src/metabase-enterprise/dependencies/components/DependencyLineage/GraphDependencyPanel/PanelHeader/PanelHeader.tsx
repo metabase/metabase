@@ -51,7 +51,7 @@ export function PanelHeader({
           {getHeaderLabel(node, groupType)}
         </Title>
         <ActionIcon
-          m={rem(ACTION_ICON_PADDING)}
+          m={rem(-ACTION_ICON_PADDING)}
           aria-label={t`Close`}
           onClick={onClose}
         >
