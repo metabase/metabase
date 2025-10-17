@@ -5,7 +5,7 @@ import type {
 } from "metabase-types/api";
 
 export function visitTransform(transformId: TransformId) {
-  cy.visit(`/admin/transforms/${transformId}`);
+  cy.visit(`/bench/transforms/${transformId}`);
 }
 
 const WAIT_TIMEOUT = 10000;

@@ -26,6 +26,7 @@ type ItemsListSectionProps = {
   settings?: React.ReactNode | null;
   listItems: React.ReactNode;
   onCollapse?: () => void;
+  testId?: string;
 };
 
 export const ItemsListSection = ({
@@ -34,9 +35,15 @@ export const ItemsListSection = ({
   settings,
   listItems,
   onCollapse,
+  testId,
 }: ItemsListSectionProps) => {
   return (
-    <Box w="100%" h="100%" style={{ display: "flex", flexDirection: "column" }}>
+    <Box
+      data-testid={testId}
+      w="100%"
+      h="100%"
+      style={{ display: "flex", flexDirection: "column" }}
+    >
       <Flex justify="space-between" align="center" p="md">
         <Flex align="center" gap="sm">
           {onCollapse && (

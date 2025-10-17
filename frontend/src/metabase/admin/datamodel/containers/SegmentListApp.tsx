@@ -109,9 +109,11 @@ function SegmentListAppInner({ onCollapse, ...props }: SegmentListAppProps) {
   return (
     <ItemsListSection
       sectionTitle={t`Segments`}
+      testId="segment-list-app"
       onCollapse={onCollapse}
       addButton={
         <ItemsListAddButton
+          aria-label={t`New segment`}
           onClick={() => dispatch(push("/bench/segment/new"))}
         />
       }
