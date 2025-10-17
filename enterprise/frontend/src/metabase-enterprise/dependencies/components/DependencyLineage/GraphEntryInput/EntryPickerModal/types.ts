@@ -6,3 +6,7 @@ export type EntryPickerItem =
   | TablePickerItem
   | QuestionPickerItem
   | TransformPickerItem;
+
+export type EntryPickerItemId = EntryPickerItem["id"];
+
+export type EntryPickerItemModel = EntryPickerItem["model"];

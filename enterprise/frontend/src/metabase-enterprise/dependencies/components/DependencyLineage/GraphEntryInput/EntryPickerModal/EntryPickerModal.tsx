@@ -1,16 +1,13 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useLogRecentItemMutation } from "metabase/api";
+import { useLogRecentItemMutation, useSearchQuery } from "metabase/api";
 import {
   EntityPickerModal,
-  type EntityPickerModalOptions,
   type EntityPickerTab,
-  defaultOptions,
 } from "metabase/common/components/EntityPicker";
 import {
   QuestionPicker,
-  type QuestionPickerOptions,
   type QuestionPickerStatePath,
 } from "metabase/common/components/Pickers/QuestionPicker";
 import {
@@ -21,18 +18,35 @@ import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import {
   type DependencyEntry,
   type DependencyNode,
-  type RecentContexts,
   isActivityModel,
 } from "metabase-types/api";
 
-import type { EntryPickerItem } from "./types";
+import { SEARCH_MODELS } from "../constants";
+
 import {
-  filterRecents,
+  ENTITY_PICKER_OPTIONS,
+  QUESTION_FOLDER_MODELS,
+  QUESTION_MODELS,
+  QUESTION_PICKER_OPTIONS,
+  RECENTS_CONTEXT,
+  TABLE_FOLDER_MODELS,
+  TABLE_MODELS,
+  TRANSFORM_FOLDER_MODELS,
+  TRANSFORM_MODELS,
+} from "./constants";
+import type {
+  EntryPickerItem,
+  EntryPickerItemId,
+  EntryPickerItemModel,
+} from "./types";
+import {
   getEntryPickerItem,
   getEntryPickerValue,
   getQuestionPickerItem,
+  getSupportedRecentItems,
   getTablePickerValue,
   getTransformPickerItem,
+  hasAvailableModels,
 } from "./utils";
 
 type EntryPickerModalProps = {
@@ -41,19 +55,6 @@ type EntryPickerModalProps = {
   onClose: () => void;
 };
 
-const ENTITY_PICKER_OPTIONS: EntityPickerModalOptions = {
-  ...defaultOptions,
-  hasConfirmButtons: false,
-  hasRecents: true,
-};
-
-const QUESTION_PICKER_OPTIONS: QuestionPickerOptions = {
-  showRootCollection: true,
-  showPersonalCollections: true,
-};
-
-const RECENTS_CONTEXT: RecentContexts[] = ["selections"];
-
 export function EntryPickerModal({
   value,
   onChange,
@@ -61,6 +62,11 @@ export function EntryPickerModal({
 }: EntryPickerModalProps) {
   const [tablesPath, setTablesPath] = useState<TablePickerStatePath>();
   const [questionsPath, setQuestionsPath] = useState<QuestionPickerStatePath>();
+  const { data: searchResponse, isLoading: isSearchLoading } = useSearchQuery({
+    models: SEARCH_MODELS,
+    limit: 0,
+    calculate_available_models: true,
+  });
   const [logRecentItem] = useLogRecentItemMutation();
 
   const selectedItem = useMemo(() => {
@@ -69,16 +75,16 @@ export function EntryPickerModal({
 
   const tabs = useMemo(() => {
     const computedTabs: EntityPickerTab<
-      EntryPickerItem["id"],
-      EntryPickerItem["model"],
+      EntryPickerItemId,
+      EntryPickerItemModel,
       EntryPickerItem
     >[] = [];
 
     computedTabs.push({
       id: "tables-tab",
       displayName: t`Tables`,
-      models: ["table"],
-      folderModels: ["database", "schema"],
+      models: TABLE_MODELS,
+      folderModels: TABLE_FOLDER_MODELS,
       icon: "table",
       render: ({ onItemSelect }) => (
         <TablePicker
@@ -90,41 +96,45 @@ export function EntryPickerModal({
       ),
     });
 
-    computedTabs.push({
-      id: "transforms-tab",
-      displayName: t`Transforms`,
-      models: ["transform"],
-      folderModels: [],
-      icon: "refresh_downstream",
-      render: ({ onItemSelect }) => (
-        <PLUGIN_TRANSFORMS.TransformPicker
-          value={value ? getTransformPickerItem(value) : undefined}
-          onItemSelect={onItemSelect}
-        />
-      ),
-    });
+    if (hasAvailableModels(searchResponse, TRANSFORM_MODELS)) {
+      computedTabs.push({
+        id: "transforms-tab",
+        displayName: t`Transforms`,
+        models: TRANSFORM_MODELS,
+        folderModels: TRANSFORM_FOLDER_MODELS,
+        icon: "refresh_downstream",
+        render: ({ onItemSelect }) => (
+          <PLUGIN_TRANSFORMS.TransformPicker
+            value={value ? getTransformPickerItem(value) : undefined}
+            onItemSelect={onItemSelect}
+          />
+        ),
+      });
+    }
 
-    computedTabs.push({
-      id: "collections-tab",
-      displayName: t`Collections`,
-      models: ["card", "dataset", "metric"],
-      folderModels: ["collection", "dashboard"],
-      icon: "folder",
-      render: ({ onItemSelect }) => (
-        <QuestionPicker
-          initialValue={value ? getQuestionPickerItem(value) : undefined}
-          models={["card", "dataset", "metric"]}
-          options={QUESTION_PICKER_OPTIONS}
-          path={questionsPath}
-          onInit={onItemSelect}
-          onItemSelect={onItemSelect}
-          onPathChange={setQuestionsPath}
-        />
-      ),
-    });
+    if (hasAvailableModels(searchResponse, QUESTION_MODELS)) {
+      computedTabs.push({
+        id: "collections-tab",
+        displayName: t`Collections`,
+        models: QUESTION_MODELS,
+        folderModels: QUESTION_FOLDER_MODELS,
+        icon: "folder",
+        render: ({ onItemSelect }) => (
+          <QuestionPicker
+            initialValue={value ? getQuestionPickerItem(value) : undefined}
+            models={QUESTION_MODELS}
+            options={QUESTION_PICKER_OPTIONS}
+            path={questionsPath}
+            onInit={onItemSelect}
+            onItemSelect={onItemSelect}
+            onPathChange={setQuestionsPath}
+          />
+        ),
+      });
+    }
 
     return computedTabs;
-  }, [value, tablesPath, questionsPath]);
+  }, [value, searchResponse, tablesPath, questionsPath]);
 
   const handleItemSelect = (item: EntryPickerItem) => {
     const value = getEntryPickerValue(item);
@@ -144,8 +154,9 @@ export function EntryPickerModal({
       initialValue={selectedItem}
       selectedItem={selectedItem ?? null}
       options={ENTITY_PICKER_OPTIONS}
-      recentFilter={filterRecents}
+      recentFilter={getSupportedRecentItems}
       recentsContext={RECENTS_CONTEXT}
+      isLoadingTabs={isSearchLoading}
       canSelectItem
       defaultToRecentTab={false}
       onItemSelect={handleItemSelect}

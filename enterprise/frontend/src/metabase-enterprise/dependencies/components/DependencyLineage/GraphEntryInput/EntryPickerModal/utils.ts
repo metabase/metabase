@@ -9,6 +9,8 @@ import type {
   DependencyEntry,
   DependencyNode,
   RecentItem,
+  SearchModel,
+  SearchResponse,
 } from "metabase-types/api";
 
 import { SEARCH_MODELS } from "../constants";
@@ -112,6 +114,14 @@ export function getEntryPickerValue(
   }
 }
 
-export function filterRecents(recentItems: RecentItem[]) {
+export function getSupportedRecentItems(recentItems: RecentItem[]) {
   return recentItems.filter((item) => SEARCH_MODELS.includes(item.model));
+}
+
+export function hasAvailableModels(
+  response: SearchResponse | undefined,
+  models: SearchModel[],
+) {
+  const availableModels = response?.available_models ?? [];
+  return models.some((model) => availableModels.includes(model));
 }
