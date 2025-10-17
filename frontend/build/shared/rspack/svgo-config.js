@@ -1,6 +1,3 @@
-/* eslint-env node */
-/* eslint-disable import/no-commonjs */
-
 /**
  * Shared SVGO configuration for @svgr/webpack loader
  *
