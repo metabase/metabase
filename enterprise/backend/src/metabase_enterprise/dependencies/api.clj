@@ -14,6 +14,7 @@
    [metabase.models.interface :as mi]
    [metabase.native-query-snippets.core :as native-query-snippets]
    [metabase.queries.schema :as queries.schema]
+   [metabase.revisions.core :as revisions]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
@@ -126,12 +127,14 @@
 
 (defn- entity-keys [entity-type]
   (case entity-type
-    :table [:name :display_name :db_id :schema]
+    :table [:name :description :display_name :db_id :schema]
     :card [:name :type :display :database_id :view_count
+           :created_at :creator :description
+           :result_metadata :last-edit-info
            :collection :collection_id :dashboard :dashboard_id
            :moderation_reviews]
-    :snippet [:name]
-    :transform [:name]
+    :snippet [:name :description]
+    :transform [:name :description]
     []))
 
 (defn- format-subentity [entity]
@@ -197,8 +200,9 @@
     (mapcat (fn [[entity-type entity-ids]]
               (->> (cond-> (t2/select (entity-model entity-type)
                                       :id [:in entity-ids])
-                     (= entity-type :card) (-> (t2/hydrate :dashboard :collection :moderation_reviews)
-                                               (->> (map collection.root/hydrate-root-collection))))
+                     (= entity-type :card) (-> (t2/hydrate :creator :dashboard :collection :moderation_reviews)
+                                               (->> (map collection.root/hydrate-root-collection))
+                                               (revisions/with-last-edit-info :card)))
                    (mapv #(entity-value entity-type % usages))))
             nodes-by-type)))
 
@@ -217,8 +221,8 @@
         ;; cache the downstream graph specifically, because between calculating transitive children and calculating
         ;; edges, we'll call this multiple times on the same nodes.
         downstream-graph (graph/cached-graph (dependency/graph-dependents))
-        nodes (-> (into #{} starting-nodes)
-                  (into (graph/transitive upstream-graph starting-nodes)))
+        nodes (into (set starting-nodes)
+                    (graph/transitive upstream-graph starting-nodes))
         edges (graph/calc-edges downstream-graph nodes)]
     {:nodes (expanded-nodes downstream-graph nodes)
      :edges edges}))
