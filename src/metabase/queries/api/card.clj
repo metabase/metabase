@@ -702,8 +702,9 @@
   "Get all of the required query metadata for a card."
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]]
-  (let [resolved-id (eid-translation/->id-or-404 :card id)]
-    (queries.metadata/batch-fetch-card-metadata [(get-card resolved-id)])))
+  (lib-be/with-metadata-provider-cache
+    (let [resolved-id (eid-translation/->id-or-404 :card id)]
+      (queries.metadata/batch-fetch-card-metadata [(get-card resolved-id)]))))
 
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
 

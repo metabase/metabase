@@ -1,14 +1,14 @@
 (ns metabase.util.performance
   "Functions and utilities for faster processing. This namespace is compatible with both Clojure and ClojureScript.
   However, some functions are either not only available in CLJS, or offer passthrough non-improved functions."
-  (:refer-clojure :exclude [reduce mapv run! some every? concat select-keys update-keys empty? not-empty #?(:cljs clj->js)])
-  #?@(:clj ()
-      :cljs [(:require
-              [cljs.core :as core]
-              [goog.object :as gobject])])
-  #?@(:clj [(:import (clojure.lang Counted ITransientCollection LazilyPersistentVector RT)
-                     (java.util ArrayList HashMap Iterator List))]
-      :default ()))
+  (:refer-clojure :exclude [reduce mapv run! some every? concat select-keys update-keys empty? not-empty doseq for #?(:cljs clj->js)])
+  #?(:clj (:require
+           [net.cgrand.macrovich :as macros])
+     :cljs (:require
+            [cljs.core :as core]
+            [goog.object :as gobject]))
+  #?(:clj (:import (clojure.lang Counted ITransientCollection LazilyPersistentVector RT)
+                   (java.util ArrayList HashMap Iterator List))))
 
 #?(:clj (set! *warn-on-reflection* true))
 
@@ -315,6 +315,100 @@
                   maybe-persistent!
                   (add-original-meta m))))
 
+;; List comprehension reimplementation.
+
+#?(:clj
+   (defmacro for
+     "Like `clojure.core/for` but eager, returns a vector, more friendly to inlining, and uses iterators.
+
+  ClojureScript version delegates to `clojure.core/for` unless it the simplest one-dimensional iteration where the
+  whole macro is replaced with `mapv`."
+     {:style/indent 1}
+     [seq-exprs & body-exprs]
+     (#'clojure.core/assert-args
+      (vector? seq-exprs) "a vector for its binding"
+      (even? (count seq-exprs)) "an even number of forms in binding vector"
+      (every? #{:let :while :when} (filter keyword? (take-nth 2 seq-exprs))) "invalid 'for' keyword")
+     (macros/case
+       :clj
+       (let [groups (reduce (fn [groups [k v]]
+                              (if (#{:let :while :when} k)
+                                (conj (pop groups) (conj (peek groups) [k v]))
+                                (conj groups [k v])))
+                            [] (partition 2 seq-exprs))]
+         (letfn [(emit-action [[[k v :as pair] & rest-mods] res-sym body]
+                   (if pair
+                     (case k
+                       :let `(let ~v ~(emit-action rest-mods res-sym body))
+                       :while `(if ~v ~(emit-action rest-mods res-sym body) ~res-sym)
+                       :when `(if ~v ~(emit-action rest-mods res-sym body) (recur ~res-sym)))
+                     body))
+                 (emit-loop [[[bind expr & mod-pairs] & rest-groups] res-sym]
+                   (if bind
+                     (let [own-res-sym (gensym "res")]
+                       `(let [it# (RT/iter ~expr)]
+                          (loop [~own-res-sym ~(or res-sym `(transient []))]
+                            (if (.hasNext it#)
+                              (let [~bind (.next it#)]
+                                ~(emit-action mod-pairs own-res-sym
+                                              `(recur ~(emit-loop rest-groups own-res-sym))))
+                              ~(if (nil? res-sym) ;; Only top-level calls persistent!
+                                 `(persistent! ~own-res-sym)
+                                 own-res-sym)))))
+                     ;; Reached the end - time to emit body
+                     `(conj! ~res-sym (do ~@body-exprs))))]
+           (emit-loop groups nil)))
+
+       :cljs
+       (if (= (count seq-exprs) 2)
+         ;; Simplest case - just replace with mapv.
+         `(mapv (fn [~(first seq-exprs)] ~@body-exprs) ~(second seq-exprs))
+         `(vec (clojure.core/for ~seq-exprs (do ~@body-exprs)))))))
+
+#?(:clj
+   (defmacro doseq
+     "Like `clojure.core/doseq` but eager, more friendly to inlining, and uses iterators.
+
+  ClojureScript version delegates to `clojure.core/doseq` unless it the simplest one-dimensional iteration where the
+  whole macro is replaced with `run!`."
+     {:style/indent 1}
+     [seq-exprs & body-exprs]
+     (#'clojure.core/assert-args
+      (vector? seq-exprs) "a vector for its binding"
+      (even? (count seq-exprs)) "an even number of forms in binding vector"
+      (every? #{:let :while :when} (filter keyword? (take-nth 2 seq-exprs))) "invalid 'doseq' keyword")
+     (macros/case
+       :clj
+       (let [groups (reduce (fn [groups [k v]]
+                              (if (#{:let :while :when} k)
+                                (conj (pop groups) (conj (peek groups) [k v]))
+                                (conj groups [k v])))
+                            [] (partition 2 seq-exprs))]
+         (letfn [(emit-action [[[k v :as pair] & rest-mods] body]
+                   (if pair
+                     (case k
+                       :let `(let ~v ~(emit-action rest-mods body))
+                       :while `(when ~v ~(emit-action rest-mods body))
+                       :when `(if ~v ~(emit-action rest-mods body) (recur)))
+                     body))
+                 (emit-loop [[[bind expr & mod-pairs] & rest-groups]]
+                   (if bind
+                     `(let [it# (RT/iter ~expr)]
+                        (loop []
+                          (when (.hasNext it#)
+                            (let [~bind (.next it#)]
+                              ~(emit-action mod-pairs `(do ~(emit-loop rest-groups)
+                                                           (recur)))))))
+                     ;; Reached the end - time to emit body
+                     `(do ~@body-exprs)))]
+           (emit-loop groups)))
+
+       :cljs
+       (if (= (count seq-exprs) 2)
+         ;; Simplest case - just replace with run!.
+         `(run! (fn [~(first seq-exprs)] ~@body-exprs) ~(second seq-exprs))
+         `(clojure.core/doseq ~seq-exprs ~@body-exprs)))))
+
 ;; clojure.walk reimplementation. Partially adapted from https://github.com/tonsky/clojure-plus.
 
 (defn walk
@@ -341,7 +435,7 @@
           (add-original-meta form)
           outer))
 
-    (vector? form)
+    (and (vector? form) (not (map-entry? form)))
     (-> (reduce-kv (fn [v idx el]
                      (let [el' (inner el)]
                        (if (identical? el' el)

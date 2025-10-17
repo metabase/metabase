@@ -31,7 +31,7 @@
   drills ([[metabase.lib.drill-thru.pk]], [[metabase.lib.drill-thru.fk-details]],
   or [[metabase.lib.drill-thru.zoom]]); see [[metabase.lib.drill-thru.object-details]] for the high-level logic that
   calls out to the individual implementations."
-  (:refer-clojure :exclude [select-keys])
+  (:refer-clojure :exclude [select-keys #?(:clj for)])
   (:require
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.filter :as lib.filter]
@@ -42,7 +42,7 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [select-keys]]))
+   [metabase.util.performance :refer [select-keys #?(:clj for)]]))
 
 (mu/defn fk-details-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.fk-details]
   "Return an `:fk-details` 'View details' drill when clicking on the value of a FK column."
