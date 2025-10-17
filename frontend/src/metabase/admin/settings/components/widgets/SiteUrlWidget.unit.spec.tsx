@@ -18,7 +18,7 @@ import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { SiteUrlWidget } from "./SiteUrlWidget";
 
-const setup = (props: { isHosted?: boolean }) => {
+const setup = (props: { isHosted?: boolean; isEnvSetting?: boolean }) => {
   const siteUrlWidgetSettings = {
     "site-url": "http://mysite.biz",
     "token-features": createMockTokenFeatures({
@@ -32,7 +32,13 @@ const setup = (props: { isHosted?: boolean }) => {
   setupUpdateSettingEndpoint();
   setupSettingsEndpoints(
     Object.entries(settings).map(([key, value]) =>
-      createMockSettingDefinition({ key: key as SettingKey, value }),
+      createMockSettingDefinition({
+        key: key as SettingKey,
+        value,
+        is_env_setting: props.isEnvSetting && key === "site-url",
+        env_name:
+          props.isEnvSetting && key === "site-url" ? "MB_SITE_URL" : undefined,
+      }),
     ),
   );
 
@@ -123,5 +129,34 @@ describe("siteUrlWidget", () => {
   it("should not render if it's hosted", async () => {
     setup({ isHosted: true });
     expect(screen.queryByText("Site url")).not.toBeInTheDocument();
+  });
+
+  it("should show environment variable message when site URL is set via env var", async () => {
+    setup({ isEnvSetting: true });
+    expect(
+      await screen.findByText(/This has been set by the/),
+    ).toBeInTheDocument();
+    expect(await screen.findByText("MB_SITE_URL")).toBeInTheDocument();
+  });
+
+  it("should not show the input when site URL is set via env var", async () => {
+    setup({ isEnvSetting: true });
+    await screen.findByText(/This has been set by the/);
+
+    expect(
+      screen.queryByRole("textbox", { name: "input-prefix" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByPlaceholderText("http://example.com"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should show the input when site URL is not set via env var", async () => {
+    setup({ isEnvSetting: false });
+
+    expect(
+      await screen.findByRole("textbox", { name: "input-prefix" }),
+    ).toBeInTheDocument();
+    expect(await screen.findByDisplayValue("mysite.biz")).toBeInTheDocument();
   });
 });
