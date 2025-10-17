@@ -33,13 +33,14 @@ import {
 import {
   getAgentErrorMessages,
   getAgentRequestMetadata,
+  getDebugMode,
   getHistory,
   getIsProcessing,
   getLastMessage,
   getMetabotConversationId,
   getUserPromptForMessageId,
 } from "./selectors";
-import type { SlashCommand } from "./types";
+import type { MetabotStoreState, SlashCommand } from "./types";
 import { createMessageId, parseSlashCommand } from "./utils";
 
 export const {
@@ -54,6 +55,7 @@ export const {
   toolCallEnd,
   setProfileOverride,
   setMetabotReqIdOverride,
+  setDebugMode,
   addSuggestedTransform,
   activateSuggestedTransform,
   deactivateSuggestedTransform,
@@ -105,7 +107,7 @@ export const setVisible =
 
 export const executeSlashCommand = createAsyncThunk<void, SlashCommand>(
   "metabase-enterprise/metabot/executeSlashCommand",
-  async (slashCommand, { dispatch }) => {
+  async (slashCommand, { dispatch, getState }) => {
     match(slashCommand)
       .with({ cmd: "profile" }, ({ args }) => {
         if (args.length <= 1) {
@@ -120,6 +122,18 @@ export const executeSlashCommand = createAsyncThunk<void, SlashCommand>(
         } else {
           dispatch(addUndo({ message: "/metabot <name>" }));
         }
+      })
+      .with({ cmd: "debug" }, () => {
+        const currentDebugMode = getDebugMode(getState() as MetabotStoreState);
+        const newDebugMode = !currentDebugMode;
+        dispatch(setDebugMode(newDebugMode));
+        dispatch(
+          addUndo({
+            message: newDebugMode
+              ? "Debug mode enabled"
+              : "Debug mode disabled",
+          }),
+        );
       })
       .otherwise(() => {
         dispatch(addUndo({ message: "Unknown command" }));

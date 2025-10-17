@@ -17,6 +17,7 @@ import type {
   MetabotAgentChatMessage,
   MetabotAgentTextChatMessage,
   MetabotChatMessage,
+  MetabotDebugToolCallMessage,
   MetabotErrorMessage,
   MetabotUserChatMessage,
 } from "metabase-enterprise/metabot/state";
@@ -233,6 +234,19 @@ export const AgentErrorMessage = ({
   </MessageContainer>
 );
 
+export const ToolCallMessage = ({
+  message,
+  ...props
+}: FlexProps & {
+  message: MetabotDebugToolCallMessage;
+}) => (
+  <MessageContainer chatRole="tool" {...props}>
+    <Text className={Styles.message} c="text-light">
+      {t`Tool: ${message.name}`}
+    </Text>
+  </MessageContainer>
+);
+
 export const getFullAgentReply = (
   messages: MetabotChatMessage[],
   messageId: string,
@@ -268,6 +282,7 @@ export const Messages = ({
   isDoingScience,
   showFeedbackButtons,
   onInternalLinkClick,
+  debugMode = false,
 }: {
   messages: MetabotChatMessage[];
   errorMessages: MetabotErrorMessage[];
@@ -275,6 +290,7 @@ export const Messages = ({
   isDoingScience: boolean;
   showFeedbackButtons: boolean;
   onInternalLinkClick?: (navigateToPath: string) => void;
+  debugMode?: boolean;
 }) => {
   const clipboard = useClipboard();
   const [sendToast] = useToast();
@@ -331,9 +347,13 @@ export const Messages = ({
     [showFeedbackButtons],
   );
 
+  const visibleMessages = debugMode
+    ? messages
+    : messages.filter((msg) => msg.role !== "tool");
+
   return (
     <>
-      {messages.map((message, index) =>
+      {visibleMessages.map((message, index) =>
         message.role === "agent" ? (
           <AgentMessage
             key={"msg-" + message.id}
@@ -345,16 +365,22 @@ export const Messages = ({
             setFeedbackMessage={setFeedbackModal}
             submittedFeedback={feedbackState.submitted[message.id]}
             hideActions={
-              isDoingScience || messages[index + 1]?.role === "agent"
+              isDoingScience || visibleMessages[index + 1]?.role === "agent"
             }
             onInternalLinkClick={onInternalLinkClick}
+          />
+        ) : message.role === "tool" ? (
+          <ToolCallMessage
+            key={"tool-" + message.id}
+            data-testid="metabot-tool-call-message"
+            message={message}
           />
         ) : (
           <UserMessage
             key={"msg-" + message.id}
             data-testid="metabot-chat-message"
             message={message}
-            hideActions={isDoingScience && messages.length === index + 1}
+            hideActions={isDoingScience && visibleMessages.length === index + 1}
             onCopy={() => {
               const copyText =
                 message.type === "action"
