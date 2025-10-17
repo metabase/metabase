@@ -250,6 +250,7 @@ const config = {
     },
     fallback: {
       crypto: path.join(SRC_PATH, "/lib/crypto-polyfill.js"),
+      buffer: require.resolve("buffer"),
     },
   },
   optimization: {
@@ -325,6 +326,7 @@ const config = {
     }),
     // https://github.com/remarkjs/remark/discussions/903
     new rspack.ProvidePlugin({
+      buffer: ["buffer", "Buffer"],
       process: "process/browser.js",
     }),
   ],
