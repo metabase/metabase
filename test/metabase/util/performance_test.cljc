@@ -45,6 +45,64 @@
             (perf/transpose [[1 1 1 1 1] [2 2 2 2 2] [3 3 3 3 3] [4 4 4 4 4] [5 5 5 5 5]])
             (apply mapv vector [[1 1 1 1 1] [2 2 2 2 2] [3 3 3 3 3] [4 4 4 4 4] [5 5 5 5 5]])))))
 
+#?(:clj
+   (deftest list-comprehensions-test
+     (are [i o] (= o i)
+       (perf/for [x (range 3)
+                  y (range 5)]
+         [x y])
+       #_=> [[0 0] [0 1] [0 2] [0 3] [0 4] [1 0] [1 1] [1 2] [1 3] [1 4] [2 0] [2 1] [2 2] [2 3] [2 4]]
+
+       (perf/for [x (range 3) :when (odd? x)
+                  y (range 5)] [x y])
+       #_=> [[1 0] [1 1] [1 2] [1 3] [1 4]]
+
+       (perf/for [x (range 3) :when (> x 5)
+                  y (range 5)]
+         [x y])
+       #_=> []
+
+       (perf/for [x (range 10) :when (odd? x)
+                  y (range 20) :while (< y 7)
+                  :let [z [x y]]]
+         z)
+       #_=> [[1 0] [1 1] [1 2] [1 3] [1 4] [1 5] [1 6] [3 0] [3 1] [3 2] [3 3] [3 4] [3 5] [3 6] [5 0] [5 1] [5 2] [5 3] [5 4] [5 5] [5 6] [7 0] [7 1] [7 2] [7 3] [7 4] [7 5] [7 6] [9 0] [9 1] [9 2] [9 3] [9 4] [9 5] [9 6]]
+
+       (perf/for [x (range 5)
+                  :let [x2 (* 2 x)] :when (> x2 4)
+                  y (range 20) :while (< y 7)
+                  :let [z [x2 y]]]
+         z)
+       #_=> [[6 0] [6 1] [6 2] [6 3] [6 4] [6 5] [6 6] [8 0] [8 1] [8 2] [8 3] [8 4] [8 5] [8 6]]
+
+       (perf/for [x (range 7)
+                  y (range 7) :while (< y x)]
+         [x y])
+       #_=> [[1 0] [2 0] [2 1] [3 0] [3 1] [3 2] [4 0] [4 1] [4 2] [4 3] [5 0] [5 1] [5 2] [5 3] [5 4] [6 0] [6 1] [6 2] [6 3] [6 4] [6 5]]
+
+       (perf/for [x nil
+                  y nil]
+         [x y])
+       #_=> [])
+
+     (are [i o] (= o i)
+       (with-out-str
+         (perf/doseq [x (range 3)
+                      y (range 5)]
+           (println x y)))
+       #_=> "0 0\n0 1\n0 2\n0 3\n0 4\n1 0\n1 1\n1 2\n1 3\n1 4\n2 0\n2 1\n2 2\n2 3\n2 4\n"
+       (with-out-str
+         (perf/doseq [x (range 5)
+                      :let [x2 (* 2 x)] :when (> x2 4)
+                      y (range 20) :while (< y 7)
+                      :let [z [x2 y]]] (println z)))
+       #_=> "[6 0]\n[6 1]\n[6 2]\n[6 3]\n[6 4]\n[6 5]\n[6 6]\n[8 0]\n[8 1]\n[8 2]\n[8 3]\n[8 4]\n[8 5]\n[8 6]\n"
+       (with-out-str
+         (perf/doseq [x nil
+                      y nil]
+           (println x y)))
+       #_=> "")))
+
 (deftest ^:parallel test-postwalk
   (are [before after] (= after (perf/postwalk #(cond-> %
                                                  (number? %) inc)
