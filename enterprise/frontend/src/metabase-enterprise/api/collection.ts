@@ -1,5 +1,9 @@
 import { provideCollectionItemListTags } from "metabase/api/tags";
 import type {
+  BulkArchiveStaleItemsRequest,
+  BulkArchiveStaleItemsResponse,
+  BulkUnarchiveItemsRequest,
+  BulkUnarchiveItemsResponse,
   ListStaleCollectionItemsRequest,
   ListStaleCollectionItemsResponse,
 } from "metabase-enterprise/clean_up/types";
@@ -23,7 +27,33 @@ export const collectionApi = EnterpriseApi.injectEndpoints({
           "dashboard",
         ]),
     }),
+    bulkArchiveStaleItems: builder.mutation<
+      BulkArchiveStaleItemsResponse,
+      BulkArchiveStaleItemsRequest
+    >({
+      query: ({ id: collectionId, ...params }) => ({
+        method: "POST",
+        url: `/api/ee/stale/${collectionId}/archive`,
+        body: params,
+      }),
+      invalidatesTags: ["card", "dashboard", "collection"],
+    }),
+    bulkUnarchiveItems: builder.mutation<
+      BulkUnarchiveItemsResponse,
+      BulkUnarchiveItemsRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: `/api/ee/stale/unarchive`,
+        body,
+      }),
+      invalidatesTags: ["card", "dashboard", "collection"],
+    }),
   }),
 });
 
-export const { useListStaleCollectionItemsQuery } = collectionApi;
+export const {
+  useListStaleCollectionItemsQuery,
+  useBulkArchiveStaleItemsMutation,
+  useBulkUnarchiveItemsMutation,
+} = collectionApi;

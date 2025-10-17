@@ -48,6 +48,8 @@ const _CleanupCollectionModal = ({
 
   // selection
   const selection = useListSelect(itemKeyFn);
+  const [showBulkArchiveConfirm, setShowBulkArchiveConfirm] = useState(false);
+  const [hasClickedSelectAll, setHasClickedSelectAll] = useState(false);
 
   // pagination
   const pagination = usePagination({ initialPage: 0, pageSize: 10 });
@@ -73,6 +75,7 @@ const _CleanupCollectionModal = ({
     setDateFilter(nextDateFilter);
     pagination.resetPage();
     selection.clear();
+    setHasClickedSelectAll(false);
   };
   const before_date = useMemo(() => {
     return getDateFilterValue(dateFilter);
@@ -83,6 +86,7 @@ const _CleanupCollectionModal = ({
     setRecursiveFilter(recursiveFilter);
     pagination.resetPage();
     selection.clear();
+    setHasClickedSelectAll(false);
   };
 
   // data
@@ -189,8 +193,14 @@ const _CleanupCollectionModal = ({
                 hasUnselected={hasUnselected}
                 getIsSelected={selection.getIsSelected}
                 onToggleSelected={selection.toggleItem}
-                onSelectAll={() => selection.selectOnlyTheseItems?.(items)}
-                onSelectNone={selection.clear}
+                onSelectAll={() => {
+                  selection.selectOnlyTheseItems?.(items);
+                  setHasClickedSelectAll(true);
+                }}
+                onSelectNone={() => {
+                  selection.clear();
+                  setHasClickedSelectAll(false);
+                }}
               />
             )}
           </DelayedLoadingAndErrorWrapper>
@@ -215,9 +225,19 @@ const _CleanupCollectionModal = ({
 
         <CleanupCollectionBulkActions
           selected={selection.selected}
-          clearSelectedItem={selection.clear}
+          total={total}
+          collectionId={collectionId}
+          beforeDate={before_date}
+          recursiveFilter={recursiveFilter}
+          clearSelectedItem={() => {
+            selection.clear();
+            setHasClickedSelectAll(false);
+          }}
           resetPagination={pagination.resetPage}
           onArchive={handleOnArchive}
+          showBulkArchiveConfirm={showBulkArchiveConfirm}
+          setShowBulkArchiveConfirm={setShowBulkArchiveConfirm}
+          hasClickedSelectAll={hasClickedSelectAll}
         />
       </Modal.Content>
     </Modal.Root>
