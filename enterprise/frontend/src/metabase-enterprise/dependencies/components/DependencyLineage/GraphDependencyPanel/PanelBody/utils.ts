@@ -6,9 +6,9 @@ import type { DependencyNode } from "metabase-types/api";
 
 import { getNodeIcon, getNodeLabel } from "../../utils";
 
-import type { SubtitleInfo, TitleInfo } from "./types";
+import type { ListItemSubtitleInfo, ListItemTitleInfo } from "./types";
 
-export function getNodeTitleInfo(node: DependencyNode): TitleInfo {
+export function getNodeTitleInfo(node: DependencyNode): ListItemTitleInfo {
   return {
     label: getNodeLabel(node),
     icon: getNodeIcon(node),
@@ -17,8 +17,8 @@ export function getNodeTitleInfo(node: DependencyNode): TitleInfo {
 
 export function getNodeSubtitleInfo(
   node: DependencyNode,
-): SubtitleInfo | undefined {
-  return match<DependencyNode, SubtitleInfo | undefined>(node)
+): ListItemSubtitleInfo | undefined {
+  return match<DependencyNode, ListItemSubtitleInfo | undefined>(node)
     .with({ type: "card", data: { dashboard: P.nonNullable } }, (node) => ({
       label: node.data.dashboard.name,
       icon: "dashboard",
