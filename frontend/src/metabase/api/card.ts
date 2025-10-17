@@ -33,11 +33,6 @@ import {
   provideParameterValuesTags,
 } from "./tags";
 import { handleQueryFulfilled } from "./utils/lifecycle";
-import {
-  invalidateRemoteSyncOnCreate,
-  invalidateRemoteSyncOnDelete,
-  invalidateRemoteSyncOnUpdate,
-} from "./utils/remote-sync-cache-helpers";
 
 const PERSISTED_MODEL_REFRESH_DELAY = 200;
 
@@ -128,8 +123,6 @@ export const cardApi = Api.injectEndpoints({
           url: "/api/card",
           body,
         }),
-        onQueryStarted: (_, { dispatch, queryFulfilled }) =>
-          invalidateRemoteSyncOnCreate(dispatch, queryFulfilled),
         invalidatesTags: (_, error) => invalidateTags(error, [listTag("card")]),
       }),
       createCardFromCsv: builder.mutation<Card, CreateCardFromCsvRequest>({
@@ -164,16 +157,6 @@ export const cardApi = Api.injectEndpoints({
               : ""),
           body,
         }),
-        onQueryStarted: (
-          updateRequest,
-          { dispatch, queryFulfilled, getState },
-        ) => {
-          const state = getState();
-          const oldCard = cardApi.endpoints.getCard.select({
-            id: updateRequest.id,
-          })(state)?.data;
-          invalidateRemoteSyncOnUpdate(oldCard, dispatch, queryFulfilled);
-        },
         invalidatesTags: (_, error, payload) => {
           const tags = [
             listTag("card"),
@@ -198,11 +181,6 @@ export const cardApi = Api.injectEndpoints({
           method: "DELETE",
           url: `/api/card/${id}`,
         }),
-        onQueryStarted: (id, { dispatch, getState }) => {
-          const state = getState();
-          const card = cardApi.endpoints.getCard.select({ id })(state)?.data;
-          invalidateRemoteSyncOnDelete(card, dispatch);
-        },
         invalidatesTags: (_, error, id) =>
           invalidateTags(error, [
             listTag("card"),

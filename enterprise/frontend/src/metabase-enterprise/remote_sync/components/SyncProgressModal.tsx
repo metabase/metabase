@@ -4,14 +4,13 @@ import { useToast } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Button, Group, Modal, Progress, Stack, Text } from "metabase/ui";
-import { useCancelSyncTaskMutation } from "metabase-enterprise/api";
-import type { SyncTaskType } from "metabase-types/api";
+import { useCancelRemoteSyncCurrentTaskMutation } from "metabase-enterprise/api";
+import type { RemoteSyncTaskType } from "metabase-types/api";
 
 interface SyncProgressModalProps {
-  taskType: SyncTaskType;
+  taskType: RemoteSyncTaskType;
   progress: number;
   isError: boolean;
-  isSuccess: boolean;
   errorMessage: string;
   onDismiss: () => void;
 }
@@ -20,14 +19,13 @@ export function SyncProgressModal({
   progress,
   taskType,
   isError,
-  isSuccess,
   errorMessage,
   onDismiss,
 }: SyncProgressModalProps) {
   const canCancel = useSelector(getUserIsAdmin);
 
-  const [cancelSyncTask, { isLoading: isCancelling }] =
-    useCancelSyncTaskMutation();
+  const [cancelRemoteSyncCurrentTask, { isLoading: isCancelling }] =
+    useCancelRemoteSyncCurrentTaskMutation();
   const [sendToast] = useToast();
 
   const onCancel = async () => {
@@ -35,9 +33,9 @@ export function SyncProgressModal({
       return;
     }
 
-    await cancelSyncTask()
+    await cancelRemoteSyncCurrentTask()
       .unwrap()
-      .catch((error) => {
+      .catch((error: any) => {
         let message = t`Failed to cancel sync`;
 
         if (typeof error?.data === "string") {
@@ -52,10 +50,6 @@ export function SyncProgressModal({
       });
   };
 
-  const handleReload = () => {
-    window.location.reload();
-  };
-
   if (isError) {
     return (
       <Modal onClose={onDismiss} opened size="md" title={t`Sync failed`}>
@@ -64,38 +58,6 @@ export function SyncProgressModal({
           {errorMessage && <Text>{errorMessage}</Text>}
           <Group justify="flex-end">
             <Button onClick={onDismiss} variant="filled">{t`Close`}</Button>
-          </Group>
-        </Stack>
-      </Modal>
-    );
-  }
-
-  if (isSuccess) {
-    return (
-      <Modal
-        onClose={onDismiss}
-        opened
-        size="md"
-        title={
-          taskType === "import" ? t`Content imported` : t`Changes pushed to Git`
-        }
-      >
-        <Stack mt="md" gap="md">
-          <Text>
-            {taskType === "import"
-              ? t`Your content has been imported. Reload the page to see the latest changes.`
-              : t`Your changes have been pushed to Git successfully.`}
-          </Text>
-          <Group justify="flex-end">
-            <Button variant="outline" onClick={onDismiss}>
-              {taskType === "import" ? t`Dismiss` : t`Close`}
-            </Button>
-            {taskType === "import" ? (
-              <Button
-                variant="filled"
-                onClick={handleReload}
-              >{t`Reload page`}</Button>
-            ) : null}
           </Group>
         </Stack>
       </Modal>
@@ -120,9 +82,7 @@ export function SyncProgressModal({
         </Text>
         {!isCancelling && canCancel && (
           <Group justify="flex-end">
-            <Button variant="subtle" onClick={onCancel}>
-              {t`Cancel`}
-            </Button>
+            <Button onClick={onCancel}>{t`Cancel`}</Button>
           </Group>
         )}
       </Stack>
@@ -131,7 +91,7 @@ export function SyncProgressModal({
 }
 
 const getModalContent = (
-  taskType: SyncTaskType,
+  taskType: RemoteSyncTaskType,
   isCancelling?: boolean,
 ): { title: string; progressLabel: string } => {
   if (isCancelling) {

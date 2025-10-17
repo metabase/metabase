@@ -36,13 +36,13 @@ import {
   Tooltip,
 } from "metabase/ui";
 import {
-  useGetChangedEntitiesQuery,
-  useImportFromBranchMutation,
+  useGetRemoteSyncChangesQuery,
+  useImportChangesMutation,
   useUpdateRemoteSyncSettingsMutation,
 } from "metabase-enterprise/api/remote-sync";
 import type {
   EnterpriseSettings,
-  RemoteSyncSettingsSet,
+  RemoteSyncConfigurationSettings,
   SettingDefinition,
 } from "metabase-types/api";
 
@@ -58,18 +58,18 @@ export const RemoteSyncAdminSettings = (): JSX.Element => {
   const { data: settingValues } = useGetSettingsQuery();
   const { data: settingDetails } = useGetAdminSettingsDetailsQuery();
   const [updateRemoteSyncSettings] = useUpdateRemoteSyncSettingsMutation();
-  const { data: dirtyData } = useGetChangedEntitiesQuery(undefined, {
+  const { data: dirtyData } = useGetRemoteSyncChangesQuery(undefined, {
     refetchOnFocus: true,
     refetchOnMountOrArgChange: true,
   });
   const [isDeactivateModalOpen, setIsDeactivateModalOpen] = useState(false);
-  const [importFromBranch, { isLoading: isImporting }] =
-    useImportFromBranchMutation();
+  const [importChanges, { isLoading: isImporting }] =
+    useImportChangesMutation();
 
   const { updateSettings } = useAdminSetting("remote-sync-url");
 
   const handleSubmit = useCallback(
-    (values: RemoteSyncSettingsSet) =>
+    (values: RemoteSyncConfigurationSettings) =>
       updateRemoteSyncSettings(values).unwrap(),
     [updateRemoteSyncSettings],
   );
@@ -112,7 +112,7 @@ export const RemoteSyncAdminSettings = (): JSX.Element => {
   const handlePullChanges = useCallback(async () => {
     const currentBranch = settingValues?.[BRANCH_KEY] || "main";
     try {
-      await importFromBranch({ branch: currentBranch, force: true }).unwrap();
+      await importChanges({ branch: currentBranch, force: true }).unwrap();
     } catch (error) {
       dispatch(
         addUndo({
@@ -122,7 +122,7 @@ export const RemoteSyncAdminSettings = (): JSX.Element => {
         }),
       );
     }
-  }, [importFromBranch, settingValues, dispatch]);
+  }, [importChanges, settingValues, dispatch]);
 
   return (
     <SettingsPageWrapper>
@@ -143,7 +143,7 @@ export const RemoteSyncAdminSettings = (): JSX.Element => {
           </Text>
 
           <FormProvider
-            initialValues={initialValues as RemoteSyncSettingsSet}
+            initialValues={initialValues as RemoteSyncConfigurationSettings}
             enableReinitialize
             validationSchema={REMOTE_SYNC_SCHEMA}
             validationContext={settingValues}

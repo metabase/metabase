@@ -2,7 +2,7 @@ import type { EnterpriseSettings } from "./settings";
 import type { UserId } from "./user";
 import type { CardDisplayType } from "./visualization";
 
-export type DirtyEntityModel =
+export type RemoteSyncEntityModel =
   | "card"
   | "dataset"
   | "metric"
@@ -11,33 +11,33 @@ export type DirtyEntityModel =
   | "document"
   | "snippet";
 
-export type DirtySyncStatus =
+export type RemoteSyncEntityStatus =
   | "create"
   | "update"
   | "delete"
   | "touch"
   | "removed";
 
-export type DirtyEntity = {
+export type RemoteSyncEntity = {
   id: number;
   name: string;
   description: string | null;
   created_at: string;
   updated_at: string | null;
-  model: DirtyEntityModel;
+  model: RemoteSyncEntityModel;
   collection_id?: number;
   display?: CardDisplayType;
   query_type?: string;
-  sync_status: DirtySyncStatus;
+  sync_status: RemoteSyncEntityStatus;
   authority_level?: string | null;
 };
 
-export type CollectionDirtyResponse = {
-  dirty: DirtyEntity[];
+export type RemoteSyncChangesResponse = {
+  dirty: RemoteSyncEntity[];
   changedCollections: Record<number, boolean>;
 };
 
-export type CollectionIsDirtyResponse = {
+export type RemoteSyncHasChangesResponse = {
   is_dirty: boolean;
 };
 
@@ -63,7 +63,7 @@ export type ImportFromBranchResponse = {
   message?: string;
 };
 
-export type RemoteSyncSettingsSet = Pick<
+export type RemoteSyncConfigurationSettings = Pick<
   EnterpriseSettings,
   | "remote-sync-enabled"
   | "remote-sync-url"
@@ -72,26 +72,24 @@ export type RemoteSyncSettingsSet = Pick<
   | "remote-sync-branch"
 >;
 
-export type UpdateRemoteSyncSettingsRequest = RemoteSyncSettingsSet;
-
-export type UpdateRemoteSyncSettingsResponse = {
+export type UpdateRemoteSyncConfigurationResponse = {
   success: boolean;
   task_id?: number;
 };
 
-export type CurrentTaskStatus =
+export type RemoteSyncTaskStatus =
   | "running"
   | "successful"
   | "timed-out"
   | "cancelled"
   | "errored";
 
-export type SyncTaskType = "import" | "export" | null;
+export type RemoteSyncTaskType = "import" | "export" | null;
 
-export type CurrentTaskResponse = {
+export type RemoteSyncTask = {
   id: number;
-  sync_task_type: SyncTaskType;
-  status: CurrentTaskStatus;
+  sync_task_type: RemoteSyncTaskType;
+  status: RemoteSyncTaskStatus;
   progress: number | null;
   started_at: string | null;
   ended_at: string | null;
@@ -113,5 +111,3 @@ export type CreateBranchResponse = {
   status: string;
   message: string;
 };
-
-export type CancelSyncTaskResponse = CurrentTaskResponse;

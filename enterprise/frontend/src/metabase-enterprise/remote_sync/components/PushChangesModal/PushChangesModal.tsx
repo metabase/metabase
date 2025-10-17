@@ -23,11 +23,11 @@ import {
   Textarea,
   Title,
 } from "metabase/ui";
-import type { Collection, DirtyEntity } from "metabase-types/api";
+import type { Collection, RemoteSyncEntity } from "metabase-types/api";
 
 import {
   useExportChangesMutation,
-  useGetChangedEntitiesQuery,
+  useGetRemoteSyncChangesQuery,
 } from "../../../api/remote-sync";
 import {
   type CollectionPathSegment,
@@ -47,7 +47,7 @@ interface PushChangesModalProps {
   collections: Collection[];
 }
 
-const SYNC_STATUS_ORDER: DirtyEntity["sync_status"][] = [
+const SYNC_STATUS_ORDER: RemoteSyncEntity["sync_status"][] = [
   "create",
   "update",
   "touch",
@@ -87,7 +87,7 @@ const CollectionPath = ({ segments }: CollectionPathProps) => {
 };
 
 interface EntityLinkProps {
-  entity: DirtyEntity;
+  entity: RemoteSyncEntity;
 }
 
 const EntityLink = ({ entity }: EntityLinkProps) => {
@@ -98,7 +98,6 @@ const EntityLink = ({ entity }: EntityLinkProps) => {
   });
 
   const url = useMemo(() => modelToUrl(entity), [entity]);
-
   if (url == null) {
     return null;
   }
@@ -132,7 +131,7 @@ const EntityLink = ({ entity }: EntityLinkProps) => {
 };
 
 interface AllChangesViewProps {
-  entities: DirtyEntity[];
+  entities: RemoteSyncEntity[];
   collections: Collection[];
   title?: string;
 }
@@ -269,7 +268,7 @@ interface ChangesListsProps {
 
 export const ChangesLists = ({ collections, title }: ChangesListsProps) => {
   const { data: dirtyData, isLoading: isLoadingChanges } =
-    useGetChangedEntitiesQuery(undefined, {
+    useGetRemoteSyncChangesQuery(undefined, {
       refetchOnMountOrArgChange: true,
       refetchOnFocus: true,
     });
@@ -339,8 +338,7 @@ export const PushChangesModal = ({
 }: PushChangesModalProps) => {
   const [commitMessage, setCommitMessage] = useState("");
   const [forceMode, setForceMode] = useState(false);
-  const { value: currentBranch, updateSetting } =
-    useAdminSetting("remote-sync-branch");
+  const { value: currentBranch } = useAdminSetting("remote-sync-branch");
 
   const [
     exportChanges,
@@ -374,11 +372,7 @@ export const PushChangesModal = ({
       forceSync: forceMode,
       branch: currentBranch,
     });
-    updateSetting({
-      key: "remote-sync-branch",
-      value: currentBranch,
-    });
-  }, [commitMessage, forceMode, exportChanges, currentBranch, updateSetting]);
+  }, [commitMessage, forceMode, exportChanges, currentBranch]);
 
   return (
     <Modal

@@ -26,7 +26,6 @@ export const ENTERPRISE_TAG_TYPES = [
   "transform-run",
   "git-tree",
   "git-file-content",
-  "synced-collections",
   "collection-dirty-entities",
   "collection-is-dirty",
   "remote-sync-branches",

@@ -1,9 +1,12 @@
+import type { CollectionId } from "metabase-types/api";
+
 import { browseDatabase } from "./browse";
 import { collection } from "./collections";
 import { dashboard } from "./dashboards";
 import { document } from "./documents";
 import { metric, model } from "./models";
 import { question, tableRowsQuery } from "./questions";
+import { timeline } from "./timelines";
 
 export type UrlableModel = {
   id: number;
@@ -12,6 +15,7 @@ export type UrlableModel = {
   database?: {
     id: number;
   };
+  collection_id?: number;
 };
 
 export function modelToUrl(item: UrlableModel) {
@@ -38,6 +42,8 @@ export function modelToUrl(item: UrlableModel) {
       return collection(item);
     case "document":
       return document(item);
+    case "timeline":
+      return timeline(item);
     case "user":
       return null;
     default:

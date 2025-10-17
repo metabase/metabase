@@ -16,8 +16,8 @@ import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/Sideba
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Button, Flex, Group, Icon, Text } from "metabase/ui";
 import {
-  useGetChangedEntitiesQuery,
-  useImportFromBranchMutation,
+  useGetRemoteSyncChangesQuery,
+  useImportChangesMutation,
 } from "metabase-enterprise/api";
 
 import { useSyncStatus } from "../hooks/use-sync-status";
@@ -41,9 +41,8 @@ export const SyncedCollectionsSidebarSection = ({
   const hasSyncedCollections = syncedCollections.length > 0;
   const isAdmin = useSelector(getUserIsAdmin);
 
-  const { value: currentBranch, updateSetting } =
-    useAdminSetting("remote-sync-branch");
-  const [importFromBranch] = useImportFromBranchMutation();
+  const { value: currentBranch } = useAdminSetting("remote-sync-branch");
+  const [importChanges] = useImportChangesMutation();
   const [
     showUnsyncedWarning,
     { open: openWarningModal, close: closeWarningModal },
@@ -54,12 +53,10 @@ export const SyncedCollectionsSidebarSection = ({
   const [nextBranch, setNextBranch] = useState<string | null>(null);
   const [sendToast] = useToast();
 
-  const { data: dirtyData, refetch: refetchDirty } = useGetChangedEntitiesQuery(
-    undefined,
-    {
+  const { data: dirtyData, refetch: refetchDirty } =
+    useGetRemoteSyncChangesQuery(undefined, {
       refetchOnFocus: true,
-    },
-  );
+    });
 
   const isDirty = !!(dirtyData?.dirty && dirtyData.dirty.length > 0);
 
@@ -71,13 +68,12 @@ export const SyncedCollectionsSidebarSection = ({
       }
 
       if (!isNewBranch) {
-        await importFromBranch({ branch });
+        await importChanges({ branch });
       }
 
-      updateSetting({ key: "remote-sync-branch", value: branch });
       setNextBranch(null);
     },
-    [importFromBranch, setNextBranch, updateSetting],
+    [importChanges, setNextBranch],
   );
 
   const handleBranchSelect = useCallback(

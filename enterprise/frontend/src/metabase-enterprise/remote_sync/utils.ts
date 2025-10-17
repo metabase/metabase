@@ -2,14 +2,16 @@ import { t } from "ttag";
 
 import { getCollectionPathAsString } from "metabase/collections/utils";
 import type { IconName } from "metabase/ui";
-import type { Collection, CollectionId, DirtyEntity } from "metabase-types/api";
+import type {
+  Collection,
+  CollectionId,
+  RemoteSyncEntityStatus,
+} from "metabase-types/api";
 
 export type CollectionPathSegment = {
   id: CollectionId;
   name: string;
 };
-
-type SyncStatus = DirtyEntity["sync_status"];
 
 type ErrorData = {
   message?: string;
@@ -26,7 +28,7 @@ type ParsedError = {
   hasConflict: boolean;
 };
 
-export const getSyncStatusIcon = (status: SyncStatus): IconName => {
+export const getSyncStatusIcon = (status: RemoteSyncEntityStatus): IconName => {
   switch (status) {
     case "create":
       return "add";
@@ -41,7 +43,7 @@ export const getSyncStatusIcon = (status: SyncStatus): IconName => {
   }
 };
 
-export const getSyncStatusColor = (status: SyncStatus): string => {
+export const getSyncStatusColor = (status: RemoteSyncEntityStatus): string => {
   switch (status) {
     case "create":
       return "var(--mb-base-color-palm-50)";
