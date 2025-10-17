@@ -4,17 +4,17 @@ import { t } from "ttag";
 
 import {
   ActionIcon,
+  Anchor,
   Box,
   FixedSizeIcon,
   Flex,
   Group,
-  type IconName,
   Stack,
-  UnstyledButton,
   rem,
 } from "metabase/ui";
-import type { DependencyEntry, DependencyNode } from "metabase-types/api";
+import type { DependencyNode } from "metabase-types/api";
 
+import { getDependencyLineageUrl } from "../../../../urls";
 import { ACTION_ICON_PADDING } from "../../constants";
 import type { NodeLocationInfo } from "../../types";
 import {
@@ -31,21 +31,13 @@ import { getNodeViewCountLabel } from "./utils";
 
 type PanelBodyProps = {
   nodes: DependencyNode[];
-  onEntryChange: (entry: DependencyEntry) => void;
 };
 
-export const PanelBody = memo(function ListBody({
-  nodes,
-  onEntryChange,
-}: PanelBodyProps) {
+export const PanelBody = memo(function ListBody({ nodes }: PanelBodyProps) {
   return (
     <div className={S.body}>
       {nodes.map((node) => (
-        <ListItem
-          key={getNodeId(node.id, node.type)}
-          node={node}
-          onEntryChange={onEntryChange}
-        />
+        <ListItem key={getNodeId(node.id, node.type)} node={node} />
       ))}
     </div>
   );
@@ -53,28 +45,17 @@ export const PanelBody = memo(function ListBody({
 
 type ListItemProps = {
   node: DependencyNode;
-  onEntryChange: (entry: DependencyEntry) => void;
 };
 
-function ListItem({ node, onEntryChange }: ListItemProps) {
-  const label = getNodeLabel(node);
-  const icon = getNodeIcon(node);
+function ListItem({ node }: ListItemProps) {
   const location = getNodeLocationInfo(node);
   const link = getNodeLink(node);
   const viewCount = getNodeViewCount(node);
 
-  const handleTitleClick = () => {
-    onEntryChange({ id: node.id, type: node.type });
-  };
-
   return (
     <Stack className={S.item} p="lg" gap="sm">
       <Group justify="space-between">
-        <ListItemTitle
-          label={label}
-          icon={icon}
-          onTitleClick={handleTitleClick}
-        />
+        <ListItemTitle node={node} />
         {viewCount != null ? (
           <ListItemViewCount viewCount={viewCount} />
         ) : link != null ? (
@@ -83,7 +64,7 @@ function ListItem({ node, onEntryChange }: ListItemProps) {
       </Group>
       {(location != null || (link != null && viewCount != null)) && (
         <Group justify={location != null ? "space-between" : "flex-end"}>
-          {location != null && <ListItemSubtitle location={location} />}
+          {location != null && <ListItemLocation location={location} />}
           {link != null && viewCount != null && <ListItemLink link={link} />}
         </Group>
       )}
@@ -92,23 +73,21 @@ function ListItem({ node, onEntryChange }: ListItemProps) {
 }
 
 type ListItemTitleProps = {
-  label: string;
-  icon: IconName;
-  onTitleClick: () => void;
+  node: DependencyNode;
 };
 
-function ListItemTitle({ label, icon, onTitleClick }: ListItemTitleProps) {
+function ListItemTitle({ node }: ListItemTitleProps) {
+  const label = getNodeLabel(node);
+  const icon = getNodeIcon(node);
+  const link = getDependencyLineageUrl({ entry: node });
+
   return (
-    <Flex
-      component={UnstyledButton}
-      className={S.textLink}
-      gap="sm"
-      align="center"
-      onClick={onTitleClick}
-    >
-      <FixedSizeIcon name={icon} />
-      <Box lh="h4">{label}</Box>
-    </Flex>
+    <Anchor c="text-primary" component={Link} to={link}>
+      <Flex gap="sm" align="center">
+        <FixedSizeIcon name={icon} />
+        <Box lh="h4">{label}</Box>
+      </Flex>
+    </Anchor>
   );
 }
 
@@ -128,21 +107,21 @@ type ListItemSubtitleProps = {
   location: NodeLocationInfo;
 };
 
-function ListItemSubtitle({ location }: ListItemSubtitleProps) {
+function ListItemLocation({ location }: ListItemSubtitleProps) {
   return (
-    <Flex
-      className={S.textLink}
+    <Anchor
       component={Link}
       to={location.link}
       target="_blank"
-      gap="sm"
-      align="center"
+      c="text-primary"
     >
-      <FixedSizeIcon name={location.icon} />
-      <Box fz="sm" lh="h5">
-        {location.label}
-      </Box>
-    </Flex>
+      <Flex gap="sm" align="center">
+        <FixedSizeIcon name={location.icon} />
+        <Box fz="sm" lh="h5">
+          {location.label}
+        </Box>
+      </Flex>
+    </Anchor>
   );
 }
 

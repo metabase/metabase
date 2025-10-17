@@ -31,13 +31,9 @@ const NODE_TYPES = {
 
 type DependencyLineageProps = {
   entry: DependencyEntry | undefined;
-  onEntryChange: (entry: DependencyEntry | undefined) => void;
 };
 
-export function DependencyLineage({
-  entry,
-  onEntryChange,
-}: DependencyLineageProps) {
+export function DependencyLineage({ entry }: DependencyLineageProps) {
   const { currentData: graph, isFetching } = useGetDependencyGraphQuery(
     entry ?? skipToken,
   );
@@ -97,7 +93,6 @@ export function DependencyLineage({
             <GraphEntryInput
               node={entryNode?.data}
               isGraphFetching={isFetching}
-              onEntryChange={onEntryChange}
             />
             {nodes.length > 1 && (
               <GraphSelectInput
@@ -118,7 +113,6 @@ export function DependencyLineage({
               <GraphDependencyPanel
                 node={selectedNode.data}
                 groupType={selection.groupType}
-                onEntryChange={onEntryChange}
                 onClose={handlePanelClose}
               />
             ) : (

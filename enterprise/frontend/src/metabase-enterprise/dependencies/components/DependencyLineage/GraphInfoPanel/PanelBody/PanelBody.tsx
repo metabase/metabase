@@ -1,11 +1,20 @@
+import { Link } from "react-router";
 import { c, t } from "ttag";
 
 import DateTime from "metabase/common/components/DateTime";
 import { getUserName } from "metabase/lib/user";
-import { FixedSizeIcon, Group, Stack, Text, Title } from "metabase/ui";
+import {
+  Anchor,
+  Box,
+  FixedSizeIcon,
+  Flex,
+  Group,
+  Stack,
+  Title,
+} from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
-import { getNodeDescription } from "../../utils";
+import { getNodeDescription, getNodeLocationInfo } from "../../utils";
 
 import S from "./PanelBody.module.css";
 import {
@@ -21,7 +30,7 @@ type PanelBodyProps = {
 
 export function PanelBody({ node }: PanelBodyProps) {
   return (
-    <Stack className={S.body} pl="lg" pr="lg" pb="lg">
+    <Stack className={S.body} pl="lg" pr="lg" pb="lg" gap="lg">
       <DescriptionInfo node={node} />
       <CreatorAndEditorInfo node={node} />
       <LocationInfo node={node} />
@@ -39,9 +48,9 @@ function DescriptionInfo({ node }: DescriptionInfoProps) {
   return (
     <Stack gap="sm">
       <Title order={6}>{t`Description`}</Title>
-      <Text c={description ? "text-primary" : "text-secondary"}>
+      <Box c={description ? "text-primary" : "text-secondary"}>
         {description ?? t`No description`}
-      </Text>
+      </Box>
     </Stack>
   );
 }
@@ -69,25 +78,25 @@ function CreatorAndEditorInfo({ node }: CreatorAndEditorInfoProps) {
       {createdAt != null && createdBy != null && (
         <Group gap="sm" wrap="nowrap">
           <FixedSizeIcon name="ai" />
-          <Text>
+          <Box>
             {c(
               "Describes when an entity was created. {0} is a date/time and {1} is a person's name",
             ).jt`${(
               <DateTime unit="day" value={createdAt} key="date" />
             )} by ${getUserName(createdBy)}`}
-          </Text>
+          </Box>
         </Group>
       )}
       {editedAt != null && editedBy != null && (
         <Group gap="sm" wrap="nowrap">
           <FixedSizeIcon name="pencil" />
-          <Text>
+          <Box>
             {c(
               "Describes when an entity was last edited. {0} is a date/time and {1} is a person's name",
             ).jt`${(
               <DateTime unit="day" value={editedAt} key="date" />
             )} by ${getUserName(editedBy)}`}
-          </Text>
+          </Box>
         </Group>
       )}
     </Stack>
@@ -98,10 +107,21 @@ type LocationInfoProps = {
   node: DependencyNode;
 };
 
-function LocationInfo(_props: LocationInfoProps) {
+function LocationInfo({ node }: LocationInfoProps) {
+  const location = getNodeLocationInfo(node);
+  if (location == null) {
+    return null;
+  }
+
   return (
     <Stack gap="sm">
       <Title order={6}>{t`Saved in`}</Title>
+      <Anchor component={Link} to={location.link} target="_blank">
+        <Flex gap="sm" align="center">
+          <FixedSizeIcon name={location.icon} />
+          <div>{location.label}</div>
+        </Flex>
+      </Anchor>
     </Stack>
   );
 }

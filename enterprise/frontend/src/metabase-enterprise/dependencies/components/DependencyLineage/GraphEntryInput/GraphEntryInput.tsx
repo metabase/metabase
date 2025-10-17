@@ -1,8 +1,12 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
+import { push } from "react-router-redux";
 
+import { useDispatch } from "metabase/lib/redux";
 import { Card } from "metabase/ui";
 import type { DependencyEntry, DependencyNode } from "metabase-types/api";
+
+import { getDependencyLineageUrl } from "../../../urls";
 
 import { EntryButton } from "./EntryButton";
 import { EntryPickerModal } from "./EntryPickerModal";
@@ -12,21 +16,24 @@ import { SEARCH_MODELS } from "./constants";
 type GraphEntryInputProps = {
   node: DependencyNode | undefined;
   isGraphFetching: boolean;
-  onEntryChange: (entry: DependencyEntry | undefined) => void;
 };
 
 export function GraphEntryInput({
   node,
   isGraphFetching,
-  onEntryChange,
 }: GraphEntryInputProps) {
   const [searchModels, setSearchModels] = useState(SEARCH_MODELS);
+  const dispatch = useDispatch();
   const [isPickerOpened, { open: openPicker, close: closePicker }] =
     useDisclosure();
 
+  const handleEntryChange = (newEntry?: DependencyEntry) => {
+    dispatch(push(getDependencyLineageUrl({ entry: newEntry })));
+  };
+
   const handlePickerChange = (newEntry: DependencyEntry) => {
     closePicker();
-    onEntryChange(newEntry);
+    handleEntryChange(newEntry);
   };
 
   return (
@@ -35,14 +42,14 @@ export function GraphEntryInput({
         {node != null ? (
           <EntryButton
             node={node}
-            onEntryChange={onEntryChange}
+            onEntryChange={handleEntryChange}
             onPickerOpen={openPicker}
           />
         ) : (
           <EntrySearchInput
             searchModels={searchModels}
             isGraphFetching={isGraphFetching}
-            onEntryChange={onEntryChange}
+            onEntryChange={handleEntryChange}
             onSearchModelsChange={setSearchModels}
             onPickerOpen={openPicker}
           />
