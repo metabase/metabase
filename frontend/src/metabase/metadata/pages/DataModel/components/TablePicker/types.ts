@@ -14,7 +14,7 @@ export type TreePath = {
   schemaName?: SchemaName;
   tableId?: TableId;
 
-  collectionId: CollectionId;
+  collectionId?: CollectionId;
   modelId?: CardId;
 };
 
@@ -31,7 +31,7 @@ export type RootNode = {
   key: string;
   label: "";
   value: Record<string, never>;
-  children: (DatabaseNode | CollectionNode)[];
+  children: (DatabaseNode | CollectionNode | ModelNode)[];
 };
 
 export type DatabaseNode = {
@@ -66,21 +66,22 @@ export type CollectionNode = {
   key: string;
   value: { collectionId: CollectionId };
   children: ModelNode[];
+  hasNoValidChildren?: boolean;
 };
 
 export type ModelNode = {
   type: "model";
   label: string;
   key: string;
-  value: { modelId: CardId };
+  value: { collectionId: CollectionId; modelId: CardId };
   children: [];
 };
 
 export type DatabaseItem = Omit<DatabaseNode, "children">;
 export type SchemaItem = Omit<SchemaNode, "children">;
 export type TableItem = Omit<TableNode, "children">;
-export type CollectionItem = Omit<TableNode, "children">;
-export type ModelItem = Omit<TableNode, "children">;
+export type CollectionItem = Omit<CollectionNode, "children">;
+export type ModelItem = Omit<ModelNode, "children">;
 
 export type Item =
   | DatabaseItem

@@ -156,6 +156,7 @@ export const {
   useListCollectionsTreeQuery,
   useLazyListCollectionsTreeQuery,
   useListCollectionItemsQuery,
+  useLazyListCollectionItemsQuery,
   useGetCollectionQuery,
   useCreateCollectionMutation,
   useUpdateCollectionMutation,

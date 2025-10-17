@@ -16,7 +16,7 @@ import EmptyState from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { ModelColumnsSection } from "metabase/metadata/pages/DataModel/components/models/ModelColumnsList";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Box, Flex, Stack, Title, rem } from "metabase/ui";
+import { Box, Flex, Stack, rem } from "metabase/ui";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions"; // eslint-disable-line no-restricted-imports
 import type { FieldName } from "metabase-types/api";
 
@@ -167,7 +167,6 @@ export const DataModel = ({ children, location, params }: Props) => {
         maw={COLUMN_CONFIG.nav.max}
         miw={COLUMN_CONFIG.nav.min}
       >
-        <Title p="xl" pb={0} order={3}>{t`Tables`}</Title>
         <RouterTablePicker
           className={S.tablePicker}
           databaseId={databaseId}
