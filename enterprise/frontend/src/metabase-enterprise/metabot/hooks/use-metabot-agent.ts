@@ -10,6 +10,7 @@ import {
   type MetabotUserChatMessage,
   getActiveToolCalls,
   getAgentErrorMessages,
+  getDebugMode,
   getIsLongMetabotConversation,
   getIsProcessing,
   getMessages,
@@ -59,6 +60,10 @@ export const useMetabotAgent = () => {
 
   const activeToolCalls = useSelector(getActiveToolCalls as any) as ReturnType<
     typeof getActiveToolCalls
+  >;
+
+  const debugMode = useSelector(getDebugMode as any) as ReturnType<
+    typeof getDebugMode
   >;
 
   const setVisible = useCallback(
@@ -176,6 +181,7 @@ export const useMetabotAgent = () => {
     submitInput,
     retryMessage,
     activeToolCalls,
+    debugMode,
     profileOverride,
     reactions,
   };
