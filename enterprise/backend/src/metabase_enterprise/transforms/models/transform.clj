@@ -190,14 +190,6 @@
     (for [transform transforms]
       (assoc transform :table (get table-keys->table (table-key-fn transform))))))
 
-(comment
-  (let [table-keys #{[1 "PUBLIC" "ORDERS"] [13371337 "PUBLIC" "V_DATABASES"]}]
-    (t2/select :model/Table {:where [:in [:composite :db_id :schema :name] (seq table-keys)]}))
-  (t2/select :model/Table {:where [:in [:composite :db_id :schema :name] ()]})
-  (-> (t2/select :model/Transform)
-      (t2/hydrate :table-with-db-and-fields))
-  -)
-
 (defmethod serdes/hash-fields :model/Transform
   [_transform]
   [:name :created_at])
