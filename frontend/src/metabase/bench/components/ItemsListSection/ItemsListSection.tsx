@@ -1,0 +1,70 @@
+import type React from "react";
+import { t } from "ttag";
+
+import { Ellipsified } from "metabase/common/components/Ellipsified";
+import {
+  ActionIcon,
+  Box,
+  Button,
+  type ButtonProps,
+  Flex,
+  Icon,
+} from "metabase/ui";
+
+export const ItemsListAddButton = (props: ButtonProps) => (
+  <Button
+    leftSection={<Icon name="add" />}
+    size="sm"
+    aria-label={t`Add`}
+    {...props}
+  />
+);
+
+type ItemsListSectionProps = {
+  sectionTitle: React.ReactNode;
+  addButton?: React.ReactNode;
+  settings?: React.ReactNode | null;
+  listItems: React.ReactNode;
+  onCollapse?: () => void;
+  testId?: string;
+};
+
+export const ItemsListSection = ({
+  sectionTitle,
+  addButton,
+  settings,
+  listItems,
+  onCollapse,
+  testId,
+}: ItemsListSectionProps) => {
+  return (
+    <Box
+      data-testid={testId}
+      w="100%"
+      h="100%"
+      style={{ display: "flex", flexDirection: "column" }}
+    >
+      <Flex justify="space-between" align="center" p="md">
+        <Flex align="center" gap="sm">
+          {onCollapse && (
+            <ActionIcon
+              onClick={onCollapse}
+              aria-label={t`Collapse`}
+              color="brand"
+            >
+              <Icon name="arrow_left" c="brand" /> {}
+            </ActionIcon>
+          )}
+          <Ellipsified fz="lg" fw="bold">
+            {sectionTitle}
+          </Ellipsified>
+        </Flex>
+        <Flex style={{ flexShrink: 0 }}>{addButton}</Flex>
+      </Flex>
+      {settings}
+      <Box p="md" style={{ overflow: "auto" }}>
+        {listItems}
+      </Box>
+    </Box>
+  );
+};

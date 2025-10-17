@@ -1,34 +1,81 @@
+import { useMemo } from "react";
 import { push } from "react-router-redux";
+import { useLocalStorage } from "react-use";
 import { t } from "ttag";
 
-import { AdminContentTable } from "metabase/common/components/AdminContentTable";
+import { useListDatabasesQuery } from "metabase/api";
+import { ItemsListSection } from "metabase/bench/components/ItemsListSection/ItemsListSection";
+import { ItemsListSettings } from "metabase/bench/components/ItemsListSection/ItemsListSettings";
+import { ItemsListTreeNode } from "metabase/bench/components/ItemsListSection/ItemsListTreeNode";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
+import Link from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useSetting } from "metabase/common/hooks";
+import { Tree } from "metabase/common/components/tree";
+import type {
+  ITreeNodeItem,
+  TreeNodeProps,
+} from "metabase/common/components/tree/types";
 import { useDispatch } from "metabase/lib/redux";
-import { Card, Flex } from "metabase/ui";
+import { Box, FixedSizeIcon, Flex, NavLink, Text } from "metabase/ui";
 import {
   useListTransformTagsQuery,
   useListTransformsQuery,
 } from "metabase-enterprise/api";
-import { TimezoneIndicator } from "metabase-enterprise/transforms/components/TimezoneIndicator";
-import type { Transform } from "metabase-types/api";
+import type { Transform, TransformTag } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
-import { RunStatusInfo } from "../../../components/RunStatusInfo";
 import { TagList } from "../../../components/TagList";
 import type { TransformListParams } from "../../../types";
 import { getTransformUrl } from "../../../urls";
-import { parseTimestampWithTimezone } from "../../../utils";
+import { CreateTransformMenu } from "../CreateTransformMenu";
 import { hasFilterParams } from "../utils";
 
-import S from "./TransformList.module.css";
+const TransformsTreeNode = (props: TreeNodeProps) => (
+  <ItemsListTreeNode
+    {...props}
+    renderLeaf={(item) => {
+      const transform = item.data as Transform | undefined;
+      if (!transform) {
+        return;
+      }
+      return (
+        <Box fw="normal" p="sm" style={{ overflow: "hidden" }} c="text-primary">
+          <Text fz="xs" lh={1} c="text-secondary" mb="xs">
+            {transform.name}
+          </Text>
+          <Flex align="center">
+            <FixedSizeIcon
+              name="enter_or_return"
+              size={8}
+              style={{ transform: "scaleX(-1)" }}
+            />
+            <FixedSizeIcon name="table2" ml="sm" />
+            <Ellipsified ml="xs">{transform.target.name}</Ellipsified>
+          </Flex>
+        </Box>
+      );
+    }}
+  />
+);
+
+const nameSorter = <T extends { name: string }>(a: T, b: T) =>
+  a.name.localeCompare(b.name);
+
+const lastModifiedSorter = <T extends { updated_at: string }>(a: T, b: T) =>
+  a.updated_at < b.updated_at ? 1 : a.updated_at > b.updated_at ? -1 : 0;
 
 type TransformListProps = {
   params: TransformListParams;
+  selectedId?: Transform["id"];
+  onCollapse?: () => void;
 };
 
-export function TransformList({ params }: TransformListProps) {
-  const systemTimezone = useSetting("system-timezone");
+export function TransformList({
+  params,
+  selectedId,
+  onCollapse,
+}: TransformListProps) {
+  const dispatch = useDispatch();
   const {
     data: transforms = [],
     isLoading: isLoadingTransforms,
@@ -43,81 +90,176 @@ export function TransformList({ params }: TransformListProps) {
     isLoading: isLoadingTags,
     error: tagsError,
   } = useListTransformTagsQuery();
+  const { data: databaseData } = useListDatabasesQuery();
   const isLoading = isLoadingTransforms || isLoadingTags;
   const error = transformsError ?? tagsError;
-  const dispatch = useDispatch();
 
-  const handleRowClick = (transform: Transform) => {
-    dispatch(push(getTransformUrl(transform.id)));
-  };
+  const [display = "tree", setDisplay] = useLocalStorage<
+    "tree" | "alphabetical" | "last-modified"
+  >("metabase-bench-transforms-display");
+
+  const sortFn = display === "last-modified" ? lastModifiedSorter : nameSorter;
+  const transformsSorted = useMemo(
+    () => [...transforms].sort(sortFn),
+    [sortFn, transforms],
+  );
+
+  const treeData = useMemo((): ITreeNodeItem[] => {
+    if (!databaseData || !transformsSorted || display !== "tree") {
+      return [];
+    }
+    type Tier<T> = (t: T) => ITreeNodeItem;
+    const tiers: Tier<Transform>[] = [
+      ({ target }) => ({
+        id: `database-${target.database}`,
+        name:
+          databaseData.data.find((d) => d.id === target.database)?.name ||
+          t`Unknown database`,
+        icon: "database",
+      }),
+      ({ target }) => ({
+        id: `schema-${target.database}-${target.schema}`,
+        name: target.schema || t`Unknown schema`,
+        icon: "folder",
+      }),
+    ];
+    const nodes: Record<string | number, ITreeNodeItem> = {};
+    const root: ITreeNodeItem = {
+      id: "root",
+      name: "root",
+      icon: "empty",
+      children: [],
+    };
+    transformsSorted.forEach((transform) => {
+      let prev = root;
+      tiers.forEach((tier) => {
+        let node = tier(transform);
+        const existingNode = nodes[node.id];
+        if (!existingNode) {
+          node = { ...node, children: [] };
+          nodes[node.id] = node;
+          prev.children?.push(node);
+        } else {
+          node = existingNode;
+        }
+        prev = node;
+      });
+      prev.children?.push({
+        id: transform.id,
+        name: transform.target.name,
+        icon: "table2",
+        data: transform,
+      });
+    });
+    const recursiveAlpha = (node: ITreeNodeItem) => {
+      node.children?.sort(nameSorter);
+      node.children?.forEach(recursiveAlpha);
+      return node;
+    };
+    return recursiveAlpha(root).children || [];
+  }, [databaseData, display, transformsSorted]);
 
   if (isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  if (transforms.length === 0) {
-    const hasFilters = hasFilterParams(params);
-    return (
-      <ListEmptyState
-        label={hasFilters ? t`No transforms found` : t`No transforms yet`}
-      />
-    );
-  }
-
   return (
-    <Card p={0} shadow="none" withBorder>
-      <AdminContentTable
-        columnTitles={[
-          t`Transform`,
-          t`Target`,
-          <Flex key="last-run-at" component="span" align="center" gap="xs">
-            <span className={S.nowrap}>{t`Last run at`}</span>{" "}
-            <TimezoneIndicator />
-          </Flex>,
-          <span key="last-run-status" className={S.nowrap}>
-            {t`Last run status`}
-          </span>,
-          t`Tags`,
-        ]}
-      >
-        {transforms.map((transform) => (
-          <tr
-            key={transform.id}
-            className={S.row}
-            onClick={() => handleRowClick(transform)}
-          >
-            <td className={S.wrap}>{transform.name}</td>
-            <td className={S.wrap}>{transform.target.name}</td>
-            <td className={S.nowrap}>
-              {transform.last_run?.end_time
-                ? parseTimestampWithTimezone(
-                    transform.last_run.end_time,
-                    systemTimezone,
-                  ).format("lll")
-                : null}
-            </td>
-            <td className={S.nowrap}>
-              {transform.last_run != null ? (
-                <RunStatusInfo
-                  status={transform.last_run.status}
-                  message={transform.last_run.message}
-                  endTime={
-                    transform.last_run.end_time != null
-                      ? parseTimestampWithTimezone(
-                          transform.last_run.end_time,
-                          systemTimezone,
-                        ).toDate()
-                      : null
-                  }
-                />
-              ) : null}
-            </td>
-            <td className={S.wrap}>
-              <TagList tags={tags} tagIds={transform.tag_ids ?? []} />
-            </td>
-          </tr>
-        ))}
-      </AdminContentTable>
-    </Card>
+    <ItemsListSection
+      sectionTitle={t`Transforms`}
+      testId="transform-list-page"
+      onCollapse={onCollapse}
+      addButton={<CreateTransformMenu />}
+      settings={
+        <ItemsListSettings
+          values={{ display }}
+          settings={[
+            {
+              name: "display",
+              options: [
+                {
+                  label: t`Target table`,
+                  value: "tree",
+                },
+                {
+                  label: t`Alphabetical`,
+                  value: "alphabetical",
+                },
+                {
+                  label: t`Last modified`,
+                  value: "last-modified",
+                },
+              ],
+            },
+          ]}
+          onSettingChange={(updates) =>
+            updates.display && setDisplay(updates.display)
+          }
+        />
+      }
+      listItems={
+        transforms.length === 0 ? (
+          <ListEmptyState
+            label={
+              hasFilterParams(params)
+                ? t`No transforms found`
+                : t`No transforms yet`
+            }
+          />
+        ) : display === "tree" ? (
+          <Box mx="-sm">
+            <Tree
+              initiallyExpanded
+              data={treeData}
+              selectedId={selectedId}
+              onSelect={(node) => {
+                if (typeof node.id === "number") {
+                  dispatch(push(`/bench/transforms/${node.id}`));
+                }
+              }}
+              TreeNode={TransformsTreeNode}
+            />
+          </Box>
+        ) : (
+          <Box>
+            {transformsSorted.map((transform) => (
+              <TransformListItem
+                key={transform.id}
+                transform={transform}
+                tags={tags}
+                isActive={transform.id === selectedId}
+              />
+            ))}
+          </Box>
+        )
+      }
+    />
+  );
+}
+
+function TransformListItem({
+  transform,
+  tags,
+  isActive,
+}: {
+  transform: Transform;
+  tags: TransformTag[];
+  isActive?: boolean;
+}) {
+  return (
+    <NavLink
+      component={Link}
+      to={getTransformUrl(transform.id)}
+      active={isActive}
+      w="100%"
+      label={
+        <Box>
+          <Text fw="bold">{transform.name}</Text>
+          <Box c="text-light" fz="sm" mb="xs" ff="monospace">
+            {transform.target.name}
+          </Box>
+          <TagList tags={tags} tagIds={transform.tag_ids ?? []} />
+        </Box>
+      }
+    />
   );
 }

@@ -31,12 +31,7 @@ class CollectionRow extends Component {
         )}
         {...(collection.archived ? undefined : { onClick: onSelectCollection })}
       >
-        <Icon
-          name="folder"
-          size={ICON_SIZE}
-          style={{ opacity: 0.25 }}
-          className={CS.flexNoShrink}
-        />
+        <Icon name="folder" size={ICON_SIZE} className={CS.flexNoShrink} />
         <Ellipsified className={cx(CS.flexFull, CS.ml1, CS.textBold)} flex={1}>
           {collection.name}
         </Ellipsified>

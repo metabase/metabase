@@ -1,0 +1,18 @@
+.treeNode.treeNode {
+  color: var(--mb-color-text-dark);
+  border-radius: var(--mantine-radius-md);
+
+  &.isSelected {
+    color: var(--mb-color-brand);
+    background-color: var(--mb-color-brand-light);
+  }
+
+  &:hover:not(&.isSelected) {
+    background-color: var(--mb-color-brand-lighter);
+  }
+}
+
+.nameContainer {
+  font-weight: normal;
+  overflow: hidden;
+}

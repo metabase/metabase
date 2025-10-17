@@ -7,7 +7,6 @@ import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { Icon, Menu } from "metabase/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { trackTransformCreate } from "metabase-enterprise/transforms/analytics";
-import { FullWidthTransformPageLayout } from "metabase-enterprise/transforms/pages/TransformPageLayout";
 import { getNewTransformFromTypeUrl } from "metabase-enterprise/transforms/urls";
 
 import { PythonTransformEditor } from "./components/PythonTransformEditor";
@@ -23,9 +22,7 @@ if (hasPremiumFeature("transforms-python")) {
   PLUGIN_TRANSFORMS_PYTHON.SourceSection = SourceSection;
 
   PLUGIN_TRANSFORMS_PYTHON.getAdminRoutes = () => (
-    <Route component={FullWidthTransformPageLayout}>
-      <Route path="library/:path" component={PythonLibraryEditorPage} />
-    </Route>
+    <Route path="library/:path" component={PythonLibraryEditorPage} />
   );
 
   PLUGIN_TRANSFORMS_PYTHON.getTransformsNavLinks = () => (

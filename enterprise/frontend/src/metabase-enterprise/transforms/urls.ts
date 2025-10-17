@@ -13,7 +13,7 @@ import type {
   TransformListParams,
 } from "./types";
 
-export const ROOT_URL = "/admin/transforms";
+export const ROOT_URL = "/bench/transforms";
 
 export function getTransformListUrl({
   lastRunStartTime,
@@ -77,18 +77,18 @@ export function getJobListUrl({
   });
   const queryString = searchParams.toString();
   if (queryString.length > 0) {
-    return `${ROOT_URL}/jobs?${queryString}`;
+    return `/bench/jobs?${queryString}`;
   } else {
-    return `${ROOT_URL}/jobs`;
+    return `/bench/jobs`;
   }
 }
 
 export function getNewJobUrl() {
-  return `${ROOT_URL}/jobs/new`;
+  return `/bench/jobs/new`;
 }
 
 export function getJobUrl(id: TransformJobId) {
-  return `${ROOT_URL}/jobs/${id}`;
+  return `/bench/jobs/${id}`;
 }
 
 export function getRunListUrl({
@@ -125,9 +125,9 @@ export function getRunListUrl({
 
   const queryString = searchParams.toString();
   if (queryString.length > 0) {
-    return `${ROOT_URL}/runs?${queryString}`;
+    return `/bench/runs?${queryString}`;
   } else {
-    return `${ROOT_URL}/runs`;
+    return `/bench/runs`;
   }
 }
 

@@ -11,6 +11,13 @@ export function getQueryBuilderModeFromLocation(
   location: LocationDescriptorObject,
 ): LocationQBModeResult {
   const { pathname } = location;
+  const isBench = pathname?.includes("/bench/");
+  if (isBench) {
+    return {
+      queryBuilderMode: "dataset",
+      datasetEditorTab: "query",
+    };
+  }
   const lastPathSegment = pathname?.split("/").pop();
 
   if (lastPathSegment === "notebook") {

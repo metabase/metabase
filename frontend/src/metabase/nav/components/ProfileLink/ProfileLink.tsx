@@ -106,6 +106,12 @@ function ProfileLinkInner({
         icon: null,
         action: () => dispatch(setOpenModal("help")),
       },
+      showAdminSettingsItem && {
+        title: t`Workbench`,
+        icon: null,
+        link: "/bench",
+        event: `Navbar;Profile Dropdown;Enter workbench`,
+      },
       {
         separator: true,
       },

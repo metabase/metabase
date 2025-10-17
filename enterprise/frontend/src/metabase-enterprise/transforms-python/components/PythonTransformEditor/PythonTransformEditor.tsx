@@ -1,7 +1,7 @@
 import { useHotkeys } from "@mantine/hooks";
 import { useState } from "react";
 
-import { Flex, Stack } from "metabase/ui";
+import { Stack } from "metabase/ui";
 import { EditorHeader } from "metabase-enterprise/transforms/components/QueryEditor/EditorHeader";
 import { useRegisterMetabotTransformContext } from "metabase-enterprise/transforms/hooks/use-register-transform-metabot-context";
 import type {
@@ -139,34 +139,30 @@ export function PythonTransformEditor({
         validationResult={validationResult}
         isQueryDirty={isSourceDirty}
       />
-      <Flex h="100%" w="100%">
-        <PythonDataPicker
-          database={saveSource["source-database"]}
-          tables={saveSource["source-tables"]}
-          onChange={handleDataChange}
+      <PythonDataPicker
+        database={saveSource["source-database"]}
+        tables={saveSource["source-tables"]}
+        onChange={handleDataChange}
+      />
+      <PythonEditorBody
+        isRunnable={isRunnable && isPythonTransformSource(source)}
+        isRunning={isRunning}
+        isDirty={isDirty}
+        onRun={run}
+        onCancel={cancel}
+        source={source.body}
+        proposedSource={proposedSource?.body}
+        onChange={handleScriptChange}
+        withDebugger={showDebugger}
+        onAcceptProposed={handleAcceptProposed}
+        onRejectProposed={onRejectProposed}
+      />
+      {showDebugger && (
+        <PythonEditorResults
+          isRunning={isRunning}
+          executionResult={executionResult}
         />
-        <Stack w="100%" h="100%" gap={0}>
-          <PythonEditorBody
-            isRunnable={isRunnable && isPythonTransformSource(source)}
-            isRunning={isRunning}
-            isDirty={isDirty}
-            onRun={run}
-            onCancel={cancel}
-            source={source.body}
-            proposedSource={proposedSource?.body}
-            onChange={handleScriptChange}
-            withDebugger={showDebugger}
-            onAcceptProposed={handleAcceptProposed}
-            onRejectProposed={onRejectProposed}
-          />
-          {showDebugger && (
-            <PythonEditorResults
-              isRunning={isRunning}
-              executionResult={executionResult}
-            />
-          )}
-        </Stack>
-      </Flex>
+      )}
     </Stack>
   );
 }

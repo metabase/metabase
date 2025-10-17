@@ -1,4 +1,4 @@
-import { useDisclosure, useHotkeys, useToggle } from "@mantine/hooks";
+import { useHotkeys, useToggle } from "@mantine/hooks";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -6,9 +6,8 @@ import { useListDatabasesQuery } from "metabase/api";
 import type { SelectionRange } from "metabase/query_builder/components/NativeQueryEditor/types";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { NativeQueryPreview } from "metabase/querying/notebook/components/NativeQueryPreview";
-import { Center, Flex, Loader, Modal, Stack } from "metabase/ui";
+import { Center, Loader, Modal, Stack } from "metabase/ui";
 import { useRegisterMetabotTransformContext } from "metabase-enterprise/transforms/hooks/use-register-transform-metabot-context";
-import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type {
   NativeQuerySnippet,
@@ -17,24 +16,13 @@ import type {
 } from "metabase-types/api";
 
 import { useQueryMetadata } from "../../hooks/use-query-metadata";
-import { useQueryResults } from "../../hooks/use-query-results";
-import { useQueryState } from "../../hooks/use-query-state";
+import type { TransformEditorValue } from "../../hooks/use-transform-editor";
 
 import { EditorBody } from "./EditorBody";
 import { EditorHeader } from "./EditorHeader";
-import { EditorSidebar } from "./EditorSidebar";
 import { EditorValidationCard } from "./EditorValidationCard";
-import { EditorVisualization } from "./EditorVisualization";
-import {
-  NativeQuerySidebar,
-  NativeQuerySidebarToggle,
-} from "./NativeQuerySidebar";
 import S from "./QueryEditor.module.css";
-import {
-  getValidationResult,
-  useInsertSnippetHandler,
-  useSelectedText,
-} from "./utils";
+import { getValidationResult, useSelectedText } from "./utils";
 
 type QueryEditorProps = {
   transform?: Transform | undefined;
@@ -47,11 +35,11 @@ type QueryEditorProps = {
   onCancel: () => void;
   onRejectProposed?: () => void;
   onAcceptProposed?: (query: QueryTransformSource) => void;
+  transformEditor: TransformEditorValue;
 };
 
 export function QueryEditor({
   transform,
-  initialSource,
   proposedSource,
   isNew = true,
   isSaving = false,
@@ -60,21 +48,22 @@ export function QueryEditor({
   onCancel,
   onRejectProposed,
   onAcceptProposed,
+  transformEditor,
 }: QueryEditorProps) {
-  const { question, proposedQuestion, isQueryDirty, setQuestion } =
-    useQueryState(initialSource.query, proposedSource?.query);
-  const { isInitiallyLoaded } = useQueryMetadata(question);
   const {
-    result,
-    rawSeries,
+    question,
+    proposedQuestion,
+    isQueryDirty,
+    setQuestion,
     isRunnable,
     isRunning,
     isResultDirty,
+    isNative,
     runQuery,
     cancelQuery,
-  } = useQueryResults(question, proposedQuestion);
-  const { isNative } = Lib.queryDisplayInfo(question.query());
-  const [isShowingNativeQueryPreview, toggleNativeQueryPreview] = useToggle();
+  } = transformEditor;
+
+  const { isInitiallyLoaded } = useQueryMetadata(question);
   const [isPreviewQueryModalOpen, togglePreviewQueryModal] = useToggle();
   const validationResult = getValidationResult(question.query());
 
@@ -82,6 +71,7 @@ export function QueryEditor({
     const query = proposedSource?.query ?? question.datasetQuery();
     return { type: "query" as const, query };
   }, [proposedSource, question]);
+
   useRegisterMetabotTransformContext(transform, source);
 
   const handleChange = async (newQuestion: Question) => {
@@ -104,26 +94,7 @@ export function QueryEditor({
     }
   };
 
-  const [
-    isDataReferenceOpen,
-    { toggle: toggleDataReference, close: closeDataReference },
-  ] = useDisclosure();
-  const [
-    isSnippetSidebarOpen,
-    { toggle: toggleSnippetSidebar, close: closeSnippetSidebar },
-  ] = useDisclosure();
-
   useHotkeys([["mod+Enter", handleCmdEnter]], []);
-
-  const handleToggleDataReference = () => {
-    closeSnippetSidebar();
-    toggleDataReference();
-  };
-
-  const handleToggleSnippetSidebar = () => {
-    closeDataReference();
-    toggleSnippetSidebar();
-  };
 
   const handleOpenModal = (type: QueryModalType) => {
     if (type === "preview-query") {
@@ -133,11 +104,6 @@ export function QueryEditor({
 
   const [selectionRange, setSelectionRange] = useState<SelectionRange[]>([]);
   const selectedText = useSelectedText(question, selectionRange);
-  const handleInsertSnippet = useInsertSnippetHandler({
-    question,
-    selectionRange,
-    onChange: handleChange,
-  });
 
   const [modalSnippet, setModalSnippet] = useState<NativeQuerySnippet | null>(
     null,
@@ -147,7 +113,9 @@ export function QueryEditor({
     include_analytics: true,
   });
 
-  if (!isInitiallyLoaded || isLoading) {
+  const loadingQuestion = !isNew && !question?._card?.dataset_query?.database;
+
+  if (!isInitiallyLoaded || isLoading || loadingQuestion) {
     return (
       <Center>
         <Loader />
@@ -162,7 +130,6 @@ export function QueryEditor({
         pos="relative"
         w="100%"
         h="100%"
-        bg="bg-white"
         data-testid="transform-query-editor"
         gap={0}
       >
@@ -176,76 +143,33 @@ export function QueryEditor({
           onSave={handleSave}
           onCancel={onCancel}
         />
-        <Flex h="100%" w="100%" mih="0">
-          <Stack flex="2 1 100%" pos="relative">
-            <EditorBody
-              question={question}
-              proposedQuestion={proposedQuestion}
-              isNative={isNative}
-              isRunnable={isRunnable}
-              isRunning={isRunning}
-              isResultDirty={isResultDirty}
-              isShowingDataReference={isDataReferenceOpen}
-              isShowingSnippetSidebar={isSnippetSidebarOpen}
-              onChange={handleChange}
-              onRunQuery={runQuery}
-              onCancelQuery={cancelQuery}
-              onRejectProposed={onRejectProposed}
-              onAcceptProposed={
-                proposedSource
-                  ? () => onAcceptProposed?.(proposedSource)
-                  : undefined
-              }
-              databases={databases?.data ?? []}
-              onToggleDataReference={handleToggleDataReference}
-              onToggleSnippetSidebar={handleToggleSnippetSidebar}
-              onOpenModal={handleOpenModal}
-              modalSnippet={modalSnippet}
-              onInsertSnippet={handleInsertSnippet}
-              onChangeModalSnippet={setModalSnippet}
-              onChangeNativeEditorSelection={setSelectionRange}
-              nativeEditorSelectedText={selectedText}
-            />
-            <EditorVisualization
-              question={question}
-              result={result}
-              rawSeries={rawSeries}
-              isNative={isNative}
-              isRunnable={isRunnable}
-              isRunning={isRunning}
-              isResultDirty={isResultDirty}
-              onRunQuery={runQuery}
-              onCancelQuery={() => undefined}
-            />
-            {!isNative && (
-              <NativeQuerySidebarToggle
-                isShowingNativeQueryPreview={isShowingNativeQueryPreview}
-                onToggleNativeQueryPreview={toggleNativeQueryPreview}
-              />
-            )}
-          </Stack>
-
-          {!isNative && isShowingNativeQueryPreview && (
-            <NativeQuerySidebar
-              question={question}
-              onConvertToNativeClick={(newQuestion) => {
-                toggleNativeQueryPreview(false);
-                setQuestion(newQuestion);
-              }}
-            />
-          )}
-
-          <EditorSidebar
-            question={question}
-            isNative={isNative}
-            isDataReferenceOpen={isDataReferenceOpen}
-            isSnippetSidebarOpen={isSnippetSidebarOpen}
-            onToggleDataReference={toggleDataReference}
-            onToggleSnippetSidebar={toggleSnippetSidebar}
-            onChangeModalSnippet={setModalSnippet}
-            onInsertSnippet={handleInsertSnippet}
-          />
-        </Flex>
+        <EditorBody
+          question={question}
+          proposedQuestion={proposedQuestion}
+          isNative={isNative}
+          isRunnable={isRunnable}
+          isRunning={isRunning}
+          isResultDirty={isResultDirty}
+          isShowingDataReference={false}
+          isShowingSnippetSidebar={false}
+          onChange={handleChange}
+          onRunQuery={runQuery}
+          onCancelQuery={cancelQuery}
+          onRejectProposed={onRejectProposed}
+          onAcceptProposed={
+            proposedSource
+              ? () => onAcceptProposed?.(proposedSource)
+              : undefined
+          }
+          databases={databases?.data ?? []}
+          onToggleDataReference={() => null}
+          onToggleSnippetSidebar={() => null}
+          onOpenModal={handleOpenModal}
+          modalSnippet={modalSnippet}
+          onChangeModalSnippet={setModalSnippet}
+          onChangeNativeEditorSelection={setSelectionRange}
+          nativeEditorSelectedText={selectedText}
+        />
         <EditorValidationCard validationResult={validationResult} />
       </Stack>
       {isNative && (

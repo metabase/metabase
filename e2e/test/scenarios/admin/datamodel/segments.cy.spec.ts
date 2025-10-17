@@ -12,12 +12,7 @@ describe("scenarios > admin > datamodel > segments", () => {
 
   describe("with no segments", () => {
     it("should have 'Custom expression' in a filter list (metabase#13069)", () => {
-      cy.visit("/admin/datamodel/segments");
-
-      cy.log("should initially show no segments in UI");
-      cy.get("main").findByText(
-        "Create segments to add them to the Filter dropdown in the query builder",
-      );
+      cy.visit("/bench/segment");
 
       cy.button("New segment").click();
 
@@ -104,21 +99,18 @@ describe("scenarios > admin > datamodel > segments", () => {
     });
 
     it("should show up in UI list and should show the segment details of a specific id", () => {
-      cy.visit("/admin/datamodel/segments");
+      cy.visit("/bench/segment");
 
-      cy.findByRole("table").within(() => {
-        cy.findByText("Filtered by Total is less than 100").should(
-          "be.visible",
-        );
+      cy.findByRole("menu").within(() => {
         cy.findByText("Sample Database").should("be.visible");
         cy.findByText("Orders").should("be.visible");
       });
-      cy.findByRole("link", { name: /Orders < 100/ })
+      cy.findByRole("menuitem", { name: /Orders < 100/ })
         .should("be.visible")
         .click();
 
       cy.get("form").within(() => {
-        cy.findByText("Edit Your Segment").should("be.visible");
+        cy.findByText("Edit your segment").should("be.visible");
         cy.findByText("Sample Database").should("be.visible");
         cy.findByText("Orders").should("be.visible");
       });
@@ -163,8 +155,7 @@ describe("scenarios > admin > datamodel > segments", () => {
     });
 
     it("should update that segment", () => {
-      cy.visit("/admin");
-      cy.findByTestId("admin-navbar-items").contains("Table Metadata").click();
+      cy.visit("/bench");
       cy.findByRole("link", { name: /Segments/ }).click();
 
       cy.findByTestId("segment-list-app")
@@ -178,7 +169,7 @@ describe("scenarios > admin > datamodel > segments", () => {
 
       // update the filter from "< 100" to "> 10"
       cy.url().should("match", /segment\/1$/);
-      cy.get("label").contains("Edit Your Segment");
+      cy.get("div").contains("Edit your segment");
       cy.findByTestId("filter-pill")
         .contains(/Total\s+is less than/)
         .click();
@@ -196,10 +187,10 @@ describe("scenarios > admin > datamodel > segments", () => {
         .clear()
         .type("All orders with a total over $10.");
       cy.get('[name="revision_message"]').type("time for a change");
-      cy.findByTestId("field-set-content").findByText("Save changes").click();
+      cy.findByRole("button", { name: "Save changes" }).click();
 
       // get redirected to previous page and see the new segment name
-      cy.url().should("match", /datamodel\/segments$/);
+      cy.url().should("match", /bench\/segment$/);
 
       cy.findByTestId("segment-list-app").findByText("Orders > 10");
 
@@ -235,34 +226,27 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.log(
         "Make sure revisions are displayed properly in admin table metadata",
       );
-      cy.visit("/admin/datamodel/segments");
-      cy.get("tr")
+      cy.visit("/bench/segment");
+      cy.get("li")
         .filter(`:contains(${SEGMENT_NAME})`)
         .icon("ellipsis")
         .click();
       H.popover().findByTextEnsureVisible("Revision History").click();
 
-      cy.location("pathname").should(
-        "eq",
-        "/admin/datamodel/segment/1/revisions",
-      );
+      cy.location("pathname").should("eq", "/bench/segment/1/revisions");
 
       cy.findByTestId("segment-revisions").within(() => {
         // metabase#45594
         cy.findByRole("heading", {
-          name: `Revision History for "${SEGMENT_NAME}"`,
+          name: `Revision history for "${SEGMENT_NAME}"`,
         }).should("be.visible");
 
         assertRevisionHistory();
       });
 
-      cy.findByTestId("breadcrumbs").within(() => {
-        cy.findByText("Segment History");
-        cy.findByRole("link", { name: "Segments" }).click();
-      });
+      cy.findByRole("link", { name: /Segments/ }).click();
 
-      cy.location("pathname").should("eq", "/admin/datamodel/segments");
-      cy.location("search").should("eq", `?table=${ORDERS_ID}`);
+      cy.location("pathname").should("eq", "/bench/segment");
 
       function assertRevisionHistory() {
         cy.findAllByRole("listitem").as("revisions").should("have.length", 2);

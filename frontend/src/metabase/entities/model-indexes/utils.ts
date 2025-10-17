@@ -11,7 +11,7 @@ import {
 import type { Field } from "metabase-types/api";
 import type { ModelIndex } from "metabase-types/api/modelIndexes";
 
-const hasSingleIntegerPk = (model?: Question) => {
+const hasSingleIntegerPkInQuestion = (model?: Question) => {
   const pkFields = model
     ?.getResultMetadata()
     ?.filter((field: Field) => isPK(field));
@@ -19,8 +19,29 @@ const hasSingleIntegerPk = (model?: Question) => {
   return pkFields?.length === 1 && isInteger(pkFields[0]);
 };
 
-export const canIndexField = (field: FieldEntity, model: Question): boolean => {
-  return !!(isString(field) && !isBoolean(field) && hasSingleIntegerPk(model));
+export const canIndexModelQuestionField = (
+  field: FieldEntity,
+  model: Question,
+): boolean => {
+  return !!(
+    isString(field) &&
+    !isBoolean(field) &&
+    hasSingleIntegerPkInQuestion(model)
+  );
+};
+
+const hasSingleIntegerPk = (resultMetadata?: Field[]) => {
+  const pkFields = resultMetadata?.filter((field: Field) => isPK(field));
+
+  return pkFields?.length === 1 && isInteger(pkFields[0]);
+};
+
+export const canIndexModelField = (field: Field, resultsMetadata?: Field[]) => {
+  return !!(
+    isString(field) &&
+    !isBoolean(field) &&
+    hasSingleIntegerPk(resultsMetadata)
+  );
 };
 
 export const getPkRef = (fields?: Field[]) => fields?.find(isPK)?.field_ref;

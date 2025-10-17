@@ -15,8 +15,12 @@ export function parseRouteParams(params: RouteParams): ParsedRouteParams {
       : params.schemaId,
     tableId: Urls.extractEntityId(params.tableId),
     fieldId: Urls.extractEntityId(params.fieldId),
+    modelId: Urls.extractEntityId(params.modelId),
+    fieldName: params.fieldName,
   };
 }
+
+const BASE_URL = "/bench/metadata";
 
 export function getUrl(params: ParsedRouteParams): string {
   const { databaseId, schemaName, tableId, fieldId } = params;
@@ -28,22 +32,22 @@ export function getUrl(params: ParsedRouteParams): string {
     tableId != null &&
     fieldId != null
   ) {
-    return `/admin/datamodel/database/${databaseId}/schema/${schemaId}/table/${tableId}/field/${fieldId}`;
+    return `${BASE_URL}/database/${databaseId}/schema/${schemaId}/table/${tableId}/field/${fieldId}`;
   }
 
   if (databaseId != null && schemaName != null && tableId != null) {
-    return `/admin/datamodel/database/${databaseId}/schema/${schemaId}/table/${tableId}`;
+    return `${BASE_URL}/database/${databaseId}/schema/${schemaId}/table/${tableId}`;
   }
 
   if (databaseId != null && schemaName != null) {
-    return `/admin/datamodel/database/${databaseId}/schema/${schemaId}`;
+    return `${BASE_URL}/database/${databaseId}/schema/${schemaId}`;
   }
 
   if (databaseId != null) {
-    return `/admin/datamodel/database/${databaseId}`;
+    return `${BASE_URL}/database/${databaseId}`;
   }
 
-  return `/admin/datamodel`;
+  return BASE_URL;
 }
 
 export function getTableMetadataQuery(

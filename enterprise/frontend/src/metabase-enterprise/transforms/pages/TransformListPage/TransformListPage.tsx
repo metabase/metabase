@@ -14,6 +14,8 @@ type TransformListPageProps = {
   location: Location;
 };
 
+// TODO: Remove any Transform components that are not needed anymore
+
 export function TransformListPage({ location }: TransformListPageProps) {
   const params = getParsedParams(location);
   const { data: tags = [], isLoading, error } = useListTransformTagsQuery();
@@ -23,7 +25,13 @@ export function TransformListPage({ location }: TransformListPageProps) {
   }
 
   return (
-    <Stack gap="xl" data-testid="transform-list-page">
+    <Stack
+      gap="xl"
+      data-testid="transform-list-page"
+      bg="bg-medium"
+      h="100%"
+      w="100%"
+    >
       <Group justify="space-between" align="start">
         <Stack gap="sm" flex={1}>
           <Title order={1}>{t`Transforms`}</Title>
@@ -32,7 +40,7 @@ export function TransformListPage({ location }: TransformListPageProps) {
         <CreateTransformMenu />
       </Group>
       <TransformFilterList params={params} tags={tags} />
-      <TransformList params={params} />
+      <TransformList params={params} onCollapse={() => {}} />
     </Stack>
   );
 }

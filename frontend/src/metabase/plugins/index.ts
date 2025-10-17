@@ -708,13 +708,14 @@ type PluginMetabotConfig = {
   hideSuggestedPrompts?: boolean;
   preventClose?: boolean;
   preventRetryMessage?: boolean;
-  suggestionModels: (SearchModel | "transform" | "user")[];
+  suggestionModels?: (SearchModel | "transform" | "user")[];
 };
 
 type PluginMetabotType = {
   isEnabled: () => boolean;
   Metabot: (props: {
     hide?: boolean;
+    w?: string;
     config?: PluginMetabotConfig;
   }) => React.ReactElement | null;
   defaultMetabotContextValue: MetabotContext;
@@ -727,6 +728,10 @@ type PluginMetabotType = {
   getMetabotVisible: (state: State) => boolean;
   MetabotToggleButton: ComponentType<{ className?: string }>;
   MetabotAppBarButton: ComponentType;
+  useMetabotAgent: () => null | {
+    visible: boolean;
+    setVisible: (visible: boolean) => void;
+  };
 };
 
 export const PLUGIN_METABOT: PluginMetabotType = {
@@ -750,6 +755,7 @@ export const PLUGIN_METABOT: PluginMetabotType = {
   getMetabotVisible: () => false,
   MetabotToggleButton: PluginPlaceholder,
   MetabotAppBarButton: PluginPlaceholder,
+  useMetabotAgent: () => null,
 };
 
 type DashCardMenuItemGetter = (
@@ -860,13 +866,13 @@ export const PLUGIN_SEMANTIC_SEARCH = {
 };
 
 export type TransformsPlugin = {
-  getAdminPaths(): AdminPath[];
-  getAdminRoutes(): ReactNode;
+  getTransformRoutes(): ReactNode;
+  ROOT_URL: string | null;
 };
 
 export const PLUGIN_TRANSFORMS: TransformsPlugin = {
-  getAdminPaths: () => [],
-  getAdminRoutes: () => null,
+  getTransformRoutes: () => null,
+  ROOT_URL: null,
 };
 
 export type PythonTransformsPlugin = {

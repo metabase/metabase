@@ -53,7 +53,7 @@ type EditorBodyProps = {
   onToggleDataReference: () => void;
   onToggleSnippetSidebar: () => void;
   onCancelQuery: () => void;
-  onInsertSnippet: (snippet: NativeQuerySnippet) => void;
+  onInsertSnippet?: (snippet: NativeQuerySnippet) => void;
   modalSnippet?: NativeQuerySnippet | null;
   onChangeModalSnippet: (snippet: NativeQuerySnippet | null) => void;
   onChangeNativeEditorSelection: (range: SelectionRange[]) => void;
@@ -139,6 +139,7 @@ export function EditorBody({
       hasRunButton
       readOnly={false}
       hasParametersList={false}
+      hasEditingSidebar={false}
       handleResize={handleResize}
       runQuery={onRunQuery}
       cancelQuery={onCancelQuery}
@@ -159,6 +160,7 @@ export function EditorBody({
       proposedQuestion={proposedQuestion}
       onRejectProposed={onRejectProposed}
       onAcceptProposed={onAcceptProposed}
+      resizable={false}
     />
   ) : (
     <ResizableBox
