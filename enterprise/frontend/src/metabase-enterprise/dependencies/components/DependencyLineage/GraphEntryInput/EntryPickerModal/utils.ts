@@ -30,26 +30,30 @@ export function getTablePickerValue(
 export function getTablePickerItem(
   node: DependencyNode,
 ): TablePickerItem | undefined {
-  if (node.type === "table") {
-    return {
-      id: node.id,
-      model: "table",
-      name: node.data.name,
-      database_id: node.data.db_id,
-    };
+  if (node.type !== "table") {
+    return;
   }
+
+  return {
+    id: node.id,
+    model: "table",
+    name: node.data.name,
+    database_id: node.data.db_id,
+  };
 }
 
 export function getQuestionPickerItem(
   node: DependencyNode,
 ): QuestionPickerItem | undefined {
-  if (node.type === "card" && node.data.type === "question") {
-    return {
-      id: node.id,
-      name: node.data.name,
-      model: "card",
-    };
+  if (node.type !== "card" || node.data.type !== "question") {
+    return;
   }
+
+  return {
+    id: node.id,
+    name: node.data.name,
+    model: "card",
+  };
 }
 
 export function getEntryPickerItem(
@@ -61,11 +65,17 @@ export function getEntryPickerItem(
 export function getEntryPickerValue(
   item: EntryPickerItem,
 ): DependencyEntry | undefined {
+  if (typeof item.id !== "number") {
+    return;
+  }
+
   switch (item.model) {
     case "table":
-      return { id: Number(item.id), type: "table" };
+      return { id: item.id, type: "table" };
     case "card":
-      return { id: Number(item.id), type: "card" };
+    case "dataset":
+    case "metric":
+      return { id: item.id, type: "card" };
   }
 }
 
