@@ -24,6 +24,7 @@ export function PanelBody({ node }: PanelBodyProps) {
     <Stack className={S.body} pl="lg" pr="lg" pb="lg">
       <DescriptionInfo node={node} />
       <CreatorAndEditorInfo node={node} />
+      <LocationInfo node={node} />
     </Stack>
   );
 }
@@ -89,6 +90,18 @@ function CreatorAndEditorInfo({ node }: CreatorAndEditorInfoProps) {
           </Text>
         </Group>
       )}
+    </Stack>
+  );
+}
+
+type LocationInfoProps = {
+  node: DependencyNode;
+};
+
+function LocationInfo(_props: LocationInfoProps) {
+  return (
+    <Stack gap="sm">
+      <Title order={6}>{t`Saved in`}</Title>
     </Stack>
   );
 }
