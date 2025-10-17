@@ -1,6 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 
+import { Card } from "metabase/ui";
 import type { DependencyEntry, DependencyNode } from "metabase-types/api";
 
 import { EntryButton } from "./EntryButton";
@@ -21,15 +22,23 @@ export function GraphEntryInput({
   const [searchModels, setSearchModels] = useState(DEFAULT_SEARCH_MODELS);
   const [_isPickerOpened, { open: openPicker }] = useDisclosure();
 
-  return node != null ? (
-    <EntryButton node={node} onEntryChange={onEntryChange} />
-  ) : (
-    <EntrySearchInput
-      searchModels={searchModels}
-      isGraphFetching={isGraphFetching}
-      onEntryChange={onEntryChange}
-      onSearchModelsChange={setSearchModels}
-      onPickerOpen={openPicker}
-    />
+  return (
+    <Card p={0} bdrs={0}>
+      {node != null ? (
+        <EntryButton
+          node={node}
+          onEntryChange={onEntryChange}
+          onPickerOpen={openPicker}
+        />
+      ) : (
+        <EntrySearchInput
+          searchModels={searchModels}
+          isGraphFetching={isGraphFetching}
+          onEntryChange={onEntryChange}
+          onSearchModelsChange={setSearchModels}
+          onPickerOpen={openPicker}
+        />
+      )}
+    </Card>
   );
 }

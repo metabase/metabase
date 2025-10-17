@@ -119,7 +119,6 @@ export function EntrySearchInput({
       )}
       w="20rem"
       searchable
-      autoFocus
       onChange={handleChange}
       onSearchChange={setSearchValue}
     />
