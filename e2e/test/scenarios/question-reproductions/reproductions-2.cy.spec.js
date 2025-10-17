@@ -653,6 +653,11 @@ describe("issue 43216", () => {
     cy.log("Update source question");
     H.commandPaletteButton().click();
     cy.wait("@recents");
+    H.commandPalette()
+      .findAllByRole("option")
+      .should("have.length", 3)
+      .eq(2)
+      .should("contain.text", "Source question");
     H.commandPalette().findByText("Source question").click();
     cy.wait("@queryMetadata");
     cy.findByTestId("native-query-editor-container")
@@ -665,6 +670,11 @@ describe("issue 43216", () => {
     cy.log("Assert updated metadata in target question");
     H.commandPaletteButton().click();
     cy.wait("@recents");
+    H.commandPalette()
+      .findAllByRole("option")
+      .should("have.length", 3)
+      .eq(2)
+      .should("contain.text", "Target question");
     H.commandPalette().findByText("Target question").click();
     cy.wait("@queryMetadata");
     cy.findAllByTestId("header-cell").eq(3).should("have.text", "D");
