@@ -323,7 +323,7 @@ const config = {
     }),
     // https://github.com/remarkjs/remark/discussions/903
     new rspack.ProvidePlugin({
-      Buffer: [path.join(SRC_PATH, "/lib/buffer-polyfill.js"), "default"],
+      Buffer: ["Buffer", "buffer"],
       process: "process/browser.js",
     }),
   ],
