@@ -1,13 +1,12 @@
-import type { Location } from "history";
 import { useMemo } from "react";
 import { push } from "react-router-redux";
+import { useLocalStorage } from "react-use";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { ItemsListSection } from "metabase/bench/components/ItemsListSection/ItemsListSection";
 import { ItemsListSettings } from "metabase/bench/components/ItemsListSection/ItemsListSettings";
 import { ItemsListTreeNode } from "metabase/bench/components/ItemsListSection/ItemsListTreeNode";
-import { useItemsListQuery } from "metabase/bench/components/ItemsListSection/useItemsListQuery";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import Link from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -64,14 +63,12 @@ const nameSorter = <T extends { name: string }>(a: T, b: T) =>
 
 type TransformListProps = {
   params: TransformListParams;
-  location: Location;
   selectedId?: Transform["id"];
   onCollapse?: () => void;
 };
 
 export function TransformList({
   params,
-  location,
   selectedId,
   onCollapse,
 }: TransformListProps) {
@@ -98,27 +95,11 @@ export function TransformList({
     [transforms],
   );
 
-  const listSettingsProps = useItemsListQuery({
-    settings: [
-      {
-        name: "display",
-        options: [
-          {
-            label: t`Target table`,
-            value: "tree",
-          },
-          {
-            label: t`Alphabetical`,
-            value: "alphabetical",
-          },
-        ],
-      },
-    ],
-    defaults: { display: "tree" },
-    location,
-  });
+  const [display = "tree", setDisplay] = useLocalStorage<
+    "tree" | "alphabetical"
+  >("metabase-bench-transforms-display");
   const treeData = useMemo((): ITreeNodeItem[] => {
-    if (!databaseData || !transformsSorted) {
+    if (!databaseData || !transformsSorted || display !== "tree") {
       return [];
     }
     type Tier<T> = (t: T) => ITreeNodeItem;
@@ -170,7 +151,7 @@ export function TransformList({
       return node;
     };
     return recursiveAlpha(root).children || [];
-  }, [databaseData, transformsSorted]);
+  }, [databaseData, display, transformsSorted]);
 
   if (isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -181,7 +162,29 @@ export function TransformList({
       sectionTitle={t`Transforms`}
       onCollapse={onCollapse}
       addButton={<CreateTransformMenu />}
-      settings={<ItemsListSettings {...listSettingsProps} />}
+      settings={
+        <ItemsListSettings
+          values={{ display }}
+          settings={[
+            {
+              name: "display",
+              options: [
+                {
+                  label: t`Target table`,
+                  value: "tree",
+                },
+                {
+                  label: t`Alphabetical`,
+                  value: "alphabetical",
+                },
+              ],
+            },
+          ]}
+          onSettingChange={(updates) =>
+            updates.display && setDisplay(updates.display)
+          }
+        />
+      }
       listItems={
         transforms.length === 0 ? (
           <ListEmptyState
@@ -191,7 +194,7 @@ export function TransformList({
                 : t`No transforms yet`
             }
           />
-        ) : listSettingsProps.values.display === "tree" ? (
+        ) : display === "tree" ? (
           <Box mx="-sm">
             <Tree
               initiallyExpanded
@@ -234,7 +237,7 @@ function TransformListItem({
   return (
     <NavLink
       component={Link}
-      to={(loc) => ({ ...loc, pathname: getTransformUrl(transform.id) })}
+      to={getTransformUrl(transform.id)}
       active={isActive}
       w="100%"
       label={

@@ -1,4 +1,3 @@
-import type { Location } from "history";
 import { useCallback } from "react";
 import type { Route } from "react-router";
 
@@ -25,11 +24,9 @@ import { SegmentListApp } from "./SegmentListApp";
 export const UpdateSegmentForm = ({
   params,
   route,
-  location,
 }: {
   params: { id: string };
   route: Route;
-  location: Location;
 }) => {
   const {
     data: segment,
@@ -55,22 +52,11 @@ export const UpdateSegmentForm = ({
   }
 
   return (
-    <SegmentForm
-      segment={segment}
-      onSubmit={handleSubmit}
-      route={route}
-      query={location.query}
-    />
+    <SegmentForm segment={segment} onSubmit={handleSubmit} route={route} />
   );
 };
 
-export const CreateSegmentForm = ({
-  route,
-  location,
-}: {
-  route: Route;
-  location: Location;
-}) => {
+export const CreateSegmentForm = ({ route }: { route: Route }) => {
   const [createSegment] = useCreateSegmentMutation();
 
   const handleSubmit = useCallback(
@@ -80,25 +66,18 @@ export const CreateSegmentForm = ({
     [createSegment],
   );
 
-  return (
-    <SegmentForm onSubmit={handleSubmit} route={route} query={location.query} />
-  );
+  return <SegmentForm onSubmit={handleSubmit} route={route} />;
 };
 
 export const SegmentApp = ({
   params,
-  location,
   children,
 }: {
   params: { id?: string };
-  location: Location;
   children?: React.ReactNode;
 }) => {
   return (
-    <BenchLayout
-      nav={<SegmentListApp params={params} location={location} />}
-      name="segment"
-    >
+    <BenchLayout nav={<SegmentListApp params={params} />} name="segment">
       {!children ? (
         <Center w="100%" h="100%">
           <NoDataError />

@@ -28,19 +28,15 @@ export const SegmentActionSelect = ({
           </ActionIcon>
         </Menu.Target>
         <Menu.Dropdown>
-          <Menu.Item
-            component={Link}
-            to={(loc) => ({ ...loc, pathname: `/bench/segment/${segment.id}` })}
-          >
+          <Menu.Item component={Link} to={`/bench/segment/${segment.id}`}>
             {t`Edit Segment`}
           </Menu.Item>
           <Menu.Item
             component={Link}
-            to={(loc) => ({
-              ...loc,
-              pathname: `/bench/segment/${segment.id}/revisions`,
-            })}
-          >{t`Revision History`}</Menu.Item>
+            to={`/bench/segment/${segment.id}/revisions`}
+          >
+            {t`Revision History`}
+          </Menu.Item>
           <Menu.Divider />
           <Menu.Item
             c="error"

@@ -2,36 +2,41 @@ import { useState } from "react";
 
 import { Button, Group, Icon, Menu } from "metabase/ui";
 
-type ItemsListOption = { label: string; value: string };
+type ItemsListOption<T> = { label: string; value: T };
 
-export interface ItemsListSetting {
-  name: string;
-  options: ItemsListOption[];
+export interface ItemsListSetting<
+  T extends Record<string, string>,
+  K extends keyof T = keyof T,
+> {
+  name: K;
+  options: ItemsListOption<T[K]>[];
 }
 
-export interface ItemsListSettingsProps {
-  settings: ItemsListSetting[];
-  values: Record<string, string | string[] | null | undefined>;
-  onSettingChange: (setting: ItemsListSetting, value: string) => void;
+export interface ItemsListSettingsProps<T extends Record<string, string>> {
+  settings: ItemsListSetting<T>[];
+  values: T;
+  onSettingChange: (updates: Partial<T>) => void;
 }
 
-const getOptionByValue = (
-  setting: ItemsListSetting,
+const getOptionByValue = <T extends Record<string, string>>(
+  setting: ItemsListSetting<T>,
   value: string | string[] | null | undefined,
 ) => setting.options.find((o) => o.value === value);
 
-export const ItemsListSettings = ({
+export const ItemsListSettings = <T extends Record<string, string>>({
   settings,
   values,
   onSettingChange,
-}: ItemsListSettingsProps) => {
-  const [menuOpenMap, setMenuOpenMap] = useState<Record<string, boolean>>({});
+}: ItemsListSettingsProps<T>) => {
+  const [menuOpenMap, setMenuOpenMap] = useState<
+    Partial<Record<keyof T, boolean>>
+  >({});
 
   return (
     <Group px="md" gap="sm">
       {settings.map((setting) => (
         <Menu
-          key={setting.name}
+          key={setting.name as string}
           position="bottom-start"
           shadow="md"
           onOpen={() =>
@@ -74,7 +79,9 @@ export const ItemsListSettings = ({
             {setting.options.map((o) => (
               <Menu.Item
                 key={o.value}
-                onClick={() => onSettingChange(setting, o.value)}
+                onClick={() =>
+                  onSettingChange({ [setting.name]: o.value } as Partial<T>)
+                }
               >
                 {o.label}
               </Menu.Item>

@@ -1,8 +1,7 @@
 import cx from "classnames";
-import type { Location } from "history";
 import { useMemo } from "react";
 import { push } from "react-router-redux";
-import { useAsync } from "react-use";
+import { useAsync, useLocalStorage } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -14,7 +13,6 @@ import {
 } from "metabase/bench/components/ItemsListSection/ItemsListSection";
 import { ItemsListSettings } from "metabase/bench/components/ItemsListSection/ItemsListSettings";
 import { ItemsListTreeNode } from "metabase/bench/components/ItemsListSection/ItemsListTreeNode";
-import { useItemsListQuery } from "metabase/bench/components/ItemsListSection/useItemsListQuery";
 import { Tree } from "metabase/common/components/tree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import CS from "metabase/css/core/index.css";
@@ -29,12 +27,11 @@ interface SegmentListAppProps {
   onCollapse?: () => void;
   segments: Segment[];
   setArchived: (segment: Segment, archived: boolean) => void;
-  location: Location;
   params: { id?: string };
 }
 
 function SegmentListAppInner({ onCollapse, ...props }: SegmentListAppProps) {
-  const { segments, setArchived, location, params } = props;
+  const { segments, setArchived, params } = props;
   const dispatch = useDispatch();
 
   const { loading: isLoadingTables } = useAsync(() => {
@@ -46,30 +43,11 @@ function SegmentListAppInner({ onCollapse, ...props }: SegmentListAppProps) {
     );
   }, [dispatch, segments]);
 
-  const listSettingsProps = useItemsListQuery({
-    settings: [
-      {
-        name: "display",
-        options: [
-          {
-            label: t`Segment table`,
-            value: "tree",
-          },
-          {
-            label: t`Alphabetical`,
-            value: "alphabetical",
-          },
-        ],
-      },
-    ],
-    defaults: { display: "tree" },
-    location,
-  });
-
-  const { query } = location;
-
+  const [display = "tree", setDisplay] = useLocalStorage<
+    "tree" | "alphabetical"
+  >("metabase-bench-segments-display");
   const treeData = useMemo((): ITreeNodeItem[] => {
-    if (isLoadingTables) {
+    if (isLoadingTables || display !== "tree") {
       return [];
     }
     type Tier<T> = (t: T) => ITreeNodeItem;
@@ -124,7 +102,7 @@ function SegmentListAppInner({ onCollapse, ...props }: SegmentListAppProps) {
       return node;
     };
     return recursiveAlpha(root).children || [];
-  }, [isLoadingTables, segments]);
+  }, [display, isLoadingTables, segments]);
 
   const selectedId = params.id ? +params.id : undefined;
 
@@ -134,14 +112,34 @@ function SegmentListAppInner({ onCollapse, ...props }: SegmentListAppProps) {
       onCollapse={onCollapse}
       addButton={
         <ItemsListAddButton
-          onClick={() =>
-            dispatch(push({ query, pathname: "/bench/segment/new" }))
+          onClick={() => dispatch(push("/bench/segment/new"))}
+        />
+      }
+      settings={
+        <ItemsListSettings
+          values={{ display }}
+          settings={[
+            {
+              name: "display",
+              options: [
+                {
+                  label: t`Segment table`,
+                  value: "tree",
+                },
+                {
+                  label: t`Alphabetical`,
+                  value: "alphabetical",
+                },
+              ],
+            },
+          ]}
+          onSettingChange={(updates) =>
+            updates.display && setDisplay(updates.display)
           }
         />
       }
-      settings={<ItemsListSettings {...listSettingsProps} />}
       listItems={
-        listSettingsProps.values.display === "tree" ? (
+        display === "tree" ? (
           <Box mx="-sm">
             <Tree
               data={treeData}
@@ -149,9 +147,7 @@ function SegmentListAppInner({ onCollapse, ...props }: SegmentListAppProps) {
               initiallyExpanded
               onSelect={(node) => {
                 if (!node.children?.length) {
-                  dispatch(
-                    push({ query, pathname: `/bench/segment/${node.id}` }),
-                  );
+                  dispatch(push(`/bench/segment/${node.id}`));
                 }
               }}
               TreeNode={ItemsListTreeNode}

@@ -28,13 +28,7 @@ export function TransformLayout({
 
   return (
     <BenchLayout
-      nav={
-        <TransformList
-          params={parsedParams}
-          location={location}
-          selectedId={selectedId}
-        />
-      }
+      nav={<TransformList params={parsedParams} selectedId={selectedId} />}
       name="transform"
     >
       {children}

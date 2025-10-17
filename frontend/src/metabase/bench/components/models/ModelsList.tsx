@@ -2,6 +2,7 @@ import type { Location } from "history";
 import { type ReactNode, useMemo } from "react";
 import { Link } from "react-router";
 import { push, replace } from "react-router-redux";
+import { useLocalStorage } from "react-use";
 import { t } from "ttag";
 
 import { searchApi, useListCollectionsTreeQuery } from "metabase/api";
@@ -33,18 +34,15 @@ import { BenchPaneHeader } from "../BenchPaneHeader";
 import { ItemsListSection } from "../ItemsListSection/ItemsListSection";
 import { ItemsListSettings } from "../ItemsListSection/ItemsListSettings";
 import { ItemsListTreeNode } from "../ItemsListSection/ItemsListTreeNode";
-import { useItemsListQuery } from "../ItemsListSection/useItemsListQuery";
 
 import { CreateModelMenu } from "./CreateModelMenu";
 
 function ModelsList({
   activeId,
   onCollapse,
-  location,
 }: {
   activeId: number;
   onCollapse?: () => void;
-  location: Location;
 }) {
   const dispatch = useDispatch();
   const { isLoading: isLoadingModels, data: modelsData } = useFetchModels({
@@ -62,52 +60,56 @@ function ModelsList({
   );
   const isLoading = isLoadingModels || isLoadingCollections;
 
-  const listSettingsProps = useItemsListQuery({
-    settings: [
-      {
-        name: "display",
-        options: [
-          {
-            label: t`By collection`,
-            value: "tree",
-          },
-          {
-            label: t`Alphabetical`,
-            value: "alphabetical",
-          },
-        ],
-      },
-    ],
-    defaults: { display: "tree" },
-    location,
-  });
-
+  const [display = "tree", setDisplay] = useLocalStorage<
+    "tree" | "alphabetical"
+  >("metabase-bench-models-display");
   const currentUser = useSelector(getUser);
   const treeData = useMemo(() => {
-    return models && collections && currentUser
+    return display === "tree" && models && collections && currentUser
       ? getTreeItems(collections, models, "dataset", currentUser.id)
       : [];
-  }, [collections, currentUser, models]);
+  }, [collections, currentUser, display, models]);
 
-  const { query } = location;
   const handleModelSelect = (item: ITreeNodeItem) => {
     if (typeof item.id === "number") {
-      dispatch(push({ query, pathname: `/bench/model/${item.id}` }));
+      dispatch(push(`/bench/model/${item.id}`));
     }
   };
 
   return (
     <ItemsListSection
       sectionTitle={t`Models`}
-      addButton={<CreateModelMenu query={query} />}
-      settings={<ItemsListSettings {...listSettingsProps} />}
+      addButton={<CreateModelMenu />}
+      settings={
+        <ItemsListSettings
+          values={{ display }}
+          settings={[
+            {
+              name: "display",
+              options: [
+                {
+                  label: t`By collection`,
+                  value: "tree",
+                },
+                {
+                  label: t`Alphabetical`,
+                  value: "alphabetical",
+                },
+              ],
+            },
+          ]}
+          onSettingChange={(updates) =>
+            updates.display && setDisplay(updates.display)
+          }
+        />
+      }
       onCollapse={onCollapse}
       listItems={
         !models || isLoading ? (
           <Center>
             <Loader />
           </Center>
-        ) : listSettingsProps.values.display === "tree" ? (
+        ) : display === "tree" ? (
           <Box mx="-sm">
             <Tree
               data={treeData}
@@ -123,7 +125,6 @@ function ModelsList({
               key={model.id}
               model={model}
               active={model.id === activeId}
-              query={query}
             />
           ))
         )
@@ -135,18 +136,16 @@ function ModelsList({
 function ModelListItem({
   model,
   active,
-  query,
 }: {
   model: SearchResult;
   active?: boolean;
-  query: Location["query"];
 }) {
   const icon = getIcon({ type: "dataset", ...model });
   return (
     <Box mb="sm">
       <NavLink
         component={Link}
-        to={{ query, pathname: `/bench/model/${model.id}` }}
+        to={`/bench/model/${model.id}`}
         active={active}
         label={
           <>
@@ -170,17 +169,12 @@ function ModelListItem({
 export const ModelsLayout = ({
   children,
   params,
-  location,
 }: {
   children: React.ReactNode;
   params: { slug: string };
-  location: Location;
 }) => {
   return (
-    <BenchLayout
-      nav={<ModelsList activeId={+params.slug} location={location} />}
-      name="model"
-    >
+    <BenchLayout nav={<ModelsList activeId={+params.slug} />} name="model">
       {children}
     </BenchLayout>
   );
