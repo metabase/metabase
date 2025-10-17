@@ -100,7 +100,8 @@
       (params/assert-valid-parameters dashboard)
       (when (:parameters changes)
         (queries/upsert-or-delete-parameter-cards-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard)))
-      (collection/check-collection-namespace :model/Dashboard (:collection_id dashboard))
+      (when (contains? changes :collection_id)
+        (collection/check-collection-namespace :model/Dashboard (:collection_id dashboard)))
       (when (:archived changes)
         (t2/delete! :model/Pulse :dashboard_id (u/the-id dashboard))))))
 

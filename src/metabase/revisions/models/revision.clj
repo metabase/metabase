@@ -79,18 +79,16 @@
   {:object mi/transform-json})
 
 (t2/define-before-insert :model/Revision
-  [{:keys [model model_id] :as revision}]
-  ;; obtain a lock on the existing revisions for this entity to prevent concurrent inserts of new revisions
-  (t2/query {:select [:id]
-             :from [:revision]
-             :where [:and
-                     [:= :model model]
-                     [:= :model_id model_id]]
-             :for :update})
-  (assoc revision
-         :timestamp (or (:timestamp revision) :%now)
-         :metabase_version config/mb-version-string
-         :most_recent true))
+  [revision]
+  ;; Require ::internal-use-only key to prevent direct t2/insert! calls.
+  ;; Use insert-revision! or insert-revisions! instead, which handle locking and cleanup efficiently.
+  (when-not (::internal-use-only revision)
+    (throw (ex-info (str "Direct insertion of revisions is not allowed. "
+                         "Use metabase.revisions.models.revision/insert-revision! or "
+                         "metabase.revisions.models.revision/insert-revisions! instead.")
+                    {:revision revision})))
+  ;; Remove the internal key - all other fields are already set by insert-revisions!
+  (dissoc revision ::internal-use-only))
 
 (t2/define-before-update :model/Revision
   [_revision]
@@ -112,28 +110,6 @@
       (update :object assoc :card_schema queries/starting-card-schema-version)
 
       model (update :object (partial mi/do-after-select model)))))
-
-(defn- delete-old-revisions!
-  "Delete old revisions of `model` with `id` when there are more than `max-revisions` in the DB."
-  [model id]
-  (when-let [old-revisions (seq (drop max-revisions (t2/select-fn-vec :id :model/Revision
-                                                                      :model    (name model)
-                                                                      :model_id id
-                                                                      {:order-by [[:timestamp :desc]
-                                                                                  [:id :desc]]})))]
-    (t2/delete! :model/Revision :id [:in old-revisions])))
-
-(t2/define-after-insert :model/Revision
-  [revision]
-  (u/prog1 revision
-    (let [{:keys [id model model_id]} revision]
-      ;; Note 1: Update the last `most_recent revision` to false (not including the current revision)
-      ;; Note 2: We don't allow updating revision but this is a special case, so we by pass the check by
-      ;; updating directly with the table name
-      (t2/update! (t2/table-name :model/Revision)
-                  {:model model :model_id model_id :most_recent true :id [:not= id]}
-                  {:most_recent false})
-      (delete-old-revisions! model model_id))))
 
 ;;; # Functions
 
@@ -190,6 +166,85 @@
         (recur (conj acc (add-revision-details model r1 r2))
                (conj more r2))))))
 
+(defn insert-revisions!
+  "Efficiently insert multiple revisions with proper locking and cleanup.
+
+  This function performs all necessary queries in constant time O(1):
+  - Single query to acquire locks on existing revisions for all model/model_id pairs
+  - Single batch insert for all revisions
+  - Single UPDATE to set most_recent = false for previous revisions
+  - Single SELECT + DELETE to clean up old revisions
+
+  Takes a collection of revision row maps with keys:
+  - :model (string)
+  - :model_id (int)
+  - :user_id (int)
+  - :object (serialized map)
+  - :is_creation (boolean)
+  - :is_reversion (boolean)
+  - :message (optional string)
+
+  Returns the collection of inserted revision instances."
+  [revision-rows]
+  (when (seq revision-rows)
+    (t2/with-transaction [_conn]
+      (let [model-ids (distinct (map (juxt :model :model_id) revision-rows))
+            ;; Build WHERE clause once: (model = 'Card' AND model_id = 1) OR (model = 'Dashboard' AND model_id = 2) OR ...
+            or-conditions (when (seq model-ids)
+                            (into [:or]
+                                  (map (fn [[model model-id]]
+                                         [:and
+                                          [:= :model model]
+                                          [:= :model_id model-id]])
+                                       model-ids)))]
+        ;; Step 1: Acquire locks on ALL relevant revisions in a SINGLE query
+        (when or-conditions
+          (t2/query {:select [:id]
+                     :from [:revision]
+                     :where or-conditions
+                     :for :update}))
+
+        ;; Step 2: Prepare and insert all revisions with metadata
+        (let [prepared-rows (map #(assoc %
+                                         :timestamp :%now
+                                         :metabase_version config/mb-version-string
+                                         :most_recent true
+                                         ::internal-use-only true)
+                                 revision-rows)
+              inserted-revisions (t2/insert-returning-instances! :model/Revision prepared-rows)
+              new-revision-ids (set (map :id inserted-revisions))]
+
+          ;; Step 3: Update ALL previous revisions to most_recent = false in a SINGLE query
+          (when (and or-conditions (seq new-revision-ids))
+            (t2/query {:update (t2/table-name :model/Revision)
+                       :where [:and
+                               or-conditions
+                               [:= :most_recent true]
+                               [:not-in :id new-revision-ids]]
+                       :set {:most_recent false}}))
+
+          ;; Step 4: Clean up old revisions in a SINGLE SELECT + SINGLE DELETE
+          (when or-conditions
+            (let [all-revisions (t2/select :model/Revision
+                                           {:where or-conditions
+                                            :order-by [[:timestamp :desc] [:id :desc]]})
+                  revisions-by-entity (group-by (juxt :model :model_id) all-revisions)
+                  old-revision-ids (into []
+                                         (mapcat (fn [[_entity-key revisions]]
+                                                   (map :id (drop max-revisions revisions))))
+                                         revisions-by-entity)]
+              (when (seq old-revision-ids)
+                (t2/delete! :model/Revision :id [:in old-revision-ids]))))
+          inserted-revisions)))))
+
+(defn insert-revision!
+  "Efficiently insert a single revision.
+
+  See [[insert-revisions!]] for details. This is a convenience wrapper for inserting
+  a single revision."
+  [revision-row]
+  (first (insert-revisions! [revision-row])))
+
 (mu/defn push-revisions!
   "Record multiple new Revisions with a single batch insert.
 
@@ -232,7 +287,7 @@
              :message      message
              :_object      object})]
       (when (seq revision-rows)
-        (t2/insert! :model/Revision (map #(dissoc % :_object) revision-rows))
+        (insert-revisions! (map #(dissoc % :_object) revision-rows))
         (map :_object revision-rows)))))
 
 (mu/defn push-revision!
@@ -273,11 +328,10 @@
       (revert-to-revision! entity id user-id serialized-instance)
       ;; Push a new revision to record this change
       (let [last-revision (t2/select-one :model/Revision :model model-name, :model_id id, {:order-by [[:id :desc]]})
-            new-revision  (first (t2/insert-returning-instances! :model/Revision
-                                                                 :model        model-name
-                                                                 :model_id     id
-                                                                 :user_id      user-id
-                                                                 :object       serialized-instance
-                                                                 :is_creation  false
-                                                                 :is_reversion true))]
+            new-revision  (insert-revision! {:model        model-name
+                                             :model_id     id
+                                             :user_id      user-id
+                                             :object       serialized-instance
+                                             :is_creation  false
+                                             :is_reversion true})]
         (add-revision-details entity new-revision last-revision)))))

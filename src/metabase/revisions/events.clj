@@ -16,15 +16,18 @@
     :or {is-creation? false}
     :as _options}]
   (revision/push-revisions!
-   (for [{:keys [user-id previous-object object id revision-message]} events
+   (for [{:keys [user-id previous-object object revision-message]} events
          :let [user-id (or user-id api/*current-user-id*)]]
-     {:entity model
-      :id id
-      :object object
-      :previous-object previous-object
-      :user-id user-id
-      :is-creation? is-creation?
-      :message revision-message})))
+     (do
+       (when-not (t2/instance-of? model object)
+         (throw (ex-info "object must be a model instance" {:object object :model model})))
+       {:entity model
+        :id (:id object)
+        :object object
+        :previous-object previous-object
+        :user-id user-id
+        :is-creation? is-creation?
+        :message revision-message}))))
 
 (defn- push-revision!
   [model event options]
@@ -44,7 +47,7 @@
 (derive :event/cards-update ::cards-event)
 
 (methodical/defmethod events/publish-event! ::cards-event
-  [topic events]
+  [topic {:keys [events]}]
   (push-revisions! :model/Card events {:is-creation? (= topic :event/card-create)}))
 
 (derive ::dashboard-event ::event)
@@ -52,15 +55,15 @@
 (derive :event/dashboard-update ::dashboard-event)
 
 (methodical/defmethod events/publish-event! ::dashboard-event
-  [topic event]
-  (push-revision! :model/Dashboard event {:is-creation? (= topic :event/dashboard-create)}))
+  [topic {:keys [events]}]
+  (push-revision! :model/Dashboard events {:is-creation? (= topic :event/dashboard-create)}))
 
 (derive ::dashboards-event ::event)
 (derive :event/dashboards-create ::dashboards-event)
-(derive :event/dashboards--update ::dashboards-event)
+(derive :event/dashboards-update ::dashboards-event)
 
 (methodical/defmethod events/publish-event! ::dashboards-event
-  [topic events]
+  [topic {:keys [events]}]
   (push-revisions! :model/Dashboard events {:is-creation? (= topic :event/dashboard-create)}))
 
 (derive ::transform-event ::event)

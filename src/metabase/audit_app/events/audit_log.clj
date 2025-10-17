@@ -24,7 +24,7 @@
 (derive :event/cards-delete ::cards-event)
 
 (methodical/defmethod events/publish-event! ::cards-event
-  [topic events]
+  [topic {:keys [events]}]
   (audit-log/record-events! topic events))
 
 (derive ::dashboard-event ::event)
@@ -40,7 +40,7 @@
 (derive :event/dashboards-delete ::dashboards-event)
 
 (methodical/defmethod events/publish-event! ::dashboards-event
-  [topic events]
+  [topic {:keys [events]}]
   (audit-log/record-event! topic events))
 
 (derive ::dashboard-card-event ::event)

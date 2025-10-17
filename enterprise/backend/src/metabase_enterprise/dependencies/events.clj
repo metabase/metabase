@@ -31,7 +31,7 @@
 (derive :event/cards-update ::cards-deps)
 
 (methodical/defmethod events/publish-event! ::cards-deps
-  [_ events]
+  [_ {:keys [events]}]
   (when (premium-features/has-feature? :dependencies)
     (t2/with-transaction [_conn]
       (models.dependency/replace-dependencies-bulk! :card
@@ -45,7 +45,8 @@
                                                 models.dependency/current-dependency-analysis-version))
                                     (map :id)
                                     seq)]
-        (t2/update! :model/Card [:in :id ids-to-update]
+        (t2/update! :model/Card
+                    :id [:in ids-to-update]
                     {:dependency_analysis_version models.dependency/current-dependency-analysis-version})))))
 
 (derive ::card-delete :metabase/event)
