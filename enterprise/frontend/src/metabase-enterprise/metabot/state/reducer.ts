@@ -55,6 +55,16 @@ export type MetabotAgentEditSuggestionChatMessage = {
   };
 };
 
+export type MetabotDebugToolCallMessage = {
+  id: string;
+  role: "tool";
+  type: "tool_call";
+  name: string;
+  message: any;
+  status: "started" | "ended";
+  result?: any;
+};
+
 export type MetabotAgentChatMessage =
   | MetabotAgentTextChatMessage
   | MetabotAgentTodoListChatMessage
@@ -64,9 +74,12 @@ export type MetabotUserChatMessage =
   | MetabotUserTextChatMessage
   | MetabotUserActionChatMessage;
 
+export type MetabotDebugChatMessage = MetabotDebugToolCallMessage;
+
 export type MetabotChatMessage =
   | MetabotUserChatMessage
-  | MetabotAgentChatMessage;
+  | MetabotAgentChatMessage
+  | MetabotDebugChatMessage;
 
 export type MetabotErrorMessage = {
   type: "message" | "alert";
@@ -182,9 +195,28 @@ export const metabot = createSlice({
     },
     toolCallStart: (
       state,
-      action: PayloadAction<{ toolCallId: string; toolName: string }>,
+      action: PayloadAction<{
+        toolCallId: string;
+        toolName: string;
+        args: string;
+      }>,
     ) => {
-      const { toolCallId, toolName } = action.payload;
+      const { toolCallId, toolName, args } = action.payload;
+      let parsedArgs;
+      try {
+        parsedArgs = JSON.parse(args);
+      } catch {
+        console.warn("Failed to parse tool call args as JSON", args);
+        parsedArgs = undefined;
+      }
+      state.messages.push({
+        id: toolCallId,
+        role: "tool",
+        type: "tool_call",
+        name: toolName,
+        message: parsedArgs,
+        status: "started",
+      });
       state.toolCalls.push({
         id: toolCallId,
         name: toolName,
@@ -192,10 +224,25 @@ export const metabot = createSlice({
         status: "started",
       });
     },
-    toolCallEnd: (state, action: PayloadAction<{ toolCallId: string }>) => {
+    toolCallEnd: (
+      state,
+      action: PayloadAction<{ toolCallId: string; result?: any }>,
+    ) => {
       state.toolCalls = state.toolCalls.map((tc) =>
         tc.id === action.payload.toolCallId ? { ...tc, status: "ended" } : tc,
       );
+
+      // Update the message in messages array with result for debug history
+      const messageIndex = state.messages.findLastIndex(
+        (msg) => msg.role === "tool" && msg.id === action.payload.toolCallId,
+      );
+      if (messageIndex !== -1) {
+        const message = state.messages[messageIndex];
+        if (message.role === "tool") {
+          message.status = "ended";
+          message.result = action.payload.result;
+        }
+      }
     },
     // NOTE: this reducer fn should be made smarter if/when we want to have
     // metabot's `state` object be able to remove / forget values. currently
