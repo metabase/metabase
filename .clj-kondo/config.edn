@@ -489,6 +489,8 @@
   metabase.util.malli/defn-                                                             schema.core/defn
   metabase.util.malli/fn                                                                schema.core/fn
   metabase.util.namespaces/import-fns                                                   potemkin/import-vars
+  metabase.util.performance/doseq                                                       clojure.core/doseq
+  metabase.util.performance/for                                                         clojure.core/for
   metabase.util/with-timer-ms                                                           clojure.core/fn
   metabuild-common.core/with-open-jar-file-system                                       clojure.core/let
   metabuild-common.files/with-open-jar-file-system                                      clojure.core/let
