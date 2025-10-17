@@ -247,10 +247,9 @@ const config = {
       ),
       "sdk-ee-plugins": resolveEnterprisePathOrNoop("/sdk-plugins"),
       "sdk-specific-imports": SRC_PATH + "/lib/noop",
-      crypto: path.join(SRC_PATH, "/lib/crypto-polyfill.js"),
     },
     fallback: {
-      buffer: require.resolve("buffer/"),
+      crypto: path.join(SRC_PATH, "/lib/crypto-polyfill.js"),
     },
   },
   optimization: {
@@ -326,7 +325,6 @@ const config = {
     }),
     // https://github.com/remarkjs/remark/discussions/903
     new rspack.ProvidePlugin({
-      Buffer: ["Buffer", "buffer"],
       process: "process/browser.js",
     }),
   ],
