@@ -8,7 +8,7 @@ import {
   useSearchQuery,
 } from "metabase/api";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import { FixedSizeIcon, Loader, Select } from "metabase/ui";
+import { DefaultSelectItem, FixedSizeIcon, Loader, Select } from "metabase/ui";
 import {
   type DependencyEntry,
   type SearchModel,
@@ -111,6 +111,12 @@ export function EntrySearchInput({
           />
         )
       }
+      renderOption={({ option }) => (
+        <DefaultSelectItem
+          {...option}
+          fw={option.value === BROWSE_OPTION_VALUE ? "bold" : undefined}
+        />
+      )}
       w="20rem"
       searchable
       autoFocus
