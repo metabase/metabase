@@ -10,6 +10,10 @@ import type {
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
+import {
+  provideDependencyGraphTags,
+  provideDependencyNodeListTags,
+} from "./tags";
 
 export const dependencyApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -22,6 +26,7 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/dependencies/graph",
         params,
       }),
+      providesTags: (graph) => (graph ? provideDependencyGraphTags(graph) : []),
     }),
     listNodeDependents: builder.query<
       DependencyNode[],
@@ -32,6 +37,8 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/dependencies/graph/dependents",
         params,
       }),
+      providesTags: (nodes) =>
+        nodes ? provideDependencyNodeListTags(nodes) : [],
     }),
     checkCardDependencies: builder.query<
       CheckDependenciesResponse,
