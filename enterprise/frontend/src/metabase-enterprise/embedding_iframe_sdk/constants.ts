@@ -93,35 +93,6 @@ export const ALLOWED_STATIC_EMBED_SETTING_KEYS_MAP = {
   browser: [] satisfies (keyof BrowserEmbedOptions)[],
   metabot: [] satisfies (keyof MetabotEmbedOptions)[],
 } as const;
-export const ALLOWED_STATIC_EMBED_SETTING_KEYS_MAP = {
-  base: [
-    "apiKey",
-    "instanceUrl",
-    "theme",
-    "locale",
-    "isStatic",
-  ] satisfies (keyof SdkIframeEmbedBaseSettings)[],
-  dashboard: [
-    "dashboardId",
-    "token",
-    "withTitle",
-    "withDownloads",
-    "initialParameters",
-    "hiddenParameters",
-  ] satisfies (keyof DashboardEmbedOptions)[],
-  chart: [
-    "questionId",
-    "token",
-    "withTitle",
-    "withDownloads",
-    "entityTypes",
-    "initialSqlParameters",
-    "hiddenParameters",
-  ] satisfies (keyof QuestionEmbedOptions)[],
-  exploration: [] satisfies (keyof ExplorationEmbedOptions)[],
-  browser: [] satisfies (keyof BrowserEmbedOptions)[],
-  metabot: [] satisfies (keyof MetabotEmbedOptions)[],
-} as const;
 
 // This file is used by embed.js, so we shouldn't import external dependencies.
 const uniq = <T>(list: T[]): T[] => Array.from(new Set(list));
