@@ -6,6 +6,7 @@ import {
 } from "@xyflow/react";
 import cx from "classnames";
 import { type MouseEvent, memo, useContext } from "react";
+import { t } from "ttag";
 
 import {
   Box,
@@ -23,11 +24,7 @@ import { getNodeIcon, getNodeLabel, isSameNode } from "../utils";
 
 import S from "./GraphNode.module.css";
 import type { DependentGroup } from "./types";
-import {
-  getDependentGroupLabel,
-  getDependentGroups,
-  getDependentsLabel,
-} from "./utils";
+import { getDependentGroupLabel, getDependentGroups } from "./utils";
 
 type GraphNodeProps = NodeProps<NodeType>;
 
@@ -59,9 +56,7 @@ export const GraphNode = memo(function ItemNode({
         </Group>
         {groups.length > 0 && (
           <>
-            <Box c="text-secondary" fz="sm" lh="1rem">
-              {getDependentsLabel(node)}
-            </Box>
+            <Box c="text-secondary" fz="sm" lh="1rem">{t`Used by`}</Box>
             {groups.map((group) => (
               <DependencyGroupButton
                 key={group.type}
