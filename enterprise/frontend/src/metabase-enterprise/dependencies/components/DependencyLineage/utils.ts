@@ -148,7 +148,7 @@ export function getNodeLocationInfo(
     .with({ type: "card", data: { collection: P.nonNullable } }, (node) => ({
       label: node.data.collection.name,
       icon: "folder",
-      url: Urls.dashboard(node.data.collection),
+      url: Urls.collection(node.data.collection),
     }))
     .otherwise(() => undefined);
 }
