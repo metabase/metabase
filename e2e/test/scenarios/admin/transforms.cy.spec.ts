@@ -2699,8 +2699,8 @@ function getQueryEditor() {
   return cy.findByTestId("transform-query-editor");
 }
 
-function getRunButton({ timeout }: { timeout?: number } = {}) {
-  return cy.findAllByTestId("run-button").eq(0, { timeout });
+function getRunButton(options: { timeout?: number } = {}) {
+  return cy.findAllByTestId("run-button").eq(0, options);
 }
 
 function getCancelButton() {
