@@ -134,14 +134,7 @@ const getTimelineEventsInsideRange = (
   const [min, max] = range;
 
   const filteredTimelineEvents = timelineEvents.filter((event) => {
-    const eventStartOfUnit = dayjs
-      .utc(event.timestamp)
-      .startOf(unit as OpUnitType);
-
-    return (
-      (min.isSame(eventStartOfUnit) || min.isBefore(eventStartOfUnit)) &&
-      (max.isSame(eventStartOfUnit) || max.isAfter(eventStartOfUnit))
-    );
+    return dayjs(event.timestamp).isBetween(min, max, unit, "[]");
   });
 
   return filteredTimelineEvents;
