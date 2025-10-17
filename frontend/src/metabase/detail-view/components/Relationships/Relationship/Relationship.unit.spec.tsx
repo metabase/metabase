@@ -4,6 +4,7 @@ import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
 import { setupCardDataset } from "__support__/server-mocks";
+import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import type { Table } from "metabase-types/api";
 import { createMockForeignKey } from "metabase-types/api/mocks";
@@ -16,7 +17,9 @@ import {
   PRODUCTS,
   createOrdersProductIdField,
   createOrdersTable,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { Relationship } from "./Relationship";
 
@@ -51,23 +54,22 @@ interface SetupOpts {
   table?: Table;
 }
 
-function setup({ dataset = DATASET, table = ORDERS_TABLE }: SetupOpts = {}) {
+function setup({ dataset = DATASET }: SetupOpts = {}) {
   const onClick = jest.fn();
 
   const TestComponent = () => (
-    <Relationship
-      fk={FK}
-      href="/test"
-      rowId={ROW_ID}
-      table={table}
-      onClick={onClick}
-    />
+    <Relationship fk={FK} rowId={ROW_ID} onClick={onClick} />
   );
 
   setupCardDataset(dataset);
 
   renderWithProviders(<Route path="/" component={TestComponent} />, {
     withRouter: true,
+    storeInitialState: createMockState({
+      entities: createMockEntitiesState({
+        databases: [createSampleDatabase()],
+      }),
+    }),
   });
 
   return { onClick };

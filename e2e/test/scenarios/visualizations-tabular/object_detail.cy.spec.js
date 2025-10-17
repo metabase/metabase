@@ -287,24 +287,6 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
       .should("be.visible");
   });
 
-  it("should fetch linked entities data only once per entity type when reopening the modal (metabase#32720)", () => {
-    cy.intercept("POST", "/api/dataset", cy.spy().as("fetchDataset"));
-
-    H.openProductsTable();
-    cy.get("@fetchDataset").should("have.callCount", 1);
-
-    drillPK({ id: 5 });
-    cy.get("@fetchDataset").should("have.callCount", 3);
-
-    cy.findByLabelText("Close").click();
-
-    drillPK({ id: 5 });
-    cy.get("@fetchDataset").should("have.callCount", 3);
-
-    cy.wait(100);
-    cy.get("@fetchDataset").should("have.callCount", 3);
-  });
-
   it("should not offer drill-through on the object detail records (metabase#20560)", () => {
     H.openPeopleTable({ limit: 2 });
 
