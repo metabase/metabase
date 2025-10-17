@@ -67,30 +67,6 @@ const AuthenticationSection = () => {
     });
   };
 
-  const isJwtEnabled = useSetting("jwt-enabled");
-  const isSamlEnabled = useSetting("saml-enabled");
-  const isJwtConfigured = useSetting("jwt-configured");
-  const isSamlConfigured = useSetting("saml-configured");
-
-  const isSsoEnabledAndConfigured =
-    (isJwtEnabled && isJwtConfigured) || (isSamlEnabled && isSamlConfigured);
-
-  const authType = isStaticEmbedding
-    ? "no-user"
-    : settings.useExistingUserSession
-      ? "user-session"
-      : "sso";
-
-  const handleAuthTypeChange = (value: string) => {
-    const isStatic = value === "no-user";
-    const useExistingUserSession = value === "user-session";
-
-    updateSettings({
-      isStatic,
-      useExistingUserSession,
-    });
-  };
-
   return (
     <Card p="md">
       <Stack gap="md" p="xs">

@@ -31,8 +31,6 @@ export const loadQuestionSdk =
     Required<Pick<SdkQuestionState, "question">> &
       Pick<SdkQuestionState, "originalQuestion" | "parameterValues">
   > => {
-    const isStatic = getIsStaticEmbedding(getState());
-
     const questionId = initQuestionId === "new" ? undefined : initQuestionId;
 
     const { card, originalCard } = await resolveCards({
