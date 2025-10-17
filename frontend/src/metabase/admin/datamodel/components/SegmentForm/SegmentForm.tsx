@@ -11,6 +11,7 @@ import {
 } from "metabase/admin/datamodel/utils/segments";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { useToast } from "metabase/common/hooks";
+import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import {
   Form,
   FormErrorMessage,
@@ -53,19 +54,27 @@ export const SegmentForm = ({
   const dispatch = useDispatch();
   const [sendToast] = useToast();
 
+  /**
+   * Navigation is scheduled so that LeaveConfirmationModal's isEnabled
+   * prop has a chance to re-compute on re-render
+   */
+  const [, scheduleCallback] = useCallbackEffect();
+
   const handleSubmit = useCallback(
     (values: Partial<UpdateSegmentRequest>) => {
       setIsSubmitting(true);
       return onSubmit(values)
         .then(() => {
           sendToast({ message: t`Segment saved` });
-          dispatch(push({ query, pathname: "/bench/segment" }));
+          scheduleCallback(() => {
+            dispatch(push({ query, pathname: "/bench/segment" }));
+          });
         })
         .catch(() => {
           setIsSubmitting(false);
         });
     },
-    [dispatch, onSubmit, query, sendToast],
+    [dispatch, onSubmit, query, scheduleCallback, sendToast],
   );
 
   return (
