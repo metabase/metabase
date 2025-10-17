@@ -85,7 +85,6 @@
                  {:id "id" :special "hello", :type "number"}]}])
 
 (deftest list-actions-test
-  (search/reset-tracking!)
   (mt/with-actions-enabled
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-actions-test-data-tables #{"users"}

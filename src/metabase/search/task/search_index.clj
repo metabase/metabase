@@ -34,7 +34,7 @@
   []
   (when (search/supports-index?)
     (cluster-lock/with-cluster-lock ::search-init-lock
-      (search/init-index! {:force-reset? false, :re-populate? false}))))
+      (search/init-engines! {:force-reset? false, :re-populate? false}))))
 
 (task/defjob ^{DisallowConcurrentExecution true
                :doc                        "Populate a new Search Index"}

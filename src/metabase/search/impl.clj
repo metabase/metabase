@@ -206,6 +206,11 @@
     (not (zero? v))
     v))
 
+(def fallback-engine-priority
+  "Search engines in order of preference for fallback scenarios."
+  [:search.engine/appdb
+   :search.engine/in-place])
+
 (defn default-engine
   "In the absence of an explicit engine argument in a request, which engine should be used?"
   []
@@ -216,13 +221,32 @@
         ;; It would be good to have a warning on start up for this.
         :search.engine/in-place))
     (first (filter search.engine/supported-engine?
-                   search.engine/fallback-engine-priority))))
+                   fallback-engine-priority))))
+
+(defn known-engines
+  "List the possible engines, whether this instance supports them or not."
+  []
+  ;; If we end up with more "abstract" nodes, we may want a better way to filter them out.
+  (keys (dissoc (methods search.engine/supported-engine?) :default)))
+
+(defn active-engines
+  "List the search engines that are supported. Does not mention the legacy in-place engine.
+   Default engine comes first."
+  []
+  (->> (for [[k p] (dissoc (methods search.engine/supported-engine?) :default :search.engine/in-place) :when (p k)] k)
+       (sort-by #(if (= (name %) (name (search.settings/search-engine))) 0 1))))
+
+(defn known-engine?
+  "Is the given engine recognized?"
+  [engine]
+  (let [registered? #(contains? (methods search.engine/supported-engine?) %)]
+    (some registered? (cons engine (ancestors engine)))))
 
 (defn- parse-engine [value]
   (or (when-not (str/blank? value)
         (let [engine (keyword "search.engine" value)]
           (cond
-            (not (search.engine/known-engine? engine))
+            (not (known-engine? engine))
             (log/warnf "Search-engine is unknown: %s" value)
 
             (not (search.engine/supported-engine? engine))

@@ -99,7 +99,3 @@
   [_ _opts]
   (log/info "reindex! is not supported for semantic search engine")
   nil)
-
-(defmethod search.engine/reset-tracking! :search.engine/semantic [_]
-  (log/info "reset-tracking! is not supported for semantic search engine")
-  nil)
