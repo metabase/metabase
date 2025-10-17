@@ -1,9 +1,11 @@
+import { Link } from "react-router";
 import { t } from "ttag";
 
-import { ActionIcon, FixedSizeIcon, Group, Title, rem } from "metabase/ui";
+import { ActionIcon, Box, FixedSizeIcon, Group, Title, rem } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
-import { getNodeLabel } from "../../utils";
+import { ACTION_ICON_PADDING } from "../../constants";
+import { getNodeLabel, getNodeLink } from "../../utils";
 
 type PanelHeaderProps = {
   node: DependencyNode;
@@ -11,14 +13,28 @@ type PanelHeaderProps = {
 };
 
 export function PanelHeader({ node, onClose }: PanelHeaderProps) {
+  const link = getNodeLink(node);
+
   return (
     <Group p="lg" wrap="nowrap">
       <Title flex={1} order={5}>
         {getNodeLabel(node)}
       </Title>
-      <ActionIcon m={rem(-6)} aria-label={t`Close`} onClick={onClose}>
-        <FixedSizeIcon name="close" />
-      </ActionIcon>
+      <Box m={rem(ACTION_ICON_PADDING)}>
+        {link != null && (
+          <ActionIcon
+            component={Link}
+            to={link}
+            target="_blank"
+            aria-label={t`Open in a new tab`}
+          >
+            <FixedSizeIcon name="external" />
+          </ActionIcon>
+        )}
+        <ActionIcon aria-label={t`Close`} onClick={onClose}>
+          <FixedSizeIcon name="close" />
+        </ActionIcon>
+      </Box>
     </Group>
   );
 }

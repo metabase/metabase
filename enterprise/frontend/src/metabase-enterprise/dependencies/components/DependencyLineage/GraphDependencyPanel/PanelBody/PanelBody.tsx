@@ -14,6 +14,7 @@ import {
 } from "metabase/ui";
 import type { DependencyEntry, DependencyNode } from "metabase-types/api";
 
+import { ACTION_ICON_PADDING } from "../../constants";
 import { getNodeId, getNodeLink, getNodeViewCount } from "../../utils";
 
 import S from "./PanelBody.module.css";
@@ -147,7 +148,7 @@ function ListItemLink({ link }: ListItemLinkProps) {
       component={Link}
       to={link}
       target="_blank"
-      m={rem(-6)}
+      m={rem(ACTION_ICON_PADDING)}
       aria-label={t`Open in a new tab`}
     >
       <FixedSizeIcon name="external" />
