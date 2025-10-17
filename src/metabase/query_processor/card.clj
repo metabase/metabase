@@ -11,6 +11,7 @@
    ;; Lib soon
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -307,7 +308,7 @@
         comparable-query (fn [query]
                            (some-> query
                                    (lib/update-query-stage -1 dissoc :filters :expressions)
-                                   qp.util/select-keys-for-hashing))
+                                   lib-be/comparable-query))
         comparable-subset-query (comparable-query base-subset-query)
         comparable-card-query (comparable-query base-card-query)
         comparable-clauses (fn [query clauses-fn]
