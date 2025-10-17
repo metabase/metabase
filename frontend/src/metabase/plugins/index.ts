@@ -728,6 +728,10 @@ type PluginMetabotType = {
   getMetabotVisible: (state: State) => boolean;
   MetabotToggleButton: ComponentType<{ className?: string }>;
   MetabotAppBarButton: ComponentType;
+  useMetabotAgent: () => null | {
+    visible: boolean;
+    setVisible: (visible: boolean) => void;
+  };
 };
 
 export const PLUGIN_METABOT: PluginMetabotType = {
@@ -751,6 +755,7 @@ export const PLUGIN_METABOT: PluginMetabotType = {
   getMetabotVisible: () => false,
   MetabotToggleButton: PluginPlaceholder,
   MetabotAppBarButton: PluginPlaceholder,
+  useMetabotAgent: () => null,
 };
 
 type DashCardMenuItemGetter = (

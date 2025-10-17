@@ -1,5 +1,5 @@
+import { PLUGIN_METABOT } from "metabase/plugins";
 import { ActionIcon, Box, Group, Icon } from "metabase/ui";
-import { useMetabotAgent } from "metabase-enterprise/metabot/hooks"; // TODO: how to make this work in non-enterprise?
 
 interface BenchToolbarProps {
   onSidebarToggle: () => void;
@@ -10,7 +10,7 @@ export function BenchAppBar({
   onSidebarToggle,
   isSidebarOpen,
 }: BenchToolbarProps) {
-  const metabot = useMetabotAgent();
+  const metabot = PLUGIN_METABOT.useMetabotAgent();
 
   return (
     <Box
@@ -42,12 +42,14 @@ export function BenchAppBar({
       /> */}
 
       <Group gap="xs">
-        <ActionIcon
-          variant={metabot.visible ? "filled" : "subtle"}
-          onClick={() => metabot.setVisible(!metabot.visible)}
-        >
-          <Icon name="metabot" />
-        </ActionIcon>
+        {metabot && (
+          <ActionIcon
+            variant={metabot.visible ? "filled" : "subtle"}
+            onClick={() => metabot.setVisible(!metabot.visible)}
+          >
+            <Icon name="metabot" />
+          </ActionIcon>
+        )}
       </Group>
     </Box>
   );
