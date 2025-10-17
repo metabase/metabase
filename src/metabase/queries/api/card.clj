@@ -684,7 +684,7 @@
   "Get all of the required query metadata for a card."
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]]
-  (lib-be/with-metadata-provider-cache
+  (lib.metadata.jvm/with-metadata-provider-cache
     (let [resolved-id (eid-translation/->id-or-404 :card id)]
       (queries.metadata/batch-fetch-card-metadata [(get-card resolved-id)]))))
 

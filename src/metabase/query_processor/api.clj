@@ -7,6 +7,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib-be.metadata.jvm :as lib-be.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.model-persistence.core :as model-persistence]
@@ -166,7 +167,7 @@
    _query-params
    query :- [:map
              [:database ms/PositiveInt]]]
-  (lib-be/with-metadata-provider-cache
+  (lib-be.metadata.jvm/with-metadata-provider-cache
     (queries/batch-fetch-query-metadata [query])))
 
 (api.macros/defendpoint :post "/native"
