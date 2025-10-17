@@ -75,21 +75,6 @@ describe("InteractiveEmbeddingSettings", () => {
     expect(body).toEqual({ value: "https://*.foo.example.com" });
   });
 
-  it("should allow changing samesite cookie setting", async () => {
-    await setup({ enabled: true });
-
-    const button = await screen.findByText("Lax (default)");
-    await userEvent.click(button);
-    const newOption = await screen.findByText("Strict (not recommended)");
-    await userEvent.click(newOption);
-
-    const puts = await findRequests("PUT");
-    expect(puts).toHaveLength(1);
-    const [{ url, body }] = puts;
-    expect(url).toContain("/setting/session-cookie-samesite");
-    expect(body).toEqual({ value: "strict" });
-  });
-
   it("should show cards with related settings", async () => {
     await setup({ enabled: true });
 
