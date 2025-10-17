@@ -1,6 +1,8 @@
 (ns metabase.lib.schema.expression.conditional
   "Conditional expressions like `:case` and `:coalesce`."
+  #?(:clj (:refer-clojure :exclude [doseq]))
   (:require
+   #?(:clj [metabase.util.performance :refer [doseq]])
    [clojure.set :as set]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
