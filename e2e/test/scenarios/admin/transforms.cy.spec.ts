@@ -1727,12 +1727,6 @@ LIMIT
         H.PythonEditor.value().should("contain", "import common");
 
         cy.findByTestId("python-data-picker")
-          .findByText("Select a database")
-          .click();
-
-        H.popover().findByText(DB_NAME).click();
-
-        cy.findByTestId("python-data-picker")
           .findByText("Select a table…")
           .click();
 
