@@ -645,10 +645,11 @@ describe("issue 43216", () => {
 
     cy.log("Update source question");
     H.commandPaletteButton().click();
-    // intentionally use search instead of recents to prevent items swiching order and making this test flaky
+    // use search instead of recents to prevent items switching order during assertions
     H.commandPaletteInput().type("source");
     H.waitForLoaderToBeRemoved();
     H.commandPalette().findByText("Source question").click();
+    H.commandPalette().should("not.exist");
     cy.findByTestId("native-query-editor-container")
       .findByText("Open Editor")
       .click();
@@ -657,10 +658,11 @@ describe("issue 43216", () => {
 
     cy.log("Assert updated metadata in target question");
     H.commandPaletteButton().click();
-    // intentionally use search instead of recents to prevent items swiching order and making this test flaky
+    // use search instead of recents to prevent items switching order during assertions
     H.commandPaletteInput().type("target");
     H.waitForLoaderToBeRemoved();
     H.commandPalette().findByText("Target question").click();
+    H.commandPalette().should("not.exist");
     cy.findAllByTestId("header-cell").eq(3).should("have.text", "D");
     H.openNotebook();
     H.getNotebookStep("data").button("Pick columns").click();
