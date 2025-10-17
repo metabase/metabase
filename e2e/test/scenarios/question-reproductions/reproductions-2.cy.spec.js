@@ -652,7 +652,7 @@ describe("issue 43216", () => {
     cy.findByTestId("native-query-editor-container")
       .findByText("Open Editor")
       .click();
-    H.NativeEditor.focus().type(" , 4 as D;").blur();
+    H.NativeEditor.focus().type(" , 4 as D;");
     H.saveSavedQuestion();
     H.waitForLoaderToBeRemoved();
     cy.wait(250); // wait for react to process all changes (flaky test)
