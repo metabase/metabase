@@ -541,5 +541,6 @@
              (sql-jdbc.conn/connection-details->spec :redshift (assoc options :db "test-db"))))
       (is (= {:classname "com.amazon.redshift.jdbc42.Driver", :subprotocol "redshift", :subname "//test.example.com:/test-db", :ssl true, :OpenSourceSubProtocolOverride false}
              (sql-jdbc.conn/connection-details->spec :redshift (assoc options :dbname "test-db"))))
-      (is (thrown-with-msg? Exception #"Redshift connection details cannot contain both 'db' and 'dbname' options"
-                            (sql-jdbc.conn/connection-details->spec :redshift (assoc options :dbname "test-dbname" :db "test-db")))))))
+      (is (= {:classname "com.amazon.redshift.jdbc42.Driver", :subprotocol "redshift", :subname "//test.example.com:/test-db", :ssl true, :OpenSourceSubProtocolOverride false}
+             (sql-jdbc.conn/connection-details->spec :redshift (assoc options :dbname "test-dbname" :db "test-db")))
+          ":db should take precedence"))))

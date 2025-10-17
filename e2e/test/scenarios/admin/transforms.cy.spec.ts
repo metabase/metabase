@@ -1618,6 +1618,19 @@ LIMIT
         "This run succeeded before it had a chance to cancel.",
       );
     });
+
+    it("should be possible to cancel a SQL transform from the preview (metabase#64474)", () => {
+      createSlowTransform(500);
+      getTransformPage().findByText("Edit query").click();
+
+      getQueryEditor().within(() => {
+        cy.findAllByTestId("run-button").eq(0).click();
+        cy.findByTestId("loading-indicator").should("be.visible");
+
+        cy.findAllByTestId("run-button").eq(0).click();
+        cy.findByTestId("loading-indicator").should("not.exist");
+      });
+    });
   });
 
   describe("dependencies", () => {
@@ -2686,7 +2699,7 @@ function getQueryEditor() {
 }
 
 function getRunButton(options: { timeout?: number } = {}) {
-  return cy.findByTestId("run-button", options);
+  return cy.findAllByTestId("run-button").eq(0, options);
 }
 
 function getCancelButton() {
