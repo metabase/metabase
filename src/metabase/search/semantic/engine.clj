@@ -1,4 +1,4 @@
-(ns metabase.search.semantic.core
+(ns metabase.search.semantic.engine
   (:require
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.config :as search.config]

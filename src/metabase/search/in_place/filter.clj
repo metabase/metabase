@@ -16,7 +16,7 @@
    [metabase.audit-app.core :as audit]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.parameters.dates :as params.dates]
-   [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
+   [metabase.search.config :as search.config :refer [SearchContext SearchableModel]]
    [metabase.search.in-place.util :as search.util]
    [metabase.search.permissions :as search.permissions]
    [metabase.util.date-2 :as u.date]
@@ -70,7 +70,7 @@
   (when-let [query (:search-string search-context)]
     (into
      [:or]
-     (for [column           (->> (let [search-columns-fn (requiring-resolve 'metabase.search.in-place.legacy/searchable-columns)]
+     (for [column           (->> (let [search-columns-fn (requiring-resolve 'metabase.search.in-place.engine/searchable-columns)]
                                    (search-columns-fn model search-native-query))
                                  (map #(search.config/column-with-model-alias model %)))
            wildcarded-token (->> (search.util/normalize query)
@@ -211,7 +211,7 @@
 
 ;; We won't need this post-legacy as it defines the joins à la carte.
 (defn- search-model->revision-model [model]
-  ((requiring-resolve 'metabase.search.in-place.legacy/search-model->revision-model) model))
+  ((requiring-resolve 'metabase.search.in-place.engine/search-model->revision-model) model))
 
 (doseq [model ["dashboard" "card" "dataset" "metric"]]
   (defmethod build-optional-filter-query [:last-edited-by model]
@@ -279,7 +279,7 @@
   (merge
    ;; models support search-native-query if there are additional columns to search when the `search-native-query`
    ;; argument is true
-   {:search-native-query (->> (dissoc (methods @(requiring-resolve 'metabase.search.in-place.legacy/searchable-columns)) :default)
+   {:search-native-query (->> (dissoc (methods @(requiring-resolve 'metabase.search.in-place.engine/searchable-columns)) :default)
                               (filter (fn [[model f]]
                                         (seq (set/difference (set (f model true)) (set (f model false))))))
                               (map first)

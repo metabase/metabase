@@ -1,4 +1,4 @@
-(ns metabase.search.appdb.core
+(ns metabase.search.appdb.engine
   (:require
    [environ.core :as env]
    [honey.sql.helpers :as sql.helpers]
@@ -6,9 +6,9 @@
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
-   [metabase.search.appdb.index :as search.index]
    [metabase.search.appdb.scoring :as search.scoring]
    [metabase.search.appdb.specialization.postgres :as specialization.postgres]
+   [metabase.search.appdb.storage :as search.appdb.storage]
    [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
    [metabase.search.filter :as search.filter]
@@ -96,10 +96,10 @@
 (defn- results
   [{:keys [search-engine search-string] :as search-ctx}]
   ;; Check whether there is a query-able index.
-  (when-not (search.index/active-table)
-    (let [index-state  @@#'search.index/*indexes*
+  (when-not (search.appdb.storage/active-table)
+    (let [index-state  @@#'search.appdb.storage/*indexes*
           ;; Sync, in case we're just out of sync with the database.
-          found-active (:active (#'search.index/sync-tracking-atoms!))
+          found-active (:active (#'search.appdb.storage/sync-tracking-atoms!))
           ;; If there's really no index, and we're running in prod - gulp, try to initialize now.
           init-now?    (and (not found-active) config/is-prod?)]
       (when init-now?
@@ -113,11 +113,11 @@
       (throw (ex-info "Search Index not found."
                       {:search-engine      search-engine
                        :db-type            (mdb/db-type)
-                       :version            @#'search.index/*index-version-id*
+                       :version            @#'search.appdb.storage/*index-version-id*
                        :lang_code          (i18n/site-locale-string)
                        :forced-init?       init-now?
                        :index-state-before index-state
-                       :index-state-after  @@#'search.index/*indexes*
+                       :index-state-after  @@#'search.appdb.storage/*indexes*
                        :index-metadata     (t2/select :model/SearchIndexMetadata :engine :appdb)}))))
 
   (try
@@ -132,7 +132,7 @@
 
     (let [weights (search.config/weights search-ctx)
           scorers (search.scoring/scorers search-ctx)
-          query   (->> (search.index/search-query search-string search-ctx [:legacy_input])
+          query   (->> (search.appdb.storage/search-query search-string search-ctx [:legacy_input])
                        (add-collection-join-and-where-clauses search-ctx)
                        (add-table-where-clauses search-ctx)
                        (search.scoring/with-scores search-ctx scorers)
@@ -141,7 +141,7 @@
            (map (partial rehydrate weights (keys scorers)))))
     (catch Exception e
       ;; Rule out the error coming from stale index metadata.
-      (#'search.index/sync-tracking-atoms!)
+      (#'search.appdb.storage/sync-tracking-atoms!)
       (throw e))))
 
 (defmethod search.engine/results :search.engine/appdb
@@ -154,38 +154,38 @@
   (let [unfiltered-context (assoc search-ctx :models search.config/all-models)
         applicable-models  (search.filter/search-context->applicable-models unfiltered-context)
         search-ctx         (assoc search-ctx :models applicable-models)]
-    (->> (search.index/search-query (:search-string search-ctx) search-ctx [[[:distinct :model] :model]])
+    (->> (search.appdb.storage/search-query (:search-string search-ctx) search-ctx [[[:distinct :model] :model]])
          (add-collection-join-and-where-clauses search-ctx)
          (search.filter/with-filters search-ctx)
          t2/query
          (into #{} (map :model)))))
 
 (defn- populate-index! [context]
-  (search.index/index-docs! context (search.ingestion/searchable-documents)))
+  (search.appdb.storage/index-docs! context (search.ingestion/searchable-documents)))
 
 (defmethod search.engine/init! :search.engine/appdb
   [_ {:keys [re-populate?] :as opts}]
-  (let [index-created (search.index/when-index-created)]
+  (let [index-created (search.appdb.storage/when-index-created)]
     (if (and index-created (< 3 (t/time-between (t/instant index-created) (t/instant) :days)))
       (do
         (log/info "Forcing early reindex because existing index is old")
         (search.engine/reindex! :search.engine/appdb {}))
 
-      (let [created? (search.index/ensure-ready! opts)]
+      (let [created? (search.appdb.storage/ensure-ready! opts)]
         (when (or created? re-populate?)
           (log/info "Populating index")
           (populate-index! (if created? :search/reindexing :search/updating)))))))
 
 (defmethod search.engine/reindex! :search.engine/appdb
   [_ {:keys [in-place?]}]
-  (search.index/ensure-ready!)
+  (search.appdb.storage/ensure-ready!)
   (if in-place?
-    (when-let [table (search.index/active-table)]
+    (when-let [table (search.appdb.storage/active-table)]
       ;; keep the current table, just delete its contents
       (t2/delete! table))
-    (search.index/maybe-create-pending!))
+    (search.appdb.storage/maybe-create-pending!))
   (u/prog1 (populate-index! (if in-place? :search/updating :search/reindexing))
-    (search.index/activate-table!)))
+    (search.appdb.storage/activate-table!)))
 
 (derive :event/setting-update ::settings-changed-event)
 

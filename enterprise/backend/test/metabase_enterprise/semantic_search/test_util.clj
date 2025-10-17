@@ -316,7 +316,7 @@
   "Wrap the thunk into with-temp, creating entities used throughout semantic search test.
 
   N.B. *disable-updates* is bound to avoid processing of those entities by logic in [[search.ingestion]] ns.
-  The processing is triggered by means :hook/search-index which :model/Card (and others) derive.
+  The processing is triggered by means :hook/search-indexed which :model/Card (and others) derive.
 
   As of 2025-09-10, processing triggered by insertion, combined with manual gating of documents that callers
   of this fn do, would result in duplicate processing and deletion of those entitities from index

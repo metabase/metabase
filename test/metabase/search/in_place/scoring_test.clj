@@ -3,8 +3,8 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.search.config :as search.config]
+   [metabase.search.in-place.engine :as search.engines.in-place]
    [metabase.search.in-place.filter-test :as search.filter-test]
-   [metabase.search.in-place.legacy :as search.legacy]
    [metabase.search.in-place.scoring :as scoring]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -235,7 +235,7 @@
   [search-ctx]
   (mt/with-current-user (mt/user->id :crowberto)
     (let [search-ctx (merge search.filter-test/default-search-ctx search-ctx)]
-      (t2/query (search.legacy/full-search-query search-ctx)))))
+      (t2/query (search.engines.in-place/full-search-query search-ctx)))))
 
 (deftest search-native-query-scoring-test
   (testing "Exclude native query matches in search scoring when the search should exclude native queries"

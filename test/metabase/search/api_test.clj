@@ -14,8 +14,8 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.util :as perms-util]
    [metabase.revisions.models.revision :as revision]
-   [metabase.search.appdb.core :as search.engines.appdb]
-   [metabase.search.appdb.index :as search.index]
+   [metabase.search.appdb.engine :as search.engines.appdb]
+   [metabase.search.appdb.storage :as search.appdb.storage]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
    [metabase.search.ingestion :as search.ingestion]
@@ -1662,11 +1662,11 @@
       (mt/with-temp [:model/Card {id :id} {:name "It boggles the mind!"}]
         (mt/user-http-request :crowberto :post 200 "search/re-init")
         (let [search-results #(:data (mt/user-http-request :rasta :get % "search" :q "boggle" :search_engine "appdb"))]
-          (is (try (t2/delete! (search.index/active-table)) (catch Exception _ :already-deleted)))
+          (is (try (t2/delete! (search.appdb.storage/active-table)) (catch Exception _ :already-deleted)))
           (is (empty? (search-results 200)))
           (mt/user-http-request :crowberto :post 200 "search/force-reindex")
           (is (loop [attempts-left 5]
-                (if (and (pos? (try (t2/count (search.index/active-table)) (catch Exception _ 0)))
+                (if (and (pos? (try (t2/count (search.appdb.storage/active-table)) (catch Exception _ 0)))
                          (some (comp #{id} :id) (search-results 200)))
                   ::success
                   (when (pos? attempts-left)

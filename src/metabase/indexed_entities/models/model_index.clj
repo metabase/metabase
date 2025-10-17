@@ -26,7 +26,7 @@
 
 (derive :model/ModelIndex :hook/created-at-timestamped?)
 ;; TODO disabled due to issues having an update hook causes, seemingly due to a toucan2 bug
-#_(derive :model/ModelIndex :hook/search-index)
+#_(derive :model/ModelIndex :hook/search-indexed)
 
 (t2/deftransforms :model/ModelIndex
   ;; TODO (Cam 10/1/25) -- update these to normalize to MBQL 5 Field refs (or stop storing field refs like this in the
@@ -206,4 +206,4 @@
                   :collection  [:model/Collection [:= :collection.id :model.collection_id]]}})
 
 ;; TODO resolve the toucan2 issue preventing us from using this hook
-(underive :model/ModelIndexValue :hook/search-index)
+(underive :model/ModelIndexValue :hook/search-indexed)

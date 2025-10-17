@@ -1,4 +1,4 @@
-(ns metabase.search.appdb.index-test
+(ns metabase.search.appdb.storage-test
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -7,7 +7,7 @@
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.search.appdb.index :as search.index]
+   [metabase.search.appdb.storage :as search.appdb.storage]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
@@ -26,7 +26,7 @@
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
 (defn- index-hits [term]
-  (count (search.index/search term)))
+  (count (search.appdb.storage/search term)))
 
 (defn- now []
   ;; Truncate to milliseconds as precision may be lost when roundtripping to the database.
@@ -64,7 +64,7 @@
 
 (deftest idempotent-test
   (with-index
-    (let [count-rows  (fn [] (t2/count (search.index/active-table)))
+    (let [count-rows  (fn [] (t2/count (search.appdb.storage/active-table)))
           rows-before (count-rows)]
       (search.engine/reindex! :search.engine/appdb {:in-place? true})
       (is (= rows-before (count-rows))))))
@@ -74,21 +74,21 @@
     (with-index
       (testing "The index is updated when models change"
        ;; Has a second entry is "Revenue Project(ions)", when using English dictionary
-        (is (= (if fulltext? 2 1) (count (search.index/search "Projected Revenue"))))
-        (is (= 0 (count (search.index/search "Protected Avenue"))))
+        (is (= (if fulltext? 2 1) (count (search.appdb.storage/search "Projected Revenue"))))
+        (is (= 0 (count (search.appdb.storage/search "Protected Avenue"))))
         (t2/update! :model/Card {:name "Projected Revenue"} {:name "Protected Avenue"})
-        (is (= (if fulltext? 1 0) (count (search.index/search "Projected Revenue"))))
-        (is (= 1 (count (search.index/search "Protected Avenue"))))
+        (is (= (if fulltext? 1 0) (count (search.appdb.storage/search "Projected Revenue"))))
+        (is (= 1 (count (search.appdb.storage/search "Protected Avenue"))))
 
        ;; Delete hooks are remove for now, over performance concerns.
        ;(t2/delete! :model/Card :name "Protected Avenue")
-        #_(is (= 0 #_1 (count (search.index/search "Projected Revenue"))))
-        #_(is (= 0 (count (search.index/search "Protected Avenue"))))))))
+        #_(is (= 0 #_1 (count (search.appdb.storage/search "Projected Revenue"))))
+        #_(is (= 0 (count (search.appdb.storage/search "Protected Avenue"))))))))
 
 (deftest related-update-test
   (with-index
     (testing "The index is updated when model dependencies change"
-      (let [index-table    (search.index/active-table)
+      (let [index-table    (search.appdb.storage/active-table)
             table-id       (t2/select-one-pk :model/Table :name "Indexed Table")
             legacy-input   #(-> (t2/select-one [index-table :legacy_input] :model "table" :model_id (str table-id))
                                 :legacy_input
@@ -105,22 +105,22 @@
     (with-fulltext-filtering
       (testing "It does not match partial words"
       ;; does not include revenue
-        (is (= #{"venues"} (into #{} (comp (map second) (map u/lower-case-en)) (search.index/search "venue")))))
+        (is (= #{"venues"} (into #{} (comp (map second) (map u/lower-case-en)) (search.appdb.storage/search "venue")))))
 
     ;; no longer works without using the english dictionary
       (testing "Unless their lexemes are matching"
         (doseq [[a b] [["revenue" "revenues"]
                        ["collect" "collection"]]]
-          (is (= (search.index/search a)
-                 (search.index/search b)))))
+          (is (= (search.appdb.storage/search a)
+                 (search.appdb.storage/search b)))))
 
       (testing "Or we match a completion of the final word"
-        (is (seq (search.index/search "sat")))
-        (is (seq (search.index/search "satisf")))
-        (is (seq (search.index/search "employee sat")))
-        (is (seq (search.index/search "satisfaction empl")))
-        (is (empty? (search.index/search "sat employee")))
-        (is (empty? (search.index/search "emp satisfaction")))))))
+        (is (seq (search.appdb.storage/search "sat")))
+        (is (seq (search.appdb.storage/search "satisf")))
+        (is (seq (search.appdb.storage/search "employee sat")))
+        (is (seq (search.appdb.storage/search "satisfaction empl")))
+        (is (empty? (search.appdb.storage/search "sat employee")))
+        (is (empty? (search.appdb.storage/search "emp satisfaction")))))))
 
 (deftest either-test
   (with-index
@@ -164,10 +164,10 @@
     (#'search.ingestion/spec-index-reducible model where-clause))))
 
 (defn fetch [model & clauses]
-  (apply t2/select (search.index/active-table) :model model clauses))
+  (apply t2/select (search.appdb.storage/active-table) :model model clauses))
 
 (defn fetch-one [model & clauses]
-  (apply t2/select-one (search.index/active-table) :model model clauses))
+  (apply t2/select-one (search.appdb.storage/active-table) :model model clauses))
 
 (defn ingest-then-fetch!
   [model entity-name]
@@ -506,22 +506,22 @@
       (try
         (doseq [tn (cons related-table obsolete-tables)]
           (try
-            (search.index/create-table! tn)
+            (search.appdb.storage/create-table! tn)
             ;; They might already exist
             (catch Exception _)))
         (testing "Given various obsolete search indexes"
-          (is (every? #'search.index/exists? (cons related-table obsolete-tables))))
-        (search.index/reset-index!)
+          (is (every? #'search.appdb.storage/exists? (cons related-table obsolete-tables))))
+        (search.appdb.storage/reset-index!)
         (testing "We can create new index"
-          (is (#'search.index/exists? (search.index/active-table))))
+          (is (#'search.appdb.storage/exists? (search.appdb.storage/active-table))))
         (testing "... without destroying any related non-index tables"
-          (is (#'search.index/exists? related-table)))
+          (is (#'search.appdb.storage/exists? related-table)))
         (testing "... and we clear out all the obsolete tables"
-          (is (every? (comp not #'search.index/exists?) obsolete-tables)))
+          (is (every? (comp not #'search.appdb.storage/exists?) obsolete-tables)))
         (testing "... and there is no more pending table"
-          (is (not (#'search.index/exists? (#'search.index/pending-table)))))
+          (is (not (#'search.appdb.storage/exists? (#'search.appdb.storage/pending-table)))))
         (finally
-          (#'search.index/drop-table! related-table))))))
+          (#'search.appdb.storage/drop-table! related-table))))))
 
 ;; We don't currently track database deletes in realtime in the search index.
 ;; To do so, we would make use of the following mechanism to find downstream elements deleted by a cascade.
@@ -553,25 +553,25 @@
                    table->descendants))))))
 
 (defn- active-table-after [simulated-delay-ns]
-  (mt/with-dynamic-fn-redefs [search.index/now (constantly (+ simulated-delay-ns (System/nanoTime)))]
-    (search.index/active-table)))
+  (mt/with-dynamic-fn-redefs [search.appdb.storage/now (constantly (+ simulated-delay-ns (System/nanoTime)))]
+    (search.appdb.storage/active-table)))
 
 (deftest auto-refresh-test
   (when (search/supports-index?)
-    (binding [search.index/*index-version-id* "auto-refresh-test"]
+    (binding [search.appdb.storage/*index-version-id* "auto-refresh-test"]
       (try
-        (reset! @#'search.index/next-sync-at nil)
-        (search.index/reset-index!)
-        (let [active-before (search.index/active-table)
-              active-after  (search.index/gen-table-name)
-              pending-after (search.index/gen-table-name)
-              period        @#'search.index/sync-tracking-period
-              version       @#'search.index/*index-version-id*]
+        (reset! @#'search.appdb.storage/next-sync-at nil)
+        (search.appdb.storage/reset-index!)
+        (let [active-before (search.appdb.storage/active-table)
+              active-after  (search.appdb.storage/gen-table-name)
+              pending-after (search.appdb.storage/gen-table-name)
+              period        @#'search.appdb.storage/sync-tracking-period
+              version       @#'search.appdb.storage/*index-version-id*]
           (search-index-metadata/create-pending! :appdb version active-after)
-          (search.index/create-table! active-after)
+          (search.appdb.storage/create-table! active-after)
           (search-index-metadata/active-pending! :appdb version)
           (search-index-metadata/create-pending! :appdb version pending-after)
-          (search.index/create-table! pending-after)
+          (search.appdb.storage/create-table! pending-after)
           (testing "We continue using our cached references for some time"
             (is (= active-before (active-table-after 100)))
             (is (= active-before (active-table-after (/ period 2)))))
@@ -579,65 +579,65 @@
           (is (= active-after (active-table-after period))))
         (finally
           (t2/delete! :model/SearchIndexMetadata :version "auto-refresh-test")
-          (#'search.index/delete-obsolete-tables!))))))
+          (#'search.appdb.storage/delete-obsolete-tables!))))))
 
 (deftest pending-table-expiry-test
   (when (search/supports-index?)
-    (binding [search.index/*index-version-id* "pending-timeout-test"]
+    (binding [search.appdb.storage/*index-version-id* "pending-timeout-test"]
       (try
-        (reset! @#'search.index/next-sync-at nil)
-        (search.index/reset-index!)
-        (let [active-table (search.index/active-table)
-              pending-old  (search.index/gen-table-name)
-              pending-new  (search.index/gen-table-name)
-              version      @#'search.index/*index-version-id*]
+        (reset! @#'search.appdb.storage/next-sync-at nil)
+        (search.appdb.storage/reset-index!)
+        (let [active-table (search.appdb.storage/active-table)
+              pending-old  (search.appdb.storage/gen-table-name)
+              pending-new  (search.appdb.storage/gen-table-name)
+              version      @#'search.appdb.storage/*index-version-id*]
 
           ;; Set up old pending table (more than a day old)
-          (search.index/create-table! pending-old)
+          (search.appdb.storage/create-table! pending-old)
           (search-index-metadata/create-pending! :appdb version pending-old)
           (t2/update! :model/SearchIndexMetadata
                       {:index_name (name pending-old)}
                       {:created_at (t/minus (t/offset-date-time) (t/days 2))})
-          (#'search.index/sync-tracking-atoms!)
+          (#'search.appdb.storage/sync-tracking-atoms!)
 
           (testing "Active table is returned"
-            (is (= active-table (search.index/active-table))))
+            (is (= active-table (search.appdb.storage/active-table))))
 
           (testing "Old pending table is ignored (more than a day old)"
-            (is (nil? (#'search.index/pending-table))))
+            (is (nil? (#'search.appdb.storage/pending-table))))
 
           ;; Create new pending table (less than a day old)
-          (search.index/create-table! pending-new)
+          (search.appdb.storage/create-table! pending-new)
           (search-index-metadata/create-pending! :appdb version pending-new)
-          (#'search.index/sync-tracking-atoms!)
+          (#'search.appdb.storage/sync-tracking-atoms!)
 
           (testing "New pending table is included (less than a day old)"
-            (is (= active-table (search.index/active-table)))
-            (is (= pending-new (#'search.index/pending-table)))))
+            (is (= active-table (search.appdb.storage/active-table)))
+            (is (= pending-new (#'search.appdb.storage/pending-table)))))
         (finally
           (t2/delete! :model/SearchIndexMetadata :version "pending-timeout-test")
-          (#'search.index/delete-obsolete-tables!))))))
+          (#'search.appdb.storage/delete-obsolete-tables!))))))
 
 (deftest when-index-created
   (when (search/supports-index?)
-    (binding [search.index/*index-version-id* "index-age-test"]
+    (binding [search.appdb.storage/*index-version-id* "index-age-test"]
       (try
-        (let [table-name (search.index/gen-table-name)
-              version @#'search.index/*index-version-id*]
+        (let [table-name (search.appdb.storage/gen-table-name)
+              version @#'search.appdb.storage/*index-version-id*]
 
           (testing "Nil age if no active table"
-            (is (nil? (#'search.index/when-index-created))))
+            (is (nil? (#'search.appdb.storage/when-index-created))))
 
           (testing "Returns age of active table"
             (let [update-time (t/truncate-to (t/minus (t/offset-date-time) (t/days 2)) :millis)]
-              (search.index/create-table! table-name)
+              (search.appdb.storage/create-table! table-name)
               (search-index-metadata/create-pending! :appdb version table-name)
               (search-index-metadata/active-pending! :appdb version)
               (t2/update! :model/SearchIndexMetadata
                           :index_name  (name table-name)
                           {:created_at  update-time})
 
-              (is (= update-time (t/truncate-to (#'search.index/when-index-created) :millis))))))
+              (is (= update-time (t/truncate-to (#'search.appdb.storage/when-index-created) :millis))))))
         (finally
           (t2/delete! :model/SearchIndexMetadata :version "index-age-test")
-          (#'search.index/delete-obsolete-tables!))))))
+          (#'search.appdb.storage/delete-obsolete-tables!))))))

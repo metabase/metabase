@@ -34,7 +34,7 @@
   ;;; TODO: this is wrong, but what should it be?
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/search-index))
+  (derive :hook/search-indexed))
 
 (t2/deftransforms :model/ModerationReview
   {:moderated_item_type mi/transform-keyword})

@@ -7,9 +7,9 @@
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.analytics.core :as analytics]
    [metabase.app-db.core :as mdb]
-   [metabase.search.appdb.core :as appdb]
+   [metabase.search.appdb.engine :as appdb]
    [metabase.search.engine :as search.engine]
-   [metabase.search.in-place.legacy :as in-place.legacy]
+   [metabase.search.in-place.engine :as in-place.legacy]
    [metabase.search.in-place.scoring :as in-place.scoring]
    [metabase.search.settings :as search.settings]
    [metabase.test :as mt]))

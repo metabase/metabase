@@ -73,7 +73,7 @@
 
 (doto :model/Revision
   (derive :metabase/model)
-  (derive :hook/search-index))
+  (derive :hook/search-indexed))
 
 (t2/deftransforms :model/Revision
   {:object mi/transform-json})

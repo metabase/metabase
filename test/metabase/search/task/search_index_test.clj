@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [honey.sql.helpers :as sql.helpers]
-   [metabase.search.appdb.index :as search.index]
+   [metabase.search.appdb.storage :as search.appdb.storage]
    [metabase.search.core :as search]
    [metabase.search.task.search-index :as task]
    [metabase.search.test-util :as search.tu]
@@ -12,12 +12,12 @@
 
 ;; TODO this is coupled to appdb engines at the moment
 (defn- index-size []
-  (t2/count (search.index/active-table)))
+  (t2/count (search.appdb.storage/active-table)))
 
 (deftest index!-test
   (search.tu/with-temp-index-table
    ;; TODO this is coupled to appdb engines at the moment
-    (t2/query (sql.helpers/drop-table (search.index/active-table)))
+    (t2/query (sql.helpers/drop-table (search.appdb.storage/active-table)))
     (testing "It can recreate the index from scratch"
      ;; May return falsey if there is nothing to index.
       (is (task/init!))
@@ -28,11 +28,11 @@
 (deftest reindex!-test
   (search.tu/with-temp-index-table
    ;; TODO this is coupled to appdb engines at the moment
-    (t2/query (sql.helpers/drop-table (search.index/active-table)))
+    (t2/query (sql.helpers/drop-table (search.appdb.storage/active-table)))
     (testing "It can recreate the index from scratch"
       (is (search/reindex! {:async? false}))
       (let [initial-size (index-size)
-            table-name (search.index/active-table)]
+            table-name (search.appdb.storage/active-table)]
         (is (pos? initial-size))
         (t2/delete! table-name (t2/select-one-pk table-name))
         (is (= (dec initial-size) (index-size)))

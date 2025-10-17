@@ -1,4 +1,4 @@
-(ns metabase.search.appdb.index
+(ns metabase.search.appdb.storage
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]

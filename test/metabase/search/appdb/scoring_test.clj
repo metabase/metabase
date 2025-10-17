@@ -4,9 +4,9 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
-   [metabase.search.appdb.index :as search.index]
    [metabase.search.appdb.scoring :as scoring]
    [metabase.search.appdb.specialization.api :as specialization]
+   [metabase.search.appdb.storage :as search.appdb.storage]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
    [metabase.search.ingestion :as search.ingestion]
@@ -28,8 +28,8 @@
   {:style/indent :defn}
   [entities & body]
   `(search.tu/with-temp-index-table
-     (#'specialization/batch-upsert! (search.index/active-table)
-                                     (map (comp #'search.index/document->entry
+     (#'specialization/batch-upsert! (search.appdb.storage/active-table)
+                                     (map (comp #'search.appdb.storage/document->entry
                                                 #'search.ingestion/->document)
                                           ~entities))
      ~@body))

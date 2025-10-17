@@ -3,7 +3,7 @@
    [metabase.api.common :as api]
    [metabase.permissions.util :as perms-util]
    [metabase.request.core :as request] ;; For now, this is specialized to the appdb engine, but we should be able to generalize it to all engines.
-   [metabase.search.appdb.index :as search.index]
+   [metabase.search.appdb.storage :as search.appdb.storage]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
@@ -25,7 +25,7 @@
   "Create a temporary index table for the duration of the body."
   [& body]
   `(when (search/supports-index?)
-     (search.index/with-temp-index-table
+     (search.appdb.storage/with-temp-index-table
       ;; We need ingestion to happen on the same thread so that it uses the right search index.
        (with-sync-search-indexing
          ~@body))))

@@ -353,7 +353,7 @@
                    (update :visibility #(or % :all))
                    (update :attrs #(merge ~default-attrs %)))]
      (validate-spec! spec#)
-     (derive (:model spec#) :hook/search-index)
+     (derive (:model spec#) :hook/search-indexed)
      (defmethod spec* ~search-model [~'_] spec#)))
 
 ;; TODO we should memoize this for production (based on spec values)
@@ -390,10 +390,10 @@
           (get (model-hooks) (t2/model instance)))))
 
 (comment
-  (doseq [d (descendants :hook/search-index)]
-    (underive d :hook/search-index))
+  (doseq [d (descendants :hook/search-indexed)]
+    (underive d :hook/search-indexed))
   (doseq [d (keys (model-hooks))]
-    (derive d :hook/search-index))
+    (derive d :hook/search-indexed))
 
   (search-models-to-update (t2/select-one :model/Card))
   (methods spec)

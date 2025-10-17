@@ -1,4 +1,4 @@
-(ns metabase.search.in-place.legacy
+(ns metabase.search.in-place.engine
   (:require
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]

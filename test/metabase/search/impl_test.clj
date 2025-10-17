@@ -8,11 +8,11 @@
    [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.queries.api.card :as api.card]
-   [metabase.search.appdb.index :as search.index]
+   [metabase.search.appdb.storage :as search.appdb.storage]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
    [metabase.search.impl :as search.impl]
-   [metabase.search.in-place.legacy :as search.legacy]
+   [metabase.search.in-place.engine :as search.engines.in-place]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -53,7 +53,7 @@
              [:like [:lower :model_name]        "%foo%"] [:inline 0]
              [:like [:lower :dataset_query]     "%foo%"] [:inline 0]
              :else [:inline 1]]]
-           (search.legacy/order-clause "Foo")))))
+           (search.engines.in-place/order-clause "Foo")))))
 
 (deftest search-db-call-count-test
   (let [search-string (mt/random-name)]
@@ -282,7 +282,7 @@
 
 (deftest old-values-removed-from-index
   (when (search/supports-index?)
-    (#'search.index/sync-tracking-atoms!)
+    (#'search.appdb.storage/sync-tracking-atoms!)
     (let [search-term (str (random-uuid))]
       (binding [search.ingestion/*force-sync* true]
         (mt/with-temp

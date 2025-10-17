@@ -22,7 +22,7 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   ;; Disabled for performance reasons, see update-dashboard-card!-call-count-test
-  #_(derive :hook/search-index))
+  #_(derive :hook/search-indexed))
 
 (t2/deftransforms :model/DashboardCard
   {:parameter_mappings     parameters/transform-parameter-mappings

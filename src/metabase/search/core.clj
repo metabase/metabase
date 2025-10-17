@@ -3,13 +3,13 @@
   (:require
    [metabase.analytics.core :as analytics]
    [metabase.analytics.prometheus :as prometheus]
-   [metabase.search.appdb.core :as search.engines.appdb]
+   [metabase.search.appdb.engine :as search.engines.appdb]
    [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
    [metabase.search.impl :as search.impl]
-   [metabase.search.in-place.legacy :as search.legacy]
+   [metabase.search.in-place.engine :as search.engines.in-place]
    [metabase.search.ingestion :as search.ingestion]
-   [metabase.search.semantic.core :as search.engines.semantic]
+   [metabase.search.semantic.engine :as search.engines.semantic]
    [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
    [metabase.util :as u]
@@ -25,7 +25,7 @@
   search.engine/keep-me
   search.engines.appdb/keep-me
   search.engines.semantic/keep-me
-  search.legacy/keep-me
+  search.engines.in-place/keep-me
 
   search.config/keep-me
   search.impl/keep-me)
