@@ -63,7 +63,8 @@
 
 (defmethod check-permissions-for-model :transform
   [search-ctx instance]
-  (and (premium-features/enable-transforms?)
+  (and (:is-superuser? search-ctx)
+       (premium-features/enable-transforms?)
        (if (:archived? search-ctx)
          (can-write? search-ctx instance)
          true)))
