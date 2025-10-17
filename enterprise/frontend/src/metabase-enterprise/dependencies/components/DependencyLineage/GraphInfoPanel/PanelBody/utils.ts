@@ -57,8 +57,8 @@ export function getNodeSchemaInfo(
 
   if (tableInfo != null) {
     return {
-      label: tableInfo.display_name,
-      icon: "database",
+      label: tableInfo.schema,
+      icon: "schema",
       url: Urls.dataModelSchema(tableInfo.db_id, tableInfo.schema),
     };
   }
