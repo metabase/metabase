@@ -1794,7 +1794,7 @@ LIMIT
     );
 
     function visitCommonLibrary(path = "common.py") {
-      cy.visit(`/admin/transforms/library/${path}`);
+      cy.visit(`/bench/transforms/library/${path}`);
     }
 
     function getLibraryEditorHeader() {
@@ -2808,15 +2808,15 @@ function getEndAtFilterWidget() {
 }
 
 function visitTransformListPage() {
-  return cy.visit("/admin/transforms");
+  return cy.visit("/bench/transforms");
 }
 
 function visitJobListPage() {
-  return cy.visit("/admin/transforms/jobs");
+  return cy.visit("/bench/jobs");
 }
 
 function visitRunListPage() {
-  return cy.visit("/admin/transforms/runs");
+  return cy.visit("/bench/runs");
 }
 
 function runTransformAndWaitForSuccess() {
