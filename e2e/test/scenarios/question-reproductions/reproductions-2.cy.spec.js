@@ -638,12 +638,14 @@ describe("issue 43216", () => {
     H.newButton("Question").click();
     H.entityPickerModal().within(() => {
       H.entityPickerModalTab("Collections").click();
+      H.waitForLoaderToBeRemoved();
       cy.findByText("Source question").click();
     });
     H.saveQuestion("Target question");
 
     cy.log("Update source question");
-    H.commandPaletteButton().click();
+    H.commandPaletteSearch("source", false); // intentionally use search instead of recents for deterministic order
+    H.waitForLoaderToBeRemoved();
     H.commandPalette().findByText("Source question").click();
     cy.findByTestId("native-query-editor-container")
       .findByText("Open Editor")
