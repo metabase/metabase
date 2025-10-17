@@ -5,8 +5,9 @@ import { Card } from "metabase/ui";
 import type { DependencyEntry, DependencyNode } from "metabase-types/api";
 
 import { EntryButton } from "./EntryButton";
+import { EntryPickerModal } from "./EntryPickerModal";
 import { EntrySearchInput } from "./EntrySearchInput";
-import { DEFAULT_SEARCH_MODELS } from "./constants";
+import { SEARCH_MODELS } from "./constants";
 
 type GraphEntryInputProps = {
   node: DependencyNode | undefined;
@@ -19,26 +20,41 @@ export function GraphEntryInput({
   isGraphFetching,
   onEntryChange,
 }: GraphEntryInputProps) {
-  const [searchModels, setSearchModels] = useState(DEFAULT_SEARCH_MODELS);
-  const [_isPickerOpened, { open: openPicker }] = useDisclosure();
+  const [searchModels, setSearchModels] = useState(SEARCH_MODELS);
+  const [isPickerOpened, { open: openPicker, close: closePicker }] =
+    useDisclosure();
+
+  const handlePickerChange = (newEntry: DependencyEntry) => {
+    closePicker();
+    onEntryChange(newEntry);
+  };
 
   return (
-    <Card p={0} bdrs={0}>
-      {node != null ? (
-        <EntryButton
-          node={node}
-          onEntryChange={onEntryChange}
-          onPickerOpen={openPicker}
-        />
-      ) : (
-        <EntrySearchInput
-          searchModels={searchModels}
-          isGraphFetching={isGraphFetching}
-          onEntryChange={onEntryChange}
-          onSearchModelsChange={setSearchModels}
-          onPickerOpen={openPicker}
+    <>
+      <Card p={0} bdrs={0}>
+        {node != null ? (
+          <EntryButton
+            node={node}
+            onEntryChange={onEntryChange}
+            onPickerOpen={openPicker}
+          />
+        ) : (
+          <EntrySearchInput
+            searchModels={searchModels}
+            isGraphFetching={isGraphFetching}
+            onEntryChange={onEntryChange}
+            onSearchModelsChange={setSearchModels}
+            onPickerOpen={openPicker}
+          />
+        )}
+      </Card>
+      {isPickerOpened && (
+        <EntryPickerModal
+          value={node}
+          onChange={handlePickerChange}
+          onClose={closePicker}
         />
       )}
-    </Card>
+    </>
   );
 }

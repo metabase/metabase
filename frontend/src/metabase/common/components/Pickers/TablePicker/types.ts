@@ -36,6 +36,8 @@ export type TablePickerStatePath = [
   TableId | undefined,
 ];
 
+export type TablePickerValueItem = TableItem;
+
 export type TablePickerFolderItem = DatabaseItem | SchemaItem;
 
-export type TablePickerItem = TablePickerFolderItem | TableItem;
+export type TablePickerItem = TablePickerValueItem | TablePickerFolderItem;

@@ -1,7 +1,7 @@
 import type { MouseEvent } from "react";
 import { t } from "ttag";
 
-import { Button, FixedSizeIcon, UnstyledButton } from "metabase/ui";
+import { Button, FixedSizeIcon } from "metabase/ui";
 import type { DependencyEntry, DependencyNode } from "metabase-types/api";
 
 import { getNodeIcon, getNodeLabel } from "../../utils";
@@ -29,9 +29,12 @@ export function EntryButton({
       }
       rightSection={
         node ? (
-          <UnstyledButton aria-label={t`Remove`} onClick={handleIconClick}>
-            <FixedSizeIcon name="close" display="block" />
-          </UnstyledButton>
+          <FixedSizeIcon
+            name="close"
+            display="block"
+            aria-label={t`Remove`}
+            onClick={handleIconClick}
+          />
         ) : undefined
       }
       onClick={onPickerOpen}
