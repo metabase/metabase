@@ -389,15 +389,13 @@
 
 (defn- decode-card-id
   [unsigned-token original-card-id]
-  (if (get-in unsigned-token [:resource :dashboard])
-    (do
-      (when-not original-card-id
+  (if-let [dashboard-id (get-in unsigned-token [:resource :dashboard])]
+    (u/prog1 original-card-id
+      (when-not <>
         (throw (ex-info "original-card-id is required for dashboard resources"
                         {:status-code 400})))
-      (let [dashboard-id (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
-        (api.embed.common/check-embedding-enabled-for-dashboard dashboard-id)
-        (api.embed.common/check-card-belongs-to-dashboard original-card-id dashboard-id)
-        original-card-id))
+      (api.embed.common/check-embedding-enabled-for-dashboard dashboard-id)
+      (api.embed.common/check-card-belongs-to-dashboard <> dashboard-id))
     (u/prog1 (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
       (api.embed.common/check-embedding-enabled-for-card <>))))
 
@@ -422,9 +420,9 @@
    query :- [:map
              [:original_card_id {:optional true} [:maybe ms/PositiveInt]]
              [:database {:optional true} [:maybe :int]]]]
-  (let [unsigned-token (unsign-and-translate-ids token)
+  (let [unsigned-token   (unsign-and-translate-ids token)
         original-card-id (:original_card_id query)
-        card-id (decode-card-id unsigned-token original-card-id)]
+        card-id          (decode-card-id unsigned-token original-card-id)]
     (api.embed.common/process-query-for-card-with-params
      :export-format    :api
      :card-id          card-id
@@ -454,10 +452,10 @@
    query :- [:map
              [:original_card_id {:optional true} [:maybe ms/PositiveInt]]
              [:database {:optional true} [:maybe :int]]]]
-  (let [unsigned-token (unsign-and-translate-ids token)
+  (let [unsigned-token   (unsign-and-translate-ids token)
         original-card-id (:original_card_id query)
-        card-id (decode-card-id unsigned-token original-card-id)
-        params (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:params])]
-    (binding [api/*current-user-permissions-set* (atom #{"/"})
+        card-id          (decode-card-id unsigned-token original-card-id)
+        params           (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:params])]
+    (binding [api/*current-user-permissions-set* (delay #{"/"})
               api/*is-superuser?* true]
       (qp.card/fetch-subset-query-metadata card-id params query))))

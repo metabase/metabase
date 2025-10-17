@@ -394,15 +394,18 @@
         (if subset-query
           (if-let [subset-query (verified-subset-query query subset-query)]
             ;; TODO (BT) should :visualization-settings in info be removed?
-            (runner subset-query info)
+            (runner subset-query (cond-> info
+                                   api/*current-user-id* (assoc :query-hash (qp.util/query-hash subset-query))))
             (throw (ex-info (tru "Invalid subset query: Card {0} does not allow running {1}."
                                  card-id
                                  (pr-str subset-query))
-                            {:type        qp.error-type/invalid-query
-                             :card-id     card-id
-                             :query       subset-query
-                             :status-code 400})))
-          (runner query info))))))
+                            {:type           qp.error-type/invalid-query
+                             :card-id        card-id
+                             :original-query query
+                             :query          subset-query
+                             :status-code    400})))
+          (runner query (cond-> info
+                          api/*current-user-id* (assoc :query-hash (qp.util/query-hash query)))))))))
 
 (defn fetch-subset-query-metadata
   "Given a card-id, parameters and a subset query, first verifies that the query is a valid subset of the card's
