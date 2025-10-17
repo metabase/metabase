@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { jt, t } from "ttag";
 
 import {
@@ -9,10 +9,9 @@ import {
   useGetAdminSettingsDetailsQuery,
   useGetSettingsQuery,
 } from "metabase/api";
-import { useAdminSetting } from "metabase/api/utils";
-import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useSetting } from "metabase/common/hooks";
+import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import {
   Form,
   FormErrorMessage,
@@ -41,7 +40,6 @@ import {
   useUpdateRemoteSyncSettingsMutation,
 } from "metabase-enterprise/api/remote-sync";
 import type {
-  EnterpriseSettings,
   RemoteSyncConfigurationSettings,
   SettingDefinition,
 } from "metabase-types/api";
@@ -62,16 +60,46 @@ export const RemoteSyncAdminSettings = (): JSX.Element => {
     refetchOnFocus: true,
     refetchOnMountOrArgChange: true,
   });
-  const [isDeactivateModalOpen, setIsDeactivateModalOpen] = useState(false);
   const [importChanges, { isLoading: isImporting }] =
     useImportChangesMutation();
+  const pendingConfirmationSettingsRef =
+    useRef<RemoteSyncConfigurationSettings | null>(null);
 
-  const { updateSettings } = useAdminSetting("remote-sync-url");
+  const {
+    show: showChangeBranchConfirmation,
+    modalContent: changeBranchConfirmationModal,
+  } = useConfirmation();
 
   const handleSubmit = useCallback(
-    (values: RemoteSyncConfigurationSettings) =>
-      updateRemoteSyncSettings(values).unwrap(),
-    [updateRemoteSyncSettings],
+    (values: RemoteSyncConfigurationSettings) => {
+      const didBranchChange =
+        values[BRANCH_KEY] !== settingValues?.[BRANCH_KEY];
+
+      if (didBranchChange) {
+        pendingConfirmationSettingsRef.current = values;
+        showChangeBranchConfirmation({
+          title: t`Switch branches?`,
+          message: t`The synced collection will update to match the new branch. Questions that exist in the current branch but not the new one will be removed from any dashboards or content that reference them permanently, even if you switch back.`,
+          confirmButtonText: t`Continue`,
+          confirmButtonProps: {
+            variant: "filled",
+            color: "danger",
+          },
+          onConfirm: () => {
+            if (pendingConfirmationSettingsRef.current) {
+              updateRemoteSyncSettings(pendingConfirmationSettingsRef.current);
+              pendingConfirmationSettingsRef.current = null;
+            }
+          },
+          onCancel: () => {
+            pendingConfirmationSettingsRef.current = null;
+          },
+        });
+        return;
+      }
+      updateRemoteSyncSettings(values);
+    },
+    [settingValues, updateRemoteSyncSettings, showChangeBranchConfirmation],
   );
 
   const initialValues = useMemo(() => {
@@ -96,18 +124,6 @@ export const RemoteSyncAdminSettings = (): JSX.Element => {
 
   const isGitSyncEnabled = useSetting("remote-sync-enabled");
   const isDirty = !!dirtyData?.dirty?.length;
-
-  const handleDeactivate = useCallback(async () => {
-    await updateSettings({
-      "remote-sync-enabled": null,
-      "remote-sync-url": null,
-      "remote-sync-token": null,
-      "remote-sync-type": null,
-      "remote-sync-auto-import": null,
-      "remote-sync-branch": null,
-    } as Partial<EnterpriseSettings>);
-    setIsDeactivateModalOpen(false);
-  }, [updateSettings]);
 
   const handlePullChanges = useCallback(async () => {
     const currentBranch = settingValues?.[BRANCH_KEY] || "main";
@@ -253,14 +269,7 @@ export const RemoteSyncAdminSettings = (): JSX.Element => {
         </Box>
       </SettingsSection>
 
-      <ConfirmModal
-        opened={isDeactivateModalOpen}
-        title={t`Turn off Git Sync?`}
-        message={t`This will remove all Git sync settings and stop backing up your content to Git.`}
-        confirmButtonText={t`Turn Off`}
-        onConfirm={handleDeactivate}
-        onClose={() => setIsDeactivateModalOpen(false)}
-      />
+      {changeBranchConfirmationModal}
     </SettingsPageWrapper>
   );
 };
