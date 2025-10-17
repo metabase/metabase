@@ -1,5 +1,5 @@
 import type { Edge } from "@xyflow/react";
-import { match } from "ts-pattern";
+import { P, match } from "ts-pattern";
 
 import * as Urls from "metabase/lib/urls";
 import type { IconName } from "metabase/ui";
@@ -12,6 +12,7 @@ import type {
   DependencyId,
   DependencyNode,
   DependencyType,
+  VisualizationDisplay,
 } from "metabase-types/api";
 
 import type { EdgeId, GraphData, NodeId, NodeType } from "./types";
@@ -75,13 +76,33 @@ export function getNodeLabel(node: DependencyNode) {
 }
 
 export function getNodeIcon(node: DependencyNode): IconName {
-  return match<DependencyNode, IconName>(node)
+  return getNodeIconWithType(
+    node.type,
+    node.type === "card" ? node.data.type : undefined,
+    node.type === "card" ? node.data.display : undefined,
+  );
+}
+
+type NodeIconData = {
+  type: DependencyType;
+  cardType?: CardType;
+  cardDisplay?: VisualizationDisplay;
+};
+
+export function getNodeIconWithType(
+  type: DependencyType,
+  cardType?: CardType,
+  cardDisplay?: VisualizationDisplay,
+): IconName {
+  return match<NodeIconData, IconName>({ type, cardType, cardDisplay })
     .with(
-      { type: "card", data: { type: "question" } },
-      (node) => visualizations.get(node.data.display)?.iconName ?? "table2",
+      { type: "card", cardType: "question", cardDisplay: P.nonNullable },
+      ({ cardDisplay }) =>
+        visualizations.get(cardDisplay)?.iconName ?? "table2",
     )
-    .with({ type: "card", data: { type: "model" } }, () => "model")
-    .with({ type: "card", data: { type: "metric" } }, () => "metric")
+    .with({ type: "card", cardType: "model" }, () => "model")
+    .with({ type: "card", cardType: "metric" }, () => "metric")
+    .with({ type: "card" }, () => "table2")
     .with({ type: "table" }, () => "table")
     .with({ type: "transform" }, () => "refresh_downstream")
     .with({ type: "snippet" }, () => "sql")

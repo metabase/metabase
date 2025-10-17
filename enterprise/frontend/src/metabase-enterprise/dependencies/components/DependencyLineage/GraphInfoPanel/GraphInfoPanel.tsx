@@ -11,7 +11,7 @@ type GraphInfoPanelProps = {
 
 export function GraphInfoPanel({ node, onClose }: GraphInfoPanelProps) {
   return (
-    <Card className={S.root} shadow="none" withBorder>
+    <Card className={S.root} withBorder>
       <PanelHeader node={node} onClose={onClose} />
     </Card>
   );

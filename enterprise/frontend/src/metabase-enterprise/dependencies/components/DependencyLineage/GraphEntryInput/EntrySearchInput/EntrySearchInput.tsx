@@ -2,10 +2,18 @@ import { useDebouncedValue } from "@mantine/hooks";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useSearchQuery } from "metabase/api";
+import {
+  useListRecentsQuery,
+  useLogRecentItemMutation,
+  useSearchQuery,
+} from "metabase/api";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { FixedSizeIcon, Loader, Select } from "metabase/ui";
-import type { DependencyEntry, SearchModel } from "metabase-types/api";
+import {
+  type DependencyEntry,
+  type SearchModel,
+  isActivityModel,
+} from "metabase-types/api";
 
 import { SearchModelPicker } from "./SearchModelPicker";
 import { getSelectOptions } from "./utils";
@@ -15,6 +23,7 @@ type EntrySearchInputProps = {
   isGraphFetching: boolean;
   onEntryChange: (entry: DependencyEntry) => void;
   onSearchModelsChange: (searchModels: SearchModel[]) => void;
+  onPickerOpen: () => void;
 };
 
 export function EntrySearchInput({
@@ -22,6 +31,7 @@ export function EntrySearchInput({
   isGraphFetching,
   onEntryChange,
   onSearchModelsChange,
+  onPickerOpen,
 }: EntrySearchInputProps) {
   const [searchValue, setSearchValue] = useState("");
   const [searchQuery] = useDebouncedValue(
@@ -29,6 +39,15 @@ export function EntrySearchInput({
     SEARCH_DEBOUNCE_DURATION,
   );
   const isSearchEnabled = searchQuery.length > 0;
+
+  const { data: recentItems } = useListRecentsQuery(
+    {
+      context: ["selections"],
+    },
+    {
+      skip: isSearchEnabled,
+    },
+  );
 
   const { data: searchResponse, isFetching: isSearchFetching } = useSearchQuery(
     {
@@ -40,15 +59,36 @@ export function EntrySearchInput({
     },
   );
 
+  const [logRecentItem] = useLogRecentItemMutation();
+
   const searchOptions = useMemo(
-    () => (isSearchEnabled ? getSelectOptions(searchResponse?.data ?? []) : []),
-    [searchResponse, isSearchEnabled],
+    () =>
+      getSelectOptions(
+        searchResponse?.data ?? [],
+        recentItems ?? [],
+        searchModels,
+        isSearchEnabled,
+      ),
+    [searchResponse, recentItems, searchModels, isSearchEnabled],
   );
 
   const handleChange = (value: string | null) => {
     const option = searchOptions.find((option) => option.value === value);
-    if (option != null) {
+    if (option == null) {
+      return;
+    }
+    if (option.type === "item") {
+      if (isActivityModel(option.model)) {
+        logRecentItem({
+          model: option.model,
+          model_id: option.entry.id,
+        });
+      }
+
       onEntryChange(option.entry);
+    }
+    if (option.type === "browse") {
+      onPickerOpen();
     }
   };
 
@@ -58,9 +98,7 @@ export function EntrySearchInput({
       data={searchOptions}
       searchValue={searchValue}
       placeholder={t`Find something…`}
-      nothingFoundMessage={
-        isSearchEnabled ? `Didn't find any results` : undefined
-      }
+      filter={({ options }) => options}
       leftSection={<FixedSizeIcon name="search" />}
       rightSection={
         isSearchFetching || isGraphFetching ? (

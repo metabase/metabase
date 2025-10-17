@@ -1,9 +1,10 @@
 import type { SelectOption } from "metabase/ui";
-import type { DependencyEntry } from "metabase-types/api";
+import type { DependencyEntry, SearchModel } from "metabase-types/api";
 
 export type ItemSelectOption = SelectOption & {
   type: "item";
   entry: DependencyEntry;
+  model: SearchModel;
 };
 
 export type DividerSelectOption = SelectOption & {

@@ -1,16 +1,22 @@
-import type { IconName } from "metabase/ui";
-import visualizations from "metabase/visualizations";
+import { t } from "ttag";
+
 import type {
-  CardDisplayType,
-  DependencyEntry,
+  CardType,
   DependencyId,
   DependencyType,
+  RecentItem,
   SearchModel,
   SearchResult,
   SearchResultId,
 } from "metabase-types/api";
 
-import type { ItemSelectOption } from "./types";
+import { getNodeIconWithType } from "../../utils";
+
+import type {
+  BrowseSelectOption,
+  EntrySelectOption,
+  ItemSelectOption,
+} from "./types";
 
 function getDependencyId(id: SearchResultId): DependencyId {
   if (typeof id === "number") {
@@ -27,54 +33,87 @@ function getDependencyType(model: SearchModel): DependencyType {
     case "metric":
       return "card";
     case "table":
-      return "table";
     case "transform":
-      return "transform";
+      return model;
     default:
       throw new TypeError(`Unsupported search result model: ${model}`);
   }
 }
 
-function getDependencyIcon(
-  model: SearchModel,
-  display?: CardDisplayType | null,
-): IconName {
+function getCardType(model: SearchModel): CardType | undefined {
   switch (model) {
     case "card":
-      return display != null
-        ? (visualizations.get(display)?.iconName ?? "table2")
-        : "table2";
+      return "question";
     case "dataset":
       return "model";
     case "metric":
       return "metric";
-    case "table":
-      return "table";
-    case "transform":
-      return "refresh_downstream";
     default:
-      throw new TypeError(`Unsupported search result model: ${model}`);
+      return undefined;
   }
 }
 
-function getDependencyEntry(
-  id: SearchResultId,
-  model: SearchModel,
-): DependencyEntry {
+function getSelectOptionValue(id: DependencyId, type: DependencyType) {
+  return `${id}-${type}`;
+}
+
+function getItemOptions<T extends SearchResult | RecentItem>(
+  items: T[],
+  getLabel: (item: T) => string,
+): ItemSelectOption[] {
+  return items.map((item) => {
+    const id = getDependencyId(item.id);
+    const type = getDependencyType(item.model);
+    const cardType = getCardType(item.model);
+    const cardDisplay =
+      item.model === "card" ? (item.display ?? undefined) : undefined;
+
+    return {
+      type: "item",
+      value: getSelectOptionValue(id, type),
+      label: getLabel(item),
+      icon: getNodeIconWithType(type, cardType, cardDisplay),
+      model: item.model,
+      entry: {
+        id,
+        type,
+      },
+    };
+  });
+}
+
+function getSearchOptions(searchResults: SearchResult[]): ItemSelectOption[] {
+  return getItemOptions(searchResults, (item) => item.name);
+}
+
+function getRecentOptions(
+  recentItems: RecentItem[],
+  searchModels: SearchModel[],
+): ItemSelectOption[] {
+  return getItemOptions(
+    recentItems.filter((item) => searchModels.includes(item.model)),
+    (item) => (item.model === "table" ? item.display_name : item.name),
+  );
+}
+
+function getBrowseOption(): BrowseSelectOption {
   return {
-    id: getDependencyId(id),
-    type: getDependencyType(model),
+    type: "browse",
+    value: "browse",
+    label: t`Browse all`,
+    icon: "search",
   };
 }
 
 export function getSelectOptions(
   searchResults: SearchResult[],
-): ItemSelectOption[] {
-  return searchResults.map((result) => ({
-    type: "search",
-    value: `${result.id}-${result.model}`,
-    label: result.name,
-    icon: getDependencyIcon(result.model, result.display),
-    entry: getDependencyEntry(result.id, result.model),
-  }));
+  recentItems: RecentItem[],
+  searchModels: SearchModel[],
+  isSearchEnabled: boolean,
+): EntrySelectOption[] {
+  const options = isSearchEnabled
+    ? getSearchOptions(searchResults)
+    : getRecentOptions(recentItems, searchModels);
+
+  return [...options, getBrowseOption()];
 }

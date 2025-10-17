@@ -64,7 +64,7 @@ export function GraphDependencyPanel({
   }, [groupType, filterOptions, sortOptions]);
 
   return (
-    <Card className={S.root} shadow="none" withBorder>
+    <Card className={S.root} withBorder>
       <PanelHeader
         node={node}
         groupType={groupType}
