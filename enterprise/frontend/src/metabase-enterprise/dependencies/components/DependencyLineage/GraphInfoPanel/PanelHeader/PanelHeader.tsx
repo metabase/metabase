@@ -5,7 +5,7 @@ import { ActionIcon, Box, FixedSizeIcon, Group, Title, rem } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
 import { ACTION_ICON_PADDING } from "../../constants";
-import { getNodeLabel, getNodeLink } from "../../utils";
+import { getNodeIcon, getNodeLabel, getNodeLink } from "../../utils";
 
 type PanelHeaderProps = {
   node: DependencyNode;
@@ -16,7 +16,8 @@ export function PanelHeader({ node, onClose }: PanelHeaderProps) {
   const link = getNodeLink(node);
 
   return (
-    <Group p="lg" wrap="nowrap">
+    <Group p="lg" gap="sm" wrap="nowrap">
+      <FixedSizeIcon c="brand" name={getNodeIcon(node)} />
       <Title flex={1} order={5}>
         {getNodeLabel(node)}
       </Title>

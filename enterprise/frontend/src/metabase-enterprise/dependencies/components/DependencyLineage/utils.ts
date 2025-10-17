@@ -75,6 +75,10 @@ export function getNodeLabel(node: DependencyNode) {
   return node.type === "table" ? node.data.display_name : node.data.name;
 }
 
+export function getNodeDescription(node: DependencyNode) {
+  return node.data.description;
+}
+
 export function getNodeIcon(node: DependencyNode): IconName {
   return getNodeIconWithType(
     node.type,

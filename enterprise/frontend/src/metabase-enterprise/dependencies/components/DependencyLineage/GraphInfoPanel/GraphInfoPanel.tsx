@@ -2,6 +2,7 @@ import { Card } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
 import S from "./GraphInfoPanel.module.css";
+import { PanelBody } from "./PanelBody";
 import { PanelHeader } from "./PanelHeader";
 
 type GraphInfoPanelProps = {
@@ -13,6 +14,7 @@ export function GraphInfoPanel({ node, onClose }: GraphInfoPanelProps) {
   return (
     <Card className={S.root} withBorder>
       <PanelHeader node={node} onClose={onClose} />
+      <PanelBody node={node} />
     </Card>
   );
 }
