@@ -2699,7 +2699,7 @@ function getQueryEditor() {
 }
 
 function getRunButton(options: { timeout?: number } = {}) {
-  return cy.findAllByTestId("run-button", options).eq(0);
+  return cy.findAllByTestId("run-button").eq(0, options);
 }
 
 function getCancelButton() {
