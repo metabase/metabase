@@ -666,6 +666,7 @@ describe("issue 43216", () => {
     H.NativeEditor.focus().type(" , 4 as D;");
     H.saveSavedQuestion();
     cy.wait(["@recents", "@queryMetadata"]);
+    cy.wait(450); // let react process things (flaky test)
 
     cy.log("Assert updated metadata in target question");
     H.commandPaletteButton().click();
