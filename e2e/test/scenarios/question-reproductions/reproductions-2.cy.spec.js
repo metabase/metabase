@@ -633,6 +633,7 @@ describe("issue 43216", () => {
 
   it("should update source question metadata when it changes (metabase#43216)", () => {
     cy.visit("/");
+    H.waitForLoaderToBeRemoved();
 
     cy.log("Create target question");
     H.newButton("Question").click();
@@ -644,27 +645,23 @@ describe("issue 43216", () => {
     H.saveQuestion("Target question");
 
     cy.log("Update source question");
-    H.commandPaletteButton().click();
-    // Use search instead of recents to prevent items switching order during assertions.
-    H.commandPaletteInput().type("source");
+    cy.findByRole("link", { name: /Our analytics/ }).click();
     H.waitForLoaderToBeRemoved();
-    H.commandPalette().findByText("Source question").click();
-    H.commandPalette().should("not.exist");
+    cy.findByRole("link", { name: "Source question" }).click();
+    H.waitForLoaderToBeRemoved();
     cy.findByTestId("native-query-editor-container")
       .findByText("Open Editor")
       .click();
     H.NativeEditor.focus().type(" , 4 as D;").blur();
     H.saveSavedQuestion();
+    H.waitForLoaderToBeRemoved();
+    cy.wait(250); // wait for react to process all changes (flaky test)
 
     cy.log("Assert updated metadata in target question");
-    H.commandPaletteButton().click();
-    // Use search instead of recents to prevent items switching order during assertions.
-    // Avoid typing "target" because sometimes the first "t" will be registered as a keyboard shortcut,
-    // viz settings will open, and the test will fail.
-    H.commandPaletteInput().type("arge");
+    cy.findByRole("link", { name: /Our analytics/ }).click();
     H.waitForLoaderToBeRemoved();
-    H.commandPalette().findByText("Target question").click();
-    H.commandPalette().should("not.exist");
+    cy.findByRole("link", { name: "Target question" }).click();
+    H.waitForLoaderToBeRemoved();
     cy.findAllByTestId("header-cell").eq(3).should("have.text", "D");
     H.openNotebook();
     H.getNotebookStep("data").button("Pick columns").click();
