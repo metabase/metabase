@@ -33,11 +33,6 @@
         &:last-child {
           margin-bottom: 4px;
         }
-
-        &:hover,
-        &[aria-selected="true"] {
-          background-color: var(--mb-color-bg-hover);
-        }
       }
 
       @supports (grid-template-columns: subgrid) {
@@ -71,26 +66,12 @@
         display: none;
       }
 
-      .cm-completionMatchedText {
-        text-decoration: none;
-        font-weight: bold;
-        color: var(--mb-color-focus);
-      }
-
       .cm-completionLabel {
         display: block;
         max-width: 18rem;
         overflow: hidden;
         text-overflow: ellipsis;
         font-weight: bold;
-      }
-
-      .cm-completionDetail {
-        color: var(--mb-color-text-light);
-        font-style: normal;
-        text-align: right;
-        overflow: hidden;
-        text-overflow: ellipsis;
       }
     }
   }

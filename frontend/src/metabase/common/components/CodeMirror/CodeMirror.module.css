@@ -76,5 +76,28 @@
       font-style: italic;
       background: none;
     }
+
+    .cm-tooltip-autocomplete {
+      ul li {
+        &:hover,
+        &[aria-selected="true"] {
+          background-color: var(--mb-color-bg-hover);
+        }
+      }
+    }
+
+    .cm-completionMatchedText {
+      text-decoration: none;
+      font-weight: bold;
+      color: var(--mb-color-focus);
+    }
+
+    .cm-completionDetail {
+      color: var(--mb-color-text-light);
+      font-style: normal;
+      text-align: right;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
   }
 }
