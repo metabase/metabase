@@ -250,7 +250,7 @@ const config = {
       crypto: path.join(SRC_PATH, "/lib/crypto-polyfill.js"),
     },
     fallback: {
-      buffer: "buffer/",
+      buffer: require.resolve("buffer/"),
     },
   },
   optimization: {
