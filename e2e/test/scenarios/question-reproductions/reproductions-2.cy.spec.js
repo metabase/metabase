@@ -633,33 +633,40 @@ describe("issue 43216", () => {
 
   it("should update source question metadata when it changes (metabase#43216)", () => {
     cy.intercept("GET", "/api/activity/recents?*").as("recents");
+    cy.intercept("GET", "/api/card/**/query_metadata").as("queryMetadata");
 
     cy.visit("/");
     H.waitForLoaderToBeRemoved();
+    cy.wait("@recents");
 
     cy.log("Create target question");
     H.newButton("Question").click();
+    cy.wait("@recents");
     H.entityPickerModal().within(() => {
       H.entityPickerModalTab("Collections").click();
       H.waitForLoaderToBeRemoved();
       cy.findByText("Source question").click();
     });
     H.saveQuestion("Target question");
+    cy.wait("@queryMetadata");
 
     cy.log("Update source question");
     H.commandPaletteButton().click();
     cy.wait("@recents");
     H.commandPalette().findByText("Source question").click();
+    cy.wait("@queryMetadata");
     cy.findByTestId("native-query-editor-container")
       .findByText("Open Editor")
       .click();
-    H.NativeEditor.focus().type(" , 4 as D");
+    H.NativeEditor.focus().type(" , 4 as D;");
     H.saveSavedQuestion();
+    cy.wait(["@recents", "@queryMetadata"]);
 
     cy.log("Assert updated metadata in target question");
     H.commandPaletteButton().click();
     cy.wait("@recents");
     H.commandPalette().findByText("Target question").click();
+    cy.wait("@queryMetadata");
     cy.findAllByTestId("header-cell").eq(3).should("have.text", "D");
     H.openNotebook();
     H.getNotebookStep("data").button("Pick columns").click();
