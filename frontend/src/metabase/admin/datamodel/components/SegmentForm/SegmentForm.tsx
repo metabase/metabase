@@ -1,5 +1,4 @@
 import type { FieldInputProps } from "formik";
-import type { Location } from "history";
 import { useCallback, useState } from "react";
 import { Link, type Route } from "react-router";
 import { push } from "react-router-redux";
@@ -39,14 +38,12 @@ export interface SegmentFormProps {
   segment?: Segment;
   onSubmit: (values: SegmentFormValues) => Promise<Segment>;
   route: Route;
-  query: Location["query"];
 }
 
 export const SegmentForm = ({
   segment,
   onSubmit,
   route,
-  query,
 }: SegmentFormProps): JSX.Element => {
   const isNew = segment == null;
   const metadata = useSelector(getMetadata);
@@ -67,14 +64,14 @@ export const SegmentForm = ({
         .then(() => {
           sendToast({ message: t`Segment saved` });
           scheduleCallback(() => {
-            dispatch(push({ query, pathname: "/bench/segment" }));
+            dispatch(push("/bench/segment"));
           });
         })
         .catch(() => {
           setIsSubmitting(false);
         });
     },
-    [dispatch, onSubmit, query, scheduleCallback, sendToast],
+    [dispatch, onSubmit, scheduleCallback, sendToast],
   );
 
   return (

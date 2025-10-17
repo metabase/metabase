@@ -4,7 +4,7 @@ import type React from "react";
 import { useEffect, useMemo } from "react";
 import { Link } from "react-router";
 import { push } from "react-router-redux";
-import { useMount, usePrevious } from "react-use";
+import { useLocalStorage, useMount, usePrevious } from "react-use";
 import { t } from "ttag";
 import { noop } from "underscore";
 
@@ -60,17 +60,14 @@ import {
 } from "../ItemsListSection/ItemsListSection";
 import { ItemsListSettings } from "../ItemsListSection/ItemsListSettings";
 import { ItemsListTreeNode } from "../ItemsListSection/ItemsListTreeNode";
-import { useItemsListQuery } from "../ItemsListSection/useItemsListQuery";
 import { getTreeItems } from "../models/utils";
 
 function MetricsList({
   activeId,
   onCollapse,
-  location,
 }: {
   activeId: number | null;
   onCollapse?: () => void;
-  location: Location;
 }) {
   const dispatch = useDispatch();
   const { isLoading: isLoadingMetrics, data: metricsData } = useFetchMetrics();
@@ -85,44 +82,48 @@ function MetricsList({
   );
   const isLoading = isLoadingMetrics || isLoadingCollections;
 
-  const listSettingsProps = useItemsListQuery({
-    location,
-    settings: [
-      {
-        name: "display",
-        options: [
-          {
-            label: t`By collection`,
-            value: "tree",
-          },
-          {
-            label: t`Alphabetical`,
-            value: "alphabetical",
-          },
-        ],
-      },
-    ],
-    defaults: { display: "tree" },
-  });
-
+  const [display = "tree", setDisplay] = useLocalStorage<
+    "tree" | "alphabetical"
+  >("metabase-bench-metrics-display");
   const currentUser = useSelector(getUser);
   const treeData = useMemo(() => {
-    return metrics && collections && currentUser
+    return metrics && collections && currentUser && display === "tree"
       ? getTreeItems(collections, metrics, "metric", currentUser.id)
       : [];
-  }, [collections, currentUser, metrics]);
+  }, [collections, currentUser, display, metrics]);
 
-  const { query } = location;
   const handleMetricSelect = (item: ITreeNodeItem) => {
     if (typeof item.id === "number") {
-      dispatch(push({ query, pathname: `/bench/metric/${item.id}` }));
+      dispatch(push(`/bench/metric/${item.id}`));
     }
   };
 
   return (
     <ItemsListSection
       sectionTitle={t`Metrics`}
-      settings={<ItemsListSettings {...listSettingsProps} />}
+      settings={
+        <ItemsListSettings
+          values={{ display }}
+          settings={[
+            {
+              name: "display",
+              options: [
+                {
+                  label: t`By collection`,
+                  value: "tree",
+                },
+                {
+                  label: t`Alphabetical`,
+                  value: "alphabetical",
+                },
+              ],
+            },
+          ]}
+          onSettingChange={(updates) =>
+            updates.display && setDisplay(updates.display)
+          }
+        />
+      }
       onCollapse={onCollapse}
       addButton={
         <ItemsListAddButton
@@ -131,7 +132,7 @@ function MetricsList({
               mode: "bench",
               cardType: "metric",
             });
-            dispatch(push({ query, pathname: url }));
+            dispatch(push(url));
           }}
         />
       }
@@ -140,7 +141,7 @@ function MetricsList({
           <Center>
             <Loader />
           </Center>
-        ) : listSettingsProps.values.display === "tree" ? (
+        ) : display === "tree" ? (
           <Box mx="-sm">
             <Tree
               data={treeData}
@@ -156,7 +157,6 @@ function MetricsList({
               key={metric.id}
               metric={metric}
               active={metric.id === activeId}
-              query={query}
             />
           ))
         )
@@ -168,18 +168,16 @@ function MetricsList({
 function MetricListItem({
   metric,
   active,
-  query,
 }: {
   metric: SearchResult;
   active?: boolean;
-  query?: Location["query"];
 }) {
   const icon = getIcon({ type: "dataset", ...metric });
   return (
     <Box mb="sm">
       <NavLink
         component={Link}
-        to={{ query, pathname: `/bench/metric/${metric.id}` }}
+        to={`/bench/metric/${metric.id}`}
         active={active}
         label={
           <>
@@ -203,17 +201,12 @@ function MetricListItem({
 export const MetricsLayout = ({
   children,
   params,
-  location,
 }: {
   children: React.ReactNode;
   params: { slug: string };
-  location: Location;
 }) => {
   return (
-    <BenchLayout
-      nav={<MetricsList activeId={+params.slug} location={location} />}
-      name="model"
-    >
+    <BenchLayout nav={<MetricsList activeId={+params.slug} />} name="model">
       {children}
     </BenchLayout>
   );

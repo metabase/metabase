@@ -17,7 +17,7 @@ export const SegmentItem = ({ segment, onRetire, isActive }: Props) => {
     <Box pos="relative">
       <NavLink
         component={Link}
-        to={(loc) => ({ ...loc, pathname: `/bench/segment/${segment.id}` })}
+        to={`/bench/segment/${segment.id}`}
         active={isActive}
         label={
           <Flex justify="space-between" pt="0.125rem">
