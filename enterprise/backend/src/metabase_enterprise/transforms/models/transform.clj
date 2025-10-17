@@ -186,7 +186,7 @@
                                         [:= :schema nil]
                                         [:in [:composite :db_id :name] table-keys-without-schema]]]})
                    (t2/hydrate :db :fields))
-        table-keys->table (group-by (juxt :db_id :schema :name) tables)]
+        table-keys->table (m/index-by (juxt :db_id :schema :name) tables)]
     (for [transform transforms]
       (assoc transform :table (get table-keys->table (table-key-fn transform))))))
 
