@@ -4,6 +4,7 @@ import type {
   TablePickerValue,
 } from "metabase/common/components/Pickers/TablePicker";
 import type {
+  CardType,
   DependencyEntry,
   DependencyNode,
   RecentItem,
@@ -42,17 +43,28 @@ export function getTablePickerItem(
   };
 }
 
+function getQuestionPickerModel(type: CardType): QuestionPickerItem["model"] {
+  switch (type) {
+    case "question":
+      return "card";
+    case "model":
+      return "dataset";
+    case "metric":
+      return "metric";
+  }
+}
+
 export function getQuestionPickerItem(
   node: DependencyNode,
 ): QuestionPickerItem | undefined {
-  if (node.type !== "card" || node.data.type !== "question") {
+  if (node.type !== "card") {
     return;
   }
 
   return {
     id: node.id,
     name: node.data.name,
-    model: "card",
+    model: getQuestionPickerModel(node.data.type),
   };
 }
 

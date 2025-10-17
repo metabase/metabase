@@ -89,15 +89,15 @@ export function EntryPickerModal({
     });
 
     computedTabs.push({
-      id: "questions-tab",
-      displayName: t`Questions`,
-      models: ["card"],
+      id: "collections-tab",
+      displayName: t`Collections`,
+      models: ["card", "dataset", "metric"],
       folderModels: ["collection", "dashboard"],
       icon: "folder",
       render: ({ onItemSelect }) => (
         <QuestionPicker
           initialValue={value ? getQuestionPickerItem(value) : undefined}
-          models={["card"]}
+          models={["card", "dataset", "metric"]}
           options={QUESTION_PICKER_OPTIONS}
           path={questionsPath}
           onInit={onItemSelect}
