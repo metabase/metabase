@@ -15,7 +15,13 @@ import type {
   VisualizationDisplay,
 } from "metabase-types/api";
 
-import type { EdgeId, GraphData, NodeId, NodeType } from "./types";
+import type {
+  EdgeId,
+  GraphData,
+  NodeId,
+  NodeLocationInfo,
+  NodeType,
+} from "./types";
 
 export function getNodeId(id: DependencyId, type: DependencyType): NodeId {
   return `${id}-${type}`;
@@ -132,18 +138,21 @@ export function getNodeLink(node: DependencyNode): string | undefined {
     .exhaustive();
 }
 
-export function getNodeLocationLabel(node: DependencyNode): string | undefined {
-  if (node.type === "card") {
-    if (node.data.dashboard != null) {
-      return node.data.dashboard.name;
-    }
-
-    if (node.data.collection != null) {
-      return node.data.collection.name;
-    }
-  }
-
-  return undefined;
+export function getNodeLocationInfo(
+  node: DependencyNode,
+): NodeLocationInfo | undefined {
+  return match<DependencyNode, NodeLocationInfo | undefined>(node)
+    .with({ type: "card", data: { dashboard: P.nonNullable } }, (node) => ({
+      label: node.data.dashboard.name,
+      icon: "dashboard",
+      link: Urls.dashboard(node.data.dashboard),
+    }))
+    .with({ type: "card", data: { collection: P.nonNullable } }, (node) => ({
+      label: node.data.collection.name,
+      icon: "folder",
+      link: Urls.dashboard(node.data.collection),
+    }))
+    .otherwise(() => undefined);
 }
 
 export function getNodeViewCount(node: DependencyNode): number | undefined {

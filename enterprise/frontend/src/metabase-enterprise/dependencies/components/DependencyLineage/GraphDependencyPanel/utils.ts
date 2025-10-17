@@ -10,7 +10,7 @@ import {
   getCardType,
   getDependencyType,
   getNodeLabel,
-  getNodeLocationLabel,
+  getNodeLocationInfo,
   getNodeViewCount,
   isCardType,
 } from "../utils";
@@ -108,8 +108,8 @@ const COMPARATORS: Record<SortColumn, SortCallback> = {
     return label1.localeCompare(label2);
   },
   location: (node1, node2) => {
-    const label1 = getNodeLocationLabel(node1) ?? "";
-    const label2 = getNodeLocationLabel(node2) ?? "";
+    const label1 = getNodeLocationInfo(node1)?.label ?? "";
+    const label2 = getNodeLocationInfo(node2)?.label ?? "";
     return label1.localeCompare(label2);
   },
   "view-count": (node1, node2) => {

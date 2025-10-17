@@ -8,6 +8,7 @@ import {
   FixedSizeIcon,
   Flex,
   Group,
+  type IconName,
   Stack,
   UnstyledButton,
   rem,
@@ -15,15 +16,18 @@ import {
 import type { DependencyEntry, DependencyNode } from "metabase-types/api";
 
 import { ACTION_ICON_PADDING } from "../../constants";
-import { getNodeId, getNodeLink, getNodeViewCount } from "../../utils";
+import type { NodeLocationInfo } from "../../types";
+import {
+  getNodeIcon,
+  getNodeId,
+  getNodeLabel,
+  getNodeLink,
+  getNodeLocationInfo,
+  getNodeViewCount,
+} from "../../utils";
 
 import S from "./PanelBody.module.css";
-import type { ListItemSubtitleInfo, ListItemTitleInfo } from "./types";
-import {
-  getNodeSubtitleInfo,
-  getNodeTitleInfo,
-  getNodeViewCountLabel,
-} from "./utils";
+import { getNodeViewCountLabel } from "./utils";
 
 type PanelBodyProps = {
   nodes: DependencyNode[];
@@ -53,8 +57,9 @@ type ListItemProps = {
 };
 
 function ListItem({ node, onEntryChange }: ListItemProps) {
-  const titleInfo = getNodeTitleInfo(node);
-  const subtitleInfo = getNodeSubtitleInfo(node);
+  const label = getNodeLabel(node);
+  const icon = getNodeIcon(node);
+  const location = getNodeLocationInfo(node);
   const link = getNodeLink(node);
   const viewCount = getNodeViewCount(node);
 
@@ -65,18 +70,20 @@ function ListItem({ node, onEntryChange }: ListItemProps) {
   return (
     <Stack className={S.item} p="lg" gap="sm">
       <Group justify="space-between">
-        <ListItemTitle titleInfo={titleInfo} onTitleClick={handleTitleClick} />
+        <ListItemTitle
+          label={label}
+          icon={icon}
+          onTitleClick={handleTitleClick}
+        />
         {viewCount != null ? (
           <ListItemViewCount viewCount={viewCount} />
         ) : link != null ? (
           <ListItemLink link={link} />
         ) : null}
       </Group>
-      {(subtitleInfo != null || (link != null && viewCount != null)) && (
-        <Group justify={subtitleInfo != null ? "space-between" : "flex-end"}>
-          {subtitleInfo != null && (
-            <ListItemSubtitle subtitleInfo={subtitleInfo} />
-          )}
+      {(location != null || (link != null && viewCount != null)) && (
+        <Group justify={location != null ? "space-between" : "flex-end"}>
+          {location != null && <ListItemSubtitle location={location} />}
           {link != null && viewCount != null && <ListItemLink link={link} />}
         </Group>
       )}
@@ -85,11 +92,12 @@ function ListItem({ node, onEntryChange }: ListItemProps) {
 }
 
 type ListItemTitleProps = {
-  titleInfo: ListItemTitleInfo;
+  label: string;
+  icon: IconName;
   onTitleClick: () => void;
 };
 
-function ListItemTitle({ titleInfo, onTitleClick }: ListItemTitleProps) {
+function ListItemTitle({ label, icon, onTitleClick }: ListItemTitleProps) {
   return (
     <Flex
       component={UnstyledButton}
@@ -98,8 +106,8 @@ function ListItemTitle({ titleInfo, onTitleClick }: ListItemTitleProps) {
       align="center"
       onClick={onTitleClick}
     >
-      <FixedSizeIcon name={titleInfo.icon} />
-      <Box lh="h4">{titleInfo.label}</Box>
+      <FixedSizeIcon name={icon} />
+      <Box lh="h4">{label}</Box>
     </Flex>
   );
 }
@@ -117,22 +125,22 @@ function ListItemViewCount({ viewCount }: ListItemViewCountProps) {
 }
 
 type ListItemSubtitleProps = {
-  subtitleInfo: ListItemSubtitleInfo;
+  location: NodeLocationInfo;
 };
 
-function ListItemSubtitle({ subtitleInfo }: ListItemSubtitleProps) {
+function ListItemSubtitle({ location }: ListItemSubtitleProps) {
   return (
     <Flex
       className={S.textLink}
       component={Link}
-      to={subtitleInfo.link}
+      to={location.link}
       target="_blank"
       gap="sm"
       align="center"
     >
-      <FixedSizeIcon name={subtitleInfo.icon} />
+      <FixedSizeIcon name={location.icon} />
       <Box fz="sm" lh="h5">
-        {subtitleInfo.label}
+        {location.label}
       </Box>
     </Flex>
   );
