@@ -24,12 +24,12 @@ type BaseDependencyNode<TType, TData> = {
 
 export type TableDependencyNodeData = Pick<
   Table,
-  "name" | "display_name" | "description" | "db_id" | "schema" | "fields"
+  "name" | "display_name" | "description" | "db_id" | "schema" | "db" | "fields"
 >;
 
 export type TransformDependencyNodeData = Pick<
   Transform,
-  "name" | "description"
+  "name" | "description" | "table"
 >;
 
 export type CardDependencyNodeData = Pick<

@@ -152,6 +152,11 @@ export function getNodeLocationInfo(
       icon: "folder",
       link: Urls.dashboard(node.data.collection),
     }))
+    .with({ type: "table", data: { db: P.nonNullable } }, (node) => ({
+      label: node.data.db.name,
+      icon: "database",
+      link: Urls.dataModelDatabase(node.data.db_id),
+    }))
     .otherwise(() => undefined);
 }
 

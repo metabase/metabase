@@ -1,5 +1,5 @@
 import { match } from "ts-pattern";
-import { msgid, ngettext } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import type { DependencyNode } from "metabase-types/api";
 
@@ -27,10 +27,15 @@ export function getNodeLastEditedBy(node: DependencyNode) {
     .otherwise(() => undefined);
 }
 
+export function getNodeLocationLabel(node: DependencyNode) {
+  return node.type === "table" ? t`Database` : t`Saved in`;
+}
+
 export function getNodeFields(node: DependencyNode) {
   return match(node)
     .with({ type: "card" }, (node) => node.data.result_metadata ?? [])
     .with({ type: "table" }, (node) => node.data.fields ?? [])
+    .with({ type: "transform" }, (node) => node.data.table?.fields ?? [])
     .otherwise(() => []);
 }
 

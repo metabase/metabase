@@ -26,6 +26,7 @@ import {
   getNodeFieldsLabel,
   getNodeLastEditedAt,
   getNodeLastEditedBy,
+  getNodeLocationLabel,
 } from "./utils";
 
 type PanelBodyProps = {
@@ -119,7 +120,7 @@ function LocationInfo({ node }: LocationInfoProps) {
 
   return (
     <Stack gap="sm">
-      <Title order={6}>{t`Saved in`}</Title>
+      <Title order={6}>{getNodeLocationLabel(node)}</Title>
       <Anchor component={Link} to={location.link} target="_blank">
         <Flex gap="sm" align="center">
           <FixedSizeIcon c="text-primary" name={location.icon} />
