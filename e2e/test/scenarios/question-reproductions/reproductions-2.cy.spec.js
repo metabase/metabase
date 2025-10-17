@@ -644,7 +644,9 @@ describe("issue 43216", () => {
     H.saveQuestion("Target question");
 
     cy.log("Update source question");
-    H.commandPaletteSearch("source", false); // intentionally use search instead of recents for deterministic order
+    H.commandPaletteButton().click();
+    // intentionally use search instead of recents to prevent items swiching order and making this test flaky
+    H.commandPaletteInput().type("source");
     H.waitForLoaderToBeRemoved();
     H.commandPalette().findByText("Source question").click();
     cy.findByTestId("native-query-editor-container")
@@ -654,7 +656,9 @@ describe("issue 43216", () => {
     H.saveSavedQuestion();
 
     cy.log("Assert updated metadata in target question");
-    H.commandPaletteSearch("target", false); // intentionally use search instead of recents for deterministic order
+    H.commandPaletteButton().click();
+    // intentionally use search instead of recents to prevent items swiching order and making this test flaky
+    H.commandPaletteInput().type("target");
     H.waitForLoaderToBeRemoved();
     H.commandPalette().findByText("Target question").click();
     cy.findAllByTestId("header-cell").eq(3).should("have.text", "D");
