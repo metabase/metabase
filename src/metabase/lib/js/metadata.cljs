@@ -7,6 +7,7 @@
    [goog.object :as gobject]
    [medley.core :as m]
    [metabase.lib.cache :as lib.cache]
+   [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.util :as lib.util]
@@ -311,6 +312,7 @@
       :visibility-type                  (keyword v)
       :id                               (parse-field-id v)
       :metabase.lib.field/binning       (parse-binning-info v)
+      :lib/original-binning             (parse-binning-info v)
       ::field-values                    (parse-field-values v)
       ::dimension                       (parse-dimension v)
       v)))
@@ -544,24 +546,25 @@
   #_{:pre [(pos-int? database-id)]}
   (let [metadata (parse-metadata unparsed-metadata)]
     (log/debug "Created metadata provider for metadata")
-    (reify lib.metadata.protocols/MetadataProvider
-      (database [_this]
-        (database metadata database-id))
-      (metadatas [_this metadata-spec]
-        (metadatas metadata database-id metadata-spec))
-      (setting [_this setting-key]
-        (setting unparsed-metadata setting-key))
+    (lib.metadata.cached-provider/cached-metadata-provider
+     (reify lib.metadata.protocols/MetadataProvider
+       (database [_this]
+         (database metadata database-id))
+       (metadatas [_this metadata-spec]
+         (metadatas metadata database-id metadata-spec))
+       (setting [_this setting-key]
+         (setting unparsed-metadata setting-key))
 
       ;; for debugging: call [[clojure.datafy/datafy]] on one of these to parse all of our metadata and see the whole
       ;; thing at once.
-      clojure.core.protocols/Datafiable
-      (datafy [_this]
-        (perf/postwalk
-         (fn [form]
-           (if (delay? form)
-             (deref form)
-             form))
-         metadata)))))
+       clojure.core.protocols/Datafiable
+       (datafy [_this]
+         (perf/postwalk
+          (fn [form]
+            (if (delay? form)
+              (deref form)
+              form))
+          metadata))))))
 
 (defn metadata-provider
   "Use a `metabase-lib/metadata/Metadata` as a [[metabase.lib.metadata.protocols/MetadataProvider]]."

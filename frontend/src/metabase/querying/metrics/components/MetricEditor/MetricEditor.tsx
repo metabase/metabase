@@ -58,9 +58,6 @@ export const MetricEditor = forwardRef<HTMLDivElement, MetricEditorProps>(
       handleCloseConfirmation,
     } = PLUGIN_DEPENDENCIES.useCheckCardDependencies({
       onSave,
-      onError: (error) => {
-        throw error;
-      },
     });
 
     const handleCreate = (question: Question) => {

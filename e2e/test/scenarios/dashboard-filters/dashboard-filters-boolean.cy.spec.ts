@@ -164,6 +164,7 @@ describe(
         H.filterWidget().click();
         H.popover().button("Add filter").click();
         H.getDashboardCard().findByText(QUESTION_NAME).click();
+        H.queryBuilderHeader().findByText(QUESTION_NAME).should("be.visible");
         H.assertQueryBuilderRowCount(1);
         H.filterWidget().findByText("true").should("be.visible");
       });
@@ -250,6 +251,7 @@ describe(
         H.filterWidget().click();
         H.popover().button("Add filter").click();
         H.getDashboardCard().findByText(QUESTION_NAME).click();
+        H.queryBuilderHeader().findByText(QUESTION_NAME).should("be.visible");
         H.assertQueryBuilderRowCount(53);
         H.filterWidget().findByText("true").should("be.visible");
       });

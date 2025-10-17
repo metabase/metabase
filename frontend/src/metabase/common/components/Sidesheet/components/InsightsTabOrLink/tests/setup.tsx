@@ -21,12 +21,14 @@ export type SetupOpts = {
   isForADashboard?: boolean;
   enableAuditAppPlugin?: boolean;
   isUserAdmin?: boolean;
+  hasUsageAnalyticsPermission?: boolean;
 };
 
 export const setup = async ({
   isForADashboard = false,
   enableAuditAppPlugin = false,
   isUserAdmin = false,
+  hasUsageAnalyticsPermission = true,
 }: SetupOpts = {}) => {
   const storeInitialState = createMockState({
     currentUser: createMockUser({ is_superuser: isUserAdmin }),
@@ -40,7 +42,11 @@ export const setup = async ({
     ),
   });
 
-  setupAuditInfoEndpoint();
+  if (hasUsageAnalyticsPermission) {
+    setupAuditInfoEndpoint();
+  } else {
+    setupAuditInfoEndpoint({ auditInfo: {} as any });
+  }
   setupEnterprisePlugins();
 
   const mockDashboard = createMockDashboard();

@@ -615,3 +615,11 @@
       (is (lib.metadata.protocols/cached-metadata-provider? mp))
       (is (lib.metadata.protocols/cached-metadata-provider-with-cache? mp))
       (is (identical? mp (:lib/metadata (#'lib.query/ensure-cached-metadata-provider {:lib/metadata mp})))))))
+
+(deftest ^:parallel preserve-database-id-with-invalid-metadata-provider-test
+  (mu/disable-enforcement
+    (is (=? {:database 1
+             :stages   [{:source-table 2, :lib/type :mbql.stage/mbql}]
+             :lib/type :mbql/query}
+            (lib.query/query (lib.tu/mock-metadata-provider {})
+                             {"database" 1, "type" "query", "query" {"source-table" 2}})))))

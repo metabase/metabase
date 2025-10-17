@@ -6,8 +6,8 @@ import _ from "underscore";
 import Card from "metabase/common/components/Card";
 import Link from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
-import { color } from "metabase/lib/colors";
 import { Box, Flex, Icon, type IconName, Title, Tooltip } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 import type { RelatedDashboardXRays } from "metabase-types/api";
 
 import S from "./AutomaticDashboardApp.module.css";
@@ -71,13 +71,13 @@ const SuggestionsList = ({
                   <Flex align="center">
                     <Icon
                       name={RELATED_CONTENT[suggestionKey].icon}
-                      color={color("accent4")}
+                      c="accent4"
                       className={CS.mr1}
                     />
                     <h4 className={CS.textWrap}>{item.title}</h4>
                     <Box ml="auto" className={CS.hoverChild}>
                       <Tooltip label={item.description}>
-                        <Icon name="info_outline" color={color("bg-dark")} />
+                        <Icon name="info_outline" c="bg-dark" />
                       </Tooltip>
                     </Box>
                   </Flex>

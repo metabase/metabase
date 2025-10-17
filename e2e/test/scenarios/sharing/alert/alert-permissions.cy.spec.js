@@ -49,7 +49,8 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
       // Change alert
       H.visitQuestion(ORDERS_QUESTION_ID);
 
-      H.openSharingMenu("Edit alerts");
+      cy.findByLabelText("Move, trash, and more…").click();
+      H.popover().findByText("Edit alerts").click();
 
       H.modal()
         .findByText(/Created by you/)
@@ -71,15 +72,16 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
 
     it("should not let you see other people's alerts", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
-      H.openSharingMenu();
+      cy.findByLabelText("Move, trash, and more…").click();
 
-      H.sharingMenu().findByText("Edit alerts").should("not.exist");
-      H.sharingMenu().findByText("Create an alert").should("be.visible");
+      H.popover().findByText("Edit alerts").should("not.exist");
+      H.popover().findByText("Create an alert").should("be.visible");
     });
 
     it("should let you see other alerts where you are a recipient", () => {
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
-      H.openSharingMenu("Edit alerts");
+      cy.findByLabelText("Move, trash, and more…").click();
+      H.popover().findByText("Edit alerts").click();
 
       H.modal().within(() => {
         cy.findByText(`Created by ${H.getFullName(admin)}`, {
@@ -91,14 +93,17 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
 
     it("should let you see your own alerts", () => {
       H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
-      H.openSharingMenu("Edit alerts");
+      cy.findByLabelText("Move, trash, and more…").click();
+      H.popover().findByText("Edit alerts").click();
 
       H.modal().findByText(/Created by you/);
     });
 
     it("should let you unsubscribe from others' alerts", () => {
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
-      H.openSharingMenu("Edit alerts");
+      cy.findByLabelText("Move, trash, and more…").click();
+      H.popover().findByText("Edit alerts").click();
+
       H.modal().within(() => {
         cy.findByText(`Created by ${H.getFullName(admin)}`, {
           exact: false,
@@ -118,7 +123,9 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
       cy.intercept("PUT", "/api/notification/*").as("updatedAlert");
 
       H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
-      H.openSharingMenu("Edit alerts");
+      cy.findByLabelText("Move, trash, and more…").click();
+      H.popover().findByText("Edit alerts").click();
+
       H.modal()
         .findByText(/Created by you/)
         .click();
@@ -144,7 +151,8 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
 });
 
 function createBasicAlert({ includeNormal } = {}) {
-  H.openSharingMenu("Create an alert");
+  cy.findByLabelText("Move, trash, and more…").click();
+  H.popover().findByText("Create an alert").click();
 
   if (includeNormal) {
     cy.findByText("Email")

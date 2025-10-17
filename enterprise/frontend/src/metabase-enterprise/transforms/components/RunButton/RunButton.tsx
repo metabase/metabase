@@ -119,7 +119,7 @@ function getRunButtonInfo({
   if (run.status === "canceled") {
     return {
       label: t`Canceled`,
-      color: "var(--mb-base-color-dubloon-30)",
+      color: "var(--mb-color-warning)",
       leftSection: <Icon name="close" color="white" aria-hidden />,
       isDisabled,
     };

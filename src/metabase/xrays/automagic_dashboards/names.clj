@@ -63,9 +63,9 @@
   [root     :- ::ads/root
    question :- [:map
                 [:dataset_query ::ads/query]]]
-  (let [aggregations (->> (get-in question [:dataset_query :query :aggregation])
+  (let [aggregations (->> (magic.util/do-with-legacy-query (:dataset_query question) get-in [:query :aggregation])
                           (metric->description root))
-        dimensions   (->> (get-in question [:dataset_query :query :breakout])
+        dimensions   (->> (magic.util/do-with-legacy-query (:dataset_query question) get-in [:query :breakout])
                           (mapcat magic.util/collect-field-references)
                           (map (partial magic.util/->field root))
                           (map :display_name)
@@ -204,7 +204,13 @@
 (mu/defmethod humanize-filter-value :between
   [root :- ::ads/root
    [_ field-reference min-value max-value]]
-  (tru "{0} is between {1} and {2}" (item-name root field-reference) min-value max-value))
+  (let [{:keys [item-name effective_type base_type unit]} (item-reference->field root field-reference)]
+    (or (when (isa? (or effective_type base_type) :type/Temporal)
+          (let [humanized-min (humanize-datetime min-value unit)
+                humanized-max (humanize-datetime max-value unit)]
+            (when (= humanized-min humanized-max)
+              (tru "{0} is {1}" item-name humanized-min))))
+        (tru "{0} is between {1} and {2}" item-name min-value max-value))))
 
 (mu/defmethod humanize-filter-value :inside
   [root :- ::ads/root
@@ -231,7 +237,8 @@
 (defn cell-title
   "Return a cell title given a root object and a cell query."
   [root cell-query]
-  (str/join " " [(if-let [aggregation (get-in root [:entity :dataset_query :query :aggregation])]
+  (str/join " " [(if-let [aggregation (-> (get-in root [:entity :dataset_query])
+                                          (magic.util/do-with-legacy-query get-in [:query :aggregation]))]
                    (metric->description root aggregation)
                    (:full-name root))
                  (tru "where {0}" (humanize-filter-value root cell-query))]))

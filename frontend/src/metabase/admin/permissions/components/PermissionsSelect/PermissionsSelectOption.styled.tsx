@@ -1,7 +1,8 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
+import type { ColorName } from "metabase/lib/colors/types";
+import { color } from "metabase/ui/utils/colors";
 
 export const PermissionsSelectOptionRoot = styled.div`
   display: flex;
@@ -9,7 +10,7 @@ export const PermissionsSelectOptionRoot = styled.div`
   width: 100%;
 `;
 
-export const IconContainer = styled.div<{ color: string }>`
+export const IconContainer = styled.div<{ color: ColorName }>`
   display: flex;
   align-items: center;
   justify-content: center;

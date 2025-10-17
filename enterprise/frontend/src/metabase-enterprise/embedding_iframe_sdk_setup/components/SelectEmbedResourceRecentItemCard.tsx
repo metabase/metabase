@@ -1,7 +1,8 @@
-import { match } from "ts-pattern";
+import { P, match } from "ts-pattern";
 
 import { Card, Group, Icon, type IconName, Stack, Text } from "metabase/ui";
 
+import { STEPS_WITHOUT_RESOURCE_SELECTION } from "../constants";
 import type {
   SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupRecentItem,
@@ -54,5 +55,5 @@ const getCardIcon = (experience: SdkIframeEmbedSetupExperience): IconName =>
     .with("chart", () => "bar")
     .with("dashboard", () => "dashboard")
     .with("browser", () => "collection")
-    .with("exploration", () => "question") // not possible
+    .with(P.union(...STEPS_WITHOUT_RESOURCE_SELECTION), () => "question") // these do not require resource selection
     .exhaustive();

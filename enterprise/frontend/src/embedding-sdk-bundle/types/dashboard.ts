@@ -5,7 +5,7 @@ import type {
 import type { CreateDashboardProperties } from "metabase/dashboard/containers/CreateDashboardForm";
 import type { CardDisplayType } from "metabase-types/api";
 
-import type { SdkEntityId } from "./entity-id";
+import type { SdkEntityId } from "./entity";
 
 export type SdkDashboardId = number | string | SdkEntityId;
 

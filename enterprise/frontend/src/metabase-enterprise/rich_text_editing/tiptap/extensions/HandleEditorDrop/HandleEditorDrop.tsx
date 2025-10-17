@@ -60,7 +60,7 @@ export const HandleEditorDrop = Extension.create({
                 dropToParent.type.name !== "cardEmbed" &&
                 dropToParent.type.name !== "resizeNode"
               ) {
-                handleCardDropOnDocument(cardEmbedInitialData);
+                return handleCardDropOnDocument(cardEmbedInitialData);
               }
             }
 

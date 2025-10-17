@@ -51,7 +51,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       .findByText("Orders in a dashboard", { timeout: 10_000 })
       .should("be.visible");
 
-    getEmbedSidebar().findByText("Get Code").click();
+    getEmbedSidebar().findByText("Get code").click();
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
@@ -87,7 +87,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       .findByText("Orders", { timeout: 10_000 })
       .should("be.visible");
 
-    getEmbedSidebar().findByText("Get Code").click();
+    getEmbedSidebar().findByText("Get code").click();
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",

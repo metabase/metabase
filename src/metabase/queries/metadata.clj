@@ -2,11 +2,14 @@
   (:require
    [clojure.set :as set]
    [metabase.api.common :as api]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.util :as lib.util]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.field :as schema.field]
@@ -48,26 +51,6 @@
   (if (seq field-ids)
     (t2/select-fn-set :table_id :model/Field :id [:in field-ids])
     #{}))
-
-(defn- query->template-tags
-  [query]
-  (-> query :native :template-tags vals))
-
-(defn- query->template-tag-field-ids [query]
-  (when-let [template-tags (query->template-tags query)]
-    (for [{tag-type :type, [dim-tag id _opts] :dimension} template-tags
-          :when (and (#{:dimension :temporal-unit} tag-type)
-                     (= dim-tag :field)
-                     (integer? id))]
-      id)))
-
-(defn- query->template-tag-snippet-ids
-  "Extract snippet IDs from template tags in a native query."
-  [query]
-  (some->> (query->template-tags query)
-           (into #{}
-                 (comp (filter #(= :snippet (:type %)))
-                       (keep :snippet-id)))))
 
 (defn- collect-recursive-snippets
   ([initial-snippet-ids]
@@ -111,31 +94,35 @@
                       (integer? field-id))]
      field-id)))
 
-(defn- batch-fetch-query-metadata*
+(mu/defn- batch-fetch-query-metadata*
   "Fetch dependent metadata for ad-hoc queries."
-  [queries]
-  (let [{source-table-ids :table
-         source-card-ids  :card}  (lib.util/source-tables-and-cards queries)
-        source-tables             (concat (schema.table/batch-fetch-table-query-metadatas source-table-ids)
-                                          (schema.table/batch-fetch-card-query-metadatas source-card-ids
-                                                                                         {:include-database? false}))
-        fk-target-field-ids       (into #{} (comp (mapcat :fields)
-                                                  (keep :fk_target_field_id))
-                                        source-tables)
-        fk-target-table-ids       (into #{} (remove source-table-ids)
-                                        (field-ids->table-ids fk-target-field-ids))
-        fk-target-tables          (schema.table/batch-fetch-table-query-metadatas fk-target-table-ids)
-        tables                    (concat source-tables fk-target-tables)
-        template-tag-field-ids    (into #{} (mapcat query->template-tag-field-ids) queries)
-        direct-snippet-ids        (into #{} (mapcat query->template-tag-snippet-ids) queries)
-        snippets                  (collect-recursive-snippets direct-snippet-ids)
-        snippet-field-ids         (collect-snippet-field-ids snippets)
+  [queries :- [:maybe [:sequential ::lib.schema/query]]]
+  (let [source-table-ids       (into #{}
+                                     (mapcat lib/all-source-table-ids)
+                                     queries)
+        source-card-ids        (into #{}
+                                     (mapcat lib/all-source-card-ids)
+                                     queries)
+        source-tables          (concat (schema.table/batch-fetch-table-query-metadatas source-table-ids)
+                                       (schema.table/batch-fetch-card-query-metadatas source-card-ids
+                                                                                      {:include-database? false}))
+        fk-target-field-ids    (into #{} (comp (mapcat :fields)
+                                               (keep :fk_target_field_id))
+                                     source-tables)
+        fk-target-table-ids    (into #{} (remove source-table-ids)
+                                     (field-ids->table-ids fk-target-field-ids))
+        fk-target-tables       (schema.table/batch-fetch-table-query-metadatas fk-target-table-ids)
+        tables                 (concat source-tables fk-target-tables)
+        template-tag-field-ids (into #{} (mapcat lib/all-template-tag-field-ids) queries)
+        direct-snippet-ids     (into #{} (mapcat lib/all-template-tag-snippet-ids) queries)
+        snippets               (collect-recursive-snippets direct-snippet-ids)
+        snippet-field-ids      (collect-snippet-field-ids snippets)
         ;; Combine all field IDs
-        all-field-ids             (set/union template-tag-field-ids snippet-field-ids)
-        query-database-ids        (into #{} (keep :database) queries)
-        database-ids              (into query-database-ids
-                                        (keep :db_id)
-                                        tables)]
+        all-field-ids          (set/union template-tag-field-ids snippet-field-ids)
+        query-database-ids     (into #{} (keep :database) queries)
+        database-ids           (into query-database-ids
+                                     (keep :db_id)
+                                     tables)]
     {;; TODO: This is naive and issues multiple queries currently. That's probably okay for most dashboards,
      ;; since they tend to query only a handful of databases at most.
      :databases (sort-by :id (get-databases database-ids))
@@ -156,20 +143,31 @@
 (defn batch-fetch-query-metadata
   "Fetch dependent metadata for ad-hoc queries."
   [queries]
-  (batch-fetch-query-metadata* (map mbql.normalize/normalize queries)))
+  (batch-fetch-query-metadata*
+   (into []
+         (comp (filter not-empty)
+               (map lib-be/normalize-query))
+         queries)))
 
-(defn batch-fetch-card-metadata
+(mu/defn batch-fetch-card-metadata
   "Fetch dependent metadata for cards.
 
   Models and native queries need their definitions walked as well as their own, card-level metadata."
-  [cards]
-  (let [queries (into (vec (keep :dataset_query cards)) ; All the queries on all the cards
-                      ;; Plus the card-level metadata of each model and native query
-                      (comp (filter (fn [card] (or (= :model (:type card))
-                                                   (= :native (-> card :dataset_query :type)))))
-                            (map (fn [card] {:query {:source-table (str "card__" (u/the-id card))}})))
+  [cards :- [:sequential ::queries.schema/card]]
+  (let [;; remove any Cards with empty queries
+        cards (remove #(empty? (:dataset_query %)) cards)
+        ;; All the queries on all the cards
+        card-queries (map :dataset_query cards)
+        ;; Plus the card-level metadata of each model and native query
+        queries (into []
+                      (comp (filter (fn [{query :dataset_query, card-type :type, :as _card}]
+                                      (or (= card-type :model)
+                                          (lib/native-only-query? query))))
+                            (map (fn [{database-id :database_id, card-id :id, :as _card}]
+                                   (let [mp (lib-be/application-database-metadata-provider database-id)]
+                                     (lib/query mp (lib.metadata/card mp card-id))))))
                       cards)]
-    (batch-fetch-query-metadata queries)))
+    (batch-fetch-query-metadata (concat card-queries queries))))
 
 (defn- click-behavior->link-details
   [{:keys [linkType type targetId] :as _click-behavior}]
@@ -219,9 +217,15 @@
     {:cards      (sort-by :id link-cards)
      :dashboards (sort-by :id dashboards)}))
 
-(defn batch-fetch-dashboard-metadata
+(mu/defn batch-fetch-dashboard-metadata
   "Fetch dependent metadata for dashboards."
-  [dashboards]
+  [dashboards :- [:sequential
+                  [:map {:optional true} [:dashcards
+                                          [:sequential
+                                           [:map
+                                            [:card   {:optional true} [:maybe ::queries.schema/card]]
+                                            [:series {:optional true} [:maybe [:sequential [:map
+                                                                                            [:dataset_query ::queries.schema/query]]]]]]]]]]]
   (let [dashcards (mapcat :dashcards dashboards)
         cards     (for [{:keys [card series]} dashcards
                         :let   [all (conj series card)]
@@ -232,6 +236,7 @@
     (merge
      (->> (remove (comp card-ids :id) (:cards links))
           (concat cards)
+          (filter some?)
           batch-fetch-card-metadata)
      {:cards      (or (:cards links)      [])
       :dashboards (or (:dashboards links) [])})))

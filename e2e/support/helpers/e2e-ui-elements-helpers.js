@@ -630,3 +630,11 @@ export function waitForLoaderToBeRemoved() {
 export function leaveConfirmationModal() {
   return cy.findByTestId("leave-confirmation");
 }
+
+export function ensureParameterColumnValue({ columnName, columnValue }) {
+  tableInteractiveBody().within(() => {
+    cy.get(`[data-column-id="${columnName}"]`).each((cell) => {
+      cy.wrap(cell).should("have.text", columnValue);
+    });
+  });
+}

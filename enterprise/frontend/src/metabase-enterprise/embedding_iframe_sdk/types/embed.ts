@@ -80,6 +80,7 @@ export interface QuestionEmbedOptions {
 
   // parameters
   initialSqlParameters?: SqlParameterValues;
+  hiddenParameters?: string[];
 
   // incompatible options
   template?: never;
@@ -131,6 +132,18 @@ export interface BrowserEmbedOptions {
   dashboardId?: never;
 }
 
+export interface MetabotEmbedOptions {
+  componentName: "metabase-metabot";
+
+  /** Layout mode for the metabot interface */
+  layout?: "auto" | "sidebar" | "stacked";
+
+  // incompatible options
+  template?: never;
+  questionId?: never;
+  dashboardId?: never;
+}
+
 type CollectionBrowserEntityTypes =
   | "collection"
   | "dashboard"
@@ -156,7 +169,8 @@ export type SdkIframeEmbedTemplateSettings =
   | DashboardEmbedOptions
   | QuestionEmbedOptions
   | ExplorationEmbedOptions
-  | BrowserEmbedOptions;
+  | BrowserEmbedOptions
+  | MetabotEmbedOptions;
 
 /** Settings used by the sdk embed route */
 export type SdkIframeEmbedSettings = Omit<
@@ -171,6 +185,7 @@ export type SdkIframeEmbedElementSettings = SdkIframeEmbedBaseSettings &
     | QuestionEmbedOptions
     | (Omit<ExplorationEmbedOptions, "questionId"> & { questionId: "new" })
     | BrowserEmbedOptions
+    | MetabotEmbedOptions
   );
 
 export type SdkIframeEmbedEvent = { type: "ready" };
@@ -183,4 +198,5 @@ export type SdkIframeEmbedSettingKey =
   | keyof DashboardEmbedOptions
   | keyof QuestionEmbedOptions
   | keyof ExplorationEmbedOptions
-  | keyof BrowserEmbedOptions;
+  | keyof BrowserEmbedOptions
+  | keyof MetabotEmbedOptions;

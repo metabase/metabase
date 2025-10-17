@@ -11,7 +11,7 @@ export const GreetingRoot = styled.div`
 
 export const GreetingLogoContainer = styled.div`
   position: relative;
-  width: 3.375rem;
+  width: 4rem;
   height: 2.5rem;
   margin-inline-end: 0.5rem;
 

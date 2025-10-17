@@ -419,12 +419,12 @@
            :model/Collection {_v-coll-id :id} {:name (format "%s Verified Collection" search-term) :authority_level "official"}]
           (testing "when has both :content-verification features"
             (mt/with-premium-features #{:content-verification}
-              (mt/with-verified-cards! [v-card-id v-model-id v-metric-id]
+              (mt/with-verified! {:card [v-card-id v-model-id v-metric-id]}
                 (is (= #{"card" "dataset" "metric"}
                        (get-available-models :q search-term :verified true))))))
           (testing "when has :content-verification feature only"
             (mt/with-premium-features #{:content-verification}
-              (mt/with-verified-cards! [v-card-id]
+              (mt/with-verified! {:card [v-card-id]}
                 (is (= #{"card"}
                        (get-available-models :q search-term :verified true))))))))
       (testing "return a subset of model for created_at filter"
@@ -485,8 +485,10 @@
           named       #(str search-name "-" %)]
       (mt/with-temp [:model/Collection {parent-id :id} {}
                      :model/Dashboard {dash :id} {:collection_id parent-id :name (named "dashboard")}
-                     :model/Card {card :id} {:collection_id parent-id :name (named "card")}
-                     :model/Card {model :id} {:collection_id parent-id :type :model :name (named "model")}]
+                     :model/Card {card :id} {:collection_id parent-id :name (named "card")
+                                             :dataset_query (mt/native-query {:query  "select 1"})}
+                     :model/Card {model :id} {:collection_id parent-id :type :model :name (named "model")
+                                              :dataset_query (mt/native-query {:query  "select 1"})}]
         (mt/with-full-data-perms-for-all-users!
           (perms/revoke-collection-permissions! (perms/all-users-group) parent-id)
           (testing "sanity check: before archiving, we can't see these items"
@@ -1199,8 +1201,10 @@
       [:model/Card {v-card-id :id}  {:name (format "%s Verified Card" search-term)}
        :model/Card {_card-id :id}   {:name (format "%s Normal Card" search-term)}
        :model/Card {_model-id :id}  {:name (format "%s Normal Model" search-term) :type :model}
-       :model/Card {v-model-id :id} {:name (format "%s Verified Model" search-term) :type :model}]
-      (mt/with-verified-cards! [v-card-id v-model-id]
+       :model/Card {v-model-id :id} {:name (format "%s Verified Model" search-term) :type :model}
+       :model/Dashboard {v-dash-id :id} {:name (format "%s Verified Dashboard" search-term)}]
+      (mt/with-verified! {:card      [v-card-id v-model-id]
+                          :dashboard [v-dash-id]}
         (mt/with-premium-features #{:content-verification}
           (testing "Able to filter only verified items"
             (let [resp (mt/user-http-request :crowberto :get 200 "search"
@@ -1214,23 +1218,24 @@
                               count))))
 
               (testing "only a subset of models are applicable"
-                (is (= #{"card" "dataset"} (set (:available_models resp)))))
+                (is (= #{"card" "dataset" "dashboard"} (set (:available_models resp)))))
 
               (testing "results contains only verified entities"
                 (is (= #{[v-card-id  "card"       "Verified filter Verified Card"]
-                         [v-model-id "dataset"    "Verified filter Verified Model"]}
+                         [v-model-id "dataset"    "Verified filter Verified Model"]
+                         [v-dash-id  "dashboard"  "Verified filter Verified Dashboard"]}
 
                        (->> (:data resp)
                             (map (juxt :id :model :name))
                             set))))))
 
-          (testing "Returns schema error if attempt to serach for non-verified items"
+          (testing "Returns schema error if attempt to search for non-verified items"
             (is (= {:verified "nullable true"}
                    (:errors (mt/user-http-request :crowberto :get 400 "search" :q "x" :verified false)))))
 
           (testing "Works with models filter"
             (testing "return intersections of supported models with provided models"
-              (is (= #{"card"}
+              (is (= #{"card" "dashboard"}
                      (->> (mt/user-http-request :crowberto :get 200 "search"
                                                 :q search-term :verified true :models "card" :models "dashboard" :model "table")
                           :data
@@ -1245,11 +1250,12 @@
                                              :calculate_available_models true)]
 
               (testing "only a subset of models are applicable"
-                (is (= #{"card" "dataset"} (set (:available_models resp)))))
+                (is (= #{"card" "dataset" "dashboard"} (set (:available_models resp)))))
 
               (testing "results contains only verified entities"
                 (is (= #{[v-card-id  "card"    "Verified filter Verified Card"]
-                         [v-model-id "dataset" "Verified filter Verified Model"]}
+                         [v-model-id "dataset" "Verified filter Verified Model"]
+                         [v-dash-id  "dashboard" "Verified filter Verified Dashboard"]}
                        (->> (:data resp)
                             (map (juxt :id :model :name))
                             set)))))))
@@ -1379,14 +1385,14 @@
        :model/Card {mbql-model :id}            {:name search-term :type :model}
        :model/Card {native-model-in-name :id}  {:name search-term :type :model}
        :model/Card {native-model-in-query :id} {:dataset_query (mt/native-query {:query (format "select %s" search-term)}) :type :model}]
+      (is (= :native
+             (t2/select-one-fn :query_type :model/Card :id native-card-in-query)))
       (mt/with-actions
        [_                         {:type :model :dataset_query (mt/mbql-query venues)}
         {http-action :action-id}  {:type :http :name search-term}
         {query-action :action-id} {:type :query :dataset_query (mt/native-query {:query (format "delete from %s" search-term)})}]
-
        ;; TODO investigate why the actions don't get indexed automatically
         (search/reindex! {:async? false :in-place? true})
-
         (testing "by default do not search for native content"
           (is (= #{["card" mbql-card]
                    ["card" native-card-in-name]
@@ -1397,14 +1403,12 @@
                       :data
                       (map (juxt :model :id))
                       set))))
-
         (testing "if search-native-query is true, search both dataset_query and the name"
           (is (= #{["card" mbql-card]
                    ["card" native-card-in-name]
                    ["dataset" mbql-model]
                    ["dataset" native-model-in-name]
                    ["action" http-action]
-
                    ["card" native-card-in-query]
                    ["dataset" native-model-in-query]
                    ["action" query-action]}
@@ -1425,21 +1429,18 @@
                                     :name       search-term}
        :model/Card {card-id-2 :id} {:creator_id user-id-2
                                     :name       search-term}]
-
       (revision/push-revision!
        {:entity       :model/Card
         :id           card-id-1
         :user-id      user-id-1
         :is-creation? true
         :object       {:id card-id-1 :type "question"}})
-
       (revision/push-revision!
        {:entity       :model/Card
         :id           card-id-2
         :user-id      user-id-2
         :is-creation? true
         :object       {:id card-id-2 :type "question"}})
-
       (testing "search result should returns creator_common_name and last_editor_common_name"
         (is (= #{["card" card-id-1 "Ngoc Khuat" "Ngoc Khuat"]
                  ;; for user that doesn't have first_name or last_name, should fall backs to email
@@ -1875,5 +1876,6 @@
           (t2/delete! :model/Database :id db-id)
           (is (not (t2/exists? :model/Card :id card-id)))
           (let [search-results (mt/user-http-request :crowberto :get 200 "search" :q card-name)]
-            (is (not (some #(= (:id %) card-id) (:data search-results)))
+            (is (not (some #{card-id}
+                           (mapv :id (:data search-results))))
                 "Card should not be found in search results after database deletion")))))))

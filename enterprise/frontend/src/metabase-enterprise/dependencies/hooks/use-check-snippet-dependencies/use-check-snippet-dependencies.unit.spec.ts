@@ -18,13 +18,12 @@ function setup({
   setupCheckSnippetDependenciesEndpoint(response);
 
   const onSave = jest.fn();
-  const onError = jest.fn();
   const { result } = renderHookWithProviders(
-    () => useCheckSnippetDependencies({ onSave, onError }),
+    () => useCheckSnippetDependencies({ onSave }),
     {},
   );
 
-  return { result, onSave, onError };
+  return { result, onSave };
 }
 
 describe("useCheckSnippetDependencies", () => {

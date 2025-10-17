@@ -262,8 +262,7 @@
           output-manifest (python-runner/read-output-manifest @shared-storage-ref)
           events          (python-runner/read-events @shared-storage-ref)]
       (.close log-future-ref)                               ; early close to force any writes to flush
-      (when (seq events)
-        (replace-python-logs! message-log events))
+      (replace-python-logs! message-log events)
       (if (not= 200 status)
         (do
           (when (:timeout body)

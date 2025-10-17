@@ -97,24 +97,9 @@ describe("getInitialStateForCardDataSource", () => {
     });
 
     expect(state.settings).toEqual({
-      "card.title": "TablyMcTableface",
       "graph.dimensions": ["COLUMN_1"],
       "graph.metrics": ["COLUMN_2"],
     });
-  });
-
-  it("should include card description in settings (metabase#63863)", () => {
-    const card = createMockCard({
-      display: "table",
-      name: "Test Card",
-      description: "This is a test description",
-    });
-
-    const state = getInitialStateForCardDataSource(card, dataset);
-
-    expect(state.settings["card.description"]).toEqual(
-      "This is a test description",
-    );
   });
 
   it("should ignore superfluous columns when the original card is a combo chart", () => {
@@ -187,7 +172,6 @@ describe("getInitialStateForCardDataSource", () => {
     });
 
     expect(state.settings).toEqual({
-      "card.title": "ComboMcComboface",
       "graph.dimensions": ["COLUMN_1"],
       "graph.metrics": ["COLUMN_2", "COLUMN_3"],
     });
@@ -234,7 +218,6 @@ describe("getInitialStateForCardDataSource", () => {
     });
 
     expect(state.settings).toEqual({
-      "card.title": "ScalarMcSmartface",
       "graph.dimensions": ["COLUMN_1"],
       "graph.metrics": ["COLUMN_2"],
       "scalar.compact_primary_number": true,
@@ -282,7 +265,6 @@ describe("getInitialStateForCardDataSource", () => {
           DIMENSION: ["$_card:1_name"],
         },
         settings: {
-          "card.title": card.name,
           "funnel.metric": "METRIC",
           "funnel.dimension": "DIMENSION",
         },

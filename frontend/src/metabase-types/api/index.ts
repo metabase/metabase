@@ -10,6 +10,7 @@ export * from "./bookmark";
 export * from "./bug-report";
 export * from "./card";
 export * from "./click-behavior";
+export * from "./cloud-add-ons";
 export * from "./collection";
 export * from "./comments";
 export * from "./content-translation";

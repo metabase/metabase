@@ -711,7 +711,7 @@ describe("QB Actions > initializeQB", () => {
 
     it("constructs a card based on provided 'db' param", async () => {
       const expectedCard = Question.create({
-        databaseId: SAMPLE_DB_ID,
+        DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
       }).card();
 
       const { result, metadata } = await setupBlank({ db: SAMPLE_DB_ID });

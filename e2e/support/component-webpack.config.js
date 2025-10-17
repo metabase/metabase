@@ -3,6 +3,9 @@ const path = require("path");
 
 const webpack = require("webpack");
 
+const {
+  SVGO_CONFIG,
+} = require("../../frontend/build/shared/rspack/svgo-config");
 const mainConfig = require("../../rspack.main.config");
 
 const SDK_PACKAGE_NAME = "@metabase/embedding-sdk-react";
@@ -56,6 +59,7 @@ module.exports = {
             loader: "@svgr/webpack",
             options: {
               ref: true,
+              svgoConfig: SVGO_CONFIG,
             },
           },
         ],

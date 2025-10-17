@@ -2,23 +2,18 @@ import type { Location } from "history";
 import { useCallback, useEffect, useMemo } from "react";
 import { push } from "react-router-redux";
 
+import { b64url_to_utf8, utf8_to_b64url } from "metabase/lib/encoding";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { loadMetadataForTable } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import type { StructuredDatasetQuery } from "metabase-types/api";
-
-import {
-  deserializeTableFilter,
-  deserializeTableSorting,
-  serializeMbqlParam,
-} from "../common/utils";
+import type { OpaqueDatasetQuery } from "metabase-types/api";
 
 type UseAdHocTableQueryProps = {
   tableId: number;
   databaseId: number;
-  location: Location<{ filter?: string; sorting?: string }>;
+  location: Location<{ query?: string }>;
 };
 
 export const useAdHocTableQuery = ({
@@ -26,80 +21,57 @@ export const useAdHocTableQuery = ({
   databaseId,
   location,
 }: UseAdHocTableQueryProps) => {
-  const filterQueryParam = useMemo(
-    () =>
-      location.query?.filter
-        ? deserializeTableFilter(location.query.filter)
-        : null,
-    [location.query.filter],
-  );
-
-  const sortingQueryParam = useMemo(
-    () =>
-      location.query?.sorting
-        ? deserializeTableSorting(location.query.sorting)
-        : null,
-    [location.query.sorting],
-  );
-
   const metadata = useSelector(getMetadata);
   const dispatch = useDispatch();
 
-  const table = metadata.table(tableId);
+  const queryParam = useMemo(
+    () =>
+      location.query?.query
+        ? deserializeQueryFromUrl(location.query.query)
+        : null,
+    [location.query.query],
+  );
+
+  const metadataProvider = useMemo(
+    () => Lib.metadataProvider(databaseId, metadata),
+    [databaseId, metadata],
+  );
+  const table = useMemo(
+    () => Lib.tableOrCardMetadata(metadataProvider, tableId),
+    [metadataProvider, tableId],
+  );
 
   useEffect(() => {
     dispatch(loadMetadataForTable(tableId));
   }, [dispatch, tableId]);
 
   const tableQuestion = useMemo(() => {
-    if (table) {
-      let question = Question.create({ databaseId, tableId, metadata });
-
-      if (filterQueryParam || sortingQueryParam) {
-        const legacyQuery = Lib.toLegacyQuery(
-          question.query(),
-        ) as StructuredDatasetQuery;
-
-        if (filterQueryParam) {
-          legacyQuery.query.filter = filterQueryParam;
-        }
-
-        if (sortingQueryParam) {
-          legacyQuery.query["order-by"] = sortingQueryParam;
-        }
-
-        question = question.setDatasetQuery(legacyQuery);
+    if (queryParam != null) {
+      const query = Lib.fromJsQuery(metadataProvider, queryParam);
+      if (Lib.sourceTableOrCardId(query) === tableId) {
+        return Question.create({
+          dataset_query: Lib.toJsQuery(query),
+          metadata,
+        });
       }
-
-      return question;
     }
-  }, [
-    table,
-    databaseId,
-    tableId,
-    metadata,
-    filterQueryParam,
-    sortingQueryParam,
-  ]);
+
+    if (table != null) {
+      const query = Lib.queryFromTableOrCardMetadata(metadataProvider, table);
+      return Question.create({ dataset_query: Lib.toJsQuery(query), metadata });
+    }
+  }, [tableId, table, queryParam, metadata, metadataProvider]);
 
   const handleTableQuestionChange = useCallback(
     (newQuestion: Question) => {
-      const legacyQuery = Lib.toLegacyQuery(
-        newQuestion.query(),
-      ) as StructuredDatasetQuery;
-      const newFilterMbql = legacyQuery.query.filter;
-      const newSortingMbql = legacyQuery.query["order-by"];
+      const newQuery = newQuestion.query();
+      const newFilters = Lib.filters(newQuery, 0);
+      const newOrderBys = Lib.orderBys(newQuery, 0);
 
-      if (newFilterMbql || newSortingMbql) {
+      // don't set the query string param if there are no filters or sorting
+      if (newFilters.length > 0 || newOrderBys.length > 0) {
         const searchParams = new URLSearchParams();
-        if (newFilterMbql) {
-          searchParams.append("filter", serializeMbqlParam(newFilterMbql));
-        }
-        if (newSortingMbql) {
-          searchParams.append("sorting", serializeMbqlParam(newSortingMbql));
-        }
-
-        // don't set filter param if it is empty
+        searchParams.set("query", serializeQueryToUrl(Lib.toJsQuery(newQuery)));
         dispatch(
           push(`${window.location.pathname}?${searchParams.toString()}`),
         );
@@ -112,7 +84,7 @@ export const useAdHocTableQuery = ({
 
   const tableQuery = useMemo(() => {
     if (tableQuestion) {
-      return Lib.toLegacyQuery(tableQuestion.query());
+      return Lib.toJsQuery(tableQuestion.query());
     }
   }, [tableQuestion]);
 
@@ -122,3 +94,11 @@ export const useAdHocTableQuery = ({
     handleTableQuestionChange,
   };
 };
+
+function serializeQueryToUrl(query: OpaqueDatasetQuery) {
+  return utf8_to_b64url(JSON.stringify(query));
+}
+
+function deserializeQueryFromUrl(query: string): OpaqueDatasetQuery {
+  return JSON.parse(b64url_to_utf8(query));
+}

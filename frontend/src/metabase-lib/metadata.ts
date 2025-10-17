@@ -1,11 +1,11 @@
 import * as ML from "cljs/metabase.lib.js";
-import * as ML_MetadataCalculation from "cljs/metabase.lib.metadata.calculation";
 import type {
   Field as ApiField,
   CardId,
   CardType,
   DatabaseId,
   DatasetColumn,
+  FieldId,
   TableId,
 } from "metabase-types/api";
 
@@ -55,13 +55,6 @@ export function metadataProvider(
   metadata: Metadata,
 ): MetadataProvider {
   return ML.metadataProvider(databaseId, metadata);
-}
-
-/**
- * @deprecated use displayInfo instead
- */
-export function displayName(query: Query, clause: Clause): string {
-  return ML_MetadataCalculation.display_name(query, clause);
 }
 
 declare function DisplayInfoFn(
@@ -176,6 +169,13 @@ export function tableOrCardMetadata(
   tableID: TableId,
 ): CardMetadata | TableMetadata | null {
   return ML.table_or_card_metadata(queryOrMetadataProvider, tableID);
+}
+
+export function fieldMetadata(
+  queryOrMetadataProvider: Query | MetadataProvider,
+  fieldID: FieldId,
+): ColumnMetadata | null {
+  return ML.field_metadata(queryOrMetadataProvider, fieldID);
 }
 
 export function visibleColumns(

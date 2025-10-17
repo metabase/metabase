@@ -6,7 +6,7 @@ import { resetSnowplow } from "e2e/support/helpers/e2e-snowplow-helpers";
 
 const { H } = cy;
 
-const { ORDERS_ID, PRODUCTS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, PRODUCTS_ID, PEOPLE_ID, ORDERS, PRODUCTS } = SAMPLE_DATABASE;
 
 describe("scenarios > table-editing", () => {
   beforeEach(() => {
@@ -497,6 +497,66 @@ describe("scenarios > table-editing", () => {
 
       cy.log("should show edit icon when no rows are selected");
       cy.findAllByTestId("row-edit-icon").should("exist");
+    });
+  });
+
+  describe("table editing bugs", () => {
+    it("WRK-907: should not allow to create new values for FK fields", () => {
+      cy.intercept("GET", `/api/table/${ORDERS_ID}/query_metadata`).as(
+        "getOrdersTable",
+      );
+      const NON_EXISTING_ID = "999999";
+      cy.intercept(
+        "GET",
+        `/api/field/${ORDERS.USER_ID}/search/${ORDERS.USER_ID}?value=${NON_EXISTING_ID}&limit=20`,
+      ).as("getFieldValues");
+      cy.intercept(
+        "GET",
+        `/api/field/${PRODUCTS.CATEGORY}/search/${PRODUCTS.CATEGORY}?value=${NON_EXISTING_ID}&limit=20`,
+      ).as("getCategoryValues");
+
+      cy.visit(`/browse/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/edit`);
+
+      cy.wait("@getOrdersTable");
+
+      cy.findByTestId("new-record-button").click();
+
+      H.modal().within(() => {
+        cy.findByTestId("User ID-field-input").click();
+        cy.realType(NON_EXISTING_ID);
+      });
+
+      cy.wait("@getFieldValues");
+
+      H.popover().within(() => {
+        cy.findByText("Nothing found").should("be.visible");
+        cy.findByText(`Add option: ${NON_EXISTING_ID}`).should("not.exist");
+      });
+
+      H.modal().findByText("Cancel").click();
+
+      cy.intercept("GET", `/api/table/${PRODUCTS_ID}/query_metadata`).as(
+        "getProductsTable",
+      );
+
+      // navigate via breadcrumbs to avoid calling expensive `cy.visit`
+      cy.findByTestId("head-crumbs-container")
+        .findByText("Sample Database")
+        .click();
+      openTableEdit("Products");
+
+      cy.wait("@getProductsTable");
+
+      cy.findByTestId("new-record-button").click();
+
+      H.modal().within(() => {
+        cy.findByTestId("Category-field-input").click();
+        cy.realType(NON_EXISTING_ID);
+      });
+
+      H.popover()
+        .findByRole("option", { name: `Add option: ${NON_EXISTING_ID}` })
+        .should("be.visible");
     });
   });
 });

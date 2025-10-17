@@ -19,9 +19,11 @@ const { CSS_CONFIG } = require("./frontend/build/shared/rspack/css-config");
 const {
   getBannerOptions,
 } = require("./frontend/build/shared/rspack/get-banner-options");
+const { SVGO_CONFIG } = require("./frontend/build/shared/rspack/svgo-config");
 
 const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
 const FONTS_PATH = __dirname + "/resources/frontend_client/app/fonts";
+const IMAGES_PATH = __dirname + "/resources/frontend_client/app/img";
 const DOCS_PATH = __dirname + "/docs";
 const FRONTEND_BUILD_CONFIGS_PATH = __dirname + "/frontend/build";
 const SRC_PATH = __dirname + "/frontend/src/metabase";
@@ -196,6 +198,7 @@ const config = {
             loader: "@svgr/webpack",
             options: {
               ref: true,
+              svgoConfig: SVGO_CONFIG,
             },
           },
         ],
@@ -216,6 +219,7 @@ const config = {
     alias: {
       "build-configs": FRONTEND_BUILD_CONFIGS_PATH,
       assets: ASSETS_PATH,
+      img: IMAGES_PATH,
       fonts: FONTS_PATH,
       docs: DOCS_PATH,
       metabase: SRC_PATH,
@@ -250,7 +254,7 @@ const config = {
     splitChunks: {
       cacheGroups: {
         vendors: {
-          test: /[\\/]node_modules[\\/](?!(sql-formatter|jspdf|html2canvas-pro)[\\/])/,
+          test: /[\\/]node_modules[\\/](?!(sql-formatter|jspdf|html2canvas|html2canvas-pro)[\\/])/,
           chunks: "all",
           name: "vendor",
         },
@@ -265,7 +269,7 @@ const config = {
           name: "jspdf",
         },
         html2canvas: {
-          test: /[\\/]node_modules[\\/]html2canvas-pro[\\/]/,
+          test: /[\\/]node_modules[\\/](html2canvas|html2canvas-pro)[\\/]/,
           chunks: "all",
           name: "html2canvas",
         },

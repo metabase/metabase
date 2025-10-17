@@ -67,6 +67,7 @@ export const FieldSchema = new schema.Entity("fields", undefined, {
   },
 });
 
+export const ForeignKeySchema = new schema.Entity("foreignKeys");
 export const SegmentSchema = new schema.Entity("segments");
 export const PersistedModelSchema = new schema.Entity("persistedModels");
 export const SnippetSchema = new schema.Entity("snippets");
@@ -99,6 +100,11 @@ FieldSchema.define({
   table: TableSchema,
   name_field: FieldSchema,
   dimensions: [{ human_readable_field: FieldSchema }],
+});
+
+ForeignKeySchema.define({
+  origin: FieldSchema,
+  destination: FieldSchema,
 });
 
 SegmentSchema.define({

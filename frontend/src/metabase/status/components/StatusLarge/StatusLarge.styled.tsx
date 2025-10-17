@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 
 import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
 import LoadingSpinner from "metabase/common/components/LoadingSpinner";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 export const StatusRoot = styled.div`
   width: 16rem;

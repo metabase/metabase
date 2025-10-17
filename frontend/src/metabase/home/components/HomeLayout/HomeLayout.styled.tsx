@@ -2,7 +2,7 @@
 import styled from "@emotion/styled";
 
 import Button from "metabase/common/components/Button/Button";
-import { hueRotate, lighten } from "metabase/lib/colors";
+import { lighten } from "metabase/lib/colors";
 import {
   breakpointMinExtraLarge,
   breakpointMinLarge,
@@ -43,19 +43,15 @@ export const LayoutBody = styled.div`
 
 export const LayoutIllustration = styled.div<{
   backgroundImageSrc: string;
-  isDefault: boolean;
 }>`
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  filter: ${({ isDefault }) =>
-    isDefault && `hue-rotate(${hueRotate("brand")}deg)`};
   background-image: ${({ backgroundImageSrc }) =>
     `url("${backgroundImageSrc}")`};
-  background-size: ${({ isDefault }) =>
-    isDefault ? "max(min(1728px, 260vh), 100%) auto" : "100% auto"};
+  background-size: 100% auto;
   background-repeat: no-repeat;
   background-position: bottom;
 `;

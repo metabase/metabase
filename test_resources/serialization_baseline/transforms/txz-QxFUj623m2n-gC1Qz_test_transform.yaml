@@ -3,13 +3,14 @@ description: A test transform for serialization
 entity_id: txz-QxFUj623m2n-gC1Qz
 name: Test Transform
 source:
-  database: My Database
   query:
-    source-table:
-    - My Database
-    - null
-    - Schemaless Table
-  type: query
+    database: My Database
+    query:
+      source-table:
+      - My Database
+      - null
+      - Schemaless Table
+    type: query
 tags:
 - entity_id: qvqHB8VgfxMzZx4LIVYGt
   position: 0

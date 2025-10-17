@@ -6,15 +6,17 @@ import { Box, Center, Loader } from "metabase/ui";
  **/
 export const EmbedPreviewLoadingOverlay = ({
   isVisible,
+  bg,
 }: {
   isVisible: boolean;
+  bg?: string;
 }) => {
   if (!isVisible) {
     return null;
   }
 
   return (
-    <Box pos="absolute" bg="var(--mb-color-bg-white)" inset={0}>
+    <Box pos="absolute" bg={bg ?? "var(--mb-color-bg-white)"} inset={0}>
       <Center h="100%" w="100%" mx="auto">
         <Loader data-testid="preview-loading-indicator" />
       </Center>

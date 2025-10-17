@@ -1,14 +1,14 @@
 import Question from "metabase-lib/v1/Question";
-import type { Card, DatasetQuery } from "metabase-types/api";
+import type { Card, LegacyDatasetQuery } from "metabase-types/api";
 
 export function getInitialQueryTransformSource(
   card: Card | undefined,
-  type: DatasetQuery["type"] | undefined,
+  type: LegacyDatasetQuery["type"] | undefined,
 ) {
   const query =
     card != null
       ? card.dataset_query
-      : Question.create({ type }).datasetQuery();
+      : Question.create({ DEPRECATED_RAW_MBQL_type: type }).datasetQuery();
 
   return { type: "query" as const, query };
 }

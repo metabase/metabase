@@ -1,5 +1,3 @@
-import { assocIn } from "icepick";
-
 import { createMockMetadata } from "__support__/metadata";
 import Question from "metabase-lib/v1/Question";
 import NativeQuery, {
@@ -55,14 +53,14 @@ function makeDatasetQuery(queryText, templateTags, databaseId) {
 
 function makeQuery(query, templateTags, metadata = METADATA) {
   return new NativeQuery(
-    Question.create({ type: "native", metadata }),
+    Question.create({ DEPRECATED_RAW_MBQL_type: "native", metadata }),
     makeDatasetQuery(query, templateTags, SAMPLE_DB_ID),
   );
 }
 
 function makeMongoQuery(query, templateTags, metadata = METADATA) {
   return new NativeQuery(
-    Question.create({ type: "native", metadata }),
+    Question.create({ DEPRECATED_RAW_MBQL_type: "native", metadata }),
     makeDatasetQuery(query, templateTags, MONGO_DB_ID),
   );
 }
@@ -218,47 +216,32 @@ describe("NativeQuery", () => {
       });
 
       it("requires a display name", () => {
-        q = q.setDatasetQuery(
-          assocIn(q.datasetQuery(), ["native", "template-tags", "foo"], {
-            name: "foo",
-            type: "text",
-          }),
-        );
-
+        q = q.setTemplateTag("foo", { name: "foo", type: "text" });
         expect(q.canRun()).toBe(false);
 
-        q = q.setDatasetQuery(
-          assocIn(q.datasetQuery(), ["native", "template-tags", "foo"], {
-            name: "foo",
-            type: "text",
-            "display-name": "Foo",
-          }),
-        );
-
+        q = q.setTemplateTag("foo", {
+          name: "foo",
+          type: "text",
+          "display-name": "Foo",
+        });
         expect(q.canRun()).toBe(true);
       });
 
       it("dimension type without a dimension", () => {
-        q = q.setDatasetQuery(
-          assocIn(q.datasetQuery(), ["native", "template-tags", "foo"], {
-            type: "dimension",
-            "widget-type": "category",
-            "display-name": "bar",
-          }),
-        );
-
+        q = q.setTemplateTag("foo", {
+          type: "dimension",
+          "widget-type": "category",
+          "display-name": "bar",
+        });
         expect(q.canRun()).toBe(false);
 
-        q = q.setDatasetQuery(
-          assocIn(q.datasetQuery(), ["native", "template-tags", "foo"], {
-            name: "foo",
-            type: "dimension",
-            "widget-type": "category",
-            dimension: ["field", 123, null],
-            "display-name": "bar",
-          }),
-        );
-
+        q = q.setTemplateTag("foo", {
+          name: "foo",
+          type: "dimension",
+          "widget-type": "category",
+          dimension: ["field", 123, null],
+          "display-name": "bar",
+        });
         expect(q.canRun()).toBe(true);
       });
     });
