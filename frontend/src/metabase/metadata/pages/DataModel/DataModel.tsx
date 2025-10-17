@@ -8,22 +8,15 @@ import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
 import {
   useGetCardQuery,
   useGetTableQueryMetadataQuery,
-  useListCollectionsTreeQuery,
   useListDatabasesQuery,
   useUpdateCardMutation,
   useUpdateFieldMutation,
 } from "metabase/api";
-import { getTreeItems } from "metabase/bench/components/models/utils";
 import EmptyState from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Tree } from "metabase/common/components/tree";
-import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
-import { useSelector } from "metabase/lib/redux";
 import { ModelColumnsSection } from "metabase/metadata/pages/DataModel/components/models/ModelColumnsList";
-import { ModelTreeNode } from "metabase/metadata/pages/DataModel/components/models/ModelTreeNode";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { getUser } from "metabase/selectors/user";
-import { Box, Flex, Stack, Text, Title, rem } from "metabase/ui";
+import { Box, Flex, Stack, rem } from "metabase/ui";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions"; // eslint-disable-line no-restricted-imports
 import type { FieldName } from "metabase-types/api";
 
@@ -79,13 +72,6 @@ export const DataModel = ({ children, location, params }: Props) => {
       : getTableMetadataQuery(tableId),
   );
 
-  // Models
-  const { isLoading: isLoadingModels, data: modelsData } = useFetchModels({
-    filter_items_in_personal_collection: undefined, // include all models
-  });
-  const { isLoading: isLoadingCollections, data: collections } =
-    useListCollectionsTreeQuery({ "exclude-archived": true });
-  const models = modelsData?.data;
   const { isLoading: isLoadingModel, data: modelCard } = useGetCardQuery(
     { id: modelId },
     { skip: !modelId },
@@ -104,21 +90,7 @@ export const DataModel = ({ children, location, params }: Props) => {
   const parentName = field?.nfc_path?.[0] ?? "";
   const parentField = fieldsByName[parentName];
   const [previewType, setPreviewType] = useState<PreviewType>("table");
-  const isLoading =
-    isLoadingTables ||
-    isLoadingDatabases ||
-    isLoadingModels ||
-    isLoadingCollections ||
-    isLoadingModel;
-
-  const currentUser = useSelector(getUser);
-  const modelsTreeData = useMemo(() => {
-    return models && collections && currentUser
-      ? getTreeItems(collections, models, "dataset", currentUser.id)
-      : [];
-  }, [collections, currentUser, models]);
-
-  const handleModelSelect = useCallback(() => {}, []);
+  const isLoading = isLoadingTables || isLoadingDatabases || isLoadingModel;
 
   const handleTableFieldChange = useCallback(
     (update: FieldChangeParams) => {
@@ -195,26 +167,13 @@ export const DataModel = ({ children, location, params }: Props) => {
         maw={COLUMN_CONFIG.nav.max}
         miw={COLUMN_CONFIG.nav.min}
       >
-        <Title p="xl" pb={0} order={3}>{t`Tables`}</Title>
         <RouterTablePicker
           className={S.tablePicker}
           databaseId={databaseId}
           schemaName={schemaName}
           tableId={tableId}
+          modelId={modelId}
         />
-
-        <LoadingAndErrorWrapper error={error} loading={isLoading}>
-          <Title p="xl" order={3} pt="sm">{t`Models`}</Title>
-
-          <Tree
-            className={S.modelsTree}
-            data={modelsTreeData}
-            selectedId={modelId}
-            onSelect={handleModelSelect}
-            emptyState={<Text c="text-light">{t`No models found`}</Text>}
-            TreeNode={ModelTreeNode}
-          />
-        </LoadingAndErrorWrapper>
       </Stack>
 
       {isSegments && children}

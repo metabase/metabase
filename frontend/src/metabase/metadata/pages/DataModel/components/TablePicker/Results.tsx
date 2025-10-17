@@ -3,6 +3,7 @@ import cx from "classnames";
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 
+import CS from "metabase/css/core/index.css";
 import { Box, Flex, Icon, Skeleton, rem } from "metabase/ui";
 
 import { getUrl } from "../../utils";
@@ -38,7 +39,14 @@ export function Results({
   onItemClick,
   onSelectedIndexChange,
 }: Props) {
-  const [activeTableId, setActiveTableId] = useState(path.tableId);
+  const [activeItem, setActiveItem] = useState(() => {
+    if (path.tableId != null) {
+      return { type: "table", id: path.tableId };
+    }
+    if (path.modelId != null) {
+      return { type: "model", id: path.modelId };
+    }
+  });
   const ref = useRef<HTMLDivElement>(null);
 
   const virtual = useVirtualizer({
@@ -89,15 +97,6 @@ export function Results({
     }
   }, [selectedIndex]);
 
-  useEffect(
-    function cleanSelectionOnPathChange() {
-      if (!path.databaseId && !path.schemaName && !path.tableId) {
-        setActiveTableId(undefined);
-      }
-    },
-    [path.databaseId, path.schemaName, path.tableId],
-  );
-
   return (
     <Box ref={ref} px="xl" pb="lg" className={S.results}>
       <Box style={{ height: virtual.getTotalSize() }}>
@@ -114,7 +113,13 @@ export function Results({
             parent,
             disabled,
           } = item;
-          const isActive = type === "table" && value?.tableId === activeTableId;
+          const isActive =
+            (type === "table" &&
+              activeItem.type === "table" &&
+              value?.tableId === activeItem.id) ||
+            (type === "model" &&
+              activeItem.type === "model" &&
+              value?.modelId === activeItem.id);
           const parentIndex = items.findIndex((item) => item.key === parent);
           const children = items.filter((item) => item.parent === key);
           const hasTableChildren = children.some(
@@ -128,12 +133,19 @@ export function Results({
 
             toggle?.(key, open);
 
-            if (value && (!isExpanded || type === "table")) {
+            if (
+              value &&
+              (!isExpanded || type === "table" || type === "model")
+            ) {
               onItemClick?.(value);
             }
 
             if (type === "table") {
-              setActiveTableId(value?.tableId);
+              setActiveItem({ type: "table", id: value?.tableId });
+            }
+
+            if (type === "model") {
+              setActiveItem({ type: "model", id: value?.modelId });
             }
           };
 
@@ -222,6 +234,9 @@ export function Results({
                     : undefined,
                 tableId: type === "table" ? value?.tableId : undefined,
                 fieldId: undefined,
+                collectionId: value?.collectionId,
+                modelId: value?.modelId,
+                fieldName: undefined,
               })}
               data-testid="tree-item"
               data-type={type}
@@ -235,13 +250,16 @@ export function Results({
               <Flex align="center" mih={ITEM_MIN_HEIGHT} py="xs" w="100%">
                 <Flex align="flex-start" gap="xs" w="100%">
                   <Flex align="center" gap="xs">
-                    {hasChildren(type) && (
+                    {hasChildren(item) && (
                       <Icon
                         name="chevronright"
                         size={10}
                         color="var(--mb-color-text-light)"
                         className={cx(S.chevron, {
                           [S.expanded]: isExpanded,
+                          [CS.hidden]:
+                            item.type === "collection" &&
+                            item.hasNoValidChildren,
                         })}
                       />
                     )}

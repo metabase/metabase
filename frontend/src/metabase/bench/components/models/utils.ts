@@ -52,6 +52,7 @@ export function getTreeItems(
     nonPersonalOrArchivedCollection,
   );
 
+  // TODO: extract this into a function and reuse for models tree in DataModel
   const preparedCollections = [
     ...userPersonalCollections,
     ...nonPersonalOrArchivedCollections,

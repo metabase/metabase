@@ -17,6 +17,7 @@ export function parseRouteParams(params: RouteParams): ParsedRouteParams {
     fieldId: Urls.extractEntityId(params.fieldId),
     modelId: Urls.extractEntityId(params.modelId),
     fieldName: params.fieldName,
+    collectionId: params.collectionId,
   };
 }
 
@@ -24,6 +25,7 @@ const BASE_URL = "/bench/metadata";
 
 export function getUrl(params: ParsedRouteParams): string {
   const { databaseId, schemaName, tableId, fieldId } = params;
+  const { collectionId, modelId, fieldName } = params;
   const schemaId = `${databaseId}:${schemaName}`;
 
   if (
@@ -45,6 +47,14 @@ export function getUrl(params: ParsedRouteParams): string {
 
   if (databaseId != null) {
     return `${BASE_URL}/database/${databaseId}`;
+  }
+
+  if (collectionId != null && modelId != null && fieldName != null) {
+    return `${BASE_URL}/collection/${collectionId}/model/${modelId}/field/${fieldName}`;
+  }
+
+  if (collectionId != null && modelId != null) {
+    return `${BASE_URL}/collection/${collectionId}/model/${modelId}`;
   }
 
   return BASE_URL;
