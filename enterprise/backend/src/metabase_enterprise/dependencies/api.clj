@@ -127,14 +127,14 @@
 
 (defn- entity-keys [entity-type]
   (case entity-type
-    :table [:name :description :display_name :db_id :schema :fields]
+    :table [:name :description :display_name :db_id :db :schema :fields]
     :card [:name :type :display :database_id :view_count
            :created_at :creator :description
            :result_metadata :last-edit-info
            :collection :collection_id :dashboard :dashboard_id
            :moderation_reviews]
     :snippet [:name :description]
-    :transform [:name :description]
+    :transform [:name :description :table]
     []))
 
 (defn- format-subentity [entity]
@@ -200,10 +200,11 @@
     (mapcat (fn [[entity-type entity-ids]]
               (->> (cond-> (t2/select (entity-model entity-type)
                                       :id [:in entity-ids])
-                     (= entity-type :card)  (-> (t2/hydrate :creator :dashboard :collection :moderation_reviews)
-                                                (->> (map collection.root/hydrate-root-collection))
-                                                (revisions/with-last-edit-info :card))
-                     (= entity-type :table) (t2/hydrate :fields))
+                     (= entity-type :card)      (-> (t2/hydrate :creator :dashboard :collection :moderation_reviews)
+                                                    (->> (map collection.root/hydrate-root-collection))
+                                                    (revisions/with-last-edit-info :card))
+                     (= entity-type :table)     (t2/hydrate :fields :db)
+                     (= entity-type :transform) (t2/hydrate :table-with-db-and-fields))
                    (mapv #(entity-value entity-type % usages))))
             nodes-by-type)))
 
