@@ -632,6 +632,8 @@ describe("issue 43216", () => {
   });
 
   it("should update source question metadata when it changes (metabase#43216)", () => {
+    cy.intercept("GET", "/api/activity/recents?*").as("recents");
+
     cy.visit("/");
     H.waitForLoaderToBeRemoved();
 
@@ -645,23 +647,19 @@ describe("issue 43216", () => {
     H.saveQuestion("Target question");
 
     cy.log("Update source question");
-    cy.findByRole("link", { name: /Our analytics/ }).click();
-    H.waitForLoaderToBeRemoved();
-    cy.findByRole("link", { name: "Source question" }).click();
-    H.waitForLoaderToBeRemoved();
+    H.commandPaletteButton().click();
+    cy.wait("@recents");
+    H.commandPalette().findByText("Source question").click();
     cy.findByTestId("native-query-editor-container")
       .findByText("Open Editor")
       .click();
-    H.NativeEditor.focus().type(" , 4 as D;");
+    H.NativeEditor.focus().type(" , 4 as D");
     H.saveSavedQuestion();
-    H.waitForLoaderToBeRemoved();
-    cy.wait(250); // wait for react to process all changes (flaky test)
 
     cy.log("Assert updated metadata in target question");
-    cy.findByRole("link", { name: /Our analytics/ }).click();
-    H.waitForLoaderToBeRemoved();
-    cy.findByRole("link", { name: "Target question" }).click();
-    H.waitForLoaderToBeRemoved();
+    H.commandPaletteButton().click();
+    cy.wait("@recents");
+    H.commandPalette().findByText("Target question").click();
     cy.findAllByTestId("header-cell").eq(3).should("have.text", "D");
     H.openNotebook();
     H.getNotebookStep("data").button("Pick columns").click();
