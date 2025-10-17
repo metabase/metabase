@@ -30,14 +30,16 @@
 (defn- encoder []
   (mr/cached ::encoder ::lib.schema/query encoder*))
 
-(defn- encode [query]
-  ((encoder) query))
+(mu/defn comparable-query :- :map
+  "Return `query` normalized in such a way that two instances of the same query compare equal."
+  [query :- :map]
+  ((encoder) (dissoc query :lib/metadata)))
 
 (mu/defn query-hash :- bytes?
   "Return a 256-bit SHA3 hash of `query` as a key for the cache. (This is returned as a byte array.)"
   ^bytes [query :- :map]
   (-> query
       (cond-> (not= (keyword (:type query)) :internal) lib-be.models.transforms/normalize-query)
-      encode
+      comparable-query
       json/encode
       buddy-hash/sha3-256))

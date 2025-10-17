@@ -16,6 +16,7 @@
 
 (p/import-vars
  [metabase.lib-be.hash
+  comparable-query
   query-hash]
  [metabase.lib-be.metadata.bootstrap
   resolve-database]
