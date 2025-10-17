@@ -16,6 +16,7 @@ import {
 } from "metabase-types/api";
 
 import { SearchModelPicker } from "./SearchModelPicker";
+import { BROWSE_OPTION_VALUE } from "./constants";
 import { getSelectOptions } from "./utils";
 
 type EntrySearchInputProps = {
@@ -77,17 +78,17 @@ export function EntrySearchInput({
     if (option == null) {
       return;
     }
-    if (option.type === "item") {
-      if (isActivityModel(option.model)) {
+    if (option.entry != null) {
+      onEntryChange(option.entry);
+
+      if (option.model != null && isActivityModel(option.model)) {
         logRecentItem({
           model: option.model,
           model_id: option.entry.id,
         });
       }
-
-      onEntryChange(option.entry);
     }
-    if (option.type === "browse") {
+    if (option.value === BROWSE_OPTION_VALUE) {
       onPickerOpen();
     }
   };

@@ -12,11 +12,8 @@ import type {
 
 import { getNodeIconWithType } from "../../utils";
 
-import type {
-  BrowseSelectOption,
-  EntrySelectOption,
-  ItemSelectOption,
-} from "./types";
+import { BROWSE_OPTION_VALUE } from "./constants";
+import type { EntrySelectOption } from "./types";
 
 function getDependencyId(id: SearchResultId): DependencyId {
   if (typeof id === "number") {
@@ -60,7 +57,7 @@ function getSelectOptionValue(id: DependencyId, type: DependencyType) {
 function getItemOptions<T extends SearchResult | RecentItem>(
   items: T[],
   getLabel: (item: T) => string,
-): ItemSelectOption[] {
+): EntrySelectOption[] {
   return items.map((item) => {
     const id = getDependencyId(item.id);
     const type = getDependencyType(item.model);
@@ -82,24 +79,24 @@ function getItemOptions<T extends SearchResult | RecentItem>(
   });
 }
 
-function getSearchOptions(searchResults: SearchResult[]): ItemSelectOption[] {
+function getSearchOptions(searchResults: SearchResult[]): EntrySelectOption[] {
   return getItemOptions(searchResults, (item) => item.name);
 }
 
 function getRecentOptions(
   recentItems: RecentItem[],
   searchModels: SearchModel[],
-): ItemSelectOption[] {
+): EntrySelectOption[] {
   return getItemOptions(
     recentItems.filter((item) => searchModels.includes(item.model)),
     (item) => (item.model === "table" ? item.display_name : item.name),
   );
 }
 
-function getBrowseOption(): BrowseSelectOption {
+function getBrowseOption(): EntrySelectOption {
   return {
     type: "browse",
-    value: "browse",
+    value: BROWSE_OPTION_VALUE,
     label: t`Browse all`,
     icon: "search",
   };
