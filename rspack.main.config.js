@@ -19,6 +19,7 @@ const { CSS_CONFIG } = require("./frontend/build/shared/rspack/css-config");
 const {
   getBannerOptions,
 } = require("./frontend/build/shared/rspack/get-banner-options");
+const { SVGO_CONFIG } = require("./frontend/build/shared/rspack/svgo-config");
 
 const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
 const FONTS_PATH = __dirname + "/resources/frontend_client/app/fonts";
@@ -197,16 +198,7 @@ const config = {
             loader: "@svgr/webpack",
             options: {
               ref: true,
-              svgoConfig: {
-                plugins: [
-                  {
-                    name: "removeUnknownsAndDefaults",
-                    params: {
-                      defaultMarkupDeclarations: false,
-                    },
-                  },
-                ],
-              },
+              svgoConfig: SVGO_CONFIG,
             },
           },
         ],
