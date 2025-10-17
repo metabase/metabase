@@ -112,7 +112,7 @@ export interface MetabotState {
   history: MetabotHistory;
   state: any;
   reactions: MetabotReactionsState;
-  toolCalls: MetabotToolCall[];
+  activeToolCalls: MetabotToolCall[];
   experimental: {
     metabotReqIdOverride: string | undefined;
     profileOverride: string | undefined;
@@ -131,7 +131,7 @@ export const getMetabotInitialState = (): MetabotState => ({
     navigateToPath: null,
     suggestedTransforms: [],
   },
-  toolCalls: [],
+  activeToolCalls: [],
   experimental: {
     metabotReqIdOverride: undefined,
     profileOverride: undefined,
@@ -156,7 +156,7 @@ export const metabot = createSlice({
       state,
       action: PayloadAction<Omit<MetabotAgentChatMessage, "id" | "role">>,
     ) => {
-      state.toolCalls = [];
+      state.activeToolCalls = [];
       state.messages.push({
         id: createMessageId(),
         role: "agent",
@@ -173,7 +173,7 @@ export const metabot = createSlice({
       state.errorMessages.push(action.payload);
     },
     addAgentTextDelta: (state, action: PayloadAction<string>) => {
-      const hasToolCalls = state.toolCalls.length > 0;
+      const hasToolCalls = state.activeToolCalls.length > 0;
       const lastMessage = _.last(state.messages);
       const canAppend =
         !hasToolCalls &&
@@ -191,7 +191,7 @@ export const metabot = createSlice({
         });
       }
 
-      state.toolCalls = hasToolCalls ? [] : state.toolCalls;
+      state.activeToolCalls = hasToolCalls ? [] : state.activeToolCalls;
     },
     toolCallStart: (
       state,
@@ -217,7 +217,7 @@ export const metabot = createSlice({
         message: parsedArgs,
         status: "started",
       });
-      state.toolCalls.push({
+      state.activeToolCalls.push({
         id: toolCallId,
         name: toolName,
         message: TOOL_CALL_MESSAGES[toolName],
@@ -228,7 +228,7 @@ export const metabot = createSlice({
       state,
       action: PayloadAction<{ toolCallId: string; result?: any }>,
     ) => {
-      state.toolCalls = state.toolCalls.map((tc) =>
+      state.activeToolCalls = state.activeToolCalls.map((tc) =>
         tc.id === action.payload.toolCallId ? { ...tc, status: "ended" } : tc,
       );
 
@@ -267,7 +267,7 @@ export const metabot = createSlice({
       state.history = [];
       state.state = {};
       state.isProcessing = false;
-      state.toolCalls = [];
+      state.activeToolCalls = [];
       state.conversationId = uuid();
       state.reactions.suggestedTransforms = [];
       state.experimental.metabotReqIdOverride = undefined;
@@ -344,11 +344,11 @@ export const metabot = createSlice({
       .addCase(sendAgentRequest.fulfilled, (state, action) => {
         state.history = action.payload?.history?.slice() ?? [];
         state.state = { ...(action.payload?.state ?? {}) };
-        state.toolCalls = [];
+        state.activeToolCalls = [];
         state.isProcessing = false;
       })
       .addCase(sendAgentRequest.rejected, (state) => {
-        state.toolCalls = [];
+        state.activeToolCalls = [];
         state.isProcessing = false;
       });
   },
