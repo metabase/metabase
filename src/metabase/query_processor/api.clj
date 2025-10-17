@@ -166,7 +166,8 @@
    _query-params
    query :- [:map
              [:database ms/PositiveInt]]]
-  (queries/batch-fetch-query-metadata [query]))
+  (lib-be/with-metadata-provider-cache
+    (queries/batch-fetch-query-metadata [query])))
 
 (api.macros/defendpoint :post "/native"
   "Fetch a native version of an MBQL query."
