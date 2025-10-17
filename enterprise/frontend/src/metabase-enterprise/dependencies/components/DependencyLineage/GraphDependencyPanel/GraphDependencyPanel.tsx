@@ -65,6 +65,7 @@ export function GraphDependencyPanel({
         searchText={searchText}
         filterOptions={filterOptions}
         sortOptions={sortOptions}
+        hasSearch={nodes.length > 1}
         onSearchTextChange={setSearchText}
         onFilterOptionsChange={setFilterOptions}
         onSortOptionsChange={setSortOptions}

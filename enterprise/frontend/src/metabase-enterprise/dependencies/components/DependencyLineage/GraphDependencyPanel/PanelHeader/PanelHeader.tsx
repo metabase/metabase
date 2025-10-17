@@ -25,6 +25,7 @@ type PanelHeaderProps = {
   searchText: string;
   filterOptions: FilterOption[];
   sortOptions: SortOptions;
+  hasSearch: boolean;
   onSearchTextChange: (searchText: string) => void;
   onFilterOptionsChange: (filterOptions: FilterOption[]) => void;
   onSortOptionsChange: (sortOptions: SortOptions) => void;
@@ -37,6 +38,7 @@ export function PanelHeader({
   searchText,
   filterOptions,
   sortOptions,
+  hasSearch,
   onSearchTextChange,
   onFilterOptionsChange,
   onSortOptionsChange,
@@ -58,29 +60,31 @@ export function PanelHeader({
           <FixedSizeIcon name="close" />
         </ActionIcon>
       </Group>
-      <TextInput
-        value={searchText}
-        placeholder={t`Search`}
-        leftSection={<FixedSizeIcon name="search" />}
-        rightSection={
-          <Group gap={0}>
-            <SortOptionsPicker
-              groupType={groupType}
-              sortOptions={sortOptions}
-              onSortOptionsChange={onSortOptionsChange}
-            />
-            {hasFilterPicker && (
-              <FilterOptionsPicker
+      {hasSearch && (
+        <TextInput
+          value={searchText}
+          placeholder={t`Search`}
+          leftSection={<FixedSizeIcon name="search" />}
+          rightSection={
+            <Group gap={0}>
+              <SortOptionsPicker
                 groupType={groupType}
-                filterOptions={filterOptions}
-                onFilterOptionsChange={onFilterOptionsChange}
+                sortOptions={sortOptions}
+                onSortOptionsChange={onSortOptionsChange}
               />
-            )}
-          </Group>
-        }
-        rightSectionWidth={hasFilterPicker ? "4.25rem" : undefined}
-        onChange={(event) => onSearchTextChange(event.target.value)}
-      />
+              {hasFilterPicker && (
+                <FilterOptionsPicker
+                  groupType={groupType}
+                  filterOptions={filterOptions}
+                  onFilterOptionsChange={onFilterOptionsChange}
+                />
+              )}
+            </Group>
+          }
+          rightSectionWidth={hasFilterPicker ? "4.25rem" : undefined}
+          onChange={(event) => onSearchTextChange(event.target.value)}
+        />
+      )}
     </Stack>
   );
 }
