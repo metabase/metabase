@@ -30,17 +30,28 @@ export function EditorHeader({
     !isSaving;
 
   return (
-    <Group justify="flex-end" p="sm"
+    <Group
+      justify="flex-end"
+      p="sm"
       style={{ zIndex: 24 /* FIXME: silly hack for prototyping */ }}
       w="100%"
     >
-      <Button key="cancel" onClick={onCancel} size="compact-sm">{t`Cancel`}</Button>
+      <Button
+        key="cancel"
+        onClick={onCancel}
+        size="compact-sm"
+      >{t`Cancel`}</Button>
       <Tooltip
         key="save"
         label={validationResult.errorMessage}
         disabled={validationResult.errorMessage == null}
       >
-        <Button onClick={onSave} variant="filled" disabled={!canSave} size="compact-sm">
+        <Button
+          onClick={onSave}
+          variant="filled"
+          disabled={!canSave}
+          size="compact-sm"
+        >
           {getSaveButtonLabel(isNew, isSaving)}
         </Button>
       </Tooltip>
