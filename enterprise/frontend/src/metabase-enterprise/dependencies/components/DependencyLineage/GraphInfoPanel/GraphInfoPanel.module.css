@@ -3,4 +3,5 @@
   flex-direction: column;
   padding: 0;
   width: 32rem;
+  pointer-events: all;
 }

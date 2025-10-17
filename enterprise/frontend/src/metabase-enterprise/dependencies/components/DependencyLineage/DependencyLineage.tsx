@@ -10,10 +10,11 @@ import {
 import { useLayoutEffect, useMemo, useState } from "react";
 
 import { skipToken } from "metabase/api";
-import { Flex, Group } from "metabase/ui";
+import { Group } from "metabase/ui";
 import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
 import type { DependencyEntry } from "metabase-types/api";
 
+import S from "./DependencyLineage.module.css";
 import { GraphContext } from "./GraphContext";
 import { GraphDependencyPanel } from "./GraphDependencyPanel";
 import { GraphEntryInput } from "./GraphEntryInput";
@@ -103,12 +104,7 @@ export function DependencyLineage({ entry }: DependencyLineageProps) {
           </Group>
         </Panel>
         {selection != null && selection.withInfo && selectedNode != null && (
-          <Flex
-            component={Panel}
-            position="top-right"
-            direction="column"
-            bottom={0}
-          >
+          <Panel className={S.panel} position="top-right">
             {selection.groupType != null ? (
               <GraphDependencyPanel
                 node={selectedNode.data}
@@ -121,7 +117,7 @@ export function DependencyLineage({ entry }: DependencyLineageProps) {
                 onClose={handlePanelClose}
               />
             )}
-          </Flex>
+          </Panel>
         )}
       </ReactFlow>
     </GraphContext.Provider>

@@ -26,7 +26,6 @@ import {
   getNodeFieldsLabel,
   getNodeLastEditedAt,
   getNodeLastEditedBy,
-  getNodeLocationLabel,
 } from "./utils";
 
 type PanelBodyProps = {
@@ -37,7 +36,7 @@ export function PanelBody({ node }: PanelBodyProps) {
   return (
     <Stack className={S.body} pl="lg" pr="lg" pb="lg" gap="lg">
       <DescriptionInfo node={node} />
-      <CreatorAndEditorInfo node={node} />
+      <CreatorAndLastEditorInfo node={node} />
       <LocationInfo node={node} />
       <FieldsInfo node={node} />
     </Stack>
@@ -65,7 +64,7 @@ type CreatorAndEditorInfoProps = {
   node: DependencyNode;
 };
 
-function CreatorAndEditorInfo({ node }: CreatorAndEditorInfoProps) {
+function CreatorAndLastEditorInfo({ node }: CreatorAndEditorInfoProps) {
   const createdAt = getNodeCreatedAt(node);
   const createdBy = getNodeCreatedBy(node);
   const editedAt = getNodeLastEditedAt(node);
@@ -120,7 +119,7 @@ function LocationInfo({ node }: LocationInfoProps) {
 
   return (
     <Stack gap="sm">
-      <Title order={6}>{getNodeLocationLabel(node)}</Title>
+      <Title order={6}>{t`Saved in`}</Title>
       <Anchor component={Link} to={location.link} target="_blank">
         <Flex gap="sm" align="center">
           <FixedSizeIcon c="text-primary" name={location.icon} />
