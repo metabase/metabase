@@ -31,11 +31,12 @@
                            (fn [transform]
                              {:transform transform :errors (get transform-errors (:id transform))})
                            broken-transforms)
-     :bad_card_count     (count broken-card-ids)
-     :bad_cards          (when (seq broken-card-ids)
-                           (mapv (fn [card]
-                                   {:card card :errors (get card-errors (:id card))})
-                                 broken-cards))}))
+     ;; Use "question" terminology rather than "card" to avoid confusing Metabot
+     :bad_question_count  (count broken-card-ids)
+     :bad_questions       (when (seq broken-card-ids)
+                            (mapv (fn [card]
+                                    {:question card :errors (get card-errors (:id card))})
+                                  broken-cards))}))
 
 (defn check-transform-dependencies
   "Check a proposed edit to a SQL transform, and return transforms that will break in a format
