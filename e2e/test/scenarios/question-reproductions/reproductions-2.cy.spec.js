@@ -645,7 +645,7 @@ describe("issue 43216", () => {
 
     cy.log("Update source question");
     H.commandPaletteButton().click();
-    // use search instead of recents to prevent items switching order during assertions
+    // Use search instead of recents to prevent items switching order during assertions.
     H.commandPaletteInput().type("source");
     H.waitForLoaderToBeRemoved();
     H.commandPalette().findByText("Source question").click();
@@ -658,8 +658,10 @@ describe("issue 43216", () => {
 
     cy.log("Assert updated metadata in target question");
     H.commandPaletteButton().click();
-    // use search instead of recents to prevent items switching order during assertions
-    H.commandPaletteInput().type("target");
+    // Use search instead of recents to prevent items switching order during assertions.
+    // Avoid typing "target" because sometimes the first "t" will be registered as a keyboard shortcut,
+    // viz settings will open, and the test will fail.
+    H.commandPaletteInput().type("arge");
     H.waitForLoaderToBeRemoved();
     H.commandPalette().findByText("Target question").click();
     H.commandPalette().should("not.exist");
