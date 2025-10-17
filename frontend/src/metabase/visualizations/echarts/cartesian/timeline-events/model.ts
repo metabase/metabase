@@ -133,11 +133,9 @@ const getTimelineEventsInsideRange = (
 ) => {
   const [min, max] = range;
 
-  const filteredTimelineEvents = timelineEvents.filter((event) => {
+  return timelineEvents.filter((event) => {
     return dayjs(event.timestamp).isBetween(min, max, unit, "[]");
   });
-
-  return filteredTimelineEvents;
 };
 
 export const getTimelineEventsModel = (
