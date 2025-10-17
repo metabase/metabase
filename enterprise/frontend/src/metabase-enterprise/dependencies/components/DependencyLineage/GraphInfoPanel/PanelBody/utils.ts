@@ -2,6 +2,7 @@ import { match } from "ts-pattern";
 import { msgid, ngettext } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
+import { getDependencyLineageUrl } from "metabase-enterprise/dependencies/urls";
 import type { DependencyNode } from "metabase-types/api";
 
 import type { NodeLinkInfo } from "../../types";
@@ -60,6 +61,24 @@ export function getNodeSchemaInfo(
       label: tableInfo.schema,
       icon: "schema",
       url: Urls.dataModelSchema(tableInfo.db_id, tableInfo.schema),
+    };
+  }
+}
+
+export function getNodeGeneratedTableInfo(
+  node: DependencyNode,
+): NodeLinkInfo | undefined {
+  const tableInfo = match(node)
+    .with({ type: "transform" }, (node) => node.data.table)
+    .otherwise(() => undefined);
+
+  if (tableInfo != null && typeof tableInfo.id === "number") {
+    return {
+      label: tableInfo.display_name,
+      icon: "table",
+      url: getDependencyLineageUrl({
+        entry: { id: tableInfo.id, type: "table" },
+      }),
     };
   }
 }

@@ -1,3 +1,4 @@
+import type { HTMLAttributeAnchorTarget } from "react";
 import { Link } from "react-router";
 import { c, t } from "ttag";
 
@@ -26,6 +27,7 @@ import {
   getNodeDatabaseInfo,
   getNodeFields,
   getNodeFieldsLabel,
+  getNodeGeneratedTableInfo,
   getNodeLastEditedAt,
   getNodeLastEditedBy,
   getNodeSchemaInfo,
@@ -40,19 +42,20 @@ export function PanelBody({ node }: PanelBodyProps) {
     <Stack className={S.body} pl="lg" pr="lg" pb="lg" gap="lg">
       <DescriptionInfo node={node} />
       <CreatorAndLastEditorInfo node={node} />
-      <LocationInfo node={node} />
+      <CollectionOrDashboardInfo node={node} />
       <DatabaseInfo node={node} />
       <SchemaInfo node={node} />
+      <GeneratedTableInfo node={node} />
       <FieldsInfo node={node} />
     </Stack>
   );
 }
 
-type DescriptionInfoProps = {
+type PanelBodyPartProps = {
   node: DependencyNode;
 };
 
-function DescriptionInfo({ node }: DescriptionInfoProps) {
+function DescriptionInfo({ node }: PanelBodyPartProps) {
   const description = getNodeDescription(node);
 
   return (
@@ -65,11 +68,7 @@ function DescriptionInfo({ node }: DescriptionInfoProps) {
   );
 }
 
-type CreatorAndEditorInfoProps = {
-  node: DependencyNode;
-};
-
-function CreatorAndLastEditorInfo({ node }: CreatorAndEditorInfoProps) {
+function CreatorAndLastEditorInfo({ node }: PanelBodyPartProps) {
   const createdAt = getNodeCreatedAt(node);
   const createdBy = getNodeCreatedBy(node);
   const editedAt = getNodeLastEditedAt(node);
@@ -112,11 +111,7 @@ function CreatorAndLastEditorInfo({ node }: CreatorAndEditorInfoProps) {
   );
 }
 
-type LocationInfoProps = {
-  node: DependencyNode;
-};
-
-function LocationInfo({ node }: LocationInfoProps) {
+function CollectionOrDashboardInfo({ node }: PanelBodyPartProps) {
   const link = getNodeLocationInfo(node);
   if (link == null) {
     return null;
@@ -125,16 +120,12 @@ function LocationInfo({ node }: LocationInfoProps) {
   return (
     <Stack gap="sm">
       <Title order={6}>{t`Saved in`}</Title>
-      <LinkWithIcon link={link} />
+      <LinkWithIcon link={link} target="_blank" />
     </Stack>
   );
 }
 
-type DatabaseInfoProps = {
-  node: DependencyNode;
-};
-
-function DatabaseInfo({ node }: DatabaseInfoProps) {
+function DatabaseInfo({ node }: PanelBodyPartProps) {
   const link = getNodeDatabaseInfo(node);
   if (link == null) {
     return null;
@@ -143,16 +134,12 @@ function DatabaseInfo({ node }: DatabaseInfoProps) {
   return (
     <Stack gap="sm">
       <Title order={6}>{t`Database`}</Title>
-      <LinkWithIcon link={link} />
+      <LinkWithIcon link={link} target="_blank" />
     </Stack>
   );
 }
 
-type SchemaInfoProps = {
-  node: DependencyNode;
-};
-
-function SchemaInfo({ node }: SchemaInfoProps) {
+function SchemaInfo({ node }: PanelBodyPartProps) {
   const link = getNodeSchemaInfo(node);
   if (link == null) {
     return null;
@@ -161,16 +148,26 @@ function SchemaInfo({ node }: SchemaInfoProps) {
   return (
     <Stack gap="sm">
       <Title order={6}>{t`Schema`}</Title>
+      <LinkWithIcon link={link} target="_blank" />
+    </Stack>
+  );
+}
+
+function GeneratedTableInfo({ node }: PanelBodyPartProps) {
+  const link = getNodeGeneratedTableInfo(node);
+  if (link == null) {
+    return null;
+  }
+
+  return (
+    <Stack gap="sm">
+      <Title order={6}>{t`Generated table`}</Title>
       <LinkWithIcon link={link} />
     </Stack>
   );
 }
 
-type FieldsInfoProps = {
-  node: DependencyNode;
-};
-
-function FieldsInfo({ node }: FieldsInfoProps) {
+function FieldsInfo({ node }: PanelBodyPartProps) {
   const fields = getNodeFields(node);
   if (fields.length === 0) {
     return null;
@@ -196,11 +193,12 @@ function FieldsInfo({ node }: FieldsInfoProps) {
 
 type LinkWithIconProps = {
   link: NodeLinkInfo;
+  target?: HTMLAttributeAnchorTarget;
 };
 
-function LinkWithIcon({ link }: LinkWithIconProps) {
+function LinkWithIcon({ link, target }: LinkWithIconProps) {
   return (
-    <Anchor component={Link} to={link.url} target="_blank">
+    <Anchor component={Link} to={link.url} target={target}>
       <Flex gap="sm" align="center">
         <FixedSizeIcon c="text-primary" name={link.icon} />
         <div>{link.label}</div>
