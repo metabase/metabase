@@ -26,7 +26,6 @@ import {
   getIsAdminApp,
   getIsAppBarVisible,
   getIsBenchApp,
-  getIsEmbeddingSetup,
   getIsNavBarEnabled,
 } from "metabase/selectors/app";
 import StatusListing from "metabase/status/components/StatusListing";
@@ -58,7 +57,6 @@ interface AppStateProps {
   errorPage: AppErrorDescriptor | null;
   isAdminApp: boolean;
   isBenchApp: boolean;
-  isEmbeddingSetup: boolean;
   bannerMessageDescriptor?: string;
   isAppBarVisible: boolean;
   isNavBarEnabled: boolean;
@@ -82,7 +80,6 @@ const mapStateToProps = (
   errorPage: getErrorPage(state),
   isAdminApp: getIsAdminApp(state, props),
   isBenchApp: getIsBenchApp(state, props),
-  isEmbeddingSetup: getIsEmbeddingSetup(state, props),
   isAppBarVisible: getIsAppBarVisible(state, props),
   isNavBarEnabled: getIsNavBarEnabled(state, props),
 });
@@ -95,7 +92,6 @@ function App({
   errorPage,
   isAdminApp,
   isBenchApp,
-  isEmbeddingSetup,
   isAppBarVisible,
   isNavBarEnabled,
   children,

@@ -67,10 +67,6 @@ export const getIsBenchApp = createSelector([getRouterPath], (path) => {
   return path.startsWith("/bench");
 });
 
-export const getIsEmbeddingSetup = createSelector([getRouterPath], (path) => {
-  return path.startsWith("/setup/embedding");
-});
-
 export const getIsCollectionPathVisible = createSelector(
   [
     getQuestion,
