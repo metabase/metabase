@@ -19,7 +19,7 @@ import type {
   EdgeId,
   GraphData,
   NodeId,
-  NodeLocationInfo,
+  NodeLinkInfo,
   NodeType,
 } from "./types";
 
@@ -128,10 +128,8 @@ export function getNodeLink(node: DependencyNode): string | undefined {
         type: node.data.type,
       }),
     )
-    .with(
-      { type: "table" },
-      (node) =>
-        `/admin/datamodel/database/${node.data.db_id}/schema/${node.data.db_id}:${encodeURIComponent(node.data.schema ?? "")}/table/${node.id}`,
+    .with({ type: "table" }, (node) =>
+      Urls.dataModelTable(node.data.db_id, node.data.schema, node.id),
     )
     .with({ type: "transform" }, (node) => `/admin/transforms/${node.id}`)
     .with({ type: "snippet" }, () => undefined)
@@ -140,17 +138,17 @@ export function getNodeLink(node: DependencyNode): string | undefined {
 
 export function getNodeLocationInfo(
   node: DependencyNode,
-): NodeLocationInfo | undefined {
-  return match<DependencyNode, NodeLocationInfo | undefined>(node)
+): NodeLinkInfo | undefined {
+  return match<DependencyNode, NodeLinkInfo | undefined>(node)
     .with({ type: "card", data: { dashboard: P.nonNullable } }, (node) => ({
       label: node.data.dashboard.name,
       icon: "dashboard",
-      link: Urls.dashboard(node.data.dashboard),
+      url: Urls.dashboard(node.data.dashboard),
     }))
     .with({ type: "card", data: { collection: P.nonNullable } }, (node) => ({
       label: node.data.collection.name,
       icon: "folder",
-      link: Urls.dashboard(node.data.collection),
+      url: Urls.dashboard(node.data.collection),
     }))
     .otherwise(() => undefined);
 }

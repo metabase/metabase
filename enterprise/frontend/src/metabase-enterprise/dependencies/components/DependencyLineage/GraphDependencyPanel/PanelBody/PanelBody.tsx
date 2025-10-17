@@ -16,7 +16,7 @@ import type { DependencyNode } from "metabase-types/api";
 
 import { getDependencyLineageUrl } from "../../../../urls";
 import { ACTION_ICON_PADDING } from "../../constants";
-import type { NodeLocationInfo } from "../../types";
+import type { NodeLinkInfo } from "../../types";
 import {
   getNodeIcon,
   getNodeId,
@@ -48,8 +48,8 @@ type ListItemProps = {
 };
 
 function ListItem({ node }: ListItemProps) {
-  const location = getNodeLocationInfo(node);
   const link = getNodeLink(node);
+  const location = getNodeLocationInfo(node);
   const viewCount = getNodeViewCount(node);
 
   return (
@@ -104,17 +104,12 @@ function ListItemViewCount({ viewCount }: ListItemViewCountProps) {
 }
 
 type ListItemSubtitleProps = {
-  location: NodeLocationInfo;
+  location: NodeLinkInfo;
 };
 
 function ListItemLocation({ location }: ListItemSubtitleProps) {
   return (
-    <Anchor
-      component={Link}
-      to={location.link}
-      target="_blank"
-      c="text-primary"
-    >
+    <Anchor component={Link} to={location.url} target="_blank" c="text-primary">
       <Flex gap="sm" align="center">
         <FixedSizeIcon name={location.icon} />
         <Box fz="sm" lh="h5">

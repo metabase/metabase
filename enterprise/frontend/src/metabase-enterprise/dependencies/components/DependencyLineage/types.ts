@@ -12,10 +12,10 @@ export type NodeId = string;
 export type EdgeId = string;
 export type NodeType = Node<DependencyNode>;
 
-export type NodeLocationInfo = {
+export type NodeLinkInfo = {
   label: string;
   icon: IconName;
-  link: string;
+  url: string;
 };
 
 export type GraphData = {

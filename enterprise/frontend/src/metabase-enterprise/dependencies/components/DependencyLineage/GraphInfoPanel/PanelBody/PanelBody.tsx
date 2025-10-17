@@ -16,16 +16,19 @@ import {
 import * as Lib from "metabase-lib";
 import type { DependencyNode } from "metabase-types/api";
 
+import type { NodeLinkInfo } from "../../types";
 import { getNodeDescription, getNodeLocationInfo } from "../../utils";
 
 import S from "./PanelBody.module.css";
 import {
   getNodeCreatedAt,
   getNodeCreatedBy,
+  getNodeDatabaseInfo,
   getNodeFields,
   getNodeFieldsLabel,
   getNodeLastEditedAt,
   getNodeLastEditedBy,
+  getNodeSchemaInfo,
 } from "./utils";
 
 type PanelBodyProps = {
@@ -38,6 +41,8 @@ export function PanelBody({ node }: PanelBodyProps) {
       <DescriptionInfo node={node} />
       <CreatorAndLastEditorInfo node={node} />
       <LocationInfo node={node} />
+      <DatabaseInfo node={node} />
+      <SchemaInfo node={node} />
       <FieldsInfo node={node} />
     </Stack>
   );
@@ -112,20 +117,51 @@ type LocationInfoProps = {
 };
 
 function LocationInfo({ node }: LocationInfoProps) {
-  const location = getNodeLocationInfo(node);
-  if (location == null) {
+  const link = getNodeLocationInfo(node);
+  if (link == null) {
     return null;
   }
 
   return (
     <Stack gap="sm">
       <Title order={6}>{t`Saved in`}</Title>
-      <Anchor component={Link} to={location.link} target="_blank">
-        <Flex gap="sm" align="center">
-          <FixedSizeIcon c="text-primary" name={location.icon} />
-          <div>{location.label}</div>
-        </Flex>
-      </Anchor>
+      <LinkWithIcon link={link} />
+    </Stack>
+  );
+}
+
+type DatabaseInfoProps = {
+  node: DependencyNode;
+};
+
+function DatabaseInfo({ node }: DatabaseInfoProps) {
+  const link = getNodeDatabaseInfo(node);
+  if (link == null) {
+    return null;
+  }
+
+  return (
+    <Stack gap="sm">
+      <Title order={6}>{t`Database`}</Title>
+      <LinkWithIcon link={link} />
+    </Stack>
+  );
+}
+
+type SchemaInfoProps = {
+  node: DependencyNode;
+};
+
+function SchemaInfo({ node }: SchemaInfoProps) {
+  const link = getNodeSchemaInfo(node);
+  if (link == null) {
+    return null;
+  }
+
+  return (
+    <Stack gap="sm">
+      <Title order={6}>{t`Schema`}</Title>
+      <LinkWithIcon link={link} />
     </Stack>
   );
 }
@@ -155,5 +191,20 @@ function FieldsInfo({ node }: FieldsInfoProps) {
         );
       })}
     </Stack>
+  );
+}
+
+type LinkWithIconProps = {
+  link: NodeLinkInfo;
+};
+
+function LinkWithIcon({ link }: LinkWithIconProps) {
+  return (
+    <Anchor component={Link} to={link.url} target="_blank">
+      <Flex gap="sm" align="center">
+        <FixedSizeIcon c="text-primary" name={link.icon} />
+        <div>{link.label}</div>
+      </Flex>
+    </Anchor>
   );
 }

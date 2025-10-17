@@ -1,7 +1,10 @@
 import { match } from "ts-pattern";
 import { msgid, ngettext } from "ttag";
 
+import * as Urls from "metabase/lib/urls";
 import type { DependencyNode } from "metabase-types/api";
+
+import type { NodeLinkInfo } from "../../types";
 
 export function getNodeCreatedAt(node: DependencyNode) {
   return match(node)
@@ -25,6 +28,40 @@ export function getNodeLastEditedBy(node: DependencyNode) {
   return match(node)
     .with({ type: "card" }, (node) => node.data["last-edit-info"])
     .otherwise(() => undefined);
+}
+
+export function getNodeDatabaseInfo(
+  node: DependencyNode,
+): NodeLinkInfo | undefined {
+  const database = match(node)
+    .with({ type: "table" }, (node) => node.data.db)
+    .with({ type: "transform" }, (node) => node.data.table?.db)
+    .otherwise(() => undefined);
+
+  if (database != null) {
+    return {
+      label: database.name,
+      icon: "database",
+      url: Urls.dataModelDatabase(database.id),
+    };
+  }
+}
+
+export function getNodeSchemaInfo(
+  node: DependencyNode,
+): NodeLinkInfo | undefined {
+  const tableInfo = match(node)
+    .with({ type: "table" }, (node) => node.data)
+    .with({ type: "transform" }, (node) => node.data.table)
+    .otherwise(() => undefined);
+
+  if (tableInfo != null) {
+    return {
+      label: tableInfo.display_name,
+      icon: "database",
+      url: Urls.dataModelSchema(tableInfo.db_id, tableInfo.schema),
+    };
+  }
 }
 
 export function getNodeFields(node: DependencyNode) {
