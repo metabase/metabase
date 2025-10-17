@@ -24,9 +24,9 @@ export const enginesConfig: Record<EngineKey, Placeholder> = {
     "redshift://examplecluster.abc123xyz789.us-west-2.redshift.amazonaws.com:5439/dev",
   snowflake:
     "snowflake://example.snowflakecomputing.com/?db=maindb&warehouse=mainwarehouse",
-  sparksql: "sparksql:Server=127.0.0.1;",
+  sparksql: "sparksql:Server=sparksql.example.com",
   sqlite: "sqlite:///C:/path/to/database.db",
-  sqlserver: "sqlserver://mydbhost:1433;databaseName=mydb",
+  sqlserver: "sqlserver://mssql.example.com:1433;databaseName=mydb",
   starburst:
     "trino://starburst.example.com:43011/hive/sales?user=test&password=secret&SSL=true&roles=system:myrole",
   vertica: "vertica://vertica.example.com:1234/databaseName?user=jane",
