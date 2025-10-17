@@ -18,7 +18,6 @@ export const AdminSettingsLayout = ({
   fullWidth?: boolean;
   maw?: string;
 }) => {
-
   return (
     <Box className={S.Wrapper}>
       <Box className={S.Main}>

@@ -17,6 +17,7 @@ import {
 } from "metabase/ui";
 import { useGetSuggestedMetabotPromptsQuery } from "metabase-enterprise/api";
 import { MetabotResetLongChatButton } from "metabase-enterprise/metabot/components/MetabotChat/MetabotResetLongChatButton";
+import type { SuggestionModel } from "metabase-enterprise/rich_text_editing/tiptap/extensions/shared/types";
 
 import { useMetabotAgent, useMetabotChatHandlers } from "../../hooks";
 import type { MetabotConfig } from "../Metabot";
@@ -26,7 +27,6 @@ import { MetabotChatEditor } from "./MetabotChatEditor";
 import { Messages } from "./MetabotChatMessage";
 import { MetabotThinking } from "./MetabotThinking";
 import { useScrollManager } from "./hooks";
-import { SuggestionModel } from "metabase-enterprise/rich_text_editing/tiptap/extensions/shared/types";
 
 const defaultSuggesstionModels: SuggestionModel[] = [
   "dataset",

@@ -130,7 +130,8 @@ export const getProfile = createSelector(
       return profileOverride;
     }
 
-    return location.pathname.startsWith(Urls.transforms())
+    const transformsUrl = Urls.transforms();
+    return transformsUrl && location.pathname.startsWith(transformsUrl)
       ? "transforms_codegen"
       : undefined;
   },

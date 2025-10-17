@@ -12,7 +12,6 @@ import { Route } from "metabase/hoc/Title";
 import { DataModel } from "metabase/metadata/pages/DataModel";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { GlossaryContainer } from "metabase/reference/glossary/GlossaryContainer";
-import { IsAdmin } from "metabase/route-guards";
 
 import { BenchApp } from "./components/BenchApp";
 import { EmptySailboat } from "./components/BenchLayout";
@@ -25,7 +24,7 @@ import {
 } from "./components/snippets/SnippetsList";
 
 export const getBenchRoutes = () => (
-  <Route path="/bench" component={IsAdmin}>
+  <Route path="/bench">
     <Route title={t`Bench`} component={BenchApp}>
       <IndexRedirect to="overview" />
       <Route path="overview" component={() => <OverviewPage />} />

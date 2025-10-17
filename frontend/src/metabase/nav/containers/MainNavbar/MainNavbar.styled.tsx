@@ -2,10 +2,7 @@
 import styled from "@emotion/styled";
 
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
-import {
-  breakpointMaxSmall,
-  breakpointMinSmall,
-} from "metabase/styled-components/theme";
+import { breakpointMaxSmall } from "metabase/styled-components/theme";
 import { Box, type BoxProps } from "metabase/ui";
 
 import { SidebarLink } from "./SidebarItems";

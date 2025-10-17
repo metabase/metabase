@@ -40,11 +40,7 @@ export function TransformListPage({ location }: TransformListPageProps) {
         <CreateTransformMenu />
       </Group>
       <TransformFilterList params={params} tags={tags} />
-      <TransformList
-        params={params}
-        location={location}
-        onCollapse={() => {}}
-      />
+      <TransformList params={params} onCollapse={() => {}} />
     </Stack>
   );
 }

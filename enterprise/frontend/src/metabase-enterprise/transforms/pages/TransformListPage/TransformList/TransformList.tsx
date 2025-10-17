@@ -1,13 +1,12 @@
-import type { Location } from "history";
 import { useMemo } from "react";
 import { push } from "react-router-redux";
+import { useLocalStorage } from "react-use";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { ItemsListSection } from "metabase/bench/components/ItemsListSection/ItemsListSection";
 import { ItemsListSettings } from "metabase/bench/components/ItemsListSection/ItemsListSettings";
 import { ItemsListTreeNode } from "metabase/bench/components/ItemsListSection/ItemsListTreeNode";
-import { useItemsListQuery } from "metabase/bench/components/ItemsListSection/useItemsListQuery";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import Link from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -62,16 +61,17 @@ const TransformsTreeNode = (props: TreeNodeProps) => (
 const nameSorter = <T extends { name: string }>(a: T, b: T) =>
   a.name.localeCompare(b.name);
 
+const lastModifiedSorter = <T extends { updated_at: string }>(a: T, b: T) =>
+  a.updated_at < b.updated_at ? 1 : a.updated_at > b.updated_at ? -1 : 0;
+
 type TransformListProps = {
   params: TransformListParams;
-  location: Location;
   selectedId?: Transform["id"];
   onCollapse?: () => void;
 };
 
 export function TransformList({
   params,
-  location,
   selectedId,
   onCollapse,
 }: TransformListProps) {
@@ -93,32 +93,19 @@ export function TransformList({
   const { data: databaseData } = useListDatabasesQuery();
   const isLoading = isLoadingTransforms || isLoadingTags;
   const error = transformsError ?? tagsError;
+
+  const [display = "tree", setDisplay] = useLocalStorage<
+    "tree" | "alphabetical" | "last-modified"
+  >("metabase-bench-transforms-display");
+
+  const sortFn = display === "last-modified" ? lastModifiedSorter : nameSorter;
   const transformsSorted = useMemo(
-    () => [...transforms].sort(nameSorter),
-    [transforms],
+    () => [...transforms].sort(sortFn),
+    [sortFn, transforms],
   );
 
-  const listSettingsProps = useItemsListQuery({
-    settings: [
-      {
-        name: "display",
-        options: [
-          {
-            label: t`Target table`,
-            value: "tree",
-          },
-          {
-            label: t`Alphabetical`,
-            value: "alphabetical",
-          },
-        ],
-      },
-    ],
-    defaults: { display: "tree" },
-    location,
-  });
   const treeData = useMemo((): ITreeNodeItem[] => {
-    if (!databaseData || !transformsSorted) {
+    if (!databaseData || !transformsSorted || display !== "tree") {
       return [];
     }
     type Tier<T> = (t: T) => ITreeNodeItem;
@@ -127,12 +114,12 @@ export function TransformList({
         id: `database-${target.database}`,
         name:
           databaseData.data.find((d) => d.id === target.database)?.name ||
-          t`Unknown`,
+          t`Unknown database`,
         icon: "database",
       }),
       ({ target }) => ({
-        id: `schema-${target.schema}`,
-        name: target.schema || t`Unknown`,
+        id: `schema-${target.database}-${target.schema}`,
+        name: target.schema || t`Unknown schema`,
         icon: "folder",
       }),
     ];
@@ -159,7 +146,7 @@ export function TransformList({
       });
       prev.children?.push({
         id: transform.id,
-        name: transform.name,
+        name: transform.target.name,
         icon: "table2",
         data: transform,
       });
@@ -170,19 +157,10 @@ export function TransformList({
       return node;
     };
     return recursiveAlpha(root).children || [];
-  }, [databaseData, transformsSorted]);
+  }, [databaseData, display, transformsSorted]);
 
   if (isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
-  }
-
-  if (transforms.length === 0) {
-    const hasFilters = hasFilterParams(params);
-    return (
-      <ListEmptyState
-        label={hasFilters ? t`No transforms found` : t`No transforms yet`}
-      />
-    );
   }
 
   return (
@@ -190,9 +168,43 @@ export function TransformList({
       sectionTitle={t`Transforms`}
       onCollapse={onCollapse}
       addButton={<CreateTransformMenu />}
-      settings={<ItemsListSettings {...listSettingsProps} />}
+      settings={
+        <ItemsListSettings
+          values={{ display }}
+          settings={[
+            {
+              name: "display",
+              options: [
+                {
+                  label: t`Target table`,
+                  value: "tree",
+                },
+                {
+                  label: t`Alphabetical`,
+                  value: "alphabetical",
+                },
+                {
+                  label: t`Last modified`,
+                  value: "last-modified",
+                },
+              ],
+            },
+          ]}
+          onSettingChange={(updates) =>
+            updates.display && setDisplay(updates.display)
+          }
+        />
+      }
       listItems={
-        listSettingsProps.values.display === "tree" ? (
+        transforms.length === 0 ? (
+          <ListEmptyState
+            label={
+              hasFilterParams(params)
+                ? t`No transforms found`
+                : t`No transforms yet`
+            }
+          />
+        ) : display === "tree" ? (
           <Box mx="-sm">
             <Tree
               initiallyExpanded
@@ -235,7 +247,7 @@ function TransformListItem({
   return (
     <NavLink
       component={Link}
-      to={(loc) => ({ ...loc, pathname: getTransformUrl(transform.id) })}
+      to={getTransformUrl(transform.id)}
       active={isActive}
       w="100%"
       label={

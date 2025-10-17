@@ -11,12 +11,12 @@ import {
   useSearchQuery,
 } from "metabase/api";
 import { isSyncCompleted } from "metabase/lib/syncing";
-import { useLazyFetchCollectionChildrenQuery } from "metabase/metadata/pages/DataModel/components/TablePicker/loaders";
 import type { IconName } from "metabase/ui";
 import type { CollectionId, DatabaseId, SchemaName } from "metabase-types/api";
 
 import { getUrl as getUrl_ } from "../../utils";
 
+import { useLazyFetchCollectionChildrenQuery } from "./loaders";
 import type {
   CollectionNode,
   DatabaseNode,

@@ -3,6 +3,8 @@ import { useKeyPressEvent } from "react-use";
 import { t } from "ttag";
 
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import { useSelector } from "metabase/lib/redux";
+import { getUser } from "metabase/selectors/user";
 import { Box, Flex, Icon, Input, Stack, rem } from "metabase/ui";
 
 import { Results } from "./Results";
@@ -53,6 +55,7 @@ function Tree({
   onChange: (path: TreePath, options?: ChangeOptions) => void;
 }) {
   const { databaseId, schemaName } = path;
+  const currentUser = useSelector(getUser); // use it to sort models
   const { isExpanded, toggle } = useExpandedState(path);
   const { tree, reload } = useTableLoader(path);
 
@@ -60,6 +63,7 @@ function Tree({
     isExpanded,
     addLoadingNodes: true,
     canFlattenSingleSchema: true,
+    userId: currentUser?.id,
   });
   const isEmpty = items.length === 0;
 

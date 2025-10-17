@@ -9,7 +9,7 @@ type ListEmptyStateProps = {
 
 export function ListEmptyState({ label }: ListEmptyStateProps) {
   return (
-    <Card shadow="none" withBorder>
+    <Card shadow="none">
       <Stack p="xl" align="center">
         <img
           src={EmptyDashboardBot}

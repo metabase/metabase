@@ -20,7 +20,7 @@ export interface TreeNodeProps {
   onSelect?: () => void;
   onToggleExpand: () => void;
   className?: string;
-  classNames: {
+  classNames?: {
     root?: string;
     expandToggleButton?: string;
     iconContainer?: string;

@@ -252,7 +252,6 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
       </div>
     ) : null;
     return (
-
       <ResizableBox
         ref={this.resizeBox}
         height={this.state.initialHeight}
@@ -322,7 +321,6 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
 
     const engine = Lib.engine(question.query());
     const canFormatQuery = engine != null && canFormatForEngine(engine);
-
 
     return (
       <div

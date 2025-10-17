@@ -1,4 +1,3 @@
-
 import { IndexRoute } from "react-router";
 import { t } from "ttag";
 
@@ -14,12 +13,16 @@ import { NewTransformPage } from "./pages/NewTransformPage";
 import { RunListPage } from "./pages/RunListPage";
 import { TransformPage } from "./pages/TransformPage";
 
-const EmptyBoat = () => <Center w="100%" h="100%"><NoDataError  /></Center>;
+const EmptyBoat = () => (
+  <Center w="100%" h="100%">
+    <NoDataError />
+  </Center>
+);
 
 export const getTransformRoutes = () => (
   <>
     <Route path="runs" component={RunListPage} />
-    <Route path="jobs"component={JobsLayout}>
+    <Route path="jobs" component={JobsLayout}>
       <IndexRoute component={EmptyBoat} />
       <Route path="new" component={NewJobPage} />
       <Route path=":jobId" component={JobPage} />

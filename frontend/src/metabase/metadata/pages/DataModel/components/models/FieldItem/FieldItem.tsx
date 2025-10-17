@@ -8,7 +8,6 @@ import EditableText from "metabase/common/components/EditableText";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Box, Card, Flex, Group, Icon, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Field } from "metabase-types/api";

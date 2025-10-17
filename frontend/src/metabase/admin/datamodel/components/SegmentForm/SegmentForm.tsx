@@ -1,5 +1,4 @@
 import type { FieldInputProps } from "formik";
-import type { Location } from "history";
 import { useCallback, useState } from "react";
 import { Link, type Route } from "react-router";
 import { push } from "react-router-redux";
@@ -11,6 +10,7 @@ import {
 } from "metabase/admin/datamodel/utils/segments";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { useToast } from "metabase/common/hooks";
+import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import {
   Form,
   FormErrorMessage,
@@ -38,14 +38,12 @@ export interface SegmentFormProps {
   segment?: Segment;
   onSubmit: (values: SegmentFormValues) => Promise<Segment>;
   route: Route;
-  query: Location["query"];
 }
 
 export const SegmentForm = ({
   segment,
   onSubmit,
   route,
-  query,
 }: SegmentFormProps): JSX.Element => {
   const isNew = segment == null;
   const metadata = useSelector(getMetadata);
@@ -53,19 +51,27 @@ export const SegmentForm = ({
   const dispatch = useDispatch();
   const [sendToast] = useToast();
 
+  /**
+   * Navigation is scheduled so that LeaveConfirmationModal's isEnabled
+   * prop has a chance to re-compute on re-render
+   */
+  const [, scheduleCallback] = useCallbackEffect();
+
   const handleSubmit = useCallback(
     (values: Partial<UpdateSegmentRequest>) => {
       setIsSubmitting(true);
       return onSubmit(values)
         .then(() => {
           sendToast({ message: t`Segment saved` });
-          dispatch(push({ query, pathname: "/bench/segment" }));
+          scheduleCallback(() => {
+            dispatch(push("/bench/segment"));
+          });
         })
         .catch(() => {
           setIsSubmitting(false);
         });
     },
-    [dispatch, onSubmit, query, sendToast],
+    [dispatch, onSubmit, scheduleCallback, sendToast],
   );
 
   return (

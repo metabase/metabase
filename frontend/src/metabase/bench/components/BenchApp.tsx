@@ -4,7 +4,6 @@ import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 
 import { PLUGIN_METABOT } from "metabase/plugins";
 import { Box, Group, Stack, rem } from "metabase/ui";
-import { useMetabotAgent } from "metabase-enterprise/metabot/hooks"; // TODO: how to make this work in non-enterprise?
 
 import { BenchAppBar } from "./BenchAppBar";
 import { BenchNav } from "./BenchNav";
@@ -92,9 +91,9 @@ export const BenchApp = ({ children }: { children: React.ReactNode }) => {
 };
 
 function BenchMetabot() {
-  const metabot = useMetabotAgent();
+  const metabot = PLUGIN_METABOT.useMetabotAgent();
 
-  if (!metabot.visible) {
+  if (!metabot?.visible) {
     return null;
   }
   return (

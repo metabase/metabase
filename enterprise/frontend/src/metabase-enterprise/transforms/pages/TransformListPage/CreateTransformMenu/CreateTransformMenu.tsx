@@ -48,8 +48,8 @@ export function CreateTransformMenu() {
           <Button
             leftSection={<Icon name="add" aria-hidden />}
             size="sm"
-          >
-          </Button>
+            aria-label={t`Create a transform`}
+          ></Button>
         </Menu.Target>
         <Menu.Dropdown>
           {isLoading ? (

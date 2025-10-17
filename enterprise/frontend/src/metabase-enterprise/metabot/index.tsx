@@ -14,6 +14,7 @@ import { MetabotAppBarButton } from "./components/MetabotAppBarButton";
 import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
 import { MetabotToggleButton } from "./components/MetabotToggleButton";
 import { MetabotContext, MetabotProvider, defaultContext } from "./context";
+import { useMetabotAgent } from "./hooks";
 import { getMetabotVisible, metabotReducer } from "./state";
 
 if (hasPremiumFeature("metabot_v3")) {
@@ -49,6 +50,7 @@ if (hasPremiumFeature("metabot_v3")) {
 
   PLUGIN_METABOT.MetabotToggleButton = MetabotToggleButton;
   PLUGIN_METABOT.MetabotAppBarButton = MetabotAppBarButton;
+  PLUGIN_METABOT.useMetabotAgent = useMetabotAgent;
 
   PLUGIN_REDUCERS.metabotPlugin = metabotReducer;
 } else if (hasPremiumFeature("offer_metabase_ai")) {

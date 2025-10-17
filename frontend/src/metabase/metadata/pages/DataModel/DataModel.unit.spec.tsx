@@ -179,7 +179,7 @@ const OtherComponent = () => {
   return (
     <>
       <span>Another route</span>
-      <Link to="admin/datamodel">Link to Data Model</Link>
+      <Link to="bench/metadata">Link to Data Model</Link>
     </>
   );
 };
@@ -211,7 +211,7 @@ async function setup({
   const { history } = renderWithProviders(
     <>
       <Route path="notAdmin" component={OtherComponent} />
-      <Route path="admin/datamodel">
+      <Route path="bench/metadata">
         <IndexRedirect to="database" />
         <Route path="database" component={DataModel} />
         <Route path="database/:databaseId" component={DataModel} />
@@ -260,7 +260,6 @@ describe("DataModel", () => {
   it("should show empty state by default", async () => {
     await setup();
 
-    expect(screen.getByRole("link", { name: /Segments/ })).toBeInTheDocument();
     expect(
       screen.getByText("Start by selecting data to model"),
     ).toBeInTheDocument();
