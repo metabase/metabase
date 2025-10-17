@@ -61,6 +61,9 @@ const TransformsTreeNode = (props: TreeNodeProps) => (
 const nameSorter = <T extends { name: string }>(a: T, b: T) =>
   a.name.localeCompare(b.name);
 
+const lastModifiedSorter = <T extends { updated_at: string }>(a: T, b: T) =>
+  a.updated_at < b.updated_at ? 1 : a.updated_at > b.updated_at ? -1 : 0;
+
 type TransformListProps = {
   params: TransformListParams;
   selectedId?: Transform["id"];
@@ -90,14 +93,17 @@ export function TransformList({
   const { data: databaseData } = useListDatabasesQuery();
   const isLoading = isLoadingTransforms || isLoadingTags;
   const error = transformsError ?? tagsError;
-  const transformsSorted = useMemo(
-    () => [...transforms].sort(nameSorter),
-    [transforms],
-  );
 
   const [display = "tree", setDisplay] = useLocalStorage<
-    "tree" | "alphabetical"
+    "tree" | "alphabetical" | "last-modified"
   >("metabase-bench-transforms-display");
+
+  const sortFn = display === "last-modified" ? lastModifiedSorter : nameSorter;
+  const transformsSorted = useMemo(
+    () => [...transforms].sort(sortFn),
+    [sortFn, transforms],
+  );
+
   const treeData = useMemo((): ITreeNodeItem[] => {
     if (!databaseData || !transformsSorted || display !== "tree") {
       return [];
@@ -176,6 +182,10 @@ export function TransformList({
                 {
                   label: t`Alphabetical`,
                   value: "alphabetical",
+                },
+                {
+                  label: t`Last modified`,
+                  value: "last-modified",
                 },
               ],
             },
