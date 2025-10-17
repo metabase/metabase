@@ -21,7 +21,6 @@ import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { PLUGIN_ANONYMOUS_EMBEDDING } from "metabase/plugins";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { setOptions } from "metabase/redux/embed";
-import { setEmbedCommonEndpoints } from "metabase/services";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { MetabotProvider } from "metabase-enterprise/metabot/context";
 
@@ -59,7 +58,6 @@ export const ComponentProviderInternal = ({
     if (isStatic) {
       if (PLUGIN_ANONYMOUS_EMBEDDING.isFeatureEnabled()) {
         reduxStore.dispatch(setIsStaticEmbedding(true));
-        setEmbedCommonEndpoints();
       } else {
         throw MetabaseError.ANONYMOUS_EMBEDDING_NOT_ALLOWED();
       }
