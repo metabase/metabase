@@ -50,7 +50,7 @@ export function getEntryPickerItem(
 export function getEntryPickerValue(
   item: EntryPickerItem,
 ): DependencyEntry | undefined {
-  return match<EntryPickerItem, DependencyEntry>(item)
+  return match<EntryPickerItem, DependencyEntry | undefined>(item)
     .with({ model: "table" }, (item) => ({
       id: Number(item.id),
       type: "table",
