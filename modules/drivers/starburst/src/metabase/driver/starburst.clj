@@ -18,6 +18,7 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -359,7 +360,8 @@
   [driver [_ arg target-timezone source-timezone]]
   (let [expr         (sql.qp/->honeysql driver (cond-> arg
                                                  (string? arg) u.date/parse))
-        with_timezone? (h2x/is-of-type? expr #"(?i)^timestamp(?:\(\d+\))? with time zone$")
+        with_timezone? (or (sql.qp.u/field-with-tz? arg)
+                           (h2x/is-of-type? expr #"(?i)^timestamp(?:\(\d+\))? with time zone$"))
         _ (sql.u/validate-convert-timezone-args with_timezone? target-timezone source-timezone)
         expr [:at_timezone
               (if with_timezone?

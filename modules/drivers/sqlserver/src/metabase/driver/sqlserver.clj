@@ -19,6 +19,7 @@
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.boolean-to-comparison :as sql.qp.boolean-to-comparison]
+   [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -396,7 +397,8 @@
 (defmethod sql.qp/->honeysql [:sqlserver :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
   (let [expr            (sql.qp/->honeysql driver arg)
-        datetimeoffset? (h2x/is-of-type? expr "datetimeoffset")]
+        datetimeoffset? (or (sql.qp.u/field-with-tz? arg)
+                            (h2x/is-of-type? expr "datetimeoffset"))]
     (sql.u/validate-convert-timezone-args datetimeoffset? target-timezone source-timezone)
     (-> (if datetimeoffset?
           expr
