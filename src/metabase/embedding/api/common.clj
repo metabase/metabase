@@ -96,13 +96,13 @@
 
 (defn check-embedding-enabled-for-card
   "Runs check-embedding-enabled-for-object for a given Card id"
-  ([card-id] (check-embedding-enabled-for-object card-id nil))
+  ([card-id] (check-embedding-enabled-for-object :model/Card card-id nil))
   ([card-id opts]
    (check-embedding-enabled-for-object :model/Card card-id opts)))
 
 (defn check-embedding-enabled-for-dashboard
   "Runs check-embedding-enabled-for-object for a given Dashboard id"
-  ([dashboard-id] (check-embedding-enabled-for-object dashboard-id nil))
+  ([dashboard-id] (check-embedding-enabled-for-object :model/Dashboard dashboard-id nil))
   ([dashboard-id opts]
    (check-embedding-enabled-for-object :model/Dashboard dashboard-id opts)))
 
@@ -311,7 +311,7 @@
    an `embedding-params` whitelist, and additional query `options`. Returns `StreamingResponse` that should be
   returned as the API endpoint result."
   [& {:keys [export-format card-id embedding-params token-params query-params constraints options]}]
-  {:pre [(integer? card-id) (u/maybe? map? embedding-params) (map? token-params) (map? query-params)]}
+  {:pre [(integer? card-id) (u/maybe? map? embedding-params) (map? token-params) (u/maybe? map? query-params)]}
   (let [merged-slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
         parameters         (apply-slug->value (resolve-card-parameters card-id) merged-slug->value)]
     (m/mapply api.public/process-query-for-card-with-id
