@@ -49,7 +49,7 @@ export function PanelHeader({
         <Title flex={1} order={5}>
           {getHeaderLabel(node, groupType)}
         </Title>
-        <ActionIcon m={rem(-6)} onClick={onClose}>
+        <ActionIcon m={rem(-6)} aria-label={t`Close`} onClick={onClose}>
           <FixedSizeIcon name="close" />
         </ActionIcon>
       </Group>

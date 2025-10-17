@@ -30,7 +30,7 @@ export function EntryButton({
       rightSection={
         node ? (
           <UnstyledButton aria-label={t`Remove`} onClick={handleIconClick}>
-            <FixedSizeIcon name="close" />
+            <FixedSizeIcon name="close" display="block" />
           </UnstyledButton>
         ) : undefined
       }

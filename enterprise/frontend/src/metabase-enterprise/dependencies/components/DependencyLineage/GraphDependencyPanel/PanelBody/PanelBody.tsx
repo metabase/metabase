@@ -1,5 +1,6 @@
 import { memo } from "react";
 import { Link } from "react-router";
+import { t } from "ttag";
 
 import {
   ActionIcon,
@@ -95,7 +96,13 @@ function ListItem({ node, onEntryChange }: ListItemProps) {
           </Flex>
         )}
         {link != null && (
-          <ActionIcon component={Link} to={link} target="_blank" m={rem(-6)}>
+          <ActionIcon
+            component={Link}
+            to={link}
+            target="_blank"
+            m={rem(-6)}
+            aria-label={t`Open in a new tab`}
+          >
             <FixedSizeIcon name="external" />
           </ActionIcon>
         )}

@@ -1,4 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
+import { t } from "ttag";
 
 import {
   ActionIcon,
@@ -27,7 +28,11 @@ export function SearchModelPicker({
   return (
     <Popover opened={isOpened} position="right" onDismiss={close}>
       <Popover.Target>
-        <ActionIcon className={S.button} onClick={toggle}>
+        <ActionIcon
+          className={S.button}
+          aria-label={t`Filter`}
+          onClick={toggle}
+        >
           <FixedSizeIcon c="text-primary" name="filter" />
         </ActionIcon>
       </Popover.Target>

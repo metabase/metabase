@@ -25,11 +25,11 @@ export function getSortDirectionItems(): SortDirectionItem[] {
   return [
     {
       value: "asc",
-      label: <FixedSizeIcon name="arrow_up" />,
+      label: <FixedSizeIcon name="arrow_up" aria-label={t`Ascending`} />,
     },
     {
       value: "desc",
-      label: <FixedSizeIcon name="arrow_down" />,
+      label: <FixedSizeIcon name="arrow_down" aria-label={t`Descending`} />,
     },
   ];
 }
