@@ -2,6 +2,7 @@ import { Link } from "react-router";
 import { c, t } from "ttag";
 
 import DateTime from "metabase/common/components/DateTime";
+import { getColumnIcon } from "metabase/common/utils/columns";
 import { getUserName } from "metabase/lib/user";
 import {
   Anchor,
@@ -12,16 +13,19 @@ import {
   Stack,
   Title,
 } from "metabase/ui";
+import * as Lib from "metabase-lib";
 import type { DependencyNode } from "metabase-types/api";
 
 import { getNodeDescription, getNodeLocationInfo } from "../../utils";
 
 import S from "./PanelBody.module.css";
 import {
-  getCreatedAt,
-  getCreatedBy,
-  getLastEditedAt,
-  getLastEditedBy,
+  getNodeCreatedAt,
+  getNodeCreatedBy,
+  getNodeFields,
+  getNodeFieldsLabel,
+  getNodeLastEditedAt,
+  getNodeLastEditedBy,
 } from "./utils";
 
 type PanelBodyProps = {
@@ -34,6 +38,7 @@ export function PanelBody({ node }: PanelBodyProps) {
       <DescriptionInfo node={node} />
       <CreatorAndEditorInfo node={node} />
       <LocationInfo node={node} />
+      <FieldsInfo node={node} />
     </Stack>
   );
 }
@@ -60,10 +65,10 @@ type CreatorAndEditorInfoProps = {
 };
 
 function CreatorAndEditorInfo({ node }: CreatorAndEditorInfoProps) {
-  const createdAt = getCreatedAt(node);
-  const createdBy = getCreatedBy(node);
-  const editedAt = getLastEditedAt(node);
-  const editedBy = getLastEditedBy(node);
+  const createdAt = getNodeCreatedAt(node);
+  const createdBy = getNodeCreatedBy(node);
+  const editedAt = getNodeLastEditedAt(node);
+  const editedBy = getNodeLastEditedBy(node);
 
   if (
     (createdAt == null || createdBy == null) &&
@@ -118,10 +123,38 @@ function LocationInfo({ node }: LocationInfoProps) {
       <Title order={6}>{t`Saved in`}</Title>
       <Anchor component={Link} to={location.link} target="_blank">
         <Flex gap="sm" align="center">
-          <FixedSizeIcon name={location.icon} />
+          <FixedSizeIcon c="text-primary" name={location.icon} />
           <div>{location.label}</div>
         </Flex>
       </Anchor>
+    </Stack>
+  );
+}
+
+type FieldsInfoProps = {
+  node: DependencyNode;
+};
+
+function FieldsInfo({ node }: FieldsInfoProps) {
+  const fields = getNodeFields(node);
+  if (fields.length === 0) {
+    return null;
+  }
+
+  return (
+    <Stack gap="sm">
+      <Title order={6}>{getNodeFieldsLabel(fields.length)}</Title>
+      {fields.map((field, fieldIndex) => {
+        const fieldTypeInfo = Lib.legacyColumnTypeInfo(field);
+        const fieldIcon = getColumnIcon(fieldTypeInfo);
+
+        return (
+          <Group key={fieldIndex} gap="sm" wrap="nowrap">
+            <FixedSizeIcon name={fieldIcon} />
+            {field.display_name}
+          </Group>
+        );
+      })}
     </Stack>
   );
 }
