@@ -15,7 +15,7 @@
     .cm-tooltip-autocomplete {
       box-shadow: 0 5px 14px rgba(0, 0, 0, 0.08);
       border-radius: 4px;
-      background-color: white;
+      background-color: var(--mb-color-bg-white);
       color: var(--mb-color-text-dark);
       border: 1px solid var(--mb-color-border);
       max-width: 520px;
@@ -36,8 +36,7 @@
 
         &:hover,
         &[aria-selected="true"] {
-          color: inherit;
-          background-color: var(--mb-color-focus);
+          background-color: var(--mb-color-bg-hover);
         }
       }
 
@@ -75,7 +74,7 @@
       .cm-completionMatchedText {
         text-decoration: none;
         font-weight: bold;
-        color: var(--mb-color-brand);
+        color: var(--mb-color-focus);
       }
 
       .cm-completionLabel {
