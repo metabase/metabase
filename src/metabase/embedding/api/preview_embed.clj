@@ -220,15 +220,13 @@
 
 (defn- decode-card-id
   [unsigned-token original-card-id]
-  (if (get-in unsigned-token [:resource :dashboard])
-    (do
-      (when-not original-card-id
+  (if-let [dashboard-id (get-in unsigned-token [:resource :dashboard])]
+    (u/prog1 original-card-id
+      (when-not <>
         (throw (ex-info "original-card-id is required for dashboard resources"
                         {:status-code 400})))
-      (let [dashboard-id (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
-        (api.embed.common/check-embedding-enabled-for-dashboard dashboard-id {:skip-object-enabled-check? true})
-        (api.embed.common/check-card-belongs-to-dashboard original-card-id dashboard-id)
-        original-card-id))
+      (api.embed.common/check-embedding-enabled-for-dashboard dashboard-id {:skip-object-enabled-check? true})
+      (api.embed.common/check-card-belongs-to-dashboard <> dashboard-id))
     (u/prog1 (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
       (api.embed.common/check-embedding-enabled-for-card <> {:skip-object-enabled-check? true}))))
 
@@ -253,9 +251,9 @@
    query :- [:map
              [:original_card_id {:optional true} [:maybe ms/PositiveInt]]
              [:database {:optional true} [:maybe :int]]]]
-  (let [unsigned-token (check-and-unsign token)
+  (let [unsigned-token   (check-and-unsign token)
         original-card-id (:original_card_id query)
-        card-id        (decode-card-id unsigned-token original-card-id)]
+        card-id          (decode-card-id unsigned-token original-card-id)]
     (api.embed.common/process-query-for-card-with-params
      :export-format    :api
      :card-id          card-id
@@ -285,11 +283,11 @@
    query :- [:map
              [:original_card_id {:optional true} [:maybe ms/PositiveInt]]
              [:database {:optional true} [:maybe :int]]]]
-  (let [unsigned-token (check-and-unsign token)
+  (let [unsigned-token   (check-and-unsign token)
         original-card-id (:original_card_id query)
-        card-id        (decode-card-id unsigned-token original-card-id)
-        params         (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
-    (binding [api/*current-user-permissions-set* (atom #{"/"})
+        card-id          (decode-card-id unsigned-token original-card-id)
+        params           (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
+    (binding [api/*current-user-permissions-set* (delay #{"/"})
               api/*is-superuser?* true]
       ;; TODO (BT) fetch-subset-query-metadata expects a sequence of parameters, but a map is coming
       (qp.card/fetch-subset-query-metadata card-id (vals params) query))))
