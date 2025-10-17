@@ -20,9 +20,10 @@
   (doseq [td test-dirs]
     (println "  - " (c/cyan td)))
   (println) (println) (println)
-  (backend/nrepl-eval "metabase.core.bootstrap"
-                      (pr-str
-                       (list 'metabase.test-runner/find-and-run-tests-repl {:only test-dirs}))))
+  (prn
+   @(backend/nrepl-eval "metabase.core.bootstrap"
+                        (pr-str
+                         (list 'metabase.test-runner/find-and-run-tests-repl {:only test-dirs})))))
 
 (defn- setup-test-files [parsed]
   (or (:arguments parsed)
@@ -53,5 +54,6 @@
       (do
         (println "Running via " (c/underline (c/magenta (c/on-cyan "the command line"))) "."
                  " This is " (c/yellow (c/on-cyan "SLOW")) " and " (c/red (c/on-cyan "NOT RECCOMENDED"))
-                 ", please consider starting a repl for quicker test runs.")
+                 ", please consider starting a repl for quicker test runs:\n\n"
+                 "  clj -M:dev:ee:ee-dev:drivers:drivers-dev:dev-start --port 7888")
         (run-tests-cli test-dirs)))))
