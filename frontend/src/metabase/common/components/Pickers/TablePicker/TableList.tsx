@@ -2,17 +2,18 @@ import { useMemo } from "react";
 
 import type { Table } from "metabase-types/api";
 
-import { ItemList, ListBox } from "../../../EntityPicker";
-import type { DataPickerValueItem } from "../types";
+import { ItemList, ListBox } from "../../EntityPicker";
+
+import type { TableItem } from "./types";
 
 interface Props {
   error: unknown;
   isLoading: boolean;
   isCurrentLevel: boolean;
-  selectedItem: DataPickerValueItem | null;
+  selectedItem: TableItem | null;
   tables: Table[] | undefined;
-  onClick: (item: DataPickerValueItem) => void;
-  shouldDisableItem?: (item: DataPickerValueItem) => boolean;
+  onClick: (item: TableItem) => void;
+  shouldDisableItem?: (item: TableItem) => boolean;
 }
 
 const isFolder = () => false;
@@ -26,7 +27,7 @@ export const TableList = ({
   onClick,
   shouldDisableItem,
 }: Props) => {
-  const items: DataPickerValueItem[] | undefined = useMemo(() => {
+  const items: TableItem[] | undefined = useMemo(() => {
     return tables?.map((table) => ({
       id: table.id,
       model: "table",

@@ -2,17 +2,18 @@ import { useMemo } from "react";
 
 import type { Database } from "metabase-types/api";
 
-import { ItemList, ListBox } from "../../../EntityPicker";
-import type { DataPickerFolderItem } from "../types";
+import { ItemList, ListBox } from "../../EntityPicker";
+
+import type { TablePickerFolderItem } from "./types";
 
 interface Props {
   databases: Database[] | undefined;
   error: unknown;
   isCurrentLevel: boolean;
   isLoading: boolean;
-  selectedItem: DataPickerFolderItem | null;
-  onClick: (item: DataPickerFolderItem) => void;
-  shouldDisableItem?: (item: DataPickerFolderItem) => boolean;
+  selectedItem: TablePickerFolderItem | null;
+  onClick: (item: TablePickerFolderItem) => void;
+  shouldDisableItem?: (item: TablePickerFolderItem) => boolean;
 }
 
 const isFolder = () => true;
@@ -26,7 +27,7 @@ export const DatabaseList = ({
   onClick,
   shouldDisableItem,
 }: Props) => {
-  const items: DataPickerFolderItem[] | undefined = useMemo(() => {
+  const items: TablePickerFolderItem[] | undefined = useMemo(() => {
     return databases?.map((database) => ({
       id: database.id,
       model: "database",
