@@ -375,7 +375,6 @@
                                               {:js-int-to-string? true, :ignore-cached-results? ignore-cache}
                                               middleware))))
         info       (cond-> {:executed-by            api/*current-user-id*
-                            :query-hash (qp.util/query-hash subset-query)
                             :context                context
                             :card-id                card-id
                             :card-name              (:name card)
