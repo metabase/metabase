@@ -1726,6 +1726,7 @@
            premium-features
            queries
            query-processor
+           revisions
            settings
            task
            util}}
