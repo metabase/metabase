@@ -713,7 +713,7 @@
                     [:id ms/PositiveInt]]]
   (let [card (api/write-check :model/Card id)]
     (t2/delete! :model/Card :id id)
-    (events/publish-event! :event/card-delete {:object card :user-id api/*current-user-id*}))
+    (events/publish-event! :event/card-delete {:object card :previous-object nil :user-id api/*current-user-id*}))
   api/generic-204-no-content)
 
 ;;; -------------------------------------------- Bulk Collections Update ---------------------------------------------

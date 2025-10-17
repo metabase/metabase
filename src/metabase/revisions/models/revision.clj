@@ -191,33 +191,36 @@
                (conj more r2))))))
 
 (mu/defn push-revision!
-  "Record a new Revision for `entity` with `id` if it's changed compared to the last revision.
-  Returns `object` or `nil` if the object does not changed."
-  [{:keys [id entity user-id object
+  "Record a new Revision for `entity` with `id` if it's changed compared to the previous object.
+  Returns `object` or `nil` if the object does not changed.
+
+  `previous-object` should be the object before the change, or `nil` if this is a creation."
+  [{:keys [id entity user-id object previous-object
            is-creation? message]
     :or   {is-creation? false}}     :- [:map {:closed true}
                                         [:id                            pos-int?]
                                         [:object                        :map]
+                                        [:previous-object               [:maybe :map]]
                                         [:entity                        [:fn toucan-model?]]
                                         [:user-id                       pos-int?]
                                         [:is-creation? {:optional true} [:maybe :boolean]]
                                         [:message      {:optional true} [:maybe :string]]]]
   (let [entity-name (name entity)
         serialized-object (serialize-instance entity id (dissoc object :message))
-        last-object (t2/select-one-fn :object :model/Revision :model entity-name :model_id id {:order-by [[:id :desc]]})
         ;; For Card entities, ensure :card_schema is excluded from comparison
         ;; Old revisions might have :card_schema added by after-select, but this field
         ;; shouldn't trigger new revisions as it's a technical/internal field
-        last-object-for-comparison (cond-> last-object
-                                     (= entity :model/Card) (dissoc :card_schema))]
+        previous-object-for-comparison (cond-> previous-object
+                                         (= entity :model/Card) (dissoc :card_schema))]
     ;; make sure we still have a map after calling out serialization function
     (assert (map? serialized-object))
-    ;; the last-object could have nested object, e.g: Dashboard can have multiple Card in it,
+    ;; the previous-object could have nested object, e.g: Dashboard can have multiple Card in it,
     ;; even though we call `post-select` on the `object`, the nested object might not be transformed correctly
     ;; E.g: Cards inside Dashboard will not be transformed
     ;; so to be safe, we'll just compare them as string
-    (when-not (= (json/encode serialized-object)
-                 (json/encode last-object-for-comparison))
+    (when (or (nil? previous-object)
+              (not= (json/encode serialized-object)
+                    (json/encode previous-object-for-comparison)))
       (t2/insert! :model/Revision
                   :model        entity-name
                   :model_id     id

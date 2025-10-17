@@ -49,7 +49,8 @@
 (mr/def ::dashboard
   [:map {:closed true}
    [:user-id pos-int?]
-   [:object [:fn #(t2/instance-of? :model/Dashboard %)]]])
+   [:object [:fn #(t2/instance-of? :model/Dashboard %)]]
+   [:previous-object [:maybe [:fn #(t2/instance-of? :model/Dashboard %)]]]])
 
 (mr/def :event/dashboard-create ::dashboard)
 (mr/def :event/dashboard-update ::dashboard)

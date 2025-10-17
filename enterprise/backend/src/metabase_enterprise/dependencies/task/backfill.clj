@@ -65,11 +65,12 @@
   [id target-version]
   ;; We don't want to change the card at all, we just want to update the dependency data and
   ;; mark the card as processed for this dependency analysis version.
-  (let [update-count (t2/update! :model/Card id :dependency_analysis_version [:< target-version]
+  (let [card-before  (t2/select-one :model/Card id)
+        update-count (t2/update! :model/Card id :dependency_analysis_version [:< target-version]
                                  {:dependency_analysis_version target-version})]
     (when-let [card (and (pos? update-count)
                          (t2/select-one :model/Card id))]
-      (events/publish-event! :event/card-update {:object card :user-id config/internal-mb-user-id}))
+      (events/publish-event! :event/card-update {:object card :previous-object card-before :user-id config/internal-mb-user-id}))
     update-count))
 
 (defn- backfill-entity!

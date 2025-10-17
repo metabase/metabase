@@ -7,7 +7,8 @@
 (mr/def ::card
   [:map {:closed true}
    [:user-id  [:maybe pos-int?]]
-   [:object   [:fn #(t2/instance-of? :model/Card %)]]])
+   [:object   [:fn #(t2/instance-of? :model/Card %)]]
+   [:previous-object [:maybe [:fn #(t2/instance-of? :model/Card %)]]]])
 
 (mr/def :event/card-create ::card)
 (mr/def :event/card-update ::card)
