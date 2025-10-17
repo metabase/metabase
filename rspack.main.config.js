@@ -7,7 +7,6 @@ const path = require("path");
 const rspack = require("@rspack/core");
 const ReactRefreshPlugin = require("@rspack/plugin-react-refresh");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
-const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
 const WebpackNotifierPlugin = require("webpack-notifier");
 
 const {
@@ -251,6 +250,7 @@ const config = {
     },
     fallback: {
       crypto: path.join(SRC_PATH, "/lib/crypto-polyfill.js"),
+      buffer: require.resolve("buffer/"),
     },
   },
   optimization: {
@@ -319,10 +319,10 @@ const config = {
       template: __dirname + "/resources/frontend_client/index_template.html",
     }),
     new rspack.BannerPlugin(getBannerOptions(LICENSE_TEXT)),
-    new NodePolyfillPlugin({
-      // buffer is needed for png downloading
-      // process is needed for react-markdown https://github.com/orgs/remarkjs/discussions/903
-      onlyAliases: ["buffer", "process"],
+    // https://github.com/orgs/remarkjs/discussions/903
+    new rspack.ProvidePlugin({
+      process: "process/browser.js",
+      Buffer: ["buffer", "Buffer"],
     }),
     new rspack.EnvironmentPlugin({
       WEBPACK_BUNDLE: "development",
