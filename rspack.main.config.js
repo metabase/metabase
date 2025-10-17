@@ -197,6 +197,16 @@ const config = {
             loader: "@svgr/webpack",
             options: {
               ref: true,
+              svgoConfig: {
+                plugins: [
+                  {
+                    name: "removeUnknownsAndDefaults",
+                    params: {
+                      defaultMarkupDeclarations: false,
+                    },
+                  },
+                ],
+              },
             },
           },
         ],
