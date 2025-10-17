@@ -3,13 +3,17 @@ import cx from "classnames";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
+import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { useToast } from "metabase/common/hooks";
 import {
   ActionIcon,
+  Button,
   Flex,
   type FlexProps,
   Icon,
   type IconName,
+  Modal,
+  Stack,
   Text,
 } from "metabase/ui";
 import { useSubmitMetabotFeedbackMutation } from "metabase-enterprise/api/metabot";
@@ -234,18 +238,100 @@ export const AgentErrorMessage = ({
   </MessageContainer>
 );
 
+const ToolCallDetailsModal = ({
+  message,
+  onClose,
+}: {
+  message: MetabotDebugToolCallMessage;
+  onClose: () => void;
+}) => {
+  const resultIsString = typeof message.result === "string";
+  const resultValue = resultIsString
+    ? message.result
+    : JSON.stringify(message.result, null, 2);
+  const resultLanguage = resultIsString ? "text" : "json";
+
+  return (
+    <Modal
+      opened
+      onClose={onClose}
+      size="lg"
+      title={t`Tool Call: ${message.name}`}
+      data-testid="tool-call-details-modal"
+    >
+      <Stack gap="md">
+        <Stack gap="xs">
+          <Text fw="bold">{t`Request`}</Text>
+          <CodeEditor
+            value={JSON.stringify(message.message, null, 2)}
+            language="json"
+            readOnly
+          />
+        </Stack>
+
+        {message.result && (
+          <Stack gap="xs">
+            <Text fw="bold">{t`Response`}</Text>
+            <CodeEditor
+              value={resultValue}
+              language={resultLanguage}
+              readOnly
+            />
+          </Stack>
+        )}
+      </Stack>
+    </Modal>
+  );
+};
+
 export const ToolCallMessage = ({
   message,
   ...props
 }: FlexProps & {
   message: MetabotDebugToolCallMessage;
-}) => (
-  <MessageContainer chatRole="tool" {...props}>
-    <Text className={Styles.message} c="text-light">
-      {t`Tool: ${message.name}`}
-    </Text>
-  </MessageContainer>
-);
+}) => {
+  const [modalOpen, setModalOpen] = useState(false);
+
+  return (
+    <>
+      <MessageContainer chatRole="tool" {...props}>
+        <Flex
+          p="md"
+          mb="md"
+          align="center"
+          justify="space-between"
+          style={{
+            border: "1px solid var(--mb-color-brand)",
+            backgroundColor: "var(--mb-color-bg-light)",
+            borderRadius: "8px",
+          }}
+        >
+          <Flex align="center" gap="xs">
+            <Text fw="bold" c="brand">
+              🔧
+            </Text>
+            <Text fw="bold" c="brand">
+              {message.name}
+            </Text>
+          </Flex>
+          <Button
+            variant="filled"
+            size="xs"
+            bg="brand"
+            c="white"
+            onClick={() => setModalOpen(true)}
+          >{t`View details`}</Button>
+        </Flex>
+      </MessageContainer>
+      {modalOpen && (
+        <ToolCallDetailsModal
+          message={message}
+          onClose={() => setModalOpen(false)}
+        />
+      )}
+    </>
+  );
+};
 
 export const getFullAgentReply = (
   messages: MetabotChatMessage[],
