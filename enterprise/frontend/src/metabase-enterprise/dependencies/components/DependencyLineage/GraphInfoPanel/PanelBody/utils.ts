@@ -56,7 +56,11 @@ export function getNodeSchemaInfo(
     .with({ type: "transform" }, (node) => node.data.table)
     .otherwise(() => undefined);
 
-  if (tableInfo != null && tableInfo.schema) {
+  if (
+    tableInfo != null &&
+    tableInfo.schema != null &&
+    tableInfo.schema !== ""
+  ) {
     return {
       label: tableInfo.schema,
       icon: "schema",
