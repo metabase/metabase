@@ -1,5 +1,4 @@
-import { match } from "ts-pattern";
-
+import type { QuestionPickerItem } from "metabase/common/components/Pickers/QuestionPicker";
 import type {
   TablePickerItem,
   TablePickerValue,
@@ -41,21 +40,33 @@ export function getTablePickerItem(
   }
 }
 
+export function getQuestionPickerItem(
+  node: DependencyNode,
+): QuestionPickerItem | undefined {
+  if (node.type === "card" && node.data.type === "question") {
+    return {
+      id: node.id,
+      name: node.data.name,
+      model: "card",
+    };
+  }
+}
+
 export function getEntryPickerItem(
   node: DependencyNode,
 ): EntryPickerItem | undefined {
-  return getTablePickerItem(node);
+  return getTablePickerItem(node) ?? getQuestionPickerItem(node);
 }
 
 export function getEntryPickerValue(
   item: EntryPickerItem,
 ): DependencyEntry | undefined {
-  return match<EntryPickerItem, DependencyEntry | undefined>(item)
-    .with({ model: "table" }, (item) => ({
-      id: Number(item.id),
-      type: "table",
-    }))
-    .otherwise(() => undefined);
+  switch (item.model) {
+    case "table":
+      return { id: Number(item.id), type: "table" };
+    case "card":
+      return { id: Number(item.id), type: "card" };
+  }
 }
 
 export function filterRecents(recentItems: RecentItem[]) {

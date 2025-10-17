@@ -4,9 +4,15 @@ import { t } from "ttag";
 import { useLogRecentItemMutation } from "metabase/api";
 import {
   EntityPickerModal,
+  type EntityPickerModalOptions,
   type EntityPickerTab,
   defaultOptions,
 } from "metabase/common/components/EntityPicker";
+import {
+  QuestionPicker,
+  type QuestionPickerOptions,
+  type QuestionPickerStatePath,
+} from "metabase/common/components/Pickers/QuestionPicker";
 import {
   TablePicker,
   type TablePickerStatePath,
@@ -18,11 +24,12 @@ import {
   isActivityModel,
 } from "metabase-types/api";
 
-import type { EntryPickerItem, EntryPickerModalOptions } from "./types";
+import type { EntryPickerItem } from "./types";
 import {
   filterRecents,
   getEntryPickerItem,
   getEntryPickerValue,
+  getQuestionPickerItem,
   getTablePickerValue,
 } from "./utils";
 
@@ -32,12 +39,15 @@ type EntryPickerModalProps = {
   onClose: () => void;
 };
 
-const OPTIONS: EntryPickerModalOptions = {
+const ENTITY_PICKER_OPTIONS: EntityPickerModalOptions = {
   ...defaultOptions,
   hasConfirmButtons: false,
-  showPersonalCollections: true,
-  showRootCollection: true,
   hasRecents: true,
+};
+
+const QUESTION_PICKER_OPTIONS: QuestionPickerOptions = {
+  showRootCollection: true,
+  showPersonalCollections: true,
 };
 
 const RECENTS_CONTEXT: RecentContexts[] = ["selections"];
@@ -48,6 +58,7 @@ export function EntryPickerModal({
   onClose,
 }: EntryPickerModalProps) {
   const [tablesPath, setTablesPath] = useState<TablePickerStatePath>();
+  const [questionsPath, setQuestionsPath] = useState<QuestionPickerStatePath>();
   const [logRecentItem] = useLogRecentItemMutation();
 
   const selectedItem = useMemo(() => {
@@ -69,7 +80,7 @@ export function EntryPickerModal({
       icon: "table",
       render: ({ onItemSelect }) => (
         <TablePicker
-          value={value != null ? getTablePickerValue(value) : undefined}
+          value={value ? getTablePickerValue(value) : undefined}
           path={tablesPath}
           onItemSelect={onItemSelect}
           onPathChange={setTablesPath}
@@ -77,8 +88,27 @@ export function EntryPickerModal({
       ),
     });
 
+    computedTabs.push({
+      id: "questions-tab",
+      displayName: t`Questions`,
+      models: ["card"],
+      folderModels: ["collection", "dashboard"],
+      icon: "folder",
+      render: ({ onItemSelect }) => (
+        <QuestionPicker
+          initialValue={value ? getQuestionPickerItem(value) : undefined}
+          models={["card"]}
+          options={QUESTION_PICKER_OPTIONS}
+          path={questionsPath}
+          onInit={onItemSelect}
+          onItemSelect={onItemSelect}
+          onPathChange={setQuestionsPath}
+        />
+      ),
+    });
+
     return computedTabs;
-  }, [value, tablesPath]);
+  }, [value, tablesPath, questionsPath]);
 
   const handleItemSelect = (item: EntryPickerItem) => {
     const value = getEntryPickerValue(item);
@@ -97,7 +127,7 @@ export function EntryPickerModal({
       tabs={tabs}
       initialValue={selectedItem}
       selectedItem={selectedItem ?? null}
-      options={OPTIONS}
+      options={ENTITY_PICKER_OPTIONS}
       recentFilter={filterRecents}
       recentsContext={RECENTS_CONTEXT}
       canSelectItem
