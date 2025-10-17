@@ -92,7 +92,7 @@ describe("parseConnectionUriRegex - Amazon Athena", () => {
         protocol: "awsathena",
         host: "athena.us-east-1.amazonaws.com",
         port: "443",
-        hasJdbcPrefix: true,
+        hasJdbcPrefix: false,
         params: {
           User: "EXAMPLEKEY",
           Password: "EXAMPLESECRETKEY",
@@ -113,7 +113,7 @@ describe("parseConnectionUriRegex - Amazon Redshift", () => {
         host: "examplecluster.abc123xyz789.us-west-2.redshift.amazonaws.com",
         port: "5439",
         database: "dev",
-        hasJdbcPrefix: true,
+        hasJdbcPrefix: false,
       }),
     );
   });
@@ -166,7 +166,7 @@ describe("parseConnectionUriRegex - Clickhouse", () => {
         protocol: "clickhouse",
         host: "localhost",
         port: "8443",
-        hasJdbcPrefix: true,
+        hasJdbcPrefix: false,
         params: {
           ssl: "true",
         },
@@ -184,7 +184,7 @@ describe("parseConnectionUriRegex - Databricks", () => {
         protocol: "databricks",
         host: "127.0.0.1",
         port: "8123",
-        hasJdbcPrefix: true,
+        hasJdbcPrefix: false,
         params: {
           httpPath: "/sql/1.0/endpoints/abc",
           OAuthSecret: "1234567890",
@@ -223,7 +223,7 @@ describe("parseConnectionUriRegex - Druid", () => {
         host: "localhost",
         port: "8888",
         path: "/druid/v2/sql/avatica/",
-        hasJdbcPrefix: true,
+        hasJdbcPrefix: false,
         params: {
           transparent_reconnection: "true",
         },
@@ -246,7 +246,7 @@ describe("parseConnectionUriRegex - MySQL", () => {
         ssl: "true",
       },
       protocol: "mysql",
-      hasJdbcPrefix: true,
+      hasJdbcPrefix: false,
     });
   });
 });
@@ -264,7 +264,7 @@ describe("parseConnectionUriRegex - Oracle", () => {
           ssl_server_cert_dn: "ServerDN",
         },
         protocol: "oracle",
-        hasJdbcPrefix: true,
+        hasJdbcPrefix: false,
       }),
     );
   });
@@ -299,7 +299,7 @@ describe("parseConnectionUriRegex - PostgreSQL", () => {
       port: "5432",
       database: "mydb",
       protocol: "postgresql",
-      hasJdbcPrefix: true,
+      hasJdbcPrefix: false,
     });
   });
 
@@ -397,7 +397,7 @@ describe("parseConnectionUriRegex - Spark SQL", () => {
     expect(result).toEqual(
       expect.objectContaining({
         protocol: "sparksql",
-        hasJdbcPrefix: true,
+        hasJdbcPrefix: false,
         params: {
           Server: "127.0.0.1",
         },
@@ -480,7 +480,7 @@ describe("parseConnectionUriRegex - Starburst", () => {
         catalog: "hive",
         schema: "sales",
         protocol: "trino",
-        hasJdbcPrefix: true,
+        hasJdbcPrefix: false,
       }),
     );
   });
@@ -496,7 +496,7 @@ describe("parseConnectionUriRegex - Vertica", () => {
         port: "1234",
         database: "databaseName",
         protocol: "vertica",
-        hasJdbcPrefix: true,
+        hasJdbcPrefix: false,
       }),
     );
   });
