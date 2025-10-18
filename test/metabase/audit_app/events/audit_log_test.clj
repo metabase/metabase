@@ -24,8 +24,8 @@
 (deftest card-create-test
   (testing ":card-create event"
     (mt/with-temp [:model/Card card {:name "My Cool Card"}]
-      (is (= {:object card :user-id (mt/user->id :rasta)}
-             (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :rasta)})))
+      (is (= {:object card :previous-object nil :user-id (mt/user->id :rasta)}
+             (events/publish-event! :event/card-create {:object card :previous-object nil :user-id (mt/user->id :rasta)})))
       (is (partial=
            {:topic    :card-create
             :user_id  (mt/user->id :rasta)
@@ -45,8 +45,8 @@
                                          :dataset_query {:database lib.schema.id/saved-questions-virtual-database-id
                                                          :type     :query
                                                          :query    {:source-table (str "card__" (u/the-id card-1))}}}]
-        (is (= {:object card-2 :user-id (mt/user->id :rasta)}
-               (events/publish-event! :event/card-create {:object card-2 :user-id (mt/user->id :rasta)})))
+        (is (= {:object card-2 :previous-object nil :user-id (mt/user->id :rasta)}
+               (events/publish-event! :event/card-create {:object card-2 :previous-object nil :user-id (mt/user->id :rasta)})))
         (is (partial=
              {:topic    :card-create
               :user_id  (mt/user->id :rasta)
@@ -64,8 +64,8 @@
       (testing card-type
         (mt/with-temp [:model/Card card {:name "My Cool Card", :type card-type}]
           (mt/with-test-user :rasta
-            (is (= {:object card :user-id (mt/user->id :rasta)}
-                   (events/publish-event! :event/card-update {:object card :user-id (mt/user->id :rasta)})))
+            (is (= {:object card :previous-object nil :user-id (mt/user->id :rasta)}
+                   (events/publish-event! :event/card-update {:object card :previous-object nil :user-id (mt/user->id :rasta)})))
             (is (partial=
                  {:topic    :card-update
                   :user_id  (mt/user->id :rasta)
@@ -84,8 +84,8 @@
       (testing card-type
         (mt/with-temp [:model/Card card {:name "My Cool Card", :type card-type}]
           (mt/with-test-user :rasta
-            (is (= {:object card :user-id (mt/user->id :rasta)}
-                   (events/publish-event! :event/card-delete {:object card :user-id (mt/user->id :rasta)})))
+            (is (= {:object card :previous-object nil :user-id (mt/user->id :rasta)}
+                   (events/publish-event! :event/card-delete {:object card :previous-object nil :user-id (mt/user->id :rasta)})))
             (is (partial=
                  {:topic    :card-delete
                   :user_id  (mt/user->id :rasta)
@@ -98,8 +98,8 @@
 (deftest dashboard-create-event-test
   (testing :dashboard-create
     (mt/with-temp [:model/Dashboard dashboard {:name "My Cool Dashboard"}]
-      (is (= {:object dashboard :user-id (mt/user->id :rasta)}
-             (events/publish-event! :event/dashboard-create {:object dashboard :user-id (mt/user->id :rasta)})))
+      (is (= {:object dashboard :previous-object nil :user-id (mt/user->id :rasta)}
+             (events/publish-event! :event/dashboard-create {:object dashboard :previous-object nil :user-id (mt/user->id :rasta)})))
       (is (partial=
            {:topic    :dashboard-create
             :user_id  (mt/user->id :rasta)
@@ -111,8 +111,8 @@
 (deftest dashboard-delete-event-test
   (testing :dashboard-delete
     (mt/with-temp [:model/Dashboard dashboard {:name "My Cool Dashboard"}]
-      (is (= {:object dashboard :user-id (mt/user->id :rasta)}
-             (events/publish-event! :event/dashboard-delete {:object dashboard :user-id (mt/user->id :rasta)})))
+      (is (= {:object dashboard :previous-object nil :user-id (mt/user->id :rasta)}
+             (events/publish-event! :event/dashboard-delete {:object dashboard :previous-object nil :user-id (mt/user->id :rasta)})))
       (is (partial=
            {:topic    :dashboard-delete
             :user_id  (mt/user->id :rasta)
@@ -126,9 +126,10 @@
     (mt/with-temp [:model/Dashboard     dashboard {:name "My Cool Dashboard"}
                    :model/Card          card {}
                    :model/DashboardCard dashcard  {:dashboard_id (:id dashboard), :card_id (:id card)}]
-      (let [event {:object    dashboard
-                   :dashcards [dashcard]
-                   :user-id   (mt/user->id :rasta)}]
+      (let [event {:object          dashboard
+                   :previous-object nil
+                   :dashcards       [dashcard]
+                   :user-id         (mt/user->id :rasta)}]
         (is (= event
                (events/publish-event! :event/dashboard-add-cards event)))
         (is (partial=
@@ -149,9 +150,10 @@
     (mt/with-temp [:model/Dashboard     dashboard {:name "My Cool Dashboard"}
                    :model/Card          card {}
                    :model/DashboardCard dashcard  {:dashboard_id (:id dashboard), :card_id (:id card)}]
-      (let [event {:object    dashboard
-                   :dashcards [dashcard]
-                   :user-id   (mt/user->id :rasta)}]
+      (let [event {:object          dashboard
+                   :previous-object nil
+                   :dashcards       [dashcard]
+                   :user-id         (mt/user->id :rasta)}]
         (is (= event
                (events/publish-event! :event/dashboard-remove-cards event)))
         (is (partial=

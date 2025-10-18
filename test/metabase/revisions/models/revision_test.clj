@@ -48,11 +48,12 @@
 
 (defn- push-fake-revision! [card-id & {:keys [message] :as object}]
   (revision/push-revision!
-   {:entity   ::FakedCard
-    :id       card-id
-    :user-id  (mt/user->id :rasta)
-    :object   (dissoc object :message)
-    :message  message}))
+   {:entity          ::FakedCard
+    :id              card-id
+    :user-id         (mt/user->id :rasta)
+    :object          (dissoc object :message)
+    :previous-object nil
+    :message         message}))
 
 (deftest ^:parallel post-select-test
   (testing (str "make sure we call the appropriate post-select methods on `:object` when a revision comes out of the "
@@ -487,3 +488,130 @@
         (is (=? [{:metabase_version new-version}
                  {:metabase_version config/mb-version-string}]
                 (revision/revisions ::FakedCard card-id)))))))
+
+(deftest push-revisions-bulk-test
+  (mt/with-model-cleanup [:model/Revision]
+    (testing "Test that `push-revisions!` creates revisions for multiple entities at once"
+      (mt/with-temp [:model/Card {card1-id :id} {}
+                     :model/Card {card2-id :id} {}
+                     :model/Card {card3-id :id} {}]
+        (testing "can create multiple revisions in one call"
+          (let [result (revision/push-revisions!
+                        [{:entity ::FakedCard
+                          :id card1-id
+                          :user-id (mt/user->id :rasta)
+                          :object {:name "Card 1"}
+                          :previous-object nil
+                          :is-creation? true}
+                         {:entity ::FakedCard
+                          :id card2-id
+                          :user-id (mt/user->id :rasta)
+                          :object {:name "Card 2"}
+                          :previous-object nil
+                          :is-creation? true}
+                         {:entity ::FakedCard
+                          :id card3-id
+                          :user-id (mt/user->id :rasta)
+                          :object {:name "Card 3"}
+                          :previous-object nil
+                          :is-creation? true}])]
+            (testing "Returns collection of objects that were revised"
+              (is (= 3 (count result)))
+              (is (= #{"Card 1" "Card 2" "Card 3"}
+                     (into #{} (map :name) result))))
+
+            (testing "All revisions are created correctly"
+              (is (=? [(mi/instance :model/Revision
+                                    {:model "FakedCard"
+                                     :model_id card1-id
+                                     :user_id (mt/user->id :rasta)
+                                     :is_creation true})]
+                      (revision/revisions ::FakedCard card1-id)))
+              (is (=? [(mi/instance :model/Revision
+                                    {:model "FakedCard"
+                                     :model_id card2-id
+                                     :user_id (mt/user->id :rasta)
+                                     :is_creation true})]
+                      (revision/revisions ::FakedCard card2-id)))
+              (is (=? [(mi/instance :model/Revision
+                                    {:model "FakedCard"
+                                     :model_id card3-id
+                                     :user_id (mt/user->id :rasta)
+                                     :is_creation true})]
+                      (revision/revisions ::FakedCard card3-id))))))
+
+        (testing "can update multiple entities at once"
+          (let [result (revision/push-revisions!
+                        [{:entity ::FakedCard
+                          :id card1-id
+                          :user-id (mt/user->id :rasta)
+                          :object {:name "Card 1 Updated"}
+                          :previous-object {:name "Card 1"}}
+                         {:entity ::FakedCard
+                          :id card2-id
+                          :user-id (mt/user->id :rasta)
+                          :object {:name "Card 2 Updated"}
+                          :previous-object {:name "Card 2"}}])]
+            (testing "Returns only objects that changed"
+              (is (= 2 (count result))))
+
+            (testing "Revisions are created for changed objects"
+              (is (= 2 (count (revision/revisions ::FakedCard card1-id))))
+              (is (= 2 (count (revision/revisions ::FakedCard card2-id))))
+              (is (= 1 (count (revision/revisions ::FakedCard card3-id)))))))
+
+        (testing "filters out entities that haven't changed"
+          (let [result (revision/push-revisions!
+                        [{:entity ::FakedCard
+                          :id card1-id
+                          :user-id (mt/user->id :rasta)
+                          :object {:name "Card 1 Updated" :serialized true}
+                          :previous-object {:name "Card 1 Updated" :serialized true}}
+                         {:entity ::FakedCard
+                          :id card2-id
+                          :user-id (mt/user->id :rasta)
+                          :object {:name "Card 2 Changed"}
+                          :previous-object {:name "Card 2 Updated"}}])]
+            (testing "Only returns objects that actually changed"
+              (is (= 1 (count result)))
+              (is (= "Card 2 Changed" (:name (first result)))))
+
+            (testing "No new revision for unchanged card"
+              (is (= 2 (count (revision/revisions ::FakedCard card1-id)))))
+
+            (testing "New revision for changed card"
+              (is (= 3 (count (revision/revisions ::FakedCard card2-id)))))))))))
+
+(deftest push-revisions-empty-input-test
+  (testing "`push-revisions!` handles empty input gracefully"
+    (is (nil? (revision/push-revisions! [])))))
+
+(deftest push-revision-delegates-to-bulk-test
+  (mt/with-model-cleanup [:model/Revision]
+    (testing "`push-revision!` (single) delegates to bulk version correctly"
+      (mt/with-temp [:model/Card {card-id :id} {}]
+        (let [result (revision/push-revision!
+                      {:entity ::FakedCard
+                       :id card-id
+                       :user-id (mt/user->id :rasta)
+                       :object {:name "Test Card"}
+                       :previous-object nil
+                       :is-creation? true})]
+          (testing "Returns the object when revision is created"
+            (is (= {:name "Test Card"} result)))
+
+          (testing "Revision is created in database"
+            (is (=? [(mi/instance :model/Revision
+                                  {:model "FakedCard"
+                                   :model_id card-id
+                                   :user_id (mt/user->id :rasta)
+                                   :is_creation true})]
+                    (revision/revisions ::FakedCard card-id)))))
+
+        (testing "Returns nil when object hasn't changed"
+          (is (nil? (revision/push-revision!
+                     {:entity ::FakedCard
+                      :id card-id
+                      :user-id (mt/user->id :rasta)
+                      :object {:name "Test Card"}
+                      :previous-object {:name "Test Card"}}))))))))

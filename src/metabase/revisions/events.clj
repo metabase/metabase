@@ -9,25 +9,30 @@
 
 (derive ::event :metabase/event)
 
-(defn- push-revision!
+(defn- push-revisions!
   [model
-   {:keys [user-id] object :object :as event}
+   events
    {:keys [is-creation?]
-    :or   {is-creation? false}
-    :as   _options}]
+    :or {is-creation? false}
+    :as _options}]
+  (revision/push-revisions!
+   (for [{:keys [user-id previous-object object revision-message]} events
+         :let [user-id (or user-id api/*current-user-id*)]]
+     (do
+       (when-not (t2/instance-of? model object)
+         (throw (ex-info "object must be a model instance" {:object object :model model})))
+       {:entity model
+        :id (:id object)
+        :object object
+        :previous-object previous-object
+        :user-id user-id
+        :is-creation? is-creation?
+        :message revision-message}))))
+
+(defn- push-revision!
+  [model event options]
   (when event
-    (try
-      (when-not (t2/instance-of? model object)
-        (throw (ex-info "object must be a model instance" {:object object :model model})))
-      (let [user-id (or user-id api/*current-user-id*)]
-        (revision/push-revision! {:entity       model
-                                  :id           (:id object)
-                                  :object       object
-                                  :user-id      user-id
-                                  :is-creation? is-creation?
-                                  :message      (:revision-message event)}))
-      (catch Throwable e
-        (log/warnf e "Failed to process revision event for model %s" model)))))
+    (push-revisions! model [event] options)))
 
 (derive ::card-event ::event)
 (derive :event/card-create ::card-event)
@@ -37,13 +42,29 @@
   [topic event]
   (push-revision! :model/Card event {:is-creation? (= topic :event/card-create)}))
 
+(derive ::cards-event ::event)
+(derive :event/cards-create ::cards-event)
+(derive :event/cards-update ::cards-event)
+
+(methodical/defmethod events/publish-event! ::cards-event
+  [topic {:keys [events]}]
+  (push-revisions! :model/Card events {:is-creation? (= topic :event/card-create)}))
+
 (derive ::dashboard-event ::event)
 (derive :event/dashboard-create ::dashboard-event)
 (derive :event/dashboard-update ::dashboard-event)
 
 (methodical/defmethod events/publish-event! ::dashboard-event
-  [topic event]
-  (push-revision! :model/Dashboard event {:is-creation? (= topic :event/dashboard-create)}))
+  [topic {:keys [events]}]
+  (push-revision! :model/Dashboard events {:is-creation? (= topic :event/dashboard-create)}))
+
+(derive ::dashboards-event ::event)
+(derive :event/dashboards-create ::dashboards-event)
+(derive :event/dashboards-update ::dashboards-event)
+
+(methodical/defmethod events/publish-event! ::dashboards-event
+  [topic {:keys [events]}]
+  (push-revisions! :model/Dashboard events {:is-creation? (= topic :event/dashboard-create)}))
 
 (derive ::transform-event ::event)
 (derive :event/transform-create ::transform-event)

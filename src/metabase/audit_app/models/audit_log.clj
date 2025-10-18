@@ -178,6 +178,38 @@
                                   (prepare-update-event-data object-details previous-details)
                                   object-details))})))
 
+(mu/defn record-events!
+  "Records multiple events in the Audit Log with a single batch insert.
+
+  `topic` is a keyword representing the type of event being recorded, e.g. `:dashboard-create`.
+
+  `events` is a collection of event param maps, each with the same structure as `record-event!`:
+  - `:object`: the object the event is acting on
+  - `:previous-object`: the previous version of the object, for update events
+  - `:user-id`: the user ID that initiated the event (defaults: `api/*current-user-id*`)
+  - `:model`: the name of the model the event is acting on
+  - `:model-id`: the ID of the model the event is acting on
+  - `:details`: a map of arbitrary details
+
+  Returns the number of rows inserted, or nil if logging is disabled."
+  [topic :- :keyword
+   events :- [:sequential ::event-params]]
+  (when (and (premium-features/log-enabled?) (seq events))
+    (span/with-span!
+      {:name       "record-events!"
+       :attributes {:event/count (count events)}}
+      (let [current-user-id api/*current-user-id*
+            rows (for [params events
+                       :let [{:keys [user-id model-name model-id details unqualified-topic]}
+                             (construct-event topic params current-user-id)]]
+                   {:topic    unqualified-topic
+                    :details  details
+                    :model    model-name
+                    :model_id model-id
+                    :user_id  user-id})]
+        (t2/insert! :model/AuditLog rows)
+        (count rows)))))
+
 (mu/defn record-event!
   "Records an event in the Audit Log.
 
@@ -201,21 +233,7 @@
   - Otherwise, returns the audit logged row."
   [topic :- :keyword
    params :- ::event-params]
-  (when (premium-features/log-enabled?)
-    (span/with-span!
-      {:name       "record-event!"
-       :attributes (cond-> {}
-                     (:model-id params) (assoc :model/id (:model-id params))
-                     (:user-id params) (assoc :user/id (:user-id params))
-                     (:model params) (assoc :model/name (u/lower-case-en (:model params))))}
-      (let [{:keys [user-id model-name model-id details unqualified-topic]}
-            (construct-event topic params api/*current-user-id*)]
-        (t2/insert! :model/AuditLog
-                    :topic    unqualified-topic
-                    :details  details
-                    :model    model-name
-                    :model_id model-id
-                    :user_id  user-id)))))
+  (record-events! topic [params]))
 
 (t2/define-before-insert :model/AuditLog
   [activity]

@@ -100,7 +100,8 @@
       (params/assert-valid-parameters dashboard)
       (when (:parameters changes)
         (queries/upsert-or-delete-parameter-cards-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard)))
-      (collection/check-collection-namespace :model/Dashboard (:collection_id dashboard))
+      (when (contains? changes :collection_id)
+        (collection/check-collection-namespace :model/Dashboard (:collection_id dashboard)))
       (when (:archived changes)
         (t2/delete! :model/Pulse :dashboard_id (u/the-id dashboard))))))
 
@@ -303,7 +304,7 @@
                                                                legacy-result-metadata-for-query)))
                             ;; Xrays populate this in their transient cards
                            (dissoc :id :can_run_adhoc_query))))]
-      (events/publish-event! :event/card-create {:object card :user-id (:creator_id card)})
+      (events/publish-event! :event/card-create {:object card :previous-object nil :user-id (:creator_id card)})
       (t2/hydrate card :creator :dashboard_count :can_write :can_run_adhoc_query :collection))))
 
 (defn save-transient-dashboard!

@@ -142,7 +142,7 @@
                            (api/maybe-reconcile-collection-position! dashboard-data)
                            ;; Ok, now save the Dashboard
                            (first (t2/insert-returning-instances! :model/Dashboard dashboard-data)))]
-      (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
+      (events/publish-event! :event/dashboard-create {:object dash :previous-object nil :user-id api/*current-user-id*})
       (analytics/track-event! :snowplow/dashboard
                               {:event        :dashboard-created
                                :dashboard-id (u/the-id dash)})
@@ -538,8 +538,8 @@
     ;; must signal event outside of tx so cards are visible from other threads
     (when-let [newly-created-cards (seq @new-cards)]
       (doseq [card newly-created-cards]
-        (events/publish-event! :event/card-create {:object card :user-id api/*current-user-id*})))
-    (events/publish-event! :event/dashboard-create {:object dashboard :user-id api/*current-user-id*})
+        (events/publish-event! :event/card-create {:object card :previous-object nil :user-id api/*current-user-id*})))
+    (events/publish-event! :event/dashboard-create {:object dashboard :previous-object nil :user-id api/*current-user-id*})
     dashboard))
 
 ;;; --------------------------------------------- List public and embeddable dashboards ------------------------------
@@ -633,7 +633,7 @@
                     [:id ms/PositiveInt]]]
   (let [dashboard (api/write-check :model/Dashboard id)]
     (t2/delete! :model/Dashboard :id id)
-    (events/publish-event! :event/dashboard-delete {:object dashboard :user-id api/*current-user-id*}))
+    (events/publish-event! :event/dashboard-delete {:object dashboard :previous-object dashboard :user-id api/*current-user-id*}))
   api/generic-204-no-content)
 
 (mu/defn- param-target->field-id :- [:maybe ::lib.schema.id/field]
@@ -779,15 +779,16 @@
 
 (defn- track-dashcard-and-tab-events!
   [{dashboard-id :id :as dashboard}
+   previous-dashboard
    {:keys [created-dashcards deleted-dashcards
            created-tab-ids deleted-tab-ids total-num-tabs]}]
   ;; Dashcard events
   (when (seq deleted-dashcards)
     (events/publish-event! :event/dashboard-remove-cards
-                           {:object dashboard :user-id api/*current-user-id* :dashcards deleted-dashcards}))
+                           {:object dashboard :previous-object previous-dashboard :user-id api/*current-user-id* :dashcards deleted-dashcards}))
   (when (seq created-dashcards)
     (events/publish-event! :event/dashboard-add-cards
-                           {:object dashboard :user-id api/*current-user-id* :dashcards created-dashcards})
+                           {:object dashboard :previous-object previous-dashboard :user-id api/*current-user-id* :dashcards created-dashcards})
     (for [{:keys [card_id]} created-dashcards
           :when             (pos-int? card_id)]
       (analytics/track-event! :snowplow/dashboard
@@ -982,8 +983,8 @@
         ;; skip publishing the event if it's just a change in its collection position
         (when-not (= #{:collection_position}
                      (set (keys dash-updates)))
-          (events/publish-event! :event/dashboard-update {:object dashboard :user-id api/*current-user-id*}))
-        (track-dashcard-and-tab-events! dashboard @changes-stats)
+          (events/publish-event! :event/dashboard-update {:object dashboard :previous-object current-dash :user-id api/*current-user-id*}))
+        (track-dashcard-and-tab-events! dashboard current-dash @changes-stats)
         (-> dashboard
             hydrate-dashboard-details
             (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))))))
@@ -1100,7 +1101,7 @@
    dashboard]
   (collection/check-write-perms-for-collection parent-collection-id)
   (let [dashboard (dashboard/save-transient-dashboard! dashboard parent-collection-id)]
-    (events/publish-event! :event/dashboard-create {:object dashboard :user-id api/*current-user-id*})
+    (events/publish-event! :event/dashboard-create {:object dashboard :previous-object nil :user-id api/*current-user-id*})
     dashboard))
 
 (api.macros/defendpoint :post "/save"
@@ -1114,7 +1115,7 @@
                                      (collection/children-location
                                       (t2/select-one :model/Collection :personal_owner_id api/*current-user-id*)))))
         dashboard (dashboard/save-transient-dashboard! (assoc dashboard :creator_id api/*current-user-id*) parent-collection-id)]
-    (events/publish-event! :event/dashboard-create {:object dashboard :user-id api/*current-user-id*})
+    (events/publish-event! :event/dashboard-create {:object dashboard :previous-object nil :user-id api/*current-user-id*})
     dashboard))
 
 ;;; ------------------------------------- Chain-filtering param value endpoints --------------------------------------

@@ -171,6 +171,63 @@
      :limit  (request/limit)
      :offset (request/offset)}))
 
+(api.macros/defendpoint :post ["/:id/archive" :id #"(?:\d+)|(?:root)"]
+  "Archive all stale items matching the given criteria. This endpoint performs a bulk archive operation and returns
+  a list of archived item IDs for undo support.
+
+  Accepts the same filter parameters as the GET endpoint:
+  - `before_date` - only archive entities that were last edited before this date
+  - `is_recursive` - if true, archive entities from all children of the collection"
+  [{:keys [id]} :- [:map
+                    [:id [:or ms/PositiveInt [:= :root]]]]
+   _query-params
+   {:keys [before_date is_recursive] :as b} :- [:map
+                                                [:before_date {:optional true} [:maybe :string]]
+                                                [:is_recursive :boolean]]]
+  (premium-features/assert-has-feature :collection-cleanup (tru "Collection Cleanup"))
+  (let [before-date    (if before_date
+                         (try (t/local-date "yyyy-MM-dd" before_date)
+                              (catch Exception _
+                                (throw (ex-info (str "invalid before_date: '"
+                                                     before_date
+                                                     "' expected format: 'yyyy-MM-dd'")
+                                                {:status 400}))))
+                         (t/minus (t/local-date) (t/months 6)))
+        collection     (if (= id :root)
+                         collection/root-collection
+                         (t2/select-one :model/Collection id))
+        _              (api/write-check collection)
+        collection-ids (->> (if is_recursive
+                              (conj (effective-children-ids collection @api/*current-user-permissions-set*)
+                                    id)
+                              [id])
+                            (mapv (fn root->nil [x] (if (= :root x) nil x)))
+                            set)
+        result         (stale/archive-candidates! {:collection-ids collection-ids
+                                                   :cutoff-date    before-date
+                                                   :user-id        api/*current-user-id*})
+        snowplow-payload {:event                   :stale-items-bulk-archived
+                          :collection_id           (when-not (= :root id) id)
+                          :total_archived          (:total_archived result)
+                          :cutoff_date             (format "%sT00:00:00Z" (str before-date))}]
+    (analytics/track-event! :snowplow/cleanup snowplow-payload)
+    result))
+
+(api.macros/defendpoint :post "/unarchive"
+  "Unarchive a specific list of items. This is used for undo functionality after a bulk archive operation.
+
+  Request body should contain:
+  - `items` - sequence of maps with `:id` and `:model` (\"card\" or \"dashboard\")"
+  [_route-params
+   _query-params
+   {:keys [items]} :- [:map
+                       [:items [:sequential [:map
+                                             [:id ms/PositiveInt]
+                                             [:model [:enum "card" "dashboard"]]]]]]]
+  (premium-features/assert-has-feature :collection-cleanup (tru "Collection Cleanup"))
+  (stale/unarchive-items! {:items items
+                           :user-id api/*current-user-id*}))
+
 (def ^{:arglists '([request respond raise])} routes
   "Ring routes for Stale API"
   (api.macros/ns-handler *ns* +auth))

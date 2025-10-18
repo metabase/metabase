@@ -795,7 +795,8 @@
             cards-on-first-tab (or (when first-tab
                                      (:cards first-tab))
                                    dashcards)
-            new-spot (autoplace/get-position-for-new-dashcard cards-on-first-tab (:display card))]
+            new-spot (autoplace/get-position-for-new-dashcard cards-on-first-tab (:display card))
+            dashboard-before dashboard]
         (t2/insert! :model/DashboardCard (assoc new-spot
                                                 :dashboard_tab_id (some-> first-tab :id)
                                                 :card_id (:id card)
@@ -804,21 +805,24 @@
         ;; we don't store a revision for the *unmodified* dashcards.
         (events/publish-event! :event/dashboard-update
                                {:object (dissoc dashboard :dashcards :tabs)
+                                :previous-object (dissoc dashboard-before :dashcards :tabs)
                                 :user-id api/*current-user-id*})))))
 
 (defn- autoremove-dashcard-for-card!
   [card-id dashboard-id]
-  (t2/delete! :model/DashboardCard :card_id card-id :dashboard_id dashboard-id)
-  (when-let [dashcard-ids (seq (map :id (t2/query {:select [[:dcs.id]]
-                                                   :from [[:dashboardcard_series :dcs]]
-                                                   :join [[:report_dashboardcard :dc]
-                                                          [:= :dc.id :dcs.dashboardcard_id]]
-                                                   :where [:and
-                                                           [:= :dc.dashboard_id dashboard-id]
-                                                           [:= :dcs.card_id card-id]]})))]
-    (t2/delete! :model/DashboardCardSeries :id [:in (set dashcard-ids)]))
-  (events/publish-event! :event/dashboard-update {:object (t2/select-one :model/Dashboard dashboard-id)
-                                                  :user-id api/*current-user-id*}))
+  (let [dashboard-before (t2/select-one :model/Dashboard dashboard-id)]
+    (t2/delete! :model/DashboardCard :card_id card-id :dashboard_id dashboard-id)
+    (when-let [dashcard-ids (seq (map :id (t2/query {:select [[:dcs.id]]
+                                                     :from [[:dashboardcard_series :dcs]]
+                                                     :join [[:report_dashboardcard :dc]
+                                                            [:= :dc.id :dcs.dashboardcard_id]]
+                                                     :where [:and
+                                                             [:= :dc.dashboard_id dashboard-id]
+                                                             [:= :dcs.card_id card-id]]})))]
+      (t2/delete! :model/DashboardCardSeries :id [:in (set dashcard-ids)]))
+    (events/publish-event! :event/dashboard-update {:object (t2/select-one :model/Dashboard dashboard-id)
+                                                    :previous-object dashboard-before
+                                                    :user-id api/*current-user-id*})))
 
 (defn- autoplace-or-remove-dashcards-for-card!
   "When moving around dashboard questions (cards that are internal to a dashboard), we need to remove or autoplace new
@@ -927,7 +931,7 @@
        (when (and dashboard_id autoplace-dashboard-questions?)
          (autoplace-dashcard-for-card! dashboard_id (:dashboard_tab_id input-card-data) card)))
      (when-not delay-event?
-       (events/publish-event! :event/card-create {:object card :user-id (:id creator)}))
+       (events/publish-event! :event/card-create {:object card :previous-object nil :user-id (:id creator)}))
      (when metadata-future
        (log/info "Metadata not available soon enough. Saving new card and asynchronously updating metadata")
        (card.metadata/save-metadata-async! metadata-future card))
@@ -1118,7 +1122,7 @@
     ;; skip publishing the event if it's just a change in its collection position
     (when-not (= #{:collection_position}
                  (set (keys card-updates)))
-      (events/publish-event! :event/card-update {:object card :user-id api/*current-user-id*}))
+      (events/publish-event! :event/card-update {:object card :previous-object card-before-update :user-id api/*current-user-id*}))
     card))
 
 (defn sole-dashboard-id
