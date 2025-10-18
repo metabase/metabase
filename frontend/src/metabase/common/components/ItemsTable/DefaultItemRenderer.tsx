@@ -92,6 +92,7 @@ export const DefaultItemRenderer = ({
           deleteBookmark={deleteBookmark}
         />
       )}
+      {visibleColumnsMap["archive"] && <Columns.Archive.Cell item={item} />}
       <Columns.RightEdge.Cell />
     </>
   );

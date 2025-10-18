@@ -37,13 +37,15 @@ export type CollectionBrowserListColumns =
   | "type"
   | "name"
   | "lastEditedBy"
-  | "lastEditedAt";
+  | "lastEditedAt"
+  | "archive";
 
 const COLLECTION_BROWSER_LIST_COLUMNS: CollectionBrowserListColumns[] = [
   "type",
   "name",
   "lastEditedBy",
   "lastEditedAt",
+  "archive",
 ];
 
 const ENTITY_NAME_MAP: Partial<

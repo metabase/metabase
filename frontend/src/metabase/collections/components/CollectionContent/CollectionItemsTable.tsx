@@ -195,6 +195,7 @@ type CollectionItemsTableContentProps = CollectionItemsTableProps & {
   onUnpinnedItemsSortingChange: (
     unpinnedItemsSorting: SortingOptions<ListCollectionItemsSortColumn>,
   ) => void;
+  visibleColumns: CollectionContentTableColumn[];
 };
 
 const CollectionItemsTableContentInner = ({
@@ -219,7 +220,7 @@ const CollectionItemsTableContentInner = ({
   toggleItem,
   total,
   unpinnedItemsSorting,
-  visibleColumns = DEFAULT_VISIBLE_COLUMNS_LIST,
+  visibleColumns,
   onClick,
   onNextPage,
   onPreviousPage,
