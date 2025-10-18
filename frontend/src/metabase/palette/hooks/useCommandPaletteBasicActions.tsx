@@ -180,10 +180,10 @@ export const useCommandPaletteBasicActions = ({
 
     actions.push({
       id: "report-issue",
-      name: t`Report an issue`,
+      name: t`Download diagnostics`,
       section: "basic",
       icon: "bug",
-      keywords: "bug, issue, problem, error, diagnostic",
+      keywords: "bug, issue, problem, error, diagnostic, download, diagnostics",
       shortcut: ["$mod+f1"],
       perform: () => {
         dispatch(openDiagnostics());

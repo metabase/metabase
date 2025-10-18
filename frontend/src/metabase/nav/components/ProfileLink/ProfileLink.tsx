@@ -124,7 +124,7 @@ function ProfileLinkInner({
         event: `Navbar;Profile Dropdown;Getting Started`,
       },
       {
-        title: t`Report an issue`,
+        title: t`Download diagnostics`,
         icon: null,
         action: () => {
           trackErrorDiagnosticModalOpened("profile-menu");
