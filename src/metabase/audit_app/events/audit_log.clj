@@ -49,6 +49,23 @@
                               :model    :model/Dashboard
                               :model-id (u/id object)})))
 
+(derive ::publicize ::event)
+(derive ::publicize-card ::publicize)
+(derive ::publicize-dashboard ::publicize)
+(derive :event/card-public-link-created ::publicize-card)
+(derive :event/card-public-link-deleted ::publicize-card)
+(derive :event/dashboard-public-link-created ::publicize-dashboard)
+(derive :event/dashboard-public-link-deleted ::publicize-dashboard)
+
+(methodical/defmethod events/publish-event! ::publicize
+  [topic {:keys [user-id object-id] :as _event}]
+  (audit-log/record-event! topic
+                           {:user-id  user-id
+                            :model    (if (isa? topic ::publicize-dashboard)
+                                        :model/Dashboard
+                                        :model/Card)
+                            :model-id object-id}))
+
 (derive ::table-event ::event)
 (derive :event/table-manual-scan ::table-event)
 (derive :event/table-manual-sync ::table-event)

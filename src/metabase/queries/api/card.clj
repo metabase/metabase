@@ -877,12 +877,16 @@
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check :model/Card card-id))
-  (let [{existing-public-uuid :public_uuid} (t2/select-one [:model/Card :public_uuid :card_schema] :id card-id)]
-    {:uuid (or existing-public-uuid
-               (u/prog1 (str (random-uuid))
-                 (t2/update! :model/Card card-id
-                             {:public_uuid       <>
-                              :made_public_by_id api/*current-user-id*})))}))
+  (let [{existing-public-uuid :public_uuid} (t2/select-one [:model/Card :public_uuid :card_schema] :id card-id)
+        uuid (or existing-public-uuid
+                 (u/prog1 (str (random-uuid))
+                   (events/publish-event! :event/card-public-link-created
+                                          {:object-id card-id
+                                           :user-id api/*current-user-id*})
+                   (t2/update! :model/Card card-id
+                               {:public_uuid       <>
+                                :made_public_by_id api/*current-user-id*})))]
+    {:uuid uuid}))
 
 (api.macros/defendpoint :delete "/:card-id/public_link"
   "Delete the publicly-accessible link to this Card."
@@ -894,6 +898,9 @@
   (t2/update! :model/Card card-id
               {:public_uuid       nil
                :made_public_by_id nil})
+  (events/publish-event! :event/card-public-link-deleted
+                         {:object-id card-id
+                          :user-id api/*current-user-id*})
   {:status 204, :body nil})
 
 (api.macros/defendpoint :post "/pivot/:card-id/query"
