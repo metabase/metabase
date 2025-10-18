@@ -54,14 +54,20 @@
 
 (defmethod specialization/extra-entry-fields :postgres [entity]
   {:search_vector
-   [:||
-    (search.util/weighted-tsvector "A" (or (:name entity) ""))
-    (search.util/weighted-tsvector "B" (or (:searchable_text entity) ""))]
+   (cond-> [:||
+            (search.util/weighted-tsvector "A" (or (:name entity) ""))
+            (search.util/weighted-tsvector "B" (or (:searchable_text entity) ""))]
+     ;; if stemming is not in a 'simple' mode, let's include non-stemmed words so that when your partially typed word
+     ;; is not matching any stem you still have something to match; see tests for #60649
+     (not= (search.util/tsv-language) "simple")
+     (conj (search.util/weighted-tsvector "C" (or (:searchable_text entity) "") "simple")))
 
    :with_native_query_vector
-   [:||
-    (search.util/weighted-tsvector "A" (or (:name entity) ""))
-    (search.util/weighted-tsvector "B" (str/join " " (keep entity [:searchable_text :native_query])))]})
+   (cond-> [:||
+            (search.util/weighted-tsvector "A" (or (:name entity) ""))
+            (search.util/weighted-tsvector "B" (str/join " " (keep entity [:searchable_text :native_query])))]
+     (not= (search.util/tsv-language) "simple")
+     (conj (search.util/weighted-tsvector "C" (or (:searchable_text entity) "") "simple")))})
 
 ;; See https://www.postgresql.org/docs/current/textsearch-controls.html#TEXTSEARCH-RANKING
 ;;  0 (the default) ignores the document length
