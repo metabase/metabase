@@ -196,6 +196,7 @@ interface DashCardVisualizationProps {
   onTogglePreviewing: () => void;
 
   onEditVisualization?: () => void;
+  cardRootRef?: React.RefObject<HTMLElement>;
 }
 
 // This is done to add the `getExtraDataForClick` prop.
@@ -523,6 +524,7 @@ export function DashCardVisualization({
             openUnderlyingQuestionItems={
               onChangeCardAndRun && (cardTitle ? undefined : titleMenuItems)
             }
+            cardRootRef={containerRef}
           />
         )}
       </Group>
@@ -541,6 +543,7 @@ export function DashCardVisualization({
     titleMenuItems,
     shouldCollapseList,
     parameterListRef,
+    containerRef,
   ]);
 
   const { getExtraDataForClick } = useClickBehaviorData({

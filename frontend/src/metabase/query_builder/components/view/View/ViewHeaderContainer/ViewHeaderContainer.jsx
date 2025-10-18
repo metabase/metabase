@@ -7,6 +7,7 @@ import { Box, Flex, Transition } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { ViewTitleHeader } from "../../ViewHeader";
+import { PasteQueryButton } from "../../ViewHeader/components/PasteQueryButton";
 import ViewSection, { ViewHeading } from "../../ViewSection";
 
 import ViewHeaderContainerS from "./ViewHeaderContainer.module.css";
@@ -17,7 +18,8 @@ const fadeIn = {
   transitionProperty: "opacity",
 };
 export const ViewHeaderContainer = (props) => {
-  const { question, onUnarchive, onMove, onDeletePermanently } = props;
+  const { question, onUnarchive, onMove, onDeletePermanently, onPasteQuery } =
+    props;
   const query = question.query();
   const card = question.card();
   const { isNative } = Lib.queryDisplayInfo(query);
@@ -55,10 +57,23 @@ export const ViewHeaderContainer = (props) => {
             style={{
               ...style,
               borderBottom: "1px solid var(--mb-color-border)",
+              width: "100%",
             }}
           >
-            <Flex direction="column" gap="xs">
+            <Flex
+              direction="row"
+              justify="space-between"
+              align="center"
+              w="100%"
+            >
               <ViewHeading>{t`Pick your starting data`}</ViewHeading>
+              {onPasteQuery && (
+                <PasteQueryButton
+                  question={question}
+                  onPaste={onPasteQuery}
+                  queryBuilderMode="notebook"
+                />
+              )}
             </Flex>
           </ViewSection>
         )}

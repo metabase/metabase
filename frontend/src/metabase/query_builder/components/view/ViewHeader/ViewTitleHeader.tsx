@@ -53,6 +53,7 @@ interface ViewTitleHeaderProps {
   }) => void;
   cancelQuery: () => void;
   onOpenModal: (modalType: QueryModalType) => void;
+  onPasteQuery: () => void;
   onEditSummary: () => void;
   onCloseSummary: () => void;
   setQueryBuilderMode: (
@@ -81,6 +82,7 @@ export function ViewTitleHeader({
   onOpenQuestionInfo,
   onSave,
   onOpenModal,
+  onPasteQuery,
   isNavBarOpen,
   originalQuestion,
   result,
@@ -188,6 +190,7 @@ export function ViewTitleHeader({
           runQuestionQuery={runQuestionQuery}
           cancelQuery={cancelQuery}
           onOpenModal={onOpenModal}
+          onPasteQuery={onPasteQuery}
           onEditSummary={onEditSummary}
           onCloseSummary={onCloseSummary}
           setQueryBuilderMode={setQueryBuilderMode}
