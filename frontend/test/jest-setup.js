@@ -1,4 +1,3 @@
-/* eslint-disable no-undef */
 import { Crypto, CryptoKey } from "@peculiar/webcrypto";
 import { TextDecoder, TextEncoder } from "util";
 import { ReadableStream } from "web-streams-polyfill";

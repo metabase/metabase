@@ -136,7 +136,7 @@ module.exports = {
   },
   env: {
     browser: true,
-    es6: true,
+    es2020: true,
     commonjs: true,
     jest: true,
     "jest/globals": true,
