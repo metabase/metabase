@@ -110,7 +110,9 @@
       "https://example.com"     {:protocol "https" :domain "example.com" :port nil}
       "http://example.com:8080" {:protocol "http" :domain "example.com" :port "8080"}
       "example.com:80"          {:protocol nil :domain "example.com" :port "80"}
-      "example.com:*"           {:protocol nil :domain "example.com" :port "*"}))
+      "example.com:*"           {:protocol nil :domain "example.com" :port "*"}
+      "app://localhost"         {:protocol "app" :domain "localhost" :port nil}
+      "capacitor://localhost"   {:protocol "capacitor" :domain "localhost" :port nil}))
   (testing "Should return nil for invalid urls"
     (are [url] (nil? (mw.security/parse-url url))
       "ftp://example.com"
