@@ -26,8 +26,6 @@ describe("BrowseNavSection", () => {
     expect(
       await within(tab).findByRole("button", { name: "Add data" }),
     ).toBeInTheDocument();
-    // The user-visible text of the button says only "Add"
-    expect(within(tab).getByText("Add")).toBeInTheDocument();
   });
 
   it("should not render a section title and an 'Add data' button for users without enough permissions", async () => {
@@ -42,8 +40,6 @@ describe("BrowseNavSection", () => {
     expect(
       within(tab).queryByRole("button", { name: "Add data" }),
     ).not.toBeInTheDocument();
-    // The user-visible text of the button says only "Add"
-    expect(within(tab).queryByText("Add")).not.toBeInTheDocument();
   });
 
   it("should not render the 'Add data' button for full app embedding", () => {

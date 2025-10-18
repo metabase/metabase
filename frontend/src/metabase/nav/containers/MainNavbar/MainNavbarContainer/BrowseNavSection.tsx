@@ -7,11 +7,12 @@ import { useSelector } from "metabase/lib/redux";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getEntityTypes } from "metabase/selectors/embedding-data-picker";
 import {
-  Button,
+  ActionIcon,
   Collapse,
   Flex,
   Group,
   Icon,
+  Tooltip,
   UnstyledButton,
 } from "metabase/ui";
 
@@ -69,19 +70,18 @@ export const BrowseNavSection = ({
           <Icon name={opened ? "chevrondown" : "chevronright"} size={8} />
         </Group>
         {showAddDataButton && (
-          <Button
-            aria-label="Add data"
-            variant="subtle"
-            leftSection={<Icon name="add_data" />}
-            h="auto"
-            p={0}
-            onClick={() => {
-              trackAddDataModalOpened("left-nav");
-              onAddDataModalOpen();
-            }}
-          >
-            {t`Add`}
-          </Button>
+          <Tooltip label={t`Add data`}>
+            <ActionIcon
+              aria-label={t`Add data`}
+              color="var(--mb-color-text-medium)"
+              onClick={() => {
+                trackAddDataModalOpened("left-nav");
+                onAddDataModalOpen();
+              }}
+            >
+              <Icon name="add" />
+            </ActionIcon>
+          </Tooltip>
         )}
       </Flex>
 
