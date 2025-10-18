@@ -196,6 +196,12 @@
       :requires [[mage.util :as u]]
       :task     (task! (u/print-tasks parsed))}
 
+  quick-test {:doc "run backend tests easier than cake"
+              :examples [["./bin/mage quick-test" "interactively select directories and files to test"]]
+              :options [["-s" "--style TYPE" "How to select tests (default: dir)" :default "dir" :default "dir"]]
+              :requires [[mage.quick-test-runner :refer [go]]]
+              :task (task! (go parsed))}
+
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Private Tasks:
   ;; These tasks are more for internal tooling, e.g. for use from git hooks etc.
