@@ -191,13 +191,19 @@
              :alias nil,
              :type :single-column,
              :source-columns
-             [[]]}},
+             [[{:column "b",
+                :alias nil,
+                :type :single-column,
+                :source-columns [[{:type :all-columns, :table {:table "products"}}]]}]]}},
           :returned-fields
           [{:column "a",
             :alias nil,
             :type :single-column,
             :source-columns
-            [[]]}]}
+            [[{:column "b",
+               :alias nil,
+               :type :single-column,
+               :source-columns [[{:type :all-columns, :table {:table "products"}}]]}]]}]}
          (->references "select a from (select b from products)"))))
 
 (deftest different-case-nested-query-test
@@ -261,12 +267,12 @@
           #{{:column "a",
              :alias nil,
              :type :single-column,
-             :source-columns [[]]}},
+             :source-columns []}},
           :returned-fields
           [{:column "a",
             :alias nil,
             :type :single-column,
-            :source-columns [[]]}]}
+            :source-columns []}]}
          (->references "select bad.a from products"))))
 
 (deftest basic-where-test
@@ -316,7 +322,14 @@
           #{{:column "category",
              :alias nil,
              :type :single-column,
-             :source-columns [[{:type :all-columns,
+             :source-columns [[{:alias "sum",
+                                :type :custom-field,
+                                :used-fields
+                                #{{:column "total",
+                                   :alias nil,
+                                   :type :single-column,
+                                   :source-columns [[{:type :all-columns, :table {:table "orders"}}]]}}}]
+                              [{:type :all-columns,
                                 :table {:table "orders"}}]]}
             {:column "total",
              :alias nil,
@@ -332,6 +345,45 @@
                :type :single-column,
                :source-columns [[{:type :all-columns, :table {:table "orders"}}]]}}}]}
          (->references "select sum(total) as sum from orders group by category"))))
+
+(deftest grouping-order-by-test
+  (is (= {:used-fields
+          #{{:alias "cards_created",
+             :type :custom-field,
+             :used-fields
+             #{{:column "creator_id",
+                :alias nil,
+                :type :single-column,
+                :source-columns [[{:type :all-columns, :table {:table "report_card"}}]]}}}
+            {:column "creator_id",
+             :alias nil,
+             :type :single-column,
+             :source-columns [[{:type :all-columns, :table {:table "report_card"}}]]}
+            {:column "creator_id",
+             :alias nil,
+             :type :single-column,
+             :source-columns
+             [[{:alias "cards_created",
+                :type :custom-field,
+                :used-fields
+                #{{:column "creator_id",
+                   :alias nil,
+                   :type :single-column,
+                   :source-columns [[{:type :all-columns, :table {:table "report_card"}}]]}}}]
+              [{:type :all-columns, :table {:table "report_card"}}]]}},
+          :returned-fields
+          [{:column "creator_id",
+            :alias nil,
+            :type :single-column,
+            :source-columns [[{:type :all-columns, :table {:table "report_card"}}]]}
+           {:alias "cards_created",
+            :type :custom-field,
+            :used-fields
+            #{{:column "creator_id",
+               :alias nil,
+               :type :single-column,
+               :source-columns [[{:type :all-columns, :table {:table "report_card"}}]]}}}]}
+         (->references "SELECT creator_id, COUNT(creator_id) AS cards_created FROM report_card GROUP BY creator_id ORDER BY cards_created DESC"))))
 
 (deftest basic-arg-test
   (is (= {:used-fields
@@ -477,7 +529,6 @@
              :type :single-column,
              :source-columns [[{:type :all-columns,
                                 :table {:table "products"}}]
-                              []
                               [{:type :all-columns,
                                 :table {:table "orders"}}]]}},
           :returned-fields
@@ -486,7 +537,6 @@
             :type :single-column,
             :source-columns [[{:type :all-columns,
                                :table {:table "products"}}]
-                             []
                              [{:type :all-columns,
                                :table {:table "orders"}}]]}
            {:type :all-columns, :table {:table "orders"}}]}
@@ -536,16 +586,14 @@
              :alias nil,
              :type :single-column,
              :source-columns
-             [[]
-              [{:type :all-columns, :table {:table "products"}}]
+             [[{:type :all-columns, :table {:table "products"}}]
               [{:type :all-columns, :table {:table "orders"}}]]}},
           :returned-fields
           [{:column "category",
             :alias nil,
             :type :single-column,
             :source-columns
-            [[]
-             [{:type :all-columns, :table {:table "products"}}]
+            [[{:type :all-columns, :table {:table "products"}}]
              [{:type :all-columns, :table {:table "orders"}}]]}]}
          (->references "select (select (select category) from products where products.id = orders.product_id) from orders"))))
 
@@ -838,7 +886,13 @@ FROM c;"))))
             {:column "manager_id",
              :alias nil,
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:table "employees"}}]]}},
+             :source-columns [[{:type :all-columns, :table {:table "employees"}}]]}
+            {:column "manager_id",
+             :alias nil,
+             :type :single-column,
+             :source-columns
+             [[{:alias "level", :type :custom-field, :used-fields #{}}]
+              [{:type :all-columns, :table {:table "employees"}}]]}},
           :returned-fields
           [{:alias "name",
             :type :composite-field,

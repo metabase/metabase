@@ -93,14 +93,10 @@
                           [[(find-source expr sources)]]
                           sources)
           source-columns (into []
-                               (map #(into []
-                                           (comp (mapcat :returned-fields)
-                                                 (filter (fn [{field-alias :alias
-                                                               field-type :type
-                                                               field-column :column}]
-                                                           (or (= field-type :all-columns)
-                                                               (= (or field-alias field-column) column)))))
-                                           %))
+                               (comp (map #(into []
+                                                 (mapcat :returned-fields)
+                                                 %))
+                                     (filter seq))
                                valid-sources)
           source-column (some #(when (= column (or (:alias %) (:column %)))
                                  %)
@@ -244,10 +240,16 @@
 (defmethod find-used-fields [:sql :macaw.ast/select]
   [driver outside-sources withs expr]
   (let [local-sources (get-select-sources driver outside-sources withs expr)
-        sources (cons local-sources outside-sources)
-        rec (partial find-used-fields driver sources withs)]
+        with-outside (cons local-sources outside-sources)
+        with-select (cons [{:used-fields #{}
+                            :returned-fields (->> (find-returned-fields driver outside-sources withs expr)
+                                                  (filter :alias))
+                            :names nil}]
+                          with-outside)
+        rec (partial find-used-fields driver with-select withs)]
     (-> (into #{}
-              (mapcat rec)
+              ;; a select can't refer to its own aliases, so don't include them in sources here
+              (mapcat (partial find-used-fields driver with-outside withs))
               (:select expr))
         (into (rec (:where expr)))
         (into (mapcat rec)
