@@ -787,6 +787,7 @@ describe("scenarios > content translation > static embedding > dashboards", () =
           // Search matches against untranslated text, hence "Fran" matching these names
           cy.findByPlaceholderText("Recherche dans la liste").type("Fran");
           cy.findByText(/Hammera Francite/).click();
+          cy.realPress("Escape");
           cy.findByTestId("parameter-value-dropdown")
             .button(/Mettre à jour le filtre/)
             .click();
