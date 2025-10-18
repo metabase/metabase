@@ -1,6 +1,5 @@
 import type { HTMLAttributes, Ref } from "react";
 import { forwardRef, useCallback } from "react";
-import type { ColorState } from "react-color";
 
 import ColorInput from "metabase/common/components/ColorInput";
 
@@ -22,7 +21,7 @@ const ColorPickerContent = forwardRef(function ColorPickerContent(
   ref: Ref<HTMLDivElement>,
 ) {
   const handleChange = useCallback(
-    (state: ColorState) => onChange?.(state.hex),
+    (color: string) => onChange?.(color),
     [onChange],
   );
 
