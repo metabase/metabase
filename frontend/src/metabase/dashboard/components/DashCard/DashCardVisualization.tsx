@@ -334,6 +334,8 @@ export function DashCardVisualization({
         started_at: new Date().toISOString(),
 
         columnValuesMapping,
+
+        json_query: rawSeries[0].json_query,
       },
     ];
 
