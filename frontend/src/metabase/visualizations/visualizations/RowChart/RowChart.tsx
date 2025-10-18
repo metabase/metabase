@@ -67,6 +67,7 @@ import {
   getAxesVisibility,
   getLabelledSeries,
   getLabels,
+  getShouldGroupRemainingValues,
   getXValueRange,
 } from "./utils/settings";
 import { ROW_CHART_SETTINGS } from "./utils/settings-definitions";
@@ -134,6 +135,7 @@ const RowChartVisualization = ({
   );
   const goal = useMemo(() => getChartGoal(settings), [settings]);
   const stackOffset = getStackOffset(settings);
+  const shouldGroupRemainingValues = getShouldGroupRemainingValues(settings);
   const theme = useRowChartTheme(
     `${fontFamily}, Arial, sans-serif`,
     isDashboard,
@@ -300,6 +302,7 @@ const RowChartVisualization = ({
           className={CS.flexFull}
           data={groupedData}
           trimData={trimData}
+          shouldGroupRemainingValues={shouldGroupRemainingValues}
           series={series}
           seriesColors={seriesColors}
           goal={goal}
