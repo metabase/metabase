@@ -243,3 +243,15 @@ export const getPugSource = ({ iframeUrl }: { iframeUrl: string }) =>
     height="600"
     allowtransparency
 )`;
+
+export const getPublicEmbedHTMLWithResizer = (iframeUrl: string): string =>
+  `<iframe
+    src=${iframeUrl}
+    frameborder="0"
+    width="800"
+    allowtransparency
+></iframe>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/iframe-resizer/4.3.2/iframeResizer.min.js"></script>
+<script>
+  iFrameResize({}, 'iframe');
+</script>`;

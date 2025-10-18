@@ -5,6 +5,7 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { useSetting } from "metabase/common/hooks";
+import { PLUGIN_PUBLIC_SHARING } from "metabase/plugins";
 
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
 import {
@@ -32,6 +33,11 @@ export function PublicSharingSettingsPage() {
           <SettingsSection title={t`Shared questions`}>
             <PublicLinksQuestionListing />
           </SettingsSection>
+          {PLUGIN_PUBLIC_SHARING.PublicLinksDocumentListing && (
+            <SettingsSection title={t`Shared documents`}>
+              <PLUGIN_PUBLIC_SHARING.PublicLinksDocumentListing />
+            </SettingsSection>
+          )}
           <SettingsSection title={t`Shared action forms`}>
             <PublicLinksActionListing />
           </SettingsSection>
