@@ -508,7 +508,7 @@ H.describeWithSnowplowEE("documents", () => {
         H.createQuestion(ACCOUNTS_COUNT_BY_CREATED_AT);
         // Need to get this one to simulate recent activity
         H.createQuestion(PRODUCTS_COUNT_BY_CATEGORY_PIE).then(
-          ({ body: { id } }) => cy.request(`/api/card/${id}`),
+          ({ body: { id } }) => cy.request("POST", `/api/card/${id}/query`),
         );
         H.createDashboard({
           name: "Fancy Dashboard",

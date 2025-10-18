@@ -75,8 +75,7 @@
                        [:token string?]]]
   (let [unsigned (unsign-and-translate-ids token)]
     (api.embed.common/check-embedding-enabled-for-card (embedding.jwt/get-in-unsigned-token-or-throw unsigned [:resource :question]))
-    (u/prog1 (api.embed.common/card-for-unsigned-token unsigned, :constraints [:enable_embedding true])
-      (events/publish-event! :event/card-read {:object-id (:id <>), :user-id api/*current-user-id*, :context :question}))))
+    (api.embed.common/card-for-unsigned-token unsigned, :constraints [:enable_embedding true])))
 
 (defn ^:private run-query-for-unsigned-token-async
   "Run the query belonging to Card identified by `unsigned-token`. Checks that embedding is enabled both globally and
@@ -183,9 +182,8 @@
                                            [:dashcard-id ms/PositiveInt]
                                            [:card-id     ms/PositiveInt]]
    query-params :- :map]
-  (u/prog1 (process-query-for-dashcard-with-signed-token token dashcard-id card-id :api
-                                                         (api.embed.common/parse-query-params query-params))
-    (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :dashboard})))
+  (process-query-for-dashcard-with-signed-token token dashcard-id card-id :api
+                                                (api.embed.common/parse-query-params query-params)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        FieldValues, Search, Remappings                                         |
@@ -312,10 +310,9 @@
                                            [:dashcard-id ms/PositiveInt]
                                            [:card-id     ms/PositiveInt]]
    query-params :- :map]
-  (u/prog1 (process-query-for-dashcard-with-signed-token token dashcard-id card-id
-                                                         :api (api.embed.common/parse-query-params query-params)
-                                                         :qp qp.pivot/run-pivot-query)
-    (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :dashboard})))
+  (process-query-for-dashcard-with-signed-token token dashcard-id card-id
+                                                :api (api.embed.common/parse-query-params query-params)
+                                                :qp qp.pivot/run-pivot-query))
 
 (api.macros/defendpoint :get "/tiles/card/:token/:zoom/:x/:y"
   "Generates a single tile image for an embedded Card using the map visualization."

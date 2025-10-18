@@ -1252,13 +1252,12 @@
                                              [:dashboard_load_id {:optional true} [:maybe ms/NonBlankString]]
                                              [:parameters        {:optional true} [:maybe [:sequential ParameterWithID]]]]]
   (with-dashboard-load-id dashboard_load_id
-    (u/prog1 (m/mapply qp.dashboard/process-query-for-dashcard
-                       (merge
-                        body
-                        {:dashboard-id dashboard-id
-                         :card-id      card-id
-                         :dashcard-id  dashcard-id}))
-      (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :dashboard}))))
+    (m/mapply qp.dashboard/process-query-for-dashcard
+              (merge
+               body
+               {:dashboard-id dashboard-id
+                :card-id      card-id
+                :dashcard-id  dashcard-id}))))
 
 (api.macros/defendpoint :post "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query/:export-format"
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it, and return
@@ -1307,15 +1306,14 @@
   [{:keys [dashboard-id dashcard-id card-id]} :- [:map
                                                   [:dashboard-id ms/PositiveInt]
                                                   [:dashcard-id  ms/PositiveInt]
-                                                  [:card-id      ms/PositiveInt]]
+                                                  [:card-id ms/PositiveInt]]
    _query-params
    body :- [:map
             [:parameters {:optional true} [:maybe [:sequential ParameterWithID]]]]]
-  (u/prog1 (m/mapply qp.dashboard/process-query-for-dashcard
-                     (merge
-                      body
-                      {:dashboard-id dashboard-id
-                       :card-id      card-id
-                       :dashcard-id  dashcard-id
-                       :qp           qp.pivot/run-pivot-query}))
-    (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :dashboard})))
+  (m/mapply qp.dashboard/process-query-for-dashcard
+            (merge
+             body
+             {:dashboard-id dashboard-id
+              :card-id      card-id
+              :dashcard-id  dashcard-id
+              :qp           qp.pivot/run-pivot-query})))

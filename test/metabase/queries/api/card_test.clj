@@ -298,14 +298,14 @@
             "The set of Card returned with f=archived should be equal to the set of archived cards")))))
 
 (deftest embedding-sdk-info-saves-view-log
-  (testing "GET /api/card with embedding headers set"
+  (testing "GET /api/card/query with embedding headers set"
     (let [;; any strings will work here (must be shorter than 254 chars), but these are semi-relaistic:
           client-string (mt/random-name)
           version-string (str "1." (rand-int 1000) "." (rand-int 1000))]
       (mt/with-temp [:model/Database {database-id :id} {}
                      :model/Card card-1 {:name "Card 1" :database_id database-id}]
         (mt/with-premium-features #{:audit-app}
-          (mt/user-http-request :crowberto :get 200 (str "card/" (u/the-id card-1))
+          (mt/user-http-request :crowberto :post 202 (str "card/" (u/the-id card-1) "/query")
                                 {:request-options {:headers {"x-metabase-client" client-string
                                                              "x-metabase-client-version" version-string}}}))
         (is (= {:embedding_client client-string, :embedding_version version-string}
