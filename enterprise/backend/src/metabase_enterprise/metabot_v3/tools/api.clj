@@ -14,6 +14,7 @@
    [metabase-enterprise.metabot-v3.table-utils :as table-utils]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription
     :as metabot-v3.tools.create-dashboard-subscription]
+   [metabase-enterprise.metabot-v3.tools.execute-query :as metabot-v3.tools.execute-query]
    [metabase-enterprise.metabot-v3.tools.field-stats :as metabot-v3.tools.field-stats]
    [metabase-enterprise.metabot-v3.tools.filters :as metabot-v3.tools.filters]
    [metabase-enterprise.metabot-v3.tools.find-outliers :as metabot-v3.tools.find-outliers]
@@ -937,6 +938,23 @@
                          [:total_count :int]]]]
    [:map [:output :string]]])
 
+(mr/def ::execute-query-arguments
+  [:and
+   [:map
+    [:database :int]
+    [:type {:optional true} [:maybe [:enum "native" "query" "sql"]]]
+    [:native {:optional true} [:maybe :map]]
+    [:query {:optional true} [:maybe :map]]]
+   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+
+(mr/def ::execute-query-result
+  [:or
+   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+    [:structured_output [:map
+                         [:data :map]
+                         [:status [:enum "completed" "failed"]]]]]
+   [:map [:output :string]]])
+
 (api.macros/defendpoint :post "/search" :- [:merge ::search-result ::tool-request]
   "Enhanced search with term and semantic queries using Reciprocal Rank Fusion."
   [_route-params
@@ -964,6 +982,22 @@
       (doto (-> {:output (str "Search failed: " (or (ex-message e) "Unknown error"))}
                 (assoc :conversation_id conversation_id))
         (metabot-v3.context/log :llm.log/be->llm)))))
+
+(api.macros/defendpoint :post "/execute-query" :- [:merge ::execute-query-result ::tool-request]
+  "Execute an ad-hoc query and return results."
+  [_route-params
+   _query-params
+   {:keys [arguments conversation_id] :as body} :- [:merge
+                                                    [:map [:arguments ::execute-query-arguments]]
+                                                    ::tool-request]]
+  (metabot-v3.context/log (assoc body :api :execute-query) :llm.log/llm->be)
+  (let [arguments (mc/encode ::execute-query-arguments
+                             arguments (mtx/transformer {:name :tool-api-request}))]
+    (doto (-> (mc/decode ::execute-query-result
+                         (metabot-v3.tools.execute-query/execute-query arguments)
+                         (mtx/transformer {:name :tool-api-response}))
+              (assoc :conversation_id conversation_id))
+      (metabot-v3.context/log :llm.log/be->llm))))
 
 (defn- enforce-authentication
   "Middleware that returns a 401 response if no `ai-session` can be found for  `request`."
