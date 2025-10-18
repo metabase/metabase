@@ -371,6 +371,10 @@
   [_]
   [:id :name :archived :created_at :updated_at :collection_id :creator_id])
 
+(defmethod columns-for-model "transform"
+  [_]
+  [:id :name :created_at :updated_at])
+
 (defmethod columns-for-model "indexed-entity" [_]
   [[:model-index-value.name     :name]
    [:model-index-value.model_pk :id]
@@ -524,6 +528,10 @@
                               [:= :bookmark.document_id :document.id]
                               [:= :bookmark.user_id (:current-user-id search-ctx)]])
       (add-collection-join-and-where-clauses model search-ctx)))
+
+(defmethod search-query-for-model "transform"
+  [model search-ctx]
+  (base-query-for-model "transform" search-ctx))
 
 (defmethod search-query-for-model "database"
   [model search-ctx]

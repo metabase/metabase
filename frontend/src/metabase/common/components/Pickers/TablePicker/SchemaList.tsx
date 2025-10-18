@@ -2,9 +2,10 @@ import { useMemo } from "react";
 
 import type { DatabaseId, SchemaName } from "metabase-types/api";
 
-import { ItemList, ListBox } from "../../../EntityPicker";
-import type { DataPickerFolderItem } from "../types";
-import { getSchemaDisplayName } from "../utils";
+import { ItemList, ListBox } from "../../EntityPicker";
+
+import type { TablePickerFolderItem } from "./types";
+import { getSchemaDisplayName } from "./utils";
 
 interface Props {
   dbId: DatabaseId;
@@ -13,8 +14,8 @@ interface Props {
   isCurrentLevel: boolean;
   isLoading: boolean;
   schemas: SchemaName[] | undefined;
-  selectedItem: DataPickerFolderItem | null;
-  onClick: (item: DataPickerFolderItem) => void;
+  selectedItem: TablePickerFolderItem | null;
+  onClick: (item: TablePickerFolderItem) => void;
 }
 
 const isFolder = () => true;
@@ -29,7 +30,7 @@ export const SchemaList = ({
   selectedItem,
   onClick,
 }: Props) => {
-  const items: DataPickerFolderItem[] | undefined = useMemo(() => {
+  const items: TablePickerFolderItem[] | undefined = useMemo(() => {
     return schemas?.map((schema) => ({
       id: schema,
       model: "schema",

@@ -11,19 +11,19 @@ import { isNotNull } from "metabase/lib/types";
 import { Flex } from "metabase/ui";
 import type { DatabaseId, SchemaName, TableId } from "metabase-types/api";
 
-import { AutoScrollBox } from "../../../EntityPicker";
-import type {
-  DataPickerFolderItem,
-  DataPickerItem,
-  DataPickerValueItem,
-  TablePickerStatePath,
-  TablePickerValue,
-} from "../types";
-import { generateKey, getDbItem, getSchemaItem, getTableItem } from "../utils";
+import { AutoScrollBox } from "../../EntityPicker";
 
 import { DatabaseList } from "./DatabaseList";
 import { SchemaList } from "./SchemaList";
 import { TableList } from "./TableList";
+import type {
+  TableItem,
+  TablePickerFolderItem,
+  TablePickerItem,
+  TablePickerStatePath,
+  TablePickerValue,
+} from "./types";
+import { generateKey, getDbItem, getSchemaItem, getTableItem } from "./utils";
 
 interface Props {
   /**
@@ -32,9 +32,9 @@ interface Props {
   databaseId?: DatabaseId;
   path: TablePickerStatePath | undefined;
   value: TablePickerValue | undefined;
-  onItemSelect: (value: DataPickerItem) => void;
+  onItemSelect: (value: TablePickerItem) => void;
   onPathChange: (path: TablePickerStatePath) => void;
-  shouldDisableItem?: (item: DataPickerItem) => boolean;
+  shouldDisableItem?: (item: TablePickerItem) => boolean;
 }
 
 export const TablePicker = ({
@@ -101,7 +101,7 @@ export const TablePicker = ({
   );
 
   const handleFolderSelect = useCallback(
-    (folder: DataPickerFolderItem) => {
+    (folder: TablePickerFolderItem) => {
       if (folder.model === "database") {
         if (dbId === folder.id) {
           const newSchemaName =
@@ -153,7 +153,7 @@ export const TablePicker = ({
   );
 
   const handleTableSelect = useCallback(
-    (item: DataPickerValueItem) => {
+    (item: TableItem) => {
       setTableId(item.id);
       onItemSelect(item);
       onPathChange([dbId, schemaName, item.id]);

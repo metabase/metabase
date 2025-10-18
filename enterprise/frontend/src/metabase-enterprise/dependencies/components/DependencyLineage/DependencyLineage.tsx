@@ -1,0 +1,125 @@
+import {
+  Background,
+  Controls,
+  type Edge,
+  Panel,
+  ReactFlow,
+  useEdgesState,
+  useNodesState,
+} from "@xyflow/react";
+import { useLayoutEffect, useMemo, useState } from "react";
+
+import { skipToken } from "metabase/api";
+import { Group } from "metabase/ui";
+import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
+import type { DependencyEntry } from "metabase-types/api";
+
+import S from "./DependencyLineage.module.css";
+import { GraphContext } from "./GraphContext";
+import { GraphDependencyPanel } from "./GraphDependencyPanel";
+import { GraphEntryInput } from "./GraphEntryInput";
+import { GraphInfoPanel } from "./GraphInfoPanel";
+import { GraphNode } from "./GraphNode";
+import { GraphNodeLayout } from "./GraphNodeLayout";
+import { GraphSelectInput } from "./GraphSelectionInput";
+import { MAX_ZOOM, MIN_ZOOM } from "./constants";
+import type { GraphSelection, NodeType } from "./types";
+import { getInitialGraph, isSameNode } from "./utils";
+
+const NODE_TYPES = {
+  node: GraphNode,
+};
+
+type DependencyLineageProps = {
+  entry: DependencyEntry | undefined;
+};
+
+export function DependencyLineage({ entry }: DependencyLineageProps) {
+  const { currentData: graph, isFetching } = useGetDependencyGraphQuery(
+    entry ?? skipToken,
+  );
+  const [nodes, setNodes, onNodesChange] = useNodesState<NodeType>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+  const [selection, setSelection] = useState<GraphSelection>();
+
+  const entryNode = useMemo(() => {
+    return entry != null
+      ? nodes.find((node) => isSameNode(node.data, entry.id, entry.type))
+      : undefined;
+  }, [nodes, entry]);
+
+  const selectedNode = useMemo(() => {
+    return selection != null
+      ? nodes.find((node) =>
+          isSameNode(node.data, selection.id, selection.type),
+        )
+      : undefined;
+  }, [nodes, selection]);
+
+  useLayoutEffect(() => {
+    if (entry == null) {
+      setNodes([]);
+      setEdges([]);
+      setSelection(undefined);
+    } else if (graph != null) {
+      const { nodes: initialNodes, edges: initialEdges } =
+        getInitialGraph(graph);
+      setNodes(initialNodes);
+      setEdges(initialEdges);
+      setSelection(entry);
+    }
+  }, [graph, entry, setNodes, setEdges]);
+
+  const handlePanelClose = () => {
+    setSelection(undefined);
+  };
+
+  return (
+    <GraphContext.Provider value={{ selection, setSelection }}>
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        nodeTypes={NODE_TYPES}
+        fitView
+        minZoom={MIN_ZOOM}
+        maxZoom={MAX_ZOOM}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+      >
+        <Background />
+        <Controls />
+        <GraphNodeLayout />
+        <Panel position="top-left">
+          <Group>
+            <GraphEntryInput
+              node={entryNode?.data}
+              isGraphFetching={isFetching}
+            />
+            {nodes.length > 1 && (
+              <GraphSelectInput
+                nodes={nodes}
+                onSelectionChange={setSelection}
+              />
+            )}
+          </Group>
+        </Panel>
+        {selection != null && selection.withInfo && selectedNode != null && (
+          <Panel className={S.panel} position="top-right">
+            {selection.groupType != null ? (
+              <GraphDependencyPanel
+                node={selectedNode.data}
+                groupType={selection.groupType}
+                onClose={handlePanelClose}
+              />
+            ) : (
+              <GraphInfoPanel
+                node={selectedNode.data}
+                onClose={handlePanelClose}
+              />
+            )}
+          </Panel>
+        )}
+      </ReactFlow>
+    </GraphContext.Provider>
+  );
+}

@@ -1,0 +1,22 @@
+.card {
+  min-width: 10rem;
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-md);
+  background-color: var(--mb-color-bg-white);
+
+  &:hover,
+  &.selected {
+    border-color: var(--mb-color-brand);
+  }
+}
+
+.pill {
+  color: var(--mb-color-text-primary);
+  background-color: var(--mb-color-bg-medium);
+
+  &:hover,
+  &.selected {
+    color: var(--mb-color-white);
+    background-color: var(--mb-color-brand);
+  }
+}

@@ -37,6 +37,7 @@ export const TAG_TYPES = [
   "task",
   "timeline",
   "timeline-event",
+  "transform",
   "user",
   "public-dashboard",
   "embed-dashboard",
@@ -62,4 +63,5 @@ export const TAG_TYPE_MAPPING = {
   metric: "card",
   snippet: "snippet",
   pulse: "subscription",
+  transform: "transform",
 } as const;

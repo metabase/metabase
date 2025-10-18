@@ -20,12 +20,13 @@ import {
   QuestionPicker,
   type QuestionPickerStatePath,
 } from "../../QuestionPicker";
+import { TablePicker } from "../../TablePicker";
+import type { TablePickerStatePath } from "../../TablePicker/types";
 import { useAvailableData } from "../hooks";
 import type {
   DataPickerItem,
   DataPickerModalOptions,
   DataPickerValue,
-  TablePickerStatePath,
 } from "../types";
 import {
   createQuestionPickerItemSelectHandler,
@@ -35,8 +36,6 @@ import {
   isTableItem,
   isValueItem,
 } from "../utils";
-
-import { TablePicker } from "./TablePicker";
 
 interface Props {
   /**

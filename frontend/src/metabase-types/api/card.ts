@@ -32,6 +32,8 @@ type CreatorInfo = Pick<
   "first_name" | "last_name" | "email" | "id" | "common_name"
 >;
 
+export type CardDashboardInfo = Pick<Dashboard, "id" | "name">;
+
 export interface Card<Q extends DatasetQuery = DatasetQuery>
   extends UnsavedCard<Q> {
   id: CardId;
@@ -56,7 +58,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   collection?: Collection | null;
   collection_id: number | null;
   collection_position: number | null;
-  dashboard: Pick<Dashboard, "id" | "name"> | null;
+  dashboard: CardDashboardInfo | null;
   dashboard_id: DashboardId | null;
   document_id?: DocumentId;
   dashboard_count: number | null;

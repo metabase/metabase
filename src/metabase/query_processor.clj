@@ -19,6 +19,7 @@
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.setup :as qp.setup]
+   [metabase.query-processor.store :as qp.store]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -79,6 +80,12 @@
    (qp.setup/with-qp-setup [query query]
      (let [rff (or rff qp.reducible/default-rff)]
        (process-query* query rff)))))
+
+(mu/defn compile-query-with-metadata-provider
+  [metadata-providerable :- :metabase.lib.schema.metadata/metadata-providerable
+   query                 :- ::qp.schema/any-query]
+  (qp.store/with-metadata-provider metadata-providerable
+    (qp.compile/compile query)))
 
 (mu/defn userland-query :- ::qp.schema/any-query
   "Add middleware options and `:info` to a `query` so it is ran as a 'userland' query, which slightly changes the QP
