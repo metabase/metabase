@@ -1,0 +1,61 @@
+name: '[bar] Customer Logo over time'
+display: bar
+query_type: query
+database_id: <<db>>
+table_id:
+- <<db>>
+- <<destination_schema>>
+- <<target.account>>
+dataset_query:
+  database: <<db>>
+  query:
+    aggregation:
+    - - count
+    breakout:
+    - - field
+      - - <<db>>
+        - <<destination_schema>>
+        - <<target.account>>
+        - created_date
+      - base-type: type/DateTimeWithLocalTZ
+        temporal-unit: month
+    - - field
+      - - <<db>>
+        - <<destination_schema>>
+        - <<target.account>>
+        - type
+      - base-type: type/Text
+    filter:
+    - time-interval
+    - - field
+      - - <<db>>
+        - <<destination_schema>>
+        - <<target.account>>
+        - created_date
+      - base-type: type/DateTimeWithLocalTZ
+    - -6
+    - month
+    - include-current: true
+    source-table:
+    - <<db>>
+    - <<destination_schema>>
+    - <<target.account>>
+  type: query
+visualization_settings:
+  column_settings: null
+  graph.dimensions:
+  - created_date
+  - type
+  graph.metrics:
+  - count
+  graph.show_values: true
+  graph.x_axis.scale: timeseries
+  map.region: world_countries
+  map.type: region
+  pie.slice_threshold: 1
+  series_settings:
+    (empty):
+      color: '#509EE3'
+  stackable.stack_type: stacked
+card_schema: 22
+type: question

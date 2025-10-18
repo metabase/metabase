@@ -1,15 +1,22 @@
 import type { ScheduleSettings } from "./settings";
 import type { Table } from "./table";
 
-import type { ISO8601Time, LongTaskStatus } from ".";
+import type { Dashboard, Document, ISO8601Time, LongTaskStatus } from ".";
 
 export type DatabaseId = number;
 
 export type InitialSyncStatus = LongTaskStatus;
 
+export const DATABASE_BLUEPRINTS = ["is-salesforce?", "is-stripe?"] as const;
+
 export type DatabaseSettings = {
   [key: string]: any;
   "database-enable-actions"?: boolean;
+  blueprints: {
+    "is-salesforce?": boolean;
+    "is-stripe?": boolean;
+    blueprinted: boolean;
+  };
 };
 
 export type DatabaseFeature =
@@ -56,6 +63,9 @@ export type DatabaseFeature =
   | "split-part"
   | "transforms/python"
   | "transforms/table";
+
+export type DatabaseBlueprintKey = (typeof DATABASE_BLUEPRINTS)[number];
+export type DatabaseBlueprintName = "salesforce" | "stripe";
 
 export interface Database extends DatabaseData {
   id: DatabaseId;
@@ -151,6 +161,14 @@ export interface ListDatabasesResponse {
   data: Database[];
   total: number;
 }
+
+export interface GetBlueprintResponse {
+  document?: Document;
+  dashboard?: Dashboard;
+  tables: Table[];
+}
+
+export interface RunBlueprintResponse extends GetBlueprintResponse {}
 
 export interface ListDatabaseIdFieldsRequest {
   id: DatabaseId;
