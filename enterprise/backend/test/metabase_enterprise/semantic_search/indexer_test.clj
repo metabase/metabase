@@ -41,9 +41,9 @@
         t1             (ts "2025-01-01T00:01:00Z")
         t2             (ts "2025-01-02T00:03:10Z")
         t3             (ts "2025-01-03T00:02:42Z")
-        c1             {:model "card" :id "1" :name "Poodle" :searchable_text "Dog Training Guide"}
-        c2             {:model "card" :id "2" :name "Pug"    :searchable_text "Dog Training Guide 2"}
-        c3             {:model "card" :id "3" :name "Collie" :searchable_text "Dog Training Guide 3"}
+        c1             {:model "card" :id "1" :name "Poodle" :searchable_text "Dog Training Guide" :embeddable_text "Dog Training Guide"}
+        c2             {:model "card" :id "2" :name "Pug"    :searchable_text "Dog Training Guide 2" :embeddable_text "Dog Training Guide 2"}
+        c3             {:model "card" :id "3" :name "Collie" :searchable_text "Dog Training Guide 3" :embeddable_text "Dog Training Guide 3"}
         version        semantic.gate/search-doc->gate-doc
         delete         (fn [doc t] (semantic.gate/deleted-search-doc->gate-doc (:model doc) (:id doc) t))]
     (with-open [_ (semantic.tu/open-metadata! pgvector index-metadata)
@@ -289,7 +289,7 @@
         model          semantic.tu/mock-embedding-model
         index          (semantic.index-metadata/qualify-index (semantic.index/default-index model) index-metadata)
         t1             (ts "2025-01-01T00:01:00Z")
-        c1             {:model "card" :id "1" :name "Dog" :searchable_text "Dog Training Guide"}
+        c1             {:model "card" :id "1" :name "Dog" :searchable_text "Dog Training Guide" :embeddable_text "Dog Training Guide"}
         version        semantic.gate/search-doc->gate-doc]
     (with-open [_ (semantic.tu/open-metadata! pgvector index-metadata)
                 _ (semantic.tu/open-index! pgvector index)]
@@ -549,7 +549,7 @@
           clock-ref            (volatile! (Instant/parse "2025-01-04T10:00:00Z"))
           clock                (reify InstantSource (instant [_] @clock-ref))
           t1                   (ts "2025-01-01T00:01:00Z")
-          card                 (fn [id] {:model "card" :id (str id) :name "Test" :searchable_text "Content"})
+          card                 (fn [id] {:model "card" :id (str id) :name "Test" :searchable_text "Content" :embeddable_text "Content"})
           version              semantic.gate/search-doc->gate-doc
           fresh-indexing-state (fn []
                                  (let [state (semantic.indexer/init-indexing-state (get-metadata-row! pgvector index-metadata index))]
@@ -668,7 +668,7 @@
         clock-ref        (volatile! (Instant/parse "2025-01-04T10:00:00Z"))
         clock            (reify InstantSource (instant [_] @clock-ref))
         t1               (ts "2025-01-01T00:01:00Z")
-        card             (fn [id content] {:model "card" :id (str id) :name content :searchable_text content})
+        card             (fn [id content] {:model "card" :id (str id) :name content :searchable_text content :embeddable_text content})
         version          semantic.gate/search-doc->gate-doc
         poisoned-doc-id  (volatile! nil)
         get-indexed-docs (fn []
