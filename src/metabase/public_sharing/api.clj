@@ -197,6 +197,102 @@
                 :format-rows?          format_rows
                 :pivot?                pivot_results}))
 
+;;; ----------------------------------------------- Public Documents -------------------------------------------------
+
+(defn- remove-document-non-public-columns
+  "Strip out internal fields that shouldn't be exposed publicly, like collection_id or permissions info."
+  [document]
+  (select-keys document [:id :name :document :created_at :updated_at :cards]))
+
+(defn public-document
+  "Fetch a public Document and strip out sensitive fields. We also hydrate the Cards embedded in the document so the
+  frontend doesn't need to make separate authenticated requests for each card — just like public Dashboards do."
+  [& conditions]
+  (let [document (api/check-404 (apply t2/select-one [:model/Document :id :name :document :content_type :created_at :updated_at]
+                                       :archived false, conditions))
+        ;; Extract card IDs from the document's ProseMirror content so we can hydrate them
+        prose-mirror-content-type @(requiring-resolve 'metabase-enterprise.documents.prose-mirror/prose-mirror-content-type)
+        card-ids (when (= prose-mirror-content-type (:content_type document))
+                   ((requiring-resolve 'metabase-enterprise.documents.prose-mirror/card-ids) document))
+        ;; Hydrate the cards so the frontend has all the metadata it needs upfront
+        cards (when (seq card-ids)
+                (let [cards (t2/select :model/Card :id [:in card-ids] :archived false)]
+                  (zipmap (map :id cards)
+                          (map remove-card-non-public-columns cards))))]
+    (-> document
+        (assoc :cards cards)
+        (dissoc :content_type)
+        remove-document-non-public-columns)))
+
+(defn- document-with-uuid [uuid] (public-document :public_uuid uuid))
+
+(defn- document-card-ids
+  "Get the set of Card IDs embedded in a public Document with the given UUID.
+
+  Returns a set of Card IDs that are embedded in the Document's ProseMirror content. Throws a 404
+  if the Document doesn't exist, is archived, or doesn't have a public UUID."
+  [uuid]
+  (let [document (api/check-404 (t2/select-one :model/Document :public_uuid uuid :archived false))
+        prose-mirror-content-type @(requiring-resolve 'metabase-enterprise.documents.prose-mirror/prose-mirror-content-type)]
+    (when (= prose-mirror-content-type (:content_type document))
+      (set ((requiring-resolve 'metabase-enterprise.documents.prose-mirror/card-ids) document)))))
+
+(api.macros/defendpoint :get "/document/:uuid"
+  "Fetch a publicly-accessible Document. Does not require auth credentials. Public sharing must be enabled."
+  [{:keys [uuid]} :- [:map
+                      [:uuid ms/UUIDString]]]
+  (public-sharing.validation/check-public-sharing-enabled)
+  (let [document (document-with-uuid uuid)]
+    (events/publish-event! :event/document-read {:object-id (:id document), :user-id api/*current-user-id*})
+    document))
+
+(api.macros/defendpoint :get "/document/:uuid/card/:card-id"
+  "Run a query for a Card that's embedded in a public Document. Doesn't require auth credentials. Public sharing must
+  be enabled."
+  [{:keys [uuid card-id]} :- [:map
+                              [:uuid    ms/UUIDString]
+                              [:card-id ms/PositiveInt]]
+   {:keys [parameters]} :- [:map
+                            [:parameters {:optional true} [:maybe ms/JSONString]]]]
+  (public-sharing.validation/check-public-sharing-enabled)
+  (api/check-404 (t2/select-one-pk :model/Card :id card-id :archived false))
+  (let [card-ids (document-card-ids uuid)]
+    ;; Make sure this card is actually in the document — we don't want people using this endpoint to query arbitrary cards
+    (api/check-404 (contains? card-ids card-id))
+    ;; Run the query as admin since public documents are available to everyone anyway
+    (u/prog1 (process-query-for-card-with-id
+              card-id
+              :api
+              parameters
+              :constraints (qp.constraints/default-query-constraints))
+      (events/publish-event! :event/card-read {:object-id card-id :user-id api/*current-user-id* :context :question}))))
+
+(api.macros/defendpoint :get "/document/:uuid/card/:card-id/:export-format"
+  "Fetch a Card embedded in a public Document and return query results in the specified format. Does not require auth
+  credentials. Public sharing must be enabled."
+  [{:keys [uuid card-id export-format]} :- [:map
+                                            [:uuid          ms/UUIDString]
+                                            [:card-id       ms/PositiveInt]
+                                            [:export-format ::qp.schema/export-format]]
+   {:keys [parameters format_rows pivot_results]} :- [:map
+                                                      [:format_rows   {:default false} :boolean]
+                                                      [:pivot_results {:default false} :boolean]
+                                                      [:parameters    {:optional true} [:maybe ms/JSONString]]]]
+  (public-sharing.validation/check-public-sharing-enabled)
+  (api/check-404 (t2/select-one-pk :model/Card :id card-id :archived false))
+  (let [card-ids (document-card-ids uuid)]
+    ;; Make sure this card is actually in the document — we don't want people using this endpoint to query arbitrary cards
+    (api/check-404 (contains? card-ids card-id))
+    (process-query-for-card-with-id
+     card-id
+     export-format
+     (json/decode+kw parameters)
+     :constraints nil
+     :middleware {:process-viz-settings? true
+                  :js-int-to-string?     false
+                  :format-rows?          format_rows
+                  :pivot?                pivot_results})))
+
 ;;; ----------------------------------------------- Public Dashboards ------------------------------------------------
 
 (def ^:private action-public-keys

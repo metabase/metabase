@@ -872,7 +872,8 @@
            request
            settings
            tiles
-           util}}
+           util
+           enterprise/documents}}
 
   pulse
   {:team "Workflows"
@@ -1734,7 +1735,8 @@
   {:team "UX West"
    :api  #{metabase-enterprise.documents.api
            metabase-enterprise.documents.core
-           metabase-enterprise.documents.init}
+           metabase-enterprise.documents.init
+           metabase-enterprise.documents.prose-mirror}
    :uses #{activity-feed
            api
            app-db
@@ -1743,6 +1745,7 @@
            events
            models
            premium-features
+           public-sharing
            queries
            query-permissions
            revisions

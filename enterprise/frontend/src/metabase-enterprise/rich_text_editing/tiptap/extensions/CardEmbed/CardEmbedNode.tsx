@@ -40,6 +40,8 @@ import {
   getHoveredChildTargetId,
 } from "metabase-enterprise/documents/selectors";
 import { getListCommentsQuery } from "metabase-enterprise/documents/utils/api";
+import { usePublicDocumentContext } from "metabase-enterprise/public/contexts/PublicDocumentContext";
+import { usePublicDocumentCardData } from "metabase-enterprise/public/hooks/use-public-document-card-data";
 import Question from "metabase-lib/v1/Question";
 import { getUrl } from "metabase-lib/v1/urls";
 import type { Card, CardDisplayType, Dataset } from "metabase-types/api";
@@ -55,6 +57,7 @@ import CS from "../extensions.module.css";
 import styles from "./CardEmbedNode.module.css";
 import { ModifyQuestionModal } from "./ModifyQuestionModal";
 import { NativeQueryModal } from "./NativeQueryModal";
+import { PublicDocumentCardMenu } from "./PublicDocumentCardMenu";
 
 export const DROP_ZONE_COLOR = "var(--mb-color-brand)";
 const DRAG_LEAVE_TIMEOUT = 300;
@@ -188,6 +191,7 @@ export const CardEmbedComponent = memo(
     const childTargetId = useSelector(getChildTargetId);
     const hoveredChildTargetId = useSelector(getHoveredChildTargetId);
     const document = useSelector(getCurrentDocument);
+    const { publicDocumentUuid } = usePublicDocumentContext();
     const { data: commentsData } = useListCommentsQuery(
       getListCommentsQuery(document),
     );
@@ -233,7 +237,17 @@ export const CardEmbedComponent = memo(
       });
     }
 
-    const { card, dataset, isLoading, series, error } = useCardData({ id });
+    // Use public hook when viewing a public document, otherwise use regular hook
+    const isPublicDocument = Boolean(publicDocumentUuid);
+    const regularCardData = useCardData({ id });
+    const publicCardData = usePublicDocumentCardData({
+      cardId: id,
+      documentUuid: publicDocumentUuid || "",
+    });
+
+    const { card, dataset, isLoading, series, error } = isPublicDocument
+      ? publicCardData
+      : regularCardData;
 
     const metadata = useSelector(getMetadata);
     const datasetError = dataset && getDatasetError(dataset);
@@ -591,9 +605,11 @@ export const CardEmbedComponent = memo(
                           size="md"
                           color="text-dark"
                           fw={700}
-                          c="pointer"
+                          c={isPublicDocument ? undefined : "pointer"}
                           truncate="end"
-                          onClick={handleTitleClick}
+                          onClick={
+                            isPublicDocument ? undefined : handleTitleClick
+                          }
                         >
                           {displayName}
                         </Text>
@@ -629,83 +645,94 @@ export const CardEmbedComponent = memo(
                         />
                       </Box>
                     )}
-                  {!isEditingTitle && (
-                    <Menu withinPortal position="bottom-end" data-hide-on-print>
-                      <Menu.Target>
-                        <Flex
-                          component="button"
-                          p="0.25rem"
-                          align="center"
-                          justify="center"
-                          className={styles.menuButton}
-                          onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                        >
-                          <Icon
-                            name="ellipsis"
-                            size={16}
-                            color="var(--mb-color-text-medium)"
-                          />
-                        </Flex>
-                      </Menu.Target>
-                      <Menu.Dropdown>
-                        {!isWithinIframe() && (
-                          <Menu.Item
-                            leftSection={<Icon name="add_comment" size={14} />}
-                            component={ForwardRefLink}
-                            to={
-                              // If no existing unresolved comments comments, add query param to auto-open new comment form
-                              unresolvedCommentsCount > 0
-                                ? commentsPath
-                                : `${commentsPath}?new=true`
+                  {!isEditingTitle &&
+                    (isPublicDocument && dataset ? (
+                      <PublicDocumentCardMenu card={card} dataset={dataset} />
+                    ) : (
+                      <Menu
+                        withinPortal
+                        position="bottom-end"
+                        data-hide-on-print
+                      >
+                        <Menu.Target>
+                          <Flex
+                            component="button"
+                            p="0.25rem"
+                            align="center"
+                            justify="center"
+                            className={styles.menuButton}
+                            onClick={(e: React.MouseEvent) =>
+                              e.stopPropagation()
                             }
-                            // actually stop the navigation from happening
-                            onClick={(e) => {
-                              if (!commentsPath || hasUnsavedChanges) {
-                                e.preventDefault();
-                              }
-                            }}
-                            // purely for presentation
-                            disabled={!commentsPath || hasUnsavedChanges}
                           >
-                            {t`Comment`}
-                          </Menu.Item>
-                        )}
-                        <Menu.Item
-                          onClick={handleEditVisualizationSettings}
-                          disabled={!canWrite}
-                          leftSection={<Icon name="palette" size={14} />}
-                        >
-                          {t`Edit Visualization`}
-                        </Menu.Item>
-                        <Menu.Item
-                          onClick={() => setIsModifyModalOpen(true)}
-                          disabled={!canWrite}
-                          leftSection={
                             <Icon
-                              name={isNativeQuestion ? "sql" : "notebook"}
-                              size={14}
+                              name="ellipsis"
+                              size={16}
+                              color="var(--mb-color-text-medium)"
                             />
-                          }
-                        >
-                          {t`Edit Query`}
-                        </Menu.Item>
-                        <Menu.Item
-                          onClick={handleReplaceQuestion}
-                          disabled={!canWrite}
-                          leftSection={<Icon name="refresh" size={14} />}
-                        >
-                          {t`Replace`}
-                        </Menu.Item>
-                        <Menu.Item
-                          onClick={handleRemoveNode}
-                          disabled={!canWrite}
-                          leftSection={<Icon name="trash" size={14} />}
-                        >
-                          {t`Remove Chart`}
-                        </Menu.Item>
-                      </Menu.Dropdown>
-                    </Menu>
-                  )}
+                          </Flex>
+                        </Menu.Target>
+                        <Menu.Dropdown>
+                          {!isWithinIframe() && (
+                            <Menu.Item
+                              leftSection={
+                                <Icon name="add_comment" size={14} />
+                              }
+                              component={ForwardRefLink}
+                              to={
+                                // If no existing unresolved comments comments, add query param to auto-open new comment form
+                                unresolvedCommentsCount > 0
+                                  ? commentsPath
+                                  : `${commentsPath}?new=true`
+                              }
+                              // actually stop the navigation from happening
+                              onClick={(e) => {
+                                if (!commentsPath || hasUnsavedChanges) {
+                                  e.preventDefault();
+                                }
+                              }}
+                              // purely for presentation
+                              disabled={!commentsPath || hasUnsavedChanges}
+                            >
+                              {t`Comment`}
+                            </Menu.Item>
+                          )}
+                          <Menu.Item
+                            onClick={handleEditVisualizationSettings}
+                            disabled={!canWrite}
+                            leftSection={<Icon name="palette" size={14} />}
+                          >
+                            {t`Edit Visualization`}
+                          </Menu.Item>
+                          <Menu.Item
+                            onClick={() => setIsModifyModalOpen(true)}
+                            disabled={!canWrite}
+                            leftSection={
+                              <Icon
+                                name={isNativeQuestion ? "sql" : "notebook"}
+                                size={14}
+                              />
+                            }
+                          >
+                            {t`Edit Query`}
+                          </Menu.Item>
+                          <Menu.Item
+                            onClick={handleReplaceQuestion}
+                            disabled={!canWrite}
+                            leftSection={<Icon name="refresh" size={14} />}
+                          >
+                            {t`Replace`}
+                          </Menu.Item>
+                          <Menu.Item
+                            onClick={handleRemoveNode}
+                            disabled={!canWrite}
+                            leftSection={<Icon name="trash" size={14} />}
+                          >
+                            {t`Remove Chart`}
+                          </Menu.Item>
+                        </Menu.Dropdown>
+                      </Menu>
+                    ))}
                 </Flex>
               </Box>
             )}
@@ -715,7 +742,9 @@ export const CardEmbedComponent = memo(
                   <Visualization
                     rawSeries={series}
                     metadata={metadata}
-                    onChangeCardAndRun={handleChangeCardAndRun}
+                    onChangeCardAndRun={
+                      isPublicDocument ? undefined : handleChangeCardAndRun
+                    }
                     getExtraDataForClick={() => ({})}
                     isEditing={false}
                     isDashboard={false}

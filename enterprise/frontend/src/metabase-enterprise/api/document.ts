@@ -55,6 +55,52 @@ export const documentApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error, { id }) =>
         !error ? [listTag("document"), idTag("document", id)] : [],
     }),
+    listPublicDocuments: builder.query<
+      Array<Pick<Document, "id" | "name" | "public_uuid">>,
+      void
+    >({
+      query: () => ({
+        method: "GET",
+        url: "/api/ee/document/public",
+      }),
+      providesTags: (result = []) => [
+        ...result.map((res) => idTag("public-document", res.id)),
+        listTag("public-document"),
+      ],
+    }),
+    createDocumentPublicLink: builder.mutation<
+      Pick<Document, "id"> & { uuid: Document["public_uuid"] },
+      Pick<Document, "id">
+    >({
+      query: ({ id }) => ({
+        method: "POST",
+        url: `/api/ee/document/${id}/public_link`,
+      }),
+      invalidatesTags: (_, error, { id }) =>
+        !error ? [listTag("public-document"), idTag("document", id)] : [],
+      transformResponse: ({ uuid }, _meta, { id }) => ({
+        id,
+        uuid,
+      }),
+    }),
+    deleteDocumentPublicLink: builder.mutation<
+      Pick<Document, "id">,
+      Pick<Document, "id">
+    >({
+      query: ({ id }) => ({
+        method: "DELETE",
+        url: `/api/ee/document/${id}/public_link`,
+      }),
+      transformResponse: (_baseQueryReturnValue, _meta, { id }) => ({ id }),
+      invalidatesTags: (_, error, { id }) =>
+        !error
+          ? [
+              listTag("public-document"),
+              idTag("public-document", id),
+              idTag("document", id),
+            ]
+          : [],
+    }),
   }),
 });
 
@@ -62,4 +108,7 @@ export const {
   useGetDocumentQuery,
   useCreateDocumentMutation,
   useUpdateDocumentMutation,
+  useListPublicDocumentsQuery,
+  useCreateDocumentPublicLinkMutation,
+  useDeleteDocumentPublicLinkMutation,
 } = documentApi;

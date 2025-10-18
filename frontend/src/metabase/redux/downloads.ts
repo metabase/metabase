@@ -32,6 +32,7 @@ export interface DownloadQueryResultsOpts {
   dashcardId?: DashCardId;
   uuid?: string;
   token?: string | null;
+  documentUuid?: string;
   params?: Record<string, unknown>;
   visualizationSettings?: VisualizationSettings;
 }
@@ -43,7 +44,11 @@ interface DownloadQueryResultsParams {
   params?: URLSearchParams | string;
 }
 
-export type ResourceType = "question" | "dashcard" | "ad-hoc-question";
+export type ResourceType =
+  | "question"
+  | "dashcard"
+  | "document-card"
+  | "ad-hoc-question";
 export type ResourceAccessedVia =
   | "internal"
   | "public-link"
@@ -61,6 +66,7 @@ const getDownloadedResourceType = ({
   dashcardId,
   uuid,
   token,
+  documentUuid,
   question,
 }: Partial<DownloadQueryResultsOpts>): DownloadedResourceInfo => {
   const cardId = question?.id();
@@ -86,6 +92,10 @@ const getDownloadedResourceType = ({
       resourceType: "dashcard",
       accessedVia: defaultAccessedVia,
     };
+  }
+
+  if (documentUuid != null) {
+    return { resourceType: "document-card", accessedVia: "public-link" };
   }
 
   if (uuid != null) {
@@ -171,6 +181,7 @@ const getDatasetParams = ({
   enablePivot = false,
   uuid,
   token,
+  documentUuid,
   params = {},
   result,
   visualizationSettings,
@@ -187,6 +198,7 @@ const getDatasetParams = ({
     dashcardId,
     uuid,
     token,
+    documentUuid,
     question,
   });
 
@@ -200,6 +212,21 @@ const getDatasetParams = ({
           parameters: result?.json_query?.parameters ?? [],
           ...exportParams,
         },
+      };
+    }
+    if (resource === "document-card" && documentUuid) {
+      return {
+        method: "GET",
+        url: `/api/public/document/${documentUuid}/card/${cardId}/${type}`,
+        params: new URLSearchParams({
+          parameters: JSON.stringify(
+            (result?.json_query?.parameters ?? []).map((param) => ({
+              id: param.id,
+              value: param.value,
+            })),
+          ),
+          ..._.mapObject(exportParams, (value) => String(value)),
+        }),
       };
     }
     if (resource === "question" && uuid) {
