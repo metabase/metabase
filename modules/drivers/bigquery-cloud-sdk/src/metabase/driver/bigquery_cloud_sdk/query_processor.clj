@@ -12,6 +12,7 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -559,7 +560,8 @@
   (let [datetime     (fn [x target-timezone]
                        [:datetime x target-timezone])
         hsql-form    (sql.qp/->honeysql driver arg)
-        timestamptz? (h2x/is-of-type? hsql-form "timestamp")]
+        timestamptz? (or (sql.qp.u/field-with-tz? arg)
+                         (h2x/is-of-type? hsql-form "timestamp"))]
     (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
     (-> (if timestamptz?
           hsql-form

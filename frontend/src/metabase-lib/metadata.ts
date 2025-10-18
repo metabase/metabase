@@ -5,6 +5,7 @@ import type {
   CardType,
   DatabaseId,
   DatasetColumn,
+  FieldId,
   TableId,
 } from "metabase-types/api";
 
@@ -168,6 +169,13 @@ export function tableOrCardMetadata(
   tableID: TableId,
 ): CardMetadata | TableMetadata | null {
   return ML.table_or_card_metadata(queryOrMetadataProvider, tableID);
+}
+
+export function fieldMetadata(
+  queryOrMetadataProvider: Query | MetadataProvider,
+  fieldID: FieldId,
+): ColumnMetadata | null {
+  return ML.field_metadata(queryOrMetadataProvider, fieldID);
 }
 
 export function visibleColumns(
