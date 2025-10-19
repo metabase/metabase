@@ -460,4 +460,5 @@
         params (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:params])]
     (binding [api/*current-user-permissions-set* (atom #{"/"})
               api/*is-superuser?* true]
-      (qp.card/fetch-subset-query-metadata card-id params query))))
+      ;; TODO (BT) fetch-subset-query-metadata expects a sequence of parameters, but a map is coming
+      (qp.card/fetch-subset-query-metadata card-id (vals params) query))))
