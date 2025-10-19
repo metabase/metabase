@@ -1,7 +1,11 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockDocument, createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockDocument,
+  createMockTokenFeatures,
+  createMockUser,
+} from "metabase-types/api/mocks";
 
 import { DOCUMENT_TITLE_MAX_LENGTH } from "../constants";
 
@@ -49,6 +53,7 @@ const setup = ({
       settings: {
         values: {
           "enable-public-sharing": isPublicSharingEnabled,
+          "token-features": createMockTokenFeatures({ documents: true }),
         } as any,
         loading: false,
       },
