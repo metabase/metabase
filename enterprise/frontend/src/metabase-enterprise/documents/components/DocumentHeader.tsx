@@ -5,7 +5,7 @@ import { t } from "ttag";
 import DateTime, {
   getFormattedTime,
 } from "metabase/common/components/DateTime";
-import { useSetting } from "metabase/common/hooks";
+import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { isWithinIframe } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
@@ -67,10 +67,12 @@ export const DocumentHeader = ({
   hasComments = false,
 }: DocumentHeaderProps) => {
   const isPublicSharingEnabled = useSetting("enable-public-sharing");
+  const hasDocumentsFeature = useHasTokenFeature("documents");
   const isAdmin = useSelector(getUserIsAdmin);
   const [isPublicLinkPopoverOpen, setIsPublicLinkPopoverOpen] = useState(false);
 
   const hasPublicLink = !!document?.public_uuid;
+  const canUsePublicSharing = isPublicSharingEnabled && hasDocumentsFeature;
 
   const handlePrint = useCallback(() => {
     window.print();
@@ -186,13 +188,13 @@ export const DocumentHeader = ({
                     <Menu.Item
                       leftSection={<Icon name="link" />}
                       onClick={() => setIsPublicLinkPopoverOpen(true)}
-                      {...(!isPublicSharingEnabled && {
+                      {...(!canUsePublicSharing && {
                         onClick: undefined,
                         component: "div",
                         disabled: true,
                       })}
                     >
-                      {isPublicSharingEnabled ? (
+                      {canUsePublicSharing ? (
                         hasPublicLink ? (
                           t`Public link`
                         ) : (

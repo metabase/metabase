@@ -204,7 +204,7 @@
   [document]
   (select-keys document [:id :name :document :created_at :updated_at :cards]))
 
-(defn public-document
+(defn- public-document
   "Fetch a public Document and strip out sensitive fields. We also hydrate the Cards embedded in the document so the
   frontend doesn't need to make separate authenticated requests for each card — just like public Dashboards do."
   [& conditions]
@@ -224,8 +224,6 @@
         (dissoc :content_type)
         remove-document-non-public-columns)))
 
-(defn- document-with-uuid [uuid] (public-document :public_uuid uuid))
-
 (defn- document-card-ids
   "Get the set of Card IDs embedded in a public Document with the given UUID.
 
@@ -242,7 +240,7 @@
   [{:keys [uuid]} :- [:map
                       [:uuid ms/UUIDString]]]
   (public-sharing.validation/check-public-sharing-enabled)
-  (let [document (document-with-uuid uuid)]
+  (let [document (public-document :public_uuid uuid)]
     (events/publish-event! :event/document-read {:object-id (:id document), :user-id api/*current-user-id*})
     document))
 
