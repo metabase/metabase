@@ -46,6 +46,7 @@ import type {
   EditParameterSidebarState,
   State,
   StoreDashboard,
+  StoreDashcard,
 } from "metabase-types/store";
 
 import { getNewCardUrl } from "./actions/getNewCardUrl";
@@ -189,7 +190,7 @@ export const getDashboardById = (state: State, dashboardId: DashboardId) => {
 };
 
 const getOrderedDashcards = _.memoize(
-  (cards, dashcards) => {
+  (cards: DashCardId[], dashcards: Record<number, StoreDashcard>) => {
     const orderedDashcards = cards
       .map((id) => dashcards[id])
       .filter((dc) => !dc.isRemoved)
@@ -207,13 +208,16 @@ const getOrderedDashcards = _.memoize(
 
     return orderedDashcards;
   },
-  (cards, dashcards) => cards.map((id) => dashcards[id]).join("-"),
+  (cards: DashCardId[]) => cards.join("-"),
 );
 
 const getDashboardMemoized = _.memoize(
-  (dashboard, dashcards) => {
+  (
+    dashboard: StoreDashboard | undefined,
+    dashcards: Record<number, StoreDashcard>,
+  ) => {
     const orderedDashcards = getOrderedDashcards(
-      dashboard.dashcards,
+      dashboard?.dashcards || [],
       dashcards,
     );
 
@@ -224,12 +228,15 @@ const getDashboardMemoized = _.memoize(
       }
     );
   },
-  (dashboard, dashcards) => dashboard.id,
+  (dashboard: StoreDashboard | undefined) => dashboard?.id?.toString() || "",
 );
 
 export const getDashboardComplete = createSelector(
   [getDashboard, getDashcards],
-  (dashboard, dashcards) => {
+  (
+    dashboard: StoreDashboard | undefined,
+    dashcards: Record<number, StoreDashcard>,
+  ) => {
     if (!dashboard) {
       return null;
     }

@@ -271,20 +271,6 @@ const DashboardContextProviderInner = forwardRef(
     const previousTabId = usePrevious(selectedTabId);
     const previousParameterValues = usePrevious(parameterValues);
 
-    const dashboardIncomplete = useSelector(getDashboard);
-
-    useEffect(() => {
-      console.log("bare _dashboard rerendered", _dashboard);
-    }, [_dashboard]);
-
-    useEffect(() => {
-      console.log("complete dashboard rerendered", dashboard);
-    }, [dashboard]);
-
-    useEffect(() => {
-      console.log("dashboardIncomplete rerendered", dashboardIncomplete);
-    }, [dashboardIncomplete]);
-
     const { refreshDashboardCardData } = useRefreshDashboard({
       dashboardId,
       parameterQueryParams,
@@ -443,13 +429,13 @@ const DashboardContextProviderInner = forwardRef(
     // so we have a filter function here to remove those. We can/will also add this
     // functionality in the SDK in the future, which is why it's a generic prop
     const dashboardWithFilteredCards = useMemo(() => {
-      // if (dashboard && isDashcardVisible) {
-      //   return assoc(
-      //     dashboard,
-      //     "dashcards",
-      //     dashboard.dashcards.filter(isDashcardVisible),
-      //   );
-      // }
+      if (dashboard && isDashcardVisible) {
+        return assoc(
+          dashboard,
+          "dashcards",
+          dashboard.dashcards.filter(isDashcardVisible),
+        );
+      }
       return dashboard;
     }, [dashboard, isDashcardVisible]);
 
