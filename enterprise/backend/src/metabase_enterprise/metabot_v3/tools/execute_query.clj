@@ -66,10 +66,17 @@
           ;; Execute the query synchronously
           info {:executed-by api/*current-user-id*
                 :context :ad-hoc}
-          results (qp/process-query (assoc query-with-constraints :info info))]
+          result (qp/process-query (assoc query-with-constraints :info info))]
 
-      {:structured-output {:data results
-                           :status "completed"}})
+      ;; Check if the query processor returned an error
+      (if (= (:status result) :failed)
+        ;; Query failed - return error information
+        {:structured-output {:status "failed"
+                             :error (:error result)
+                             :error_type (:error_type result)}}
+        ;; Query succeeded - return data
+        {:structured-output {:data result
+                             :status "completed"}}))
     (catch Exception e
       (metabot-v3.tools.u/handle-agent-error e))))
 
