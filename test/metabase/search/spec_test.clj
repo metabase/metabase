@@ -63,14 +63,13 @@
                                                       :database_id
                                                       :dataset_query
                                                       :display
+                                                      :document_id
                                                       :last_used_at
                                                       :name
-                                                      :query_type
                                                       :type
                                                       :view_count
                                                       :created_at
-                                                      :updated_at
-                                                      :result_metadata},
+                                                      :updated_at},
                                       :where        [:= :updated.id :this.id]}},
                  :Collection       #{{:search-model "card",
                                       :fields       #{:authority_level :name :namespace :type :location},

@@ -3,14 +3,25 @@ import { ThemeProvider as _CompatibilityEmotionThemeProvider } from "@emotion/re
 import type { MantineTheme, MantineThemeOverride } from "@mantine/core";
 import { MantineProvider } from "@mantine/core";
 import { merge } from "icepick";
-import { type ReactNode, useContext, useMemo } from "react";
+import {
+  type ReactNode,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { parseHashOptions } from "metabase/lib/browser";
+import type { DisplayTheme } from "metabase/public/lib/types";
+import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 
 import { getThemeOverrides } from "../../../theme";
+import { ColorSchemeProvider, useColorScheme } from "../ColorSchemeProvider";
+import type { ResolvedColorScheme } from "../ColorSchemeProvider/ColorSchemeProvider";
 import { DatesProvider } from "../DatesProvider";
 
-import { themeProviderContext } from "./context";
+import { ThemeProviderContext } from "./context";
 
 interface ThemeProviderProps {
   children: ReactNode;
@@ -21,12 +32,19 @@ interface ThemeProviderProps {
    * to allow SDK users to customize the theme.
    */
   theme?: MantineThemeOverride;
+
+  displayTheme?: DisplayTheme | string;
 }
 
-export const ThemeProvider = (props: ThemeProviderProps) => {
+const ThemeProviderInner = (props: ThemeProviderProps) => {
+  const { resolvedColorScheme } = useColorScheme();
+
   // Merge default theme overrides with user-provided theme overrides
   const theme = useMemo(() => {
-    const theme = merge(getThemeOverrides(), props.theme) as MantineTheme;
+    const theme = merge(
+      getThemeOverrides(resolvedColorScheme),
+      props.theme,
+    ) as MantineTheme;
 
     return {
       ...theme,
@@ -65,22 +83,77 @@ export const ThemeProvider = (props: ThemeProviderProps) => {
         },
       },
     } as MantineTheme;
-  }, [props.theme]);
+  }, [props.theme, resolvedColorScheme]);
 
-  const { withCssVariables } = useContext(themeProviderContext);
+  const { withCssVariables, withGlobalClasses } =
+    useContext(ThemeProviderContext);
 
   return (
     <MantineProvider
       theme={theme}
+      forceColorScheme={resolvedColorScheme}
       getStyleNonce={() => window.MetabaseNonce ?? "metabase"}
       classNamesPrefix="mb-mantine"
-      // This slows down unit tests like crazy
       cssVariablesSelector={isEmbeddingSdk() ? ".mb-wrapper" : undefined}
+      // This slows down unit tests like crazy
       withCssVariables={withCssVariables}
+      withGlobalClasses={withGlobalClasses}
     >
       <_CompatibilityEmotionThemeProvider theme={theme}>
         <DatesProvider>{props.children}</DatesProvider>
       </_CompatibilityEmotionThemeProvider>
     </MantineProvider>
+  );
+};
+
+const getColorSchemeFromDisplayTheme = (
+  displayTheme: DisplayTheme | string | boolean | string[] | undefined,
+): ResolvedColorScheme | null => {
+  switch (displayTheme) {
+    case "light":
+    case "transparent":
+      return "light";
+    case "night":
+    case "dark":
+      return "dark";
+  }
+  return null;
+};
+
+const getColorSchemeOverride = ({ hash }: Location) => {
+  return getColorSchemeFromDisplayTheme(parseHashOptions(hash).theme);
+};
+
+const useColorSchemeFromHash = ({
+  enabled = true,
+}: {
+  enabled?: boolean;
+}): ResolvedColorScheme | null => {
+  const [hashScheme, setHashScheme] = useState<ResolvedColorScheme | null>(() =>
+    getColorSchemeOverride(location),
+  );
+  useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+    const onHashChange = () => setHashScheme(getColorSchemeOverride(location));
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, [enabled]);
+  return enabled ? hashScheme : null;
+};
+
+export const ThemeProvider = (props: ThemeProviderProps) => {
+  const schemeFromHash = useColorSchemeFromHash({
+    enabled: getIsEmbeddingIframe(),
+  });
+  const forceColorScheme = props.displayTheme
+    ? getColorSchemeFromDisplayTheme(props.displayTheme)
+    : schemeFromHash;
+
+  return (
+    <ColorSchemeProvider forceColorScheme={forceColorScheme}>
+      <ThemeProviderInner {...props} />
+    </ColorSchemeProvider>
   );
 };

@@ -1,6 +1,7 @@
 (ns metabase.driver.sql-jdbc.sync.describe-table
   "SQL JDBC impl for `describe-fields`, `describe-table`, `describe-fks`, `describe-table-fks`, and `describe-nested-field-columns`.
   `describe-table-fks` is deprecated and will be replaced by `describe-fks` in the future."
+  (:refer-clojure :exclude [some select-keys every? mapv])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
@@ -20,6 +21,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [some select-keys every? mapv]]
    [potemkin :as p]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])

@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
 import { isNotNull } from "metabase/lib/types";
-import * as Lib from "metabase-lib";
 import {
   type HelpText,
-  clausesForMode,
   getHelpText,
-} from "metabase-lib/v1/expressions";
+  getSupportedClauses,
+} from "metabase/querying/expressions";
+import * as Lib from "metabase-lib";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
@@ -49,12 +49,9 @@ export function getFilteredClauses({
   database: Database | null;
   reportTimezone?: string;
 }) {
-  const clauses = clausesForMode(expressionMode);
-  const filteredClauses = clauses
-    .filter(
-      (clause) =>
-        database?.hasFeature(clause.requiresFeature) &&
-        clause.displayName.toLowerCase().includes(filter.toLowerCase()),
+  const filteredClauses = getSupportedClauses({ expressionMode, database })
+    .filter((clause) =>
+      clause.displayName.toLowerCase().includes(filter.toLowerCase()),
     )
     .map((clause) =>
       clause.name && database

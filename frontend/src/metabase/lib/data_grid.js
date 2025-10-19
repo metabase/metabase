@@ -179,6 +179,7 @@ export function pivot(data, normalCol, pivotCol, cellCol) {
     columns: pivotValues,
     rows: pivotedRows,
     sourceRows,
+    rows_truncated: data.rows_truncated,
   };
 }
 

@@ -28,7 +28,8 @@ import { zoomInRow } from "./zoom";
 export const RESET_ROW_ZOOM = "metabase/qb/RESET_ROW_ZOOM";
 export const resetRowZoom = () => (dispatch: Dispatch) => {
   dispatch({ type: RESET_ROW_ZOOM });
-  dispatch(updateUrl());
+
+  dispatch(updateUrl(null, { preserveParameters: false }));
 };
 
 function filterByFk(
@@ -85,9 +86,10 @@ export const followForeignKey = createThunkAction(
         table,
       );
       const query = filterByFk(baseQuery, fk.origin, objectId);
-      const finalCard = Question.create({ databaseId, metadata })
-        .setQuery(query)
-        .card();
+      const finalCard = Question.create({
+        dataset_query: Lib.toJsQuery(query),
+        metadata,
+      }).card();
 
       dispatch(resetRowZoom());
       dispatch(setCardAndRun(finalCard));
@@ -139,9 +141,10 @@ export const loadObjectDetailFKReferences = createThunkAction(
         );
         const aggregatedQuery = Lib.aggregateByCount(baseQuery, -1);
         const query = filterByFk(aggregatedQuery, fk.origin, objectId);
-        const finalCard = Question.create({ databaseId, metadata })
-          .setQuery(query)
-          .datasetQuery();
+        const finalCard = Question.create({
+          dataset_query: Lib.toJsQuery(query),
+          metadata,
+        }).datasetQuery();
 
         const info: FKInfo = {
           status: 0,

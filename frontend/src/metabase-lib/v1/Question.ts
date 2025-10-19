@@ -52,18 +52,23 @@ import { isDimensionTarget } from "metabase-types/guards";
 import type { Query } from "../types";
 
 export type QuestionCreatorOpts = {
-  databaseId?: DatabaseId;
   cardType?: CardType;
-  tableId?: TableId;
   collectionId?: CollectionId;
   dashboardId?: DashboardId;
   metadata?: Metadata;
   parameterValues?: ParameterValuesMap;
-  type?: "query" | "native";
   name?: string;
   display?: CardDisplayType;
   visualization_settings?: VisualizationSettings;
   dataset_query?: DatasetQuery;
+  DEPRECATED_RAW_MBQL_type?: "query" | "native";
+  DEPRECATED_RAW_MBQL_databaseId?: DatabaseId;
+  DEPRECATED_RAW_MBQL_tableId?: TableId;
+};
+
+export type QuestionDashboardProps = {
+  dashboardId?: DashboardId;
+  dashcardId?: DashCardId;
 };
 
 /**
@@ -172,7 +177,7 @@ class Question {
   _legacyNativeQuery = _.once((): NativeQuery | undefined => {
     const datasetQuery = this._card.dataset_query;
 
-    if (NativeQuery.isDatasetQueryType(datasetQuery)) {
+    if (this.isNative()) {
       return new NativeQuery(this, datasetQuery);
     }
 
@@ -206,6 +211,18 @@ class Question {
 
   setDatasetQuery(newDatasetQuery: DatasetQuery): Question {
     return this.setCard(assoc(this.card(), "dataset_query", newDatasetQuery));
+  }
+
+  isNative() {
+    if (
+      this.datasetQuery() == null ||
+      InternalQuery.isDatasetQueryType(this.datasetQuery())
+    ) {
+      return false;
+    }
+
+    const queryInfo = Lib.queryDisplayInfo(this.query());
+    return queryInfo.isNative;
   }
 
   /**
@@ -438,13 +455,16 @@ class Question {
     return this.setQuery(query);
   }
 
-  composeQuestionAdhoc(): Question {
+  composeQuestionAdhoc(options: QuestionCreatorOpts = {}): Question {
     if (!this.isSaved()) {
       return this;
     }
-
     const query = this.composeQuestion().query();
-    return Question.create({ metadata: this.metadata() }).setQuery(query);
+    return Question.create({
+      metadata: this.metadata(),
+      dataset_query: Lib.toJsQuery(query),
+      ...options,
+    });
   }
 
   /**
@@ -508,12 +528,15 @@ class Question {
     );
   }
 
+  getDashboardProps(): QuestionDashboardProps {
+    const { dashboardId, dashcardId } = this.card();
+    return { dashboardId, dashcardId };
+  }
+
   setDashboardProps({
     dashboardId,
     dashcardId,
-  }:
-    | { dashboardId: DashboardId; dashcardId: DashCardId }
-    | { dashboardId: undefined; dashcardId: undefined }): Question {
+  }: QuestionDashboardProps): Question {
     const card = chain(this.card())
       .assoc("dashboardId", dashboardId)
       .assoc("dashcardId", dashcardId)
@@ -699,7 +722,9 @@ class Question {
       return (
         q &&
         new Question(q.card(), this.metadata())
-          .setParameters(getTemplateTagParametersFromCard(q.card()))
+          .setParameters(
+            getTemplateTagParametersFromCard(q.card(), q.metadata()),
+          )
           .setDashboardProps({
             dashboardId: undefined,
             dashcardId: undefined,
@@ -738,7 +763,7 @@ class Question {
       dashboard_id: card.dashboard_id,
       ...(includeEntityId ? { entity_id: card.entity_id } : {}),
       ...(includeDatasetQuery
-        ? { dataset_query: Lib.toLegacyQuery(this.query()) }
+        ? { dataset_query: Lib.toJsQuery(this.query()) }
         : {}),
       display: card.display,
       ...(_.isEmpty(card.parameters)
@@ -822,8 +847,7 @@ class Question {
       throw new Error("Internal query is not supported by MLv2");
     }
 
-    this.__mlv2Query ??= Lib.fromLegacyQuery(
-      this.datasetQuery()?.database,
+    this.__mlv2Query ??= Lib.fromJsQuery(
       this.metadataProvider(),
       this.datasetQuery(),
     );
@@ -847,7 +871,7 @@ class Question {
   }
 
   setQuery(query: Query): Question {
-    return this.setDatasetQuery(Lib.toLegacyQuery(query));
+    return this.setDatasetQuery(Lib.toJsQuery(query));
   }
 
   generateQueryDescription() {
@@ -879,7 +903,9 @@ class Question {
       return this;
     }
 
-    return this.setParameters(getTemplateTagParametersFromCard(this.card()));
+    return this.setParameters(
+      getTemplateTagParametersFromCard(this.card(), this.metadata()),
+    );
   }
 
   /**
@@ -887,13 +913,13 @@ class Question {
    * but it would require changing the constructor signature so that `card` is an optional parameter and has a default value
    */
   static create({
-    databaseId,
-    tableId,
+    DEPRECATED_RAW_MBQL_type: type = "query",
+    DEPRECATED_RAW_MBQL_databaseId: databaseId,
+    DEPRECATED_RAW_MBQL_tableId: tableId,
     collectionId,
     dashboardId,
     metadata,
     parameterValues,
-    type = "query",
     name,
     display = "table",
     visualization_settings = {},

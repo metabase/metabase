@@ -1,13 +1,12 @@
 (ns metabase.legacy-mbql.schema.helpers
-  (:refer-clojure :exclude [distinct])
+  (:refer-clojure :exclude [distinct #?(:clj for)])
   (:require
+   #?(:clj [metabase.util.performance :refer [for]])
    [clojure.string :as str]
    [metabase.types.core]
    [metabase.util.malli.registry :as mr]))
 
 (comment metabase.types.core/keep-me)
-
-;;; --------------------------------------------------- defclause ----------------------------------------------------
 
 (defn mbql-clause?
   "True if `x` is an MBQL clause (a sequence with a keyword as its first arg)."
@@ -57,7 +56,7 @@
   "Impl of [[metabase.legacy-mbql.schema.macros/defclause]] macro. Creates a Malli schema."
   [tag & arg-schemas]
   [:and
-   {:doc/title [:span [:code (pr-str tag)] " clause"]}
+   {:description (str "schema for a valid legacy MBQL " :tag " clause")}
    [:fn
     {:error/message (str "must be a `" tag "` clause")}
     (partial is-clause? tag)]
@@ -87,10 +86,6 @@
      [tag (if (qualified-keyword? schema)
             [:ref schema]
             schema)])))
-
-(def KeywordOrString
-  "Schema for any keyword or string."
-  [:or :keyword :string])
 
 (defn non-empty
   "Add an addditonal constraint to `schema` (presumably an array) that requires it to be non-empty

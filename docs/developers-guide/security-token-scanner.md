@@ -27,7 +27,6 @@ Security token scanner detects potentially leaked API keys and secrets in the Me
 
 The scanner uses `.gitignore` to filter files and will block commits containing detected tokens.
 
-
 ## False positives
 
 If the scanner flags a non-token string, you should **exclude the literal token string** by adding it to: `mage/resources/token_scanner/token_whitelist.txt`.
@@ -35,7 +34,6 @@ If the scanner flags a non-token string, you should **exclude the literal token 
 ```
 echo 'my-token-string' >> mage/resources/token_scanner/token_whitelist.txt && git add mage/resources/token_scanner/token_whitelist.txt
 ```
-
 
 ## Bypassing (not recommended)
 

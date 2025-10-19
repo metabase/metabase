@@ -90,7 +90,9 @@
   admin-writable-site-wide-settings
   can-read-setting?
   current-user-readable-visibilities
+  custom-disabled-reasons!
   defsetting
+  disabled-for-db-reasons
   env-var-value
   export?
   get
@@ -111,6 +113,7 @@
   user-readable-values-map
   uuid-nonce-base
   validate-settings-formatting!
+  validate-settable-for-db!
   writable-settings]
  [metabase.settings.models.setting.cache
   cache-update-check-interval-ms
@@ -130,10 +133,11 @@
   []
   metabase.settings.models.setting/*database-local-values*)
 
-(defmacro with-database-local-values
+(defmacro with-database
   "Execute `body` with Database-local Setting values bound to `new-values`."
-  [new-values & body]
-  `(binding [metabase.settings.models.setting/*database-local-values* ~new-values]
+  [new-db & body]
+  `(binding [metabase.settings.models.setting/*database*              (:metabase/toucan-instance (meta ~new-db))
+             metabase.settings.models.setting/*database-local-values* (or (:settings ~new-db) {})]
      ~@body))
 
 (defn user-local-values

@@ -78,6 +78,19 @@ describe("scenarios > embedding-sdk > collection browser", () => {
       mockAuthProviderAndJwtSignIn();
     });
 
+    it("does not contain parent collection in breadcrumb (EMB-596)", () => {
+      cy.intercept("GET", "/api/collection/*").as("getCollection");
+
+      mountSdkContent(
+        <CollectionBrowser collectionId={SECOND_COLLECTION_ENTITY_ID} />,
+      );
+
+      getSdkRoot().within(() => {
+        cy.findByText("Second collection").should("exist");
+        cy.findByText("First collection").should("not.exist");
+      });
+    });
+
     it("can change collection to a different entity id without crashing (metabase#57438)", () => {
       const TestComponent = () => {
         const [collectionId, setCollectionId] = useState<string | null>(

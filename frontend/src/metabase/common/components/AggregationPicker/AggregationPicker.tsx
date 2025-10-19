@@ -14,17 +14,19 @@ import {
 import { Popover } from "metabase/common/components/MetadataInfo/Popover";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import { useSelector } from "metabase/lib/redux";
-import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
-import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
-import { getMetadata } from "metabase/selectors/metadata";
-import { Box, Flex, Icon, Text } from "metabase/ui";
-import * as Lib from "metabase-lib";
+import {
+  ExpressionWidget,
+  ExpressionWidgetHeader,
+} from "metabase/query_builder/components/expressions";
 import {
   type DefinedClauseName,
   type MBQLClauseFunctionConfig,
   clausesForMode,
   getClauseDefinition,
-} from "metabase-lib/v1/expressions";
+} from "metabase/querying/expressions";
+import { getMetadata } from "metabase/selectors/metadata";
+import { Box, Flex, Icon, Text } from "metabase/ui";
+import * as Lib from "metabase-lib";
 
 import { QueryColumnPicker } from "../QueryColumnPicker";
 
@@ -44,6 +46,7 @@ export interface AggregationPickerProps {
   onClose?: () => void;
   onQueryChange: (query: Lib.Query) => void;
   onBack?: () => void;
+  readOnly?: boolean;
 }
 
 type OperatorListItem = Lib.AggregationOperatorDisplayInfo & {
@@ -79,6 +82,7 @@ export function AggregationPicker({
   onClose,
   onQueryChange,
   onBack,
+  readOnly,
 }: AggregationPickerProps) {
   const metadata = useSelector(getMetadata);
   const displayInfo = clause
@@ -91,7 +95,13 @@ export function AggregationPicker({
     isEditingExpression,
     { turnOn: openExpressionEditor, turnOff: closeExpressionEditor },
   ] = useToggle(
-    isExpressionEditorInitiallyOpen(query, stageIndex, clause, operators),
+    isExpressionEditorInitiallyOpen({
+      query,
+      stageIndex,
+      clause,
+      operators,
+      readOnly,
+    }),
   );
   const [initialExpressionClause, setInitialExpressionClause] =
     useState<DefinedClauseName | null>(null);
@@ -307,10 +317,15 @@ export function AggregationPicker({
         withName
         expressionMode="aggregation"
         expressionIndex={clauseIndex}
-        header={<ExpressionWidgetHeader onBack={closeExpressionEditor} />}
+        header={
+          <ExpressionWidgetHeader
+            onBack={readOnly ? undefined : closeExpressionEditor}
+          />
+        }
         onChangeClause={handleClauseChange}
         onClose={closeExpressionEditor}
         initialExpressionClause={initialExpressionClause}
+        readOnly={readOnly}
       />
     );
   }
@@ -358,7 +373,6 @@ export function AggregationPicker({
       maxHeight={Infinity}
       itemTestId="dimension-list-item"
       globalSearch
-      fuzzySearch
     />
   );
 }
@@ -413,7 +427,7 @@ function renderItemIcon(item: Item) {
       >
         <span aria-label={t`More info`}>
           <PopoverDefaultIcon name="empty" size={18} />
-          <PopoverHoverTarget name="info_filled" size={18} />
+          <PopoverHoverTarget name="info" size={18} />
         </span>
       </Popover>
     </Flex>
@@ -435,12 +449,23 @@ function getInitialOperator(
   return operator ?? null;
 }
 
-function isExpressionEditorInitiallyOpen(
-  query: Lib.Query,
-  stageIndex: number,
-  clause: Lib.AggregationClause | undefined,
-  operators: Lib.AggregationOperator[],
-): boolean {
+function isExpressionEditorInitiallyOpen({
+  query,
+  stageIndex,
+  clause,
+  operators,
+  readOnly,
+}: {
+  query: Lib.Query;
+  stageIndex: number;
+  clause: Lib.AggregationClause | undefined;
+  operators: Lib.AggregationOperator[];
+  readOnly?: boolean;
+}): boolean {
+  if (readOnly) {
+    return true;
+  }
+
   if (!clause) {
     return false;
   }

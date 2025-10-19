@@ -8,7 +8,7 @@ redirect_from:
 
 > To get fast, reliable, and secure deployment with none of the work or hidden costs that come with self-hosting, check out [Metabase Cloud](https://www.metabase.com/cloud/).
 
-Metabase provides an official Docker image via Dockerhub that can be used for deployments on any system that is running Docker.
+Metabase provides an official Docker image via Docker Hub that can be used for deployments on any system that is running Docker.
 
 If you're trying to upgrade your Metabase version on Docker, check out these [upgrading instructions](upgrading-metabase.md).
 

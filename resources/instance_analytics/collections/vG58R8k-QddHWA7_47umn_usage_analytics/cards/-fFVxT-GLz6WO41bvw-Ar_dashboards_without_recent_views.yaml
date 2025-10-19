@@ -23,8 +23,6 @@ parameter_mappings: []
 dataset_query:
   database: Internal Metabase Database
   query:
-    expression-idents:
-      Days since last view: expression_-fFVxT-GLz6WO41bvw-Ar@0__Days since last view
     expressions:
       Days since last view:
       - datetime-diff
@@ -96,7 +94,6 @@ dataset_query:
         - base-type: type/Text
           join-alias: Last content viewed at - Entity Qualified
       fields: none
-      ident: join_-fFVxT-GLz6WO41bvw-Ar@0__Last content viewed at - Entity Qualified
       source-table: tKEl86EXMyTDIoO9nyFTV
       strategy: left-join
     limit: 100

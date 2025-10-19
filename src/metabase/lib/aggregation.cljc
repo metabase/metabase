@@ -1,5 +1,5 @@
 (ns metabase.lib.aggregation
-  (:refer-clojure :exclude [count distinct max min var])
+  (:refer-clojure :exclude [count distinct max min var select-keys mapv #?(:clj doseq) #?(:clj for)])
   (:require
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
@@ -13,13 +13,15 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [select-keys mapv #?(:clj doseq) #?(:clj for)]]))
 
 (mu/defn column-metadata->aggregation-ref :- :mbql.clause/aggregation
   "Given `:metadata/column` column metadata for an aggregation, construct an `:aggregation` reference."
@@ -32,33 +34,53 @@
     (assert ag-uuid "Metadata for an aggregation reference should include :lib/source-uuid")
     [:aggregation options ag-uuid]))
 
+(declare aggregations)
+
+(mu/defn resolve-aggregation-by-name :- ::lib.schema.aggregation/aggregation
+  "Attempt to find an aggregation with `ag-name`. This is mostly for dealing with super broken `:field` refs in
+  parameters that do stuff like `[:field \"count\" nil]` inside [[metabase.lib.field.resolution]]."
+  ([query stage-number ag-name]
+   (resolve-aggregation-by-name query stage-number (aggregations query stage-number) ag-name))
+
+  ([query stage-number ags ag-name :- :string]
+   (m/find-first
+    (fn [aggregation]
+      (= (lib.metadata.calculation/column-name query stage-number aggregation) ag-name))
+    ags)))
+
 (mu/defn resolve-aggregation :- ::lib.schema.aggregation/aggregation
   "Resolve an aggregation with a specific `ag-uuid`."
-  [query        :- ::lib.schema/query
-   stage-number :- :int
-   ag-uuid      :- :string]
-  (let [{aggregations :aggregation} (lib.util/query-stage query stage-number)
-        found (m/find-first (comp #{ag-uuid} :lib/uuid second) aggregations)]
-    (when-not found
-      (throw (ex-info (i18n/tru "No aggregation with uuid {0}" ag-uuid)
-                      {:uuid         ag-uuid
-                       :query        query
-                       :stage-number stage-number})))
-    found))
+  [query                                                                :- ::lib.schema/query
+   stage-number                                                         :- :int
+   [_tag {source-name :lib/source-name, :as _opts} ag-uuid, :as ag-ref] :- :mbql.clause/aggregation]
+  (let [ags (aggregations query stage-number)]
+    (when (empty? ags)
+      (throw (ex-info (lib.util/format "There are no aggregations in stage %d" stage-number)
+                      {:query query, :stage-number stage-number, :ref ag-ref})))
+    (or (m/find-first #(= (lib.options/uuid %) ag-uuid) ags)
+        (when source-name
+          (resolve-aggregation-by-name query stage-number ags source-name))
+        (throw (ex-info (if source-name
+                          (i18n/tru "No aggregation with uuid {0} or source name {1}" (pr-str ag-uuid) (pr-str source-name))
+                          (i18n/tru "No aggregation with uuid {0}" (pr-str ag-uuid)))
+                        {:uuid            ag-uuid
+                         :lib/source-name source-name
+                         :query           query
+                         :stage-number    stage-number})))))
 
 (defmethod lib.metadata.calculation/describe-top-level-key-method :aggregation
   [query stage-number _k]
-  (when-let [aggregations (not-empty (:aggregation (lib.util/query-stage query stage-number)))]
+  (when-let [ags (not-empty (:aggregation (lib.util/query-stage query stage-number)))]
     (lib.util/join-strings-with-conjunction
      (i18n/tru "and")
-     (for [aggregation aggregations]
+     (for [aggregation ags]
        (lib.metadata.calculation/display-name query stage-number aggregation :long)))))
 
 (defmethod lib.metadata.calculation/metadata-method :aggregation
   [query
    stage-number
-   [_ag {:keys [base-type effective-type display-name], agg-name :name, :as _opts} index, :as _aggregation-ref]]
-  (let [aggregation (resolve-aggregation query stage-number index)]
+   [_ag {:keys [base-type effective-type display-name], agg-name :name, :as _opts} _uuid, :as ag-ref]]
+  (let [aggregation (resolve-aggregation query stage-number ag-ref)]
     (merge
      (lib.metadata.calculation/metadata query stage-number aggregation)
      {:lib/source :source/aggregations
@@ -75,8 +97,8 @@
 ;;; TODO -- merge this stuff into `defop` somehow.
 
 (defmethod lib.metadata.calculation/display-name-method :aggregation
-  [query stage-number [_tag _opts index] style]
-  (lib.metadata.calculation/display-name query stage-number (resolve-aggregation query stage-number index) style))
+  [query stage-number ag-ref style]
+  (lib.metadata.calculation/display-name query stage-number (resolve-aggregation query stage-number ag-ref) style))
 
 (lib.hierarchy/derive ::count-aggregation ::aggregation)
 
@@ -159,8 +181,11 @@
     :sum       "sum"
     :var       "var"))
 
-(defmethod lib.metadata.calculation/display-name-method ::unary-aggregation
-  [query stage-number [tag _opts arg] style]
+(mu/defmethod lib.metadata.calculation/display-name-method ::unary-aggregation
+  [query
+   stage-number
+   [tag _opts arg] :- [:ref ::lib.schema.mbql-clause/clause]
+   style]
   (let [arg (lib.metadata.calculation/display-name query stage-number arg style)]
     (case tag
       :avg       (i18n/tru "Average of {0}"            arg)
@@ -235,8 +260,7 @@
      ;; This might be an inner aggregation expression without an ident of its own, but that's fine since we're only
      ;; here for its type!
      (select-keys (lib.metadata.calculation/metadata query stage-number first-arg) [:settings :semantic-type]))
-   ((get-method lib.metadata.calculation/metadata-method :default) query stage-number clause)
-   {:ident (lib.options/ident clause)}))
+   ((get-method lib.metadata.calculation/metadata-method :default) query stage-number clause)))
 
 (lib.common/defop count       [] [x])
 (lib.common/defop cum-count   [] [x])
@@ -301,7 +325,7 @@
                               (-> metadata
                                   (u/assoc-default :effective-type (or (:base-type metadata) :type/*))
                                   (assoc :lib/source      :source/aggregations
-                                         :lib/source-uuid (lib.options/uuid  aggregation))))))))))
+                                         :lib/source-uuid (lib.options/uuid aggregation))))))))))
 
 (def ^:private OperatorWithColumns
   [:merge
@@ -333,8 +357,7 @@
 
   ([query :- ::lib.schema/query
     stage-number :- :int]
-   (let [stage (lib.util/query-stage query stage-number)
-         columns (lib.metadata.calculation/visible-columns query stage-number stage)
+   (let [columns (lib.metadata.calculation/visible-columns query stage-number)
          with-columns (fn [{:keys [requires-column? supported-field] :as operator}]
                         (cond
                           (not requires-column?)
@@ -446,9 +469,8 @@
   ([query :- ::lib.schema/query
     stage-number :- :int
     aggregation-position :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]]
-   (let [stage (lib.util/query-stage query stage-number)
-         agg-cols (aggregations-metadata query stage-number)
-         columns (into (vec (lib.metadata.calculation/visible-columns query stage-number stage))
+   (let [agg-cols (aggregations-metadata query stage-number)
+         columns (into (vec (lib.metadata.calculation/visible-columns query stage-number))
                        (cond->> agg-cols
                          aggregation-position (keep-indexed (fn [i a]
                                                               (when (not= i aggregation-position)
@@ -456,6 +478,6 @@
      (not-empty columns))))
 
 (defmethod lib.metadata.calculation/type-of-method :aggregation
-  [query stage-number [_aggregation _opts agg-uuid, :as _aggregation-ref]]
-  (let [expression (resolve-aggregation query stage-number agg-uuid)]
+  [query stage-number ag-ref]
+  (let [expression (resolve-aggregation query stage-number ag-ref)]
     (lib.metadata.calculation/type-of query stage-number expression)))

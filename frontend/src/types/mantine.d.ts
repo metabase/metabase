@@ -12,6 +12,8 @@ declare module "@mantine/core" {
    *
    * Refer to [https://v6.mantine.dev/theming/theme-object/#other]
    **/
-  export interface MantineThemeOther extends EmbeddingThemeOptions {}
+  export interface MantineThemeOther extends EmbeddingThemeOptions {
+    colorScheme: "light" | "dark";
+  }
   export interface MantineTheme extends _EmotionCompatibilityTheme {}
 }

@@ -31,9 +31,9 @@ import type {
   DatasetColumn,
   DatetimeUnit,
   Parameter,
-  ParameterValueOrArray,
+  ParameterValuesMap,
   QuestionDashboardCard,
-  UserAttribute,
+  UserAttributeMap,
 } from "metabase-types/api";
 import { isImplicitActionClickBehavior } from "metabase-types/guards";
 
@@ -65,8 +65,8 @@ export function getDataFromClicked({
 }: {
   extraData?: {
     dashboard?: Dashboard;
-    parameterValuesBySlug?: Record<string, ParameterValueOrArray>;
-    userAttributes?: Record<UserAttribute, UserAttribute> | null;
+    parameterValuesBySlug?: ParameterValuesMap;
+    userAttributes?: UserAttributeMap | null;
   };
   dimensions?: DimensionType[];
   data?: (ClickObjectDataRow & {

@@ -1,16 +1,20 @@
 import { t } from "ttag";
 
+import { useUpdateSettingsMutation } from "metabase/api";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { useSetting } from "metabase/common/hooks";
 import {
   Button,
   Card,
   CopyButton,
+  Flex,
+  HoverCard,
   Icon,
   Radio,
   Stack,
   Text,
 } from "metabase/ui";
+import type { SettingKey } from "metabase-types/api";
 
 import { trackEmbedWizardCodeCopied } from "../analytics";
 import { useSdkIframeEmbedSetupContext } from "../context";
@@ -18,6 +22,7 @@ import { useSdkIframeEmbedSnippet } from "../hooks/use-sdk-iframe-embed-snippet"
 
 export const GetCodeStep = () => {
   const { settings, updateSettings } = useSdkIframeEmbedSetupContext();
+  const [updateInstanceSettings] = useUpdateSettingsMutation();
 
   const isJwtEnabled = useSetting("jwt-enabled");
   const isSamlEnabled = useSetting("saml-enabled");
@@ -30,6 +35,20 @@ export const GetCodeStep = () => {
   const snippet = useSdkIframeEmbedSnippet();
 
   const authType = settings.useExistingUserSession ? "user-session" : "sso";
+
+  const handleCodeSnippetCopied = () => {
+    // Embed Flow: track code copied
+    trackEmbedWizardCodeCopied(
+      settings.useExistingUserSession ? "user_session" : "sso",
+    );
+
+    // Embedding Hub: track step completion
+    const settingKey: SettingKey = settings.useExistingUserSession
+      ? "embedding-hub-test-embed-snippet-created"
+      : "embedding-hub-production-embed-snippet-created";
+
+    updateInstanceSettings({ [settingKey]: true });
+  };
 
   return (
     <Stack gap="md">
@@ -54,8 +73,28 @@ export const GetCodeStep = () => {
             <Stack gap="sm">
               <Radio
                 value="user-session"
-                // eslint-disable-next-line no-literal-metabase-strings -- this string is only shown for admins.
-                label={t`Existing Metabase Session`}
+                label={
+                  <Flex align="center" gap="xs">
+                    {/* eslint-disable-next-line no-literal-metabase-strings -- this string is only shown for admins. */}
+                    <Text>{t`Existing Metabase session`}</Text>
+                    <HoverCard position="bottom">
+                      <HoverCard.Target>
+                        <Icon
+                          name="info"
+                          size={14}
+                          c="text-medium"
+                          cursor="pointer"
+                        />
+                      </HoverCard.Target>
+                      <HoverCard.Dropdown>
+                        <Text size="sm" p="md" style={{ width: 300 }}>
+                          {/* eslint-disable-next-line no-literal-metabase-strings -- this string is only shown for admins. */}
+                          {t`This option lets you test Embedded Analytics JS locally using your existing Metabase session cookie. This only works for testing locally, using your admin account and on this browser. This may not work on Safari and Firefox. We recommend testing this in Chrome.`}
+                        </Text>
+                      </HoverCard.Dropdown>
+                    </HoverCard>
+                  </Flex>
+                }
               />
 
               <Radio
@@ -65,13 +104,6 @@ export const GetCodeStep = () => {
               />
             </Stack>
           </Radio.Group>
-
-          {authType === "user-session" && (
-            <Text size="sm" c="text-medium">
-              {/* eslint-disable-next-line no-literal-metabase-strings -- this string is only shown for admins. */}
-              {t`This option lets you test iframe embedding locally using your existing Metabase session cookie. This only works for testing locally, using your admin account and on this browser.`}
-            </Text>
-          )}
 
           {authType === "sso" && (
             <Text size="sm" c="text-medium">
@@ -83,16 +115,18 @@ export const GetCodeStep = () => {
 
       <Card p="md">
         <Text size="lg" fw="bold" mb="md">
-          {t`Embed Code`}
+          {t`Embed code`}
         </Text>
 
         <Stack gap="sm">
-          <CodeEditor
-            language="html"
-            value={snippet}
-            readOnly
-            lineNumbers={false}
-          />
+          <div onCopy={handleCodeSnippetCopied}>
+            <CodeEditor
+              language="html"
+              value={snippet}
+              readOnly
+              lineNumbers={false}
+            />
+          </div>
 
           <CopyButton value={snippet}>
             {({ copied, copy }: { copied: boolean; copy: () => void }) => (
@@ -100,10 +134,10 @@ export const GetCodeStep = () => {
                 leftSection={<Icon name="copy" size={16} />}
                 onClick={() => {
                   copy();
-                  trackEmbedWizardCodeCopied();
+                  handleCodeSnippetCopied();
                 }}
               >
-                {copied ? t`Copied!` : t`Copy Code`}
+                {copied ? t`Copied!` : t`Copy code`}
               </Button>
             )}
           </CopyButton>

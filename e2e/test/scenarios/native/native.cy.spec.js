@@ -207,7 +207,7 @@ describe("scenarios > question > native", () => {
           .findByLabelText("Parameter widget label")
           .type(" updated")
           .blur();
-        H.filterWidget().should("have.text", "Unit updated");
+        H.filterWidget({ name: "Unit updated" }).should("exist");
       });
 
       it("should handle required prop for time grouping", () => {
@@ -578,8 +578,9 @@ describe("scenarios > question > native", () => {
     cy.button("Preview the query").click();
     cy.wait("@datasetNative");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/where CATEGORY='Gadget'/).should("be.visible");
+    H.modal().within(() => {
+      H.codeMirrorValue().should("contain", "CATEGORY = 'Gadget'");
+    });
   });
 
   it("should show errors when previewing a query", () => {
@@ -753,7 +754,7 @@ describe("scenarios > question > native", () => {
 });
 
 // causes error in cypress 13
-describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
+describe("no native access", { tags: ["@external", "@skip"] }, () => {
   beforeEach(() => {
     H.restore("postgres-12");
     cy.signInAsAdmin();

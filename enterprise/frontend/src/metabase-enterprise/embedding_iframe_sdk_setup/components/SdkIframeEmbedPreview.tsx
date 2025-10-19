@@ -1,91 +1,203 @@
-import { useEffect, useRef, useState } from "react";
+import {
+  createElement,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useSearchParam } from "react-use";
-import _ from "underscore";
+import { match } from "ts-pattern";
 
 import { useSetting } from "metabase/common/hooks";
-import { Box } from "metabase/ui";
-import type { MetabaseEmbed } from "metabase-enterprise/embedding_iframe_sdk/embed";
+import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
+import { colors as defaultMetabaseColors } from "metabase/lib/colors";
+import { Card } from "metabase/ui";
+import { METABASE_CONFIG_IS_PROXY_FIELD_NAME } from "metabase-enterprise/embedding_iframe_sdk/constants";
+// we import the equivalent of embed.js so that we don't add extra loading time
+// by appending the script
+import { setupConfigWatcher } from "metabase-enterprise/embedding_iframe_sdk/embed";
+import type { SdkIframeEmbedBaseSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
+import { getDerivedDefaultColorsForEmbedFlow } from "../utils/derived-colors-for-embed-flow";
+import { getConfigurableThemeColors } from "../utils/theme-colors";
 
-import S from "./SdkIframeEmbedSetup.module.css";
+import { EmbedPreviewLoadingOverlay } from "./EmbedPreviewLoadingOverlay";
+import S from "./SdkIframeEmbedPreview.module.css";
 
 declare global {
   interface Window {
-    "metabase.embed": { MetabaseEmbed: typeof MetabaseEmbed };
+    metabaseConfig?: Partial<SdkIframeEmbedBaseSettings> & {
+      [METABASE_CONFIG_IS_PROXY_FIELD_NAME]?: boolean;
+    };
   }
 }
 
 export const SdkIframeEmbedPreview = () => {
-  const [isIframeLoaded, setIsIframeLoaded] = useState(false);
+  const { settings } = useSdkIframeEmbedSetupContext();
+  const [isLoading, setIsLoading] = useState(true);
 
-  const { settings, isEmbedSettingsLoaded } = useSdkIframeEmbedSetupContext();
-
-  const embedJsRef = useRef<MetabaseEmbed | null>(null);
   const localeOverride = useSearchParam("locale");
-  const scriptRef = useRef<HTMLScriptElement | null>(null);
 
   const instanceUrl = useSetting("site-url");
+  const applicationColors = useSetting("application-colors");
 
-  useEffect(
-    () => {
-      if (isEmbedSettingsLoaded) {
-        const script = document.createElement("script");
+  const containerRef = useRef<HTMLDivElement>(null);
 
-        script.src = `${instanceUrl}/app/embed.js`;
-        document.body.appendChild(script);
+  const defineMetabaseConfig = useCallback(
+    (metabaseConfig: SdkIframeEmbedBaseSettings) => {
+      window.metabaseConfig = metabaseConfig;
 
-        script.onload = () => {
-          const { MetabaseEmbed } = window["metabase.embed"];
-
-          embedJsRef.current = new MetabaseEmbed({
-            ...settings,
-
-            target: "#iframe-embed-container",
-            iframeClassName: S.EmbedPreviewIframe,
-            useExistingUserSession: true,
-            instanceUrl,
-
-            ...(localeOverride ? { locale: localeOverride } : {}),
-          });
-
-          embedJsRef.current.addEventListener("ready", () =>
-            setIsIframeLoaded(true),
-          );
-        };
-
-        scriptRef.current = script;
+      if (!window.metabaseConfig[METABASE_CONFIG_IS_PROXY_FIELD_NAME]) {
+        setupConfigWatcher();
       }
-
-      return () => {
-        embedJsRef.current?.destroy();
-        scriptRef.current?.remove();
-      };
     },
+    [],
+  );
+  const cleanupMetabaseConfig = useCallback(() => {
+    if (window.metabaseConfig) {
+      delete window.metabaseConfig;
+    }
+  }, []);
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- settings are synced via useEffect below
-    [isEmbedSettingsLoaded],
+  const derivedTheme = useMemo(() => {
+    // TODO(EMB-696): There is a bug in the SDK where if we set the theme back to undefined,
+    // some color will not be reset to the default (e.g. text color, CSS variables).
+    // We can remove this block once EMB-696 is fixed.
+    const defaultTheme: MetabaseTheme = {
+      colors: Object.fromEntries(
+        getConfigurableThemeColors().map((color) => [
+          color.key,
+          applicationColors?.[color.originalColorKey] ??
+            defaultMetabaseColors[color.originalColorKey],
+        ]),
+      ),
+    };
+
+    return getDerivedDefaultColorsForEmbedFlow(
+      settings.theme ?? defaultTheme,
+      applicationColors ?? undefined,
+    );
+  }, [applicationColors, settings.theme]);
+
+  const metabaseConfig = useMemo(
+    () => ({
+      instanceUrl,
+      theme: derivedTheme,
+      ...(localeOverride ? { locale: localeOverride } : {}),
+      useExistingUserSession: true,
+    }),
+    [instanceUrl, localeOverride, derivedTheme],
   );
 
-  useEffect(() => {
-    if (embedJsRef.current && isIframeLoaded) {
-      embedJsRef.current.updateSettings({
-        // Clear the existing experiences.
-        // This is necessary as `updateSettings` merges new settings with existing ones.
-        template: undefined,
-        questionId: undefined,
-        dashboardId: undefined,
+  // initial configuration, needed so that the element finds the config on first render
+  if (!window.metabaseConfig?.instanceUrl) {
+    defineMetabaseConfig(metabaseConfig);
+  }
 
-        // We must always use user sessions in the preview.
-        // We never use SSO in the preview as that adds complexity.
-        ..._.omit(settings, ["useExistingUserSession"]),
-      });
+  useEffect(() => {
+    defineMetabaseConfig(metabaseConfig);
+  }, [metabaseConfig, defineMetabaseConfig]);
+
+  useEffect(
+    () => () => {
+      cleanupMetabaseConfig();
+    },
+    [cleanupMetabaseConfig],
+  );
+
+  // Show a "fake" loading indicator when componentName changes.
+  // Embed JS has its own loading indicator, but it shows up after the iframe loads.
+  useEffect(() => {
+    if (containerRef.current) {
+      const embed = containerRef.current.querySelector(settings.componentName);
+      const handleReady = () => setIsLoading(false);
+
+      if (embed) {
+        setIsLoading(true);
+        embed.addEventListener("ready", handleReady);
+
+        return () => {
+          embed.removeEventListener("ready", handleReady);
+        };
+      }
     }
-  }, [settings, isIframeLoaded]);
+  }, [settings.componentName]);
 
   return (
-    <div>
-      <Box id="iframe-embed-container" data-iframe-loaded={isIframeLoaded} />
-    </div>
+    <Card
+      className={S.EmbedPreviewIframe}
+      id="iframe-embed-container"
+      bg={settings.theme?.colors?.background}
+      h="100%"
+      ref={containerRef}
+      pos="relative"
+    >
+      {match(settings)
+        .with(
+          { componentName: "metabase-question", template: "exploration" },
+          (s) =>
+            createElement("metabase-question", {
+              "question-id": "new",
+              "is-save-enabled": s.isSaveEnabled,
+              "target-collection": s.targetCollection,
+              "entity-types": s.entityTypes
+                ? JSON.stringify(s.entityTypes)
+                : undefined,
+            }),
+        )
+        .with({ componentName: "metabase-question" }, (s) =>
+          createElement("metabase-question", {
+            "question-id": s.questionId,
+            drills: s.drills,
+            "with-title": s.withTitle,
+            "with-downloads": s.withDownloads,
+            "is-save-enabled": s.isSaveEnabled,
+            "target-collection": s.targetCollection,
+            "entity-types": s.entityTypes
+              ? JSON.stringify(s.entityTypes)
+              : undefined,
+            "initial-sql-parameters": s.initialSqlParameters
+              ? JSON.stringify(s.initialSqlParameters)
+              : undefined,
+            "hidden-parameters": s.hiddenParameters
+              ? JSON.stringify(s.hiddenParameters)
+              : undefined,
+          }),
+        )
+        .with({ componentName: "metabase-dashboard" }, (s) =>
+          createElement("metabase-dashboard", {
+            "dashboard-id": s.dashboardId,
+            drills: s.drills,
+            "with-title": s.withTitle,
+            "with-downloads": s.withDownloads,
+            "initial-parameters": s.initialParameters
+              ? JSON.stringify(s.initialParameters)
+              : undefined,
+            "hidden-parameters": s.hiddenParameters
+              ? JSON.stringify(s.hiddenParameters)
+              : undefined,
+          }),
+        )
+        .with({ componentName: "metabase-browser" }, (s) =>
+          createElement("metabase-browser", {
+            "read-only": s.readOnly,
+            "initial-collection": s.initialCollection,
+            "collection-visible-columns": s.collectionVisibleColumns
+              ? JSON.stringify(s.collectionVisibleColumns)
+              : undefined,
+          }),
+        )
+        .with({ componentName: "metabase-metabot" }, (s) =>
+          createElement("metabase-metabot", { layout: s.layout }),
+        )
+        .exhaustive()}
+
+      <EmbedPreviewLoadingOverlay
+        isVisible={isLoading}
+        bg={settings.theme?.colors?.background}
+      />
+    </Card>
   );
 };

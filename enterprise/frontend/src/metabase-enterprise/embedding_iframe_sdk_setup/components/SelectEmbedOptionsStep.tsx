@@ -1,31 +1,141 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
+import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
-import { ColorPillPicker } from "metabase/common/components/ColorPicker";
-import { useSetting } from "metabase/common/hooks";
 import type { MetabaseColors } from "metabase/embedding-sdk/theme";
-import { colors as defaultMetabaseColors } from "metabase/lib/colors";
-import type { ColorName } from "metabase/lib/colors/types";
-import { Card, Checkbox, Divider, Group, Stack, Text } from "metabase/ui";
+import { Card, Checkbox, Divider, Stack, Text } from "metabase/ui";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
 
+import { ColorCustomizationSection } from "./ColorCustomizationSection";
+import { MetabotLayoutSetting } from "./MetabotLayoutSetting";
 import { ParameterSettings } from "./ParameterSettings";
 
 export const SelectEmbedOptionsStep = () => {
-  const { experience, settings, updateSettings } =
-    useSdkIframeEmbedSetupContext();
+  return (
+    <Stack gap="md">
+      <BehaviorSection />
+      <ParametersSection />
+      <AppearanceSection />
+    </Stack>
+  );
+};
 
-  const applicationColors = useSetting("application-colors");
+const BehaviorSection = () => {
+  const { settings, updateSettings } = useSdkIframeEmbedSetupContext();
+
+  const behaviorSection = useMemo(() => {
+    return match(settings)
+      .with({ template: "exploration" }, (settings) => (
+        <Checkbox
+          label={t`Allow people to save new questions`}
+          checked={settings.isSaveEnabled}
+          onChange={(e) => updateSettings({ isSaveEnabled: e.target.checked })}
+        />
+      ))
+      .with(
+        { componentName: "metabase-question", questionId: P.nonNullable },
+        (settings) => (
+          <Stack gap="md">
+            <Checkbox
+              label={t`Allow people to drill through on data points`}
+              checked={settings.drills}
+              onChange={(e) => updateSettings({ drills: e.target.checked })}
+            />
+
+            <Checkbox
+              label={t`Allow downloads`}
+              checked={settings.withDownloads}
+              onChange={(e) =>
+                updateSettings({ withDownloads: e.target.checked })
+              }
+            />
+
+            <Checkbox
+              label={t`Allow people to save new questions`}
+              checked={settings.isSaveEnabled}
+              onChange={(e) =>
+                updateSettings({ isSaveEnabled: e.target.checked })
+              }
+            />
+          </Stack>
+        ),
+      )
+      .with(
+        { componentName: "metabase-dashboard", dashboardId: P.nonNullable },
+        (settings) => (
+          <Stack gap="md">
+            <Checkbox
+              label={t`Allow people to drill through on data points`}
+              checked={settings.drills}
+              onChange={(e) => updateSettings({ drills: e.target.checked })}
+            />
+
+            <Checkbox
+              label={t`Allow downloads`}
+              checked={settings.withDownloads}
+              onChange={(e) =>
+                updateSettings({ withDownloads: e.target.checked })
+              }
+            />
+          </Stack>
+        ),
+      )
+      .with({ componentName: "metabase-browser" }, (settings) => (
+        <Checkbox
+          label={t`Allow editing dashboards and questions`}
+          checked={!settings.readOnly}
+          onChange={(e) => updateSettings({ readOnly: !e.target.checked })}
+        />
+      ))
+      .otherwise(() => null);
+  }, [settings, updateSettings]);
+
+  if (behaviorSection === null) {
+    return null;
+  }
+
+  return (
+    <Card p="md">
+      <Text size="lg" fw="bold" mb="md">
+        {t`Behavior`}
+      </Text>
+
+      {behaviorSection}
+    </Card>
+  );
+};
+
+const ParametersSection = () => {
+  const { experience } = useSdkIframeEmbedSetupContext();
+
+  if (experience !== "dashboard" && experience !== "chart") {
+    return null;
+  }
+
+  return (
+    <Card p="md">
+      <Text size="lg" fw="bold" mb="xs">
+        {t`Parameters`}
+      </Text>
+
+      <Text size="sm" c="text-medium" mb="lg">
+        {experience === "dashboard"
+          ? t`Set default values and control visibility`
+          : t`Set default values`}
+      </Text>
+
+      <ParameterSettings />
+    </Card>
+  );
+};
+
+const AppearanceSection = () => {
+  const { settings, updateSettings } = useSdkIframeEmbedSetupContext();
 
   const { theme } = settings;
 
-  const isQuestionOrDashboardEmbed =
-    settings.dashboardId || settings.questionId;
-
-  const isExplorationEmbed = settings.template === "exploration";
-
-  const updateColor = useCallback(
+  const updateColors = useCallback(
     (nextColors: Partial<MetabaseColors>) => {
       updateSettings({
         theme: { ...theme, colors: { ...theme?.colors, ...nextColors } },
@@ -34,131 +144,38 @@ export const SelectEmbedOptionsStep = () => {
     [theme, updateSettings],
   );
 
-  const isDashboardOrInteractiveQuestion =
-    settings.dashboardId ||
-    (settings.questionId && settings.isDrillThroughEnabled);
+  const appearanceSection = match(settings)
+    .with({ template: "exploration" }, () => null)
+    .with({ componentName: "metabase-metabot" }, () => <MetabotLayoutSetting />)
+    .with(
+      { componentName: P.union("metabase-question", "metabase-dashboard") },
+      (settings) => {
+        const label = match(settings.componentName)
+          .with("metabase-dashboard", () => t`Show dashboard title`)
+          .with("metabase-question", () => t`Show chart title`)
+          .exhaustive();
+
+        return (
+          <Checkbox
+            label={label}
+            checked={settings.withTitle}
+            onChange={(e) => updateSettings({ withTitle: e.target.checked })}
+          />
+        );
+      },
+    )
+    .otherwise(() => null);
 
   return (
-    <Stack gap="md">
-      <Card p="md">
-        <Text size="lg" fw="bold" mb="md">
-          {t`Behavior`}
-        </Text>
-        <Stack gap="md">
-          {isQuestionOrDashboardEmbed && (
-            <Checkbox
-              label={t`Allow users to drill through on data points`}
-              checked={settings.isDrillThroughEnabled}
-              onChange={(e) =>
-                updateSettings({ isDrillThroughEnabled: e.target.checked })
-              }
-            />
-          )}
+    <Card p="md">
+      <ColorCustomizationSection
+        theme={theme}
+        onColorChange={updateColors}
+        onColorReset={() => updateSettings({ theme: undefined })}
+      />
 
-          {isDashboardOrInteractiveQuestion && (
-            <Checkbox
-              label={t`Allow downloads`}
-              checked={settings.withDownloads}
-              onChange={(e) =>
-                updateSettings({ withDownloads: e.target.checked })
-              }
-            />
-          )}
-
-          {isExplorationEmbed && (
-            <Checkbox
-              label={t`Allow users to save new questions`}
-              checked={settings.isSaveEnabled}
-              onChange={(e) =>
-                updateSettings({ isSaveEnabled: e.target.checked })
-              }
-            />
-          )}
-        </Stack>
-      </Card>
-
-      {isQuestionOrDashboardEmbed && (
-        <Card p="md">
-          <Text size="lg" fw="bold" mb="xs">
-            {t`Parameters`}
-          </Text>
-
-          <Text size="sm" c="text-medium" mb="lg">
-            {t`Set default values and control visibility`}
-          </Text>
-
-          <ParameterSettings />
-        </Card>
-      )}
-
-      <Card p="md">
-        <Text size="lg" fw="bold" mb="lg">
-          {t`Appearance`}
-        </Text>
-
-        <Group align="start" gap="xl" mb="lg">
-          {getConfigurableThemeColors().map(
-            ({ key, name, originalColorKey }) => {
-              // Use the default from appearance settings.
-              // If not set, use the default Metabase color.
-              const originalColor =
-                applicationColors?.[originalColorKey] ??
-                defaultMetabaseColors[originalColorKey];
-
-              return (
-                <Stack gap="xs" align="start" key={key}>
-                  <Text size="sm" fw="bold">
-                    {name}
-                  </Text>
-
-                  <ColorPillPicker
-                    onChange={(color) => updateColor({ [key]: color })}
-                    initialColor={theme?.colors?.[key]}
-                    originalColor={originalColor}
-                  />
-                </Stack>
-              );
-            },
-          )}
-        </Group>
-
-        {isDashboardOrInteractiveQuestion && (
-          <>
-            <Divider mb="md" />
-
-            <Checkbox
-              label={t`Show ${experience} title`}
-              checked={settings.withTitle}
-              onChange={(e) => updateSettings({ withTitle: e.target.checked })}
-            />
-          </>
-        )}
-      </Card>
-    </Stack>
+      {appearanceSection && <Divider mt="lg" mb="md" />}
+      {appearanceSection}
+    </Card>
   );
 };
-
-const getConfigurableThemeColors = () =>
-  [
-    {
-      name: t`Brand Color`,
-      key: "brand",
-      originalColorKey: "brand",
-    },
-    {
-      name: t`Text Color`,
-      key: "text-primary",
-      originalColorKey: "text-dark",
-    },
-    {
-      name: t`Background Color`,
-      key: "background",
-      originalColorKey: "bg-white",
-    },
-  ] as const satisfies {
-    name: string;
-    key: keyof MetabaseColors;
-
-    // Populate colors from appearance settings.
-    originalColorKey: ColorName;
-  }[];

@@ -1,8 +1,9 @@
 import type {
   MetabaseColor,
   MetabaseColors,
+  MetabaseComponentTheme,
 } from "metabase/embedding-sdk/theme";
-import { colors } from "metabase/lib/colors";
+import { colorConfig, colors } from "metabase/lib/colors";
 import type { ColorName, ColorPalette } from "metabase/lib/colors/types";
 
 import { getEmbeddingChartColors } from "./get-embedding-chart-colors";
@@ -24,9 +25,11 @@ export type SemanticColorKey =
   | "text-brand"
   | "text-white"
   | "background"
+  | "background-hover"
   | "background-selected"
   | "background-disabled"
   | "background-inverse"
+  | "background-light"
   | "background-brand"
   | "brand-light"
   | "brand-lighter";
@@ -49,12 +52,35 @@ export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   "text-secondary": ["text-medium", "text-secondary"],
   "text-tertiary": ["text-light", "text-tertiary"],
   background: ["bg-white", "background"],
-  "background-hover": ["bg-light"],
+  "background-hover": ["bg-light", "background-hover"],
   "background-secondary": ["bg-medium"],
   "background-disabled": ["background-disabled"],
+  "background-light": ["background-light"],
   shadow: ["shadow"],
   positive: ["success"],
   negative: ["danger"],
+  "text-white": ["text-white", "white"],
+  error: ["error"],
+  "background-error": ["bg-error"],
+  "text-hover": ["text-hover"],
+};
+
+/**
+ * These colors must never be changed.
+ * For example, the blue Metabase brand color.
+ **/
+export const SDK_UNCHANGEABLE_COLORS: (ColorName | SemanticColorKey)[] = [
+  "metabase-brand",
+];
+
+export const SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING: Record<
+  keyof NonNullable<MetabaseComponentTheme["tooltip"]>,
+  ColorName
+> = {
+  textColor: "tooltip-text",
+  secondaryTextColor: "tooltip-text-secondary",
+  backgroundColor: "tooltip-background",
+  focusedBackgroundColor: "tooltip-background-focused",
 };
 
 const originalColors = { ...colors };
@@ -106,5 +132,22 @@ export function setGlobalEmbeddingColors(
 
   Object.entries(combinedThemeColors).forEach(([key, value]) => {
     colors[key as ColorName] = value;
+  });
+
+  // Also set overrides on the color config, this way when we
+  // set up the mantine theme colors, we will grab apropriate app palette colors as well 🥺
+  Object.entries(combinedThemeColors).forEach(([key, value]) => {
+    colorConfig[key as ColorName] = { light: value, dark: value };
+  });
+
+  /**
+   * (EMB-696)
+   * Reset colors set previously that's now not passed in `sdkColors`.
+   * Otherwise, previously modified colors will persist, and won't be reset to default values.
+   */
+  Object.keys(colors).forEach((key) => {
+    if (!combinedThemeColors[key as ColorName]) {
+      delete colors[key as ColorName];
+    }
   });
 }

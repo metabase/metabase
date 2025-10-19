@@ -539,7 +539,7 @@
         table             (sync/create-table! db {:name         table-name
                                                   :schema       (not-empty schema)
                                                   :display_name display-name})
-        _set_is_upload    (t2/update! :model/Table (:id table) {:is_upload true})
+        _set_is_upload    (t2/update! :model/Table (:id table) {:is_upload true, :data_authority :authoritative, :is_writable true})
         _sync             (scan-and-sync-table! db table)
         _set_names        (set-display-names! (:id table) columns)
         ;; Set the display_name of the auto-generated primary key column to the same as its name, so that if users
@@ -744,9 +744,9 @@
 
 (defn- only-table-id
   "For models that depend on only one table, return its id, otherwise return nil. Doesn't support native queries."
-  [model]
+  [{query :dataset_query, :as model}]
   ; dataset_query can be empty in tests
-  (when-let [query (queries/card->lib-query model)]
+  (when-let [query (not-empty query)]
     (when (and (mbql? model) (no-joins? query))
       (lib/source-table-id query))))
 

@@ -39,6 +39,7 @@ import {
 import { getVisualizerSeriesCardIndex } from "metabase/visualizer/utils";
 import type { CardId } from "metabase-types/api";
 
+import { useTooltipMouseLeave } from "./use-tooltip-mouse-leave";
 import {
   getHoveredEChartsSeriesDataKeyAndIndex,
   getHoveredSeriesDataKey,
@@ -46,6 +47,7 @@ import {
 
 export const useChartEvents = (
   chartRef: React.MutableRefObject<EChartsType | undefined>,
+  containerRef: React.RefObject<HTMLDivElement>,
   chartModel: BaseCartesianChartModel,
   timelineEventsModel: TimelineEventsModel | null,
   option: EChartsCoreOption,
@@ -70,6 +72,7 @@ export const useChartEvents = (
   }: VisualizationProps,
 ) => {
   const isBrushing = useRef<boolean>();
+  useTooltipMouseLeave(chartRef, onHoverChange, containerRef);
 
   const onOpenQuestion = useCallback(
     (cardId?: CardId) => {
@@ -409,13 +412,11 @@ export const useChartEvents = (
         cardId: seriesModel.cardId,
         dimensions,
         settings,
+        element: event.currentTarget,
       };
 
       if (hasBreakout && visualizationIsClickable(clickData)) {
-        onVisualizationClick({
-          ...clickData,
-          element: event.currentTarget,
-        });
+        onVisualizationClick(clickData);
       } else if (isDashboard) {
         onOpenQuestion(seriesModel.cardId);
       }

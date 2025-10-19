@@ -1,4 +1,6 @@
 .Root {
+  flex-shrink: 0;
+
   &:hover {
     background-color: var(--mb-color-brand-lighter) !important;
   }

@@ -39,7 +39,7 @@
   message)
 
 (defmethod channel/render-notification [:channel/metabase-test :notification/testing]
-  [_channel-type notification-info _template _recipients]
+  [_channel-type notification-info _handler]
   [notification-info])
 
 (defmethod notification.payload/payload :notification/testing

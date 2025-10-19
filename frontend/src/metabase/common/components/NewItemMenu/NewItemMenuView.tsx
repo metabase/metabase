@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "metabase/plugins";
+import { PLUGIN_DOCUMENTS } from "metabase/plugins";
 import { setOpenModal } from "metabase/redux/ui";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Icon, Menu } from "metabase/ui";
@@ -65,11 +65,11 @@ const NewItemMenuView = ({
           key="native"
           component={ForwardRefLink}
           to={Urls.newQuestion({
-            type: "native",
+            DEPRECATED_RAW_MBQL_type: "native",
             creationType: "native_question",
             collectionId,
             cardType: "question",
-            databaseId: lastUsedDatabaseId || undefined,
+            DEPRECATED_RAW_MBQL_databaseId: lastUsedDatabaseId || undefined,
           })}
           leftSection={<Icon name="sql" />}
         >
@@ -90,16 +90,15 @@ const NewItemMenuView = ({
       </Menu.Item>,
     );
 
-    // This is a non-standard way of feature gating, akin to using hasPremiumFeature. Do not do this for more complex setups.
-    if (PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.shouldShowEmbedInNewItemMenu()) {
+    if (PLUGIN_DOCUMENTS.shouldShowDocumentInNewItemMenu()) {
       items.push(
         <Menu.Item
-          key="embed"
+          key="document"
           component={ForwardRefLink}
-          to="/embed-iframe"
-          leftSection={<Icon name="embed" />}
+          to="/document/new"
+          leftSection={<Icon name="document" />}
         >
-          {t`Embed`}
+          {t`Document`}
         </Menu.Item>,
       );
     }
@@ -109,8 +108,8 @@ const NewItemMenuView = ({
     hasDataAccess,
     hasNativeWrite,
     collectionId,
-    hasDatabaseWithJsonEngine,
     lastUsedDatabaseId,
+    hasDatabaseWithJsonEngine,
     dispatch,
   ]);
 

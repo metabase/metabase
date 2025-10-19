@@ -5,6 +5,7 @@ import Draggable from "react-draggable";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import type { VisualizationSettings } from "metabase-types/api";
 
 import { PivotTableCell, ResizeHandle } from "./PivotTable.styled";
@@ -20,7 +21,6 @@ interface CellProps {
   isBody?: boolean;
   isBold?: boolean;
   isEmphasized?: boolean;
-  isNightMode?: boolean;
   isBorderedHeader?: boolean;
   isTransparent?: boolean;
   hasTopBorder?: boolean;
@@ -36,7 +36,6 @@ interface CellProps {
   isBody?: boolean;
   isBold?: boolean;
   isEmphasized?: boolean;
-  isNightMode?: boolean;
   isBorderedHeader?: boolean;
   isTransparent?: boolean;
   hasTopBorder?: boolean;
@@ -53,7 +52,6 @@ export function Cell({
   isBody = false,
   isBold,
   isEmphasized,
-  isNightMode,
   isBorderedHeader,
   isTransparent,
   hasTopBorder,
@@ -67,7 +65,6 @@ export function Cell({
     <PivotTableCell
       data-allow-page-break-after
       data-testid="pivot-table-cell"
-      isNightMode={isNightMode}
       isBold={isBold}
       isEmphasized={isEmphasized}
       isBorderedHeader={isBorderedHeader}
@@ -126,7 +123,6 @@ type CellClickHandler = (
 interface TopHeaderCellProps {
   item: HeaderItem;
   style: React.CSSProperties;
-  isNightMode: boolean;
   getCellClickHandler: CellClickHandler;
   onResize?: (newWidth: number) => void;
 }
@@ -134,19 +130,19 @@ interface TopHeaderCellProps {
 export const TopHeaderCell = ({
   item,
   style,
-  isNightMode,
   getCellClickHandler,
   onResize,
 }: TopHeaderCellProps) => {
   const { value, hasChildren, clicked, isSubtotal, maxDepthBelow, span } = item;
+
+  const tc = useTranslateContent();
 
   return (
     <Cell
       style={{
         ...style,
       }}
-      value={value}
-      isNightMode={isNightMode}
+      value={tc(value)}
       isBorderedHeader={maxDepthBelow === 0}
       isEmphasized={hasChildren}
       isBold={isSubtotal}
@@ -165,7 +161,6 @@ type LeftHeaderCellProps = TopHeaderCellProps & {
 export const LeftHeaderCell = ({
   item,
   style,
-  isNightMode,
   getCellClickHandler,
   rowIndex,
   settings,
@@ -180,7 +175,6 @@ export const LeftHeaderCell = ({
         ...style,
         ...(depth === 0 ? { paddingLeft: LEFT_HEADER_LEFT_SPACING } : {}),
       }}
-      isNightMode={isNightMode}
       value={value}
       isEmphasized={isSubtotal}
       isBold={isSubtotal}
@@ -205,7 +199,6 @@ export const LeftHeaderCell = ({
 interface BodyCellProps {
   style: React.CSSProperties;
   rowSection: BodyItem[];
-  isNightMode: boolean;
   getCellClickHandler: CellClickHandler;
   cellWidths: number[];
   showTooltip?: boolean;
@@ -214,7 +207,6 @@ interface BodyCellProps {
 export const BodyCell = ({
   style,
   rowSection,
-  isNightMode,
   getCellClickHandler,
   cellWidths,
   showTooltip = true,
@@ -225,7 +217,6 @@ export const BodyCell = ({
         ({ value, isSubtotal, clicked, backgroundColor }, index) => {
           return (
             <Cell
-              isNightMode={isNightMode}
               key={index}
               style={{
                 flexBasis: cellWidths[index],

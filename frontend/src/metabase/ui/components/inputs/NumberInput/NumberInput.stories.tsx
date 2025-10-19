@@ -1,3 +1,5 @@
+import { fn } from "@storybook/test";
+
 import { Icon, Stack } from "metabase/ui";
 
 import { NumberInput, type NumberInputProps } from "./";
@@ -12,6 +14,7 @@ const args = {
   disabled: false,
   readOnly: false,
   withAsterisk: false,
+  onChange: fn(),
 };
 
 const sampleArgs = {

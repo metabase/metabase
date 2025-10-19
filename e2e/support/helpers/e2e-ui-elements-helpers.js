@@ -56,7 +56,7 @@ export function entityPickerModalLevel(level) {
 /**
  *
  * @param {number} level
- * @param {string} name
+ * @param {string | RegExp} name
  */
 export function entityPickerModalItem(level, name) {
   return entityPickerModalLevel(level).findByText(name).parents("a");
@@ -151,7 +151,9 @@ export function notificationList() {
 /**
  * Get the `fieldset` HTML element that we use as a filter widget container.
  *
- * @param {boolean} isEditing - whether dashboard editing mode is enabled
+ * @param {Object} options
+ * @param {boolean} [options.isEditing] - whether dashboard editing mode is enabled
+ * @param {string} [options.name] - the name of the filter widget to get
  *
  * @returns HTMLFieldSetElement
  *
@@ -169,10 +171,12 @@ export function notificationList() {
  * @todo Add the ability to alias the chosen filter widget.
  * @todo Extract into a separate helper file.
  */
-export function filterWidget({ isEditing = false } = {}) {
-  return cy.findAllByTestId(
-    isEditing ? "editing-parameter-widget" : "parameter-widget",
-  );
+export function filterWidget({ isEditing = false, name = null } = {}) {
+  const selector = isEditing ? "editing-parameter-widget" : "parameter-widget";
+
+  return name != null
+    ? cy.findAllByTestId(selector).filter(`:contains(${name})`)
+    : cy.findAllByTestId(selector);
 }
 
 export function clearFilterWidget(index = 0) {
@@ -621,4 +625,16 @@ export function mapPinIcon() {
 
 export function waitForLoaderToBeRemoved() {
   cy.findByTestId("loading-indicator").should("not.exist");
+}
+
+export function leaveConfirmationModal() {
+  return cy.findByTestId("leave-confirmation");
+}
+
+export function ensureParameterColumnValue({ columnName, columnValue }) {
+  tableInteractiveBody().within(() => {
+    cy.get(`[data-column-id="${columnName}"]`).each((cell) => {
+      cy.wrap(cell).should("have.text", columnValue);
+    });
+  });
 }

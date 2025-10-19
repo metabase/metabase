@@ -11,7 +11,7 @@ const defaultSettings = {
 
 export const setupEmailEndpoints = (settings = defaultSettings) => {
   fetchMock.put("path:/api/email", settings);
-  fetchMock.post("path:/api/email/test", 204);
+  fetchMock.post("path:/api/email/test", 204, { name: "email-test" });
   fetchMock.delete("path:/api/email", 204);
 };
 

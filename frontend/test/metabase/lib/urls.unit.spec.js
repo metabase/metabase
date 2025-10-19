@@ -192,9 +192,9 @@ describe("urls", () => {
       });
 
       it("should return correct metadata editor URL", () => {
-        expect(
-          modelEditor({ id: 1, name: "Order" }, { type: "metadata" }),
-        ).toBe("/model/1-order/metadata");
+        expect(modelEditor({ id: 1, name: "Order" }, { type: "columns" })).toBe(
+          "/model/1-order/columns",
+        );
       });
 
       it("should handle missing name", () => {

@@ -1,7 +1,7 @@
 import { setupTranslateContentStringSpy } from "__support__/content-translation";
 import { screen, waitFor } from "__support__/ui";
 
-import { setup } from "./setup";
+import { setup } from "./setup.spec";
 
 describe("ParameterWidget (EE with token, in static embedding)", () => {
   describe("content translation", () => {
@@ -22,9 +22,9 @@ describe("ParameterWidget (EE with token, in static embedding)", () => {
         ],
       });
       await waitFor(() => {
-        expect(screen.getByTestId("field-set-legend")).toHaveTextContent(
-          "Text enthält",
-        );
+        expect(
+          screen.getByTestId("parameter-value-widget-target"),
+        ).toHaveTextContent("Text enthält");
       });
       expect(translateContentStringSpy()).toHaveBeenCalled();
     });

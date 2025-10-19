@@ -14,7 +14,7 @@ Verify that the application you created in your IdP supports SAML. Sometimes oth
 
 ## Is the issuer or Entity ID correct?
 
-After filling out the authentication form with your identity provider, you're taken back to Metabase but it throws an error. To see the error, go to **Admin settings** > **Troubleshooting** > **Logs**. You'll see an error that says something like **Incorrect response <issuer\>**.
+After filling out the authentication form with your identity provider, you're taken back to Metabase but it throws an error. To see the error, go to **Admin settings** > **Tools** > **Logs**. You'll see an error that says something like **Incorrect response <issuer\>**.
 
 **Root cause**: Your issuer or Entity ID is incorrect.
 
@@ -22,14 +22,14 @@ After filling out the authentication form with your identity provider, you're ta
 
 1. You should have received an XML file of metadata from your identity provider. Open that metadata file, and look for the correct issuer or Entity ID. This ID is a unique identifier for the identity provider. Depending on your provider, the issuer or Entity ID usually looks something like this:
    ```
-   http://www.example.com/141xkex604w0Q5PN724v
+   https://www.example.com/141xkex604w0Q5PN724v
    ```
 2. Copy the issuer or Entity ID from the XML file.
 3. Go to Metabase and select **Admin settings** > **Settings** > **Authentication** > **SAML**. Enter the issuer or Entity ID into the **SAML Identity Provider Issuer** field.
 
 ## Is the SAML identity provider certificate value correct?
 
-After filling out the authentication form with your identity provider, you go back to Metabase but it throws an error. Go to **Admin settings** > **Troubleshooting** > **Logs**. You'll see an error that says something like **Invalid assertion error <issuer\>**.
+After filling out the authentication form with your identity provider, you go back to Metabase but it throws an error. Go to **Admin settings** > **Tools** > **Logs**. You'll see an error that says something like **Invalid assertion error <issuer\>**.
 
 **Root cause**: The certificate value you entered is incorrect.
 

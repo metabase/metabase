@@ -199,7 +199,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
 // This class shows up only when card title is already re-rendered.
 // That's why we don't have to wait for a specific XHR, but this works only for SCALAR questions.
 function clickScalarCardTitle(card_name) {
-  cy.findByTestId("scalar-title").contains(card_name).click();
+  H.dashboardGrid().findByText(card_name).click();
 }
 
 function addCardToNewDashboard(dashboard_name, card_id) {

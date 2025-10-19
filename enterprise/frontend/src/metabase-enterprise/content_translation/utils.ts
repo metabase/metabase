@@ -1,15 +1,21 @@
 import * as I from "icepick";
 import { useCallback, useMemo } from "react";
+import { match } from "ts-pattern";
 import _ from "underscore";
 
 import type { ContentTranslationFunction } from "metabase/i18n/types";
 import type { HoveredObject } from "metabase/visualizations/types";
-import type { DictionaryArray, Series } from "metabase-types/api";
+import type {
+  DictionaryArray,
+  MaybeTranslatedSeries,
+  RowValue,
+  Series,
+} from "metabase-types/api";
 
 import { hasTranslations, useTranslateContent } from "./use-translate-content";
 
 export type TranslateContentStringFunction = <
-  MsgidType = string | null | undefined,
+  MsgidType = string | boolean | null | undefined,
 >(
   dictionary: DictionaryArray | undefined,
   locale: string | undefined,
@@ -26,22 +32,28 @@ export type TranslateContentStringFunction = <
 export const translateContentString: TranslateContentStringFunction = (
   dictionary,
   locale,
-  msgid,
+  rawMsgid,
 ) => {
   if (!locale) {
-    return msgid;
+    return rawMsgid;
   }
 
-  if (typeof msgid !== "string") {
-    return msgid;
+  if (typeof rawMsgid !== "string" && typeof rawMsgid !== "boolean") {
+    return rawMsgid;
   }
+
+  // Boolean values are matched against the dictionary as strings
+  const msgid = typeof rawMsgid === "boolean" ? rawMsgid.toString() : rawMsgid;
 
   if (!msgid.trim()) {
     return msgid;
   }
 
+  const lowerCaseMsgId = msgid.toLowerCase();
+
   const msgstr = dictionary?.find(
-    (row) => row.locale === locale && row.msgid === msgid,
+    (row) =>
+      row.locale === locale && row.msgid.toLowerCase() === lowerCaseMsgId,
   )?.msgstr;
 
   if (!msgstr || !msgstr.trim()) {
@@ -113,7 +125,7 @@ export const useTranslateFieldValuesInHoveredObject = (
 export const translateFieldValuesInSeries = (
   series: Series,
   tc: ContentTranslationFunction,
-) => {
+): MaybeTranslatedSeries => {
   if (!hasTranslations(tc)) {
     return series;
   }
@@ -121,12 +133,50 @@ export const translateFieldValuesInSeries = (
     if (!singleSeries.data) {
       return singleSeries;
     }
-    const translatedRows = singleSeries.data.rows.map((row) =>
-      row.map((value) => tc(value)),
-    );
+    const untranslatedRows = singleSeries.data.rows.concat();
+
+    const translatedRows: RowValue[][] = match(singleSeries.card?.display)
+      .with("pie", () => {
+        const pieRows =
+          singleSeries.card.visualization_settings?.["pie.rows"] ?? [];
+        const keyToNameMap = Object.fromEntries(
+          pieRows.map((row) => [row.key, row.name]),
+        );
+
+        // The pie chart relies on the rows to generate its legend,
+        // which is why we need to translate them too
+        // They're in the format of:
+        // [
+        //   ["Doohickey", 123],
+        //   ["Widget", 456],
+        //   ...
+        // ]
+        //
+        return singleSeries.data.rows.map((row) =>
+          row.map((value) => {
+            if (
+              typeof value === "string" &&
+              keyToNameMap[value] !== undefined
+            ) {
+              return tc(keyToNameMap[value]);
+            }
+            return tc(value);
+          }),
+        );
+      })
+      .otherwise(() => {
+        return singleSeries.data.rows.map((row) =>
+          row.map((value) => tc(value)),
+        );
+      });
+
     return {
       ...singleSeries,
-      data: { ...singleSeries.data, rows: translatedRows },
+      data: {
+        ...singleSeries.data,
+        untranslatedRows,
+        rows: translatedRows,
+      },
     };
   });
 };

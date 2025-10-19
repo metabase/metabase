@@ -40,6 +40,28 @@ describe("useListKeyboardNavigation", () => {
     expect(list.some(getRef)).toBeFalsy();
   });
 
+  it("does nothing on key down if no list items", () => {
+    const onEnterMock = jest.fn();
+    const { result } = renderHook(() =>
+      useListKeyboardNavigation<unknown>({ list: [], onEnter: onEnterMock }),
+    );
+    const { selectedItem, cursorIndex } = result.current;
+
+    expect(selectedItem).toBeNull();
+    expect(cursorIndex).toBeNull();
+
+    fireKey("ArrowDown");
+    expect(result.current.selectedItem).toBeNull();
+    expect(result.current.cursorIndex).toBeNull();
+
+    fireKey("ArrowUp");
+    expect(result.current.selectedItem).toBeNull();
+    expect(result.current.cursorIndex).toBeNull();
+
+    fireKey("Enter");
+    expect(onEnterMock).not.toHaveBeenCalled();
+  });
+
   it("navigates list downwards", () => {
     const { result } = renderHook(() =>
       useListKeyboardNavigation<unknown>({ list, onEnter: jest.fn() }),

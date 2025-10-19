@@ -6,7 +6,7 @@ import type { StructuredQuestionDetails } from "e2e/support/helpers";
 const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("issue 43075", () => {
-  const questionDetails: H.StructuredQuestionDetails = {
+  const questionDetails: StructuredQuestionDetails = {
     query: {
       "source-table": PRODUCTS_ID,
       aggregation: [["count"]],
@@ -37,7 +37,7 @@ describe("issue 43075", () => {
 });
 
 describe("issue 41133", () => {
-  const questionDetails: H.StructuredQuestionDetails = {
+  const questionDetails: StructuredQuestionDetails = {
     query: {
       "source-table": PRODUCTS_ID,
     },
@@ -493,5 +493,41 @@ describe("issue 54755", () => {
     H.createQuestion(questionDetails, { visitQuestion: true });
     cy.icon("warning").should("not.exist");
     cy.findByTestId("visualization-placeholder").should("be.visible");
+  });
+});
+
+describe("issue 63026", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should show tooltips with reasonable width for pie charts with long text labels (metabase#63026)", () => {
+    const query = `select '${"a".repeat(1000)}' as category, 45 as count
+union all select 'Short name', 25 as count
+union all select 'Medium length category', 30 as count`;
+
+    H.visitQuestionAdhoc({
+      display: "pie",
+      dataset_query: {
+        type: "native",
+        native: {
+          query,
+        },
+        database: SAMPLE_DB_ID,
+      },
+      visualization_settings: {
+        "pie.show_labels": true,
+      },
+    });
+
+    H.chartPathWithFillColor("#88BF4D").trigger("mousemove");
+
+    cy.get("[data-testid='echarts-tooltip']")
+      .should("be.visible")
+      .then(($tooltip) => {
+        const width = $tooltip.width();
+        expect(width).to.be.lte(550);
+      });
   });
 });

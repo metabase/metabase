@@ -69,8 +69,6 @@ export interface DatasetColumn {
   binning_info?: BinningMetadata | null;
   settings?: Record<string, any>;
   fingerprint?: FieldFingerprint | null;
-  ident?: string;
-  "model/inner_ident"?: string;
 
   // model with customized metadata
   fk_target_field_id?: FieldId | null;
@@ -100,7 +98,7 @@ export interface DatasetData {
 }
 
 export type JsonQuery = DatasetQuery & {
-  parameters?: unknown[];
+  parameters?: Parameter[];
   "cache-strategy"?: CacheStrategy & {
     /** An ISO 8601 date */
     "invalidated-at"?: string;
@@ -138,6 +136,7 @@ export type DatasetError =
 export type DatasetErrorType =
   | "invalid-query"
   | "missing-required-parameter"
+  | "missing-required-permissions"
   | string;
 
 export interface EmbedDatasetData {
@@ -178,10 +177,21 @@ export type SingleSeries = {
    * COLUMN_2, etc.) to their original values (count, avg, etc.).
    */
   columnValuesMapping?: Record<string, VisualizerColumnValueSource[]>;
-} & Pick<Dataset, "data" | "error" | "started_at">;
+} & Pick<Dataset, "error" | "started_at" | "data">;
+
+export type SingleSeriesWithTranslation = SingleSeries & {
+  data: Dataset["data"] & {
+    /**
+     * The original, untranslated rows for this series (if any).
+     * Undefined if no translation occured.
+     */
+    untranslatedRows?: RowValues[];
+  };
+};
 
 export type RawSeries = SingleSeries[];
 export type TransformedSeries = RawSeries & { _raw: Series };
+export type MaybeTranslatedSeries = SingleSeriesWithTranslation[];
 export type Series = RawSeries | TransformedSeries;
 
 export type TemplateTagId = string;

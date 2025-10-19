@@ -240,6 +240,24 @@ describe("applyParameter", () => {
           "ID is between -9223372036854775808 and 9223372036854775807",
       },
       {
+        type: "number/between",
+        target: getFilterColumnTarget("ORDERS", "ID"),
+        value: [1],
+        expectedDisplayName: "ID is greater than or equal to 1",
+      },
+      {
+        type: "number/between",
+        target: getFilterColumnTarget("ORDERS", "ID"),
+        value: [1, null],
+        expectedDisplayName: "ID is greater than or equal to 1",
+      },
+      {
+        type: "number/between",
+        target: getFilterColumnTarget("ORDERS", "ID"),
+        value: [null, 2],
+        expectedDisplayName: "ID is less than or equal to 2",
+      },
+      {
         type: "id",
         target: getFilterColumnTarget("ORDERS", "IS_TRIAL"),
         value: [true],

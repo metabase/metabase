@@ -7,6 +7,7 @@
 }
 
 .DashCardActionsPanelContainer {
+  min-width: fit-content;
   padding: 0.125em 0.25em;
   background: var(--mb-color-bg-dashboard-card);
   transform: translateY(-50%);

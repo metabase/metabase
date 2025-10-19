@@ -1,5 +1,5 @@
 (ns metabase.lib.filter
-  (:refer-clojure :exclude [filter and or not = < <= > >= not-empty case])
+  (:refer-clojure :exclude [filter and or not = < <= > >= not-empty case every? some mapv #?(:clj doseq) #?(:clj for)])
   (:require
    [inflections.core :as inflections]
    [medley.core :as m]
@@ -27,6 +27,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.number :as u.number]
+   [metabase.util.performance :refer [every? some mapv #?(:clj doseq) #?(:clj for)]]
    [metabase.util.time :as u.time]))
 
 (doseq [tag [:and :or]]
@@ -119,7 +120,7 @@
       [(_ :guard #{:!= :not-in}) _ [:get-year _ (a :guard temporal?)] (b :guard int?)]
       (i18n/tru "{0} excludes {1}" (->unbucketed-display-name a) (u.time/format-unit b :year))
 
-      [(op :guard #{:= :in :!= :not-in}) _ [(f :guard #{:get-hour :get-month :get-quarter :get-year}) _ (a :guard temporal?)] & (args :guard #(every? int? %))]
+      [(op :guard #{:= :in :!= :not-in}) _ [(f :guard #{:get-hour :get-month :get-quarter :get-year}) _ (a :guard temporal?)] & (args :guard (every? int? args))]
       (i18n/tru "{0} {1} {2} {3} selections"
                 (->unbucketed-display-name a)
                 (if (#{:= :in} op) "is one of" "excludes")
@@ -348,7 +349,7 @@
 (lib.common/defop during [t v unit])
 (lib.common/defop segment [segment-id])
 
-(mu/defn- add-filter-to-stage
+(mu/defn add-filter-to-stage
   "Add a new filter clause to a `stage`, ignoring it if it is a duplicate clause (ignoring :lib/uuid)."
   [stage      :- ::lib.schema/stage
    new-filter :- [:maybe ::lib.schema.expression/boolean]]
@@ -468,11 +469,10 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int]
-   (let [stage (lib.util/query-stage query stage-number)
-         columns (sequence
+   (let [columns (sequence
                   (comp (map add-column-operators)
                         (clojure.core/filter :operators))
-                  (lib.metadata.calculation/visible-columns query stage-number stage))
+                  (lib.metadata.calculation/visible-columns query stage-number))
          existing-filters (filters query stage-number)]
      (cond
        (empty? columns)
@@ -515,8 +515,7 @@
     stage-number :- :int
     a-filter-clause :- ::lib.schema.expression/boolean]
    (let [[op _ first-arg] a-filter-clause
-         stage   (lib.util/query-stage query stage-number)
-         columns (lib.metadata.calculation/visible-columns query stage-number stage)
+         columns (lib.metadata.calculation/visible-columns query stage-number)
          col     (lib.equality/find-matching-column query stage-number first-arg columns)]
      (clojure.core/or (m/find-first #(clojure.core/= (:short %) op)
                                     (lib.filter.operator/filter-operators col))
@@ -532,11 +531,12 @@
   ([query         :- ::lib.schema/query
     stage-number  :- :int
     legacy-filter :- some?]
-   (let [legacy-filter    (mbql.normalize/normalize-fragment [:query :filter] legacy-filter)
+   (let [legacy-filter    #_{:clj-kondo/ignore [:deprecated-var]} (mbql.normalize/normalize-fragment [:query :filter] legacy-filter)
          query-filters    (vec (filters query stage-number))
-         matching-filters (clojure.core/filter #(clojure.core/= (mbql.normalize/normalize-fragment
-                                                                 [:query :filter]
-                                                                 (lib.convert/->legacy-MBQL %))
+         matching-filters (clojure.core/filter #(clojure.core/= #_{:clj-kondo/ignore [:deprecated-var]}
+                                                 (mbql.normalize/normalize-fragment
+                                                  [:query :filter]
+                                                  (lib.convert/->legacy-MBQL %))
                                                                 legacy-filter)
                                                query-filters)]
      (when (seq matching-filters)
@@ -577,8 +577,7 @@
     stage-number :- :int
     a-filter-clause :- ::lib.schema.expression/boolean]
    (let [[op options first-arg & rest-args] a-filter-clause
-         stage   (lib.util/query-stage query stage-number)
-         columns (lib.metadata.calculation/visible-columns query stage-number stage)
+         columns (lib.metadata.calculation/visible-columns query stage-number)
          col     (lib.equality/find-matching-column query stage-number first-arg columns)]
      {:lib/type :mbql/filter-parts
       :operator (clojure.core/or (m/find-first #(clojure.core/= (:short %) op)

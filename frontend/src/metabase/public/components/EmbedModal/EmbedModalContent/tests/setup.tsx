@@ -1,11 +1,15 @@
 import { Route } from "react-router";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupTokenStatusEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import type { EmbedResource } from "metabase/public/lib/types";
 import type { TokenFeatures } from "metabase-types/api";
-import { createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockTokenFeatures,
+  createMockUser,
+} from "metabase-types/api/mocks";
 
 import type { EmbedModalContentProps } from "../EmbedModalContent";
 import { EmbedModalContent } from "../EmbedModalContent";
@@ -21,6 +25,7 @@ export interface SetupOpts {
   props?: Partial<EmbedModalContentProps>;
   hasEnterprisePlugins?: boolean;
   tokenFeatures?: TokenFeatures;
+  isHosted?: boolean;
 }
 
 export function setup(
@@ -47,7 +52,8 @@ export function setup(
       onDeletePublicLink = jest.fn(),
     } = {},
     hasEnterprisePlugins,
-    tokenFeatures,
+    tokenFeatures = createMockTokenFeatures(),
+    isHosted,
   }: SetupOpts = {
     props: {},
   },
@@ -56,13 +62,19 @@ export function setup(
     "token-features": tokenFeatures,
     "enable-embedding-static": enableEmbeddingStatic,
     "enable-embedding-interactive": enableEmbeddingInteractive,
+    "enable-embedding-simple": enableEmbeddingInteractive,
     "enable-embedding-sdk": enableEmbeddingSdk,
     "embedding-secret-key": "my_super_secret_key",
+    "is-hosted?": isHosted ?? false,
   });
 
   if (hasEnterprisePlugins) {
     setupEnterprisePlugins();
   }
+
+  setupTokenStatusEndpoint({
+    valid: true,
+  });
 
   const view = renderWithProviders(
     <Route

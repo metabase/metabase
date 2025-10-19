@@ -20,8 +20,10 @@
    [clojure.data :as data]
    [metabase.analyze.core :as analyze]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.models.interface :as mi]
-   [metabase.query-processor.store :as qp.store]
+   ;; legacy usage -- don't do things like this going forward
+   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
@@ -78,7 +80,7 @@
 
   ([field       :- i/FieldInstance
     {:keys [exists-name]}
-    fingerprint :- [:maybe analyze/Fingerprint]]
+    fingerprint :- [:maybe ::lib.schema.metadata.fingerprint/fingerprint]]
    (sync-util/with-error-handling (format "Error classifying %s" (sync-util/name-for-logging field))
      (let [classified (analyze/run-classifiers field fingerprint)
            would-be-name? (= (:semantic_type classified) :type/Name)

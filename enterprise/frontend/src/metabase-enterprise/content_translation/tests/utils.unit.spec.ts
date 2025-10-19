@@ -2,6 +2,7 @@ import type { HoveredObject } from "metabase/visualizations/types";
 import type { DatasetColumn, DictionaryArray } from "metabase-types/api";
 import { createMockColumn, createMockSeries } from "metabase-types/api/mocks";
 
+import { leaveUntranslated } from "../use-translate-content";
 import {
   translateCardNames,
   translateContentString,
@@ -101,13 +102,13 @@ describe("content translation utils", () => {
       ).toBe("Whitespace Translation");
     });
 
-    it("should handle case sensitivity", () => {
+    it("should be case insensitive for msgid (metabase#61795)", () => {
       expect(translateContentString(mockDictionary, "es", "hello")).toBe(
-        "hello",
-      ); // no match
-      expect(translateContentString(mockDictionary, "ES", "Hello")).toBe(
-        "Hello",
-      ); // no match
+        "Hola",
+      );
+      expect(translateContentString(mockDictionary, "es", "WORLD")).toBe(
+        "Mundo",
+      );
     });
   });
 
@@ -400,9 +401,8 @@ describe("content translation utils", () => {
 
     it("should return the original series if no translations are available", () => {
       const series = createMockSeries();
-      const result = translateFieldValuesInSeries(series, mockTC);
+      const result = translateFieldValuesInSeries(series, leaveUntranslated);
       expect(result).toEqual(series);
-      expect(mockTC).not.toHaveBeenCalled();
     });
 
     it("should translate all columns in the series", () => {

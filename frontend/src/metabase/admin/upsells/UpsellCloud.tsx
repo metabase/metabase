@@ -25,7 +25,7 @@ export const UpsellCloud = ({
       campaign="cloud"
       buttonText={t`Try for free`}
       source={source}
-      onOpenModal={onOpenModal}
+      onClick={onOpenModal}
       illustrationSrc="app/assets/img/upsell-cloud.png"
     >
       {c("'restores' and 'upgrades' are nouns in plural in this context")

@@ -8,7 +8,6 @@ export const selectOverrides = {
   Select: Select.extend({
     defaultProps: {
       size: "md",
-      maxDropdownHeight: 512,
       withScrollArea: false,
       allowDeselect: false,
       inputWrapperOrder: ["label", "description", "input", "error"],

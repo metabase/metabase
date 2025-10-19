@@ -1,3 +1,7 @@
+import fs from "fs";
+import os from "os";
+import path from "path";
+
 import { FAILURE_EXIT_CODE, SUCCESS_EXIT_CODE } from "./constants/exit-code";
 import CypressBackend from "./cypress-runner-backend";
 import runCypress from "./cypress-runner-run-tests";
@@ -10,11 +14,12 @@ import {
 import { startHostAppContainers } from "./embedding-sdk/host-apps/start-host-app-containers";
 import { startSampleAppContainers } from "./embedding-sdk/sample-apps/start-sample-app-containers";
 
+let tempSampleDBDir: string | null = null;
+
 // if you want to change these, set them as environment variables in your shell
 const userOptions = {
   TEST_SUITE: "e2e", // e2e | component
   MB_EDITION: "ee", // ee | oss
-  ENTERPRISE_TOKEN: "",
   START_CONTAINERS: true,
   STOP_CONTAINERS: false,
   BACKEND_PORT: 4000,
@@ -27,7 +32,6 @@ const userOptions = {
 };
 
 const derivedOptions = {
-  CYPRESS_MB_ALL_FEATURES_TOKEN: userOptions.ENTERPRISE_TOKEN,
   QA_DB_ENABLED: userOptions.START_CONTAINERS,
   BUILD_JAR: userOptions.BACKEND_PORT === 4000,
   START_BACKEND: userOptions.BACKEND_PORT === 4000,
@@ -43,9 +47,16 @@ const options = {
 
 process.env = unBooleanify(options);
 
-if (options.MB_EDITION === "ee" && !options.ENTERPRISE_TOKEN) {
+const missingTokens = [
+  "MB_ALL_FEATURES_TOKEN",
+  "MB_STARTER_CLOUD_TOKEN",
+  "MB_PRO_CLOUD_TOKEN",
+  "MB_PRO_SELF_HOSTED_TOKEN",
+].filter((token) => !process.env[token]);
+
+if (options.MB_EDITION === "ee" && missingTokens.length > 0) {
   printBold(
-    "⚠️ ENTERPRISE_TOKEN is not set. Either set it or run with MB_EDITION=oss",
+    `⚠️ Missing tokens: ${missingTokens.join(", ")}. Either set them or run with MB_EDITION=oss`,
   );
   process.exit(FAILURE_EXIT_CODE);
 }
@@ -53,7 +64,6 @@ if (options.MB_EDITION === "ee" && !options.ENTERPRISE_TOKEN) {
 printBold(`Running Cypress with options:
   - TEST_SUITE         : ${options.TEST_SUITE}
   - MB_EDITION         : ${options.MB_EDITION}
-  - ENTERPRISE_TOKEN   : ${options.ENTERPRISE_TOKEN ? "present" : "<missing>"}
   - START_CONTAINERS   : ${options.START_CONTAINERS}
   - STOP_CONTAINERS    : ${options.STOP_CONTAINERS}
   - BUILD_JAR          : ${options.BUILD_JAR}
@@ -87,6 +97,14 @@ const init = async () => {
         );
         process.exit(FAILURE_EXIT_CODE);
       }
+
+      // Use a temporary copy of the sample db so it won't use and lock the db used for local development
+      tempSampleDBDir = path.join(
+        os.tmpdir(),
+        `metabase-sample-db-e2e-${process.pid}`,
+      );
+      fs.mkdirSync(tempSampleDBDir, { recursive: true });
+      process.env.MB_INTERNAL_DO_NOT_USE_SAMPLE_DB_DIR = tempSampleDBDir;
 
       printBold("⏳ Starting backend");
       await CypressBackend.start();
@@ -141,6 +159,20 @@ const cleanup = async (exitCode: string | number = SUCCESS_EXIT_CODE) => {
   if (options.BUILD_JAR) {
     printBold("⏳ Cleaning up...");
     await CypressBackend.stop();
+  }
+
+  // Add cleanup for the temporary sample database directory
+  if (tempSampleDBDir) {
+    try {
+      fs.rmSync(tempSampleDBDir, { recursive: true, force: true });
+      printBold(
+        `🗑️ Cleaned up temporary sample database directory: ${tempSampleDBDir}`,
+      );
+    } catch (e) {
+      console.error(
+        `Error cleaning up temporary sample database directory: ${e}`,
+      );
+    }
   }
 
   if (options.STOP_CONTAINERS) {

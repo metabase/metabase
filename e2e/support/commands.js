@@ -1,9 +1,12 @@
+import "cypress-iframe";
+
 // this is the only place we allow direct helper import
 // eslint-disable-next-line no-direct-helper-import
 import { H } from "e2e/support";
 
 import "./commands/ui/button";
 import "./commands/ui/icon";
+import "./commands/ui/paste";
 
 import "./commands/user/createUser";
 import "./commands/user/authentication";

@@ -51,12 +51,13 @@ import {
 } from "../analytics";
 import {
   getAutoApplyFiltersToastId,
+  getCurrentDashcards,
   getDashCardById,
   getDashboard,
   getDashboardBeforeEditing,
   getDashboardComplete,
+  getDashboardHeaderParameters,
   getDashboardId,
-  getDashcardList,
   getDashcards,
   getDraftParameterValues,
   getFiltersToReset,
@@ -72,6 +73,7 @@ import {
   hasInlineParameters,
   isDashcardInlineParameter,
   isQuestionDashCard,
+  setDashboardHeaderParameterIndex,
   supportsInlineParameters,
 } from "../utils";
 
@@ -272,7 +274,7 @@ export const setEditingParameter =
     const currentTabId = getSelectedTabId(getState());
     const parameterDashcard = findDashCardForInlineParameter(
       parameterId,
-      getDashcardList(getState()),
+      getCurrentDashcards(getState()),
     );
 
     if (
@@ -407,7 +409,7 @@ export const setParameterMapping = createThunkAction(
   (
     parameterId: ParameterId,
     dashcardId: DashCardId,
-    cardId: CardId,
+    cardId: CardId | null,
     target: ParameterTarget | null,
   ) => {
     return (dispatch, getState) => {
@@ -859,7 +861,8 @@ export const setParameterTemporalUnits = createThunkAction(
         ...parameter,
         temporal_units: temporalUnits,
         default:
-          parameter.default && temporalUnits.includes(parameter.default)
+          parameter.default &&
+          temporalUnits.includes(parameter.default as TemporalUnit)
             ? parameter.default
             : undefined,
       }));
@@ -922,21 +925,22 @@ export const setParameterIndex = createThunkAction(
       return;
     }
 
-    const parameterIndex = _.findIndex(
-      dashboard.parameters,
-      (p) => p.id === parameterId,
+    const headerParameters = getDashboardHeaderParameters(getState());
+    const headerParameterIds = headerParameters.map((p) => p.id);
+
+    dispatch(
+      setDashboardAttributes({
+        id: dashboard.id,
+        attributes: {
+          parameters: setDashboardHeaderParameterIndex(
+            dashboard.parameters,
+            headerParameterIds,
+            parameterId,
+            index,
+          ),
+        },
+      }),
     );
-    if (parameterIndex >= 0) {
-      const parameters = dashboard.parameters.slice();
-      parameters.splice(index, 0, parameters.splice(parameterIndex, 1)[0]);
-      dispatch(
-        setDashboardAttributes({
-          id: dashboard.id,
-          attributes: { parameters },
-        }),
-      );
-    }
-    return { id: parameterId, index };
   },
 );
 
@@ -952,13 +956,11 @@ export const setOrUnsetParameterValues =
   (parameterIdValuePairs: any[][]) =>
   (dispatch: Dispatch, getState: GetState) => {
     const parameterValues = getParameterValues(getState());
+    const areAllSet = parameterIdValuePairs.every(([id, value]) =>
+      _.isEqual(value, parameterValues[id]),
+    );
     parameterIdValuePairs
-      .map(([id, value]) =>
-        setParameterValue(
-          id,
-          _.isEqual(value, parameterValues[id]) ? null : value,
-        ),
-      )
+      .map(([id, value]) => setParameterValue(id, areAllSet ? null : value))
       .forEach(dispatch);
   };
 

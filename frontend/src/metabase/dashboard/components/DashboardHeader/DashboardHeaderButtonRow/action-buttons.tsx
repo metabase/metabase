@@ -75,20 +75,8 @@ export const dashboardActionButtons: Record<
   },
   [DASHBOARD_ACTION.NIGHT_MODE_TOGGLE]: {
     component: () => <NightModeToggleButton />,
-    enabled: ({
-      isEditing,
-      isFullscreen,
-      dashboard,
-      hasNightModeToggle,
-      onNightModeChange,
-    }) =>
-      Boolean(
-        !isEditing &&
-          isFullscreen &&
-          !dashboard.archived &&
-          hasNightModeToggle &&
-          onNightModeChange,
-      ),
+    enabled: ({ isEditing, isFullscreen, dashboard }) =>
+      Boolean(!isEditing && isFullscreen && !dashboard.archived),
   },
   [DASHBOARD_ACTION.FULLSCREEN_TOGGLE]: {
     component: FullscreenToggle,

@@ -23,4 +23,6 @@
    [:desc :mbql.clause/desc]])
 
 (mr/def ::order-bys
-  (lib.schema.util/distinct-ignoring-uuids [:sequential {:min 1} [:ref ::order-by]]))
+  [:and
+   [:sequential {:min 1} [:ref ::order-by]]
+   [:ref ::lib.schema.util/distinct-mbql-clauses]])

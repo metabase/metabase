@@ -1,20 +1,12 @@
 import type { LocationDescriptor } from "history";
 import type { Route } from "react-router";
-import { push } from "react-router-redux";
-import { t } from "ttag";
 
-import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import title from "metabase/hoc/Title";
-import { useDispatch } from "metabase/lib/redux";
-import { PLUGIN_DB_ROUTING } from "metabase/plugins";
 import { Modal } from "metabase/ui";
-import type {
-  DatabaseData,
-  DatabaseEditErrorType,
-  DatabaseId,
-} from "metabase-types/api";
+import type { DatabaseData, DatabaseEditErrorType } from "metabase-types/api";
 
 import { DatabaseEditConnectionForm } from "../components/DatabaseEditConnectionForm";
+import { useDatabaseConnection } from "../hooks/use-database-connection";
 
 import S from "./DatabaseConnectionModal.module.css";
 
@@ -27,42 +19,18 @@ export const DatabaseConnectionModalInner = ({
   location: LocationDescriptor;
   params: { databaseId: string };
 }) => {
-  const dispatch = useDispatch();
-
-  const queryParams = new URLSearchParams(location.search);
-  const preselectedEngine = queryParams.get("engine") ?? undefined;
-
-  const addingNewDatabase = params.databaseId === undefined;
-
-  const databaseReq = useGetDatabaseQuery(
-    addingNewDatabase ? skipToken : { id: parseInt(params.databaseId, 10) },
-  );
-  const database = databaseReq.currentData ?? {
-    id: undefined,
-    is_attached_dwh: false,
-    router_user_attribute: undefined,
-    engine: preselectedEngine,
-  };
-
-  const handleCloseModal = () => {
-    dispatch(
-      database?.id
-        ? push(`/admin/databases/${database.id}`)
-        : push(`/admin/databases`),
-    );
-  };
-
-  const handleOnSubmit = (savedDB: { id: DatabaseId }) => {
-    if (addingNewDatabase) {
-      dispatch(push(`/admin/databases/${savedDB.id}?created=true`));
-    } else {
-      handleCloseModal();
-    }
-  };
+  const {
+    database,
+    databaseReq,
+    handleCancel: handleCloseModal,
+    handleOnSubmit,
+    title,
+    config,
+  } = useDatabaseConnection({ databaseId: params.databaseId });
 
   return (
     <Modal
-      title={addingNewDatabase ? t`Add a database` : t`Edit connection details`}
+      title={title}
       opened
       onClose={handleCloseModal}
       padding="xl"
@@ -79,13 +47,8 @@ export const DatabaseConnectionModalInner = ({
         onSubmitted={handleOnSubmit}
         onCancel={handleCloseModal}
         route={route}
-        config={{
-          engine: {
-            fieldState: database
-              ? PLUGIN_DB_ROUTING.getPrimaryDBEngineFieldState(database)
-              : "disabled",
-          },
-        }}
+        config={config}
+        formLocation="admin"
       />
     </Modal>
   );

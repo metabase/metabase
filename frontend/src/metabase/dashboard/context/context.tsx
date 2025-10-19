@@ -13,9 +13,13 @@ import {
 import { usePrevious, useUnmount } from "react-use";
 import { isEqual, isObject, noop } from "underscore";
 
-import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { getTabHiddenParameterSlugs } from "metabase/public/lib/tab-parameters";
-import type { Dashboard, DashboardCard, DashboardId } from "metabase-types/api";
+import type {
+  Dashboard,
+  DashboardCard,
+  DashboardId,
+  ParameterValuesMap,
+} from "metabase-types/api";
 
 import type { DashboardCardMenu } from "../components/DashCard/DashCardMenu/dashcard-menu";
 import type { NavigateToNewCardFromDashboardOpts } from "../components/DashCard/types";
@@ -23,7 +27,6 @@ import type { DashboardActionKey } from "../components/DashboardHeader/Dashboard
 import {
   useDashboardFullscreen,
   useDashboardRefreshPeriod,
-  useDashboardTheme,
   useRefreshDashboard,
 } from "../hooks";
 import type { UseAutoScrollToDashcardResult } from "../hooks/use-auto-scroll-to-dashcard";
@@ -48,7 +51,7 @@ type DashboardActionButtonList = DashboardActionKey[] | null;
 
 export type DashboardContextOwnProps = {
   dashboardId: DashboardId;
-  parameterQueryParams?: ParameterValues;
+  parameterQueryParams?: ParameterValuesMap;
   onLoad?: (dashboard: Dashboard) => void;
   onError?: (error: unknown) => void;
   onLoadWithoutCards?: (dashboard: Dashboard) => void;
@@ -75,7 +78,6 @@ export type DashboardContextOwnProps = {
 };
 
 export type DashboardContextOwnResult = {
-  shouldRenderAsNightMode: boolean;
   dashboardId: DashboardId | null;
   dashboardActions?: DashboardActionButtonList;
 };
@@ -125,11 +127,11 @@ const DashboardContextProviderInner = forwardRef(
 
       children,
 
+      theme = "light",
       background = true,
       bordered = true,
       titled = true,
       font = null,
-      theme: initTheme = "light",
       hideParameters: hide_parameters = null,
       downloadsEnabled = { pdf: true, results: true },
       autoScrollToDashcardId = undefined,
@@ -147,6 +149,7 @@ const DashboardContextProviderInner = forwardRef(
       isLoading,
       isLoadingWithoutCards,
       parameters,
+      isEmbeddingIframe,
 
       // redux actions
       addCardToDashboard,
@@ -172,29 +175,19 @@ const DashboardContextProviderInner = forwardRef(
     const previousTabId = usePrevious(selectedTabId);
     const previousParameterValues = usePrevious(parameterValues);
 
-    const { refreshDashboard } = useRefreshDashboard({
+    const { refreshDashboardCardData } = useRefreshDashboard({
       dashboardId,
       parameterQueryParams,
     });
 
     const { onRefreshPeriodChange, refreshPeriod, setRefreshElapsedHook } =
-      useDashboardRefreshPeriod({ onRefresh: refreshDashboard });
+      useDashboardRefreshPeriod({ onRefresh: refreshDashboardCardData });
 
     const {
       isFullscreen,
       onFullscreenChange,
       ref: fullscreenRef,
     } = useDashboardFullscreen();
-
-    const {
-      hasNightModeToggle,
-      isNightMode,
-      onNightModeChange,
-      theme,
-      setTheme,
-    } = useDashboardTheme(initTheme);
-
-    const shouldRenderAsNightMode = Boolean(isNightMode && isFullscreen);
 
     const handleError = useCallback(
       (error: unknown) => {
@@ -301,12 +294,6 @@ const DashboardContextProviderInner = forwardRef(
         dashboard
       ) {
         onLoadWithoutCards?.(dashboard);
-        // For whatever reason, isLoading waits for all cards to be loaded but doesn't account for the
-        // fact that there might be no dashcards. So onLoad never triggers when there are no cards,
-        // so this solves that issue for now.
-        if (dashboard?.dashcards.length === 0) {
-          onLoad?.(dashboard);
-        }
       }
     }, [
       previousIsLoadingWithoutCards,
@@ -381,19 +368,14 @@ const DashboardContextProviderInner = forwardRef(
           isFullscreen,
           onFullscreenChange,
           fullscreenRef,
-          hasNightModeToggle,
-          onNightModeChange,
-          isNightMode,
-          shouldRenderAsNightMode,
           refreshPeriod,
           setRefreshElapsedHook,
           onRefreshPeriodChange,
+          theme,
           background,
           bordered,
           titled,
           font,
-          theme,
-          setTheme,
           hideParameters,
           downloadsEnabled,
           autoScrollToDashcardId,
@@ -408,6 +390,7 @@ const DashboardContextProviderInner = forwardRef(
           isNavigatingBackToDashboard,
           parameters,
           parameterValues,
+          isEmbeddingIframe,
 
           // redux actions
           addCardToDashboard,

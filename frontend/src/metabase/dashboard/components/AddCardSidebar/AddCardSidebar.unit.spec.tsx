@@ -232,19 +232,17 @@ describe("AddCardSideBar", () => {
         name: "question in public collection",
         model: "card",
       });
-      fetchMock.get(
-        {
-          url: "path:/api/search",
-          query: {
-            ...baseQuery,
-            q: typedText,
-            filter_items_in_personal_collection: "exclude",
-          },
+      fetchMock.get({
+        url: "path:/api/search",
+        query: {
+          ...baseQuery,
+          q: typedText,
+          filter_items_in_personal_collection: "exclude",
         },
-        {
+        response: {
           data: [questionInPublicCollection],
         },
-      );
+      });
 
       expect(
         await screen.findByText(questionInPublicCollection.name),
@@ -304,19 +302,17 @@ describe("AddCardSideBar", () => {
         name: "question in public collection",
         model: "card",
       });
-      fetchMock.get(
-        {
-          url: "path:/api/search",
-          query: {
-            ...baseQuery,
-            q: typedText,
-            filter_items_in_personal_collection: "exclude",
-          },
+      fetchMock.get({
+        url: "path:/api/search",
+        query: {
+          ...baseQuery,
+          q: typedText,
+          filter_items_in_personal_collection: "exclude",
         },
-        {
+        response: {
           data: [questionInPublicCollection],
         },
-      );
+      });
 
       expect(
         await screen.findByText(questionInPublicCollection.name),
@@ -401,18 +397,16 @@ describe("AddCardSideBar", () => {
         name: "question in personal collection",
         model: "card",
       });
-      fetchMock.get(
-        {
-          url: "path:/api/search",
-          query: {
-            ...baseQuery,
-            q: typedText,
-          },
+      fetchMock.get({
+        url: "path:/api/search",
+        query: {
+          ...baseQuery,
+          q: typedText,
         },
-        {
+        response: {
           data: [questionInPublicCollection, questionInPersonalCollection],
         },
-      );
+      });
 
       expect(
         await screen.findByText(questionInPublicCollection.name),
@@ -423,7 +417,7 @@ describe("AddCardSideBar", () => {
 
       // There's no way to math a URL that a query param is not present
       // with fetch-mock, so we have to assert it manually.
-      const call = fetchMock.lastCall("path:/api/search");
+      const call = fetchMock.callHistory.lastCall("path:/api/search");
       const urlObject = new URL(checkNotNull(call?.request?.url));
       expect(urlObject.pathname).toEqual("/api/search");
       expect(

@@ -8,6 +8,8 @@
    [metabase.search.test-util :as search.tu]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 ;; TODO this is coupled to appdb engines at the moment
 (defn- index-size []
   (t2/count (search.index/active-table)))
@@ -28,12 +30,12 @@
    ;; TODO this is coupled to appdb engines at the moment
     (t2/query (sql.helpers/drop-table (search.index/active-table)))
     (testing "It can recreate the index from scratch"
-      (is (search/reindex!))
+      (is (search/reindex! {:async? false}))
       (let [initial-size (index-size)
             table-name (search.index/active-table)]
         (is (pos? initial-size))
         (t2/delete! table-name (t2/select-one-pk table-name))
         (is (= (dec initial-size) (index-size)))
         (testing "It can cycle the index gracefully"
-          (is (search/reindex!))
+          (is (search/reindex! {:async? false}))
           (is (= initial-size (index-size))))))))

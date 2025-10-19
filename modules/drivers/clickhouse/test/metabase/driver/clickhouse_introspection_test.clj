@@ -502,10 +502,10 @@
       (mt/db)
       (t2.with-temp/with-temp
         [:model/Database db {:engine :clickhouse
-                             :details (merge {:scan-all-databases true}
-                                             (mt/dbdef->connection-details
+                             :details (merge (mt/dbdef->connection-details
                                               :clickhouse :db
-                                              {:database-name "default"}))}]
+                                              {:database-name "default"})
+                                             {:db-filters-type "all"})}]
         (let [describe-result (driver/describe-database :clickhouse db)]
           ;; check the existence of at least some test tables here
           (doseq [table test-tables]
@@ -524,9 +524,9 @@
       (mt/db)
       (t2.with-temp/with-temp
         [:model/Database db {:engine :clickhouse
-                             :details (mt/dbdef->connection-details
-                                       :clickhouse :db
-                                       {:database-name "metabase_db_scan_test information_schema"})}]
+                             :details (merge (mt/dbdef->connection-details :clickhouse :db nil)
+                                             {:db-filters-type "inclusion"
+                                              :db-filters-patterns "metabase_db_scan_test, information_schema"})}]
         (let [{:keys [tables] :as _describe-result}
               (driver/describe-database :clickhouse db)
               tables-table  {:name        "tables"
@@ -541,3 +541,26 @@
           ;; tables from `information_schema`
           (is (contains? tables tables-table))
           (is (contains? tables columns-table)))))))
+
+(deftest ^:parallel clickhouse-describe-database-enable-multiple-db-schema-test
+  (mt/test-driver :clickhouse
+    (let [tables-with-schema {:tables
+                              #{{:name "users", :schema "test_data", :description nil}
+                                {:name "venues", :schema "test_data", :description nil}
+                                {:name "categories", :schema "test_data", :description nil}
+                                {:name "checkins", :schema "test_data", :description nil}
+                                {:name "orders", :schema "test_data", :description nil}
+                                {:name "people", :schema "test_data", :description nil}
+                                {:name "products", :schema "test_data", :description nil}
+                                {:name "reviews", :schema "test_data", :description nil}}}]
+      (testing "when the enable-multiple-db is true describe-database returns tables with the db/schema"
+        (is (= tables-with-schema
+               (driver/describe-database driver/*driver* (mt/db)))))
+      (testing "when the enable-multiple-db is false describe-database returns tables without the db/schema"
+        (mt/with-temp [:model/Database db {:engine :clickhouse,
+                                           :details (assoc (:details (mt/db))
+                                                           :enable-multiple-db false
+                                                           :db-filters-type nil
+                                                           :db-filters-patterns nil)}]
+          (is (= {:tables (set (map #(assoc % :schema nil) (:tables tables-with-schema)))}
+                 (driver/describe-database driver/*driver* db))))))))

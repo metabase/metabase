@@ -9,6 +9,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   FIRST_COLLECTION_ENTITY_ID,
   FIRST_COLLECTION_ID,
+  ORDERS_QUESTION_ID,
   SECOND_COLLECTION_ENTITY_ID,
   THIRD_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
@@ -78,6 +79,16 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
 
     getSdkRoot().within(() => {
       cy.findByTestId("development-watermark").should("exist");
+    });
+  });
+
+  it("uses the embedding-sdk-react client request header", () => {
+    mountInteractiveQuestion();
+
+    cy.wait("@cardQuery").then(({ request }) => {
+      expect(request?.headers?.["x-metabase-client"]).to.equal(
+        "embedding-sdk-react",
+      );
     });
   });
 
@@ -537,6 +548,64 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
         cy.findByText(/To run your code, click on the Run button/).should(
           "not.exist",
         );
+      });
+    });
+  });
+
+  it("should not show 'Back to previous results' button when filtering returns no results on a new question (EMB-620)", () => {
+    mountSdkContent(<InteractiveQuestion questionId="new" />);
+    H.popover().findByRole("link", { name: "Orders" }).click();
+
+    getSdkRoot().within(() => {
+      cy.findByText("Visualize").click();
+
+      cy.log("add a filter that returns no results");
+      cy.findByText("Filter").click();
+
+      H.popover().within(() => {
+        cy.findByText("ID").click();
+        cy.findByPlaceholderText("Enter an ID").type("555555");
+        cy.findByText("Add filter").click();
+      });
+
+      cy.log("back to previous result button should not be visible");
+      cy.findByText("No results!").should("be.visible");
+      cy.findByText("Back to previous results").should("not.exist");
+    });
+  });
+
+  it("should show the `Save` button when a visualization type was changed (metabase#62396)", () => {
+    mountSdkContent(<InteractiveQuestion questionId={ORDERS_QUESTION_ID} />);
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("chart-type-selector-button").click();
+
+      cy.findByTestId("sdk-question-save-button").should("not.exist");
+
+      cy.findByRole("menu").within(() => {
+        cy.findByText("Trend").click();
+      });
+
+      cy.findByTestId("interactive-question-top-toolbar").within(() => {
+        cy.findByText("Save").should("exist");
+      });
+    });
+  });
+
+  it("should show the `Save` button when a visualization setting was changed (metabase#62396)", () => {
+    mountSdkContent(<InteractiveQuestion questionId={ORDERS_QUESTION_ID} />);
+
+    getSdkRoot().within(() => {
+      H.openVizSettingsSidebar();
+
+      cy.findByTestId("sdk-question-save-button").should("not.exist");
+
+      cy.findByTestId("chartsettings-sidebar").within(() => {
+        cy.findByTestId("User ID-hide-button").click();
+      });
+
+      cy.findByTestId("interactive-question-top-toolbar").within(() => {
+        cy.findByText("Save").should("exist");
       });
     });
   });

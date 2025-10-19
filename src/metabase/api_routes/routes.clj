@@ -22,6 +22,7 @@
    [metabase.eid-translation.api]
    [metabase.embedding.api]
    [metabase.geojson.api]
+   [metabase.glossary.api]
    [metabase.indexed-entities.api]
    [metabase.logger.api]
    [metabase.login-history.api]
@@ -69,6 +70,7 @@
          metabase.dashboards.api/keep-me
          metabase.eid-translation.api/keep-me
          metabase.geojson.api/keep-me
+         metabase.glossary.api/keep-me
          metabase.indexed-entities.api/keep-me
          metabase.logger.api/keep-me
          metabase.login-history.api/keep-me
@@ -149,6 +151,7 @@
    "/embed"                (+message-only-exceptions metabase.embedding.api/embedding-routes)
    "/field"                (+auth metabase.warehouse-schema.api/field-routes)
    "/geojson"              'metabase.geojson.api
+   "/glossary"             (+auth 'metabase.glossary.api)
    "/google"               (+auth metabase.sso.api/google-auth-routes)
    "/ldap"                 (+auth metabase.sso.api/ldap-routes)
    "/logger"               (+auth 'metabase.logger.api)
@@ -199,4 +202,7 @@
      (requiring-resolve 'metabase-enterprise.api.routes/routes)
      pass-thru-handler)
    (handlers/route-map-handler route-map)
+   (if (and config/dev-available? (not *compile-files*))
+     (requiring-resolve 'dev.api.routes/routes)
+     pass-thru-handler)
    not-found-handler))

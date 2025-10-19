@@ -2,16 +2,20 @@ import { useDisclosure } from "@mantine/hooks";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { DashboardPickerModal } from "metabase/common/components/Pickers/DashboardPicker";
 import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker";
 import { ActionIcon, Card, Group, Icon, Stack, Text } from "metabase/ui";
+import type { CollectionId } from "metabase-types/api";
 
-import { trackEmbedWizardResourceSelected } from "../analytics";
+import { STEPS_WITHOUT_RESOURCE_SELECTION } from "../constants";
 import { useSdkIframeEmbedSetupContext } from "../context";
 import type {
   SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupRecentItem,
+  SdkIframeEmbedSetupRecentItemType,
 } from "../types";
+import { getResourceIdFromSettings } from "../utils/get-default-sdk-iframe-embed-setting";
 
 import { SelectEmbedResourceMissingRecents } from "./SelectEmbedResourceMissingRecents";
 import { SelectEmbedResourceRecentItemCard } from "./SelectEmbedResourceRecentItemCard";
@@ -23,23 +27,25 @@ export const SelectEmbedResourceStep = () => {
     updateSettings,
     recentDashboards,
     recentQuestions,
+    recentCollections,
     addRecentItem,
   } = useSdkIframeEmbedSetupContext();
 
   const [isPickerOpen, { open: openPicker, close: closePicker }] =
     useDisclosure(false);
 
-  // Only dashboard and charts allow selecting resources.
-  if (experience !== "dashboard" && experience !== "chart") {
+  // If a step does not allow resource selection, hide it.
+  if (!hasResourceSelectionStep(experience)) {
     return null;
   }
 
-  const isDashboard = experience === "dashboard";
-  const recentItems = isDashboard ? recentDashboards : recentQuestions;
+  const recentItems = match(experience)
+    .with("dashboard", () => recentDashboards)
+    .with("browser", () => recentCollections)
+    .with("chart", () => recentQuestions)
+    .exhaustive();
 
-  const selectedItemId = isDashboard
-    ? settings.dashboardId
-    : settings.questionId;
+  const selectedItemId = getResourceIdFromSettings(settings);
 
   const updateEmbedSettings = (
     experience: SdkIframeEmbedSetupExperience,
@@ -48,12 +54,12 @@ export const SelectEmbedResourceStep = () => {
     // Do not update if the selected item is already selected.
     if (
       (experience === "dashboard" && settings.dashboardId === id) ||
-      (experience === "chart" && settings.questionId === id)
+      (experience === "chart" && settings.questionId === id) ||
+      (settings.componentName === "metabase-browser" &&
+        settings.initialCollection === id)
     ) {
       return;
     }
-
-    trackEmbedWizardResourceSelected(Number(id), experience);
 
     if (experience === "dashboard") {
       updateSettings({
@@ -69,6 +75,11 @@ export const SelectEmbedResourceStep = () => {
 
         // Clear parameters
         initialSqlParameters: {},
+        hiddenParameters: [],
+      });
+    } else if (experience === "browser") {
+      updateSettings({
+        initialCollection: id as CollectionId,
       });
     }
   };
@@ -82,7 +93,16 @@ export const SelectEmbedResourceStep = () => {
     updateEmbedSettings(experience, resourceId);
 
     // Add the current resource to the top of the recent items list
-    const resourceType = experience === "dashboard" ? "dashboard" : "question";
+
+    const resourceType = match<
+      typeof experience,
+      SdkIframeEmbedSetupRecentItemType
+    >(experience)
+      .with("chart", () => "question")
+      .with("browser", () => "collection")
+      .with("dashboard", () => "dashboard")
+      .exhaustive();
+
     addRecentItem(resourceType, {
       id: resourceId,
       name: item.name,
@@ -154,8 +174,30 @@ export const SelectEmbedResourceStep = () => {
       );
     }
 
+    if (experience === "browser") {
+      return (
+        <CollectionPickerModal
+          title={t`Select a collection`}
+          value={{
+            id: selectedItemId ?? "root",
+            model: "collection",
+            collection_id: null,
+          }}
+          onChange={handlePickerModalResourceSelect}
+          onClose={closePicker}
+          options={COLLECTION_MODAL_OPTIONS}
+        />
+      );
+    }
+
     return null;
   };
+
+  const browseResourceTitle = match(experience)
+    .with("dashboard", () => t`Browse dashboards`)
+    .with("browser", () => t`Browse collections`)
+    .with("chart", () => t`Browse questions`)
+    .exhaustive();
 
   return (
     <>
@@ -168,11 +210,7 @@ export const SelectEmbedResourceStep = () => {
           <ActionIcon
             variant="outline"
             size="lg"
-            title={
-              experience === "dashboard"
-                ? t`Browse dashboards`
-                : t`Browse questions`
-            }
+            title={browseResourceTitle}
             onClick={openPicker}
             data-testid="embed-browse-entity-button"
           >
@@ -192,6 +230,7 @@ const getEmbedTitle = (experience: string) =>
   match(experience)
     .with("dashboard", () => t`Select a dashboard to embed`)
     .with("chart", () => t`Select a chart to embed`)
+    .with("browser", () => t`Select a collection to embed`)
     .with("exploration", () => t`Exploration embed setup`)
     .otherwise(() => t`Select content to embed`);
 
@@ -199,6 +238,7 @@ const getEmbedDescription = (experience: string) =>
   match(experience)
     .with("dashboard", () => t`Choose from your recently visited dashboards`)
     .with("chart", () => t`Choose from your recently visited charts`)
+    .with("browser", () => t`Choose a collection to start browsing from`)
     .with("exploration", () => null)
     .otherwise(() => t`Choose your content to embed`);
 
@@ -207,3 +247,19 @@ const MODAL_OPTIONS = {
   showRootCollection: true,
   hasConfirmButtons: false,
 } as const;
+
+const COLLECTION_MODAL_OPTIONS = {
+  showPersonalCollections: true,
+  showRootCollection: true,
+  hasConfirmButtons: true,
+} as const;
+
+const hasResourceSelectionStep = (
+  experience: SdkIframeEmbedSetupExperience,
+): experience is Exclude<
+  SdkIframeEmbedSetupExperience,
+  (typeof STEPS_WITHOUT_RESOURCE_SELECTION)[number]
+> =>
+  !(
+    STEPS_WITHOUT_RESOURCE_SELECTION as SdkIframeEmbedSetupExperience[]
+  ).includes(experience);

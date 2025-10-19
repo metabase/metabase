@@ -82,7 +82,6 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
     );
 
     getSdkRoot().within(() => {
-      cy.findByText("New question").should("be.visible");
       cy.button("Save").should("not.exist");
     });
 

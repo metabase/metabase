@@ -19,27 +19,23 @@ export const AdminNavWrapper = ({
   children: React.ReactNode;
 } & StackProps) => {
   return (
-    <Stack
-      w="16rem"
-      gap={0}
-      bg="white"
-      p="md"
-      h="100%"
-      {...stackProps}
-      component="nav"
-    >
+    <Stack w="16rem" gap={0} p="md" h="100%" {...stackProps} component="nav">
       {children}
     </Stack>
   );
 };
 
 export type AdminNavItemProps = {
-  path: string;
+  path?: string;
+  /* folderPath is used to highlight the folder when one of its children is active, but doesn't navigate */
+  folderPattern?: string;
   icon?: IconName;
+  onClick?: () => void;
 } & Omit<NavLinkProps, "href">;
 
 export function AdminNavItem({
   path,
+  folderPattern,
   label,
   icon,
   ...navLinkProps
@@ -49,9 +45,9 @@ export function AdminNavItem({
 
   return (
     <NavLink
-      component={Link}
-      to={path}
-      defaultOpened={subpath.includes(path)}
+      component={path ? Link : undefined}
+      to={path ?? ""}
+      defaultOpened={folderPattern ? subpath.includes(folderPattern) : false}
       active={path === subpath}
       variant="admin-nav"
       label={label}

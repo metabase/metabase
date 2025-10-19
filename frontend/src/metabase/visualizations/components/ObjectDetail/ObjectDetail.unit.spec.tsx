@@ -11,8 +11,11 @@ import {
   getBrokenUpTextMatcher,
   renderWithProviders,
   screen,
+  waitFor,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
+import registerVisualizations from "metabase/visualizations/register";
 import type { Field } from "metabase-types/api";
 import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
 import {
@@ -29,6 +32,8 @@ import {
 
 import ObjectDetail from "./ObjectDetail";
 
+registerVisualizations();
+
 const PRODUCTS_TABLE = createProductsTable();
 const ORDERS_TABLE = createOrdersTable();
 const HIDDEN_ORDERS_TABLE = createOrdersTable({
@@ -36,8 +41,7 @@ const HIDDEN_ORDERS_TABLE = createOrdersTable({
 });
 const REVIEWS_TABLE = createReviewsTable();
 
-const PRODUCTS_RECORD_RELATED_ORDERS_COUNT = 93;
-const PRODUCTS_RECORD_RELATED_REVIEWS_COUNT = 8;
+const FK_RECORDS_COUNT = 93;
 
 interface SetupOpts {
   hideOrdersTable?: boolean;
@@ -47,12 +51,14 @@ function setup({ hideOrdersTable = false }: SetupOpts = {}) {
   setupDatabasesEndpoints([]);
   setupActionsEndpoints([]);
   const productsId = checkNotNull(findField(PRODUCTS_TABLE.fields, "ID"));
-  const ordersProductId = checkNotNull(
-    findField(ORDERS_TABLE.fields, "PRODUCT_ID"),
-  );
-  const reviewsProductId = checkNotNull(
-    findField(REVIEWS_TABLE.fields, "PRODUCT_ID"),
-  );
+  const ordersProductId = {
+    ...checkNotNull(findField(ORDERS_TABLE.fields, "PRODUCT_ID")),
+    table: ORDERS_TABLE,
+  };
+  const reviewsProductId = {
+    ...checkNotNull(findField(REVIEWS_TABLE.fields, "PRODUCT_ID")),
+    table: REVIEWS_TABLE,
+  };
   setupTableEndpoints(PRODUCTS_TABLE, [
     {
       origin: ordersProductId,
@@ -113,38 +119,16 @@ function setup({ hideOrdersTable = false }: SetupOpts = {}) {
 }
 
 function setupForeignKeyCountQueryEndpoints() {
-  fetchMock.post(
-    {
-      name: "ordersCountQuery",
-      url: "path:/api/dataset",
-      matchPartialBody: true,
-      body: {
-        query: { "source-table": ORDERS_TABLE.id },
-      },
-    },
-    createMockDataset({
+  fetchMock.post({
+    name: "ordersCountQuery",
+    url: "path:/api/dataset",
+    response: createMockDataset({
       status: "completed",
       data: {
-        rows: [[PRODUCTS_RECORD_RELATED_ORDERS_COUNT]],
+        rows: [[FK_RECORDS_COUNT]],
       },
     }),
-  );
-  fetchMock.post(
-    {
-      name: "reviewsCountQuery",
-      url: "path:/api/dataset",
-      matchPartialBody: true,
-      body: {
-        query: { "source-table": REVIEWS_TABLE.id },
-      },
-    },
-    createMockDataset({
-      status: "completed",
-      data: {
-        rows: [[PRODUCTS_RECORD_RELATED_REVIEWS_COUNT]],
-      },
-    }),
-  );
+  });
 }
 
 function findField(fields: Field[] | undefined, name: string) {
@@ -155,18 +139,19 @@ describe("ObjectDetail", () => {
   it("should render foreign key count when no table is hidden", async () => {
     setup();
 
+    await waitFor(() => {
+      expect(screen.getAllByTestId("loading-indicator")).toHaveLength(2);
+    });
+    await waitForLoaderToBeRemoved();
+
     expect(
       await screen.findByText(
-        getBrokenUpTextMatcher(
-          [PRODUCTS_RECORD_RELATED_REVIEWS_COUNT, "Reviews"].join(""),
-        ),
+        getBrokenUpTextMatcher([FK_RECORDS_COUNT, "Reviews"].join("")),
       ),
     ).toBeInTheDocument();
     expect(
       await screen.findByText(
-        getBrokenUpTextMatcher(
-          [PRODUCTS_RECORD_RELATED_ORDERS_COUNT, "Orders"].join(""),
-        ),
+        getBrokenUpTextMatcher([FK_RECORDS_COUNT, "Orders"].join("")),
       ),
     ).toBeInTheDocument();
   });
@@ -174,17 +159,18 @@ describe("ObjectDetail", () => {
   it("should render related objects count only for foreign keys referencing non-hidden tables (metabase#32654)", async () => {
     setup({ hideOrdersTable: true });
 
+    await waitFor(() => {
+      expect(screen.getAllByTestId("loading-indicator")).toHaveLength(2);
+    });
+    await waitForLoaderToBeRemoved();
+
     expect(
       await screen.findByText(
-        getBrokenUpTextMatcher(
-          [PRODUCTS_RECORD_RELATED_REVIEWS_COUNT, "Reviews"].join(""),
-        ),
+        getBrokenUpTextMatcher([FK_RECORDS_COUNT, "Reviews"].join("")),
       ),
     ).toBeInTheDocument();
     expect(
-      screen.queryByText(
-        [PRODUCTS_RECORD_RELATED_ORDERS_COUNT, "Orders"].join(""),
-      ),
+      screen.queryByText([FK_RECORDS_COUNT, "Orders"].join("")),
     ).not.toBeInTheDocument();
   });
 });

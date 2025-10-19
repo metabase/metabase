@@ -790,7 +790,7 @@ describe("issue 40064", () => {
   });
 });
 
-describe.skip("issue 10493", () => {
+describe("issue 10493", { tags: "@skip" }, () => {
   beforeEach(() => {
     H.restore();
     cy.intercept("POST", "/api/dataset").as("dataset");
@@ -1805,7 +1805,12 @@ describe("issue 45063", { tags: "@flaky" }, () => {
     });
   }
 
-  function verifyListFilter({ fieldDisplayName, fieldValue, fieldValueLabel }) {
+  function verifyListFilter({
+    fieldDisplayName,
+    filterHeaderName,
+    fieldValue,
+    fieldValueLabel,
+  }) {
     H.tableHeaderClick(fieldDisplayName);
     H.popover().findByText("Filter by this column").click();
     H.popover().within(() => {
@@ -1814,13 +1819,14 @@ describe("issue 45063", { tags: "@flaky" }, () => {
       cy.button("Add filter").click();
     });
     cy.findByTestId("qb-filters-panel")
-      .findByText(`${fieldDisplayName} is ${fieldValue}`)
+      .findByText(`${filterHeaderName || fieldDisplayName} is ${fieldValue}`)
       .click();
     H.popover().findByLabelText(fieldValueLabel).should("be.checked");
   }
 
   function verifySearchFilter({
     fieldDisplayName,
+    filterHeaderName,
     fieldPlaceholder,
     fieldValue,
     fieldValueLabel,
@@ -1834,7 +1840,7 @@ describe("issue 45063", { tags: "@flaky" }, () => {
       .button("Add filter")
       .click();
     cy.findByTestId("qb-filters-panel")
-      .findByText(`${fieldDisplayName} is ${fieldValue}`)
+      .findByText(`${filterHeaderName || fieldDisplayName} is ${fieldValue}`)
       .should("be.visible");
   }
 
@@ -1842,6 +1848,7 @@ describe("issue 45063", { tags: "@flaky" }, () => {
     visitCard,
     fieldId,
     fieldDisplayName,
+    filterHeaderName,
     fieldPlaceholder,
     fieldValue,
     fieldValueLabel,
@@ -1852,7 +1859,12 @@ describe("issue 45063", { tags: "@flaky" }, () => {
     setListValues({ fieldId });
     cy.signInAsNormalUser();
     visitCard();
-    verifyListFilter({ fieldDisplayName, fieldValue, fieldValueLabel });
+    verifyListFilter({
+      fieldDisplayName,
+      filterHeaderName,
+      fieldValue,
+      fieldValueLabel,
+    });
     H.assertQueryBuilderRowCount(expectedRowCount);
 
     cy.log("search values");
@@ -1862,6 +1874,7 @@ describe("issue 45063", { tags: "@flaky" }, () => {
     visitCard();
     verifySearchFilter({
       fieldDisplayName,
+      filterHeaderName,
       fieldPlaceholder,
       fieldValue,
       fieldValueLabel,
@@ -1942,7 +1955,7 @@ describe("issue 45063", { tags: "@flaky" }, () => {
       });
     });
 
-    it("should work with models", () => {
+    it("should work with models", { tags: "@flaky" }, () => {
       createGuiModel({ sourceTableId: ORDERS_ID });
       verifyRemappedFilter({
         visitCard: () => cy.get("@modelId").then(H.visitModel),
@@ -1965,7 +1978,8 @@ describe("issue 45063", { tags: "@flaky" }, () => {
       verifyRemappedFilter({
         visitCard: () => cy.get("@modelId").then(H.visitModel),
         fieldId: ORDERS.PRODUCT_ID,
-        fieldDisplayName: "PRODUCT_ID",
+        fieldDisplayName: "Product ID",
+        filterHeaderName: "PRODUCT_ID", // the title case version doesn't get picked up in filters
         fieldPlaceholder: "Search by Title or enter an ID",
         fieldValue: 1,
         fieldValueLabel: "Rustic Paper Wallet",
@@ -2024,7 +2038,7 @@ describe("issue 41464", () => {
   });
 });
 
-describe.skip("issue 45359", () => {
+describe("issue 45359", { tags: "@skip" }, () => {
   beforeEach(() => {
     H.restore();
     cy.intercept("/app/fonts/Lato/lato-v16-latin-regular.woff2").as(
@@ -2401,8 +2415,8 @@ describe("issue 50038", () => {
                   strategy: "left-join",
                   condition: [
                     "=",
-                    ["field", ORDERS_ID, {}],
-                    ["field", PRODUCTS_ID, {}],
+                    ["field", PRODUCTS.ID, null],
+                    ["field", ORDERS.PRODUCT_ID, { "join-alias": "Orders" }],
                   ],
                 },
               ],

@@ -52,32 +52,32 @@ H.describeWithSnowplow(
         openAddDataModalFromSidebar();
 
         cy.log("Tracking shouldn't happen on the default open tab");
-        getTab("CSV").should("have.attr", "data-active", "true");
+        getTab("Database").should("have.attr", "data-active", "true");
 
-        cy.log("Track when Database tab opens");
-        openTab("Database");
+        cy.log("Track when CSV tab opens");
+        openTab("CSV");
         H.expectUnstructuredSnowplowEvent({
-          event: "database_tab_clicked",
+          event: "csv_tab_clicked",
           triggered_from: "add-data-modal",
         });
 
         cy.log("Ignore the repeated click");
-        openTab("Database");
+        openTab("CSV");
         H.expectUnstructuredSnowplowEvent(
           {
-            event: "database_tab_clicked",
+            event: "csv_tab_clicked",
             triggered_from: "add-data-modal",
           },
           1,
         );
 
-        cy.log("Track when CSV tab opens");
-        openTab("CSV");
+        cy.log("Track when Database tab opens");
+        openTab("Database");
         // We confirm that it didn't track the default open tab because the following assertion passes.
         // If there were multiple events like this, the count would be higher
         H.expectUnstructuredSnowplowEvent(
           {
-            event: "csv_tab_clicked",
+            event: "database_tab_clicked",
             triggered_from: "add-data-modal",
           },
           1,
@@ -87,7 +87,6 @@ H.describeWithSnowplow(
       it("should track database selection", () => {
         cy.visit("/");
         openAddDataModalFromSidebar();
-        openTab("Database");
         addDataModal()
           .findByRole("listbox")
           .findByText("Snowflake")
@@ -113,6 +112,7 @@ H.describeWithSnowplow(
 
         cy.visit("/");
         openAddDataModalFromSidebar();
+        openTab("CSV");
         addDataModal().findByText("Select a file").click();
 
         H.expectUnstructuredSnowplowEvent({
@@ -156,7 +156,6 @@ describe("Add data modal", () => {
       cy.signInAsAdmin();
       cy.visit("/");
       openAddDataModalFromSidebar();
-      openTab("Database");
 
       addDataModal().within(() => {
         cy.log("Admin should be able to manage databases");
@@ -208,10 +207,8 @@ describe("Add data modal", () => {
         cy.location("search").should("eq", "?engine=snowflake");
       });
 
-      H.modal().within(() => {
-        cy.findByText("Add a database").should("be.visible");
-        cy.findByLabelText("Database type").should("contain", "Snowflake");
-      });
+      cy.findByRole("heading", { name: "Add a database" }).should("be.visible");
+      cy.findByLabelText("Database type").should("have.value", "Snowflake");
     });
 
     it("should not offer to add data when in full app embedding", () => {
@@ -241,6 +238,7 @@ describe("Add data modal", () => {
       cy.signInAsAdmin();
       cy.visit("/");
       openAddDataModalFromSidebar();
+      openTab("CSV");
       addDataModal().findByText("Enable uploads").click();
 
       cy.location("pathname").should("eq", "/admin/settings/uploads");
@@ -324,6 +322,7 @@ describe("Add data modal", () => {
       cy.signIn("nocollection");
       cy.visit("/");
       openAddDataModalFromSidebar();
+      openTab("CSV");
 
       addDataModal().within(() => {
         cy.button("Upload").should("be.disabled");
@@ -382,6 +381,14 @@ describe("Add data modal", () => {
       H.tableInteractiveBody()
         .should("contain", "value1")
         .and("contain", "value2");
+    });
+
+    it("should be hidden for non-admins without upload permissions", () => {
+      cy.signInAsNormalUser();
+      cy.visit("/");
+      cy.findByRole("tab", { name: /^Data/i }).within(() => {
+        cy.findByLabelText("Add data").should("not.exist");
+      });
     });
   });
 });

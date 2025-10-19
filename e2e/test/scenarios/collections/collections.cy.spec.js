@@ -903,9 +903,9 @@ describe("scenarios > collection defaults", () => {
 
           cy.log("single move");
 
-          cy.findByTestId("collection-table").within(() => {
-            H.openCollectionItemMenu("Outer collection 1");
-          });
+          cy.wait("@getCollectionItems");
+
+          H.openCollectionItemMenu("Outer collection 1");
 
           H.popover().findByText("Move").click();
 

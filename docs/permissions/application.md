@@ -1,5 +1,6 @@
 ---
 title: Application permissions
+summary: Grant groups access to Metabase's administrative features like settings, monitoring tools, and notifications.
 redirect_from:
   - /docs/latest/administration-guide/application-permissions
 ---
@@ -19,6 +20,7 @@ Settings access defines which groups can view and edit the settings under the Ad
 - [Settings](../configuring-metabase/settings.md)
 - [Email](../configuring-metabase/email.md)
 - [Slack](../configuring-metabase/slack.md)
+- [Webhooks](../configuring-metabase/webhooks.md)
 - [Authentication](../people-and-groups/start.md)
 - [Maps](../configuring-metabase/custom-maps.md)
 - [Localization](../configuring-metabase/localization.md)

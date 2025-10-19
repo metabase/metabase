@@ -1,12 +1,15 @@
 (ns metabase.lib.underlying
   "Helpers for getting at \"underlying\" or \"top-level\" queries and columns.
   This logic is shared by a handful of things like drill-thrus."
+  #?(:clj (:refer-clojure :exclude [for]))
   (:require
+   #?(:clj [metabase.util.performance :refer [for]])
    [clojure.set :as set]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.field :as lib.field]
+   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.ref :as lib.ref]
@@ -57,6 +60,7 @@
 
 (def ^:private TopLevelColumnOptions
   [:map
+   {:closed true}
    [:rename-superflous-options? {:optional true} :boolean]])
 
 (mu/defn top-level-column :- [:maybe ::lib.schema.metadata/column]
@@ -84,8 +88,12 @@
              ;; circumstances, you will not need them. On the off chance you do need them, they'll still be available.
              (set/rename-keys {::lib.field/temporal-unit ::temporal-unit
                                ::lib.field/binning       ::binning}))
-           (let [prev-cols (lib.metadata.calculation/returned-columns query -2 (lib.util/previous-stage query -1))
-                 prev-col  (lib.equality/find-matching-column query -2 (lib.ref/ref column) prev-cols)]
+           (let [prev-cols (for [col (lib.metadata.calculation/returned-columns query -2 (lib.util/previous-stage query -1))]
+                             (-> col
+                                 lib.field.util/update-keys-for-col-from-previous-stage
+                                 (assoc ::original col)))
+                 prev-col  (some-> (lib.equality/find-matching-column query -2 (lib.ref/ref column) prev-cols)
+                                   ::original)]
              (when prev-col
                (recur (update query :stages pop) prev-col)))))))))
 
@@ -107,14 +115,14 @@
                                                   [:maybe ::lib.schema.metadata/column]
                                                   :boolean]]
   [f :- [:=> [:cat ::lib.schema.metadata/column] :boolean]]
-  (fn has-source?
+  (fn f?
     ([column]
      (f column))
     ([query column]
      (boolean
       (and (seq column)
-           (or (has-source? column)
-               (has-source? (top-level-column query column))))))))
+           (or (f? column)
+               (f? (top-level-column query column))))))))
 
 (def ^{:arglists '([column] [query column])} aggregation-sourced?
   "Does column or top-level-column have :source/aggregations?"

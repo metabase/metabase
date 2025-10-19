@@ -2,6 +2,7 @@ import { createSlice } from "@reduxjs/toolkit";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import api, { GET, POST } from "metabase/lib/api";
 import { isWithinIframe, openSaveDialog } from "metabase/lib/dom";
 import { createAsyncThunk } from "metabase/lib/redux";
@@ -30,7 +31,7 @@ export interface DownloadQueryResultsOpts {
   dashboardId?: DashboardId;
   dashcardId?: DashCardId;
   uuid?: string;
-  token?: string;
+  token?: string | null;
   params?: Record<string, unknown>;
   visualizationSettings?: VisualizationSettings;
 }
@@ -66,7 +67,7 @@ const getDownloadedResourceType = ({
 
   const isInIframe = isWithinIframe();
 
-  const defaultAccessedVia = process.env.EMBEDDING_SDK_VERSION
+  const defaultAccessedVia = isEmbeddingSdk()
     ? "sdk-embed"
     : isInIframe
       ? "interactive-iframe-embed"

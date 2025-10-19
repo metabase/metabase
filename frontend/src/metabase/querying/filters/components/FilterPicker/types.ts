@@ -1,7 +1,8 @@
+import type { DefinedClauseName } from "metabase/querying/expressions";
 import type * as Lib from "metabase-lib";
-import type { DefinedClauseName } from "metabase-lib/v1/expressions";
 
 export type FilterPickerWidgetProps = {
+  autoFocus: boolean;
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
@@ -11,6 +12,7 @@ export type FilterPickerWidgetProps = {
   withSubmitButton: boolean;
   onChange: (filter: Lib.ExpressionClause, opts: FilterChangeOpts) => void;
   onBack?: () => void;
+  readOnly?: boolean;
 };
 
 export type FilterChangeOpts = {

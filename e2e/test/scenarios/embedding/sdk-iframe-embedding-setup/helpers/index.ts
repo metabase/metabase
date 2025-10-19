@@ -25,13 +25,11 @@ export const visitNewEmbedPage = ({ locale }: { locale?: string } = {}) => {
     params.append("locale", locale);
   }
 
-  cy.visit("/embed-iframe?" + params);
+  cy.visit("/embed-js?" + params);
+
   cy.wait("@dashboard");
 
-  cy.get("#iframe-embed-container", {
-    // we are loading lots of JS, so on a slow connection it will take a long while.
-    timeout: 20000,
-  }).should("have.attr", "data-iframe-loaded", "true");
+  cy.get("[data-iframe-loaded]", { timeout: 20000 }).should("have.length", 1);
 };
 
 export const assertRecentItemName = (
@@ -55,11 +53,14 @@ export const assertDashboard = ({ id, name }: { id: number; name: string }) => {
 };
 
 type NavigateToStepOptions =
-  | { experience: "exploration"; resourceName?: never }
-  | ({ experience: "dashboard" | "chart" } & (
-      | { resourceName: string; skipResourceSelection?: never }
-      | { skipResourceSelection: true }
-    ));
+  | {
+      experience: "exploration" | "metabot";
+      resourceName?: never;
+    }
+  | {
+      experience: "dashboard" | "chart" | "browser";
+      resourceName: string;
+    };
 
 export const navigateToEntitySelectionStep = (
   options: NavigateToStepOptions,
@@ -70,26 +71,32 @@ export const navigateToEntitySelectionStep = (
 
   cy.log("select an experience");
 
-  if (experience === "chart") {
-    cy.findByText("Chart").click();
-  } else if (experience === "exploration") {
-    cy.findByText("Exploration").click();
+  const hasEntitySelection =
+    experience !== "exploration" && experience !== "metabot";
+
+  const labelByExperience = match(experience)
+    .with("chart", () => "Chart")
+    .with("exploration", () => "Exploration")
+    .with("browser", () => "Browser")
+    .with("metabot", () => "Metabot")
+    .otherwise(() => undefined);
+
+  if (labelByExperience) {
+    cy.findByText(labelByExperience).click();
   }
 
-  // exploration template does not have the entity selection step
-  if (experience !== "exploration") {
+  // exploration and metabot experience does not have the entity selection step
+  if (hasEntitySelection && options.resourceName) {
     cy.log("navigate to the entity selection step");
+
     getEmbedSidebar().within(() => {
       cy.findByText("Next").click(); // Entity selection step
     });
-  }
-
-  if (experience !== "exploration" && !options.skipResourceSelection) {
-    const { resourceName } = options;
 
     const resourceType = match(experience)
       .with("dashboard", () => "Dashboards")
       .with("chart", () => "Questions")
+      .with("browser", () => "Collections")
       .otherwise(() => "");
 
     cy.log(`searching for ${resourceType} via the picker modal`);
@@ -99,12 +106,17 @@ export const navigateToEntitySelectionStep = (
 
     entityPickerModal().within(() => {
       cy.findByText(resourceType).click();
-      cy.findAllByText(resourceName).first().click();
+      cy.findAllByText(options.resourceName).first().click();
+
+      // Collection picker requires an explicit confirmation.
+      if (experience === "browser") {
+        cy.findByText("Select").click();
+      }
     });
 
     cy.log(`${resourceType} title should be visible by default`);
     getEmbedSidebar().within(() => {
-      cy.findByText(resourceName).should("be.visible");
+      cy.findByText(options.resourceName).should("be.visible");
     });
   }
 };
@@ -123,7 +135,7 @@ export const navigateToGetCodeStep = (options: NavigateToStepOptions) => {
 
   cy.log("navigate to get code step");
   getEmbedSidebar().within(() => {
-    cy.findByText("Get Code").click(); // Get code step
+    cy.findByText("Get code").click(); // Get code step
   });
 };
 

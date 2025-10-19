@@ -31,10 +31,11 @@ import { openSharingMenu } from "./e2e-sharing-helpers";
  * @param {EmbedPayload} payload - The {@link EmbedPayload} we pass to this function
  * @param {object} [options]
  * @param {object} [options.setFilters]
- * @param {PageStyle} options.pageStyle
- * @param {object} options.additionalHashOptions
+ * @param {PageStyle} [options.pageStyle]
+ * @param {object} [options.additionalHashOptions]
  * @param {string} [options.additionalHashOptions.locale]
  * @param {string[]} [options.additionalHashOptions.hideFilters]
+ * @param {(window: Window) => void} [options.onBeforeLoad]
  * @param {object} [options.qs]
  *
  * @example
@@ -177,13 +178,9 @@ function getIframeUrl() {
  * @param {string} [selector]
  */
 export function getIframeBody(selector = "iframe") {
-  return cy
-    .get(selector)
-    .its("0.contentDocument")
-    .should("exist")
-    .its("body")
-    .should("not.be.undefined")
-    .then(cy.wrap);
+  cy.frameLoaded(selector);
+  cy.wait(1); // unclear why, but the tests are flaky without this
+  return cy.iframe(selector);
 }
 
 export function getEmbedModalSharingPane() {

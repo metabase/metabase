@@ -85,7 +85,6 @@ dataset_query:
           - full_name
         - base-type: type/Text
           join-alias: People - Creator
-      ident: join_fwkC3nWB_uouifA5kkaBp@0__People - Creator
       source-table: 0wVIfjBJWclD0lKeABYYl
     - alias: Content - Card Qualified
       condition:
@@ -108,7 +107,6 @@ dataset_query:
           - name
         - base-type: type/Text
           join-alias: Content - Card Qualified
-      ident: join_fwkC3nWB_uouifA5kkaBp@0__Content - Card Qualified
       source-table: AxSackBiyXVRUzM_TyyQY
     source-table: skoPT2xiuEcUV8vFkHE6S
   type: query

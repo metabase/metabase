@@ -53,6 +53,7 @@ export const EditUserModal = ({ onClose, params }: EditUserModalProps) => {
           onCancel={onClose}
           initialValues={initialValues}
           onSubmit={handleSubmit}
+          userId={userId}
         />
       </LoadingAndErrorWrapper>
     </Modal>

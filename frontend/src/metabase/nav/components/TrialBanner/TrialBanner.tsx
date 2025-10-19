@@ -2,8 +2,8 @@ import { msgid, ngettext, t } from "ttag";
 
 import { Banner } from "metabase/common/components/Banner";
 import ExternalLink from "metabase/common/components/ExternalLink";
+import { useStoreUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { getStoreUrl } from "metabase/selectors/settings";
 import { Flex, Text } from "metabase/ui";
 
 export const TrialBanner = ({
@@ -14,7 +14,7 @@ export const TrialBanner = ({
   onClose: () => void;
 }) => {
   const lastDay = daysRemaining === 0;
-  const href = getStoreUrl("account/manage/plans");
+  const href = useStoreUrl("account/manage/plans");
 
   return (
     <Banner

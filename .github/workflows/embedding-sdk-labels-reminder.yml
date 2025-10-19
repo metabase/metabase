@@ -1,0 +1,49 @@
+name: Embedding SDK Labels Reminder
+
+on:
+  pull_request:
+    types: [auto_merge_enabled, review_requested, labeled, unlabeled, synchronize]
+    branches:
+      - "master"
+  merge_group:
+
+jobs:
+  files-changed:
+    name: Check which files changed
+    runs-on: ubuntu-22.04
+    timeout-minutes: 3
+    outputs:
+      frontend_embedding_sdk_package_sources: ${{ steps.changes.outputs.frontend_embedding_sdk_package_sources }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test which files changed
+        uses: dorny/paths-filter@v3.0.0
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
+
+  embedding-sdk-package-no-release-notes-reminder:
+    needs: [ files-changed ]
+    if: |
+      !cancelled() &&
+      (needs.files-changed.outputs.frontend_embedding_sdk_package_sources == 'true')
+    name: Embedding SDK package release-notes/no-release-notes label reminder
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jesusvasquez333/verify-pr-label-action@v1.4.0
+        id: verify-release-notes-labels
+        with:
+          github-token: '${{ secrets.GITHUB_TOKEN }}'
+          valid-labels: 'release-notes, no-release-notes'
+          disable-reviews: true
+      - name: Comment on PR if label should be added
+        if: ${{ always() }}
+        uses: ./.github/actions/notify-pull-request
+        with:
+          remove-previous-comment: true
+          add-new-comment: ${{ steps.verify-release-notes-labels.outcome == 'failure' }}
+          message: "⚠️ Changes were made to the <b>Embedding SDK Package</b>. Review this PR and apply one of the following labels.<br><br>- <code>release-notes</code> — select if this PR must be included in the main Metabase changelog release notes.<br>- <code>no-release-notes</code> — select if this PR should not be included in the main Metabase changelog release notes."
+          include-log: true

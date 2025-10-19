@@ -2,6 +2,7 @@
   "Common test extension functionality for all SQL drivers."
   (:require
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [honey.sql :as sql]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
@@ -10,6 +11,7 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test.data :as data]
+   [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -74,6 +76,27 @@
     (->> (apply qualified-name-components driver names)
          (map (partial ddl.i/format-name driver))
          (apply sql.u/quote-name driver identifier-type))))
+
+(defmulti compile-native-ddl
+  {:arglists '([driver native-ddl])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod compile-native-ddl :sql/test-extensions
+  [driver native-ddl]
+
+  (if (string? native-ddl)
+    [native-ddl]
+    (let [compiled-honeysql (walk/postwalk
+                             (fn [node]
+                               (if (and (vector? node) (= ::table-identifier (first node)))
+                                 (let [{:keys [database-name]} (tx/get-dataset-definition (or data.impl/*dbdef-used-to-create-db* (tx/default-dataset driver)))]
+                                   (keyword (str/join "." (qualified-name-components driver database-name (name (second node))))))
+                                 node))
+                             native-ddl)]
+      (sql.qp/format-honeysql driver compiled-honeysql))))
+
+(sql/register-clause! :add-constraint :modify-column :modify-column)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Interface (Comments)                                              |

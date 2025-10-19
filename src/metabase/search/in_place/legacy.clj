@@ -92,7 +92,6 @@
    :display             :text
    :dashboard_id        :integer
    :display_type        :text
-   :has_temporal_dimensions :boolean
    ;; returned for Metric and Segment
    :table_id            :integer
    :table_schema        :text
@@ -330,11 +329,6 @@
     :where  [:= :report_dashboardcard.card_id :card.id]}
    :dashboardcard_count])
 
-(def ^:private has-temporal-dimensions-col
-  [[:case
-    [:like :result_metadata "%\"temporal_unit\":%"] true
-    :else false] :has_temporal_dimensions])
-
 (def ^:private table-columns
   "Columns containing information about the Table this model references. Returned for Metrics and Segments."
   [:table_id
@@ -371,8 +365,11 @@
         :dashboard_id
         bookmark-col dashboardcard-count-col
         :result_metadata
-        has-temporal-dimensions-col
         [:display :display_type]))
+
+(defmethod columns-for-model "document"
+  [_]
+  [:id :name :archived :created_at :updated_at :collection_id :creator_id])
 
 (defmethod columns-for-model "indexed-entity" [_]
   [[:model-index-value.name     :name]
@@ -519,6 +516,15 @@
                               [:= :bookmark.user_id (:current-user-id search-ctx)]])
       (add-collection-join-and-where-clauses model search-ctx)))
 
+(defmethod search-query-for-model "document"
+  [model search-ctx]
+  (-> (base-query-for-model "document" search-ctx)
+      (sql.helpers/left-join [:document_bookmark :bookmark]
+                             [:and
+                              [:= :bookmark.document_id :document.id]
+                              [:= :bookmark.user_id (:current-user-id search-ctx)]])
+      (add-collection-join-and-where-clauses model search-ctx)))
+
 (defmethod search-query-for-model "database"
   [model search-ctx]
   (-> (base-query-for-model model search-ctx)
@@ -602,14 +608,18 @@
        :limit    search.config/*db-max-results*})))
 
 ;; Return a reducible-query corresponding to searching the entities without an index.
-(defmethod search.engine/results
-  :search.engine/in-place
+(defn- results
   [search-ctx]
   (let [search-query (full-search-query search-ctx)]
     (log/tracef "Searching with query:\n%s\n%s"
                 (u/pprint-to-str search-query)
                 (mdb/format-sql (first (mdb/compile search-query))))
     (t2/reducible-query search-query)))
+
+(defmethod search.engine/results
+  :search.engine/in-place
+  [search-ctx]
+  (results search-ctx))
 
 (defmethod search.engine/score :search.engine/in-place [search-ctx result]
   (scoring/score-and-result result search-ctx))

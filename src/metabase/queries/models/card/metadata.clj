@@ -1,11 +1,14 @@
 (ns metabase.queries.models.card.metadata
   "Code related to Card metadata (re)calculation and saving updated metadata asynchronously."
   (:require
+   [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.lib.core :as lib]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.util :as qp.util]
@@ -42,11 +45,10 @@ saved later when it is ready."
     [:metadata-future ::future]]])
 
 (mu/defn- maybe-async-model-result-metadata :- ::maybe-async-result-metadata
-  [{:keys [query metadata original-metadata valid-metadata? entity-id]} :- [:map
-                                                                            [:valid-metadata? :any]]]
+  [{:keys [query metadata original-metadata valid-metadata?]} :- [:map
+                                                                  [:valid-metadata? :any]]]
   (log/debug "Querying for metadata and blending model metadata")
   (let [futur     (-> query
-                      (assoc-in [:info :card-entity-id] entity-id)
                       legacy-result-metadata-future)
         metadata' (if valid-metadata?
                     (map mbql.normalize/normalize-source-metadata metadata)
@@ -54,6 +56,8 @@ saved later when it is ready."
         result    (deref futur metadata-sync-wait-ms ::timed-out)
         combiner  (fn [result]
                     (-> result
+                        ;; existing usage, don't use this going forward
+                        #_{:clj-kondo/ignore [:deprecated-var]}
                         (qp.util/combine-metadata metadata')))]
     (if (= result ::timed-out)
       {:metadata-future (future
@@ -66,11 +70,9 @@ saved later when it is ready."
       {:metadata (combiner result)})))
 
 (mu/defn- maybe-async-recomputed-metadata :- ::maybe-async-result-metadata
-  [query entity-id]
+  [query]
   (log/debug "Querying for metadata")
-  (let [futur (-> query
-                  (assoc-in [:info :card-entity-id] entity-id)
-                  legacy-result-metadata-future)
+  (let [futur (legacy-result-metadata-future query)
         result (deref futur metadata-sync-wait-ms ::timed-out)]
     (if (= result ::timed-out)
       {:metadata-future futur}
@@ -79,10 +81,9 @@ saved later when it is ready."
 (defn normalize-dataset-query
   "Normalize the query `dataset-query` received via an HTTP call.
   Handles both (legacy) MBQL and pMBQL queries."
+  {:deprecated "0.57.0"}
   [dataset-query]
-  (if (= (lib/normalized-query-type dataset-query) :mbql/query)
-    (lib/normalize dataset-query)
-    (mbql.normalize/normalize dataset-query)))
+  (lib-be/normalize-query dataset-query))
 
 (mu/defn maybe-async-result-metadata :- ::maybe-async-result-metadata
   "Return result metadata for the passed in `query`. If metadata needs to be recalculated, waits up to
@@ -97,14 +98,14 @@ saved later when it is ready."
 
   This is also complicated because everything is optional, so we cannot assume the client will provide metadata and
   might need to save a metadata edit, or might need to use db-saved metadata on a modified dataset."
-  [{:keys [original-query query metadata original-metadata model? entity-id], :as options}]
+  [{:keys [original-query query metadata original-metadata model?], :as options}]
   (let [valid-metadata? (and metadata
                              (mr/validate analyze/ResultsMetadata metadata))]
     (cond
       (or
        ;; query didn't change, preserve existing metadata
-       (and (= (normalize-dataset-query original-query)
-               (normalize-dataset-query query))
+       (and (= (lib-be/normalize-query original-query)
+               (lib-be/normalize-query query))
             valid-metadata?)
        ;; only sent valid metadata in the edit. Metadata might be the same, might be different. We save in either case
        (and (nil? query)
@@ -130,7 +131,7 @@ saved later when it is ready."
       (maybe-async-model-result-metadata (assoc options :valid-metadata? valid-metadata?))
 
       :else
-      (maybe-async-recomputed-metadata query entity-id))))
+      (maybe-async-recomputed-metadata query))))
 
 (def ^:private metadata-async-timeout-ms
   "Duration in milliseconds to wait for the metadata before abandoning the asynchronous metadata saving. Default is 15
@@ -202,39 +203,43 @@ saved later when it is ready."
                  (->> (remove (comp old-names :name) new-metadata)
                       (map update-fn))))))
 
-(defn populate-result-metadata
+(mu/defn populate-result-metadata :- [:map
+                                      [:result_metadata {:optional true} [:maybe [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]]
   "When inserting/updating a Card, populate the result metadata column if not already populated by inferring the
   metadata from the query."
   ([card]
    (populate-result-metadata card nil))
+
   ([{query :dataset_query metadata :result_metadata :as card} changes]
-   (cond
-     ;; not updating the query => no-op
-     (and (not-empty changes)
-          (not (contains? changes :dataset_query)))
-     (do
-       (log/debug "Not inferring result metadata for Card: query was not updated")
-       card)
+   (-> (cond
+         ;; not updating the query => no-op
+         (and (not-empty changes)
+              (not (contains? changes :dataset_query)))
+         (do
+           (log/debug "Not inferring result metadata for Card: query was not updated")
+           card)
 
-     ;; passing in metadata => use that metadata, but replace any placeholder idents in it.
-     (or (and (not-empty changes) (contains? changes :result_metadata))
-         (and (empty? changes) metadata))
-     (do
-       (log/debug "Not inferring result metadata for Card: metadata was passed in to insert!/update!")
-       card)
+         ;; passing in metadata => use that metadata, but replace any placeholder idents in it.
+         (or (and (not-empty changes) (contains? changes :result_metadata))
+             (and (empty? changes) metadata))
+         (do
+           (log/debug "Not inferring result metadata for Card: metadata was passed in to insert!/update!")
+           card)
 
-     ;; query has changed (or new Card) and this is a native query => set metadata to nil
-     ;;
-     ;; we can't infer the metadata for a native query without running it, so it's better to have no metadata than
-     ;; possibly incorrect metadata.
-     (= (:type query) :native)
-     (do
-       (log/debug "Can't infer result metadata for Card: query is a native query. Setting result metadata to nil")
-       (assoc card :result_metadata nil))
+         ;; query has changed (or new Card) and this is a native query => set metadata to nil
+         ;;
+         ;; we can't infer the metadata for a native query without running it, so it's better to have no metadata than
+         ;; possibly incorrect metadata.
+         (= (:type query) :native)
+         (do
+           (log/debug "Can't infer result metadata for Card: query is a native query. Setting result metadata to nil")
+           (assoc card :result_metadata nil))
 
-     ;; otherwise, attempt to infer the metadata. If the query can't be run for one reason or another, set metadata to
-     ;; nil.
-     :else
-     (do
-       (log/debug "Attempting to infer result metadata for Card")
-       (assoc card :result_metadata (infer-metadata-with-model-overrides query card))))))
+         ;; otherwise, attempt to infer the metadata. If the query can't be run for one reason or another, set metadata to
+         ;; nil.
+         :else
+         (do
+           (log/debug "Attempting to infer result metadata for Card")
+           (assoc card :result_metadata (infer-metadata-with-model-overrides query card))))
+       ;; now normalize the result metadata as needed so it passes the output schema check
+       (m/update-existing :result_metadata #(some->> % (lib.normalize/normalize [:sequential ::lib.schema.metadata/lib-or-legacy-column]))))))

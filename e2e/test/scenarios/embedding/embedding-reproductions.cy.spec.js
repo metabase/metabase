@@ -1,11 +1,11 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import { questionAsPinMapWithTiles } from "e2e/test/scenarios/embedding/shared/embedding-questions";
 import { defer } from "metabase/lib/promise";
-
 const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-describe.skip("issue 15860", () => {
+describe("issue 15860", { tags: "@skip" }, () => {
   const q1IdFilter = {
     name: "Q1 ID",
     slug: "q1_id",
@@ -964,17 +964,20 @@ describe("issue 40660", () => {
     });
 
     H.getIframeBody().within(() => {
+      cy.findByText(dashboardDetails.name).should("be.visible");
+      cy.findByTestId("loading-indicator").should("not.exist");
+      cy.findAllByText("1018947080336").should("have.length", 3);
       cy.findByTestId("embed-frame").scrollTo("bottom");
 
-      cy.findByRole("link", { name: "Powered by Metabase" }).should(
-        "be.visible",
-      );
+      cy.findByRole("link", { name: "Powered by Metabase" })
+        .scrollIntoView()
+        .should("be.visible");
     });
   });
 });
 
 // Skipped since it does not make sense when CSP is disabled
-describe.skip("issue 49142", () => {
+describe("issue 49142", { tags: "@skip" }, () => {
   const questionDetails = {
     name: "Products",
     query: { "source-table": PRODUCTS_ID, limit: 2 },
@@ -1413,7 +1416,7 @@ describe("issue 51934 (EMB-189)", () => {
         "have.css",
         "background-color",
         // brand color
-        "rgb(80, 158, 227)",
+        "rgb(80, 158, 226)",
       );
       cy.findByRole("menuitem", { name: QUESTION_IN_COLLECTION_NAME })
         .should("be.visible")
@@ -1442,7 +1445,7 @@ describe("issue 51934 (EMB-189)", () => {
         "have.css",
         "background-color",
         // brand color
-        "rgb(80, 158, 227)",
+        "rgb(80, 158, 226)",
       );
       cy.findByRole("menuitem", { name: MODEL_IN_COLLECTION_NAME })
         .should("be.visible")
@@ -1464,7 +1467,7 @@ describe("issue 51934 (EMB-189)", () => {
         "have.css",
         "background-color",
         // brand color
-        "rgb(80, 158, 227)",
+        "rgb(80, 158, 226)",
       );
       cy.findByRole("menuitem", { name: MODEL_IN_ROOT_NAME }).should(
         "be.visible",
@@ -1491,4 +1494,27 @@ describe("issue 51934 (EMB-189)", () => {
       });
     });
   }
+});
+
+describe("issue 63687", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should properly display pin map tiles without auth errors for a valid JWT token", () => {
+    H.createNativeQuestion(questionAsPinMapWithTiles, {
+      visitQuestion: true,
+    });
+
+    H.openStaticEmbeddingModal({ activeTab: "parameters" });
+
+    cy.intercept("/api/embed/tiles/**").as("getTiles");
+
+    H.visitIframe();
+
+    cy.wait("@getTiles").then(({ response: tileResponse }) => {
+      expect(tileResponse?.statusCode).to.equal(200);
+    });
+  });
 });

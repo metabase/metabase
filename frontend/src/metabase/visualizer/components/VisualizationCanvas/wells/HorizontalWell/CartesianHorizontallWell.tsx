@@ -57,7 +57,7 @@ export function CartesianHorizontalWell({ style, ...props }: FlexProps) {
       dimensions.push(timeDimensions[0]);
     }
     if (categoryDimensions.length > 0) {
-      dimensions.push(categoryDimensions[0]);
+      dimensions.push(...categoryDimensions); //.push(categoryDimensions[0]);
     }
 
     return dimensions;

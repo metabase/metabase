@@ -96,8 +96,12 @@ describe("useEntityQuery", () => {
 
     expect(screen.getByText(TEST_DB.name)).toBeInTheDocument();
     expect(screen.getByText(TEST_TABLE.name)).toBeInTheDocument();
-    expect(fetchMock.calls(`path:/api/database/${TEST_DB.id}`)).toHaveLength(1);
-    expect(fetchMock.calls(`path:/api/table/${TEST_TABLE.id}`)).toHaveLength(1);
+    expect(
+      fetchMock.callHistory.calls(`path:/api/database/${TEST_DB.id}`),
+    ).toHaveLength(1);
+    expect(
+      fetchMock.callHistory.calls(`path:/api/table/${TEST_TABLE.id}`),
+    ).toHaveLength(1);
   });
 
   it("should not reload data when re-rendered", async () => {
@@ -108,8 +112,12 @@ describe("useEntityQuery", () => {
 
     expect(screen.getByText(TEST_DB.name)).toBeInTheDocument();
     expect(screen.getByText(TEST_TABLE.name)).toBeInTheDocument();
-    expect(fetchMock.calls(`path:/api/database/${TEST_DB.id}`)).toHaveLength(1);
-    expect(fetchMock.calls(`path:/api/table/${TEST_TABLE.id}`)).toHaveLength(1);
+    expect(
+      fetchMock.callHistory.calls(`path:/api/database/${TEST_DB.id}`),
+    ).toHaveLength(1);
+    expect(
+      fetchMock.callHistory.calls(`path:/api/table/${TEST_TABLE.id}`),
+    ).toHaveLength(1);
   });
 
   it("should reload data only for calls with the reload flag when re-mounted", async () => {
@@ -122,7 +130,11 @@ describe("useEntityQuery", () => {
 
     expect(screen.getByText(TEST_DB.name)).toBeInTheDocument();
     expect(screen.getByText(TEST_TABLE.name)).toBeInTheDocument();
-    expect(fetchMock.calls(`path:/api/database/${TEST_DB.id}`)).toHaveLength(1);
-    expect(fetchMock.calls(`path:/api/table/${TEST_TABLE.id}`)).toHaveLength(2);
+    expect(
+      fetchMock.callHistory.calls(`path:/api/database/${TEST_DB.id}`),
+    ).toHaveLength(1);
+    expect(
+      fetchMock.callHistory.calls(`path:/api/table/${TEST_TABLE.id}`),
+    ).toHaveLength(2);
   });
 });

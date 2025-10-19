@@ -128,7 +128,7 @@
               [(:base_type field) nil]
 
               :else
-              (when-let [coercion-strategy (keyword coercion-strategy)]
+              (when-let [coercion-strategy (some-> coercion-strategy keyword)]
                 (let [effective (types/effective-type-for-coercion coercion-strategy)]
                   (if (types/is-coercible? coercion-strategy (:base_type field) effective)
                     [effective coercion-strategy]
@@ -302,7 +302,9 @@
                               [:id        ms/PositiveInt]
                               [:search-id ms/PositiveInt]]
    {:keys [value]} :- [:map
-                       [:value ms/NonBlankString]]]
+                       [:value {:optional true} ms/NonBlankString]]]
+  (when-not value
+    (api/check-400 (request/limit) "Limit required if value is omitted"))
   (let [field        (api/check-404 (t2/select-one :model/Field :id id))
         search-field (api/check-404 (t2/select-one :model/Field :id search-id))]
     (api/check-403 (mi/can-read? field))

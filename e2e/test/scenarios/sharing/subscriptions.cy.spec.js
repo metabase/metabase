@@ -133,15 +133,19 @@ describe("scenarios > dashboard > subscriptions", () => {
         H.popover().isRenderedWithinViewport();
       });
 
-      it.skip("should not send attachments by default if not explicitly selected (metabase#28673)", () => {
-        openDashboardSubscriptions();
-        assignRecipient();
+      it(
+        "should not send attachments by default if not explicitly selected (metabase#28673)",
+        { tags: "@skip" },
+        () => {
+          openDashboardSubscriptions();
+          assignRecipient();
 
-        cy.findByLabelText("Attach results").should("not.be.checked");
-        H.sendEmailAndAssert(
-          ({ attachments }) => expect(attachments).to.be.empty,
-        );
-      });
+          cy.findByLabelText("Attach results").should("not.be.checked");
+          H.sendEmailAndAssert(
+            ({ attachments }) => expect(attachments).to.be.empty,
+          );
+        },
+      );
     });
 
     describe("with existing subscriptions", () => {
@@ -325,6 +329,29 @@ describe("scenarios > dashboard > subscriptions", () => {
         .within(() => {
           cy.findByRole("checkbox").should("be.checked");
         });
+    });
+
+    it("should send only attachments without email content when 'Send only attachments' is enabled", () => {
+      assignRecipient();
+
+      cy.findByLabelText("Attach results").click();
+      cy.findByLabelText("Questions to attach").click();
+      cy.findByLabelText("Send only attachments").click();
+      cy.findByLabelText("Send only attachments").should("be.checked");
+
+      H.sendEmailAndAssert((email) => {
+        expect(email.attachments).to.not.be.empty;
+        const csvAttachment = email.attachments.find(
+          (attachment) => attachment.contentType === "text/csv",
+        );
+        expect(csvAttachment).to.exist;
+        expect(csvAttachment.fileName).to.include("Orders");
+        expect(email.html).to.not.include("Orders chart");
+        expect(email.html).to.include(
+          "Dashboard content available in attached files",
+        );
+        expect(email.html).to.include("Orders in a dashboard");
+      });
     });
 
     it("should not display 'null' day of the week (metabase#14405)", () => {

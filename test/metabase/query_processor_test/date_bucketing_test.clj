@@ -24,7 +24,6 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.driver.util :as driver.u]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -32,7 +31,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.format-rows :as format-rows]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -100,9 +99,23 @@
         [id s cnt]))))
 
 (defmethod sanity-check-test-expected-rows :sqlite
-  [_driver _timezone]
-  (for [[id s cnt] sanity-check-test-utc-results]
-    [id (u.date/format-sql (t/local-date-time (u.date/parse s))) cnt]))
+  [_driver timezone]
+  (case timezone
+    :pacific [[1 "2015-06-06 10:40:00.000" 4]
+              [2 "2015-06-10 19:51:00.000" 0]
+              [3 "2015-06-09 15:42:00.000" 5]
+              [4 "2015-06-22 23:49:00.000" 3]
+              [5 "2015-06-20 01:45:00.000" 3]]
+    :utc     [[1 "2015-06-06 10:40:00.000" 4]
+              [2 "2015-06-10 19:51:00.000" 0]
+              [3 "2015-06-09 15:42:00.000" 5]
+              [4 "2015-06-22 23:49:00.000" 3]
+              [5 "2015-06-20 01:45:00.000" 3]]
+    :eastern [[1 "2015-06-06 10:40:00.000" 4]
+              [2 "2015-06-10 19:51:00.000" 0]
+              [3 "2015-06-09 15:42:00.000" 5]
+              [4 "2015-06-22 23:49:00.000" 3]
+              [5 "2015-06-20 01:45:00.000" 3]]))
 
 (deftest sanity-check-test
   (mt/test-drivers (mt/normal-drivers-with-feature ::sanity-check-test)
@@ -241,16 +254,16 @@
 ;;; return them directly. This is less than ideal. TIMEZONE FIXME
 (defmethod group-by-default-test-expected-rows :sqlite
   [_driver]
-  [["2015-06-01 10:31:00" 1]
-   ["2015-06-01 16:06:00" 1]
-   ["2015-06-01 17:23:00" 1]
-   ["2015-06-01 18:55:00" 1]
-   ["2015-06-01 21:04:00" 1]
-   ["2015-06-01 21:19:00" 1]
-   ["2015-06-02 02:13:00" 1]
-   ["2015-06-02 05:37:00" 1]
-   ["2015-06-02 08:20:00" 1]
-   ["2015-06-02 11:11:00" 1]])
+  [["2015-06-01 10:31:00.000" 1]
+   ["2015-06-01 16:06:00.000" 1]
+   ["2015-06-01 17:23:00.000" 1]
+   ["2015-06-01 18:55:00.000" 1]
+   ["2015-06-01 21:04:00.000" 1]
+   ["2015-06-01 21:19:00.000" 1]
+   ["2015-06-02 02:13:00.000" 1]
+   ["2015-06-02 05:37:00.000" 1]
+   ["2015-06-02 08:20:00.000" 1]
+   ["2015-06-02 11:11:00.000" 1]])
 
 (deftest group-by-default-test
   (mt/test-drivers (mt/normal-drivers)
@@ -308,16 +321,16 @@
 ;;; Always in UTC so isn't impacted by changes in report-timezone
 (defmethod group-by-default-test-2-expected-rows :sqlite
   [_driver]
-  [["2015-06-01 10:31:00" 1]
-   ["2015-06-01 16:06:00" 1]
-   ["2015-06-01 17:23:00" 1]
-   ["2015-06-01 18:55:00" 1]
-   ["2015-06-01 21:04:00" 1]
-   ["2015-06-01 21:19:00" 1]
-   ["2015-06-02 02:13:00" 1]
-   ["2015-06-02 05:37:00" 1]
-   ["2015-06-02 08:20:00" 1]
-   ["2015-06-02 11:11:00" 1]])
+  [["2015-06-01 10:31:00.000" 1]
+   ["2015-06-01 16:06:00.000" 1]
+   ["2015-06-01 17:23:00.000" 1]
+   ["2015-06-01 18:55:00.000" 1]
+   ["2015-06-01 21:04:00.000" 1]
+   ["2015-06-01 21:19:00.000" 1]
+   ["2015-06-02 02:13:00.000" 1]
+   ["2015-06-02 05:37:00.000" 1]
+   ["2015-06-02 08:20:00.000" 1]
+   ["2015-06-02 11:11:00.000" 1]])
 
 (deftest group-by-default-test-2
   (mt/test-drivers (mt/normal-drivers)
@@ -346,7 +359,16 @@
 
 (defmethod group-by-default-test-3-expected-rows :sqlite
   [_driver]
-  (sad-toucan-result (default-timezone-parse-fn :utc) (comp u.date/format-sql t/local-date-time)))
+  [["2015-06-01 10:31:00.000" 1]
+   ["2015-06-01 16:06:00.000" 1]
+   ["2015-06-01 17:23:00.000" 1]
+   ["2015-06-01 18:55:00.000" 1]
+   ["2015-06-01 21:04:00.000" 1]
+   ["2015-06-01 21:19:00.000" 1]
+   ["2015-06-02 02:13:00.000" 1]
+   ["2015-06-02 05:37:00.000" 1]
+   ["2015-06-02 08:20:00.000" 1]
+   ["2015-06-02 11:11:00.000" 1]])
 
 (deftest group-by-default-test-3
   ;; Changes the JVM timezone from UTC to Pacific, this test isn't run on H2 as the database stores it's timezones in
@@ -1185,32 +1207,32 @@
         intervalCount    (.intervalCount this)]
     (mt/dataset-definition
      (str "interval_" interval-seconds (when-not (= 30 intervalCount) (str "_" intervalCount)) "_" (.randomName this))
-     ["checkins"
-      [{:field-name "timestamp"
-        :base-type  (or (driver->current-datetime-base-type driver/*driver*) :type/DateTime)}]
-      (mapv (fn [i]
-              ;; TIMESTAMP FIXME — not sure if still needed
-              ;;
-              ;; Create timestamps using relative dates (e.g. `DATEADD(second, -195, GETUTCDATE())` instead of
-              ;; generating Java classes here so they'll be in the DB's native timezone. Some DBs refuse to use
-              ;; the same timezone we're running the tests from *cough* SQL Server *cough*
-              [(u/prog1 (if (and (isa? driver/hierarchy driver/*driver* :sql)
-                                 ;; BigQuery/Vertica don't insert rows using SQL statements
-                                 ;;
-                                 ;; TODO -- make 'insert-rows-using-statements?` a multimethod so we don't need to
-                                 ;; hardcode the whitelist here.
-                                 (not (#{:vertica :bigquery-cloud-sdk} driver/*driver*)))
-                          (sql.qp/compiled
-                           (sql.qp/add-interval-honeysql-form driver/*driver*
-                                                              (sql.qp/current-datetime-honeysql-form driver/*driver*)
-                                                              (* i interval-seconds)
-                                                              :second))
-                          (u.date/add :second (* i interval-seconds)))
-                 (assert <>))])
-            (let [shift (quot intervalCount 2)
-                  lower-bound (- shift)
-                  upper-bound (- intervalCount shift)]
-              (range lower-bound upper-bound)))])))
+     [["checkins"
+       [{:field-name "timestamp"
+         :base-type  (or (driver->current-datetime-base-type driver/*driver*) :type/DateTime)}]
+       (mapv (fn [i]
+               ;; TIMESTAMP FIXME — not sure if still needed
+               ;;
+               ;; Create timestamps using relative dates (e.g. `DATEADD(second, -195, GETUTCDATE())` instead of
+               ;; generating Java classes here so they'll be in the DB's native timezone. Some DBs refuse to use
+               ;; the same timezone we're running the tests from *cough* SQL Server *cough*
+               [(u/prog1 (if (and (isa? driver/hierarchy driver/*driver* :sql)
+                                  ;; BigQuery/Vertica don't insert rows using SQL statements
+                                  ;;
+                                  ;; TODO -- make 'insert-rows-using-statements?` a multimethod so we don't need to
+                                  ;; hardcode the whitelist here.
+                                  (not (#{:vertica :bigquery-cloud-sdk} driver/*driver*)))
+                           (sql.qp/compiled
+                            (sql.qp/add-interval-honeysql-form driver/*driver*
+                                                               (sql.qp/current-datetime-honeysql-form driver/*driver*)
+                                                               (* i interval-seconds)
+                                                               :second))
+                           (u.date/add :second (* i interval-seconds)))
+                  (assert <>))])
+             (let [shift (quot intervalCount 2)
+                   lower-bound (- shift)
+                   upper-bound (- intervalCount shift)]
+               (range lower-bound upper-bound)))]])))
 
 (defn- dataset-def-with-timestamps
   ([interval-seconds]
@@ -1328,7 +1350,7 @@
 (deftest ^:parallel time-interval-expression-test
   (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
     (mt/dataset checkins:1-per-day
-      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (let [metadata-provider (mt/metadata-provider)
             orders (lib.metadata/table metadata-provider (mt/id :checkins))
             query (lib/query metadata-provider orders)
             timestamp-col (m/find-first (comp #{(mt/id :checkins :timestamp)} :id) (lib/visible-columns query))
@@ -1628,7 +1650,7 @@
                    (mt/first-row
                     (qp/process-query query))))))))))
 
-(deftest temporal-unit-parameters-test
+(deftest ^:parallel temporal-unit-parameters-test
   (mt/dataset test-data
     (let [query-months (mt/query orders
                          {:type       :query
@@ -1649,23 +1671,23 @@
         (is (= [37019.52 32923.82 36592.60 35548.11 43556.61 39537.82
                 42292.10 42443.71 42077.35 45708.74 44498.55 46245.48]
                (unit-totals "month"))))
-
       (testing "quarterly"
         (is (= [106535.94 118642.54 126813.16 136452.77]
                (unit-totals "quarter"))))
-
       (testing "annual"
         (is (= [488444.41] (unit-totals "year")))))))
 
 (deftest ^:parallel incompatible-temporal-unit-parameter-test
   (testing "Incompatible time unit parameter yields expected error"
     (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo #"This chart can not be broken out by the selected unit of time: minute\."
+         clojure.lang.ExceptionInfo
+         #"\QThis chart can not be broken out by the selected unit of time: minute.\E"
          (qp.preprocess/preprocess
-          (mt/mbql-query
-            checkins
-            {:type       :query
-             :query      {:aggregation  [[:count]]
+          (mt/$ids checkins
+            {:database   (mt/id)
+             :type       :query
+             :query      {:source-table $$checkins
+                          :aggregation  [[:count]]
                           :breakout     [!day.date]}
              :parameters [{:type   :temporal-unit
                            :target [:dimension !day.date]
@@ -1709,7 +1731,7 @@
                      (mt/formatted-rows
                       [int int] (qp/process-query query)))))))))))
 
-(deftest filter-by-current-quarter-test
+(deftest ^:parallel filter-by-current-quarter-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "Should be able to filter by current quarter (#20683)"
       (let [query (mt/mbql-query checkins
@@ -1722,12 +1744,11 @@
                  (mt/formatted-rows
                   [int] (qp/process-query query)))))))))
 
-(deftest filter-by-expression-time-interval-test
+(deftest ^:parallel filter-by-expression-time-interval-test
   (testing "Datetime expressions can filter to a date range (#33528)"
     (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
-      (mt/dataset
-        checkins:1-per-day
-        (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (mt/dataset checkins:1-per-day
+        (let [mp (mt/metadata-provider)
               query (as-> (lib/query mp (lib.metadata/table mp (mt/id :checkins))) $q
                       (lib/expression $q "customdate" (m/find-first (comp #{(mt/id :checkins :timestamp)} :id) (lib/visible-columns $q)))
                       (lib/filter $q (lib/time-interval (lib/expression-ref $q "customdate") :current :week)))
@@ -1744,12 +1765,12 @@
                  (get-in (qp/process-query (lib.convert/->pMBQL mbql-query)) [:data :native_form])
                  (get-in (qp/process-query query) [:data :native_form]))))))))
 
-(deftest filter-by-expression-relative-time-interval-test
+(deftest ^:parallel filter-by-expression-relative-time-interval-test
   (testing "Datetime expressions can filter to a date range"
     (mt/test-drivers
       (mt/normal-drivers-with-feature :date-arithmetics :test/dynamic-dataset-loading)
       (mt/dataset checkins:1-per-day:60
-        (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        (let [mp (mt/metadata-provider)
               query (as-> (lib/query mp (lib.metadata/table mp (mt/id :checkins))) $q
                       (lib/expression $q "customdate" (m/find-first (comp #{(mt/id :checkins :timestamp)} :id)
                                                                     (lib/visible-columns $q)))

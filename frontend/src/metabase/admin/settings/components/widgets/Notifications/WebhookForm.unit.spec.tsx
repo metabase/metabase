@@ -174,8 +174,8 @@ describe("WebhookForm", () => {
       advanceTimers: true,
     });
 
-    fetchMock.post("path:/api/channel/test", async (_url, opts) => {
-      const body = JSON.parse((await opts.body) as string);
+    fetchMock.post("path:/api/channel/test", async (call) => {
+      const body = JSON.parse(call.options?.body as string);
       return body.details.url?.endsWith("good") ? { ok: true } : 400;
     });
 

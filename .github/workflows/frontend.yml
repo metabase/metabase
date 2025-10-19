@@ -9,6 +9,16 @@ on:
       skip-lint:
         type: boolean
         default: false
+  workflow_dispatch:
+    inputs:
+      skip:
+        description: "Skip main frontend jobs (type-check, unit tests, timezone tests)"
+        type: boolean
+        default: false
+      skip-lint:
+        description: "Skip linting jobs (prettier, eslint, css variables check)"
+        type: boolean
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-frontend
@@ -42,6 +52,8 @@ jobs:
         run: yarn run lint-prettier-pure
       - name: Run ESLint linter
         run: yarn run lint-eslint-pure
+      - name: Run CSS linter
+        run: yarn run lint-css
 
   fe-type-check:
     if: ${{ !inputs.skip }}
@@ -67,7 +79,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2]
+        shard: [1, 2] # 2 shards for parallel execution
     env:
       SHARDS: 2 # should match matrix above
       JEST_JUNIT_OUTPUT_DIR: ./target/junit
@@ -84,7 +96,7 @@ jobs:
         run: yarn run test-unit --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }}
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
-        if: always()
+        if: always() && github.event_name != 'workflow_dispatch'
         with:
           input-path: ./target/junit
           output-name: frontend-unit

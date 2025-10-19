@@ -102,6 +102,25 @@ H.describeWithSnowplow("scenarios > browse", () => {
     });
   });
 
+  it("can generate x-ray dashboard from a browse page", () => {
+    cy.visit(`/browse/databases/${SAMPLE_DB_ID}`);
+
+    cy.findByTestId("browse-schemas").within(() => {
+      cy.findAllByRole("link")
+        .filter(":contains(People)")
+        .should("be.visible")
+        .realHover();
+      cy.findAllByLabelText("X-ray this table").filter(":visible").click();
+    });
+
+    H.expectNoBadSnowplowEvents();
+    H.expectUnstructuredSnowplowEvent({
+      event: "x-ray_clicked",
+      event_detail: "table",
+      triggered_from: "browse_database",
+    });
+  });
+
   it("tracks when a new model creation is initiated", () => {
     cy.visit("/browse/models");
     cy.findByTestId("browse-models-header")
@@ -152,6 +171,10 @@ H.describeWithSnowplow("scenarios > browse", () => {
     H.browseDatabases().click();
     cy.findByRole("link", { name: /Learn about our data/ }).click();
     cy.location("pathname").should("eq", "/reference/databases");
+    H.expectNoBadSnowplowEvents();
+    H.expectUnstructuredSnowplowEvent({
+      event: "learn_about_our_data_clicked",
+    });
     cy.go("back");
     cy.findByRole("heading", { name: "Sample Database" }).click();
     cy.findByRole("heading", { name: "Products" }).click();

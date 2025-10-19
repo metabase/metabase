@@ -4,24 +4,20 @@ import { c, t } from "ttag";
 import { getCurrentVersion } from "metabase/admin/app/selectors";
 import { useGetVersionInfoQuery } from "metabase/api";
 import ExternalLink from "metabase/common/components/ExternalLink";
-import { useSetting } from "metabase/common/hooks";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { newVersionAvailable, versionIsLatest } from "metabase/lib/utils";
-import type {
-  UpdateChannel,
-  VersionInfo,
-  VersionInfoRecord,
-} from "metabase-types/api";
+import { Tabs } from "metabase/ui";
 
 import S from "./VersionUpdateNotice.module.css";
+
+const embedQueryParams = "?hide_nav=true&no_gdpr=true";
 
 export function VersionUpdateNotice() {
   const { data: versionInfo } = useGetVersionInfoQuery();
   const currentVersion = useSelector(getCurrentVersion);
-  const updateChannel = useSetting("update-channel") ?? "latest";
-  const latestVersion = versionInfo?.[updateChannel]?.version;
+  const latestVersion = versionInfo?.latest?.version;
   const displayVersion = formatVersion(currentVersion);
 
   if (latestVersion && versionIsLatest({ currentVersion, latestVersion })) {
@@ -33,8 +29,6 @@ export function VersionUpdateNotice() {
       <NewVersionAvailable
         currentVersion={displayVersion}
         latestVersion={latestVersion}
-        updateChannel={updateChannel}
-        versionInfo={versionInfo}
       />
     );
   }
@@ -66,16 +60,10 @@ function DefaultUpdateMessage({ currentVersion }: { currentVersion: string }) {
 function NewVersionAvailable({
   currentVersion,
   latestVersion,
-  updateChannel,
-  versionInfo,
 }: {
   currentVersion: string;
   latestVersion: string;
-  updateChannel: UpdateChannel;
-  versionInfo?: VersionInfo | null;
 }) {
-  const lastestVersionInfo = versionInfo?.[updateChannel];
-
   return (
     <div>
       <div
@@ -110,51 +98,42 @@ function NewVersionAvailable({
           {t`Update`}
         </ExternalLink>
       </div>
-
-      {versionInfo && (
-        <div
-          className={cx(
-            CS.textMedium,
-            CS.bordered,
-            CS.rounded,
-            CS.p2,
-            CS.mt2,
-            CS.overflowYScroll,
-          )}
-          style={{ height: 330 }}
-        >
-          <h3 className={cx(CS.pb3, CS.textUppercase)}>{t`What's Changed:`}</h3>
-
-          {lastestVersionInfo && <Version version={lastestVersionInfo} />}
-
-          {versionInfo.older &&
-            versionInfo.older.map((version, index) => (
-              <Version key={index} version={version} />
-            ))}
-        </div>
-      )}
     </div>
   );
 }
 
-function Version({ version }: { version: VersionInfoRecord }) {
-  if (!version) {
-    return null;
-  }
+export function NewVersionInfo() {
+  const { data: versionInfo } = useGetVersionInfoQuery();
+  const latestMajorVersion = getLatestMajorVersion(
+    versionInfo?.latest?.version,
+  );
 
   return (
-    <div className={CS.pb3}>
-      <h3 className={CS.textMedium}>{formatVersion(version.version)}</h3>
-      <ul style={{ listStyleType: "disc", listStylePosition: "inside" }}>
-        {version.highlights &&
-          version.highlights.map((highlight, index) => (
-            <li key={index} style={{ lineHeight: "1.5" }} className={CS.pl1}>
-              {highlight}
-            </li>
-          ))}
-      </ul>
-    </div>
+    <Tabs mt="md" defaultValue="whats-new">
+      <Tabs.List>
+        <Tabs.Tab value="whats-new">{t`What's new`}</Tabs.Tab>
+        <Tabs.Tab value="changelog">{t`Changelog`}</Tabs.Tab>
+      </Tabs.List>
+      <Tabs.Panel value="whats-new">
+        <iframe
+          data-testid="releases-iframe"
+          src={`https://www.metabase.com/releases${embedQueryParams}`}
+          className={S.iframe}
+        />
+      </Tabs.Panel>
+      <Tabs.Panel value="changelog">
+        <iframe
+          data-testid="changelog-iframe"
+          src={`https://www.metabase.com/changelog/${latestMajorVersion}${embedQueryParams}`}
+          className={S.iframe}
+        />
+      </Tabs.Panel>
+    </Tabs>
   );
+}
+
+function getLatestMajorVersion(version: string | null | undefined) {
+  return version?.split(".")[1] ?? "";
 }
 
 function formatVersion(versionLabel = "") {

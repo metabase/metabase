@@ -5,9 +5,11 @@
 
   Drivers can call boolean->comparison to convert boolean literals and refs into comparison expressions. See the
   sqlserver or oracle drivers for examples."
+  (:refer-clojure :exclude [some mapv update-keys])
   (:require
    [metabase.driver-api.core :as driver-api]
-   [metabase.driver.sql.query-processor :as sql.qp]))
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.util.performance :refer [some mapv update-keys]]))
 
 ;; Oracle and SQLServer (and maybe others) use 0 and 1 for boolean constants, but, for example, none of the following
 ;; queries are valid in such databases:
@@ -75,8 +77,7 @@
   expression refs by name, if necessary, to determine whether their value is a boolean literal."
   [clause]
   (and (driver-api/is-clause? :expression clause)
-       (or (boolean-typed-clause? clause)
-           (boolean-value-clause? (driver-api/expression-with-name sql.qp/*inner-query* (second clause))))))
+       (boolean-value-clause? (driver-api/expression-with-name sql.qp/*inner-query* (second clause)))))
 
 (defn boolean->comparison
   "Convert boolean field refs or expression literals to equivalent boolean comparison expressions.
