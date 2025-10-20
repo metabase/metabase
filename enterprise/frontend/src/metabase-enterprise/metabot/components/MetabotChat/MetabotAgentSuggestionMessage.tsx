@@ -114,7 +114,7 @@ export const AgentSuggestionMessage = ({
   );
 
   const canApply = !isViewing || !isActive;
-  const isNew = !isViewing && !editorTransform;
+  const isNew = !isViewing && !editorTransform && suggestedTransform.id == null;
 
   const {
     data: originalTransform,
