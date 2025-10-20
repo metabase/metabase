@@ -628,6 +628,7 @@ describe("issue 43216", () => {
     H.createNativeQuestion({
       name: "Source question",
       native: { query: "select 1 as A, 2 as B, 3 as C" },
+      collection_id: null, // Create in root collection so it's visible in the entity picker
     });
   });
 
