@@ -71,7 +71,7 @@ describe("GettingStartedSection", () => {
 
   it("should trigger the modal on 'Add data' click", async () => {
     const { onAddDataModalOpen } = setup();
-    await userEvent.click(screen.getByText("Add data"));
+    await userEvent.click(screen.getByText("Add your data"));
     expect(onAddDataModalOpen).toHaveBeenCalledTimes(1);
   });
 });
