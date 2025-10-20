@@ -147,9 +147,9 @@
                   result (metabot.dependencies/check-transform-dependencies
                           {:id transform1-id
                            :source modified-source})
-                  bad-cards (get-in result [:structured_output :bad_cards])]
+                  bad-cards (get-in result [:structured_output :bad_questions])]
               ;; Two cards should be broken...
               (is (false? (get-in result [:structured_output :success])))
-              (is (= 2 (get-in result [:structured_output :bad_card_count])))
+              (is (= 2 (get-in result [:structured_output :bad_question_count])))
               ;; ...but only one should be reported due to the limit.
               (is (= 1 (count bad-cards))))))))))
