@@ -53,7 +53,7 @@ export function dataModelSchema(
   databaseId: DatabaseId,
   schema: SchemaName | null,
 ) {
-  return `${dataModelDatabase(databaseId)}/schema/${databaseId}${encodeURIComponent(schema ?? "")}`;
+  return `${dataModelDatabase(databaseId)}/schema/${databaseId}:${encodeURIComponent(schema ?? "")}`;
 }
 
 export function dataModelTable(

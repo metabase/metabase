@@ -139,7 +139,11 @@ export function getNodeLink(
         name: node.data.name,
         type: node.data.type,
       }),
-      tooltip: t`View this question`,
+      tooltip: match(node.data.type)
+        .with("question", () => t`View this question`)
+        .with("model", () => t`View this model`)
+        .with("metric", () => t`View this metric`)
+        .exhaustive(),
     }))
     .with({ type: "table" }, (node) => ({
       url: Urls.dataModelTable(node.data.db_id, node.data.schema, node.id),
