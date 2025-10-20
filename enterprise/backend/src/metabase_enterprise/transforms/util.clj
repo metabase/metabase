@@ -172,13 +172,12 @@
   (case (keyword query-type)
     :query (:query (qp.compile/compile-with-inline-parameters (massage-sql-query (:query source))))))
 
-(defn required-database-feature
-  "Returns the database feature necessary to execute `transform`."
+(defn required-database-features
+  "Returns the database features necessary to execute `transform`."
   [transform]
   (if (python-transform? transform)
-    :transforms/python
-    (case (-> transform :target :type)
-      "table"             :transforms/table)))
+    [:transforms/python]
+    [:transforms/table]))
 
 (defn ->instant
   "Convert a temporal value `t` to an Instant in the system timezone."

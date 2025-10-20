@@ -51,13 +51,13 @@
   [transform]
   (let [database (api/check-400 (t2/select-one :model/Database (transforms.i/target-db-id transform))
                                 (deferred-tru "The target database cannot be found."))
-        feature (transforms.util/required-database-feature transform)]
+        features (transforms.util/required-database-features transform)]
     (api/check-400 (not (:is_sample database))
                    (deferred-tru "Cannot run transforms on the sample database."))
     (api/check-400 (not (:is_audit database))
                    (deferred-tru "Cannot run transforms on audit databases."))
-    (api/check-400 (driver.u/supports? (:engine database) feature database)
-                   (deferred-tru "The database does not support the requested transform target type."))
+    (api/check-400 (every? (fn [feature] (driver.u/supports? (:engine database) feature database)) features)
+                   (deferred-tru "The database does not support the requested transform features."))
     (api/check-400 (not (transforms.util/db-routing-enabled? database))
                    (deferred-tru "Transforms are not supported on databases with DB routing enabled."))))
 
