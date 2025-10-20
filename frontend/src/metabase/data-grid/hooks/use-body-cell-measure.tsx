@@ -3,11 +3,13 @@ import { useCallback, useMemo, useRef } from "react";
 import { renderToString } from "react-dom/server";
 
 import { BodyCell } from "metabase/data-grid/components/BodyCell/BodyCell";
+import { reactNodeToHtmlString } from "metabase/lib/react-to-html";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { ThemeProvider } from "metabase/ui";
 
 import { DEFAULT_FONT_SIZE } from "../constants";
 import type { DataGridTheme } from "../types";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 
 export type CellMeasurer = (
   content: React.ReactNode,
@@ -62,8 +64,9 @@ export const useCellMeasure = (
       if (typeof content === "string") {
         contentCell.textContent = content;
       } else {
-        contentCell.innerHTML = renderToString(content);
+        contentCell.innerHTML = getContentCellHtmlString(content);
       }
+
       const boundingRect = rootEl.getBoundingClientRect();
       return {
         width: boundingRect.width,
@@ -112,3 +115,7 @@ export const useBodyCellMeasure = (theme?: DataGridTheme) => {
     measureRoot,
   };
 };
+
+function getContentCellHtmlString(content: React.ReactNode) {
+  return reactNodeToHtmlString(content);
+}
