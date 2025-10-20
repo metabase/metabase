@@ -52,7 +52,7 @@ saved later when it is ready."
   (let [futur     (-> query
                       legacy-result-metadata-future)
         metadata' (if valid-metadata?
-                    (lib/normalize ::qp.schema/metadata.columns metadata)
+                    (lib/normalize ::qp.schema/result-metadata.columns metadata)
                     original-metadata)
         result    (deref futur metadata-sync-wait-ms ::timed-out)
         combiner  (fn [result]

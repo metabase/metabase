@@ -14,6 +14,7 @@
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util.match :as lib.util.match]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
@@ -53,7 +54,7 @@
     strategy))
 
 (mu/defn- explict-stage-references :- [:set :int]
-  [parameters]
+  [parameters :- [:maybe ::parameters.schema/parameters]]
   (into #{}
         (keep (fn [{:keys [target]}]
                 (some-> target lib/parameter-target-dimension-options :stage-number)))
@@ -94,7 +95,7 @@
                             [:dataset_query [:or
                                              [:= {:description "empty map"} {}]
                                              ::lib.schema/query]]]
-   parameters  :- [:maybe [:sequential :map]]
+   parameters  :- [:maybe ::parameters.schema/parameters]
    constraints :- [:maybe :map]
    middleware  :- [:maybe :map]
    & [ids]]
@@ -193,14 +194,15 @@
 
   Background: some more-specific parameter types aren't allowed for certain types of parameters.
   See [[metabase.legacy-mbql.schema/parameter-types]] for details."
-  [parameter-name
+  [parameter-name       :- :string
    widget-type          :- ::lib.schema.template-tag/widget-type
    parameter-value-type :- ::lib.schema.parameter/type]
   (when-not (allowed-parameter-type-for-template-tag-widget-type? parameter-value-type widget-type)
     (let [allowed-types (allowed-parameter-types-for-template-tag-widget-type widget-type)]
-      (throw (ex-info (tru "Invalid parameter type {0} for parameter {1}. Parameter type must be one of: {2}"
+      (throw (ex-info (tru "Invalid parameter type {0} for parameter {1} with widget type {2}. Parameter type must be one of: {3}"
                            parameter-value-type
                            (pr-str parameter-name)
+                           widget-type
                            (str/join ", " (sort allowed-types)))
                       {:type              qp.error-type/invalid-parameter
                        :invalid-parameter parameter-name
@@ -250,7 +252,7 @@
     (qp.streaming/streaming-response [rff export-format (qp.streaming/safe-filename-prefix (:card-name info))]
       (qp (update query :info merge info) rff))))
 
-(mu/defn combined-parameters-and-template-tags
+(mu/defn combined-parameters-and-template-tags :- ::parameters.schema/parameters
   "Enrich `card.parameters` to include parameters from template-tags.
 
   On native queries parameters exists in 2 forms:
@@ -271,9 +273,10 @@
                      id->parameter
                      id->template-tags-parameter))))
 
-(defn- enrich-parameters-from-card
+(mu/defn- enrich-parameters-from-card :- ::parameters.schema/parameters
   "Allow the FE to omit type and target for parameters by adding them from the card."
-  [parameters card-parameters]
+  [parameters      :- [:maybe ::parameters.schema/parameters]
+   card-parameters :- [:maybe ::parameters.schema/parameters]]
   (let [id->card-param (->> card-parameters
                             (map #(select-keys % [:id :type :target]))
                             (m/index-by :id))]
@@ -333,6 +336,7 @@
                                                    :cache_invalidated_at :entity_id :created_at :card_schema
                                                    :parameters]
                                                   :id card-id))
+        parameters (some-> parameters parameters.schema/normalize-parameters)
         parameters (enrich-parameters-from-card parameters (combined-parameters-and-template-tags card))
         dash-viz   (when (and (not= context :question)
                               dashcard-id)

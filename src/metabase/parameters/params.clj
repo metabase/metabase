@@ -21,6 +21,7 @@
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.parameters.schema :as parameters.schema]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
@@ -62,14 +63,17 @@
     (template-tag->field-form [:template-tag :company] some-dashcard) ; -> [:field 100 nil]"
   [template-tag-name :- :string
    card              :- :metabase.queries.schema/card]
-  (some-> card
-          :dataset_query
-          not-empty
-          lib-be/normalize-query
-          lib/all-template-tags-map
-          (get template-tag-name)
-          :dimension
-          lib/field-ref-id))
+  (or (some-> card
+              :dataset_query
+              not-empty
+              lib-be/normalize-query
+              lib/all-template-tags-map
+              (get template-tag-name)
+              :dimension
+              lib/field-ref-id)
+      (do
+        (log/warnf "Could not find matching Field ID for target: %s" (pr-str template-tag-name))
+        nil)))
 
 (mu/defn param-target->field-id :- [:maybe ::lib.schema.id/field]
   "Parse a Card parameter `target` form, which looks something like `[:dimension [:field-id 100]]`, and return the Field

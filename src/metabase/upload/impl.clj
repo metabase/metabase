@@ -366,7 +366,7 @@
              (normalize-display-name h))))))
 
 (defn- derive-column-names [driver header]
-  (let [generator-fn (lib/unique-name-generator-with-options {:unique-alias-fn (unique-alias-fn driver " ")})]
+  (let [generator-fn (lib/unique-name-generator-with-options {:unique-alias-fn (unique-alias-fn driver "_")})]
     (mapv (comp keyword generator-fn)
           (for [h header] (normalize-column-name driver h)))))
 

@@ -69,7 +69,7 @@
   [target :- ::lib.schema.parameter/target]
   (some-> target parameter-target-field-ref lib.options/options))
 
-(mu/defn- parameter-target-legacy-expression-ref :- [:maybe ::target.legacy-expression-ref]
+(mu/defn- parameter-target-legacy-expression-ref :- [:maybe ::lib.schema.parameter/target.legacy-expression-ref]
   [target :- ::lib.schema.parameter/target]
   (case (first target)
     :dimension (let [[_tag dimension] target]
