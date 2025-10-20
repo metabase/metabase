@@ -2,6 +2,36 @@ import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { H } = cy;
 
+// Helper function to create a test document with embedded card
+function createTestDocumentWithCard(name = "Test Document") {
+  return H.createDocument({
+    name,
+    document: {
+      content: [
+        {
+          type: "paragraph",
+          content: [{ type: "text", text: "Test content" }],
+          attrs: { _id: "1" },
+        },
+        {
+          type: "resizeNode",
+          attrs: { height: 400, minHeight: 280 },
+          content: [
+            {
+              type: "cardEmbed",
+              attrs: { id: ORDERS_QUESTION_ID, name: null, _id: "2" },
+            },
+          ],
+        },
+        { type: "paragraph", attrs: { _id: "3" } },
+      ],
+      type: "doc",
+    },
+    collection_id: null,
+    idAlias: "documentId",
+  });
+}
+
 describe("scenarios > documents > public", () => {
   beforeEach(() => {
     H.restore();
@@ -366,5 +396,90 @@ describe("scenarios > documents > public", () => {
       cy.findByText(".json").should("exist");
       cy.findByTestId("download-results-button").should("exist");
     });
+  });
+
+  it("should be accessible without authentication", () => {
+    // Create a document with public link
+    createTestDocumentWithCard("Public Anonymous Document");
+
+    cy.log("Create public link");
+    cy.get("@documentId")
+      .then((documentId) => {
+        return H.createPublicDocumentLink(documentId);
+      })
+      .then(({ body: { uuid } }) => {
+        cy.log("Sign out and visit public document as anonymous user");
+        cy.signOut();
+        cy.visit(`/public/document/${uuid}`);
+      });
+
+    cy.log("Verify document content is visible without authentication");
+    H.documentContent().should("contain", "Test content");
+    H.getDocumentCard("Orders").should("exist");
+
+    cy.log("Verify document is read-only");
+    H.documentContent()
+      .findByRole("textbox")
+      .should("have.attr", "contenteditable", "false");
+
+    cy.log("Verify no authentication UI is shown");
+    cy.findByRole("button", { name: "Sign in" }).should("not.exist");
+  });
+
+  it("should become inaccessible when public sharing is disabled", () => {
+    // Create a document with public link
+    createTestDocumentWithCard("Document for Disabling Test");
+
+    cy.log("Create public link while sharing is enabled");
+    cy.get("@documentId")
+      .then((documentId) => {
+        return H.createPublicDocumentLink(documentId);
+      })
+      .then(({ body: { uuid } }) => {
+        cy.wrap(uuid).as("publicUuid");
+
+        cy.log("Verify document is accessible with sharing enabled");
+        cy.signOut();
+        cy.visit(`/public/document/${uuid}`);
+        H.documentContent().should("contain", "Test content");
+      });
+
+    cy.log("Disable public sharing");
+    cy.signInAsAdmin();
+    H.updateSetting("enable-public-sharing", false);
+    cy.signOut();
+
+    cy.log("Try to access public document after disabling sharing");
+    cy.get("@publicUuid").then((uuid) => {
+      cy.visit(`/public/document/${uuid}`);
+
+      cy.log("Verify document is no longer accessible");
+      // Public routes return a generic error message when sharing is disabled
+      cy.findByText("An error occurred.").should("be.visible");
+
+      // Verify the document content is not shown
+      H.documentContent().should("not.exist");
+    });
+  });
+
+  it("should generate valid UUID format for public links", () => {
+    // Create a document
+    createTestDocumentWithCard("UUID Format Test");
+
+    cy.log("Create public link and verify UUID format");
+    cy.get("@documentId")
+      .then((documentId) => {
+        return H.createPublicDocumentLink(documentId);
+      })
+      .then(({ body: { uuid } }) => {
+        cy.log("Verify UUID has valid format");
+        expect(uuid).to.match(
+          /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/,
+        );
+
+        cy.log("Verify document is accessible via the UUID");
+        cy.visit(`/public/document/${uuid}`);
+        H.documentContent().should("contain", "Test content");
+      });
   });
 });
