@@ -265,6 +265,7 @@ export const FieldValuesWidgetInner = forwardRef<
     return dispatch(
       fetchDashboardParameterValues({
         dashboardId,
+        token,
         parameter,
         parameters,
         query,
