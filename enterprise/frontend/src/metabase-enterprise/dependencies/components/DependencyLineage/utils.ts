@@ -19,8 +19,9 @@ import type {
 import type {
   EdgeId,
   GraphData,
+  LinkWithLabelInfo,
+  LinkWithTooltipInfo,
   NodeId,
-  NodeLinkInfo,
   NodeType,
 } from "./types";
 
@@ -128,41 +129,34 @@ export function getNodeIconWithType(
     .exhaustive();
 }
 
-export function getNodeLink(node: DependencyNode): string | undefined {
+export function getNodeLink(
+  node: DependencyNode,
+): LinkWithTooltipInfo | undefined {
   return match(node)
-    .with({ type: "card" }, (node) =>
-      Urls.question({
+    .with({ type: "card" }, (node) => ({
+      url: Urls.question({
         id: node.id,
         name: node.data.name,
         type: node.data.type,
       }),
-    )
-    .with({ type: "table" }, (node) =>
-      Urls.dataModelTable(node.data.db_id, node.data.schema, node.id),
-    )
-    .with({ type: "transform" }, (node) => `/admin/transforms/${node.id}`)
+      tooltip: t`View this question`,
+    }))
+    .with({ type: "table" }, (node) => ({
+      url: Urls.dataModelTable(node.data.db_id, node.data.schema, node.id),
+      tooltip: t`View metadata`,
+    }))
+    .with({ type: "transform" }, (node) => ({
+      url: `/admin/transforms/${node.id}`,
+      tooltip: t`View this transform`,
+    }))
     .with({ type: "snippet" }, () => undefined)
-    .exhaustive();
-}
-
-export function getNodeLinkTooltip(node: DependencyNode) {
-  return match(node)
-    .with(
-      { type: "card", data: { type: "question" } },
-      () => t`View this question`,
-    )
-    .with({ type: "card", data: { type: "model" } }, () => t`View this model`)
-    .with({ type: "card", data: { type: "metric" } }, () => t`View this metric`)
-    .with({ type: "table" }, () => t`View metadata`)
-    .with({ type: "transform" }, () => t`View this transform`)
-    .with({ type: "snippet" }, () => t`View this snippet`)
     .exhaustive();
 }
 
 export function getNodeLocationInfo(
   node: DependencyNode,
-): NodeLinkInfo | undefined {
-  return match<DependencyNode, NodeLinkInfo | undefined>(node)
+): LinkWithLabelInfo | undefined {
+  return match<DependencyNode, LinkWithLabelInfo | undefined>(node)
     .with({ type: "card", data: { dashboard: P.nonNullable } }, (node) => ({
       label: node.data.dashboard.name,
       icon: "dashboard",

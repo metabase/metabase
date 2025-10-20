@@ -9,14 +9,15 @@ import {
   createMockTransformDependencyNode,
 } from "metabase-types/api/mocks";
 
-import { getNodeIcon } from "./utils";
+import type { LinkWithTooltipInfo } from "./types";
+import { getNodeIcon, getNodeLink } from "./utils";
 
 registerVisualizations();
 
 describe("getNodeIcon", () => {
   it.each<{
     node: DependencyNode;
-    icon: IconName;
+    expectedIcon: IconName;
   }>([
     {
       node: createMockCardDependencyNode({
@@ -25,7 +26,7 @@ describe("getNodeIcon", () => {
           display: "pie",
         }),
       }),
-      icon: "pie",
+      expectedIcon: "pie",
     },
     {
       node: createMockCardDependencyNode({
@@ -34,7 +35,7 @@ describe("getNodeIcon", () => {
           display: "table",
         }),
       }),
-      icon: "model",
+      expectedIcon: "model",
     },
     {
       node: createMockCardDependencyNode({
@@ -43,21 +44,44 @@ describe("getNodeIcon", () => {
           display: "scalar",
         }),
       }),
-      icon: "metric",
+      expectedIcon: "metric",
     },
     {
       node: createMockTableDependencyNode(),
-      icon: "table",
+      expectedIcon: "table",
     },
     {
       node: createMockTransformDependencyNode(),
-      icon: "refresh_downstream",
+      expectedIcon: "refresh_downstream",
     },
     {
       node: createMockSnippetDependencyNode(),
-      icon: "sql",
+      expectedIcon: "sql",
     },
-  ])("should get the node icon", ({ node, icon }) => {
-    expect(getNodeIcon(node)).toBe(icon);
+  ])("should get the node icon", ({ node, expectedIcon }) => {
+    expect(getNodeIcon(node)).toBe(expectedIcon);
+  });
+});
+
+describe("getNodeLink", () => {
+  it.each<{
+    node: DependencyNode;
+    expectedLink: LinkWithTooltipInfo;
+  }>([
+    {
+      node: createMockCardDependencyNode({
+        id: 1,
+        data: createMockCardDependencyNodeData({
+          type: "question",
+          name: "My question",
+        }),
+      }),
+      expectedLink: {
+        url: "/question/1-my-question",
+        tooltip: "View this question",
+      },
+    },
+  ])("should get the node link", ({ node, expectedLink }) => {
+    expect(getNodeLink(node)).toEqual(expectedLink);
   });
 });

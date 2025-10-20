@@ -1,6 +1,5 @@
 import { memo } from "react";
 import { Link } from "react-router";
-import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import {
@@ -18,13 +17,12 @@ import type { DependencyNode } from "metabase-types/api";
 
 import { getDependencyLineageUrl } from "../../../../urls";
 import { ACTION_ICON_PADDING } from "../../constants";
-import type { NodeLinkInfo } from "../../types";
+import type { LinkWithLabelInfo, LinkWithTooltipInfo } from "../../types";
 import {
   getNodeIcon,
   getNodeId,
   getNodeLabel,
   getNodeLink,
-  getNodeLinkTooltip,
   getNodeLocationInfo,
   getNodeViewCount,
 } from "../../utils";
@@ -52,7 +50,6 @@ type ListItemProps = {
 
 function ListItem({ node }: ListItemProps) {
   const link = getNodeLink(node);
-  const tooltip = getNodeLinkTooltip(node);
   const location = getNodeLocationInfo(node);
   const viewCount = getNodeViewCount(node);
 
@@ -63,15 +60,13 @@ function ListItem({ node }: ListItemProps) {
         {viewCount != null ? (
           <ListItemViewCount viewCount={viewCount} />
         ) : link != null ? (
-          <ListItemLink link={link} tooltip={tooltip} />
+          <ListItemLink link={link} />
         ) : null}
       </Group>
       {(location != null || (link != null && viewCount != null)) && (
         <Group justify={location != null ? "space-between" : "flex-end"}>
           {location != null && <ListItemLocation location={location} />}
-          {link != null && viewCount != null && (
-            <ListItemLink link={link} tooltip={tooltip} />
-          )}
+          {link != null && viewCount != null && <ListItemLink link={link} />}
         </Group>
       )}
     </Stack>
@@ -110,7 +105,7 @@ function ListItemViewCount({ viewCount }: ListItemViewCountProps) {
 }
 
 type ListItemSubtitleProps = {
-  location: NodeLinkInfo;
+  location: LinkWithLabelInfo;
 };
 
 function ListItemLocation({ location }: ListItemSubtitleProps) {
@@ -127,19 +122,18 @@ function ListItemLocation({ location }: ListItemSubtitleProps) {
 }
 
 type ListItemLinkProps = {
-  link: string;
-  tooltip: string;
+  link: LinkWithTooltipInfo;
 };
 
-function ListItemLink({ link, tooltip }: ListItemLinkProps) {
+function ListItemLink({ link }: ListItemLinkProps) {
   return (
-    <Tooltip label={tooltip}>
+    <Tooltip label={link.tooltip}>
       <ActionIcon
         component={ForwardRefLink}
-        to={link}
+        to={link.url}
         target="_blank"
         m={rem(-ACTION_ICON_PADDING)}
-        aria-label={t`Open in a new tab`}
+        aria-label={link.tooltip}
       >
         <FixedSizeIcon name="external" />
       </ActionIcon>

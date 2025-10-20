@@ -13,12 +13,7 @@ import {
 import type { DependencyNode } from "metabase-types/api";
 
 import { ACTION_ICON_PADDING } from "../../constants";
-import {
-  getNodeIcon,
-  getNodeLabel,
-  getNodeLink,
-  getNodeLinkTooltip,
-} from "../../utils";
+import { getNodeIcon, getNodeLabel, getNodeLink } from "../../utils";
 
 type PanelHeaderProps = {
   node: DependencyNode;
@@ -27,7 +22,6 @@ type PanelHeaderProps = {
 
 export function PanelHeader({ node, onClose }: PanelHeaderProps) {
   const link = getNodeLink(node);
-  const tooltip = getNodeLinkTooltip(node);
 
   return (
     <Group p="lg" gap="sm" wrap="nowrap">
@@ -37,12 +31,12 @@ export function PanelHeader({ node, onClose }: PanelHeaderProps) {
       </Title>
       <Box m={rem(-ACTION_ICON_PADDING)}>
         {link != null && (
-          <Tooltip label={tooltip}>
+          <Tooltip label={link.tooltip}>
             <ActionIcon
               component={ForwardRefLink}
-              to={link}
+              to={link.url}
               target="_blank"
-              aria-label={tooltip}
+              aria-label={link.tooltip}
             >
               <FixedSizeIcon name="external" />
             </ActionIcon>

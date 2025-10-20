@@ -5,7 +5,7 @@ import * as Urls from "metabase/lib/urls";
 import { getDependencyLineageUrl } from "metabase-enterprise/dependencies/urls";
 import type { DependencyNode } from "metabase-types/api";
 
-import type { NodeLinkInfo } from "../../types";
+import type { LinkWithLabelInfo } from "../../types";
 
 export function getNodeCreatedAt(node: DependencyNode) {
   return match(node)
@@ -33,7 +33,7 @@ export function getNodeLastEditedBy(node: DependencyNode) {
 
 export function getNodeDatabaseInfo(
   node: DependencyNode,
-): NodeLinkInfo | undefined {
+): LinkWithLabelInfo | undefined {
   const database = match(node)
     .with({ type: "table" }, (node) => node.data.db)
     .with({ type: "transform" }, (node) => node.data.table?.db)
@@ -50,7 +50,7 @@ export function getNodeDatabaseInfo(
 
 export function getNodeSchemaInfo(
   node: DependencyNode,
-): NodeLinkInfo | undefined {
+): LinkWithLabelInfo | undefined {
   const tableInfo = match(node)
     .with({ type: "table" }, (node) => node.data)
     .with({ type: "transform" }, (node) => node.data.table)
@@ -71,7 +71,7 @@ export function getNodeSchemaInfo(
 
 export function getNodeGeneratedTableInfo(
   node: DependencyNode,
-): NodeLinkInfo | undefined {
+): LinkWithLabelInfo | undefined {
   const tableInfo = match(node)
     .with({ type: "transform" }, (node) => node.data.table)
     .otherwise(() => undefined);

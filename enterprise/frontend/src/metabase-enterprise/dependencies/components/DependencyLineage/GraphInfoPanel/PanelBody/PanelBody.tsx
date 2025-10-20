@@ -17,7 +17,7 @@ import {
 import * as Lib from "metabase-lib";
 import type { DependencyNode } from "metabase-types/api";
 
-import type { NodeLinkInfo } from "../../types";
+import type { LinkWithLabelInfo } from "../../types";
 import { getNodeDescription, getNodeLocationInfo } from "../../utils";
 
 import S from "./PanelBody.module.css";
@@ -192,7 +192,7 @@ function FieldsInfo({ node }: PanelBodyPartProps) {
 }
 
 type LinkWithIconProps = {
-  link: NodeLinkInfo;
+  link: LinkWithLabelInfo;
   target?: HTMLAttributeAnchorTarget;
 };
 
