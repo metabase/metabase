@@ -10,13 +10,13 @@
 
   NOTE: Currently returns a single database ID, but we may want to change this to return multiple database IDs in the
   future since transforms can have multiple input sources."
-  {:added "0.47.0" :arglists '([transform])}
+  {:added "0.57.0" :arglists '([transform])}
   transform->transform-type)
 
 (defmulti target-db-id
   "Return the ID of the target database for a given `transform`. The target database is the destination where the
   transformed data will be written. Often this is the same database as the source database."
-  {:added "0.47.0" :arglists '([transform])}
+  {:added "0.57.0" :arglists '([transform])}
   transform->transform-type)
 
 (defmulti execute!
@@ -36,7 +36,7 @@
   - `:run-method`
      Expected to be either `:cron` (for scheduled runs) or `:manual` (for ad-hoc or test runs)
      Used for instrumentation / metadata purposes."
-  {:added "0.47.0" :arglists '([transform options])}
+  {:added "0.57.0" :arglists '([transform options])}
   (fn [transform _options]
     (transform->transform-type transform)))
 
@@ -53,5 +53,5 @@
      Represents a 'placeholder' table (as we no table id / metadata) for the same purposes.
 
   An empty set indicates no dependencies."
-  {:added "0.47.0" :arglists '([transform])}
+  {:added "0.57.0" :arglists '([transform])}
   transform->transform-type)
