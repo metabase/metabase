@@ -1,5 +1,5 @@
 (ns metabase.lib.filter
-  (:refer-clojure :exclude [filter and or not = < <= > >= not-empty case every? some mapv])
+  (:refer-clojure :exclude [filter and or not = < <= > >= not-empty case every? some mapv #?(:clj doseq) #?(:clj for)])
   (:require
    [inflections.core :as inflections]
    [medley.core :as m]
@@ -27,7 +27,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.number :as u.number]
-   [metabase.util.performance :refer [every? some mapv]]
+   [metabase.util.performance :refer [every? some mapv #?(:clj doseq) #?(:clj for)]]
    [metabase.util.time :as u.time]))
 
 (doseq [tag [:and :or]]
@@ -531,11 +531,12 @@
   ([query         :- ::lib.schema/query
     stage-number  :- :int
     legacy-filter :- some?]
-   (let [legacy-filter    (mbql.normalize/normalize-fragment [:query :filter] legacy-filter)
+   (let [legacy-filter    #_{:clj-kondo/ignore [:deprecated-var]} (mbql.normalize/normalize-fragment [:query :filter] legacy-filter)
          query-filters    (vec (filters query stage-number))
-         matching-filters (clojure.core/filter #(clojure.core/= (mbql.normalize/normalize-fragment
-                                                                 [:query :filter]
-                                                                 (lib.convert/->legacy-MBQL %))
+         matching-filters (clojure.core/filter #(clojure.core/= #_{:clj-kondo/ignore [:deprecated-var]}
+                                                 (mbql.normalize/normalize-fragment
+                                                  [:query :filter]
+                                                  (lib.convert/->legacy-MBQL %))
                                                                 legacy-filter)
                                                query-filters)]
      (when (seq matching-filters)

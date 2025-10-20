@@ -3,16 +3,21 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.xrays.domain-entities.specs :refer [domain-entity-specs MBQL]]
+   [metabase.xrays.domain-entities.specs :as domain-entities.specs :refer [*domain-entity-specs* MBQL]]
    [toucan2.core :as t2]))
 
-(def ^:private ^{:arglists '([field])} field-type
+(mu/defn field-type :- [:or
+                        ::lib.schema.common/base-type
+                        ::lib.schema.common/semantic-or-relation-type]
   "Return the most specific type of a given field."
-  (some-fn :semantic_type :base_type))
+  [field :- [:map
+             [:base_type ::lib.schema.common/base-type]]]
+  ((some-fn :semantic_type :base_type) field))
 
 (def SourceName
   "A reference to a `SourceEntity`."
@@ -26,7 +31,7 @@
 
 (def SourceEntity
   "A source for a card. Can be either a table or another card."
-  [:or (ms/InstanceOf :model/Table) (ms/InstanceOf :model/Card)])
+  (ms/InstanceOf #{:model/Table :model/Card}))
 
 (def Bindings
   "Top-level lexical context mapping source names to their corresponding entity and constituent dimensions. See also
@@ -60,13 +65,15 @@
 
 (mu/defn mbql-reference :- MBQL
   "Return MBQL clause for a given field-like object."
-  [{:keys [id name base_type]}]
+  [{:keys [id name base_type]} :- [:map
+                                   [:base_type ::lib.schema.common/base-type]]]
   (if id
     [:field id nil]
     [:field name {:base-type base_type}]))
 
-(defn- has-attribute?
-  [entity {:keys [field _domain_entity _has_many]}]
+(mu/defn- has-attribute?
+  [entity          :- SourceEntity
+   {:keys [field]} :- ::domain-entities.specs/attribute]
   (cond
     field (some (fn [col]
                   (when (or (isa? (field-type col) field)
@@ -74,9 +81,10 @@
                     col))
                 ((some-fn :fields :result_metadata) entity))))
 
-(defn satisfies-requierments?
+(mu/defn satisfies-requirements?
   "Does source entity satisfies requirements of given spec?"
-  [entity {:keys [required_attributes]}]
+  [entity                         :- [:or SourceEntity]
+   {:keys [required_attributes]} :- domain-entities.specs/DomainEntitySpec]
   (every? (partial has-attribute? entity) required_attributes))
 
 (defn- best-match
@@ -93,8 +101,9 @@
                             (lib.util.match/match entity [:dimension dimension] dimension))]
           (resolve-dimension-clauses bindings source entity))))
 
-(defn- instantiate-domain-entity
-  [table {:keys [name description metrics segments breakout_dimensions type]}]
+(mu/defn- instantiate-domain-entity :- ::domain-entities.specs/instantiated-domain-entity
+  [table                                                                :- (ms/InstanceOf :model/Table)
+   {:keys [name description metrics segments breakout_dimensions type]} :- domain-entities.specs/DomainEntitySpec]
   (let [dimensions (into {} (for [field (:fields table)]
                               [(-> field field-type clojure.core/name) field]))
         bindings   {name {:entity     table
@@ -108,13 +117,13 @@
      :source_table        (u/the-id table)
      :name                name}))
 
-(defn domain-entity-for-table
+(mu/defn domain-entity-for-table :- [:maybe ::domain-entities.specs/instantiated-domain-entity]
   "Find the best fitting domain entity for given table."
-  [table]
+  [table :- (ms/InstanceOf :model/Table)]
   (let [table (t2/hydrate table :fields)]
-    (some->> @domain-entity-specs
+    (some->> @*domain-entity-specs*
              vals
-             (filter (partial satisfies-requierments? table))
+             (filter (partial satisfies-requirements? table))
              best-match
              (instantiate-domain-entity table))))
 
@@ -122,4 +131,5 @@
   "Fake hydration function."
   [tables]
   (for [table tables]
+    ;; TODO (Cam 9/29/25) -- this key is only used in Clojure-land, there's no reason we should use snake-case for it
     (assoc table :domain_entity (domain-entity-for-table table))))

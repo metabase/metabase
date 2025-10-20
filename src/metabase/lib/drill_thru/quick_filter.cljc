@@ -38,7 +38,7 @@
   There is a separate function `filterDrillDetails` which returns `query` and `column` used for the `FilterPicker`. It
   should automatically append a query stage and find the corresponding _filterable_ column in this stage. It is used
   for `contains` and `does-not-contain` operators."
-  (:refer-clojure :exclude [select-keys mapv])
+  (:refer-clojure :exclude [select-keys mapv #?(:clj for)])
   (:require
    [medley.core :as m]
    [metabase.lib.drill-thru.column-filter :as lib.drill-thru.column-filter]
@@ -57,7 +57,7 @@
    [metabase.lib.underlying :as lib.underlying]
    [metabase.util.malli :as mu]
    [metabase.util.number :as u.number]
-   [metabase.util.performance :refer [select-keys mapv]]))
+   [metabase.util.performance :refer [select-keys mapv #?(:clj for)]]))
 
 (defn- maybe-bigint->value-clause
   [value]

@@ -61,3 +61,26 @@
                             (lib/normalize ::lib.schema.parameter/dimension clause))
     [:dimension ["field-id" 76331]] [:dimension [:field 76331 nil]]
     ["dimension" ["fk->" 23 30]]    [:dimension [:field 30 {:source-field 23}]]))
+
+(deftest ^:parallel normalize-dimension-with-raw-field-id-test
+  (is (= [:dimension [:field 100 nil]]
+         (lib/normalize ::lib.schema.parameter/dimension [:dimension 100]))))
+
+(deftest ^:parallel normalize-target-test
+  (is (= [:variable [:template-tag "state"]]
+         (lib/normalize ::lib.schema.parameter/target [:variable ["template-tag" "state"]])
+         (lib/normalize ::lib.schema.parameter/target [:variable ["template-tag" :state]]))))
+
+(deftest ^:parallel fix-unwrapped-template-tag-target-test
+  (is (= [:variable [:template-tag "x"]]
+         (lib/normalize ::lib.schema.parameter/target ["template-tag" :x])
+         (lib/normalize ::lib.schema.parameter/target [:template-tag "x"]))))
+
+(deftest ^:parallel decode-busted-param-type-test
+  (is (= :text
+         (lib/normalize ::lib.schema.parameter/type "type/Text")
+         (lib/normalize ::lib.schema.parameter/type :type/Text))))
+
+(deftest ^:parallel default-to-type-text-test
+  (is (= {:id "x", :type :text}
+         (lib/normalize ::lib.schema.parameter/parameter {:id "x"}))))

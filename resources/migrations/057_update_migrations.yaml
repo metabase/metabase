@@ -1902,6 +1902,71 @@ databaseChangeLog:
             path: instance_analytics_views/view_log/v2/mysql-view_log.sql
             relativeToChangelogFile: true
 
+  - changeSet:
+      id: v57.2025-10-06T18:26:00
+      author: camsaul
+      comment: >-
+        In v57, we started persisting MBQL 5 in the app DB; to support rollbacks to v56 and older (which don't work
+        100% correctly with MBQL 5 in the app DB) I'm copying the old legacy query to a new column. Note that new
+        Cards created in 57 won't populate this column.
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: legacy_query
+                  type: ${text.type}
+                  remarks: >-
+                    Legacy MBQL version of the query (serialized as JSON) for existing Cards created before v57, to
+                    support rollbacks to v56. This column should be removed in v58.
+
+  - changeSet:
+      id: v57.2025-10-06T18:26:01
+      author: camsaul
+      comment: >-
+        Copy legacy MBQL queries from report_card.dataset_query to report_card.legacy_query to support rollbacks
+      changes:
+        - sql: >-
+            UPDATE report_card
+            SET legacy_query = dataset_query;
+      rollback:
+        - sql: >-
+            UPDATE report_card
+            SET dataset_query = legacy_query
+            WHERE legacy_query IS NOT NULL;
+
+  - changeSet:
+      id: v57.2025-10-06T18:26:02
+      author: camsaul
+      comment: >-
+        Copy legacy MBQL queries from Actions v1 query_action.dataset_query to query_action.legacy_query
+      changes:
+        - addColumn:
+            tableName: query_action
+            columns:
+              - column:
+                  name: legacy_query
+                  type: ${text.type}
+                  remarks: >-
+                    Legacy MBQL version of the query (serialized as JSON) for existing Query Actions created before
+                    v57, to support rollbacks to v56. This column should be removed in v58.
+
+  - changeSet:
+      id: v57.2025-10-06T18:26:03
+      author: camsaul
+      comment: >-
+        Copy legacy MBQL queries from Actions v1 query_action.dataset_query to query_action.legacy_query to support rollbacks
+      changes:
+        - sql: >-
+            UPDATE query_action
+            SET legacy_query = dataset_query;
+      rollback:
+        - sql: >-
+            UPDATE query_action
+            SET dataset_query = legacy_query
+            WHERE legacy_query IS NOT NULL;
+
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
@@ -1931,7 +1996,7 @@ databaseChangeLog:
 #
 # 2) Migrations should go in the ###_update_migrations.yaml file for the target version.
 #
-# 3) Run mage lint-migrations-file to run core.spec checks against any changes you make here. Liquibase is pretty
+# 3) Run mage lint-migrations to run core.spec checks against any changes you make here. Liquibase is pretty
 #    forgiving and won't complain if you accidentally mix up things like deleteCascade and onDelete: CASCADE. CI runs
 #    this check but it's nicer to know now instead of waiting for CI.
 #

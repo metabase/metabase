@@ -1223,7 +1223,7 @@ describe("issue 49160", () => {
 
     cy.findByLabelText("Rating").click();
     H.echartsContainer().findByText("200").should("be.visible");
-    H.echartsContainer().findByText("TOTAL").should("be.visible");
+    H.echartsContainer().findByText("Total").should("be.visible");
   });
 
   it("pie chart should work when instance colors have overrides", () => {

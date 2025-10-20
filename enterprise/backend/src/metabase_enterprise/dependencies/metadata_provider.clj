@@ -112,11 +112,10 @@
 
 (defn- get-returned-columns [mp queryable]
   (let [query (lib/query mp queryable)]
-    (if (= (:lib/type (lib/query-stage query 0))
-           :mbql.stage/mbql)
-      (lib/returned-columns query)
+    (if (lib/native-only-query? query)
       (deps.native/native-result-metadata (:engine (lib.metadata/database mp))
-                                          mp query))))
+                                          query)
+      (lib/returned-columns query))))
 
 (defmethod add-override :card [^OverridingMetadataProvider mp _entity-type id updates]
   (with-overrides mp

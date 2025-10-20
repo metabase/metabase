@@ -1,5 +1,5 @@
 (ns metabase.lib.metadata.calculation
-  (:refer-clojure :exclude [select-keys mapv])
+  (:refer-clojure :exclude [select-keys mapv #?(:clj for)])
   (:require
    #?(:clj  [metabase.config.core :as config]
       :cljs [metabase.lib.cache :as lib.cache])
@@ -24,7 +24,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [select-keys mapv]]))
+   [metabase.util.performance :refer [select-keys mapv #?(:clj for)]]))
 
 (mr/def ::display-name-style
   "Schema for valid values of `display-name-style` as passed to [[display-name-method]].
@@ -648,6 +648,7 @@
             :let   [remapped (lib.metadata/remapped-field query column)]
             :when  (and remapped
                         (not (false? (:active remapped)))
+                        (not= (:visibility-type remapped) :sensitive)
                         (not (existing-ids (:id remapped))))]
         (merge
          remapped

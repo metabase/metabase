@@ -8,6 +8,7 @@
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase.actions.models :as action]
+   [metabase.lib.core :as lib]
    [metabase.models.serialization :as serdes]
    [metabase.search.core :as search]
    [metabase.test :as mt]
@@ -231,10 +232,10 @@
 
         (testing "the serialized form is as desired"
           (let [card (first (by-model @serialized "Card"))]
-            (is (=? {:type  :query
-                     :query {:source-table ["my-db" nil "customers"]
-                             :filter       [:>= [:field ["my-db" nil "customers" "age"] nil] 18]
-                             :aggregation  [[:count]]}
+            (is (=? {:type     :query
+                     :query    {:source-table ["my-db" nil "customers"]
+                                :filter       [:>= [:field ["my-db" nil "customers" "age"] {}] 18]
+                                :aggregation  [[:count]]}
                      :database "my-db"}
                     (:dataset_query card)))))
 
@@ -263,10 +264,12 @@
             (is (not= (:dataset_query @card1s)
                       (:dataset_query @card1d)))
             (testing "the Card's query is based on the new Database, Table, and Field IDs"
-              (is (=? {:type     :query
-                       :query    {:source-table (:id @table1d)
-                                  :filter       [:>= [:field (:id @field1d) nil] 18]
-                                  :aggregation  [[:count]]}
+              (is (=? {:lib/type :mbql/query
+                       :stages   [{:source-table (:id @table1d)
+                                   :filters      [[:>= {}
+                                                   [:field {} (:id @field1d)]
+                                                   18]]
+                                   :aggregation  [[:count {}]]}]
                        :database (:id @db1d)}
                       (:dataset_query @card1d))))))))))
 
@@ -924,8 +927,7 @@
             (is (= (:id @snippet1s)
                    (-> (t2/select-one :model/Card :entity_id new-eid)
                        :dataset_query
-                       :native
-                       :template-tags
+                       lib/all-template-tags-map
                        (get "snippet: things")
                        :snippet-id)))))))))
 
@@ -1196,7 +1198,7 @@
                                             :name          "the action"
                                             :model_id      (:id card)
                                             :type          :query
-                                            :dataset_query "wow"
+                                            :dataset_query {}
                                             :database_id   (:id db)})]
             (reset! serialized
                     (->> (serdes.extract/extract {})
