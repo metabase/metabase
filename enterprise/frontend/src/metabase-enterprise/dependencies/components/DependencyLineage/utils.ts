@@ -198,7 +198,7 @@ export function getCardType(
   }
 }
 
-export function isCardType(groupType: DependencyGroupType) {
+export function isCardGroupType(groupType: DependencyGroupType) {
   return getCardType(groupType) != null;
 }
 

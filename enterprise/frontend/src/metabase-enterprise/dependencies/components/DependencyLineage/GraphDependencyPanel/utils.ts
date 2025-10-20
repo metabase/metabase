@@ -12,7 +12,7 @@ import {
   getNodeLabel,
   getNodeLocationInfo,
   getNodeViewCount,
-  isCardType,
+  isCardGroupType,
 } from "../utils";
 
 import { FILTER_OPTIONS } from "./constants";
@@ -79,10 +79,10 @@ export function canFilterByOption(
   option: FilterOption,
 ) {
   return match(option)
-    .with("verified", () => isCardType(groupType))
-    .with("in-dashboard", () => isCardType(groupType))
-    .with("in-official-collection", () => isCardType(groupType))
-    .with("not-in-personal-collection", () => isCardType(groupType))
+    .with("verified", () => isCardGroupType(groupType))
+    .with("in-dashboard", () => isCardGroupType(groupType))
+    .with("in-official-collection", () => isCardGroupType(groupType))
+    .with("not-in-personal-collection", () => isCardGroupType(groupType))
     .exhaustive();
 }
 
@@ -125,8 +125,8 @@ export function canSortByColumn(
 ) {
   return match(column)
     .with("name", () => true)
-    .with("location", () => isCardType(groupType))
-    .with("view-count", () => isCardType(groupType))
+    .with("location", () => isCardGroupType(groupType))
+    .with("view-count", () => isCardGroupType(groupType))
     .exhaustive();
 }
 
