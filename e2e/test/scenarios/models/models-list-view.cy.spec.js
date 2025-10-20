@@ -37,7 +37,7 @@ describe("scenarios > models list view", () => {
       cy.log("Ensure List view is enabled");
       cy.findByTestId("list-view").should("be.visible");
 
-      cy.findByTestId("dataset-edit-bar").button("Save changes").click();
+      cy.findByTestId("dataset-edit-bar").button("Save").click();
       cy.wait("@dataset");
 
       cy.log("Display data as list after saving");
@@ -147,7 +147,7 @@ describe("scenarios > models list view", () => {
         cy.findByRole("img").should("have.attr", "aria-label", "company icon");
       });
 
-      cy.findByTestId("dataset-edit-bar").button("Save changes").click();
+      cy.findByTestId("dataset-edit-bar").button("Save").click();
       cy.wait("@dataset");
 
       cy.log("Verify that custom column set is correct");
@@ -252,7 +252,7 @@ describe("scenarios > models list view", () => {
         cy.findByText("List").click();
       });
 
-      cy.findByTestId("dataset-edit-bar").button("Save changes").click();
+      cy.findByTestId("dataset-edit-bar").button("Save").click();
       cy.wait("@dataset");
 
       cy.findByTestId("list-view").should("be.visible");
@@ -298,7 +298,7 @@ describe("scenarios > models list view", () => {
         cy.findByText("List").click();
       });
 
-      cy.findByTestId("dataset-edit-bar").button("Save changes").click();
+      cy.findByTestId("dataset-edit-bar").button("Save").click();
       cy.wait("@dataset");
 
       cy.findByTestId("list-view").should("be.visible");

@@ -10,7 +10,7 @@ import { Box, Icon, Menu, Stack, Text, UnstyledButton } from "metabase/ui";
 
 export function BenchNav() {
   return (
-    <Box h="100%">
+    <Box h="100%" data-testid="bench-nav">
       <Stack
         style={{
           flexShrink: 0,
@@ -111,6 +111,7 @@ function BenchNavTitleMenu() {
   };
   return (
     <Menu
+      data-testid="bench-nav-title-menu"
       opened={isMenuOpen}
       onClose={() => setIsMenuOpen(false)}
       position="bottom-start"
