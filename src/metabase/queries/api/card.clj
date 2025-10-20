@@ -227,26 +227,16 @@
   instead, you can specify `?legacy-mbql=true`."
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
-   {ignore-view? :ignore_view
-    legacy-mbql? :legacy-mbql
-    :keys        [context]} :- [:map
-                                [:ignore_view         {:optional true} [:maybe :boolean]]
-                                [:context             {:optional true} [:maybe [:enum :collection]]]
-                                [:legacy-mbql {:optional true, :default false} [:maybe :boolean]]]]
+   {legacy-mbql? :legacy-mbql
+    :keys        []} :- [:map [:legacy-mbql {:optional true, :default false} [:maybe :boolean]]]]
   (let [resolved-id (eid-translation/->id-or-404 :card id)
-        card        (get-card resolved-id)
-        response    (cond-> card
-                      legacy-mbql?
-                      (update :dataset_query (fn [query]
-                                               #_{:clj-kondo/ignore [:discouraged-var]}
-                                               (cond-> query
-                                                 (seq query) lib/->legacy-MBQL))))]
-    (u/prog1 response
-      (when-not ignore-view?
-        (events/publish-event! :event/card-read
-                               {:object-id (:id <>)
-                                :user-id   api/*current-user-id*
-                                :context   (or context :question)})))))
+        card (get-card resolved-id)]
+    (cond-> card
+      legacy-mbql?
+      (update :dataset_query (fn [query]
+                               #_{:clj-kondo/ignore [:discouraged-var]}
+                               (cond-> query
+                                 (seq query) lib/->legacy-MBQL))))))
 
 (defn- check-allowed-to-remove-from-existing-dashboards [card]
   (let [dashboards (or (:in_dashboards card)
@@ -820,10 +810,10 @@
   (let [resolved-card-id (eid-translation/->id-or-404 :card card-id)]
     (qp.card/process-query-for-card
      resolved-card-id :api
-     :parameters   parameters
+     :parameters parameters
      :ignore-cache ignore_cache
      :dashboard-id dashboard_id
-     :context      (if collection_preview :collection :question)
+     :context (if collection_preview :collection :question)
      :middleware   {:process-viz-settings? false})))
 
 (api.macros/defendpoint :post "/:card-id/query/:export-format"
