@@ -77,6 +77,14 @@ export function isSameNode(
   return node.id === id && node.type === type;
 }
 
+export function findNode(
+  nodes: NodeType[],
+  id: DependencyId,
+  type: DependencyType,
+) {
+  return nodes.find((node) => isSameNode(node.data, id, type));
+}
+
 export function getNodeLabel(node: DependencyNode) {
   return node.type === "table" ? node.data.display_name : node.data.name;
 }

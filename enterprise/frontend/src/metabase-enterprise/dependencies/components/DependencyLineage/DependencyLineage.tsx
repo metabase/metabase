@@ -7,11 +7,12 @@ import {
   useEdgesState,
   useNodesState,
 } from "@xyflow/react";
-import { useLayoutEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { t } from "ttag";
 
-import { skipToken } from "metabase/api";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Group } from "metabase/ui";
-import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
+import { useLazyGetDependencyGraphQuery } from "metabase-enterprise/api";
 import type { DependencyEntry } from "metabase-types/api";
 
 import S from "./DependencyLineage.module.css";
@@ -24,7 +25,7 @@ import { GraphNodeLayout } from "./GraphNodeLayout";
 import { GraphSelectInput } from "./GraphSelectionInput";
 import { MAX_ZOOM, MIN_ZOOM } from "./constants";
 import type { GraphSelection, NodeType } from "./types";
-import { getInitialGraph, isSameNode } from "./utils";
+import { findNode, getInitialGraph } from "./utils";
 
 const NODE_TYPES = {
   node: GraphNode,
@@ -35,40 +36,49 @@ type DependencyLineageProps = {
 };
 
 export function DependencyLineage({ entry }: DependencyLineageProps) {
-  const { currentData: graph, isFetching } = useGetDependencyGraphQuery(
-    entry ?? skipToken,
-  );
+  const [fetchGraph, { isFetching }] = useLazyGetDependencyGraphQuery();
   const [nodes, setNodes, onNodesChange] = useNodesState<NodeType>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [selection, setSelection] = useState<GraphSelection>();
+  const { sendErrorToast } = useMetadataToasts();
 
   const entryNode = useMemo(() => {
-    return entry != null
-      ? nodes.find((node) => isSameNode(node.data, entry.id, entry.type))
-      : undefined;
+    return entry != null ? findNode(nodes, entry.id, entry.type) : undefined;
   }, [nodes, entry]);
 
   const selectedNode = useMemo(() => {
     return selection != null
-      ? nodes.find((node) =>
-          isSameNode(node.data, selection.id, selection.type),
-        )
+      ? findNode(nodes, selection.id, selection.type)
       : undefined;
   }, [nodes, selection]);
 
-  useLayoutEffect(() => {
+  const setGraph = useCallback(
+    (nodes: NodeType[], edges: Edge[], selection?: GraphSelection) => {
+      setNodes(nodes);
+      setEdges(edges);
+      setSelection(selection);
+    },
+    [setEdges, setNodes],
+  );
+
+  useEffect(() => {
     if (entry == null) {
-      setNodes([]);
-      setEdges([]);
-      setSelection(undefined);
-    } else if (graph != null) {
+      setGraph([], []);
+      return;
+    }
+
+    fetchGraph(entry).then(({ data: graph }) => {
+      if (graph == null) {
+        setGraph([], []);
+        sendErrorToast(t`Failed to load the dependency graph`);
+        return;
+      }
+
       const { nodes: initialNodes, edges: initialEdges } =
         getInitialGraph(graph);
-      setNodes(initialNodes);
-      setEdges(initialEdges);
-      setSelection(entry);
-    }
-  }, [graph, entry, setNodes, setEdges]);
+      setGraph(initialNodes, initialEdges, entry);
+    });
+  }, [entry, fetchGraph, setGraph, sendErrorToast]);
 
   const handlePanelClose = () => {
     setSelection(undefined);

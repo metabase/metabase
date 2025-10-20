@@ -75,6 +75,7 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
 
 export const {
   useGetDependencyGraphQuery,
+  useLazyGetDependencyGraphQuery,
   useListNodeDependentsQuery,
   useLazyCheckCardDependenciesQuery,
   useLazyCheckSnippetDependenciesQuery,
