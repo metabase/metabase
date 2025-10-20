@@ -458,9 +458,9 @@ describe("issue 55619", () => {
       .should("be.visible");
     H.datasetEditBar().button("Save").click();
     H.modal().button("Save").click();
-    H.modal().should("not.exist");
-    H.queryBuilderHeader().findByText("Orders").should("be.visible");
-    cy.findByTestId("loading-indicator").should("not.exist");
+    H.modal().should("not.exist"); // wait for modal to disappear
+    H.queryBuilderHeader().findByText("Orders").should("be.visible"); // wait for qb to turn into view-mode
+    cy.findByTestId("loading-indicator").should("not.exist"); // wait for query to complete
     H.tableHeaderColumn("Discount (€)").should("be.visible");
   });
 });
