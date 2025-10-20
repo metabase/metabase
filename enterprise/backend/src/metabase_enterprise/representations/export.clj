@@ -21,12 +21,11 @@
   "Returns the representation type for an entity (e.g., :question, :model, :metric).
    For plain maps (like MBQL data), uses :type field. For Toucan models, uses t2/model."
   {:arglists '[[entity]]}
-  (fn [entity]
-    (or (:type entity) (t2/model entity))))
+  t2/model)
 
-(defmethod representation-type :model/Card [card] (:type card))
 (defmethod representation-type :default [entity]
-  (or (:type entity) (t2/model entity)))
+  (throw (ex-info (str "Unknown entity type: " (t2/model entity))
+                  {:entity entity})))
 
 (defmulti export-entity
   "Export a Metabase entity to its human-readable representation format.

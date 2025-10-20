@@ -15,6 +15,9 @@
 (defmethod import/type->schema [:v0 :transform] [_]
   ::transform)
 
+(defmethod export/representation-type :model/Transform [_entity]
+  :transform)
+
 ;;; ------------------------------------ Schema Definitions ------------------------------------
 
 (mr/def ::type
@@ -111,12 +114,11 @@
 
 ;;; ------------------------------------ Ingestion Functions ------------------------------------
 
-(defn yaml->toucan
-  "Convert a validated v0 transform representation into data suitable for creating/updating a Transform."
+(defmethod import/yaml->toucan [:v0 :transform]
   [{:keys [database] :as representation}
    ref-index]
   (let [database-id (try
-                      (v0-common/ref->id (:database representation) ref-index)
+                      (v0-common/ref->id database ref-index)
                       (catch Exception e
                         (log/errorf e "Error resolving database ref: %s" database)
                         (t2/select-one-fn :id :model/Database :name database)))
@@ -133,10 +135,6 @@
      :target {:type "table"
               :schema (-> representation :target_table :schema)
               :name (-> representation :target_table :table)}}))
-
-(defmethod import/yaml->toucan [:v0 :transform]
-  [representation ref-index]
-  (yaml->toucan representation ref-index))
 
 (defn- set-up-tags [transform-id tags]
   (when (seq tags)
@@ -170,7 +168,7 @@
 
 ;; EXPORT
 
-(defmethod export/export-entity :model/Transform [transform]
+(defmethod export/export-entity :transform [transform]
   (let [query (v0-mbql/patch-refs-for-export (-> transform :source :query))]
     (cond-> {:name (:name transform)
              :type :transform

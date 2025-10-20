@@ -56,6 +56,30 @@
           (mu/validate-throw schema representation')))
       (throw (ex-info "Missing required field: type" {:representation representation})))))
 
+;; inserting and updating
+
+(defn insert!
+  "Insert a representation as a new entity."
+  [representation]
+  (let [representation (normalize-representation representation)]
+    (if-some [model (v0-common/type->model (name (:type representation)))]
+      (let [toucan (yaml->toucan representation)]
+        (t2/insert! model toucan))
+      (throw (ex-info (str "Unknown representation type: " (:type representation))
+                      {:representation representation
+                       :type (:type representation)})))))
+
+(defn update!
+  "Update an existing entity from a representation."
+  [representation id]
+  (let [representation (normalize-representation representation)]
+    (if-some [model (v0-common/type->model (name (:type representation)))]
+      (let [toucan (yaml->toucan representation)]
+        (t2/update! model id toucan))
+      (throw (ex-info (str "Unknown representation type: " (:type representation))
+                      {:representation representation
+                       :type (:type representation)})))))
+
 (defn order-representations
   "Order representations topologically by ref dependency"
   [representations]
@@ -70,7 +94,7 @@
         (recur acc' (set/difference remaining (set acc')))))))
 
 (defn- file->collection-id
-  [file]
+  [^java.io.File file]
   (let [id
         (-> (.getParent file)
             (str/split #"/")
@@ -91,7 +115,7 @@
       nil)))
 
 (defn- prepare-yaml
-  [file]
+  [^java.io.File file]
   (when (or (str/ends-with? (.getName file) ".yml")
             (str/ends-with? (.getName file) ".yaml"))
     (-> (import-yaml file)
@@ -200,7 +224,7 @@
   []
   (let [trans-dir "transforms/"
         trans-path (str v0-common/representations-export-dir trans-dir)]
-    (doseq [file (file-seq (io/file trans-path))]
+    (doseq [^java.io.File file (file-seq (io/file trans-path))]
       (when (.isFile file)
         (try
           (let [valid-repr (-> (slurp file)
@@ -217,27 +241,3 @@
             (t2/update! :model/Transform id update-transform))
           (catch Exception e
             (log/errorf e "Failed to ingest representation file %s" (.getName file))))))))
-
-;; inserting and updating
-
-(defn insert!
-  "Insert a representation as a new entity."
-  [representation]
-  (let [representation (normalize-representation representation)]
-    (if-some [model (v0-common/type->model (name (:type representation)))]
-      (let [toucan (yaml->toucan representation)]
-        (t2/insert! model toucan))
-      (throw (ex-info (str "Unknown representation type: " (:type representation))
-                      {:representation representation
-                       :type (:type representation)})))))
-
-(defn update!
-  "Update an existing entity from a representation."
-  [representation id]
-  (let [representation (normalize-representation representation)]
-    (if-some [model (v0-common/type->model (name (:type representation)))]
-      (let [toucan (yaml->toucan representation)]
-        (t2/update! model id toucan))
-      (throw (ex-info (str "Unknown representation type: " (:type representation))
-                      {:representation representation
-                       :type (:type representation)})))))

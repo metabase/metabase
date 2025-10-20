@@ -17,6 +17,9 @@
 
 (defmethod import/type->schema [:v0 :snippet] [_] ::snippet)
 
+(defmethod export/representation-type :model/NativeQuerySnippet [_entity]
+  :snippet)
+
 ;;; ------------------------------------ Schema Definitions ------------------------------------
 
 (mr/def ::type
@@ -104,7 +107,7 @@
           (= type :card) (v0-common/->ref (:card-id template-tag) :card)
           :else (throw (ex-info "Unknown template tag type" {:template-tag template-tag})))))
 
-(defmethod export/export-entity :model/NativeQuerySnippet [snippet]
+(defmethod export/export-entity :snippet [snippet]
   (let [snippet-ref (v0-common/unref (v0-common/->ref (:id snippet) :snippet))
         template-tags (into {}
                             (comp

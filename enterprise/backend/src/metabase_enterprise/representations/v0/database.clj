@@ -16,6 +16,9 @@
 (defmethod import/type->schema [:v0 :database] [_]
   ::database)
 
+(defmethod export/representation-type :model/Database [_entity]
+  :database)
+
 (set! *warn-on-reflection* true)
 
 ;;; ------------------------------------ Schema Definitions ------------------------------------
@@ -203,7 +206,7 @@
             details
             driver.u/default-sensitive-fields)))
 
-(defmethod export/export-entity :model/Database [database]
+(defmethod export/export-entity :database [database]
   (let [ref (v0-common/unref (v0-common/->ref (:id database) :database))]
     (-> {:type :database
          :version :v0

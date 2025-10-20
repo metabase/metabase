@@ -12,6 +12,9 @@
 (defmethod import/type->schema [:v0 :collection] [_]
   ::collection)
 
+(defmethod export/representation-type :model/Collection [_entity]
+  :collection)
+
 ;;; ------------------------------------ Schema Definitions ------------------------------------
 
 (mr/def ::type
@@ -85,17 +88,6 @@
       :description description
       :location location})))
 
-(defn export
-  "Export the collection, returning EDN suitable for yml"
-  [collection]
-  (-> {:type :collection
-       :version :v0
-       :ref (format "%s-%s" "collection" (:id collection))
-       :name (:name collection)
-       :description (:description collection)
-       :children (children collection)}
-      u/remove-nils))
-
 (defn- persist!
   [new-collection]
   (log/debug "Creating new collection" (:name new-collection))
@@ -118,5 +110,11 @@
       (archive-and-persist! existing new-collection)
       (persist! new-collection))))
 
-(defmethod export/export-entity :model/Collection [collection]
-  (export collection))
+(defmethod export/export-entity :collection [collection]
+  (-> {:type :collection
+       :version :v0
+       :ref (format "%s-%s" "collection" (:id collection))
+       :name (:name collection)
+       :description (:description collection)
+       :children (children collection)}
+      u/remove-nils))

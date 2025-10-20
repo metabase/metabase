@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
+   [metabase-enterprise.representations.v0.card]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.v0.mbql :as v0-mbql]
    [metabase.api.common :as api]
