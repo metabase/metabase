@@ -80,6 +80,7 @@ export function getTreeItems(
         id: model.id,
         name: model.name,
         icon: getIcon(model),
+        data: model,
       }),
     );
 
@@ -99,10 +100,13 @@ export function getTreeItems(
       .filter((collectionItem) => (collectionItem.children?.length || 0) > 0),
     ...models
       .filter((m) => !m.collection.id)
-      .map((m) => ({
-        id: m.id,
-        name: m.name,
-        icon: getIcon(m),
-      })),
+      .map(
+        (m): ITreeNodeItem => ({
+          id: m.id,
+          name: m.name,
+          icon: getIcon(m),
+          data: m,
+        }),
+      ),
   ];
 }

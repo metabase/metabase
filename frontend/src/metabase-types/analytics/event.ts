@@ -83,7 +83,7 @@ export type NewIFrameCardCreatedEvent = ValidateEvent<{
 export type MoveToTrashEvent = ValidateEvent<{
   event: "moved-to-trash";
   target_id: number | null;
-  triggered_from: "collection" | "detail_page" | "cleanup_modal";
+  triggered_from: "collection" | "detail_page" | "cleanup_modal" | "bench";
   duration_ms: number | null;
   result: "success" | "failure";
   event_detail:

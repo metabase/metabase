@@ -380,12 +380,12 @@ export interface CreateCardRequest {
   parameter_mappings?: unknown;
   description?: string;
   collection_id?: CollectionId;
-  dashboard_id?: DashboardId;
+  dashboard_id?: DashboardId | null;
   document_id?: DocumentId | null;
   dashboard_tab_id?: DashboardTabId;
   collection_position?: number;
   result_metadata?: Field[];
-  cache_ttl?: number;
+  cache_ttl?: number | null;
 }
 
 export interface CreateCardFromCsvRequest {

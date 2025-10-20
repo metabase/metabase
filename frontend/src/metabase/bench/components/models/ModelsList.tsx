@@ -1,5 +1,5 @@
 import type { Location } from "history";
-import { type ReactNode, useMemo } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { push, replace } from "react-router-redux";
 import { useLocalStorage } from "react-use";
@@ -34,15 +34,22 @@ import { BenchPaneHeader } from "../BenchPaneHeader";
 import { ItemsListSection } from "../ItemsListSection/ItemsListSection";
 import { ItemsListSettings } from "../ItemsListSection/ItemsListSettings";
 import { ItemsListTreeNode } from "../ItemsListSection/ItemsListTreeNode";
+import {
+  type SearchResultModal,
+  SearchResultModals,
+} from "../shared/SearchResultModals";
 
 import { CreateModelMenu } from "./CreateModelMenu";
+import { ModelMoreMenu } from "./ModelMoreMenu";
 
 function ModelsList({
   activeId,
   onCollapse,
+  onOpenModal,
 }: {
   activeId: number;
   onCollapse?: () => void;
+  onOpenModal: (modal: SearchResultModal) => void;
 }) {
   const dispatch = useDispatch();
   const { isLoading: isLoadingModels, data: modelsData } = useFetchModels({
@@ -75,6 +82,10 @@ function ModelsList({
       dispatch(push(`/bench/model/${item.id}`));
     }
   };
+
+  const renderMoreMenu = (item: SearchResult) => (
+    <ModelMoreMenu item={item} onOpenModal={onOpenModal} />
+  );
 
   return (
     <ItemsListSection
@@ -117,6 +128,13 @@ function ModelsList({
               onSelect={handleModelSelect}
               emptyState={<Text c="text-light">{t`No models found`}</Text>}
               TreeNode={ItemsListTreeNode}
+              rightSection={(item) =>
+                item.data ? (
+                  <div onClick={(e) => e.stopPropagation()}>
+                    {renderMoreMenu(item.data as SearchResult)}
+                  </div>
+                ) : null
+              }
             />
           </Box>
         ) : (
@@ -125,6 +143,7 @@ function ModelsList({
               key={model.id}
               model={model}
               active={model.id === activeId}
+              renderMoreMenu={renderMoreMenu}
             />
           ))
         )
@@ -136,13 +155,15 @@ function ModelsList({
 function ModelListItem({
   model,
   active,
+  renderMoreMenu,
 }: {
   model: SearchResult;
   active?: boolean;
+  renderMoreMenu: (model: SearchResult) => ReactNode;
 }) {
   const icon = getIcon({ type: "dataset", ...model });
   return (
-    <Box mb="sm">
+    <Box mb="sm" pos="relative">
       <NavLink
         component={Link}
         to={`/bench/model/${model.id}`}
@@ -162,6 +183,9 @@ function ModelListItem({
           </>
         }
       />
+      <Box pos="absolute" right="0.25rem" top="0.25rem">
+        {renderMoreMenu(model)}
+      </Box>
     </Box>
   );
 }
@@ -173,9 +197,22 @@ export const ModelsLayout = ({
   children: React.ReactNode;
   params: { slug: string };
 }) => {
+  const [modal, setModal] = useState<SearchResultModal | null>(null);
+  const onClose = () => setModal(null);
+
   return (
-    <BenchLayout nav={<ModelsList activeId={+params.slug} />} name="model">
+    <BenchLayout
+      nav={<ModelsList activeId={+params.slug} onOpenModal={setModal} />}
+      name="model"
+    >
       {children}
+      {modal && (
+        <SearchResultModals
+          activeId={+params.slug}
+          modal={modal}
+          onClose={onClose}
+        />
+      )}
     </BenchLayout>
   );
 };
