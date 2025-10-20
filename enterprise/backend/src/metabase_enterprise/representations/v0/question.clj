@@ -95,25 +95,19 @@
 ;;; ------------------------------------ Ingestion ------------------------------------
 
 (defmethod import/yaml->toucan [:v0 :question]
-  [{question-name :name
-    :keys [_type _ref entity-id description database collection] :as representation}
-   ref-index]
-  (let [database-id (v0-common/resolve-database-id database ref-index)
+  [representation ref-index]
+  (let [database-id (v0-common/ref->id (:database representation) ref-index)
         query (-> (assoc representation :database database-id)
                   (v0-mbql/import-dataset-query ref-index))]
-    {:entity_id (or entity-id
-                    (v0-common/generate-entity-id representation))
-     :creator_id (or api/*current-user-id*
-                     config/internal-mb-user-id)
-     :name question-name
-     :description (or description "")
-     :display :table
+    {:creator_id (or api/*current-user-id* config/internal-mb-user-id)
+     :name (:name representation)
+     :description (or (:description representation) "")
+     :display (or (:display representation) :table)
      :dataset_query query
      :visualization_settings {}
      :database_id database-id
-     :query_type (if (= (:type query) "native") :native :query)
-     :type :question
-     :collection_id (v0-common/find-collection-id collection)}))
+     :query_type (if (= (name (:type query)) "native") :native :query)
+     :type :question}))
 
 (defmethod import/persist! [:v0 :question]
   [representation ref-index]
@@ -133,26 +127,13 @@
 ;; -- Export --
 
 (defmethod export/export-entity :question [card]
-  (let [query    (v0-mbql/patch-refs-for-export (:dataset_query card))
-        card-ref (v0-common/unref (v0-common/->ref (:id card) :question))]
-    (cond-> {:name        (:name card)
-             :type        (:type card)
-             :version     :v0
-             :ref         card-ref
-             :entity-id   (:entity_id card)
-             :description (:description card)}
+  (let [card-ref (v0-common/unref (v0-common/->ref (:id card) :question))]
+    (-> {:name        (:name card)
+         :type        (:type card)
+         :version     :v0
+         :ref         card-ref
+         :entity-id   (:entity_id card)
+         :description (:description card)}
 
-      (= :native (:type query))
-      (assoc :query (-> query :native :query)
-             :database (:database query))
-
-      (= :query (:type query))
-      (assoc :mbql_query (:query query)
-             :database (:database query))
-
-      (= :mbql/query (:lib/type query))
-      (assoc :lib_query (:stages query)
-             :database (:database query))
-
-      :always
-      u/remove-nils)))
+        (merge (v0-mbql/export-dataset-query (:dataset_query card)))
+        u/remove-nils)))

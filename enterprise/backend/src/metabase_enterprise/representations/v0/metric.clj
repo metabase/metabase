@@ -269,21 +269,12 @@
 ;;; -- Export --
 
 (defmethod export/export-entity :metric [card]
-  (let [query (v0-mbql/patch-refs-for-export (:dataset_query card))]
-    (cond-> {:name (:name card)
-             :type (:type card)
-             :version :v0
-             :ref (v0-common/unref (v0-common/->ref (:id card) :metric))
-             :description (:description card)}
+  (-> {:name (:name card)
+       :type (:type card)
+       :version :v0
+       :ref (v0-common/unref (v0-common/->ref (:id card) :metric))
+       :description (:description card)
+       :columns (:result_metadata card)}
 
-      (= :native (:type query))
-      (assoc :query (-> query :native :query)
-             :database (:database query))
-
-      (= :query (:type query))
-      (assoc :mbql_query (:query query)
-             :database (:database query)
-             :columns (:result_metadata card))
-
-      :always
-      u/remove-nils)))
+      (merge (v0-mbql/export-dataset-query (:dataset_query card)))
+      u/remove-nils))

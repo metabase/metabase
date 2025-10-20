@@ -324,27 +324,16 @@
       settings (assoc :settings settings))))
 
 (defmethod export/export-entity :model [card]
-  (let [query    (v0-mbql/patch-refs-for-export (:dataset_query card))
-        card-ref (v0-common/unref (v0-common/->ref (:id card) :model))
+  (let [card-ref (v0-common/unref (v0-common/->ref (:id card) :model))
         columns  (when-let [result-metadata (:result_metadata card)]
                    (seq (mapv extract-user-editable-column-metadata result-metadata)))]
-    (cond-> {:name (:name card)
-             :type (:type card)
-             :version :v0
-             :ref card-ref
-             :entity-id (:entity_id card)
-             :description (:description card)}
+    (-> {:name (:name card)
+         :type (:type card)
+         :version :v0
+         :ref card-ref
+         :entity-id (:entity_id card)
+         :description (:description card)}
 
-      (= :native (:type query))
-      (assoc :query (-> query :native :query)
-             :database (:database query))
-
-      (= :query (:type query))
-      (assoc :mbql_query (:query query)
-             :database (:database query))
-
-      columns
-      (assoc :columns columns)
-
-      :always
-      u/remove-nils)))
+        (merge (v0-mbql/export-dataset-query (:dataset_query card)))
+        (assoc :columns columns)
+        u/remove-nils)))

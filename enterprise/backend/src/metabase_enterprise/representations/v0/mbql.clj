@@ -195,3 +195,17 @@
       :else
       (throw (ex-info "Question must have either 'query' or 'mbql_query'"
                       {:representation representation})))))
+
+(defn export-dataset-query
+  [query]
+  (let [query (patch-refs-for-export query)]
+    (cond-> {:database (:database query)}
+
+      (= :native (:type query))
+      (assoc :query (-> query :native :query))
+
+      (= :query (:type query))
+      (assoc :mbql_query (:query query))
+
+      (= :mbql/query (:lib/type query))
+      (assoc :lib_query (:stages query)))))

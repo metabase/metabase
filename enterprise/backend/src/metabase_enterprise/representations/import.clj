@@ -60,10 +60,10 @@
 
 (defn insert!
   "Insert a representation as a new entity."
-  [representation]
+  [representation ref-index]
   (let [representation (normalize-representation representation)]
     (if-some [model (v0-common/type->model (name (:type representation)))]
-      (let [toucan (yaml->toucan representation)]
+      (let [toucan (yaml->toucan representation ref-index)]
         (t2/insert! model toucan))
       (throw (ex-info (str "Unknown representation type: " (:type representation))
                       {:representation representation
