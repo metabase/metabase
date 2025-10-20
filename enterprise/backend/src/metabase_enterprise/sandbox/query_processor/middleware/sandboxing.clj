@@ -23,7 +23,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
-   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.util.persisted-cache :as qp.persisted]
@@ -353,13 +353,14 @@
   (or (when (not api/*is-superuser?*)
         (when-let [table-id->sandbox (when *current-user-id*
                                        (query->table-id->sandbox query))]
+          (premium-features/assert-has-feature :sandboxes (tru "Sandboxing"))
           (sandboxed-query query table-id->sandbox)))
       query))
 
 (defenterprise apply-sandboxing
   "Pre-processing middleware. Replaces source tables a User was querying against with source queries that (presumably)
   restrict the rows returned, based on presence of sandboxes."
-  :feature :sandboxes
+  :feature :none
   [query]
   (apply-sandboxing* query))
 

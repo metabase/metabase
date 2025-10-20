@@ -39,7 +39,7 @@
 
   WARNING: This should NOT be used directly for sandboxing enforcement. Use `*sandboxes-for-user*` or
   `enforced-sandboxes-for-tables` below, so that the cache is used."
-  :feature :sandboxes
+  :feature :none
   [user-id]
   (when user-id
     (let [user-group-ids           (user/group-ids user-id)

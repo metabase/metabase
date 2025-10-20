@@ -1600,3 +1600,10 @@
                      [:field {:join-alias "people" :lib/uuid string?} (mt/id :people :name)]
                      [:field {:join-alias "people" :lib/uuid string?} (mt/id :people :city)]]
                     (-> preprocessed lib/joins first lib/join-fields)))))))))
+
+(deftest sandboxing-throws-on-ee-without-token
+  (mt/test-drivers (e2e-test-drivers)
+    (testing "Basic test around querying a table by a user with segmented only permissions and a GTAP question that is a native query"
+      (met/with-gtaps! {:gtaps {:venues (venues-category-native-sandbox-def)}, :attributes {"cat" 50}}
+        (mt/with-premium-features #{}
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Sandboxing is a paid feature" (run-venues-count-query))))))))

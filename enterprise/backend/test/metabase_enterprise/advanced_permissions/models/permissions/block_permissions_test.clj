@@ -192,7 +192,7 @@
               ;; 'grant' the block permissions.
               (testing "the highest permission level from any group wins (block doesn't override other groups anymore)"
                 (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :blocked)
-                (testing "if EE token does not have the `:advanced-permissions` feature: should not do check"
+                (testing "if EE token does not have the `:advanced-permissions` feature, but we're in EE, we still do the check"
                   (mt/with-premium-features #{}
                     (is (nil? (check-block-perms)))))
                 (testing "should still not be able to run ad-hoc query"
