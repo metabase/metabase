@@ -14,7 +14,7 @@
 
 (mr/def ::transform-details
   [:map
-   [:transform-type [:enum {:decode/normalize schema.common/normalize-keyword} :table]]
+   [:transform-type [:enum {:decode/normalize schema.common/normalize-keyword} :table :table-incremental]]
    [:conn-spec :any]
    [:query :string]
    [:output-table [:keyword {:decode/normalize schema.common/normalize-keyword}]]])
@@ -22,6 +22,12 @@
 (mr/def ::transform-opts
   [:map
    [:overwrite? :boolean]])
+
+(defn- transform-opts [{:keys [transform-type]}]
+  (case transform-type
+    :table {:overwrite? true}
+
+    :table-incremental {}))
 
 (defn run-mbql-transform!
   "Run `transform` and sync its target table.
@@ -42,7 +48,7 @@
                               :query (transforms.util/compile-source source)
                               :output-schema (:schema target)
                               :output-table (transforms.util/qualified-table-name driver target)}
-           opts {:overwrite? true}]
+           opts (transform-opts transform-details)]
        (when (transforms.util/db-routing-enabled? database)
          (throw (ex-info "Transforms are not supported on databases with DB routing enabled."
                          {:driver driver, :database database})))
