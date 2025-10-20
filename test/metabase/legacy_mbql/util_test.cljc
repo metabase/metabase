@@ -5,7 +5,8 @@
        :cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :as t]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.types.core]))
+   [metabase.types.core]
+   [metabase.util.malli :as mu]))
 
 (comment metabase.types.core/keep-me)
 
@@ -702,20 +703,17 @@
 (t/deftest ^:parallel update-field-options-test
   (t/is (= [:field 1 {:wow true}]
            (mbql.u/update-field-options [:field 1 nil] assoc :wow true)
-           (mbql.u/update-field-options [:field 1 {}] assoc :wow true)
+           (mu/disable-enforcement
+             (mbql.u/update-field-options [:field 1 {}] assoc :wow true))
            (mbql.u/update-field-options [:field 1 {:wow false}] assoc :wow true)))
-
   (t/is (= [:field 1 {:a 1, :b 2}]
            (mbql.u/update-field-options [:field 1 {:a 1}] assoc :b 2)))
-
   (t/testing "Should remove empty options"
     (t/is (= [:field 1 nil]
              (mbql.u/update-field-options [:field 1 {:a 1}] dissoc :a))))
-
   (t/testing "Should normalize the clause"
     (t/is (= [:field 1 nil]
              (mbql.u/update-field-options [:field 1 {:a {:b 1}}] assoc-in [:a :b] nil))))
-
   (t/testing "Should work with `:expression` and `:aggregation` references as well"
     (t/is (= [:expression "wow" {:a 1}]
              (mbql.u/update-field-options [:expression "wow"] assoc :a 1)))
@@ -725,7 +723,6 @@
              (mbql.u/update-field-options [:aggregation 0] assoc :a 1)))
     (t/is (= [:aggregation 0 {:a 1, :b 2}]
              (mbql.u/update-field-options [:aggregation 0 {:b 2}] assoc :a 1)))
-
     ;; in the future when we make the 3-arg version the normalized/"official" version we will probably want to stop
     ;; doing this.
     (t/testing "Remove empty options entirely from `:expression` and `:aggregation` (for now)"

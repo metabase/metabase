@@ -256,11 +256,11 @@
 (deftest ^:parallel normalize-source-metadata-test
   (testing "normalize-source-metadata"
     (testing "should convert legacy field_refs to modern `:field` clauses"
-      (is (= {:field_ref [:field 1 {:temporal-unit :month}]}
+      (is (= {:field_ref [:field 1 {:temporal-unit :month}], :base_type :type/*}
              (lib/normalize ::mbql.s/legacy-column-metadata
                             {:field_ref ["datetime-field" ["field-id" 1] "month"]}))))
     (testing "should correctly keywordize Field options"
-      (is (= {:field_ref [:field 1 {:temporal-unit :month}]}
+      (is (= {:field_ref [:field 1 {:temporal-unit :month}], :base_type :type/*}
              (lib/normalize ::mbql.s/legacy-column-metadata
                             {:field_ref ["field" 1 {:temporal-unit "month"}]}))))))
 
@@ -268,17 +268,17 @@
   (let [col {:fingerprint {:global {:distinct-count 200, :nil% 0}
                            :type   {:type/DateTime {:earliest "2016-04-26T19:29:55.147Z"
                                                     :latest   "2019-04-15T13:34:19.931Z"}}}}]
-    (is (= col
+    (is (= (assoc col :base_type :type/*)
            (lib/normalize ::mbql.s/legacy-column-metadata col)))))
 
 (deftest ^:parallel normalize-evil-source-metadata-test
   (testing "Fix really messed up fingerprints with lower-cased type names (only in prod) (#63397)"
     (mu/disable-enforcement
-      (is (= {:fingerprint
-              {:global {:distinct-count 418, :nil% 0.0},
-               :type
-               {:type/Text
-                {:percent-json 0.0, :percent-url 0.0, :percent-email 0.0, :percent-state 0.0, :average-length 13.26388888888889}}}}
+      (is (= {:base_type   :type/*
+              :fingerprint {:global {:distinct-count 418, :nil% 0.0},
+                            :type
+                            {:type/Text
+                             {:percent-json 0.0, :percent-url 0.0, :percent-email 0.0, :percent-state 0.0, :average-length 13.26388888888889}}}}
              (lib/normalize
               ::mbql.s/legacy-column-metadata
               {:fingerprint
@@ -296,3 +296,19 @@
          (lib/normalize ::mbql.s/expression ["expression" "X" {"temporal-unit" nil, "lib/uuid" "d01f4c83-0fe5-4329-80f3-2bbea1f27c3b"}])))
   (is (= [:expression "X" {:temporal-unit :day}]
          (lib/normalize ::mbql.s/expression ["expression" "X" {"temporal-unit" "day", "lib/uuid" "d01f4c83-0fe5-4329-80f3-2bbea1f27c3b"}]))))
+
+(deftest ^:parallel lib-normalize-legacy-binning-info-test
+  (is (= {:base_type    :type/*
+          :binning_info {:binning_strategy :num-bins
+                         :num-bins         100
+                         :strategy         :num-bins}
+          :display_name "X"
+          :name         "X"}
+         ;; populate `:strategy` if we only have `:binning_strategy`
+         (lib/normalize ::mbql.s/legacy-column-metadata {:name         "X"
+                                                         :binning_info {"binning_strategy" "num-bins", "num-bins" 100}})
+         ;; prefer `:strategy` over `:binning_strategy` if they conflict
+         (lib/normalize ::mbql.s/legacy-column-metadata {:name         "X"
+                                                         :binning_info {"binning_strategy" "default"
+                                                                        "strategy"         "num-bins"
+                                                                        "num-bins"         100}}))))

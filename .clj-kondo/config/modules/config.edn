@@ -119,7 +119,6 @@
            metabase.analyze.query-results}
    :uses #{config
            driver
-           legacy-mbql
            lib
            models
            sync
@@ -781,7 +780,6 @@
    :uses #{api
            app-db
            classloader
-           legacy-mbql
            lib
            lib-be
            models
@@ -919,7 +917,6 @@
            eid-translation
            embedding
            events
-           legacy-mbql
            lib
            lib-be
            models
@@ -1321,7 +1318,6 @@
            collections
            driver
            events
-           legacy-mbql
            lib
            model-persistence
            models

@@ -10,6 +10,7 @@
    [metabase.legacy-mbql.schema.helpers :as helpers :refer [is-clause?]]
    [metabase.legacy-mbql.schema.macros :refer [defclause one-of]]
    [metabase.lib.schema.actions :as lib.schema.actions]
+   [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.constraints :as lib.schema.constraints]
    [metabase.lib.schema.expression.temporal :as lib.schema.expression.temporal]
@@ -1368,31 +1369,98 @@
   "Normalize legacy column metadata when using [[metabase.lib.normalize/normalize]]."
   [m]
   (when (map? m)
-    (let [m (lib.schema.common/normalize-map-no-kebab-case m)]
-      ;; remove deprecated `:ident` key.
-      (dissoc m :ident))))
+    (-> m
+        lib.schema.common/normalize-map-no-kebab-case
+        ;; remove deprecated `:ident` key.
+        (dissoc :ident)
+        ;; set `display_name` to `name` if it's unset.
+        (as-> $m (cond-> $m
+                   (core/and (:name $m)
+                             (core/not (contains? $m :display_name)))
+                   (assoc :display_name (:name $m)))))))
+
+(mr/def ::legacy-column-metadata.binning-info
+  [:and
+   [:map
+    {:decode/normalize (fn [m]
+                         (when (map? m)
+                           (let [m (lib.schema.common/normalize-map-no-kebab-case m)]
+                             (cond-> m
+                               (core/and (:binning_strategy m)
+                                         (core/not (:strategy m)))
+                               (assoc :strategy (:binning_strategy m))))))}
+    [:strategy         [:ref ::lib.schema.binning/strategy]]
+    [:binning_strategy {:optional true} [:ref ::lib.schema.binning/strategy]]
+    [:bin_width        {:optional true} [:ref ::lib.schema.binning/bin-width]]
+    [:num_bins         {:optional true} [:ref ::lib.schema.binning/num-bins]]]
+   [:fn
+    {:error/message "bin_width is a required key when strategy is bin-width"}
+    (fn [m]
+      (if (core/= (:strategy m) :bin-width)
+        (contains? m :bin_width)
+        true))]
+   [:fn
+    {:error/message "num_bins is a required key when strategy is num-bins"}
+    (fn [m]
+      (if (core/= (:strategy m) :num-bins)
+        (contains? m :num_bins)
+        true))]
+   [:fn
+    {:error/message    "binning_strategy, if present, must be equal to strategy"
+     :decode/normalize (fn [m]
+                         (cond-> m
+                           (:binning_strategy m)
+                           (assoc :binning_strategy (:strategy m))))}
+    (fn [m]
+      (if (:binning_strategy m)
+        (core/= (:binning_strategy m) (:strategy m))
+        true))]])
+
+(defn- legacy-column-metadata-qualified-keys-schema
+  "In 56+ legacy column metadata can optionally include qualified keys from Lib-style metadata. Walk the Lib column
+  metadata schema and build a `:map` schema out of those keys."
+  []
+  (let [schema          (mr/resolve-schema ::lib.schema.metadata/column)
+        find-map-schema (fn find-map-schema [schema]
+                          (if (core/= (mc/type schema) :map)
+                            schema
+                            (some find-map-schema (mc/children schema))))
+        map-schema (find-map-schema schema)]
+    (into [:map]
+          (keep (fn [[k opts schema]]
+                  (when (qualified-keyword? k)
+                    [k (assoc opts :optional true) schema])))
+          (mc/children map-schema))))
+
+;;; TODO (Cam 10/20/25) -- it would be nice to come up with a way to automatically rebuild this if
+;;; `::lib.schema.metadata/column` changes
+(mr/def ::legacy-column-metadata.qualified-keys
+  (legacy-column-metadata-qualified-keys-schema))
 
 (mr/def ::legacy-column-metadata
   "Schema for a single legacy metadata column. This is the pre-Lib equivalent of
   `:metabase.lib.schema.metadata/column`."
   [:and
-   [:map
-    ;; this schema is allowed for Card `result_metadata` in Lib so `:decode/normalize` is used for those Lib use cases.
-    {:decode/normalize lib-normalize-legacy-column}
-    [:base_type          ::lib.schema.common/base-type]
-    [:display_name       :string]
-    [:name               :string]
-    [:effective_type     {:optional true} ::lib.schema.common/base-type]
-    [:converted_timezone {:optional true} [:maybe [:ref ::lib.schema.expression.temporal/timezone-id]]]
-    [:field_ref          {:optional true} [:maybe [:ref ::Reference]]]
-    ;; Fingerprint is required in order to use BINNING
-    [:fingerprint        {:optional true} [:maybe [:ref ::lib.schema.metadata.fingerprint/fingerprint]]]
-    [:id                 {:optional true} [:maybe ::lib.schema.id/field]]
-    ;; name is allowed to be empty in some databases like SQL Server.
-    [:semantic_type      {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
-    [:source             {:optional true} [:maybe [:ref ::lib.schema.metadata/column.legacy-source]]]
-    [:unit               {:optional true} [:maybe [:ref ::lib.schema.temporal-bucketing/unit]]]
-    [:visibility_type    {:optional true} [:maybe [:ref ::lib.schema.metadata/column.visibility-type]]]]
+   [:merge
+    [:map
+     ;; this schema is allowed for Card `result_metadata` in Lib so `:decode/normalize` is used for those Lib use cases.
+     {:decode/normalize lib-normalize-legacy-column}
+     [:base_type          {:default :type/*} ::lib.schema.common/base-type]
+     [:display_name       :string]
+     [:name               :string]
+     [:binning_info       {:optional true} [:maybe [:ref ::legacy-column-metadata.binning-info]]]
+     [:effective_type     {:optional true} ::lib.schema.common/base-type]
+     [:converted_timezone {:optional true} [:maybe [:ref ::lib.schema.expression.temporal/timezone-id]]]
+     [:field_ref          {:optional true} [:maybe [:ref ::Reference]]]
+     ;; Fingerprint is required in order to use BINNING
+     [:fingerprint        {:optional true} [:maybe [:ref ::lib.schema.metadata.fingerprint/fingerprint]]]
+     [:id                 {:optional true} [:maybe ::lib.schema.id/field]]
+     ;; name is allowed to be empty in some databases like SQL Server.
+     [:semantic_type      {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
+     [:source             {:optional true} [:maybe [:ref ::lib.schema.metadata/column.legacy-source]]]
+     [:unit               {:optional true} [:maybe [:ref ::lib.schema.temporal-bucketing/unit]]]
+     [:visibility_type    {:optional true} [:maybe [:ref ::lib.schema.metadata/column.visibility-type]]]]
+    [:ref ::legacy-column-metadata.qualified-keys]]
    (lib.schema.common/disallowed-keys
     {:lib/type "Legacy results metadata should not have :lib/type, use :metabase.lib.schema.metadata/column for Lib metadata"})
    (letfn [(disallowed-key? [k]
@@ -1574,7 +1642,6 @@
     [:order-by     {:optional true} [:ref ::OrderBys]]
     [:page         {:optional true} [:ref :metabase.lib.schema/page]]
     [:joins        {:optional true} [:ref ::Joins]]
-
     [:source-metadata
      {:optional true
       :description "Info about the columns of the source query. Added in automatically by middleware. This metadata is
