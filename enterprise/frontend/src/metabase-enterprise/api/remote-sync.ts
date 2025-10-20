@@ -30,6 +30,10 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
           "force-sync": forceSync,
         },
       }),
+      invalidatesTags: () => [
+        tag("collection-dirty-entities"),
+        tag("session-properties"),
+      ],
     }),
     importChanges: builder.mutation<
       ImportFromBranchResponse,

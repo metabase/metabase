@@ -25,7 +25,7 @@ import { useSyncStatus } from "../hooks/use-sync-status";
 import { BranchPicker } from "./BranchPicker";
 import { CollectionSyncStatusBadge } from "./CollectionSyncStatusBadge";
 import { PushChangesModal } from "./PushChangesModal/PushChangesModal";
-import { UnsyncedWarningModal } from "./UnsyncedWarningModal";
+import { UnsyncedChangesModal } from "./UnsyncedChangesModal";
 
 interface SyncedCollectionsSidebarSectionProps {
   syncedCollections: CollectionTreeItem[];
@@ -92,6 +92,7 @@ export const SyncedCollectionsSidebarSection = ({
           openWarningModal();
         } else {
           await changeBranch(branch, isNewBranch);
+          setNextBranch(null);
         }
       } catch {
         sendToast({
@@ -99,8 +100,6 @@ export const SyncedCollectionsSidebarSection = ({
           toastColor: "error",
           message: t`Sorry, we were unable to switch branches.`,
         });
-      } finally {
-        setNextBranch(null);
       }
     },
     [currentBranch, changeBranch, openWarningModal, refetchDirty, sendToast],
@@ -172,7 +171,15 @@ export const SyncedCollectionsSidebarSection = ({
         </ErrorBoundary>
       </SidebarSection>
       {showUnsyncedWarning && (
-        <UnsyncedWarningModal onClose={closeWarningModal} />
+        <UnsyncedChangesModal
+          collections={syncedCollections}
+          currentBranch={currentBranch!}
+          nextBranch={nextBranch!}
+          onClose={() => {
+            closeWarningModal();
+            setNextBranch(null);
+          }}
+        />
       )}
       {showPush && (
         <PushChangesModal
