@@ -268,6 +268,10 @@ export const colorConfig = {
     light: baseColors.orionAlpha[10],
     dark: baseColors.orionAlphaInverse[10],
   },
+  "background-disabled-inverse": {
+    light: baseColors.orionAlphaInverse[10],
+    dark: baseColors.orionAlpha[10],
+  },
   "background-error-secondary": {
     light: baseColors.lobster[5],
     dark: baseColors.lobster[90],
@@ -377,7 +381,7 @@ export const colorConfig = {
   },
   focus: {
     light: baseColors.blue[20],
-    dark: baseColors.blue[50],
+    dark: baseColors.blue[70],
   },
   "icon-primary-disabled": {
     light: baseColors.orion[30],
@@ -465,6 +469,10 @@ export const colorConfig = {
   "text-disabled": {
     light: baseColors.orionAlpha[40],
     dark: baseColors.orionAlphaInverse[40],
+  },
+  "text-disabled-inverse": {
+    light: baseColors.orionAlphaInverse[40],
+    dark: baseColors.orionAlpha[40],
   },
   "text-hover": {
     light: baseColors.brand[60],
