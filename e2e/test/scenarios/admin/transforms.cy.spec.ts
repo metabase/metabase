@@ -1400,7 +1400,7 @@ LIMIT
       H.assertQueryBuilderRowCount(1);
     });
 
-    it("should be able to update a Python query", () => {
+    it("should be able to update a Python query", { tags: ["@python"] }, () => {
       setPythonRunnerSettings();
       cy.log("create a new transform");
       H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
