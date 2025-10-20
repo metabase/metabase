@@ -66,11 +66,9 @@
       width: 1.3rem;
       height: 1.3rem;
     }
-  }
 
-  /** Only show the top border when there are messages. */
-  &[data-layout="stacked"][data-has-messages="true"] {
-    .chat {
+    /** Only show the top border when there are messages. */
+    .chatHistory:not(:empty) {
       border-top: 1px solid var(--mb-color-border);
     }
   }

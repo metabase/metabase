@@ -9,7 +9,6 @@ import { SdkQuestionDefaultView } from "embedding-sdk-bundle/components/private/
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import { Stack } from "metabase/ui";
-import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 import { useMetabotReactions } from "metabase-enterprise/metabot/hooks/use-metabot-reactions";
 
 import { MetabotChatHistory } from "./MetabotChatHistory";
@@ -39,10 +38,8 @@ const MetabotQuestionInner = ({
   const { isLocaleLoading } = useLocale();
   const { navigateToPath } = useMetabotReactions();
   const { ref: containerRef, width: containerWidth } = useElementSize();
-  const { messages } = useMetabotAgent();
 
   const hasQuestion = !!navigateToPath;
-  const hasMessages = messages.length > 0;
 
   const derivedLayout = useMemo(() => {
     return match(layout)
@@ -96,7 +93,6 @@ const MetabotQuestionInner = ({
         ref={containerRef}
         className={S.container}
         data-layout={derivedLayout}
-        data-has-messages={hasMessages}
         data-testid="metabot-question-container"
       >
         <div className={S.question}>{renderQuestion()}</div>
