@@ -18,13 +18,11 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.lib.util.unique-name-generator]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.namespaces :as shared.ns]
    [metabase.util.performance :refer [every? mapv select-keys update-keys some #?(:clj for)]]))
 
 #?(:clj
@@ -40,15 +38,6 @@
 
    :cljs
    (def format "Exactly like [[clojure.core/format]] but ClojureScript-friendly." gstring/format))
-
-(comment metabase.lib.util.unique-name-generator/keep-me)
-
-(shared.ns/import-fns
- [metabase.lib.util.unique-name-generator
-  non-truncating-unique-name-generator
-  truncate-alias
-  unique-name-generator
-  unique-name-generator-with-options])
 
 ;;; TODO (Cam 9/8/25) -- overlapping functionality with [[metabase.lib.schema.common/is-clause?]]
 (defn clause?

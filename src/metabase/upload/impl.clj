@@ -17,7 +17,6 @@
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
-   [metabase.lib.util :as lib.util]
    [metabase.model-persistence.core :as model-persistence]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
@@ -357,17 +356,17 @@
     (fn [base suffix]
       (as-> (str base separator suffix) %
         (driver/escape-alias driver %)
-        (lib.util/truncate-alias % max-length)))))
+        (lib/truncate-alias % max-length)))))
 
 (defn- derive-display-names [driver header]
-  (let [generator-fn (lib.util/unique-name-generator-with-options {:unique-alias-fn (unique-alias-fn driver " ")})]
+  (let [generator-fn (lib/unique-name-generator-with-options {:unique-alias-fn (unique-alias-fn driver " ")})]
     (mapv generator-fn
           (for [h header]
             (humanization/name->human-readable-name
              (normalize-display-name h))))))
 
 (defn- derive-column-names [driver header]
-  (let [generator-fn (lib.util/unique-name-generator-with-options {:unique-alias-fn (unique-alias-fn driver " ")})]
+  (let [generator-fn (lib/unique-name-generator-with-options {:unique-alias-fn (unique-alias-fn driver " ")})]
     (mapv (comp keyword generator-fn)
           (for [h header] (normalize-column-name driver h)))))
 

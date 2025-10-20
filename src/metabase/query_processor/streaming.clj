@@ -2,8 +2,8 @@
   (:refer-clojure :exclude [every? some mapv])
   (:require
    [clojure.string :as str]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.util :as lib.util]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
@@ -48,7 +48,7 @@
 
   TODO (Cam 9/23/25) -- We should use [[metabase.lib.field.util/add-deduplicated-names]] to do this."
   [cols]
-  (mapv (let [unique-name-fn (lib.util/non-truncating-unique-name-generator)]
+  (mapv (let [unique-name-fn (lib/non-truncating-unique-name-generator)]
           (fn [col]
             (let [unique-name (unique-name-fn (:name col))]
               (-> col

@@ -17,6 +17,7 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -173,7 +174,7 @@
   Only deduplicate the default `__join` aliases; we don't want the [[lib.util/unique-name-generator]] to touch other
   aliases and truncate them or anything like that."
   [joins]
-  (let [unique-name-fn (lib.util/unique-name-generator)]
+  (let [unique-name-fn (lib.util.unique-name-generator/unique-name-generator)]
     (mapv (fn [join]
             (cond-> join
               (= (:alias join) legacy-default-join-alias) (update :alias unique-name-fn)))

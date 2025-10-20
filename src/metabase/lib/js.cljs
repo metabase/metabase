@@ -79,6 +79,7 @@
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.memoize :as memoize]
@@ -1390,7 +1391,7 @@
   "Inner implementation for [[returned-columns]], which wraps this with caching."
   [a-query stage-number]
   (let [stage          (lib.util/query-stage a-query stage-number)
-        unique-name-fn (lib.util/unique-name-generator)]
+        unique-name-fn (lib.util.unique-name-generator/unique-name-generator)]
     (->> (lib.metadata.calculation/returned-columns a-query stage-number stage)
          (map #(-> %
                    (assoc :selected? true)

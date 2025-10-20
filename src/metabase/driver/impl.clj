@@ -3,7 +3,7 @@
   clutter in [[metabase.driver]] itself."
   (:require
    [metabase.classloader.core :as classloader]
-   [metabase.lib.util :as lib.util]
+   [metabase.lib.core :as lib]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
@@ -233,4 +233,4 @@
    (truncate-alias s default-alias-max-length-bytes))
 
   (^String [^String s max-length-bytes]
-   (lib.util/truncate-alias s max-length-bytes)))
+   (lib/truncate-alias s max-length-bytes)))

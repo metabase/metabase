@@ -28,7 +28,6 @@
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.logger.core :as logger]
    [metabase.models.interface :as mi]
@@ -109,7 +108,7 @@
  lib.util.match/match
  lib.util.match/match-one
  lib.util.match/replace
- lib.util/truncate-alias
+ lib/truncate-alias
  lib/->legacy-MBQL
  lib/->metadata-provider
  lib/normalize
@@ -192,7 +191,7 @@
 (p/import-fn secrets/value-as-file! secret-value-as-file!)
 (p/import-fn table/database table->database)
 
-(p/import-fn lib.util/unique-name-generator-with-options unique-name-generator)
+(p/import-fn lib/unique-name-generator-with-options unique-name-generator)
 
 (p/import-def qp.error-type/db qp.error-type.db)
 (p/import-def qp.error-type/driver qp.error-type.driver)

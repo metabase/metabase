@@ -15,6 +15,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :as i18n]
@@ -232,7 +233,7 @@
                ;; do not truncate the desired column aliases coming back in card metadata, if the query returns a
                ;; 'crazy long' column name then we need to use that in the next stage.
                ;; See [[metabase.lib.card-test/propagate-crazy-long-identifiers-from-card-metadata-test]]
-               (lib.field.util/add-source-and-desired-aliases-xform metadata-providerable (lib.util/non-truncating-unique-name-generator))
+               (lib.field.util/add-source-and-desired-aliases-xform metadata-providerable (lib.util.unique-name-generator/non-truncating-unique-name-generator))
                (cond-> result-cols
                  (seq model-cols) (merge-model-metadata model-cols))))))))
 
