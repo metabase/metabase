@@ -245,12 +245,6 @@ const ToolCallDetailsModal = ({
   message: MetabotDebugToolCallMessage;
   onClose: () => void;
 }) => {
-  const resultIsString = typeof message.result === "string";
-  const resultValue = resultIsString
-    ? message.result
-    : JSON.stringify(message.result, null, 2);
-  const resultLanguage = resultIsString ? undefined : "json";
-
   return (
     <Modal
       opened
@@ -260,23 +254,21 @@ const ToolCallDetailsModal = ({
       data-testid="tool-call-details-modal"
     >
       <Stack gap="md">
-        <Stack gap="xs">
-          <Text fw="bold">{t`Request`}</Text>
-          <CodeEditor
-            value={JSON.stringify(message.message, null, 2)}
-            language="json"
-            readOnly
-          />
-        </Stack>
+        {message.args && (
+          <Stack gap="xs">
+            <Text fw="bold">{t`Request`}</Text>
+            <CodeEditor
+              value={JSON.stringify(message.args, null, 2)}
+              language="json"
+              readOnly
+            />
+          </Stack>
+        )}
 
         {message.result && (
           <Stack gap="xs">
             <Text fw="bold">{t`Response`}</Text>
-            <CodeEditor
-              value={resultValue}
-              language={resultLanguage}
-              readOnly
-            />
+            <CodeEditor value={message.result} readOnly />
           </Stack>
         )}
       </Stack>
