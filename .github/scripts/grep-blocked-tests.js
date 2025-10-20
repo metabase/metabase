@@ -12,7 +12,7 @@
 
 /**
  * Build a list of blocked Cypress tests from a ci test config.
- * 
+ *
  * @param {BlockedTestsConfig} config
  * @returns {string} A semicolon-separated string of blocked Cypress tests, each prefixed with a hyphen.
  */
