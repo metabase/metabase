@@ -10,8 +10,16 @@
    [toucan2.core :as t2]))
 
 (defn lookup-by-id [rep-type id]
-  (t2/select-one-fn :id (v0-common/type->model rep-type) :id id))
+  (t2/select-one (v0-common/type->model rep-type) :id id))
 
+(defn lookup-by-entity-id [rep-type entity-id]
+  (t2/select-one (v0-common/type->model rep-type) :entity_id entity-id))
 
-
-
+(defn lookup-by-name [rep-type name]
+  (let [entities (t2/select (v0-common/type->model rep-type) :name name)]
+    (if (= 1 (count entities))
+      (first entities)
+      (throw (ex-info (str "Multiple entities of type " rep-type " with name '" name "'.")
+                      {:rep-type rep-type
+                       :name name
+                       :entities entities})))))
