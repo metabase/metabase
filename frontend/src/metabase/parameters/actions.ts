@@ -48,15 +48,17 @@ export const fetchParameterValues =
 
 export interface FetchCardParameterValuesOpts {
   cardId: CardId;
+  token?: string | null;
   parameter: Parameter;
   query?: string;
 }
 
 export const fetchCardParameterValues =
-  ({ cardId, parameter, query }: FetchCardParameterValuesOpts) =>
+  ({ cardId, token, parameter, query }: FetchCardParameterValuesOpts) =>
   (dispatch: Dispatch, getState: GetState) => {
     const request = {
       cardId,
+      token,
       paramId: parameter.id,
       query,
     };
@@ -118,6 +120,7 @@ const loadParameterValues = async (request: ParameterValuesRequest) => {
 
 interface CardParameterValuesRequest {
   cardId: CardId;
+  token?: string | null;
   paramId: ParameterId;
   query?: string;
 }

@@ -1,16 +1,21 @@
+import { sessionPropertiesPath } from "metabase/api";
 import api from "metabase/lib/api";
 import { embedBase, internalBase } from "metabase/services";
+
+const COMMON_NO_AUTH_CHECK_ENDPOINTS = [sessionPropertiesPath];
 
 /**
  * URL patterns used for matching and transforming API requests
  * in static embedding mode.
+ * These patterns are needed only for endpoints that have different parameter names/path/structure for `/embed`
  */
 const URL_PATTERNS = {
-  SESSION_PROPERTIES: "/api/session/properties",
-  CARD_QUERY: "/api/card/:cardId/query",
-  CARD_PIVOT_QUERY: "/api/card/pivot/:cardId/query",
-  DATASET: "/api/dataset",
-  DATASET_QUERY_METADATA: "/api/dataset/query_metadata",
+  CARD_QUERY: `${internalBase}/card/:cardId/query`,
+  CARD_PIVOT_QUERY: `${internalBase}/card/pivot/:cardId/query`,
+  CARD_PARAMETER_VALUES: `${internalBase}/card/:cardId/params/:paramId/values`,
+  CARD_PARAMETER_SEARCH: `${internalBase}/card/:cardId/params/:paramId/search/:query`,
+  DASHBOARD_PARAMETER_VALUES: `${internalBase}/dashboard/:dashId/params/:paramId/values`,
+  DASHBOARD_PARAMETER_SEARCH: `${internalBase}/dashboard/:dashId/params/:paramId/search/:query`,
 } as const;
 
 /**
@@ -22,19 +27,27 @@ const EMBED_URL_TRANSFORMATIONS: Record<
   { url: string; method: "GET" | "POST" }
 > = {
   [URL_PATTERNS.CARD_QUERY]: {
-    url: "/api/embed/card/:token/query",
+    url: `${embedBase}/card/:token/query`,
     method: "GET",
   },
   [URL_PATTERNS.CARD_PIVOT_QUERY]: {
-    url: "/api/embed/pivot/card/:token/query",
+    url: `${embedBase}/pivot/card/:token/query`,
     method: "GET",
   },
-  [URL_PATTERNS.DATASET]: {
-    url: "/api/embed/dataset/:token",
+  [URL_PATTERNS.CARD_PARAMETER_VALUES]: {
+    url: `${embedBase}/card/:token/params/:paramId/values`,
     method: "GET",
   },
-  [URL_PATTERNS.DATASET_QUERY_METADATA]: {
-    url: "/api/embed/dataset/:token/query_metadata",
+  [URL_PATTERNS.CARD_PARAMETER_SEARCH]: {
+    url: `${embedBase}/card/:token/params/:paramId/search/:query`,
+    method: "GET",
+  },
+  [URL_PATTERNS.DASHBOARD_PARAMETER_VALUES]: {
+    url: `${embedBase}/dashboard/:token/params/:paramId/values`,
+    method: "GET",
+  },
+  [URL_PATTERNS.DASHBOARD_PARAMETER_SEARCH]: {
+    url: `${embedBase}/dashboard/:token/params/:paramId/search/:query`,
     method: "GET",
   },
 } as const;
@@ -89,8 +102,10 @@ function getRequestTransformation({
 }: RequestData): RequestData | null {
   const matchedPattern = findMatchingPattern(url);
 
-  // session/properties endpoint can be executed as-is
-  if (matchedPattern === URL_PATTERNS.SESSION_PROPERTIES) {
+  if (
+    matchedPattern &&
+    COMMON_NO_AUTH_CHECK_ENDPOINTS.includes(matchedPattern)
+  ) {
     return null;
   }
 
