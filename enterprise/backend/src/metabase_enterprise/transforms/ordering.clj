@@ -18,8 +18,9 @@
 (set! *warn-on-reflection* true)
 
 (defmethod transforms.i/table-dependencies :query
-  [transform]
-  (let [query (-> (get-in transform [:source :query])
+  [{:keys [id source]}]
+  (let [query (-> source
+                  (transforms.util/inject-transform-parameters id)
                   transforms.util/massage-sql-query
                   qp.preprocess/preprocess)
         driver (-> query

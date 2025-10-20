@@ -200,11 +200,25 @@
   [query]
   (assoc-in query [:middleware :disable-remaps?] true))
 
+(defn inject-transform-parameters
+  "Inject transform_id parameter into a query's :parameters vector."
+  [query transform-id]
+  (cond-> query
+    transform-id
+    (update :parameters conj {:type :number
+                              :target [:variable [:template-tag "transform_id"]]
+                              :value transform-id})))
+
 (defn compile-source
-  "Compile the source query of a transform."
-  [{query-type :type :as source}]
-  (case (keyword query-type)
-    :query (:query (qp.compile/compile-with-inline-parameters (massage-sql-query (:query source))))))
+  "Compile the source query of a transform.
+  Optionally injects `transform_id` parameter for use in native incremental queries."
+  ([source]
+   (compile-source source nil))
+  ([{:keys [query] query-type :type} transform-id]
+   (case (keyword query-type)
+     :query
+     (let [query-with-params (inject-transform-parameters query transform-id)]
+       (:query (qp.compile/compile-with-inline-parameters (massage-sql-query query-with-params)))))))
 
 (defn required-database-features
   "Returns the database features necessary to execute `transform`."

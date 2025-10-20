@@ -28,8 +28,7 @@
 
 (defn- transform-source-out [m]
   (-> m
-      mi/json-out-without-keywordization
-      (update-keys keyword)
+      mi/json-out-with-keywordization
       (m/update-existing :query lib-be/normalize-query)
       (m/update-existing :type keyword)))
 
