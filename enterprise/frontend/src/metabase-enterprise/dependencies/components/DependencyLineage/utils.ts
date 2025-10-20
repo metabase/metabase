@@ -171,14 +171,18 @@ export function getNodeLocationInfo(
       icon: "folder",
       url: Urls.collection(node.data.collection),
     }))
-    .otherwise(() => undefined);
+    .with(
+      { type: P.union("card", "table", "transform", "snippet") },
+      () => undefined,
+    )
+    .exhaustive();
 }
 
 export function getNodeViewCount(node: DependencyNode): number | undefined {
-  if (node.type === "card") {
-    return node.data.view_count;
-  }
-  return undefined;
+  return match(node)
+    .with({ type: "card" }, (node) => node.data.view_count)
+    .with({ type: P.union("table", "transform", "snippet") }, () => undefined)
+    .exhaustive();
 }
 
 export function getCardType(
