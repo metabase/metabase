@@ -6,8 +6,7 @@
 (mr/def ::keyset-strategy
   [:map
    [:type [:= "keyset"]]
-   [:keyset-column :string]
-   [:table-name {:optional true} :string]]) ; for python transforms with multiple tables
+   [:keyset-column :string]])
 
 (mr/def ::source-strategy
   [:multi {:dispatch :type}
@@ -23,6 +22,7 @@
    [:python
     [:map {:closed true}
      [:source-database {:optional true} :int]
+     ;; NB: if source is keyset, only one table allowed
      [:source-tables   [:map-of :string :int]]
      [:type [:= "python"]]
      [:body :string]
@@ -42,12 +42,22 @@
    ["append" ::append-config]
    #_["merge" ::merge-config]])
 
-(mr/def ::transform-target
+(mr/def ::table-target
   [:map
    [:database {:optional true} :int]
-   [:type [:enum "table" "table-incremental"]]
+   [:type [:= "table"]]
+   [:schema {:optional true} [:or ms/NonBlankString :nil]]
+   [:name :string]])
+
+(mr/def ::table-incremental-target
+  [:map
+   [:database {:optional true} :int]
+   [:type [:= "table-incremental"]]
    [:schema {:optional true} [:or ms/NonBlankString :nil]]
    [:name :string]
+   [:target-incremental-strategy ::target-incremental-strategy]])
 
-   ;; only for table-incremental, TODO: specify with a multi spec
-   [:target-incremental-strategy {:optional true} ::target-incremental-strategy]])
+(mr/def ::transform-target
+  [:multi {:dispatch :type}
+   ["table" ::table-target]
+   ["table-incremental" ::table-incremental-target]])
