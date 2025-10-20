@@ -44,7 +44,13 @@ export const PublicDocumentCardMenu = ({
   });
 
   return (
-    <Menu offset={4} position="bottom-end" opened={isOpen} onClose={close}>
+    <Menu
+      withinPortal
+      offset={4}
+      position="bottom-end"
+      opened={isOpen}
+      onClose={close}
+    >
       <Menu.Target>
         <ActionIcon
           size="xs"
@@ -53,6 +59,7 @@ export const PublicDocumentCardMenu = ({
           })}
           onClick={toggle}
           data-testid="public-document-card-menu"
+          aria-label="ellipsis"
         >
           <Icon name="ellipsis" />
         </ActionIcon>

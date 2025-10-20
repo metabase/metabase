@@ -123,7 +123,7 @@ export const PublicDocument = ({ params }: PublicDocumentProps) => {
           <Box maw={900} mx="auto" p="xl" w="100%">
             <h1 style={{ marginBottom: "1rem" }}>{document.name}</h1>
             <div className={S.editorContent}>
-              <EditorContent editor={editor} />
+              <EditorContent data-testid="document-content" editor={editor} />
             </div>
           </Box>
         </PublicDocumentProvider>

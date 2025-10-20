@@ -646,9 +646,9 @@ export const CardEmbedComponent = memo(
                       </Box>
                     )}
                   {!isEditingTitle &&
-                    (isPublicDocument && dataset ? (
+                    (isPublicDocument && dataset && !canWrite ? (
                       <PublicDocumentCardMenu card={card} dataset={dataset} />
-                    ) : (
+                    ) : canWrite ? (
                       <Menu
                         withinPortal
                         position="bottom-end"
@@ -732,7 +732,7 @@ export const CardEmbedComponent = memo(
                           </Menu.Item>
                         </Menu.Dropdown>
                       </Menu>
-                    ))}
+                    ) : null)}
                 </Flex>
               </Box>
             )}
