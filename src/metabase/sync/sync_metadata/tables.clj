@@ -80,7 +80,9 @@
     ;; Lobos
     #"^lobos_migrations$"
     ;; MSSQL
-    #"^syncobj_0x.*"})
+    #"^syncobj_0x.*"
+    ;; Metabase incremental transforms watermark table
+    #"^mb__watermark_table$"})
 
 (defenterprise is-temp-transform-table?
   "Return true if `table` references a temporary transform table created during transforms execution."
