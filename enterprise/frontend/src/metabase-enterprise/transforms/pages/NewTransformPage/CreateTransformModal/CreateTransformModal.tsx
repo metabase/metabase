@@ -132,8 +132,15 @@ function IncrementalNotice({ source }: IncrementalNoticeProps) {
 
   // Only show the note for SQL/native queries
   // MBQL queries will have the filter automatically added
+  if (source.type !== "query") {
+    return null;
+  }
+
+  // Check if this is a native query by looking at the stages
+  const query = source.query as any;
   const isNativeQuery =
-    source.type === "query" && "native" in source.query;
+    query.stages?.[0]?.["lib/type"] === "mbql.stage/native" ||
+    query.stages?.[0]?.native != null;
 
   if (!isNativeQuery) {
     return null;
@@ -141,7 +148,7 @@ function IncrementalNotice({ source }: IncrementalNoticeProps) {
 
   return (
     <Alert variant="info" icon="info">
-      {t`After saving, you'll need to edit your query to add a WHERE filter on the keyset column. You can use the snippet`}{" "}
+      {t`After saving, you'll need to edit your query to add a WHERE filter on the keyset column. Use this snippet:`}{" "}
       <strong>{`{{snippet: incremental transform filter}}`}</strong>
     </Alert>
   );
