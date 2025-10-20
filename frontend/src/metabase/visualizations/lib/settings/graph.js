@@ -274,9 +274,7 @@ export const LINE_SETTINGS = {
   // DEPRECATED: moved to series settings
   "line.marker_enabled": {},
   // DEPRECATED: moved to series settings
-  "line.missing": {
-    default: "interpolate",
-  },
+  "line.missing": {},
 };
 
 export const STACKABLE_SETTINGS = {
