@@ -60,9 +60,9 @@ export type MetabotDebugToolCallMessage = {
   role: "tool";
   type: "tool_call";
   name: string;
-  message: any;
+  args?: Record<string, any>;
   status: "started" | "ended";
-  result?: any;
+  result?: string;
 };
 
 export type MetabotAgentChatMessage =
@@ -200,13 +200,13 @@ export const metabot = createSlice({
       action: PayloadAction<{
         toolCallId: string;
         toolName: string;
-        args: string;
+        args?: string;
       }>,
     ) => {
       const { toolCallId, toolName, args } = action.payload;
       let parsedArgs;
       try {
-        parsedArgs = JSON.parse(args);
+        parsedArgs = args ? JSON.parse(args) : undefined;
       } catch {
         console.warn("Failed to parse tool call args as JSON", args);
         parsedArgs = undefined;
@@ -216,7 +216,7 @@ export const metabot = createSlice({
         role: "tool",
         type: "tool_call",
         name: toolName,
-        message: parsedArgs,
+        args: parsedArgs ?? null,
         status: "started",
       });
       state.activeToolCalls.push({
