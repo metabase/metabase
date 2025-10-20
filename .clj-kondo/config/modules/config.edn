@@ -2021,15 +2021,12 @@
            sync
            task
            task-history
-           util
-           enterprise/transforms-python}}
+           util}}
 
   enterprise/transforms-python
   {:team "Querying"
    :api  #{metabase-enterprise.transforms-python.api
-           metabase-enterprise.transforms-python.execute
-           metabase-enterprise.transforms-python.init
-           metabase-enterprise.transforms-python.settings}
+           metabase-enterprise.transforms-python.init}
    :uses #{analytics
            api
            app-db
