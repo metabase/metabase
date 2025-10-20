@@ -41,16 +41,15 @@
       (and (premium-features/has-feature? :sso-saml) (sso-settings/saml-enabled) (sso-settings/saml-configured))))
 
 (defn- has-user-created-models? []
-  (t2/exists? :model/Card {:where [:and
-                                   [:= :type "model"]
-                                   [:= :archived false]
-                                   [:or
-                                    [:and
-                                     [:!= :collection_id (:id (audit/default-custom-reports-collection))]
-                                     [:not-in :collection_id {:select :id
-                                                              :from   [(t2/table-name :model/Collection)]
-                                                              :where  [:= :is_sample true]}]]
-                                    [:is :collection_id nil]]]}))
+  (let [sample-collection-ids (t2/select-pks-set :model/Collection :is_sample true)
+        audit-collection-id (:id (audit/default-audit-collection))
+        excluded-ids (not-empty (vec (filter some? (conj sample-collection-ids audit-collection-id))))]
+    (t2/exists? :model/Card {:where (cond-> [:and
+                                             [:= :type "model"]
+                                             [:= :archived false]]
+                                      excluded-ids (conj [:or
+                                                          [:is :collection_id nil]
+                                                          [:not-in :collection_id excluded-ids]]))})))
 
 (defn- embedding-hub-checklist []
   {"add-data"                      (has-user-added-database?)
