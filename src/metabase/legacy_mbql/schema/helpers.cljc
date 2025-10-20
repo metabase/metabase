@@ -1,6 +1,7 @@
 (ns metabase.legacy-mbql.schema.helpers
-  (:refer-clojure :exclude [distinct])
+  (:refer-clojure :exclude [distinct #?(:clj for)])
   (:require
+   #?(:clj [metabase.util.performance :refer [for]])
    [clojure.string :as str]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.types.core]

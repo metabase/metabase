@@ -3,7 +3,7 @@
 
   DEPRECATED: Use [[metabase.lib.core]] for MBQL manipulation in all new code."
   {:deprecated "0.57.0"}
-  (:refer-clojure :exclude [replace some mapv every?])
+  (:refer-clojure :exclude [replace some mapv every? #?(:clj for)])
   (:require
    #?@(:clj
        [[metabase.legacy-mbql.jvm-util :as mbql.jvm-u]])
@@ -21,7 +21,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.namespaces :as shared.ns]
-   [metabase.util.performance :refer [every? mapv some]]
+   [metabase.util.performance :refer [some mapv every? #?(:clj for)]]
    [metabase.util.time :as u.time]))
 
 (shared.ns/import-fns

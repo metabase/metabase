@@ -2108,6 +2108,15 @@
   [query-or-metadata-provider table-id]
   (lib.metadata/table-or-card query-or-metadata-provider table-id))
 
+(defn ^:export field-metadata
+  "Given an integer `field-id`, returns the field's metadata.
+
+  Returns `nil` (JS `null`) if no matching metadata is found.
+
+  > **Code health:** Healthy."
+  [query-or-metadata-provider field-id]
+  (lib.metadata/field query-or-metadata-provider field-id))
+
 ;; TODO: "LHS" is a confusing name here. This is really the display name for the joined thing, usually a table.
 ;; It's an internal detail that this is often based on the LHS of the first join condition, ie. the FK's name.
 
