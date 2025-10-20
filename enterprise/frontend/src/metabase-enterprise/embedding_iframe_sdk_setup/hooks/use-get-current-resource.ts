@@ -11,10 +11,10 @@ import type {
 import type { Card, Dashboard } from "metabase-types/api";
 
 const getResource = ({
-                       experience,
-                       dashboard,
-                       card,
-                     }: {
+  experience,
+  dashboard,
+  card,
+}: {
   experience: SdkIframeEmbedSetupExperience;
   dashboard: Dashboard | null | undefined;
   card: Card | null | undefined;

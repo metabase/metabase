@@ -35,7 +35,10 @@ export const PublicComponentWrapper = forwardRef<
 
     if (loginStatus.status === "error") {
       content = (
-        <SdkError message={loginStatus.error.message} error={loginStatus.error} />
+        <SdkError
+          message={loginStatus.error.message}
+          error={loginStatus.error}
+        />
       );
     }
   }
