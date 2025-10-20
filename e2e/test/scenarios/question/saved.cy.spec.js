@@ -645,7 +645,7 @@ describe(
 
     it("should allow you to enable a webhook alert", () => {
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
-      cy.findByTestId("sharing-menu-button").click();
+      cy.findByLabelText("Move, trash, and more…").click();
       H.popover().findByText("Create an alert").click();
 
       H.modal().findByText("New alert").should("be.visible");
@@ -655,7 +655,8 @@ describe(
       });
       H.modal().button("Done").click();
 
-      H.openSharingMenu("Edit alerts");
+      cy.findByLabelText("Move, trash, and more…").click();
+      H.popover().findByText("Edit alerts").click();
       H.modal()
         .findByText(/Created by you/)
         .should("be.exist")
@@ -668,7 +669,7 @@ describe(
     it("should allow you to test a webhook", { tags: "@skip" }, () => {
       cy.intercept("POST", "/api/pulse/test").as("testAlert");
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
-      cy.findByTestId("sharing-menu-button").click();
+      cy.findByLabelText("Move, trash, and more…").click();
       H.popover().findByText("Create an alert").click();
 
       H.modal().within(() => {

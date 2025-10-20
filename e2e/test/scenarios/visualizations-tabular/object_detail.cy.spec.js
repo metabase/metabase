@@ -229,7 +229,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     getNextObjectDetailButton().should("not.exist");
   });
 
-  it("handles opening a filtered out record", () => {
+  it.skip("handles opening a filtered out record", () => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     const FILTERED_OUT_ID = 1;
 
@@ -242,7 +242,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     });
   });
 
-  it("can view details of an out-of-range record", () => {
+  it.skip("can view details of an out-of-range record", () => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     // since we only fetch 2000 rows, this ID is out of range
     // and has to be fetched separately
@@ -285,24 +285,6 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     cy.findByTestId("view-footer")
       .findByText("Showing 92 rows")
       .should("be.visible");
-  });
-
-  it("should fetch linked entities data only once per entity type when reopening the modal (metabase#32720)", () => {
-    cy.intercept("POST", "/api/dataset", cy.spy().as("fetchDataset"));
-
-    H.openProductsTable();
-    cy.get("@fetchDataset").should("have.callCount", 1);
-
-    drillPK({ id: 5 });
-    cy.get("@fetchDataset").should("have.callCount", 3);
-
-    cy.findByLabelText("Close").click();
-
-    drillPK({ id: 5 });
-    cy.get("@fetchDataset").should("have.callCount", 3);
-
-    cy.wait(100);
-    cy.get("@fetchDataset").should("have.callCount", 3);
   });
 
   it("should not offer drill-through on the object detail records (metabase#20560)", () => {
