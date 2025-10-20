@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import { getColorsForValues } from "metabase/lib/colors/charts";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import type { VisualizationSettings } from "metabase-types/api";
+import type { StackType, VisualizationSettings } from "metabase-types/api";
 
 export const SERIES_SETTING_KEY = "series_settings";
 export const SERIES_COLORS_SETTING_KEY = "series_settings.colors";
@@ -65,7 +65,17 @@ export const getSeriesDefaultLineMarker = (
 
 export const getSeriesDefaultLineMissing = (
   settings: ComputedVisualizationSettings,
-) => settings["line.missing"] ?? "interpolate";
+  stackType: StackType,
+) =>
+  settings["line.missing"] ??
+  (hasInterpolatedLineMissingOption(stackType) ? "interpolate" : "zero");
+
+/**
+ * Both stacked and 100% stacked won't have interpolated line missing option (UXW-128)
+ */
+export const hasInterpolatedLineMissingOption = (stackType: StackType) => {
+  return stackType === null;
+};
 
 export const getSeriesDefaultShowSeriesValues = (
   settings: ComputedVisualizationSettings,

@@ -278,6 +278,12 @@ export const LINE_SETTINGS = {
 };
 
 export const STACKABLE_SETTINGS = {
+  "stackable._default_stack_type": {
+    readDependencies: ["graph.metrics", "graph.dimensions"],
+    getDefault: ([{ card }], settings) => {
+      return getDefaultStackingValue(settings, card);
+    },
+  },
   "stackable.stack_type": {
     get section() {
       return t`Display`;
