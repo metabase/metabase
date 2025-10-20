@@ -32,7 +32,7 @@ export function numberToWord(num: number) {
   }
 }
 
-export function isJWT(string: unknown) {
+export function isJWT(string: unknown): string is string {
   return (
     typeof string === "string" &&
     /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(string)
@@ -161,3 +161,28 @@ export function versionIsLatest({
 }
 
 export const isEEBuild = () => PLUGIN_IS_EE_BUILD.isEEBuild();
+
+// Extract entity id from signed JWT token used in Static Embedding
+export const extractEntityIdFromJwtToken = (
+  jwtToken: string,
+): {
+  entityType: "question" | "dashboard" | null;
+  entityId: string | null;
+} => {
+  try {
+    const parts = jwtToken.split(".");
+    const payload = JSON.parse(atob(parts[1]));
+    const resource = payload.resource;
+
+    const entityType = resource.dashboard
+      ? "dashboard"
+      : resource.question
+        ? "question"
+        : null;
+    const entityId = entityType ? resource[entityType] : null;
+
+    return { entityType, entityId };
+  } catch {
+    return { entityType: null, entityId: null };
+  }
+};

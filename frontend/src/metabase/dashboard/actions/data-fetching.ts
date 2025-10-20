@@ -25,6 +25,7 @@ import {
   isQuestionDashCard,
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { entityCompatibleQuery } from "metabase/lib/entities";
 import type { Deferred } from "metabase/lib/promise";
 import { defer } from "metabase/lib/promise";
@@ -673,13 +674,27 @@ export const fetchDashboard = createAsyncThunk(
           })),
         };
       } else if (dashboardType === "embed") {
-        result = await EmbedApi.dashboard(
-          { token: dashId, dashboard_load_id: dashboardLoadId },
-          { cancelled: fetchDashboardCancellation.promise },
-        );
+        const [response] = await Promise.all([
+          EmbedApi.dashboard(
+            { token: dashId, dashboard_load_id: dashboardLoadId },
+            { cancelled: fetchDashboardCancellation.promise },
+          ),
+          // Drills for `embed` dashboard type are supported only in embedding SDK via anonymous embedding
+          // TODO: add feature check here
+          ...(isEmbeddingSdk()
+            ? [
+                entityCompatibleQuery(
+                  { id: dashId, dashboard_load_id: dashboardLoadId },
+                  dispatch,
+                  dashboardApi.endpoints.getDashboardQueryMetadata,
+                  { forceRefetch: false },
+                ),
+              ]
+            : []),
+        ]);
+        result = response;
         result = {
           ...result,
-          id: dashId,
           dashcards: result.dashcards.map((dc: DashboardCard) => ({
             ...dc,
             dashboard_id: dashId,

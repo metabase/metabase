@@ -22,6 +22,7 @@ export function availableDrillThrus(
   value: RowValue | undefined,
   row: ClickObjectDataRow[] | undefined,
   dimensions: ClickObjectDimension[] | undefined,
+  isSubsetOnly: boolean | undefined,
 ): DrillThru[] {
   return ML.available_drill_thrus(
     query,
@@ -31,6 +32,7 @@ export function availableDrillThrus(
     value,
     row,
     dimensions,
+    isSubsetOnly,
   );
 }
 

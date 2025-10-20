@@ -1,6 +1,10 @@
 import _ from "underscore";
 
 import type {
+  SdkDispatch,
+  SdkStoreState,
+} from "embedding-sdk-bundle/store/types";
+import type {
   LoadSdkQuestionParams,
   SdkQuestionState,
 } from "embedding-sdk-bundle/types/question";
@@ -9,19 +13,20 @@ import { getParameterValuesForQuestion } from "metabase/query_builder/actions/co
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
-import type { Dispatch, GetState } from "metabase-types/store";
 
 export const loadQuestionSdk =
   ({
     options = {},
     deserializedCard,
     questionId: initQuestionId,
+    token,
+    originalCardId,
     initialSqlParameters,
     targetDashboardId,
   }: LoadSdkQuestionParams) =>
   async (
-    dispatch: Dispatch,
-    getState: GetState,
+    dispatch: SdkDispatch,
+    getState: () => SdkStoreState,
   ): Promise<
     Required<Pick<SdkQuestionState, "question">> &
       Pick<SdkQuestionState, "originalQuestion" | "parameterValues">
@@ -30,13 +35,15 @@ export const loadQuestionSdk =
 
     const { card, originalCard } = await resolveCards({
       cardId: questionId ?? undefined,
+      token,
       options,
       dispatch,
       getState,
       deserializedCard,
     });
 
-    await dispatch(loadMetadataForCard(card));
+    await dispatch(loadMetadataForCard(card, { originalCardId }));
+
     const metadata = getMetadata(getState());
 
     const originalQuestion =

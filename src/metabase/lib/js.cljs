@@ -2257,7 +2257,7 @@
   clicked value are also in the `dimensions` list.
 
   > **Code health:** Single use. This is only here to support the context menu UI and should not be reused."
-  [a-query stage-number card-id column value row dimensions]
+  [a-query stage-number card-id column value row dimensions subset-only?]
   (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
     (let [column-ref (when-let [a-ref (and column (.-field_ref ^js column))]
                        (legacy-ref->pMBQL a-ref))]
@@ -2270,7 +2270,8 @@
                                  :else              value)
                    :card-id    card-id}
                   (when row                    {:row        (mapv row-cell       row)})
-                  (when (not-empty dimensions) {:dimensions (mapv dimension-cell dimensions)}))
+                  (when (not-empty dimensions) {:dimensions (mapv dimension-cell dimensions)})
+                  (when subset-only?           {:subset-only? subset-only?}))
            (lib.core/available-drill-thrus a-query stage-number)
            to-array))))
 

@@ -20,8 +20,9 @@
   [query        :- ::lib.schema/query
    stage-number :- :int
    context      :- ::lib.schema.drill-thru/context]
-  (some (fn [f]
-          (f query stage-number context))
-        [lib.drill-thru.fk-details/fk-details-drill
-         lib.drill-thru.pk/pk-drill
-         lib.drill-thru.zoom/zoom-drill]))
+  (when-not (:subset-only? context)
+    (some (fn [f]
+            (f query stage-number context))
+          [lib.drill-thru.fk-details/fk-details-drill
+           lib.drill-thru.pk/pk-drill
+           lib.drill-thru.zoom/zoom-drill])))

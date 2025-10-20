@@ -1,8 +1,17 @@
 import _ from "underscore";
 
+import { Api } from "metabase/api";
+import {
+  provideAdhocQueryMetadataTags,
+  provideCollectionTags,
+  provideDashboardQueryMetadataTags,
+} from "metabase/api/tags";
+import { handleQueryFulfilled } from "metabase/api/utils/lifecycle";
 import api, { DELETE, GET, POST, PUT } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
+import { updateMetadata } from "metabase/lib/redux/metadata";
 import { PLUGIN_API, PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
+import { QueryMetadataSchema } from "metabase/schema";
 import Question from "metabase-lib/v1/Question";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { isNative } from "metabase-lib/v1/queries/utils/card";
@@ -92,6 +101,7 @@ export async function runQuestionQuery(
     isDirty = false,
     ignoreCache = false,
     collectionPreview = false,
+    originalCardId,
     // Ability to override or add extra query params to the request, used by Embedding SDK
     queryParamsOverride = {},
   } = {},
@@ -127,13 +137,17 @@ export async function runQuestionQuery(
   }
 
   const getDatasetQueryResult = (datasetQuery) => {
-    const datasetQueryWithParameters = { ...datasetQuery, parameters };
+    const extendedDatasetQuery = {
+      ...datasetQuery,
+      parameters,
+      original_card_id: question.card().original_card_id ?? originalCardId,
+    };
     return maybeUsePivotEndpoint(
       MetabaseApi.dataset,
       card,
       question.metadata(),
     )(
-      datasetQueryWithParameters,
+      extendedDatasetQuery,
       cancelDeferred
         ? {
             cancelled: cancelDeferred.promise,
@@ -341,11 +355,44 @@ export function setPublicDashboardEndpoints(uuid) {
   setDashboardEndpoints({ base: publicBase, encodedUuid });
 }
 
+export function setEmbedCommonEndpoints({ base, encodedToken }) {
+  MetabaseApi.dataset = POST(`${base}/dataset/${encodedToken}`);
+  MetabaseApi.dataset_pivot = POST(`${base}/dataset/pivot/${encodedToken}`);
+
+  Api.injectEndpoints({
+    endpoints: (builder) => ({
+      getAdhocQuery: builder.query({
+        query: ({ _refetchDeps, ignore_error, ...body }) => ({
+          method: "POST",
+          url: `${base}/dataset/${encodedToken}`,
+          body,
+          noEvent: ignore_error,
+        }),
+      }),
+      getAdhocQueryMetadata: builder.query({
+        query: (body) => ({
+          method: "POST",
+          url: `${base}/dataset/${encodedToken}/query_metadata`,
+          body,
+        }),
+        providesTags: (metadata) =>
+          metadata ? provideAdhocQueryMetadataTags(metadata) : [],
+        onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+          handleQueryFulfilled(queryFulfilled, (data) =>
+            dispatch(updateMetadata(data, QueryMetadataSchema)),
+          ),
+      }),
+    }),
+    overrideExisting: true,
+  });
+}
+
 /**
  * @param token {string}
  */
 export function setEmbedQuestionEndpoints(token) {
   const encodedToken = encodeURIComponent(token);
+  setEmbedCommonEndpoints({ base: embedBase, encodedToken });
   setCardEndpoints({ base: embedBase, encodedToken });
   PLUGIN_CONTENT_TRANSLATION.setEndpointsForStaticEmbedding(encodedToken);
 }
@@ -355,6 +402,7 @@ export function setEmbedQuestionEndpoints(token) {
  */
 export function setEmbedDashboardEndpoints(token) {
   const encodedToken = encodeURIComponent(token);
+  setEmbedCommonEndpoints({ base: embedBase, encodedToken });
   setDashboardEndpoints({ base: embedBase, encodedToken });
   PLUGIN_CONTENT_TRANSLATION.setEndpointsForStaticEmbedding(encodedToken);
 }
@@ -367,10 +415,28 @@ function setCardEndpoints({ base, encodedUuid, encodedToken }) {
   const prefix = `${base}/card/${encodedUuid ?? encodedToken}`;
 
   // RTK query
-  PLUGIN_API.getRemappedCardParameterValueUrl = (_dashboardId, parameterId) =>
+  PLUGIN_API.getRemappedCardParameterValueUrl = (_cardId, parameterId) =>
     `${prefix}/params/${encodeURIComponent(parameterId)}/remapping`;
+  PLUGIN_API.getCardUrl = () => prefix;
 
   // legacy API
+  CardApi.query = GET_with(`${prefix}/query`, [
+    // Params below are not supported by `/api/embed/card/:cardId/query` endpoint
+    "cardId",
+    "ignore_cache",
+    "collection_preview",
+  ]);
+  CardApi.query = GET_with(`${prefix}/query`, [
+    // Params below are not supported by `/api/embed/card/:cardId/query` endpoint
+    "cardId",
+    "ignore_cache",
+    "collection_preview",
+  ]);
+  CardApi.query_pivot = GET_with(`${base}/pivot/card/${encodedToken}/query`, [
+    "cardId",
+    "ignore_cache",
+    "collection_preview",
+  ]);
   CardApi.parameterValues = GET_with(`${prefix}/params/:paramId/values`, [
     "cardId",
   ]);
@@ -390,6 +456,32 @@ function setDashboardEndpoints({ base, encodedUuid, encodedToken }) {
   ) => `${prefix}/params/${encodeURIComponent(parameterId)}/remapping`;
 
   // legacy API
+  Api.injectEndpoints({
+    endpoints: (builder) => ({
+      getCollection: builder.query({
+        query: ({ id, ...params }) => {
+          return {
+            url: prefix,
+            params,
+          };
+        },
+        providesTags: (collection) =>
+          collection ? provideCollectionTags(collection) : [],
+      }),
+      getDashboardQueryMetadata: builder.query({
+        query: () => ({
+          url: `${prefix}/query_metadata`,
+        }),
+        providesTags: (metadata) =>
+          metadata ? provideDashboardQueryMetadataTags(metadata) : [],
+        onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+          handleQueryFulfilled(queryFulfilled, (data) =>
+            dispatch(updateMetadata(data, QueryMetadataSchema)),
+          ),
+      }),
+    }),
+    overrideExisting: true,
+  });
   DashboardApi.parameterValues = GET_with(`${prefix}/params/:paramId/values`, [
     "dashId",
   ]);

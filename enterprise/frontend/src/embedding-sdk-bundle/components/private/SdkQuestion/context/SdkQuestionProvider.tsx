@@ -1,9 +1,15 @@
 import { createContext, useContext, useEffect, useMemo } from "react";
+import { t } from "ttag";
 
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
+import { useExtractEntityIdFromJwtToken } from "embedding-sdk-bundle/hooks/private/use-extract-entity-id-from-jwt-token";
 import { useLoadQuestion } from "embedding-sdk-bundle/hooks/private/use-load-question";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
-import { getError, getPlugins } from "embedding-sdk-bundle/store/selectors";
+import {
+  getError,
+  getIsStaticEmbedding,
+  getPlugins,
+} from "embedding-sdk-bundle/store/selectors";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
 import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
@@ -14,6 +20,7 @@ import {
 import { useSaveQuestion } from "metabase/query_builder/containers/use-save-question";
 import { setEntityTypes } from "metabase/redux/embedding-data-picker";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
+import { EmbeddingSdkAnonymousUserMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkAnonymousUserMode";
 import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
@@ -33,7 +40,9 @@ export const SdkQuestionContext = createContext<
 const DEFAULT_OPTIONS = {};
 
 export const SdkQuestionProvider = ({
-  questionId,
+  questionId: rawQuestionId,
+  token: rawToken,
+  originalCardId,
   options = DEFAULT_OPTIONS,
   deserializedCard,
   componentPlugins,
@@ -54,6 +63,21 @@ export const SdkQuestionProvider = ({
   navigateToNewCard: userNavigateToNewCard,
   onVisualizationChange,
 }: SdkQuestionProviderProps) => {
+  const isStaticEmbedding = useSdkSelector(getIsStaticEmbedding);
+
+  const {
+    entityId: questionId,
+    token,
+    tokenError,
+  } = useExtractEntityIdFromJwtToken({
+    isStaticEmbedding,
+    entityType: "question",
+    entityId: rawQuestionId,
+    token: rawToken ?? undefined,
+  });
+
+  const isNewQuestion = questionId === "new";
+
   const error = useSdkSelector(getError);
 
   const handleCreateQuestion = useCreateQuestion();
@@ -113,6 +137,8 @@ export const SdkQuestionProvider = ({
     navigateToNewCard,
   } = useLoadQuestion({
     questionId,
+    token,
+    originalCardId,
     options,
     deserializedCard,
     initialSqlParameters,
@@ -132,7 +158,9 @@ export const SdkQuestionProvider = ({
         question &&
         getEmbeddingMode({
           question,
-          queryMode: EmbeddingSdkMode,
+          queryMode: isStaticEmbedding
+            ? EmbeddingSdkAnonymousUserMode
+            : EmbeddingSdkMode,
           plugins: plugins as InternalMetabasePluginsConfig,
         })
       );
@@ -142,6 +170,7 @@ export const SdkQuestionProvider = ({
 
   const questionContext: SdkQuestionContextType = {
     originalId: questionId,
+    token,
     isQuestionLoading,
     isQueryRunning,
     resetQuestion: loadAndQueryQuestion,
@@ -181,6 +210,16 @@ export const SdkQuestionProvider = ({
   useEffect(() => {
     dispatch(setEntityTypes(entityTypes));
   }, [dispatch, entityTypes]);
+
+  if (isStaticEmbedding && isNewQuestion) {
+    return (
+      <SdkError message={t`You can't save questions in anonymous embedding`} />
+    );
+  }
+
+  if (tokenError) {
+    return <SdkError message={tokenError} />;
+  }
 
   if (error) {
     return <SdkError message={error.message} />;

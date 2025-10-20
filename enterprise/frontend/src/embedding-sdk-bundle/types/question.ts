@@ -16,6 +16,7 @@ export type SdkQuestionId = number | "new" | SdkEntityId;
 export interface SdkQuestionState {
   question?: InternalQuestion;
   originalQuestion?: InternalQuestion;
+  token?: string | null;
   queryResults?: any[];
   parameterValues?: ParameterValuesMap;
 }
@@ -40,6 +41,16 @@ export type LoadSdkQuestionParams = {
    * @internal
    */
   questionId?: SdkQuestionId | null;
+
+  /**
+   * @internal
+   */
+  token?: string | null;
+
+  /**
+   * @internal
+   */
+  originalCardId?: number | null;
 
   /**
    * @internal

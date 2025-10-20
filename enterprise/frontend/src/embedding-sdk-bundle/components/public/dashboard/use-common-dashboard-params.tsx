@@ -9,6 +9,7 @@ import {
 import { getNewCardUrl } from "metabase/dashboard/actions/getNewCardUrl";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import * as Urls from "metabase/lib/urls";
+import { isJWT } from "metabase/lib/utils";
 import { navigateBackToDashboard } from "metabase/query_builder/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import type Question from "metabase-lib/v1/Question";
@@ -24,6 +25,7 @@ export const useCommonDashboardParams = ({
   const store = useSdkStore();
 
   const [adhocQuestionUrl, setAdhocQuestionUrl] = useState<string | null>(null);
+  const [originalCardId, setOriginalCardId] = useState<number | null>(null);
 
   const previousDashboardId = usePrevious(dashboardId);
 
@@ -76,6 +78,7 @@ export const useCommonDashboardParams = ({
             },
           });
           setAdhocQuestionUrl(url);
+          setOriginalCardId(previousCard.id);
         }
       }
     },
@@ -109,12 +112,14 @@ export const useCommonDashboardParams = ({
           },
         });
         setAdhocQuestionUrl(Urls.question(question.card()));
+        setOriginalCardId(question.card().id);
       }
     },
     [dashboardId, dispatch, store],
   );
 
   return {
+    originalCardId,
     adhocQuestionUrl,
     onNavigateBackToDashboard: handleNavigateBackToDashboard,
     onEditQuestion,
@@ -126,7 +131,7 @@ const findDashboardById = (
   dashboardId: DashboardId,
   dashboards: Record<DashboardId, StoreDashboard>,
 ): StoreDashboard | null => {
-  if (typeof dashboardId === "number") {
+  if (typeof dashboardId === "number" || isJWT(dashboardId)) {
     return dashboards[dashboardId] ?? null;
   }
 

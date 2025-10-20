@@ -15,7 +15,15 @@ export const loadMetadataForTable =
   };
 
 export const loadMetadataForCard =
-  (card: Card | UnsavedCard) => async (dispatch: Dispatch) => {
+  (
+    card: Card | UnsavedCard,
+    {
+      originalCardId,
+    }: {
+      originalCardId?: number | null;
+    } = {},
+  ) =>
+  async (dispatch: Dispatch) => {
     if (isSavedCard(card)) {
       return entityCompatibleQuery(
         card.id,
@@ -25,7 +33,10 @@ export const loadMetadataForCard =
       );
     } else if (card.dataset_query.database != null) {
       return entityCompatibleQuery(
-        card.dataset_query,
+        {
+          ...card.dataset_query,
+          original_card_id: originalCardId ?? card.original_card_id,
+        },
         dispatch,
         datasetApi.endpoints.getAdhocQueryMetadata,
         { forceRefetch: false },

@@ -10,6 +10,7 @@ export function queryDrill(
   question: Question,
   clicked: Lib.ClickObject,
   isDrillEnabled: (drill: DrillThruDisplayInfo) => boolean,
+  isSubsetOnly: boolean,
 ): ClickAction[] {
   const query = question.query();
   const stageIndex = -1;
@@ -21,6 +22,7 @@ export function queryDrill(
     clicked.value,
     clicked.data,
     clicked.dimensions,
+    isSubsetOnly,
   );
 
   const applyDrill = (drill: Lib.DrillThru, ...args: unknown[]) => {

@@ -14,6 +14,7 @@ import type {
 } from "metabase-enterprise/embedding_iframe_sdk_setup/types";
 
 import { trackEmbedWizardOpened } from "../analytics";
+import { getAdjustedSdkIframeEmbedSetting } from "../utils/get-adjusted-sdk-iframe-embed-setting";
 import {
   getDefaultSdkIframeEmbedSettings,
   getExperienceFromSettings,
@@ -23,7 +24,7 @@ import {
 const getSettingsToPersist = (
   settings: Partial<SdkIframeEmbedSetupSettings>,
 ) => {
-  return _.pick(settings, ["theme", "useExistingUserSession"]);
+  return _.pick(settings, ["theme", "useExistingUserSession", "isStatic"]);
 };
 
 const usePersistedSettings = () => {
@@ -114,9 +115,14 @@ export const useSdkIframeEmbedSettings = ({
           ...nextSettings,
         } as SdkIframeEmbedSetupSettings;
 
-        persistSettings(mergedSettings);
+        const adjustedSettings = getAdjustedSdkIframeEmbedSetting({
+          prevSettings: prevSettings ?? defaultSettings,
+          settings: mergedSettings,
+        });
 
-        return mergedSettings;
+        persistSettings(adjustedSettings);
+
+        return adjustedSettings;
       }),
     [defaultSettings, persistSettings],
   );
@@ -133,15 +139,24 @@ export const useSdkIframeEmbedSettings = ({
   // If they are, set them as the current settings.
   useEffect(() => {
     if (!isEmbedSettingsLoaded && !isRecentsLoading) {
-      setRawSettings({
-        ...settings,
-        ...persistedSettings,
+      setRawSettings((prevSettings) => {
+        const mergedSettings = {
+          ...settings,
+          ...persistedSettings,
 
-        // Override the persisted settings if `auth_method` is specified.
-        // This is used for Embedding Hub.
-        ...(urlParams.authMethod !== null && {
-          useExistingUserSession: urlParams.authMethod === "user_session",
-        }),
+          // Override the persisted settings if `auth_method` is specified.
+          // This is used for Embedding Hub.
+          ...(urlParams.authMethod !== null && {
+            useExistingUserSession: urlParams.authMethod === "user_session",
+          }),
+        };
+
+        const adjustedSettings = getAdjustedSdkIframeEmbedSetting({
+          prevSettings: prevSettings ?? defaultSettings,
+          settings: mergedSettings,
+        });
+
+        return adjustedSettings;
       });
 
       setEmbedSettingsLoaded(true);
@@ -154,6 +169,7 @@ export const useSdkIframeEmbedSettings = ({
     settings,
     isRecentsLoading,
     urlParams,
+    defaultSettings,
   ]);
 
   return {

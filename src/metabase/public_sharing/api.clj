@@ -68,9 +68,10 @@
     card
     (mi/instance
      :model/Card
-     (-> card
-         (select-keys [:id :name :description :display :visualization_settings :parameters :entity_id :dataset_query])
-         (update :dataset_query select-keys [:lib/metadata :lib/type :database :stages])))))
+     (u/select-nested-keys card [:id :name :description :display :visualization_settings :parameters :entity_id
+                                 ;; TODO return the full query only for embedding and when drill thrus are enabled
+                                 #_[:dataset_query :type [:native :template-tags]]
+                                 :dataset_query :database_id]))))
 
 (defn public-card
   "Return a public Card matching key-value `conditions`, removing all columns that should not be visible to the general
@@ -78,7 +79,9 @@
   [& conditions]
   (binding [params/*ignore-current-user-perms-and-return-all-field-values* true]
     (-> (api/check-404 (apply t2/select-one [:model/Card :id :dataset_query :description :display :name :parameters
-                                             :visualization_settings :card_schema]
+                                             :visualization_settings :card_schema
+                                             ;; TODO return the full query only for embedding and when drill thrus are enabled
+                                             :database_id]
                               :archived false, conditions))
         remove-card-non-public-columns
         combine-parameters-and-template-tags
@@ -144,21 +147,18 @@
   [card-id :- ::lib.schema.id/card
    export-format
    parameters
-   & {:keys [qp]
-      :or   {qp qp.card/process-query-for-card-default-qp}
-      :as   options}]
+   & options]
   ;; run this query with full superuser perms
   ;;
   ;; we actually need to bind the current user perms here twice, once so `card-api` will have the full perms when it
   ;; tries to do the `read-check`, and a second time for when the query is ran (async) so the QP middleware will have
   ;; the correct perms
   (request/as-admin
-    (m/mapply qp.card/process-query-for-card card-id export-format
-              :parameters parameters
-              :context    (export-format->context export-format)
-              :qp         qp
-              :make-run   process-query-for-card-with-id-run-fn
-              options)))
+    (apply qp.card/process-query-for-card card-id export-format
+           :parameters parameters
+           :context    (export-format->context export-format)
+           :make-run   process-query-for-card-with-id-run-fn
+           options)))
 
 (defn ^:private process-query-for-card-with-public-uuid
   "Run query for a *public* Card with UUID. If public sharing is not enabled, this throws an exception. Returns a

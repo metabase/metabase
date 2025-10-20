@@ -2,6 +2,7 @@
   "Code for running a query in the context of a specific Card."
   (:refer-clojure :exclude [mapv select-keys])
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
@@ -10,12 +11,14 @@
    ;; Lib soon
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
+   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.queries.core :as queries]
@@ -23,6 +26,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.middleware.parameters :as qp.params]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.middleware.results-metadata :as qp.results-metadata]
    [metabase.query-processor.pivot :as qp.pivot]
@@ -284,6 +288,41 @@
                             (m/index-by :id))]
     (mapv #(merge (-> % :id id->card-param) %) parameters)))
 
+(mu/defn- verified-subset-query :- [:maybe ::lib.schema/query]
+  [card-query   :- ::qp.schema/any-query
+   subset-query :- ::qp.schema/any-query]
+  (let [mp (qp.store/metadata-provider)
+        ;; TODO (BT) or should we add the constraints to the subset query?
+        normalized-card-query   (lib/query mp (dissoc card-query :constraints))
+        normalized-subset-query (lib/query mp subset-query)
+        base-query (fn [query]
+                     (some-> query
+                             qp.params/substitute-parameters
+                             lib/drop-empty-stages
+                             ;; TODO (BT) removing order-by and limit could give access to hidden data
+                             (lib/update-query-stage -1 dissoc :aggregation :breakout :order-by :limit)))
+        base-card-query   (base-query normalized-card-query)
+        base-subset-query (-> (iterate lib/drop-stage normalized-subset-query)
+                              (nth (- (lib/stage-count normalized-subset-query) (lib/stage-count base-card-query)) nil)
+                              base-query)
+        comparable-query (fn [query]
+                           (some-> query
+                                   (lib/update-query-stage -1 dissoc :filters :expressions)
+                                   lib-be/comparable-query))
+        comparable-subset-query (comparable-query base-subset-query)
+        comparable-card-query (comparable-query base-card-query)
+        comparable-clauses (fn [query clauses-fn]
+                             (some-> query clauses-fn lib.schema.util/remove-lib-uuids set))
+        comparable-card-filters (comparable-clauses base-card-query lib/filters)
+        comparable-subset-filters (comparable-clauses base-subset-query lib/filters)]
+    ;; TODO (BT) does the filter-stage require special handling here?
+    (when (and (= comparable-subset-query
+                  comparable-card-query)
+               ;; TODO (BT) this disables :drill-thru/zoom-in.binning when we _change_ filters
+               (set/subset? comparable-card-filters
+                            comparable-subset-filters))
+      normalized-subset-query)))
+
 (mu/defn process-query-for-card
   "Run the query for Card with `parameters` and `constraints`. By default, returns results in a
   `metabase.server.streaming_response.StreamingResponse` (see [[metabase.server.streaming-response]]) that should be
@@ -304,7 +343,8 @@
   all valid options."
   [card-id :- ::lib.schema.id/card
    export-format
-   & {:keys [parameters constraints context dashboard-id dashcard-id middleware qp make-run ignore-cache]
+   & {:keys [parameters constraints context dashboard-id dashcard-id middleware qp make-run ignore-cache
+             subset-query]
       :or   {constraints (qp.constraints/default-query-constraints)
              context     :question
              ;; param `make-run` can be used to control how the query is ran, e.g. if you need to customize the `context`
@@ -323,9 +363,11 @@
         card-viz   (:visualization_settings card)
         merged-viz (m/deep-merge card-viz dash-viz)
         ;; We need to check this here because dashcards don't get selected until this point
-        qp         (if (= :pivot (:display card))
-                     qp.pivot/run-pivot-query
-                     (or qp process-query-for-card-default-qp))
+        qp         (cond
+                     (= :pivot (:display card)) qp.pivot/run-pivot-query
+                     qp                         qp
+                     subset-query               qp/process-query
+                     :else                      process-query-for-card-default-qp)
         runner     (make-run qp export-format)
         query      (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
                        (assoc :viz-settings merged-viz)
@@ -347,5 +389,37 @@
                 (u/pprint-to-str query))
     (binding [qp.perms/*card-id* card-id]
       (qp.store/with-metadata-provider (:database_id card)
-        (qp.results-metadata/store-previous-result-metadata! card)
-        (runner query info)))))
+        (when-not subset-query
+          (qp.results-metadata/store-previous-result-metadata! card))
+        (if subset-query
+          (if-let [subset-query (verified-subset-query query subset-query)]
+            ;; TODO (BT) should :visualization-settings in info be removed?
+            (runner subset-query (cond-> info
+                                   api/*current-user-id* (assoc :query-hash (qp.util/query-hash subset-query))))
+            (throw (ex-info (tru "Invalid subset query: Card {0} does not allow running {1}."
+                                 card-id
+                                 (pr-str subset-query))
+                            {:type           qp.error-type/invalid-query
+                             :card-id        card-id
+                             :original-query query
+                             :query          subset-query
+                             :status-code    400})))
+          (runner query (cond-> info
+                          api/*current-user-id* (assoc :query-hash (qp.util/query-hash query)))))))))
+
+(defn fetch-subset-query-metadata
+  "Given a card-id, parameters and a subset query, first verifies that the query is a valid subset of the card's
+  query, and if so, returns the query metadata. Throws an exception if the query is not a valid subset."
+  [card-id parameters query]
+  (let [card       (api/read-check (t2/select-one :model/Card card-id))
+        card-query (query-for-card card parameters (qp.constraints/default-query-constraints) nil)]
+    (qp.store/with-metadata-provider (:database_id card)
+      (if-let [subset-query (verified-subset-query card-query query)]
+        (queries/batch-fetch-query-metadata [subset-query])
+        (throw (ex-info (tru "Invalid subset query: Card {0} does not allow running {1}."
+                             card-id
+                             (pr-str query))
+                        {:type        qp.error-type/invalid-query
+                         :card-id     card-id
+                         :query       query
+                         :status-code 400}))))))

@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLatest } from "react-use";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -20,6 +20,10 @@ export const useParameters = ({
 }: UseParameterListProps) => {
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
+
+  const [initialAvailableParameters, setInitialAvailableParameters] = useState<
+    Parameter[] | null
+  >(null);
 
   // This prevents `availableParameters` from being updated on every metadata change,
   // which would cause unnecessary re-renders in the component using this hook.
@@ -49,6 +53,16 @@ export const useParameters = ({
   }, [resource, experience, metadata, metadataRef]);
 
   useEffect(() => {
+    if (!resource) {
+      return;
+    }
+
+    if (initialAvailableParameters === null) {
+      setInitialAvailableParameters(availableParameters);
+    }
+  }, [resource, availableParameters, initialAvailableParameters]);
+
+  useEffect(() => {
     if (resource && "param_fields" in resource && resource.param_fields) {
       // This is needed to make some parameter widget populate the dropdown list
       // otherwise they will use a normal text input
@@ -58,5 +72,6 @@ export const useParameters = ({
 
   return {
     availableParameters,
+    initialAvailableParameters,
   };
 };

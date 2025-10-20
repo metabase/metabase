@@ -205,6 +205,7 @@ export type QueryClickActionsMode = {
     }
   | {
       hasDrills: true;
+      performSubsetOnlyDrills: boolean;
       availableOnlyDrills?: Lib.DrillThruType[];
     }
 );

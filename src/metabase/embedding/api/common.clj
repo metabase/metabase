@@ -79,10 +79,13 @@
 
 (defn- check-embedding-enabled-for-object
   "Check that embedding is enabled, that `object` exists, and embedding for `object` is enabled."
-  ([entity id]
+  ([entity id] (check-embedding-enabled-for-object entity id nil))
+  ([entity id {:keys [skip-object-enabled-check?]}]
    (api/check (pos-int? id)
               [400 (tru "{0} id should be a positive integer." (name entity))])
-   (check-embedding-enabled-for-object (t2/select-one [entity :enable_embedding] :id id)))
+   (check-embedding-enabled-for-object (cond-> (t2/select-one [entity :enable_embedding] :id id)
+                                         skip-object-enabled-check?
+                                         (assoc :enable_embedding true))))
 
   ([object]
    (embedding.validation/check-embedding-enabled)
@@ -91,13 +94,17 @@
    (api/check (:enable_embedding object)
               [400 (tru "Embedding is not enabled for this object.")])))
 
-(def ^{:arglists '([card-id])} check-embedding-enabled-for-card
+(defn check-embedding-enabled-for-card
   "Runs check-embedding-enabled-for-object for a given Card id"
-  (partial check-embedding-enabled-for-object :model/Card))
+  ([card-id] (check-embedding-enabled-for-object :model/Card card-id nil))
+  ([card-id opts]
+   (check-embedding-enabled-for-object :model/Card card-id opts)))
 
-(def ^{:arglists '([dashboard-id])} check-embedding-enabled-for-dashboard
+(defn check-embedding-enabled-for-dashboard
   "Runs check-embedding-enabled-for-object for a given Dashboard id"
-  (partial check-embedding-enabled-for-object :model/Dashboard))
+  ([dashboard-id] (check-embedding-enabled-for-object :model/Dashboard dashboard-id nil))
+  ([dashboard-id opts]
+   (check-embedding-enabled-for-object :model/Dashboard dashboard-id opts)))
 
 (defn- resolve-card-parameters
   "Returns parameters for a card (HUH?)" ; TODO - better docstring
@@ -283,6 +290,21 @@
       (assoc (select-keys param [:type :target :slug])
              :value value))))
 
+(mu/defn qp-query-parameters  :- [:maybe [:sequential
+                                          [:map
+                                           [:slug ms/NonBlankString]
+                                           [:type :keyword]
+                                           [:target :any]
+                                           [:value :any]]]]
+  "Resolve parameters provided for a card specified by `card-or-id` via app-db (`embedding-params`),
+  the token (`token-params`), and in the HTTP query as query parameters (`query-params`) to parameters
+  expected by the query processor."
+  [card-or-id embedding-params token-params query-params]
+  (let [merged-slug->value (validate-and-merge-params embedding-params
+                                                      token-params
+                                                      (normalize-query-params query-params))]
+    (apply-slug->value (resolve-card-parameters card-or-id) merged-slug->value)))
+
 ;;; ---------------------------- Card Fns used by both /api/embed and /api/preview_embed -----------------------------
 
 (defn card-for-unsigned-token
@@ -303,16 +325,13 @@
   "Run the query associated with Card with `card-id` using JWT `token-params`, user-supplied URL `query-params`,
    an `embedding-params` whitelist, and additional query `options`. Returns `StreamingResponse` that should be
   returned as the API endpoint result."
-  [& {:keys [export-format card-id embedding-params token-params query-params qp constraints options]
-      :or   {qp qp.card/process-query-for-card-default-qp}}]
-  {:pre [(integer? card-id) (u/maybe? map? embedding-params) (map? token-params) (map? query-params)]}
-  (let [merged-slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
-        parameters         (apply-slug->value (resolve-card-parameters card-id) merged-slug->value)]
+  [& {:keys [export-format card-id embedding-params token-params query-params constraints options]}]
+  {:pre [(integer? card-id) (u/maybe? map? embedding-params) (map? token-params) (u/maybe? map? query-params)]}
+  (let [parameters (qp-query-parameters card-id embedding-params token-params query-params)]
     (m/mapply api.public/process-query-for-card-with-id
               card-id export-format parameters
               :context     :embedded-question
               :constraints constraints
-              :qp          qp
               options)))
 
 (defn unsigned-token->card-id
@@ -487,6 +506,19 @@
                       (u/pprint-to-str (u/all-ex-data e)))
           (throw e))))))
 
+(defn card-metadata-for-unsigned-token
+  "Return the query metadata for the card in `unsigned-token`."
+  ([unsigned-token] (card-metadata-for-unsigned-token unsigned-token nil))
+  ([unsigned-token {:keys [skip-object-enabled-check?]}]
+   (let [card-id (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
+         _ (api/check (pos-int? card-id) [400 (tru "{0} id should be a positive integer." "Card")])
+         card (t2/select-one [:model/Card :archived :id :dataset_query :enable_embedding :type :card_schema] card-id)]
+     (check-embedding-enabled-for-object (cond-> card
+                                           skip-object-enabled-check?  (assoc :enable_embedding true)))
+     (binding [api/*current-user-permissions-set* (atom #{"/"})
+               api/*is-superuser?* true]
+       (queries/batch-fetch-card-metadata [card])))))
+
 (defn unsigned-token->dashboard-id
   "Get the Dashboard ID from an unsigned token."
   [unsigned-token]
@@ -588,3 +620,30 @@
        (binding [api/*current-user-permissions-set* (atom #{"/"})
                  api/*is-superuser?*                true]
          (parameters.dashboard/dashboard-param-remapped-value dashboard param-key value constraints))))))
+
+(defn dashboard-metadata-for-unsigned-token
+  "Get the query metadata for the dasghboard in `unsigned-token`."
+  ([unsigned-token] (dashboard-metadata-for-unsigned-token unsigned-token nil))
+  ([unsigned-token {:keys [skip-object-enabled-check?]}]
+   (let [dashboard-id (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
+         _ (api/check (pos-int? dashboard-id) [400 (tru "{0} id should be a positive integer." "Dashboard")])
+         dashboard (-> (t2/select-one [:model/Dashboard :archived :id :enable_embedding] dashboard-id)
+                       (t2/hydrate [:dashcards
+                                    ;; disabled :can_run_adhoc_query for performance reasons in 50 release
+                                    [:card :can_write #_:can_run_adhoc_query [:moderation_reviews :moderator_details]]
+                                    [:series :can_write #_:can_run_adhoc_query]
+                                    :dashcard/action
+                                    :dashcard/linkcard-info]))]
+     (check-embedding-enabled-for-object (cond-> dashboard
+                                           skip-object-enabled-check? (assoc :enable_embedding true)))
+     (binding [api/*current-user-permissions-set* (atom #{"/"})
+               api/*is-superuser?* true]
+       (queries/batch-fetch-dashboard-metadata [dashboard])))))
+
+(mu/defn check-card-belongs-to-dashboard :- :nil
+  "If the card with `card-id` doesn't belong to the dashboard with `dashboard-id`, throws an exception."
+  [card-id :- ms/PositiveInt
+   dashboard-id :- ms/PositiveInt]
+  (when-not (t2/exists? :model/DashboardCard :dashboard_id dashboard-id, :card_id card-id)
+    (throw (ex-info (tru "Card {0} does not belong to dashboard {1}" card-id dashboard-id)
+                    {:status-code 404}))))

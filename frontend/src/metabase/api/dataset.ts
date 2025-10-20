@@ -5,6 +5,7 @@ import type {
   Dataset,
   DatasetQuery,
   FieldValue,
+  GetAdhocQueryMetadataRequest,
   GetRemappedParameterValueRequest,
   NativeDatasetResponse,
 } from "metabase-types/api";
@@ -58,8 +59,11 @@ export const datasetApi = Api.injectEndpoints({
         noEvent: ignore_error,
       }),
     }),
-    getAdhocQueryMetadata: builder.query<CardQueryMetadata, DatasetQuery>({
-      query: (body) => ({
+    getAdhocQueryMetadata: builder.query<
+      CardQueryMetadata,
+      GetAdhocQueryMetadataRequest
+    >({
+      query: ({ original_card_id, ...body }) => ({
         method: "POST",
         url: "/api/dataset/query_metadata",
         body,
