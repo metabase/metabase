@@ -286,13 +286,11 @@ describe("issue 20517", () => {
   });
 
   it("should be able to save metadata changes with empty description (metabase#20517)", () => {
-    cy.findByTestId("dataset-edit-bar")
-      .button("Save changes")
-      .should("be.disabled");
+    cy.findByTestId("dataset-edit-bar").button("Save").should("be.disabled");
     cy.findByDisplayValue(/^This is a unique ID/).clear();
     cy.findByDisplayValue(/^This is a unique ID/).should("not.exist");
     cy.findByTestId("dataset-edit-bar")
-      .button("Save changes")
+      .button("Save")
       .should("not.be.disabled")
       .click();
     cy.wait("@updateModel").then(({ response: { body, statusCode } }) => {
@@ -336,7 +334,7 @@ describe("issue 20624", { tags: "@skip" }, () => {
     // Let's set a new name for it
     cy.findByDisplayValue(renamedColumn).clear().type("Foo").blur();
 
-    cy.button("Save changes").click();
+    cy.button("Save").click();
     cy.wait("@updateCard");
 
     cy.get("[data-testid=cell-data]").should("contain", "Foo");
@@ -419,7 +417,7 @@ describe("issue 22517", () => {
 
     renameColumn("ID", "Foo");
 
-    cy.button("Save changes").click();
+    cy.button("Save").click();
     cy.wait("@updateMetadata");
   });
 
@@ -449,7 +447,7 @@ describe("issue 22517", () => {
       cy.findByText("Foo");
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Save changes").click();
+      cy.findByText("Save").click();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Foo");
@@ -482,7 +480,7 @@ describe("issue 22518", () => {
     cy.findByTestId("native-query-editor-container").icon("play").click();
     cy.wait("@dataset");
 
-    cy.findByTestId("dataset-edit-bar").button("Save changes").click();
+    cy.findByTestId("dataset-edit-bar").button("Save").click();
 
     cy.findAllByTestId("header-cell")
       .should("have.length", 3)
@@ -575,7 +573,7 @@ describe(
         // Make sure the column name updated before saving
         cy.findByDisplayValue("Created At");
 
-        cy.button("Save changes").click();
+        cy.button("Save").click();
         cy.wait("@updateModel");
 
         H.visitModel(id);
@@ -730,7 +728,7 @@ describe("issue 23421", () => {
     H.NativeEditor.get().should("be.visible").and("contain", query);
     cy.findByRole("columnheader", { name: "id" }).should("be.visible");
     cy.findByRole("columnheader", { name: "created_at" }).should("be.visible");
-    cy.button("Save changes").should("be.visible");
+    cy.button("Save").should("be.visible");
   });
 
   it("`visualization_settings` with hidden columns should not break UI (metabase#23421)", () => {
@@ -745,7 +743,7 @@ describe("issue 23421", () => {
       cy.findByText("id").should("be.visible");
       cy.findByText("created_at").should("be.visible");
     });
-    cy.button("Save changes").should("be.disabled");
+    cy.button("Save").should("be.disabled");
   });
 });
 
@@ -903,7 +901,7 @@ describe("issue 28193", () => {
     cy.findByTestId("run-button").click();
     cy.wait("@dataset");
 
-    cy.button("Save changes").click();
+    cy.button("Save").click();
     cy.location("pathname").should("not.include", "/query");
 
     assertOnColumns();
@@ -1048,7 +1046,7 @@ describe("issue 29517 - nested question based on native model with remapped valu
       mapModelColumnToDatabase({ table: "Orders", field: "Created At" });
 
       cy.intercept("PUT", "/api/card/*").as("updateModel");
-      cy.button("Save changes").click();
+      cy.button("Save").click();
       cy.wait("@updateModel");
 
       const nestedQuestionDetails = {
@@ -1160,7 +1158,7 @@ describe("issue 53556 - nested question based on native model with remapped valu
       mapModelColumnToDatabase({ table: "Orders", field: "Total" });
 
       cy.intercept("PUT", "/api/card/*").as("updateModel");
-      cy.button("Save changes").click();
+      cy.button("Save").click();
       cy.wait("@updateModel");
 
       const nestedQuestionDetails = {
@@ -1356,7 +1354,7 @@ FROM
       mapModelColumnToDatabase({ table: "People", field: "Source" });
 
       cy.intercept("PUT", "/api/card/*").as("updateModel");
-      cy.button("Save changes").click();
+      cy.button("Save").click();
       cy.wait("@updateModel");
 
       const nestedQuestionDetails = {
@@ -1950,7 +1948,7 @@ describe("issues 35039 and 37009", () => {
     cy.wait("@dataset");
 
     cy.findByTestId("dataset-edit-bar").within(() => {
-      cy.button("Save changes").click();
+      cy.button("Save").click();
       cy.button("Saving…").should("not.exist");
     });
 
@@ -2019,7 +2017,7 @@ describe("issue 37009", () => {
     H.popover().findByText("Edit query definition").click();
     H.NativeEditor.focus().type(" WHERE CATEGORY = 'Gadget'");
     cy.findByTestId("dataset-edit-bar")
-      .button("Save changes")
+      .button("Save")
       .should("be.disabled")
       .trigger("mousemove", { force: true });
     cy.findByRole("tooltip").should(
@@ -2030,7 +2028,7 @@ describe("issue 37009", () => {
     cy.wait("@dataset");
     cy.findByRole("tooltip").should("not.exist");
     cy.findByTestId("dataset-edit-bar")
-      .button("Save changes")
+      .button("Save")
       .should("be.enabled")
       .click();
     cy.wait("@updateCard")
@@ -2114,7 +2112,7 @@ describe("issue 40252", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
     cy.findByTestId("dataset-edit-bar")
-      .findByRole("button", { name: "Save changes" })
+      .findByRole("button", { name: "Save" })
       .should("be.enabled")
       .click();
 
@@ -2167,7 +2165,7 @@ describe("issue 42355", () => {
       cy.findByText("Orders").click();
       cy.findByText("ID").click();
     });
-    cy.button("Save changes").click();
+    cy.button("Save").click();
 
     cy.log("check metadata changes are visible");
     H.openQuestionActions();
@@ -2253,14 +2251,14 @@ describe("issue 45926", () => {
       cy.findByDisplayValue("ID").type(" updated");
     });
 
-    cy.button("Save changes").click();
+    cy.button("Save").click();
     cy.wait("@dataset");
 
     cy.findByRole("columnheader", { name: "ID updated" }).should("be.visible");
     H.openQuestionActions("Edit query definition");
     cy.button("Sort").click();
     H.popover().findByText("ID").click();
-    cy.button("Save changes").click();
+    cy.button("Save").click();
     cy.wait("@dataset");
 
     H.questionInfoButton().click();
