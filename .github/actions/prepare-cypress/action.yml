@@ -43,9 +43,12 @@ runs:
             ? JSON.parse(fs.readFileSync(configPath, "utf8"))
             : {};
 
+          console.log("CONFIG", config)
+
           const { getBlockedCypressTests } = require('${{ github.workspace }}/.github/scripts/grep-blocked-tests.js');
 
           const blockedTests = getBlockedCypressTests(config);
+          console.log("BLOCKED", blockedTests)
           core.setOutput('blocked-tests', blockedTests);
 
     - name: Check to see if dependencies should be cached
