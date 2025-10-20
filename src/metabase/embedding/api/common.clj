@@ -290,6 +290,21 @@
       (assoc (select-keys param [:type :target :slug])
              :value value))))
 
+(mu/defn qp-query-parameters  :- [:maybe [:sequential
+                                          [:map
+                                           [:slug ms/NonBlankString]
+                                           [:type :keyword]
+                                           [:target :any]
+                                           [:value :any]]]]
+  "Resolve parameters provided for a card specified by `card-or-id` via app-db (`embedding-params`),
+  the token (`token-params`), and in the HTTP query as query parameters (`query-params`) to parameters
+  expected by the query processor."
+  [card-or-id embedding-params token-params query-params]
+  (let [merged-slug->value (validate-and-merge-params embedding-params
+                                                      token-params
+                                                      (normalize-query-params query-params))]
+    (apply-slug->value (resolve-card-parameters card-or-id) merged-slug->value)))
+
 ;;; ---------------------------- Card Fns used by both /api/embed and /api/preview_embed -----------------------------
 
 (defn card-for-unsigned-token
@@ -312,8 +327,7 @@
   returned as the API endpoint result."
   [& {:keys [export-format card-id embedding-params token-params query-params constraints options]}]
   {:pre [(integer? card-id) (u/maybe? map? embedding-params) (map? token-params) (u/maybe? map? query-params)]}
-  (let [merged-slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
-        parameters         (apply-slug->value (resolve-card-parameters card-id) merged-slug->value)]
+  (let [parameters (qp-query-parameters card-id embedding-params token-params query-params)]
     (m/mapply api.public/process-query-for-card-with-id
               card-id export-format parameters
               :context     :embedded-question

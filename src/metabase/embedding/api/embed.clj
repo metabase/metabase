@@ -399,6 +399,20 @@
     (u/prog1 (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
       (api.embed.common/check-embedding-enabled-for-card <>))))
 
+(defn- process-subset-query
+  [token query & {:keys [qp]}]
+  (let [unsigned-token   (unsign-and-translate-ids token)
+        original-card-id (:original_card_id query)
+        card-id          (decode-card-id unsigned-token original-card-id)]
+    (api.embed.common/process-query-for-card-with-params
+     :export-format    :api
+     :card-id          card-id
+     :token-params     (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:params])
+     :embedding-params (t2/select-one-fn :embedding_params :model/Card :id card-id)
+     :constraints      (qp.constraints/default-query-constraints)
+     :options          (cond-> {:subset-query query}
+                         qp (assoc :qp qp)))))
+
 (api.macros/defendpoint :post "/dataset/:token"
   "Fetch the results of running the ad-hoc query `query` that should represent a subset of the query of the card
   either encoded in the JSON Web Token `token` signed with the `embedding-secret-key` or provided by
@@ -420,16 +434,20 @@
    query :- [:map
              [:original_card_id {:optional true} [:maybe ms/PositiveInt]]
              [:database {:optional true} [:maybe :int]]]]
-  (let [unsigned-token   (unsign-and-translate-ids token)
-        original-card-id (:original_card_id query)
-        card-id          (decode-card-id unsigned-token original-card-id)]
-    (api.embed.common/process-query-for-card-with-params
-     :export-format    :api
-     :card-id          card-id
-     :token-params     (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:params])
-     :embedding-params (t2/select-one-fn :embedding_params :model/Card :id card-id)
-     :constraints      (qp.constraints/default-query-constraints)
-     :options          {:subset-query query})))
+  (process-subset-query token query))
+
+(api.macros/defendpoint :post "/dataset/pivot/:token"
+  "Fetch the results of running the ad-hoc pivot query `query` that should represent a subset of the query of the card
+  either encoded in the JSON Web Token `token` signed with the `embedding-secret-key` or provided by
+  the query parameter `original-card-id` and belonging to the dashboard encoded in the JSON Web Token
+  `token` signed with the `embedding-secret-key`."
+  [{:keys [token]} :- [:map
+                       [:token string?]]
+   _query-params
+   query :- [:map
+             [:original_card_id {:optional true} [:maybe ms/PositiveInt]]
+             [:database {:optional true} [:maybe :int]]]]
+  (process-subset-query token query :qp qp.pivot/run-pivot-query))
 
 (api.macros/defendpoint :post "/dataset/:token/query_metadata"
   "Fetch the query metadata of an ad-hoc query that should represent a subset of the query of the card
@@ -455,8 +473,9 @@
   (let [unsigned-token   (unsign-and-translate-ids token)
         original-card-id (:original_card_id query)
         card-id          (decode-card-id unsigned-token original-card-id)
-        params           (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:params])]
+        token-params     (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:params])
+        embedding-params (t2/select-one-fn :embedding_params :model/Card :id card-id)
+        parameters       (api.embed.common/qp-query-parameters card-id embedding-params token-params nil)]
     (binding [api/*current-user-permissions-set* (delay #{"/"})
               api/*is-superuser?* true]
-      ;; TODO (BT) fetch-subset-query-metadata expects a sequence of parameters, but a map is coming
-      (qp.card/fetch-subset-query-metadata card-id (vals params) query))))
+      (qp.card/fetch-subset-query-metadata card-id parameters query))))
