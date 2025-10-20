@@ -11,7 +11,6 @@
    [malli.destructure]
    [malli.error :as me]
    [malli.util :as mut]
-   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli.registry :as mr])
   #?(:cljs (:require-macros [metabase.util.malli])))
