@@ -11,6 +11,9 @@ outputs:
   chrome-path:
     description: Path to the custom Chrome executable
     value: ${{ steps.setup-chrome.outputs.chrome-path }}
+  blocked-tests:
+    description: String containing blocked Cypress tests (to be used by the Cypress grep plugin)
+    value: ${{ steps.kill-switch.outputs.blocked-tests }}
 
 runs:
   using: "composite"
@@ -21,6 +24,29 @@ runs:
         # https://chromium.cypress.io/linux/stable/111.0.5563.146
         chrome-version: 1097615
       id: setup-chrome
+
+    - name: Fetch CI config
+      shell: bash
+      run: |
+        curl -o ci-test-config.json https://raw.githubusercontent.com/metabase/metabase/refs/heads/master/ci-test-config.json
+
+    - name: Get a list of disabled Cypress tests from the CI config
+      id: kill-switch
+      continue-on-error: true
+      uses: actions/github-script@v7
+      with:
+        script: | #js
+          const fs = require('fs');
+          const configPath = "./ci-test-config.json"
+
+          const config = fs.existsSync(configPath)
+            ? JSON.parse(fs.readFileSync(configPath, "utf8"))
+            : {};
+
+          const { getBlockedCypressTests } = require('${{ github.workspace }}/.github/scripts/grep-blocked-tests.js');
+
+          const blockedTests = getBlockedCypressTests(config);
+          core.setOutput('blocked-tests', blockedTests);
 
     - name: Check to see if dependencies should be cached
       if: ${{ contains(github.event.head_commit.message, '[ci nocache]') }}
