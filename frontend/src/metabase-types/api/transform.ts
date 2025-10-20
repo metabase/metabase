@@ -26,27 +26,53 @@ export type Transform = {
 
 export type PythonTransformTableAliases = Record<string, ConcreteTableId>;
 
+export type KeysetStrategy = {
+  type: "keyset";
+  "keyset-column": string;
+};
+
+export type SourceIncrementalStrategy = KeysetStrategy;
+
 export type PythonTransformSource = {
   type: "python";
   body: string;
   "source-database": DatabaseId;
   "source-tables": PythonTransformTableAliases;
+  "source-incremental-strategy"?: SourceIncrementalStrategy;
 };
+
 export type QueryTransformSource = {
   type: "query";
   query: DatasetQuery;
+  "source-incremental-strategy"?: SourceIncrementalStrategy;
 };
 
 export type TransformSource = QueryTransformSource | PythonTransformSource;
 
-export type TransformTargetType = "table";
+export type AppendConfig = {
+  type: "append";
+};
 
-export type TransformTarget = {
-  type: TransformTargetType;
+export type TargetIncrementalStrategy = AppendConfig;
+
+export type TransformTargetType = "table" | "table-incremental";
+
+export type TableTarget = {
+  type: "table";
   name: string;
   schema: string | null;
   database: number;
 };
+
+export type TableIncrementalTarget = {
+  type: "table-incremental";
+  name: string;
+  schema: string | null;
+  database: number;
+  "target-incremental-strategy": TargetIncrementalStrategy;
+};
+
+export type TransformTarget = TableTarget | TableIncrementalTarget;
 
 export type TransformRun = {
   id: TransformRunId;

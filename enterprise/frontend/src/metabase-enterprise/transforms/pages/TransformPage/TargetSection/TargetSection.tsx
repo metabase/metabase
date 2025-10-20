@@ -25,6 +25,7 @@ import type { Transform } from "metabase-types/api";
 import { SplitSection } from "../../../components/SplitSection";
 import { isTransformRunning } from "../utils";
 
+import { UpdateIncrementalModal } from "./UpdateIncrementalModal";
 import { UpdateTargetModal } from "./UpdateTargetModal";
 
 type TargetSectionProps = {
@@ -43,6 +44,7 @@ export function TargetSection({ transform }: TargetSectionProps) {
       <Divider />
       <Group p="lg">
         <EditTargetButton transform={transform} />
+        <EditIncrementalButton transform={transform} />
         <EditMetadataButton transform={transform} />
       </Group>
     </SplitSection>
@@ -197,6 +199,42 @@ function EditTargetButton({ transform }: EditTargetButtonProps) {
   );
 }
 
+type EditIncrementalButtonProps = {
+  transform: Transform;
+};
+
+function EditIncrementalButton({ transform }: EditIncrementalButtonProps) {
+  const [isModalOpened, { open: openModal, close: closeModal }] =
+    useDisclosure();
+  const { sendSuccessToast } = useMetadataToasts();
+
+  const isIncremental = transform.target.type === "table-incremental";
+
+  const handleUpdate = () => {
+    closeModal();
+    sendSuccessToast(t`Incremental settings updated`);
+  };
+
+  return (
+    <>
+      <Button
+        leftSection={<Icon name="refresh" aria-hidden />}
+        disabled={isTransformRunning(transform)}
+        onClick={openModal}
+      >
+        {isIncremental ? t`Edit incremental settings` : t`Make transform incremental`}
+      </Button>
+      {isModalOpened && (
+        <UpdateIncrementalModal
+          transform={transform}
+          onUpdate={handleUpdate}
+          onClose={closeModal}
+        />
+      )}
+    </>
+  );
+}
+
 type EditMetadataButtonProps = {
   transform: Transform;
 };
@@ -214,7 +252,7 @@ function EditMetadataButton({ transform }: EditMetadataButtonProps) {
       leftSection={<Icon name="label" aria-hidden />}
       data-testid="table-metadata-link"
     >
-      {t`Edit this table’s metadata`}
+      {t`Edit this table's metadata`}
     </Button>
   );
 }

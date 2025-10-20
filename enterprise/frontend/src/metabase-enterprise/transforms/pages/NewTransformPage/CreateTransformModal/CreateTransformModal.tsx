@@ -1,3 +1,4 @@
+import { useFormikContext } from "formik";
 import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
@@ -11,14 +12,16 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   Form,
+  FormCheckbox,
   FormErrorMessage,
   FormProvider,
+  FormSelect,
   FormSubmitButton,
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
-import { Box, Button, FocusTrap, Group, Modal, Stack } from "metabase/ui";
+import { Alert, Box, Button, FocusTrap, Group, Modal, Stack } from "metabase/ui";
 import { useCreateTransformMutation } from "metabase-enterprise/api";
 import { trackTransformCreated } from "metabase-enterprise/transforms/analytics";
 import { SchemaFormSelect } from "metabase-enterprise/transforms/components/SchemaFormSelect";
@@ -32,12 +35,14 @@ type CreateTransformModalProps = {
   source: TransformSource;
   onCreate: (transform: Transform) => void;
   onClose: () => void;
+  initialIncremental?: boolean;
 };
 
 export function CreateTransformModal({
   source,
   onCreate,
   onClose,
+  initialIncremental = false,
 }: CreateTransformModalProps) {
   return (
     <Modal title={t`Save your transform`} opened padding="xl" onClose={onClose}>
@@ -46,6 +51,7 @@ export function CreateTransformModal({
         source={source}
         onCreate={onCreate}
         onClose={onClose}
+        initialIncremental={initialIncremental}
       />
     </Modal>
   );
@@ -55,6 +61,7 @@ type CreateTransformFormProps = {
   source: TransformSource;
   onCreate: (transform: Transform) => void;
   onClose: () => void;
+  initialIncremental: boolean;
 };
 
 type NewTransformValues = {
@@ -62,6 +69,10 @@ type NewTransformValues = {
   description: string | null;
   targetName: string;
   targetSchema: string | null;
+  incremental: boolean;
+  keysetColumn: string | null;
+  sourceStrategy: "keyset";
+  targetStrategy: "append";
 };
 
 const NEW_TRANSFORM_SCHEMA = Yup.object({
@@ -69,12 +80,101 @@ const NEW_TRANSFORM_SCHEMA = Yup.object({
   description: Yup.string().nullable(),
   targetName: Yup.string().required(Errors.required),
   targetSchema: Yup.string().nullable(),
+  incremental: Yup.boolean().required(),
+  keysetColumn: Yup.string().nullable().when("incremental", {
+    is: true,
+    then: (schema) => schema.required(Errors.required),
+    otherwise: (schema) => schema.nullable(),
+  }),
+  sourceStrategy: Yup.string().oneOf(["keyset"]).required(),
+  targetStrategy: Yup.string().oneOf(["append"]).required(),
 });
+
+function SourceStrategyFields() {
+  const { values } = useFormikContext<NewTransformValues>();
+
+  if (!values.incremental) {
+    return null;
+  }
+
+  return (
+    <>
+      <FormSelect
+        name="sourceStrategy"
+        label={t`Source Strategy`}
+        description={t`How to track which rows to process`}
+        data={[
+          { value: "keyset", label: t`Keyset` },
+        ]}
+      />
+      {values.sourceStrategy === "keyset" && (
+        <FormTextInput
+          name="keysetColumn"
+          label={t`Keyset Column`}
+          placeholder={t`e.g., id, row_num`}
+          description={t`An integer column used to track incremental updates`}
+        />
+      )}
+    </>
+  );
+}
+
+type IncrementalNoticeProps = {
+  source: TransformSource;
+};
+
+function IncrementalNotice({ source }: IncrementalNoticeProps) {
+  const { values } = useFormikContext<NewTransformValues>();
+
+  if (!values.incremental) {
+    return null;
+  }
+
+  // Only show the note for SQL/native queries
+  // MBQL queries will have the filter automatically added
+  const isNativeQuery =
+    source.type === "query" && "native" in source.query;
+
+  if (!isNativeQuery) {
+    return null;
+  }
+
+  return (
+    <Alert variant="info" icon="info">
+      {t`After saving, you'll need to edit your query to add a WHERE filter on the keyset column. You can use the snippet`}{" "}
+      <strong>{`{{snippet: incremental transform filter}}`}</strong>
+    </Alert>
+  );
+}
+
+function TargetStrategyFields() {
+  const { values } = useFormikContext<NewTransformValues>();
+
+  if (!values.incremental) {
+    return null;
+  }
+
+  return (
+    <>
+      <FormSelect
+        name="targetStrategy"
+        label={t`Target Strategy`}
+        description={t`How to update the target table`}
+        data={[
+          { value: "append", label: t`Append` },
+        ]}
+      />
+      {/* Append strategy has no additional fields */}
+      {/* Future strategies like "merge" could add fields here */}
+    </>
+  );
+}
 
 function CreateTransformForm({
   source,
   onCreate,
   onClose,
+  initialIncremental,
 }: CreateTransformFormProps) {
   const databaseId =
     source.type === "query" ? source.query.database : source["source-database"];
@@ -100,8 +200,8 @@ function CreateTransformForm({
   const supportsSchemas = database && hasFeature(database, "schemas");
 
   const initialValues: NewTransformValues = useMemo(
-    () => getInitialValues(schemas),
-    [schemas],
+    () => getInitialValues(schemas, initialIncremental),
+    [schemas, initialIncremental],
   );
 
   if (isLoading || error != null) {
@@ -152,6 +252,13 @@ function CreateTransformForm({
             label={t`Table name`}
             placeholder={t`descriptive_name`}
           />
+          <FormCheckbox
+            name="incremental"
+            label={t`Incremental?`}
+          />
+          <IncrementalNotice source={source} />
+          <SourceStrategyFields />
+          <TargetStrategyFields />
           <Group>
             <Box flex={1}>
               <FormErrorMessage />
@@ -165,29 +272,60 @@ function CreateTransformForm({
   );
 }
 
-function getInitialValues(schemas: string[]): NewTransformValues {
+function getInitialValues(
+  schemas: string[],
+  initialIncremental: boolean,
+): NewTransformValues {
   return {
     name: "",
     description: null,
     targetName: "",
     targetSchema: schemas?.[0] || null,
+    incremental: initialIncremental,
+    keysetColumn: initialIncremental ? "id" : null,
+    sourceStrategy: "keyset",
+    targetStrategy: "append",
   };
 }
 
 function getCreateRequest(
   source: TransformSource,
-  { name, description, targetName, targetSchema }: NewTransformValues,
+  { name, description, targetName, targetSchema, incremental, keysetColumn, sourceStrategy, targetStrategy }: NewTransformValues,
   databaseId: number,
 ): CreateTransformRequest {
+  // Build the source with incremental strategy if enabled
+  const transformSource: TransformSource = incremental
+    ? {
+        ...source,
+        "source-incremental-strategy": {
+          type: sourceStrategy,
+          "keyset-column": keysetColumn!,
+        },
+      }
+    : source;
+
+  // Build the target with incremental strategy if enabled
+  const transformTarget: CreateTransformRequest["target"] = incremental
+    ? {
+        type: "table-incremental",
+        name: targetName,
+        schema: targetSchema,
+        database: databaseId,
+        "target-incremental-strategy": {
+          type: targetStrategy,
+        },
+      }
+    : {
+        type: "table",
+        name: targetName,
+        schema: targetSchema,
+        database: databaseId,
+      };
+
   return {
-    name: name,
+    name,
     description,
-    source,
-    target: {
-      type: "table",
-      name: targetName,
-      schema: targetSchema,
-      database: databaseId,
-    },
+    source: transformSource,
+    target: transformTarget,
   };
 }

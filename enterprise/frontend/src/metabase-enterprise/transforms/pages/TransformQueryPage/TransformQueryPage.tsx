@@ -87,6 +87,7 @@ export function TransformQueryPageBody({
     dispatch(push(Urls.transform(transform.id)));
   };
 
+
   if (transform.source.type === "python") {
     return (
       <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
@@ -106,6 +107,7 @@ export function TransformQueryPageBody({
         isSaving={isSaving || isCheckingDependencies}
         onSave={handleSaveSource}
         onCancel={handleCancel}
+        transformId={transform.id}
       />
       {isConfirmationShown && checkData != null && (
         <PLUGIN_DEPENDENCIES.CheckDependenciesModal
