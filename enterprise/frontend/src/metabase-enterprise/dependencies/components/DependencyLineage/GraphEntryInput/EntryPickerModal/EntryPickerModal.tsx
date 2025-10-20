@@ -149,7 +149,7 @@ export function EntryPickerModal({
 
   return (
     <EntityPickerModal
-      title={t`Pick an entity to analyze`}
+      title={t`Pick an item to see its dependencies`}
       tabs={tabs}
       initialValue={selectedItem}
       selectedItem={selectedItem ?? null}

@@ -98,7 +98,7 @@ export function EntrySearchInput({
       value={null}
       data={searchOptions}
       searchValue={searchValue}
-      placeholder={t`Find something…`}
+      placeholder={t`Pick an item to see its dependencies`}
       filter={({ options }) => options}
       leftSection={<FixedSizeIcon name="search" />}
       rightSection={
