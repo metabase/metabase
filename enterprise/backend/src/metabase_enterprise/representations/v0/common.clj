@@ -10,12 +10,20 @@
 
   Representation types are human-readable identifiers used in YAML files,
   while model keywords are used internally by Toucan for database operations."
-  {"question" :model/Card
-   "metric" :model/Card
-   "model" :model/Card
-   "database" :model/Database
-   "transform" :model/Transform
-   "snippet" :model/NativeQuerySnippet})
+  {:question    :model/Card
+   :metric      :model/Card
+   :model       :model/Card
+   :database    :model/Database
+   :transform   :model/Transform
+   :snippet     :model/NativeQuerySnippet
+   :collection  :model/Collection
+   "question"   :model/Card
+   "metric"     :model/Card
+   "model"      :model/Card
+   "database"   :model/Database
+   "transform"  :model/Transform
+   "snippet"    :model/NativeQuerySnippet
+   "collection" :model/Collection})
 
 (defn entity-id
   "Generates an entity-id stably from ref and collection-ref."
