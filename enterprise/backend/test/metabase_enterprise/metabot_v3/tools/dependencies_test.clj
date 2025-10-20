@@ -105,12 +105,12 @@
                       {:id transform1-id
                        :source modified-source})]
           (is (false? (get-in result [:structured_output :success])))
-          (is (= 1 (get-in result [:structured_output :bad_card_count])))
-          (let [bad-cards (get-in result [:structured_output :bad_cards])]
-            (is (= 1 (count bad-cards)))
-            (is (= card-id (get-in (first bad-cards) [:card :id])))
-            (is (= "Card using Transform 1" (get-in (first bad-cards) [:card :name])))
-            (is (some? (:errors (first bad-cards))))))))))
+          (is (= 1 (get-in result [:structured_output :bad_question_count])))
+          (let [bad-questions (get-in result [:structured_output :bad_questions])]
+            (is (= 1 (count bad-questions)))
+            (is (= card-id (get-in (first bad-questions) [:question :id])))
+            (is (= "Card using Transform 1" (get-in (first bad-questions) [:question :name])))
+            (is (some? (:errors (first bad-questions))))))))))
 
 (deftest check-transform-dependencies-card-limit-test
   (testing "max-reported-broken-transforms limit applies to cards"
