@@ -2,8 +2,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import Button from "metabase/common/components/Button";
-import { getFormattedTime } from "metabase/common/components/DateTime/DateTime";
 import { color } from "metabase/lib/colors";
+import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import { getRelativeTime } from "metabase/lib/time-dayjs";
 import type { RevisionOrModerationEvent } from "metabase/plugins";
 import { Icon, Tooltip } from "metabase/ui";
@@ -60,7 +60,10 @@ export function Timeline({
                   </Tooltip>
                 )}
               </EventHeader>
-              <Tooltip position="bottom" label={getFormattedTime(timestamp)}>
+              <Tooltip
+                position="bottom"
+                label={formatDateTimeWithUnit(timestamp, "default")}
+              >
                 <Timestamp dateTime={timestamp}>
                   {getRelativeTime(timestamp)}
                 </Timestamp>
