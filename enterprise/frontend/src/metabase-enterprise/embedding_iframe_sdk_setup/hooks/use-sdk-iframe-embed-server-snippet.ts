@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 
 import { useSetting } from "metabase/common/hooks";
-import { checkNotNull } from "metabase/lib/types";
 import {
   clojure,
   node,
@@ -62,13 +61,13 @@ export function useSdkIframeEmbedServerSnippet() {
     (experience === "chart" && settings.questionId);
 
   const siteUrl = useSetting("site-url");
-  const secretKey = checkNotNull(useSetting("embedding-secret-key"));
+  const secretKey = useSetting("embedding-secret-key");
 
   const resourceType = getResourceTypeFromExperience(experience);
 
   const serverSnippetOptions = useMemo(
     () =>
-      resource && resourceType
+      resource && resourceType && secretKey
         ? getEmbedServerCodeExampleOptions({
             siteUrl,
             secretKey,
