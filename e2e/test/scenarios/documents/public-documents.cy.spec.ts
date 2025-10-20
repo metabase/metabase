@@ -32,6 +32,57 @@ function createTestDocumentWithCard(name = "Test Document") {
   });
 }
 
+// Helper function to create a test document with custom content
+function createTestDocument(name: string, content: string) {
+  return H.createDocument({
+    name,
+    document: {
+      content: [
+        {
+          type: "paragraph",
+          content: [{ type: "text", text: content }],
+          attrs: { _id: "1" },
+        },
+      ],
+      type: "doc",
+    },
+    collection_id: null,
+    idAlias: "documentId",
+  });
+}
+
+// Helper function to visit a public document
+function visitPublicDocument(
+  documentIdAlias = "@documentId",
+  options?: { signOut?: boolean },
+) {
+  cy.get(documentIdAlias)
+    .then((documentId) => {
+      return H.createPublicDocumentLink(documentId);
+    })
+    .then(({ body: { uuid } }) => {
+      if (options?.signOut) {
+        cy.signOut();
+      }
+      cy.visit(`/public/document/${uuid}`);
+    });
+}
+
+// Helper function to verify document is read-only
+function verifyDocumentIsReadOnly() {
+  H.documentContent()
+    .findByRole("textbox")
+    .should("have.attr", "contenteditable", "false");
+  cy.findByRole("button", { name: "Save" }).should("not.exist");
+}
+
+// Helper function to verify comments are hidden
+function verifyCommentsAreHidden() {
+  H.Comments.getDocumentNodeButtons().should("not.exist");
+  cy.findByTestId("comments-sidebar").should("not.exist");
+  cy.findByRole("link", { name: "Show all comments" }).should("not.exist");
+}
+
 describe("scenarios > documents > public", () => {
   beforeEach(() => {
     H.restore();
@@ -42,51 +93,7 @@ describe("scenarios > documents > public", () => {
 
   it("should not show comments in public documents", () => {
     // Create a document with content and an embedded card
-    H.createDocument({
-      name: "Test Public Document",
-      document: {
-        content: [
-          {
-            type: "paragraph",
-            content: [
-              {
-                type: "text",
-                text: "This is a test paragraph",
-              },
-            ],
-            attrs: {
-              _id: "1",
-            },
-          },
-          {
-            type: "resizeNode",
-            attrs: {
-              height: 400,
-              minHeight: 280,
-            },
-            content: [
-              {
-                type: "cardEmbed",
-                attrs: {
-                  id: ORDERS_QUESTION_ID,
-                  name: null,
-                  _id: "2",
-                },
-              },
-            ],
-          },
-          {
-            type: "paragraph",
-            attrs: {
-              _id: "3",
-            },
-          },
-        ],
-        type: "doc",
-      },
-      collection_id: null,
-      idAlias: "documentId",
-    });
+    createTestDocument("Test Public Document", "This is a test paragraph");
 
     cy.log("Visit the document as admin to verify comments exist");
     H.visitDocument("@documentId");
@@ -98,73 +105,18 @@ describe("scenarios > documents > public", () => {
     H.Comments.getDocumentNodeButtons().should("exist");
 
     cy.log("Create public link and visit public document");
-    cy.get("@documentId")
-      .then((documentId) => {
-        return H.createPublicDocumentLink(documentId);
-      })
-      .then(({ body: { uuid } }) => {
-        cy.visit(`/public/document/${uuid}`);
-      });
+    visitPublicDocument();
 
     cy.log("Verify document content is visible");
     H.documentContent().should("contain", "This is a test paragraph");
-    H.getDocumentCard("Orders").should("exist");
 
     cy.log("Verify comment buttons do not exist in public view");
-    H.Comments.getDocumentNodeButtons().should("not.exist");
-
-    cy.log("Verify comment sidebar is not accessible");
-    cy.findByTestId("comments-sidebar").should("not.exist");
-    cy.findByRole("link", { name: "Show all comments" }).should("not.exist");
+    verifyCommentsAreHidden();
   });
 
   it("should only show 'Download results' in card menu for public documents", () => {
     // Create a document with an embedded card
-    H.createDocument({
-      name: "Test Document with Card",
-      document: {
-        content: [
-          {
-            type: "paragraph",
-            content: [
-              {
-                type: "text",
-                text: "Document with embedded card",
-              },
-            ],
-            attrs: {
-              _id: "1",
-            },
-          },
-          {
-            type: "resizeNode",
-            attrs: {
-              height: 400,
-              minHeight: 280,
-            },
-            content: [
-              {
-                type: "cardEmbed",
-                attrs: {
-                  id: ORDERS_QUESTION_ID,
-                  name: null,
-                  _id: "2",
-                },
-              },
-            ],
-          },
-          {
-            type: "paragraph",
-            attrs: {
-              _id: "3",
-            },
-          },
-        ],
-        type: "doc",
-      },
-      collection_id: null,
-      idAlias: "documentId",
-    });
+    createTestDocumentWithCard("Test Document with Card");
 
     cy.log("Visit document as admin to verify full menu exists");
     H.visitDocument("@documentId");
@@ -184,13 +136,7 @@ describe("scenarios > documents > public", () => {
     H.documentContent().click();
 
     cy.log("Create public link and visit public document");
-    cy.get("@documentId")
-      .then((documentId) => {
-        return H.createPublicDocumentLink(documentId);
-      })
-      .then(({ body: { uuid } }) => {
-        cy.visit(`/public/document/${uuid}`);
-      });
+    visitPublicDocument();
 
     cy.log("Verify card is visible in public view");
     H.getDocumentCard("Orders").should("exist");
@@ -212,28 +158,10 @@ describe("scenarios > documents > public", () => {
 
   it("should restrict document header menu in public view", () => {
     // Create a document
-    H.createDocument({
-      name: "Test Document Header",
-      document: {
-        content: [
-          {
-            type: "paragraph",
-            content: [
-              {
-                type: "text",
-                text: "Testing header menu restrictions",
-              },
-            ],
-            attrs: {
-              _id: "1",
-            },
-          },
-        ],
-        type: "doc",
-      },
-      collection_id: null,
-      idAlias: "documentId",
-    });
+    createTestDocument(
+      "Test Document Header",
+      "Testing header menu restrictions",
+    );
 
     cy.log("Visit document as admin to verify full menu exists");
     H.visitDocument("@documentId");
@@ -253,13 +181,7 @@ describe("scenarios > documents > public", () => {
     H.documentContent().click();
 
     cy.log("Create public link and visit public document");
-    cy.get("@documentId")
-      .then((documentId) => {
-        return H.createPublicDocumentLink(documentId);
-      })
-      .then(({ body: { uuid } }) => {
-        cy.visit(`/public/document/${uuid}`);
-      });
+    visitPublicDocument();
 
     cy.log("Verify document content is visible in public view");
     H.documentContent().should("contain", "Testing header menu restrictions");
@@ -271,28 +193,10 @@ describe("scenarios > documents > public", () => {
 
   it("should be read-only in public view", () => {
     // Create a document
-    H.createDocument({
-      name: "Read-only Test Document",
-      document: {
-        content: [
-          {
-            type: "paragraph",
-            content: [
-              {
-                type: "text",
-                text: "This content should not be editable",
-              },
-            ],
-            attrs: {
-              _id: "1",
-            },
-          },
-        ],
-        type: "doc",
-      },
-      collection_id: null,
-      idAlias: "documentId",
-    });
+    createTestDocument(
+      "Read-only Test Document",
+      "This content should not be editable",
+    );
 
     cy.log("Visit document as admin to verify it's editable");
     H.visitDocument("@documentId");
@@ -303,13 +207,7 @@ describe("scenarios > documents > public", () => {
       .should("have.attr", "contenteditable", "true");
 
     cy.log("Create public link and visit public document");
-    cy.get("@documentId")
-      .then((documentId) => {
-        return H.createPublicDocumentLink(documentId);
-      })
-      .then(({ body: { uuid } }) => {
-        cy.visit(`/public/document/${uuid}`);
-      });
+    visitPublicDocument();
 
     cy.log("Verify document content is visible");
     H.documentContent().should(
@@ -318,64 +216,15 @@ describe("scenarios > documents > public", () => {
     );
 
     cy.log("Verify document is read-only");
-    H.documentContent()
-      .findByRole("textbox")
-      .should("have.attr", "contenteditable", "false");
-
-    cy.log("Verify no save button exists");
-    cy.findByRole("button", { name: "Save" }).should("not.exist");
+    verifyDocumentIsReadOnly();
   });
 
   it("should allow downloading results from embedded cards", () => {
     // Create a document with an embedded card
-    H.createDocument({
-      name: "Download Test Document",
-      document: {
-        content: [
-          {
-            type: "paragraph",
-            content: [
-              {
-                type: "text",
-                text: "Document with downloadable card",
-              },
-            ],
-            attrs: {
-              _id: "1",
-            },
-          },
-          {
-            type: "resizeNode",
-            attrs: {
-              height: 400,
-              minHeight: 280,
-            },
-            content: [
-              {
-                type: "cardEmbed",
-                attrs: {
-                  id: ORDERS_QUESTION_ID,
-                  name: null,
-                  _id: "2",
-                },
-              },
-            ],
-          },
-        ],
-        type: "doc",
-      },
-      collection_id: null,
-      idAlias: "documentId",
-    });
+    createTestDocumentWithCard("Download Test Document");
 
     cy.log("Create public link and visit public document");
-    cy.get("@documentId")
-      .then((documentId) => {
-        return H.createPublicDocumentLink(documentId);
-      })
-      .then(({ body: { uuid } }) => {
-        cy.visit(`/public/document/${uuid}`);
-      });
+    visitPublicDocument();
 
     cy.log("Verify card is visible");
     H.getDocumentCard("Orders").should("exist");
@@ -402,25 +251,15 @@ describe("scenarios > documents > public", () => {
     // Create a document with public link
     createTestDocumentWithCard("Public Anonymous Document");
 
-    cy.log("Create public link");
-    cy.get("@documentId")
-      .then((documentId) => {
-        return H.createPublicDocumentLink(documentId);
-      })
-      .then(({ body: { uuid } }) => {
-        cy.log("Sign out and visit public document as anonymous user");
-        cy.signOut();
-        cy.visit(`/public/document/${uuid}`);
-      });
+    cy.log("Sign out and visit public document as anonymous user");
+    visitPublicDocument("@documentId", { signOut: true });
 
     cy.log("Verify document content is visible without authentication");
     H.documentContent().should("contain", "Test content");
     H.getDocumentCard("Orders").should("exist");
 
     cy.log("Verify document is read-only");
-    H.documentContent()
-      .findByRole("textbox")
-      .should("have.attr", "contenteditable", "false");
+    verifyDocumentIsReadOnly();
 
     cy.log("Verify no authentication UI is shown");
     cy.findByRole("button", { name: "Sign in" }).should("not.exist");
