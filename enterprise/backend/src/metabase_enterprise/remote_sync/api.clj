@@ -231,13 +231,13 @@
    _query
    {:keys [name]} :- [:map [:name ms/NonBlankString]]]
   (api/check-superuser)
-  (let [base-branch (settings/remote-sync-branch)
+  (let [base-branch (or (remote-sync.task/last-version) (settings/remote-sync-branch))
         source (source/source-from-settings)]
     (when-not source
       (throw (ex-info "Git source not configured"
                       {:status-code 400})))
     (when-not base-branch
-      (throw (ex-info "Remote sync branch not configured"
+      (throw (ex-info "Base commit not found"
                       {:status-code 400})))
     (try
       (source.p/create-branch source name base-branch)
@@ -247,32 +247,6 @@
       (catch Exception e
         (throw (ex-info (format "Failed to create branch: %s" (.getMessage e))
                         {:status-code 400} e))))))
-
-(api.macros/defendpoint :post "/stash"
-  "Stashes changes to a new branch, and changes the current branch to it.
-  Requires superuser permissions."
-  [_route
-   _query
-   {:keys [new_branch message]} :- [:map
-                                    [:new_branch ms/NonBlankString]
-                                    [:message ms/NonBlankString]]]
-  (api/check-superuser)
-  (when (not= (settings/remote-sync-type) :development)
-    (throw (ex-info "Stash is only allowed when remote-sync-type is set to 'development'" {:status-code 400})))
-  (let [source (source/source-from-settings)]
-    (when (nil? source)
-      (throw (ex-info "Git source not configured"
-                      {:status-code 400})))
-    (try
-      (source.p/create-branch source new_branch (settings/remote-sync-branch))
-      (settings/remote-sync-branch! new_branch)
-      {:status  "success"
-       :message (str "Stashing to " new_branch)
-       :task_id (async-export! new_branch message)}
-      (catch Exception e
-        (.printStackTrace e)
-        (throw (ex-info (format "Failed to stash changes to branch: %s" (.getMessage e))
-                        {:status-code 400}))))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/remote-sync` routes."

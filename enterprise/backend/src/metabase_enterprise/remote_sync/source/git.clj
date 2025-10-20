@@ -240,16 +240,14 @@
 
 (defn create-branch
   "Create a new branch from an existing branch"
-  [{:keys [^Git git] :as source} branch-name base-branch]
+  [{:keys [^Git git] :as source} branch-name base-commit-ish]
   (fetch! source)
   (let [repo (.getRepository git)
-        base-ref (qualify-branch base-branch)
         new-branch-ref (qualify-branch branch-name)
-        base-commit-id (or (.resolve repo base-ref)
-                           (.resolve repo (qualify-branch (default-branch source))))]
+        base-commit-id (.resolve repo base-commit-ish)]
     (when-not base-commit-id
-      (throw (ex-info (format "Base branch '%s' not found" base-branch)
-                      {:base-branch base-branch})))
+      (throw (ex-info (format "Base branch '%s' not found" base-commit-ish)
+                      {:base-branch base-commit-ish})))
     (when (.resolve repo new-branch-ref)
       (throw (ex-info (format "Branch '%s' already exists" branch-name)
                       {:branch branch-name})))
