@@ -20,6 +20,7 @@ import {
   Title,
 } from "embedding-sdk-bundle/components/private/SdkQuestion/components";
 import { ResultToolbar } from "embedding-sdk-bundle/components/private/SdkQuestion/components/ResultToolbar/ResultToolbar";
+import type { SdkQuestionEntityProps } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
 import { DefaultViewTitle } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView/DefaultViewTitle";
 import {
   SdkQuestion,
@@ -43,8 +44,6 @@ import { staticQuestionSchema } from "./StaticQuestion.schema";
 export type StaticQuestionProps = PropsWithChildren<
   Pick<
     SdkQuestionProps,
-    | "questionId"
-    | "token"
     | "withChartTypeSelector"
     | "height"
     | "width"
@@ -55,7 +54,8 @@ export type StaticQuestionProps = PropsWithChildren<
     | "withDownloads"
     | "title"
   >
->;
+> &
+  SdkQuestionEntityProps;
 
 /**
  * @interface
