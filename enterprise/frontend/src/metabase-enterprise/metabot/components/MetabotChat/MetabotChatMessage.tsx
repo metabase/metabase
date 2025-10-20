@@ -249,7 +249,7 @@ const ToolCallDetailsModal = ({
   const resultValue = resultIsString
     ? message.result
     : JSON.stringify(message.result, null, 2);
-  const resultLanguage = resultIsString ? "text" : "json";
+  const resultLanguage = resultIsString ? undefined : "json";
 
   return (
     <Modal
