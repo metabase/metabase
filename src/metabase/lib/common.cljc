@@ -1,5 +1,5 @@
 (ns metabase.lib.common
-  (:refer-clojure :exclude [mapv every?])
+  (:refer-clojure :exclude [mapv every? #?(:clj for)])
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -8,7 +8,7 @@
    [metabase.lib.schema.common :as schema.common]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv #?@(:clj [every?])]])
+   [metabase.util.performance :refer [mapv #?@(:clj [every? for])]])
   #?(:cljs (:require-macros [metabase.lib.common])))
 
 (comment lib.options/keep-me

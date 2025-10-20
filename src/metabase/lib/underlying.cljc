@@ -1,7 +1,9 @@
 (ns metabase.lib.underlying
   "Helpers for getting at \"underlying\" or \"top-level\" queries and columns.
   This logic is shared by a handful of things like drill-thrus."
+  #?(:clj (:refer-clojure :exclude [for]))
   (:require
+   #?(:clj [metabase.util.performance :refer [for]])
    [clojure.set :as set]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.breakout :as lib.breakout]
