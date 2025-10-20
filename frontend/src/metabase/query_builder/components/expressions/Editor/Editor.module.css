@@ -36,10 +36,6 @@
     .cm-gutters {
       border-top-left-radius: var(--mantine-radius-sm);
     }
-
-    .cm-tooltip-autocomplete {
-      display: none;
-    }
   }
 }
 
