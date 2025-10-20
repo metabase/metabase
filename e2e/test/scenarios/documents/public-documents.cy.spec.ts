@@ -294,7 +294,7 @@ describe("scenarios > documents > public", () => {
 
       cy.log("Verify document is no longer accessible");
       // Public routes return a generic error message when sharing is disabled
-      cy.findByText("An error occurred.").should("be.visible");
+      cy.get("h2").should("be.visible").and("contain", "An error occurred");
 
       // Verify the document content is not shown
       H.documentContent().should("not.exist");
@@ -320,5 +320,56 @@ describe("scenarios > documents > public", () => {
         cy.visit(`/public/document/${uuid}`);
         H.documentContent().should("contain", "Test content");
       });
+  });
+
+  it("should show error for invalid public UUIDs", () => {
+    const invalidUuid = "00000000-0000-0000-0000-000000000000";
+
+    cy.log("Visit public document with non-existent UUID");
+    cy.visit(`/public/document/${invalidUuid}`);
+
+    cy.log("Verify error message is shown");
+    cy.get("h2").should("be.visible").and("contain", "Not found");
+
+    cy.log("Verify document content is not shown");
+    H.documentContent().should("not.exist");
+  });
+
+  it("should show error when accessing public link of deleted document", () => {
+    // Create a document with public link
+    createTestDocumentWithCard("Document to be Deleted");
+
+    cy.log("Create public link");
+    cy.get("@documentId")
+      .then((documentId) => {
+        return H.createPublicDocumentLink(documentId);
+      })
+      .then(({ body: { uuid } }) => {
+        cy.wrap(uuid).as("publicUuid");
+
+        cy.log("Verify document is accessible before deletion");
+        cy.visit(`/public/document/${uuid}`);
+        H.documentContent().should("contain", "Test content");
+      });
+
+    cy.log("Delete the document");
+    cy.get("@documentId").then((documentId) => {
+      H.visitDocument(documentId);
+    });
+
+    // Move document to trash
+    cy.findByRole("button", { name: "More options" }).click();
+    H.popover().findByText("Move to trash").click();
+
+    cy.log("Try to access public link after document deletion");
+    cy.get("@publicUuid").then((uuid) => {
+      cy.visit(`/public/document/${uuid}`);
+
+      cy.log("Verify error message is shown");
+      cy.get("h2").should("be.visible").and("contain", "Not found");
+
+      cy.log("Verify document content is not shown");
+      H.documentContent().should("not.exist");
+    });
   });
 });
