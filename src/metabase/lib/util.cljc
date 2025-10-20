@@ -1,5 +1,5 @@
 (ns metabase.lib.util
-  (:refer-clojure :exclude [format every? mapv select-keys update-keys some #?(:clj doseq) #?(:clj for)])
+  (:refer-clojure :exclude [format every? mapv select-keys update-keys some #?(:clj for)])
   (:require
    #?@(:clj
        ([potemkin :as p])
@@ -25,7 +25,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.namespaces :as shared.ns]
-   [metabase.util.performance :refer [every? mapv select-keys update-keys some #?(:clj doseq) #?(:clj for)]]))
+   [metabase.util.performance :refer [every? mapv select-keys update-keys some #?(:clj for)]]))
 
 #?(:clj
    (set! *warn-on-reflection* true))

@@ -1,7 +1,6 @@
 (ns metabase.parameters.custom-values-test
   (:require
    [clojure.test :refer :all]
-   [metabase.lib.core :as lib]
    [metabase.parameters.custom-values :as custom-values]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
