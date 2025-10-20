@@ -1,7 +1,7 @@
 import type { MetabaseCollection } from "embedding-sdk-bundle/types/collection";
 import type { CardDisplayType } from "metabase-types/api";
 
-import type { SdkEntityId } from "./entity-id";
+import type { SdkEntityId } from "./entity";
 
 export type SdkDashboardId = number | string | SdkEntityId;
 

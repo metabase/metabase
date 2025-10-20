@@ -434,6 +434,23 @@
                {:name  "SUBTOTAL"}]
               (lib/returned-columns query -1 -1 {:include-remaps? true}))))))
 
+(deftest ^:parallel skip-hidden-remapped-columns-test
+  (testing "remaps to hidden (`:visibility-type :sensitive`) columns are ignored"
+    (let [mp (-> meta/metadata-provider
+                 (lib.tu/merged-mock-metadata-provider
+                  {:fields [{:id              (meta/id :categories :name)
+                             :visibility-type :sensitive}]})
+                 (lib.tu/remap-metadata-provider (meta/id :venues :category-id) (meta/id :categories :name)))
+          query (-> (lib/query mp (meta/table-metadata :venues))
+                    (lib/with-fields [(meta/field-metadata :venues :id)
+                                      (meta/field-metadata :venues :category-id)]))]
+      (is (=? [{:name  "ID"}
+               {:name  "CATEGORY_ID"}]
+              (lib/returned-columns query)))
+      (is (=? [{:name  "ID"}
+               {:name  "CATEGORY_ID"}]
+              (lib/returned-columns query -1 -1 {:include-remaps? true}))))))
+
 (deftest ^:parallel remapped-columns-test-2-remapping-in-joins
   (testing "explicitly joined columns with remaps are added after their join"
     (let [mp         (-> meta/metadata-provider

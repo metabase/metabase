@@ -18,3 +18,8 @@ export type SdkErrorComponent = ({
   message,
   error,
 }: SdkErrorComponentProps) => JSX.Element;
+
+export type SdkLoadingError = {
+  status: number;
+  message: string;
+};

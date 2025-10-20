@@ -1,3 +1,22 @@
+## [0.56.4](https://github.com/metabase/metabase/compare/embedding-sdk-0.56.3...embedding-sdk-0.56.4) (2025-10-15)
+
+
+### Bug Fixes
+
+* **sdk:** Allow token without`exp`, but raise a warning ([#64315](https://github.com/metabase/metabase/issues/64315)) ([ddad1ca](https://github.com/metabase/metabase/commit/ddad1ca93d61eeae0dad88f45202e83443e51169)), closes [#64238](https://github.com/metabase/metabase/issues/64238)
+* **sdk:** Fix SDK refresh token race-conditions ([#64226](https://github.com/metabase/metabase/issues/64226)) ([76221cb](https://github.com/metabase/metabase/commit/76221cb683c6ee6b4921d0a124230bc2ef663eaa))
+* **sdk:** Fix SDK TSC errors ([#64404](https://github.com/metabase/metabase/issues/64404)) ([c7e7192](https://github.com/metabase/metabase/commit/c7e7192dd698c8d26b626bc681905bb274874e44)), closes [#64328](https://github.com/metabase/metabase/issues/64328)
+* **sdk:** prevent double scrollbars in sdk dashboards ([#62962](https://github.com/metabase/metabase/issues/62962)) ([#63023](https://github.com/metabase/metabase/issues/63023)) ([bc8b0aa](https://github.com/metabase/metabase/commit/bc8b0aa04fc51368ef9423fdf737744e17dd0e03))
+* **sdk:** Properly load Tiles from MB instance ([#63676](https://github.com/metabase/metabase/issues/63676)) ([#63719](https://github.com/metabase/metabase/issues/63719)) ([f8057da](https://github.com/metabase/metabase/commit/f8057da6232729b1bc07c980c85288e9467a10c5))
+
+
+### Features
+
+* **sdk:** Add "start new conversation" button for MetabotQuestion ([#63286](https://github.com/metabase/metabase/issues/63286)) ([ab65a11](https://github.com/metabase/metabase/commit/ab65a113e9c4ce6dea818a7c37123fcbb321f238))
+* **sdk:** native questions should hide filter and summarize from toolbar ([#63082](https://github.com/metabase/metabase/issues/63082)) ([#63123](https://github.com/metabase/metabase/issues/63123)) ([c743366](https://github.com/metabase/metabase/commit/c743366d405eb4d8ac9f7639058c4d3ec4828b56))
+
+
+
 ## [0.56.3](https://github.com/metabase/metabase/compare/embedding-sdk-0.56.2...embedding-sdk-0.56.3) (2025-08-29)
 
 

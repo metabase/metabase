@@ -1,16 +1,17 @@
-(ns metabase.lib.js.metadata
-  (:require
-   [clojure.core.protocols]
-   [clojure.string :as str]
-   [clojure.walk :as walk]
-   [goog]
-   [goog.object :as gobject]
-   [medley.core :as m]
-   [metabase.lib.cache :as lib.cache]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.lib.util :as lib.util]
-   [metabase.util :as u]
-   [metabase.util.log :as log]))
+  (ns metabase.lib.js.metadata
+    (:require
+     [clojure.core.protocols]
+     [clojure.string :as str]
+     [clojure.walk :as walk]
+     [goog]
+     [goog.object :as gobject]
+     [medley.core :as m]
+     [metabase.lib.cache :as lib.cache]
+     [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
+     [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+     [metabase.lib.util :as lib.util]
+     [metabase.util :as u]
+     [metabase.util.log :as log]))
 
 ;;; metabase-lib/metadata/Metadata comes in an object like
 ;;;
@@ -547,30 +548,31 @@
   [database-id unparsed-metadata]
   (let [metadata (parse-metadata unparsed-metadata)]
     (log/debug "Created metadata provider for metadata")
-    (reify lib.metadata.protocols/MetadataProvider
-      (database [_this]
-        (database metadata database-id))
-      (metadatas [_this metadata-type ids]
-        (metadatas metadata metadata-type ids))
-      (tables [_this]
-        (tables metadata database-id))
-      (metadatas-for-table [_this metadata-type table-id]
-        (metadatas-for-table metadata metadata-type table-id))
-      (metadatas-for-card [_this metadata-type card-id]
-        (metadatas-for-card metadata metadata-type card-id))
-      (setting [_this setting-key]
-        (setting unparsed-metadata setting-key))
+    (lib.metadata.cached-provider/cached-metadata-provider
+     (reify lib.metadata.protocols/MetadataProvider
+       (database [_this]
+         (database metadata database-id))
+       (metadatas [_this metadata-type ids]
+         (metadatas metadata metadata-type ids))
+       (tables [_this]
+         (tables metadata database-id))
+       (metadatas-for-table [_this metadata-type table-id]
+         (metadatas-for-table metadata metadata-type table-id))
+       (metadatas-for-card [_this metadata-type card-id]
+         (metadatas-for-card metadata metadata-type card-id))
+       (setting [_this setting-key]
+         (setting unparsed-metadata setting-key))
 
-      ;; for debugging: call [[clojure.datafy/datafy]] on one of these to parse all of our metadata and see the whole
-      ;; thing at once.
-      clojure.core.protocols/Datafiable
-      (datafy [_this]
-        (walk/postwalk
-         (fn [form]
-           (if (delay? form)
-             (deref form)
-             form))
-         metadata)))))
+        ;; for debugging: call [[clojure.datafy/datafy]] on one of these to parse all of our metadata and see the whole
+        ;; thing at once.
+       clojure.core.protocols/Datafiable
+       (datafy [_this]
+         (walk/postwalk
+          (fn [form]
+            (if (delay? form)
+              (deref form)
+              form))
+          metadata))))))
 
 (defn metadata-provider
   "Use a `metabase-lib/metadata/Metadata` as a [[metabase.lib.metadata.protocols/MetadataProvider]]."

@@ -64,7 +64,8 @@ export type CodeSampleParameters = {
   resourceType: EmbedResourceType;
   resourceId: EmbedResource["id"];
   params: EmbeddingParametersValues;
-  displayOptions: EmbeddingDisplayOptions;
+  displayOptions?: EmbeddingDisplayOptions;
+  withIframeSnippet: boolean;
 };
 
 export type ClientCodeSampleConfig = {

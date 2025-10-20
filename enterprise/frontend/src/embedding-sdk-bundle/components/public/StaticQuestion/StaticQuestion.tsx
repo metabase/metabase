@@ -49,8 +49,8 @@ export type StaticQuestionProps = PropsWithChildren<
   >
 >;
 
-const _StaticQuestion = ({
-  questionId: initialQuestionId,
+const StaticQuestionInner = ({
+  questionId,
   withChartTypeSelector,
   height,
   width,
@@ -77,7 +77,7 @@ const _StaticQuestion = ({
 
   return (
     <SdkQuestion
-      questionId={initialQuestionId}
+      questionId={questionId}
       getClickActionMode={getClickActionMode}
       navigateToNewCard={null}
       initialSqlParameters={initialSqlParameters}
@@ -119,23 +119,24 @@ const _StaticQuestion = ({
  * @function
  * @category StaticQuestion
  */
-export const StaticQuestion = _StaticQuestion as typeof _StaticQuestion & {
-  Filter: typeof Filter;
-  FilterDropdown: typeof FilterDropdown;
-  ResetButton: typeof QuestionResetButton;
-  Title: typeof Title;
-  Summarize: typeof Summarize;
-  SummarizeDropdown: typeof SummarizeDropdown;
-  QuestionVisualization: typeof QuestionVisualization;
-  ChartTypeSelector: typeof ChartTypeSelector;
-  ChartTypeDropdown: typeof ChartTypeDropdown;
-  QuestionSettings: typeof QuestionSettings;
-  QuestionSettingsDropdown: typeof QuestionSettingsDropdown;
-  Breakout: typeof Breakout;
-  BreakoutDropdown: typeof BreakoutDropdown;
-  DownloadWidget: typeof DownloadWidget;
-  DownloadWidgetDropdown: typeof DownloadWidgetDropdown;
-};
+export const StaticQuestion =
+  StaticQuestionInner as typeof StaticQuestionInner & {
+    Filter: typeof Filter;
+    FilterDropdown: typeof FilterDropdown;
+    ResetButton: typeof QuestionResetButton;
+    Title: typeof Title;
+    Summarize: typeof Summarize;
+    SummarizeDropdown: typeof SummarizeDropdown;
+    QuestionVisualization: typeof QuestionVisualization;
+    ChartTypeSelector: typeof ChartTypeSelector;
+    ChartTypeDropdown: typeof ChartTypeDropdown;
+    QuestionSettings: typeof QuestionSettings;
+    QuestionSettingsDropdown: typeof QuestionSettingsDropdown;
+    Breakout: typeof Breakout;
+    BreakoutDropdown: typeof BreakoutDropdown;
+    DownloadWidget: typeof DownloadWidget;
+    DownloadWidgetDropdown: typeof DownloadWidgetDropdown;
+  };
 
 StaticQuestion.Filter = Filter;
 StaticQuestion.FilterDropdown = FilterDropdown;
