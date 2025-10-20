@@ -1672,14 +1672,15 @@
                    :model/DashboardCard       dc3 {:dashboard_id (:id d2) :card_id (:id c3)}
                    :model/DashboardCardSeries s   {:dashboardcard_id (:id dc1) :card_id (:id c2)}]
       (t2/with-call-count [qc]
-        (is (=? [(assoc d1
-                        :dashcards [(assoc dc1 :series [s])]
-                        :tabs nil)
-                 (assoc d2
-                        :dashcards [(assoc dc2 :series nil)
-                                    (assoc dc3 :series nil)]
-                        :tabs nil)]
-                (into [] (serdes/extract-query "Dashboard" {:where [:in :id [(:id d1) (:id d2)]]}))))
+        ;; Use sets to ensure order independence of `extract-query` result.
+        (is (=? #{(assoc d1
+                         :dashcards [(assoc dc1 :series [s])]
+                         :tabs nil)
+                  (assoc d2
+                         :dashcards [(assoc dc2 :series nil)
+                                     (assoc dc3 :series nil)]
+                         :tabs nil)}
+                (set (serdes/extract-query "Dashboard" {:where [:in :id [(:id d1) (:id d2)]]}))))
         ;; 1 per dashboard/dashcard/series/tabs
         (is (= 4 (qc)))))))
 

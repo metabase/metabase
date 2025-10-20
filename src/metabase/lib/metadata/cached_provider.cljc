@@ -1,5 +1,5 @@
 (ns metabase.lib.metadata.cached-provider
-  (:refer-clojure :exclude [update-keys])
+  (:refer-clojure :exclude [update-keys #?(:clj doseq)])
   (:require
    #?@(:clj ([metabase.util.json :as json]
              [pretty.core :as pretty]))
@@ -9,7 +9,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [update-keys]]))
+   [metabase.util.performance :refer [update-keys #?(:clj doseq)]]))
 
 #?(:clj (set! *warn-on-reflection* true))
 
