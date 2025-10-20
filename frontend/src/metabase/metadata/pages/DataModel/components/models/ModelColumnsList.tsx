@@ -11,7 +11,12 @@ import { ModelSortableFieldList } from "metabase/metadata/pages/DataModel/compon
 import { getModelFieldMetadataUrl } from "metabase/metadata/pages/DataModel/components/models/utils";
 import { Group, Loader, Stack, Text, rem } from "metabase/ui";
 import { getSortedModelFields } from "metabase-lib/v1/metadata/utils/models"; // eslint-disable-line no-restricted-imports
-import type { Card, FieldName, UpdateFieldRequest } from "metabase-types/api";
+import type {
+  Card,
+  CollectionId,
+  FieldName,
+  UpdateFieldRequest,
+} from "metabase-types/api";
 
 import { FieldItem } from "./FieldItem";
 import type { ModelColumnUpdate } from "./types";
@@ -62,6 +67,7 @@ export const ModelColumnsList = ({
 };
 
 interface ModelColumnsSectionProps {
+  collectionId: CollectionId;
   modelId: number;
   fieldName: FieldName | undefined;
   model: Card;
@@ -72,6 +78,7 @@ interface ModelColumnsSectionProps {
 }
 
 export function ModelColumnsSection({
+  collectionId,
   modelId,
   fieldName,
   model,
@@ -184,7 +191,7 @@ export function ModelColumnsSection({
             <ModelColumnsList
               activeFieldName={fieldName}
               getFieldHref={(fieldName) =>
-                getModelFieldMetadataUrl({ modelId, fieldName })
+                getModelFieldMetadataUrl({ collectionId, modelId, fieldName })
               }
               model={model}
               onChangeSettings={onFieldChange}

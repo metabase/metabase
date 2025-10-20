@@ -4,7 +4,6 @@ import _ from "underscore";
 
 import {
   skipToken,
-  useLazyListCollectionsTreeQuery,
   useLazyListDatabaseSchemaTablesQuery,
   useLazyListDatabaseSchemasQuery,
   useLazyListDatabasesQuery,
@@ -58,6 +57,18 @@ export function hasChildren(item: Item): boolean {
   return true;
 }
 
+export function isItemWithHiddenExpandIcon(item: Item): boolean {
+  if (item.type === "collection" && item.hasNoValidChildren) {
+    return true;
+  }
+
+  if (item.type === "model" && item.value.collectionId === "root") {
+    return true;
+  }
+
+  return false;
+}
+
 export function getUrl(value: TreePath) {
   return getUrl_({
     fieldId: undefined,
@@ -87,7 +98,7 @@ export function useTableLoader(path: TreePath) {
   const [fetchDatabases, databases] = useLazyListDatabasesQuery();
   const [fetchSchemas, schemas] = useLazyListDatabaseSchemasQuery();
   const [fetchTables, tables] = useLazyListDatabaseSchemaTablesQuery();
-  const [fetchCollections, collections] = useLazyListCollectionsTreeQuery();
+  const [fetchCollections, collections] = useLazyFetchCollectionChildrenQuery();
   const [fetchCollectionChildren, models] =
     useLazyFetchCollectionChildrenQuery();
 
@@ -207,10 +218,8 @@ export function useTableLoader(path: TreePath) {
   );
 
   const getCollections = useCallback(async () => {
-    const response = await fetchCollections(
-      { "exclude-archived": true, shallow: true },
-      true,
-    );
+    const rootCollectionId = "root";
+    const response = await fetchCollections({ id: rootCollectionId }, true);
 
     if (collectionsRef.current.isError) {
       // Do not refetch when this call failed previously.
@@ -219,13 +228,26 @@ export function useTableLoader(path: TreePath) {
     }
 
     return (
-      response.data?.map((collection) =>
-        node<CollectionNode>({
-          type: "collection",
-          label: collection.name,
-          value: { collectionId: collection.id },
-        }),
-      ) ?? []
+      response.data?.data?.map((modelOrCollection) => {
+        if (modelOrCollection.model === "collection") {
+          return node<CollectionNode>({
+            type: "collection",
+            label: modelOrCollection.name,
+            value: { collectionId: modelOrCollection.id },
+          });
+        }
+
+        if (modelOrCollection.model === "dataset") {
+          return node<ModelNode>({
+            type: "model",
+            label: modelOrCollection.name,
+            value: {
+              collectionId: rootCollectionId,
+              modelId: modelOrCollection.id,
+            },
+          });
+        }
+      }) ?? []
     );
   }, [fetchCollections, collectionsRef]);
 

@@ -42,8 +42,15 @@ interface Props {
 }
 
 export const DataModel = ({ children, location, params }: Props) => {
-  const { databaseId, fieldId, schemaName, tableId, modelId, fieldName } =
-    parseRouteParams(params);
+  const {
+    databaseId,
+    fieldId,
+    schemaName,
+    tableId,
+    collectionId,
+    modelId,
+    fieldName,
+  } = parseRouteParams(params);
   const { data: databasesData, isLoading: isLoadingDatabases } =
     useListDatabasesQuery({ include_editable_data_model: true });
   const databaseExists = databasesData?.data?.some(
@@ -237,6 +244,7 @@ export const DataModel = ({ children, location, params }: Props) => {
                      * This is to avoid state mix-up with optimistic updates.
                      */
                     key={table.id}
+                    collectionId={collectionId}
                     modelId={modelId}
                     fieldName={fieldName}
                     model={modelCard}
