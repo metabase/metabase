@@ -3,13 +3,11 @@ import { useCallback, useMemo, useRef } from "react";
 import { renderToString } from "react-dom/server";
 
 import { BodyCell } from "metabase/data-grid/components/BodyCell/BodyCell";
-import { reactNodeToHtmlString } from "metabase/lib/react-to-html";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { ThemeProvider } from "metabase/ui";
 
 import { DEFAULT_FONT_SIZE } from "../constants";
 import type { DataGridTheme } from "../types";
-import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 
 export type CellMeasurer = (
   content: React.ReactNode,
@@ -116,6 +114,41 @@ export const useBodyCellMeasure = (theme?: DataGridTheme) => {
   };
 };
 
-function getContentCellHtmlString(content: React.ReactNode) {
-  return reactNodeToHtmlString(content);
+function getContentCellHtmlString(content: React.ReactNode): string {
+  // This renders a lightweight HTML on the SDK for DOM measurement.
+  // `renderToString` from react-dom/server will crash Embedding SDK (metabase#58393)
+  // Therefore, `process.env` is needed to tree-shake react-dom/server out of the SDK.
+  // `reactNodeToHtmlString` will throw "cannot flush when React is already rendering" error (metabase#61164),
+  if (process.env.IS_EMBEDDING_SDK) {
+    if (isContentCell(content)) {
+      const tag = content.type;
+      const { href, className, children } = content.props;
+
+      let attributes = `class="${className}"`;
+
+      if (href) {
+        attributes += ` href="${href}"`;
+      }
+
+      return `<${tag} ${attributes}>${children}</${tag}>`;
+    }
+
+    return "";
+  }
+
+  return renderToString(content);
 }
+
+const isContentCell = (
+  content: React.ReactNode,
+): content is React.ReactElement<
+  { href?: string; className: string; children: string },
+  string
+> =>
+  Boolean(
+    content &&
+      typeof content === "object" &&
+      "type" in content &&
+      typeof content.props.children === "string" &&
+      typeof content.props.className === "string",
+  );
