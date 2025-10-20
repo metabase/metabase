@@ -1,4 +1,4 @@
-import { match } from "ts-pattern";
+import { P, match } from "ts-pattern";
 
 import type {
   DependencyGroupType,
@@ -42,47 +42,49 @@ function isMatchingSearchQuery(node: DependencyNode, searchQuery: string) {
 }
 
 const FILTERS: Record<FilterOption, FilterCallback> = {
-  verified: (node) => {
-    if (node.type === "card") {
-      const lastReview = node.data.moderation_reviews?.find(
-        (review) => review.most_recent,
-      );
-      return lastReview != null && lastReview.status === "verified";
-    }
-    return false;
-  },
-  "in-dashboard": (node) => {
-    if (node.type === "card") {
-      const dashboard = node.data.dashboard;
-      return dashboard != null;
-    }
-    return false;
-  },
-  "in-official-collection": (node) => {
-    if (node.type === "card") {
-      const collection = node.data.collection;
-      return collection != null && collection.authority_level === "official";
-    }
-    return false;
-  },
-  "not-in-personal-collection": (node) => {
-    if (node.type === "card") {
-      const collection = node.data.collection;
-      return collection != null && !collection.is_personal;
-    }
-    return false;
-  },
+  verified: (node) =>
+    match(node)
+      .with({ type: "card" }, (node) => {
+        const lastReview = node.data.moderation_reviews?.find(
+          (review) => review.most_recent,
+        );
+        return lastReview != null && lastReview.status === "verified";
+      })
+      .with({ type: P.union("table", "transform", "snippet") }, () => false)
+      .exhaustive(),
+  "in-dashboard": (node) =>
+    match(node)
+      .with({ type: "card" }, (node) => {
+        const dashboard = node.data.dashboard;
+        return dashboard != null;
+      })
+      .with({ type: P.union("table", "transform", "snippet") }, () => false)
+      .exhaustive(),
+  "in-official-collection": (node) =>
+    match(node)
+      .with({ type: "card" }, (node) => {
+        const collection = node.data.collection;
+        return collection != null && collection.authority_level === "official";
+      })
+      .with({ type: P.union("table", "transform", "snippet") }, () => false)
+      .exhaustive(),
+  "not-in-personal-collection": (node) =>
+    match(node)
+      .with({ type: "card" }, (node) => {
+        const collection = node.data.collection;
+        return collection != null && !collection.is_personal;
+      })
+      .with({ type: P.union("table", "transform", "snippet") }, () => false)
+      .exhaustive(),
 };
 
 export function canFilterByOption(
   groupType: DependencyGroupType,
   option: FilterOption,
 ) {
-  return match(option)
-    .with("verified", () => isCardGroupType(groupType))
-    .with("in-dashboard", () => isCardGroupType(groupType))
-    .with("in-official-collection", () => isCardGroupType(groupType))
-    .with("not-in-personal-collection", () => isCardGroupType(groupType))
+  return match({ groupType, option })
+    .with({ groupType: P.union("question", "model", "metric") }, () => true)
+    .with({ groupType: P.union("table", "transform", "snippet") }, () => false)
     .exhaustive();
 }
 

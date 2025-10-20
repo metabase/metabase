@@ -1,4 +1,4 @@
-import { match } from "ts-pattern";
+import { P, match } from "ts-pattern";
 import { msgid, ngettext } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
@@ -10,25 +10,29 @@ import type { LinkWithLabelInfo } from "../../types";
 export function getNodeCreatedAt(node: DependencyNode) {
   return match(node)
     .with({ type: "card" }, (node) => node.data.created_at)
-    .otherwise(() => undefined);
+    .with({ type: P.union("table", "transform", "snippet") }, () => undefined)
+    .exhaustive();
 }
 
 export function getNodeCreatedBy(node: DependencyNode) {
   return match(node)
     .with({ type: "card" }, (node) => node.data.creator)
-    .otherwise(() => undefined);
+    .with({ type: P.union("table", "transform", "snippet") }, () => undefined)
+    .exhaustive();
 }
 
 export function getNodeLastEditedAt(node: DependencyNode) {
   return match(node)
     .with({ type: "card" }, (node) => node.data["last-edit-info"]?.timestamp)
-    .otherwise(() => undefined);
+    .with({ type: P.union("table", "transform", "snippet") }, () => undefined)
+    .exhaustive();
 }
 
 export function getNodeLastEditedBy(node: DependencyNode) {
   return match(node)
     .with({ type: "card" }, (node) => node.data["last-edit-info"])
-    .otherwise(() => undefined);
+    .with({ type: P.union("table", "transform", "snippet") }, () => undefined)
+    .exhaustive();
 }
 
 export function getNodeDatabaseInfo(
@@ -37,7 +41,8 @@ export function getNodeDatabaseInfo(
   const database = match(node)
     .with({ type: "table" }, (node) => node.data.db)
     .with({ type: "transform" }, (node) => node.data.table?.db)
-    .otherwise(() => undefined);
+    .with({ type: P.union("card", "snippet") }, () => undefined)
+    .exhaustive();
 
   if (database != null) {
     return {
@@ -54,7 +59,8 @@ export function getNodeSchemaInfo(
   const tableInfo = match(node)
     .with({ type: "table" }, (node) => node.data)
     .with({ type: "transform" }, (node) => node.data.table)
-    .otherwise(() => undefined);
+    .with({ type: P.union("card", "snippet") }, () => undefined)
+    .exhaustive();
 
   if (
     tableInfo != null &&
@@ -74,7 +80,8 @@ export function getNodeGeneratedTableInfo(
 ): LinkWithLabelInfo | undefined {
   const tableInfo = match(node)
     .with({ type: "transform" }, (node) => node.data.table)
-    .otherwise(() => undefined);
+    .with({ type: P.union("card", "table", "snippet") }, () => undefined)
+    .exhaustive();
 
   if (tableInfo != null && typeof tableInfo.id === "number") {
     return {
@@ -92,7 +99,8 @@ export function getNodeFields(node: DependencyNode) {
     .with({ type: "card" }, (node) => node.data.result_metadata ?? [])
     .with({ type: "table" }, (node) => node.data.fields ?? [])
     .with({ type: "transform" }, (node) => node.data.table?.fields ?? [])
-    .otherwise(() => []);
+    .with({ type: P.union("snippet") }, () => [])
+    .exhaustive();
 }
 
 export function getNodeFieldsLabel(fieldCount: number) {
