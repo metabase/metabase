@@ -134,6 +134,7 @@ export const SdkQuestionProvider = ({
     navigateToNewCard,
   } = useLoadQuestion({
     questionId,
+    isStaticEmbedding,
     token,
     options,
     deserializedCard,

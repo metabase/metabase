@@ -43,7 +43,7 @@ export const initAuth = createAsyncThunk(
       // Use existing user session. Do nothing.
     } else if (isValidInstanceUrl) {
       // SSO setup
-      api.onBeforeRequest = async () => {
+      api.onBeforeRequestHandlers.push(async () => {
         const session = await dispatch(
           getOrRefreshSession({
             metabaseInstanceUrl,
@@ -53,7 +53,7 @@ export const initAuth = createAsyncThunk(
         if (session?.id) {
           api.sessionToken = session.id;
         }
-      };
+      });
       try {
         // verify that the session is actually valid before proceeding
         await dispatch(

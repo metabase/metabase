@@ -800,7 +800,6 @@ export const PLUGIN_DATABASE_REPLICATION = {
 };
 
 export const PLUGIN_API = {
-  getCardUrl: (cardId: CardId) => `/api/card/${cardId}`,
   getRemappedCardParameterValueUrl: (
     cardId: CardId,
     parameterId: ParameterId,

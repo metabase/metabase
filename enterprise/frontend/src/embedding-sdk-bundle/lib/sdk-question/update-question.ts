@@ -35,6 +35,7 @@ interface UpdateQuestionParams {
   queryResults?: any[];
   cancelDeferred?: Deferred;
   isStaticEmbedding: boolean;
+  token: string | null | undefined;
 
   /** Optimistic update the question in the query builder UI */
   optimisticUpdateQuestion: (question: Question) => void;
@@ -57,6 +58,7 @@ export const updateQuestionSdk =
       optimisticUpdateQuestion: onQuestionChange,
       shouldRunQueryOnQuestionChange = false,
       isStaticEmbedding,
+      token,
     } = params;
 
     nextQuestion = getAdHocQuestionWithVizSettings({
@@ -109,7 +111,7 @@ export const updateQuestionSdk =
     );
 
     if (!_.isEqual(currentDependencies, nextDependencies)) {
-      await dispatch(loadMetadataForCard(nextQuestion.card()));
+      await dispatch(loadMetadataForCard(nextQuestion.card(), { token }));
     }
 
     const metadata = getMetadata(getState());
@@ -124,10 +126,11 @@ export const updateQuestionSdk =
     if (shouldRunQueryOnQuestionChange) {
       return runQuestionQuerySdk({
         question: nextQuestion,
+        isStaticEmbedding,
+        token,
         originalQuestion,
         parameterValues: nextParameterValues,
         cancelDeferred,
-        isStaticEmbedding,
       });
     }
 

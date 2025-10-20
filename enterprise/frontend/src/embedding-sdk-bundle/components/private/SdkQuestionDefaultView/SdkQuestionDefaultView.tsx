@@ -10,6 +10,7 @@ import {
   SdkLoader,
 } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { QuestionVisualization } from "embedding-sdk-bundle/components/private/SdkQuestion/components/Visualization";
+import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
 import { shouldRunCardQuery } from "embedding-sdk-bundle/lib/sdk-question";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
@@ -243,6 +244,12 @@ export const SdkQuestionDefaultView = ({
               <EditorButton isOpen={isEditorOpen} onClick={toggleEditor} />
             </Group>
           </ResultToolbar>
+        )}
+
+        {isStaticEmbedding && (
+          <Box w="100%">
+            <SdkQuestion.SqlParametersList />
+          </Box>
         )}
       </Stack>
 

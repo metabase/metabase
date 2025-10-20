@@ -71,7 +71,7 @@ export const cardApi = Api.injectEndpoints({
       getCard: builder.query<Card, GetCardRequest>({
         query: ({ id, ignore_error, ...params }) => ({
           method: "GET",
-          url: PLUGIN_API.getCardUrl(id),
+          url: `/api/card/${id}`,
           params,
           noEvent: ignore_error,
         }),

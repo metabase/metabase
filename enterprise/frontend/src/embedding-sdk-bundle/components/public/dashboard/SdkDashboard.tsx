@@ -52,7 +52,6 @@ import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module
 import { resetErrorPage, setErrorPage } from "metabase/redux/app";
 import { dismissAllUndo } from "metabase/redux/undo";
 import { getErrorPage } from "metabase/selectors/app";
-import { setEmbedDashboardEndpoints } from "metabase/services";
 import type { CardDisplayType } from "metabase-types/api";
 
 import type {
@@ -165,12 +164,6 @@ const SdkDashboardInner = ({
     entityId: rawDashboardId,
     token: rawToken ?? undefined,
   });
-
-  useEffect(() => {
-    if (isStaticEmbedding) {
-      setEmbedDashboardEndpoints(token ?? "");
-    }
-  }, [isStaticEmbedding, token]);
 
   const { handleLoad, handleLoadWithoutCards } = useDashboardLoadHandlers({
     onLoad,

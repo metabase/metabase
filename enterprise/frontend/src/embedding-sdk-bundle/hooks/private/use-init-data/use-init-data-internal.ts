@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useMount } from "react-use";
 import _ from "underscore";
 
+import { overrideRequestsForStaticEmbedding } from "embedding-sdk-bundle/lib/override-requests-for-static-embedding";
 import { initAuth } from "embedding-sdk-bundle/store/auth";
 import {
   setFetchRefreshTokenFn,
@@ -104,6 +105,8 @@ export const useInitDataInternal = ({
   useMount(function initializeData() {
     if (isStatic) {
       dispatch(refreshSiteSettings());
+
+      overrideRequestsForStaticEmbedding();
     }
 
     if (!isStatic && isAuthUninitialized()) {

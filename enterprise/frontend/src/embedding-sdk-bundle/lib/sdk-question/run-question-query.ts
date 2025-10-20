@@ -10,6 +10,7 @@ import type { ParameterValuesMap } from "metabase-types/api";
 interface RunQuestionQueryParams {
   question: Question;
   isStaticEmbedding: boolean;
+  token: string | null | undefined;
   originalQuestion?: Question;
   parameterValues?: ParameterValuesMap;
   cancelDeferred?: Deferred;
@@ -21,6 +22,7 @@ export async function runQuestionQuerySdk(
   let {
     question,
     isStaticEmbedding,
+    token,
     originalQuestion,
     parameterValues,
     cancelDeferred,
@@ -53,6 +55,7 @@ export async function runQuestionQuerySdk(
       cancelDeferred,
       ignoreCache: false,
       isDirty: isQueryDirty,
+      token,
       ...(isStaticEmbedding && {
         queryParamsOverride: {
           parameters: JSON.stringify(filteredParameters),

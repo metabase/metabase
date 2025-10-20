@@ -36,7 +36,18 @@ export class Api extends EventEmitter {
   apiKey = "";
   sessionToken;
 
-  onBeforeRequest;
+  /**
+   * @typedef {{
+   *    method: "GET" | "POST";
+   *    url: string;
+   *    options: {
+   *      headers?: Record<string, string>;
+   *      hasBody: boolean;
+   *    } & Record<string, unknown>;
+   * }} RequestHandlerData
+   * @type {((data: RequestHandlerData) => (Promise<void | RequestHandlerData>))[]}
+   */
+  onBeforeRequestHandlers = [];
   onResponseError;
 
   /**
@@ -123,12 +134,36 @@ export class Api extends EventEmitter {
       };
 
       return async (rawData, invocationOptions = {}) => {
-        if (this.onBeforeRequest) {
-          await this.onBeforeRequest();
+        let options = { ...defaultOptions, ...invocationOptions };
+        let url = urlTemplate;
+
+        if (this.onBeforeRequestHandlers.length) {
+          for (const handler of this.onBeforeRequestHandlers) {
+            const onBeforeRequestHandlerResult = await handler({
+              method,
+              url,
+              options,
+            });
+
+            if (onBeforeRequestHandlerResult) {
+              if (onBeforeRequestHandlerResult.method) {
+                method = onBeforeRequestHandlerResult.method;
+              }
+
+              if (onBeforeRequestHandlerResult.url) {
+                url = onBeforeRequestHandlerResult.url;
+              }
+
+              if (onBeforeRequestHandlerResult.options) {
+                options = {
+                  ...options,
+                  ...onBeforeRequestHandlerResult.options,
+                };
+              }
+            }
+          }
         }
 
-        const options = { ...defaultOptions, ...invocationOptions };
-        let url = urlTemplate;
         // this will transform arrays to objects with numeric keys
         // we shouldn't be using top level-arrays in the API
         const data = { ...rawData };

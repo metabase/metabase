@@ -16,6 +16,7 @@ interface RunQuestionOnNavigateParams extends NavigateToNewCardParams {
   originalQuestion?: Question;
   parameterValues?: ParameterValuesMap;
   isStaticEmbedding: boolean;
+  token: string | null | undefined;
   onQuestionChange: (question: Question) => void;
   onClearQueryResults: () => void;
 }
@@ -28,6 +29,7 @@ export const runQuestionOnNavigateSdk =
   ): Promise<SdkQuestionState | null> => {
     let {
       isStaticEmbedding,
+      token,
       nextCard,
       previousCard,
       originalQuestion,
@@ -56,7 +58,7 @@ export const runQuestionOnNavigateSdk =
     // Optimistic update the UI before we re-fetch the query metadata.
     onQuestionChange(new Question(nextCard, getMetadata(getState())));
 
-    await dispatch(loadMetadataForCard(nextCard));
+    await dispatch(loadMetadataForCard(nextCard, { token }));
 
     const state = await runQuestionQuerySdk({
       question: new Question(nextCard, getMetadata(getState())),
@@ -64,6 +66,7 @@ export const runQuestionOnNavigateSdk =
       parameterValues,
       cancelDeferred,
       isStaticEmbedding,
+      token,
     });
 
     return state as SdkQuestionState;

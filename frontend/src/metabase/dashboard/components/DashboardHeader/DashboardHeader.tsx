@@ -57,7 +57,12 @@ export const DashboardHeaderInner = ({ dashboard }: DashboardHeaderProps) => {
   );
 
   const { data: collection, isLoading: isLoadingCollection } =
-    useGetCollectionQuery({ id: dashboard.collection_id || "root" });
+    useGetCollectionQuery(
+      { id: dashboard.collection_id || "root" },
+      {
+        skip: isStaticEmbedding,
+      },
+    );
 
   const onRequestCancel = () => {
     if (isDirty && isEditing) {
@@ -106,12 +111,15 @@ export const DashboardHeaderInner = ({ dashboard }: DashboardHeaderProps) => {
     ];
   };
 
-  if (isLoadingCollection || !collection) {
-    return (
-      <Flex justify="center" py="1.5rem">
-        <Loader size={29} />
-      </Flex>
-    );
+  // We don't fetch collection info for static embedding
+  if (!isStaticEmbedding) {
+    if (isLoadingCollection || !collection) {
+      return (
+        <Flex justify="center" py="1.5rem">
+          <Loader size={29} />
+        </Flex>
+      );
+    }
   }
 
   const hasLastEditInfo = dashboard["last-edit-info"] != null;

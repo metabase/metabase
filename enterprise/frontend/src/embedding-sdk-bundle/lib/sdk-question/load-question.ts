@@ -15,6 +15,10 @@ import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 
+type LoadQuestionSdkParams = LoadSdkQuestionParams & {
+  token: string | null | undefined;
+};
+
 export const loadQuestionSdk =
   ({
     options = {},
@@ -23,7 +27,7 @@ export const loadQuestionSdk =
     token,
     initialSqlParameters,
     targetDashboardId,
-  }: LoadSdkQuestionParams) =>
+  }: LoadQuestionSdkParams) =>
   async (
     dispatch: SdkDispatch,
     getState: () => SdkStoreState,
@@ -45,7 +49,7 @@ export const loadQuestionSdk =
     });
 
     if (!isStatic) {
-      await dispatch(loadMetadataForCard(card));
+      await dispatch(loadMetadataForCard(card, { token }));
     }
 
     const metadata = getMetadata(getState());
