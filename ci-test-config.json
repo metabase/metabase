@@ -7,6 +7,11 @@
       "metabase.warehouse-schema.api.table-test/update-table-sync-test",
       "metabase.warehouses.api-test/can-rescan-fieldvalues-for-a-db",
       "metabase-enterprise.transforms-python.transforms-api-test/python-transform-schema-change-integration-test"
+    ],
+    "cypress": [
+      "should show 404 if database does not exist (metabase#14652)",
+      "should show today's date",
+      "common library"
     ]
   },
   "metadata": {
