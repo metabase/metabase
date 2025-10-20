@@ -214,7 +214,7 @@
                                   :events_url          (:url events)
                                   :table_mapping       table-name->url
                                   :manifest_mapping    table-name->manifest-url}
-        response                 (transforms.instrumentation/with-python-api-timing [run-id]
+        response                 (with-python-api-timing [run-id]
                                    (python-runner-request server-url :post "/execute" {:body (json/encode payload)}))]
     ;; when a 500 is returned we observe a string in the body (despite the python returning json)
     ;; always try to parse the returned string as json before yielding (could tighten this up at some point)
