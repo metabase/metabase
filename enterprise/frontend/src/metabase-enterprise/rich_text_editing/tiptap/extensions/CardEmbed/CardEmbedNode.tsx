@@ -29,6 +29,7 @@ import { trackDocumentReplaceCard } from "metabase-enterprise/documents/analytic
 import { getUnresolvedComments } from "metabase-enterprise/documents/components/Editor/CommentsMenu";
 import { EDITOR_STYLE_BOUNDARY_CLASS } from "metabase-enterprise/documents/components/Editor/constants";
 import {
+  createDraftCard,
   loadMetadataForDocumentCard,
   openVizSettingsSidebar,
 } from "metabase-enterprise/documents/documents.slice";
@@ -108,6 +109,7 @@ export interface CardEmbedAttributes {
   id?: number;
   name?: string;
   class?: string;
+  adhocUrl?: string; // For ad-hoc questions from agent: /question#base64json
 }
 export const CardEmbed: Node<{
   HTMLAttributes: CardEmbedAttributes;
@@ -135,6 +137,10 @@ export const CardEmbed: Node<{
         default: null,
         parseHTML: (element) => element.getAttribute("data-name"),
       },
+      adhocUrl: {
+        default: null,
+        parseHTML: (element) => element.getAttribute("data-adhoc-url"),
+      },
       ...createIdAttribute(),
     };
   },
@@ -143,6 +149,71 @@ export const CardEmbed: Node<{
     return [
       {
         tag: `div[data-type="${CardEmbed.name}"]`,
+      },
+      // Parse markdown image syntax with metabase:// URLs
+      {
+        tag: 'img[src^="metabase://"]',
+        priority: 1001, // Higher than SmartLink (1000)
+        getAttrs: (node) => {
+          if (typeof node === "string") {
+            return false;
+          }
+
+          const src = node.getAttribute("src");
+          if (!src) {
+            return false;
+          }
+
+          // Only handle questions and models (visualizable entities)
+          const match = src.match(/^metabase:\/\/(question|model)\/(-?\d+)$/);
+          if (!match) {
+            return false;
+          }
+
+          const id = parseInt(match[2], 10);
+          if (isNaN(id)) {
+            return false;
+          }
+
+          const alt = node.getAttribute("alt");
+          return {
+            id,
+            name: alt && alt.trim() !== "" ? alt : null,
+          };
+        },
+      },
+      // Parse markdown image syntax with ad-hoc question URLs (/question#base64)
+      {
+        tag: 'img[src^="/question#"]',
+        priority: 1002, // Higher than metabase:// rule
+        getAttrs: (node) => {
+          if (typeof node === "string") {
+            return false;
+          }
+
+          const src = node.getAttribute("src");
+          if (!src || !src.startsWith("/question#")) {
+            return false;
+          }
+
+          // Generate a stable negative ID from the URL hash
+          // Use a simple hash function to create a consistent ID for the same URL
+          const hash = Array.from(src).reduce(
+            (hash, char) => ((hash << 5) - hash + char.charCodeAt(0)) | 0,
+            0,
+          );
+          // Ensure it's negative and within a reasonable range
+          const id = -((Math.abs(hash) % 1000000) + 1);
+
+          const alt = node.getAttribute("alt");
+          const attrs = {
+            id,
+            name: alt && alt.trim() !== "" ? alt : null,
+            adhocUrl: src,
+          };
+
+          return attrs;
+        },
       },
     ];
   },
@@ -156,6 +227,7 @@ export const CardEmbed: Node<{
           "data-type": CardEmbed.name,
           "data-id": node.attrs.id,
           "data-name": node.attrs.name,
+          "data-adhoc-url": node.attrs.adhocUrl,
         },
         this.options.HTMLAttributes,
       ),
@@ -208,9 +280,79 @@ export const CardEmbedComponent = memo(
     const commentsPath = document
       ? `/document/${document.id}/comments/${_id}`
       : "";
-    const { id, name } = node.attrs;
+    const { id, name, adhocUrl } = node.attrs;
     const dispatch = useDispatch();
     const canWrite = editor.options.editable;
+
+    // Parse and register ad-hoc question if needed
+    useEffect(() => {
+      if (!adhocUrl || !id) {
+        return;
+      }
+
+      try {
+        // Extract base64 JSON from /question#base64
+        const hashIndex = adhocUrl.indexOf("#");
+        if (hashIndex === -1) {
+          console.error("[CardEmbed] Invalid ad-hoc URL format:", adhocUrl);
+          return;
+        }
+
+        const base64Json = adhocUrl.substring(hashIndex + 1);
+        const jsonString = atob(base64Json);
+        const cardData = JSON.parse(jsonString);
+
+        // Auto-generate template tags for card references like {{#123}}
+        // This matches the backend behavior in execute_query.clj
+        const datasetQuery = cardData.dataset_query;
+        if (
+          datasetQuery?.type === "native" &&
+          datasetQuery?.native?.query &&
+          typeof datasetQuery.native.query === "string"
+        ) {
+          const cardRefs =
+            datasetQuery.native.query.matchAll(/\{\{#(\d+)\}\}/g);
+          const templateTags: Record<string, any> = {};
+
+          for (const match of cardRefs) {
+            const cardId = parseInt(match[1], 10);
+            const tagName = `#${cardId}`;
+            templateTags[tagName] = {
+              id: tagName,
+              name: tagName,
+              "display-name": tagName,
+              type: "card",
+              "card-id": cardId,
+            };
+          }
+
+          if (Object.keys(templateTags).length > 0) {
+            datasetQuery.native["template-tags"] = templateTags;
+          }
+        }
+
+        // Create a minimal Card object for the draft
+        const draftCard = {
+          dataset_query: datasetQuery,
+          display: cardData.display || "table",
+          visualization_settings: cardData.visualization_settings || {},
+          displayIsLocked: cardData.displayIsLocked,
+          database_id: datasetQuery?.database,
+          name: name || "Ad-hoc Question",
+        };
+
+        // Register the draft card in Redux so useCardData can find it
+        dispatch(
+          createDraftCard({
+            originalCard: draftCard as any,
+            modifiedData: {},
+            draftId: id,
+          }),
+        );
+      } catch (error) {
+        console.error("[CardEmbed] Failed to parse ad-hoc URL:", error);
+      }
+    }, [adhocUrl, id, name, dispatch]);
 
     const isMountedRef = useRef(false);
 

@@ -1,4 +1,5 @@
 import { type UnknownAction, isRejected } from "@reduxjs/toolkit";
+import type { JSONContent } from "@tiptap/core";
 import Link from "@tiptap/extension-link";
 import { generateJSON } from "@tiptap/html";
 import StarterKit from "@tiptap/starter-kit";
@@ -18,7 +19,11 @@ import {
   aiStreamingQuery,
   getInflightRequestsForUrl,
 } from "metabase-enterprise/api/ai-streaming";
+import { CardEmbed } from "metabase-enterprise/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedNode";
+import { FlexContainer } from "metabase-enterprise/rich_text_editing/tiptap/extensions/FlexContainer/FlexContainer";
+import { ResizeNode } from "metabase-enterprise/rich_text_editing/tiptap/extensions/ResizeNode/ResizeNode";
 import { SmartLink } from "metabase-enterprise/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
+import { wrapCardEmbed } from "metabase-enterprise/rich_text_editing/tiptap/extensions/shared/layout";
 import type {
   MetabotAgentRequest,
   MetabotAgentResponse,
@@ -204,6 +209,35 @@ export const submitInput = createAsyncThunk<
   },
 );
 
+/**
+ * Wraps standalone CardEmbed nodes in ResizeNodes for consistency
+ * with slash command behavior (cards should be resizable)
+ */
+function wrapStandaloneCardEmbeds(doc: JSONContent): JSONContent {
+  if (!doc.content) {
+    return doc;
+  }
+
+  const wrappedContent = doc.content.map((node) => {
+    // Wrap top-level CardEmbed nodes that aren't already in ResizeNode
+    if (node.type === "cardEmbed") {
+      return wrapCardEmbed(node);
+    }
+
+    // Recursively process nested structures
+    if (node.content) {
+      return {
+        ...node,
+        content: wrapStandaloneCardEmbeds({ content: node.content }).content,
+      };
+    }
+
+    return node;
+  });
+
+  return { ...doc, content: wrappedContent };
+}
+
 export const sendAgentRequest = createAsyncThunk<
   Omit<MetabotAgentResponse, "reactions">,
   Omit<MetabotAgentRequest, "conversation_id">,
@@ -269,27 +303,48 @@ export const sendAgentRequest = createAsyncThunk<
                   (_, linkText, href) => `<a href="${href}">${linkText}</a>`,
                 );
 
-                // Convert markdown to HTML (with metabase:// links already as HTML)
+                // Pre-process markdown image syntax for embedded charts
+                // Converts: ![alt](metabase://question/123) -> <img src="..." alt="..." />
+                // Also handles ad-hoc questions: ![alt](/question#base64) -> <img src="..." alt="..." />
+                const metabaseImagePattern =
+                  /!\[([^\]]*)\]\(((?:metabase:\/\/(?:question|model)\/(?:-?\d+)|\/question#[A-Za-z0-9+/=]+))\)/g;
+
+                const contentWithImages = contentWithHtmlLinks.replace(
+                  metabaseImagePattern,
+                  (_, alt, src) => {
+                    const altAttr =
+                      alt.trim() !== "" ? ` alt="${alt}"` : ' alt=""';
+                    return `<img src="${src}"${altAttr} />`;
+                  },
+                );
+
+                // Convert markdown to HTML (with metabase:// links and images already as HTML)
                 // allowDangerousHtml preserves HTML tags instead of escaping them
-                const html = micromark(contentWithHtmlLinks, {
+                const html = micromark(contentWithImages, {
                   allowDangerousHtml: true,
                 });
 
                 // Get siteUrl for SmartLink extension
                 const siteUrl = getSetting(getState() as any, "site-url");
 
-                // Convert HTML to Tiptap JSON
-                // Use StarterKit without Link, then add SmartLink (priority 1000) and Link
-                const doc = generateJSON(html, [
+                // Convert HTML to Tiptap JSON with card embed support
+                // Extension order matters: ResizeNode → FlexContainer → CardEmbed (1002/1001) → SmartLink (1000) → Link
+                let doc = generateJSON(html, [
                   StarterKit.configure({
                     // Disable link since SmartLink needs to handle metabase:// links first
                     link: false,
                   }),
+                  ResizeNode, // Parent container for CardEmbed or FlexContainer
+                  FlexContainer, // Container for side-by-side CardEmbeds
+                  CardEmbed, // Handles <img src="/question#..."> (priority 1002) and <img src="metabase://..."> (priority 1001)
                   SmartLink.configure({
                     siteUrl,
                   }),
                   Link,
                 ]);
+
+                // Wrap standalone CardEmbed nodes in ResizeNodes for consistency
+                doc = wrapStandaloneCardEmbeds(doc);
 
                 dispatch(setDocumentTitle(part.value.title));
                 dispatch(

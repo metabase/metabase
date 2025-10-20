@@ -62,4 +62,26 @@ export const TOOL_CALL_MESSAGES: Record<string, string | undefined> = {
   get search_metabase_documentation() {
     return t`Consulting the docs`;
   },
+  get create_sql_query() {
+    const values = [
+      t`My life for Aiur!`,
+      t`Forcing tables to JOIN`,
+      t`Constructing additional pylons`,
+    ];
+
+    const result = values[i % values.length] ?? t`Creating a query`;
+    i++;
+    return result;
+  },
+  get execute_query() {
+    const values = [
+      t`Spawn more overlords`,
+      t`You require more vespene gas`,
+      t`Power overwhelming`,
+    ];
+
+    const result = values[i % values.length] ?? t`Executing query`;
+    i++;
+    return result;
+  },
 };
