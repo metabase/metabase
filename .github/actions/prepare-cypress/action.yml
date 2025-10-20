@@ -37,7 +37,7 @@ runs:
       with:
         script: | #js
           const fs = require('fs');
-          const configPath = "./ci-test-config.json"
+          const configPath = "ci-test-config.json"
 
           const config = fs.existsSync(configPath)
             ? JSON.parse(fs.readFileSync(configPath, "utf8"))
