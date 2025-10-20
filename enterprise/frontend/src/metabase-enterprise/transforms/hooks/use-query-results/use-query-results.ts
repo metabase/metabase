@@ -7,9 +7,16 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { runQuestionQuery } from "metabase/services";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import type { DatasetQuery } from "metabase-types/api";
+import type { DatasetQuery, ParameterValuesMap } from "metabase-types/api";
 
-export function useQueryResults(question: Question) {
+type TransformParameters = {
+  transformId?: number;
+};
+
+export function useQueryResults(
+  question: Question,
+  transformParameters?: TransformParameters,
+) {
   const metadata = useSelector(getMetadata);
   const [lastRunQuery, setLastRunQuery] = useState<DatasetQuery | null>(null);
   const deferredRef = useRef<Deferred>();
@@ -22,12 +29,48 @@ export function useQueryResults(question: Question) {
     return deferredRef.current;
   }
 
+  // Inject transform parameters if they exist
+  const questionWithParams = useMemo(() => {
+    if (!transformParameters?.transformId) {
+      return question;
+    }
+
+    // Get the dataset query to find parameter IDs
+    const datasetQuery = question.datasetQuery() as any;
+      const parameters = question.parameters();
+
+
+    if (!parameters || !Array.isArray(parameters)) {
+      return question;
+    }
+
+    // Build parameter values map by finding the IDs that correspond to transform params
+    const parameterValues: ParameterValuesMap = {};
+
+    for (const param of parameters) {
+      if (
+        param.target &&
+        Array.isArray(param.target) &&
+        param.target[0] === "variable" &&
+        Array.isArray(param.target[1]) &&
+        param.target[1][0] === "template-tag"
+      ) {
+        const tagName = param.target[1][1];
+        if (tagName === "transform_id") {
+          parameterValues[param.id] = transformParameters.transformId;
+        }
+      }
+    }
+
+    return question.setParameterValues(parameterValues);
+  }, [question, transformParameters]);
+
   const [{ value: results = null, loading: isRunning }, runQuery] = useAsyncFn(
     () =>
-      runQuestionQuery(question, {
+      runQuestionQuery(questionWithParams, {
         cancelDeferred: deferred(),
       }),
-    [question],
+    [questionWithParams],
   );
 
   const { result, rawSeries, isRunnable, isResultDirty } = useMemo(() => {
@@ -57,8 +100,8 @@ export function useQueryResults(question: Question) {
 
   const handleRunQuery = useCallback(async () => {
     await runQuery();
-    setLastRunQuery(question.datasetQuery());
-  }, [question, runQuery]);
+    setLastRunQuery(questionWithParams.datasetQuery());
+  }, [questionWithParams, runQuery]);
 
   const handleCancelQuery = useCallback(() => {
     return deferredRef.current?.resolve();

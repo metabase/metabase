@@ -63,7 +63,9 @@ export function QueryEditor({
     isResultDirty,
     runQuery,
     cancelQuery,
-  } = useQueryResults(question);
+  } = useQueryResults(question, {
+    transformId,
+  });
   const { isNative } = Lib.queryDisplayInfo(question.query());
   const [isShowingNativeQueryPreview, toggleNativeQueryPreview] = useToggle();
   const [isPreviewQueryModalOpen, togglePreviewQueryModal] = useToggle();

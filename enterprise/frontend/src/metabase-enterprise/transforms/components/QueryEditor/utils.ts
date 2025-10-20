@@ -72,13 +72,13 @@ export function useInsertSnippetHandler({
   };
 }
 
-const ALLOWED_TRANSFORM_VARIABLES = ["keyset_column", "transform_id"];
+const ALLOWED_TRANSFORM_VARIABLES = ["transform_id"];
 
 export function getValidationResult(query: Lib.Query): QueryValidationResult {
   const { isNative } = Lib.queryDisplayInfo(query);
   if (isNative) {
     const tags = Object.values(Lib.templateTags(query));
-    // Allow snippets, cards, and the special transform variables (keyset_column, transform_id)
+    // Allow snippets, cards, and the special transform variables (transform_id)
     const hasInvalidTags = tags.some(
       (t) =>
         t.type !== "card" &&
