@@ -108,6 +108,9 @@ export function SelectEmbedTypePane({
   const isEmbedJsEnabled = useSetting("enable-embedding-simple");
   const isEmbeddingSdkEnabled = useSetting("enable-embedding-sdk");
 
+  const shouldShowModernStaticEmbeddingWizard =
+    !resource.enable_embedding || resource.embedding_type === "static-embed-js";
+
   return (
     <Stack
       display="inline-flex"
@@ -117,20 +120,41 @@ export function SelectEmbedTypePane({
       align="stretch"
     >
       <Group gap="lg" maw="100%" align="stretch">
-        {/* Static Embedding */}
-        <SharingPaneButton
-          title={t`Static embedding`}
-          illustration={<StaticEmbeddingIllustration />}
-          onClick={isStaticEmbeddingEnabled ? goToNextStep : undefined}
-          isDisabled={!isStaticEmbeddingEnabled}
-          disabledLink="/admin/embedding/static"
-        >
-          <List>
-            <List.Item>{t`Embedded, signed charts in iframes.`}</List.Item>
-            <List.Item>{t`No query builder or row-level data access.`}</List.Item>
-            <List.Item>{t`Data restriction with locked parameters.`}</List.Item>
-          </List>
-        </SharingPaneButton>
+        {/* Legacy Static Embedding */}
+        {!shouldShowModernStaticEmbeddingWizard && (
+          <SharingPaneButton
+            title={t`Static embedding`}
+            illustration={<StaticEmbeddingIllustration />}
+            onClick={isStaticEmbeddingEnabled ? goToNextStep : undefined}
+            isDisabled={!isStaticEmbeddingEnabled}
+            disabledLink="/admin/embedding/static"
+          >
+            <List>
+              <List.Item>{t`Embedded, signed charts in iframes.`}</List.Item>
+              <List.Item>{t`No query builder or row-level data access.`}</List.Item>
+              <List.Item>{t`Data restriction with locked parameters.`}</List.Item>
+            </List>
+          </SharingPaneButton>
+        )}
+
+        {/* EmbedJS-based Static Embedding */}
+        {shouldShowModernStaticEmbeddingWizard && (
+          <MaybeLinkEmbedJs
+            shouldRenderLink={!isEmbedJsAvailable || isEmbedJsEnabled}
+            embedFlowUrl={getEmbedFlowUrl({ isStaticEmbedding: true })}
+          >
+            <SharingPaneButton
+              title={t`Anonymous Embedding`}
+              illustration={<StaticEmbeddingIllustration />}
+              isDisabled={!isStaticEmbeddingEnabled || !isEmbedJsEnabled}
+              disabledLink="/admin/embedding/static"
+            >
+              <List>
+                <List.Item>{t`A simple way to embed without SSO using plain JavaScript.`}</List.Item>
+              </List>
+            </SharingPaneButton>
+          </MaybeLinkEmbedJs>
+        )}
 
         {/* Embedded Analytics JS: render either upsell or embed flow link */}
         <MaybeLinkEmbedJs

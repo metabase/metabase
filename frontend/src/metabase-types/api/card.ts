@@ -1,4 +1,7 @@
-import type { EmbeddingParameters } from "metabase/public/lib/types";
+import type {
+  EmbeddingParameters,
+  EmbeddingType,
+} from "metabase/public/lib/types";
 import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
 
 import type { Collection, CollectionId, LastEditInfo } from "./collection";
@@ -47,6 +50,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
 
   /* Indicates whether static embedding for this card has been published */
   enable_embedding: boolean;
+  embedding_type?: EmbeddingType;
   embedding_params: EmbeddingParameters | null;
   can_write: boolean;
   can_restore: boolean;

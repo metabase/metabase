@@ -24,7 +24,7 @@ import {
 const getSettingsToPersist = (
   settings: Partial<SdkIframeEmbedSetupSettings>,
 ) => {
-  return _.pick(settings, ["theme", "useExistingUserSession", "isStatic"]);
+  return _.pick(settings, ["theme", "useExistingUserSession"]);
 };
 
 const usePersistedSettings = () => {
