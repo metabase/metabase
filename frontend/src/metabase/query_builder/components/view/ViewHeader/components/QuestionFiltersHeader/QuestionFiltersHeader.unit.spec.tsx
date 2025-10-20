@@ -46,7 +46,6 @@ function setup({
 
     const question = Question.create({
       metadata,
-      type: "query",
       dataset_query: Lib.toJsQuery(query),
     });
 

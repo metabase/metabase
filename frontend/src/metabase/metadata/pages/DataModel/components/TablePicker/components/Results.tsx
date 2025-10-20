@@ -5,13 +5,14 @@ import { Link } from "react-router";
 
 import { Box, Flex, Icon, Skeleton, rem } from "metabase/ui";
 
-import { getUrl } from "../../utils";
+import { getUrl } from "../../../utils";
+import { TYPE_ICONS } from "../constants";
+import type { FlatItem, TreePath } from "../types";
+import { hasChildren } from "../utils";
 
 import { BulkTableVisibilityToggle } from "./BulkTableVisibilityToggle";
 import S from "./Results.module.css";
 import { TableVisibilityToggle } from "./TableVisibilityToggle";
-import type { FlatItem, TreePath } from "./types";
-import { TYPE_ICONS, hasChildren } from "./utils";
 
 const VIRTUAL_OVERSCAN = 5;
 const ITEM_MIN_HEIGHT = 32; // items can vary in size because of text wrapping

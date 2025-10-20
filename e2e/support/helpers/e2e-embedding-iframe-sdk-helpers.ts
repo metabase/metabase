@@ -93,9 +93,10 @@ export const getSimpleEmbedIframeContent = (iframeIndex = 0) => {
  */
 export function loadSdkIframeEmbedTestPage({
   origin = "",
+  selector,
   onVisitPage,
   ...options
-}: BaseEmbedTestPageOptions) {
+}: BaseEmbedTestPageOptions & { selector?: string }) {
   const testPageSource = getSdkIframeEmbedHtml(options);
 
   const testPageUrl = `${origin}/sdk-iframe-test-page`;
@@ -108,7 +109,7 @@ export function loadSdkIframeEmbedTestPage({
   cy.visit(testPageUrl, { onLoad: onVisitPage });
   cy.title().should("include", "Metabase Embed Test");
 
-  return getIframeBody();
+  return getIframeBody(selector);
 }
 
 /**
