@@ -62,6 +62,7 @@ export type SdkIframeEmbedSetupSettings = Omit<
   SdkIframeEmbedSetupTemplateSettings;
 
 export type SdkIframeEmbedSetupUrlParams = {
+  isStatic: boolean;
   authMethod?: string | null;
   resourceType?: string | null;
   resourceId?: string | null;

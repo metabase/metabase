@@ -54,6 +54,7 @@ export const SdkIframeEmbedSetupProvider = ({
     const params = new URLSearchParams(location.search);
 
     return {
+      isStatic: params.get("is_static") === "true",
       authMethod: params.get("auth_method"),
       resourceType: params.get("resource_type"),
       resourceId: params.get("resource_id"),

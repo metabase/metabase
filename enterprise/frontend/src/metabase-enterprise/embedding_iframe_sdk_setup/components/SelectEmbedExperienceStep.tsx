@@ -57,13 +57,17 @@ export const SelectEmbedExperienceStep = () => {
 
       // these settings are overridden when the embed type changes
       ...getDefaultSdkIframeEmbedSettings({
+        isStatic: settings.isStatic ?? false,
         experience,
         resourceId: defaultResourceId,
       }),
     });
   };
 
-  const experiences = getEmbedExperiences({ isMetabotAvailable });
+  const experiences = getEmbedExperiences({
+    isStaticEmbedding: !!settings.isStatic,
+    isMetabotAvailable,
+  });
 
   return (
     <>
