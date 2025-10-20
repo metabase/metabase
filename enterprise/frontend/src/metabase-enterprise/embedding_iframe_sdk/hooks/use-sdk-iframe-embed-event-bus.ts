@@ -41,6 +41,7 @@ export function useSdkIframeEmbedEventBus({
 
       match(event.data)
         .with({ type: "metabase.embed.setSettings" }, ({ data }) => {
+          (window as any).embedSettings = data;
           setEmbedSettings(data);
           onSettingsChanged?.(data);
         })
