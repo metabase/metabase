@@ -116,7 +116,7 @@
    Deletes any existing watermark entry for this transform and inserts a new one
    with the MAX value of the watermark field from the transform output table."
   [{:keys [id source target] :as transform} driver database]
-  (when (= :keyset (some-> source :source-incremental-strategy type keyword))
+  (when (= :keyset (some-> source :source-incremental-strategy :type keyword))
     (let [watermark-field (-> source :source-incremental-strategy :keyset-column)
           output-table (qualified-table-name driver target)
           watermark-table (qualified-table-name driver (watermark-table-for-transform transform))
@@ -127,14 +127,14 @@
 
           delete-honeysql {:delete-from watermark-table
                            :where [:= :transform_id id]}
-          delete-sql (sql.qp/format-honeysql driver delete-honeysql)]
+          [delete-sql & delete-params] (sql.qp/format-honeysql driver delete-honeysql)]
       (log/info "Upserting watermark for transform" id "with field" watermark-field)
       (try
         (let [[insert-query & insert-args] (driver/compile-insert driver {:query select-query
                                                                           :output-table watermark-table})]
-          (assert (= [] insert-args))
+          (assert (not (seq insert-args)))
 
-          (driver/execute-raw-queries! driver conn-spec [delete-sql
+          (driver/execute-raw-queries! driver conn-spec [[delete-sql delete-params]
                                                          [insert-query select-args]]))
         (catch Exception e
           (log/error e "Failed to upsert watermark for transform" id))))))
