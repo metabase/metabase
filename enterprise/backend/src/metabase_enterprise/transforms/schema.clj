@@ -8,7 +8,7 @@
    [:type [:= "keyset"]]
    [:keyset-column :string]])
 
-(mr/def ::source-strategy
+(mr/def ::source-incremental-strategy
   [:multi {:dispatch :type}
    ["keyset" ::keyset-strategy]])
 
@@ -18,7 +18,7 @@
     [:map
      [:type [:= "query"]]
      [:query [:map [:database :int]]]
-     [:source-strategy {:optional true} ::source-strategy]]]
+     [:source-incremental-strategy {:optional true} ::source-incremental-strategy]]]
    [:python
     [:map {:closed true}
      [:source-database {:optional true} :int]
@@ -26,7 +26,7 @@
      [:source-tables   [:map-of :string :int]]
      [:type [:= "python"]]
      [:body :string]
-     [:source-strategy {:optional true} ::source-strategy]]]])
+     [:source-incremental-strategy {:optional true} ::source-incremental-strategy]]]])
 
 (mr/def ::append-config
   [:map [:type [:= "append"]]])

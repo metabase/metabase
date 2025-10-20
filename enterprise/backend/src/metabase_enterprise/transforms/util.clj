@@ -8,6 +8,7 @@
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.driver :as driver]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor.compile :as qp.compile]
@@ -104,6 +105,39 @@
    ;; sync the new table (note that even a failed sync status means that the execution succeeded)
    (log/info "Syncing target" (pr-str target) "for transform")
    (activate-table-and-mark-computed! database target)))
+
+(defn watermark-table-for-transform
+  "Returns watermark table for given transform"
+  [{:keys [target]}]
+  (assoc target :name "mb__watermark_table"))
+
+(defn maybe-upsert-watermark!
+  "Update the watermark tracking table for an incremental transform with watermark strategy.
+   Deletes any existing watermark entry for this transform and inserts a new one
+   with the MAX value of the watermark field from the transform output table."
+  [{:keys [id source target] :as transform} driver database]
+  (when (= :keyset (some-> source :source-incremental-strategy type keyword))
+    (let [watermark-field (-> source :source-incremental-strategy :keyset-column)
+          output-table (qualified-table-name driver target)
+          watermark-table (qualified-table-name driver (watermark-table-for-transform transform))
+          conn-spec (driver/connection-spec driver database)
+          select-honeysql {:select [[id :transform_id] [[:max (keyword watermark-field)] :watermark_id]]
+                           :from [output-table]}
+          [select-query & select-args] (sql.qp/format-honeysql driver select-honeysql)
+
+          delete-honeysql {:delete-from watermark-table
+                           :where [:= :transform_id id]}
+          delete-sql (sql.qp/format-honeysql driver delete-honeysql)]
+      (log/info "Upserting watermark for transform" id "with field" watermark-field)
+      (try
+        (let [[insert-query & insert-args] (driver/compile-insert driver {:query select-query
+                                                                          :output-table watermark-table})]
+          (assert (= [] insert-args))
+
+          (driver/execute-raw-queries! driver conn-spec [delete-sql
+                                                         [insert-query select-args]]))
+        (catch Exception e
+          (log/error e "Failed to upsert watermark for transform" id))))))
 
 (defn target-table-exists?
   "Test if the target table of a transform already exists."

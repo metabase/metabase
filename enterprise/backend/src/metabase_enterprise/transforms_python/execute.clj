@@ -230,6 +230,9 @@
         table-exists? (transforms.util/target-table-exists? transform)
         data-source {:type :jsonl-file
                      :file temp-file}]
+
+    ;; once we have more than just append, dispatch on :target-incremental-strategy
+
     (if (not table-exists?)
       (do
         (log/info "New table")
@@ -361,7 +364,9 @@
                                 (save-log-to-transform-run-message! run-id message-log))
             ex-message-fn     #(exceptional-run-message message-log %)
             result            (transforms.instrumentation/with-stage-timing [run-id [:computation :python-execution]]
-                                (transforms.util/run-cancelable-transform! run-id driver transform-details run-fn :ex-message-fn ex-message-fn))]
+                                (transforms.util/run-cancelable-transform! run-id driver transform-details run-fn :ex-message-fn ex-message-fn))
+            _                 (transforms.util/maybe-upsert-watermark! transform driver db)]
+
         (transforms.instrumentation/with-stage-timing [run-id [:import :table-sync]]
           (transforms.util/sync-target! target db run-id))
         {:run_id run-id

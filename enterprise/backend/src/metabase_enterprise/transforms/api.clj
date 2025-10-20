@@ -14,6 +14,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
+   [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.request.core :as request]
@@ -83,6 +84,18 @@
                 (map #(update % :last_run transforms.util/localize-run-timestamps)))
           (t2/hydrate transforms :last_run :transform_tag_ids))))
 
+(defn- ensure-mb-watermark-table-exists! [{:keys [source] :as transform}]
+  (when (= :keyset (some-> source :source-incremental-strategy type keyword))
+    (let [db-id (transforms.i/target-db-id transform)
+          {driver :engine :as database} (t2/select-one :model/Database db-id)
+          watermark-table (transforms.util/watermark-table-for-transform transform)
+          watermark-table-name (transforms.util/qualified-table-name driver watermark-table)]
+      (when-not (driver/table-exists? driver database watermark-table)
+        (driver/create-table! driver db-id watermark-table-name
+                              {:transform_id (driver/type->database-type driver :type/Integer),
+                               :watermark_id (driver/type->database-type driver :type/Integer)}
+                              :primary-key [:transform_id])))))
+
 (api.macros/defendpoint :post "/"
   "Create a new transform."
   [_route-params
@@ -97,6 +110,7 @@
   (api/check-superuser)
   (check-database-feature body)
   (check-feature-enabled! body)
+  (ensure-mb-watermark-table-exists! body)
   (api/check (not (transforms.util/target-table-exists? body))
              403
              (deferred-tru "A table with that name already exists."))
@@ -177,6 +191,7 @@
                           new (merge old body)
                           target-fields #(-> % :target (select-keys [:schema :name]))]
                       ;; we must validate on a full transform object
+                      (ensure-mb-watermark-table-exists! new)
                       (check-feature-enabled! new)
                       (check-database-feature new)
                       (when (transforms.util/query-transform? old)

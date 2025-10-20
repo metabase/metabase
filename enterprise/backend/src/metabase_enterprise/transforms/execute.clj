@@ -26,6 +26,7 @@
   (case transform-type
     :table {:overwrite? true}
 
+    ;; once we have more than just append, dispatch on :target-incremental-strategy
     :table-incremental {}))
 
 (defn run-mbql-transform!
@@ -35,7 +36,7 @@
   by delivering the `start-promise` just before the start when the beginning of the execution has been booked
   in the database."
   ([transform] (run-mbql-transform! transform nil))
-  ([{:keys [id source target]} {:keys [run-method start-promise]}]
+  ([{:keys [id source target] :as transform} {:keys [run-method start-promise]}]
    (try
      (let [db (get-in source [:query :database])
            {driver :engine :as database} (t2/select-one :model/Database db)
@@ -56,6 +57,7 @@
          (transforms.util/run-cancelable-transform!
           run-id driver transform-details
           (fn [_cancel-chan] (driver/run-transform! driver transform-details opts))))
+       (transforms.util/maybe-upsert-watermark! transform driver database)
        (transforms.instrumentation/with-stage-timing [run-id [:import :table-sync]]
          (transforms.util/sync-target! target database run-id)
          ;; This event must be published only after the sync is complete - the new table needs to be in AppDB.
