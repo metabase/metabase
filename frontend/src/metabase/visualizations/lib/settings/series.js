@@ -155,11 +155,12 @@ export function seriesSetting({ readDependencies = [], def } = {}) {
     "line.missing": {
       title: t`Replace missing values with`,
       widget: "select",
-      getProps: (_series, _settings, _onChange, { settings: vizSettings }) => ({
+      getProps: (_series, settings, _onChange, { settings: vizSettings }) => ({
         options: [
           { name: t`Zero`, value: "zero" },
           { name: t`Nothing`, value: "none" },
           ...(hasInterpolatedLineMissingOption(
+            settings["display"],
             vizSettings["stackable._default_stack_type"],
           )
             ? [{ name: t`Linear Interpolated`, value: "interpolate" }]
@@ -172,7 +173,8 @@ export function seriesSetting({ readDependencies = [], def } = {}) {
         // use legacy global line.missing setting if present
         getSeriesDefaultLineMissing(
           vizSettings,
-          settings["stackable._default_stack_type"],
+          settings["display"],
+          vizSettings["stackable._default_stack_type"],
         ),
       readDependencies: ["display", "stackable._default_stack_type"],
     },
