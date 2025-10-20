@@ -22,15 +22,15 @@
   (let [query (-> (get-in transform [:source :query])
                   transforms.util/massage-sql-query
                   qp.preprocess/preprocess)
-          driver (-> query
-                     lib.metadata/database
-                     :engine)]
-      (if (lib/native-only-query? query)
-        (driver/native-query-deps driver query)
-        (into #{}
-              (map (fn [table-id]
-                     {:table table-id}))
-              (lib/all-source-table-ids query)))))
+        driver (-> query
+                   lib.metadata/database
+                   :engine)]
+    (if (lib/native-only-query? query)
+      (driver/native-query-deps driver query)
+      (into #{}
+            (map (fn [table-id]
+                   {:table table-id}))
+            (lib/all-source-table-ids query)))))
 
 (defn- dependency-map [transforms]
   (into {}
@@ -126,8 +126,8 @@
         output-tables    (output-table-map mp db-transforms)
         transform-ids    (into #{} (map :id) db-transforms)
         node->children   #(->> % transforms-by-id transforms.i/table-dependencies (keep (fn [{:keys [table transform]}]
-                                                                                         (or (output-tables table)
-                                                                                             (transform-ids transform)))))
+                                                                                          (or (output-tables table)
+                                                                                              (transform-ids transform)))))
         id->name         (comp :name transforms-by-id)
         cycle            (find-cycle node->children [transform-id])]
     (when cycle
