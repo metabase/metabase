@@ -181,7 +181,7 @@ export const translateFieldValuesInSeries = (
               typeof value === "string" &&
               seriesSettings[value]?.title !== undefined
             ) {
-              return tc(seriesSettings[value].title);
+              return tc(seriesSettings[value].title!);
             }
             return tc(value);
           }),
