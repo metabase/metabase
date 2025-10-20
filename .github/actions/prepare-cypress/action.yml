@@ -28,7 +28,7 @@ runs:
     - name: Fetch CI config
       shell: bash
       run: |
-        curl -o ci-test-config.json https://raw.githubusercontent.com/metabase/metabase/refs/heads/master/ci-test-config.json
+        curl -o ci-test-config.json https://raw.githubusercontent.com/metabase/metabase/0563d8ff6b7a62e56145ccbfb428837744a04f22/ci-test-config.json
 
     - name: Get a list of disabled Cypress tests from the CI config
       id: kill-switch
