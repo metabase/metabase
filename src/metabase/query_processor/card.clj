@@ -252,7 +252,7 @@
     (qp.streaming/streaming-response [rff export-format (qp.streaming/safe-filename-prefix (:card-name info))]
       (qp (update query :info merge info) rff))))
 
-(mu/defn combined-parameters-and-template-tags :- ::parameters.schema/parameters
+(mu/defn combined-parameters-and-template-tags :- [:maybe ::parameters.schema/parameters]
   "Enrich `card.parameters` to include parameters from template-tags.
 
   On native queries parameters exists in 2 forms:
