@@ -1,5 +1,6 @@
 import type { Edge } from "@xyflow/react";
 import { P, match } from "ts-pattern";
+import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
 import type { IconName } from "metabase/ui";
@@ -141,6 +142,20 @@ export function getNodeLink(node: DependencyNode): string | undefined {
     )
     .with({ type: "transform" }, (node) => `/admin/transforms/${node.id}`)
     .with({ type: "snippet" }, () => undefined)
+    .exhaustive();
+}
+
+export function getNodeLinkTooltip(node: DependencyNode) {
+  return match(node)
+    .with(
+      { type: "card", data: { type: "question" } },
+      () => t`View this question`,
+    )
+    .with({ type: "card", data: { type: "model" } }, () => t`View this model`)
+    .with({ type: "card", data: { type: "metric" } }, () => t`View this metric`)
+    .with({ type: "table" }, () => t`View metadata`)
+    .with({ type: "transform" }, () => t`View this transform`)
+    .with({ type: "snippet" }, () => t`View this snippet`)
     .exhaustive();
 }
 

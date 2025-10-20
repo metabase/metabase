@@ -1,11 +1,24 @@
-import { Link } from "react-router";
 import { t } from "ttag";
 
-import { ActionIcon, Box, FixedSizeIcon, Group, Title, rem } from "metabase/ui";
+import { ForwardRefLink } from "metabase/common/components/Link";
+import {
+  ActionIcon,
+  Box,
+  FixedSizeIcon,
+  Group,
+  Title,
+  Tooltip,
+  rem,
+} from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
 import { ACTION_ICON_PADDING } from "../../constants";
-import { getNodeIcon, getNodeLabel, getNodeLink } from "../../utils";
+import {
+  getNodeIcon,
+  getNodeLabel,
+  getNodeLink,
+  getNodeLinkTooltip,
+} from "../../utils";
 
 type PanelHeaderProps = {
   node: DependencyNode;
@@ -14,6 +27,7 @@ type PanelHeaderProps = {
 
 export function PanelHeader({ node, onClose }: PanelHeaderProps) {
   const link = getNodeLink(node);
+  const tooltip = getNodeLinkTooltip(node);
 
   return (
     <Group p="lg" gap="sm" wrap="nowrap">
@@ -23,14 +37,16 @@ export function PanelHeader({ node, onClose }: PanelHeaderProps) {
       </Title>
       <Box m={rem(-ACTION_ICON_PADDING)}>
         {link != null && (
-          <ActionIcon
-            component={Link}
-            to={link}
-            target="_blank"
-            aria-label={t`Open in a new tab`}
-          >
-            <FixedSizeIcon name="external" />
-          </ActionIcon>
+          <Tooltip label={tooltip}>
+            <ActionIcon
+              component={ForwardRefLink}
+              to={link}
+              target="_blank"
+              aria-label={tooltip}
+            >
+              <FixedSizeIcon name="external" />
+            </ActionIcon>
+          </Tooltip>
         )}
         <ActionIcon aria-label={t`Close`} onClick={onClose}>
           <FixedSizeIcon name="close" />

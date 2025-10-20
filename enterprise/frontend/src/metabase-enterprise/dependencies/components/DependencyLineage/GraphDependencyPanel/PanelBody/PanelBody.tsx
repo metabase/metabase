@@ -2,6 +2,7 @@ import { memo } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import { ForwardRefLink } from "metabase/common/components/Link";
 import {
   ActionIcon,
   Anchor,
@@ -10,6 +11,7 @@ import {
   Flex,
   Group,
   Stack,
+  Tooltip,
   rem,
 } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
@@ -22,6 +24,7 @@ import {
   getNodeId,
   getNodeLabel,
   getNodeLink,
+  getNodeLinkTooltip,
   getNodeLocationInfo,
   getNodeViewCount,
 } from "../../utils";
@@ -49,6 +52,7 @@ type ListItemProps = {
 
 function ListItem({ node }: ListItemProps) {
   const link = getNodeLink(node);
+  const tooltip = getNodeLinkTooltip(node);
   const location = getNodeLocationInfo(node);
   const viewCount = getNodeViewCount(node);
 
@@ -59,13 +63,15 @@ function ListItem({ node }: ListItemProps) {
         {viewCount != null ? (
           <ListItemViewCount viewCount={viewCount} />
         ) : link != null ? (
-          <ListItemLink link={link} />
+          <ListItemLink link={link} tooltip={tooltip} />
         ) : null}
       </Group>
       {(location != null || (link != null && viewCount != null)) && (
         <Group justify={location != null ? "space-between" : "flex-end"}>
           {location != null && <ListItemLocation location={location} />}
-          {link != null && viewCount != null && <ListItemLink link={link} />}
+          {link != null && viewCount != null && (
+            <ListItemLink link={link} tooltip={tooltip} />
+          )}
         </Group>
       )}
     </Stack>
@@ -122,18 +128,21 @@ function ListItemLocation({ location }: ListItemSubtitleProps) {
 
 type ListItemLinkProps = {
   link: string;
+  tooltip: string;
 };
 
-function ListItemLink({ link }: ListItemLinkProps) {
+function ListItemLink({ link, tooltip }: ListItemLinkProps) {
   return (
-    <ActionIcon
-      component={Link}
-      to={link}
-      target="_blank"
-      m={rem(-ACTION_ICON_PADDING)}
-      aria-label={t`Open in a new tab`}
-    >
-      <FixedSizeIcon name="external" />
-    </ActionIcon>
+    <Tooltip label={tooltip}>
+      <ActionIcon
+        component={ForwardRefLink}
+        to={link}
+        target="_blank"
+        m={rem(-ACTION_ICON_PADDING)}
+        aria-label={t`Open in a new tab`}
+      >
+        <FixedSizeIcon name="external" />
+      </ActionIcon>
+    </Tooltip>
   );
 }
