@@ -9,7 +9,12 @@ interface BenchPaneHeaderProps {
 
 export const BenchPaneHeader = ({ title, actions }: BenchPaneHeaderProps) => {
   return (
-    <Flex p="md" justify="space-between" align="center">
+    <Flex
+      data-testid="bench-pane-header"
+      p="md"
+      justify="space-between"
+      align="center"
+    >
       <Text fw="bold">{title}</Text>
       <Flex>{actions}</Flex>
     </Flex>
