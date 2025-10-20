@@ -415,9 +415,9 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
         );
 
         cy.log("should show disclaimer text in sidebar layout");
-        H.getSimpleEmbedIframeContent()
-          .findByText("AI isn't perfect. Double-check results.")
-          .should("be.visible");
+        cy.findAllByText("AI isn't perfect. Double-check results.").should(
+          "be.visible",
+        );
       });
     });
 
@@ -434,7 +434,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
 
       cy.log("should show disclaimer text in stacked layout");
       H.getSimpleEmbedIframeContent()
-        .findByText("AI isn't perfect. Double-check results.")
+        .findAllByText("AI isn't perfect. Double-check results.")
         .should("be.visible");
     });
   });
