@@ -392,6 +392,7 @@ LIMIT
 
       H.NativeEditor.value().should("eq", EXPECTED_QUERY);
       getQueryEditor().button("Save changes").click();
+      getTransformPage().should("be.visible");
 
       cy.log("run the transform and make sure its table can be queried");
       runTransformAndWaitForSuccess();
@@ -2699,7 +2700,7 @@ function getQueryEditor() {
 }
 
 function getRunButton(options: { timeout?: number } = {}) {
-  return cy.findAllByTestId("run-button", options).eq(0);
+  return cy.findAllByTestId("run-button").eq(0, options);
 }
 
 function getCancelButton() {
