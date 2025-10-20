@@ -5,6 +5,9 @@ import { createRoot } from "react-dom/client";
 /**
  * Given a React node, it renders the node into a HTML string synchronously.
  *
+ * WARNING: Do not use this function inside useEffect or other lifecycle hooks!
+ * You will get an error "React cannot flush when React is already rendering" if you do.
+ *
  * https://18.react.dev/reference/react-dom/server/renderToString#removing-rendertostring-from-the-client-code
  */
 export function reactNodeToHtmlString(node: ReactNode) {
