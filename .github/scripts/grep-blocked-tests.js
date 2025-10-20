@@ -25,10 +25,9 @@ function getBlockedCypressTests(config = {}) {
     );
   }
 
-  const escapeQuotes = (s) => s.replace(/"/g, '\\"');
   const toPrefixed = (s) => `-${s.trim()}`;
 
-  return skipped.map((t) => toPrefixed(escapeQuotes(t))).join(";");
+  return skipped.map(toPrefixed).join(";");
 }
 
 module.exports = {
