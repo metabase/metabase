@@ -91,10 +91,7 @@
   "Generate a query for a saved Card"
   [{dataset-query :dataset_query
     card-type     :type
-    :as           card} :- [:map
-                            [:dataset_query [:or
-                                             [:= {:description "empty map"} {}]
-                                             ::lib.schema/query]]]
+    :as           card} :- ::queries.schema/card
    parameters  :- [:maybe ::parameters.schema/parameters]
    constraints :- [:maybe :map]
    middleware  :- [:maybe :map]

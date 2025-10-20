@@ -780,13 +780,13 @@
      clojure.core/eval        {:message "Don't use eval outside of tests"}}
 
     :discouraged-namespace
-    {metabase.legacy-mbql.jvm-util       {:message "Avoid legacy MBQL utis, use Lib instead"}
+    {metabase.legacy-mbql.jvm-util       {:message "Avoid legacy MBQL utils, use Lib instead"}
      metabase.legacy-mbql.normalize      {:message "Avoid legacy MBQL normalization, use MBQL 5 + lib/normalize instead"}
-     metabase.legacy-mbql.predicates     {:message "Avoid legacy MBQL utis, use Lib instead"}
+     metabase.legacy-mbql.predicates     {:message "Avoid legacy MBQL utils, use Lib instead"}
      metabase.legacy-mbql.schema         {:message "Avoid the legacy MBQL schema, use MBQL 5 + lib.schema instead"}
      metabase.legacy-mbql.schema.helpers {:message "Avoid the legacy MBQL schema, use MBQL 5 + lib.schema instead"}
      metabase.legacy-mbql.schema.macros  {:message "Avoid the legacy MBQL schema, use MBQL 5 + lib.schema instead"}
-     metabase.legacy-mbql.util           {:message "Avoid legacy MBQL utis, use Lib instead"}
+     metabase.legacy-mbql.util           {:message "Avoid legacy MBQL utils, use Lib instead"}
      metabase.query-processor.store      {:message "Please do not use the QP Store outside of legacy QP or driver code. Use MBQL 5/Lib or lib.metadata.jvm/applicaton-database-metadata-provider instead."}}}}
 
   printable-namespaces

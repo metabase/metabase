@@ -131,7 +131,7 @@
     (result-metadata* query current-user-id))))
 
 (mu/defn- ensure-legacy :- ::qp.schema/result-metadata.column
-  {:deprecated "0.51.0"}
+  {:deprecated "0.57.0"}
   [col :- :map]
   (letfn [(ensure-field-ref [col]
             ;; HACK for backward compatibility with FE stuff -- ideally we would be able to remove this entirely but
