@@ -4,7 +4,6 @@ import type { Table } from "./table";
 import type { Transform } from "./transform";
 
 export type DependencyId = number;
-
 export type DependencyType = "card" | "table" | "transform" | "snippet";
 export type DependencyGroupType = CardType | Exclude<DependencyType, "card">;
 
@@ -15,7 +14,7 @@ export type DependencyEntry = {
 
 export type DependentStats = Partial<Record<DependencyGroupType, number>>;
 
-type BaseDependencyNode<TType, TData> = {
+type BaseDependencyNode<TType extends DependencyType, TData> = {
   id: DependencyId;
   type: TType;
   data: TData;
