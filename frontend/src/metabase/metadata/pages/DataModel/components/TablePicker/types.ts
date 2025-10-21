@@ -10,6 +10,12 @@ import type {
 
 export type NodeKey = string;
 
+type IconProps = {
+  name: IconName;
+  color?: string;
+  tooltip?: string;
+};
+
 export type TreePath = {
   databaseId?: DatabaseId;
   schemaName?: SchemaName;
@@ -65,11 +71,7 @@ export type CollectionNode = {
   type: "collection";
   label: string;
   key: string;
-  icon: {
-    name: IconName;
-    color?: string;
-    tooltip?: string;
-  };
+  icon: IconProps;
   value: { collectionId: CollectionId };
   children: (CollectionNode | ModelNode)[];
 };
@@ -118,6 +120,7 @@ type LoadingItem = {
   parent?: NodeKey;
   table?: undefined;
   disabled?: never;
+  icon?: IconProps;
 };
 
 export type ExpandedState = {

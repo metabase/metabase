@@ -12,6 +12,7 @@ import { BulkTableVisibilityToggle } from "./BulkTableVisibilityToggle";
 import S from "./Results.module.css";
 import { TableVisibilityToggle } from "./TableVisibilityToggle";
 import type {
+  CollectionItem,
   FlatItem,
   ItemType,
   ModelItem,
@@ -135,7 +136,6 @@ export function Results({
             value,
             label,
             type,
-            icon: iconProps,
             isExpanded,
             isLoading,
             key,
@@ -155,6 +155,7 @@ export function Results({
           const hasTableChildren = children.some(
             (child) => child.type === "table",
           );
+          const typedValue = value as TreePath | undefined;
 
           const handleItemSelect = (open?: boolean) => {
             if (disabled) {
@@ -263,15 +264,15 @@ export function Results({
                 pointerEvents: disabled ? "none" : undefined,
               }}
               to={getUrl({
-                databaseId: value?.databaseId,
+                databaseId: typedValue?.databaseId,
                 schemaName:
                   type === "schema" || type === "table"
-                    ? value?.schemaName
+                    ? typedValue?.schemaName
                     : undefined,
-                tableId: type === "table" ? value?.tableId : undefined,
+                tableId: type === "table" ? typedValue?.tableId : undefined,
                 fieldId: undefined,
-                collectionId: value?.collectionId,
-                modelId: value?.modelId,
+                collectionId: typedValue?.collectionId,
+                modelId: typedValue?.modelId,
                 fieldName: undefined,
               })}
               data-testid="tree-item"
@@ -297,7 +298,9 @@ export function Results({
                     />
 
                     <Icon
-                      {...(iconProps || { name: TYPE_ICONS[type] })}
+                      {...((item as CollectionItem).icon || {
+                        name: TYPE_ICONS[type],
+                      })}
                       className={S.icon}
                     />
                   </Flex>

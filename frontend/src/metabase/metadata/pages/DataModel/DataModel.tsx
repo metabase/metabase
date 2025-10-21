@@ -17,7 +17,7 @@ import { ModelColumnsSection } from "metabase/metadata/pages/DataModel/component
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Box, Flex, Stack, Title, rem } from "metabase/ui";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions"; // eslint-disable-line no-restricted-imports
-import type { FieldName } from "metabase-types/api";
+import type { FieldName, UpdateFieldRequest } from "metabase-types/api";
 
 import S from "./DataModel.module.css";
 import {
@@ -94,10 +94,15 @@ export const DataModel = ({ params }: Props) => {
   const parentField = fieldsByName[parentName];
   const [previewType, setPreviewType] = useState<PreviewType>("table");
   const isLoading = isLoadingTables || isLoadingDatabases || isLoadingModel;
+  const fieldDatabaseId = isModelMode ? modelCard?.database_id : databaseId;
 
   const handleTableFieldChange = useCallback(
     (update: FieldChangeParams) => {
-      return updateField(update);
+      if (!update.id) {
+        throw new Error(`Cannot find field "id" in update object`);
+      }
+
+      return updateField(update as UpdateFieldRequest);
     },
     [updateField],
   );
@@ -267,34 +272,30 @@ export const DataModel = ({ params }: Props) => {
           miw={COLUMN_CONFIG.field.min}
         >
           <LoadingAndErrorWrapper error={error} loading={isLoading}>
-            {field &&
-              table &&
-              (isModelMode ? modelCard?.database_id : databaseId) && (
-                <Box flex="1" h="100%" maw={COLUMN_CONFIG.field.max}>
-                  <FieldSection
-                    mode={isModelMode ? "model" : "table"}
-                    databaseId={
-                      isModelMode ? modelCard.database_id : databaseId
-                    }
-                    field={field}
-                    /**
-                     * Make sure internal component state is reset when changing fields.
-                     * This is to avoid state mix-up with optimistic updates.
-                     */
-                    key={isModelMode ? fieldName : getRawTableFieldId(field)}
-                    parent={parentField}
-                    table={table}
-                    collectionId={collectionId}
-                    onFieldValuesClick={openFieldValuesModal}
-                    onPreviewClick={togglePreview}
-                    onFieldChange={
-                      isModelMode
-                        ? handleModelColumnChange
-                        : handleTableFieldChange
-                    }
-                  />
-                </Box>
-              )}
+            {field && table && fieldDatabaseId && (
+              <Box flex="1" h="100%" maw={COLUMN_CONFIG.field.max}>
+                <FieldSection
+                  mode={isModelMode ? "model" : "table"}
+                  databaseId={fieldDatabaseId}
+                  field={field}
+                  /**
+                   * Make sure internal component state is reset when changing fields.
+                   * This is to avoid state mix-up with optimistic updates.
+                   */
+                  key={isModelMode ? fieldName : getRawTableFieldId(field)}
+                  parent={parentField}
+                  table={table}
+                  collectionId={collectionId}
+                  onFieldValuesClick={openFieldValuesModal}
+                  onPreviewClick={togglePreview}
+                  onFieldChange={
+                    isModelMode
+                      ? handleModelColumnChange
+                      : handleTableFieldChange
+                  }
+                />
+              </Box>
+            )}
           </LoadingAndErrorWrapper>
 
           {!isLoading && !error && !field && (

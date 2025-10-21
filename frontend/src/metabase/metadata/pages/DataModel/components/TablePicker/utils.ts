@@ -22,7 +22,13 @@ import { useSelector } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { getUser } from "metabase/selectors/user";
 import type { IconName } from "metabase/ui";
-import type { DatabaseId, SchemaName } from "metabase-types/api";
+import type {
+  CardId,
+  DatabaseId,
+  SchemaName,
+  SearchResult,
+  TableId,
+} from "metabase-types/api";
 
 import { getUrl as getUrl_ } from "../../utils";
 
@@ -31,7 +37,6 @@ import type {
   DatabaseNode,
   ExpandedState,
   FlatItem,
-  Item,
   ItemType,
   ModelNode,
   NodeKey,
@@ -59,7 +64,7 @@ export const TYPE_ICONS: Record<ItemType, IconName> = {
   model: "model",
 };
 
-export function isItemWithHiddenExpandIcon(item: Item): boolean {
+export function isItemWithHiddenExpandIcon(item: FlatItem): boolean {
   if (item.type === "model" || item.type === "table") {
     return true;
   }
@@ -112,7 +117,7 @@ export function useTableLoader(path: TreePath) {
 
   const [tree, setTree] = useState<TreeNode>(rootNode());
 
-  const getDatabases = useCallback(async () => {
+  const getDatabases = useCallback(async (): Promise<DatabaseNode[]> => {
     const response = await fetchDatabases(
       { include_editable_data_model: true },
       true,
@@ -219,7 +224,7 @@ export function useTableLoader(path: TreePath) {
     [fetchSchemas, getTables, schemasRef],
   );
 
-  const collectionsSubTree = useMemo(() => {
+  const collectionsSubTree = useMemo((): (CollectionNode | ModelNode)[] => {
     const rootCollectionId = "root";
 
     if (!collections || !modelsData?.data || !currentUser) {
@@ -238,7 +243,7 @@ export function useTableLoader(path: TreePath) {
 
     const sortedModels = [...modelsData.data].sort((a, b) =>
       a.name.localeCompare(b.name),
-    );
+    ) as SearchResult<CardId, "dataset">[];
 
     function collectionToTreeNode(
       collection: CollectionTreeItem,
@@ -299,7 +304,7 @@ export function useTableLoader(path: TreePath) {
         getTables(databaseId, schemaName),
       ]);
 
-      const newTree: TreeNode = rootNode([
+      const newTree = rootNode([
         ...databases.map((database) => ({
           ...database,
           children:
@@ -356,7 +361,7 @@ export function useSearch(query: string) {
   const tree = useMemo(() => {
     const tree: TreeNode = rootNode();
 
-    data?.data.forEach((result) => {
+    (data?.data as SearchResult<TableId, "table">[]).forEach((result) => {
       const { model, database_name, database_id, table_schema, id, name } =
         result;
       const tableSchema = table_schema ?? "";
@@ -365,11 +370,11 @@ export function useSearch(query: string) {
         let databaseNode = tree.children.find(
           (node) =>
             node.type === "database" && node.value.databaseId === database_id,
-        );
+        ) as DatabaseNode | undefined;
         if (!databaseNode) {
           databaseNode = node<DatabaseNode>({
             type: "database",
-            label: database_name,
+            label: database_name || "",
             value: {
               databaseId: database_id,
             },
@@ -381,7 +386,7 @@ export function useSearch(query: string) {
           return (
             node.type === "schema" && node.value.schemaName === tableSchema
           );
-        });
+        }) as SchemaNode | undefined;
         if (!schemaNode) {
           schemaNode = node<SchemaNode>({
             type: "schema",
@@ -410,10 +415,6 @@ export function useSearch(query: string) {
           });
           schemaNode.children.push(tableNode);
         }
-      }
-
-      if (model === "dataset") {
-        // TODO: add it's parents to this tree
       }
     });
     return tree;
@@ -637,7 +638,9 @@ function node<T extends TreeNode>(x: Optional<T, "key" | "children">): T {
   } as T;
 }
 
-function rootNode(children: DatabaseNode[] = []): RootNode {
+function rootNode(
+  children: (DatabaseNode | CollectionNode | ModelNode)[] = [],
+): RootNode {
   return node<RootNode>({
     type: "root",
     label: "",
