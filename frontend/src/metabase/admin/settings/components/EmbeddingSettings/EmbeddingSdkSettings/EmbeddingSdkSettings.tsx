@@ -18,9 +18,8 @@ import {
   PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
   PLUGIN_EMBEDDING_SDK,
 } from "metabase/plugins";
-import { Box, Button, Group, HoverCard, Icon, Text } from "metabase/ui";
+import { Box, Group, HoverCard, Icon, Stack, Text } from "metabase/ui";
 
-import { SettingHeader } from "../../SettingHeader";
 import { AdminSettingInput } from "../../widgets/AdminSettingInput";
 
 import S from "./EmbeddingSdkSettings.module.css";
@@ -221,20 +220,29 @@ export function EmbeddingSdkSettings() {
       </Box>
 
       {isEmbeddingAvailable && isHosted && (
-        <Box>
-          <SettingHeader
-            id="version-pinning"
-            title={t`Version pinning`}
-            description={t`Metabase Cloud instances are automatically upgraded to new releases. SDK packages are strictly compatible with specific version of Metabase. You can request to pin your Metabase to a major version and upgrade your Metabase and SDK dependency in a coordinated fashion.`}
-          />
-          <Button
-            size="compact-md"
-            variant="outline"
-            leftSection={<Icon size={12} name="mail" aria-hidden />}
-            component={ExternalLink}
-            fz="0.75rem"
-            href="mailto:help@metabase.com"
-          >{t`Request version pinning`}</Button>
+        <Box py="lg" px="xl" className={S.SectionCard}>
+          <Stack gap="xs">
+            <Text
+              htmlFor="version-pinning"
+              component="label"
+              c="text-primary"
+              fw="bold"
+              fz="lg"
+            >
+              {t`Version pinning`}
+            </Text>
+
+            <Text c="text-secondary" lh="lg" mb="sm">
+              {t`Metabase Cloud instances are automatically upgraded to new releases. SDK packages are strictly compatible with specific version of Metabase. You can request to pin your Metabase to a major version and upgrade your Metabase and SDK dependency in a coordinated fashion.`}
+            </Text>
+
+            <ExternalLink href="mailto:help@metabase.com">
+              <Group gap="sm" fw="bold" w="fit-content">
+                <Icon name="mail" size={14} aria-hidden />
+                <span>{t`Request version pinning`}</span>
+              </Group>
+            </ExternalLink>
+          </Stack>
         </Box>
       )}
 
