@@ -14,8 +14,11 @@ import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker/components/QuestionPickerModal";
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
+import { canDownloadResults } from "metabase/dashboard/components/DashCard/DashCardMenu/utils";
 import { isWithinIframe } from "metabase/lib/dom";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { QuestionDownloadWidget } from "metabase/query_builder/components/QuestionDownloadWidget";
+import { useDownloadData } from "metabase/query_builder/components/QuestionDownloadWidget/use-download-data";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Loader, Menu, Text, TextInput } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -58,6 +61,141 @@ import styles from "./CardEmbedNode.module.css";
 import { ModifyQuestionModal } from "./ModifyQuestionModal";
 import { NativeQueryModal } from "./NativeQueryModal";
 import { PublicDocumentCardMenu } from "./PublicDocumentCardMenu";
+
+interface CardEmbedMenuContext {
+  canWrite: boolean;
+  dataset: Dataset | undefined;
+  question: Question | undefined;
+  isNativeQuestion: boolean | undefined;
+  commentsPath: string;
+  hasUnsavedChanges: boolean;
+  unresolvedCommentsCount: number;
+}
+
+interface CardEmbedMenuActions {
+  handleDownload: (opts: {
+    type: string;
+    enableFormatting: boolean;
+    enablePivot: boolean;
+  }) => void;
+  handleEditVisualizationSettings: () => void;
+  setIsModifyModalOpen: (open: boolean) => void;
+  handleReplaceQuestion: () => void;
+  handleRemoveNode: () => void;
+}
+
+interface CardEmbedMenuState {
+  menuView: string | null;
+  setMenuView: (view: string | null) => void;
+  isDownloadingData: boolean;
+}
+
+type CardEmbedMenuDropdownProps = CardEmbedMenuContext &
+  CardEmbedMenuActions &
+  CardEmbedMenuState;
+
+const CardEmbedMenuDropdown = ({
+  // Context
+  canWrite,
+  dataset,
+  question,
+  isNativeQuestion,
+  commentsPath,
+  hasUnsavedChanges,
+  unresolvedCommentsCount,
+  // Actions
+  handleDownload,
+  handleEditVisualizationSettings,
+  setIsModifyModalOpen,
+  handleReplaceQuestion,
+  handleRemoveNode,
+  // State
+  menuView,
+  setMenuView,
+  isDownloadingData,
+}: CardEmbedMenuDropdownProps) => {
+  if (menuView === "downloads" && question && dataset) {
+    return (
+      <QuestionDownloadWidget
+        question={question}
+        result={dataset}
+        onDownload={(opts) => {
+          setMenuView(null);
+          handleDownload(opts);
+        }}
+      />
+    );
+  }
+
+  return (
+    <>
+      {!isWithinIframe() && canWrite && (
+        <Menu.Item
+          leftSection={<Icon name="add_comment" size={14} />}
+          component={ForwardRefLink}
+          to={
+            unresolvedCommentsCount > 0
+              ? commentsPath
+              : `${commentsPath}?new=true`
+          }
+          onClick={(e) => {
+            if (!commentsPath || hasUnsavedChanges) {
+              e.preventDefault();
+            }
+          }}
+          disabled={!commentsPath || hasUnsavedChanges}
+        >
+          {t`Comment`}
+        </Menu.Item>
+      )}
+      {canWrite && (
+        <>
+          <Menu.Item
+            onClick={handleEditVisualizationSettings}
+            leftSection={<Icon name="palette" size={14} />}
+          >
+            {t`Edit Visualization`}
+          </Menu.Item>
+          <Menu.Item
+            onClick={() => setIsModifyModalOpen(true)}
+            leftSection={
+              <Icon name={isNativeQuestion ? "sql" : "notebook"} size={14} />
+            }
+          >
+            {t`Edit Query`}
+          </Menu.Item>
+          <Menu.Item
+            onClick={handleReplaceQuestion}
+            leftSection={<Icon name="refresh" size={14} />}
+          >
+            {t`Replace`}
+          </Menu.Item>
+        </>
+      )}
+      {canDownloadResults(dataset) && (
+        <Menu.Item
+          leftSection={<Icon name="download" aria-hidden />}
+          aria-label={isDownloadingData ? t`Downloading…` : t`Download results`}
+          disabled={isDownloadingData}
+          closeMenuOnClick={false}
+          onClick={() => {
+            setMenuView("downloads");
+          }}
+        >
+          {isDownloadingData ? t`Downloading…` : t`Download results`}
+        </Menu.Item>
+      )}
+      {canWrite && (
+        <Menu.Item
+          onClick={handleRemoveNode}
+          leftSection={<Icon name="trash" size={14} />}
+        >
+          {t`Remove Chart`}
+        </Menu.Item>
+      )}
+    </>
+  );
+};
 
 export const DROP_ZONE_COLOR = "var(--mb-color-brand)";
 const DRAG_LEAVE_TIMEOUT = 300;
@@ -256,6 +394,7 @@ export const CardEmbedComponent = memo(
     const titleInputRef = useRef<HTMLInputElement>(null);
     const [isModifyModalOpen, setIsModifyModalOpen] = useState(false);
     const [isReplaceModalOpen, setIsReplaceModalOpen] = useState(false);
+    const [menuView, setMenuView] = useState<string | null>(null);
     const [dragState, setDragState] = useState<{
       isDraggedOver: boolean;
       side: "left" | "right" | null;
@@ -266,8 +405,17 @@ export const CardEmbedComponent = memo(
     const isBeingDragged = editor.view.draggingNode === node;
 
     const displayName = name || card?.name;
-    const question = card != null ? new Question(card) : undefined;
+    const question = useMemo(
+      () => (card != null ? new Question(card, metadata) : undefined),
+      [card, metadata],
+    );
     const isNativeQuestion = question?.isNative();
+
+    const [{ loading: isDownloadingData }, handleDownload] = useDownloadData({
+      question: question!,
+      result: dataset!,
+      documentId: document?.id,
+    });
 
     useEffect(() => {
       if (isEditingTitle && titleInputRef.current) {
@@ -648,11 +796,13 @@ export const CardEmbedComponent = memo(
                   {!isEditingTitle &&
                     (isPublicDocument && dataset && !canWrite ? (
                       <PublicDocumentCardMenu card={card} dataset={dataset} />
-                    ) : !isPublicDocument ? (
+                    ) : !isPublicDocument && (canWrite || dataset) ? (
                       <Menu
                         withinPortal
                         position="bottom-end"
                         data-hide-on-print
+                        opened={menuView !== null ? true : undefined}
+                        onClose={() => setMenuView(null)}
                       >
                         <Menu.Target>
                           <Flex
@@ -673,63 +823,25 @@ export const CardEmbedComponent = memo(
                           </Flex>
                         </Menu.Target>
                         <Menu.Dropdown>
-                          {!isWithinIframe() && (
-                            <Menu.Item
-                              leftSection={
-                                <Icon name="add_comment" size={14} />
-                              }
-                              component={ForwardRefLink}
-                              to={
-                                // If no existing unresolved comments comments, add query param to auto-open new comment form
-                                unresolvedCommentsCount > 0
-                                  ? commentsPath
-                                  : `${commentsPath}?new=true`
-                              }
-                              // actually stop the navigation from happening
-                              onClick={(e) => {
-                                if (!commentsPath || hasUnsavedChanges) {
-                                  e.preventDefault();
-                                }
-                              }}
-                              // purely for presentation
-                              disabled={!commentsPath || hasUnsavedChanges}
-                            >
-                              {t`Comment`}
-                            </Menu.Item>
-                          )}
-                          <Menu.Item
-                            onClick={handleEditVisualizationSettings}
-                            disabled={!canWrite}
-                            leftSection={<Icon name="palette" size={14} />}
-                          >
-                            {t`Edit Visualization`}
-                          </Menu.Item>
-                          <Menu.Item
-                            onClick={() => setIsModifyModalOpen(true)}
-                            disabled={!canWrite}
-                            leftSection={
-                              <Icon
-                                name={isNativeQuestion ? "sql" : "notebook"}
-                                size={14}
-                              />
+                          <CardEmbedMenuDropdown
+                            menuView={menuView}
+                            setMenuView={setMenuView}
+                            canWrite={canWrite}
+                            dataset={dataset}
+                            question={question}
+                            isNativeQuestion={isNativeQuestion}
+                            isDownloadingData={isDownloadingData}
+                            handleDownload={handleDownload}
+                            handleEditVisualizationSettings={
+                              handleEditVisualizationSettings
                             }
-                          >
-                            {t`Edit Query`}
-                          </Menu.Item>
-                          <Menu.Item
-                            onClick={handleReplaceQuestion}
-                            disabled={!canWrite}
-                            leftSection={<Icon name="refresh" size={14} />}
-                          >
-                            {t`Replace`}
-                          </Menu.Item>
-                          <Menu.Item
-                            onClick={handleRemoveNode}
-                            disabled={!canWrite}
-                            leftSection={<Icon name="trash" size={14} />}
-                          >
-                            {t`Remove Chart`}
-                          </Menu.Item>
+                            setIsModifyModalOpen={setIsModifyModalOpen}
+                            handleReplaceQuestion={handleReplaceQuestion}
+                            handleRemoveNode={handleRemoveNode}
+                            commentsPath={commentsPath}
+                            hasUnsavedChanges={hasUnsavedChanges}
+                            unresolvedCommentsCount={unresolvedCommentsCount}
+                          />
                         </Menu.Dropdown>
                       </Menu>
                     ) : null)}

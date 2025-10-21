@@ -9,11 +9,13 @@
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
+   [metabase.public-sharing.api :as public-sharing]
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries.core :as card]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -305,6 +307,58 @@
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
   (t2/select [:model/Document :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
+
+;;; ------------------------------------------------ Card Downloads --------------------------------------------------
+
+(defn- validate-card-in-document!
+  "Validates that a card exists in a document and both are accessible.
+  Throws appropriate API errors if validation fails."
+  [document-id card-id]
+  (let [document (api/check-404 (t2/select-one :model/Document :id document-id :archived false))]
+    (api/read-check document)
+    (api/check-404 (t2/select-one-pk :model/Card :id card-id :archived false))
+    (api/check-404 (contains? (set (prose-mirror/card-ids document)) card-id))))
+
+(api.macros/defendpoint :post "/:document-id/card/:card-id/query/:export-format"
+  "Download query results for a Card embedded in a Document.
+  
+  Returns query results in the requested format. The user must have read access to the document
+  to download results. If the card's query fails, standard query error responses are returned.
+  
+  Parameters:
+  - document-id: ID of the document containing the card
+  - card-id: ID of the card to download results from
+  - export-format: Output format (csv, xlsx, json)
+  - parameters: Optional query parameters
+  - format_rows: Whether to apply formatting (default false)
+  - pivot_results: Whether to pivot results (default false)"
+  [{:keys [document-id card-id export-format]} :- [:map
+                                                   [:document-id   ms/PositiveInt]
+                                                   [:card-id       ms/PositiveInt]
+                                                   [:export-format :keyword]]
+   _query-params
+   {:keys          [parameters]
+    pivot-results? :pivot_results
+    format-rows?   :format_rows
+    :as            _body}
+   :- [:map
+       [:parameters    {:optional true} [:maybe
+                                         {:decode/api (fn [x]
+                                                        (cond-> x
+                                                          (string? x) json/decode+kw))}
+                                         [:sequential [:map-of :keyword :any]]]]
+       [:format_rows   {:default false} ms/BooleanValue]
+       [:pivot_results {:default false} ms/BooleanValue]]]
+  (validate-card-in-document! document-id card-id)
+  (public-sharing/process-query-for-card-with-id
+   card-id export-format parameters
+   :constraints nil
+   :middleware {:process-viz-settings?  true
+                :skip-results-metadata? true
+                :ignore-cached-results? true
+                :format-rows?           format-rows?
+                :pivot?                 pivot-results?
+                :js-int-to-string?      false}))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/document/` routes."
