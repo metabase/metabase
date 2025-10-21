@@ -427,6 +427,7 @@
                               :nested-queries                  true
                               :set-timezone                    true
                               :standard-deviation-aggregations true
+                              :test/create-table-without-data  false
                               :rename                          true
                               :test/jvm-timezone-setting       false
                               :identifiers-with-spaces         true
