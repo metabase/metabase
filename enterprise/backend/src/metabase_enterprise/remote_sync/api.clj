@@ -17,7 +17,8 @@
    [metabase.collections.models.collection :as collection]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -35,8 +36,9 @@
                        :timeout-ms (settings/remote-sync-task-time-limit-ms)}
        (let [result (f task-id)]
          (case (:status result)
-           :success (do (remote-sync.task/complete-sync-task! task-id)
-                        (settings/remote-sync-branch! branch))
+           :success (t2/with-transaction [_conn]
+                      (settings/remote-sync-branch! branch)
+                      (remote-sync.task/complete-sync-task! task-id))
            :error (remote-sync.task/fail-sync-task! task-id (:message result))
            (remote-sync.task/fail-sync-task! task-id "Unexpected Error")))))
     task-id))
