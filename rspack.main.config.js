@@ -19,6 +19,7 @@ const { CSS_CONFIG } = require("./frontend/build/shared/rspack/css-config");
 const {
   getBannerOptions,
 } = require("./frontend/build/shared/rspack/get-banner-options");
+const { SVGO_CONFIG } = require("./frontend/build/shared/rspack/svgo-config");
 
 const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
 const FONTS_PATH = __dirname + "/resources/frontend_client/app/fonts";
@@ -197,6 +198,7 @@ const config = {
             loader: "@svgr/webpack",
             options: {
               ref: true,
+              svgoConfig: SVGO_CONFIG,
             },
           },
         ],
@@ -252,7 +254,7 @@ const config = {
     splitChunks: {
       cacheGroups: {
         vendors: {
-          test: /[\\/]node_modules[\\/](?!(sql-formatter|jspdf|html2canvas-pro)[\\/])/,
+          test: /[\\/]node_modules[\\/](?!(sql-formatter|jspdf|html2canvas|html2canvas-pro)[\\/])/,
           chunks: "all",
           name: "vendor",
         },
@@ -267,7 +269,7 @@ const config = {
           name: "jspdf",
         },
         html2canvas: {
-          test: /[\\/]node_modules[\\/]html2canvas-pro[\\/]/,
+          test: /[\\/]node_modules[\\/](html2canvas|html2canvas-pro)[\\/]/,
           chunks: "all",
           name: "html2canvas",
         },
@@ -384,13 +386,18 @@ if (isDevMode) {
   }
 
   // replace minified files with un-minified versions
-  for (const name in config.resolve.alias) {
-    const minified = config.resolve.alias[name];
+  const aliases = config.resolve.alias || {};
+
+  Object.entries(aliases).forEach(([name, minified]) => {
+    if (typeof minified !== "string") {
+      return;
+    }
+
     const unminified = minified.replace(/[.-\/]min\b/g, "");
     if (minified !== unminified && fs.existsSync(unminified)) {
-      config.resolve.alias[name] = unminified;
+      aliases[name] = unminified;
     }
-  }
+  });
 
   // by default enable "cheap" source maps for fast re-build speed
   // with BETTER_SOURCE_MAPS we switch to sourcemaps that work with breakpoints and makes stacktraces readable

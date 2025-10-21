@@ -96,14 +96,16 @@
    not-found]
   (if-let [metadata-provider (->cached-metadata-provider metadata-providerable)]
     (lib.metadata.protocols/cached-value metadata-provider k not-found)
-    not-found))
+    (do (log/warn "Not a cached-metadata-provider")
+        not-found)))
 
 (mu/defn- cache-value! :- :nil
   [metadata-providerable :- ::lib.metadata.protocols/metadata-providerable
    k                     :- ::cache-key
    v]
-  (when-let [metadata-provider (->cached-metadata-provider metadata-providerable)]
-    (lib.metadata.protocols/cache-value! metadata-provider k v))
+  (if-let [metadata-provider (->cached-metadata-provider metadata-providerable)]
+    (lib.metadata.protocols/cache-value! metadata-provider k v)
+    (log/warn "Not a cached-metadata-provider"))
   nil)
 
 (defn ^:dynamic *cache-hit-hook*

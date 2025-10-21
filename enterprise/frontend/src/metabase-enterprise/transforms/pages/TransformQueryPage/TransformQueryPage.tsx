@@ -74,9 +74,6 @@ export function TransformQueryPageBody({
         dispatch(push(Urls.transform(transform.id)));
       }
     },
-    onError: () => {
-      sendErrorToast(t`Failed to update transform query`);
-    },
   });
 
   const handleSaveSource = async (source: TransformSource) => {
