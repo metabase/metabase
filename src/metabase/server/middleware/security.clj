@@ -203,8 +203,12 @@
 (defn approved-protocol?
   "Checks if the protocol is compatible with the reference one"
   [protocol reference-protocol]
-  (or (nil? reference-protocol)
-      (= protocol reference-protocol)))
+  (if (nil? reference-protocol)
+    ;; When the approved origin has no protocol (e.g., "localhost"),
+    ;; treat it as allowing only HTTP or HTTPS. Custom schemes like
+    ;; app:// must be explicitly specified in the approved origins.
+    (contains? #{"http" "https"} protocol)
+    (= protocol reference-protocol)))
 
 (defn approved-port?
   "Checks if the port is compatible with the reference one"
