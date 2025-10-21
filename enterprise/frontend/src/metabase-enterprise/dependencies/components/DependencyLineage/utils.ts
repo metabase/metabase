@@ -150,7 +150,7 @@ export function getNodeLink(
       tooltip: t`View metadata`,
     }))
     .with({ type: "transform" }, (node) => ({
-      url: `/admin/transforms/${node.id}`,
+      url: Urls.transform(node.id),
       tooltip: t`View this transform`,
     }))
     .with({ type: "snippet" }, () => undefined)

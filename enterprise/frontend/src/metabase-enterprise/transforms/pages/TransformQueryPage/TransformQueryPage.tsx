@@ -17,7 +17,6 @@ import {
 import type { Transform, TransformSource } from "metabase-types/api";
 
 import { QueryEditor } from "../../components/QueryEditor";
-import { getTransformUrl } from "../../urls";
 
 type TransformQueryPageParams = {
   transformId: string;
@@ -72,7 +71,7 @@ export function TransformQueryPageBody({
         sendErrorToast(t`Failed to update transform query`);
       } else {
         sendSuccessToast(t`Transform query updated`);
-        dispatch(push(getTransformUrl(transform.id)));
+        dispatch(push(Urls.transform(transform.id)));
       }
     },
     onError: () => {
@@ -88,7 +87,7 @@ export function TransformQueryPageBody({
   };
 
   const handleCancel = () => {
-    dispatch(push(getTransformUrl(transform.id)));
+    dispatch(push(Urls.transform(transform.id)));
   };
 
   if (transform.source.type === "python") {

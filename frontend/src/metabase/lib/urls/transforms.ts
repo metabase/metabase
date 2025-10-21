@@ -1,21 +1,44 @@
 import type {
   CardId,
   DatabaseId,
-  LegacyDatasetQuery,
   TableId,
   TransformId,
   TransformJobId,
+  TransformRunMethod,
+  TransformRunStatus,
+  TransformTagId,
 } from "metabase-types/api";
 
-import type {
-  JobListParams,
-  RunListParams,
-  TransformListParams,
-} from "./types";
+const ROOT_URL = "/admin/transforms";
 
-export const ROOT_URL = "/admin/transforms";
+export type TransformListParams = {
+  lastRunStartTime?: string;
+  lastRunStatuses?: TransformRunStatus[];
+  tagIds?: TransformTagId[];
+};
 
-export function getTransformListUrl({
+export type TransformJobListParams = {
+  lastRunStartTime?: string;
+  lastRunStatuses?: TransformRunStatus[];
+  nextRunStartTime?: string;
+  tagIds?: TransformTagId[];
+};
+
+export type TransformRunListParams = {
+  page?: number;
+  statuses?: TransformRunStatus[];
+  transformIds?: TransformId[];
+  transformTagIds?: TransformTagId[];
+  startTime?: string;
+  endTime?: string;
+  runMethods?: TransformRunMethod[];
+};
+
+export type TransformPythonLibraryParams = {
+  path: string;
+};
+
+export function transformList({
   lastRunStartTime,
   lastRunStatuses,
   tagIds,
@@ -38,30 +61,28 @@ export function getTransformListUrl({
   }
 }
 
-export function getNewTransformFromTypeUrl(
-  type: LegacyDatasetQuery["type"] | "python",
-) {
+export function newTransformFromType(type: "query" | "native" | "python") {
   return `${ROOT_URL}/new/${type}`;
 }
 
-export function getNewTransformFromCardUrl(cardId: CardId) {
+export function newTransformFromCard(cardId: CardId) {
   return `${ROOT_URL}/new/card/${cardId}`;
 }
 
-export function getTransformUrl(transformId: TransformId) {
+export function transform(transformId: TransformId) {
   return `${ROOT_URL}/${transformId}`;
 }
 
-export function getTransformQueryUrl(transformId: TransformId) {
+export function transformQuery(transformId: TransformId) {
   return `${ROOT_URL}/${transformId}/query`;
 }
 
-export function getJobListUrl({
+export function transformJobList({
   lastRunStartTime,
   lastRunStatuses,
   nextRunStartTime,
   tagIds,
-}: JobListParams = {}) {
+}: TransformJobListParams = {}) {
   const searchParams = new URLSearchParams();
   if (lastRunStartTime != null) {
     searchParams.set("lastRunStartTime", lastRunStartTime);
@@ -83,15 +104,15 @@ export function getJobListUrl({
   }
 }
 
-export function getNewJobUrl() {
+export function newTransformJob() {
   return `${ROOT_URL}/jobs/new`;
 }
 
-export function getJobUrl(id: TransformJobId) {
+export function transformJob(id: TransformJobId) {
   return `${ROOT_URL}/jobs/${id}`;
 }
 
-export function getRunListUrl({
+export function transformRunList({
   page,
   transformIds,
   statuses,
@@ -99,7 +120,7 @@ export function getRunListUrl({
   startTime,
   endTime,
   runMethods,
-}: RunListParams = {}) {
+}: TransformRunListParams = {}) {
   const searchParams = new URLSearchParams();
   if (page != null) {
     searchParams.set("page", String(page));
@@ -131,22 +152,10 @@ export function getRunListUrl({
   }
 }
 
-export function getBrowseDatabaseUrl(databaseId: DatabaseId) {
-  return `/browse/databases/${databaseId}`;
+export function transformPythonLibrary({ path }: TransformPythonLibraryParams) {
+  return `/admin/transforms/library/${path}`;
 }
 
-export function getBrowseSchemaUrl(databaseId: DatabaseId, schema: string) {
-  return `/browse/databases/${databaseId}/schema/${schema ?? ""}`;
-}
-
-export function getQueryBuilderUrl(tableId: TableId, databaseId: DatabaseId) {
+export function queryBuilderTable(tableId: TableId, databaseId: DatabaseId) {
   return `/question#?db=${databaseId}&table=${tableId}`;
-}
-
-export function getTableMetadataUrl(
-  tableId: TableId,
-  schema: string | null,
-  databaseId: DatabaseId,
-) {
-  return `/admin/datamodel/database/${databaseId}/schema/${databaseId}:${encodeURIComponent(schema ?? "")}/table/${tableId}`;
 }
