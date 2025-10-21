@@ -7,6 +7,7 @@ import { Box, FixedSizeIcon, Group, Stack, Title } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DependencyNode } from "metabase-types/api";
 
+import { GraphNodeLink } from "../../GraphNodeLink";
 import { getNodeDescription } from "../../utils";
 
 import S from "./PanelBody.module.css";
@@ -15,6 +16,7 @@ import {
   getNodeCreatedBy,
   getNodeFields,
   getNodeFieldsLabel,
+  getNodeGeneratedTableInfo,
   getNodeLastEditedAt,
   getNodeLastEditedBy,
 } from "./utils";
@@ -28,6 +30,7 @@ export function PanelBody({ node }: PanelBodyProps) {
     <Stack className={S.body} p="lg" gap="lg" lh="1rem">
       <DescriptionSection node={node} />
       <CreatorAndLastEditorSection node={node} />
+      <GeneratedTableSection node={node} />
       <FieldsSection node={node} />
     </Stack>
   );
@@ -86,6 +89,25 @@ function CreatorAndLastEditorSection({ node }: SectionProps) {
           </Box>
         </Group>
       )}
+    </Stack>
+  );
+}
+
+function GeneratedTableSection({ node }: SectionProps) {
+  const link = getNodeGeneratedTableInfo(node);
+  if (link == null) {
+    return null;
+  }
+
+  return (
+    <Stack gap="sm">
+      <Title order={6}>{t`Generated table`}</Title>
+      <GraphNodeLink
+        label={link.label}
+        icon="table"
+        url={link.url}
+        target="_blank"
+      />
     </Stack>
   );
 }

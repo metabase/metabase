@@ -1,6 +1,8 @@
 import { P, match } from "ts-pattern";
 import { msgid, ngettext } from "ttag";
 
+import * as Urls from "metabase/lib/urls";
+import type { NodeLink } from "metabase-enterprise/dependencies/components/DependencyLineage/types";
 import type { DependencyNode } from "metabase-types/api";
 
 export function getNodeCreatedAt(node: DependencyNode) {
@@ -29,6 +31,22 @@ export function getNodeLastEditedBy(node: DependencyNode) {
     .with({ type: "card" }, (node) => node.data["last-edit-info"])
     .with({ type: P.union("table", "transform", "snippet") }, () => undefined)
     .exhaustive();
+}
+
+export function getNodeGeneratedTableInfo(
+  node: DependencyNode,
+): NodeLink | undefined {
+  const tableInfo = match(node)
+    .with({ type: "transform" }, (node) => node.data.table)
+    .with({ type: P.union("card", "table", "snippet") }, () => undefined)
+    .exhaustive();
+
+  if (tableInfo != null && typeof tableInfo.id === "number") {
+    return {
+      label: tableInfo.display_name,
+      url: Urls.dataModelTable(tableInfo.db_id, tableInfo.schema, tableInfo.id),
+    };
+  }
 }
 
 export function getNodeFields(node: DependencyNode) {

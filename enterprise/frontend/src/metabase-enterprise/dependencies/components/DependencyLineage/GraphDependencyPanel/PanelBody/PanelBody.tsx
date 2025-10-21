@@ -1,5 +1,4 @@
 import { memo } from "react";
-import { Link } from "react-router";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import * as Urls from "metabase/lib/urls";
@@ -7,7 +6,6 @@ import {
   ActionIcon,
   Box,
   FixedSizeIcon,
-  Flex,
   Group,
   Stack,
   Tooltip,
@@ -15,6 +13,7 @@ import {
 } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
+import { GraphNodeLink } from "../../GraphNodeLink";
 import { GraphNodeLocation } from "../../GraphNodeLocation";
 import { ACTION_ICON_PADDING } from "../../constants";
 import type { NodeLink } from "../../types";
@@ -82,16 +81,9 @@ type ListItemTitleProps = {
 function ListItemTitle({ node }: ListItemTitleProps) {
   const label = getNodeLabel(node);
   const icon = getNodeIcon(node);
-  const link = Urls.dependencyLineage({ entry: node });
+  const url = Urls.dependencyLineage({ entry: node });
 
-  return (
-    <Box className={S.link} component={Link} to={link}>
-      <Flex gap="sm" align="center">
-        <FixedSizeIcon name={icon} c="brand" />
-        <Box lh="h4">{label}</Box>
-      </Flex>
-    </Box>
-  );
+  return <GraphNodeLink label={label} icon={icon} url={url} />;
 }
 
 type ListItemViewCountProps = {

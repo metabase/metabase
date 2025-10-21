@@ -13,18 +13,14 @@ export type EdgeId = string;
 export type NodeType = Node<DependencyNode>;
 
 export type NodeLink = {
+  label: string;
   url: string;
-  tooltip: string;
+  tooltip?: string;
 };
 
 export type NodeLocation = {
   icon: IconName;
-  parts: NodeLocationLink[];
-};
-
-export type NodeLocationLink = {
-  label: string;
-  url: string;
+  parts: NodeLink[];
 };
 
 export type GraphData = {
