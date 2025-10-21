@@ -179,13 +179,14 @@ export const SyncedCollectionsSidebarSection = ({
             closeWarningModal();
             setNextBranch(null);
           }}
+          variant="switch-branch"
         />
       )}
       {showPush && (
         <PushChangesModal
-          isOpen={showPush}
           onClose={closePush}
           collections={syncedCollections}
+          currentBranch={currentBranch!}
         />
       )}
     </>

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useAdminSetting } from "metabase/api/utils";
 import {
   Alert,
   Box,
@@ -20,23 +19,23 @@ import type { Collection } from "metabase-types/api";
 import { useExportChangesMutation } from "../../../api";
 import { type ExportError, parseExportError } from "../../utils";
 import { ChangesLists } from "../ChangesLists";
+import { UnsyncedChangesModal } from "../UnsyncedChangesModal";
 
 import { CommitMessageSection } from "./CommitMessageSection";
 
 interface PushChangesModalProps {
-  isOpen: boolean;
-  onClose: () => void;
   collections: Collection[];
+  currentBranch: string;
+  onClose: () => void;
 }
 
 export const PushChangesModal = ({
-  isOpen,
   onClose,
+  currentBranch,
   collections,
 }: PushChangesModalProps) => {
   const [commitMessage, setCommitMessage] = useState("");
   const [forceMode, setForceMode] = useState(false);
-  const { value: currentBranch } = useAdminSetting("remote-sync-branch");
 
   const [
     exportChanges,
@@ -72,9 +71,20 @@ export const PushChangesModal = ({
     });
   }, [commitMessage, forceMode, exportChanges, currentBranch]);
 
+  if (hasConflict) {
+    return (
+      <UnsyncedChangesModal
+        collections={collections}
+        currentBranch={currentBranch}
+        onClose={onClose}
+        variant="push"
+      />
+    );
+  }
+
   return (
     <Modal
-      opened={isOpen}
+      opened
       title={<Title fw={600} order={3} pl="sm">{t`Push to Git`}</Title>}
       onClose={onClose}
       size="lg"

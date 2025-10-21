@@ -1,117 +1,67 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useToast } from "metabase/common/hooks";
-import * as Urls from "metabase/lib/urls";
-import { Box, Button, Group, Modal } from "metabase/ui";
-import {
-  useCreateBranchMutation,
-  useExportChangesMutation,
-  useGetBranchesQuery,
-  useImportChangesMutation,
-} from "metabase-enterprise/api";
+import { Box, Button, Group, Modal, Text } from "metabase/ui";
+import { useGetBranchesQuery } from "metabase-enterprise/api";
 import type { Collection } from "metabase-types/api";
 
 import { ChangesLists } from "../ChangesLists";
 
 import { BranchNameInput } from "./BranchNameInput";
-import { BranchSwitchOptions, type OptionValue } from "./BranchSwitchOptions";
+import { OutOfSyncOptions } from "./OutOfSyncOptions";
+import {
+  useDiscardChangesAndSwitchAction,
+  usePushChangesAction,
+  useStashToNewBranchAction,
+} from "./mutation-wrappers";
+import {
+  type ModalVariant,
+  type OptionValue,
+  getContinueButtonText,
+} from "./utils";
 
 interface UnsyncedWarningModalProps {
   collections: Collection[];
   currentBranch: string;
-  nextBranch: string;
+  nextBranch?: string;
   onClose: VoidFunction;
+  variant: ModalVariant;
 }
 
 export const UnsyncedChangesModal = (props: UnsyncedWarningModalProps) => {
-  const { collections, onClose, currentBranch, nextBranch } = props;
+  const { collections, onClose, currentBranch, nextBranch, variant } = props;
   const [optionValue, setOptionValue] = useState<OptionValue>();
   const [newBranchName, setNewBranchName] = useState<string>("");
-  const [importChanges, { isLoading: isImporting }] =
-    useImportChangesMutation();
-  const [exportChanges, { isLoading: isExporting }] =
-    useExportChangesMutation();
-  const [createBranch, { isLoading: isCreatingBranch }] =
-    useCreateBranchMutation();
   const { data: branchesData } = useGetBranchesQuery();
   const existingBranches = useMemo(
     () => branchesData?.items || [],
     [branchesData],
   );
-  const [sendToast] = useToast();
+  const { pushChanges, isPushingChanges } = usePushChangesAction();
+  const { stashToNewBranch, isStashing } =
+    useStashToNewBranchAction(existingBranches);
+  const { discardChangesAndSwitch, isImporting } =
+    useDiscardChangesAndSwitchAction(collections);
 
-  const handleContinueClick = async () => {
+  const handleContinueButtonClick = async () => {
     if (!optionValue) {
       return;
     }
 
     if (optionValue === "push") {
-      try {
-        await exportChanges({
-          branch: currentBranch,
-        }).unwrap();
-        sendToast({
-          message: t`Changes pushed. You can now switch branches.`,
-          timeout: 8000,
-        });
-        onClose();
-      } catch (error) {
-        sendToast({ message: t`Failed to push changes`, icon: "warning" });
-      }
+      await pushChanges(currentBranch, variant === "push", onClose);
     }
 
     if (optionValue === "new-branch") {
-      if (!newBranchName) {
-        sendToast({
-          message: t`Please enter a valid branch name`,
-          icon: "warning",
-        });
-        return;
-      }
-
-      if (existingBranches.includes(newBranchName)) {
-        sendToast({
-          message: t`This branch name already exists`,
-          icon: "warning",
-        });
-        return;
-      }
-
-      try {
-        await createBranch({ name: newBranchName }).unwrap();
-        await exportChanges({
-          branch: newBranchName,
-        }).unwrap();
-        sendToast({
-          message: t`Changes pushed to new branch. You can now switch branches.`,
-          timeout: 8000,
-        });
-        onClose();
-      } catch (error) {
-        sendToast({
-          message: t`Failed to push changes to new branch`,
-          icon: "warning",
-        });
-      }
+      await stashToNewBranch(newBranchName, onClose);
     }
 
-    if (optionValue === "discard") {
-      try {
-        await importChanges({ branch: nextBranch, force: true }).unwrap();
-        onClose();
-        if (collections.length) {
-          // Navigate to base the collection page with a full reload to make sure
-          // the current page exists, and we don't have any dirty state left in the UI
-          window.location.href = Urls.collection(collections[0]);
-        }
-      } catch (error) {
-        sendToast({ message: t`Failed to switch branches`, icon: "warning" });
-      }
+    if (optionValue === "discard" && nextBranch) {
+      await discardChangesAndSwitch(nextBranch, onClose);
     }
   };
 
-  const isProcessing = isImporting || isExporting || isCreatingBranch;
+  const isProcessing = isImporting || isPushingChanges || isStashing;
   const isButtonDisabled = useMemo(() => {
     let disabled = !optionValue || isProcessing;
 
@@ -126,16 +76,29 @@ export const UnsyncedChangesModal = (props: UnsyncedWarningModalProps) => {
     <Modal
       onClose={onClose}
       opened
-      title={t`You have unsynced changes. What do you want to do?`}
+      title={
+        <Text component="span" fz="1.25rem" lh="2rem">
+          {variant === "switch-branch" ? (
+            t`You have unsynced changes. What do you want to do?`
+          ) : (
+            <>
+              {t`Your branch is behind the remote branch.`}
+              <br />
+              {t`What do you want to do?`}
+            </>
+          )}
+        </Text>
+      }
       withCloseButton={false}
     >
       <Box pt="md">
         <ChangesLists collections={collections} />
 
-        <BranchSwitchOptions
+        <OutOfSyncOptions
           currentBranch={currentBranch}
           handleOptionChange={setOptionValue}
           optionValue={optionValue}
+          variant={variant}
         />
 
         {optionValue === "new-branch" && (
@@ -154,7 +117,7 @@ export const UnsyncedChangesModal = (props: UnsyncedWarningModalProps) => {
             color={optionValue === "discard" ? "error" : "brand"}
             disabled={isButtonDisabled}
             loading={isProcessing}
-            onClick={handleContinueClick}
+            onClick={handleContinueButtonClick}
             variant="filled"
           >
             {getContinueButtonText(optionValue)}
@@ -163,16 +126,4 @@ export const UnsyncedChangesModal = (props: UnsyncedWarningModalProps) => {
       </Box>
     </Modal>
   );
-};
-
-const getContinueButtonText = (optionValue?: OptionValue) => {
-  switch (optionValue) {
-    case "push":
-    case "new-branch":
-      return t`Push changes`;
-    case "discard":
-      return t`Discard changes`;
-    default:
-      return t`Continue`;
-  }
 };

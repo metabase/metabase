@@ -15,7 +15,7 @@ export type CollectionPathSegment = {
 
 type ErrorData = {
   message?: string;
-  conflict?: boolean;
+  conflicts?: boolean;
 };
 
 export type ExportError = {
@@ -61,8 +61,7 @@ export const getSyncStatusColor = (status: RemoteSyncEntityStatus): string => {
 const isValidErrorData = (data: unknown): data is ErrorData =>
   typeof data === "object" && data !== null;
 
-const hasConflictProperty = (data: ErrorData): boolean =>
-  "conflict" in data && Boolean(data.conflict);
+const hasConflictProperty = (data: ErrorData): boolean => !!data.conflicts;
 
 const getErrorMessage = (data: ErrorData): string | undefined =>
   "message" in data && typeof data.message === "string"
