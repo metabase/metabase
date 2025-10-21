@@ -63,16 +63,40 @@
 
 (mu/defn upstream-deps:dashboard :- ::deps.schema/upstream-deps
   "Given a dashboard, return its upstream dependencies"
-  [{dashboard-id :id :as _dashboard}]
+  [{dashboard-id :id :as dashboard}]
   ;; TODO(rileythomp): Check that it's okay to use t2 here
+  ;; Would it be better to hydrate these card ids in events/publish-event! ::dashboard-deps?
+  ;; And then pull out the card ids here?
   (let [card-ids (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id dashboard-id)
-        dashcard-ids     (t2/select-fn-set :id :model/DashboardCard
-                                           :dashboard_id dashboard-id)
-        series-card-ids  (when (seq dashcard-ids)
+        dashcards     (t2/select :model/DashboardCard
+                                 :dashboard_id dashboard-id)
+        series-card-ids  (when (seq dashcards)
                            (t2/select-fn-set :card_id :model/DashboardCardSeries
-                                             :dashboardcard_id [:in dashcard-ids]))
-        all-card-ids (into card-ids series-card-ids)]
-    {:card all-card-ids}))
+                                             :dashboardcard_id [:in (map :id dashcards)]))
+        parameter-cards (into #{} (keep (comp :card_id :values_source_config) (:parameters dashboard)))
+        column-setting-cards (reduce into #{}
+                                     (map (fn [dashcard]
+                                            (keep (fn [[_col col-setting]]
+                                                    (let [cb (:click_behavior col-setting)]
+                                                      (when (= (:linkType cb) "question")
+                                                        (:targetId cb))))
+                                                  (:column_settings (:visualization_settings dashcard))))
+                                          dashcards))
+        column-setting-dashboards (reduce into #{}
+                                          (map (fn [dashcard]
+                                                 (keep (fn [[_col col-setting]]
+                                                         (let [cb (:click_behavior col-setting)]
+                                                           (when (= (:linkType cb) "dashboard")
+                                                             (:targetId cb))))
+                                                       (:column_settings (:visualization_settings dashcard))))
+                                               dashcards))
+        all-card-ids (reduce into #{} [card-ids
+                                       series-card-ids
+                                       parameter-cards
+                                       column-setting-cards])
+        all-dashboard-ids (reduce into #{} [column-setting-dashboards])]
+    {:card all-card-ids
+     :dashboard all-dashboard-ids}))
 
 (mu/defn upstream-deps:document :- ::deps.schema/upstream-deps
   "Given a document, return its upstream dependencies"

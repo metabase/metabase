@@ -129,6 +129,9 @@
 (methodical/defmethod events/publish-event! ::dashboard-deps
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
+    ;; TODO(rileythomp): Would it be better to hydrate the dashboard here
+    ;; with all the card ids that we need? And then pull those card ids
+    ;; out in deps.calculation/upstream-deps:dashboard?
     (t2/with-transaction [_conn]
       (models.dependency/replace-dependencies! :dashboard (:id object) (deps.calculation/upstream-deps:dashboard object))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
