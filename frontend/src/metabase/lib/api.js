@@ -44,8 +44,16 @@ export class Api extends EventEmitter {
    *      headers?: Record<string, string>;
    *      hasBody: boolean;
    *    } & Record<string, unknown>;
-   * }} RequestHandlerData
-   * @type {((data: RequestHandlerData) => (Promise<void | RequestHandlerData>))[]}
+   * }} OnBeforeRequestHandlerData
+   *
+   * @typedef {(data: RequestHandlerData) => (Promise<void | OnBeforeRequestHandlerData>)} OnBeforeRequestHandler
+   *
+   * @typedef {{
+   *   key: string;
+   *   handler: OnBeforeRequestHandler
+   * }} OnBeforeRequestHandlerDescription
+   *
+   * @type {OnBeforeRequestHandlerDescription[]}
    */
   onBeforeRequestHandlers = [];
   onResponseError;
@@ -138,7 +146,7 @@ export class Api extends EventEmitter {
         let url = urlTemplate;
 
         if (this.onBeforeRequestHandlers.length) {
-          for (const handler of this.onBeforeRequestHandlers) {
+          for (const { handler } of this.onBeforeRequestHandlers) {
             const onBeforeRequestHandlerResult = await handler({
               method,
               url,
@@ -421,4 +429,20 @@ export const setLocaleHeader = (locale) => {
    */
   // eslint-disable-next-line no-literal-metabase-strings -- Header name, not a user facing string
   DEFAULT_OPTIONS.headers["X-Metabase-Locale"] = locale ?? undefined;
+};
+
+/**
+ * @param {OnBeforeRequestHandlerDescription} handlerDescription
+ */
+export const setOnBeforeRequestHandler = (handlerDescription) => {
+  const existingHandlerKeyIndex = instance.onBeforeRequestHandlers.findIndex(
+    ({ key }) => key === handlerDescription.key,
+  );
+
+  if (existingHandlerKeyIndex >= 0) {
+    instance.onBeforeRequestHandlers[existingHandlerKeyIndex] =
+      handlerDescription;
+  } else {
+    instance.onBeforeRequestHandlers.push(handlerDescription);
+  }
 };
