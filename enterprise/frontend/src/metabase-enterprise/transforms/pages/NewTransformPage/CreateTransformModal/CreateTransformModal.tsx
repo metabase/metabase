@@ -148,8 +148,8 @@ function IncrementalNotice({ source }: IncrementalNoticeProps) {
 
   return (
     <Alert variant="info" icon="info">
-      {t`After saving, you'll need to edit your query to add a WHERE filter on the keyset column. Use this snippet:`}{" "}
-      <strong>{`{{snippet: incremental transform filter}}`}</strong>
+          {t`Ensure your query contains WHERE filter on the keyset column. You may want to use:`}{" "}
+      <strong>{`[[AND id > {{watermark}}]]`}</strong>
     </Alert>
   );
 }

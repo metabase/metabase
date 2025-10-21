@@ -153,10 +153,10 @@ function UpdateIncrementalForm({
                     query.stages?.[0]?.native != null;
 
                   return isNativeQuery ? (
-                    <Alert variant="info" icon="info">
-                      {t`You'll need to edit your query to add a WHERE filter on the keyset column. You can use the snippet`}{" "}
-                      <strong>{`{{snippet: incremental transform filter}}`}</strong>
-                    </Alert>
+                      <Alert variant="info" icon="info">
+                          {t`Ensure your query contains WHERE filter on the keyset column. You may want to use:`}{" "}
+                          <strong>{`[[AND id > {{watermark}}]]`}</strong>
+                      </Alert>
                   ) : null;
                 })()}
                 <FormSelect
