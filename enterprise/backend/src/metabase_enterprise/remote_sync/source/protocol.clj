@@ -4,22 +4,63 @@
 
 (defprotocol Source
   (branches [source]
-    "Returns a map of branch names available in the source")
+    "Get all available branch names from the remote source.
+
+    Args:
+      source: The source instance implementing this protocol.
+
+    Returns:
+      A collection of branch name strings available in the source.")
 
   (create-branch [source branch-name base-branch]
-    "Creates a new branch from an existing branch")
+    "Create a new branch from an existing branch.
+
+    Args:
+      source: The source instance implementing this protocol.
+      branch-name: The name for the new branch to create.
+      base-branch: The name of the existing branch to use as the base.
+
+    Returns:
+      The name of the newly created branch.")
 
   (list-files [source]
-    "Lists all files in the source")
+    "List all files available in the source.
+
+    Args:
+      source: The source instance implementing this protocol.
+
+    Returns:
+      A collection of file path strings.")
 
   (read-file [source path]
-    "Reads the contents of the file at `path` in `branch`")
+    "Read the contents of a file from the source.
+
+    Args:
+      source: The source instance implementing this protocol.
+      path: The relative path to the file to read.
+
+    Returns:
+      The file contents as a string, or nil if the file doesn't exist.")
 
   (write-files! [source message files]
-    "Writes `content` to `path` in `branch` with commit `message` for all files in `files`")
+    "Write multiple files to the source with a commit message.
+
+    Args:
+      source: The source instance implementing this protocol.
+      message: The commit message to use when writing files.
+      files: A sequence of file specs (maps with :path and :content keys).
+
+    Returns:
+      The result of the write operation.")
 
   (version [source]
-    "Returns a version identifier for the current state of the source (eg a git sha)"))
+    "Get a version identifier for the current state of the source.
+
+    Args:
+      source: The source instance implementing this protocol.
+
+    Returns:
+      A version identifier string (e.g., a git SHA)."))
 
 (methodical/defmulti ->ingestable
   "Creates an ingestable source for remote sync operations.

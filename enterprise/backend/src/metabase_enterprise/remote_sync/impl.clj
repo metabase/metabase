@@ -20,7 +20,14 @@
   (t2/select-pks-vec :model/Collection :type "remote-synced"))
 
 (defn sync-objects!
-  "Setup the remote-sync-object table with the imported-entities"
+  "Populate the remote-sync-object table with imported entities.
+
+  Args:
+    timestamp: The instant timestamp when the sync occurred.
+    imported-entities: A map where keys are model names (strings) and values are sets of entity IDs that were imported.
+
+  Returns:
+    The result of inserting RemoteSyncObject records into the database."
   [timestamp imported-entities]
   (t2/delete! :model/RemoteSyncObject)
   (let [inserts (->> imported-entities
@@ -88,7 +95,19 @@
          :details {:error-type (type e)}}))))
 
 (defn import!
-  "Reloads the Metabase entities from the git repo"
+  "Import and reload Metabase entities from a remote source.
+
+  Args:
+    ingestable-source: An IngestableSource instance providing access to serialized entities.
+    task-id: The RemoteSyncTask identifier used to track progress updates.
+    create-collection?: (Optional keyword arg) If true, creates a remote-synced collection if one doesn't exist.
+
+  Returns:
+    A map with :status, :version, and :message keys describing the import result.
+    Status can be :success or :error.
+
+  Raises:
+    Exception: Various exceptions may be thrown during import and are caught and converted to error status maps."
   [ingestable-source task-id & {:keys [create-collection?]}]
   (log/info "Reloading remote entities from the remote source")
   (analytics/inc! :metabase-remote-sync/imports)
@@ -127,7 +146,19 @@
        :message "Remote sync source is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."})))
 
 (defn export!
-  "Exports the synced collections to the source repo"
+  "Export remote-synced collections to a remote source repository.
+
+  Args:
+    source: The remote source implementing the Source protocol where files will be written.
+    task-id: The RemoteSyncTask identifier used to track progress updates.
+    message: The commit message to use when writing files to the source.
+
+  Returns:
+    A map with :status, :version, and :message keys describing the export result.
+    Status can be :success or :error.
+
+  Raises:
+    Exception: Various exceptions may be thrown during export and are caught and converted to error status maps."
   [source task-id message]
   (if source
     (let [sync-timestamp (t/instant)

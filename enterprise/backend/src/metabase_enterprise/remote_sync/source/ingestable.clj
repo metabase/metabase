@@ -43,15 +43,15 @@
       (callback <> serdes-path))))
 
 (defn wrap-progress-ingestable
-  "Updates a RemoteSyncTask model with a progress indcator.
+  "Wrap an Ingestable to track and update progress during ingestion.
 
-  Arguments:
-    task-id: the integer id of the RemoteSyncTask model to update
-    normalize: make the progress ratio of out this number
-    ingestable:  And Ingestable to wrap
+  Args:
+    task-id: The integer ID of the RemoteSyncTask model to update with progress.
+    normalize: The maximum progress ratio value (progress will be calculated as a fraction of this number).
+    ingestable: An Ingestable object to wrap with progress tracking.
 
   Returns:
-    an Ingestable object that will use the callback"
+    A CallbackIngestable instance that updates task progress as items are ingested."
   [task-id normalize ingestable]
   (let [total (count (serialization/ingest-list ingestable))
         calls (atom 0)]
@@ -87,15 +87,15 @@
     (serialization/ingest-one ingestable serdes-path)))
 
 (defn wrap-root-dep-ingestable
-  "Wraps an ingestable in a function that filters the result of ingest list to only items in the Ingestable
-  that have one of the root-dependencies passed to it.
+  "Wrap an Ingestable to filter items by root dependencies.
 
-  Arguments:
-    root-dependencies: sequence of serdes dependencies in the format [{:model MODEL_NAME :id ENTITY_ID}]
-    ingestable: source ingestable object
+  Args:
+    root-dependencies: A sequence of serdes dependency maps in the format [{:model MODEL_NAME :id ENTITY_ID}].
+    ingestable: The source Ingestable object to wrap.
 
   Returns:
-    and ingestable that filters out the items it lists to just to those sharing the dependencies  "
+    A RootDependencyIngestable instance that filters ingest-list results to only include
+    items sharing one of the specified root dependencies."
   [root-dependencies ingestable]
   (->RootDependencyIngestable ingestable root-dependencies (atom {})))
 
@@ -116,7 +116,13 @@
           (throw (ex-info "Unable to ingest file" {:abs-path serdes-path} e)))))))
 
 (defn ingestable-version
-  "Returns the version of the given ingestable source."
+  "Get the version identifier from an ingestable source.
+
+  Args:
+    ingestable: An IngestableSource instance or wrapper containing an IngestableSource.
+
+  Returns:
+    A version identifier string from the underlying source (e.g., a git SHA)."
   [ingestable]
   (let [ingestable (or (:ingestable ingestable) ingestable)]
     (source.p/version (:source ingestable))))

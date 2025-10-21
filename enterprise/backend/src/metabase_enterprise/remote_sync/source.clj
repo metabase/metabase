@@ -77,7 +77,19 @@
     (remote-sync.task/update-progress! task-id (-> (inc idx) (/ count) (* 0.65) (+ 0.3)))))
 
 (defn store!
-  "Store files from `stream` to `source` on `branch`. Commits with `message`."
+  "Store serialized entities from a stream to a remote source and commit the changes.
+
+  Args:
+    stream: A sequence of serialized entities to be stored.
+    source: The remote source implementing the Source protocol where files will be written.
+    task-id: The RemoteSyncTask identifier used to track progress updates.
+    message: The commit message to use when writing files to the source.
+
+  Returns:
+    The result of calling write-files! on the source with the serialized files.
+
+  Raises:
+    Exception: If any entity in the stream is an Exception instance, it will be re-thrown."
   [stream source task-id message]
   (let [opts (serdes/storage-base-context)
         ;; Bound the count of the items in the stream we don't accidentally realize the entire list into memory
@@ -85,7 +97,13 @@
     (source.p/write-files! source message (map-indexed #(->file-spec task-id stream-count opts %1 %2) stream))))
 
 (defn source-from-settings
-  "Returns a source based on the current settings, optionally passing an alternate branch"
+  "Create a git source from the current remote sync settings.
+
+  Args:
+    branch: (Optional) The branch name to use. If not provided, uses the configured remote-sync-branch setting.
+
+  Returns:
+    A GitSource instance configured with the remote-sync-url, branch, and remote-sync-token from settings."
   ([branch]
    (git/git-source
     (setting/get :remote-sync-url)

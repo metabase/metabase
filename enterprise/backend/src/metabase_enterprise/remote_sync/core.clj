@@ -17,7 +17,15 @@
   ->ingestable])
 
 (defenterprise editable?
-  "Should the remote-synced collection be editable. Always true on OSS"
+  "Determine if a remote-synced collection should be editable.
+
+  Args:
+    collection: The collection to check for editability.
+
+  Returns:
+    Boolean - true if the collection is editable, false otherwise.
+    Returns true when remote-sync-type is :development or when the collection
+    is not a remote-synced collection. Always returns true on OSS."
   :feature :none
   [collection]
   (or (= (settings/remote-sync-type) :development)

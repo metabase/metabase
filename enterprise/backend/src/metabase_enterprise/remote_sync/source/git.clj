@@ -51,7 +51,16 @@
     (str "refs/heads/" branch)))
 
 (defn fetch!
-  "Call fetch on the repository."
+  "Fetch updates from the remote git repository.
+
+  Args:
+    git-source: A map containing :git (Git instance) and optional :token for authentication.
+
+  Returns:
+    The result of the git fetch operation.
+
+  Raises:
+    ExceptionInfo: If the fetch operation fails."
   [{:keys [^Git git] :as git-source}]
   (log/info "Fetching repository" {:repo (str git)})
   (u/prog1 (call-remote-command (.fetch git) git-source))
@@ -69,8 +78,19 @@
       nil)))
 
 (defn clone-repository!
-  "Clone git repository to a temporary directory using jgit. If the temp directory already exists, use it rather than re-clone.
-  Returns the path to the cloned `jgit.Repository` bare-repo object."
+  "Clone a git repository to a temporary directory using JGit.
+
+  Args:
+    args: A map containing:
+      - :url - The git repository URL to clone.
+      - :token - (Optional) Authentication token for private repositories.
+
+  Returns:
+    A Git instance for the cloned repository. If the repository already exists
+    in the temp directory and is valid, returns the existing repository after fetching.
+
+  Raises:
+    ExceptionInfo: If cloning fails (network issues, invalid URL, authentication failure, etc.)."
   [{:keys [^String url ^String token] :as args}]
   (let [dir (io/file (System/getProperty "java.io.tmpdir") "metabase-git" (-> (str/join ":" [url token]) buddy-hash/sha1 codecs/bytes->hex))
         existing-git (existing-git-repo dir args)]
@@ -90,7 +110,14 @@
                            :error (.getMessage e)} e)))))))
 
 (defn ->commit-id
-  "Returns the full commit ref for a branch or commit-ish string, or nil if not found."
+  "Resolve a branch name or commit-ish string to a full commit reference.
+
+  Args:
+    source: A map containing :git (Git instance) and :commit-ish (the ref to resolve).
+    commit-ish: (Optional) The branch name or commit-ish string to resolve. If not provided, uses :commit-ish from source.
+
+  Returns:
+    The full commit SHA string, or nil if the commit-ish cannot be resolved."
   ([{:keys [^String commit-ish] :as source}]
    (->commit-id source commit-ish))
 
@@ -99,7 +126,18 @@
      (.name ref))))
 
 (defn log
-  "The log of commits on a branch."
+  "Get the commit history log for a branch.
+
+  Args:
+    source: A map containing :git (Git instance) and :commit-ish to retrieve logs from.
+
+  Returns:
+    A sequence of commit maps, each containing:
+      - :message - The full commit message
+      - :author-name - The commit author's name
+      - :author-email - The commit author's email
+      - :id - The abbreviated commit SHA (8 characters)
+      - :parent - The abbreviated parent commit SHA (8 characters), or nil if no parent"
   [{:keys [^Git git] :as source}]
   (when-let [ref (->commit-id source)]
     (when-let [branch-id (.resolve (.getRepository git) ref)]
@@ -112,7 +150,13 @@
                                       :parent       (when (< 0 (.getParentCount commit)) (.name (.abbreviate (.getParent commit 0) 8)))}) log-result)))))
 
 (defn list-files
-  "List all files in the repository."
+  "List all files in the git repository at the current commit.
+
+  Args:
+    source: A map containing :git (Git instance) and :commit-ish specifying which commit to list files from.
+
+  Returns:
+    A sorted sequence of relative file path strings from the repository root."
   [{:keys [^Git git] :as source}]
   (when-let [ref (->commit-id source)]
     (let [repo (.getRepository git)
@@ -128,8 +172,14 @@
                 files))))))
 
 (defn read-file
-  "Read a specific file from the repository. Returns nil if the file does not exist.
-  Path should be relative to the root of the repository."
+  "Read the contents of a specific file from the git repository.
+
+  Args:
+    source: A map containing :git (Git instance) and :commit-ish specifying which commit to read from.
+    path: The relative path to the file from the repository root.
+
+  Returns:
+    The file contents as a UTF-8 string, or nil if the file does not exist at the specified path."
   [{:keys [^Git git] :as source} ^String path]
   (let [repo (.getRepository git)]
     (when-let [ref (->commit-id source)]
@@ -138,7 +188,16 @@
           (String. (.getBytes loader) "UTF-8"))))))
 
 (defn push-branch!
-  "Pushes a local branch to a remote branch."
+  "Push a local branch to the remote repository.
+
+  Args:
+    git-source: A map containing :git (Git instance), :commit-ish (branch name), and optional :token for authentication.
+
+  Returns:
+    The push response from JGit.
+
+  Raises:
+    ExceptionInfo: If the push operation fails or returns a non-OK/UP_TO_DATE status."
   [{:keys [^Git git ^String commit-ish] :as git-source}]
   (let [branch-name (qualify-branch commit-ish)
         push-response (call-remote-command
@@ -167,7 +226,13 @@
   (some #(or (= % path) (str/starts-with? path %)) prefixes))
 
 (defn default-branch
-  "Return the default branch of the repo"
+  "Get the default branch name of the git repository.
+
+  Args:
+    git-source: A map containing :git (Git instance).
+
+  Returns:
+    The default branch name as a string (without 'refs/heads/' prefix), or nil if no default branch is found."
   [{:keys [^Git git]}]
   (let [repo (.getRepository git)
         head-ref (.findRef repo "HEAD")]
@@ -176,8 +241,22 @@
         (str/replace-first (.getName target-ref) "refs/heads/" "")))))
 
 (defn write-files!
-  "Write a seq of files to the repo. `files` should be maps of :path and :content, with path relative to the root of the repository.
-  Replaces all files in the branch with the given files, does not preserve files not in the list."
+  "Write multiple files to the git repository and commit the changes.
+
+  Args:
+    source: A map containing :git (Git instance) and :commit-ish (target branch name).
+    message: The commit message for this change.
+    files: A sequence of file maps, each with :path and :content keys. Paths should be relative to the repository root.
+
+  Returns:
+    The result of pushing the branch to the remote repository.
+
+  Raises:
+    ExceptionInfo: If the write or push operation fails.
+
+  Notes:
+    This function replaces all files in the branch with the given files, organized by collection prefix.
+    Files not in the provided list but in the same collection prefix will be deleted."
   [{:keys [^Git git ^String commit-ish] :as source} ^String message files]
   (fetch! source)
   (let [repo (.getRepository git)
@@ -230,7 +309,13 @@
     (push-branch! source)))
 
 (defn branches
-  "Return the branches in the remote repo"
+  "Get all branch names from the remote repository.
+
+  Args:
+    source: A map containing :git (Git instance) and optional :token for authentication.
+
+  Returns:
+    A sorted sequence of branch name strings (without 'refs/heads/' prefix)."
   [{:keys [^Git git] :as source}]
   (->> (call-remote-command (.lsRemote git) source)
        (filter #(str/starts-with? (.getName ^Ref %) "refs/heads/"))
@@ -239,7 +324,18 @@
        sort))
 
 (defn create-branch
-  "Create a new branch from an existing branch"
+  "Create a new branch in the git repository from an existing branch.
+
+  Args:
+    source: A map containing :git (Git instance) and optional :token for authentication.
+    branch-name: The name for the new branch to create.
+    base-commit-ish: The commit-ish (branch name, tag, or SHA) to use as the base for the new branch.
+
+  Returns:
+    The name of the newly created branch.
+
+  Raises:
+    ExceptionInfo: If the base branch is not found or if the new branch already exists."
   [{:keys [^Git git] :as source} branch-name base-commit-ish]
   (fetch! source)
   (let [repo (.getRepository git)
@@ -283,7 +379,15 @@
                          :token token}))))
 
 (defn git-source
-  "Create a new git source"
+  "Create a new GitSource instance for a git repository.
+
+  Args:
+    url: The git repository URL.
+    commit-ish: The branch name, tag, or commit SHA to use.
+    token: (Optional) Authentication token for private repositories.
+
+  Returns:
+    A GitSource record implementing the Source protocol."
   [url commit-ish token]
   (->GitSource (get-repo url token)
                url commit-ish token))
