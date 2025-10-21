@@ -12,6 +12,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
+   [metabase.test.data.sql :as sql.tx]
    [toucan2.core :as t2]))
 
 (defn- make-incremental-source-query
@@ -19,7 +20,10 @@
   [schema]
   {:database (mt/id)
    :type "native"
-   :native {:query (format "SELECT * FROM %stransforms_products [[WHERE id > {{watermark}}]]" (cond-> (or schema "") schema (str ".")))
+   :native {:query (format "SELECT * FROM %s [[WHERE id > {{watermark}}]]"
+                           (if schema
+                             (sql.tx/qualify-and-quote driver/*driver* nil schema "transforms_products")
+                             "transforms_products"))
             :template-tags {"watermark" {:id "watermark"
                                          :name "watermark"
                                          :display-name "Watermark"
