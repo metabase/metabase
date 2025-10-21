@@ -778,6 +778,7 @@
               (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
                 (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
               (sync/sync-database! database {:scan :schema})
+              ;; this creates impersonations for the rasta user by default, and does `(request/with-test-user :rasta ...)`
               (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                              :attributes     {"impersonation_attr" role-a}}
                 (mt/with-premium-features #{}
@@ -790,6 +791,8 @@
                   (testing "admin should still be able to query"
                     (request/as-admin
                       (is (= [100]
-                             (mt/first-row
-                              (mt/run-mbql-query venues
-                                {:aggregation [[:count]]})))))))))))))))
+                             (map
+                              long
+                              (mt/first-row
+                               (mt/run-mbql-query venues
+                                 {:aggregation [[:count]]}))))))))))))))))
