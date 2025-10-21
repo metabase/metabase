@@ -234,6 +234,7 @@
 ;;; belongs in Lib in its current shape.
 (defn ensure-binning-in-display-name
   "Update results column so binning is contained in its display_name."
+  {:deprecated "0.57.0"}
   [column]
   (if (:binning_info column)
     (update column :display_name #(ensure-ends-with-binning %1

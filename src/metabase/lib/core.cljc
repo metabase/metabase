@@ -41,6 +41,7 @@
    [metabase.lib.options]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.page]
+   [metabase.lib.parameters]
    [metabase.lib.parse :as lib.parse]
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
@@ -55,6 +56,7 @@
    [metabase.lib.template-tags :as lib.template-tags]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.util.unique-name-generator]
    [metabase.lib.validate :as lib.validate]
    [metabase.lib.walk.util]
    [metabase.util.namespaces :as shared.ns]))
@@ -95,6 +97,7 @@
          lib.normalize/keep-me
          metabase.lib.options/keep-me
          lib.order-by/keep-me
+         metabase.lib.parameters/keep-me
          lib.parse/keep-me
          lib.query/keep-me
          lib.ref/keep-me
@@ -109,6 +112,7 @@
          lib.template-tags/keep-me
          lib.temporal-bucket/keep-me
          lib.util/keep-me
+         metabase.lib.util.unique-name-generator/keep-me
          metabase.lib.walk.util/keep-me)
 
 (shared.ns/import-fns
@@ -282,8 +286,6 @@
   filter-clause
   filter-operator
   filter-parts
-  find-filter-for-legacy-filter
-  find-filterable-column-for-legacy-ref
   and
   or
   not
@@ -391,10 +393,23 @@
   order-bys
   orderable-columns]
  [lib.normalize
-  normalize]
+  normalize
+  ->normalized-stage-metadata]
  [metabase.lib.page
   current-page
   with-page]
+ [metabase.lib.parameters
+  parameter-target-dimension-options
+  parameter-target-expression-name
+  parameter-target-expression-options
+  parameter-target-expression-ref
+  parameter-target-field-id
+  parameter-target-field-name
+  parameter-target-field-options
+  parameter-target-field-ref
+  parameter-target-is-dimension?
+  parameter-target-template-tag-name
+  update-parameter-target-dimension-options]
  [lib.parse
   parse]
  [lib.query
@@ -413,6 +428,8 @@
   with-wrapped-native-query
   wrap-native-query-with-mbql]
  [lib.ref
+  field-ref-id
+  field-ref-name
   ref]
  [lib.remove-replace
   remove-clause
@@ -462,6 +479,11 @@
   source-table-id
   source-card-id
   update-query-stage]
+ [metabase.lib.util.unique-name-generator
+  non-truncating-unique-name-generator
+  truncate-alias
+  unique-name-generator
+  unique-name-generator-with-options]
  [lib.validate
   find-bad-refs]
  [metabase.lib.walk.util
