@@ -100,6 +100,7 @@
     :model/TransformRunCancelation           metabase-enterprise.transforms.models.transform-run-cancelation
     :model/TransformTag                      metabase-enterprise.transforms.models.transform-tag
     :model/TransformTransformTag             metabase-enterprise.transforms.models.transform-transform-tag
+    :model/TransformWatermark                metabase-enterprise.transforms.models.transform-watermark
     :model/Undo                              metabase-enterprise.action-v2.models.undo
     :model/User                              metabase.users.models.user
     :model/UserKeyValue                      metabase.user-key-value.models.user-key-value

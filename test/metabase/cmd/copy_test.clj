@@ -51,6 +51,7 @@
     :model/TransformJobTransformTag
     :model/TransformTag
     :model/TransformTransformTag
+    :model/TransformWatermark
     :model/Undo
     :model/UserKeyValue})
 
