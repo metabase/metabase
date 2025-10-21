@@ -96,7 +96,7 @@
      :message (when-not task-id "No changes since last import")}))
 
 (api.macros/defendpoint :get "/is-dirty"
-  "Check if any collection has remote sync changes that are not saved."
+  "Check if any remote-synced collection has remote sync changes that are not saved."
   []
   (api/check-superuser)
   {:is_dirty (remote-sync.object/dirty-global?)})
