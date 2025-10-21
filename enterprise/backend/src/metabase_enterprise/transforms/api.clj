@@ -85,7 +85,7 @@
           (t2/hydrate transforms :last_run :transform_tag_ids))))
 
 (defn- ensure-mb-watermark-table-exists! [{:keys [source] :as transform}]
-  (when (= :keyset (some-> source :source-incremental-strategy type keyword))
+  (when (= :keyset (some-> source :source-incremental-strategy :type keyword))
     (let [db-id (transforms.i/target-db-id transform)
           {driver :engine :as database} (t2/select-one :model/Database db-id)
           watermark-table (transforms.util/watermark-table-for-transform transform)
