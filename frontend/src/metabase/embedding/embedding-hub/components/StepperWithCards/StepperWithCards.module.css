@@ -63,6 +63,7 @@
 
 .lockedStepCard {
   cursor: not-allowed;
+  background-color: var(--mb-color-bg-light);
 }
 
 .stepCard:not(.lockedStepCard):hover {
