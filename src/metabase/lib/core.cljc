@@ -473,4 +473,5 @@
   all-template-tags
   all-template-tags-map
   all-template-tags-id->field-ids
-  any-native-stage?])
+  any-native-stage?
+  any-native-unsandboxed-stage?])

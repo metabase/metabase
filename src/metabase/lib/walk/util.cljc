@@ -104,6 +104,20 @@
        nil))
     @has-native-stage?))
 
+(mu/defn any-native-unsandboxed-stage?
+  "Returns true if any stage of this query a native query that is *not* the base of a sandbox"
+  [query :- ::lib.schema/query]
+  (let [has-native-stage? (volatile! false)]
+    (lib.walk/walk-stages
+     query
+     (fn [_query _path stage]
+       (when (and (not @has-native-stage?)
+                  (not (:query-permissions/sandboxed-table stage))
+                  (= (:lib/type stage) :mbql.stage/native))
+         (vreset! has-native-stage? true))
+       nil))
+    @has-native-stage?))
+
 (mu/defn all-field-ids :- [:set ::lib.schema.id/field]
   "Set of all Field IDs referenced in `:field` refs in a query or MBQL clause."
   [query-or-clause :- [:or
