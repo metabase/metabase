@@ -74,6 +74,16 @@
                            (t2/select-fn-set :card_id :model/DashboardCardSeries
                                              :dashboardcard_id [:in (map :id dashcards)]))
         parameter-cards (into #{} (keep (comp :card_id :values_source_config) (:parameters dashboard)))
+        vis-setting-cards (into #{} (keep (fn [dashcard]
+                                            (let [cb (:click_behavior (:visualization_settings dashcard))]
+                                              (when (= (:linkType cb) "question")
+                                                (:targetId cb))))
+                                          dashcards))
+        vis-setting-dashboards (into #{} (keep (fn [dashcard]
+                                                 (let [cb (:click_behavior (:visualization_settings dashcard))]
+                                                   (when (= (:linkType cb) "dashboard")
+                                                     (:targetId cb))))
+                                               dashcards))
         column-setting-cards (reduce into #{}
                                      (map (fn [dashcard]
                                             (keep (fn [[_col col-setting]]
@@ -93,8 +103,9 @@
         all-card-ids (reduce into #{} [card-ids
                                        series-card-ids
                                        parameter-cards
-                                       column-setting-cards])
-        all-dashboard-ids (reduce into #{} [column-setting-dashboards])]
+                                       column-setting-cards
+                                       vis-setting-cards])
+        all-dashboard-ids (into column-setting-dashboards vis-setting-dashboards)]
     {:card all-card-ids
      :dashboard all-dashboard-ids}))
 
