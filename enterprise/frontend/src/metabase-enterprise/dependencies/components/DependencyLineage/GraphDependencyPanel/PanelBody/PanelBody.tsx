@@ -2,6 +2,7 @@ import { memo } from "react";
 import { Link } from "react-router";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
+import * as Urls from "metabase/lib/urls";
 import {
   ActionIcon,
   Anchor,
@@ -15,7 +16,6 @@ import {
 } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
-import { getDependencyLineageUrl } from "../../../../urls";
 import { ACTION_ICON_PADDING } from "../../constants";
 import type { LinkWithLabelInfo, LinkWithTooltipInfo } from "../../types";
 import {
@@ -80,7 +80,7 @@ type ListItemTitleProps = {
 function ListItemTitle({ node }: ListItemTitleProps) {
   const label = getNodeLabel(node);
   const icon = getNodeIcon(node);
-  const link = getDependencyLineageUrl({ entry: node });
+  const link = Urls.dependencyLineage({ entry: node });
 
   return (
     <Anchor c="text-primary" component={Link} to={link}>

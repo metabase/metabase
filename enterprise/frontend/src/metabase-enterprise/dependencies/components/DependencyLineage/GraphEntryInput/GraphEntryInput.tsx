@@ -3,10 +3,9 @@ import { useState } from "react";
 import { push } from "react-router-redux";
 
 import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { Card } from "metabase/ui";
 import type { DependencyEntry, DependencyNode } from "metabase-types/api";
-
-import { getDependencyLineageUrl } from "../../../urls";
 
 import { EntryButton } from "./EntryButton";
 import { EntryPickerModal } from "./EntryPickerModal";
@@ -28,7 +27,7 @@ export function GraphEntryInput({
     useDisclosure();
 
   const handleEntryChange = (newEntry?: DependencyEntry) => {
-    dispatch(push(getDependencyLineageUrl({ entry: newEntry })));
+    dispatch(push(Urls.dependencyLineage({ entry: newEntry })));
   };
 
   const handlePickerChange = (newEntry: DependencyEntry) => {
