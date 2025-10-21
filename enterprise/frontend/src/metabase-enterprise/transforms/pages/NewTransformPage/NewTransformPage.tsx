@@ -163,7 +163,7 @@ export function NewTransformPageInner({
       )}
       <LeaveRouteConfirmModal
         key={location.key}
-        isEnabled={isDirty}
+        isEnabled={isDirty && !isModalOpened}
         route={route}
         onConfirm={clearProposed}
       />

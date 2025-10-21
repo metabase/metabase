@@ -143,7 +143,7 @@ export function TransformQueryPageBody({
       )}
       <LeaveRouteConfirmModal
         key={location.key}
-        isEnabled={isDirty}
+        isEnabled={isDirty && !isConfirmationShown}
         route={route}
         onConfirm={clearProposed}
       />
