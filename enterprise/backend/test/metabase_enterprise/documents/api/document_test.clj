@@ -2237,7 +2237,7 @@
 
 (deftest download-document-card-respects-download-permissions-test
   (testing "POST /api/ee/document/:document-id/card/:card-id/query/:export-format respects database download permissions"
-    (mt/with-premium-features #{:advanced-permissions}
+    (mt/with-premium-features #{:documents :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp [:model/Collection {coll-id :id} {}
                        :model/Card {card-id :id} {:name "Test Card"
