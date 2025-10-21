@@ -37,8 +37,11 @@ export function getListRequest(
   };
 }
 
-function isMatchingSearchQuery(node: DependencyNode, searchQuery: string) {
-  return getNodeLabel(node).toLowerCase().includes(searchQuery);
+function isMatchingSearchQuery(
+  node: DependencyNode,
+  lowerCaseSearchQuery: string,
+) {
+  return getNodeLabel(node).toLowerCase().includes(lowerCaseSearchQuery);
 }
 
 const FILTERS: Record<FilterOption, FilterCallback> = {
@@ -154,10 +157,10 @@ export function getVisibleNodes(
   nodes: DependencyNode[],
   options: SearchOptions,
 ) {
-  const searchQuery = options.searchQuery.trim().toLowerCase();
+  const lowerCaseSearchQuery = options.searchQuery.toLowerCase();
   const visibleNodes = nodes.filter(
     (node) =>
-      isMatchingSearchQuery(node, searchQuery) &&
+      isMatchingSearchQuery(node, lowerCaseSearchQuery) &&
       isMatchingFilters(node, options.filterOptions),
   );
   visibleNodes.sort((node1, node2) =>
