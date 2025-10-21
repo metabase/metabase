@@ -9,6 +9,10 @@
   border-color: var(--mb-color-brand);
 }
 
+.ResourceCard:hover {
+  background: var(--mb-color-background-hover-light);
+}
+
 @media (prefers-reduced-motion) {
   .ResourceCard {
     transition: none;
