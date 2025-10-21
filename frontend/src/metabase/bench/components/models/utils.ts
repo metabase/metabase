@@ -17,12 +17,10 @@ import type {
   SearchResult,
 } from "metabase-types/api";
 
-export function getTreeItems(
+export const getGroupedTreeItems = (
   collections: Collection[],
-  models: SearchResult[],
-  itemType: CollectionContentModel,
   userId: number,
-): ITreeNodeItem[] {
+) => {
   const userPersonalCollections = currentUserPersonalCollections(
     collections,
     userId,
@@ -52,11 +50,20 @@ export function getTreeItems(
     nonPersonalOrArchivedCollection,
   );
 
-  const preparedCollections = [
+  return [
     ...userPersonalCollections,
     ...nonPersonalOrArchivedCollections,
     ...(otherPersonalCollectionsRoot ? [otherPersonalCollectionsRoot] : []),
   ];
+};
+
+export function getTreeItems(
+  collections: Collection[],
+  models: SearchResult[],
+  itemType: CollectionContentModel,
+  userId: number,
+): ITreeNodeItem[] {
+  const preparedCollections = getGroupedTreeItems(collections, userId);
 
   const collectionTree = buildCollectionTree(
     preparedCollections,
@@ -89,7 +96,7 @@ export function getTreeItems(
   return [
     ...collectionTree
       .map(collectionToTreeNode)
-      .filter((collectionItem) => collectionItem.children?.length > 0),
+      .filter((collectionItem) => (collectionItem.children?.length || 0) > 0),
     ...models
       .filter((m) => !m.collection.id)
       .map((m) => ({

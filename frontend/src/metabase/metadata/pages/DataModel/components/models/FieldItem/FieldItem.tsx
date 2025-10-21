@@ -3,7 +3,6 @@ import type { MouseEvent } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import { useUpdateFieldMutation } from "metabase/api";
 import EditableText from "metabase/common/components/EditableText";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { getColumnIcon } from "metabase/common/utils/columns";
@@ -21,7 +20,7 @@ interface Props {
   field: Field;
   href: string;
   parent?: Field;
-  onChangeSettings: (update: ModelColumnUpdate) => Promise<{ error?: string }>;
+  onChangeSettings: (update: ModelColumnUpdate) => Promise<{ error?: unknown }>;
 }
 
 export const FieldItem = ({
@@ -31,7 +30,6 @@ export const FieldItem = ({
   parent,
   onChangeSettings,
 }: Props) => {
-  const [updateField] = useUpdateFieldMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
   const icon = getColumnIcon(Lib.legacyColumnTypeInfo(field));
@@ -52,7 +50,7 @@ export const FieldItem = ({
       sendErrorToast(t`Failed to update name of ${field.display_name}`);
     } else {
       sendSuccessToast(t`Name of ${field.display_name} updated`, async () => {
-        const { error } = await updateField({
+        const { error } = await onChangeSettings({
           name: field.name,
           display_name: field.display_name,
         });
@@ -79,7 +77,7 @@ export const FieldItem = ({
       sendSuccessToast(
         t`Description of ${field.display_name} updated`,
         async () => {
-          const { error } = await updateField({
+          const { error } = await onChangeSettings({
             name: field.name,
             description: field.description ?? "",
           });

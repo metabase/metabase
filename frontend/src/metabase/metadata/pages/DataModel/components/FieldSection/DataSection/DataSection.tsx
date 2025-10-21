@@ -26,7 +26,7 @@ import SubInputIllustration from "./illustrations/sub-input.svg?component";
 interface Props {
   mode: MetadataEditMode;
   field: Field;
-  onFieldChange: (update: FieldChangeParams) => Promise<{ error?: string }>;
+  onFieldChange: (update: FieldChangeParams) => Promise<{ error?: unknown }>;
 }
 
 const DataSectionBase = ({ mode, field, onFieldChange }: Props) => {

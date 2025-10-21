@@ -4,14 +4,18 @@ import type { ItemType } from "./types";
 
 export const UNNAMED_SCHEMA_NAME = "";
 
-export const CHILD_TYPES = {
+export const CHILD_TYPES: Record<ItemType, ItemType | null> = {
   database: "schema",
   schema: "table",
   table: null,
+  collection: "model",
+  model: null,
 } as const;
 
 export const TYPE_ICONS: Record<ItemType, IconName> = {
-  table: "table2",
-  schema: "folder",
   database: "database",
+  schema: "folder",
+  table: "table2",
+  collection: "collection",
+  model: "model",
 };

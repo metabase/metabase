@@ -9,9 +9,10 @@ import S from "metabase/metadata/pages/DataModel/components/TableSection/TableSe
 import { useResponsiveButtons } from "metabase/metadata/pages/DataModel/components/TableSection/hooks";
 import { ModelSortableFieldList } from "metabase/metadata/pages/DataModel/components/models/ModelSortableFieldList";
 import { getModelFieldMetadataUrl } from "metabase/metadata/pages/DataModel/components/models/utils";
+import type { FieldChangeParams } from "metabase/metadata/pages/DataModel/types";
 import { Group, Loader, Stack, Text, rem } from "metabase/ui";
-import { getSortedModelFields } from "metabase-lib/v1/metadata/utils/models"; // eslint-disable-line no-restricted-imports
-import type { Card, FieldName, UpdateFieldRequest } from "metabase-types/api";
+import { getSortedModelFields } from "metabase-lib/v1/metadata/utils/models";
+import type { Card, CollectionId, FieldName } from "metabase-types/api";
 
 import { FieldItem } from "./FieldItem";
 import type { ModelColumnUpdate } from "./types";
@@ -20,7 +21,7 @@ interface Props {
   activeFieldName?: FieldName;
   getFieldHref: (fieldName: FieldName) => string;
   model: Card;
-  onChangeSettings: (update: ModelColumnUpdate) => Promise<{ error?: string }>;
+  onChangeSettings: (update: ModelColumnUpdate) => Promise<{ error?: unknown }>;
 }
 
 export const ModelColumnsList = ({
@@ -62,16 +63,18 @@ export const ModelColumnsList = ({
 };
 
 interface ModelColumnsSectionProps {
+  collectionId: CollectionId;
   modelId: number;
   fieldName: FieldName | undefined;
   model: Card;
-  onFieldChange: (update: UpdateFieldRequest) => Promise<{ error?: string }>;
+  onFieldChange: (update: FieldChangeParams) => Promise<{ error?: unknown }>;
   onFieldsOrderChange: (
     fieldsOrder: FieldName[],
-  ) => Promise<{ error?: string }>;
+  ) => Promise<{ error?: unknown }>;
 }
 
 export function ModelColumnsSection({
+  collectionId,
   modelId,
   fieldName,
   model,
@@ -184,7 +187,7 @@ export function ModelColumnsSection({
             <ModelColumnsList
               activeFieldName={fieldName}
               getFieldHref={(fieldName) =>
-                getModelFieldMetadataUrl({ modelId, fieldName })
+                getModelFieldMetadataUrl({ collectionId, modelId, fieldName })
               }
               model={model}
               onChangeSettings={onFieldChange}

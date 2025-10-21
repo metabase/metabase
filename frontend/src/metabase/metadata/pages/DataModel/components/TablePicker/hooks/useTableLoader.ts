@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useDeepCompareEffect, useLatest } from "react-use";
 import _ from "underscore";
 
@@ -6,19 +6,37 @@ import {
   useLazyListDatabaseSchemaTablesQuery,
   useLazyListDatabaseSchemasQuery,
   useLazyListDatabasesQuery,
+  useListCollectionsTreeQuery,
 } from "metabase/api";
+import { getGroupedTreeItems } from "metabase/bench/components/models/utils";
+import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
+// eslint-disable-next-line no-restricted-imports
+import {
+  type CollectionTreeItem,
+  buildCollectionTree,
+  getCollectionIcon,
+} from "metabase/entities/collections";
+import { useSelector } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
-import type { DatabaseId, SchemaName } from "metabase-types/api";
+import { getUser } from "metabase/selectors/user";
+import type {
+  CardId,
+  DatabaseId,
+  SchemaName,
+  SearchResult,
+} from "metabase-types/api";
 
 import { UNNAMED_SCHEMA_NAME } from "../constants";
 import type {
+  CollectionNode,
   DatabaseNode,
+  ModelNode,
   SchemaNode,
   TableNode,
   TreeNode,
   TreePath,
 } from "../types";
-import { merge, node, rootNode } from "../utils";
+import { merge, node, rootNode, sort } from "../utils";
 
 /**
  * For the currently view path, fetches the database, schema and table (or any subset that applies to the path).
@@ -35,13 +53,23 @@ export function useTableLoader(path: TreePath) {
   const [fetchDatabases, databases] = useLazyListDatabasesQuery();
   const [fetchSchemas, schemas] = useLazyListDatabaseSchemasQuery();
   const [fetchTables, tables] = useLazyListDatabaseSchemaTablesQuery();
+
+  const { data: modelsData } = useFetchModels({
+    filter_items_in_personal_collection: undefined, // include all models
+  });
+  const { data: collections } = useListCollectionsTreeQuery({
+    "exclude-archived": true,
+  });
+
+  const currentUser = useSelector(getUser);
+
   const databasesRef = useLatest(databases);
   const schemasRef = useLatest(schemas);
   const tablesRef = useLatest(tables);
 
   const [tree, setTree] = useState<TreeNode>(rootNode());
 
-  const getDatabases = useCallback(async () => {
+  const getDatabases = useCallback(async (): Promise<DatabaseNode[]> => {
     const response = await fetchDatabases(
       { include_editable_data_model: true },
       true,
@@ -148,36 +176,109 @@ export function useTableLoader(path: TreePath) {
     [fetchSchemas, getTables, schemasRef],
   );
 
+  const collectionsSubTree = useMemo((): (CollectionNode | ModelNode)[] => {
+    const rootCollectionId = "root";
+
+    if (!collections || !modelsData?.data || !currentUser) {
+      return [];
+    }
+
+    const preparedCollections = getGroupedTreeItems(
+      collections,
+      currentUser.id,
+    );
+
+    const collectionTree = buildCollectionTree(
+      preparedCollections,
+      (m) => m === "dataset",
+    );
+
+    const sortedModels = [...modelsData.data].sort((a, b) =>
+      a.name.localeCompare(b.name),
+    ) as SearchResult<CardId, "dataset">[];
+
+    function collectionToTreeNode(
+      collection: CollectionTreeItem,
+    ): CollectionNode {
+      const modelsInCollection = sortedModels.filter(
+        (model) => model.collection.id === collection.id,
+      );
+
+      const modelNodes = modelsInCollection.map(
+        (model): ModelNode =>
+          node<ModelNode>({
+            type: "model",
+            label: model.name,
+            value: {
+              collectionId: collection.id,
+              modelId: model.id,
+            },
+          }),
+      );
+
+      const childCollectionNodes =
+        collection.children.map(collectionToTreeNode);
+
+      return node<CollectionNode>({
+        type: "collection",
+        label: collection.name,
+        icon: getCollectionIcon(collection),
+        value: { collectionId: collection.id },
+        children: [...childCollectionNodes, ...modelNodes],
+      });
+    }
+
+    return [
+      ...collectionTree
+        .filter(({ type }) => type !== "instance-analytics") // ignore Usage Analytics collection as we cannot edit its items metadata
+        .map(collectionToTreeNode),
+      ...sortedModels
+        .filter((m) => !m.collection.id)
+        .map((model) =>
+          node<ModelNode>({
+            type: "model",
+            label: model.name,
+            value: {
+              collectionId: rootCollectionId,
+              modelId: model.id,
+            },
+          }),
+        ),
+    ];
+  }, [collections, currentUser, modelsData?.data]);
+
   const load = useCallback(
     async function (path: TreePath) {
       const { databaseId, schemaName } = path;
       const [databases, schemas, tables] = await Promise.all([
         getDatabases(),
-        getSchemas(path.databaseId),
-        getTables(path.databaseId, path.schemaName),
+        getSchemas(databaseId),
+        getTables(databaseId, schemaName),
       ]);
 
-      const newTree: TreeNode = rootNode(
-        databases.map((database) => ({
+      const newTree = rootNode([
+        ...sort<DatabaseNode>(databases).map((database) => ({
           ...database,
           children:
             database.value.databaseId !== databaseId
               ? database.children
-              : schemas.map((schema) => ({
+              : sort<SchemaNode>(schemas).map((schema) => ({
                   ...schema,
                   children:
                     schema.value.schemaName !== schemaName
                       ? schema.children
-                      : tables,
+                      : sort<TableNode>(tables),
                 })),
         })),
-      );
+        ...collectionsSubTree,
+      ]);
+
       setTree((current) => {
         const merged = merge(current, newTree);
         return _.isEqual(current, merged) ? current : merged;
       });
     },
-    [getDatabases, getSchemas, getTables],
+    [collectionsSubTree, getDatabases, getSchemas, getTables],
   );
 
   useDeepCompareEffect(() => {
@@ -186,7 +287,7 @@ export function useTableLoader(path: TreePath) {
     load,
     path,
     // When a table is modified, e.g. we change display_name with PUT /api/table/:id
-    // we need to manually call the lazy RTK hooks, so that the the updated table
+    // we need to manually call the lazy RTK hooks, so that the updated table
     // is refetched here. We detect this modification with tables.isFetching.
     tables.isFetching,
   ]);

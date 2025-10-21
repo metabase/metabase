@@ -2,18 +2,24 @@ import { getUrl as getUrl_ } from "../../utils";
 
 import { CHILD_TYPES, UNNAMED_SCHEMA_NAME } from "./constants";
 import type {
+  CollectionNode,
   DatabaseNode,
   ExpandedState,
   FlatItem,
   ItemType,
+  ModelNode,
   NodeKey,
   RootNode,
   TreeNode,
   TreePath,
 } from "./types";
 
-export function hasChildren(type: ItemType): boolean {
-  return type !== "table";
+export function isItemWithHiddenExpandIcon(item: FlatItem): boolean {
+  if (item.type === "model" || item.type === "table") {
+    return true;
+  }
+
+  return false;
 }
 
 export function getUrl(value: TreePath) {
@@ -22,6 +28,10 @@ export function getUrl(value: TreePath) {
     tableId: undefined,
     databaseId: undefined,
     schemaName: undefined,
+
+    modelId: undefined,
+    fieldName: undefined,
+    collectionId: undefined,
     ...value,
   });
 }
@@ -83,10 +93,11 @@ export function flatten(
       return [
         loadingItem("database", level),
         loadingItem("database", level),
-        loadingItem("database", level),
+        loadingItem("collection", level),
+        loadingItem("collection", level),
       ];
     }
-    return sort(node.children).flatMap((child) => flatten(child, opts));
+    return node.children.flatMap((child) => flatten(child, opts));
   }
 
   if (
@@ -96,7 +107,7 @@ export function flatten(
   ) {
     // Hide nameless schemas in the tree
     return [
-      ...sort(node.children).flatMap((child) =>
+      ...node.children.flatMap((child) =>
         flatten(child, {
           ...opts,
           level,
@@ -107,7 +118,7 @@ export function flatten(
   }
 
   if (typeof isExpanded === "function" && !isExpanded(node.key)) {
-    return [{ ...node, level, parent }];
+    return [{ ...node, level, parent } as FlatItem];
   }
 
   if (addLoadingNodes && node.children.length === 0) {
@@ -123,7 +134,7 @@ export function flatten(
 
   return [
     { ...node, isExpanded: true, level, parent },
-    ...sort(node.children).flatMap((child) =>
+    ...node.children.flatMap((child) =>
       flatten(child, {
         ...opts,
         level: level + 1,
@@ -134,7 +145,7 @@ export function flatten(
   ];
 }
 
-export function sort(nodes: TreeNode[]): TreeNode[] {
+export function sort<T extends { label: string } = TreeNode>(nodes: T[]): T[] {
   return Array.from(nodes).sort((a, b) => {
     return a.label.localeCompare(b.label);
   });
@@ -169,8 +180,7 @@ export function merge(
   return {
     ...a,
     ...b,
-    // @ts-expect-error: we can't type the child node here correctly
-    // without checking all the combinations, just assume we are right.
+    // @ts-expect-error: we can't type the child node here correctly without checking all the combinations, just assume we are right.
     children,
   };
 }
@@ -178,8 +188,20 @@ export function merge(
 /**
  * Create a unique key for a TreePath
  */
-export function toKey({ databaseId, schemaName, tableId }: TreePath) {
-  return JSON.stringify([databaseId, schemaName, tableId]);
+export function toKey({
+  databaseId,
+  schemaName,
+  tableId,
+  collectionId,
+  modelId,
+}: TreePath) {
+  return JSON.stringify([
+    databaseId,
+    schemaName,
+    tableId,
+    collectionId,
+    modelId,
+  ]);
 }
 
 type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
@@ -194,7 +216,9 @@ export function node<T extends TreeNode>(
   } as T;
 }
 
-export function rootNode(children: DatabaseNode[] = []): RootNode {
+export function rootNode(
+  children: (DatabaseNode | CollectionNode | ModelNode)[] = [],
+): RootNode {
   return node<RootNode>({
     type: "root",
     label: "",

@@ -15,6 +15,9 @@ describe("parseRouteParams", () => {
       schemaName: "public",
       tableId: 2,
       fieldId: 3,
+      collectionId: undefined,
+      modelId: undefined,
+      fieldName: undefined,
     });
   });
 
@@ -29,6 +32,9 @@ describe("parseRouteParams", () => {
       schemaName: "public",
       tableId: undefined,
       fieldId: undefined,
+      collectionId: undefined,
+      modelId: undefined,
+      fieldName: undefined,
     });
   });
 
@@ -45,6 +51,10 @@ describe("parseRouteParams", () => {
       schemaName: "",
       tableId: undefined,
       fieldId: undefined,
+
+      collectionId: undefined,
+      modelId: undefined,
+      fieldName: undefined,
     });
   });
 });
@@ -56,6 +66,10 @@ describe("getUrl", () => {
       schemaName: "public",
       tableId: 2,
       fieldId: 3,
+
+      collectionId: undefined,
+      modelId: undefined,
+      fieldName: undefined,
     };
 
     expect(getUrl(params)).toBe(
@@ -69,6 +83,10 @@ describe("getUrl", () => {
       schemaName: "public",
       tableId: 2,
       fieldId: undefined,
+
+      collectionId: undefined,
+      modelId: undefined,
+      fieldName: undefined,
     };
 
     expect(getUrl(params)).toBe(
@@ -82,6 +100,10 @@ describe("getUrl", () => {
       schemaName: "public",
       tableId: undefined,
       fieldId: undefined,
+
+      collectionId: undefined,
+      modelId: undefined,
+      fieldName: undefined,
     };
 
     expect(getUrl(params)).toBe("/bench/metadata/database/1/schema/1:public");
@@ -93,6 +115,10 @@ describe("getUrl", () => {
       schemaName: undefined,
       tableId: undefined,
       fieldId: undefined,
+
+      collectionId: undefined,
+      modelId: undefined,
+      fieldName: undefined,
     };
 
     expect(getUrl(params)).toBe("/bench/metadata/database/1");
@@ -104,6 +130,10 @@ describe("getUrl", () => {
       schemaName: undefined,
       tableId: undefined,
       fieldId: undefined,
+
+      collectionId: undefined,
+      modelId: undefined,
+      fieldName: undefined,
     };
 
     expect(getUrl(params)).toBe("/bench/metadata");
@@ -115,6 +145,10 @@ describe("getUrl", () => {
       schemaName: "public",
       tableId: undefined,
       fieldId: 3,
+
+      collectionId: undefined,
+      modelId: undefined,
+      fieldName: undefined,
     };
 
     expect(getUrl(params)).toBe("/bench/metadata/database/1/schema/1:public");
@@ -126,6 +160,10 @@ describe("getUrl", () => {
       schemaName: "public",
       tableId: 2,
       fieldId: 3,
+
+      collectionId: undefined,
+      modelId: undefined,
+      fieldName: undefined,
     };
 
     expect(getUrl(params)).toBe("/bench/metadata");

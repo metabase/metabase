@@ -21,7 +21,7 @@ import { TitledSection } from "../TitledSection";
 interface Props {
   mode: MetadataEditMode;
   field: Field;
-  onFieldChange: (update: FieldChangeParams) => Promise<{ error?: string }>;
+  onFieldChange: (update: FieldChangeParams) => Promise<{ error?: unknown }>;
 }
 
 const FormattingSectionBase = ({ mode, field, onFieldChange }: Props) => {

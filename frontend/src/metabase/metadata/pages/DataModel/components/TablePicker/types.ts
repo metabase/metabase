@@ -1,4 +1,7 @@
+import type { IconName } from "metabase/ui";
 import type {
+  CardId,
+  CollectionId,
   DatabaseId,
   SchemaName,
   Table,
@@ -7,20 +10,35 @@ import type {
 
 export type NodeKey = string;
 
+type IconProps = {
+  name: IconName;
+  color?: string;
+  tooltip?: string;
+};
+
 export type TreePath = {
   databaseId?: DatabaseId;
   schemaName?: SchemaName;
   tableId?: TableId;
+
+  collectionId?: CollectionId;
+  modelId?: CardId;
 };
 
-export type TreeNode = RootNode | DatabaseNode | SchemaNode | TableNode;
+export type TreeNode =
+  | RootNode
+  | DatabaseNode
+  | SchemaNode
+  | TableNode
+  | CollectionNode
+  | ModelNode;
 
 export type RootNode = {
   type: "root";
   key: string;
   label: "";
   value: Record<string, never>;
-  children: DatabaseNode[];
+  children: (DatabaseNode | CollectionNode | ModelNode)[];
 };
 
 export type DatabaseNode = {
@@ -49,11 +67,35 @@ export type TableNode = {
   disabled?: boolean;
 };
 
+export type CollectionNode = {
+  type: "collection";
+  label: string;
+  key: string;
+  icon: IconProps;
+  value: { collectionId: CollectionId };
+  children: (CollectionNode | ModelNode)[];
+};
+
+export type ModelNode = {
+  type: "model";
+  label: string;
+  key: string;
+  value: { collectionId: CollectionId; modelId: CardId };
+  children: [];
+};
+
 export type DatabaseItem = Omit<DatabaseNode, "children">;
 export type SchemaItem = Omit<SchemaNode, "children">;
 export type TableItem = Omit<TableNode, "children">;
+export type CollectionItem = Omit<CollectionNode, "children">;
+export type ModelItem = Omit<ModelNode, "children">;
 
-export type Item = DatabaseItem | SchemaItem | TableItem;
+export type Item =
+  | DatabaseItem
+  | SchemaItem
+  | TableItem
+  | CollectionItem
+  | ModelItem;
 
 export type ItemType = Item["type"];
 
@@ -78,6 +120,7 @@ type LoadingItem = {
   parent?: NodeKey;
   table?: undefined;
   disabled?: never;
+  icon?: IconProps;
 };
 
 export type ExpandedState = {
