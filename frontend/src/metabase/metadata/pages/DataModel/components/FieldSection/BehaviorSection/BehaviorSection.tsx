@@ -38,7 +38,7 @@ interface Props {
   databaseId: DatabaseId;
   field: Field;
   table: Table; // use Table type for models as a temp hack
-  onFieldChange: (update: FieldChangeParams) => Promise<{ error?: string }>;
+  onFieldChange: (update: FieldChangeParams) => Promise<{ error?: unknown }>;
 }
 
 const BehaviorSectionBase = ({

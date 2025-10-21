@@ -7,15 +7,25 @@ import {
   useLazyListDatabaseSchemaTablesQuery,
   useLazyListDatabaseSchemasQuery,
   useLazyListDatabasesQuery,
+  useListCollectionsTreeQuery,
   useSearchQuery,
 } from "metabase/api";
+import { getGroupedTreeItems } from "metabase/bench/components/models/utils";
+import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
+// eslint-disable-next-line no-restricted-imports
+import {
+  type CollectionTreeItem,
+  buildCollectionTree,
+  getCollectionIcon,
+} from "metabase/entities/collections";
+import { useSelector } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
+import { getUser } from "metabase/selectors/user";
 import type { IconName } from "metabase/ui";
-import type { CollectionId, DatabaseId, SchemaName } from "metabase-types/api";
+import type { DatabaseId, SchemaName } from "metabase-types/api";
 
 import { getUrl as getUrl_ } from "../../utils";
 
-import { useLazyFetchCollectionChildrenQuery } from "./loaders";
 import type {
   CollectionNode,
   DatabaseNode,
@@ -49,20 +59,8 @@ export const TYPE_ICONS: Record<ItemType, IconName> = {
   model: "model",
 };
 
-export function hasChildren(item: Item): boolean {
-  if (item.type === "table" || item.type === "model") {
-    return false;
-  }
-
-  return true;
-}
-
 export function isItemWithHiddenExpandIcon(item: Item): boolean {
-  if (item.type === "collection" && item.hasNoValidChildren) {
-    return true;
-  }
-
-  if (item.type === "model" && item.value.collectionId === "root") {
+  if (item.type === "model" || item.type === "table") {
     return true;
   }
 
@@ -98,15 +96,19 @@ export function useTableLoader(path: TreePath) {
   const [fetchDatabases, databases] = useLazyListDatabasesQuery();
   const [fetchSchemas, schemas] = useLazyListDatabaseSchemasQuery();
   const [fetchTables, tables] = useLazyListDatabaseSchemaTablesQuery();
-  const [fetchCollections, collections] = useLazyFetchCollectionChildrenQuery();
-  const [fetchCollectionChildren, models] =
-    useLazyFetchCollectionChildrenQuery();
+
+  const { data: modelsData } = useFetchModels({
+    filter_items_in_personal_collection: undefined, // include all models
+  });
+  const { data: collections } = useListCollectionsTreeQuery({
+    "exclude-archived": true,
+  });
+
+  const currentUser = useSelector(getUser);
 
   const databasesRef = useLatest(databases);
   const schemasRef = useLatest(schemas);
   const tablesRef = useLatest(tables);
-  const collectionsRef = useLatest(collections);
-  const modelsRef = useLatest(models);
 
   const [tree, setTree] = useState<TreeNode>(rootNode());
 
@@ -217,93 +219,85 @@ export function useTableLoader(path: TreePath) {
     [fetchSchemas, getTables, schemasRef],
   );
 
-  const getCollections = useCallback(async () => {
+  const collectionsSubTree = useMemo(() => {
     const rootCollectionId = "root";
-    const response = await fetchCollections({ id: rootCollectionId }, true);
 
-    if (collectionsRef.current.isError) {
-      // Do not refetch when this call failed previously.
-      // This is to prevent infinite data-loading loop as RTK query does not cache error responses.
+    if (!collections || !modelsData?.data || !currentUser) {
       return [];
     }
 
-    return (
-      response.data?.data?.map((modelOrCollection) => {
-        if (modelOrCollection.model === "collection") {
-          return node<CollectionNode>({
-            type: "collection",
-            label: modelOrCollection.name,
-            value: { collectionId: modelOrCollection.id },
-          });
-        }
+    const preparedCollections = getGroupedTreeItems(
+      collections,
+      currentUser.id,
+    );
 
-        if (modelOrCollection.model === "dataset") {
-          return node<ModelNode>({
+    const collectionTree = buildCollectionTree(
+      preparedCollections,
+      (m) => m === "dataset",
+    );
+
+    const sortedModels = [...modelsData.data].sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
+
+    function collectionToTreeNode(
+      collection: CollectionTreeItem,
+    ): CollectionNode {
+      const modelsInCollection = sortedModels.filter(
+        (model) => model.collection.id === collection.id,
+      );
+
+      const modelNodes = modelsInCollection.map(
+        (model): ModelNode =>
+          node<ModelNode>({
             type: "model",
-            label: modelOrCollection.name,
+            label: model.name,
+            value: {
+              collectionId: collection.id,
+              modelId: model.id,
+            },
+          }),
+      );
+
+      const childCollectionNodes =
+        collection.children.map(collectionToTreeNode);
+
+      return node<CollectionNode>({
+        type: "collection",
+        label: collection.name,
+        icon: getCollectionIcon(collection),
+        value: { collectionId: collection.id },
+        children: [...childCollectionNodes, ...modelNodes],
+      });
+    }
+
+    return [
+      ...collectionTree
+        .filter(({ type }) => type !== "instance-analytics") // ignore Usage Analytics collection as we cannot edit its items metadata
+        .map(collectionToTreeNode),
+      ...sortedModels
+        .filter((m) => !m.collection.id)
+        .map((model) =>
+          node<ModelNode>({
+            type: "model",
+            label: model.name,
             value: {
               collectionId: rootCollectionId,
-              modelId: modelOrCollection.id,
+              modelId: model.id,
             },
-          });
-        }
-      }) ?? []
-    );
-  }, [fetchCollections, collectionsRef]);
-
-  const getCollectionChildren = useCallback(
-    async (collectionId: CollectionId | undefined) => {
-      if (collectionId === undefined) {
-        return [];
-      }
-
-      const response = await fetchCollectionChildren(
-        {
-          id: collectionId,
-        },
-        true,
-      );
-
-      if (modelsRef.current.isError) {
-        // Do not refetch when this call failed previously.
-        // This is to prevent infinite data-loading loop as RTK query does not cache error responses.
-        return [];
-      }
-
-      return (
-        response.data?.data?.map((modelOrCollection) => {
-          if (modelOrCollection.model === "collection") {
-            return node<CollectionNode>({
-              type: "collection",
-              label: modelOrCollection.name,
-              value: { collectionId: modelOrCollection.id },
-            });
-          }
-
-          if (modelOrCollection.model === "dataset") {
-            return node<ModelNode>({
-              type: "model",
-              label: modelOrCollection.name,
-              value: { collectionId, modelId: modelOrCollection.id },
-            });
-          }
-        }) ?? []
-      );
-    },
-    [fetchCollectionChildren, modelsRef],
-  );
+          }),
+        ),
+    ];
+  }, [collections, currentUser, modelsData?.data]);
 
   const load = useCallback(
     async function (path: TreePath) {
-      const { databaseId, schemaName, collectionId } = path;
-      const [databases, schemas, tables, collections, models] =
-        await Promise.all([
-          getDatabases(),
-          getSchemas(databaseId),
-          getTables(databaseId, schemaName),
-          getCollections(),
-          getCollectionChildren(collectionId),
-        ]);
+      const { databaseId, schemaName } = path;
+      const [databases, schemas, tables] = await Promise.all([
+        getDatabases(),
+        getSchemas(databaseId),
+        getTables(databaseId, schemaName),
+      ]);
 
       const newTree: TreeNode = rootNode([
         ...databases.map((database) => ({
@@ -319,31 +313,15 @@ export function useTableLoader(path: TreePath) {
                       : tables,
                 })),
         })),
+        ...collectionsSubTree,
       ]);
 
       setTree((current) => {
-        const topLevelCollectionsAndModels = buildCollectionsTree(
-          collections,
-          collectionId,
-          models,
-          current as RootNode,
-        );
-
-        if (topLevelCollectionsAndModels?.length) {
-          newTree.children.push(...topLevelCollectionsAndModels);
-        }
-
         const merged = merge(current, newTree);
         return _.isEqual(current, merged) ? current : merged;
       });
     },
-    [
-      getCollections,
-      getDatabases,
-      getCollectionChildren,
-      getSchemas,
-      getTables,
-    ],
+    [collectionsSubTree, getDatabases, getSchemas, getTables],
   );
 
   useDeepCompareEffect(() => {
@@ -355,7 +333,6 @@ export function useTableLoader(path: TreePath) {
     // we need to manually call the lazy RTK hooks, so that the updated table
     // is refetched here. We detect this modification with tables.isFetching.
     tables.isFetching,
-    models.isFetching,
   ]);
 
   return { tree, reload: load };
@@ -371,7 +348,7 @@ export function useSearch(query: string) {
       ? skipToken
       : {
           q: query,
-          models: ["table", "model"],
+          models: ["table"],
           model_ancestors: true,
         },
   );
@@ -384,7 +361,7 @@ export function useSearch(query: string) {
         result;
       const tableSchema = table_schema ?? "";
 
-      if (model === "table" || database_name !== null) {
+      if (model === "table" || database_name != null) {
         let databaseNode = tree.children.find(
           (node) =>
             node.type === "database" && node.value.databaseId === database_id,
@@ -550,7 +527,7 @@ export function flatten(
         loadingItem("collection", level),
       ];
     }
-    return sortForRootNode(node.children).flatMap((child) =>
+    return /*sortForRootNode(node.children)*/ node.children.flatMap((child) =>
       flatten(child, opts),
     );
   }
@@ -562,7 +539,7 @@ export function flatten(
   ) {
     // Hide nameless schemas in the tree
     return [
-      ...sort(node.children).flatMap((child) =>
+      /*...sort(node.children)*/ ...node.children.flatMap((child) =>
         flatten(child, {
           ...opts,
           level,
@@ -573,14 +550,10 @@ export function flatten(
   }
 
   if (typeof isExpanded === "function" && !isExpanded(node.key)) {
-    return [{ ...node, level, parent }];
+    return [{ ...node, level, parent } as FlatItem];
   }
 
-  if (
-    addLoadingNodes &&
-    node.children.length === 0 &&
-    (node.type === "collection" ? node.hasNoValidChildren !== true : true)
-  ) {
+  if (addLoadingNodes && node.children.length === 0) {
     const childType = CHILD_TYPES[node.type];
     if (!childType) {
       return [{ ...node, level, parent }];
@@ -593,7 +566,7 @@ export function flatten(
 
   return [
     { ...node, isExpanded: true, level, parent },
-    ...sort(node.children).flatMap((child) =>
+    /*...sort(node.children)*/ ...node.children.flatMap((child) =>
       flatten(child, {
         ...opts,
         level: level + 1,
@@ -602,33 +575,6 @@ export function flatten(
       }),
     ),
   ];
-}
-
-function sort(nodes: TreeNode[]): TreeNode[] {
-  return Array.from(nodes).sort((a, b) => {
-    return a.label.localeCompare(b.label);
-  });
-}
-
-function sortForRootNode(nodes: TreeNode[]): TreeNode[] {
-  return Array.from(nodes).sort((a, b) => {
-    // Databases first
-    if (a.type === "database" && b.type !== "database") {
-      return -1;
-    }
-    if (a.type !== "database" && b.type === "database") {
-      return 1;
-    }
-    // Collections second
-    if (a.type === "collection" && b.type !== "collection") {
-      return -1;
-    }
-    if (a.type !== "collection" && b.type === "collection") {
-      return 1;
-    }
-    // Otherwise alphabetical
-    return a.label.localeCompare(b.label);
-  });
 }
 
 /**
@@ -713,82 +659,4 @@ function loadingItem(
     isLoading: true,
     key: Math.random().toString(),
   };
-}
-
-function buildCollectionsTree(
-  topLevelCollectionsAndModels: (CollectionNode | ModelNode)[],
-  parentCollectionId: CollectionId | undefined,
-  loadedChildren: (CollectionNode | ModelNode)[],
-  fullTree: RootNode,
-): (CollectionNode | ModelNode)[] | undefined {
-  if (!parentCollectionId) {
-    return topLevelCollectionsAndModels;
-  }
-
-  const parentCollectionNode = findInTree(fullTree, (item) => {
-    return (
-      item.type === "collection" &&
-      item.value.collectionId === parentCollectionId
-    );
-  }) as CollectionNode | undefined;
-
-  if (!parentCollectionNode) {
-    return [];
-  }
-
-  let newSubtree = {
-    ...parentCollectionNode,
-    children: loadedChildren,
-  } as CollectionNode;
-
-  if (!loadedChildren.length) {
-    newSubtree.hasNoValidChildren = true;
-  }
-
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    // TODO: optimize this to avoid searching the whole tree every time
-    const parentToFind = findInTree(fullTree, (item) => {
-      return (
-        item.type === "collection" &&
-        item.children.some((child) => child.key === newSubtree.key)
-      );
-    }) as CollectionNode | undefined;
-
-    if (parentToFind) {
-      newSubtree = {
-        ...parentToFind,
-        children: parentToFind.children.map((child) =>
-          child.key === newSubtree.key ? newSubtree : child,
-        ),
-      } as CollectionNode;
-    } else {
-      break;
-    }
-  }
-
-  return topLevelCollectionsAndModels.map((item) => {
-    if (item.key === newSubtree.key) {
-      return newSubtree;
-    }
-    return item;
-  });
-}
-
-function findInTree(
-  node: TreeNode,
-  checkItem: (item: TreeNode) => boolean,
-): TreeNode | undefined {
-  for (const item of node.children) {
-    if (checkItem(item as TreeNode)) {
-      return item as TreeNode;
-    } else {
-      const existsInChild = findInTree(item as TreeNode, checkItem);
-      if (existsInChild) {
-        return existsInChild;
-      }
-    }
-  }
-
-  return false;
 }

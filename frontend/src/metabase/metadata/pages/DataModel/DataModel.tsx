@@ -1,6 +1,5 @@
 import { useDisclosure, useWindowEvent } from "@mantine/hooks";
-import type { Location } from "history";
-import { type ReactNode, useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -36,12 +35,10 @@ import type { FieldChangeParams, RouteParams } from "./types";
 import { getTableMetadataQuery, parseRouteParams } from "./utils";
 
 interface Props {
-  children?: ReactNode;
-  location: Location;
   params: RouteParams;
 }
 
-export const DataModel = ({ children, location, params }: Props) => {
+export const DataModel = ({ params }: Props) => {
   const {
     databaseId,
     fieldId,
@@ -56,7 +53,6 @@ export const DataModel = ({ children, location, params }: Props) => {
   const databaseExists = databasesData?.data?.some(
     (database) => database.id === databaseId,
   );
-  const isSegments = location.pathname.startsWith("/metadata/segment");
   const [isPreviewOpen, { close: closePreview, toggle: togglePreview }] =
     useDisclosure();
   const [isSyncModalOpen, { close: closeSyncModal, open: openSyncModal }] =
@@ -67,7 +63,7 @@ export const DataModel = ({ children, location, params }: Props) => {
   ] = useDisclosure();
   const isModelMode = modelId != null;
   const isEmptyStateShown = isModelMode
-    ? fieldName == null
+    ? collectionId == null || fieldName == null
     : databaseId == null || tableId == null || fieldId == null;
   const {
     currentData: table,
@@ -80,7 +76,7 @@ export const DataModel = ({ children, location, params }: Props) => {
   );
 
   const { isLoading: isLoadingModel, data: modelCard } = useGetCardQuery(
-    { id: modelId },
+    { id: modelId as number },
     { skip: !modelId },
   );
 
@@ -108,6 +104,10 @@ export const DataModel = ({ children, location, params }: Props) => {
 
   const handleModelColumnChange = useCallback(
     (update: FieldChangeParams) => {
+      if (!modelCard || !modelId) {
+        return Promise.reject();
+      }
+
       const newMetadata = table?.fields?.map((column) => {
         return update.name === column.name ? { ...column, ...update } : column;
       });
@@ -117,11 +117,15 @@ export const DataModel = ({ children, location, params }: Props) => {
         result_metadata: newMetadata,
       });
     },
-    [modelId, table?.fields, updateCard],
+    [modelCard, modelId, table?.fields, updateCard],
   );
 
   const handleModelColumnsOrderChange = useCallback(
     (fieldsOrder: FieldName[]) => {
+      if (!modelCard || !modelId) {
+        return Promise.reject();
+      }
+
       const newFields = fieldsOrder.map((fieldName) => ({
         name: fieldName,
         enabled: true,
@@ -135,7 +139,7 @@ export const DataModel = ({ children, location, params }: Props) => {
         },
       });
     },
-    [modelCard?.visualization_settings, modelId, updateCard],
+    [modelCard, modelId, updateCard],
   );
 
   useWindowEvent(
@@ -183,173 +187,167 @@ export const DataModel = ({ children, location, params }: Props) => {
         />
       </Stack>
 
-      {isSegments && children}
+      {databaseId != null && tableId == null && databaseExists === false && (
+        <Stack
+          className={S.column}
+          h="100%"
+          justify="center"
+          miw={rem(400)}
+          p="xl"
+        >
+          <LoadingAndErrorWrapper error={t`Not found.`} />
+        </Stack>
+      )}
 
-      {!isSegments && (
-        <>
-          {databaseId != null &&
-            tableId == null &&
-            databaseExists === false && (
-              <Stack
-                className={S.column}
-                h="100%"
-                justify="center"
-                miw={rem(400)}
-                p="xl"
-              >
-                <LoadingAndErrorWrapper error={t`Not found.`} />
-              </Stack>
-            )}
-
-          {tableId && (
-            <Stack
-              className={S.column}
-              flex={COLUMN_CONFIG.table.flex}
-              h="100%"
-              justify={error ? "center" : undefined}
-              maw={COLUMN_CONFIG.table.max}
-              miw={COLUMN_CONFIG.table.min}
-            >
-              <LoadingAndErrorWrapper error={error} loading={isLoading}>
-                {table && !isModelMode && (
-                  <TableSection
-                    /**
-                     * Make sure internal component state is reset when changing tables.
-                     * This is to avoid state mix-up with optimistic updates.
-                     */
-                    key={table.id}
-                    params={params}
-                    table={table}
-                    onSyncOptionsClick={openSyncModal}
-                  />
-                )}
-              </LoadingAndErrorWrapper>
-            </Stack>
-          )}
-
-          {isModelMode && modelId && (
-            <Stack
-              className={S.column}
-              flex={COLUMN_CONFIG.table.flex}
-              h="100%"
-              justify={error ? "center" : undefined}
-              maw={COLUMN_CONFIG.table.max}
-              miw={COLUMN_CONFIG.table.min}
-            >
-              <LoadingAndErrorWrapper error={error} loading={isLoading}>
-                {table && (
-                  <ModelColumnsSection
-                    /**
-                     * Make sure internal component state is reset when changing tables.
-                     * This is to avoid state mix-up with optimistic updates.
-                     */
-                    key={table.id}
-                    collectionId={collectionId}
-                    modelId={modelId}
-                    fieldName={fieldName}
-                    model={modelCard}
-                    onSyncOptionsClick={openSyncModal}
-                    onFieldChange={handleModelColumnChange}
-                    onFieldsOrderChange={handleModelColumnsOrderChange}
-                  />
-                )}
-              </LoadingAndErrorWrapper>
-            </Stack>
-          )}
-
-          {!isEmptyStateShown && (
-            <Stack
-              className={S.column}
-              flex={COLUMN_CONFIG.field.flex}
-              h="100%"
-              justify={
-                (!isLoading && !error && !field) || error ? "center" : undefined
-              }
-              maw={COLUMN_CONFIG.field.max}
-              miw={COLUMN_CONFIG.field.min}
-            >
-              <LoadingAndErrorWrapper error={error} loading={isLoading}>
-                {field && table && (
-                  <Box flex="1" h="100%" maw={COLUMN_CONFIG.field.max}>
-                    <FieldSection
-                      mode={isModelMode ? "model" : "table"}
-                      databaseId={
-                        isModelMode ? modelCard?.database_id : databaseId
-                      }
-                      field={field}
-                      /**
-                       * Make sure internal component state is reset when changing fields.
-                       * This is to avoid state mix-up with optimistic updates.
-                       */
-                      key={isModelMode ? fieldName : getRawTableFieldId(field)}
-                      parent={parentField}
-                      table={table}
-                      onFieldValuesClick={openFieldValuesModal}
-                      onPreviewClick={togglePreview}
-                      onFieldChange={
-                        isModelMode
-                          ? handleModelColumnChange
-                          : handleTableFieldChange
-                      }
-                    />
-                  </Box>
-                )}
-              </LoadingAndErrorWrapper>
-
-              {!isLoading && !error && !field && (
-                <LoadingAndErrorWrapper error={t`Not found.`} />
-              )}
-            </Stack>
-          )}
-
-          {!isEmptyStateShown && field && table && isPreviewOpen && (
-            <Box
-              bg="accent-gray-light"
-              flex={COLUMN_CONFIG.preview.flex}
-              h="100%"
-              p="xl"
-              maw={COLUMN_CONFIG.preview.max}
-              miw={COLUMN_CONFIG.preview.min}
-            >
-              <PreviewSection
-                className={S.preview}
-                databaseId={databaseId}
-                field={field}
-                fieldId={fieldId}
-                previewType={previewType}
+      {tableId && (
+        <Stack
+          className={S.column}
+          flex={COLUMN_CONFIG.table.flex}
+          h="100%"
+          justify={error ? "center" : undefined}
+          maw={COLUMN_CONFIG.table.max}
+          miw={COLUMN_CONFIG.table.min}
+        >
+          <LoadingAndErrorWrapper error={error} loading={isLoading}>
+            {table && !isModelMode && (
+              <TableSection
+                /**
+                 * Make sure internal component state is reset when changing tables.
+                 * This is to avoid state mix-up with optimistic updates.
+                 */
+                key={table.id}
+                params={params}
                 table={table}
-                tableId={tableId}
-                onClose={closePreview}
-                onPreviewTypeChange={setPreviewType}
+                onSyncOptionsClick={openSyncModal}
               />
-            </Box>
-          )}
+            )}
+          </LoadingAndErrorWrapper>
+        </Stack>
+      )}
 
-          {isEmptyStateShown && (
-            <Flex
-              align="center"
-              flex="1"
-              justify="center"
-              miw={rem(EMPTY_STATE_MIN_WIDTH)}
-            >
-              <Box maw={rem(320)} p="xl">
-                <EmptyState
-                  illustrationElement={<img src={EmptyDashboardBot} />}
-                  title={
-                    table
-                      ? t`Edit the table and fields`
-                      : t`Start by selecting data to model`
-                  }
-                  message={
-                    table
-                      ? t`Select a field to edit its name, description, formatting, and more.`
-                      : t`Browse your databases to find the table you’d like to edit.`
-                  }
-                />
-              </Box>
-            </Flex>
+      {isModelMode && modelId && collectionId && (
+        <Stack
+          className={S.column}
+          flex={COLUMN_CONFIG.table.flex}
+          h="100%"
+          justify={error ? "center" : undefined}
+          maw={COLUMN_CONFIG.table.max}
+          miw={COLUMN_CONFIG.table.min}
+        >
+          <LoadingAndErrorWrapper error={error} loading={isLoading}>
+            {table && modelCard && (
+              <ModelColumnsSection
+                /**
+                 * Make sure internal component state is reset when changing tables.
+                 * This is to avoid state mix-up with optimistic updates.
+                 */
+                key={table.id}
+                collectionId={collectionId}
+                modelId={modelId}
+                fieldName={fieldName}
+                model={modelCard}
+                onFieldChange={handleModelColumnChange}
+                onFieldsOrderChange={handleModelColumnsOrderChange}
+              />
+            )}
+          </LoadingAndErrorWrapper>
+        </Stack>
+      )}
+
+      {!isEmptyStateShown && (
+        <Stack
+          className={S.column}
+          flex={COLUMN_CONFIG.field.flex}
+          h="100%"
+          justify={
+            (!isLoading && !error && !field) || error ? "center" : undefined
+          }
+          maw={COLUMN_CONFIG.field.max}
+          miw={COLUMN_CONFIG.field.min}
+        >
+          <LoadingAndErrorWrapper error={error} loading={isLoading}>
+            {field &&
+              table &&
+              (isModelMode ? modelCard?.database_id : databaseId) && (
+                <Box flex="1" h="100%" maw={COLUMN_CONFIG.field.max}>
+                  <FieldSection
+                    mode={isModelMode ? "model" : "table"}
+                    databaseId={
+                      isModelMode ? modelCard.database_id : databaseId
+                    }
+                    field={field}
+                    /**
+                     * Make sure internal component state is reset when changing fields.
+                     * This is to avoid state mix-up with optimistic updates.
+                     */
+                    key={isModelMode ? fieldName : getRawTableFieldId(field)}
+                    parent={parentField}
+                    table={table}
+                    collectionId={collectionId}
+                    onFieldValuesClick={openFieldValuesModal}
+                    onPreviewClick={togglePreview}
+                    onFieldChange={
+                      isModelMode
+                        ? handleModelColumnChange
+                        : handleTableFieldChange
+                    }
+                  />
+                </Box>
+              )}
+          </LoadingAndErrorWrapper>
+
+          {!isLoading && !error && !field && (
+            <LoadingAndErrorWrapper error={t`Not found.`} />
           )}
-        </>
+        </Stack>
+      )}
+
+      {!isEmptyStateShown && field && table && isPreviewOpen && (
+        <Box
+          bg="accent-gray-light"
+          flex={COLUMN_CONFIG.preview.flex}
+          h="100%"
+          p="xl"
+          maw={COLUMN_CONFIG.preview.max}
+          miw={COLUMN_CONFIG.preview.min}
+        >
+          <PreviewSection
+            className={S.preview}
+            databaseId={table.db_id}
+            field={field}
+            fieldId={getRawTableFieldId(field)}
+            previewType={previewType}
+            table={table}
+            tableId={table.id}
+            onClose={closePreview}
+            onPreviewTypeChange={setPreviewType}
+          />
+        </Box>
+      )}
+
+      {isEmptyStateShown && (
+        <Flex
+          align="center"
+          flex="1"
+          justify="center"
+          miw={rem(EMPTY_STATE_MIN_WIDTH)}
+        >
+          <Box maw={rem(320)} p="xl">
+            <EmptyState
+              illustrationElement={<img src={EmptyDashboardBot} />}
+              title={
+                table
+                  ? t`Edit the table and fields`
+                  : t`Start by selecting data to model`
+              }
+              message={
+                table
+                  ? t`Select a field to edit its name, description, formatting, and more.`
+                  : t`Browse your databases to find the table you’d like to edit.`
+              }
+            />
+          </Box>
+        </Flex>
       )}
 
       {table && (

@@ -11,8 +11,14 @@ import { getUrl } from "../../utils";
 import { BulkTableVisibilityToggle } from "./BulkTableVisibilityToggle";
 import S from "./Results.module.css";
 import { TableVisibilityToggle } from "./TableVisibilityToggle";
-import type { FlatItem, ItemType, TreePath } from "./types";
-import { TYPE_ICONS, hasChildren, isItemWithHiddenExpandIcon } from "./utils";
+import type {
+  FlatItem,
+  ItemType,
+  ModelItem,
+  TableItem,
+  TreePath,
+} from "./types";
+import { TYPE_ICONS, isItemWithHiddenExpandIcon } from "./utils";
 
 const VIRTUAL_OVERSCAN = 5;
 const ITEM_MIN_HEIGHT = 32; // items can vary in size because of text wrapping
@@ -129,6 +135,7 @@ export function Results({
             value,
             label,
             type,
+            icon: iconProps,
             isExpanded,
             isLoading,
             key,
@@ -163,12 +170,18 @@ export function Results({
               onItemClick?.(value);
             }
 
-            if (type === "table") {
-              setActiveItem({ type: "table", id: value?.tableId });
+            if (type === "table" && (value as TableItem["value"])?.tableId) {
+              setActiveItem({
+                type: "table",
+                id: (value as TableItem["value"]).tableId,
+              });
             }
 
-            if (type === "model") {
-              setActiveItem({ type: "model", id: value?.modelId });
+            if (type === "model" && (value as ModelItem["value"])?.modelId) {
+              setActiveItem({
+                type: "model",
+                id: (value as ModelItem["value"]).modelId,
+              });
             }
           };
 
@@ -273,20 +286,20 @@ export function Results({
               <Flex align="center" mih={ITEM_MIN_HEIGHT} py="xs" w="100%">
                 <Flex align="flex-start" gap="xs" w="100%">
                   <Flex align="center" gap="xs">
-                    {(hasChildren(item) ||
-                      isItemWithHiddenExpandIcon(item)) && (
-                      <Icon
-                        name="chevronright"
-                        size={10}
-                        color="var(--mb-color-text-light)"
-                        className={cx(S.chevron, {
-                          [S.expanded]: isExpanded,
-                          [CS.hidden]: isItemWithHiddenExpandIcon(item),
-                        })}
-                      />
-                    )}
+                    <Icon
+                      name="chevronright"
+                      size={10}
+                      color="var(--mb-color-text-light)"
+                      className={cx(S.chevron, {
+                        [S.expanded]: isExpanded,
+                        [CS.hidden]: isItemWithHiddenExpandIcon(item),
+                      })}
+                    />
 
-                    <Icon name={TYPE_ICONS[type]} className={S.icon} />
+                    <Icon
+                      {...(iconProps || { name: TYPE_ICONS[type] })}
+                      className={S.icon}
+                    />
                   </Flex>
 
                   {isLoading ? (

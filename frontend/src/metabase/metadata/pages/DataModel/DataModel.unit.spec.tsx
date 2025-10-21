@@ -63,6 +63,9 @@ const DEFAULT_ROUTE_PARAMS: ParsedRouteParams = {
   schemaName: undefined,
   tableId: undefined,
   fieldId: undefined,
+  collectionId: undefined,
+  modelId: undefined,
+  fieldName: undefined,
 };
 
 const ORDERS_ID_FIELD = createOrdersIdField();
@@ -744,6 +747,9 @@ describe("DataModel", () => {
           schemaName: JSON_TABLE.schema,
           tableId: JSON_TABLE.id,
           fieldId: getRawTableFieldId(JSON_FIELD_ROOT),
+          collectionId: undefined,
+          modelId: undefined,
+          fieldName: undefined,
         },
       });
 
@@ -757,6 +763,9 @@ describe("DataModel", () => {
           schemaName: ORDERS_TABLE.schema,
           tableId: ORDERS_TABLE.id,
           fieldId: getRawTableFieldId(ORDERS_DISCOUNT_FIELD),
+          collectionId: undefined,
+          modelId: undefined,
+          fieldName: undefined,
         },
       });
 
@@ -770,6 +779,9 @@ describe("DataModel", () => {
           schemaName: ORDERS_TABLE.schema,
           tableId: ORDERS_TABLE.id,
           fieldId: getRawTableFieldId(ORDERS_ID_FIELD),
+          collectionId: undefined,
+          modelId: undefined,
+          fieldName: undefined,
         },
       });
 
@@ -789,6 +801,9 @@ describe("DataModel", () => {
           schemaName: ORDERS_TABLE.schema,
           tableId: ORDERS_TABLE.id,
           fieldId: getRawTableFieldId(ORDERS_DISCOUNT_FIELD),
+          collectionId: undefined,
+          modelId: undefined,
+          fieldName: undefined,
         },
       });
 
@@ -817,6 +832,9 @@ describe("DataModel", () => {
           schemaName: ORDERS_TABLE.schema,
           tableId: ORDERS_TABLE.id,
           fieldId: getRawTableFieldId(ORDERS_PRODUCT_ID_FIELD),
+          collectionId: undefined,
+          modelId: undefined,
+          fieldName: undefined,
         },
         unauthorizedField: PRODUCTS_ID_FIELD,
       });
@@ -843,6 +861,9 @@ describe("DataModel", () => {
           schemaName: ORDERS_TABLE.schema,
           tableId: ORDERS_TABLE.id,
           fieldId: getRawTableFieldId(ORDERS_QUANTITY_FIELD),
+          collectionId: undefined,
+          modelId: undefined,
+          fieldName: undefined,
         },
       });
 
@@ -869,6 +890,9 @@ describe("DataModel", () => {
           schemaName: ORDERS_TABLE.schema,
           tableId: ORDERS_TABLE.id,
           fieldId: getRawTableFieldId(ORDERS_QUANTITY_FIELD),
+          collectionId: undefined,
+          modelId: undefined,
+          fieldName: undefined,
         },
         hasFieldValuesAccess: false,
         unauthorizedField: ORDERS_QUANTITY_FIELD,
@@ -892,6 +916,9 @@ describe("DataModel", () => {
           schemaName: ORDERS_TABLE.schema,
           tableId: ORDERS_TABLE.id,
           fieldId: getRawTableFieldId(ORDERS_ID_FIELD),
+          collectionId: undefined,
+          modelId: undefined,
+          fieldName: undefined,
         },
       });
 
@@ -917,6 +944,9 @@ describe("DataModel", () => {
           schemaName: ORDERS_TABLE.schema,
           tableId: ORDERS_TABLE.id,
           fieldId: getRawTableFieldId(ORDERS_ID_FIELD),
+          collectionId: undefined,
+          modelId: undefined,
+          fieldName: undefined,
         },
       });
 

@@ -11,7 +11,12 @@ import type {
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Group, Stack, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { DatabaseId, Field, Table } from "metabase-types/api";
+import type {
+  CollectionId,
+  DatabaseId,
+  Field,
+  Table,
+} from "metabase-types/api";
 
 import { ResponsiveButton } from "../ResponsiveButton";
 
@@ -24,27 +29,20 @@ import { useResponsiveButtons } from "./hooks";
 
 type FieldSectionProps = {
   mode: MetadataEditMode;
+  databaseId: DatabaseId;
+  collectionId: CollectionId | undefined;
+  field: Field;
+  table: Table;
   parent?: Field;
   onFieldValuesClick: () => void;
   onPreviewClick: () => void;
-  onFieldChange: (update: FieldChangeParams) => Promise<{ error?: string }>;
-} & (
-  | {
-      mode: "table";
-      databaseId: DatabaseId;
-      field: Field;
-      table: Table;
-    }
-  | {
-      mode: "model";
-      table: Table; // use Table type for models as a temp hack
-      field: Field;
-    }
-);
+  onFieldChange: (update: FieldChangeParams) => Promise<{ error?: unknown }>;
+};
 
 const FieldSectionBase = ({
   mode,
   databaseId,
+  collectionId,
   field,
   parent,
   table,
@@ -179,6 +177,7 @@ const FieldSectionBase = ({
         <MetadataSection
           mode={mode}
           databaseId={databaseId}
+          collectionId={collectionId}
           field={field}
           table={table}
           onFieldChange={onFieldChange}

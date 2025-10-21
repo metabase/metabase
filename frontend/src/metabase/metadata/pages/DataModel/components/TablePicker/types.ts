@@ -1,3 +1,4 @@
+import type { IconName } from "metabase/ui";
 import type {
   CardId,
   CollectionId,
@@ -64,9 +65,13 @@ export type CollectionNode = {
   type: "collection";
   label: string;
   key: string;
+  icon: {
+    name: IconName;
+    color?: string;
+    tooltip?: string;
+  };
   value: { collectionId: CollectionId };
-  children: ModelNode[];
-  hasNoValidChildren?: boolean;
+  children: (CollectionNode | ModelNode)[];
 };
 
 export type ModelNode = {

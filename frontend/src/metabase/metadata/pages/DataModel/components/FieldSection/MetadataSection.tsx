@@ -10,7 +10,12 @@ import type {
 } from "metabase/metadata/pages/DataModel/types";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import type { DatabaseId, Field, Table } from "metabase-types/api";
+import type {
+  CollectionId,
+  DatabaseId,
+  Field,
+  Table,
+} from "metabase-types/api";
 
 import { trackMetadataChange } from "../../analytics";
 import { TitledSection } from "../TitledSection";
@@ -23,22 +28,17 @@ type Patch = Partial<
 
 type MetadataSectionProps = {
   mode: MetadataEditMode;
-  onFieldChange: (update: FieldChangeParams) => Promise<{ error?: string }>;
+  databaseId: DatabaseId;
+  collectionId: CollectionId | undefined;
+  onFieldChange: (update: FieldChangeParams) => Promise<{ error?: unknown }>;
   field: Field;
   table: Table; // use Table type for models as a temp hack
-} & (
-  | {
-      mode: "table";
-      databaseId: DatabaseId;
-    }
-  | {
-      mode: "model";
-    }
-);
+};
 
 const MetadataSectionBase = ({
   mode,
   databaseId,
+  collectionId,
   field,
   table,
   onFieldChange,
@@ -51,8 +51,8 @@ const MetadataSectionBase = ({
   });
 
   const semanticTypeError = useMemo(() => {
-    return getSemanticTypeError(table, field);
-  }, [table, field]);
+    return getSemanticTypeError({ table, field, mode, collectionId });
+  }, [table, field, mode, collectionId]);
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
 

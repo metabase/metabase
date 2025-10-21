@@ -1,11 +1,9 @@
-import { useDeferredValue, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useKeyPressEvent } from "react-use";
 import { t } from "ttag";
 
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { useSelector } from "metabase/lib/redux";
-import { getUser } from "metabase/selectors/user";
-import { Box, Flex, Icon, Input, Stack, rem } from "metabase/ui";
+import { Box, Flex, Icon, Stack, rem } from "metabase/ui";
 
 import { Results } from "./Results";
 import S from "./TablePicker.module.css";
@@ -55,7 +53,6 @@ function Tree({
   onChange: (path: TreePath, options?: ChangeOptions) => void;
 }) {
   const { databaseId, schemaName } = path;
-  const currentUser = useSelector(getUser); // use it to sort models
   const { isExpanded, toggle } = useExpandedState(path);
   const { tree, reload } = useTableLoader(path);
 
@@ -63,7 +60,6 @@ function Tree({
     isExpanded,
     addLoadingNodes: true,
     canFlattenSingleSchema: true,
-    userId: currentUser?.id,
   });
   const isEmpty = items.length === 0;
 
@@ -71,7 +67,7 @@ function Tree({
     // When we detect only one database, we automatically select and expand it.
     const databases = tree.children.filter(
       (node) => (node as DatabaseNode).type === "database",
-    );
+    ) as DatabaseNode[];
 
     if (databases.length !== 1) {
       return;
@@ -125,6 +121,7 @@ function Tree({
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function Search({
   query,
   path,
