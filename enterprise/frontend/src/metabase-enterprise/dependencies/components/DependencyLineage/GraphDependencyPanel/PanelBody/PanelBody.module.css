@@ -8,18 +8,17 @@
   }
 }
 
-.titleLink {
-  color: var(--mb-color-text-primary);
-
+.link {
   &:hover {
     color: var(--mb-color-brand);
+    text-decoration: none;
   }
-}
 
-.locationLink {
-  color: var(--mb-color-text-secondary);
+  &.primary {
+    color: var(--mb-color-text-primary);
+  }
 
-  &:hover {
-    color: var(--mb-color-brand);
+  &.secondary {
+    color: var(--mb-color-text-secondary);
   }
 }

@@ -48,7 +48,7 @@ export function PanelHeader({
   const hasFilterPicker = canFilter(groupType);
 
   return (
-    <Stack className={S.root} p="lg" gap="lg">
+    <Stack className={S.root} p="lg" gap="lg" lh="1rem">
       <Group wrap="nowrap">
         <Title flex={1} order={4}>
           {getHeaderLabel(node, groupType)}

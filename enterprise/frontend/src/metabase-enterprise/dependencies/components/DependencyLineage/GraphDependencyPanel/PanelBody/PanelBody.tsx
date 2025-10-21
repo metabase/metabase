@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { memo } from "react";
 import { Link } from "react-router";
 
@@ -36,11 +37,11 @@ type PanelBodyProps = {
 
 export const PanelBody = memo(function ListBody({ nodes }: PanelBodyProps) {
   return (
-    <div className={S.body}>
+    <Box className={S.body} lh="1rem">
       {nodes.map((node) => (
         <ListItem key={getNodeId(node.id, node.type)} node={node} />
       ))}
-    </div>
+    </Box>
   );
 });
 
@@ -83,7 +84,7 @@ function ListItemTitle({ node }: ListItemTitleProps) {
   const link = Urls.dependencyLineage({ entry: node });
 
   return (
-    <Anchor className={S.titleLink} component={Link} to={link}>
+    <Anchor className={cx(S.link, S.primary)} component={Link} to={link}>
       <Flex gap="sm" align="center">
         <FixedSizeIcon name={icon} c="brand" />
         <Box lh="h4">{label}</Box>
@@ -111,7 +112,7 @@ type ListItemSubtitleProps = {
 function ListItemLocation({ location }: ListItemSubtitleProps) {
   return (
     <Anchor
-      className={S.locationLink}
+      className={cx(S.link, S.secondary)}
       component={Link}
       to={location.url}
       target="_blank"

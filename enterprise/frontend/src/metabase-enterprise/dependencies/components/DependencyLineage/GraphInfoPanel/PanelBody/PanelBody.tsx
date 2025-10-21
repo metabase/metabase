@@ -1,36 +1,22 @@
-import type { HTMLAttributeAnchorTarget } from "react";
-import { Link } from "react-router";
 import { c, t } from "ttag";
 
 import DateTime from "metabase/common/components/DateTime";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { getUserName } from "metabase/lib/user";
-import {
-  Anchor,
-  Box,
-  FixedSizeIcon,
-  Flex,
-  Group,
-  Stack,
-  Title,
-} from "metabase/ui";
+import { Box, FixedSizeIcon, Group, Stack, Title } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DependencyNode } from "metabase-types/api";
 
-import type { LinkWithLabelInfo } from "../../types";
-import { getNodeDescription, getNodeLocationInfo } from "../../utils";
+import { getNodeDescription } from "../../utils";
 
 import S from "./PanelBody.module.css";
 import {
   getNodeCreatedAt,
   getNodeCreatedBy,
-  getNodeDatabaseInfo,
   getNodeFields,
   getNodeFieldsLabel,
-  getNodeGeneratedTableInfo,
   getNodeLastEditedAt,
   getNodeLastEditedBy,
-  getNodeSchemaInfo,
 } from "./utils";
 
 type PanelBodyProps = {
@@ -39,36 +25,29 @@ type PanelBodyProps = {
 
 export function PanelBody({ node }: PanelBodyProps) {
   return (
-    <Stack className={S.body} pl="lg" pr="lg" pb="lg" gap="lg">
-      <DescriptionInfo node={node} />
-      <CreatorAndLastEditorInfo node={node} />
-      <CollectionOrDashboardInfo node={node} />
-      <DatabaseInfo node={node} />
-      <SchemaInfo node={node} />
-      <GeneratedTableInfo node={node} />
-      <FieldsInfo node={node} />
+    <Stack className={S.body} p="lg" gap="lg" lh="1rem">
+      <DescriptionSection node={node} />
+      <CreatorAndLastEditorSection node={node} />
+      <FieldsSection node={node} />
     </Stack>
   );
 }
 
-type PanelBodyPartProps = {
+type SectionProps = {
   node: DependencyNode;
 };
 
-function DescriptionInfo({ node }: PanelBodyPartProps) {
+function DescriptionSection({ node }: SectionProps) {
   const description = getNodeDescription(node);
 
   return (
-    <Stack gap="sm">
-      <Title order={6}>{t`Description`}</Title>
-      <Box c={description ? "text-primary" : "text-secondary"}>
-        {description ?? t`No description`}
-      </Box>
-    </Stack>
+    <Box c={description ? "text-primary" : "text-secondary"} lh="h4">
+      {description ?? t`No description`}
+    </Box>
   );
 }
 
-function CreatorAndLastEditorInfo({ node }: PanelBodyPartProps) {
+function CreatorAndLastEditorSection({ node }: SectionProps) {
   const createdAt = getNodeCreatedAt(node);
   const createdBy = getNodeCreatedBy(node);
   const editedAt = getNodeLastEditedAt(node);
@@ -111,70 +90,14 @@ function CreatorAndLastEditorInfo({ node }: PanelBodyPartProps) {
   );
 }
 
-function CollectionOrDashboardInfo({ node }: PanelBodyPartProps) {
-  const link = getNodeLocationInfo(node);
-  if (link == null) {
-    return null;
-  }
-
-  return (
-    <Stack gap="sm">
-      <Title order={6}>{t`Saved in`}</Title>
-      <LinkWithIcon link={link} target="_blank" />
-    </Stack>
-  );
-}
-
-function DatabaseInfo({ node }: PanelBodyPartProps) {
-  const link = getNodeDatabaseInfo(node);
-  if (link == null) {
-    return null;
-  }
-
-  return (
-    <Stack gap="sm">
-      <Title order={6}>{t`Database`}</Title>
-      <LinkWithIcon link={link} target="_blank" />
-    </Stack>
-  );
-}
-
-function SchemaInfo({ node }: PanelBodyPartProps) {
-  const link = getNodeSchemaInfo(node);
-  if (link == null) {
-    return null;
-  }
-
-  return (
-    <Stack gap="sm">
-      <Title order={6}>{t`Schema`}</Title>
-      <LinkWithIcon link={link} target="_blank" />
-    </Stack>
-  );
-}
-
-function GeneratedTableInfo({ node }: PanelBodyPartProps) {
-  const link = getNodeGeneratedTableInfo(node);
-  if (link == null) {
-    return null;
-  }
-
-  return (
-    <Stack gap="sm">
-      <Title order={6}>{t`Generated table`}</Title>
-      <LinkWithIcon link={link} />
-    </Stack>
-  );
-}
-
-function FieldsInfo({ node }: PanelBodyPartProps) {
+function FieldsSection({ node }: SectionProps) {
   const fields = getNodeFields(node);
   if (fields.length === 0) {
     return null;
   }
 
   return (
-    <Stack gap="sm">
+    <Stack gap="md">
       <Title order={6}>{getNodeFieldsLabel(fields.length)}</Title>
       {fields.map((field, fieldIndex) => {
         const fieldTypeInfo = Lib.legacyColumnTypeInfo(field);
@@ -182,27 +105,11 @@ function FieldsInfo({ node }: PanelBodyPartProps) {
 
         return (
           <Group key={fieldIndex} gap="sm" wrap="nowrap">
-            <FixedSizeIcon name={fieldIcon} />
+            <FixedSizeIcon name={fieldIcon} c="text-secondary" />
             {field.display_name}
           </Group>
         );
       })}
     </Stack>
-  );
-}
-
-type LinkWithIconProps = {
-  link: LinkWithLabelInfo;
-  target?: HTMLAttributeAnchorTarget;
-};
-
-function LinkWithIcon({ link, target }: LinkWithIconProps) {
-  return (
-    <Anchor component={Link} to={link.url} target={target}>
-      <Flex gap="sm" align="center">
-        <FixedSizeIcon c="text-primary" name={link.icon} />
-        <div>{link.label}</div>
-      </Flex>
-    </Anchor>
   );
 }

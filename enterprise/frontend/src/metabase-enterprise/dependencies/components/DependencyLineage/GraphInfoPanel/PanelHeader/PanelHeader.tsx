@@ -1,9 +1,12 @@
+import { Link } from "react-router";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import {
   ActionIcon,
+  Anchor,
   Box,
+  Center,
   FixedSizeIcon,
   Group,
   Title,
@@ -13,7 +16,14 @@ import {
 import type { DependencyNode } from "metabase-types/api";
 
 import { ACTION_ICON_PADDING } from "../../constants";
-import { getNodeIcon, getNodeLabel, getNodeLink } from "../../utils";
+import {
+  getNodeIcon,
+  getNodeLabel,
+  getNodeLink,
+  getNodeLocationInfo,
+} from "../../utils";
+
+import S from "./PanelHeader.module.css";
 
 type PanelHeaderProps = {
   node: DependencyNode;
@@ -22,13 +32,27 @@ type PanelHeaderProps = {
 
 export function PanelHeader({ node, onClose }: PanelHeaderProps) {
   const link = getNodeLink(node);
+  const location = getNodeLocationInfo(node);
 
   return (
-    <Group p="lg" gap="sm" wrap="nowrap">
-      <FixedSizeIcon c="brand" name={getNodeIcon(node)} />
-      <Title flex={1} order={5}>
-        {getNodeLabel(node)}
-      </Title>
+    <Group className={S.root} p="lg" gap="0.75rem" wrap="nowrap" lh="1rem">
+      <Center w="2.75rem" h="2.75rem" bdrs="50%" bg="bg-secondary">
+        <FixedSizeIcon name={getNodeIcon(node)} c="brand" size={20} />
+      </Center>
+      <Box flex={1}>
+        <Title order={3}>{getNodeLabel(node)}</Title>
+        {location != null && (
+          <Anchor
+            className={S.link}
+            component={Link}
+            to={location.url}
+            target="_blank"
+            fz="sm"
+          >
+            {location.label}
+          </Anchor>
+        )}
+      </Box>
       <Box m={rem(-ACTION_ICON_PADDING)}>
         {link != null && (
           <Tooltip label={link.tooltip}>
