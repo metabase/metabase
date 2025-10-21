@@ -625,14 +625,10 @@ describe("issue 43216", () => {
     H.restore();
     cy.signInAsNormalUser();
 
-    H.createNativeQuestion(
-      {
-        name: "Source question",
-        native: { query: "select 1 as A, 2 as B, 3 as C" },
-        collection_id: null, // Create in root collection so it's visible in the entity picker
-      },
-      { visitQuestion: true }, // Visit the question to add it to recents
-    );
+    H.createNativeQuestion({
+      name: "Source question",
+      native: { query: "select 1 as A, 2 as B, 3 as C" },
+    });
   });
 
   it("should update source question metadata when it changes (metabase#43216)", () => {

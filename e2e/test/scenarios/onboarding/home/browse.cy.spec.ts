@@ -270,7 +270,6 @@ H.describeWithSnowplowEE("scenarios > browse (EE)", () => {
           limit: 10,
         },
         type: "model",
-        collection_id: null, // Create in root collection, not personal collection
       });
     });
 
