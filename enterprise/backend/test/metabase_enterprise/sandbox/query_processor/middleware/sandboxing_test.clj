@@ -426,10 +426,7 @@
                     (binding [qp.perms/*card-id* (u/the-id card)]
                       (is (= 1
                              (count (mt/rows
-                                     (qp/process-query {:database (mt/id)
-                                                        :type :query
-                                                        :query {:source-table (mt/id :venues)
-                                                                :limit 1}}))))))))))))))))
+                                     (qp/process-query (mt/mbql-query venues {:limit 1})))))))))))))))))
 
 (deftest e2e-test-14
   (mt/test-drivers (e2e-test-drivers)
