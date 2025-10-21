@@ -56,28 +56,6 @@
   (when (premium-features/has-feature? :dependencies)
     (t2/delete! :model/Dependency :from_entity_type :snippet :from_entity_id (:id object))))
 
-;; ### Dashboards
-(derive ::dashboard-deps :metabase/event)
-(derive :event/dashboard-create ::dashboard-deps)
-(derive :event/dashboard-update ::dashboard-deps)
-
-(methodical/defmethod events/publish-event! ::dashboard-deps
-  [_ {:keys [object]}]
-  (when (premium-features/has-feature? :dependencies)
-    (t2/with-transaction [_conn]
-      (models.dependency/replace-dependencies! :dashboard (:id object) (deps.calculation/upstream-deps:dashboard object))
-      (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
-        (t2/update! :model/Dashboard (:id object)
-                    {:dependency_analysis_version models.dependency/current-dependency-analysis-version})))))
-
-(derive ::dashboard-delete :metabase/event)
-(derive :event/dashboard-delete ::dashboard-delete)
-
-(methodical/defmethod events/publish-event! ::dashboard-delete
-  [_ {:keys [object]}]
-  (when (premium-features/has-feature? :dependencies)
-    (t2/delete! :model/Dependency :from_entity_type :dashboard :from_entity_id (:id object))))
-
 ;; ### Transforms
 (derive ::transform-deps :metabase/event)
 (derive :event/create-transform ::transform-deps)
@@ -142,3 +120,47 @@
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
     (transform-table-deps! object)))
+
+;; ### Dashboards
+(derive ::dashboard-deps :metabase/event)
+(derive :event/dashboard-create ::dashboard-deps)
+(derive :event/dashboard-update ::dashboard-deps)
+
+(methodical/defmethod events/publish-event! ::dashboard-deps
+  [_ {:keys [object]}]
+  (when (premium-features/has-feature? :dependencies)
+    (t2/with-transaction [_conn]
+      (models.dependency/replace-dependencies! :dashboard (:id object) (deps.calculation/upstream-deps:dashboard object))
+      (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
+        (t2/update! :model/Dashboard (:id object)
+                    {:dependency_analysis_version models.dependency/current-dependency-analysis-version})))))
+
+(derive ::dashboard-delete :metabase/event)
+(derive :event/dashboard-delete ::dashboard-delete)
+
+(methodical/defmethod events/publish-event! ::dashboard-delete
+  [_ {:keys [object]}]
+  (when (premium-features/has-feature? :dependencies)
+    (t2/delete! :model/Dependency :from_entity_type :dashboard :from_entity_id (:id object))))
+
+;; ### Documents
+(derive ::document-deps :metabase/event)
+(derive :event/document-create ::document-deps)
+(derive :event/document-update ::document-deps)
+
+(methodical/defmethod events/publish-event! ::document-deps
+  [_ {:keys [object]}]
+  (when (premium-features/has-feature? :dependencies)
+    (t2/with-transaction [_conn]
+      (models.dependency/replace-dependencies! :document (:id object) (deps.calculation/upstream-deps:document object))
+      (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
+        (t2/update! :model/Document (:id object)
+                    {:dependency_analysis_version models.dependency/current-dependency-analysis-version})))))
+
+(derive ::document-delete :metabase/event)
+(derive :event/document-delete ::document-delete)
+
+(methodical/defmethod events/publish-event! ::document-delete
+  [_ {:keys [object]}]
+  (when (premium-features/has-feature? :dependencies)
+    (t2/delete! :model/Dependency :from_entity_type :document :from_entity_id (:id object))))

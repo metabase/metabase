@@ -136,6 +136,7 @@
     :snippet [:name :description]
     :transform [:name :description :table]
     :dashboard [:name :description]
+    :document [:name :description]
     []))
 
 (defn- format-subentity [entity]
@@ -157,7 +158,8 @@
     :card :model/Card
     :snippet :model/NativeQuerySnippet
     :transform :model/Transform
-    :dashboard :model/Dashboard))
+    :dashboard :model/Dashboard
+    :document :model/Document))
 
 (defn- calc-usages
   "Calculates the count of direct dependents for all nodes in `nodes`, based on `graph`. "
@@ -193,20 +195,22 @@
                      (= entity-type :table)     (t2/hydrate :fields :db)
                      (= entity-type :transform) (t2/hydrate :table-with-db-and-fields)
                      (= entity-type :dashboard) (-> (t2/hydrate :creator :dashboard :collection :moderation_reviews)
-                                                    (->> (map collection.root/hydrate-root-collection))))
+                                                    (->> (map collection.root/hydrate-root-collection)))
+                     (= entity-type :document) (-> (t2/hydrate :creator :collection)
+                                                   (->> (map collection.root/hydrate-root-collection))))
                    (mapv #(entity-value entity-type % usages))))
             nodes-by-type)))
 
 (api.macros/defendpoint :get "/graph"
   "TODO: This endpoint is supposed to take an :id and :type of an entity (currently :table, :card, :snippet, :transform,
-  or :dashboard) and return the entity with all its upstream and downstream dependencies that should be fetched
+  :dashboard, or :document) and return the entity with all its upstream and downstream dependencies that should be fetched
   recursively. :edges match our :model/Dependency format. Each node in :nodes has :id, :type, and :data, and :data
   depends on the node type. For :table, there should be :display_name. For :card, there should be :name
   and :type. For :snippet -> :name. For :transform -> :name."
   [_route-params
    {:keys [id type]} :- [:map
                          [:id {:optional true} ms/PositiveInt]
-                         [:type {:optional true} (ms/enum-decode-keyword [:table :card :snippet :transform :dashboard])]]]
+                         [:type {:optional true} (ms/enum-decode-keyword [:table :card :snippet :transform :dashboard :document])]]]
   (let [starting-nodes [[type id]]
         upstream-graph (dependency/graph-dependencies)
         ;; cache the downstream graph specifically, because between calculating transitive children and calculating
@@ -221,8 +225,8 @@
 (def ^:private dependents-args
   [:map
    [:id ms/PositiveInt]
-   [:type (ms/enum-decode-keyword [:table :card :snippet :transform :dashboard])]
-   [:dependent_type (ms/enum-decode-keyword [:table :card :snippet :transform :dashboard])]
+   [:type (ms/enum-decode-keyword [:table :card :snippet :transform :dashboard :document])]
+   [:dependent_type (ms/enum-decode-keyword [:table :card :snippet :transform :dashboard :document])]
    [:dependent_card_type {:optional true} (ms/enum-decode-keyword
                                            [:question :model :metric])]])
 

@@ -88,3 +88,7 @@
 (mr/def ::collection
   "Valid Collection ID"
   pos-int?)
+
+(mr/def ::document
+  "Valid Document ID"
+  pos-int?)

@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.dependencies.native-validation :as deps.native]
    [metabase-enterprise.dependencies.schema :as deps.schema]
+   [metabase-enterprise.documents.models.document :as m.document]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
@@ -65,3 +66,9 @@
   [{dashboard-id :id :as _dashboard}]
   ;; TODO(rileythomp): Check that it's okay to use t2 here
   {:card (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id dashboard-id)})
+
+(mu/defn upstream-deps:document :- ::deps.schema/upstream-deps
+  "Given a document, return its upstream dependencies"
+  [{_document-id :id :as document}]
+  (let [card-ids (or (#'m.document/document-deps document) #{})]
+    {:card card-ids}))

@@ -9,4 +9,5 @@
    [:table     {:optional true} [:set ::lib.schema.id/table]]
    [:snippet   {:optional true} [:set ::lib.schema.id/snippet]]
    [:transform {:optional true} [:set ::lib.schema.id/transform]]
-   [:dashboard {:optional true} [:set ::lib.schema.id/dashboard]]])
+   [:dashboard {:optional true} [:set ::lib.schema.id/dashboard]]
+   [:document  {:optional true} [:set ::lib.schema.id/document]]])
