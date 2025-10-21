@@ -56,7 +56,7 @@ export function useQueryResults(
         param.target[1][0] === "template-tag"
       ) {
         const tagName = param.target[1][1];
-        if (tagName === "transform_id") {
+        if (tagName === "watermark") {
           parameterValues[param.id] = transformParameters.transformId;
         }
       }
