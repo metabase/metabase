@@ -12,7 +12,6 @@ import { SameSiteAlert } from "./EmbeddingAppSameSiteCookieDescription.styled";
 
 export const EmbeddingAppSameSiteCookieDescription = () => {
   const docsUrl = useSelector((state) =>
-    // eslint-disable-next-line no-unconditional-metabase-links-render -- Admin settings
     getDocsUrl(state, {
       page: "embedding/interactive-embedding",
       anchor: "embedding-metabase-in-a-different-domain",
@@ -30,9 +29,7 @@ export const EmbeddingAppSameSiteCookieDescription = () => {
   return (
     <Stack gap="sm">
       {shouldDisplayNote && <AuthorizedOriginsNote />}
-      {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
-      <Text>{t`Determines whether or not cookies are allowed to be sent on cross-site requests. You’ll likely need to change this to None if your embedding application is hosted under a different domain than Metabase. Otherwise, leave it set to Lax, as it's more secure.`}</Text>
-      <Text>{jt`If you set this to None, you'll have to use HTTPS, or browsers will reject the request. ${(
+      <Text>{jt`Determines whether to allow cookies for cross-site requests. ${(
         <ExternalLink key="learn-more" href={docsUrl}>
           {t`Learn more`}
         </ExternalLink>

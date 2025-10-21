@@ -1,7 +1,8 @@
 (ns metabase.lib.extraction
   #?(:clj (:refer-clojure :exclude [for]))
   (:require
-   #?(:clj [metabase.util.performance :refer [for]])
+   #?@(:clj
+       ([metabase.util.performance :refer [for]]))
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -12,6 +13,7 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
@@ -112,7 +114,7 @@
   (let [unique-name-fn (->> (lib.util/query-stage query stage-number)
                             (lib.metadata.calculation/returned-columns query stage-number)
                             (map :name)
-                            (lib.util/unique-name-generator))]
+                            (lib.util.unique-name-generator/unique-name-generator))]
     (lib.expression/expression
      query
      stage-number
