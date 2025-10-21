@@ -107,6 +107,7 @@
    "TransformJobRun"
    "TransformRun"
    "TransformRunCancelation"
+   "TransformWatermark"
    "Undo"
    "User"
    "UserKeyValue"
