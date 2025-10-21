@@ -8,6 +8,7 @@
    [metabase-enterprise.metabot-v3.dummy-tools :as metabot-v3.tools.dummy-tools]
    [metabase-enterprise.metabot-v3.tools.api :as metabot-v3.tools.api]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription :as metabot-v3.tools.create-dashboard-subscription]
+   [metabase-enterprise.metabot-v3.tools.dependencies-test :as metabot-v3.tools.dependencies-test]
    [metabase-enterprise.metabot-v3.tools.filters :as metabot-v3.tools.filters]
    [metabase-enterprise.metabot-v3.tools.find-outliers :as metabot-v3.tools.find-outliers]
    [metabase-enterprise.metabot-v3.tools.generate-insights :as metabot-v3.tools.generate-insights]
@@ -1380,3 +1381,50 @@
                                           {:request-options {:headers {"x-metabase-session" rasta-ai-token}}}
                                           {:arguments {:snippet_id (:id snippet-1)}
                                            :conversation_id conversation-id})))))))))
+
+(deftest check-transform-dependencies-test
+  ;; This is just a quick sanity check for the API endpoint. The function powering this endpoint is tested more
+  ;; thoroughly in metabase-enterprise.metabot-v3.tools.dependencies-test.
+  (mt/with-premium-features #{:metabot-v3 :transforms :dependencies}
+    (let [conversation-id (str (random-uuid))
+          rasta-ai-token (ai-session-token)
+          crowberto-ai-token (ai-session-token :crowberto (str (random-uuid)))
+          people-query (lib/native-query (mt/metadata-provider) "SELECT * FROM people")
+          modified-source {:type "query" :query people-query}]
+      (metabot-v3.tools.dependencies-test/with-dependent-transforms! [transform1-id _]
+        (testing "400 for invalid args"
+          (is (=? {:errors
+                   {:arguments {:source string?}},
+                   :specific-errors {:arguments {:source ["missing required key, received: nil"]}}}
+                  (mt/user-http-request :rasta :post 400 "ee/metabot-tools/check-transform-dependencies"
+                                        {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
+                                        {:arguments {:transform_id 1}
+                                         :conversation_id conversation-id}))))
+        (testing "403 for insufficient permissions"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :post 403 "ee/metabot-tools/check-transform-dependencies"
+                                       {:request-options {:headers {"x-metabase-session" rasta-ai-token}}}
+                                       {:arguments {:transform_id transform1-id
+                                                    :source modified-source}
+                                        :conversation_id conversation-id}))))
+        (testing "404 returned for non-existent snippet"
+          (is (= "Not found."
+                 (let [max-transform-id (t2/select-one-fn :max-id [:model/Transform [:%max.id :max-id]])]
+                   (mt/user-http-request :rasta :post 404 "ee/metabot-tools/check-transform-dependencies"
+                                         {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
+                                         {:arguments {:transform_id (inc max-transform-id)
+                                                      :source modified-source}
+                                          :conversation_id conversation-id})))))
+        (testing "Edits with broken dependencies"
+          (is (=? {:structured_output {:success false
+                                       :bad_question_count 0
+                                       :bad_questions nil
+                                       :bad_transform_count 1
+                                       :bad_transforms seq?}
+                   :conversation_id conversation-id}
+                  (mt/user-http-request :rasta :post 200 "ee/metabot-tools/check-transform-dependencies"
+                                        {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
+                                        {:arguments {:transform_id transform1-id
+                                                     :source modified-source}
+                                         :conversation_id conversation-id}))))))))
+
