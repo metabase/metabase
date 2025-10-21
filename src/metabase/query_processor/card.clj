@@ -172,15 +172,6 @@
                [param-name tag-type])))
      (lib/all-template-tags-map query))))
 
-(defn- allowed-parameter-type-for-template-tag-widget-type? [parameter-type widget-type]
-  (when-let [allowed-template-tag-types (get-in lib.schema.parameter/types [parameter-type :allowed-for])]
-    (contains? allowed-template-tag-types widget-type)))
-
-(defn- allowed-parameter-types-for-template-tag-widget-type [widget-type]
-  (into #{} (for [[parameter-type {:keys [allowed-for]}] lib.schema.parameter/types
-                  :when                                  (contains? allowed-for widget-type)]
-              parameter-type)))
-
 (mu/defn check-allowed-parameter-value-type
   "If a parameter (i.e., a template tag or Dashboard parameter) is specified with `widget-type` (e.g.
   `:date/all-options`), make sure a user is allowed to pass in parameters with value type `parameter-value-type` (e.g.
@@ -192,11 +183,13 @@
   Background: some more-specific parameter types aren't allowed for certain types of parameters.
   See [[metabase.legacy-mbql.schema/parameter-types]] for details."
   [parameter-name       :- :string
-   widget-type          :- ::lib.schema.template-tag/widget-type
+   widget-type          :- ::lib.schema.parameter/widget-type
    parameter-value-type :- ::lib.schema.parameter/type]
-  (when-not (allowed-parameter-type-for-template-tag-widget-type? parameter-value-type widget-type)
-    (let [allowed-types (allowed-parameter-types-for-template-tag-widget-type widget-type)]
-      (throw (ex-info (tru "Invalid parameter type {0} for parameter {1} with widget type {2}. Parameter type must be one of: {3}"
+  (when-not (lib.schema.parameter/parameter-type-and-widget-type-allowed-together? parameter-value-type widget-type)
+    (let [allowed-types (lib.schema.parameter/allowed-parameter-types-for-template-tag-widget-type widget-type)]
+      ;; if we're running into errors where `parameter-value-type` is `:text`, that might be because it's the
+      ;; `:default` value in the schema these days
+      (throw (ex-info (tru "Invalid parameter value type {0} for parameter {1} with widget type {2}. Parameter value must be one of: {3}"
                            parameter-value-type
                            (pr-str parameter-name)
                            widget-type
@@ -272,7 +265,7 @@
 
 (mu/defn- enrich-parameters-from-card :- ::parameters.schema/parameters
   "Allow the FE to omit type and target for parameters by adding them from the card."
-  [parameters      :- [:maybe ::parameters.schema/parameters]
+  [parameters      :- [:maybe [:sequential :map]]
    card-parameters :- [:maybe ::parameters.schema/parameters]]
   (let [id->card-param (->> card-parameters
                             (map #(select-keys % [:id :type :target]))
@@ -333,7 +326,6 @@
                                                    :cache_invalidated_at :entity_id :created_at :card_schema
                                                    :parameters]
                                                   :id card-id))
-        parameters (some-> parameters parameters.schema/normalize-parameters)
         parameters (enrich-parameters-from-card parameters (combined-parameters-and-template-tags card))
         dash-viz   (when (and (not= context :question)
                               dashcard-id)

@@ -23,7 +23,7 @@
                             (qp/process-query (assoc query :info info))))
            options)))
 
-(deftest resolve-parameters-validation-test
+(deftest ^:parallel resolve-parameters-validation-test
   (api.dashboard-test/with-chain-filter-fixtures [{{dashboard-id :id} :dashboard
                                                    {card-id :id}      :card
                                                    {dashcard-id :id}  :dashcard}]
@@ -43,8 +43,10 @@
       (testing "Should error if parameter is of a different type"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"Invalid parameter type :number/!= for parameter \"_PRICE_\".*"
-             (resolve-params [{:id "_PRICE_", :value 4, :type :number/!=}]))))))
+             #"Invalid parameter value type :number for parameter \"_PRICE_\".*"
+             (resolve-params [{:id "_PRICE_", :value 4, :type :number}])))))))
+
+(deftest ^:parallel resolve-parameters-validation-test-2
   (testing "Resolves new operator type arguments without error (#25031)"
     (mt/dataset test-data
       (let [query (mt/native-query {:query         "select COUNT(*) from \"ORDERS\" where true [[AND quantity={{qty_locked}}]]"
