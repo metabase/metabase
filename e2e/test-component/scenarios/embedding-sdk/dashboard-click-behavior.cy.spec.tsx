@@ -18,6 +18,11 @@ import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
+/**
+ * NOTE: since https://github.com/metabase/metabase/pull/64623 we convert links to click behaviors,
+ * so this file is almost always checking for click behaviors and not anchor tags.
+ */
+
 describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
@@ -348,7 +353,6 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
           },
         ],
       }).then(({ dashboard }) => {
-        // Click-behavior mapping no longer renders anchors; stub anchor clicks and assert they happen
         stubAnchorClick();
 
         mountSdkContent(<EditableDashboard dashboardId={dashboard.id} />);
@@ -357,6 +361,50 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
           H.getDashboardCard(0).findAllByText("Link to 493").first().click();
 
           expectClickBehaviorForUrl("https://example.org/493");
+        });
+      });
+    });
+  });
+
+  it("links to the same domain as the host app should open in a new tab", () => {
+    cy.signIn("admin");
+    cy.intercept("GET", "/api/card/*").as("getCard");
+
+    cy.get<string>("@questionId").then((questionId) => {
+      H.createDashboardWithQuestions({
+        dashboardName: "URL Dashboard",
+        questions: [
+          {
+            name: "Orders with URLs",
+            query: {
+              "source-table": `card__${questionId}`,
+              limit: 5,
+            },
+          },
+        ],
+        cards: [
+          {
+            visualization_settings: {
+              column_settings: {
+                [JSON.stringify(["name", "ID"])]: {
+                  view_as: "link",
+                  link_text: "Link to {{ID}}",
+                  // not super realistic, but we can't change the origin in component tests
+                  link_url: `${window.location.origin}/test/{{ID}}`,
+                },
+              },
+            },
+          },
+        ],
+      }).then(({ dashboard }) => {
+        stubAnchorClick();
+
+        mountSdkContent(<EditableDashboard dashboardId={dashboard.id} />);
+
+        getSdkRoot().within(() => {
+          H.getDashboardCard(0).findAllByText("Link to 493").first().click();
+
+          expectClickBehaviorForUrl(`${window.location.origin}/test/493`);
         });
       });
     });
