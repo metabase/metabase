@@ -946,11 +946,12 @@
                        {:aggregation [[:count]]
                         :breakout    [[:field (mt/id :attempts field) {:temporal-unit unit}]]})
               bucket (lib/raw-temporal-bucket (first (lib/breakouts (qp.preprocess/preprocess query))))]
-          ;; if the bucket was removed automatically by normalization (see for
+          ;; if the bucket was removed automatically by normalization or swapped with something correct (see for
           ;; example [[metabase.lib.schema.ref/valid-temporal-unit-for-base-type?]]) or somewhere else in
           ;; preprocessing then we don't even need to run the query to know that that sort of breakout isn't
           ;; supported.
-          (if (nil? bucket)
+          (if (or (nil? bucket)
+                  (not= bucket unit))
             false
             (try
               (qp/process-query query)
@@ -965,9 +966,10 @@
       (doseq [test-case (test-table-seq breakout-test-table)
               :when     (= (:row test-case) field)
               :let      [unit (:col test-case)]]
-        (if (:expected test-case)
-          (is (can-breakout?! field unit report-timezone))
-          (is (not (can-breakout?! field unit report-timezone))))))))
+        (testing (pr-str test-case)
+          (if (:expected test-case)
+            (is (can-breakout?! field unit report-timezone))
+            (is (not (can-breakout?! field unit report-timezone)))))))))
 
 (deftest breakout-by-bucketed-datetimes-e2e-time-test      (run-breakout-test-table-tests-for-field! :time nil))
 (deftest breakout-by-bucketed-datetimes-e2e-datetime-test  (run-breakout-test-table-tests-for-field! :datetime nil))
@@ -988,8 +990,11 @@
                 [int]
                 (mt/run-mbql-query venues
                   {:aggregation [[:count]]
-                   :filter      [:= $name "x\\\\' OR 1 = 1 -- "]})))))
+                   :filter      [:= $name "x\\\\' OR 1 = 1 -- "]}))))))))
 
+(deftest ^:parallel string-escape-test-2
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "Make sure single quotes in parameters are escaped properly to prevent SQL injection\n"
       (testing "native query"
         (is (= [[0]]
                (mt/formatted-rows
