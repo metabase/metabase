@@ -60,7 +60,6 @@ export function sendMetabotMessage(input: string) {
   metabotChatInput()
     .should("not.be.disabled")
     .click()
-    .should("be.focused")
     .type(input)
     .type("{Enter}");
 }

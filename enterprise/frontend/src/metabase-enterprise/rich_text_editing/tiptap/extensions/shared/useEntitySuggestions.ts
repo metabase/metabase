@@ -133,7 +133,10 @@ export function useEntitySuggestions({
     if (selectedSearchModel) {
       return [selectedSearchModel];
     }
-    if (searchModels && filteredSearchModels?.length === 0) {
+    if (
+      searchModels &&
+      (!filteredSearchModels || filteredSearchModels?.length === 0)
+    ) {
       return searchModels;
     }
     return filteredSearchModels;
