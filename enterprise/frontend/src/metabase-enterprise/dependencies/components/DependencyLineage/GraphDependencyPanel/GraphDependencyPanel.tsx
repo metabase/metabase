@@ -37,7 +37,10 @@ export function GraphDependencyPanel({
     error,
   } = useListNodeDependentsQuery(getListRequest(node, groupType));
   const [searchText, setSearchText] = useState("");
-  const [searchQuery] = useDebouncedValue(searchText, SEARCH_DEBOUNCE_DURATION);
+  const [searchQuery] = useDebouncedValue(
+    searchText.trim(),
+    SEARCH_DEBOUNCE_DURATION,
+  );
   const [filterOptions, setFilterOptions] = useState<FilterOption[]>([]);
   const [sortOptions, setSortOptions] = useState(() =>
     getDefaultSortOptions(groupType),
