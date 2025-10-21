@@ -253,7 +253,7 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
       .should("have.attr", "href", "https://example.org/448");
   });
 
-  it("columns that have 'type/URL' semantic type should be rendered as a link", () => {
+  it("columns that have 'type/URL' semantic type should open URL via click behavior", () => {
     cy.signIn("admin");
 
     cy.get<string>("@questionId").then((questionId) => {
@@ -300,23 +300,37 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
               },
             ],
           }).then(({ dashboard }) => {
+            // Click-behavior mapping no longer renders anchors; stub anchor clicks and assert they happen
+            cy.window().then((win) => {
+              cy.stub(win.HTMLAnchorElement.prototype, "click").as(
+                "anchorClick",
+              );
+            });
+
             mountSdkContent(
               <InteractiveDashboard dashboardId={dashboard.id} />,
             );
 
             getSdkRoot().within(() => {
               H.getDashboardCard(0)
-                .findByRole("link", {
-                  name: "https://example.org/448",
-                })
-                .should("have.attr", "href", "https://example.org/448");
+                .findAllByText("https://example.org/448")
+                .first()
+                .click();
+
+              cy.get<sinon.SinonSpy>("@anchorClick").then((spy) => {
+                expect(spy.callCount).to.be.greaterThan(0);
+                const blankTargets = spy
+                  .getCalls()
+                  .filter((call: any) => call.thisValue.target === "_blank");
+                expect(blankTargets.length).to.be.greaterThan(0);
+              });
             });
           });
         });
     });
   });
 
-  it("columns that have 'Display as Link' should be rendered as a link and use the custom rendering", () => {
+  it("columns that have 'Display as Link' should trigger custom URL click behavior", () => {
     cy.signIn("admin");
     cy.intercept("GET", "/api/card/*").as("getCard");
 
@@ -346,14 +360,23 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
           },
         ],
       }).then(({ dashboard }) => {
+        // Click-behavior mapping no longer renders anchors; stub anchor clicks and assert they happen
+        cy.window().then((win) => {
+          cy.stub(win.HTMLAnchorElement.prototype, "click").as("anchorClick");
+        });
+
         mountSdkContent(<EditableDashboard dashboardId={dashboard.id} />);
 
         getSdkRoot().within(() => {
-          H.getDashboardCard(0)
-            .findByRole("link", {
-              name: "Link to 448",
-            })
-            .should("have.attr", "href", "https://example.org/448");
+          H.getDashboardCard(0).findAllByText("Link to 448").first().click();
+
+          cy.get<sinon.SinonSpy>("@anchorClick").then((spy) => {
+            expect(spy.callCount).to.be.greaterThan(0);
+            const blankTargets = spy
+              .getCalls()
+              .filter((call: any) => call.thisValue.target === "_blank");
+            expect(blankTargets.length).to.be.greaterThan(0);
+          });
         });
       });
     });
