@@ -648,7 +648,7 @@ export const CardEmbedComponent = memo(
                   {!isEditingTitle &&
                     (isPublicDocument && dataset && !canWrite ? (
                       <PublicDocumentCardMenu card={card} dataset={dataset} />
-                    ) : canWrite ? (
+                    ) : !isPublicDocument ? (
                       <Menu
                         withinPortal
                         position="bottom-end"
