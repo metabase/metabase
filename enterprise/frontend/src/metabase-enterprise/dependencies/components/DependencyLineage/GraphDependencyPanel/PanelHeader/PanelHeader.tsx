@@ -16,6 +16,7 @@ import type { FilterOption, SortOptions } from "../types";
 import { canFilter } from "../utils";
 
 import { FilterOptionsPicker } from "./FilterOptionsPicker";
+import S from "./PanelHeader.module.css";
 import { SortOptionsPicker } from "./SortOptionsPicker";
 import { getHeaderLabel } from "./utils";
 
@@ -47,9 +48,9 @@ export function PanelHeader({
   const hasFilterPicker = canFilter(groupType);
 
   return (
-    <Stack pl="lg" pt="lg" pr="lg" gap="md">
+    <Stack className={S.root} p="lg" gap="lg">
       <Group wrap="nowrap">
-        <Title flex={1} order={5}>
+        <Title flex={1} order={4}>
           {getHeaderLabel(node, groupType)}
         </Title>
         <ActionIcon

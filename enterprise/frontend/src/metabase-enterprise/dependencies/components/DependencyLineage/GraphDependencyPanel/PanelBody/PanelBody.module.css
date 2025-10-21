@@ -7,3 +7,19 @@
     border-bottom: 1px solid var(--mb-color-border);
   }
 }
+
+.titleLink {
+  color: var(--mb-color-text-primary);
+
+  &:hover {
+    color: var(--mb-color-brand);
+  }
+}
+
+.locationLink {
+  color: var(--mb-color-text-secondary);
+
+  &:hover {
+    color: var(--mb-color-brand);
+  }
+}

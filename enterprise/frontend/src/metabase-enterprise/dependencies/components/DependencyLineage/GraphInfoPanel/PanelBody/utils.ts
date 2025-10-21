@@ -2,7 +2,6 @@ import { P, match } from "ts-pattern";
 import { msgid, ngettext } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
-import { getDependencyLineageUrl } from "metabase-enterprise/dependencies/urls";
 import type { DependencyNode } from "metabase-types/api";
 
 import type { LinkWithLabelInfo } from "../../types";
@@ -87,7 +86,7 @@ export function getNodeGeneratedTableInfo(
     return {
       label: tableInfo.display_name,
       icon: "table",
-      url: getDependencyLineageUrl({
+      url: Urls.dependencyLineage({
         entry: { id: tableInfo.id, type: "table" },
       }),
     };

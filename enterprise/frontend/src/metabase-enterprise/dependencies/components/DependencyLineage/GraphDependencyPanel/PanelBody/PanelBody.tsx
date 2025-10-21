@@ -83,9 +83,9 @@ function ListItemTitle({ node }: ListItemTitleProps) {
   const link = Urls.dependencyLineage({ entry: node });
 
   return (
-    <Anchor c="text-primary" component={Link} to={link}>
+    <Anchor className={S.titleLink} component={Link} to={link}>
       <Flex gap="sm" align="center">
-        <FixedSizeIcon name={icon} />
+        <FixedSizeIcon name={icon} c="brand" />
         <Box lh="h4">{label}</Box>
       </Flex>
     </Anchor>
@@ -110,7 +110,12 @@ type ListItemSubtitleProps = {
 
 function ListItemLocation({ location }: ListItemSubtitleProps) {
   return (
-    <Anchor component={Link} to={location.url} target="_blank" c="text-primary">
+    <Anchor
+      className={S.locationLink}
+      component={Link}
+      to={location.url}
+      target="_blank"
+    >
       <Flex gap="sm" align="center">
         <FixedSizeIcon name={location.icon} />
         <Box fz="sm" lh="h5">
