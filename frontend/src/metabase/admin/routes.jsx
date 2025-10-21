@@ -23,6 +23,7 @@ import { PerformanceApp } from "metabase/admin/performance/components/Performanc
 import getAdminPermissionsRoutes from "metabase/admin/permissions/routes";
 import {
   EmbeddingSdkSettings,
+  EmbeddingSecuritySettings,
   StaticEmbeddingSettings,
 } from "metabase/admin/settings/components/EmbeddingSettings";
 import { Help } from "metabase/admin/tools/components/Help";
@@ -172,6 +173,11 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
             path="static"
             title={t`Static`}
             component={StaticEmbeddingSettings}
+          />
+          <Route
+            path="security"
+            title={t`Security`}
+            component={EmbeddingSecuritySettings}
           />
         </Route>
       </Route>
