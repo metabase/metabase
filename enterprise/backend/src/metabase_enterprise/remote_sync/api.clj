@@ -248,7 +248,7 @@
       {:status  "success"
        :message (format "Branch '%s' created from '%s'" name base-branch)}
       (catch Exception e
-        (throw (ex-info (format "Failed to create branch: %s" (.getMessage e))
+        (throw (ex-info (format "Failed to create branch: %s" (ex-message e))
                         {:status-code 400} e))))))
 
 (api.macros/defendpoint :post "/stash"
@@ -268,13 +268,11 @@
                       {:status-code 400})))
     (try
       (source.p/create-branch source new_branch (settings/remote-sync-branch))
-      (settings/remote-sync-branch! new_branch)
       {:status  "success"
        :message (str "Stashing to " new_branch)
        :task_id (async-export! new_branch false message)}
       (catch Exception e
-        (.printStackTrace e)
-        (throw (ex-info (format "Failed to stash changes to branch: %s" (.getMessage e))
+        (throw (ex-info (format "Failed to stash changes to branch: %s" (ex-message e))
                         {:status-code 400}))))))
 
 (def ^{:arglists '([request respond raise])} routes

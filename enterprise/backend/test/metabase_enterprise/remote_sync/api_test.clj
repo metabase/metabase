@@ -623,7 +623,7 @@
                                                 :status            "updated"
                                                 :status_changed_at (java.time.OffsetDateTime/now)}]
         (with-redefs [source/source-from-settings (constantly mock-source)
-                      api/async-export! (fn [_ _] (swap! export-calls inc))]
+                      api/async-export! (fn [_ _ _] (swap! export-calls inc))]
           (is (=? {:status  "success"
                    :message "Stashing to feature-branch"}
                   (mt/user-http-request :crowberto :post 200 "ee/remote-sync/stash"
@@ -631,5 +631,4 @@
                                          :message "Stash message"})))
           (is (= #{["main" "main-ref"] ["develop" "develop-ref"] ["feature-branch" "feature-branch-ref"]}
                  (set (source.p/branches mock-source))))
-          (is (= "feature-branch" (settings/remote-sync-branch)))
           (is (= 1 @export-calls)))))))
