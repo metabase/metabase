@@ -13,8 +13,8 @@ import {
 } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
-import { GraphNodeLink } from "../../GraphNodeLink";
-import { GraphNodeLocation } from "../../GraphNodeLocation";
+import { GraphBreadcrumbs } from "../../GraphBreadcrumbs";
+import { GraphLink } from "../../GraphLink";
 import { ACTION_ICON_PADDING } from "../../constants";
 import type { NodeLink } from "../../types";
 import {
@@ -65,7 +65,7 @@ function ListItem({ node }: ListItemProps) {
       {(location != null || (link != null && viewCount != null)) && (
         <Group justify={location != null ? "space-between" : "flex-end"}>
           {location != null && (
-            <GraphNodeLocation location={location} withIcon />
+            <GraphBreadcrumbs location={location} withIcon />
           )}
           {link != null && viewCount != null && <ListItemLink link={link} />}
         </Group>
@@ -83,7 +83,7 @@ function ListItemTitle({ node }: ListItemTitleProps) {
   const icon = getNodeIcon(node);
   const url = Urls.dependencyLineage({ entry: node });
 
-  return <GraphNodeLink label={label} icon={icon} url={url} />;
+  return <GraphLink label={label} icon={icon} url={url} />;
 }
 
 type ListItemViewCountProps = {

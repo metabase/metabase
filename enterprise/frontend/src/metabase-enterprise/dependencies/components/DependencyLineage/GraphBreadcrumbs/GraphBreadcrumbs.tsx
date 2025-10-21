@@ -5,17 +5,17 @@ import { Box, Group, Icon } from "metabase/ui";
 
 import type { NodeLocation } from "../types";
 
-import S from "./GraphNodeLocation.module.css";
+import S from "./GraphBreadcrumbs.module.css";
 
-type GraphNodeLocationProps = {
+type GraphBreadcrumbsProps = {
   location: NodeLocation;
   withIcon?: boolean;
 };
 
-export function GraphNodeLocation({
+export function GraphBreadcrumbs({
   location,
   withIcon,
-}: GraphNodeLocationProps) {
+}: GraphBreadcrumbsProps) {
   return (
     <Group c="text-secondary" gap="sm" wrap="nowrap">
       {withIcon && <Icon name={location.icon} />}

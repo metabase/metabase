@@ -2,21 +2,16 @@ import { Link } from "react-router";
 
 import { Box, FixedSizeIcon, Flex, type IconName } from "metabase/ui";
 
-import S from "./GraphNodeLink.module.css";
+import S from "./GraphLink.module.css";
 
-type GraphNodeLinkProps = {
+type GraphLinkProps = {
   label: string;
   icon: IconName;
   url: string;
   target?: string;
 };
 
-export function GraphNodeLink({
-  label,
-  icon,
-  url,
-  target,
-}: GraphNodeLinkProps) {
+export function GraphLink({ label, icon, url, target }: GraphLinkProps) {
   return (
     <Box className={S.link} component={Link} to={url} target={target}>
       <Flex gap="sm" align="center">

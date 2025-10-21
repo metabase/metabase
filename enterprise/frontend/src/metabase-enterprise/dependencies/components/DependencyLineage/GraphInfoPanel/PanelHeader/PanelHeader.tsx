@@ -14,7 +14,7 @@ import {
 } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
-import { GraphNodeLocation } from "../../GraphNodeLocation";
+import { GraphBreadcrumbs } from "../../GraphBreadcrumbs";
 import { ACTION_ICON_PADDING } from "../../constants";
 import {
   getNodeIcon,
@@ -41,7 +41,7 @@ export function PanelHeader({ node, onClose }: PanelHeaderProps) {
       </Center>
       <Stack gap="xs" flex={1}>
         <Title order={3}>{getNodeLabel(node)}</Title>
-        {location != null && <GraphNodeLocation location={location} />}
+        {location != null && <GraphBreadcrumbs location={location} />}
       </Stack>
       <Box m={rem(-ACTION_ICON_PADDING)}>
         {link != null && (

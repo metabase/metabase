@@ -7,7 +7,7 @@ import { Box, FixedSizeIcon, Group, Stack, Title } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DependencyNode } from "metabase-types/api";
 
-import { GraphNodeLink } from "../../GraphNodeLink";
+import { GraphLink } from "../../GraphLink";
 import { getNodeDescription } from "../../utils";
 
 import S from "./PanelBody.module.css";
@@ -102,7 +102,7 @@ function GeneratedTableSection({ node }: SectionProps) {
   return (
     <Stack gap="sm">
       <Title order={6}>{t`Generated table`}</Title>
-      <GraphNodeLink
+      <GraphLink
         label={link.label}
         icon="table"
         url={link.url}
