@@ -8,6 +8,7 @@ import type {
   StructuredQuestionDetails,
 } from "e2e/support/helpers";
 import type { Filter, LocalFieldReference } from "metabase-types/api";
+import { createMockParameter } from "metabase-types/api/mocks";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } =
   SAMPLE_DATABASE;
@@ -1287,6 +1288,51 @@ SELECT 2 AS ID, 3 AS USER_ID
             cy.get("[data-testid=cell-data]").should("have.text", "3");
           });
         });
+    });
+  });
+});
+
+describe("issue 64293", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should be possible to run a query for a empty required parameter without a default value (metabase#64293)", () => {
+    const questionDetails: NativeQuestionDetails = {
+      name: "Question 1",
+      native: {
+        query: "SELECT * FROM PEOPLE WHERE state = {{State}}",
+        "template-tags": {
+          State: {
+            type: "text",
+            name: "State",
+            id: "1",
+            "display-name": "State",
+          },
+        },
+      },
+      parameters: [
+        createMockParameter({
+          id: "1",
+          slug: "State",
+          required: true,
+          name: "State",
+        }),
+      ],
+    };
+
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
+
+    cy.findByPlaceholderText("State").should("exist");
+    cy.findByPlaceholderText("State").type("NY{enter}");
+
+    H.runButtonOverlay().should("exist");
+    H.runButtonOverlay().click();
+
+    H.ensureParameterColumnValue({
+      columnName: "STATE",
+      columnValue: "NY",
     });
   });
 });
