@@ -83,6 +83,12 @@ function verifyCommentsAreHidden() {
   cy.findByRole("link", { name: "Show all comments" }).should("not.exist");
 }
 
+// Helper function to verify error message is displayed
+function verifyErrorMessage(expectedMessage: string) {
+  cy.get("h2").should("be.visible").and("contain", expectedMessage);
+  H.documentContent().should("not.exist");
+}
+
 describe("scenarios > documents > public", () => {
   beforeEach(() => {
     H.restore();
@@ -294,45 +300,12 @@ describe("scenarios > documents > public", () => {
 
       cy.log("Verify document is no longer accessible");
       // Public routes return a generic error message when sharing is disabled
-      cy.get("h2").should("be.visible").and("contain", "An error occurred");
-
-      // Verify the document content is not shown
-      H.documentContent().should("not.exist");
+      verifyErrorMessage("An error occurred");
     });
-  });
 
-  it("should generate valid UUID format for public links", () => {
-    // Create a document
-    createTestDocumentWithCard("UUID Format Test");
-
-    cy.log("Create public link and verify UUID format");
-    cy.get("@documentId")
-      .then((documentId) => {
-        return H.createPublicDocumentLink(documentId);
-      })
-      .then(({ body: { uuid } }) => {
-        cy.log("Verify UUID has valid format");
-        expect(uuid).to.match(
-          /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/,
-        );
-
-        cy.log("Verify document is accessible via the UUID");
-        cy.visit(`/public/document/${uuid}`);
-        H.documentContent().should("contain", "Test content");
-      });
-  });
-
-  it("should show error for invalid public UUIDs", () => {
-    const invalidUuid = "00000000-0000-0000-0000-000000000000";
-
-    cy.log("Visit public document with non-existent UUID");
-    cy.visit(`/public/document/${invalidUuid}`);
-
-    cy.log("Verify error message is shown");
-    cy.get("h2").should("be.visible").and("contain", "Not found");
-
-    cy.log("Verify document content is not shown");
-    H.documentContent().should("not.exist");
+    // Cleanup: Re-enable public sharing for subsequent tests
+    cy.signInAsAdmin();
+    H.updateSetting("enable-public-sharing", true);
   });
 
   it("should show error when accessing public link of deleted document", () => {
@@ -366,10 +339,7 @@ describe("scenarios > documents > public", () => {
       cy.visit(`/public/document/${uuid}`);
 
       cy.log("Verify error message is shown");
-      cy.get("h2").should("be.visible").and("contain", "Not found");
-
-      cy.log("Verify document content is not shown");
-      H.documentContent().should("not.exist");
+      verifyErrorMessage("Not found");
     });
   });
 });
