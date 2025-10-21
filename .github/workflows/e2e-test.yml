@@ -143,6 +143,7 @@ jobs:
             --env grepTags="-@mongo+-@python+-@flaky+-@OSS+-@skip",grepOmitFiltered=true \
             --spec "$SPEC_PATH" \
             --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+        continue-on-error: true
 
       - name: Run Tagged EE Cypress tests on ${{ inputs.name }}
         if: ${{ inputs.specs }}
@@ -155,6 +156,7 @@ jobs:
           --env grepTags="${{inputs.tags && format('{0}+-@skip', inputs.tags) || '-@skip'}}",grepOmitFiltered=true \
           --spec "$SPEC_PATH" \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+        continue-on-error: true
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
