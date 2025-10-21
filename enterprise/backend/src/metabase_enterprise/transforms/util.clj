@@ -201,13 +201,13 @@
   (assoc-in query [:middleware :disable-remaps?] true))
 
 (defn inject-transform-parameters
-  "Inject transform_id parameter into a query's :parameters vector."
+  "Inject watermark parameter into a query's :parameters vector."
   [query transform-id]
-  (cond-> query
-    transform-id
-    (update :parameters conj {:type :number
-                              :target [:variable [:template-tag "transform_id"]]
-                              :value transform-id})))
+  (if-let [watermark-value (t2/select-one-fn :watermark_value :model/TransformWatermark :transform_id transform-id)]
+    (update query :parameters conj {:type :number
+                                    :target [:variable [:template-tag "watermark"]]
+                                    :value watermark-value})
+    query))
 
 (defn compile-source
   "Compile the source query of a transform.
