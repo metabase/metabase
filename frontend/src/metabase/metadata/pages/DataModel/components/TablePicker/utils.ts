@@ -305,17 +305,17 @@ export function useTableLoader(path: TreePath) {
       ]);
 
       const newTree = rootNode([
-        ...databases.map((database) => ({
+        ...sort<DatabaseNode>(databases).map((database) => ({
           ...database,
           children:
             database.value.databaseId !== databaseId
               ? database.children
-              : schemas.map((schema) => ({
+              : sort<SchemaNode>(schemas).map((schema) => ({
                   ...schema,
                   children:
                     schema.value.schemaName !== schemaName
                       ? schema.children
-                      : tables,
+                      : sort<TableNode>(tables),
                 })),
         })),
         ...collectionsSubTree,
@@ -528,9 +528,7 @@ export function flatten(
         loadingItem("collection", level),
       ];
     }
-    return /*sortForRootNode(node.children)*/ node.children.flatMap((child) =>
-      flatten(child, opts),
-    );
+    return node.children.flatMap((child) => flatten(child, opts));
   }
 
   if (
@@ -540,7 +538,7 @@ export function flatten(
   ) {
     // Hide nameless schemas in the tree
     return [
-      /*...sort(node.children)*/ ...node.children.flatMap((child) =>
+      ...node.children.flatMap((child) =>
         flatten(child, {
           ...opts,
           level,
@@ -567,7 +565,7 @@ export function flatten(
 
   return [
     { ...node, isExpanded: true, level, parent },
-    /*...sort(node.children)*/ ...node.children.flatMap((child) =>
+    ...node.children.flatMap((child) =>
       flatten(child, {
         ...opts,
         level: level + 1,
@@ -576,6 +574,12 @@ export function flatten(
       }),
     ),
   ];
+}
+
+function sort<T = TreeNode>(nodes: T[]): T[] {
+  return Array.from(nodes).sort((a, b) => {
+    return a.label.localeCompare(b.label);
+  });
 }
 
 /**
