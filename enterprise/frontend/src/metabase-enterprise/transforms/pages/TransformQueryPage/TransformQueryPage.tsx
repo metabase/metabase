@@ -27,7 +27,7 @@ export function TransformQueryPage({
   transformEditor,
 }: {
   transform: Transform;
-  setSource: (source: TransformSource) => void;
+  setSource: (source: DraftTransformSource) => void;
   proposedSource: TransformSource | undefined;
   acceptProposed: (source: TransformSource) => void;
   clearProposed: () => void;
