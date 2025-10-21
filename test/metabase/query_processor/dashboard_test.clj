@@ -43,8 +43,8 @@
       (testing "Should error if parameter is of a different type"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"Invalid parameter value type :number for parameter \"_PRICE_\".*"
-             (resolve-params [{:id "_PRICE_", :value 4, :type :number}])))))))
+             #"Invalid parameter value type :number/!= for parameter \"_PRICE_\".*"
+             (resolve-params [{:id "_PRICE_", :value 4, :type :number/!=}])))))))
 
 (deftest ^:parallel resolve-parameters-validation-test-2
   (testing "Resolves new operator type arguments without error (#25031)"

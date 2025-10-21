@@ -276,22 +276,22 @@
   "The context to use for tracking the view. Return nil if the view should not be tracked"
   [{:keys [context]}]
   (case context
-    :public-dashboard :dashboard
-    :public-question :question
-    :embedded-dashboard :dashboard
-    :embedded-question :question
-    :csv-download nil
-    :public-csv-download nil
-    :embedded-csv-download nil
-    :json-download nil
-    :public-json-download nil
+    :public-dashboard       :dashboard
+    :public-question        :question
+    :embedded-dashboard     :dashboard
+    :embedded-question      :question
+    :csv-download           nil
+    :public-csv-download    nil
+    :embedded-csv-download  nil
+    :json-download          nil
+    :public-json-download   nil
     :embedded-json-download nil
-    :xlsx-download nil
-    :public-xlsx-download nil
+    :xlsx-download          nil
+    :public-xlsx-download   nil
     :embedded-xlsx-download nil
     :dashboard-subscription nil
-    :pulse nil
-    :map-tiles nil
+    :pulse                  nil
+    :map-tiles              nil
     context))
 
 (mu/defn process-query-for-card
@@ -326,6 +326,10 @@
                                                    :cache_invalidated_at :entity_id :created_at :card_schema
                                                    :parameters]
                                                   :id card-id))
+        ;; don't use the usual parameter normalization code here because we don't want it to add a default `:type` (we
+        ;; will infer this separately based on Card parameter mappings)
+        parameters (for [parameter parameters]
+                     (m/update-existing parameter :type keyword))
         parameters (enrich-parameters-from-card parameters (combined-parameters-and-template-tags card))
         dash-viz   (when (and (not= context :question)
                               dashcard-id)
