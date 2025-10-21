@@ -2021,6 +2021,7 @@
            lib-be
            models
            premium-features
+           queries
            query-processor
            request
            search
