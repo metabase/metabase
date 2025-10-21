@@ -240,28 +240,70 @@
            (str/join ", " (map #(format-and-quote-field-name driver %) field-names))
            (if condition (str " WHERE " condition) ""))))
 
+(defmulti generated-column-sql
+  "Return the driver-specific equivalent of 'GENERATED ALWAYS AS $expr' (SQL:2003) to be appended to a column definition.
+  The expression should be given as a string.
+
+  Implementor notes:
+  If a driver does not support adding generated columns for tests, return nil."
+  {:arglists '([driver expr])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod generated-column-sql :default
+  [_ expr]
+  (format "GENERATED ALWAYS AS (%s)" expr))
+
+(defmulti generated-column-infers-type?
+  "Some databases (SQL-Server) do not specify the types of generated columns."
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod generated-column-infers-type? :default
+  [_]
+  false)
+
+(defmulti default-column-sql
+  "Return the driver-specific equivalent of 'DEFAULT $expr' (SQL:92) to be appended to a column definition.
+  The expression should be given as a string.
+
+  If the driver does not support default columns for tests, return nil."
+  {:arglists '([driver expr])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod default-column-sql :default [_ expr]
+  (format "DEFAULT (%s)" expr))
+
 (defn- field-definition-sql
-  [driver {:keys [field-name base-type field-comment not-null? unique?], :as field-definition}]
-  (let [field-name (format-and-quote-field-name driver field-name)
-        field-type (or (cond
-                         (and (map? base-type) (contains? base-type :native))
-                         (:native base-type)
+  [driver {:keys [field-name base-type field-comment not-null? unique? default-expr generated-expr], :as field-definition}]
+  (let [field-name      (format-and-quote-field-name driver field-name)
+        field-type      (or (cond
+                              (and (map? base-type) (contains? base-type :native))
+                              (:native base-type)
 
-                         (and (map? base-type) (contains? base-type :natives))
-                         (get-in base-type [:natives driver])
+                              (and (map? base-type) (contains? base-type :natives))
+                              (get-in base-type [:natives driver])
 
-                         base-type
-                         (field-base-type->sql-type driver base-type))
-                       (throw (ex-info (format "Missing datatype for field %s for driver: %s"
-                                               field-name driver)
-                                       {:field  field-definition
-                                        :driver driver})))
+                              base-type
+                              (field-base-type->sql-type driver base-type))
+                            (throw (ex-info (format "Missing datatype for field %s for driver: %s"
+                                                    field-name driver)
+                                            {:field  field-definition
+                                             :driver driver})))
         not-null       (when not-null?
                          "NOT NULL")
         unique         (when unique?
                          "UNIQUE")
+        default        (when default-expr
+                         (default-column-sql driver default-expr))
+        generated      (when generated-expr
+                         (generated-column-sql driver generated-expr))
+        infer-type     (and generated-expr (generated-column-infers-type? driver))
+        field-type'    (when-not infer-type field-type)
         inline-comment (inline-column-comment-sql driver field-comment)]
-    (str/join " " (filter some? [field-name field-type not-null unique inline-comment]))))
+    (str/join " " (filter some? [field-name field-type' not-null default generated unique inline-comment]))))
 
 (defn fielddefs->pk-field-names
   "Find the pk field names in fieldefs"
