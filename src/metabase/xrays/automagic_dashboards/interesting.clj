@@ -394,3 +394,6 @@
                                :xrays/aggregation entity
                                :metric-score      dashboard-templates/max-score}])))
      :filters (grounded-filters filter-specs dims)}))
+
+(defn ->reference [template-type entity]
+  ::NOCOMMIT-FIXME)
