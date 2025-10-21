@@ -198,10 +198,14 @@
   [query]
   (assoc-in query [:middleware :disable-remaps?] true))
 
+(defn- next-watermark-value
+  [transform-id]
+  (t2/select-one-fn :watermark_value :model/TransformWatermark :transform_id transform-id))
+
 (defn inject-transform-parameters
   "Inject watermark parameter into a query's :parameters vector."
   [query transform-id]
-  (if-let [watermark-value (t2/select-one-fn :watermark_value :model/TransformWatermark :transform_id transform-id)]
+  (if-let [watermark-value (next-watermark-value transform-id)]
     (update query :parameters conj {:type :number
                                     :target [:variable [:template-tag "watermark"]]
                                     :value watermark-value})
@@ -211,10 +215,6 @@
   [{:keys [query] :as source}]
   (m/find-first #(= (:name %) (:keyset-column (:source-incremental-strategy source)))
                 (lib/filterable-columns query)))
-
-(defn- next-watermark-value
-  [transform-id]
-  (t2/select-one-fn :watermark_value :model/TransformWatermark :transform_id transform-id))
 
 (defn compile-source
   "Compile the source query of a transform.
