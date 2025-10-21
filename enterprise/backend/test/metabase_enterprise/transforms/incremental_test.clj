@@ -11,16 +11,15 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
-   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
 (defn- make-incremental-source-query
   "Create a native query with watermark template tag for incremental transforms."
-  []
+  [schema]
   {:database (mt/id)
    :type "native"
-   :native {:query "SELECT * FROM transforms_products WHERE id > {{watermark}}"
+   :native {:query (format "SELECT * FROM %stransforms_products WHERE id > {{watermark}}" (cond-> schema schema (str ".")))
             :template-tags {"watermark" {:id "watermark"
                                          :name "watermark"
                                          :display-name "Watermark"
@@ -34,7 +33,7 @@
   (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
     {:name transform-name
      :source {:type "query"
-              :query (make-incremental-source-query)
+              :query (make-incremental-source-query schema)
               :source-incremental-strategy {:type "keyset"
                                             :keyset-column keyset-column}}
      :target {:type "table-incremental"
@@ -60,8 +59,7 @@
 (defn- insert-test-products!
   "Insert new products into the transforms_products table."
   [products]
-  (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
-        source-table-name (t2/select-one-fn :name :model/Table (mt/id :transforms_products))
+  (let [[schema source-table-name] (t2/select-one-fn (juxt :schema :name) :model/Table (mt/id :transforms_products))
         spec (sql-jdbc.conn/db->pooled-connection-spec (mt/id))
         schema-prefix (if schema (str schema ".") "")
         values-list (str/join ", "
@@ -72,8 +70,26 @@
                            schema-prefix
                            source-table-name
                            values-list)]
-    (driver/execute-raw-queries! driver/*driver* spec [[insert-sql]])
-    (sync/sync-database! (mt/db) {:scan :schema})))
+    (driver/execute-raw-queries! driver/*driver* spec [[insert-sql]])))
+
+(defn- delete-test-products!
+  [products]
+  (let [[schema source-table-name] (t2/select-one-fn (juxt :schema :name) :model/Table (mt/id :transforms_products))
+        spec (sql-jdbc.conn/db->pooled-connection-spec (mt/id))
+        schema-prefix (if schema (str schema ".") "")
+        delete-sql (format "DELETE FROM %s%s WHERE name IN (%s)"
+                           schema-prefix
+                           source-table-name
+                           (str/join ", " (map (constantly "?") products)))]
+    (driver/execute-raw-queries! driver/*driver* spec [[delete-sql (mapv :name products)]])))
+
+(defmacro with-insert-test-products! [products & body]
+  `(let [products# ~products]
+     (try
+       (insert-test-products! products#)
+       ~@body
+       (finally
+         (delete-test-products! products#)))))
 
 (set! *warn-on-reflection* true)
 
@@ -134,19 +150,20 @@
                         (is (= 16 watermark) "Watermark should still be 16")))))
 
                 (testing "Third run after adding new data processes only new rows"
-                  (insert-test-products! [{:name "New Product 1"
-                                           :category "Widget"
-                                           :price 99.99
-                                           :created-at "2024-01-17T10:00:00"}
-                                          {:name "New Product 2"
-                                           :category "Gadget"
-                                           :price 199.99
-                                           :created-at "2024-01-18T10:00:00"}])
+                  (with-insert-test-products!
+                    [{:name "New Product 1"
+                      :category "Widget"
+                      :price 99.99
+                      :created-at "2024-01-17T10:00:00"}
+                     {:name "New Product 2"
+                      :category "Gadget"
+                      :price 199.99
+                      :created-at "2024-01-18T10:00:00"}]
 
-                  (transforms.i/execute! transform {:run-method :manual})
-                  (let [row-count (get-table-row-count target-table)]
-                    (is (= 18 row-count) "Third run should add 2 new rows (16 + 2 = 18)")
+                    (transforms.i/execute! transform {:run-method :manual})
+                    (let [row-count (get-table-row-count target-table)]
+                      (is (= 18 row-count) "Third run should add 2 new rows (16 + 2 = 18)")
 
-                    (testing "Watermark is updated to new MAX(id)"
-                      (let [watermark (get-watermark-value (:id transform))]
-                        (is (= 18 watermark) "Watermark should be updated to 18")))))))))))))
+                      (testing "Watermark is updated to new MAX(id)"
+                        (let [watermark (get-watermark-value (:id transform))]
+                          (is (>= watermark 18) "Watermark should be updated"))))))))))))))
