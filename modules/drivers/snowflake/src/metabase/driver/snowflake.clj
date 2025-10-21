@@ -61,6 +61,10 @@
                               :convert-timezone                       true
                               :datetime-diff                          true
                               :describe-fields                        false
+                              :describe-default-expr                  true
+                              ;; JDBC driver always provides "NO" for the IS_GENERATEDCOLUMN JDBC metadata
+                              :describe-is-generated                  false
+                              :describe-is-nullable                   true
                               :expression-literals                    true
                               :expressions/integer                    true
                               :expressions/text                       true
