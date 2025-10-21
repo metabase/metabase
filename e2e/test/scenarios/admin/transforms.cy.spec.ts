@@ -191,7 +191,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
 
     it(
       "should be possible to create and run a Python transform",
-      { tags: ["@transforms-python"] },
+      { tags: ["@python"] },
       () => {
         setPythonRunnerSettings();
         cy.log("create a new transform");
@@ -392,6 +392,7 @@ LIMIT
 
       H.NativeEditor.value().should("eq", EXPECTED_QUERY);
       getQueryEditor().button("Save changes").click();
+      getTransformPage().should("be.visible");
 
       cy.log("run the transform and make sure its table can be queried");
       runTransformAndWaitForSuccess();
@@ -1399,7 +1400,7 @@ LIMIT
       H.assertQueryBuilderRowCount(1);
     });
 
-    it("should be able to update a Python query", () => {
+    it("should be able to update a Python query", { tags: ["@python"] }, () => {
       setPythonRunnerSettings();
       cy.log("create a new transform");
       H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
@@ -1674,7 +1675,7 @@ LIMIT
   describe("python > common library", () => {
     it(
       "should be possible to edit and save the common library",
-      { tags: ["@transforms-python"] },
+      { tags: ["@python"] },
       () => {
         visitCommonLibrary();
 
@@ -1712,7 +1713,7 @@ LIMIT
 
     it(
       "should be possible to use the common library",
-      { tags: ["@transforms-python"] },
+      { tags: ["@python"] },
       () => {
         setPythonRunnerSettings();
         createPythonLibrary(

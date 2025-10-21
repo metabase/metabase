@@ -92,8 +92,7 @@
   [{:keys [uuid]} :- [:map
                       [:uuid ms/UUIDString]]]
   (public-sharing.validation/check-public-sharing-enabled)
-  (u/prog1 (card-with-uuid uuid)
-    (events/publish-event! :event/card-read {:object-id (:id <>), :user-id api/*current-user-id*, :context :question})))
+  (card-with-uuid uuid))
 
 (defmulti ^:private transform-qp-result
   "Transform results to be suitable for a public endpoint"
@@ -388,13 +387,12 @@
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-404 (t2/select-one-pk :model/Card :id card-id :archived false))
   (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false))]
-    (u/prog1 (process-query-for-dashcard
-              :dashboard-id  dashboard-id
-              :card-id       card-id
-              :dashcard-id   dashcard-id
-              :export-format :api
-              :parameters    parameters)
-      (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :dashboard}))))
+    (process-query-for-dashcard
+     :dashboard-id  dashboard-id
+     :card-id       card-id
+     :dashcard-id   dashcard-id
+     :export-format :api
+     :parameters    parameters)))
 
 (api.macros/defendpoint :post ["/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:export-format"
                                :export-format qp.schema/export-formats-regex]
@@ -610,14 +608,13 @@
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-404 (t2/select-one-pk :model/Card :id card-id :archived false))
   (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false))]
-    (u/prog1 (process-query-for-dashcard
-              :dashboard-id  dashboard-id
-              :card-id       card-id
-              :dashcard-id   dashcard-id
-              :export-format :api
-              :parameters    parameters
-              :qp            qp.pivot/run-pivot-query)
-      (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :dashboard}))))
+    (process-query-for-dashcard
+     :dashboard-id  dashboard-id
+     :card-id       card-id
+     :dashcard-id   dashcard-id
+     :export-format :api
+     :parameters    parameters
+     :qp            qp.pivot/run-pivot-query)))
 
 (def ^:private action-execution-throttle
   "Rate limit at 10 actions per 1000 ms on a per action basis.
