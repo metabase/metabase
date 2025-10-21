@@ -6,7 +6,6 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import * as Urls from "metabase/lib/urls";
 import {
   ActionIcon,
-  Anchor,
   Box,
   FixedSizeIcon,
   Flex,
@@ -84,12 +83,12 @@ function ListItemTitle({ node }: ListItemTitleProps) {
   const link = Urls.dependencyLineage({ entry: node });
 
   return (
-    <Anchor className={cx(S.link, S.primary)} component={Link} to={link}>
+    <Box className={cx(S.link, S.primary)} component={Link} to={link}>
       <Flex gap="sm" align="center">
         <FixedSizeIcon name={icon} c="brand" />
         <Box lh="h4">{label}</Box>
       </Flex>
-    </Anchor>
+    </Box>
   );
 }
 
@@ -111,7 +110,7 @@ type ListItemSubtitleProps = {
 
 function ListItemLocation({ location }: ListItemSubtitleProps) {
   return (
-    <Anchor
+    <Box
       className={cx(S.link, S.secondary)}
       component={Link}
       to={location.url}
@@ -123,7 +122,7 @@ function ListItemLocation({ location }: ListItemSubtitleProps) {
           {location.label}
         </Box>
       </Flex>
-    </Anchor>
+    </Box>
   );
 }
 

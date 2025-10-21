@@ -4,7 +4,6 @@ import { t } from "ttag";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import {
   ActionIcon,
-  Anchor,
   Box,
   Center,
   FixedSizeIcon,
@@ -42,7 +41,7 @@ export function PanelHeader({ node, onClose }: PanelHeaderProps) {
       <Box flex={1}>
         <Title order={3}>{getNodeLabel(node)}</Title>
         {location != null && (
-          <Anchor
+          <Box
             className={S.link}
             component={Link}
             to={location.url}
@@ -50,7 +49,7 @@ export function PanelHeader({ node, onClose }: PanelHeaderProps) {
             fz="sm"
           >
             {location.label}
-          </Anchor>
+          </Box>
         )}
       </Box>
       <Box m={rem(-ACTION_ICON_PADDING)}>
