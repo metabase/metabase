@@ -65,7 +65,14 @@
   "Given a dashboard, return its upstream dependencies"
   [{dashboard-id :id :as _dashboard}]
   ;; TODO(rileythomp): Check that it's okay to use t2 here
-  {:card (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id dashboard-id)})
+  (let [card-ids (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id dashboard-id)
+        dashcard-ids     (t2/select-fn-set :id :model/DashboardCard
+                                           :dashboard_id dashboard-id)
+        series-card-ids  (when (seq dashcard-ids)
+                           (t2/select-fn-set :card_id :model/DashboardCardSeries
+                                             :dashboardcard_id [:in dashcard-ids]))
+        all-card-ids (into card-ids series-card-ids)]
+    {:card all-card-ids}))
 
 (mu/defn upstream-deps:document :- ::deps.schema/upstream-deps
   "Given a document, return its upstream dependencies"
