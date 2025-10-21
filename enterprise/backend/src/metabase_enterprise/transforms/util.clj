@@ -219,7 +219,8 @@
   If no watermark value exists for the transform (i.e., this is the first run), returns the
   query unchanged to allow a full initial load."
   [{:keys [query] :as source} transform-id]
-  (if-let [watermark-value (next-watermark-value transform-id)]
+  (if-let [watermark-value (when (= :keyset (some-> source :source-incremental-strategy :type keyword))
+                             (next-watermark-value transform-id))]
     (if (lib.query/native? query)
       (update query :parameters conj {:type :number
                                       :target [:variable [:template-tag "watermark"]]
