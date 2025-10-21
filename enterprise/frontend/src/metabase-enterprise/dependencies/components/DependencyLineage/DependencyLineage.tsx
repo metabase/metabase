@@ -93,6 +93,7 @@ export function DependencyLineage({ entry }: DependencyLineageProps) {
         fitView
         minZoom={MIN_ZOOM}
         maxZoom={MAX_ZOOM}
+        data-testid="dependency-lineage"
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
       >

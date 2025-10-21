@@ -120,6 +120,7 @@ export function EntrySearchInput({
       w="20rem"
       searchable
       autoFocus
+      data-testid="graph-entry-search-input"
       onChange={handleChange}
       onSearchChange={setSearchValue}
     />

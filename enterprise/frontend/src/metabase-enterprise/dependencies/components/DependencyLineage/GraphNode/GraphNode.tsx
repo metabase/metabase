@@ -32,6 +32,7 @@ export const GraphNode = memo(function ItemNode({
   data: node,
 }: GraphNodeProps) {
   const { selection, setSelection } = useContext(GraphContext);
+  const label = getNodeLabel(node);
   const groups = getDependentGroups(node);
   const sources = useNodeConnections({ handleType: "source" });
   const targets = useNodeConnections({ handleType: "target" });
@@ -48,11 +49,13 @@ export const GraphNode = memo(function ItemNode({
         className={cx(S.card, { [S.selected]: isSelected })}
         p="md"
         gap="sm"
+        aria-label={label}
+        data-testid="graph-node"
         onClick={handleClick}
       >
         <Group gap="sm">
           <FixedSizeIcon name={getNodeIcon(node)} c="brand" />
-          {getNodeLabel(node)}
+          {label}
         </Group>
         {groups.length > 0 && (
           <>

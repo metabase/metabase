@@ -40,6 +40,7 @@ export function GraphSelectInput({
         leftSection={<FixedSizeIcon name="search" />}
         w="20rem"
         searchable
+        data-testid="graph-selection-input"
         onChange={handleChange}
       />
     </Card>

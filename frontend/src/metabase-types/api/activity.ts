@@ -8,11 +8,9 @@ export const ACTIVITY_MODELS = [
   "table",
   "card",
   "dataset",
-  "metric",
   "dashboard",
   "collection",
   "document",
-  "transform",
 ] as const;
 
 export type ActivityModel = (typeof ACTIVITY_MODELS)[number];

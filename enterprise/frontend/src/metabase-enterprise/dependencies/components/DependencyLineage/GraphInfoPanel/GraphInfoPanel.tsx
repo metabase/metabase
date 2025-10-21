@@ -12,7 +12,7 @@ type GraphInfoPanelProps = {
 
 export function GraphInfoPanel({ node, onClose }: GraphInfoPanelProps) {
   return (
-    <Card className={S.root} withBorder>
+    <Card className={S.root} withBorder data-testid="graph-info-panel">
       <PanelHeader node={node} onClose={onClose} />
       <PanelBody node={node} />
     </Card>

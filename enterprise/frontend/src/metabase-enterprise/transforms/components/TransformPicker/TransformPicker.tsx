@@ -40,7 +40,7 @@ export function TransformPicker({ value, onItemSelect }: TransformPickerProps) {
       data-testid="nested-item-picker"
     >
       <Flex h="100%" w="fit-content">
-        <ListBox data-testid="item-picker-level-2">
+        <ListBox data-testid="item-picker-level-0">
           <ItemList
             items={items}
             selectedItem={selectedItem}

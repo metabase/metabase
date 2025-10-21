@@ -37,6 +37,7 @@ export function EntryButton({
           />
         ) : undefined
       }
+      data-testid="graph-entry-button"
       onClick={onPickerOpen}
     >
       {node ? getNodeLabel(node) : undefined}
