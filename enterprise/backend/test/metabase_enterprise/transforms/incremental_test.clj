@@ -19,7 +19,7 @@
   [schema]
   {:database (mt/id)
    :type "native"
-   :native {:query (format "SELECT * FROM %stransforms_products [[WHERE id > {{watermark}}]]" (cond-> schema schema (str ".")))
+   :native {:query (format "SELECT * FROM %stransforms_products [[WHERE id > {{watermark}}]]" (cond-> (or schema "") schema (str ".")))
             :template-tags {"watermark" {:id "watermark"
                                          :name "watermark"
                                          :display-name "Watermark"
