@@ -364,11 +364,10 @@
                                 (save-log-to-transform-run-message! run-id message-log))
             ex-message-fn     #(exceptional-run-message message-log %)
             result            (transforms.instrumentation/with-stage-timing [run-id [:computation :python-execution]]
-                                (transforms.util/run-cancelable-transform! run-id driver transform-details run-fn :ex-message-fn ex-message-fn))
-            _                 (transforms.util/maybe-upsert-watermark! transform driver db)]
-
+                                (transforms.util/run-cancelable-transform! run-id driver transform-details run-fn :ex-message-fn ex-message-fn))]
         (transforms.instrumentation/with-stage-timing [run-id [:import :table-sync]]
-          (transforms.util/sync-target! target db run-id))
+          (transforms.util/sync-target! target db run-id)
+          (transforms.util/maybe-upsert-watermark! transform (:id db)))
         {:run_id run-id
          :result result}))
     (catch Throwable t

@@ -57,10 +57,10 @@
          (transforms.util/run-cancelable-transform!
           run-id driver transform-details
           (fn [_cancel-chan] (driver/run-transform! driver transform-details opts))))
-       (transforms.util/maybe-upsert-watermark! transform driver database)
        (transforms.instrumentation/with-stage-timing [run-id [:import :table-sync]]
          (transforms.util/sync-target! target database run-id)
          ;; This event must be published only after the sync is complete - the new table needs to be in AppDB.
+         (transforms.util/maybe-upsert-watermark! transform db)
          (events/publish-event! :event/transform-run-complete {:object transform-details})))
      (catch Throwable t
        (log/error t "Error executing transform")

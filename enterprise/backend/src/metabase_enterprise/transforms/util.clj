@@ -8,9 +8,10 @@
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.driver :as driver]
-   [metabase.driver.sql.query-processor :as sql.qp]
+
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -92,7 +93,7 @@
     (finally
       (canceling/chan-end-run! run-id))))
 
-(declare activate-table-and-mark-computed!)
+(declare activate-table-and-mark-computed! target-table)
 
 (defn sync-target!
   "Sync target of a transform"
@@ -106,38 +107,31 @@
    (log/info "Syncing target" (pr-str target) "for transform")
    (activate-table-and-mark-computed! database target)))
 
-(defn watermark-table-for-transform
-  "Returns watermark table for given transform"
-  [{:keys [target]}]
-  (assoc target :name "mb__watermark_table"))
-
 (defn maybe-upsert-watermark!
-  "Update the watermark tracking table for an incremental transform with watermark strategy.
-   Deletes any existing watermark entry for this transform and inserts a new one
-   with the MAX value of the watermark field from the transform output table."
-  [{:keys [id source target] :as transform} driver database]
+  "Update the watermark value in the app DB for an incremental transform with keyset strategy.
+   Computes the MAX value of the watermark field from the transform output table and stores it in the app DB."
+  [{:keys [id source target]} db-id]
   (when (= :keyset (some-> source :source-incremental-strategy :type keyword))
-    (let [watermark-field (-> source :source-incremental-strategy :keyset-column)
-          output-table (qualified-table-name driver target)
-          watermark-table (qualified-table-name driver (watermark-table-for-transform transform))
-          conn-spec (driver/connection-spec driver database)
-          select-honeysql {:select [[id :transform_id] [[:max (keyword watermark-field)] :watermark_id]]
-                           :from [output-table]}
-          [select-query & select-args] (sql.qp/format-honeysql driver select-honeysql)
-
-          delete-honeysql {:delete-from watermark-table
-                           :where [:= :transform_id id]}
-          [delete-sql & delete-params] (sql.qp/format-honeysql driver delete-honeysql)]
-      (log/info "Upserting watermark for transform" id "with field" watermark-field)
-      (try
-        (let [[insert-query & insert-args] (driver/compile-insert driver {:query select-query
-                                                                          :output-table watermark-table})]
-          (assert (not (seq insert-args)))
-
-          (driver/execute-raw-queries! driver conn-spec [[delete-sql delete-params]
-                                                         [insert-query select-args]]))
-        (catch Exception e
-          (log/error e "Failed to upsert watermark for transform" id))))))
+    (let [watermark-field-name (-> source :source-incremental-strategy :keyset-column)
+          table (target-table db-id target)]
+      (when table
+        (log/info "Upserting watermark for transform" id "with field" watermark-field-name)
+        (try
+          (when-let [field (t2/select-one :model/Field
+                                          :table_id (:id table)
+                                          :name watermark-field-name)]
+            ;; TODO: build via lib?
+            (let [mbql-query {:type :query
+                              :database db-id
+                              :query {:source-table (:id table)
+                                      :aggregation [[:max [:field (:id field) nil]]]}}
+                  watermark-value (-> mbql-query qp/process-query :data :rows first first)]
+              (log/infof "Computed watermark value: %s" watermark-value)
+              (if (t2/exists? :model/TransformWatermark :transform_id id)
+                (t2/update! :model/TransformWatermark {:transform_id id} {:watermark_value watermark-value})
+                (t2/insert! :model/TransformWatermark {:transform_id id :watermark_value watermark-value}))))
+          (catch Exception e
+            (log/error e "Failed to upsert watermark for transform" id)))))))
 
 (defn target-table-exists?
   "Test if the target table of a transform already exists."
