@@ -76,6 +76,7 @@ export const MetabotChatEditor = forwardRef<MetabotChatInputRef | null, Props>(
           render: createSuggestionRenderer(
             createMentionSuggestion({
               searchModels: suggestionModels,
+              canFilterSearchModels: true,
               canBrowseAll: false,
             }),
           ),
