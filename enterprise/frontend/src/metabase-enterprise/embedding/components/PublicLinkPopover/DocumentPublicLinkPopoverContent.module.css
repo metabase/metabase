@@ -1,0 +1,7 @@
+.removeLinkAnchor {
+  cursor: pointer;
+}
+
+.removeLinkAnchor:hover {
+  text-decoration: underline;
+}

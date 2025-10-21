@@ -18,6 +18,8 @@ import {
   Tooltip,
 } from "metabase/ui";
 
+import S from "./DocumentPublicLinkPopoverContent.module.css";
+
 interface DocumentPublicLinkPopoverContentProps {
   url: string | null;
   loading?: boolean;
@@ -147,13 +149,7 @@ export const DocumentPublicLinkPopoverContent = ({
               c="error"
               fw={700}
               onClick={onRemoveLink}
-              style={{ cursor: "pointer" }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.textDecoration = "underline";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.textDecoration = "none";
-              }}
+              className={S.removeLinkAnchor}
             >
               {t`Remove public link`}
             </Anchor>
