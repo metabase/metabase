@@ -1,7 +1,6 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import cx from "classnames";
 import { type CSSProperties, useMemo, useRef } from "react";
-import { t } from "ttag";
 
 import { Icon, Stack, Text } from "metabase/ui";
 import { useObjectDetail } from "metabase/visualizations/components/TableInteractive/hooks/use-object-detail";
@@ -15,6 +14,7 @@ import type {
 
 import styles from "./ListView.module.css";
 import { ListViewItem } from "./ListViewItem";
+import { getEntityIcon } from "./styling";
 
 export interface ListViewProps {
   data: DatasetData;
@@ -48,14 +48,18 @@ export function ListView({
   });
   const virtualRows = virtualizer.getVirtualItems();
 
-  const { titleColumn, subtitleColumn, imageColumn, rightColumns } =
-    useListColumns(cols, settings?.["list.columns"]);
+  const { titleColumn, imageColumn, rightColumns } = useListColumns(
+    cols,
+    settings?.["list.columns"],
+  );
 
   const openObjectDetail = useObjectDetail(data);
 
   // Get the appropriate icon based on entity type
   const entityIcon =
     settings?.["list.entity_icon"] || getEntityIcon(entityType);
+  const entityIconColor = settings?.["list.entity_icon_color"];
+  const entityIconEnabled = settings?.["list.entity_icon_enabled"];
 
   return (
     <Stack
@@ -73,7 +77,6 @@ export function ListView({
             {!!titleColumn && (
               <ColumnHeader
                 column={titleColumn}
-                subtitleColumn={subtitleColumn}
                 sortedColumnName={sortedColumnName}
                 sortingDirection={sortingDirection}
                 onSortClick={onSortClick}
@@ -119,10 +122,10 @@ export function ListView({
                     row={row}
                     cols={cols}
                     settings={settings}
-                    entityIcon={entityIcon}
+                    entityIcon={entityIconEnabled ? entityIcon : undefined}
+                    entityIconColor={entityIconColor}
                     imageColumn={imageColumn}
                     titleColumn={titleColumn}
-                    subtitleColumn={subtitleColumn}
                     rightColumns={rightColumns}
                     onClick={() => isInteractive && openObjectDetail(index)}
                     className={styles.listItemVirtualized}
@@ -143,7 +146,6 @@ export function ListView({
 
 interface ColumnHeaderProps {
   column: DatasetColumn;
-  subtitleColumn?: DatasetColumn | null;
   sortedColumnName?: string;
   sortingDirection?: "asc" | "desc";
   onSortClick: (column: DatasetColumn) => void;
@@ -152,7 +154,6 @@ interface ColumnHeaderProps {
 
 function ColumnHeader({
   column,
-  subtitleColumn,
   sortedColumnName,
   sortingDirection,
   style,
@@ -171,7 +172,6 @@ function ColumnHeader({
     >
       <Text fw="bold" size="sm" c="text-medium" style={{ display: "inline" }}>
         {column.display_name}
-        {subtitleColumn && " " + t`and` + " " + subtitleColumn.display_name}
       </Text>
       {sortedColumnName === column.name && (
         <Icon
@@ -191,18 +191,11 @@ export function useListColumns(
 ) {
   // Column role is based on it's position in the list:
   // - First column is title
-  // - Second column is subtitle
   // - Next 0-5 columns are right columns
   const titleColumn = useMemo(() => {
     return !listSettings
       ? null
       : cols.find((col) => listSettings?.left[0] === col.name);
-  }, [cols, listSettings]);
-
-  const subtitleColumn = useMemo(() => {
-    return !listSettings || listSettings.left.length < 2
-      ? null
-      : cols.find((col) => listSettings?.left[1] === col.name);
   }, [cols, listSettings]);
 
   const imageColumn = useMemo(() => {
@@ -223,24 +216,7 @@ export function useListColumns(
 
   return {
     titleColumn,
-    subtitleColumn,
     imageColumn,
     rightColumns,
   };
 }
-
-export const ENTITY_ICONS = {
-  "entity/UserTable": "person",
-  "entity/CompanyTable": "company",
-  "entity/TransactionTable": "receipt",
-  "entity/SubscriptionTable": "sync",
-  "entity/ProductTable": "label",
-  "entity/EventTable": "calendar",
-  "entity/GenericTable": "document",
-} as const;
-
-export const getEntityIcon = (entityType?: string) => {
-  return entityType
-    ? ENTITY_ICONS[entityType as keyof typeof ENTITY_ICONS] || "document"
-    : "document";
-};

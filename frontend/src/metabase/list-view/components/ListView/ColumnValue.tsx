@@ -85,7 +85,7 @@ export function ColumnValue({ column, value, rawValue }: ColumnValueProps) {
   }
 
   return (
-    <Ellipsified fw="bold" size="sm" c="text-secondary" truncate>
+    <Ellipsified size="sm" c="text-secondary" truncate>
       {value}
     </Ellipsified>
   );

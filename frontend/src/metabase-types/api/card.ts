@@ -329,6 +329,8 @@ export type VisualizationSettings = {
   // List view settings
   "list.columns"?: ListViewColumns;
   "list.entity_icon"?: string;
+  "list.entity_icon_color"?: string;
+  "list.entity_icon_enabled"?: boolean;
 
   [key: string]: any;
 } & EmbedVisualizationSettings;

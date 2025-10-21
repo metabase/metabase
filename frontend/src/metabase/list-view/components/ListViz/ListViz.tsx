@@ -54,6 +54,12 @@ const vizDefinition = {
     "list.entity_icon": {
       default: null,
     },
+    "list.entity_icon_color": {
+      default: "text-primary",
+    },
+    "list.entity_icon_enabled": {
+      default: true,
+    },
     "list.columns": {
       getDefault: ([
         {
@@ -311,19 +317,40 @@ export const ListViz = ({
     left,
     right,
     entityIcon,
+    entityIconColor,
+    entityIconEnabled,
   }: {
-    left: string[];
-    right: string[];
+    left?: string[];
+    right?: string[];
     entityIcon?: string;
+    entityIconColor?: string;
+    entityIconEnabled?: boolean;
   }) => {
-    const newSettings = {
-      "list.columns": {
+    // const newSettings = {
+    //   "list.columns": {
+    //     left,
+    //     right,
+    //   },
+    //   "list.entity_icon": entityIcon,
+    // };
+    const settings = { ...(question?.settings() || {}) };
+    if (left && right) {
+      settings["list.columns"] = {
         left,
         right,
-      },
-      "list.entity_icon": entityIcon,
-    };
-    const nextQuestion = question?.updateSettings(newSettings);
+      };
+    }
+    if (entityIcon) {
+      settings["list.entity_icon"] = entityIcon;
+    }
+    if (entityIconColor) {
+      settings["list.entity_icon_color"] = entityIconColor;
+    }
+    if (entityIconEnabled !== undefined) {
+      settings["list.entity_icon_enabled"] = entityIconEnabled;
+    }
+
+    const nextQuestion = question?.updateSettings(settings);
     if (nextQuestion) {
       dispatch(updateQuestion(nextQuestion));
     }

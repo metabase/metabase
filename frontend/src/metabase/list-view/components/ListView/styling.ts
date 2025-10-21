@@ -1,0 +1,43 @@
+import { color } from "metabase/ui/utils/colors";
+
+export const ENTITY_ICONS = {
+  "entity/UserTable": "person",
+  "entity/CompanyTable": "factory",
+  "entity/TransactionTable": "receipt",
+  package: "package",
+  sticky_note: "sticky_note",
+  "entity/EventTable": "calendar",
+  "entity/SubscriptionTable": "sync",
+  location: "location",
+  pivot_table: "pivot_table",
+  message_circle: "message_circle",
+  octagon_alert: "octagon_alert",
+  "entity/ProductTable": "label",
+  "entity/GenericTable": "document",
+  zap: "zap",
+} as const;
+
+export const getEntityIcon = (entityType?: string) => {
+  return entityType
+    ? ENTITY_ICONS[entityType as keyof typeof ENTITY_ICONS] || "document"
+    : "document";
+};
+
+export const ENTITY_ICON_COLORS = [
+  "text-primary",
+  "brand",
+  "filter",
+  "syntax-parameters",
+  "danger",
+  "success",
+];
+
+export function getIconBackground(iconColor?: string) {
+  if (!iconColor) {
+    return "var(--mb-color-white)";
+  }
+
+  return iconColor !== "text-primary"
+    ? `color-mix(in srgb, ${color(iconColor)}, transparent 88%)`
+    : "var(--mb-color-white)";
+}

@@ -3,8 +3,8 @@
   flex-wrap: wrap;
   gap: var(--mantine-spacing-xs);
   align-items: center;
-  border: 1px dashed var(--mb-color-border);
-  background-color: var(--mb-color-bg-light);
+  border: 1px dashed var(--mb-color-saturated-blue) !important;
+  background-color: var(--mb-color-background-hover-light);
   border-radius: var(--mantine-radius-md);
   transition: box-shadow 250ms ease;
   min-height: 2.5rem;
@@ -15,7 +15,7 @@
 }
 
 .dragOver {
-  box-shadow: 0 0 2px 1px var(--mb-color-border);
+  box-shadow: 0 0 2px 1px var(--mb-color-saturated-blue);
   cursor: none !important;
 }
 

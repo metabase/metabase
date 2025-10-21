@@ -43,11 +43,11 @@
 .listItem {
   width: 100%;
   max-width: 75rem;
+  height: 4rem;
   border: 1px solid var(--mb-color-border);
   border-radius: var(--mantine-radius-md);
   background: var(--mb-color-bg-white);
-  padding: var(--mantine-spacing-md)
-    var(--item-padding, var(--mantine-spacing-md));
+  padding-inline: var(--item-padding, var(--mantine-spacing-md));
 
   &:hover {
     background-color: var(--mb-color-brand-lighter);
@@ -63,9 +63,13 @@
 .listHeader,
 .listItem {
   display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) repeat(var(--grid-columns), 12%);
+  grid-template-columns: minmax(0, 1fr) repeat(var(--grid-columns), 12%);
   gap: var(--mantine-spacing-md);
   align-items: center;
+
+  &.withIcon {
+    grid-template-columns: 32px minmax(0, 1fr) repeat(var(--grid-columns), 12%);
+  }
 }
 
 .categoryValue {
@@ -81,10 +85,10 @@
 
 .listViewConfigurationInputs {
   display: grid;
-  grid-template-columns: 32px minmax(calc(30% - 32px - 1rem), 1fr) calc(
-      70% - 1rem
+  grid-template-columns: 3rem minmax(calc(30% - 3rem - 0.75rem), 1fr) calc(
+      70% - 0.75rem
     );
-  gap: var(--mantine-spacing-md);
+  gap: var(--mantine-spacing-sm);
   align-items: start;
   border: 1px solid var(--mb-color-border);
   border-radius: var(--mantine-radius-md);
@@ -98,5 +102,16 @@
 
   &:hover {
     color: var(--mb-color-brand);
+  }
+}
+
+.iconColorButton {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  outline-offset: 0.125rem;
+
+  &.selected {
+    outline: 1px solid var(--mb-color-brand);
   }
 }
