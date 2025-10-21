@@ -37,8 +37,7 @@ export function useQueryResults(
 
     // Get the dataset query to find parameter IDs
     const datasetQuery = question.datasetQuery() as any;
-      const parameters = question.parameters();
-
+    const parameters = question.parameters();
 
     if (!parameters || !Array.isArray(parameters)) {
       return question;

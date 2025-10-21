@@ -82,7 +82,9 @@ function FlushWatermarkButton({ transform }: FlushWatermarkButtonProps) {
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   // Only show for transforms with keyset incremental strategy
-  const sourceStrategy = (transform.source as any)["source-incremental-strategy"];
+  const sourceStrategy = (transform.source as any)[
+    "source-incremental-strategy"
+  ];
   const hasKeysetStrategy = sourceStrategy?.type === "keyset";
 
   if (!hasKeysetStrategy) {

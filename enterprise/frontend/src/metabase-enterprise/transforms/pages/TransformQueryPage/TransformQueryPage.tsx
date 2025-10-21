@@ -87,7 +87,6 @@ export function TransformQueryPageBody({
     dispatch(push(Urls.transform(transform.id)));
   };
 
-
   if (transform.source.type === "python") {
     return (
       <PLUGIN_TRANSFORMS_PYTHON.TransformEditor

@@ -21,7 +21,15 @@ import {
   FormTextarea,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
-import { Alert, Box, Button, FocusTrap, Group, Modal, Stack } from "metabase/ui";
+import {
+  Alert,
+  Box,
+  Button,
+  FocusTrap,
+  Group,
+  Modal,
+  Stack,
+} from "metabase/ui";
 import { useCreateTransformMutation } from "metabase-enterprise/api";
 import { trackTransformCreated } from "metabase-enterprise/transforms/analytics";
 import { SchemaFormSelect } from "metabase-enterprise/transforms/components/SchemaFormSelect";
@@ -81,11 +89,13 @@ const NEW_TRANSFORM_SCHEMA = Yup.object({
   targetName: Yup.string().required(Errors.required),
   targetSchema: Yup.string().nullable(),
   incremental: Yup.boolean().required(),
-  keysetColumn: Yup.string().nullable().when("incremental", {
-    is: true,
-    then: (schema) => schema.required(Errors.required),
-    otherwise: (schema) => schema.nullable(),
-  }),
+  keysetColumn: Yup.string()
+    .nullable()
+    .when("incremental", {
+      is: true,
+      then: (schema) => schema.required(Errors.required),
+      otherwise: (schema) => schema.nullable(),
+    }),
   sourceStrategy: Yup.string().oneOf(["keyset"]).required(),
   targetStrategy: Yup.string().oneOf(["append"]).required(),
 });
@@ -103,9 +113,7 @@ function SourceStrategyFields() {
         name="sourceStrategy"
         label={t`Source Strategy`}
         description={t`How to track which rows to process`}
-        data={[
-          { value: "keyset", label: t`Keyset` },
-        ]}
+        data={[{ value: "keyset", label: t`Keyset` }]}
       />
       {values.sourceStrategy === "keyset" && (
         <FormTextInput
@@ -148,7 +156,7 @@ function IncrementalNotice({ source }: IncrementalNoticeProps) {
 
   return (
     <Alert variant="info" icon="info">
-          {t`Ensure your query contains WHERE filter on the keyset column. You may want to use:`}{" "}
+      {t`Ensure your query contains WHERE filter on the keyset column. You may want to use:`}{" "}
       <strong>{`[[AND id > {{watermark}}]]`}</strong>
     </Alert>
   );
@@ -167,9 +175,7 @@ function TargetStrategyFields() {
         name="targetStrategy"
         label={t`Target Strategy`}
         description={t`How to update the target table`}
-        data={[
-          { value: "append", label: t`Append` },
-        ]}
+        data={[{ value: "append", label: t`Append` }]}
       />
       {/* Append strategy has no additional fields */}
       {/* Future strategies like "merge" could add fields here */}
@@ -259,10 +265,7 @@ function CreateTransformForm({
             label={t`Table name`}
             placeholder={t`descriptive_name`}
           />
-          <FormCheckbox
-            name="incremental"
-            label={t`Incremental?`}
-          />
+          <FormCheckbox name="incremental" label={t`Incremental?`} />
           <IncrementalNotice source={source} />
           <SourceStrategyFields />
           <TargetStrategyFields />
@@ -297,7 +300,16 @@ function getInitialValues(
 
 function getCreateRequest(
   source: TransformSource,
-  { name, description, targetName, targetSchema, incremental, keysetColumn, sourceStrategy, targetStrategy }: NewTransformValues,
+  {
+    name,
+    description,
+    targetName,
+    targetSchema,
+    incremental,
+    keysetColumn,
+    sourceStrategy,
+    targetStrategy,
+  }: NewTransformValues,
   databaseId: number,
 ): CreateTransformRequest {
   // Build the source with incremental strategy if enabled

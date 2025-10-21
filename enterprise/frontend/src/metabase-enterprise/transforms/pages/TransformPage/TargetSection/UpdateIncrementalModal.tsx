@@ -62,11 +62,13 @@ type IncrementalValues = {
 const INCREMENTAL_SCHEMA = Yup.object({
   incremental: Yup.boolean().required(),
   sourceStrategy: Yup.string().oneOf(["keyset"]).required(),
-  keysetColumn: Yup.string().nullable().when("incremental", {
-    is: true,
-    then: (schema) => schema.required(Errors.required),
-    otherwise: (schema) => schema.nullable(),
-  }),
+  keysetColumn: Yup.string()
+    .nullable()
+    .when("incremental", {
+      is: true,
+      then: (schema) => schema.required(Errors.required),
+      otherwise: (schema) => schema.nullable(),
+    }),
   targetStrategy: Yup.string().oneOf(["append"]).required(),
 });
 
@@ -153,19 +155,17 @@ function UpdateIncrementalForm({
                     query.stages?.[0]?.native != null;
 
                   return isNativeQuery ? (
-                      <Alert variant="info" icon="info">
-                          {t`Ensure your query contains WHERE filter on the keyset column. You may want to use:`}{" "}
-                          <strong>{`[[AND id > {{watermark}}]]`}</strong>
-                      </Alert>
+                    <Alert variant="info" icon="info">
+                      {t`Ensure your query contains WHERE filter on the keyset column. You may want to use:`}{" "}
+                      <strong>{`[[AND id > {{watermark}}]]`}</strong>
+                    </Alert>
                   ) : null;
                 })()}
                 <FormSelect
                   name="sourceStrategy"
                   label={t`Source Strategy`}
                   description={t`How to track which rows to process`}
-                  data={[
-                    { value: "keyset", label: t`Keyset` },
-                  ]}
+                  data={[{ value: "keyset", label: t`Keyset` }]}
                 />
                 {values.sourceStrategy === "keyset" && (
                   <FormTextInput
@@ -179,9 +179,7 @@ function UpdateIncrementalForm({
                   name="targetStrategy"
                   label={t`Target Strategy`}
                   description={t`How to update the target table`}
-                  data={[
-                    { value: "append", label: t`Append` },
-                  ]}
+                  data={[{ value: "append", label: t`Append` }]}
                 />
               </>
             )}

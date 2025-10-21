@@ -222,7 +222,9 @@ function EditIncrementalButton({ transform }: EditIncrementalButtonProps) {
         disabled={isTransformRunning(transform)}
         onClick={openModal}
       >
-        {isIncremental ? t`Edit incremental settings` : t`Make transform incremental`}
+        {isIncremental
+          ? t`Edit incremental settings`
+          : t`Make transform incremental`}
       </Button>
       {isModalOpened && (
         <UpdateIncrementalModal

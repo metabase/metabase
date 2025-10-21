@@ -84,7 +84,8 @@ export function QueryEditor({
 
     // Copy over the incremental strategy if it exists
     if (initialSource["source-incremental-strategy"]) {
-      newSource["source-incremental-strategy"] = initialSource["source-incremental-strategy"];
+      newSource["source-incremental-strategy"] =
+        initialSource["source-incremental-strategy"];
     }
 
     onSave(newSource);
