@@ -324,3 +324,5 @@
                     (is (= "Only transforms with keyset incremental strategy can have their watermark flushed."
                            (mt/user-http-request :crowberto :post 400 (format "ee/transform/%d/flush-watermark" (:id transform))))
                         "Should return 400 for non-keyset incremental transform")))))))))))
+
+;; TODO: test changing keyset
