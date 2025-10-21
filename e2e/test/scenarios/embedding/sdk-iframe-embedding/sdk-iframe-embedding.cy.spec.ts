@@ -351,6 +351,7 @@ H.describeWithSnowplowEE(
             attributes: {},
           },
         ],
+        selector: `[dashboard-id="${ORDERS_DASHBOARD_ID}"] > iframe`, // get only the first iframe
       });
 
       frame.within(() => {

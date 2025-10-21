@@ -1,8 +1,9 @@
 (ns metabase.legacy-mbql.schema.helpers
-  {:clj-kondo/config '{:linters {:deprecated-var {:level :off}}}}
-  (:refer-clojure :exclude [distinct])
+  (:refer-clojure :exclude [distinct #?(:clj for)])
   (:require
+   #?(:clj [metabase.util.performance :refer [for]])
    [clojure.string :as str]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.types.core]
    [metabase.util.malli.registry :as mr]))
 
@@ -67,11 +68,15 @@
   [:and
    {:description (str "schema for a valid legacy MBQL " :tag " clause")}
    [:fn
-    {:error/message (str "must be a `" tag "` clause")}
+    {:error/message    (str "must be a `" tag "` clause")
+     :decode/normalize (fn [x]
+                         (when (and (sequential? x)
+                                    ((some-fn keyword? string?) (first x)))
+                           (update (vec x) 0 keyword)))}
     (partial is-clause? tag)]
    (into
     [:catn
-     ["tag" [:= tag]]]
+     ["tag" [:= {:decode/normalize lib.schema.common/normalize-keyword} tag]]]
     (for [[arg-name arg-schema] (partition 2 arg-schemas)]
       [arg-name (clause-arg-schema arg-schema)]))])
 

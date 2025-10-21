@@ -43,9 +43,9 @@
    [clojure.walk :as walk]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -67,7 +67,7 @@
                                    :type/DateTime
                                    ((juxt :earliest :latest))
                                    (map u.date/parse))
-        can-use?  #(mbql.s/valid-temporal-unit-for-base-type? (:base_type field) %)]
+        can-use?  #(lib.schema.ref/valid-temporal-unit-for-base-type? (:base_type field) %)]
     (if (and earliest latest)
       (let [duration   (u.date/period-duration earliest latest)
             less-than? #(u.date/greater-than-period-duration? % duration)]

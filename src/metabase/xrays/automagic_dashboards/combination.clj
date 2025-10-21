@@ -34,7 +34,6 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.xrays.automagic-dashboards.dashboard-templates :as dashboard-templates]
-   [metabase.xrays.automagic-dashboards.interesting :as interesting]
    [metabase.xrays.automagic-dashboards.schema :as ads]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
    [metabase.xrays.automagic-dashboards.visualization-macros :as visualization]))
@@ -174,8 +173,8 @@
   [{:keys [cell-query]}]
   (letfn [(collect-dimensions [[op & args]]
             (case (some-> op qp.util/normalize-token)
-              :and (mapcat collect-dimensions args)
-              :=   (magic.util/collect-field-references args)
+              :and          (mapcat collect-dimensions args)
+              (:between :=) (magic.util/collect-field-references args)
               nil))]
     (->> cell-query
          collect-dimensions

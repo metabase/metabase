@@ -18,7 +18,7 @@
   process-virtual-dashcard]
  [notification.payload.temp-storage
   cleanup!
-  is-cleanable?])
+  cleanable?])
 
 (mr/def ::Notification
   "Schema for the notification."

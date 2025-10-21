@@ -9,7 +9,6 @@
   (:refer-clojure :exclude [ref every? some select-keys])
   (:require
    [medley.core :as m]
-   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.schema.actions :as actions]
    [metabase.lib.schema.aggregation :as aggregation]
    [metabase.lib.schema.common :as common]

@@ -148,7 +148,8 @@
    [kixi.stats.math :as math]
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ;; legacy usage, do not use this in new code
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]

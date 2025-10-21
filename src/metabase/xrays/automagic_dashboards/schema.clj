@@ -5,8 +5,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [metabase.lib.dispatch :as lib.dispatch]))
+   [metabase.util.malli.schema :as ms]))
 
 (mr/def ::root
   [:map

@@ -119,9 +119,9 @@
            metabase.analyze.query-results}
    :uses #{config
            driver
-           legacy-mbql
            lib
            models
+           query-processor
            sync
            util}}
 
@@ -594,7 +594,6 @@
            metabase.legacy-mbql.schema
            metabase.legacy-mbql.util}
    :uses #{lib
-           models
            types
            util}}
 
@@ -710,8 +709,7 @@
 
   models
   {:team "DevEx"
-   :api  #{metabase.models.dispatch
-           metabase.models.humanization
+   :api  #{metabase.models.humanization
            metabase.models.init
            metabase.models.interface
            metabase.models.resolution
@@ -784,7 +782,6 @@
    :uses #{api
            app-db
            classloader
-           legacy-mbql
            lib
            lib-be
            models
@@ -922,7 +919,6 @@
            eid-translation
            embedding
            events
-           legacy-mbql
            lib
            lib-be
            models
@@ -1324,7 +1320,6 @@
            collections
            driver
            events
-           legacy-mbql
            lib
            model-persistence
            models
@@ -2005,6 +2000,7 @@
            metabase-enterprise.transforms.core
            metabase-enterprise.transforms.init
            metabase-enterprise.transforms.instrumentation
+           metabase-enterprise.transforms.interface
            metabase-enterprise.transforms.util}
    :uses #{analytics
            api
@@ -2021,15 +2017,14 @@
            sync
            task
            task-history
-           util
-           enterprise/transforms-python}}
+           util}}
 
   enterprise/transforms-python
   {:team "Querying"
    :api  #{metabase-enterprise.transforms-python.api
-           metabase-enterprise.transforms-python.execute
            metabase-enterprise.transforms-python.init}
-   :uses #{api
+   :uses #{analytics
+           api
            app-db
            config
            driver
