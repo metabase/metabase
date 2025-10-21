@@ -47,7 +47,7 @@ describe("snapshots", () => {
       addUsersAndGroups();
       createCollections();
       withSampleDatabase((SAMPLE_DATABASE) => {
-        // ensureTableIdsAreCorrect(SAMPLE_DATABASE);
+        ensureTableIdsAreCorrect(SAMPLE_DATABASE);
         hideNewSampleTables(SAMPLE_DATABASE);
         createQuestionsAndDashboards(SAMPLE_DATABASE);
         snapshot("without-models");

@@ -265,7 +265,7 @@
 
 (mu/defn- enrich-parameters-from-card :- ::parameters.schema/parameters
   "Allow the FE to omit type and target for parameters by adding them from the card."
-  [parameters      :- [:maybe [:sequential :map]]
+  [parameters      :- [:maybe ::parameters.schema/parameters-with-optional-types]
    card-parameters :- [:maybe ::parameters.schema/parameters]]
   (let [id->card-param (->> card-parameters
                             (map #(select-keys % [:id :type :target]))
@@ -326,10 +326,7 @@
                                                    :cache_invalidated_at :entity_id :created_at :card_schema
                                                    :parameters]
                                                   :id card-id))
-        ;; don't use the usual parameter normalization code here because we don't want it to add a default `:type` (we
-        ;; will infer this separately based on Card parameter mappings)
-        parameters (for [parameter parameters]
-                     (m/update-existing parameter :type keyword))
+        parameters (some-> parameters parameters.schema/normalize-parameters-without-adding-default-types)
         parameters (enrich-parameters-from-card parameters (combined-parameters-and-template-tags card))
         dash-viz   (when (and (not= context :question)
                               dashcard-id)

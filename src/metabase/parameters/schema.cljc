@@ -108,6 +108,22 @@
   [parameters]
   (lib/normalize ::parameters parameters))
 
+(mr/def ::parameter-with-optional-type
+  [:merge
+   ::parameter
+   [:map
+    [:type {:optional true} [:ref ::lib.schema.parameter/type]]]])
+
+(mr/def ::parameters-with-optional-types
+  [:sequential ::parameter-with-optional-type])
+
+(mu/defn normalize-parameters-without-adding-default-types :- ::parameters-with-optional-types
+  "The same as [[normalize-parameters]], but does not add a default `:type` if it is missing. Needed in some cases
+  where we infer the type based on the `:widget-type` in the saved parameter declarations inside a Card or Dashboard,
+  e.g. when running an embedded Card with the Card QP."
+  [parameters]
+  (lib/normalize ::parameters-with-optional-types parameters))
+
 #?(:clj
    (def transform-parameters
      "Toucan 2 transform for columns that are sequences of Card/Dashboard parameters."
