@@ -305,6 +305,22 @@
                                                         :version        "mock-version"}]
                   (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {}))))))))))
 
+(deftest export-force-if-external-changes-test
+  (testing "POST /api/ee/remote-sync/export can force sync when remote is ahead of the last sync"
+    (mt/with-temporary-setting-values [remote-sync-type :development]
+      (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "foo"
+                                              :ended_at       :%now
+                                              :version        "other-version"}]
+        (let [mock-source (test-helpers/create-mock-source)]
+          (mt/with-temporary-setting-values [remote-sync-enabled true
+                                             remote-sync-url "https://github.com/test/repo.git"
+                                             remote-sync-token "test-token"
+                                             remote-sync-branch "main"]
+            (with-redefs [source/source-from-settings          (constantly mock-source)
+                          source.ingestable/ingestable-version (constantly "mock-version")]
+              (testing "Can export with force"
+                (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:force true})))))))))
+
 ;;; ------------------------------------------------- Current Task Endpoint -------------------------------------------------
 
 (deftest current-task-returns-nil-when-no-tasks-test

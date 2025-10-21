@@ -58,11 +58,11 @@
       (run-async! "import" branch (fn [task-id] (impl/import! ingestable-source task-id import-args))))))
 
 (defn- async-export!
-  [branch message]
+  [branch force? message]
   (let [source (source/source-from-settings branch)
         last-task-version (remote-sync.task/last-version)
         current-source-version (source.ingestable/ingestable-version (source.p/->ingestable source {}))]
-    (when (and (some? last-task-version) (not= last-task-version current-source-version))
+    (when (and (not force?) (some? last-task-version) (not= last-task-version current-source-version))
       (throw (ex-info "Cannot export changes that will overwrite new changes in the branch."
                       {:status-code 400
                        :conflicts true})))
@@ -120,10 +120,10 @@
   Requires superuser permissions."
   [_route
    _query
-   {:keys [message branch _force-sync]}] :- [:map
-                                             [:message {:optional true} ms/NonBlankString]
-                                             [:branch {:optional true} ms/NonBlankString]
-                                             [:force-sync {:optional true} :boolean]]
+   {:keys [message branch force]}] :- [:map
+                                       [:message {:optional true} ms/NonBlankString]
+                                       [:branch {:optional true} ms/NonBlankString]
+                                       [:force {:optional true} :boolean]]
   (api/check-superuser)
   (when-not (settings/remote-sync-enabled)
     (throw (ex-info "Git sync is paused. Please resume it to perform export operations."
@@ -132,6 +132,7 @@
     (throw (ex-info "Exports are only allowed when remote-sync-type is set to 'development'" {:status-code 400})))
   {:message "Export task started"
    :task_id (async-export! (or branch (settings/remote-sync-branch))
+                           (or force false)
                            (or message "Exported from Metabase"))})
 
 (defn- task-status [task]
@@ -247,6 +248,32 @@
       (catch Exception e
         (throw (ex-info (format "Failed to create branch: %s" (.getMessage e))
                         {:status-code 400} e))))))
+
+(api.macros/defendpoint :post "/stash"
+  "Stashes changes to a new branch, and changes the current branch to it.
+  Requires superuser permissions."
+  [_route
+   _query
+   {:keys [new_branch message]} :- [:map
+                                    [:new_branch ms/NonBlankString]
+                                    [:message ms/NonBlankString]]]
+  (api/check-superuser)
+  (when (not= (settings/remote-sync-type) :development)
+    (throw (ex-info "Stash is only allowed when remote-sync-type is set to 'development'" {:status-code 400})))
+  (let [source (source/source-from-settings)]
+    (when (nil? source)
+      (throw (ex-info "Git source not configured"
+                      {:status-code 400})))
+    (try
+      (source.p/create-branch source new_branch (settings/remote-sync-branch))
+      (settings/remote-sync-branch! new_branch)
+      {:status  "success"
+       :message (str "Stashing to " new_branch)
+       :task_id (async-export! new_branch false message)}
+      (catch Exception e
+        (.printStackTrace e)
+        (throw (ex-info (format "Failed to stash changes to branch: %s" (.getMessage e))
+                        {:status-code 400}))))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/remote-sync` routes."
