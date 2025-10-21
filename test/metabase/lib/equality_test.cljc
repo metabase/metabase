@@ -1398,3 +1398,18 @@
                {:lib/source-column-alias "CREATED_AT",    :display-name "Created At",      :selected? false}]
               (map #(select-keys % [:lib/source-column-alias :display-name :selected?])
                    marked))))))
+
+(deftest ^:parallel matching-column-by-source-uuid-test
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                  (lib/aggregate (lib/sum (meta/field-metadata :orders :total)))
+                  (lib/breakout (lib/with-temporal-bucket
+                                  (meta/field-metadata :orders :created-at) :month)))
+        returned (lib/returned-columns query)
+        want-breakout-by (m/find-first (comp #{:source/aggregations} :lib/source) returned)
+        expected-uuid (:lib/source-uuid want-breakout-by)
+        query-next (lib/append-stage query)
+        breakoutable-next (lib/breakoutable-columns query-next)
+        {:lib/keys [source source-uuid]}
+        (lib/matching-column-by-source-uuid want-breakout-by breakoutable-next)]
+    (is (= expected-uuid source-uuid))
+    (is (= :source/previous-stage source))))
