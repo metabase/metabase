@@ -189,6 +189,14 @@ export const transformApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("transform"), listTag("table")]),
     }),
+    flushTransformWatermark: builder.mutation<void, TransformId>({
+      query: (id) => ({
+        method: "POST",
+        url: `/api/ee/transform/${id}/flush-watermark`,
+      }),
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [idTag("transform", id)]),
+    }),
   }),
 });
 
@@ -204,4 +212,5 @@ export const {
   useUpdateTransformMutation,
   useDeleteTransformMutation,
   useDeleteTransformTargetMutation,
+  useFlushTransformWatermarkMutation,
 } = transformApi;
