@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
+   [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.events.core :as events]
@@ -172,7 +173,7 @@
   "Fetch tables with their fields. The tables show up under the `:table` property."
   [transforms]
   (let [table-key-fn (fn [{:keys [target] :as transform}]
-                       [(transforms.util/target-database-id transform) (:schema target) (:name target)])
+                       [(transforms.i/target-db-id transform) (:schema target) (:name target)])
         table-keys (into #{} (map table-key-fn) transforms)
         table-keys-with-schema (filter second table-keys)
         table-keys-without-schema (keep (fn [[db-id schema table-name]]
