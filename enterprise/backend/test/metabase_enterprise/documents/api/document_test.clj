@@ -6,6 +6,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -2233,3 +2234,58 @@
                                   {:parameters []
                                    :format_rows false
                                    :pivot_results false})))))))
+
+(deftest download-document-card-respects-download-permissions-test
+  (testing "POST /api/ee/document/:document-id/card/:card-id/query/:export-format respects database download permissions"
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection {coll-id :id} {}
+                       :model/Card {card-id :id} {:name "Test Card"
+                                                  :dataset_query (mt/mbql-query venues {:limit 10})
+                                                  :display :table
+                                                  :collection_id coll-id}
+                       :model/Document {doc-id :id} {:name "Test Document"
+                                                     :collection_id coll-id
+                                                     :document {:type "doc"
+                                                                :content [{:type "cardEmbed"
+                                                                           :attrs {:id card-id}}]}}]
+          (t2/update! :model/Card card-id {:document_id doc-id})
+
+          (mt/with-group-for-user [group :rasta {:name "Rasta Group"}]
+            ;; Grant collection read permissions so user can access the document
+            (perms/grant-collection-read-permissions! group coll-id)
+
+            (testing "User without download permissions gets 403"
+              ;; Set download permissions to :no-self-service (no downloads allowed)
+              (data-perms/set-database-permission! group (mt/id) :perms/download-results :no)
+
+              (mt/user-http-request :rasta
+                                    :post 403
+                                    (format "ee/document/%s/card/%s/query/csv" doc-id card-id)
+                                    {:parameters []
+                                     :format_rows false
+                                     :pivot_results false}))
+
+            (testing "User with limited download permissions (10k rows) can download"
+              (data-perms/set-database-permission! group (mt/id) :perms/download-results :ten-thousand-rows)
+
+              (let [response (mt/user-http-request :rasta
+                                                   :post 200
+                                                   (format "ee/document/%s/card/%s/query/csv" doc-id card-id)
+                                                   {:parameters []
+                                                    :format_rows false
+                                                    :pivot_results false})]
+                (is (some? response))
+                (is (string? response))))
+
+            (testing "User with full download permissions can download"
+              (data-perms/set-database-permission! group (mt/id) :perms/download-results :one-million-rows)
+
+              (let [response (mt/user-http-request :rasta
+                                                   :post 200
+                                                   (format "ee/document/%s/card/%s/query/csv" doc-id card-id)
+                                                   {:parameters []
+                                                    :format_rows false
+                                                    :pivot_results false})]
+                (is (some? response))
+                (is (string? response))))))))))
