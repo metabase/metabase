@@ -188,6 +188,7 @@ export const MetabotChatEditor = forwardRef<MetabotChatInputRef | null, Props>(
         </Box>
         <Box className={S.contentWrapper}>
           <EditorContent
+            data-testid="metabot-chat-input"
             editor={editor}
             className={cx(S.content, {
               [S.disabled]: disabled,

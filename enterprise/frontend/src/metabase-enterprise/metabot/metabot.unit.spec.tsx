@@ -1,3 +1,4 @@
+/* eslint-disable jest/expect-expect */
 import { combineReducers } from "@reduxjs/toolkit";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
@@ -9,6 +10,7 @@ import { setupDatabaseListEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import {
   act,
+  fireEvent,
   renderWithProviders,
   screen,
   waitFor,
@@ -106,9 +108,19 @@ function setup(
 const chat = () => screen.findByTestId("metabot-chat");
 const chatMessages = () => screen.findAllByTestId("metabot-chat-message");
 const lastChatMessage = async () => (await chatMessages()).at(-1);
-const input = () => screen.findByTestId("metabot-chat-input");
-const enterChatMessage = async (message: string, send = true) =>
-  userEvent.type(await input(), `${message}${send ? "{Enter}" : ""}`);
+const input = async () => {
+  const chatInput = await screen.findByTestId("metabot-chat-input");
+  // get tiptap content editable node
+  // eslint-disable-next-line testing-library/no-node-access
+  return chatInput.querySelector('[contenteditable="true"]')!;
+};
+const enterChatMessage = async (message: string, send = true) => {
+  await userEvent.type(await input(), message);
+  if (send) {
+    fireEvent.focus(await input());
+    await userEvent.keyboard("{Enter}");
+  }
+};
 const closeChatButton = () => screen.findByTestId("metabot-close-chat");
 const responseLoader = () => screen.findByTestId("metabot-response-loader");
 const resetChatButton = () => screen.findByTestId("metabot-reset-chat");
@@ -248,19 +260,7 @@ describe("metabot-streaming", () => {
       }
     });
 
-    it("should not render markdown for user messages", async () => {
-      setup();
-      mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
-
-      const msg = "# Who is your favorite?";
-      await enterChatMessage(msg);
-      expect(await screen.findByText(msg)).toBeInTheDocument();
-      expect(
-        screen.queryByRole("heading", { level: 1 }),
-      ).not.toBeInTheDocument();
-    });
-
-    it("should render markdown for metabot's replies", async () => {
+    it("should render markdown for messages", async () => {
       setup();
       mockAgentEndpoint({
         textChunks: [
@@ -269,11 +269,17 @@ describe("metabot-streaming", () => {
           `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
         ],
       });
-      await enterChatMessage("Who is your favorite?");
 
-      const heading = await screen.findByRole("heading", { level: 1 });
-      expect(heading).toBeInTheDocument();
-      expect(heading).toHaveTextContent(`You, but don't tell anyone.`);
+      await enterChatMessage("# Who is your favorite?");
+
+      await screen.findByRole("heading", {
+        level: 1,
+        name: `Who is your favorite?`,
+      });
+      await screen.findByRole("heading", {
+        level: 1,
+        name: `You, but don't tell anyone.`,
+      });
     });
 
     it("should present the user an option to provide feedback", async () => {
@@ -388,9 +394,9 @@ describe("metabot-streaming", () => {
         ),
       });
 
-      expect(await input()).toHaveValue("");
+      expect(await input()).toHaveTextContent("");
       await userEvent.click(await screen.findByText("CLICK HERE"));
-      expect(await input()).toHaveValue("TEST VAL");
+      expect(await input()).toHaveTextContent("TEST VAL");
     });
 
     describe("prompt-suggestions", () => {
@@ -493,7 +499,7 @@ describe("metabot-streaming", () => {
       );
 
       await enterChatMessage("Who is your favorite?", false);
-      expect(await input()).toHaveValue("Who is your favorite?");
+      expect(await input()).toHaveTextContent("Who is your favorite?");
 
       await enterChatMessage("Who is your favorite?");
       expect(await responseLoader()).toBeInTheDocument();
@@ -502,7 +508,7 @@ describe("metabot-streaming", () => {
       ).toBeInTheDocument();
 
       // should auto-clear input + refocus
-      expect(await input()).toHaveValue("");
+      expect(await input()).toHaveTextContent("");
       expect(await input()).toHaveFocus();
     });
 
@@ -682,7 +688,7 @@ describe("metabot-streaming", () => {
         ["user", "Who is your favorite?"],
         ["agent", METABOT_ERR_MSG.agentOffline],
       ]);
-      expect(await input()).toHaveValue("Who is your favorite?");
+      expect(await input()).toHaveTextContent("Who is your favorite?");
     });
 
     it("should handle non-successful responses", async () => {
@@ -695,7 +701,7 @@ describe("metabot-streaming", () => {
         ["user", "Who is your favorite?"],
         ["agent", METABOT_ERR_MSG.default],
       ]);
-      expect(await input()).toHaveValue("Who is your favorite?");
+      expect(await input()).toHaveTextContent("Who is your favorite?");
     });
 
     it("should handle show error if data error part is in response", async () => {
@@ -708,7 +714,7 @@ describe("metabot-streaming", () => {
         ["user", "Who is your favorite?"],
         ["agent", METABOT_ERR_MSG.default],
       ]);
-      expect(await input()).toHaveValue("Who is your favorite?");
+      expect(await input()).toHaveTextContent("Who is your favorite?");
     });
 
     it("should not show a user error when an AbortError is triggered", async () => {
@@ -725,7 +731,7 @@ describe("metabot-streaming", () => {
       await userEvent.click(await resetChatButton());
 
       await assertConversation([]);
-      expect(await input()).toHaveValue("");
+      expect(await input()).toHaveTextContent("");
     });
 
     it("should remove previous error messages and prompt when submiting next prompt", async () => {
@@ -738,7 +744,7 @@ describe("metabot-streaming", () => {
         ["user", "Who is your favorite?"],
         ["agent", METABOT_ERR_MSG.agentOffline],
       ]);
-      expect(await input()).toHaveValue("Who is your favorite?");
+      expect(await input()).toHaveTextContent("Who is your favorite?");
 
       mockAgentEndpoint({
         textChunks: whoIsYourFavoriteResponse,
@@ -958,10 +964,12 @@ describe("metabot-streaming", () => {
       expect(beforeResetState.conversationId).not.toBe(null);
       expect(_.omit(beforeResetState.messages[0], "id")).toStrictEqual({
         role: "user",
+        type: "text",
         message: "Who is your favorite?",
       });
       expect(_.omit(beforeResetState.messages[1], "id")).toStrictEqual({
         role: "agent",
+        type: "text",
         message: "You, but don't tell anyone.",
       });
 

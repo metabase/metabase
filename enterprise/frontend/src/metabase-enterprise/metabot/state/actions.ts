@@ -1,6 +1,7 @@
 import { type UnknownAction, isRejected, nanoid } from "@reduxjs/toolkit";
 import { push } from "react-router-redux";
 import { P, match } from "ts-pattern";
+import _ from "underscore";
 
 import { createAsyncThunk } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
@@ -165,7 +166,12 @@ export const submitInput = createAsyncThunk<
       // altering it by adding the current message the user is wanting to send
       const agentMetadata = getAgentRequestMetadata(getState() as any);
       const messageId = createMessageId();
-      dispatch(addUserMessage({ id: messageId, ...data }));
+      dispatch(
+        addUserMessage({
+          id: messageId,
+          ..._.omit(data, ["context", "metabot_id"]),
+        }),
+      );
 
       const sendMessageRequestPromise = dispatch(
         sendAgentRequest({
