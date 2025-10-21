@@ -202,33 +202,39 @@
   [transform-id]
   (t2/select-one-fn :watermark_value :model/TransformWatermark :transform_id transform-id))
 
-(defn inject-transform-parameters
-  "Inject watermark parameter into a query's :parameters vector."
-  [query transform-id]
-  (if-let [watermark-value (next-watermark-value transform-id)]
-    (update query :parameters conj {:type :number
-                                    :target [:variable [:template-tag "watermark"]]
-                                    :value watermark-value})
-    query))
-
 (defn- source->keyset-column
   [{:keys [query] :as source}]
   (m/find-first #(= (:name %) (:keyset-column (:source-incremental-strategy source)))
                 (lib/filterable-columns query)))
 
+(defn preprocess-incremental-query
+  "Preprocess a query for incremental transform execution by adding watermark filtering.
+
+  For native queries, injects the watermark value into the query's :parameters vector as a
+  template tag variable named 'watermark'.
+
+  For MBQL queries, adds a filter clause that constrains the keyset column to values greater
+  than the current watermark.
+
+  If no watermark value exists for the transform (i.e., this is the first run), returns the
+  query unchanged to allow a full initial load."
+  [{:keys [query] :as source} transform-id]
+  (if-let [watermark-value (next-watermark-value transform-id)]
+    (if (lib.query/native? query)
+      (update query :parameters conj {:type :number
+                                      :target [:variable [:template-tag "watermark"]]
+                                      :value watermark-value})
+      (lib/filter query (lib/> (source->keyset-column source) watermark-value)))
+    query))
+
 (defn compile-source
-  "Compile the source query of a transform.
-  Optionally injects `transform_id` parameter for use in native incremental queries."
+  "Compile the source query of a transform."
   ([source]
    (compile-source source nil))
-  ([{:keys [query] query-type :type :as source} transform-id]
+  ([{query-type :type :as source} transform-id]
    (case (keyword query-type)
      :query
-     (let [query-with-params (if (lib.query/native? query)
-                               (inject-transform-parameters query transform-id)
-                               (if-let [watermark-value (next-watermark-value transform-id)]
-                                 (lib/filter query (lib/> (source->keyset-column source) watermark-value))
-                                 query))]
+     (let [query-with-params (preprocess-incremental-query source transform-id)]
        (:query (qp.compile/compile-with-inline-parameters (massage-sql-query query-with-params)))))))
 
 (defn required-database-features

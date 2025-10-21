@@ -20,8 +20,7 @@
 (defmethod transforms.i/table-dependencies :query
   [{:keys [id source]}]
   (let [query (-> source
-                  :query
-                  (transforms.util/inject-transform-parameters id)
+                  (transforms.util/preprocess-incremental-query id)
                   transforms.util/massage-sql-query
                   qp.preprocess/preprocess)
         driver (-> query
