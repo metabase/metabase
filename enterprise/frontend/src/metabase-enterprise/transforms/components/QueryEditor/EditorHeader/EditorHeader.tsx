@@ -31,15 +31,6 @@ export function EditorHeader({
   return (
     <EditBar
       title={getTitle(isNew)}
-      center={
-        transformId && (
-          <Flex align="center" gap="md">
-            <Text size="sm" c="text-medium">
-              {t`Transform ID: ${transformId}`}
-            </Text>
-          </Flex>
-        )
-      }
       admin
       buttons={[
         <Button key="cancel" small onClick={onCancel}>{t`Cancel`}</Button>,
