@@ -127,7 +127,9 @@ export function SelectEmbedTypePane({
   const isEmbeddingSdkEnabled = useSetting("enable-embedding-sdk");
 
   const shouldShowModernStaticEmbeddingWizard =
-    !resource.enable_embedding || resource.embedding_type === "static-embed-js";
+    // TODO for testing - uncomment
+    (false && !resource.enable_embedding) ||
+    resource.embedding_type === "static-embed-js";
 
   return (
     <Stack

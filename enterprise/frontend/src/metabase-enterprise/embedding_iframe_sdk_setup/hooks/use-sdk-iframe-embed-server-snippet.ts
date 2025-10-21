@@ -82,7 +82,7 @@ export function useSdkIframeEmbedServerSnippet() {
   );
 
   const [selectedServerSnippetId, setSelectedServerSnippetId] = useState(
-    serverSnippetOptions[0].id,
+    serverSnippetOptions[0]?.id,
   );
 
   const serverSnippetOption =
