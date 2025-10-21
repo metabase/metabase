@@ -632,16 +632,15 @@ describe("issue 43216", () => {
   });
 
   it("should update source question metadata when it changes (metabase#43216)", () => {
-    cy.intercept("GET", "/api/activity/recents?*").as("recents");
+    cy.intercept("GET", "/api/search*source*").as("searchSource");
+    cy.intercept("GET", "/api/search*target*").as("searchTarget");
     cy.intercept("GET", "/api/card/**/query_metadata").as("queryMetadata");
 
     cy.visit("/");
     H.waitForLoaderToBeRemoved();
-    cy.wait("@recents");
 
     cy.log("Create target question");
     H.newButton("Question").click();
-    cy.wait("@recents");
     H.entityPickerModal().within(() => {
       H.entityPickerModalTab("Collections").click();
       H.waitForLoaderToBeRemoved();
@@ -652,12 +651,8 @@ describe("issue 43216", () => {
 
     cy.log("Update source question");
     H.commandPaletteButton().click();
-    cy.wait("@recents");
-    H.commandPalette()
-      .findAllByRole("option")
-      .should("have.length", 3)
-      .eq(2)
-      .should("contain.text", "Source question");
+    H.commandPaletteInput().type("source");
+    cy.wait("@searchSource");
     H.commandPalette().findByText("Source question").click();
     cy.wait("@queryMetadata");
     cy.findByTestId("native-query-editor-container")
@@ -665,17 +660,13 @@ describe("issue 43216", () => {
       .click();
     H.NativeEditor.focus().type(" , 4 as D;");
     H.saveSavedQuestion();
-    cy.wait(["@recents", "@queryMetadata"]);
+    cy.wait("@queryMetadata");
     cy.wait(450); // let react process things (flaky test)
 
     cy.log("Assert updated metadata in target question");
     H.commandPaletteButton().click();
-    cy.wait("@recents");
-    H.commandPalette()
-      .findAllByRole("option")
-      .should("have.length", 3)
-      .eq(2)
-      .should("contain.text", "Target question");
+    H.commandPaletteInput().type("target");
+    cy.wait("@searchTarget");
     H.commandPalette().findByText("Target question").click();
     cy.wait("@queryMetadata");
     cy.findAllByTestId("header-cell").eq(3).should("have.text", "D");
