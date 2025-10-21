@@ -321,10 +321,10 @@
 
 (api.macros/defendpoint :post "/:document-id/card/:card-id/query/:export-format"
   "Download query results for a Card embedded in a Document.
-  
+
   Returns query results in the requested format. The user must have read access to the document
   to download results. If the card's query fails, standard query error responses are returned.
-  
+
   Parameters:
   - document-id: ID of the document containing the card
   - card-id: ID of the card to download results from
