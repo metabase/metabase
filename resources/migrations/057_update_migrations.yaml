@@ -2004,6 +2004,8 @@ databaseChangeLog:
                   name: made_public_by_id
       rollback:
         - empty
+
+  - changeSet:
       id: v57.2025-10-21T14:14:22
       author: wotbrew
       comment: Add column metabase_field.database_is_pk
