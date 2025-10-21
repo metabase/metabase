@@ -40,6 +40,8 @@ import {
   getHoveredChildTargetId,
 } from "metabase-enterprise/documents/selectors";
 import { getListCommentsQuery } from "metabase-enterprise/documents/utils/api";
+import { usePublicDocumentContext } from "metabase-enterprise/public/contexts/PublicDocumentContext";
+import { usePublicDocumentCardData } from "metabase-enterprise/public/hooks/use-public-document-card-data";
 import Question from "metabase-lib/v1/Question";
 import { getUrl } from "metabase-lib/v1/urls";
 import type { Card, CardDisplayType, Dataset } from "metabase-types/api";
@@ -188,6 +190,7 @@ export const CardEmbedComponent = memo(
     const childTargetId = useSelector(getChildTargetId);
     const hoveredChildTargetId = useSelector(getHoveredChildTargetId);
     const document = useSelector(getCurrentDocument);
+    const { publicDocumentUuid } = usePublicDocumentContext();
     const { data: commentsData } = useListCommentsQuery(
       getListCommentsQuery(document),
     );
@@ -233,7 +236,17 @@ export const CardEmbedComponent = memo(
       });
     }
 
-    const { card, dataset, isLoading, series, error } = useCardData({ id });
+    // Use public hook when viewing a public document, otherwise use regular hook
+    const isPublicDocument = Boolean(publicDocumentUuid);
+    const regularCardData = useCardData({ id });
+    const publicCardData = usePublicDocumentCardData({
+      cardId: id,
+      documentUuid: publicDocumentUuid || "",
+    });
+
+    const { card, dataset, isLoading, series, error } = isPublicDocument
+      ? publicCardData
+      : regularCardData;
 
     const metadata = useSelector(getMetadata);
     const datasetError = dataset && getDatasetError(dataset);
