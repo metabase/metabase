@@ -120,8 +120,8 @@
    :uses #{config
            driver
            lib
-           query-processor
            models
+           query-processor
            sync
            util}}
 

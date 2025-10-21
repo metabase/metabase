@@ -7,7 +7,7 @@ import { createMockParameter } from "metabase-types/api/mocks";
 
 const { ORDERS, PRODUCTS, PEOPLE } = SAMPLE_DATABASE;
 
-describe.only("scenarios > native > filters > remapping", () => {
+describe("scenarios > native > filters > remapping", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -15,7 +15,7 @@ describe.only("scenarios > native > filters > remapping", () => {
     addExternalRemapping();
   });
 
-  it.only("should remap dashboard parameter values", () => {
+  it("should remap dashboard parameter values", () => {
     createQuestion().then((questionId) => {
       H.visitQuestion(questionId);
       testWidgetsRemapping();
