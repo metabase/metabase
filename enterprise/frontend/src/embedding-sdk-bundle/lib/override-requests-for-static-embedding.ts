@@ -1,5 +1,5 @@
 import { sessionPropertiesPath } from "metabase/api";
-import api from "metabase/lib/api";
+import { setOnBeforeRequestHandler } from "metabase/lib/api";
 import { embedBase, internalBase } from "metabase/services";
 
 const COMMON_NO_AUTH_CHECK_ENDPOINTS = [sessionPropertiesPath];
@@ -144,26 +144,29 @@ function replaceWithEmbedBase(url: string): string {
  * into static embedding API requests.
  */
 export const overrideRequestsForStaticEmbedding = () => {
-  api.onBeforeRequestHandlers.push(async ({ method, url, options }) => {
-    const transformation = getRequestTransformation({ method, url, options });
+  setOnBeforeRequestHandler({
+    key: "override-requests-for-static-embedding",
+    handler: async ({ method, url, options }) => {
+      const transformation = getRequestTransformation({ method, url, options });
 
-    if (!transformation) {
-      return { method, url, options };
-    }
+      if (!transformation) {
+        return { method, url, options };
+      }
 
-    if (!options.headers) {
-      options.headers = {};
-    }
+      if (!options.headers) {
+        options.headers = {};
+      }
 
-    /**
-     * Set header to indicate that this request is for static embedding.
-     */
-    options.headers["x-metabase-static-embedding"] = "true";
+      /**
+       * Set header to indicate that this request is for static embedding.
+       */
+      options.headers["x-metabase-static-embedding"] = "true";
 
-    return {
-      method: transformation.method,
-      url: replaceWithEmbedBase(transformation.url),
-      options: transformation.options,
-    };
+      return {
+        method: transformation.method,
+        url: replaceWithEmbedBase(transformation.url),
+        options: transformation.options,
+      };
+    },
   });
 };

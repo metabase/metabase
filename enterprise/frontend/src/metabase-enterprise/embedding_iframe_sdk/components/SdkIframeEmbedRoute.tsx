@@ -137,7 +137,6 @@ const SdkIframeEmbedView = ({
         {
           componentName: "metabase-dashboard",
           token: P.nonNullable,
-          drills: P.optional(false),
         },
         (settings) => (
           <StaticDashboard
@@ -158,12 +157,6 @@ const SdkIframeEmbedView = ({
           dashboardId: P.nonNullable,
           drills: P.optional(true),
         },
-        // Embedding based on a token (anonymous) with enabled drills
-        {
-          componentName: "metabase-dashboard",
-          token: P.nonNullable,
-          drills: true,
-        },
         (settings) => (
           <InteractiveDashboard
             dashboardId={settings.dashboardId ?? null}
@@ -182,14 +175,13 @@ const SdkIframeEmbedView = ({
         // Embedding based on a questionId (non-anonymous) with disabled drills
         {
           componentName: "metabase-question",
-          questionId: P.nonNullable,
+          questionId: P.intersection(P.nonNullable, P.not("new")),
           drills: false,
         },
         // Embedding based on a token (anonymous) with default/disabled drills
         {
           componentName: "metabase-question",
           token: P.nonNullable,
-          drills: P.optional(false),
         },
         (settings) => (
           <StaticQuestion
@@ -210,13 +202,6 @@ const SdkIframeEmbedView = ({
         {
           componentName: "metabase-question",
           questionId: P.nonNullable,
-          drills: P.optional(true),
-        },
-        // Embedding based on a token (anonymous) with enabled drills
-        {
-          componentName: "metabase-question",
-          token: P.nonNullable,
-          drills: true,
         },
         (settings) => (
           <SdkQuestion
