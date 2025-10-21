@@ -9,7 +9,7 @@
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.driver :as driver]
-   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.query :as lib.query]
@@ -124,11 +124,11 @@
           (when-let [field (t2/select-one :model/Field
                                           :table_id (:id table)
                                           :name watermark-field-name)]
-            ;; TODO: build via lib?
-            (let [mbql-query {:type :query
-                              :database db-id
-                              :query {:source-table (:id table)
-                                      :aggregation [[:max [:field (:id field) nil]]]}}
+            (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
+                  table-metadata (lib.metadata/table metadata-provider (:id table))
+                  field-metadata (lib.metadata/field metadata-provider (:id field))
+                  mbql-query (-> (lib/query metadata-provider table-metadata)
+                                 (lib/aggregate (lib/max field-metadata)))
                   watermark-value (-> mbql-query qp/process-query :data :rows first first)]
               (log/infof "Computed watermark value: %s" watermark-value)
               (if (t2/exists? :model/TransformWatermark :transform_id id)
