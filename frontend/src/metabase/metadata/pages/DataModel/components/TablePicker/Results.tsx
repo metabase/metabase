@@ -250,7 +250,7 @@ export function Results({
               align="center"
               justify="space-between"
               gap="sm"
-              className={cx(S.item, S[type], {
+              className={cx(S.item, {
                 [S.active]: isActive,
                 [S.selected]: selectedIndex === index,
               })}
