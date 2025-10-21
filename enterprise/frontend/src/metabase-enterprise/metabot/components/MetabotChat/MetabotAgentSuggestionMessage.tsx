@@ -13,6 +13,7 @@ import { CodeMirror } from "metabase/common/components/CodeMirror";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import EditorS from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor/CodeMirrorEditor.module.css";
+import { getMetadata } from "metabase/selectors/metadata";
 import {
   Button,
   Collapse,
@@ -30,7 +31,7 @@ import {
   getIsSuggestedTransformActive,
 } from "metabase-enterprise/metabot/state";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   MetabotTransformInfo,
   SuggestedTransform,
@@ -102,6 +103,7 @@ export const AgentSuggestionMessage = ({
   message: MetabotAgentEditSuggestionChatMessage;
 }) => {
   const dispatch = useDispatch();
+  const metadata = useSelector(getMetadata);
 
   const { suggestedTransform, editorTransform } = message.payload;
   const isActive = useSelector((state) =>
@@ -124,8 +126,10 @@ export const AgentSuggestionMessage = ({
     error,
   } = useGetOldTransform(message.payload);
 
-  const oldSource = originalTransform ? getSourceCode(originalTransform) : "";
-  const newSource = getSourceCode(suggestedTransform);
+  const oldSource = originalTransform
+    ? getSourceCode(originalTransform, metadata)
+    : "";
+  const newSource = getSourceCode(suggestedTransform, metadata);
 
   const handleApply = () => {
     dispatch(activateSuggestedTransform(suggestedTransform));
@@ -227,12 +231,15 @@ export const AgentSuggestionMessage = ({
 
 function getSourceCode(
   transform: Pick<MetabotTransformInfo, "source">,
+  metadata: Metadata,
 ): string {
   return match(transform)
     .with({ source: { type: "query" } }, (t) => {
-      // Is there a better way to convert a DatsetQuery to an opaque Lib query?
-      const question = Question.create({ dataset_query: t.source.query });
-      const query = question.query();
+      const metadataProvider = Lib.metadataProvider(
+        t.source.query.database,
+        metadata,
+      );
+      const query = Lib.fromJsQuery(metadataProvider, t.source.query);
       if (Lib.queryDisplayInfo(query).isNative) {
         return Lib.rawNativeQuery(query);
       } else {
