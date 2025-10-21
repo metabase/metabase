@@ -13,7 +13,7 @@ import {
 import {
   TablePicker,
   type TablePickerStatePath,
-} from "metabase/common/components/Pickers/TablePicker/TablePicker";
+} from "metabase/common/components/Pickers/TablePicker";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import {
   type DependencyEntry,

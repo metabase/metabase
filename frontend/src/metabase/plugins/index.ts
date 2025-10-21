@@ -956,7 +956,7 @@ function useCheckDependencies<TChange>({
 }
 
 export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
-  DependencyLineage: PluginPlaceholder,
+  DependencyLineagePage: PluginPlaceholder,
   CheckDependenciesForm: PluginPlaceholder,
   CheckDependenciesModal: PluginPlaceholder,
   CheckDependenciesTitle: PluginPlaceholder,

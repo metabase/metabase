@@ -10,12 +10,12 @@ import type {
   SearchResultId,
 } from "metabase-types/api";
 
-import { getNodeIconWithType } from "../../utils";
+import { getDependencyType, getNodeIconWithType } from "../../utils";
 
-import { BROWSE_OPTION_VALUE } from "./constants";
+import { BROWSE_OPTION_VALUE, SEARCH_MODEL_TO_GROUP_TYPE } from "./constants";
 import type { EntrySelectOption } from "./types";
 
-function getDependencyId(id: SearchResultId): DependencyId {
+function getItemDependencyId(id: SearchResultId): DependencyId {
   if (typeof id === "number") {
     return id;
   } else {
@@ -23,21 +23,15 @@ function getDependencyId(id: SearchResultId): DependencyId {
   }
 }
 
-function getDependencyType(model: SearchModel): DependencyType {
-  switch (model) {
-    case "card":
-    case "dataset":
-    case "metric":
-      return "card";
-    case "table":
-    case "transform":
-      return model;
-    default:
-      throw new TypeError(`Unsupported search result model: ${model}`);
+function getItemDependencyType(model: SearchModel): DependencyType {
+  const groupType = SEARCH_MODEL_TO_GROUP_TYPE[model];
+  if (groupType == null) {
+    throw new Error(`Search model "${model}" is not supported`);
   }
+  return getDependencyType(groupType);
 }
 
-function getCardType(model: SearchModel): CardType | undefined {
+function getItemCardType(model: SearchModel): CardType | undefined {
   switch (model) {
     case "card":
       return "question";
@@ -50,7 +44,7 @@ function getCardType(model: SearchModel): CardType | undefined {
   }
 }
 
-function getSelectOptionValue(id: DependencyId, type: DependencyType) {
+function getOptionValue(id: DependencyId, type: DependencyType) {
   return `${id}-${type}`;
 }
 
@@ -59,15 +53,15 @@ function getItemOptions<T extends SearchResult | RecentItem>(
   getLabel: (item: T) => string,
 ): EntrySelectOption[] {
   return items.map((item) => {
-    const id = getDependencyId(item.id);
-    const type = getDependencyType(item.model);
-    const cardType = getCardType(item.model);
+    const id = getItemDependencyId(item.id);
+    const type = getItemDependencyType(item.model);
+    const cardType = getItemCardType(item.model);
     const cardDisplay =
       item.model === "card" ? (item.display ?? undefined) : undefined;
 
     return {
       type: "item",
-      value: getSelectOptionValue(id, type),
+      value: getOptionValue(id, type),
       label: getLabel(item),
       icon: getNodeIconWithType(type, cardType, cardDisplay),
       model: item.model,
