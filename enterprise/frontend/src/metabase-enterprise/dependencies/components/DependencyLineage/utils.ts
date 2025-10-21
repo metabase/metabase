@@ -19,9 +19,9 @@ import type {
 import type {
   EdgeId,
   GraphData,
-  LinkWithLabelInfo,
-  LinkWithTooltipInfo,
   NodeId,
+  NodeLink,
+  NodeLocation,
   NodeType,
 } from "./types";
 
@@ -129,9 +129,7 @@ export function getNodeIconWithType(
     .exhaustive();
 }
 
-export function getNodeLink(
-  node: DependencyNode,
-): LinkWithTooltipInfo | undefined {
+export function getNodeLink(node: DependencyNode): NodeLink | undefined {
   return match(node)
     .with({ type: "card" }, (node) => ({
       url: Urls.question({
@@ -159,18 +157,58 @@ export function getNodeLink(
 
 export function getNodeLocationInfo(
   node: DependencyNode,
-): LinkWithLabelInfo | undefined {
-  return match<DependencyNode, LinkWithLabelInfo | undefined>(node)
+): NodeLocation | undefined {
+  return match<DependencyNode, NodeLocation | undefined>(node)
     .with({ type: "card", data: { dashboard: P.nonNullable } }, (node) => ({
-      label: node.data.dashboard.name,
       icon: "dashboard",
-      url: Urls.dashboard(node.data.dashboard),
+      parts: [
+        {
+          label: node.data.dashboard.name,
+          url: Urls.dashboard(node.data.dashboard),
+        },
+      ],
     }))
     .with({ type: "card", data: { collection: P.nonNullable } }, (node) => ({
-      label: node.data.collection.name,
-      icon: "folder",
-      url: Urls.collection(node.data.collection),
+      icon: "collection",
+      parts: [
+        {
+          label: node.data.collection.name,
+          url: Urls.collection(node.data.collection),
+        },
+      ],
     }))
+    .with({ type: "table", data: { db: P.nonNullable } }, (node) => ({
+      icon: "database",
+      parts: [
+        {
+          label: node.data.db.name,
+          url: Urls.dataModelDatabase(node.data.db_id),
+        },
+        {
+          label: node.data.schema,
+          url: Urls.dataModelSchema(node.data.db_id, node.data.schema),
+        },
+      ],
+    }))
+    .with(
+      { type: "transform", data: { table: { db: P.nonNullable } } },
+      (node) => ({
+        icon: "database",
+        parts: [
+          {
+            label: node.data.table.db.name,
+            url: Urls.dataModelDatabase(node.data.table.db_id),
+          },
+          {
+            label: node.data.table.schema,
+            url: Urls.dataModelSchema(
+              node.data.table.db_id,
+              node.data.table.schema,
+            ),
+          },
+        ],
+      }),
+    )
     .with(
       { type: P.union("card", "table", "transform", "snippet") },
       () => undefined,
@@ -196,10 +234,6 @@ export function getCardType(
     default:
       return undefined;
   }
-}
-
-export function isCardGroupType(groupType: DependencyGroupType) {
-  return getCardType(groupType) != null;
 }
 
 export function getDependencyType(

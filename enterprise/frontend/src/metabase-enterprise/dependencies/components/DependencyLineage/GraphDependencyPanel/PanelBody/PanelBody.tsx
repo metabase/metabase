@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { memo } from "react";
 import { Link } from "react-router";
 
@@ -16,8 +15,9 @@ import {
 } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
+import { GraphNodeLocation } from "../../GraphNodeLocation";
 import { ACTION_ICON_PADDING } from "../../constants";
-import type { LinkWithLabelInfo, LinkWithTooltipInfo } from "../../types";
+import type { NodeLink } from "../../types";
 import {
   getNodeIcon,
   getNodeId,
@@ -65,7 +65,9 @@ function ListItem({ node }: ListItemProps) {
       </Group>
       {(location != null || (link != null && viewCount != null)) && (
         <Group justify={location != null ? "space-between" : "flex-end"}>
-          {location != null && <ListItemLocation location={location} />}
+          {location != null && (
+            <GraphNodeLocation location={location} withIcon />
+          )}
           {link != null && viewCount != null && <ListItemLink link={link} />}
         </Group>
       )}
@@ -83,7 +85,7 @@ function ListItemTitle({ node }: ListItemTitleProps) {
   const link = Urls.dependencyLineage({ entry: node });
 
   return (
-    <Box className={cx(S.link, S.primary)} component={Link} to={link}>
+    <Box className={S.link} component={Link} to={link}>
       <Flex gap="sm" align="center">
         <FixedSizeIcon name={icon} c="brand" />
         <Box lh="h4">{label}</Box>
@@ -103,31 +105,8 @@ function ListItemViewCount({ viewCount }: ListItemViewCountProps) {
     </Box>
   );
 }
-
-type ListItemSubtitleProps = {
-  location: LinkWithLabelInfo;
-};
-
-function ListItemLocation({ location }: ListItemSubtitleProps) {
-  return (
-    <Box
-      className={cx(S.link, S.secondary)}
-      component={Link}
-      to={location.url}
-      target="_blank"
-    >
-      <Flex gap="sm" align="center">
-        <FixedSizeIcon name={location.icon} />
-        <Box fz="sm" lh="h5">
-          {location.label}
-        </Box>
-      </Flex>
-    </Box>
-  );
-}
-
 type ListItemLinkProps = {
-  link: LinkWithTooltipInfo;
+  link: NodeLink;
 };
 
 function ListItemLink({ link }: ListItemLinkProps) {

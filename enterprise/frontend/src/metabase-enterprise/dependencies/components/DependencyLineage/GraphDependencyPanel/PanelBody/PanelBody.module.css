@@ -9,16 +9,10 @@
 }
 
 .link {
+  color: var(--mb-color-text-primary);
+
   &:hover {
     color: var(--mb-color-brand);
     text-decoration: none;
-  }
-
-  &.primary {
-    color: var(--mb-color-text-primary);
-  }
-
-  &.secondary {
-    color: var(--mb-color-text-secondary);
   }
 }

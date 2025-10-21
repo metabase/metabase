@@ -1,4 +1,3 @@
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
@@ -8,12 +7,14 @@ import {
   Center,
   FixedSizeIcon,
   Group,
+  Stack,
   Title,
   Tooltip,
   rem,
 } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
+import { GraphNodeLocation } from "../../GraphNodeLocation";
 import { ACTION_ICON_PADDING } from "../../constants";
 import {
   getNodeIcon,
@@ -38,20 +39,10 @@ export function PanelHeader({ node, onClose }: PanelHeaderProps) {
       <Center w="2.75rem" h="2.75rem" bdrs="50%" bg="bg-secondary">
         <FixedSizeIcon name={getNodeIcon(node)} c="brand" size={20} />
       </Center>
-      <Box flex={1}>
+      <Stack gap="xs" flex={1}>
         <Title order={3}>{getNodeLabel(node)}</Title>
-        {location != null && (
-          <Box
-            className={S.link}
-            component={Link}
-            to={location.url}
-            target="_blank"
-            fz="sm"
-          >
-            {location.label}
-          </Box>
-        )}
-      </Box>
+        {location != null && <GraphNodeLocation location={location} />}
+      </Stack>
       <Box m={rem(-ACTION_ICON_PADDING)}>
         {link != null && (
           <Tooltip label={link.tooltip}>

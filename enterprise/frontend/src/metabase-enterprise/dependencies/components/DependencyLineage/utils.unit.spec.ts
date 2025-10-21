@@ -10,7 +10,7 @@ import {
   createMockTransformDependencyNode,
 } from "metabase-types/api/mocks";
 
-import type { LinkWithTooltipInfo } from "./types";
+import type { NodeLink } from "./types";
 import { getNodeIcon, getNodeLink } from "./utils";
 
 registerVisualizations();
@@ -67,7 +67,7 @@ describe("getNodeIcon", () => {
 describe("getNodeLink", () => {
   it.each<{
     node: DependencyNode;
-    expectedLink: LinkWithTooltipInfo;
+    expectedLink: NodeLink;
   }>([
     {
       node: createMockCardDependencyNode({
