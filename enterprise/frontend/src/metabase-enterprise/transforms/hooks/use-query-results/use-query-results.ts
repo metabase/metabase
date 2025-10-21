@@ -1,6 +1,7 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useAsyncFn } from "react-use";
 
+import { type Deferred, defer } from "metabase/lib/promise";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { runQuestionQuery } from "metabase/services";
@@ -14,11 +15,23 @@ export function useQueryResults(
 ) {
   const metadata = useSelector(getMetadata);
   const [lastRunQuery, setLastRunQuery] = useState<DatasetQuery | null>(null);
+  const deferredRef = useRef<Deferred>();
+
+  function deferred() {
+    // Cancel the previous query when a new one is started.
+    deferredRef.current?.resolve();
+    deferredRef.current = defer();
+
+    return deferredRef.current;
+  }
 
   const currentQuestion = proposedQuestion ?? question;
 
   const [{ value: results = null, loading: isRunning }, runQuery] = useAsyncFn(
-    () => runQuestionQuery(currentQuestion),
+    () =>
+      runQuestionQuery(currentQuestion, {
+        cancelDeferred: deferred(),
+      }),
     [currentQuestion],
   );
 
@@ -57,7 +70,7 @@ export function useQueryResults(
   }, [currentQuestion, runQuery]);
 
   const handleCancelQuery = useCallback(() => {
-    return null;
+    return deferredRef.current?.resolve();
   }, []);
 
   return {

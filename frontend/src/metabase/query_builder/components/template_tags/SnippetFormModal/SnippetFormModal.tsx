@@ -75,9 +75,6 @@ export function SnippetFormModal({
     handleCloseConfirmation,
   } = PLUGIN_DEPENDENCIES.useCheckSnippetDependencies({
     onSave: handleUpdate,
-    onError: (error) => {
-      throw error;
-    },
   });
 
   const handleSubmit = useCallback(

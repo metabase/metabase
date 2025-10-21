@@ -2009,6 +2009,7 @@
            metabase-enterprise.transforms.core
            metabase-enterprise.transforms.init
            metabase-enterprise.transforms.instrumentation
+           metabase-enterprise.transforms.interface
            metabase-enterprise.transforms.util}
    :uses #{analytics
            api
@@ -2026,15 +2027,14 @@
            sync
            task
            task-history
-           util
-           enterprise/transforms-python}}
+           util}}
 
   enterprise/transforms-python
   {:team "Querying"
    :api  #{metabase-enterprise.transforms-python.api
-           metabase-enterprise.transforms-python.execute
            metabase-enterprise.transforms-python.init}
-   :uses #{api
+   :uses #{analytics
+           api
            app-db
            config
            driver
