@@ -179,7 +179,11 @@ jobs:
           name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
 
       - name: Build Embedding SDK package
-        run: yarn build-embedding-sdk-package
+        run: |
+          # Remove the matchers to not report false positives on every PR
+          # unrelated to embedding (EMB-765)
+          echo "::remove-matcher owner=tsc::"
+          yarn build-embedding-sdk-package
 
       - name: Prepare Embedding SDK artifact
         uses: actions/upload-artifact@v4

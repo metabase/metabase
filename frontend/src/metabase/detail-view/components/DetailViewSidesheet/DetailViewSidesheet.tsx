@@ -372,11 +372,8 @@ export function DetailViewSidesheet({
                 py={rem(48)}
               >
                 <Relationships
-                  columns={columns}
-                  row={row}
                   rowId={rowId}
                   rowName={rowName}
-                  table={table}
                   tableForeignKeys={tableForeignKeys}
                   onClick={onClose}
                 />
