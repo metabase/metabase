@@ -143,7 +143,11 @@ jobs:
             --env grepTags="-@mongo+-@python+-@flaky+-@OSS+-@skip",grepOmitFiltered=true \
             --spec "$SPEC_PATH" \
             --browser ${{ steps.cypress-prep.outputs.chrome-path }}
-        continue-on-error: true
+        # Trunk Quarantine controls the final state of the run in the CI!
+        # Even if this step fails, we let it pass and then `trunk-io/analytics-uploader` determines whether to fail or to
+        # pass the whole job, based on the quarantine list.
+        # We only want to "continue on error" (ignore failures) when the Trunk upload is active - i.e. not on drafts!
+        continue-on-error: ${{ !(github.event_name == 'pull_request' && github.event.pull_request.draft == true) }}
 
       - name: Run Tagged EE Cypress tests on ${{ inputs.name }}
         if: ${{ inputs.specs }}
@@ -156,7 +160,11 @@ jobs:
           --env grepTags="${{inputs.tags && format('{0}+-@skip', inputs.tags) || '-@skip'}}",grepOmitFiltered=true \
           --spec "$SPEC_PATH" \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
-        continue-on-error: true
+        # Trunk Quarantine controls the final state of the run in the CI!
+        # Even if this step fails, we let it pass and then `trunk-io/analytics-uploader` determines whether to fail or to
+        # pass the whole job, based on the quarantine list.
+        # We only want to "continue on error" (ignore failures) when the Trunk upload is active - i.e. not on drafts!
+        continue-on-error: ${{ !(github.event_name == 'pull_request' && github.event.pull_request.draft == true) }}
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
