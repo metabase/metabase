@@ -98,6 +98,12 @@ export function SortablePill({
       {...attributes}
       {...listeners}
       style={combinedStyle}
+      styles={{
+        label: {
+          display: "flex",
+          alignItems: "center",
+        },
+      }}
       radius="xl"
       draggable
       onDragStart={(e) => {

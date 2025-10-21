@@ -295,18 +295,22 @@ export const ListViewConfiguration = ({
                           onConfigurationChange({
                             left: leftValues,
                             right: rightValues,
-                            entityIcon: iconName,
+                            entityIcon: iconName as string,
                           });
                         }}
                       >
-                        <Icon name={iconName} size={16} c="text-primary" />
+                        <Icon
+                          name={iconName as IconName}
+                          size={16}
+                          c="text-primary"
+                        />
                       </ActionIcon>
                     </Flex>
                   ))}
                 </SimpleGrid>
                 <Menu.Divider m={0} />
                 <SimpleGrid cols={6} p="md">
-                  {ENTITY_ICON_COLORS.map((color) => (
+                  {ENTITY_ICON_COLORS.map((color: string) => (
                     <Flex justify="center" align="center" key={color}>
                       <Button
                         className={cx(S.iconColorButton, {
@@ -315,7 +319,6 @@ export const ListViewConfiguration = ({
                         variant="subtle"
                         bg={color}
                         onClick={() => {
-                          // setSelectedIconColor(color);
                           onConfigurationChange({
                             entityIconColor: color,
                           });

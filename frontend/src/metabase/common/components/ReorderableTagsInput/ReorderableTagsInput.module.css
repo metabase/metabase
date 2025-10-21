@@ -7,7 +7,7 @@
   background-color: var(--mb-color-background-hover-light);
   border-radius: var(--mantine-radius-md);
   transition: box-shadow 250ms ease;
-  min-height: 2.5rem;
+  min-height: 3.25rem;
 }
 
 .max {
@@ -20,6 +20,7 @@
 }
 
 .pill {
+  display: flex;
   height: 100%;
   font-weight: 400;
   background: var(--mb-color-bg-white);
@@ -44,4 +45,5 @@
 
 .inputField {
   min-width: 1rem;
+  height: 2rem;
 }
