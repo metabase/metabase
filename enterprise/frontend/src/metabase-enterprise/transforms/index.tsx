@@ -3,7 +3,12 @@ import { t } from "ttag";
 
 import { createAdminRouteGuard } from "metabase/admin/utils";
 import { Route } from "metabase/hoc/Title";
-import { PLUGIN_TRANSFORMS, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import {
+  PLUGIN_ENTITIES,
+  PLUGIN_TRANSFORMS,
+  PLUGIN_TRANSFORMS_PYTHON,
+} from "metabase/plugins";
+import { Transforms } from "metabase-enterprise/entities/transforms";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { TransformPicker } from "./components/TransformPicker";
@@ -18,6 +23,7 @@ import { DetailsPageLayout, ListPageLayout } from "./pages/TransformPageLayout";
 import { TransformQueryPage } from "./pages/TransformQueryPage";
 
 if (hasPremiumFeature("transforms")) {
+  PLUGIN_ENTITIES.entities["transforms"] = Transforms;
   PLUGIN_TRANSFORMS.TransformPicker = TransformPicker;
 
   PLUGIN_TRANSFORMS.getAdminPaths = () => [
