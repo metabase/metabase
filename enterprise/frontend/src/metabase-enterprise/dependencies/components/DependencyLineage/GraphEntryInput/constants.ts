@@ -8,7 +8,7 @@ export const SEARCH_MODELS: SearchModel[] = [
   "transform",
 ];
 
-// makes sure that new dependency types are explicitly mapped to a search model
+// make sure that new dependency types are explicitly mapped to a search model
 const GROUP_TYPE_TO_SEARCH_MODEL: Record<
   DependencyGroupType,
   SearchModel | undefined
