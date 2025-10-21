@@ -14,7 +14,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
-   [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.request.core :as request]
@@ -173,11 +172,15 @@
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "put transform" id)
   (api/check-superuser)
-  (let [transform (t2/with-transaction [_]
+  (let [old (t2/select-one :model/Transform id)
+        new (merge old body)
+        old-keyset-column (-> old :source :source-incremental-strategy :keyset-column)
+        new-keyset-column (-> new :source :source-incremental-strategy :keyset-column)
+        keyset-changed? (and new-keyset-column
+                             (not= old-keyset-column new-keyset-column))
+        transform (t2/with-transaction [_]
                     ;; Cycle detection should occur within the transaction to avoid race
-                    (let [old (t2/select-one :model/Transform id)
-                          new (merge old body)
-                          target-fields #(-> % :target (select-keys [:schema :name]))]
+                    (let [target-fields #(-> % :target (select-keys [:schema :name]))]
                       ;; we must validate on a full transform object
 
                       (check-feature-enabled! new)
@@ -194,7 +197,13 @@
                     ;; Update tag associations if provided
                     (when (contains? body :tag_ids)
                       (transform.model/update-transform-tags! id (:tag_ids body)))
-                    (t2/hydrate (t2/select-one :model/Transform id) :transform_tag_ids))]
+                    (let [updated-transform (t2/select-one :model/Transform id)]
+                      ;; Recompute watermark if keyset column changed
+                      (when keyset-changed?
+                        (log/infof "Keyset column changed from %s to %s, recomputing watermark"
+                                   old-keyset-column new-keyset-column)
+                        (transforms.util/maybe-upsert-watermark! updated-transform (transforms.i/target-db-id updated-transform)))
+                      (t2/hydrate updated-transform :transform_tag_ids)))]
     (events/publish-event! :event/transform-update {:object transform :user-id api/*current-user-id*})
     transform))
 
