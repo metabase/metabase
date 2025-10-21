@@ -2,7 +2,7 @@ const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
+const { ORDERS_TINY_ID, ORDERS_TINY } = SAMPLE_DATABASE;
 
 function selectExtractColumn() {
   H.popover().findByText("Extract columns").click();
@@ -38,37 +38,37 @@ describe(
   () => {
     const DATE_EXTRACTIONS = [
       {
-        table: ORDERS_ID,
+        table: ORDERS_TINY_ID,
         column: "Created At",
         name: "Hour of day",
         fn: "hour",
       },
       {
-        table: ORDERS_ID,
+        table: ORDERS_TINY_ID,
         column: "Created At",
         name: "Day of month",
         fn: "day",
       },
       {
-        table: ORDERS_ID,
+        table: ORDERS_TINY_ID,
         column: "Created At",
         name: "Day of week",
         fn: "weekday",
       },
       {
-        table: ORDERS_ID,
+        table: ORDERS_TINY_ID,
         column: "Created At",
         name: "Month of year",
         fn: "month",
       },
       {
-        table: ORDERS_ID,
+        table: ORDERS_TINY_ID,
         column: "Created At",
         name: "Quarter of year",
         fn: "quarter",
       },
       {
-        table: ORDERS_ID,
+        table: ORDERS_TINY_ID,
         column: "Created At",
         name: "Year",
         fn: "year",
@@ -77,13 +77,13 @@ describe(
 
     const EMAIL_EXTRACTIONS = [
       {
-        table: ORDERS_ID,
+        table: ORDERS_TINY_ID,
         column: "Email",
         name: "Domain",
         fn: "domain",
       },
       {
-        table: ORDERS_ID,
+        table: ORDERS_TINY_ID,
         column: "Email",
         name: "Host",
         fn: "host",
@@ -92,19 +92,19 @@ describe(
 
     const URL_EXRACTIONS = [
       {
-        table: ORDERS_ID,
+        table: ORDERS_TINY_ID,
         column: "Product ID",
         name: "Domain",
         fn: "domain",
       },
       {
-        table: ORDERS_ID,
+        table: ORDERS_TINY_ID,
         column: "Product ID",
         name: "Subdomain",
         fn: "subdomain",
       },
       {
-        table: ORDERS_ID,
+        table: ORDERS_TINY_ID,
         column: "Product ID",
         name: "Host",
         fn: "host",
@@ -122,7 +122,7 @@ describe(
       cy.signInAsAdmin();
 
       // Make the PRODUCT_ID column a URL column for these tests, to avoid having to create a new model
-      cy.request("PUT", `/api/field/${ORDERS.PRODUCT_ID}`, {
+      cy.request("PUT", `/api/field/${ORDERS_TINY.PRODUCT_ID}`, {
         semantic_type: "type/URL",
       });
     });
@@ -147,7 +147,7 @@ describe(
     }
 
     it("should be possible to create the same extraction multiple times", () => {
-      H.openOrdersTable({ mode: "notebook", limit: 5 });
+      H.openOrdersTinyTable({ mode: "notebook", limit: 5 });
       H.addCustomColumn();
       selectExtractColumn();
 
@@ -173,7 +173,7 @@ describe(
     });
 
     it("should be possible to edit a previous stages' columns when an aggregation is present (metabase#43226)", () => {
-      H.openOrdersTable({ mode: "notebook", limit: 5 });
+      H.openOrdersTinyTable({ mode: "notebook", limit: 5 });
 
       cy.button("Summarize").click();
       H.popover().findByText("Count of rows").click();
@@ -206,7 +206,7 @@ H.describeWithSnowplow(
     });
 
     it("should track column extraction via shortcut", () => {
-      H.openTable({ mode: "notebook", limit: 1, table: ORDERS_ID });
+      H.openTable({ mode: "notebook", limit: 1, table: ORDERS_TINY_ID });
       H.addCustomColumn();
       selectExtractColumn();
 
@@ -237,7 +237,7 @@ describe("scenarios > question > custom column > expression shortcuts > combine"
   });
 
   it("should be possible to select a combine columns shortcut", () => {
-    H.openOrdersTable({ mode: "notebook", limit: 5 });
+    H.openOrdersTinyTable({ mode: "notebook", limit: 5 });
     H.addCustomColumn();
 
     selectCombineColumns();
@@ -278,7 +278,7 @@ describe("scenarios > question > custom column > expression shortcuts > combine"
   });
 
   it("should be possible to cancel when using the combine column shortcut", () => {
-    H.openOrdersTable({ mode: "notebook" });
+    H.openOrdersTinyTable({ mode: "notebook" });
     H.addCustomColumn();
     selectCombineColumns();
 
@@ -295,7 +295,7 @@ describe("scenarios > question > custom column > expression shortcuts > combine"
   });
 
   it("should be possible to add and remove more than one column", () => {
-    H.openOrdersTable({ mode: "notebook" });
+    H.openOrdersTinyTable({ mode: "notebook" });
     H.addCustomColumn();
     selectCombineColumns();
 
@@ -319,7 +319,7 @@ describe("scenarios > question > custom column > expression shortcuts > combine"
   });
 
   it("should pick the correct default separator based on the type of the first column", () => {
-    H.openOrdersTable({ mode: "notebook" });
+    H.openOrdersTinyTable({ mode: "notebook" });
     H.addCustomColumn();
     selectCombineColumns();
 
@@ -348,7 +348,7 @@ H.describeWithSnowplow(
     });
 
     it("should send an event for combine columns", () => {
-      H.openOrdersTable({ mode: "notebook" });
+      H.openOrdersTinyTable({ mode: "notebook" });
       H.addCustomColumn();
       selectCombineColumns();
 

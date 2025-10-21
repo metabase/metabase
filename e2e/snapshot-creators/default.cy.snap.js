@@ -19,6 +19,7 @@ import {
 
 const {
   STATIC_ORDERS_ID,
+  STATIC_ORDERS_TINY_ID,
   STATIC_PRODUCTS_ID,
   STATIC_REVIEWS_ID,
   STATIC_PEOPLE_ID,
@@ -285,6 +286,7 @@ describe("snapshots", () => {
 
   function ensureTableIdsAreCorrect({
     ORDERS_ID,
+    ORDERS_TINY_ID,
     PRODUCTS_ID,
     REVIEWS_ID,
     PEOPLE_ID,
@@ -301,6 +303,7 @@ describe("snapshots", () => {
     expect(ANALYTIC_EVENTS_ID).to.eq(STATIC_ANALYTIC_EVENTS_ID);
     expect(FEEDBACK_ID).to.eq(STATIC_FEEDBACK_ID);
     expect(INVOICES_ID).to.eq(STATIC_INVOICES_ID);
+    expect(ORDERS_TINY_ID).to.eq(STATIC_ORDERS_TINY_ID);
   }
 
   function hideNewSampleTables({

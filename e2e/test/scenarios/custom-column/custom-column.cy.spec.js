@@ -4,8 +4,14 @@ import { dedent } from "ts-dedent";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE_ID, PEOPLE } =
-  SAMPLE_DATABASE;
+const {
+  ORDERS_TINY,
+  ORDERS_TINY_ID,
+  PRODUCTS,
+  PRODUCTS_ID,
+  PEOPLE_ID,
+  PEOPLE,
+} = SAMPLE_DATABASE;
 
 describe("scenarios > question > custom column", () => {
   beforeEach(() => {
@@ -21,11 +27,11 @@ describe("scenarios > question > custom column", () => {
         name: "16680",
         display: "line",
         query: {
-          "source-table": ORDERS_ID,
+          "source-table": ORDERS_TINY_ID,
           aggregation: [["count"]],
           breakout: [
             ["expression", "TestColumn"],
-            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ["field", ORDERS_TINY.CREATED_AT, { "temporal-unit": "month" }],
           ],
           expressions: { TestColumn: ["+", 1, 1] },
         },
@@ -43,7 +49,7 @@ describe("scenarios > question > custom column", () => {
   });
 
   it("can create a custom column (metabase#13241)", () => {
-    H.openOrdersTable({ mode: "notebook" });
+    H.openOrdersTinyTable({ mode: "notebook" });
     cy.findByLabelText("Custom column").click();
 
     H.enterCustomColumnDetails({
@@ -62,7 +68,7 @@ describe("scenarios > question > custom column", () => {
 
   it("should not show default period in date column name (metabase#36631)", () => {
     const name = "Base question";
-    H.createQuestion({ name, query: { "source-table": ORDERS_ID } });
+    H.createQuestion({ name, query: { "source-table": ORDERS_TINY_ID } });
 
     H.startNewQuestion();
     H.entityPickerModal().within(() => {
@@ -79,7 +85,7 @@ describe("scenarios > question > custom column", () => {
   });
 
   it("should not show binning for a numeric custom column", () => {
-    H.openOrdersTable({ mode: "notebook" });
+    H.openOrdersTinyTable({ mode: "notebook" });
     cy.findByLabelText("Custom column").click();
 
     H.enterCustomColumnDetails({
@@ -109,7 +115,7 @@ describe("scenarios > question > custom column", () => {
   });
 
   it("should show temporal units for a date/time custom column", () => {
-    H.openOrdersTable({ mode: "notebook" });
+    H.openOrdersTinyTable({ mode: "notebook" });
     cy.findByLabelText("Custom column").click();
 
     H.enterCustomColumnDetails({
@@ -169,7 +175,7 @@ describe("scenarios > question > custom column", () => {
     "should show info popovers when hovering over custom column dimensions in the summarize sidebar",
     { tags: "@skip" },
     () => {
-      H.openOrdersTable({ mode: "notebook" });
+      H.openOrdersTinyTable({ mode: "notebook" });
       cy.findByLabelText("Custom column").click();
 
       H.enterCustomColumnDetails({ formula: "1 + 1", name: "Math" });
@@ -203,7 +209,7 @@ describe("scenarios > question > custom column", () => {
     ];
 
     customFormulas.forEach(({ formula, name }) => {
-      H.openOrdersTable({ mode: "notebook" });
+      H.openOrdersTinyTable({ mode: "notebook" });
       cy.findByLabelText("Custom column").click();
 
       H.enterCustomColumnDetails({ formula, name });
@@ -216,7 +222,7 @@ describe("scenarios > question > custom column", () => {
   });
 
   it("should create custom column with fields from aggregated data (metabase#12762)", () => {
-    H.openOrdersTable({ mode: "notebook" });
+    H.openOrdersTinyTable({ mode: "notebook" });
 
     H.summarize({ mode: "notebook" });
 
@@ -263,7 +269,7 @@ describe("scenarios > question > custom column", () => {
   });
 
   it("should not return same results for columns with the same name (metabase#12649)", () => {
-    H.openOrdersTable({ mode: "notebook" });
+    H.openOrdersTinyTable({ mode: "notebook" });
     // join with Products
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Join data").click();
@@ -313,9 +319,9 @@ describe("scenarios > question > custom column", () => {
               ],
             ],
             breakout: [
-              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+              ["datetime-field", ["field-id", ORDERS_TINY.CREATED_AT], "month"],
             ],
-            "source-table": ORDERS_ID,
+            "source-table": ORDERS_TINY_ID,
           },
         },
       },
@@ -334,21 +340,21 @@ describe("scenarios > question > custom column", () => {
       {
         name: "14080",
         query: {
-          "source-table": ORDERS_ID,
+          "source-table": ORDERS_TINY_ID,
           expressions: { [CC_NAME]: ["*", 1, 1] },
           aggregation: [
             [
               "distinct",
               [
                 "fk->",
-                ["field-id", ORDERS.PRODUCT_ID],
+                ["field-id", ORDERS_TINY.PRODUCT_ID],
                 ["field-id", PRODUCTS.ID],
               ],
             ],
             ["sum", ["expression", CC_NAME]],
           ],
           breakout: [
-            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
+            ["datetime-field", ["field-id", ORDERS_TINY.CREATED_AT], "year"],
           ],
         },
         display: "line",
@@ -372,9 +378,9 @@ describe("scenarios > question > custom column", () => {
           "source-query": {
             aggregation: [["cum-count"]],
             breakout: [
-              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+              ["datetime-field", ["field-id", ORDERS_TINY.CREATED_AT], "month"],
             ],
-            "source-table": ORDERS_ID,
+            "source-table": ORDERS_TINY_ID,
           },
         },
       },
@@ -398,11 +404,11 @@ describe("scenarios > question > custom column", () => {
         name: "14193",
         query: {
           "source-query": {
-            "source-table": ORDERS_ID,
-            filter: [">", ["field-id", ORDERS.SUBTOTAL], 0],
-            aggregation: [["sum", ["field-id", ORDERS.TOTAL]]],
+            "source-table": ORDERS_TINY_ID,
+            filter: [">", ["field-id", ORDERS_TINY.SUBTOTAL], 0],
+            aggregation: [["sum", ["field-id", ORDERS_TINY.TOTAL]]],
             breakout: [
-              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
+              ["datetime-field", ["field-id", ORDERS_TINY.CREATED_AT], "year"],
             ],
           },
           expressions: {
@@ -458,14 +464,14 @@ describe("scenarios > question > custom column", () => {
     H.createQuestion({
       name: "14775",
       query: {
-        "source-table": ORDERS_ID,
+        "source-table": ORDERS_TINY_ID,
         joins: [
           {
             fields: "all",
             "source-table": PRODUCTS_ID,
             condition: [
               "=",
-              ["field-id", ORDERS.PRODUCT_ID],
+              ["field-id", ORDERS_TINY.PRODUCT_ID],
               ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
             ],
             alias: "Products",
@@ -507,21 +513,21 @@ describe("scenarios > question > custom column", () => {
         dataset_query: {
           type: "query",
           query: {
-            "source-table": ORDERS_ID,
+            "source-table": ORDERS_TINY_ID,
             expressions: {
               [CC_NAME]: [
                 "case",
                 [
                   [
-                    [">", ["field", ORDERS.DISCOUNT, null], 0],
-                    ["field", ORDERS.CREATED_AT, null],
+                    [">", ["field", ORDERS_TINY.DISCOUNT, null], 0],
+                    ["field", ORDERS_TINY.CREATED_AT, null],
                   ],
                 ],
                 {
                   default: [
                     "field",
                     PRODUCTS.CREATED_AT,
-                    { "source-field": ORDERS.PRODUCT_ID },
+                    { "source-field": ORDERS_TINY.PRODUCT_ID },
                   ],
                 },
               ],
@@ -544,7 +550,7 @@ describe("scenarios > question > custom column", () => {
     H.createQuestion({
       name: "15316",
       query: {
-        "source-table": ORDERS_ID,
+        "source-table": ORDERS_TINY_ID,
         expressions: { "MyCC [2027]": ["+", 1, 1] },
       },
     }).then(({ body: { id: QUESTION_ID } }) => {
@@ -566,7 +572,7 @@ describe("scenarios > question > custom column", () => {
   });
 
   it("should work with `isNull` function (metabase#15922)", () => {
-    H.openOrdersTable({ mode: "notebook" });
+    H.openOrdersTinyTable({ mode: "notebook" });
     H.getNotebookStep("data").button("Custom column").click();
     H.enterCustomColumnDetails({
       formula: "isnull([Discount])",
@@ -589,8 +595,8 @@ describe("scenarios > question > custom column", () => {
         database: SAMPLE_DB_ID,
         type: "query",
         query: {
-          "source-table": ORDERS_ID,
-          expressions: { CustomDate: ["field", ORDERS.CREATED_AT, null] },
+          "source-table": ORDERS_TINY_ID,
+          expressions: { CustomDate: ["field", ORDERS_TINY.CREATED_AT, null] },
         },
       },
     });
@@ -611,7 +617,7 @@ describe("scenarios > question > custom column", () => {
   });
 
   it("should work with relative date filter applied to a custom column (metabase#16273)", () => {
-    H.openOrdersTable({ mode: "notebook" });
+    H.openOrdersTinyTable({ mode: "notebook" });
     H.addCustomColumn();
 
     H.enterCustomColumnDetails({
@@ -645,7 +651,7 @@ describe("scenarios > question > custom column", () => {
   });
 
   it("should allow indenting using Tab", () => {
-    H.openOrdersTable({ mode: "notebook" });
+    H.openOrdersTinyTable({ mode: "notebook" });
     cy.findByLabelText("Custom column").click();
 
     H.enterCustomColumnDetails({ formula: "1 + 2", blur: false });
@@ -656,7 +662,7 @@ describe("scenarios > question > custom column", () => {
   });
 
   it("should not format expression when pressing tab in the editor", () => {
-    H.openOrdersTable({ mode: "notebook" });
+    H.openOrdersTinyTable({ mode: "notebook" });
     cy.findByLabelText("Custom column").click();
 
     H.enterCustomColumnDetails({ formula: "1+1" });
@@ -676,7 +682,7 @@ describe("scenarios > question > custom column", () => {
   });
 
   it("should format expression when clicking the format button", () => {
-    H.openOrdersTable({ mode: "notebook" });
+    H.openOrdersTinyTable({ mode: "notebook" });
     cy.findByLabelText("Custom column").click();
 
     H.enterCustomColumnDetails({ formula: "1+1" });
@@ -693,7 +699,7 @@ describe("scenarios > question > custom column", () => {
   });
 
   it("should format the expression when pressing the format keyboard shortcut", () => {
-    H.openOrdersTable({ mode: "notebook" });
+    H.openOrdersTinyTable({ mode: "notebook" });
     cy.findByLabelText("Custom column").click();
 
     H.enterCustomColumnDetails({ formula: "1+1" });
@@ -715,7 +721,7 @@ describe("scenarios > question > custom column", () => {
   });
 
   it("should not try formatting the expression when it's invalid using the keyboard shortcut", () => {
-    H.openOrdersTable({ mode: "notebook" });
+    H.openOrdersTinyTable({ mode: "notebook" });
     cy.findByLabelText("Custom column").click();
 
     H.enterCustomColumnDetails({ formula: "1+" });
@@ -733,7 +739,7 @@ describe("scenarios > question > custom column", () => {
   });
 
   it("should format long expressions on multiple lines", () => {
-    H.openOrdersTable({ mode: "notebook" });
+    H.openOrdersTinyTable({ mode: "notebook" });
     cy.findByLabelText("Custom column").click();
 
     H.enterCustomColumnDetails({
@@ -755,7 +761,7 @@ describe("scenarios > question > custom column", () => {
   });
 
   it("should not allow formatting when the expression contains an error", () => {
-    H.openOrdersTable({ mode: "notebook" });
+    H.openOrdersTinyTable({ mode: "notebook" });
     cy.findByLabelText("Custom column").click();
 
     H.enterCustomColumnDetails({
@@ -765,13 +771,13 @@ describe("scenarios > question > custom column", () => {
   });
 
   it("should show the format button when the expression editor is empty", () => {
-    H.openOrdersTable({ mode: "notebook" });
+    H.openOrdersTinyTable({ mode: "notebook" });
     cy.findByLabelText("Custom column").click();
     H.CustomExpressionEditor.formatButton().should("not.exist");
   });
 
   it("should not allow saving the expression when it is invalid", () => {
-    H.openOrdersTable({ mode: "notebook" });
+    H.openOrdersTinyTable({ mode: "notebook" });
     cy.findByLabelText("Custom column").click();
 
     H.enterCustomColumnDetails({
@@ -785,7 +791,7 @@ describe("scenarios > question > custom column", () => {
   });
 
   it("should validate the expression when typing", () => {
-    H.openOrdersTable({ mode: "notebook" });
+    H.openOrdersTinyTable({ mode: "notebook" });
     cy.findByLabelText("Custom column").click();
 
     H.enterCustomColumnDetails({
@@ -800,7 +806,7 @@ describe("scenarios > question > custom column", () => {
   });
 
   it("should allow choosing a suggestion with Tab", () => {
-    H.openOrdersTable({ mode: "notebook" });
+    H.openOrdersTinyTable({ mode: "notebook" });
     cy.findByLabelText("Custom column").click();
 
     H.enterCustomColumnDetails({ formula: "[Cre", blur: false });
@@ -815,7 +821,7 @@ describe("scenarios > question > custom column", () => {
   });
 
   it("should be possible to use the suggestion snippet arguments", () => {
-    H.openOrdersTable({ mode: "notebook" });
+    H.openOrdersTinyTable({ mode: "notebook" });
     H.addCustomColumn();
 
     H.CustomExpressionEditor.type("coalesc{tab}[Tax]{tab}[User ID]", {
@@ -828,7 +834,7 @@ describe("scenarios > question > custom column", () => {
   });
 
   it("should be possible to use the suggestion templates", () => {
-    H.openOrdersTable({ mode: "notebook" });
+    H.openOrdersTinyTable({ mode: "notebook" });
     H.addCustomColumn();
 
     H.CustomExpressionEditor.type("coalesc{tab}", { delay: 50 });
@@ -1134,7 +1140,7 @@ describe(
     });
 
     it("should handle CASE (metabase#13122)", () => {
-      openCustomColumnInTable(ORDERS_ID);
+      openCustomColumnInTable(ORDERS_TINY_ID);
 
       H.enterCustomColumnDetails({
         formula: "case([Discount] > 0, [Created At], [Product → Created At])",
@@ -1154,7 +1160,7 @@ describe(
     });
 
     it("should handle COALESCE", () => {
-      openCustomColumnInTable(ORDERS_ID);
+      openCustomColumnInTable(ORDERS_TINY_ID);
 
       H.enterCustomColumnDetails({
         formula: "COALESCE([Product → Created At], [Created At])",
@@ -1214,7 +1220,7 @@ describe("scenarios > question > custom column > expression editor", () => {
     // This is the default screen size but we need it explicitly set for this test because of the resize later on
     cy.viewport(1280, 800);
 
-    H.openOrdersTable({ mode: "notebook" });
+    H.openOrdersTinyTable({ mode: "notebook" });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom column").click();
 
@@ -1832,18 +1838,18 @@ describe("scenarios > question > custom column > aggregation", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
-    H.openOrdersTable({ mode: "notebook" });
+    H.openOrdersTinyTable({ mode: "notebook" });
   });
 
   it("should be possible to resolve aggregations from the question", () => {
     H.createQuestion(
       {
         query: {
-          "source-table": ORDERS_ID,
+          "source-table": ORDERS_TINY_ID,
           aggregation: [
             [
               "aggregation-options",
-              ["sum", ["field", ORDERS.TOTAL, null]],
+              ["sum", ["field", ORDERS_TINY.TOTAL, null]],
               {
                 name: "Custom Sum",
                 "display-name": "Custom Sum",
@@ -1880,11 +1886,11 @@ describe("scenarios > question > custom column > aggregation", () => {
     H.createQuestion(
       {
         query: {
-          "source-table": ORDERS_ID,
+          "source-table": ORDERS_TINY_ID,
           aggregation: [
             [
               "aggregation-options",
-              ["sum", ["field", ORDERS.TOTAL, null]],
+              ["sum", ["field", ORDERS_TINY.TOTAL, null]],
               {
                 name: "Custom Sum",
                 "display-name": "Custom Sum",
@@ -1920,11 +1926,11 @@ describe("scenarios > question > custom column > aggregation", () => {
     H.createQuestion(
       {
         query: {
-          "source-table": ORDERS_ID,
+          "source-table": ORDERS_TINY_ID,
           aggregation: [
             [
               "aggregation-options",
-              ["sum", ["field", ORDERS.TOTAL, null]],
+              ["sum", ["field", ORDERS_TINY.TOTAL, null]],
               {
                 name: "Custom Sum",
                 "display-name": "Custom Sum",
@@ -1958,11 +1964,11 @@ describe("scenarios > question > custom column > aggregation", () => {
     H.createQuestion(
       {
         query: {
-          "source-table": ORDERS_ID,
+          "source-table": ORDERS_TINY_ID,
           aggregation: [
             [
               "aggregation-options",
-              ["sum", ["field", ORDERS.TOTAL, null]],
+              ["sum", ["field", ORDERS_TINY.TOTAL, null]],
               {
                 name: "Custom Sum",
                 "display-name": "Custom Sum",
@@ -1994,11 +2000,11 @@ describe("scenarios > question > custom column > aggregation", () => {
     H.createQuestion(
       {
         query: {
-          "source-table": ORDERS_ID,
+          "source-table": ORDERS_TINY_ID,
           aggregation: [
             [
               "aggregation-options",
-              ["sum", ["field", ORDERS.TOTAL, null]],
+              ["sum", ["field", ORDERS_TINY.TOTAL, null]],
               {
                 name: "Foo",
                 "display-name": "Foo",
@@ -2025,7 +2031,7 @@ describe("scenarios > question > custom column > aggregation", () => {
   it("should be possible to reorder aggregations with the same name", () => {
     H.createQuestion(
       {
-        query: { "source-table": ORDERS_ID },
+        query: { "source-table": ORDERS_TINY_ID },
       },
       { visitQuestion: true },
     );
@@ -2080,7 +2086,7 @@ describe("scenarios > question > custom column > aggregation", () => {
     beforeEach(() => {
       H.createQuestion({
         query: {
-          "source-table": ORDERS_ID,
+          "source-table": ORDERS_TINY_ID,
           aggregation: [
             [
               "aggregation-options",
@@ -2088,7 +2094,7 @@ describe("scenarios > question > custom column > aggregation", () => {
                 "min",
                 [
                   "field",
-                  ORDERS.SUBTOTAL,
+                  ORDERS_TINY.SUBTOTAL,
                   {
                     "base-type": "type/Float",
                   },
@@ -2114,7 +2120,7 @@ describe("scenarios > question > custom column > aggregation", () => {
                   "avg",
                   [
                     "field",
-                    ORDERS.TAX,
+                    ORDERS_TINY.TAX,
                     {
                       "base-type": "type/Float",
                     },
@@ -2229,7 +2235,7 @@ describe("scenarios > question > custom column > aggregation", () => {
       H.createQuestion(
         {
           query: {
-            "source-table": ORDERS_ID,
+            "source-table": ORDERS_TINY_ID,
             aggregation: [
               [
                 "aggregation-options",
@@ -2237,7 +2243,7 @@ describe("scenarios > question > custom column > aggregation", () => {
                   "min",
                   [
                     "field",
-                    ORDERS.SUBTOTAL,
+                    ORDERS_TINY.SUBTOTAL,
                     {
                       "base-type": "type/Float",
                     },
@@ -2263,7 +2269,7 @@ describe("scenarios > question > custom column > aggregation", () => {
                     "avg",
                     [
                       "field",
-                      ORDERS.TAX,
+                      ORDERS_TINY.TAX,
                       {
                         "base-type": "type/Float",
                       },
@@ -2328,7 +2334,7 @@ describe("scenarios > question > custom column > aggregation", () => {
       H.createQuestion(
         {
           query: {
-            "source-table": ORDERS_ID,
+            "source-table": ORDERS_TINY_ID,
             aggregation: [
               [
                 "aggregation-options",
@@ -2336,7 +2342,7 @@ describe("scenarios > question > custom column > aggregation", () => {
                   "min",
                   [
                     "field",
-                    ORDERS.SUBTOTAL,
+                    ORDERS_TINY.SUBTOTAL,
                     {
                       "base-type": "type/Float",
                     },
@@ -2362,7 +2368,7 @@ describe("scenarios > question > custom column > aggregation", () => {
                     "avg",
                     [
                       "field",
-                      ORDERS.TAX,
+                      ORDERS_TINY.TAX,
                       {
                         "base-type": "type/Float",
                       },
@@ -2378,7 +2384,7 @@ describe("scenarios > question > custom column > aggregation", () => {
             breakout: [
               [
                 "field",
-                ORDERS.CREATED_AT,
+                ORDERS_TINY.CREATED_AT,
                 { "base-type": "type/DateTime", "temporal-unit": "month" },
               ],
             ],
@@ -2472,7 +2478,7 @@ describe("scenarios > question > custom column > aggregation", () => {
     });
 
     it("should be possible reference both aggregations with same name in follow up stage", () => {
-      H.openOrdersTable({ mode: "notebook" });
+      H.openOrdersTinyTable({ mode: "notebook" });
 
       H.summarize({ mode: "notebook" });
 
@@ -2545,7 +2551,7 @@ describe("scenarios > question > custom column > aggregation", () => {
   });
 
   it("should show a custom error when there are no aggregations in a custom aggregation", () => {
-    H.openOrdersTable({ mode: "notebook" });
+    H.openOrdersTinyTable({ mode: "notebook" });
     H.summarize({ mode: "notebook" });
     H.popover().findByText("Custom Expression").scrollIntoView().click();
     H.CustomExpressionEditor.type("1 + 1");

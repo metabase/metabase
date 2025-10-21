@@ -27,15 +27,16 @@ export const SAMPLE_DB_SCHEMA_ID = "1:PUBLIC";
 // so any changes that affect the order of the tables returned by that function will change the ids of these tables. A common case is when adding a new key to table metadata
 export const SAMPLE_DB_TABLES = {
   // old tables
-  STATIC_PRODUCTS_ID: 7,
+  STATIC_PRODUCTS_ID: 8,
   STATIC_ORDERS_ID: 1,
+  STATIC_ORDERS_TINY_ID: 3,
   STATIC_PEOPLE_ID: 2,
-  STATIC_REVIEWS_ID: 5,
+  STATIC_REVIEWS_ID: 6,
   // new tables
-  STATIC_ACCOUNTS_ID: 8,
-  STATIC_ANALYTIC_EVENTS_ID: 4,
-  STATIC_FEEDBACK_ID: 3,
-  STATIC_INVOICES_ID: 6,
+  STATIC_ACCOUNTS_ID: 9,
+  STATIC_ANALYTIC_EVENTS_ID: 5,
+  STATIC_FEEDBACK_ID: 4, // shifted because ORDERS_TINY took ID 3
+  STATIC_INVOICES_ID: 7,
 };
 
 // All users and admin groups are the defaults that come with Metabase.

@@ -5,6 +5,7 @@ import { NativeEditor } from "./e2e-native-editor-helpers";
 
 const {
   STATIC_ORDERS_ID,
+  STATIC_ORDERS_TINY_ID,
   STATIC_PRODUCTS_ID,
   STATIC_PEOPLE_ID,
   STATIC_REVIEWS_ID,
@@ -203,6 +204,13 @@ export function openProductsTable({ mode, limit, callback } = {}) {
  */
 export function openOrdersTable({ mode, limit, callback } = {}) {
   return openTable({ table: STATIC_ORDERS_ID, mode, limit, callback });
+}
+
+/**
+ * @param {OpenTablesProps} props
+ */
+export function openOrdersTinyTable({ mode, limit, callback } = {}) {
+  return openTable({ table: STATIC_ORDERS_TINY_ID, mode, limit, callback });
 }
 
 /**
