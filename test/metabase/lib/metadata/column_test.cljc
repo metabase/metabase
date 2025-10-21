@@ -22,5 +22,5 @@
   (let [query (lib/query meta/metadata-provider (meta/table-metadata :venues))]
     (is (thrown-with-msg?
          #?(:clj java.lang.IllegalArgumentException :cljs :default)
-         #"\QNo matching clause: 123456\E"
+         #"No matching clause: 123456"
          (lib.metadata.column/column-with-unique-key query "column-unique-key-v123456$Categories__NAME")))))
