@@ -258,7 +258,7 @@ const SdkDashboardInner = ({
     );
   }
 
-  if (isStaticEntityLoadingError(errorPage)) {
+  if (isStaticEmbedding && isStaticEntityLoadingError(errorPage)) {
     return (
       <SdkDashboardStyledWrapper className={className} style={style}>
         <SdkError message={errorPage.data ?? t`Something's gone wrong`} />
