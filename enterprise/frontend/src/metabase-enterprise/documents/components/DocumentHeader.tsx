@@ -254,7 +254,6 @@ export const DocumentHeader = ({
         {document && isAdmin && (
           <DocumentPublicLinkPopover
             document={document}
-            target={<span />}
             isOpen={isPublicLinkPopoverOpen}
             onClose={() => setIsPublicLinkPopoverOpen(false)}
           />

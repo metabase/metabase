@@ -18,12 +18,10 @@ import { DocumentPublicLinkPopoverContent } from "./DocumentPublicLinkPopoverCon
 
 export const DocumentPublicLinkPopover = ({
   document,
-  target,
   isOpen,
   onClose,
 }: {
   document: Document;
-  target: JSX.Element;
   isOpen: boolean;
   onClose: () => void;
 }) => {
@@ -74,7 +72,9 @@ export const DocumentPublicLinkPopover = ({
       position="bottom-end"
     >
       <Popover.Target>
-        <Box onClick={isOpen ? onClose : undefined}>{target}</Box>
+        <Box onClick={isOpen ? onClose : undefined}>
+          <span />
+        </Box>
       </Popover.Target>
       <Popover.Dropdown>
         <Box
