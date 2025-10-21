@@ -8,7 +8,8 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [toucan2.core :as t2]))
 
 (mu/defn- upstream-deps:mbql-query :- ::deps.schema/upstream-deps
   [query :- ::lib.schema/query]
@@ -58,3 +59,9 @@
                                    [entity-type entity-id]))))
                            (vals template_tags))]
     (u/group-by first second conj #{} dependencies)))
+
+(mu/defn upstream-deps:dashboard :- ::deps.schema/upstream-deps
+  "Given a dashboard, return its upstream dependencies"
+  [{dashboard-id :id :as _dashboard}]
+  ;; TODO(rileythomp): Check that it's okay to use t2 here
+  {:card (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id dashboard-id)})
