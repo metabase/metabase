@@ -258,12 +258,15 @@
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Document :id document-id, :archived false)
   ;; Return existing UUID if already public, otherwise generate and save a new one
-  {:uuid (or (t2/select-one-fn :public_uuid :model/Document :id document-id)
-             ;; prog1 returns the UUID and <> refers to that UUID in the update
-             (u/prog1 (str (random-uuid))
-               (t2/update! :model/Document document-id
-                           {:public_uuid       <>
-                            :made_public_by_id api/*current-user-id*})))})
+  (if-let [existing-uuid (t2/select-one-fn :public_uuid :model/Document :id document-id)]
+    {:uuid existing-uuid}
+    (do
+      (t2/update! :model/Document document-id
+                  {:public_uuid       (str (random-uuid))
+                   :made_public_by_id api/*current-user-id*})
+      ;; Always select after update to ensure we return what's actually stored,
+      ;; even if there was a concurrent update
+      {:uuid (t2/select-one-fn :public_uuid :model/Document :id document-id)})))
 
 (api.macros/defendpoint :delete "/:document-id/public_link"
   "Remove the public link for a Document.
