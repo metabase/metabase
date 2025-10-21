@@ -8,10 +8,12 @@
    [metabase.actions.models :as action]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
-   [metabase.legacy-mbql.schema :as mbql.s]
+   ;; legacy usage, do not use this in new code
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.model-persistence.core :as model-persistence]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.queries.models.query :as query]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
@@ -110,13 +112,10 @@
 (mu/defn- build-implicit-query :- [:map
                                    [:query          ::mbql.s/Query]
                                    [:row-parameters ::actions.args/row]
-                                   ;; TODO -- the schema for these should probably be
-                                   ;; `:metabase.lib.schema.parameter/parameter` instead of `:any`, but I'm not
-                                   ;; 100% sure about that.
-                                   [:prefetch-parameters {:optional true} [:tuple :any]]]
+                                   [:prefetch-parameters {:optional true} [:maybe ::parameters.schema/parameters]]]
   [{:keys [model_id parameters] :as _action} implicit-action request-parameters]
   (let [{database-id :db_id
-         table-id :id :as table} (implicit-action-table model_id)
+         table-id    :id :as table} (implicit-action-table model_id)
         table-fields             (:fields table)
         pk-fields                (filterv #(isa? (:semantic_type %) :type/PK) table-fields)
         slug->field-name         (->> table-fields
@@ -155,9 +154,12 @@
                 [:= [:field (:id pk-field) nil] (get simple-parameters pk-field-name)])
 
       requires-pk?
-      (assoc :prefetch-parameters [{:target [:dimension [:field (:id pk-field) nil]]
-                                    :type "id"
-                                    :value [(get simple-parameters pk-field-name)]}]))))
+      (assoc :prefetch-parameters [{;; parameter ID here is not really important but let's generate something
+                                    ;; consistent rather than random to make this easier to test
+                                    :id     "metabase.actions.execution/prefetch-parameters-pk"
+                                    :target [:dimension [:field (:id pk-field) nil]]
+                                    :type   :id
+                                    :value  [(get simple-parameters pk-field-name)]}]))))
 
 (defn- parse-implicit-action [action-instance]
   (let [k (keyword (:kind action-instance))]
