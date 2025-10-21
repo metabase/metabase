@@ -1,11 +1,15 @@
 (ns metabase-enterprise.transforms.schema
   (:require
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
 (mr/def ::keyset-strategy
   [:map
    [:type [:= "keyset"]]
+   ;; only available for mbql and python transforms
+   [:keyset-filter-ref {:optional true} ::lib.schema.ref/ref]
+   ;; TODO: we should rename this to keyset-ref
    [:keyset-column :string]])
 
 (mr/def ::source-incremental-strategy

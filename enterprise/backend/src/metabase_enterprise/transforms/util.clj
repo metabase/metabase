@@ -3,7 +3,6 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [java-time.api :as t]
-   [medley.core :as m]
    [metabase-enterprise.transforms.canceling :as canceling]
    [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
@@ -12,8 +11,10 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
@@ -22,6 +23,7 @@
    [metabase.sync.core :as sync]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -202,10 +204,9 @@
   [transform-id]
   (t2/select-one-fn :watermark_value :model/TransformWatermark :transform_id transform-id))
 
-(defn- source->keyset-column
-  [{:keys [query] :as source}]
-  (m/find-first #(= (:name %) (:keyset-column (:source-incremental-strategy source)))
-                (lib/filterable-columns query)))
+(defn- source->keyset-fitler-ref
+  [source]
+  (some->> source :source-incremental-strategy :keyset-filter-ref (lib/normalize ::lib.schema.ref/ref)))
 
 (defn preprocess-incremental-query
   "Preprocess a query for incremental transform execution by adding watermark filtering.
@@ -225,7 +226,7 @@
       (update query :parameters conj {:type :number
                                       :target [:variable [:template-tag "watermark"]]
                                       :value watermark-value})
-      (lib/filter query (lib/> (source->keyset-column source) watermark-value)))
+      (lib/filter query (lib/> (source->keyset-fitler-ref source) watermark-value)))
     query))
 
 (defn compile-source

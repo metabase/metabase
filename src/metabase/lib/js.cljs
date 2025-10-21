@@ -1494,6 +1494,16 @@
       lib.convert/->legacy-MBQL
       normalize-legacy-ref))
 
+(defn ^:export ref
+  "Given a column, metric or segment metadata from eg. [[fieldable-columns]] or [[available-segments]],
+  return a modern pMBQL ref for it as a JS value.
+
+  > **Code health:** Healthy. This returns the modern MLv2 ref format."
+  [column]
+  (-> column
+      lib.core/ref
+      (clj->js :keyword-fn u/qualified-name)))
+
 (defn ^:export legacy-ref
   "Given a column, metric or segment metadata from eg. [[fieldable-columns]] or [[available-segments]],
   return it as a legacy JSON field ref.

@@ -21,6 +21,8 @@ import {
   FormTextarea,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
+import { useSelector } from "metabase/lib/redux";
+import { getMetadata } from "metabase/selectors/metadata";
 import {
   Alert,
   Box,
@@ -32,7 +34,10 @@ import {
 } from "metabase/ui";
 import { useCreateTransformMutation } from "metabase-enterprise/api";
 import { trackTransformCreated } from "metabase-enterprise/transforms/analytics";
+import { KeysetColumnSelect } from "metabase-enterprise/transforms/components/KeysetColumnSelect";
 import { SchemaFormSelect } from "metabase-enterprise/transforms/components/SchemaFormSelect";
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
 import type {
   CreateTransformRequest,
   Transform,
@@ -79,6 +84,7 @@ type NewTransformValues = {
   targetSchema: string | null;
   incremental: boolean;
   keysetColumn: string | null;
+  keysetFilterRef: string | null;
   sourceStrategy: "keyset";
   targetStrategy: "append";
 };
@@ -96,12 +102,51 @@ const NEW_TRANSFORM_SCHEMA = Yup.object({
       then: (schema) => schema.required(Errors.required),
       otherwise: (schema) => schema.nullable(),
     }),
+  keysetFilterRef: Yup.string().nullable(),
   sourceStrategy: Yup.string().oneOf(["keyset"]).required(),
   targetStrategy: Yup.string().oneOf(["append"]).required(),
 });
 
-function SourceStrategyFields() {
+type SourceStrategyFieldsProps = {
+  source: TransformSource;
+};
+
+function SourceStrategyFields({ source }: SourceStrategyFieldsProps) {
   const { values } = useFormikContext<NewTransformValues>();
+  const metadata = useSelector(getMetadata);
+
+  // Convert DatasetQuery to Lib.Query via Question
+  const libQuery = useMemo(() => {
+    if (source.type !== "query") {
+      return null;
+    }
+
+    try {
+      const question = Question.create({
+        dataset_query: source.query,
+        metadata,
+      });
+      return question.query();
+    } catch (error) {
+      console.error("SourceStrategyFields: Error creating question", error);
+      return null;
+    }
+  }, [source, metadata]);
+
+  // Check if this is an MBQL query (not native SQL or Python)
+  const isMbqlQuery = useMemo(() => {
+    if (!libQuery) {
+      return false;
+    }
+
+    try {
+      const queryDisplayInfo = Lib.queryDisplayInfo(libQuery);
+      return !queryDisplayInfo.isNative;
+    } catch (error) {
+      console.error("SourceStrategyFields: Error checking query type", error);
+      return false;
+    }
+  }, [libQuery]);
 
   if (!values.incremental) {
     return null;
@@ -116,12 +161,23 @@ function SourceStrategyFields() {
         data={[{ value: "keyset", label: t`Keyset` }]}
       />
       {values.sourceStrategy === "keyset" && (
-        <FormTextInput
-          name="keysetColumn"
-          label={t`Keyset Column`}
-          placeholder={t`e.g., id, row_num`}
-          description={t`An integer column used to track incremental updates`}
-        />
+        <>
+          <FormTextInput
+            name="keysetColumn"
+            label={t`Keyset Column`}
+            placeholder={t`e.g., id, updated_at`}
+            description={t`Column name in the target table to track progress`}
+          />
+          {isMbqlQuery && libQuery && (
+            <KeysetColumnSelect
+              name="keysetFilterRef"
+              label={t`Source Filter Field`}
+              placeholder={t`Select a field to filter on`}
+              description={t`Which field from the source to use in the incremental filter`}
+              query={libQuery}
+            />
+          )}
+        </>
       )}
     </>
   );
@@ -267,7 +323,7 @@ function CreateTransformForm({
           />
           <FormCheckbox name="incremental" label={t`Incremental?`} />
           <IncrementalNotice source={source} />
-          <SourceStrategyFields />
+          <SourceStrategyFields source={source} />
           <TargetStrategyFields />
           <Group>
             <Box flex={1}>
@@ -293,6 +349,7 @@ function getInitialValues(
     targetSchema: schemas?.[0] || null,
     incremental: initialIncremental,
     keysetColumn: initialIncremental ? "id" : null,
+    keysetFilterRef: null,
     sourceStrategy: "keyset",
     targetStrategy: "append",
   };
@@ -307,11 +364,19 @@ function getCreateRequest(
     targetSchema,
     incremental,
     keysetColumn,
+    keysetFilterRef,
     sourceStrategy,
     targetStrategy,
   }: NewTransformValues,
   databaseId: number,
 ): CreateTransformRequest {
+  // Parse the keyset filter ref if it's a stringified JSON (from the dropdown)
+  const parsedFilterRef = keysetFilterRef
+    ? keysetFilterRef.startsWith("[") || keysetFilterRef.startsWith("{")
+      ? JSON.parse(keysetFilterRef)
+      : keysetFilterRef
+    : null;
+
   // Build the source with incremental strategy if enabled
   const transformSource: TransformSource = incremental
     ? {
@@ -319,6 +384,7 @@ function getCreateRequest(
         "source-incremental-strategy": {
           type: sourceStrategy,
           "keyset-column": keysetColumn!,
+          ...(parsedFilterRef && { "keyset-filter-ref": parsedFilterRef }),
         },
       }
     : source;

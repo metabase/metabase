@@ -12,6 +12,8 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
+import { useSelector } from "metabase/lib/redux";
+import { getMetadata } from "metabase/selectors/metadata";
 import {
   Alert,
   Box,
@@ -22,6 +24,9 @@ import {
   Stack,
 } from "metabase/ui";
 import { useUpdateTransformMutation } from "metabase-enterprise/api";
+import { KeysetColumnSelect } from "metabase-enterprise/transforms/components/KeysetColumnSelect";
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
 import type { Transform } from "metabase-types/api";
 
 type UpdateIncrementalModalProps = {
@@ -56,6 +61,7 @@ type IncrementalValues = {
   incremental: boolean;
   sourceStrategy: "keyset";
   keysetColumn: string | null;
+  keysetFilterRef: string | null;
   targetStrategy: "append";
 };
 
@@ -69,6 +75,7 @@ const INCREMENTAL_SCHEMA = Yup.object({
       then: (schema) => schema.required(Errors.required),
       otherwise: (schema) => schema.nullable(),
     }),
+  keysetFilterRef: Yup.string().nullable(),
   targetStrategy: Yup.string().oneOf(["append"]).required(),
 });
 
@@ -84,9 +91,51 @@ function UpdateIncrementalForm({
   onClose,
 }: UpdateIncrementalFormProps) {
   const [updateTransform] = useUpdateTransformMutation();
+  const metadata = useSelector(getMetadata);
   const initialValues = useMemo(() => getInitialValues(transform), [transform]);
 
+  // Convert DatasetQuery to Lib.Query via Question
+  const libQuery = useMemo(() => {
+    if (transform.source.type !== "query") {
+      return null;
+    }
+
+    try {
+      const question = Question.create({
+        dataset_query: transform.source.query,
+        metadata,
+      });
+      return question.query();
+    } catch (error) {
+      console.error("UpdateIncrementalForm: Error creating question", error);
+      return null;
+    }
+  }, [transform.source, metadata]);
+
+  // Check if this is an MBQL query (not native SQL or Python)
+  const isMbqlQuery = useMemo(() => {
+    if (!libQuery) {
+      return false;
+    }
+
+    try {
+      const queryDisplayInfo = Lib.queryDisplayInfo(libQuery);
+      return !queryDisplayInfo.isNative;
+    } catch (error) {
+      console.error("UpdateIncrementalForm: Error checking query type", error);
+      return false;
+    }
+  }, [libQuery]);
+
   const handleSubmit = async (values: IncrementalValues) => {
+    // Parse the keyset filter ref if it's a stringified JSON (from the dropdown)
+    const parsedFilterRef = values.keysetFilterRef
+      ? values.keysetFilterRef.startsWith("[") ||
+        values.keysetFilterRef.startsWith("{")
+        ? JSON.parse(values.keysetFilterRef)
+        : values.keysetFilterRef
+      : null;
+
     // Build the source with incremental strategy if enabled
     const source = values.incremental
       ? {
@@ -94,6 +143,7 @@ function UpdateIncrementalForm({
           "source-incremental-strategy": {
             type: "keyset" as const,
             "keyset-column": values.keysetColumn!,
+            ...(parsedFilterRef && { "keyset-filter-ref": parsedFilterRef }),
           },
         }
       : {
@@ -168,12 +218,23 @@ function UpdateIncrementalForm({
                   data={[{ value: "keyset", label: t`Keyset` }]}
                 />
                 {values.sourceStrategy === "keyset" && (
-                  <FormTextInput
-                    name="keysetColumn"
-                    label={t`Keyset Column`}
-                    placeholder={t`e.g., id, row_num`}
-                    description={t`An integer column used to track incremental updates`}
-                  />
+                  <>
+                    <FormTextInput
+                      name="keysetColumn"
+                      label={t`Keyset Column`}
+                      placeholder={t`e.g., id, updated_at`}
+                      description={t`Column name in the target table to track progress`}
+                    />
+                    {isMbqlQuery && libQuery && (
+                      <KeysetColumnSelect
+                        name="keysetFilterRef"
+                        label={t`Source Filter Field`}
+                        placeholder={t`Select a field to filter on`}
+                        description={t`Which field from the source to use in the incremental filter`}
+                        query={libQuery}
+                      />
+                    )}
+                  </>
                 )}
                 <FormSelect
                   name="targetStrategy"
@@ -199,15 +260,32 @@ function UpdateIncrementalForm({
 
 function getInitialValues(transform: Transform): IncrementalValues {
   const isIncremental = transform.target.type === "table-incremental";
-  const keysetColumn =
-    transform.source["source-incremental-strategy"]?.type === "keyset"
-      ? transform.source["source-incremental-strategy"]["keyset-column"]
+  const strategy = transform.source["source-incremental-strategy"];
+  const columnName =
+    strategy?.type === "keyset" ? strategy["keyset-column"] : null;
+  const fieldRef =
+    strategy?.type === "keyset" && strategy["keyset-filter-ref"]
+      ? JSON.stringify(strategy["keyset-filter-ref"])
       : null;
 
-  return {
+  console.log("UpdateIncrementalModal - getInitialValues:", {
+    isIncremental,
+    strategy,
+    columnName,
+    columnNameType: typeof columnName,
+    fieldRef,
+    fieldRefType: typeof fieldRef,
+  });
+
+  const result = {
     incremental: isIncremental,
     sourceStrategy: "keyset",
-    keysetColumn: isIncremental ? keysetColumn : "id",
+    keysetColumn: isIncremental ? columnName : null,
+    keysetFilterRef: isIncremental ? fieldRef : null,
     targetStrategy: "append",
   };
+
+  console.log("UpdateIncrementalModal - returning initialValues:", result);
+
+  return result;
 }
