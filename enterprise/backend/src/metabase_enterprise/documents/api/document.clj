@@ -13,6 +13,8 @@
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries.core :as card]
    [metabase.query-permissions.core :as query-perms]
+   [metabase.query-processor.api :as api.dataset]
+   [metabase.query-processor.card :as qp.card]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -350,15 +352,17 @@
        [:format_rows   {:default false} ms/BooleanValue]
        [:pivot_results {:default false} ms/BooleanValue]]]
   (validate-card-in-document! document-id card-id)
-  (public-sharing/process-query-for-card-with-id
-   card-id export-format parameters
+  (qp.card/process-query-for-card
+   card-id export-format
+   :parameters  parameters
    :constraints nil
-   :middleware {:process-viz-settings?  true
-                :skip-results-metadata? true
-                :ignore-cached-results? true
-                :format-rows?           format-rows?
-                :pivot?                 pivot-results?
-                :js-int-to-string?      false}))
+   :context     (api.dataset/export-format->context export-format)
+   :middleware  {:process-viz-settings?  true
+                 :skip-results-metadata? true
+                 :ignore-cached-results? true
+                 :format-rows?           format-rows?
+                 :pivot?                 pivot-results?
+                 :js-int-to-string?      false}))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/document/` routes."
