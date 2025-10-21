@@ -238,6 +238,20 @@
       (transforms.canceling/cancel-run! (:id run))))
   nil)
 
+(api.macros/defendpoint :post "/:id/flush-watermark"
+  "Flush the watermark for an incremental transform with keyset strategy.
+  This will cause the next run to recompute the watermark from scratch."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
+  (log/info "flushing watermark for transform" id)
+  (api/check-superuser)
+  (let [transform (api/check-404 (t2/select-one :model/Transform id))]
+    (api/check-400 (= :keyset (some-> transform :source :source-incremental-strategy :type keyword))
+                   (deferred-tru "Only transforms with keyset incremental strategy can have their watermark flushed."))
+    (t2/delete! :model/TransformWatermark :transform_id id)
+    (log/infof "Watermark flushed for transform %d" id)
+    nil))
+
 (api.macros/defendpoint :post "/:id/run"
   "Run a transform."
   [{:keys [id]} :- [:map
