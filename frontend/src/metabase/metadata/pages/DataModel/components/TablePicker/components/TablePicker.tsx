@@ -11,6 +11,7 @@ interface TablePickerProps {
 }
 
 export function TablePicker({ path, className, onChange }: TablePickerProps) {
+  // TODO: UXW-1857 - add search support
   // const [query, setQuery] = useState("");
   // const deferredQuery = useDeferredValue(query);
 

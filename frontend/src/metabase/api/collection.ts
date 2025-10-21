@@ -154,9 +154,7 @@ export const collectionApi = Api.injectEndpoints({
 export const {
   useListCollectionsQuery,
   useListCollectionsTreeQuery,
-  useLazyListCollectionsTreeQuery,
   useListCollectionItemsQuery,
-  useLazyListCollectionItemsQuery,
   useGetCollectionQuery,
   useCreateCollectionMutation,
   useUpdateCollectionMutation,
