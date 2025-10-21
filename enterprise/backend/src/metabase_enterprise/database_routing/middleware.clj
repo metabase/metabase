@@ -34,6 +34,8 @@
 (defenterprise attach-destination-db-middleware
   "Pre-processing middleware. Calculates the destination database that should be used for this query, e.g. for caching
   purposes. Does not make any changes to the query besides (possibly) adding a `:destination-database/id` key."
+  ;; run this even when the `:database-routing` feature is not enabled, so that we can assert that it *is* enabled if
+  ;; DB routing is configured. (Throwing here is better than silently ignoring the configured routing.)
   :feature :none
   [query]
   (let [database (lib.metadata/database (qp.store/metadata-provider))
