@@ -3,6 +3,7 @@ const YAML = require("json-to-pretty-yaml");
 const { StatsWriterPlugin } = require("webpack-stats-plugin");
 
 const { WEBPACK_BUNDLE } = require("./frontend/build/shared/constants");
+const { SVGO_CONFIG } = require("./frontend/build/shared/rspack/svgo-config");
 
 const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
 const SRC_PATH = __dirname + "/frontend/src/metabase";
@@ -98,6 +99,7 @@ module.exports = (env) => {
               loader: "@svgr/webpack",
               options: {
                 ref: true,
+                svgoConfig: SVGO_CONFIG,
               },
             },
           ],
