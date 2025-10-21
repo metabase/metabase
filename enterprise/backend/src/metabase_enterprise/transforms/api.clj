@@ -15,6 +15,7 @@
    [metabase.api.util.handlers :as handlers]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -35,7 +36,7 @@
    [:query
     [:map
      [:type [:= "query"]]
-     [:query [:map [:database :int]]]]]
+     [:query ::queries.schema/query]]]
    [:python
     [:map {:closed true}
      [:source-database {:optional true} :int]

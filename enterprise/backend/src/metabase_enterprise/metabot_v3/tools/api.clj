@@ -1154,22 +1154,29 @@
   [:and
    [:map
     [:transform_id :int]
-    [:source {:optional true} [:maybe ms/Map]]]
+    [:source ::metabot-v3.tools.transforms/transform-source]]
    [:map {:encode/tool-api-request
           #(set/rename-keys % {:transform_id :id})}]])
+
+(mr/def ::broken-question
+  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:id :int]
+   [:name :string]])
 
 (mr/def ::broken-transform
   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
    [:id :int]
-   [:name :string]
-   [:description {:optional true} [:maybe :string]]])
+   [:name :string]])
 
 (mr/def ::check-transform-dependencies-result
   [:or
    [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
     [:structured_output [:map
                          [:success :boolean]
-                         [:bad_transforms [:sequential ::broken-transform]]]]]
+                         [:bad_transform_count :int]
+                         [:bad_transforms [:sequential ::broken-transform]]
+                         [:bad_question_count :int]
+                         [:bad_questions [:sequential ::broken-question]]]]]
    [:map [:output :string]]])
 
 (api.macros/defendpoint :post "/check-transform-dependencies" :- [:merge ::check-transform-dependencies-result ::tool-request]
