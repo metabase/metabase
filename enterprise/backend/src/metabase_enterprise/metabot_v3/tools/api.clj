@@ -1155,9 +1155,7 @@
   [:and
    [:map
     [:transform_id :int]
-    [:source {:optional true} [:maybe [:map
-                                       [:type {:optional true} :keyword]
-                                       [:query {:optional true} ::queries.schema/query]]]]]
+    [:source ::metabot-v3.tools.transforms/transform-source]]
    [:map {:encode/tool-api-request
           #(set/rename-keys % {:transform_id :id})}]])
 

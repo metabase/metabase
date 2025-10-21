@@ -19,11 +19,11 @@
                                        (take (dec *max-reported-broken-transforms*)
                                              (disj broken-transform-ids edited-transform-id)))
                                (take *max-reported-broken-transforms* broken-transform-ids))
-        broken-transforms    (when (seq broken-transform-ids)
+        broken-transforms    (when (seq transforms-to-report)
                                (t2/select [:model/Transform :id :name] :id [:in transforms-to-report]))
         broken-card-ids      (set (keys card-errors))
         cards-to-report      (take *max-reported-broken-transforms* broken-card-ids)
-        broken-cards         (when (seq broken-card-ids)
+        broken-cards         (when (seq cards-to-report)
                                (t2/select [:model/Card :id :name] :id [:in cards-to-report]))]
     {:success             (empty? broken-transform-ids)
      :bad_transform_count (count broken-transform-ids)

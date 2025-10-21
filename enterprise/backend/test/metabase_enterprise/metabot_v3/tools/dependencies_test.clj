@@ -91,9 +91,7 @@
          {:name "Card using Transform 1"
           :database_id (mt/id)
           :table_id (mt/id :orders)
-          :dataset_query {:type "native"
-                          :database (mt/id)
-                          :native {:query "SELECT total FROM orders_transform_1"}}}
+          :dataset_query (lib/native-query (mt/metadata-provider) "SELECT total FROM orders_transform_1")}
          :model/Dependency {}
          {:from_entity_type "card"
           :from_entity_id card-id
@@ -120,9 +118,7 @@
          {:name "Card 1 using Transform 1"
           :database_id (mt/id)
           :table_id (mt/id :orders)
-          :dataset_query {:type "native"
-                          :database (mt/id)
-                          :native {:query "SELECT total FROM orders_transform_1"}}}
+          :dataset_query (lib/native-query (mt/metadata-provider) "SELECT total FROM orders_transform_1")}
          :model/Dependency {}
          {:from_entity_type "card"
           :from_entity_id card1-id
@@ -132,9 +128,7 @@
          {:name "Card 2 using Transform 1"
           :database_id (mt/id)
           :table_id (mt/id :orders)
-          :dataset_query {:type "native"
-                          :database (mt/id)
-                          :native {:query "SELECT total FROM orders_transform_1"}}}
+          :dataset_query (lib/native-query (mt/metadata-provider) "SELECT total FROM orders_transform_1")}
          :model/Dependency {}
          {:from_entity_type "card"
           :from_entity_id card2-id
