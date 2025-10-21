@@ -3,12 +3,16 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase-enterprise.transforms.canceling :as canceling]
    [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.driver :as driver]
-
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.query :as lib.query]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor :as qp]
@@ -203,15 +207,27 @@
                                     :value watermark-value})
     query))
 
+(defn- source->keyset-column
+  [{:keys [query] :as source}]
+  (m/find-first #(= (:name %) (:keyset-column (:source-incremental-strategy source)))
+                (lib/filterable-columns query)))
+
+(defn- next-watermark-value!
+  [transform-id]
+  (or (t2/select-one-fn :watermark_value :model/TransformWatermark :transform_id transform-id)
+      0))
+
 (defn compile-source
   "Compile the source query of a transform.
   Optionally injects `transform_id` parameter for use in native incremental queries."
   ([source]
    (compile-source source nil))
-  ([{:keys [query] query-type :type} transform-id]
+  ([{:keys [query] query-type :type :as source} transform-id]
    (case (keyword query-type)
      :query
-     (let [query-with-params (inject-transform-parameters query transform-id)]
+     (let [query-with-params (if (lib.query/native? query)
+                               (inject-transform-parameters query transform-id)
+                               (lib/filter query #p (lib/> (source->keyset-column source) (next-watermark-value! transform-id))))]
        (:query (qp.compile/compile-with-inline-parameters (massage-sql-query query-with-params)))))))
 
 (defn required-database-features
