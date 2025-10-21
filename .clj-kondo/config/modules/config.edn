@@ -2032,6 +2032,8 @@
            app-db
            config
            driver
+           lib
+           lib-be
            query-processor
            settings
            util

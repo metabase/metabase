@@ -9,6 +9,9 @@
    [metabase-enterprise.transforms.instrumentation :as transforms.instrumentation]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.config.core :as config]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.util.i18n :as i18n]
@@ -111,14 +114,14 @@
            (.newLine)))))))
 
 (defn- execute-mbql-query
-  [db-id query rff cancel-chan]
+  [query rff cancel-chan]
   ;; if we have a cancel-chan (a promise channel) for the transform, we'd like for QP to respect it
   ;; and early exit if a value is delivered, but QP closes it when it's done. So we copy it.
   (with-bindings* (cond-> {}
                     cancel-chan
                     (assoc #'qp.pipeline/*canceled-chan* (a/go (a/<! cancel-chan))))
     (^:once fn* []
-      (qp/process-query {:type :query :database db-id :query query} rff))))
+      (qp/process-query query rff))))
 
 (defn- throw-if-cancelled [cancel-chan]
   (when (a/poll! cancel-chan)
@@ -126,9 +129,11 @@
 
 (defn- write-table-data-to-file! [{:keys [db-id table-id fields-meta temp-file cancel-chan limit]}]
   (with-open [os (io/output-stream temp-file)]
-    (let [query (cond-> {:source-table table-id} limit (assoc :limit limit))
+    (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
+          table-metadata (lib.metadata/table metadata-provider table-id)
+          query (cond-> (lib/query metadata-provider table-metadata) limit (lib/limit limit))
           rff (fn [cols-meta] (write-jsonl-row-to-os-rff os fields-meta cols-meta))]
-      (execute-mbql-query db-id query rff cancel-chan)
+      (execute-mbql-query query rff cancel-chan)
       (some-> cancel-chan throw-if-cancelled)
       nil)))
 
