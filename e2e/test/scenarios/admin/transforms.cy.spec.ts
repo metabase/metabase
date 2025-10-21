@@ -1402,6 +1402,7 @@ LIMIT
 
     it("should be able to update a Python query", { tags: ["@python"] }, () => {
       expect(2).to.eq(42);
+
       setPythonRunnerSettings();
       cy.log("create a new transform");
       H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
