@@ -136,9 +136,7 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
   it("should allow external URL click behaviors in the SDK (EMB-878)", () => {
     // External click behaviour use the open() function in metabase/lib/dom creates temporary anchors and calls .click()
     // To check that we call it, we stub the anchor element click
-    cy.window().then((win) => {
-      cy.stub(win.HTMLAnchorElement.prototype, "click").as("anchorClick");
-    });
+    stubAnchorClick();
 
     cy.get<string>("@dashboardId").then((dashboardId) => {
       mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
@@ -241,6 +239,7 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
   });
 
   it("columns that return a string url should be rendered as a link", () => {
+    // We can't map them easily to click behaviors, so they stay as links for now
     cy.get<string>("@questionId").then((questionId) => {
       mountSdkContent(<InteractiveQuestion questionId={questionId} />);
     });
@@ -248,9 +247,9 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
     cy.intercept("GET", "/api/card/*").as("getCard");
     cy.wait("@getCard");
 
-    cy.findByRole("link", { name: "https://example.org/448" })
+    cy.findByRole("link", { name: "https://example.org/979" })
       .should("have.length", 1)
-      .should("have.attr", "href", "https://example.org/448");
+      .should("have.attr", "href", "https://example.org/979");
   });
 
   it("columns that have 'type/URL' semantic type should open URL via click behavior", () => {
@@ -300,12 +299,7 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
               },
             ],
           }).then(({ dashboard }) => {
-            // Click-behavior mapping no longer renders anchors; stub anchor clicks and assert they happen
-            cy.window().then((win) => {
-              cy.stub(win.HTMLAnchorElement.prototype, "click").as(
-                "anchorClick",
-              );
-            });
+            stubAnchorClick();
 
             mountSdkContent(
               <InteractiveDashboard dashboardId={dashboard.id} />,
@@ -313,17 +307,11 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
 
             getSdkRoot().within(() => {
               H.getDashboardCard(0)
-                .findAllByText("https://example.org/448")
+                .findAllByText("https://example.org/761")
                 .first()
                 .click();
 
-              cy.get<sinon.SinonSpy>("@anchorClick").then((spy) => {
-                expect(spy.callCount).to.be.greaterThan(0);
-                const blankTargets = spy
-                  .getCalls()
-                  .filter((call: any) => call.thisValue.target === "_blank");
-                expect(blankTargets.length).to.be.greaterThan(0);
-              });
+              expectClickBehaviorForUrl("https://example.org/761");
             });
           });
         });
@@ -361,24 +349,33 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
         ],
       }).then(({ dashboard }) => {
         // Click-behavior mapping no longer renders anchors; stub anchor clicks and assert they happen
-        cy.window().then((win) => {
-          cy.stub(win.HTMLAnchorElement.prototype, "click").as("anchorClick");
-        });
+        stubAnchorClick();
 
         mountSdkContent(<EditableDashboard dashboardId={dashboard.id} />);
 
         getSdkRoot().within(() => {
-          H.getDashboardCard(0).findAllByText("Link to 448").first().click();
+          H.getDashboardCard(0).findAllByText("Link to 493").first().click();
 
-          cy.get<sinon.SinonSpy>("@anchorClick").then((spy) => {
-            expect(spy.callCount).to.be.greaterThan(0);
-            const blankTargets = spy
-              .getCalls()
-              .filter((call: any) => call.thisValue.target === "_blank");
-            expect(blankTargets.length).to.be.greaterThan(0);
-          });
+          expectClickBehaviorForUrl("https://example.org/493");
         });
       });
     });
   });
 });
+
+const stubAnchorClick = () => {
+  cy.window().then((win) => {
+    cy.stub(win.HTMLAnchorElement.prototype, "click").as("anchorClick");
+  });
+};
+
+const expectClickBehaviorForUrl = (url: string) => {
+  cy.get<sinon.SinonSpy>("@anchorClick").should((spy) => {
+    expect(spy.callCount).to.be.greaterThan(0);
+    const last = spy.getCalls().at(-1);
+    expect(last?.thisValue.target).to.eq("_blank");
+    const href = (last?.thisValue as HTMLAnchorElement).href;
+    const u = new URL(href);
+    expect(`${u.origin}${u.pathname}`).to.eq(url);
+  });
+};
