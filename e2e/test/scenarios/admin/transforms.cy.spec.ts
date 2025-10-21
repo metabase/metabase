@@ -378,7 +378,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
 FROM
   "Schema Q"."Animals"
 LIMIT
-  5`;
+  59086703127`;
 
       createMbqlTransform({ visitTransform: true });
       getTransformPage().findByText("Edit query").click();
