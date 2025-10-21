@@ -3,7 +3,7 @@ import { push } from "react-router-redux";
 
 import { useDispatch } from "metabase/lib/redux";
 
-import { TablePicker } from "./TablePicker";
+import { TablePicker } from "./components";
 import type { TreePath } from "./types";
 import { getUrl } from "./utils";
 

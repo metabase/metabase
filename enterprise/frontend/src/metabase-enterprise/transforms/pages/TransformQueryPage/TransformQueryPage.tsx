@@ -9,7 +9,11 @@ import {
 } from "metabase/plugins";
 import { useUpdateTransformMutation } from "metabase-enterprise/api";
 import type { TransformEditorValue } from "metabase-enterprise/transforms/hooks/use-transform-editor";
-import type { Transform, TransformSource } from "metabase-types/api";
+import type {
+  DraftTransformSource,
+  Transform,
+  TransformSource,
+} from "metabase-types/api";
 
 import { QueryEditor } from "../../components/QueryEditor";
 import { getTransformUrl } from "../../urls";
@@ -23,7 +27,7 @@ export function TransformQueryPage({
   transformEditor,
 }: {
   transform: Transform;
-  setSource: (source: TransformSource) => void;
+  setSource: (source: DraftTransformSource) => void;
   proposedSource: TransformSource | undefined;
   acceptProposed: (source: TransformSource) => void;
   clearProposed: () => void;
@@ -52,9 +56,6 @@ export function TransformQueryPage({
         dispatch(push(getTransformUrl(transform.id)));
       }
     },
-    onError: () => {
-      sendErrorToast(t`Failed to update transform query`);
-    },
   });
 
   const handleSaveSource = async (source: TransformSource) => {
@@ -71,27 +72,9 @@ export function TransformQueryPage({
     dispatch(push(getTransformUrl(transform.id)));
   };
 
-  if (transform.source.type === "python") {
-    return (
-      <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
-        transform={transform}
-        initialSource={transform.source}
-        proposedSource={
-          proposedSource?.type === "python" ? proposedSource : undefined
-        }
-        isNew={false}
-        isSaving={isSaving}
-        onSave={handleSaveSource}
-        onCancel={handleCancel}
-        onRejectProposed={clearProposed}
-        onAcceptProposed={acceptProposed}
-      />
-    );
-  }
-
   return (
     <>
-      <QueryEditor
+      <TransformEditorBody
         transform={transform}
         initialSource={transform.source}
         proposedSource={
@@ -114,5 +97,68 @@ export function TransformQueryPage({
         />
       )}
     </>
+  );
+}
+
+interface TransformEditorBodyProps {
+  transform: Transform;
+  initialSource: TransformSource;
+  proposedSource?: TransformSource;
+  isSaving?: boolean;
+  onChange?: (source: DraftTransformSource) => void;
+  onSave: (source: TransformSource) => void;
+  onCancel: () => void;
+  onRejectProposed?: () => void;
+  onAcceptProposed?: (source: TransformSource) => void;
+  transformEditor: TransformEditorValue;
+}
+
+function TransformEditorBody({
+  transform,
+  initialSource,
+  proposedSource,
+  isSaving,
+  onChange,
+  onSave,
+  onCancel,
+  onRejectProposed,
+  onAcceptProposed,
+  transformEditor,
+}: TransformEditorBodyProps) {
+  if (initialSource.type === "python") {
+    return (
+      <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
+        transform={transform}
+        initialSource={initialSource}
+        proposedSource={
+          proposedSource?.type === "python" ? proposedSource : undefined
+        }
+        isNew={false}
+        isSaving={isSaving}
+        onChange={onChange}
+        onSave={onSave}
+        onCancel={onCancel}
+        onRejectProposed={onRejectProposed}
+        onAcceptProposed={onAcceptProposed}
+      />
+    );
+  }
+
+  return (
+    <QueryEditor
+      initialSource={initialSource}
+      transform={transform}
+      isNew={false}
+      isSaving={isSaving}
+      onSave={onSave}
+      onChange={onChange}
+      onCancel={onCancel}
+      proposedSource={
+        proposedSource?.type === "query" ? proposedSource : undefined
+      }
+      onRejectProposed={onRejectProposed}
+      onAcceptProposed={onAcceptProposed}
+      transformEditor={transformEditor}
+    />
   );
 }

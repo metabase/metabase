@@ -47,7 +47,7 @@
     (t2/insert-returning-pks! :model/Field
                               (for [{:keys [base-type coercion-strategy database-is-auto-increment database-partitioned database-position
                                             database-required database-type effective-type field-comment json-unfolding nfc-path visibility-type]
-                                     field-name :name :as field} new-field-metadatas
+                                     field-name :name :as field} (sort-by :database-position new-field-metadatas)
                                     :let [semantic-type (common/semantic-type field)
                                           has-field-values (when (sync-util/can-be-list? base-type semantic-type)
                                                              :auto-list)]]

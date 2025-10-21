@@ -1711,7 +1711,7 @@
   enterprise/dependencies
   {:team "Querying"
    :api  #{metabase-enterprise.dependencies.api
-           #_metabase-enterprise.dependencies.core
+           metabase-enterprise.dependencies.core
            metabase-enterprise.dependencies.init}
    :uses #{analyze
            api
@@ -1856,6 +1856,7 @@
            util
            warehouse-schema
            warehouses
+           enterprise/dependencies
            enterprise/documents
            enterprise/transforms
            enterprise/transforms-python}}
@@ -2008,6 +2009,7 @@
            metabase-enterprise.transforms.core
            metabase-enterprise.transforms.init
            metabase-enterprise.transforms.instrumentation
+           metabase-enterprise.transforms.interface
            metabase-enterprise.transforms.util}
    :uses #{analytics
            api
@@ -2018,6 +2020,7 @@
            lib-be
            models
            premium-features
+           queries
            query-processor
            request
            search
@@ -2025,15 +2028,14 @@
            sync
            task
            task-history
-           util
-           enterprise/transforms-python}}
+           util}}
 
   enterprise/transforms-python
   {:team "Querying"
    :api  #{metabase-enterprise.transforms-python.api
-           metabase-enterprise.transforms-python.execute
            metabase-enterprise.transforms-python.init}
-   :uses #{api
+   :uses #{analytics
+           api
            app-db
            config
            driver

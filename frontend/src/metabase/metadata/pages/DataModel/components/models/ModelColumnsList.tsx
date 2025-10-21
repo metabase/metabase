@@ -11,7 +11,7 @@ import { ModelSortableFieldList } from "metabase/metadata/pages/DataModel/compon
 import { getModelFieldMetadataUrl } from "metabase/metadata/pages/DataModel/components/models/utils";
 import type { FieldChangeParams } from "metabase/metadata/pages/DataModel/types";
 import { Group, Loader, Stack, Text, rem } from "metabase/ui";
-import { getSortedModelFields } from "metabase-lib/v1/metadata/utils/models"; // eslint-disable-line no-restricted-imports
+import { getSortedModelFields } from "metabase-lib/v1/metadata/utils/models";
 import type { Card, CollectionId, FieldName } from "metabase-types/api";
 
 import { FieldItem } from "./FieldItem";

@@ -498,9 +498,6 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
       }
       runQuestionQuery();
     },
-    onError: (error) => {
-      throw error;
-    },
   });
 
   useLayoutEffect(() => {

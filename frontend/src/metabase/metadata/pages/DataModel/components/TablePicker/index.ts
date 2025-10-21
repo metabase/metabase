@@ -1,2 +1,2 @@
-export * from "./TablePicker";
+export { TablePicker } from "./components";
 export * from "./wrappers";

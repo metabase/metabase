@@ -84,7 +84,7 @@ describe("issue 29943", () => {
       H.waitForLoaderToBeRemoved();
 
       reorderTotalAndCustomColumns();
-      cy.button("Save changes").click();
+      cy.button("Save").click();
       cy.wait("@dataset");
 
       H.openQuestionActions();
@@ -245,7 +245,7 @@ describe("issue 23103", () => {
       cy.findByText("Category").click();
     });
 
-    cy.button("Save changes").click();
+    cy.button("Save").click();
     cy.wait("@updateModel");
     cy.button("Saving…").should("not.exist");
 
@@ -734,7 +734,7 @@ describe("issue 39749", () => {
     cy.findByLabelText("Description").should("have.text", "A");
     H.tableHeaderClick("Sum of Total");
     cy.findByLabelText("Description").should("have.text", "B");
-    cy.button("Save changes").click();
+    cy.button("Save").click();
     cy.wait("@updateModel");
 
     cy.log("verify that the description was updated successfully");
@@ -853,7 +853,7 @@ describe("issue 33844", () => {
     cy.findAllByTestId("detail-shortcut").should("not.exist");
     H.tableHeaderClick("ID");
     cy.findByLabelText("Detail views only").click();
-    cy.button(isNew ? "Save" : "Save changes").click();
+    cy.button("Save").click();
     if (isNew) {
       H.modal().button("Save").click();
       cy.wait("@createModel");
@@ -877,7 +877,7 @@ describe("issue 33844", () => {
     H.tableHeaderClick("ID");
     cy.findByLabelText("Detail views only").should("be.checked");
     cy.findByLabelText("Table and details views").click();
-    cy.button("Save changes").click();
+    cy.button("Save").click();
     cy.wait("@updateModel");
     cy.wait("@dataset");
     H.tableInteractive().findByText("ID").should("be.visible");
@@ -933,7 +933,7 @@ describe("issue 45924", () => {
     cy.findByTestId("dataset-edit-bar").findByText("Columns").click();
     H.tableHeaderClick("ID1");
     cy.findByLabelText("Display name").should("have.value", "ID1");
-    cy.findByTestId("dataset-edit-bar").button("Save changes").click();
+    cy.findByTestId("dataset-edit-bar").button("Save").click();
     cy.wait("@updateCard");
     cy.wait("@dataset");
     H.tableInteractive().findByText("ID1").should("be.visible");
@@ -995,7 +995,7 @@ describe("issue 39993", () => {
       H.moveDnDKitElement(H.tableHeaderColumn(columnName), {
         horizontal: -100,
       });
-      cy.button("Save changes").click();
+      cy.button("Save").click();
       cy.wait("@updateModel");
       cy.findAllByTestId("header-cell").eq(0).should("have.text", "Exp");
       cy.findAllByTestId("header-cell").eq(1).should("have.text", "ID");
@@ -1440,7 +1440,7 @@ describe("issue 20624", () => {
     H.waitForLoaderToBeRemoved();
     H.tableHeaderClick("Vendor");
     cy.findByLabelText("Display name").clear().type("Retailer");
-    cy.button("Save changes").should("be.enabled").click();
+    cy.button("Save").should("be.enabled").click();
     cy.wait("@updateCard");
     H.tableInteractive().within(() => {
       cy.findByText("Retailer").should("be.visible");
@@ -1493,14 +1493,14 @@ describe("issue 32037", () => {
 
   it("should show unsaved changes modal and allow to discard changes when editing model's query (metabase#32037)", () => {
     H.openQuestionActions("Edit query definition");
-    cy.button("Save changes").should("be.disabled");
+    cy.button("Save").should("be.disabled");
     H.filter({ mode: "notebook" });
     H.popover().within(() => {
       cy.findByText("ID").click();
       cy.findByPlaceholderText("Enter an ID").type("1").blur();
       cy.button("Add filter").click();
     });
-    cy.button("Save changes").should("be.enabled");
+    cy.button("Save").should("be.enabled");
     cy.go("back");
 
     verifyDiscardingChanges();
@@ -1509,9 +1509,9 @@ describe("issue 32037", () => {
   it("should show unsaved changes modal and allow to discard changes when editing model's metadata (metabase#32037)", () => {
     H.openQuestionActions("Edit metadata");
     H.waitForLoaderToBeRemoved();
-    cy.button("Save changes").should("be.disabled");
+    cy.button("Save").should("be.disabled");
     cy.findByLabelText("Description").type("123").blur();
-    cy.button("Save changes").should("be.enabled");
+    cy.button("Save").should("be.enabled");
     cy.go("back");
 
     verifyDiscardingChanges();
@@ -1524,7 +1524,7 @@ describe("issue 32037", () => {
     });
 
     H.tableInteractive().should("be.visible");
-    cy.button("Save changes").should("not.exist");
+    cy.button("Save").should("not.exist");
     cy.get("@modelPathname").then((modelPathname) => {
       cy.location("pathname").should("eq", modelPathname);
     });
@@ -1990,10 +1990,16 @@ describe("issue 50915", () => {
     cy.findByTestId("dataset-edit-bar").button("Save").click();
     cy.findByTestId("save-question-modal").button("Save").click();
     H.queryBuilderHeader().should("be.visible");
+    H.queryBuilderMain()
+      .findByText("37.65", { timeout: 10000 })
+      .should("be.visible");
 
     cy.log("immediately after saving, drill-thru");
     H.tableHeaderClick("Discount ($)");
     H.popover().findByText("Distinct values").click();
+    H.queryBuilderMain()
+      .findByText("1,115", { timeout: 10000 })
+      .should("be.visible");
     H.assertTableData({ columns: ["Distinct values of Discount"] });
 
     cy.log("assert that the model is used for the data source");

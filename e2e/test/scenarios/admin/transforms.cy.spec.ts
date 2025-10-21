@@ -191,7 +191,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
 
     it(
       "should be possible to create and run a Python transform",
-      { tags: ["@transforms-python"] },
+      { tags: ["@python"] },
       () => {
         setPythonRunnerSettings();
         cy.log("create a new transform");
@@ -392,6 +392,7 @@ LIMIT
 
       H.NativeEditor.value().should("eq", EXPECTED_QUERY);
       getQueryEditor().button("Save changes").click();
+      getTransformPage().should("be.visible");
 
       cy.log("run the transform and make sure its table can be queried");
       runTransformAndWaitForSuccess();
@@ -1399,7 +1400,7 @@ LIMIT
       H.assertQueryBuilderRowCount(1);
     });
 
-    it("should be able to update a Python query", () => {
+    it("should be able to update a Python query", { tags: ["@python"] }, () => {
       setPythonRunnerSettings();
       cy.log("create a new transform");
       H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
@@ -1618,6 +1619,19 @@ LIMIT
         "This run succeeded before it had a chance to cancel.",
       );
     });
+
+    it("should be possible to cancel a SQL transform from the preview (metabase#64474)", () => {
+      createSlowTransform(500);
+      getTransformPage().findByText("Edit query").click();
+
+      getQueryEditor().within(() => {
+        cy.findAllByTestId("run-button").eq(0).click();
+        cy.findByTestId("loading-indicator").should("be.visible");
+
+        cy.findAllByTestId("run-button").eq(0).click();
+        cy.findByTestId("loading-indicator").should("not.exist");
+      });
+    });
   });
 
   describe("dependencies", () => {
@@ -1661,7 +1675,7 @@ LIMIT
   describe("python > common library", () => {
     it(
       "should be possible to edit and save the common library",
-      { tags: ["@transforms-python"] },
+      { tags: ["@python"] },
       () => {
         visitCommonLibrary();
 
@@ -1699,7 +1713,7 @@ LIMIT
 
     it(
       "should be possible to use the common library",
-      { tags: ["@transforms-python"] },
+      { tags: ["@python"] },
       () => {
         setPythonRunnerSettings();
         createPythonLibrary(
@@ -1780,7 +1794,7 @@ LIMIT
     );
 
     function visitCommonLibrary(path = "common.py") {
-      cy.visit(`/admin/transforms/library/${path}`);
+      cy.visit(`/bench/transforms/library/${path}`);
     }
 
     function getLibraryEditorHeader() {
@@ -2686,7 +2700,7 @@ function getQueryEditor() {
 }
 
 function getRunButton(options: { timeout?: number } = {}) {
-  return cy.findByTestId("run-button", options);
+  return cy.findAllByTestId("run-button").eq(0, options);
 }
 
 function getCancelButton() {
@@ -2794,15 +2808,15 @@ function getEndAtFilterWidget() {
 }
 
 function visitTransformListPage() {
-  return cy.visit("/admin/transforms");
+  return cy.visit("/bench/transforms");
 }
 
 function visitJobListPage() {
-  return cy.visit("/admin/transforms/jobs");
+  return cy.visit("/bench/jobs");
 }
 
 function visitRunListPage() {
-  return cy.visit("/admin/transforms/runs");
+  return cy.visit("/bench/runs");
 }
 
 function runTransformAndWaitForSuccess() {

@@ -1,7 +1,7 @@
 import { skipToken } from "metabase/api";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema"; // eslint-disable-line no-restricted-imports
+import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
 import type { GetTableQueryMetadataRequest, TableId } from "metabase-types/api";
 
 import type { ParsedRouteParams, RouteParams } from "./types";

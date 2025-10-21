@@ -11,7 +11,6 @@ import {
 import type { SearchResult } from "metabase-types/api";
 
 interface EntitySearchSectionProps {
-  canBrowseAll: boolean;
   menuItems: MenuItem[];
   selectedIndex: number;
   onItemSelect: (index: number) => void;
@@ -22,6 +21,7 @@ interface EntitySearchSectionProps {
   onModalSelect: (item: QuestionPickerValueItem) => void;
   onModalClose: () => void;
   onItemHover: (index: number) => void;
+  canBrowseAll?: boolean;
   selectedSearchModelName?: string;
 }
 
@@ -64,11 +64,9 @@ export function EntitySearchSection({
           <Text size="md" c="text-medium">{t`No results found`}</Text>
         </Box>
       ) : null}
-
       {canBrowseAll && (
         <>
           {menuItems.length > 0 && <Divider my="sm" mx="sm" />}
-
           <SearchResultsFooter
             isSelected={selectedIndex === menuItems.length}
             onClick={onFooterClick}

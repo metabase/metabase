@@ -16,7 +16,7 @@ import { useEntitySuggestions } from "../shared/useEntitySuggestions";
 
 import type { MentionCommandProps } from "./MentionExtension";
 
-interface MentionSuggestionProps {
+export interface MentionSuggestionProps {
   items: SearchResult[];
   command: (item: MentionCommandProps) => void;
   editor: Editor;
@@ -58,7 +58,7 @@ const MentionSuggestionComponent = forwardRef<
         model: item.model,
         label: item.label,
         href: item.href,
-        document, // only used for analytics tracking purposes
+        document, // currently only used for analytics tracking purposes
       });
     },
     [command, document],

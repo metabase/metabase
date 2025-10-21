@@ -8,7 +8,7 @@ import {
 } from "metabase/common/components/Sortable";
 import { SortableFieldItem } from "metabase/metadata/components";
 import { Stack, rem } from "metabase/ui";
-import { getSortedModelFields } from "metabase-lib/v1/metadata/utils/models"; // eslint-disable-line no-restricted-imports
+import { getSortedModelFields } from "metabase-lib/v1/metadata/utils/models";
 import type { Card, Field, FieldName } from "metabase-types/api";
 
 type Props = {

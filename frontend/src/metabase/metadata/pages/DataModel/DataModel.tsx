@@ -16,7 +16,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { ModelColumnsSection } from "metabase/metadata/pages/DataModel/components/models/ModelColumnsList";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Box, Flex, Stack, Title, rem } from "metabase/ui";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions"; // eslint-disable-line no-restricted-imports
+import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { FieldName, UpdateFieldRequest } from "metabase-types/api";
 
 import S from "./DataModel.module.css";
