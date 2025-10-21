@@ -1,4 +1,5 @@
 import cx from "classnames";
+import { Link } from "react-router";
 import { match } from "ts-pattern";
 import { c, jt, t } from "ttag";
 
@@ -18,7 +19,7 @@ import {
   PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
   PLUGIN_EMBEDDING_SDK,
 } from "metabase/plugins";
-import { Box, Group, HoverCard, Icon, Stack, Text } from "metabase/ui";
+import { Box, Button, Group, HoverCard, Icon, Stack, Text } from "metabase/ui";
 
 import { AdminSettingInput } from "../../widgets/AdminSettingInput";
 
@@ -135,17 +136,7 @@ export function EmbeddingSdkSettings() {
         settingKey="enable-embedding-simple"
         isFeatureEnabled={isSimpleEmbedFeatureAvailable}
         links={[
-          ...(isSimpleEmbedFeatureAvailable
-            ? [
-                {
-                  type: "button" as const,
-                  title: t`New embed`,
-                  to: "/embed-js",
-                },
-              ]
-            : []),
           {
-            type: "link",
             icon: "reference",
             title: t`Documentation`,
             href: embedJsDocumentationUrl?.url,
@@ -161,6 +152,15 @@ export function EmbeddingSdkSettings() {
             />
           ) : undefined
         }
+        actionButton={
+          isSimpleEmbedFeatureAvailable && (
+            <Link to="/embed-js" className={CS.cursorPointer}>
+              <Button variant="brand" size="sm">
+                {t`New embed`}
+              </Button>
+            </Link>
+          )
+        }
       />
 
       <SdkSettingsCard
@@ -169,13 +169,11 @@ export function EmbeddingSdkSettings() {
         settingKey="enable-embedding-sdk"
         links={[
           {
-            type: "link",
             icon: "bolt",
             title: t`Quick start`,
             href: sdkQuickStartUrl,
           },
           {
-            type: "link",
             icon: "reference",
             title: t`Documentation`,
             href: sdkDocumentationUrl,
