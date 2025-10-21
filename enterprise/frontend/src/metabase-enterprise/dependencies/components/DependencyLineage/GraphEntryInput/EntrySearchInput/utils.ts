@@ -11,8 +11,9 @@ import type {
 } from "metabase-types/api";
 
 import { getDependencyType, getNodeIconWithType } from "../../utils";
+import { SEARCH_MODEL_TO_GROUP_TYPE } from "../constants";
 
-import { BROWSE_OPTION_VALUE, SEARCH_MODEL_TO_GROUP_TYPE } from "./constants";
+import { BROWSE_OPTION_VALUE } from "./constants";
 import type { EntrySelectOption } from "./types";
 
 function getItemDependencyId(id: SearchResultId): DependencyId {

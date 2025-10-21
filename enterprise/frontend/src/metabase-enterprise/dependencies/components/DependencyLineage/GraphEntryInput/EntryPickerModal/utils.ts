@@ -13,7 +13,8 @@ import type {
   SearchResponse,
 } from "metabase-types/api";
 
-import { SEARCH_MODELS } from "../constants";
+import { getDependencyType } from "../../utils";
+import { SEARCH_MODELS, SEARCH_MODEL_TO_GROUP_TYPE } from "../constants";
 
 import type { EntryPickerItem } from "./types";
 
@@ -98,19 +99,17 @@ export function getEntryPickerItem(
 export function getEntryPickerValue(
   item: EntryPickerItem,
 ): DependencyEntry | undefined {
-  if (typeof item.id !== "number") {
+  if (
+    typeof item.id !== "number" ||
+    item.model === "database" ||
+    item.model === "schema"
+  ) {
     return;
   }
 
-  switch (item.model) {
-    case "table":
-      return { id: item.id, type: "table" };
-    case "card":
-    case "dataset":
-    case "metric":
-      return { id: item.id, type: "card" };
-    case "transform":
-      return { id: item.id, type: "transform" };
+  const groupType = SEARCH_MODEL_TO_GROUP_TYPE[item.model];
+  if (groupType != null) {
+    return { id: item.id, type: getDependencyType(groupType) };
   }
 }
 
