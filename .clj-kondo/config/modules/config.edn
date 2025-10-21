@@ -1748,6 +1748,7 @@
            public-sharing
            queries
            query-permissions
+           query-processor
            revisions
            search
            util

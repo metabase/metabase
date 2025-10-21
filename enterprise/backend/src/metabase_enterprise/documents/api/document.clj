@@ -9,7 +9,6 @@
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
-   [metabase.public-sharing.api :as public-sharing]
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries.core :as card]
    [metabase.query-permissions.core :as query-perms]
