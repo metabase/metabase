@@ -18,16 +18,7 @@ import {
   PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
   PLUGIN_EMBEDDING_SDK,
 } from "metabase/plugins";
-import {
-  Alert,
-  Box,
-  Button,
-  Flex,
-  Group,
-  HoverCard,
-  Icon,
-  Text,
-} from "metabase/ui";
+import { Box, Button, Group, HoverCard, Icon, Text } from "metabase/ui";
 
 import { SettingHeader } from "../../SettingHeader";
 import { AdminSettingInput } from "../../widgets/AdminSettingInput";
@@ -191,6 +182,7 @@ export function EmbeddingSdkSettings() {
             href: sdkDocumentationUrl,
           },
         ]}
+        alertInfoText={apiKeyBannerText}
       />
 
       <Box py="lg" px="xl" className={S.SectionCard}>
@@ -211,7 +203,7 @@ export function EmbeddingSdkSettings() {
                   </HoverCard.Target>
 
                   <HoverCard.Dropdown>
-                    <Box p="md" w={270}>
+                    <Box p="md" w={270} bg="white">
                       <Text lh="lg" c="text-medium">
                         {corsHintText}
                       </Text>
@@ -245,23 +237,6 @@ export function EmbeddingSdkSettings() {
           >{t`Request version pinning`}</Button>
         </Box>
       )}
-
-      <Alert
-        data-testid="sdk-settings-alert-info"
-        px="xl"
-        bg="none"
-        bd="1px solid var(--mb-color-border)"
-      >
-        <Flex gap="sm">
-          <Box>
-            <Icon color="var(--mb-color-text-secondary)" name="info" mt="2px" />
-          </Box>
-
-          <Text c="text-medium" lh="lg">
-            {apiKeyBannerText}
-          </Text>
-        </Flex>
-      </Alert>
 
       <RelatedSettingsSection
         items={getModularEmbeddingRelatedSettingItems()}

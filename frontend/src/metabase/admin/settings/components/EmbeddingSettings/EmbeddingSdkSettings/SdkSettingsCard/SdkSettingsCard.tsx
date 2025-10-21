@@ -4,6 +4,8 @@ import { match } from "ts-pattern";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
 import {
+  Alert,
+  Box,
   Button,
   Flex,
   Group,
@@ -27,6 +29,7 @@ export function SdkSettingsCard({
   isFeatureEnabled = true,
   links,
   rightSideContent,
+  alertInfoText,
 }: {
   title: string;
   description: string;
@@ -34,6 +37,7 @@ export function SdkSettingsCard({
   isFeatureEnabled?: boolean;
   links?: LinkItem[];
   rightSideContent?: React.ReactNode;
+  alertInfoText?: React.ReactNode;
 }) {
   const hasLinksContent = links && links.length > 0;
 
@@ -80,6 +84,29 @@ export function SdkSettingsCard({
           />
           {rightSideContent}
         </Group>
+
+        {alertInfoText && (
+          <Alert
+            data-testid="sdk-settings-alert-info"
+            mt="md"
+            bg="bg-light"
+            bd="1px solid var(--mb-color-border)"
+          >
+            <Flex gap="sm">
+              <Box>
+                <Icon
+                  color="var(--mb-color-text-secondary)"
+                  name="info"
+                  mt="2px"
+                />
+              </Box>
+
+              <Text c="text-primary" lh="lg">
+                {alertInfoText}
+              </Text>
+            </Flex>
+          </Alert>
+        )}
       </Stack>
 
       {hasLinksContent && (
