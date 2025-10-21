@@ -3,6 +3,7 @@
    [metabase-enterprise.transforms.instrumentation :as transforms.instrumentation]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.lib.schema.common :as schema.common]
    [metabase.util.log :as log]
@@ -48,20 +49,29 @@
                               :output-schema (:schema target)
                               :output-table (transforms.util/qualified-table-name driver target)}
            opts (transform-opts transform-details)
-           ;; mark the execution as started and notify any observers
-           {run-id :id} (transforms.util/try-start-unless-already-running id run-method)]
-       (when start-promise
-         (deliver start-promise [:started run-id]))
-       (log/info "Executing transform" id "with target" (pr-str target))
-       (transforms.instrumentation/with-stage-timing [run-id [:computation :mbql-query]]
-         (transforms.util/run-cancelable-transform!
-          run-id driver transform-details
-          (fn [_cancel-chan] (driver/run-transform! driver transform-details opts))))
-       (transforms.instrumentation/with-stage-timing [run-id [:import :table-sync]]
-         (transforms.util/sync-target! target database run-id)
-         ;; This event must be published only after the sync is complete - the new table needs to be in AppDB.
-         (transforms.util/maybe-upsert-watermark! transform db)
-         (events/publish-event! :event/transform-run-complete {:object transform-details})))
+           features (transforms.util/required-database-features transform)]
+
+       (when (transforms.util/db-routing-enabled? database)
+         (throw (ex-info "Transforms are not supported on databases with DB routing enabled."
+                         {:driver driver, :database database})))
+       (when-not (every? (fn [feature] (driver.u/supports? (:engine database) feature database)) features)
+         (throw (ex-info "The database does not support the requested transform target type."
+                         {:driver driver, :database database, :features features})))
+
+       (let [;; mark the execution as started and notify any observers
+             {run-id :id} (transforms.util/try-start-unless-already-running id run-method)]
+         (when start-promise
+           (deliver start-promise [:started run-id]))
+         (log/info "Executing transform" id "with target" (pr-str target))
+         (transforms.instrumentation/with-stage-timing [run-id [:computation :mbql-query]]
+           (transforms.util/run-cancelable-transform!
+            run-id driver transform-details
+            (fn [_cancel-chan] (driver/run-transform! driver transform-details opts))))
+         (transforms.instrumentation/with-stage-timing [run-id [:import :table-sync]]
+           (transforms.util/sync-target! target database run-id)
+           ;; This event must be published only after the sync is complete - the new table needs to be in AppDB.
+           (transforms.util/maybe-upsert-watermark! transform db)
+           (events/publish-event! :event/transform-run-complete {:object transform-details}))))
      (catch Throwable t
        (log/error t "Error executing transform")
        (when start-promise
