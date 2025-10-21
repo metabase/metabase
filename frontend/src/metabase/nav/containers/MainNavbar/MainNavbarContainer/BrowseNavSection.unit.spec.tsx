@@ -1,6 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupDatabaseListEndpoint } from "__support__/server-mocks";
+import {
+  setupDatabaseListEndpoint,
+  setupUpdateSettingEndpoint,
+} from "__support__/server-mocks";
 import { getIcon, renderWithProviders, screen, within } from "__support__/ui";
 import * as domUtils from "metabase/lib/dom";
 import { createMockDatabase, createMockUser } from "metabase-types/api/mocks";
@@ -182,6 +185,7 @@ function setup({
     can_upload: true,
   });
   setupDatabaseListEndpoint([database]);
+  setupUpdateSettingEndpoint();
 
   if (isEmbeddingIframe) {
     jest.spyOn(domUtils, "isWithinIframe").mockReturnValue(true);
