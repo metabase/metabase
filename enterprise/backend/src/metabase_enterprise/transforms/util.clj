@@ -212,10 +212,9 @@
   (m/find-first #(= (:name %) (:keyset-column (:source-incremental-strategy source)))
                 (lib/filterable-columns query)))
 
-(defn- next-watermark-value!
+(defn- next-watermark-value
   [transform-id]
-  (or (t2/select-one-fn :watermark_value :model/TransformWatermark :transform_id transform-id)
-      0))
+  (t2/select-one-fn :watermark_value :model/TransformWatermark :transform_id transform-id))
 
 (defn compile-source
   "Compile the source query of a transform.
@@ -227,7 +226,9 @@
      :query
      (let [query-with-params (if (lib.query/native? query)
                                (inject-transform-parameters query transform-id)
-                               (lib/filter query #p (lib/> (source->keyset-column source) (next-watermark-value! transform-id))))]
+                               (if-let [watermark-value (next-watermark-value transform-id)]
+                                 (lib/filter query (lib/> (source->keyset-column source) watermark-value))
+                                 query))]
        (:query (qp.compile/compile-with-inline-parameters (massage-sql-query query-with-params)))))))
 
 (defn required-database-features
