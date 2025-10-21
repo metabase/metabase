@@ -5,6 +5,7 @@
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase-enterprise.serialization.core :as serialization]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.util :as mt]
    [toucan2.core :as t2]))
 
 (use-fixtures :each test-helpers/clean-remote-sync-state)
@@ -68,59 +69,56 @@
   (testing "wrap-progress-ingestable creates CallbackIngestable with progress tracking"
     ;; This test cannot use with-temp because the callback uses a separate connection to make
     ;; sure it is updating progress outside of the transaction serdes is using
-    (let [user (first (t2/insert-returning-instances! :model/User {:first_name "Test"
-                                                                   :last_name "User"
-                                                                   :email "test@example.com"
-                                                                   :password "password123"}))
-          task (first (t2/insert-returning-instances! :model/RemoteSyncTask {:sync_task_type "import"
-                                                                             :initiated_by (:id user)}))]
-      (try
-        (let [task-id (:id task)
-              mock-source (test-helpers/create-mock-source)
-              base-ingestable (ingestable/->IngestableSource mock-source (atom nil))
-              normalize 100]
+    (mt/with-model-cleanup [:model/User :model/RemoteSyncTask]
+      (let [user (first (t2/insert-returning-instances! :model/User {:first_name "Test"
+                                                                     :last_name "User"
+                                                                     :email "test@example.com"
+                                                                     :password "password123"}))
+            task (first (t2/insert-returning-instances! :model/RemoteSyncTask {:sync_task_type "import"
+                                                                               :initiated_by (:id user)}))
+            task-id (:id task)
+            mock-source (test-helpers/create-mock-source)
+            base-ingestable (ingestable/->IngestableSource mock-source (atom nil))
+            normalize 100]
 
-          (testing "creates a CallbackIngestable"
-            (let [wrapped (ingestable/wrap-progress-ingestable task-id normalize base-ingestable)]
-              (is (instance? metabase_enterprise.remote_sync.source.ingestable.CallbackIngestable wrapped)
-                  "Should return CallbackIngestable instance")))
+        (testing "creates a CallbackIngestable"
+          (let [wrapped (ingestable/wrap-progress-ingestable task-id normalize base-ingestable)]
+            (is (instance? metabase_enterprise.remote_sync.source.ingestable.CallbackIngestable wrapped)
+                "Should return CallbackIngestable instance")))
 
-          (testing "updates task progress in database as items are ingested"
-            (let [wrapped (ingestable/wrap-progress-ingestable task-id normalize base-ingestable)
-                  paths (serialization/ingest-list wrapped)
-                  total-paths (count paths)]
+        (testing "updates task progress in database as items are ingested"
+          (let [wrapped (ingestable/wrap-progress-ingestable task-id normalize base-ingestable)
+                paths (serialization/ingest-list wrapped)
+                total-paths (count paths)]
 
-              (is (seq paths) "Should have paths to ingest")
+            (is (seq paths) "Should have paths to ingest")
 
-              (let [initial-task (t2/select-one :model/RemoteSyncTask :id task-id)]
-                (is (nil? (:progress initial-task)) "Progress should be nil initially"))
+            (let [initial-task (t2/select-one :model/RemoteSyncTask :id task-id)]
+              (is (nil? (:progress initial-task)) "Progress should be nil initially"))
 
-              (serialization/ingest-one wrapped (first paths))
-              (let [task-after-first (t2/select-one :model/RemoteSyncTask :id task-id)]
-                (is (some? (:progress task-after-first)) "Progress should be updated after first item")
-                (is (< (abs (- (:progress task-after-first) (double (* (/ 1 total-paths) normalize)))) 0.01)
-                    "Progress should reflect one item ingested")
-                (is (some? (:last_progress_report_at task-after-first))
-                    "last_progress_report_at should be set"))
+            (serialization/ingest-one wrapped (first paths))
+            (let [task-after-first (t2/select-one :model/RemoteSyncTask :id task-id)]
+              (is (some? (:progress task-after-first)) "Progress should be updated after first item")
+              (is (< (abs (- (:progress task-after-first) (double (* (/ 1 total-paths) normalize)))) 0.01)
+                  "Progress should reflect one item ingested")
+              (is (some? (:last_progress_report_at task-after-first))
+                  "last_progress_report_at should be set"))
 
-              (serialization/ingest-one wrapped (second paths))
-              (let [task-after-second (t2/select-one :model/RemoteSyncTask :id task-id)]
-                (is (< (abs (- (:progress task-after-second) (double (* (/ 2 total-paths) normalize)))) 0.01)
-                    "Progress should reflect two items ingested"))))
+            (serialization/ingest-one wrapped (second paths))
+            (let [task-after-second (t2/select-one :model/RemoteSyncTask :id task-id)]
+              (is (< (abs (- (:progress task-after-second) (double (* (/ 2 total-paths) normalize)))) 0.01)
+                  "Progress should reflect two items ingested"))))
 
-          (testing "progress reaches normalize value when all items ingested"
-            (let [wrapped (ingestable/wrap-progress-ingestable task-id normalize base-ingestable)
-                  paths (serialization/ingest-list wrapped)]
+        (testing "progress reaches normalize value when all items ingested"
+          (let [wrapped (ingestable/wrap-progress-ingestable task-id normalize base-ingestable)
+                paths (serialization/ingest-list wrapped)]
 
-              (doseq [path paths]
-                (serialization/ingest-one wrapped path))
+            (doseq [path paths]
+              (serialization/ingest-one wrapped path))
 
-              (let [final-task (t2/select-one :model/RemoteSyncTask :id task-id)]
-                (is (< (abs (- (:progress final-task) (double normalize))) 0.01)
-                    "Progress should equal normalize value when all items ingested")))))
-        (finally
-          (t2/delete! :model/RemoteSyncTask :id (:id task))
-          (t2/delete! :model/User :id (:id user)))))))
+            (let [final-task (t2/select-one :model/RemoteSyncTask :id task-id)]
+              (is (< (abs (- (:progress final-task) (double normalize))) 0.01)
+                  "Progress should equal normalize value when all items ingested"))))))))
 
 (deftest root-dependency-ingestable-test
   (testing "RootDependencyIngestable filters items based on root dependencies"

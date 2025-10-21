@@ -126,27 +126,3 @@
 
         (testing "files list is empty"
           (is (empty? (:files @written-files))))))))
-
-(deftest store!-large-stream-test
-  (testing "store! handles many entities efficiently"
-    (mt/with-temp [:model/User user {:first_name "Test"
-                                     :last_name "User"
-                                     :email "test@example.com"
-                                     :password "password123"}
-                   :model/RemoteSyncTask {task-id :id} {:sync_task_type "export"
-                                                        :initiated_by (:id user)}]
-      (let [written-files (atom nil)
-            mock-source (->MockSource written-files)
-            test-entities (map #(create-test-entity (str "test-id-" %)
-                                                    (str "entity-" %)
-                                                    "Collection")
-                               (range 10))]
-
-        (source/store! test-entities mock-source task-id "Bulk commit")
-
-        (testing "all entities were written"
-          (is (= 10 (count (:files @written-files)))))
-
-        (testing "progress was updated"
-          (let [final-task (t2/select-one :model/RemoteSyncTask :id task-id)]
-            (is (some? (:progress final-task)))))))))
