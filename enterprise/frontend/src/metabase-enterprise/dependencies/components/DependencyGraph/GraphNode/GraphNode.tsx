@@ -23,7 +23,7 @@ import type { GraphSelection, NodeType } from "../types";
 import {
   getNodeIcon,
   getNodeLabel,
-  getNodeTypeLabel,
+  getNodeTypeInfo,
   isSameNode,
 } from "../utils";
 
@@ -42,6 +42,7 @@ export const GraphNode = memo(function ItemNode({
 }: GraphNodeProps) {
   const { selection, setSelection } = useContext(GraphContext);
   const label = getNodeLabel(node);
+  const typeInfo = getNodeTypeInfo(node);
   const groups = getDependentGroups(node);
   const sources = useNodeConnections({ handleType: "source" });
   const targets = useNodeConnections({ handleType: "target" });
@@ -64,10 +65,10 @@ export const GraphNode = memo(function ItemNode({
         onClick={handleClick}
       >
         <Stack gap="sm">
-          <Group gap="xs">
-            <FixedSizeIcon name={getNodeIcon(node)} c="brand" />
+          <Group c={typeInfo.color} gap="xs">
+            <FixedSizeIcon name={getNodeIcon(node)} />
             <Box fz="sm" fw="bold" lh="1rem">
-              {getNodeTypeLabel(node)}
+              {typeInfo.label}
             </Box>
           </Group>
           <Box fw="bold" lh="1rem">

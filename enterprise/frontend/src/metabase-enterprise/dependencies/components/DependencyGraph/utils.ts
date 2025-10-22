@@ -22,6 +22,7 @@ import type {
   NodeLink,
   NodeLocation,
   NodeType,
+  NodeTypeInfo,
 } from "./types";
 
 export function getNodeId(id: DependencyId, type: DependencyType): NodeId {
@@ -255,23 +256,23 @@ export function getDependencyType(
   }
 }
 
-export function getNodeTypeLabel(node: DependencyNode): string {
+export function getNodeTypeInfo(node: DependencyNode): NodeTypeInfo {
   switch (node.type) {
     case "card":
       switch (node.data.type) {
         case "question":
-          return t`Question`;
+          return { label: t`Question`, color: "text-secondary" };
         case "model":
-          return t`Model`;
+          return { label: t`Model`, color: "brand" };
         case "metric":
-          return t`Metric`;
+          return { label: t`Metric`, color: "summarize" };
       }
       break;
     case "table":
-      return t`Table`;
+      return { label: t`Table`, color: "brand" };
     case "transform":
-      return t`Transform`;
+      return { label: t`Transform`, color: "warning" };
     case "snippet":
-      return t`Snippet`;
+      return { label: t`Snippet`, color: "text-secondary" };
   }
 }
