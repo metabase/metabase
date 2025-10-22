@@ -10,7 +10,7 @@ import {
   useGetSettingsQuery,
 } from "metabase/api";
 import ExternalLink from "metabase/common/components/ExternalLink";
-import { useDocsUrl, useSetting } from "metabase/common/hooks";
+import { useDocsUrl, useSetting, useToast } from "metabase/common/hooks";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import {
   Form,
@@ -35,7 +35,6 @@ import {
   useGetRemoteSyncChangesQuery,
   useUpdateRemoteSyncSettingsMutation,
 } from "metabase-enterprise/api/remote-sync";
-import { PullChangesButton } from "metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/PullChangesButton";
 import type {
   RemoteSyncConfigurationSettings,
   SettingDefinition,
@@ -50,6 +49,8 @@ import {
   TYPE_KEY,
   URL_KEY,
 } from "../../constants";
+
+import { PullChangesButton } from "./PullChangesButton";
 
 export const RemoteSyncAdminSettings = () => {
   const { data: settingValues } = useGetSettingsQuery();
@@ -66,11 +67,24 @@ export const RemoteSyncAdminSettings = () => {
     show: showChangeBranchConfirmation,
     modalContent: changeBranchConfirmationModal,
   } = useConfirmation();
+  const [sendToast] = useToast();
 
   const handleSubmit = useCallback(
-    (values: RemoteSyncConfigurationSettings) => {
+    async (values: RemoteSyncConfigurationSettings) => {
       const didBranchChange =
         values[BRANCH_KEY] !== settingValues?.[BRANCH_KEY];
+      const saveSettings = async (values: RemoteSyncConfigurationSettings) => {
+        try {
+          await updateRemoteSyncSettings(values).unwrap();
+          sendToast({ message: t`Settings saved successfully`, icon: "check" });
+        } catch (error) {
+          sendToast({
+            message: t`Settings could not be saved`,
+            icon: "warning",
+          });
+          throw error;
+        }
+      };
 
       if (didBranchChange) {
         pendingConfirmationSettingsRef.current = values;
@@ -82,9 +96,9 @@ export const RemoteSyncAdminSettings = () => {
             variant: "filled",
             color: "danger",
           },
-          onConfirm: () => {
+          onConfirm: async () => {
             if (pendingConfirmationSettingsRef.current) {
-              updateRemoteSyncSettings(pendingConfirmationSettingsRef.current);
+              await saveSettings(pendingConfirmationSettingsRef.current);
               pendingConfirmationSettingsRef.current = null;
             }
           },
@@ -94,9 +108,14 @@ export const RemoteSyncAdminSettings = () => {
         });
         return;
       }
-      updateRemoteSyncSettings(values);
+      await saveSettings(values);
     },
-    [settingValues, updateRemoteSyncSettings, showChangeBranchConfirmation],
+    [
+      settingValues,
+      updateRemoteSyncSettings,
+      sendToast,
+      showChangeBranchConfirmation,
+    ],
   );
 
   const initialValues = useMemo(() => {
@@ -238,6 +257,7 @@ export const RemoteSyncAdminSettings = () => {
                       }
                       variant="filled"
                       disabled={!dirty}
+                      flex="auto 0 0"
                     />
                   </Flex>
                 </Stack>

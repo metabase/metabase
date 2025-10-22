@@ -44,19 +44,15 @@ export const getErrorMessage = createSelector(
   (currentTask) => currentTask?.error_message ?? "",
 );
 
-export const getIsImportingOrExporting = createSelector(
+export const getHasPendingMutation = createSelector(
   [(state: State) => state[remoteSyncApi.reducerPath]?.mutations],
   (mutations) => {
     if (!mutations) {
       return false;
     }
 
-    return Object.values(mutations).some((mutation) => {
-      return (
-        (mutation?.endpointName === "importChanges" ||
-          mutation?.endpointName === "exportChanges") &&
-        mutation?.status === "pending"
-      );
-    });
+    return Object.values(mutations).some(
+      (mutation) => mutation?.status === "pending",
+    );
   },
 );
