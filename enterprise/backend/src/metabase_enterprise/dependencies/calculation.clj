@@ -132,8 +132,15 @@
 
 (mu/defn upstream-deps:document :- ::deps.schema/upstream-deps
   "Given a document, return its upstream dependencies"
-  [{_document-id :id :as document}]
+  [document]
   (reduce (fn [deps [dep-type dep-id]]
             (update deps dep-type (fnil conj #{}) dep-id))
           {}
           (document-deps document)))
+
+(mu/defn upstream-deps:sandbox :- ::deps.schema/upstream-deps
+  "Given a sandbox, return its upstream dependencies"
+  [sandbox]
+  (if-let [card-id (:card_id sandbox)]
+    {:card #{card-id}}
+    {}))

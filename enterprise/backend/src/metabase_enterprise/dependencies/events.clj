@@ -167,3 +167,25 @@
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
     (t2/delete! :model/Dependency :from_entity_type :document :from_entity_id (:id object))))
+
+;; ### Documents
+(derive ::sandbox-deps :metabase/event)
+(derive :event/sandbox-create ::sandbox-deps)
+(derive :event/sandbox-update ::sandbox-deps)
+
+(methodical/defmethod events/publish-event! ::sandbox-deps
+  [_ {:keys [object]}]
+  (when (premium-features/has-feature? :dependencies)
+    (t2/with-transaction [_conn]
+      (models.dependency/replace-dependencies! :sandbox (:id object) (deps.calculation/upstream-deps:sandbox object))
+      (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
+        (t2/update! :model/Document (:id object)
+                    {:dependency_analysis_version models.dependency/current-dependency-analysis-version})))))
+
+(derive ::sandbox-delete :metabase/event)
+(derive :event/sandbox-delete ::document-delete)
+
+(methodical/defmethod events/publish-event! ::sandbox-delete
+  [_ {:keys [object]}]
+  (when (premium-features/has-feature? :dependencies)
+    (t2/delete! :model/Dependency :from_entity_type :document :from_entity_id (:id object))))

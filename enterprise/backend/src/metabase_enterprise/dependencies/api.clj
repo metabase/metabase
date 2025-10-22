@@ -137,6 +137,7 @@
     :transform [:name :description :table]
     :dashboard [:name :description]
     :document [:name :description]
+    :sandbox [:group_id :table_id :card_id  :attribute_remappings]
     []))
 
 (defn- format-subentity [entity]
@@ -159,7 +160,8 @@
     :snippet :model/NativeQuerySnippet
     :transform :model/Transform
     :dashboard :model/Dashboard
-    :document :model/Document))
+    :document :model/Document
+    :sandbox :model/Sandbox))
 
 (defn- calc-usages
   "Calculates the count of direct dependents for all nodes in `nodes`, based on `graph`. "
@@ -197,20 +199,21 @@
                      (= entity-type :dashboard) (-> (t2/hydrate :creator :dashboard :collection :moderation_reviews)
                                                     (->> (map collection.root/hydrate-root-collection)))
                      (= entity-type :document) (-> (t2/hydrate :creator :collection)
-                                                   (->> (map collection.root/hydrate-root-collection))))
+                                                   (->> (map collection.root/hydrate-root-collection)))
+                     (= entity-type :sandbox) (t2/hydrate))
                    (mapv #(entity-value entity-type % usages))))
             nodes-by-type)))
 
 (api.macros/defendpoint :get "/graph"
-  "TODO: This endpoint is supposed to take an :id and :type of an entity (currently :table, :card, :snippet, :transform,
-  :dashboard, or :document) and return the entity with all its upstream and downstream dependencies that should be fetched
-  recursively. :edges match our :model/Dependency format. Each node in :nodes has :id, :type, and :data, and :data
-  depends on the node type. For :table, there should be :display_name. For :card, there should be :name
-  and :type. For :snippet -> :name. For :transform -> :name."
+  "TODO: This endpoint is supposed to take an :id and :type of an entity (currently :table, :card, :snippet,
+  :transform, :dashboard, :document, or :sandbox) and return the entity with all its upstream and downstream
+  dependencies that should be fetched recursively. :edges match our :model/Dependency format. Each node in
+  :nodes has :id, :type, and :data, and :data depends on the node type. For :table, there should be
+  :display_name. For :card, there should be :name and :type. For :snippet -> :name. For :transform -> :name."
   [_route-params
    {:keys [id type]} :- [:map
                          [:id {:optional true} ms/PositiveInt]
-                         [:type {:optional true} (ms/enum-decode-keyword [:table :card :snippet :transform :dashboard :document])]]]
+                         [:type {:optional true} (ms/enum-decode-keyword [:table :card :snippet :transform :dashboard :document :sandbox])]]]
   (let [starting-nodes [[type id]]
         upstream-graph (dependency/graph-dependencies)
         ;; cache the downstream graph specifically, because between calculating transitive children and calculating
@@ -225,17 +228,17 @@
 (def ^:private dependents-args
   [:map
    [:id ms/PositiveInt]
-   [:type (ms/enum-decode-keyword [:table :card :snippet :transform :dashboard :document])]
-   [:dependent_type (ms/enum-decode-keyword [:table :card :snippet :transform :dashboard :document])]
+   [:type (ms/enum-decode-keyword [:table :card :snippet :transform :dashboard :document :sandbox])]
+   [:dependent_type (ms/enum-decode-keyword [:table :card :snippet :transform :dashboard :document :sandbox])]
    [:dependent_card_type {:optional true} (ms/enum-decode-keyword
                                            [:question :model :metric])]])
 
 (api.macros/defendpoint :get "/graph/dependents"
   "TODO: This endpoint is supposed to take an :id and :type of an entity (currently :table, :card, :snippet,
-  or :transform) and return the entity with all its upstream and downstream dependencies that should be fetched
-  recursively. :edges match our :model/Dependency format. Each node in :nodes has :id, :type, and :data, and :data
-  depends on the node type. For :table, there should be :display_name. For :card, there should be :name
-  and :type. For :snippet -> :name. For :transform -> :name."
+  :transform, :dashboard, :document, or :sandbox) and return the entity with all its upstream and downstream
+  dependencies that should be fetched recursively. :edges match our :model/Dependency format. Each node in
+  :nodes has :id, :type, and :data, and :data depends on the node type. For :table, there should be
+  :display_name. For :card, there should be :name and :type. For :snippet -> :name. For :transform -> :name."
   [_route-params
    {:keys [id type dependent_type dependent_card_type]} :- dependents-args]
   (let [downstream-graph (graph/cached-graph (dependency/graph-dependents))

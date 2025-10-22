@@ -92,3 +92,7 @@
 (mr/def ::document
   "Valid Document ID"
   pos-int?)
+
+(mr/def ::sandbox
+  "Valid Sandbox ID"
+  pos-int?)
