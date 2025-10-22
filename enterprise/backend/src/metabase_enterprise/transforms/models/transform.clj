@@ -4,7 +4,6 @@
    [medley.core :as m]
    [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
-   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]

@@ -51,10 +51,14 @@
   (children-of [_this key-seq]
     (children-fn key-seq)))
 
-(defn graph-dependents []
+(defn graph-dependents
+  "Return a dependency graph for finding dependents (downstream entities)."
+  []
   (->DependencyGraph key-dependents))
 
-(defn graph-dependencies []
+(defn graph-dependencies
+  "Return a dependency graph for finding dependencies (upstream entities)."
+  []
   (->DependencyGraph key-dependencies))
 
 (defn transitive-dependents
