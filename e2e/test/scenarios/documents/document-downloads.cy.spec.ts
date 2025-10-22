@@ -1,4 +1,6 @@
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { DOCUMENT_WITH_TWO_CARDS } from "e2e/support/document-initial-data";
+import { DataPermissionValue } from "metabase/admin/permissions/types";
 
 const { H } = cy;
 
@@ -140,5 +142,59 @@ describe("scenarios > documents > downloads", () => {
     // Document content should not render and no card menu should be visible
     H.documentContent().should("not.exist");
     cy.findByRole("button", { name: /ellipsis/ }).should("not.exist");
+  });
+
+  it("hides Download results when the person lacks download permission but can view the collection", () => {
+    H.createDocument({
+      name: "No Download Permission Document",
+      document: DOCUMENT_WITH_TWO_CARDS,
+      collection_id: null,
+      alias: "document",
+      idAlias: "documentId",
+    });
+
+    H.visitDocument("@documentId");
+
+    // Wait for card to load
+    H.getDocumentCard("Orders")
+      .should("be.visible")
+      .findByTestId("table-root")
+      .should("exist");
+
+    // Remove download permission but keep view-data unrestricted
+    const { READONLY_GROUP, ALL_USERS_GROUP } = USER_GROUPS;
+    cy.updatePermissionsGraph({
+      [READONLY_GROUP]: {
+        [SAMPLE_DB_ID]: {
+          download: { schemas: DataPermissionValue.NONE },
+          "view-data": DataPermissionValue.UNRESTRICTED,
+        },
+      },
+      [ALL_USERS_GROUP]: {
+        [SAMPLE_DB_ID]: {
+          download: { schemas: DataPermissionValue.NONE },
+        },
+      },
+    });
+
+    // Sign in as read-only user who can view the collection but cannot download
+    cy.signIn("readonly");
+    H.visitDocument("@documentId");
+
+    // Wait for card to load as readonly user
+    H.getDocumentCard("Orders")
+      .should("be.visible")
+      .findByTestId("table-root")
+      .should("exist");
+
+    // Open card menu
+    H.openDocumentCardMenu("Orders");
+
+    // Verify that Download results is not shown
+    H.popover().within(() => {
+      cy.findByRole("menuitem", { name: /Download results/i }).should(
+        "not.exist",
+      );
+    });
   });
 });
