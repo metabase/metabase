@@ -24,11 +24,9 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
    [metabase.queries.core :as queries]
-   [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
@@ -136,7 +134,7 @@
     (str/replace s #"\[\[(\w+)(?:\.([\w\-]+))?\]\]"
                  (fn [[_ identifier attribute]]
                    (let [entity    (binding-fn identifier)
-                         attribute (some-> attribute qp.util/normalize-token)]
+                         attribute (some-> attribute u/->kebab-case-en keyword)]
                      (str (or (and (ifn? entity) (entity attribute))
                               (root attribute)
                               (interesting/->reference template-type entity))))))))
@@ -167,23 +165,6 @@
           dimension-name->field
           (map first card-dimensions)))
 
-(def ^:private ^{:arglists '([field])} id-or-name
-  (some-fn :id :name))
-
-(mu/defn singular-cell-dimensions :- [:set [:or ::lib.schema.id/field :string]]
-  "Return the set of ids referenced in a cell query."
-  [{:keys [cell-query], :as _root} :- ::ads/root]
-  (letfn [(collect-dimensions [[tag _opts & args]]
-            ;; TODO (Cam 10/21/25) -- piccing apart MBQL clauses like this is a little icky and unidiomatic, we really
-            ;; don't discourage digging around in MBQL outside of Lib -- FIXME
-            (case (some-> tag keyword)
-              :and          (mapcat collect-dimensions args)
-              (:between :=) (magic.util/collect-field-references args)
-              nil))]
-    (into #{}
-          (map magic.util/field-reference->id)
-          (collect-dimensions cell-query))))
-
 (defn- valid-breakout-dimension?
   [{:keys [base_type db fingerprint aggregation]}]
   (or (nil? aggregation)
@@ -193,14 +174,12 @@
            (not= (-> fingerprint :type :type/Number :min)
                  (-> fingerprint :type :type/Number :max)))))
 
-(defn- valid-bindings? [{:keys [root]} satisfied-dimensions bindings]
-  (let [cell-dimension? (singular-cell-dimensions root)]
-    (->> satisfied-dimensions
-         (map first)
-         (map (fn [[identifier opts]]
-                (merge (bindings identifier) opts)))
-         (every? (every-pred valid-breakout-dimension?
-                             (complement (comp cell-dimension? id-or-name)))))))
+(defn- valid-bindings? [satisfied-dimensions bindings]
+  (->> satisfied-dimensions
+       (map first)
+       (map (fn [[identifier opts]]
+              (merge (bindings identifier) opts)))
+       (every? valid-breakout-dimension?)))
 
 (mu/defn grounded-metrics->dashcards :- [:sequential
                                          [:merge
@@ -235,7 +214,7 @@
                                      (apply math.combo/cartesian-product)
                                      (map (partial zipmap dim-names)))
           :let [merged-dims (combine-dimensions dimension-name->field card-dimensions)]
-          :when (and (valid-bindings? base-context card-dimensions dimension-name->field)
+          :when (and (valid-bindings? card-dimensions dimension-name->field)
                      (every? metric-name->metric card-metrics))
           :let [[grounded-metric :as all-satisfied-metrics] (map metric-name->metric card-metrics)
                 final-aggregate                    (into []

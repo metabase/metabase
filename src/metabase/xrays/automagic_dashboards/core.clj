@@ -373,8 +373,17 @@
 
 (mu/defn- singular-cell-dimension-field-ids :- [:maybe [:set [:or :string ::lib.schema.id/field]]]
   "Return the set of ids referenced in a cell query"
-  [root :- ::ads/root]
-  (combination/singular-cell-dimensions root))
+  [{:keys [cell-query], :as _root} :- ::ads/root]
+  (letfn [(collect-dimensions [[tag _opts & args]]
+            ;; TODO (Cam 10/21/25) -- piccing apart MBQL clauses like this is a little icky and unidiomatic, we really
+            ;; don't discourage digging around in MBQL outside of Lib -- FIXME
+            (case (some-> tag keyword)
+              :and          (mapcat collect-dimensions args)
+              (:between :=) (magic.util/collect-field-references args)
+              nil))]
+    (into #{}
+          (map magic.util/field-reference->id)
+          (collect-dimensions cell-query))))
 
 (defn- matching-dashboard-templates
   "Return matching dashboard templates ordered by specificity.
