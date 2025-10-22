@@ -9,12 +9,9 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { EmbeddingSettingsCard } from "metabase/admin/settings/components/EmbeddingSettings";
-import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { UpsellDevInstances } from "metabase/admin/upsells";
-import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
-import { Box, Button } from "metabase/ui";
 
 import { EmbeddingAppOriginDescription } from "./EmbeddingAppOriginDescription";
 
@@ -46,16 +43,6 @@ export function InteractiveEmbeddingSettings() {
       />
 
       <SettingsSection>
-        <Box>
-          <SettingHeader id="get-started" title={t`Get started`} />
-          <Button
-            mt="xs"
-            variant="outline"
-            component={ExternalLink}
-            href={quickStartUrl}
-          >{t`Check out the Quickstart`}</Button>
-        </Box>
-
         <AdminSettingInput
           name="embedding-app-origins-interactive"
           title={t`Authorized origins`}
