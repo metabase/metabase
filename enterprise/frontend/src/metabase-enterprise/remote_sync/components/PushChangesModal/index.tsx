@@ -10,7 +10,6 @@ import {
   Icon,
   Modal,
   Stack,
-  Title,
 } from "metabase/ui";
 import { useExportChangesMutation } from "metabase-enterprise/api";
 import type { Collection } from "metabase-types/api";
@@ -75,14 +74,12 @@ export const PushChangesModal = ({
   return (
     <Modal
       opened
-      title={<Title fw={600} order={3} pl="sm">{t`Push to Git`}</Title>}
+      title={t`Push to Git`}
       onClose={onClose}
       size="lg"
-      styles={{
-        body: { padding: 0 },
-      }}
+      padding="xl"
     >
-      <Box px="xl" pt="md">
+      <Box pt="md">
         {errorMessage && (
           <Alert mb="md" variant="error" icon={<Icon name="warning" />}>
             {errorMessage}
@@ -101,7 +98,7 @@ export const PushChangesModal = ({
 
       <Divider my="lg" />
 
-      <Box px="xl" pb="lg">
+      <Box>
         <Group gap="sm" justify="end">
           <Button variant="subtle" onClick={onClose}>
             {t`Cancel`}

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { Box, Button, Group, Icon, Modal, Text } from "metabase/ui";
+import { Box, Button, Group, Icon, Modal } from "metabase/ui";
 import { useGetBranchesQuery } from "metabase-enterprise/api";
 import type { Collection } from "metabase-types/api";
 
@@ -80,17 +80,17 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
       onClose={onClose}
       opened
       title={
-        <Text component="span" fz="1.25rem" lh="2rem">
-          {variant === "push" ? (
-            <>
-              {t`Your branch is behind the remote branch.`}{" "}
-              {t`What do you want to do?`}
-            </>
-          ) : (
-            t`You have unsynced changes. What do you want to do?`
-          )}
-        </Text>
+        variant === "push" ? (
+          <>
+            {t`Your branch is behind the remote branch.`}{" "}
+            {t`What do you want to do?`}
+          </>
+        ) : (
+          t`You have unsynced changes. What do you want to do?`
+        )
       }
+      padding="xl"
+      styles={{ title: { lineHeight: "2rem" } }}
       withCloseButton={false}
     >
       <Box pt="md">
