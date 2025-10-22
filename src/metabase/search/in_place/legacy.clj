@@ -530,7 +530,7 @@
       (add-collection-join-and-where-clauses model search-ctx)))
 
 (defmethod search-query-for-model "transform"
-  [model search-ctx]
+  [_model search-ctx]
   (base-query-for-model "transform" search-ctx))
 
 (defmethod search-query-for-model "database"
