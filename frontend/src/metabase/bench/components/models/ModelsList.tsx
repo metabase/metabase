@@ -19,6 +19,7 @@ import { Tree } from "metabase/common/components/tree/Tree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
 import { useDispatch, useSelector } from "metabase/lib/redux/hooks";
+import type { SidebarFeatures } from "metabase/query_builder/components/NativeQueryEditor/types";
 import { ModelCacheManagementSection } from "metabase/query_builder/components/view/sidebars/ModelCacheManagementSection";
 import { shouldShowQuestionSettingsSidebar } from "metabase/query_builder/components/view/sidebars/QuestionSettingsSidebar";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
@@ -49,6 +50,15 @@ import {
 
 import { CreateModelMenu } from "./CreateModelMenu";
 import { ModelMoreMenu } from "./ModelMoreMenu";
+
+const sidebarFeatures: Required<SidebarFeatures> = {
+  dataReference: true,
+  variables: true,
+  snippets: true,
+  promptInput: true,
+  formatQuery: true,
+  aiGeneration: false,
+};
 
 function ModelsList({
   activeId,
@@ -280,6 +290,7 @@ export const ModelEditor = (props: {
           searchApi.util.invalidateTags([listTag(TAG_TYPE_MAPPING["dataset"])]),
         );
       }}
+      sidebarFeatures={sidebarFeatures}
     />
   );
 };
