@@ -1,0 +1,14 @@
+.appBar {
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
+.selectButton {
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-default);
+  background-color: var(--mb-color-bg-white);
+  transition: background-color 0.2s ease;
+}
+
+.selectButton:hover {
+  background-color: var(--mb-color-bg-light);
+}
