@@ -1,17 +1,21 @@
 (ns metabase.xrays.automagic-dashboards.filters
   (:require
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.util :as mbql.u]
+   ;; legacy usage, do not use this in new code
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.legacy-mbql.util :as mbql.u]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.malli :as mu]
    [metabase.warehouse-schema.models.field :as field]
+   [metabase.xrays.automagic-dashboards.schema :as ads]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
    [toucan2.core :as t2]))
 
 (defn- temporal?
   "Does `field` represent a temporal value, i.e. a date, time, or datetime?"
   [{base-type :base_type, effective-type :effective_type, unit :unit}]
-  ;; TODO -- not sure why we're excluding year here? Is it because we normally returned it as an integer in the past?
+  ;; Excluding :year because it's (currently) both an extraction and truncation unit.
+  ;; For the purposes of this check, :year is an interesting :unit which yields a time interval, not just a number.
   (and (not ((disj u.date/extract-units :year) unit))
        (isa? (or effective-type base-type) :type/Temporal)))
 
@@ -75,7 +79,7 @@
 (defn- add-filter
   [dashcard filter-id field]
   (let [mappings (->> (conj (:series dashcard) (:card dashcard))
-                      (keep (fn [card]
+                      (keep (mu/fn [card :- [:maybe ::ads/card]]
                               (when-let [target (filter-for-card card field)]
                                 {:parameter_id filter-id
                                  :target       target
@@ -113,10 +117,11 @@
   (partial remove (fn [{:keys [fingerprint]}]
                     (some-> fingerprint :global :distinct-count (< 2)))))
 
-(defn add-filters
+(mu/defn add-filters
   "Add up to `max-filters` filters to dashboard `dashboard`. The `dimensions` argument is a list of fields for which to
   create filters."
-  [dashboard dimensions max-filters]
+  [dashboard :- ::ads/dashboard
+   dimensions max-filters]
   (let [fks (when-let [table-ids (not-empty (set (keep (comp :table_id :card)
                                                        (:dashcards dashboard))))]
               (field/with-targets (t2/select :model/Field

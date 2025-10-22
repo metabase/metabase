@@ -29,7 +29,7 @@
   (:require
    [clojure.data :as data]
    [medley.core :as m]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
@@ -39,11 +39,10 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.order-by :as lib.schema.order-by]
    [metabase.lib.schema.ref :as lib.schema.ref]
-   [metabase.lib.util :as lib.util]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.middleware.large-int :as large-int]
    [metabase.query-processor.schema :as qp.schema]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -92,12 +91,13 @@
   (let [col (lib.metadata/field metadata-providerable field-id)]
     (when-let [{remap-id :id, remap-name :name, remap-field-id :field-id} (:lib/external-remap col)]
       (when-let [remap-field (lib.metadata/field metadata-providerable remap-field-id)]
-        {:id                        remap-id
-         :name                      remap-name
-         :field-id                  (:id col)
-         :field-name                (:name col)
-         :human-readable-field-id   remap-field-id
-         :human-readable-field-name (:name remap-field)}))))
+        (when (not= (:visibility-type remap-field) :sensitive)
+          {:id                        remap-id
+           :name                      remap-name
+           :field-id                  (:id col)
+           :field-name                (:name col)
+           :human-readable-field-id   remap-field-id
+           :human-readable-field-name (:name remap-field)})))))
 
 (mr/def ::remap-info
   [:and
@@ -128,7 +128,7 @@
   ;;
   ;; TODO (Cam 7/23/25) -- this seems sorta busted, we should probably be using `:lib/desired-column-alias` here
   ;; instead.
-  (let [name-generator (lib.util/unique-name-generator)
+  (let [name-generator (lib/unique-name-generator)
         unique-name    (fn [field-id]
                          (assert (pos-int? field-id) (str "Invalid Field ID: " (pr-str field-id)))
                          (let [field (lib.metadata/field query field-id)]
@@ -607,7 +607,7 @@
     rff
     (fn remap-results-rff* [metadata]
       (let [mlv2-cols          (map
-                                #(lib.metadata.jvm/instance->metadata % :metadata/column)
+                                #(lib-be/instance->metadata % :metadata/column)
                                 (:cols metadata))
             internal-cols-info (internal-columns-info mlv2-cols)
             metadata           (add-remapped-to-and-from-metadata metadata external-remaps internal-cols-info)]

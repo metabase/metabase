@@ -241,6 +241,14 @@ export type VisualizationPassThroughProps = {
    * Extra buttons to be shown in the table footer (if the visualization is a table)
    */
   tableFooterExtraButtons?: React.ReactNode;
+
+  /**
+   * Props used for Audit Table visualization
+   */
+  isSelectable?: boolean;
+  rowChecked?: [];
+  onAllSelectClick?: () => void;
+  onRowSelectClick?: () => void;
 };
 
 export type ColumnSettingDefinition<TValue, TProps = unknown> = {

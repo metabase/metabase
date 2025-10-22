@@ -13,14 +13,14 @@
    ;; Lib only soon
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.schema :as mbql.s]
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
+   ^{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.middleware.annotate.legacy-helper-fns :as annotate.legacy-helper-fns]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -231,6 +231,7 @@
   [inner-query :- :map
    expression  :- [:maybe ::mbql.s/FieldOrExpressionDef]]
   (when expression
+    #_{:clj-kondo/ignore [:deprecated-var]}
     (let [mlv2-query (annotate.legacy-helper-fns/legacy-inner-query->mlv2-query inner-query)]
       (lib/type-of mlv2-query (lib/->pMBQL expression)))))
 
@@ -238,7 +239,7 @@
   "Convert an `:expression` reference from a source query into an appropriate `:field` clause for use in the surrounding
   query."
   [{:keys [source-query], :as query} [_ expression-name opts :as _clause]]
-  (let [expression-definition        (mbql.u/expression-with-name query expression-name)
+  (let [expression-definition        #_{:clj-kondo/ignore [:deprecated-var]} (mbql.u/expression-with-name query expression-name)
         base-type                    (infer-expression-type query expression-definition)
         {::add/keys [desired-alias]} (lib.util.match/match-one source-query
                                        [:expression (_ :guard (partial = expression-name)) source-opts]
@@ -280,7 +281,8 @@
     ;; In fact, we don't mark all Fields, only the ones we deem coercible. Marking all would make a bunch of tests
     ;; fail, but it might still make sense. For example, #48721 would have been avoided by unconditional marking.
     (_ :guard coercible-field-ref?)
-    (recur (mbql.u/update-field-options &match assoc :qp/ignore-coercion true))
+    (recur #_{:clj-kondo/ignore [:deprecated-var]}
+     (mbql.u/update-field-options &match assoc :qp/ignore-coercion true))
 
     [:field id-or-name (opts :guard :join-alias)]
     (let [{::add/keys [desired-alias]} (lib.util.match/match-one (:source-query query)

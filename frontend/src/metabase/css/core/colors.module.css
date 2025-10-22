@@ -29,6 +29,11 @@
   color: var(--mb-color-brand);
 }
 
+/** Non-whitelabeled Metabase brand color */
+.textMetabaseBrand {
+  color: var(--mb-color-metabase-brand);
+}
+
 .textSuccess {
   color: var(--mb-color-success);
 }

@@ -14,18 +14,19 @@
   [query :- ::lib.schema/query]
   (let [bad-fields (volatile! [])]
     (lib.walk/walk-clauses
-     query (fn [query path-type path clause]
-             (when (and (= path-type :lib.walk/stage)
-                        (vector? clause)
-                        (= (first clause) :field))
-               (let [column (lib.walk/apply-f-for-stage-at-path
-                             lib.field.resolution/resolve-field-ref
-                             query path clause)]
-                 (when (or (not column)
-                           (::lib.field.resolution/fallback-metadata? column)
-                           (not (:active column true)))
-                   (vswap! bad-fields conj clause))))
-             nil))
+     query
+     (fn [query path-type path clause]
+       (when (and (= path-type :lib.walk/stage)
+                  (vector? clause)
+                  (= (first clause) :field))
+         (let [column (lib.walk/apply-f-for-stage-at-path
+                       lib.field.resolution/resolve-field-ref
+                       query path clause)]
+           (when (or (not column)
+                     (::lib.field.resolution/fallback-metadata? column)
+                     (not (:active column true)))
+             (vswap! bad-fields conj clause))))
+       nil))
     (not-empty @bad-fields)))
 
 (comment

@@ -1,13 +1,11 @@
 (ns metabase.lib.fe-util
-  (:refer-clojure :exclude [every? mapv select-keys some])
+  (:refer-clojure :exclude [every? mapv select-keys some #?(:clj doseq) #?(:clj for)])
   (:require
    [inflections.core :as inflections]
    [medley.core :as m]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.card :as lib.card]
    [metabase.lib.common :as lib.common]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.filter :as lib.filter]
@@ -35,7 +33,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.number :as u.number]
-   [metabase.util.performance :refer [every? mapv select-keys some]]
+   [metabase.util.performance :refer [every? mapv select-keys some #?(:clj doseq) #?(:clj for)]]
    [metabase.util.time :as u.time]))
 
 (def ^:private ExpressionArg
@@ -75,7 +73,7 @@
                            (:temporal-unit (lib.options/options maybe-clause-arg)))
                 (u.time/timestamp-coercible? other-arg))))
 
-(defn- expand-temporal-expression
+(defn expand-temporal-expression
   "Modify expression in a way, that its resulting [[expression-parts]] are digestable by filter picker.
 
    Current filter picker implementation is unable to handle expression parts of expressions of a form
@@ -867,7 +865,7 @@
                    (query-dependents-foreign-keys metadata-providerable card-columns))
                  (when (and (= (:type card) :metric) definition)
                    (query-dependents metadata-providerable
-                                     (-> definition mbql.normalize/normalize lib.convert/->pMBQL))))))
+                                     definition)))))
      (when-let [table-id (:source-table base-stage)]
        (cons {:type :table, :id table-id}
              (query-dependents-foreign-keys metadata-providerable

@@ -25,25 +25,29 @@ Currently you can choose to embed:
 
 ## Quickstart
 
-You can also follow the setup guide directly in Metabase in **Admin > Embedding > Setup guide**. We're recording the steps here for convenience.
+You can also follow the setup guide directly in Metabase in **Admin settings > Embedding > Setup guide**. We're recording the steps here for convenience.
 
 ### 1. Enable Embedded Analytics JS
 
-1. In Metabase, go to **Admin > Embedding > Modular embedding**.
+1. In Metabase, go to **Admin settings > Embedding > Modular embedding**.
 2. Toggle on **Embedded Analytics JS**.
 3. Under **Cross-Origin Resource Sharing (CORS)**, add the URLs of the websites where you want to embed Metabase (such as `https://*.example.com`). For testing embeds, you can use `localhost` which is always included in CORS policy.
+4. If you are embedding Metabase components in a domain that's different from your Metabase's domain (including when you're testing the app locally but use Metabase Cloud), go to **Admin settings > Embedding > Security** and set **SameSite cookie** to **None**.
 
 ### 2. Create a new embed
 
-1. In Metabase, go to **Admin > Embedding > Setup guide > Embed in your code**, and select **Try it out** next to **Embedded analytics JS**.
+1. In Metabase, go to **Admin > Embedding > Modular embedding**, and select **New embed** next to **Embedded analytics JS**.
 
    If you're planning to embed an existing question or dashboard, you can instead go straight to that question or dashboard, click on the **Share** button, and choose **Embedded Analytics JS**.
 
 2. Choose the _type_ of entity to embed:
+
    - Dashboard
    - Question
    - Exploration (which will embed the Metabase query builder)
    - Browser
+   - Metabot question
+
 3. Next, select the entity you want to embed. For browser, pick the collection you want people to start from.
 
 Once you've selected what you want to embed, click Next to customize your embed.
@@ -73,6 +77,16 @@ You'll get a choice between "Existing Metabase session" and "Single sign-on (SSO
 Metabase will generate a code snippet that you can copy and paste into your app, see [Embed code snippets](#embed-code-snippets) for an example. You can later modify this code snippet to specify additional appearance options or change the behavior of some components.
 
 Add the code snippet into your app, and refresh the page.
+
+## Each end user should have their own Metabase account
+
+Each end-user must have their own Metabase account.
+
+The problem with having end-users share a Metabase account is that, even if you filter data on the client side via the Embedded analytics JS, all end-users will still have access to the session token, which they could use to access Metabase directly via the API to get data they’re not supposed to see.
+
+If each end-user has their own Metabase account, however, you can configure permissions in Metabase and everyone will only have access to the data they should.
+
+In addition to this, we consider shared accounts to be unfair usage. Fair usage of Embedded Analytics JS involves giving each end-user of the embedded analytics their own Metabase account.
 
 ## Embed code snippets
 
@@ -140,7 +154,7 @@ When you're creating a new embed using **Admin > Embedding > Setup guide > Embed
 
 To define the configuration that applies to every embed on the page, use the `defineMetabaseConfig()` function. Its parameters include:
 
-- `instanceUrl: "https://your-metabase-url"` (required): the URL of your Metabase instance, like https://youlooknicetoday.metabaseapp.com
+- `instanceUrl: "https://your-metabase-url"` (required): the URL of your Metabase instance, like `https://youlooknicetoday.metabaseapp.com`
 
 - `theme: {...}` (optional): [appearance options for the embeds](#theming).
 
@@ -380,3 +394,21 @@ To render a collection browser so people can navigate a collection and open dash
 **Optional parameters:**
 
 - `read-only` (default is true) – if true, people can interact with items (filter, summarize, drill-through) but cannot save. If false, they can create and edit items in the collection.
+
+## Embedding Metabase in a different domain
+
+If you want to embed Metabase in another domain (say, if Metabase is hosted at `metabase.yourcompany.com`, but you want to embed Metabase at `yourcompany.github.io`), you can tell Metabase to set the session cookie's SameSite value to "none".
+
+You can set session cookie's SameSite value in **Admin settings** > **Embedding** > **Security** > **SameSite cookie setting**.
+
+SameSite values include:
+
+- **Lax** (default): Allows Metabase session cookies to be shared on the same domain. Used for production instances on the same domain.
+- **None (requires HTTPS)**: Use "None" when your app and Metabase are hosted on different domains. Incompatible with Safari and iOS-based browsers.
+- **Strict** (not recommended): Does not allow Metabase session cookies to be shared with embedded instances. Use this if you do not want to enable session sharing with embedding.
+
+You can also set the [`MB_SESSION_COOKIE_SAMESITE` environment variable](../configuring-metabase/environment-variables.md#mb_session_cookie_samesite).
+
+If you're using Safari, you'll need to [allow cross-site tracking](https://support.apple.com/en-tj/guide/safari/sfri40732/mac). Depending on the browser, you may also run into issues when viewing emdedded items in private/incognito tabs.
+
+Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).
