@@ -148,30 +148,29 @@ const CardEmbedMenuDropdown = ({
           {t`Comment`}
         </Menu.Item>
       )}
-      {canWrite && (
-        <>
-          <Menu.Item
-            onClick={handleEditVisualizationSettings}
-            leftSection={<Icon name="palette" size={14} />}
-          >
-            {t`Edit Visualization`}
-          </Menu.Item>
-          <Menu.Item
-            onClick={() => setIsModifyModalOpen(true)}
-            leftSection={
-              <Icon name={isNativeQuestion ? "sql" : "notebook"} size={14} />
-            }
-          >
-            {t`Edit Query`}
-          </Menu.Item>
-          <Menu.Item
-            onClick={handleReplaceQuestion}
-            leftSection={<Icon name="refresh" size={14} />}
-          >
-            {t`Replace`}
-          </Menu.Item>
-        </>
-      )}
+      <Menu.Item
+        onClick={handleEditVisualizationSettings}
+        leftSection={<Icon name="palette" size={14} />}
+        disabled={!canWrite}
+      >
+        {t`Edit Visualization`}
+      </Menu.Item>
+      <Menu.Item
+        onClick={() => setIsModifyModalOpen(true)}
+        leftSection={
+          <Icon name={isNativeQuestion ? "sql" : "notebook"} size={14} />
+        }
+        disabled={!canWrite}
+      >
+        {t`Edit Query`}
+      </Menu.Item>
+      <Menu.Item
+        onClick={handleReplaceQuestion}
+        leftSection={<Icon name="refresh" size={14} />}
+        disabled={!canWrite}
+      >
+        {t`Replace`}
+      </Menu.Item>
       {canDownloadResults(dataset) && (
         <Menu.Item
           leftSection={<Icon name="download" aria-hidden />}
@@ -185,14 +184,13 @@ const CardEmbedMenuDropdown = ({
           {isDownloadingData ? t`Downloading…` : t`Download results`}
         </Menu.Item>
       )}
-      {canWrite && (
-        <Menu.Item
-          onClick={handleRemoveNode}
-          leftSection={<Icon name="trash" size={14} />}
-        >
-          {t`Remove Chart`}
-        </Menu.Item>
-      )}
+      <Menu.Item
+        onClick={handleRemoveNode}
+        leftSection={<Icon name="trash" size={14} />}
+        disabled={!canWrite}
+      >
+        {t`Remove Chart`}
+      </Menu.Item>
     </>
   );
 };
