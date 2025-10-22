@@ -15,7 +15,7 @@ import { Group } from "metabase/ui";
 import { useLazyGetDependencyGraphQuery } from "metabase-enterprise/api";
 import type { DependencyEntry } from "metabase-types/api";
 
-import S from "./DependencyLineage.module.css";
+import S from "./DependencyGraph.module.css";
 import { GraphContext } from "./GraphContext";
 import { GraphDependencyPanel } from "./GraphDependencyPanel";
 import { GraphEntryInput } from "./GraphEntryInput";
@@ -31,11 +31,11 @@ const NODE_TYPES = {
   node: GraphNode,
 };
 
-type DependencyLineageProps = {
+type DependencyGraphProps = {
   entry?: DependencyEntry;
 };
 
-export function DependencyLineage({ entry }: DependencyLineageProps) {
+export function DependencyGraph({ entry }: DependencyGraphProps) {
   const [fetchGraph, { isFetching }] = useLazyGetDependencyGraphQuery();
   const [nodes, setNodes, onNodesChange] = useNodesState<NodeType>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
