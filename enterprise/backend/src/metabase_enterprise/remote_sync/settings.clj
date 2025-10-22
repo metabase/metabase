@@ -23,7 +23,7 @@
   :export? false)
 
 (defsetting remote-sync-token
-  (deferred-tru "A GH token")
+  (deferred-tru "An Authorization Bearer token allowing access to the git repo over HTTP")
   :type :string
   :visibility :admin
   :doc true
