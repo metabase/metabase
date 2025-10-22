@@ -1,7 +1,7 @@
 import cx from "classnames";
 import type { Location } from "history";
 import type React from "react";
-import { useEffect, useMemo } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { push } from "react-router-redux";
 import { useLocalStorage, useMount, usePrevious } from "react-use";
@@ -60,14 +60,21 @@ import {
 } from "../ItemsListSection/ItemsListSection";
 import { ItemsListSettings } from "../ItemsListSection/ItemsListSettings";
 import { ItemsListTreeNode } from "../ItemsListSection/ItemsListTreeNode";
+import { ModelMoreMenu } from "../models/ModelMoreMenu";
 import { getTreeItems } from "../models/utils";
+import {
+  type SearchResultModal,
+  SearchResultModals,
+} from "../shared/SearchResultModals";
 
 function MetricsList({
   activeId,
   onCollapse,
+  onOpenModal,
 }: {
   activeId: number | null;
   onCollapse?: () => void;
+  onOpenModal: (modal: SearchResultModal) => void;
 }) {
   const dispatch = useDispatch();
   const { isLoading: isLoadingMetrics, data: metricsData } = useFetchMetrics();
@@ -97,6 +104,10 @@ function MetricsList({
       dispatch(push(`/bench/metric/${item.id}`));
     }
   };
+
+  const renderMoreMenu = (item: SearchResult) => (
+    <ModelMoreMenu item={item} onOpenModal={onOpenModal} />
+  );
 
   return (
     <ItemsListSection
@@ -149,6 +160,13 @@ function MetricsList({
               onSelect={handleMetricSelect}
               emptyState={<Text c="text-light">{t`No models found`}</Text>}
               TreeNode={ItemsListTreeNode}
+              rightSection={(item) =>
+                item.data ? (
+                  <div onClick={(e) => e.stopPropagation()}>
+                    {renderMoreMenu(item.data as SearchResult)}
+                  </div>
+                ) : null
+              }
             />
           </Box>
         ) : (
@@ -157,6 +175,7 @@ function MetricsList({
               key={metric.id}
               metric={metric}
               active={metric.id === activeId}
+              renderMoreMenu={renderMoreMenu}
             />
           ))
         )
@@ -168,13 +187,15 @@ function MetricsList({
 function MetricListItem({
   metric,
   active,
+  renderMoreMenu,
 }: {
   metric: SearchResult;
   active?: boolean;
+  renderMoreMenu: (metric: SearchResult) => ReactNode;
 }) {
   const icon = getIcon({ type: "dataset", ...metric });
   return (
-    <Box mb="sm">
+    <Box mb="sm" pos="relative">
       <NavLink
         component={Link}
         to={`/bench/metric/${metric.id}`}
@@ -194,6 +215,9 @@ function MetricListItem({
           </>
         }
       />
+      <Box pos="absolute" right="0.25rem" top="0.25rem">
+        {renderMoreMenu(metric)}
+      </Box>
     </Box>
   );
 }
@@ -205,9 +229,21 @@ export const MetricsLayout = ({
   children: React.ReactNode;
   params: { slug: string };
 }) => {
+  const [modal, setModal] = useState<SearchResultModal | null>(null);
+  const onClose = () => setModal(null);
   return (
-    <BenchLayout nav={<MetricsList activeId={+params.slug} />} name="model">
+    <BenchLayout
+      nav={<MetricsList activeId={+params.slug} onOpenModal={setModal} />}
+      name="metric"
+    >
       {children}
+      {modal && (
+        <SearchResultModals
+          activeId={+params.slug}
+          modal={modal}
+          onClose={onClose}
+        />
+      )}
     </BenchLayout>
   );
 };
