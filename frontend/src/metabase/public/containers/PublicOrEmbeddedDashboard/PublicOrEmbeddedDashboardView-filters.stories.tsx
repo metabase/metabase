@@ -10,6 +10,7 @@ import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { Api } from "metabase/api";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
+import { stableStringify } from "metabase/lib/objects";
 import { MetabaseReduxProvider } from "metabase/lib/redux/custom-context";
 import {
   MockDashboardContext,
@@ -120,16 +121,21 @@ function ReduxDecorator(Story: StoryFn, context: StoryContext) {
     }),
     parameters: {
       parameterValuesCache: {
-        [`{"paramId":"${CATEGORY_DROPDOWN_FILTER.id}","dashId":${DASHBOARD_ID}}`]:
-          {
-            values: [["Doohickey"], ["Gadget"], ["Gizmo"], ["Widget"]],
-            has_more_values: parameterType === "search" ? true : false,
-          },
-        [`{"paramId":"${CATEGORY_DROPDOWN_FILTER.id}","dashId":${DASHBOARD_ID},"query":"g"}`]:
-          {
-            values: [["Gadget"], ["Gizmo"], ["Widget"]],
-            has_more_values: parameterType === "search" ? true : false,
-          },
+        [stableStringify({
+          paramId: CATEGORY_DROPDOWN_FILTER.id,
+          dashId: DASHBOARD_ID,
+        })]: {
+          values: [["Doohickey"], ["Gadget"], ["Gizmo"], ["Widget"]],
+          has_more_values: parameterType === "search" ? true : false,
+        },
+        [stableStringify({
+          paramId: CATEGORY_DROPDOWN_FILTER.id,
+          dashId: DASHBOARD_ID,
+          query: "g",
+        })]: {
+          values: [["Gadget"], ["Gizmo"], ["Widget"]],
+          has_more_values: parameterType === "search" ? true : false,
+        },
       },
     },
     entities: createMockEntitiesState({

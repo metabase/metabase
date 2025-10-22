@@ -1,7 +1,9 @@
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-use";
 
 import { useSearchQuery } from "metabase/api";
+import { useEmbeddingParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/hooks/use-embedding-paramers";
+import { useGetStaticEmbeddingSignedToken } from "metabase-enterprise/embedding_iframe_sdk_setup/hooks/use-get-static-embedding-signed-token";
 
 import {
   SdkIframeEmbedSetupContext,
@@ -52,6 +54,7 @@ export const SdkIframeEmbedSetupProvider = ({
     const params = new URLSearchParams(location.search);
 
     return {
+      isStatic: params.get("is_static") === "true",
       authMethod: params.get("auth_method"),
       resourceType: params.get("resource_type"),
       resourceId: params.get("resource_id"),
@@ -95,15 +98,48 @@ export const SdkIframeEmbedSetupProvider = ({
     settings,
   });
 
-  const { availableParameters } = useParameters({
+  const { availableParameters, initialAvailableParameters } = useParameters({
     experience,
     resource,
   });
-
-  const { parametersValuesById } = useParametersValues({
+  const {
+    embeddingParameters,
+    initialEmbeddingParameters,
+    onEmbeddingParametersChange,
+  } = useEmbeddingParameters({
     settings,
+    updateSettings,
+    resource,
+    initialAvailableParameters,
     availableParameters,
   });
+
+  const { parametersValuesById, previewParameterValuesBySlug } =
+    useParametersValues({
+      settings,
+      availableParameters,
+      embeddingParameters,
+    });
+
+  const { signedToken: staticEmbeddingSignedToken } =
+    useGetStaticEmbeddingSignedToken({
+      settings,
+      experience,
+      previewParameterValuesBySlug,
+      embeddingParameters,
+    });
+
+  useEffect(() => {
+    if (!settings.isStatic || !initialEmbeddingParameters) {
+      return;
+    }
+
+    onEmbeddingParametersChange(initialEmbeddingParameters);
+  }, [
+    settings.isStatic,
+    initialEmbeddingParameters,
+    onEmbeddingParametersChange,
+  ]);
 
   const value: SdkIframeEmbedSetupContextType = {
     currentStep,
@@ -123,7 +159,12 @@ export const SdkIframeEmbedSetupProvider = ({
     addRecentItem,
     isEmbedSettingsLoaded,
     availableParameters,
+    initialEmbeddingParameters,
     parametersValuesById,
+    previewParameterValuesBySlug,
+    embeddingParameters,
+    onEmbeddingParametersChange,
+    staticEmbeddingSignedToken,
   };
 
   return (

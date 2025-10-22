@@ -1,6 +1,7 @@
 import type { PropsWithChildren } from "react";
 
 import type { LoadQuestionHookResult } from "embedding-sdk-bundle/hooks/private/use-load-question";
+import type { SdkEntityToken } from "embedding-sdk-bundle/types";
 import type { SdkCollectionId } from "embedding-sdk-bundle/types/collection";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
 import type {
@@ -105,10 +106,21 @@ export type QuestionMockLocationParameters = {
   params: { slug?: string };
 };
 
+export type SdkQuestionEntityProps = {
+  questionId: SdkQuestionId | null;
+
+  /**
+   * A valid JWT token for the anonymous embedding.
+   *
+   * @internal
+   */
+  token?: SdkEntityToken | null;
+};
+
 export type SdkQuestionProviderProps = PropsWithChildren<
   SdkQuestionConfig &
-    Omit<LoadSdkQuestionParams, "questionId"> & {
-      questionId: SdkQuestionId | null;
+    Omit<LoadSdkQuestionParams, "questionId"> &
+    SdkQuestionEntityProps & {
       /**
        * @internal
        */
@@ -139,6 +151,7 @@ export type SdkQuestionContextType = Omit<
     plugins: SdkQuestionConfig["componentPlugins"] | null;
     mode: QueryClickActionsMode | Mode | null | undefined;
     originalId: SdkQuestionId | null;
+    token: string | null | undefined;
     resetQuestion: () => void;
     onReset: () => void;
     onCreate: (question: Question) => Promise<Question>;

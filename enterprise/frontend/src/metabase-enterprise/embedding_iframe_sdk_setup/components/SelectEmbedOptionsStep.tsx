@@ -26,22 +26,29 @@ const BehaviorSection = () => {
 
   const behaviorSection = useMemo(() => {
     return match(settings)
-      .with({ template: "exploration" }, (settings) => (
-        <Checkbox
-          label={t`Allow people to save new questions`}
-          checked={settings.isSaveEnabled}
-          onChange={(e) => updateSettings({ isSaveEnabled: e.target.checked })}
-        />
-      ))
+      .with(
+        { template: "exploration", isStatic: P.optional(false) },
+        (settings) => (
+          <Checkbox
+            label={t`Allow people to save new questions`}
+            checked={settings.isSaveEnabled}
+            onChange={(e) =>
+              updateSettings({ isSaveEnabled: e.target.checked })
+            }
+          />
+        ),
+      )
       .with(
         { componentName: "metabase-question", questionId: P.nonNullable },
         (settings) => (
           <Stack gap="md">
-            <Checkbox
-              label={t`Allow people to drill through on data points`}
-              checked={settings.drills}
-              onChange={(e) => updateSettings({ drills: e.target.checked })}
-            />
+            {!settings.isStatic && (
+              <Checkbox
+                label={t`Allow people to drill through on data points`}
+                checked={settings.drills}
+                onChange={(e) => updateSettings({ drills: e.target.checked })}
+              />
+            )}
 
             <Checkbox
               label={t`Allow downloads`}
@@ -51,13 +58,15 @@ const BehaviorSection = () => {
               }
             />
 
-            <Checkbox
-              label={t`Allow people to save new questions`}
-              checked={settings.isSaveEnabled}
-              onChange={(e) =>
-                updateSettings({ isSaveEnabled: e.target.checked })
-              }
-            />
+            {!settings.isStatic && (
+              <Checkbox
+                label={t`Allow people to save new questions`}
+                checked={settings.isSaveEnabled}
+                onChange={(e) =>
+                  updateSettings({ isSaveEnabled: e.target.checked })
+                }
+              />
+            )}
           </Stack>
         ),
       )
@@ -65,11 +74,13 @@ const BehaviorSection = () => {
         { componentName: "metabase-dashboard", dashboardId: P.nonNullable },
         (settings) => (
           <Stack gap="md">
-            <Checkbox
-              label={t`Allow people to drill through on data points`}
-              checked={settings.drills}
-              onChange={(e) => updateSettings({ drills: e.target.checked })}
-            />
+            {!settings.isStatic && (
+              <Checkbox
+                label={t`Allow people to drill through on data points`}
+                checked={settings.drills}
+                onChange={(e) => updateSettings({ drills: e.target.checked })}
+              />
+            )}
 
             <Checkbox
               label={t`Allow downloads`}
@@ -81,13 +92,16 @@ const BehaviorSection = () => {
           </Stack>
         ),
       )
-      .with({ componentName: "metabase-browser" }, (settings) => (
-        <Checkbox
-          label={t`Allow editing dashboards and questions`}
-          checked={!settings.readOnly}
-          onChange={(e) => updateSettings({ readOnly: !e.target.checked })}
-        />
-      ))
+      .with(
+        { componentName: "metabase-browser", isStatic: P.optional(false) },
+        (settings) => (
+          <Checkbox
+            label={t`Allow editing dashboards and questions`}
+            checked={!settings.readOnly}
+            onChange={(e) => updateSettings({ readOnly: !e.target.checked })}
+          />
+        ),
+      )
       .otherwise(() => null);
   }, [settings, updateSettings]);
 

@@ -1,5 +1,10 @@
 import _ from "underscore";
 
+import { getIsStaticEmbedding } from "embedding-sdk-bundle/store/selectors";
+import type {
+  SdkDispatch,
+  SdkStoreState,
+} from "embedding-sdk-bundle/store/types";
 import type {
   LoadSdkQuestionParams,
   SdkQuestionState,
@@ -9,34 +14,44 @@ import { getParameterValuesForQuestion } from "metabase/query_builder/actions/co
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
-import type { Dispatch, GetState } from "metabase-types/store";
+
+type LoadQuestionSdkParams = LoadSdkQuestionParams & {
+  token: string | null | undefined;
+};
 
 export const loadQuestionSdk =
   ({
     options = {},
     deserializedCard,
     questionId: initQuestionId,
+    token,
     initialSqlParameters,
     targetDashboardId,
-  }: LoadSdkQuestionParams) =>
+  }: LoadQuestionSdkParams) =>
   async (
-    dispatch: Dispatch,
-    getState: GetState,
+    dispatch: SdkDispatch,
+    getState: () => SdkStoreState,
   ): Promise<
     Required<Pick<SdkQuestionState, "question">> &
       Pick<SdkQuestionState, "originalQuestion" | "parameterValues">
   > => {
+    const isStatic = getIsStaticEmbedding(getState());
+
     const questionId = initQuestionId === "new" ? undefined : initQuestionId;
 
     const { card, originalCard } = await resolveCards({
       cardId: questionId ?? undefined,
+      token,
       options,
       dispatch,
       getState,
       deserializedCard,
     });
 
-    await dispatch(loadMetadataForCard(card));
+    if (!isStatic) {
+      await dispatch(loadMetadataForCard(card, { token }));
+    }
+
     const metadata = getMetadata(getState());
 
     const originalQuestion =

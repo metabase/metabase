@@ -13,46 +13,60 @@ import type {
   SqlParameterValues,
 } from "embedding-sdk-package";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
+import type { StrictUnion } from "metabase/embedding-sdk/types/utils";
 import type { EmbeddedAnalyticsJsEventSchema } from "metabase-types/analytics/embedded-analytics-js";
 import type { CollectionId } from "metabase-types/api";
 
 /** Events that the embed.js script listens for */
 export type SdkIframeEmbedTagMessage =
-  | { type: "metabase.embed.iframeReady" }
-  | { type: "metabase.embed.requestSessionToken" };
+  | SdkIframeEmbedTagIframeReadyMessage
+  | SdkIframeEmbedTagRequestSessionTokenMessage;
+
+export type SdkIframeEmbedTagIframeReadyMessage = {
+  type: "metabase.embed.iframeReady";
+};
+export type SdkIframeEmbedTagRequestSessionTokenMessage = {
+  type: "metabase.embed.requestSessionToken";
+};
 
 /** Events that the sdk embed route listens for */
 export type SdkIframeEmbedMessage =
-  | {
-      type: "metabase.embed.setSettings";
-      data: SdkIframeEmbedSettings;
-    }
-  | {
-      type: "metabase.embed.submitSessionToken";
-      data: {
-        authMethod: MetabaseAuthMethod;
-        sessionToken: MetabaseEmbeddingSessionToken;
-      };
-    }
-  | {
-      type: "metabase.embed.reportAuthenticationError";
-      data: {
-        error: MetabaseError<MetabaseErrorCode, unknown>;
-      };
-    }
-  | {
-      type: "metabase.embed.reportAnalytics";
-      data: {
-        usageAnalytics: EmbeddedAnalyticsJsEventSchema;
-        embedHostUrl: string;
-      };
-    };
+  | SdkIframeEmbedSetSettingsMessage
+  | SdkIframeEmbedSubmitSessionTokenMessage
+  | SdkIframeEmbedReportAuthenticationError
+  | SdkIframeEmbedReportAnalytics;
+
+export type SdkIframeEmbedSetSettingsMessage = {
+  type: "metabase.embed.setSettings";
+  data: SdkIframeEmbedSettings;
+};
+export type SdkIframeEmbedSubmitSessionTokenMessage = {
+  type: "metabase.embed.submitSessionToken";
+  data: {
+    authMethod: MetabaseAuthMethod;
+    sessionToken: MetabaseEmbeddingSessionToken;
+  };
+};
+export type SdkIframeEmbedReportAuthenticationError = {
+  type: "metabase.embed.reportAuthenticationError";
+  data: {
+    error: MetabaseError<MetabaseErrorCode, unknown>;
+  };
+};
+export type SdkIframeEmbedReportAnalytics = {
+  type: "metabase.embed.reportAnalytics";
+  data: {
+    usageAnalytics: EmbeddedAnalyticsJsEventSchema;
+    embedHostUrl: string;
+  };
+};
 
 // --- Embed Option Interfaces ---
 
-export interface DashboardEmbedOptions {
+export type DashboardEmbedOptions = StrictUnion<
+  { dashboardId: number | string } | { token: string }
+> & {
   componentName: "metabase-dashboard";
-  dashboardId: number | string;
 
   drills?: boolean;
   withTitle?: boolean;
@@ -65,11 +79,12 @@ export interface DashboardEmbedOptions {
   // incompatible options
   template?: never;
   questionId?: never;
-}
+};
 
-export interface QuestionEmbedOptions {
+export type QuestionEmbedOptions = StrictUnion<
+  { questionId: number | string } | { token: string }
+> & {
   componentName: "metabase-question";
-  questionId: number | string;
 
   drills?: boolean;
   withTitle?: boolean;
@@ -85,7 +100,7 @@ export interface QuestionEmbedOptions {
   // incompatible options
   template?: never;
   dashboardId?: never;
-}
+};
 
 export interface ExplorationEmbedOptions {
   componentName: "metabase-question";
@@ -98,6 +113,7 @@ export interface ExplorationEmbedOptions {
   // incompatible options
   dashboardId?: never;
   questionId?: never;
+  token?: never;
 }
 
 export interface BrowserEmbedOptions {
@@ -130,6 +146,7 @@ export interface BrowserEmbedOptions {
   template?: never;
   questionId?: never;
   dashboardId?: never;
+  token?: never;
 }
 
 export interface MetabotEmbedOptions {
@@ -142,6 +159,7 @@ export interface MetabotEmbedOptions {
   template?: never;
   questionId?: never;
   dashboardId?: never;
+  token?: never;
 }
 
 type CollectionBrowserEntityTypes =
@@ -151,6 +169,7 @@ type CollectionBrowserEntityTypes =
   | "model";
 
 export type SdkIframeEmbedBaseSettings = {
+  isStatic?: boolean;
   apiKey?: string;
   instanceUrl: string;
   theme?: MetabaseTheme;
@@ -163,6 +182,10 @@ export type SdkIframeEmbedBaseSettings = {
 
   // Whether the embed is running on localhost. Cannot be set by the user.
   _isLocalhost?: boolean;
+};
+
+export type SdkIframeEmbedStaticEmbeddingSettings = {
+  isStatic: boolean;
 };
 
 export type SdkIframeEmbedTemplateSettings =

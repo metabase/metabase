@@ -1,6 +1,6 @@
 import cx from "classnames";
 import type React from "react";
-import { useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -50,19 +50,27 @@ export function SelectEmbedTypePane({
   getPublicUrl,
   goToNextStep,
 }: SelectEmbedTypePaneProps) {
-  const embedFlowUrl = useMemo(() => {
-    const params = new URLSearchParams();
+  const getEmbedFlowUrl = useCallback(
+    ({ isStaticEmbedding }: { isStaticEmbedding?: boolean } = {}) => {
+      const params = new URLSearchParams();
 
-    params.set("resource_type", resourceType);
+      // TODO: a temporary condition. Should check a field of a resource
+      if (isStaticEmbedding) {
+        params.set("is_static", "true");
+      }
 
-    if (resource.id) {
-      params.set("resource_id", resource.id.toString());
-    }
+      params.set("resource_type", resourceType);
 
-    return "/embed-js?" + params.toString();
-  }, [resourceType, resource.id]);
+      if (resource.id) {
+        params.set("resource_id", resource.id.toString());
+      }
 
-  const { url } = useUpsellEmbedJsCta({ embedFlowUrl });
+      return "/embed-js?" + params.toString();
+    },
+    [resourceType, resource.id],
+  );
+
+  const { url } = useUpsellEmbedJsCta({ embedFlowUrl: getEmbedFlowUrl() });
   const hasPublicLink = resource.public_uuid != null;
 
   const utmTags = {
@@ -118,6 +126,11 @@ export function SelectEmbedTypePane({
   const isEmbedJsEnabled = useSetting("enable-embedding-simple");
   const isEmbeddingSdkEnabled = useSetting("enable-embedding-sdk");
 
+  const shouldShowModernStaticEmbeddingWizard =
+    // TODO for testing - uncomment
+    (false && !resource.enable_embedding) ||
+    resource.embedding_type === "static-embed-js";
+
   return (
     <Stack
       display="inline-flex"
@@ -127,25 +140,46 @@ export function SelectEmbedTypePane({
       align="stretch"
     >
       <Group gap="lg" maw="100%" align="stretch">
-        {/* Static Embedding */}
-        <SharingPaneButton
-          title={t`Static embedding`}
-          illustration={<StaticEmbeddingIllustration />}
-          onClick={isStaticEmbeddingEnabled ? goToNextStep : undefined}
-          isDisabled={!isStaticEmbeddingEnabled}
-          disabledLink="/admin/embedding/static"
-        >
-          <List>
-            <List.Item>{t`Embedded, signed charts in iframes.`}</List.Item>
-            <List.Item>{t`No query builder or row-level data access.`}</List.Item>
-            <List.Item>{t`Data restriction with locked parameters.`}</List.Item>
-          </List>
-        </SharingPaneButton>
+        {/* Legacy Static Embedding */}
+        {!shouldShowModernStaticEmbeddingWizard && (
+          <SharingPaneButton
+            title={t`Static embedding`}
+            illustration={<StaticEmbeddingIllustration />}
+            onClick={isStaticEmbeddingEnabled ? goToNextStep : undefined}
+            isDisabled={!isStaticEmbeddingEnabled}
+            disabledLink="/admin/embedding/static"
+          >
+            <List>
+              <List.Item>{t`Embedded, signed charts in iframes.`}</List.Item>
+              <List.Item>{t`No query builder or row-level data access.`}</List.Item>
+              <List.Item>{t`Data restriction with locked parameters.`}</List.Item>
+            </List>
+          </SharingPaneButton>
+        )}
+
+        {/* EmbedJS-based Static Embedding */}
+        {shouldShowModernStaticEmbeddingWizard && (
+          <MaybeLinkEmbedJs
+            shouldRenderLink={!isEmbedJsAvailable || isEmbedJsEnabled}
+            embedFlowUrl={getEmbedFlowUrl({ isStaticEmbedding: true })}
+          >
+            <SharingPaneButton
+              title={t`Anonymous Embedding`}
+              illustration={<StaticEmbeddingIllustration />}
+              isDisabled={!isStaticEmbeddingEnabled || !isEmbedJsEnabled}
+              disabledLink="/admin/embedding/static"
+            >
+              <List>
+                <List.Item>{t`A simple way to embed without SSO using plain JavaScript.`}</List.Item>
+              </List>
+            </SharingPaneButton>
+          </MaybeLinkEmbedJs>
+        )}
 
         {/* Embedded Analytics JS: render either upsell or embed flow link */}
         <MaybeLinkEmbedJs
           shouldRenderLink={!isEmbedJsAvailable || isEmbedJsEnabled}
-          embedFlowUrl={embedFlowUrl}
+          embedFlowUrl={getEmbedFlowUrl()}
         >
           <SharingPaneButton
             title={t`Embedded Analytics JS`}
@@ -155,7 +189,7 @@ export function SelectEmbedTypePane({
             disabledLink="/admin/embedding/modular"
             actionHint={
               !isEmbedJsAvailable ? (
-                <UpsellEmbedJsCta embedFlowUrl={embedFlowUrl} />
+                <UpsellEmbedJsCta embedFlowUrl={getEmbedFlowUrl()} />
               ) : undefined
             }
           >
