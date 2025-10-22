@@ -1,20 +1,22 @@
 const { H } = cy;
 
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { IconName } from "metabase/ui";
-import type { DependencyId, DependencyType } from "metabase-types/api";
+import type { DependencyId, DependencyType, TableId } from "metabase-types/api";
 
 const BASE_URL = "/dependencies";
-const { ORDERS_ID } = SAMPLE_DATABASE;
+const TABLE_NAME = "scoreboard_actions";
+const TABLE_DISPLAY_NAME = "Scoreboard Actions";
+const TABLE_ID_ALIAS = "tableId";
 
 describe("scenarios > dependencies > dependency graph", () => {
   beforeEach(() => {
     H.restore("postgres-writable");
-    H.resetTestTable({ type: "postgres", table: "many_schemas" });
+    H.resetTestTable({ type: "postgres", table: TABLE_NAME });
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
-    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "Animals" });
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TABLE_NAME });
+    H.getTableId({ name: TABLE_NAME }).as(TABLE_ID_ALIAS);
   });
 
   describe("entity search", () => {
@@ -88,8 +90,10 @@ describe("scenarios > dependencies > dependency graph", () => {
     }
 
     it("should be able to use inline search for all supported entity types", () => {
-      createMetric();
-      createSqlTransform();
+      getScoreboardTableId().then((tableId) => {
+        createTableBasedMetric(tableId);
+        createTableBasedTransform(TABLE_NAME);
+      });
       visitGraph();
 
       testEntitySearch({
@@ -108,22 +112,24 @@ describe("scenarios > dependencies > dependency graph", () => {
         isRecentItem: true,
       });
       testEntitySearch({
-        itemName: "Orders metric",
+        itemName: "Table-based metric",
         itemIcon: "metric",
         isRecentItem: false,
       });
       testEntitySearch({
-        itemName: "SQL transform",
+        itemName: "Table-based transform",
         itemIcon: "refresh_downstream",
         isRecentItem: false,
       });
     });
 
     it("should be able to use the entity picker for all supported entity types", () => {
-      createMetric();
-      createSqlTransform();
-      visitGraph();
+      getScoreboardTableId().then((tableId) => {
+        createTableBasedMetric(tableId);
+        createTableBasedTransform(TABLE_NAME);
+      });
 
+      visitGraph();
       testEntityPicker({
         tabName: "Tables",
         itemName: "Products",
@@ -144,42 +150,95 @@ describe("scenarios > dependencies > dependency graph", () => {
       });
       testEntityPicker({
         tabName: "Collections",
-        itemName: "Orders metric",
+        itemName: "Table-based metric",
         itemLevel: 1,
         itemIcon: "metric",
       });
       testEntityPicker({
         tabName: "Transforms",
-        itemName: "SQL transform",
+        itemName: "Table-based transform",
         itemLevel: 0,
         itemIcon: "refresh_downstream",
       });
     });
   });
 
-  describe("focusing an entity", () => {
+  describe("entity focus", () => {
     it("should be possible to select an entity via search", () => {
-      createQuestion().then(({ body: card }) => {
-        visitGraphForEntity(card.id, "card");
+      getScoreboardTableId().then((tableId) => {
+        createTableBasedQuestion(tableId).then(({ body: card }) => {
+          visitGraphForEntity(card.id, "card");
+        });
       });
+
       dependencyGraph().within(() => {
-        cy.findByLabelText("Orders")
+        cy.findByLabelText(TABLE_DISPLAY_NAME)
           .should("be.visible")
           .and("not.have.attr", "aria-selected", "true");
-        cy.findByLabelText("Orders question")
+        cy.findByLabelText("Table-based question")
           .should("be.visible")
           .and("have.attr", "aria-selected", "true");
       });
 
       graphSelectionInput().click();
-      H.popover().findByText("Orders").click();
+      H.popover().findByText(TABLE_DISPLAY_NAME).click();
       dependencyGraph().within(() => {
-        cy.findByLabelText("Orders")
+        cy.findByLabelText(TABLE_DISPLAY_NAME)
           .should("be.visible")
           .and("have.attr", "aria-selected", "true");
-        cy.findByLabelText("Orders question")
+        cy.findByLabelText("Table-based question")
           .should("be.visible")
           .and("not.have.attr", "aria-selected", "true");
+      });
+    });
+  });
+
+  describe("dependency types", () => {
+    function verifyPanelNavigation({
+      itemTitle,
+      groupTitle,
+      dependentItemTitle,
+    }: {
+      itemTitle: string;
+      groupTitle: string;
+      dependentItemTitle: string;
+    }) {
+      dependencyGraph().findByLabelText(itemTitle).contains(groupTitle).click();
+      graphDependencyPanel()
+        .findByLabelText(dependentItemTitle)
+        .findByText(dependentItemTitle)
+        .click();
+      graphEntryButton().findByText(dependentItemTitle).should("be.visible");
+      cy.go("back");
+    }
+
+    it("should display dependencies for a table and navigate to them", () => {
+      getScoreboardTableId().then((tableId) => {
+        createTableBasedQuestion(tableId);
+        createTableBasedModel(tableId);
+        createTableBasedMetric(tableId);
+        createTableBasedTransform(TABLE_NAME);
+        visitGraphForEntity(tableId, "table");
+      });
+      verifyPanelNavigation({
+        itemTitle: TABLE_DISPLAY_NAME,
+        groupTitle: "question",
+        dependentItemTitle: "Table-based question",
+      });
+      verifyPanelNavigation({
+        itemTitle: TABLE_DISPLAY_NAME,
+        groupTitle: "model",
+        dependentItemTitle: "Table-based model",
+      });
+      verifyPanelNavigation({
+        itemTitle: TABLE_DISPLAY_NAME,
+        groupTitle: "metric",
+        dependentItemTitle: "Table-based metric",
+      });
+      verifyPanelNavigation({
+        itemTitle: TABLE_DISPLAY_NAME,
+        groupTitle: "transform",
+        dependentItemTitle: "Table-based transform",
       });
     });
   });
@@ -209,36 +268,54 @@ function graphSelectionInput() {
   return cy.findByTestId("graph-selection-input");
 }
 
-function createQuestion() {
+function graphDependencyPanel() {
+  return cy.findByTestId("graph-dependency-panel");
+}
+
+function getScoreboardTableId() {
+  return cy.get<number>(`@${TABLE_ID_ALIAS}`);
+}
+
+function createTableBasedQuestion(tableId: TableId) {
   return H.createQuestion({
-    name: "Orders question",
+    name: "Table-based question",
+    type: "question",
     query: {
-      "source-table": ORDERS_ID,
+      "source-table": tableId,
     },
   });
 }
 
-function createMetric() {
+function createTableBasedModel(tableId: TableId) {
   return H.createQuestion({
-    name: "Orders metric",
+    name: "Table-based model",
+    type: "model",
+    query: {
+      "source-table": tableId,
+    },
+  });
+}
+
+function createTableBasedMetric(tableId: TableId) {
+  return H.createQuestion({
+    name: "Table-based metric",
     type: "metric",
     query: {
-      "source-table": ORDERS_ID,
-      aggregation: [["count"]],
+      "source-table": tableId,
     },
   });
 }
 
-function createSqlTransform() {
+function createTableBasedTransform(tableName: string) {
   return H.createTransform({
-    name: "SQL transform",
+    name: "Table-based transform",
     source: {
       type: "query",
       query: {
         database: WRITABLE_DB_ID,
         type: "native",
         native: {
-          query: "SELECT 1 AS num",
+          query: `SELECT team_name, score from ${tableName}`,
           "template-tags": {},
         },
       },
@@ -246,7 +323,7 @@ function createSqlTransform() {
     target: {
       type: "table",
       database: WRITABLE_DB_ID,
-      schema: "Schema A",
+      schema: "public",
       name: "transform_table",
     },
   });

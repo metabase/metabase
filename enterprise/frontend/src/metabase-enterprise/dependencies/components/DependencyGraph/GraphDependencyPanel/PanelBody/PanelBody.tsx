@@ -38,15 +38,16 @@ type ListItemProps = {
 };
 
 function ListItem({ node }: ListItemProps) {
+  const label = getNodeLabel(node);
   const link = getNodeLink(node);
   const location = getNodeLocationInfo(node);
   const viewCount = getNodeViewCount(node);
 
   return (
-    <Stack className={S.item} p="lg" gap="sm">
+    <Stack className={S.item} p="lg" gap="sm" aria-label={label}>
       <Group justify="space-between">
         <GraphLink
-          label={getNodeLabel(node)}
+          label={label}
           icon={getNodeIcon(node)}
           url={Urls.dependencyGraph({ entry: node })}
         />
