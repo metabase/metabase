@@ -6,8 +6,8 @@ import { SyncProgressModal } from "../components/SyncProgressModal";
 import { REMOTE_SYNC_KEY } from "../constants";
 import {
   getErrorMessage,
+  getHasPendingMutation,
   getIsError,
-  getIsImportingOrExporting,
   getIsRunning,
   getProgress,
   getShowModal,
@@ -27,9 +27,9 @@ export const useSyncStatus = () => {
   const progress = useSelector(getProgress);
   const isError = useSelector(getIsError);
   const errorMessage = useSelector(getErrorMessage);
-  const isImportingOrExporting = useSelector(getIsImportingOrExporting);
+  const hasPendingMutation = useSelector(getHasPendingMutation);
 
-  const shouldPoll = isRunning && showModal && !isImportingOrExporting;
+  const shouldPoll = isRunning && showModal && !hasPendingMutation;
 
   useGetRemoteSyncCurrentTaskQuery(undefined, {
     pollingInterval: shouldPoll ? SYNC_STATUS_POLL_INTERVAL : undefined,
