@@ -41,10 +41,10 @@
                                                :target {:type "table"
                                                         :name "output_table"
                                                         :schema "output_schema"}}]
-      (let [edn  (rep/export transform)
+      (let [edn (rep/export transform)
             ;; convert to yaml and read back in to convert keywords to strings, etc
             yaml (yaml/generate-string edn)
-            rep  (yaml/parse-string yaml)]
+            rep (yaml/parse-string yaml)]
         (is (rep/normalize-representation rep))))))
 
 (deftest can-import
