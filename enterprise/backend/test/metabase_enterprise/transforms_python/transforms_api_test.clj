@@ -267,7 +267,9 @@
                       :expect-status :failed
                       :expected ["42" "is the answer" "Failed to create the resulting table"]
                       :writeback-ex (Exception. "Boom!")}]]
-      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/test-drivers (-> (mt/normal-drivers-with-feature :transforms/table)
+                           ;; certain drivers are slow/unpredictable enough that the generous timings in this test are not enough
+                           (disj :snowflake :redshift :bigquery-cloud-sdk))
         (mt/with-premium-features #{:transforms :transforms-python}
           (mt/dataset transforms-dataset/transforms-test
             (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
