@@ -39,12 +39,15 @@ import type { ComputedVisualizationSettings } from "metabase/visualizations/type
 import type * as Lib from "metabase-lib";
 import type { DatasetColumn, DatasetData, RowValues } from "metabase-types/api";
 
-import { ListViewItem } from "./ListViewItem";
-import { ENTITY_ICONS, ENTITY_ICON_COLORS, getEntityIcon } from "./styling";
 import { useListColumns } from "./ListView";
-
 import S from "./ListView.module.css";
-import { getIconBackground } from "./styling";
+import { ListViewItem } from "./ListViewItem";
+import {
+  ENTITY_ICONS,
+  ENTITY_ICON_COLORS,
+  getEntityIcon,
+  getIconBackground,
+} from "./styling";
 
 const MAX_LEFT_COLUMNS = 1;
 const MAX_RIGHT_COLUMNS = 5;
@@ -62,7 +65,7 @@ export const ListViewConfiguration = ({
   onChange: (settings: {
     left: string[];
     right: string[];
-    entityIcon?: string;
+    entityIcon?: string | null;
     entityIconColor?: string;
     entityIconEnabled?: boolean;
     useImageColumn?: boolean;
@@ -97,7 +100,7 @@ export const ListViewConfiguration = ({
   // Local state duplication for selected settings to immediately reflect
   // list item preview changes.
   const [selectedEntityIcon, setSelectedEntityIcon] = useState<string | null>(
-    () => settings?.["list.entity_icon"] || getEntityIcon(entityType),
+    () => settings?.["list.entity_icon"] || null,
   );
   const [selectedIconColor, setSelectedIconColor] = useState<string>(
     () => settings?.["list.entity_icon_color"] as string,
@@ -308,22 +311,26 @@ export const ListViewConfiguration = ({
                 </Box>
                 <Menu.Divider m={0} />
                 <SimpleGrid cols={5} p="md">
-                  {imageColumn && (
-                    <ActionIcon
-                      radius="lg"
-                      p="md"
-                      className={cx(S.imageColumn, {
-                        [S.selected]: useImageColumn && entityIconEnabled,
-                      })}
-                      onClick={() => {
-                        onConfigurationChange({
-                          left: leftValues,
-                          right: rightValues,
-                          useImageColumn: true,
-                          entityIcon: null,
-                        });
-                      }}
-                    >
+                  <ActionIcon
+                    radius="lg"
+                    p="md"
+                    w="2rem"
+                    h="2rem"
+                    disabled={!imageColumn}
+                    className={cx({
+                      [S.imageColumn]: !!imageColumn,
+                      [S.selected]: useImageColumn && entityIconEnabled,
+                    })}
+                    onClick={() => {
+                      onConfigurationChange({
+                        left: leftValues,
+                        right: rightValues,
+                        useImageColumn: true,
+                        entityIcon: null,
+                      });
+                    }}
+                  >
+                    {imageColumn ? (
                       <Image
                         src={previewSample[cols.indexOf(imageColumn)]}
                         alt=""
@@ -331,8 +338,18 @@ export const ListViewConfiguration = ({
                         h={32}
                         style={{ flexShrink: 0 }}
                       />
-                    </ActionIcon>
-                  )}
+                    ) : (
+                      <Flex justify="center" align="center">
+                        <Icon
+                          tooltip={t`Image field not found`}
+                          tooltipPosition="right"
+                          name="camera"
+                          size={16}
+                          c="text-primary"
+                        />
+                      </Flex>
+                    )}
+                  </ActionIcon>
                   {Object.entries(ENTITY_ICONS).map(([key, iconName]) => (
                     <Flex justify="center" align="center" key={key}>
                       <ActionIcon

@@ -338,10 +338,10 @@ export const ListViz = ({
         right,
       };
     }
-    if (entityIcon) {
+    if (entityIcon !== undefined) {
       settings["list.entity_icon"] = entityIcon;
     }
-    if (entityIconColor) {
+    if (entityIconColor !== undefined) {
       settings["list.entity_icon_color"] = entityIconColor;
     }
     if (entityIconEnabled !== undefined) {

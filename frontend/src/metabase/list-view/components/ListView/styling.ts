@@ -15,6 +15,7 @@ export const ENTITY_ICONS = {
   "entity/ProductTable": "label",
   "entity/GenericTable": "document",
   zap: "zap",
+  camera: "camera",
 } as const;
 
 export const getEntityIcon = (entityType?: string) => {

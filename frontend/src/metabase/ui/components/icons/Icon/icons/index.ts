@@ -72,6 +72,8 @@ import burger_component from "./burger.svg?component";
 import burger_source from "./burger.svg?source";
 import calendar_component from "./calendar.svg?component";
 import calendar_source from "./calendar.svg?source";
+import camera_component from "./camera.svg?component";
+import camera_source from "./camera.svg?source";
 import check_component from "./check.svg?component";
 import check_source from "./check.svg?source";
 import check_filled_component from "./check_filled.svg?component";
@@ -632,6 +634,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     calendar: {
       component: calendar_component,
       source: calendar_source,
+    },
+    camera: {
+      component: camera_component,
+      source: camera_source,
     },
     check: {
       component: check_component,
@@ -1538,6 +1544,7 @@ export type IconName =
   | "bubble"
   | "burger"
   | "calendar"
+  | "camera"
   | "check"
   | "check_filled"
   | "code_block"
