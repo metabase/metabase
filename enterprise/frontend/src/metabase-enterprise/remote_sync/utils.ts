@@ -18,7 +18,7 @@ type ErrorData = {
   conflicts?: boolean;
 };
 
-export type ExportError = {
+export type SyncError = {
   data?: ErrorData;
   message?: string;
 };
@@ -68,9 +68,7 @@ const getErrorMessage = (data: ErrorData): string | undefined =>
     ? data.message
     : undefined;
 
-export const parseExportError = (
-  exportError: ExportError | null,
-): ParsedError => {
+export const parseSyncError = (exportError: SyncError | null): ParsedError => {
   if (!exportError) {
     return { errorMessage: null, hasConflict: false };
   }

@@ -5,21 +5,19 @@ import {
   Alert,
   Box,
   Button,
-  Card,
   Divider,
   Group,
   Icon,
   Modal,
   Stack,
-  Text,
   Title,
 } from "metabase/ui";
+import { useExportChangesMutation } from "metabase-enterprise/api";
 import type { Collection } from "metabase-types/api";
 
-import { useExportChangesMutation } from "../../../api";
-import { type ExportError, parseExportError } from "../../utils";
+import { type SyncError, parseSyncError } from "../../utils";
 import { ChangesLists } from "../ChangesLists";
-import { UnsyncedChangesModal } from "../UnsyncedChangesModal";
+import { SyncConflictModal } from "../SyncConflictModal";
 
 import { CommitMessageSection } from "./CommitMessageSection";
 
@@ -35,7 +33,6 @@ export const PushChangesModal = ({
   collections,
 }: PushChangesModalProps) => {
   const [commitMessage, setCommitMessage] = useState("");
-  const [forceMode, setForceMode] = useState(false);
 
   const [
     exportChanges,
@@ -43,15 +40,9 @@ export const PushChangesModal = ({
   ] = useExportChangesMutation();
 
   const { errorMessage, hasConflict } = useMemo(
-    () => parseExportError(exportError as ExportError),
+    () => parseSyncError(exportError as SyncError),
     [exportError],
   );
-
-  useEffect(() => {
-    if (hasConflict) {
-      setForceMode(true);
-    }
-  }, [hasConflict]);
 
   useEffect(() => {
     if (isSuccess) {
@@ -66,14 +57,13 @@ export const PushChangesModal = ({
 
     exportChanges({
       message: commitMessage.trim() || undefined,
-      forceSync: forceMode,
       branch: currentBranch,
     });
-  }, [commitMessage, forceMode, exportChanges, currentBranch]);
+  }, [commitMessage, exportChanges, currentBranch]);
 
   if (hasConflict) {
     return (
-      <UnsyncedChangesModal
+      <SyncConflictModal
         collections={collections}
         currentBranch={currentBranch}
         onClose={onClose}
@@ -94,11 +84,7 @@ export const PushChangesModal = ({
     >
       <Box px="xl" pt="md">
         {errorMessage && (
-          <Alert
-            mb="md"
-            variant={hasConflict ? "warning" : "error"}
-            icon={<Icon name={hasConflict ? "info" : "warning"} />}
-          >
+          <Alert mb="md" variant="error" icon={<Icon name="warning" />}>
             {errorMessage}
           </Alert>
         )}
@@ -116,32 +102,19 @@ export const PushChangesModal = ({
       <Divider my="lg" />
 
       <Box px="xl" pb="lg">
-        {hasConflict && (
-          <Card bg="warning-light" p="sm" mb="md">
-            <Group gap="xs">
-              <Icon name="warning" c="warning" />
-              <Text size="sm" c="warning-dark">
-                {t`Force pushing will replace the remote version with your changes`}
-              </Text>
-            </Group>
-          </Card>
-        )}
-
         <Group gap="sm" justify="end">
           <Button variant="subtle" onClick={onClose}>
             {t`Cancel`}
           </Button>
           <Button
-            variant="filled"
-            color={forceMode ? "warning" : "brand"}
-            onClick={handlePush}
+            color="brand"
             disabled={isPushing}
+            leftSection={<Icon name="upload" />}
             loading={isPushing}
-            leftSection={
-              forceMode ? <Icon name="warning" /> : <Icon name="upload" />
-            }
+            onClick={handlePush}
+            variant="filled"
           >
-            {forceMode ? t`Force push` : t`Push changes`}
+            {t`Push changes`}
           </Button>
         </Group>
       </Box>

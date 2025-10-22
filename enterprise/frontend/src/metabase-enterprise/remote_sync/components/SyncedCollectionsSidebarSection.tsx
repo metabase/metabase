@@ -1,4 +1,3 @@
-import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
@@ -14,7 +13,7 @@ import {
 import type { CollectionTreeItem } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView";
 import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Box, Button, Flex, Group, Icon, Text } from "metabase/ui";
+import { Box, Flex, Group, Text } from "metabase/ui";
 import {
   useGetRemoteSyncChangesQuery,
   useImportChangesMutation,
@@ -24,13 +23,17 @@ import { useSyncStatus } from "../hooks/use-sync-status";
 
 import { BranchPicker } from "./BranchPicker";
 import { CollectionSyncStatusBadge } from "./CollectionSyncStatusBadge";
-import { PushChangesModal } from "./PushChangesModal/PushChangesModal";
-import { UnsyncedChangesModal } from "./UnsyncedChangesModal";
+import { PullFromRemoteButton } from "./PullFromRemoteButton";
+import { PushChangesButton } from "./PushChangesButton";
+import {
+  SyncConflictModal,
+  type SyncConflictVariant,
+} from "./SyncConflictModal";
 
 interface SyncedCollectionsSidebarSectionProps {
   syncedCollections: CollectionTreeItem[];
   collectionItem: CollectionTreeItem | null;
-  onItemSelect: () => void;
+  onItemSelect: VoidFunction;
 }
 
 export const SyncedCollectionsSidebarSection = ({
@@ -43,11 +46,8 @@ export const SyncedCollectionsSidebarSection = ({
 
   const { value: currentBranch } = useAdminSetting("remote-sync-branch");
   const [importChanges] = useImportChangesMutation();
-  const [
-    showUnsyncedWarning,
-    { open: openWarningModal, close: closeWarningModal },
-  ] = useDisclosure(false);
-  const [showPush, { open: openPush, close: closePush }] = useDisclosure(false);
+  const [syncConflictVariant, setSyncConflictVariant] =
+    useState<SyncConflictVariant>();
   const { isRunning: isSyncTaskRunning } = useSyncStatus();
 
   const [nextBranch, setNextBranch] = useState<string | null>(null);
@@ -89,7 +89,7 @@ export const SyncedCollectionsSidebarSection = ({
         const isDirty = freshDirtyData.dirty.length > 0;
 
         if (isDirty && !isNewBranch) {
-          openWarningModal();
+          setSyncConflictVariant("switch-branch");
         } else {
           await changeBranch(branch, isNewBranch);
           setNextBranch(null);
@@ -102,10 +102,10 @@ export const SyncedCollectionsSidebarSection = ({
         });
       }
     },
-    [currentBranch, changeBranch, openWarningModal, refetchDirty, sendToast],
+    [currentBranch, changeBranch, refetchDirty, sendToast],
   );
 
-  const isSwitchingBranch = nextBranch != null;
+  const isSwitchingBranch = !!nextBranch;
 
   return (
     <>
@@ -118,29 +118,27 @@ export const SyncedCollectionsSidebarSection = ({
               </Group>
               {isAdmin && (
                 <Group p="sm" pl="14px" gap="sm" w="100%" pt={0}>
-                  {currentBranch != null ? (
-                    <BranchPicker
-                      isLoading={isSyncTaskRunning || isSwitchingBranch}
-                      value={currentBranch}
-                      onChange={handleBranchSelect}
-                      baseBranch={currentBranch}
-                    />
-                  ) : null}
-                  {isDirty && (
-                    <Button
-                      variant="subtle"
-                      onClick={openPush}
-                      h={24}
-                      px={0}
-                      ml="auto"
-                    >
-                      <Icon
-                        name="upload"
-                        c="brand"
-                        size={18}
-                        tooltip={t`Push to Git`}
+                  {!!currentBranch && (
+                    <>
+                      <BranchPicker
+                        isLoading={isSyncTaskRunning || isSwitchingBranch}
+                        value={currentBranch}
+                        onChange={handleBranchSelect}
+                        baseBranch={currentBranch}
                       />
-                    </Button>
+                      <Group ml="auto" gap="xs">
+                        <PullFromRemoteButton
+                          branch={currentBranch}
+                          setSyncConflictVariant={setSyncConflictVariant}
+                        />
+                        {isDirty && (
+                          <PushChangesButton
+                            currentBranch={currentBranch}
+                            syncedCollections={syncedCollections}
+                          />
+                        )}
+                      </Group>
+                    </>
                   )}
                 </Group>
               )}
@@ -170,23 +168,16 @@ export const SyncedCollectionsSidebarSection = ({
           </Box>
         </ErrorBoundary>
       </SidebarSection>
-      {showUnsyncedWarning && (
-        <UnsyncedChangesModal
+      {!!syncConflictVariant && (
+        <SyncConflictModal
           collections={syncedCollections}
           currentBranch={currentBranch!}
-          nextBranch={nextBranch!}
+          nextBranch={nextBranch}
           onClose={() => {
-            closeWarningModal();
+            setSyncConflictVariant(undefined);
             setNextBranch(null);
           }}
-          variant="switch-branch"
-        />
-      )}
-      {showPush && (
-        <PushChangesModal
-          onClose={closePush}
-          collections={syncedCollections}
-          currentBranch={currentBranch!}
+          variant={syncConflictVariant}
         />
       )}
     </>

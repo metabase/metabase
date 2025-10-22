@@ -21,13 +21,13 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
       ExportChangesResponse,
       ExportChangesRequest
     >({
-      query: ({ message, forceSync, branch }) => ({
+      query: ({ message, force, branch }) => ({
         url: `/api/ee/remote-sync/export`,
         method: "POST",
         body: {
           message,
           branch,
-          "force-sync": forceSync,
+          force,
         },
       }),
       invalidatesTags: () => [

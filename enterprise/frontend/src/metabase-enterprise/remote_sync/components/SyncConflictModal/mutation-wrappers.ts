@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
 import * as Urls from "metabase/lib/urls";
@@ -8,6 +8,10 @@ import {
   useExportChangesMutation,
   useImportChangesMutation,
 } from "metabase-enterprise/api";
+import {
+  type SyncError,
+  parseSyncError,
+} from "metabase-enterprise/remote_sync/utils";
 import type { Collection } from "metabase-types/api";
 
 export const usePushChangesAction = () => {
@@ -17,23 +21,25 @@ export const usePushChangesAction = () => {
 
   return {
     pushChanges: useCallback(
-      async (
-        currentBranch: string,
-        forceSync: boolean,
-        closeModal: VoidFunction,
-      ) => {
+      async (branch: string, force: boolean, closeModal: VoidFunction) => {
         try {
           await exportChanges({
-            branch: currentBranch,
-            forceSync,
+            branch,
+            force,
           }).unwrap();
           sendToast({
-            message: t`Changes pushed. You can now switch branches.`,
+            message: c("{0} is the GitHub branch name")
+              .t`Changes pushed to branch ${branch} successfully.`,
             timeout: 8000,
           });
           closeModal();
         } catch (error) {
-          sendToast({ message: t`Failed to push changes`, icon: "warning" });
+          const { errorMessage } = parseSyncError(error as SyncError);
+          sendToast({
+            message: errorMessage || t`Failed to push changes`,
+            icon: "warning",
+            timeout: 8000,
+          });
         }
       },
       [exportChanges, sendToast],
@@ -74,7 +80,8 @@ export const useStashToNewBranchAction = (existingBranches: string[]) => {
             branch: newBranchName,
           }).unwrap();
           sendToast({
-            message: t`Changes pushed to new branch. You can now switch branches.`,
+            message: c("{0} is the GitHub branch name")
+              .t`Changes pushed to new branch ${newBranchName}`,
             timeout: 8000,
           });
           closeModal();
@@ -93,16 +100,16 @@ export const useStashToNewBranchAction = (existingBranches: string[]) => {
   };
 };
 
-export const useDiscardChangesAndSwitchAction = (collections: Collection[]) => {
+export const useDiscardChangesAndImportAction = (collections: Collection[]) => {
   const [importChanges, { isLoading: isImporting }] =
     useImportChangesMutation();
   const [sendToast] = useToast();
 
   return {
-    discardChangesAndSwitch: useCallback(
-      async (nextBranch: string, closeModal: VoidFunction) => {
+    discardChangesAndImport: useCallback(
+      async (targetBranch: string, closeModal: VoidFunction) => {
         try {
-          await importChanges({ branch: nextBranch, force: true }).unwrap();
+          await importChanges({ branch: targetBranch, force: true }).unwrap();
           closeModal();
 
           if (collections.length) {
@@ -111,7 +118,11 @@ export const useDiscardChangesAndSwitchAction = (collections: Collection[]) => {
             window.location.href = Urls.collection(collections[0]);
           }
         } catch (error) {
-          sendToast({ message: t`Failed to switch branches`, icon: "warning" });
+          sendToast({
+            message: c("{0} is the GitHub branch name")
+              .t`Failed to import from branch ${targetBranch}`,
+            icon: "warning",
+          });
         }
       },
       [collections, importChanges, sendToast],

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { Box, Button, Group, Modal, Text } from "metabase/ui";
+import { Box, Button, Group, Icon, Modal, Text } from "metabase/ui";
 import { useGetBranchesQuery } from "metabase-enterprise/api";
 import type { Collection } from "metabase-types/api";
 
@@ -10,25 +10,27 @@ import { ChangesLists } from "../ChangesLists";
 import { BranchNameInput } from "./BranchNameInput";
 import { OutOfSyncOptions } from "./OutOfSyncOptions";
 import {
-  useDiscardChangesAndSwitchAction,
+  useDiscardChangesAndImportAction,
   usePushChangesAction,
   useStashToNewBranchAction,
 } from "./mutation-wrappers";
 import {
-  type ModalVariant,
   type OptionValue,
+  type SyncConflictVariant,
   getContinueButtonText,
 } from "./utils";
+
+export { SyncConflictVariant };
 
 interface UnsyncedWarningModalProps {
   collections: Collection[];
   currentBranch: string;
-  nextBranch?: string;
+  nextBranch?: string | null;
   onClose: VoidFunction;
-  variant: ModalVariant;
+  variant: SyncConflictVariant;
 }
 
-export const UnsyncedChangesModal = (props: UnsyncedWarningModalProps) => {
+export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
   const { collections, onClose, currentBranch, nextBranch, variant } = props;
   const [optionValue, setOptionValue] = useState<OptionValue>();
   const [newBranchName, setNewBranchName] = useState<string>("");
@@ -40,8 +42,9 @@ export const UnsyncedChangesModal = (props: UnsyncedWarningModalProps) => {
   const { pushChanges, isPushingChanges } = usePushChangesAction();
   const { stashToNewBranch, isStashing } =
     useStashToNewBranchAction(existingBranches);
-  const { discardChangesAndSwitch, isImporting } =
-    useDiscardChangesAndSwitchAction(collections);
+  const { discardChangesAndImport, isImporting } =
+    useDiscardChangesAndImportAction(collections);
+  const isForcingPush = variant === "push" && optionValue === "push";
 
   const handleContinueButtonClick = async () => {
     if (!optionValue) {
@@ -56,8 +59,8 @@ export const UnsyncedChangesModal = (props: UnsyncedWarningModalProps) => {
       await stashToNewBranch(newBranchName, onClose);
     }
 
-    if (optionValue === "discard" && nextBranch) {
-      await discardChangesAndSwitch(nextBranch, onClose);
+    if (optionValue === "discard") {
+      await discardChangesAndImport(nextBranch || currentBranch, onClose);
     }
   };
 
@@ -78,14 +81,13 @@ export const UnsyncedChangesModal = (props: UnsyncedWarningModalProps) => {
       opened
       title={
         <Text component="span" fz="1.25rem" lh="2rem">
-          {variant === "switch-branch" ? (
-            t`You have unsynced changes. What do you want to do?`
-          ) : (
+          {variant === "push" ? (
             <>
-              {t`Your branch is behind the remote branch.`}
-              <br />
+              {t`Your branch is behind the remote branch.`}{" "}
               {t`What do you want to do?`}
             </>
+          ) : (
+            t`You have unsynced changes. What do you want to do?`
           )}
         </Text>
       }
@@ -116,9 +118,15 @@ export const UnsyncedChangesModal = (props: UnsyncedWarningModalProps) => {
           <Button
             color={optionValue === "discard" ? "error" : "brand"}
             disabled={isButtonDisabled}
+            leftSection={isForcingPush ? <Icon name="warning" /> : undefined}
             loading={isProcessing}
             onClick={handleContinueButtonClick}
             variant="filled"
+            title={
+              isForcingPush
+                ? t`Force push will replace the remote version with your changes`
+                : undefined
+            }
           >
             {getContinueButtonText(optionValue)}
           </Button>

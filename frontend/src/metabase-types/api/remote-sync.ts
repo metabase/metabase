@@ -44,7 +44,7 @@ export type RemoteSyncHasChangesResponse = {
 export type ExportChangesRequest = {
   message?: string;
   branch?: string;
-  forceSync?: boolean;
+  force?: boolean;
 };
 
 export type ExportChangesResponse = {
