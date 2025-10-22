@@ -2,23 +2,78 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { usePath } from "metabase/common/hooks";
+import type { IconName } from "metabase/ui";
 
 export interface BenchTab {
   id: string;
   label: string;
-  icon: string;
+  icon: IconName;
 }
 
 export const BENCH_TABS: BenchTab[] = [
-  { id: "overview", label: t`Overview`, icon: "home" },
-  { id: "transforms", label: t`Transforms`, icon: "sql" },
-  { id: "model", label: t`Models`, icon: "model" },
-  { id: "metric", label: t`Metrics`, icon: "metric" },
-  { id: "segment", label: t`Segments`, icon: "filter" },
-  { id: "snippet", label: t`SQL snippets`, icon: "snippet" },
-  { id: "metadata", label: t`Metadata`, icon: "database" },
-  { id: "dependencies", label: t`Dependencies`, icon: "beaker" },
-  { id: "glossary", label: t`Glossary`, icon: "globe" },
+  {
+    id: "overview",
+    get label() {
+      return t`Overview`;
+    },
+    icon: "home",
+  },
+  {
+    id: "transforms",
+    get label() {
+      return t`Transforms`;
+    },
+    icon: "sql",
+  },
+  {
+    id: "model",
+    get label() {
+      return t`Models`;
+    },
+    icon: "model",
+  },
+  {
+    id: "metric",
+    get label() {
+      return t`Metrics`;
+    },
+    icon: "metric",
+  },
+  {
+    id: "segment",
+    get label() {
+      return t`Segments`;
+    },
+    icon: "filter",
+  },
+  {
+    id: "snippet",
+    get label() {
+      return t`SQL snippets`;
+    },
+    icon: "snippet",
+  },
+  {
+    id: "metadata",
+    get label() {
+      return t`Metadata`;
+    },
+    icon: "database",
+  },
+  {
+    id: "dependencies",
+    get label() {
+      return t`Dependencies`;
+    },
+    icon: "beaker",
+  },
+  {
+    id: "glossary",
+    get label() {
+      return t`Glossary`;
+    },
+    icon: "globe",
+  },
 ];
 
 export function useBenchCurrentTab(): BenchTab {
@@ -42,7 +97,7 @@ export function useBenchCurrentTab(): BenchTab {
       currentPath = "transforms";
     }
 
-    const matchingTab = BENCH_TABS.find(tab => tab.id === currentPath);
+    const matchingTab = BENCH_TABS.find((tab) => tab.id === currentPath);
 
     return matchingTab || BENCH_TABS[0];
   }, [pathname]);
