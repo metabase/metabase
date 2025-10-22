@@ -56,7 +56,7 @@
               (setting/set-value-of-type! :keyword :remote-sync-type value))))
 
 (defsetting remote-sync-auto-import
-  (deferred-tru "Whether to automatically import from the remote git repository. Only applies if remote-sync-type is ''import''.")
+  (deferred-tru "Whether to automatically import from the remote git repository. Only applies if remote-sync-type is :production.")
   :type :boolean
   :visibility :authenticated
   :export? false
