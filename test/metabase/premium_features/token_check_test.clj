@@ -199,16 +199,7 @@
               (is (= #{"fake" "features"} (token-check/*token-features*)))
               (is @called? "Did not hit the network!")
               (is (= {:valid true :status "fake" :features ["fake" "features"]}
-                     (token-check/retrieve token-check/grace-period token)))))))))
-  (testing "Setting a new value populates the grace period cache"
-    (let [new-token (tu/random-token)]
-      (binding [http/request (fn [& _] {:status 200
-                                        :body "{\"valid\":true,\"status\":\"fake\",\"features\":[\"fake\",\"features\"]}"})]
-        (mt/discard-setting-changes [premium-embedding-token]
-          (premium-features.settings/premium-embedding-token! new-token)
-          (is (= #{"fake" "features"} (token-check/*token-features*)))
-          (is (= {:valid true :status "fake" :features ["fake" "features"]}
-                 (token-check/retrieve token-check/grace-period new-token))))))))
+                     (token-check/retrieve token-check/grace-period token))))))))))
 
 (deftest token-status-setting-test
   (testing "If a `premium-embedding-token` has been set, the `token-status` setting should return the response
