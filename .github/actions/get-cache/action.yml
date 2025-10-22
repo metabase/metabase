@@ -22,4 +22,4 @@ runs:
       with:
         path: ${{ inputs.path }}
         key: ${{ runner.os }}-${{ inputs.cache-name }}-${{ steps.get-date.outputs.week-of-year }}
-        restore-keys: ${{ runner.os }}-${{ inputs.cache-name}}-
+        restore-keys: ${{ runner.os }}-${{ inputs.cache-name }}-
