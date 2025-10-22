@@ -8,18 +8,24 @@ import { useLocalStorage, useMount, usePrevious } from "react-use";
 import { t } from "ttag";
 import { noop } from "underscore";
 
-import { searchApi, useListCollectionsTreeQuery } from "metabase/api";
+import {
+  searchApi,
+  useGetCardQuery,
+  useListCollectionsTreeQuery,
+} from "metabase/api";
 import { listTag } from "metabase/api/tags";
 import { getIcon } from "metabase/browse/models/utils";
 import ActionButton from "metabase/common/components/ActionButton/ActionButton";
 import Button from "metabase/common/components/Button";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
+import { SidesheetCard } from "metabase/common/components/Sidesheet/SidesheetCard";
 import { Tree } from "metabase/common/components/tree/Tree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { useFetchMetrics } from "metabase/common/hooks/use-fetch-metrics";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { newQuestion } from "metabase/lib/urls/questions";
+import { PLUGIN_CACHING } from "metabase/plugins";
 import {
   type QueryParams,
   cancelQuery,
@@ -50,6 +56,7 @@ import {
   NavLink,
   Text,
 } from "metabase/ui";
+import Question from "metabase-lib/v1/Question";
 import type { RawSeries, SearchResult } from "metabase-types/api";
 
 import { BenchLayout } from "../BenchLayout";
@@ -62,6 +69,7 @@ import { ItemsListSettings } from "../ItemsListSection/ItemsListSettings";
 import { ItemsListTreeNode } from "../ItemsListSection/ItemsListTreeNode";
 import { ModelMoreMenu } from "../models/ModelMoreMenu";
 import { getTreeItems } from "../models/utils";
+import { BenchTabs } from "../shared/BenchTabs";
 import {
   type SearchResultModal,
   SearchResultModals,
@@ -248,6 +256,31 @@ export const MetricsLayout = ({
   );
 };
 
+const MetricHeader = ({
+  actions,
+  params,
+}: {
+  actions?: ReactNode;
+  params: QueryParams;
+}) => {
+  return (
+    <BenchPaneHeader
+      title={
+        <BenchTabs
+          tabs={[
+            { label: t`Query`, to: `/bench/metric/${params.slug}` },
+            {
+              label: t`Settings`,
+              to: `/bench/metric/${params.slug}/settings`,
+            },
+          ]}
+        />
+      }
+      actions={actions}
+    />
+  );
+};
+
 export const MetricEditor = ({
   location,
   params,
@@ -309,8 +342,8 @@ export const MetricEditor = ({
       onRunQuery={() => dispatch(runQuestionQuery())}
       onCancelQuery={() => dispatch(cancelQuery())}
       Header={(headerProps) => (
-        <BenchPaneHeader
-          title={question.displayName() ?? t`New metric`}
+        <MetricHeader
+          params={params}
           actions={
             !question.isSaved() ? (
               <Button
@@ -341,5 +374,38 @@ export const MetricEditor = ({
         />
       )}
     />
+  );
+};
+
+export const MetricSettings = ({ params }: { params: { slug: string } }) => {
+  const { data: card } = useGetCardQuery({ id: +params.slug });
+  const question = useMemo(() => card && new Question(card), [card]);
+  const [page, setPage] = useState<"default" | "caching">("default");
+  if (!question) {
+    return null;
+  }
+  return (
+    <>
+      <MetricHeader params={params} />
+      <Box mx="md" mt="sm" maw={480}>
+        <SidesheetCard title={t`Caching`}>
+          <PLUGIN_CACHING.SidebarCacheSection
+            model="question"
+            item={question}
+            setPage={setPage}
+            key={page}
+          />
+        </SidesheetCard>
+      </Box>
+      {page === "caching" && (
+        <PLUGIN_CACHING.SidebarCacheForm
+          item={question}
+          model="question"
+          onBack={() => setPage("default")}
+          onClose={() => setPage("default")}
+          pt="md"
+        />
+      )}
+    </>
   );
 };

@@ -1,21 +1,26 @@
 import type { Location } from "history";
 import { type ReactNode, useMemo, useState } from "react";
-import { Link } from "react-router";
+import { Link, withRouter } from "react-router";
 import { push, replace } from "react-router-redux";
 import { useLocalStorage } from "react-use";
 import { t } from "ttag";
 
-import { searchApi, useListCollectionsTreeQuery } from "metabase/api";
+import {
+  searchApi,
+  useGetCardQuery,
+  useListCollectionsTreeQuery,
+} from "metabase/api";
 import { TAG_TYPE_MAPPING, listTag } from "metabase/api/tags";
 import { getTreeItems } from "metabase/bench/components/models/utils";
 import { getIcon } from "metabase/browse/models/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
+import { SidesheetCard } from "metabase/common/components/Sidesheet/SidesheetCard";
 import { Tree } from "metabase/common/components/tree/Tree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
 import { useDispatch, useSelector } from "metabase/lib/redux/hooks";
+import { ModelCacheManagementSection } from "metabase/query_builder/components/view/sidebars/ModelCacheManagementSection";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
-import { getQuestion } from "metabase/query_builder/selectors";
 import { getUser } from "metabase/selectors/user";
 import {
   Box,
@@ -26,7 +31,7 @@ import {
   NavLink,
   Text,
 } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
+import Question from "metabase-lib/v1/Question";
 import type { SearchResult } from "metabase-types/api";
 
 import { BenchLayout } from "../BenchLayout";
@@ -34,6 +39,7 @@ import { BenchPaneHeader } from "../BenchPaneHeader";
 import { ItemsListSection } from "../ItemsListSection/ItemsListSection";
 import { ItemsListSettings } from "../ItemsListSection/ItemsListSettings";
 import { ItemsListTreeNode } from "../ItemsListSection/ItemsListTreeNode";
+import { BenchTabs } from "../shared/BenchTabs";
 import {
   type SearchResultModal,
   SearchResultModals,
@@ -217,22 +223,36 @@ export const ModelsLayout = ({
   );
 };
 
-const ModelEditorHeader = ({ buttons }: { buttons?: ReactNode }) => {
-  const question = useSelector(getQuestion);
-  if (!question) {
-    return null;
-  }
-  return (
-    <BenchPaneHeader
-      title={question.displayName() ?? t`New model`}
-      actions={buttons}
-    />
-  );
-};
+const ModelEditorHeader = withRouter(
+  ({
+    buttons,
+    params,
+  }: {
+    buttons?: ReactNode;
+    params: { slug: string; tab?: string };
+  }) => {
+    return (
+      <BenchPaneHeader
+        title={
+          <BenchTabs
+            tabs={[
+              { label: t`Query`, to: `/bench/model/${params.slug}` },
+              {
+                label: t`Settings`,
+                to: `/bench/model/${params.slug}/settings`,
+              },
+            ]}
+          />
+        }
+        actions={buttons}
+      />
+    );
+  },
+);
 
 export const ModelEditor = (props: {
   location: Location;
-  params: { slug: string };
+  params: { slug: string; tab?: string };
 }) => {
   const dispatch = useDispatch();
 
@@ -248,5 +268,23 @@ export const ModelEditor = (props: {
         );
       }}
     />
+  );
+};
+
+export const ModelSettings = ({ params }: { params: { slug: string } }) => {
+  const { data: card } = useGetCardQuery({ id: +params.slug });
+  const question = useMemo(() => card && new Question(card), [card]);
+  if (!question) {
+    return null;
+  }
+  return (
+    <>
+      <ModelEditorHeader />
+      <Box mx="md" mt="sm" maw={480}>
+        <SidesheetCard title={t`Caching`}>
+          <ModelCacheManagementSection model={question} />
+        </SidesheetCard>
+      </Box>
+    </>
   );
 };

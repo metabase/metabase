@@ -4,7 +4,7 @@ import { Flex, Text } from "metabase/ui";
 
 interface BenchPaneHeaderProps {
   title: ReactNode;
-  actions: ReactNode;
+  actions?: ReactNode;
 }
 
 export const BenchPaneHeader = ({ title, actions }: BenchPaneHeaderProps) => {
