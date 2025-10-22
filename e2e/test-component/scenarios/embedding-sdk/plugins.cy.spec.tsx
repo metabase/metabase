@@ -80,7 +80,7 @@ describe("scenarios > embedding-sdk > plugins", () => {
       });
     });
 
-    it("should open a click actions popover with a custom item", () => {
+    it("should open a click actions popover with a custom item from component plugins", () => {
       cy.get<string>("@dashboardId").then((dashboardId) => {
         mountSdkContent(
           <InteractiveDashboard
@@ -93,6 +93,31 @@ describe("scenarios > embedding-sdk > plugins", () => {
             }}
           />,
         );
+      });
+
+      getSdkRoot().within(() => {
+        cy.findByText("Facebook").click();
+
+        cy.findByTestId("click-actions-popover").within(() => {
+          cy.findByText("Custom element").click();
+        });
+
+        cy.findByTestId("click-actions-popover").should("not.exist");
+      });
+    });
+
+    it("should open a click actions popover with a custom item from global plugins (EMB-894)", () => {
+      cy.get<string>("@dashboardId").then((dashboardId) => {
+        mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />, {
+          sdkProviderProps: {
+            pluginsConfig: {
+              mapQuestionClickActions: (clickActions: ClickAction[]) => [
+                ...clickActions,
+                CUSTOM_ACTION_WITH_VIEW,
+              ],
+            },
+          },
+        });
       });
 
       getSdkRoot().within(() => {
