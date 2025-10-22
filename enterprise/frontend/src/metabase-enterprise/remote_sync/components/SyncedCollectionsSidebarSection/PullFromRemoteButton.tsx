@@ -9,7 +9,7 @@ import {
   parseSyncError,
 } from "metabase-enterprise/remote_sync/utils";
 
-import type { SyncConflictVariant } from "./SyncConflictModal";
+import type { SyncConflictVariant } from "../SyncConflictModal";
 
 interface PushChangesButtonProps {
   branch: string;

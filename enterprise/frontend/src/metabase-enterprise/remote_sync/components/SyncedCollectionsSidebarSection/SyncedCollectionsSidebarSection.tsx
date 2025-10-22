@@ -19,17 +19,17 @@ import {
   useImportChangesMutation,
 } from "metabase-enterprise/api";
 
-import { BRANCH_KEY } from "../constants";
-import { useSyncStatus } from "../hooks/use-sync-status";
+import { BRANCH_KEY } from "../../constants";
+import { useSyncStatus } from "../../hooks/use-sync-status";
+import {
+  SyncConflictModal,
+  type SyncConflictVariant,
+} from "../SyncConflictModal";
 
 import { BranchPicker } from "./BranchPicker";
 import { CollectionSyncStatusBadge } from "./CollectionSyncStatusBadge";
 import { PullFromRemoteButton } from "./PullFromRemoteButton";
 import { PushChangesButton } from "./PushChangesButton";
-import {
-  SyncConflictModal,
-  type SyncConflictVariant,
-} from "./SyncConflictModal";
 
 interface SyncedCollectionsSidebarSectionProps {
   syncedCollections: CollectionTreeItem[];

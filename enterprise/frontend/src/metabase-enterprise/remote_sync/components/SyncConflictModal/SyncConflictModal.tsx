@@ -20,8 +20,6 @@ import {
   getContinueButtonText,
 } from "./utils";
 
-export { SyncConflictVariant };
-
 interface UnsyncedWarningModalProps {
   collections: Collection[];
   currentBranch: string;

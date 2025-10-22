@@ -4,7 +4,7 @@ import { t } from "ttag";
 import type { CollectionTreeItem } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView";
 import { ActionIcon, Icon } from "metabase/ui";
 
-import { PushChangesModal } from "./PushChangesModal";
+import { PushChangesModal } from "../PushChangesModal";
 
 interface PushChangesButtonProps {
   currentBranch: string;

@@ -6,8 +6,8 @@ import {
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { LibraryNav } from "./LibraryNav";
-import { RemoteSyncAdminSettings } from "./components/RemoteSyncAdminSettings";
-import { SyncedCollectionsSidebarSection } from "./components/SyncedCollectionsSidebarSection";
+import { RemoteSyncAdminSettings } from "./components/RemoteSyncAdminSettings/RemoteSyncAdminSettings";
+import { SyncedCollectionsSidebarSection } from "./components/SyncedCollectionsSidebarSection/SyncedCollectionsSidebarSection";
 import { REMOTE_SYNC_INVALIDATION_TAGS } from "./constants";
 import { useSyncStatus } from "./hooks/use-sync-status";
 import { remoteSyncListenerMiddleware } from "./middleware/remote-sync-listener-middleware";

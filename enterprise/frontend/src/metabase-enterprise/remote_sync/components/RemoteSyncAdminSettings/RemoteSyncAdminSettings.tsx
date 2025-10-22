@@ -21,12 +21,9 @@ import {
   FormSwitch,
   FormTextInput,
 } from "metabase/forms";
-import { useDispatch } from "metabase/lib/redux";
-import { addUndo } from "metabase/redux/undo";
 import {
   Badge,
   Box,
-  Button,
   Flex,
   Radio,
   Stack,
@@ -36,9 +33,9 @@ import {
 } from "metabase/ui";
 import {
   useGetRemoteSyncChangesQuery,
-  useImportChangesMutation,
   useUpdateRemoteSyncSettingsMutation,
 } from "metabase-enterprise/api/remote-sync";
+import { PullChangesButton } from "metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/PullChangesButton";
 import type {
   RemoteSyncConfigurationSettings,
   SettingDefinition,
@@ -52,10 +49,9 @@ import {
   TOKEN_KEY,
   TYPE_KEY,
   URL_KEY,
-} from "../constants";
+} from "../../constants";
 
-export const RemoteSyncAdminSettings = (): JSX.Element => {
-  const dispatch = useDispatch();
+export const RemoteSyncAdminSettings = () => {
   const { data: settingValues } = useGetSettingsQuery();
   const { data: settingDetails } = useGetAdminSettingsDetailsQuery();
   const [updateRemoteSyncSettings] = useUpdateRemoteSyncSettingsMutation();
@@ -63,8 +59,6 @@ export const RemoteSyncAdminSettings = (): JSX.Element => {
     refetchOnFocus: true,
     refetchOnMountOrArgChange: true,
   });
-  const [importChanges, { isLoading: isImporting }] =
-    useImportChangesMutation();
   const pendingConfirmationSettingsRef =
     useRef<RemoteSyncConfigurationSettings | null>(null);
 
@@ -125,23 +119,8 @@ export const RemoteSyncAdminSettings = (): JSX.Element => {
     },
   );
 
-  const isGitSyncEnabled = useSetting(REMOTE_SYNC_KEY);
-  const isDirty = !!dirtyData?.dirty?.length;
-
-  const handlePullChanges = useCallback(async () => {
-    const currentBranch = settingValues?.[BRANCH_KEY] || "main";
-    try {
-      await importChanges({ branch: currentBranch, force: true }).unwrap();
-    } catch (error) {
-      dispatch(
-        addUndo({
-          message: t`Failed to pull changes`,
-          toaster: true,
-          undo: false,
-        }),
-      );
-    }
-  }, [importChanges, settingValues, dispatch]);
+  const isRemoteSyncEnabled = useSetting(REMOTE_SYNC_KEY);
+  const hasUnsyncedChanges = !!dirtyData?.dirty?.length;
 
   return (
     <SettingsPageWrapper>
@@ -149,7 +128,7 @@ export const RemoteSyncAdminSettings = (): JSX.Element => {
         <Box flex={1} maw="52rem">
           <Flex align="flex-end" gap="sm" mb="xs">
             <Title order={2}>{t`Git Sync`}</Title>
-            {isGitSyncEnabled && (
+            {isRemoteSyncEnabled && (
               <Badge
                 style={{ textTransform: "none" }}
                 py={10}
@@ -171,7 +150,7 @@ export const RemoteSyncAdminSettings = (): JSX.Element => {
             {({ dirty, values }) => (
               <Form disabled={!dirty}>
                 <Stack gap="md">
-                  {!isGitSyncEnabled && (
+                  {!isRemoteSyncEnabled && (
                     <Text c="text-medium" size="sm">
                       {jt`Need help setting this up? Check out our ${(
                         <ExternalLink key="link" href={docsUrl}>
@@ -204,14 +183,14 @@ export const RemoteSyncAdminSettings = (): JSX.Element => {
                         description={t`In development mode, you can make changes to synced collections and pull and push from any git branch`}
                       />
                       <Tooltip
-                        disabled={!isDirty}
+                        disabled={!hasUnsyncedChanges}
                         label={t`You can't switch to production as you have unpublished changes.`}
                         position="bottom-start"
                       >
                         <Box>
                           <Radio
                             description={t`In production mode, synced collections are read-only, and automatically sync with the specified branch`}
-                            disabled={isDirty}
+                            disabled={hasUnsyncedChanges}
                             label={t`Production`}
                             value="production"
                           />
@@ -233,18 +212,12 @@ export const RemoteSyncAdminSettings = (): JSX.Element => {
                             )}
                           />
                         </Box>
-                        {isGitSyncEnabled && (
-                          <Tooltip
-                            label={t`Save settings before pulling changes`}
-                            disabled={!dirty}
-                          >
-                            <Button
-                              variant="outline"
-                              onClick={handlePullChanges}
-                              disabled={isImporting || dirty}
-                              loading={isImporting}
-                            >{t`Pull changes`}</Button>
-                          </Tooltip>
+                        {isRemoteSyncEnabled && (
+                          <PullChangesButton
+                            branch={values?.[BRANCH_KEY] || "main"}
+                            dirty={dirty}
+                            forcePull
+                          />
                         )}
                       </Flex>
                       <FormSwitch
@@ -259,7 +232,9 @@ export const RemoteSyncAdminSettings = (): JSX.Element => {
                     <FormErrorMessage />
                     <FormSubmitButton
                       label={
-                        isGitSyncEnabled ? t`Save changes` : t`Set up Git Sync`
+                        isRemoteSyncEnabled
+                          ? t`Save changes`
+                          : t`Set up Git Sync`
                       }
                       variant="filled"
                       disabled={!dirty}
