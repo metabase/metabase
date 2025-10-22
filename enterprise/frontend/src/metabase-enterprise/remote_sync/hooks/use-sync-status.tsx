@@ -7,6 +7,7 @@ import { REMOTE_SYNC_KEY } from "../constants";
 import {
   getErrorMessage,
   getIsError,
+  getIsImportingOrExporting,
   getIsRunning,
   getProgress,
   getShowModal,
@@ -26,8 +27,9 @@ export const useSyncStatus = () => {
   const progress = useSelector(getProgress);
   const isError = useSelector(getIsError);
   const errorMessage = useSelector(getErrorMessage);
+  const isImportingOrExporting = useSelector(getIsImportingOrExporting);
 
-  const shouldPoll = isRunning && showModal;
+  const shouldPoll = isRunning && showModal && !isImportingOrExporting;
 
   useGetRemoteSyncCurrentTaskQuery(undefined, {
     pollingInterval: shouldPoll ? SYNC_STATUS_POLL_INTERVAL : undefined,
