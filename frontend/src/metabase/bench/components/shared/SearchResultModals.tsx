@@ -64,7 +64,7 @@ const CloneQuestionModal = ({
         const res = await createCard({
           ...card,
           name: formValues.name,
-          collection_id: formValues.collectionId,
+          collection_id: formValues.collection_id,
           description: formValues.description,
           collection_position: shouldBePinned ? 1 : undefined,
         });
