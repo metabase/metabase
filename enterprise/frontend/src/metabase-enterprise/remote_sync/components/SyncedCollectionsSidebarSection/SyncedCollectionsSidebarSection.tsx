@@ -118,7 +118,7 @@ export const SyncedCollectionsSidebarSection = ({
                 <SidebarHeading>{t`Synced Collections`}</SidebarHeading>
               </Group>
               {isAdmin && (
-                <Group p="sm" pl="14px" gap="sm" w="100%" pt={0}>
+                <Group pb="sm" pl="0.875rem" gap="sm" w="100%">
                   {!!currentBranch && (
                     <>
                       <BranchPicker
