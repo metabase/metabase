@@ -783,11 +783,11 @@
                                                              :attributes     {"impersonation_attr" role-a}}
                 (mt/with-premium-features #{}
                   (testing "impersonated user is blocked"
-                    (is (thrown? clojure.lang.ExceptionInfo
-                                 #"Advanced Permissions is a paid feature not currently available"
-                                 (mt/formatted-rows [int]
-                                                    (mt/run-mbql-query venues
-                                                      {:aggregation [[:count]]})))))
+                    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                          #"Advanced Permissions is a paid feature not currently available"
+                                          (mt/formatted-rows [int]
+                                                             (mt/run-mbql-query venues
+                                                               {:aggregation [[:count]]})))))
                   (testing "admin should still be able to query"
                     (request/as-admin
                       (is (= [100]
