@@ -404,9 +404,14 @@
   (testing "PUT /api/table/:id"
     (mt/with-temp [:model/Table table]
       (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
-                            {:display_name    "Userz"
-                             :visibility_type "hidden"
-                             :description     "What a nice table!"})
+                            {:display_name     "Userz"
+                             :visibility_type  "hidden"
+                             :description      "What a nice table!"
+                             ;; bulk-metadata-editing
+                             :data_source      "metabase-transform"
+                             :visibility_type2 "copper"
+                             :owner_email      "bob@org.com"
+                             :owner_user_id    (mt/user->id :crowberto)})
       (is (= (merge
               (-> (table-defaults)
                   (dissoc :segments :field_values :metrics :updated_at)
@@ -417,7 +422,13 @@
                :schema          ""
                :visibility_type "hidden"
                :display_name    "Userz"
-               :is_writable     nil})
+               :is_writable     nil
+               ;; bulk-metadata-editing
+               :data_source      "metabase-transform"
+               :visibility_type2 "copper"
+               ;; exclusive later (not now)
+               :owner_email      "bob@org.com"
+               :owner_user_id    (mt/user->id :crowberto)})
              (dissoc (mt/user-http-request :crowberto :get 200 (format "table/%d" (u/the-id table)))
                      :updated_at))))))
 
