@@ -1,5 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
+
+import { Button, Flex } from "metabase/ui";
+import type { TableId } from "metabase-types/api";
 
 import { useExpandedState, useTableLoader } from "../hooks";
 import type { ChangeOptions, DatabaseNode, TreePath } from "../types";
@@ -17,6 +20,7 @@ export function Tree({ path, onChange }: Props) {
   const { databaseId, schemaName } = path;
   const { isExpanded, toggle } = useExpandedState(path);
   const { tree, reload } = useTableLoader(path);
+  const [selectedItems, setSelectedItems] = useState<Set<TableId>>(new Set());
 
   const items = flatten(tree, {
     isExpanded,
@@ -71,14 +75,42 @@ export function Tree({ path, onChange }: Props) {
     return <EmptyState title={t`No data to show`} />;
   }
 
+  function onItemToggle(tableId: TableId) {
+    setSelectedItems((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(tableId)) {
+        newSet.delete(tableId);
+      } else {
+        newSet.add(tableId);
+      }
+
+      return newSet;
+    });
+  }
+
+  function onEditSelectedItems() {
+    console.log({ selectedItems });
+  }
+
   return (
-    <Results
-      items={items}
-      path={path}
-      reload={reload}
-      toggle={toggle}
-      withMassToggle
-      onItemClick={onChange}
-    />
+    <>
+      <Results
+        items={items}
+        path={path}
+        reload={reload}
+        toggle={toggle}
+        withMassToggle
+        onItemClick={onChange}
+        onItemToggle={onItemToggle}
+        selectedItems={selectedItems}
+      />
+      <Flex justify="center">
+        {selectedItems.size > 0 && (
+          <Button onClick={onEditSelectedItems}>
+            Edit {selectedItems.size} items
+          </Button>
+        )}
+      </Flex>
+    </>
   );
 }

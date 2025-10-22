@@ -4,7 +4,8 @@ import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 
 import CS from "metabase/css/core/index.css";
-import { Box, Flex, Icon, Skeleton, rem } from "metabase/ui";
+import { Box, Checkbox, Flex, Icon, Skeleton, rem } from "metabase/ui";
+import type { TableId } from "metabase-types/api";
 
 import { getUrl } from "../../../utils";
 import { TYPE_ICONS } from "../constants";
@@ -35,6 +36,8 @@ interface Props {
   withMassToggle?: boolean;
   onItemClick?: (path: TreePath) => void;
   onSelectedIndexChange?: (index: number) => void;
+  onItemToggle?: (tableId: TableId) => void;
+  selectedItems?: Set<TableId>;
 }
 
 export function Results({
@@ -46,6 +49,8 @@ export function Results({
   withMassToggle,
   onItemClick,
   onSelectedIndexChange,
+  onItemToggle,
+  selectedItems,
 }: Props) {
   const [activeItem, setActiveItem] = useState<
     { type: ItemType; id: number | string } | undefined
@@ -157,6 +162,9 @@ export function Results({
             (child) => child.type === "table",
           );
           const typedValue = value as TreePath | undefined;
+          const isItemSelected =
+            item.type === "table" &&
+            selectedItems?.has(item.value?.tableId ?? "");
 
           const handleItemSelect = (open?: boolean) => {
             if (disabled) {
@@ -327,6 +335,27 @@ export function Results({
                   )}
                 </Flex>
               </Flex>
+
+              {type === "table" && (
+                <Box>
+                  {" "}
+                  <Checkbox
+                    size="xs"
+                    checked={isItemSelected}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                    }}
+                    onChange={(event) => {
+                      const tableId = item.value?.tableId;
+                      if (!tableId) {
+                        return;
+                      }
+                      event.stopPropagation();
+                      onItemToggle?.(tableId);
+                    }}
+                  />
+                </Box>
+              )}
 
               {withMassToggle &&
                 type === "database" &&
