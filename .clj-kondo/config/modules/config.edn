@@ -1110,6 +1110,7 @@
   {:team "UX West"
    :api  #{metabase.server.core
            metabase.server.init
+           metabase.server.lib.etag-cache
            metabase.server.middleware.session
            metabase.server.settings
            metabase.server.streaming-response} ; TODO -- too many API namespaces
@@ -1949,6 +1950,12 @@
            search
            setup
            util}}
+
+  enterprise/server
+  {:team "UX West"
+   :api  #{}
+   :uses #{config
+           server}}
 
   enterprise/snippet-collections
   {:team "Querying"
