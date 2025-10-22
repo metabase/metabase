@@ -7,6 +7,7 @@
    [metabase-enterprise.transforms-python.s3 :as s3]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
    [metabase-enterprise.transforms.instrumentation :as transforms.instrumentation]
+   [metabase-enterprise.transforms.util :as transforms.u]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
@@ -127,15 +128,13 @@
   (when (a/poll! cancel-chan)
     (throw (ex-info "Run cancelled" {:error-type :cancelled}))))
 
-(defn- write-table-data-to-file! [{:keys [db-id table-id fields-meta temp-file cancel-chan limit]}]
+(defn- write-query-data-to-file! [{:keys [query fields-meta temp-file cancel-chan]}]
   (with-open [os (io/output-stream temp-file)]
-    (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
-          table-metadata (lib.metadata/table metadata-provider table-id)
-          query (cond-> (lib/query metadata-provider table-metadata) limit (lib/limit limit))
-          rff (fn [cols-meta] (write-jsonl-row-to-os-rff os fields-meta cols-meta))]
-      (execute-mbql-query query rff cancel-chan)
-      (some-> cancel-chan throw-if-cancelled)
-      nil)))
+    (execute-mbql-query query
+                        (fn [cols-meta] (write-jsonl-row-to-os-rff os fields-meta cols-meta))
+                        cancel-chan)
+    (some-> cancel-chan throw-if-cancelled)
+    nil))
 
 (defn restricted-insert-type
   "Type for insertion restricted to supported"
@@ -208,7 +207,7 @@
   (let [{:keys [objects]} shared-storage
         {:keys [output output-manifest events]} objects
         url-for-path             (fn [path] (:url (get objects path)))
-        table-name->url          (update-vals table-name->id #(url-for-path [:table % :data]))
+        table-name->url          (update-vals #p table-name->id #(url-for-path [:table % :data]))
         table-name->manifest-url (update-vals table-name->id #(url-for-path [:table % :manifest]))
         payload                  {:code                code
                                   :library             (t2/select-fn->fn :path :source :model/PythonLibrary)
@@ -272,17 +271,31 @@
              :nfc_path nil
              {:order-by [[:database_position :asc]]}))
 
+(defn- build-table-query
+  "Build a mbql query for table, mgiht add a proper filter for incremental transforms."
+  [table-id source-incremental-strategy transform-id limit]
+  (let [db-id             (t2/select-one-fn :db_id (t2/table-name :model/Table) :id table-id)
+        metadata-provider (lib-be/application-database-metadata-provider db-id)
+        table-metadata    (lib.metadata/table metadata-provider table-id)]
+    (cond-> (lib/query metadata-provider table-metadata)
+      source-incremental-strategy (transforms.u/preprocess-incremental-query source-incremental-strategy transform-id)
+      limit                       (lib/limit limit))))
+
 ;; TODO break this up such that s3 can be swapped out for other transfer mechanisms.
 (defn copy-tables-to-s3!
   "Writes table content to their corresponding objects named in shared-storage, see (open-shared-storage!).
   Blocks until all tables are fully written and committed to shared storage."
   [{:keys [run-id
            shared-storage
-           table-name->id
+           source
            cancel-chan
-           limit]}]
+           limit
+           transform-id]}]
+  (when (and (:source-incremental-strategy source)
+             (> (count (:source-tables source)) 1))
+    (throw (ex-info "Incremental transforms for python only support one source tables" {})))
   ;; TODO there's scope for some parallelism here, in particular across different databases
-  (doseq [[table-name table-id] table-name->id
+  (doseq [[table-name table-id] (:source-tables source)
           :let [{:keys [s3-client bucket-name objects]} shared-storage
                 {data-path :path}                       (get objects [:table table-id :data])
                 {manifest-path :path}                   (get objects [:table table-id :manifest])]]
@@ -294,14 +307,12 @@
               fields-meta (fields-metadata driver table-id)
               manifest    (generate-manifest table-id fields-meta)]
           (transforms.instrumentation/with-stage-timing [run-id [:export :dwh-to-file]]
-            (write-table-data-to-file!
-             {:db-id       db-id
-              :driver      driver
-              :table-id    table-id
-              :fields-meta fields-meta
-              :temp-file   tmp-data-file
-              :cancel-chan cancel-chan
-              :limit       limit}))
+            (let [query (build-table-query table-id (:source-incremental-strategy source) transform-id limit)]
+              (write-query-data-to-file!
+               {:query       query
+                :fields-meta fields-meta
+                :temp-file   tmp-data-file
+                :cancel-chan cancel-chan})))
           (with-open [writer (io/writer tmp-meta-file)]
             (json/encode-to manifest writer {}))
           (let [data-size (.length tmp-data-file)

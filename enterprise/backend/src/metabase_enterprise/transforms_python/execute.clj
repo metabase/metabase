@@ -278,10 +278,10 @@
           server-url      (transforms-python.settings/python-runner-url)
           _               (python-runner/copy-tables-to-s3! {:run-id         run-id
                                                              :shared-storage @shared-storage-ref
-                                                             :table-name->id (:source-tables source)
-                                                             :cancel-chan    cancel-chan})
+                                                             :source         source
+                                                             :cancel-chan    cancel-chan
+                                                             :transform-id   (:id transform)})
           _               (start-cancellation-process! server-url run-id cancel-chan) ; inherits lifetime of cancel-chan
-
           {:keys [status body] :as response}
           (python-runner/execute-python-code-http-call!
            {:server-url     server-url

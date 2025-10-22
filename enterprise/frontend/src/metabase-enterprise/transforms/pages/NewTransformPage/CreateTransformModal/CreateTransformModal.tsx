@@ -34,7 +34,10 @@ import {
 } from "metabase/ui";
 import { useCreateTransformMutation } from "metabase-enterprise/api";
 import { trackTransformCreated } from "metabase-enterprise/transforms/analytics";
-import { KeysetColumnSelect } from "metabase-enterprise/transforms/components/KeysetColumnSelect";
+import {
+  KeysetColumnSelect,
+  PythonKeysetColumnSelect,
+} from "metabase-enterprise/transforms/components/KeysetColumnSelect";
 import { SchemaFormSelect } from "metabase-enterprise/transforms/components/SchemaFormSelect";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -148,6 +151,13 @@ function SourceStrategyFields({ source }: SourceStrategyFieldsProps) {
     }
   }, [libQuery]);
 
+  // Check if this is a Python transform with exactly one source table
+  // Incremental transforms are only supported for single-table Python transforms
+  const isPythonTransform =
+    source.type === "python" &&
+    source["source-tables"] &&
+    Object.keys(source["source-tables"]).length === 1;
+
   if (!values.incremental) {
     return null;
   }
@@ -175,6 +185,15 @@ function SourceStrategyFields({ source }: SourceStrategyFieldsProps) {
               placeholder={t`Select a field to filter on`}
               description={t`Which field from the source to use in the incremental filter`}
               query={libQuery}
+            />
+          )}
+          {isPythonTransform && source["source-tables"] && (
+            <PythonKeysetColumnSelect
+              name="keysetFilterRef"
+              label={t`Source Filter Field`}
+              placeholder={t`Select a field to filter on`}
+              description={t`Which field from the source to use in the incremental filter`}
+              sourceTables={source["source-tables"]}
             />
           )}
         </>

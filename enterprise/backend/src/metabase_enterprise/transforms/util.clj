@@ -203,8 +203,8 @@
   (t2/select-one-fn :watermark_value :model/TransformWatermark :transform_id transform-id))
 
 (defn- source->keyset-fitler-ref
-  [source]
-  (some->> source :source-incremental-strategy :keyset-filter-ref (lib/normalize ::lib.schema.ref/ref)))
+  [source-incremental-strategy]
+  (some->> source-incremental-strategy :keyset-filter-ref (lib/normalize ::lib.schema.ref/ref)))
 
 (defn preprocess-incremental-query
   "Preprocess a query for incremental transform execution by adding watermark filtering.
@@ -217,14 +217,14 @@
 
   If no watermark value exists for the transform (i.e., this is the first run), returns the
   query unchanged to allow a full initial load."
-  [{:keys [query] :as source} transform-id]
-  (if-let [watermark-value (when (= :keyset (some-> source :source-incremental-strategy :type keyword))
+  [query source-incremental-strategy transform-id]
+  (if-let [watermark-value (when (= :keyset (some-> source-incremental-strategy :type keyword))
                              (next-watermark-value transform-id))]
     (if (lib.query/native? query)
       (update query :parameters conj {:type :number
                                       :target [:variable [:template-tag "watermark"]]
                                       :value watermark-value})
-      (lib/filter query (lib/> (source->keyset-fitler-ref source) watermark-value)))
+      (lib/filter query (lib/> (source->keyset-fitler-ref source-incremental-strategy) watermark-value)))
     query))
 
 (defn compile-source
@@ -234,7 +234,7 @@
   ([{query-type :type :as source} transform-id]
    (case (keyword query-type)
      :query
-     (let [query-with-params (preprocess-incremental-query source transform-id)]
+     (let [query-with-params (preprocess-incremental-query (:query source) (:source-incremental-strategy source) transform-id)]
        (:query (qp.compile/compile-with-inline-parameters (massage-sql-query query-with-params)))))))
 
 (defn required-database-features
