@@ -34,7 +34,7 @@
     (api/check-400 (not existing?) "Remote sync in progress")
     (u.jvm/in-virtual-thread*
      (dh/with-timeout {:interrupt? true
-                       :timeout-ms (settings/remote-sync-task-time-limit-ms)}
+                       :timeout-ms (* (settings/remote-sync-task-time-limit-ms) 10)}
        (let [result (f task-id)]
          (case (:status result)
            :success (t2/with-transaction [_conn]
@@ -224,18 +224,7 @@
         {:items branch-list})
       (catch Exception e
         (log/errorf e "Failed to get branches from git source: %s" (ex-message e))
-        (let [error-msg (cond
-                          (instance? java.net.UnknownHostException e)
-                          "Network error: Unable to reach git repository host"
-
-                          (str/includes? (ex-message e) "Authentication failed")
-                          "Authentication failed: Please check your git credentials"
-
-                          (str/includes? (ex-message e) "Repository not found")
-                          "Repository not found: Please check the repository URL"
-
-                          :else
-                          (format "Failed to get branches from git source: %s" (ex-message e)))]
+        (let [error-msg (impl/decode-source-error e)]
           (throw (ex-info error-msg {:status-code 400}
                           e)))))
     (throw (ex-info "Git source not configured. Please configure MB_GIT_SOURCE_REPO_URL environment variable."

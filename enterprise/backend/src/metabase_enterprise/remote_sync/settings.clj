@@ -77,7 +77,7 @@
   :visibility :authenticated
   :export? false
   :encryption :no
-  :default (* 1000 60 60))
+  :default (* 1000 60 5))
 
 (defn check-git-settings
   "Check that the given settings are valid and update if they are. Throws exception if they are not.

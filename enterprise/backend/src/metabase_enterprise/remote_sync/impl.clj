@@ -64,6 +64,32 @@
                                  [:not-in entity-ids]
                                  :entity_id))))))
 
+(defn decode-source-error
+  "Handle constructing sensible messages for errors from remote sync sources.
+
+  Args:
+    e: a Throwable
+
+  Returns
+    a string error message."
+  [e]
+  (cond
+    (or (instance? java.net.UnknownHostException e)
+        (instance? java.net.UnknownHostException (ex-cause e)))
+    "Network error: Unable to reach git repository host"
+
+    (str/includes? (ex-message e) "Authentication failed")
+    "Authentication failed: Please check your git credentials"
+
+    (str/includes? (ex-message e) "Repository not found")
+    "Repository not found: Please check the repository URL"
+
+    (str/includes? (ex-message e) "branch")
+    "Branch error: Please check the specified branch exists"
+
+    :else
+    (format "Failed to reload from git repository: %s" (ex-message e))))
+
 (defn- handle-import-exception
   [e source-ingestable]
   (if (:cancelled? (ex-data e))
@@ -71,27 +97,11 @@
     (do
       (log/errorf e "Failed to reload from git repository: %s" (ex-message e))
       (analytics/inc! :metabase-remote-sync/imports-failed)
-      (let [error-msg (cond
-                        (or (instance? java.net.UnknownHostException e)
-                            (instance? java.net.UnknownHostException (ex-cause e)))
-                        "Network error: Unable to reach git repository host"
+      {:status        :error
+       :message       (decode-source-error e)
+       :version       (source.ingestable/ingestable-version source-ingestable)
 
-                        (str/includes? (ex-message e) "Authentication failed")
-                        "Authentication failed: Please check your git credentials"
-
-                        (str/includes? (ex-message e) "Repository not found")
-                        "Repository not found: Please check the repository URL"
-
-                        (str/includes? (ex-message e) "branch")
-                        "Branch error: Please check the specified branch exists"
-
-                        :else
-                        (format "Failed to reload from git repository: %s" (ex-message e)))]
-        {:status        :error
-         :message       error-msg
-         :version       (source.ingestable/ingestable-version source-ingestable)
-
-         :details {:error-type (type e)}}))))
+       :details {:error-type (type e)}})))
 
 (defn import!
   "Import and reload Metabase entities from a remote source.
