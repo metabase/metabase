@@ -61,14 +61,16 @@
    (respond (health-handler))))
 
 (def ^:private static-files-handler
-  (apply compojure/routes
-         (remove nil?
-                 [(when (and config/ee-available? (not *compile-files*))
-                    #_{:clj-kondo/ignore [:metabase/modules]}
-                    @(requiring-resolve 'metabase-enterprise.server.routes/static-files-handler))
-       ;; fall back to serving _all_ other files under /app
-                  (route/resources "/" {:root "frontend_client/app"})
-                  (route/not-found {:status 404 :body "Not found."})])))
+  (apply
+   #_{:clj-kondo/ignore [:discouraged-var]}
+   compojure/routes
+   (remove nil?
+           [(when (and config/ee-available? (not *compile-files*))
+              #_{:clj-kondo/ignore [:metabase/modules]}
+              @(requiring-resolve 'metabase-enterprise.server.routes/static-files-handler))
+            ;; fall back to serving _all_ other files under /app
+            (route/resources "/" {:root "frontend_client/app"})
+            (route/not-found {:status 404 :body "Not found."})])))
 
 (mu/defn- api-handler :- ::api.macros/handler
   [api-routes :- ::api.macros/handler]

@@ -1,6 +1,8 @@
-(ns metabase.server.middleware.embedding-sdk-bundle
+(ns metabase-enterprise.server.middleware.embedding-sdk-bundle
   "Embedding SDK Bundle related Ring middleware."
   (:require
+   #_{:clj-kondo/ignore [:metabase/modules]}
+   #_{:clj-kondo/ignore [:metabase/modules]}
    [metabase.config.core :as config]
    [metabase.server.lib.etag-cache :as lib.etag-cache]
    [ring.util.response :as response]))

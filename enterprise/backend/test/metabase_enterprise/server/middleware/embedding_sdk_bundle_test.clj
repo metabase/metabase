@@ -1,9 +1,9 @@
-(ns metabase.server.middleware.embedding-sdk-bundle-test
+(ns metabase-enterprise.server.middleware.embedding-sdk-bundle-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.server.middleware.embedding-sdk-bundle :as mw.embedding-sdk-bundle]
    [metabase.config.core :as config]
    [metabase.server.lib.etag-cache :as lib.etag-cache]
-   [metabase.server.middleware.embedding-sdk-bundle :as mw.embedding-sdk-bundle]
    [ring.util.response :as response]))
 
 (set! *warn-on-reflection* true)
@@ -43,30 +43,30 @@
         (is (= "\"abc\"" (get-in resp [:headers "ETag"])))
         (is (= js-ct (get-in resp [:headers "Content-Type"])))
         (is (= "Accept-Encoding" (get-in resp [:headers "Vary"])))
-        (is (= "dummy" (:body resp))))))
+        (is (= "dummy" (:body resp)))))))
 
-  (deftest serve-bundle-handler-dev-skips-etag-and-sets-no-store
-    (testing "Dev skips with-etag and sets no-store + Content-Type, no prod-only headers"
-      (with-redefs [config/is-prod? false
-                    response/resource-response (constantly {:status 200 :headers {} :body "dummy"})
-                                         ;; If it were called in dev, we’d see this exception
-                    lib.etag-cache/with-etag (fn [& _]
-                                               (throw (ex-info "with-etag should not be called in dev" {})))]
-        (let [handler (mw.embedding-sdk-bundle/serve-bundle-handler)
-              resp    (handler {:headers {}})]
-          (is (= 200 (:status resp)))
-          (is (= "no-store" (get-in resp [:headers "Cache-Control"])))
-          (is (= js-ct (get-in resp [:headers "Content-Type"])))
-          (is (nil? (get-in resp [:headers "Vary"])))
-          (is (= "dummy" (:body resp))))))
+(deftest serve-bundle-handler-dev-skips-etag-and-sets-no-store
+  (testing "Dev skips with-etag and sets no-store + Content-Type, no prod-only headers"
+    (with-redefs [config/is-prod? false
+                  response/resource-response (constantly {:status 200 :headers {} :body "dummy"})
+                                       ;; If it were called in dev, we'd see this exception
+                  lib.etag-cache/with-etag (fn [& _]
+                                             (throw (ex-info "with-etag should not be called in dev" {})))]
+      (let [handler (mw.embedding-sdk-bundle/serve-bundle-handler)
+            resp    (handler {:headers {}})]
+        (is (= 200 (:status resp)))
+        (is (= "no-store" (get-in resp [:headers "Cache-Control"])))
+        (is (= js-ct (get-in resp [:headers "Content-Type"])))
+        (is (nil? (get-in resp [:headers "Vary"])))
+        (is (= "dummy" (:body resp)))))))
 
-    (deftest serve-bundle-handler-404-propagates
-      (testing "Missing resource → 404 with no-store; no prod-only headers"
-        (with-redefs [config/is-prod? true
-                      response/resource-response (constantly nil)
-                      lib.etag-cache/with-etag (fn [& args] (throw (ex-info "Not expected for 404" {:args args})))]
-          (let [handler (mw.embedding-sdk-bundle/serve-bundle-handler)
-                resp    (handler {:headers {}})]
-            (is (= 404 (:status resp)))
-            (is (= "no-store" (get-in resp [:headers "Cache-Control"])))
-            (is (nil? (get-in resp [:headers "Vary"])))))))))
+(deftest serve-bundle-handler-404-propagates
+  (testing "Missing resource → 404 with no-store; no prod-only headers"
+    (with-redefs [config/is-prod? true
+                  response/resource-response (constantly nil)
+                  lib.etag-cache/with-etag (fn [& args] (throw (ex-info "Not expected for 404" {:args args})))]
+      (let [handler (mw.embedding-sdk-bundle/serve-bundle-handler)
+            resp    (handler {:headers {}})]
+        (is (= 404 (:status resp)))
+        (is (= "no-store" (get-in resp [:headers "Cache-Control"])))
+        (is (nil? (get-in resp [:headers "Vary"])))))))
