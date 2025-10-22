@@ -221,6 +221,55 @@
           (is (= {:bad_cards [], :bad_transforms [], :success true}
                  response)))))))
 
+(deftest check-snippet-content-change-breaks-cards-test
+  (testing "POST /api/ee/dependencies/check_snippet detects when snippet content changes break dependent cards"
+    (mt/dataset test-data
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/User user {:email "test@test.com"}
+                       :model/NativeQuerySnippet {snippet-id :id snippet-name :name} {:name "filter-snippet"
+                                                                                      :content "WHERE SUBTOTAL > 100"}]
+          (mt/with-model-cleanup [:model/Card]
+            (let [tag-name (str "snippet: " snippet-name)
+                  mp (mt/metadata-provider)
+                  native-query (-> (lib/native-query mp (format "SELECT * FROM ORDERS %s" (str "{{" tag-name "}}")))
+                                   (lib/with-template-tags {tag-name {:name tag-name
+                                                                      :display-name (str "Snippet: " snippet-name)
+                                                                      :type :snippet
+                                                                      :snippet-name snippet-name
+                                                                      :snippet-id snippet-id}}))
+                  card (card/create-card! {:name "Card using snippet"
+                                           :dataset_query native-query
+                                           :display :table
+                                           :visualization_settings {}}
+                                          user)
+                  proposed-content "WHERE NONEXISTENT_COLUMN > 100"
+                  response (mt/user-http-request :rasta :post 200 "ee/dependencies/check_snippet"
+                                                 {:id snippet-id
+                                                  :content proposed-content})]
+              (is (=? {:success false
+                       :bad_cards [{:id (:id card)}]
+                       :bad_transforms []}
+                      response)))))))))
+
+(deftest graph-table-root-test
+  (testing "GET /api/ee/dependencies/graph with table as root node"
+    (mt/dataset test-data
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-model-cleanup [:model/Card]
+          (mt/with-temp [:model/User user {:email "test@test.com"}]
+            (let [_card-1 (card/create-card! (basic-card "Card 1" :orders) user)
+                  _card-2 (card/create-card! (basic-card "Card 2" :orders) user)
+                  response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
+                                                 :id (mt/id :orders)
+                                                 :type "table")]
+              (testing "table has no upstream dependencies, so only the table node is returned"
+                (is (=? {:nodes [{:id (mt/id :orders)
+                                  :type "table"
+                                  :data {:db_id (mt/id)}
+                                  :dependents {:question 2}}]
+                         :edges #{}}
+                        (update response :edges set)))))))))))
+
 (deftest dependents-test
   (testing "GET /api/ee/dependencies/graph/dependents"
     (mt/with-premium-features #{:dependencies}
