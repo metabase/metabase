@@ -6,6 +6,7 @@
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
+   [metabase-enterprise.remote-sync.schema :as remote-sync.schema]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.ingestable :as source.ingestable]
@@ -45,14 +46,14 @@
 
 (defn- async-import!
   [branch force? import-args]
-  (let [ingestable-source     (source.p/->ingestable (source/source-from-settings branch) {:path-filters [#"collections/.*"]})
-        source-version        (source.ingestable/ingestable-version ingestable-source)
+  (let [ingestable-source (source.p/->ingestable (source/source-from-settings branch) {:path-filters [#"collections/.*"]})
+        source-version (source.ingestable/ingestable-version ingestable-source)
         last-imported-version (remote-sync.task/last-import-version)
-        has-dirty?            (remote-sync.object/dirty-global?)]
+        has-dirty? (remote-sync.object/dirty-global?)]
     (when (and has-dirty? (not force?))
       (throw (ex-info "There are unsaved changes in the Remote Sync collection which will be overwritten by the import. Force the import to discard these changes."
                       {:status-code 400
-                       :conflicts   true})))
+                       :conflicts true})))
     (if (and (not force?) (= last-imported-version source-version))
       (do (log/infof "Skipping import: source version %s matches last imported version" source-version)
           (settings/remote-sync-branch! branch)
@@ -72,7 +73,7 @@
                                                             task-id
                                                             message)))))
 
-(api.macros/defendpoint :post "/import"
+(api.macros/defendpoint :post "/import" :- remote-sync.schema/ImportResponse
   "Reload Metabase content from Git repository source of truth.
 
   This endpoint will:
@@ -95,13 +96,13 @@
      :task_id task-id
      :message (when-not task-id "No changes since last import")}))
 
-(api.macros/defendpoint :get "/is-dirty"
+(api.macros/defendpoint :get "/is-dirty" :- remote-sync.schema/IsDirtyResponse
   "Check if any remote-synced collection has remote sync changes that are not saved."
   []
   (api/check-superuser)
   {:is_dirty (remote-sync.object/dirty-global?)})
 
-(api.macros/defendpoint :get "/dirty"
+(api.macros/defendpoint :get "/dirty" :- remote-sync.schema/DirtyResponse
   "Return dirty models from a any remote-sync collection"
   []
   (api/check-superuser)
@@ -109,7 +110,7 @@
                 (m/distinct-by (juxt :id :model))
                 (remote-sync.object/dirty-for-global))})
 
-(api.macros/defendpoint :post "/export"
+(api.macros/defendpoint :post "/export" :- remote-sync.schema/ExportResponse
   "Export the current state of the Remote Sync collection to a Source
   This endpoint will:
   1. Fetch the latest changes from the source
@@ -145,13 +146,13 @@
                         (remote-sync.task/timed-out? task) :timed-out
                         :else :running)))
 
-(api.macros/defendpoint :get "/current-task"
+(api.macros/defendpoint :get "/current-task" :- [:maybe remote-sync.schema/SyncTask]
   "Get the current sync task"
   []
   (when-let [task (remote-sync.task/most-recent-task)]
     (task-status task)))
 
-(api.macros/defendpoint :post "/current-task/cancel"
+(api.macros/defendpoint :post "/current-task/cancel" :- remote-sync.schema/SyncTask
   "Cancels the current task if one is running"
   []
   (let [task (remote-sync.task/most-recent-task)]
@@ -159,7 +160,7 @@
     (remote-sync.task/cancel-sync-task! (:id task))
     (task-status (remote-sync.task/most-recent-task))))
 
-(api.macros/defendpoint :put "/settings"
+(api.macros/defendpoint :put "/settings" :- remote-sync.schema/SettingsUpdateResponse
   "Update Git Sync related settings. You must be a superuser to do this."
   [_route-params
    _query-params
@@ -178,7 +179,7 @@
     (settings/check-and-update-remote-settings! settings)
     (catch Exception e
       (throw (ex-info "Invalid git settings"
-                      {:error       (.getMessage e)
+                      {:error (ex-message e)
                        :status-code 400} e))))
   (cond (and (settings/remote-sync-enabled)
              (= :production (settings/remote-sync-type)))
@@ -194,7 +195,7 @@
         :else
         {:success true}))
 
-(api.macros/defendpoint :get "/branches"
+(api.macros/defendpoint :get "/branches" :- remote-sync.schema/BranchesResponse
   "Get list of branches from the configured git source.
 
   Returns a JSON object with branch names under the :items key.
@@ -207,27 +208,25 @@
       (let [branch-list (source.p/branches source)]
         {:items branch-list})
       (catch Exception e
-        (log/errorf e "Failed to get branches from git source: %s" (.getMessage e))
+        (log/errorf e "Failed to get branches from git source: %s" (ex-message e))
         (let [error-msg (cond
                           (instance? java.net.UnknownHostException e)
                           "Network error: Unable to reach git repository host"
 
-                          (str/includes? (.getMessage e) "Authentication failed")
+                          (str/includes? (ex-message e) "Authentication failed")
                           "Authentication failed: Please check your git credentials"
 
-                          (str/includes? (.getMessage e) "Repository not found")
+                          (str/includes? (ex-message e) "Repository not found")
                           "Repository not found: Please check the repository URL"
 
                           :else
-                          (format "Failed to get branches from git source: %s" (.getMessage e)))]
-          {:status 400
-           :body {:status "error"
-                  :message error-msg}})))
-    {:status 400
-     :body {:status "error"
-            :message "Git source not configured. Please configure MB_GIT_SOURCE_REPO_URL environment variable."}}))
+                          (format "Failed to get branches from git source: %s" (ex-message e)))]
+          (throw (ex-info error-msg {:status-code 400}
+                          e)))))
+    (throw (ex-info "Git source not configured. Please configure MB_GIT_SOURCE_REPO_URL environment variable."
+                    {:status-code 400}))))
 
-(api.macros/defendpoint :post "/create-branch"
+(api.macros/defendpoint :post "/create-branch" :- remote-sync.schema/CreateBranchResponse
   "Create a new branch from the current remote-sync branch and switches the current remote-sync branch to it.
   Requires superuser permissions."
   [_route
@@ -245,13 +244,13 @@
     (try
       (source.p/create-branch source name base-branch)
       (settings/remote-sync-branch! name)
-      {:status  "success"
+      {:status "success"
        :message (format "Branch '%s' created from '%s'" name base-branch)}
       (catch Exception e
         (throw (ex-info (format "Failed to create branch: %s" (ex-message e))
                         {:status-code 400} e))))))
 
-(api.macros/defendpoint :post "/stash"
+(api.macros/defendpoint :post "/stash" :- remote-sync.schema/StashResponse
   "Stashes changes to a new branch, and changes the current branch to it.
   Requires superuser permissions."
   [_route
@@ -268,7 +267,7 @@
                       {:status-code 400})))
     (try
       (source.p/create-branch source new_branch (settings/remote-sync-branch))
-      {:status  "success"
+      {:status "success"
        :message (str "Stashing to " new_branch)
        :task_id (async-export! new_branch false message)}
       (catch Exception e

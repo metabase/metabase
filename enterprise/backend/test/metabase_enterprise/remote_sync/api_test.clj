@@ -72,15 +72,13 @@
 (deftest branches-endpoint-errors-when-git-not-configured-test
   (testing "GET /api/ee/remote-sync/branches errors when git source not configured"
     (with-redefs [source/source-from-settings (constantly nil)]
-      (is (= {:status "error"
-              :message "Git source not configured. Please configure MB_GIT_SOURCE_REPO_URL environment variable."}
+      (is (= "Git source not configured. Please configure MB_GIT_SOURCE_REPO_URL environment variable."
              (mt/user-http-request :crowberto :get 400 "ee/remote-sync/branches"))))))
 
 (deftest branches-endpoint-handles-repository-errors-test
   (testing "GET /api/ee/remote-sync/branches handles git repository errors"
     (with-redefs [source/source-from-settings (constantly (mock-git-source :error-on-branches? true))]
-      (is (= {:status "error"
-              :message "Repository not found: Please check the repository URL"}
+      (is (= "Repository not found: Please check the repository URL"
              (mt/user-http-request :crowberto :get 400 "ee/remote-sync/branches"))))))
 
 ;;; ------------------------------------------------- Import Endpoint -------------------------------------------------
@@ -288,35 +286,35 @@
   (testing "POST /api/ee/remote-sync/export errors when remote is ahead of the last sync"
     (mt/with-temporary-setting-values [remote-sync-type :development]
       (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "foo"
-                                              :ended_at       :%now
-                                              :version        "other-version"}]
+                                              :ended_at :%now
+                                              :version "other-version"}]
         (let [mock-source (test-helpers/create-mock-source)]
           (mt/with-temporary-setting-values [remote-sync-enabled true
                                              remote-sync-url "https://github.com/test/repo.git"
                                              remote-sync-token "test-token"
                                              remote-sync-branch "main"]
-            (with-redefs [source/source-from-settings          (constantly mock-source)
+            (with-redefs [source/source-from-settings (constantly mock-source)
                           source.ingestable/ingestable-version (constantly "mock-version")]
               (is (= "Cannot export changes that will overwrite new changes in the branch."
                      (:message (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {}))))
               (testing "Can export when the versions match"
                 (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "foo"
-                                                        :ended_at       :%now
-                                                        :version        "mock-version"}]
+                                                        :ended_at :%now
+                                                        :version "mock-version"}]
                   (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {}))))))))))
 
 (deftest export-force-if-external-changes-test
   (testing "POST /api/ee/remote-sync/export can force sync when remote is ahead of the last sync"
     (mt/with-temporary-setting-values [remote-sync-type :development]
       (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "foo"
-                                              :ended_at       :%now
-                                              :version        "other-version"}]
+                                              :ended_at :%now
+                                              :version "other-version"}]
         (let [mock-source (test-helpers/create-mock-source)]
           (mt/with-temporary-setting-values [remote-sync-enabled true
                                              remote-sync-url "https://github.com/test/repo.git"
                                              remote-sync-token "test-token"
                                              remote-sync-branch "main"]
-            (with-redefs [source/source-from-settings          (constantly mock-source)
+            (with-redefs [source/source-from-settings (constantly mock-source)
                           source.ingestable/ingestable-version (constantly "mock-version")]
               (testing "Can export with force"
                 (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:force true})))))))))
@@ -618,13 +616,13 @@
                                        remote-sync-token "test-token"
                                        remote-sync-branch "main"
                                        remote-sync-type :development]
-      (mt/with-temp [:model/RemoteSyncObject _ {:model_type        "Card"
-                                                :model_id          1
-                                                :status            "updated"
+      (mt/with-temp [:model/RemoteSyncObject _ {:model_type "Card"
+                                                :model_id 1
+                                                :status "updated"
                                                 :status_changed_at (java.time.OffsetDateTime/now)}]
         (with-redefs [source/source-from-settings (constantly mock-source)
                       api/async-export! (fn [_ _ _] (swap! export-calls inc))]
-          (is (=? {:status  "success"
+          (is (=? {:status "success"
                    :message "Stashing to feature-branch"}
                   (mt/user-http-request :crowberto :post 200 "ee/remote-sync/stash"
                                         {:new_branch "feature-branch"
