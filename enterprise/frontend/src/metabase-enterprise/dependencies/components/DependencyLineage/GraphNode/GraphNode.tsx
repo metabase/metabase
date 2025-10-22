@@ -86,7 +86,7 @@ export const GraphNode = memo(function ItemNode({
 type DependencyGroupButtonProps = {
   node: DependencyNode;
   group: DependentGroup;
-  selection: GraphSelection | undefined;
+  selection: GraphSelection | null;
   onSelectionChange: (selection: GraphSelection) => void;
 };
 

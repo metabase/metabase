@@ -27,7 +27,7 @@ import type { CardDisplayType, VisualizationDisplay } from "./visualization";
 import type { SmartScalarComparison } from "./visualization-settings";
 export type CardType = "model" | "question" | "metric";
 
-type CreatorInfo = Pick<
+export type CardCreatorInfo = Pick<
   UserInfo,
   "first_name" | "last_name" | "email" | "id" | "common_name"
 >;
@@ -75,7 +75,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
 
   archived: boolean;
 
-  creator?: CreatorInfo;
+  creator?: CardCreatorInfo;
   "last-edit-info"?: LastEditInfo;
   table_id?: TableId;
 }

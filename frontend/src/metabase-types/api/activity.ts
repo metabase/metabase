@@ -8,6 +8,7 @@ export const ACTIVITY_MODELS = [
   "table",
   "card",
   "dataset",
+  "metric",
   "dashboard",
   "collection",
   "document",

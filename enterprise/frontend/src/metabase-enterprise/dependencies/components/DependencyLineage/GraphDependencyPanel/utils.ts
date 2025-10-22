@@ -1,5 +1,3 @@
-import { P, match } from "ts-pattern";
-
 import type {
   DependencyGroupType,
   DependencyNode,
@@ -44,73 +42,50 @@ function isMatchingSearchQuery(
 }
 
 const FILTERS: Record<FilterOption, FilterCallback> = {
-  verified: (node) =>
-    match(node)
-      .with({ type: "card" }, (node) => {
-        const lastReview = node.data.moderation_reviews?.find(
-          (review) => review.most_recent,
-        );
-        return lastReview != null && lastReview.status === "verified";
-      })
-      .with({ type: P.union("table", "transform", "snippet") }, () => false)
-      .exhaustive(),
-  "in-dashboard": (node) =>
-    match(node)
-      .with({ type: "card" }, (node) => {
-        const dashboard = node.data.dashboard;
-        return dashboard != null;
-      })
-      .with({ type: P.union("table", "transform", "snippet") }, () => false)
-      .exhaustive(),
-  "in-official-collection": (node) =>
-    match(node)
-      .with({ type: "card" }, (node) => {
-        const collection = node.data.collection;
-        return collection != null && collection.authority_level === "official";
-      })
-      .with({ type: P.union("table", "transform", "snippet") }, () => false)
-      .exhaustive(),
-  "not-in-personal-collection": (node) =>
-    match(node)
-      .with({ type: "card" }, (node) => {
-        const collection = node.data.collection;
-        return collection != null && !collection.is_personal;
-      })
-      .with({ type: P.union("table", "transform", "snippet") }, () => false)
-      .exhaustive(),
+  verified: (node) => {
+    if (node.type !== "card") {
+      return false;
+    }
+    const lastReview = node.data.moderation_reviews?.find(
+      (review) => review.most_recent,
+    );
+    return lastReview != null && lastReview.status === "verified";
+  },
+  "in-dashboard": (node) => {
+    if (node.type !== "card") {
+      return false;
+    }
+    const dashboard = node.data.dashboard;
+    return dashboard != null;
+  },
+  "in-official-collection": (node) => {
+    if (node.type !== "card") {
+      return false;
+    }
+    const collection = node.data.collection;
+    return collection != null && collection.authority_level === "official";
+  },
+  "not-in-personal-collection": (node) => {
+    if (node.type !== "card") {
+      return false;
+    }
+    const collection = node.data.collection;
+    return collection != null && !collection.is_personal;
+  },
 };
 
 export function canFilterByOption(
   groupType: DependencyGroupType,
   option: FilterOption,
-) {
+): boolean {
   const type = getDependencyType(groupType);
-  return match({ type, option })
-    .with(
-      {
-        type: "card",
-        option: P.union(
-          "verified",
-          "in-dashboard",
-          "in-official-collection",
-          "not-in-personal-collection",
-        ),
-      },
-      () => true,
-    )
-    .with(
-      {
-        type: P.union("table", "transform", "snippet"),
-        option: P.union(
-          "verified",
-          "in-dashboard",
-          "in-official-collection",
-          "not-in-personal-collection",
-        ),
-      },
-      () => false,
-    )
-    .exhaustive();
+  switch (option) {
+    case "verified":
+    case "in-dashboard":
+    case "in-official-collection":
+    case "not-in-personal-collection":
+      return type === "card";
+  }
 }
 
 export function canFilter(groupType: DependencyGroupType) {
@@ -153,22 +128,15 @@ const COMPARATORS: Record<SortColumn, SortCallback> = {
 export function canSortByColumn(
   groupType: DependencyGroupType,
   column: SortColumn,
-) {
+): boolean {
   const type = getDependencyType(groupType);
-  return match({ type, column })
-    .with({ column: "name" }, () => true)
-    .with(
-      { type: "card", column: P.union("location", "view-count") },
-      () => true,
-    )
-    .with(
-      {
-        type: P.union("table", "transform", "snippet"),
-        column: P.union("location", "view-count"),
-      },
-      () => false,
-    )
-    .exhaustive();
+  switch (column) {
+    case "name":
+      return true;
+    case "location":
+    case "view-count":
+      return type === "card";
+  }
 }
 
 export function getDefaultSortOptions(type: DependencyGroupType): SortOptions {

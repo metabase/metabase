@@ -17,7 +17,7 @@ import { EntrySearchInput } from "./EntrySearchInput";
 import { SEARCH_MODELS } from "./constants";
 
 type GraphEntryInputProps = {
-  node: DependencyNode | undefined;
+  node: DependencyNode | null;
   isGraphFetching: boolean;
 };
 
@@ -31,8 +31,8 @@ export function GraphEntryInput({
   const [isPickerOpened, { open: openPicker, close: closePicker }] =
     useDisclosure();
 
-  const handleEntryChange = (newEntry?: DependencyEntry) => {
-    dispatch(push(Urls.dependencyLineage({ entry: newEntry })));
+  const handleEntryChange = (newEntry: DependencyEntry | null) => {
+    dispatch(push(Urls.dependencyLineage(newEntry ? { entry: newEntry } : {})));
   };
 
   const handlePickerChange = (newEntry: DependencyEntry) => {

@@ -9,7 +9,7 @@ import { getNodeIcon, getNodeLabel } from "../utils";
 
 type GraphSelectInputProps = {
   nodes: NodeType[];
-  onSelectionChange: (selection: GraphSelection | undefined) => void;
+  onSelectionChange: (selection: GraphSelection | null) => void;
 };
 
 export function GraphSelectInput({

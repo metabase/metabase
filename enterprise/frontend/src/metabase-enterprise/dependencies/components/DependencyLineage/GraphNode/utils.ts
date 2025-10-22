@@ -1,4 +1,3 @@
-import { match } from "ts-pattern";
 import { msgid, ngettext, t } from "ttag";
 
 import type { DependencyNode } from "metabase-types/api";
@@ -37,25 +36,22 @@ export function getDependencyGroupTitle(
   return node.type === "transform" ? t`Generates` : t`Used by`;
 }
 
-export function getDependentGroupLabel({ type, count }: DependentGroup) {
-  return match(type)
-    .with("question", () =>
-      ngettext(msgid`${count} question`, `${count} questions`, count),
-    )
-    .with("model", () =>
-      ngettext(msgid`${count} model`, `${count} models`, count),
-    )
-    .with("metric", () =>
-      ngettext(msgid`${count} metric`, `${count} metrics`, count),
-    )
-    .with("table", () =>
-      ngettext(msgid`${count} table`, `${count} tables`, count),
-    )
-    .with("transform", () =>
-      ngettext(msgid`${count} transform`, `${count} transforms`, count),
-    )
-    .with("snippet", () =>
-      ngettext(msgid`${count} snippet`, `${count} snippets`, count),
-    )
-    .exhaustive();
+export function getDependentGroupLabel({
+  type,
+  count,
+}: DependentGroup): string {
+  switch (type) {
+    case "question":
+      return ngettext(msgid`${count} question`, `${count} questions`, count);
+    case "model":
+      return ngettext(msgid`${count} model`, `${count} models`, count);
+    case "metric":
+      return ngettext(msgid`${count} metric`, `${count} metrics`, count);
+    case "table":
+      return ngettext(msgid`${count} table`, `${count} tables`, count);
+    case "transform":
+      return ngettext(msgid`${count} transform`, `${count} transforms`, count);
+    case "snippet":
+      return ngettext(msgid`${count} snippet`, `${count} snippet`, count);
+  }
 }

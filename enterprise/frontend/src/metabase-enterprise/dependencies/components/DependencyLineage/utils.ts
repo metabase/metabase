@@ -1,5 +1,4 @@
 import type { Edge } from "@xyflow/react";
-import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
@@ -75,7 +74,7 @@ export function isSameNode(
   node: DependencyNode,
   id: DependencyId,
   type: DependencyType,
-) {
+): boolean {
   return node.id === id && node.type === type;
 }
 
@@ -83,15 +82,15 @@ export function findNode(
   nodes: NodeType[],
   id: DependencyId,
   type: DependencyType,
-) {
-  return nodes.find((node) => isSameNode(node.data, id, type));
+): NodeType | null {
+  return nodes.find((node) => isSameNode(node.data, id, type)) ?? null;
 }
 
-export function getNodeLabel(node: DependencyNode) {
+export function getNodeLabel(node: DependencyNode): string {
   return node.type === "table" ? node.data.display_name : node.data.name;
 }
 
-export function getNodeDescription(node: DependencyNode) {
+export function getNodeDescription(node: DependencyNode): string | null {
   return node.data.description;
 }
 
@@ -103,117 +102,139 @@ export function getNodeIcon(node: DependencyNode): IconName {
   );
 }
 
-type NodeIconData = {
-  type: DependencyType;
-  cardType?: CardType;
-  cardDisplay?: VisualizationDisplay;
-};
-
 export function getNodeIconWithType(
   type: DependencyType,
   cardType?: CardType,
   cardDisplay?: VisualizationDisplay,
 ): IconName {
-  return match<NodeIconData, IconName>({ type, cardType, cardDisplay })
-    .with(
-      { type: "card", cardType: "question", cardDisplay: P.nonNullable },
-      ({ cardDisplay }) =>
-        visualizations.get(cardDisplay)?.iconName ?? "table2",
-    )
-    .with({ type: "card", cardType: "model" }, () => "model")
-    .with({ type: "card", cardType: "metric" }, () => "metric")
-    .with({ type: "card" }, () => "table2")
-    .with({ type: "table" }, () => "table")
-    .with({ type: "transform" }, () => "refresh_downstream")
-    .with({ type: "snippet" }, () => "sql")
-    .exhaustive();
+  switch (type) {
+    case "card":
+      switch (cardType) {
+        case "question":
+          return cardDisplay != null
+            ? (visualizations.get(cardDisplay)?.iconName ?? "table2")
+            : "table2";
+        case "model":
+          return "model";
+        case "metric":
+          return "metric";
+        default:
+          return "table2";
+      }
+    case "table":
+      return "table";
+    case "transform":
+      return "refresh_downstream";
+    case "snippet":
+      return "sql";
+  }
 }
 
-export function getNodeLink(node: DependencyNode): NodeLink | undefined {
-  return match(node)
-    .with({ type: "card" }, (node) => ({
-      label: match(node.data.type)
-        .with("question", () => t`View this question`)
-        .with("model", () => t`View this model`)
-        .with("metric", () => t`View this metric`)
-        .exhaustive(),
-      url: Urls.question({
-        id: node.id,
-        name: node.data.name,
-        type: node.data.type,
-      }),
-    }))
-    .with({ type: "table" }, (node) => ({
-      label: t`View metadata`,
-      url: Urls.dataModelTable(node.data.db_id, node.data.schema, node.id),
-    }))
-    .with({ type: "transform" }, (node) => ({
-      label: t`View this transform`,
-      url: Urls.transform(node.id),
-    }))
-    .with({ type: "snippet" }, () => undefined)
-    .exhaustive();
+function getCardLinkLabel(cardType: CardType): string {
+  switch (cardType) {
+    case "question":
+      return t`View this question`;
+    case "model":
+      return t`View this model`;
+    case "metric":
+      return t`View this metric`;
+  }
 }
 
-export function getNodeLocationInfo(
-  node: DependencyNode,
-): NodeLocation | undefined {
-  return match<DependencyNode, NodeLocation | undefined>(node)
-    .with({ type: "card", data: { dashboard: P.nonNullable } }, (node) => ({
-      icon: "dashboard",
-      parts: [
-        {
-          label: node.data.dashboard.name,
-          url: Urls.dashboard(node.data.dashboard),
-        },
-      ],
-    }))
-    .with({ type: "card", data: { collection: P.nonNullable } }, (node) => ({
-      icon: "collection",
-      parts: [
-        {
-          label: node.data.collection.name,
-          url: Urls.collection(node.data.collection),
-        },
-      ],
-    }))
-    .with({ type: "table", data: { db: P.nonNullable } }, (node) => ({
-      icon: "database",
-      parts: [
-        {
-          label: node.data.db.name,
-          url: Urls.dataModelDatabase(node.data.db_id),
-        },
-        {
-          label: node.data.schema,
-          url: Urls.dataModelSchema(node.data.db_id, node.data.schema),
-        },
-      ],
-    }))
-    .with(
-      { type: P.union("card", "table", "transform", "snippet") },
-      () => undefined,
-    )
-    .exhaustive();
+export function getNodeLink(node: DependencyNode): NodeLink | null {
+  switch (node.type) {
+    case "card":
+      return {
+        label: getCardLinkLabel(node.data.type),
+        url: Urls.question({
+          id: node.id,
+          name: node.data.name,
+          type: node.data.type,
+        }),
+      };
+    case "table":
+      return {
+        label: t`View metadata`,
+        url: Urls.dataModelTable(node.data.db_id, node.data.schema, node.id),
+      };
+    case "transform":
+      return {
+        label: t`View this transform`,
+        url: Urls.transform(node.id),
+      };
+    case "snippet":
+      return null;
+  }
 }
 
-export function getNodeViewCount(node: DependencyNode): number | undefined {
-  return match(node)
-    .with({ type: "card" }, (node) => node.data.view_count)
-    .with({ type: P.union("table", "transform", "snippet") }, () => undefined)
-    .exhaustive();
+export function getNodeLocationInfo(node: DependencyNode): NodeLocation | null {
+  switch (node.type) {
+    case "card":
+      if (node.data.dashboard != null) {
+        return {
+          icon: "dashboard",
+          parts: [
+            {
+              label: node.data.dashboard.name,
+              url: Urls.dashboard(node.data.dashboard),
+            },
+          ],
+        };
+      }
+      if (node.data.collection != null) {
+        return {
+          icon: "collection",
+          parts: [
+            {
+              label: node.data.collection.name,
+              url: Urls.collection(node.data.collection),
+            },
+          ],
+        };
+      }
+      return null;
+    case "table":
+      if (node.data.db != null) {
+        return {
+          icon: "database",
+          parts: [
+            {
+              label: node.data.db.name,
+              url: Urls.dataModelDatabase(node.data.db_id),
+            },
+            {
+              label: node.data.schema,
+              url: Urls.dataModelSchema(node.data.db_id, node.data.schema),
+            },
+          ],
+        };
+      }
+      return null;
+    case "transform":
+    case "snippet":
+      return null;
+  }
 }
 
-export function getCardType(
-  groupType: DependencyGroupType,
-): CardType | undefined {
+export function getNodeViewCount(node: DependencyNode): number | null {
+  switch (node.type) {
+    case "card":
+      return node.data.view_count ?? null;
+    case "table":
+    case "transform":
+    case "snippet":
+      return null;
+  }
+}
+
+export function getCardType(groupType: DependencyGroupType): CardType | null {
   switch (groupType) {
     case "question":
     case "model":
     case "metric":
       return groupType;
     default:
-      return undefined;
+      return null;
   }
 }
 

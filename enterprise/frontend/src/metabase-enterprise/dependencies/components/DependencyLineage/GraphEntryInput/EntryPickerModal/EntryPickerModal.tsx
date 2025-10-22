@@ -50,7 +50,7 @@ import {
 } from "./utils";
 
 type EntryPickerModalProps = {
-  value: DependencyNode | undefined;
+  value: DependencyNode | null;
   onChange: (value: DependencyEntry) => void;
   onClose: () => void;
 };

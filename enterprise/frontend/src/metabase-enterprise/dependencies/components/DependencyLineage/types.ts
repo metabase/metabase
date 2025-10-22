@@ -35,6 +35,6 @@ export type GraphSelection = {
 };
 
 export type GraphContextType = {
-  selection: GraphSelection | undefined;
-  setSelection: (selection: GraphSelection | undefined) => void;
+  selection: GraphSelection | null;
+  setSelection: (selection: GraphSelection | null) => void;
 };

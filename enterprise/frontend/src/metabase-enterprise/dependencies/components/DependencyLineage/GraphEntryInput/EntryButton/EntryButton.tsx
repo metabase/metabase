@@ -7,8 +7,8 @@ import type { DependencyEntry, DependencyNode } from "metabase-types/api";
 import { getNodeIcon, getNodeLabel } from "../../utils";
 
 type EntryButtonProps = {
-  node: DependencyNode | undefined;
-  onEntryChange: (entry: DependencyEntry | undefined) => void;
+  node: DependencyNode | null;
+  onEntryChange: (entry: DependencyEntry | null) => void;
   onPickerOpen: () => void;
 };
 
@@ -19,7 +19,7 @@ export function EntryButton({
 }: EntryButtonProps) {
   const handleIconClick = (event: MouseEvent) => {
     event.stopPropagation();
-    onEntryChange(undefined);
+    onEntryChange(null);
   };
 
   return (

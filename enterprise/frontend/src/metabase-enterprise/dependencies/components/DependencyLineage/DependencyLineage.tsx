@@ -32,28 +32,28 @@ const NODE_TYPES = {
 };
 
 type DependencyLineageProps = {
-  entry: DependencyEntry | undefined;
+  entry?: DependencyEntry;
 };
 
 export function DependencyLineage({ entry }: DependencyLineageProps) {
   const [fetchGraph, { isFetching }] = useLazyGetDependencyGraphQuery();
   const [nodes, setNodes, onNodesChange] = useNodesState<NodeType>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
-  const [selection, setSelection] = useState<GraphSelection>();
+  const [selection, setSelection] = useState<GraphSelection | null>(null);
   const { sendErrorToast } = useMetadataToasts();
 
   const entryNode = useMemo(() => {
-    return entry != null ? findNode(nodes, entry.id, entry.type) : undefined;
+    return entry != null ? findNode(nodes, entry.id, entry.type) : null;
   }, [nodes, entry]);
 
   const selectedNode = useMemo(() => {
     return selection != null
       ? findNode(nodes, selection.id, selection.type)
-      : undefined;
+      : null;
   }, [nodes, selection]);
 
   const setGraph = useCallback(
-    (nodes: NodeType[], edges: Edge[], selection?: GraphSelection) => {
+    (nodes: NodeType[], edges: Edge[], selection: GraphSelection | null) => {
       setNodes(nodes);
       setEdges(edges);
       setSelection(selection);
@@ -63,13 +63,13 @@ export function DependencyLineage({ entry }: DependencyLineageProps) {
 
   useEffect(() => {
     if (entry == null) {
-      setGraph([], []);
+      setGraph([], [], null);
       return;
     }
 
     fetchGraph(entry).then(({ data: graph }) => {
       if (graph == null) {
-        setGraph([], []);
+        setGraph([], [], null);
         sendErrorToast(t`Failed to load the dependency graph`);
         return;
       }
@@ -81,7 +81,7 @@ export function DependencyLineage({ entry }: DependencyLineageProps) {
   }, [entry, fetchGraph, setGraph, sendErrorToast]);
 
   const handlePanelClose = () => {
-    setSelection(undefined);
+    setSelection(null);
   };
 
   return (
@@ -103,7 +103,7 @@ export function DependencyLineage({ entry }: DependencyLineageProps) {
         <Panel position="top-left">
           <Group>
             <GraphEntryInput
-              node={entryNode?.data}
+              node={entryNode?.data ?? null}
               isGraphFetching={isFetching}
             />
             {nodes.length > 1 && (
