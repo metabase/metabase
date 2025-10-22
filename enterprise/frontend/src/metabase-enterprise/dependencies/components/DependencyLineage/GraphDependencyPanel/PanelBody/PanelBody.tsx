@@ -25,7 +25,7 @@ type PanelBodyProps = {
 
 export const PanelBody = memo(function ListBody({ nodes }: PanelBodyProps) {
   return (
-    <Box className={S.body} lh="1rem">
+    <Box className={S.body}>
       {nodes.map((node) => (
         <ListItem key={getNodeId(node.id, node.type)} node={node} />
       ))}
@@ -51,7 +51,7 @@ function ListItem({ node }: ListItemProps) {
           url={Urls.dependencyLineage({ entry: node })}
         />
         {viewCount != null ? (
-          <Box c="text-secondary" fz="sm">
+          <Box c="text-secondary" fz="sm" lh="1rem">
             {getNodeViewCountLabel(viewCount)}
           </Box>
         ) : link != null ? (

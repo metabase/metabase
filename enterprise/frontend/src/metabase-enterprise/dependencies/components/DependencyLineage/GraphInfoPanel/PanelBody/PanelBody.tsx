@@ -29,7 +29,7 @@ type PanelBodyProps = {
 
 export function PanelBody({ node }: PanelBodyProps) {
   return (
-    <Stack className={S.body} p="lg" gap="lg" lh="1rem">
+    <Stack className={S.body} p="lg" gap="lg">
       <DescriptionSection node={node} />
       <CreatorAndLastEditorSection node={node} />
       <GeneratedTableSection node={node} />
@@ -65,7 +65,7 @@ function CreatorAndLastEditorSection({ node }: SectionProps) {
   }
 
   return (
-    <Stack gap="sm">
+    <Stack gap="sm" lh="1rem">
       <Title order={6}>{t`Creator and last editor`}</Title>
       {createdAt != null && createdBy != null && (
         <Group gap="sm" wrap="nowrap">
@@ -102,7 +102,7 @@ function GeneratedTableSection({ node }: SectionProps) {
   }
 
   return (
-    <Stack gap="sm">
+    <Stack gap="sm" lh="1rem">
       <Title order={6}>{t`Generated table`}</Title>
       <Group justify="space-between">
         <GraphLink label={info.title.label} icon="table" url={info.title.url} />
@@ -123,7 +123,7 @@ function FieldsSection({ node }: SectionProps) {
   }
 
   return (
-    <Stack gap="md">
+    <Stack gap="md" lh="1rem">
       <Title order={6}>{getNodeFieldsLabel(fields.length)}</Title>
       {fields.map((field, fieldIndex) => {
         const fieldTypeInfo = Lib.legacyColumnTypeInfo(field);

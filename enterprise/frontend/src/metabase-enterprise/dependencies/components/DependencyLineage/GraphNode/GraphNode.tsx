@@ -52,12 +52,11 @@ export const GraphNode = memo(function ItemNode({
         className={cx(S.card, { [S.selected]: isSelected })}
         p="md"
         gap="sm"
-        lh="1rem"
         aria-label={label}
         data-testid="graph-node"
         onClick={handleClick}
       >
-        <Group gap="sm">
+        <Group gap="sm" lh="1rem">
           <FixedSizeIcon name={getNodeIcon(node)} c="brand" />
           {label}
         </Group>

@@ -28,6 +28,7 @@ export function GraphBreadcrumbs({
               component={Link}
               to={part.url}
               target="_blank"
+              lh="1rem"
             >
               {part.label}
             </Box>

@@ -34,12 +34,14 @@ export function PanelHeader({ node, onClose }: PanelHeaderProps) {
   const location = getNodeLocationInfo(node);
 
   return (
-    <Group className={S.root} p="lg" gap="0.75rem" wrap="nowrap" lh="1rem">
+    <Group className={S.root} p="lg" gap="0.75rem" wrap="nowrap">
       <Center w="2.75rem" h="2.75rem" bdrs="50%" bg="bg-secondary">
         <FixedSizeIcon name={getNodeIcon(node)} c="brand" size={20} />
       </Center>
       <Stack gap="xs" flex={1}>
-        <Title order={3}>{getNodeLabel(node)}</Title>
+        <Title order={3} lh="1rem">
+          {getNodeLabel(node)}
+        </Title>
         {location != null && <GraphBreadcrumbs location={location} />}
       </Stack>
       <Box m={rem(-ACTION_ICON_PADDING)}>
