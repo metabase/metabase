@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [diehard.core :as dh]
-   [metabase-enterprise.remote-sync.api :as api]
+   [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.settings :as settings]
@@ -86,8 +86,7 @@
 (deftest import-with-default-branch-test
   (testing "POST /api/ee/remote-sync/import succeeds with default branch"
     (let [mock-main (test-helpers/create-mock-source)]
-      (mt/with-temporary-setting-values [remote-sync-enabled true
-                                         remote-sync-url "https://github.com/test/repo.git"
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                          remote-sync-token "test-token"
                                          remote-sync-branch "main"]
         (with-redefs [source/source-from-settings (constantly mock-main)]
@@ -99,8 +98,7 @@
 (deftest import-with-specific-branch-test
   (testing "POST /api/ee/remote-sync/import succeeds with specific branch"
     (let [mock-develop (test-helpers/create-mock-source :branch "develop")]
-      (mt/with-temporary-setting-values [remote-sync-enabled true
-                                         remote-sync-url "https://github.com/test/repo.git"
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                          remote-sync-token "test-token"
                                          remote-sync-branch "main"]
         (with-redefs [source/source-from-settings (constantly mock-develop)]
@@ -117,15 +115,14 @@
 
 (deftest import-errors-when-remote-sync-disabled-test
   (testing "POST /api/ee/remote-sync/import errors when remote sync is disabled"
-    (mt/with-temporary-setting-values [remote-sync-enabled false]
-      (is (= "Git sync is paused. Please resume it to perform import operations."
+    (mt/with-temporary-setting-values [remote-sync-url nil]
+      (is (= "Remote sync is not configured."
              (mt/user-http-request :crowberto :post 400 "ee/remote-sync/import" {}))))))
 
 (deftest import-handles-network-errors-test
   (testing "POST /api/ee/remote-sync/import handles network errors during import"
     (let [mock-main (test-helpers/create-mock-source :fail-mode :network-error)]
-      (mt/with-temporary-setting-values [remote-sync-enabled true
-                                         remote-sync-url "https://github.com/test/repo.git"
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                          remote-sync-token "test-token"
                                          remote-sync-branch "main"]
         (with-redefs [source/source-from-settings (constantly mock-main)]
@@ -138,8 +135,7 @@
   (testing "POST /api/ee/remote-sync/import errors when task already exists"
     (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "foo"}]
       (let [mock-source (test-helpers/create-mock-source)]
-        (mt/with-temporary-setting-values [remote-sync-enabled true
-                                           remote-sync-url "https://github.com/test/repo.git"
+        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                            remote-sync-token "test-token"
                                            remote-sync-branch "main"]
           (with-redefs [source/source-from-settings (constantly mock-source)]
@@ -149,8 +145,7 @@
 (deftest import-errors-when-dirty-changes-test
   (testing "POST /api/ee/remote-sync/import errors when dirty changes exist"
     (let [mock-main (test-helpers/create-mock-source)]
-      (mt/with-temporary-setting-values [remote-sync-enabled true
-                                         remote-sync-url "https://github.com/test/repo.git"
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                          remote-sync-token "test-token"
                                          remote-sync-branch "main"]
         (t2/insert! :model/RemoteSyncObject {:model_type "Card"
@@ -171,8 +166,7 @@
     (let [mock-main (test-helpers/create-mock-source)
           initial-branch "main"
           new-branch "feature"]
-      (mt/with-temporary-setting-values [remote-sync-enabled true
-                                         remote-sync-url "https://github.com/test/repo.git"
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                          remote-sync-token "test-token"
                                          remote-sync-branch initial-branch]
         ;; First import to establish the version
@@ -200,8 +194,7 @@
     (mt/with-temporary-setting-values [remote-sync-type :production]
       (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "foo"}]
         (let [mock-source (test-helpers/create-mock-source)]
-          (mt/with-temporary-setting-values [remote-sync-enabled true
-                                             remote-sync-url "https://github.com/test/repo.git"
+          (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                              remote-sync-token "test-token"
                                              remote-sync-branch "main"]
             (with-redefs [source/source-from-settings (constantly mock-source)]
@@ -213,8 +206,7 @@
     (mt/with-temporary-setting-values [remote-sync-type :development]
       (mt/with-temp [:model/Collection _ {:type "remote-synced" :name "Test Collection" :location "/"}]
         (let [mock-main (test-helpers/create-mock-source)]
-          (mt/with-temporary-setting-values [remote-sync-enabled true
-                                             remote-sync-url "https://github.com/test/repo.git"
+          (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                              remote-sync-token "test-token"
                                              remote-sync-branch "main"]
             (with-redefs [source/source-from-settings (constantly mock-main)]
@@ -229,8 +221,7 @@
     (mt/with-temporary-setting-values [remote-sync-type :development]
       (mt/with-temp [:model/Collection _ {:type "remote-synced" :name "Test Collection" :location "/"}]
         (let [mock-main (test-helpers/create-mock-source)]
-          (mt/with-temporary-setting-values [remote-sync-enabled true
-                                             remote-sync-url "https://github.com/test/repo.git"
+          (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                              remote-sync-token "test-token"
                                              remote-sync-branch "main"]
             (with-redefs [source/source-from-settings (constantly mock-main)]
@@ -244,15 +235,15 @@
 (deftest export-requires-superuser-test
   (testing "POST /api/ee/remote-sync/export requires superuser permissions"
     (mt/with-temporary-setting-values [remote-sync-type :development
-                                       remote-sync-enabled true]
+                                       remote-sync-url "file://repo.git"]
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :post 403 "ee/remote-sync/export" {}))))))
 
 (deftest export-errors-when-remote-sync-disabled-test
   (testing "POST /api/ee/remote-sync/export errors when remote sync is disabled"
     (mt/with-temporary-setting-values [remote-sync-type :development
-                                       remote-sync-enabled false]
-      (is (= "Git sync is paused. Please resume it to perform export operations."
+                                       remote-sync-url nil]
+      (is (= "Remote sync is not configured."
              (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {}))))))
 
 (deftest export-handles-write-errors-test
@@ -260,8 +251,7 @@
     (mt/with-temporary-setting-values [remote-sync-type :development]
       (mt/with-temp [:model/Collection _ {:type "remote-synced" :name "Test Collection" :location "/"}]
         (let [mock-main (test-helpers/create-mock-source :fail-mode :write-files-error)]
-          (mt/with-temporary-setting-values [remote-sync-enabled true
-                                             remote-sync-url "https://github.com/test/repo.git"
+          (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                              remote-sync-token "test-token"
                                              remote-sync-branch "main"]
             (with-redefs [source/source-from-settings (constantly mock-main)]
@@ -274,8 +264,7 @@
     (mt/with-temporary-setting-values [remote-sync-type :development]
       (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "foo"}]
         (let [mock-source (test-helpers/create-mock-source)]
-          (mt/with-temporary-setting-values [remote-sync-enabled true
-                                             remote-sync-url "https://github.com/test/repo.git"
+          (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                              remote-sync-token "test-token"
                                              remote-sync-branch "main"]
             (with-redefs [source/source-from-settings (constantly mock-source)]
@@ -289,8 +278,7 @@
                                               :ended_at :%now
                                               :version "other-version"}]
         (let [mock-source (test-helpers/create-mock-source)]
-          (mt/with-temporary-setting-values [remote-sync-enabled true
-                                             remote-sync-url "https://github.com/test/repo.git"
+          (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                              remote-sync-token "test-token"
                                              remote-sync-branch "main"]
             (with-redefs [source/source-from-settings (constantly mock-source)
@@ -310,8 +298,7 @@
                                               :ended_at :%now
                                               :version "other-version"}]
         (let [mock-source (test-helpers/create-mock-source)]
-          (mt/with-temporary-setting-values [remote-sync-enabled true
-                                             remote-sync-url "https://github.com/test/repo.git"
+          (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                              remote-sync-token "test-token"
                                              remote-sync-branch "main"]
             (with-redefs [source/source-from-settings (constantly mock-source)
@@ -534,11 +521,10 @@
     (let [mock-main (test-helpers/create-mock-source)]
       (with-redefs [settings/check-git-settings (constantly nil)
                     source/source-from-settings (constantly mock-main)]
-        (mt/with-temporary-setting-values [remote-sync-enabled false
+        (mt/with-temporary-setting-values [remote-sync-url nil
                                            remote-sync-type :development]
           (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                                                 {:remote-sync-enabled true
-                                                                  :remote-sync-url "https://github.com/test/repo.git"
+                                                                 {:remote-sync-url "https://github.com/test/repo.git"
                                                                   :remote-sync-branch "main"})
                 task (wait-for-task-completion task_id)]
             (is (=? {:success true} resp))
@@ -549,13 +535,12 @@
     (let [mock-main (test-helpers/create-mock-source)]
       (with-redefs [settings/check-git-settings (constantly nil)
                     source/source-from-settings (constantly mock-main)]
-        (mt/with-temporary-setting-values [remote-sync-enabled true
-                                           remote-sync-type :production
+        (mt/with-temporary-setting-values [remote-sync-type :production
                                            remote-sync-branch "main"
                                            remote-sync-url "https://github.com/test/repo.git"
                                            remote-sync-token "test-token"]
           (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                               {:remote-sync-enabled true
+                                               {:remote-sync-url "file://repo.git"
                                                 :remote-sync-type :production})
                 task (wait-for-task-completion (:task_id response))]
             (is (=? {:success true} response))
@@ -576,16 +561,14 @@
   (testing "PUT /api/ee/remote-sync/settings doesn't allow loosing dirty data"
     (with-redefs [remote-sync.object/dirty-global? (constantly true)
                   settings/check-and-update-remote-settings! #(throw (Exception. "Should not be called"))]
-      (mt/with-temporary-setting-values [remote-sync-enabled true
-                                         remote-sync-url "https://github.com/test/repo.git"
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                          remote-sync-token "test-token"
                                          remote-sync-branch "main"
                                          remote-sync-type :development]
         (testing "cannot change to production mode"
           (is (= "There are unsaved changes in the Remote Sync collection which will be overwritten switching to production mode."
                  (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
-                                       {:remote-sync-enabled true
-                                        :remote-sync-type :production
+                                       {:remote-sync-type :production
                                         :remote-sync-branch "main"
                                         :remote-sync-url "https://github.com/test/repo.git"
                                         :remote-sync-token "test-token"}))))))))
@@ -593,8 +576,7 @@
 (deftest create-branch
   (testing "POST /api/ee/remote-sync/create-branch creates a new branch")
   (let [mock-source (test-helpers/create-mock-source)]
-    (mt/with-temporary-setting-values [remote-sync-enabled true
-                                       remote-sync-url "https://github.com/test/repo.git"
+    (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                        remote-sync-token "test-token"
                                        remote-sync-branch "main"
                                        remote-sync-type :development]
@@ -611,8 +593,7 @@
   (testing "POST /api/ee/remote-sync/stash")
   (let [mock-source (test-helpers/create-mock-source)
         export-calls (atom 0)]
-    (mt/with-temporary-setting-values [remote-sync-enabled true
-                                       remote-sync-url "https://github.com/test/repo.git"
+    (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                        remote-sync-token "test-token"
                                        remote-sync-branch "main"
                                        remote-sync-type :development]
@@ -621,7 +602,7 @@
                                                 :status "updated"
                                                 :status_changed_at (java.time.OffsetDateTime/now)}]
         (with-redefs [source/source-from-settings (constantly mock-source)
-                      api/async-export! (fn [_ _ _] (swap! export-calls inc))]
+                      impl/async-export!          (fn [_ _ _] (swap! export-calls inc))]
           (is (=? {:status "success"
                    :message "Stashing to feature-branch"}
                   (mt/user-http-request :crowberto :post 200 "ee/remote-sync/stash"

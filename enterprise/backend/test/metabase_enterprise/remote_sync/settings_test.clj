@@ -13,7 +13,6 @@
         {:remote-sync-url     "file://my/url.git"
          :remote-sync-type    :production
          :remote-sync-branch  "test-branch"
-         :remote-sync-enabled "true"
          :remote-sync-token   nil}]
     (with-redefs [settings/check-git-settings (fn [{:keys [remote-sync-token]}]
                                                 ;; git should always be checked with a nil or full token
@@ -22,8 +21,7 @@
       (mt/with-temporary-setting-values [:remote-sync-token nil
                                          :remote-sync-url nil
                                          :remote-sync-type nil
-                                         :remote-sync-branch nil
-                                         :remote-sync-enabled nil]
+                                         :remote-sync-branch nil]
         (testing "Allows setting with no token"
           (settings/check-and-update-remote-settings! (assoc default-settings :remote-sync-token nil))
           (is (= "file://my/url.git" (settings/remote-sync-url)))
@@ -48,3 +46,9 @@
   (is (thrown-with-msg? clojure.lang.ExceptionInfo
                         #"Remote-sync-type set to an unsupported value"
                         (settings/remote-sync-type! :invalid-type))))
+
+(deftest remote-sync-enabled-test
+  (mt/with-temporary-setting-values [:remote-sync-url nil]
+    (is (false? (settings/remote-sync-enabled))))
+  (mt/with-temporary-setting-values [:remote-sync-url "file://my/repo.git"]
+    (is (true? (settings/remote-sync-enabled)))))

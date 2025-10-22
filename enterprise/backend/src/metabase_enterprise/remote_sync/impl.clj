@@ -1,15 +1,21 @@
 (ns metabase-enterprise.remote-sync.impl
   (:require
    [clojure.string :as str]
+   [diehard.core :as dh]
    [java-time.api :as t]
+   [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
+   [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.ingestable :as source.ingestable]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.serialization.core :as serialization]
    [metabase.analytics.core :as analytics]
+   [metabase.api.common :as api]
+   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.collections.models.collection :as collection]
    [metabase.models.serialization :as serdes]
+   [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -212,3 +218,55 @@
 (def cluster-lock
   "Shared cluster lock name for remote-sync tasks"
   ::remote-sync-task)
+
+(defn- run-async!
+  [task-type branch f]
+  (let [{task-id :id
+         existing? :existing?}
+        (cluster-lock/with-cluster-lock cluster-lock
+          (if-let [{id :id} (remote-sync.task/current-task)]
+            {:existing? true :id id}
+            (remote-sync.task/create-sync-task! task-type api/*current-user-id*)))]
+    (api/check-400 (not existing?) "Remote sync in progress")
+    (u.jvm/in-virtual-thread*
+     (dh/with-timeout {:interrupt? true
+                       :timeout-ms (* (settings/remote-sync-task-time-limit-ms) 10)}
+       (let [result (f task-id)]
+         (case (:status result)
+           :success (t2/with-transaction [_conn]
+                      (settings/remote-sync-branch! branch)
+                      (remote-sync.task/complete-sync-task! task-id))
+           :error (remote-sync.task/fail-sync-task! task-id (:message result))
+           (remote-sync.task/fail-sync-task! task-id "Unexpected Error")))))
+    task-id))
+
+(defn async-import!
+  "Import remote-synced collections from a remote source repository asynchronously."
+  [branch force? import-args]
+  (let [ingestable-source (source.p/->ingestable (source/source-from-settings branch) {:path-filters [#"collections/.*"]})
+        source-version (source.ingestable/ingestable-version ingestable-source)
+        last-imported-version (remote-sync.task/last-import-version)
+        has-dirty? (remote-sync.object/dirty-global?)]
+    (when (and has-dirty? (not force?))
+      (throw (ex-info "There are unsaved changes in the Remote Sync collection which will be overwritten by the import. Force the import to discard these changes."
+                      {:status-code 400
+                       :conflicts true})))
+    (if (and (not force?) (= last-imported-version source-version))
+      (do (log/infof "Skipping import: source version %s matches last imported version" source-version)
+          (settings/remote-sync-branch! branch)
+          nil)
+      (run-async! "import" branch (fn [task-id] (import! ingestable-source task-id import-args))))))
+
+(defn async-export!
+  "Export the remote-synced collections to the remote source repository."
+  [branch force? message]
+  (let [source (source/source-from-settings branch)
+        last-task-version (remote-sync.task/last-version)
+        current-source-version (source.ingestable/ingestable-version (source.p/->ingestable source {}))]
+    (when (and (not force?) (some? last-task-version) (not= last-task-version current-source-version))
+      (throw (ex-info "Cannot export changes that will overwrite new changes in the branch."
+                      {:status-code 400
+                       :conflicts true})))
+    (run-async! "export" branch (fn [task-id] (export! source
+                                                       task-id
+                                                       message)))))

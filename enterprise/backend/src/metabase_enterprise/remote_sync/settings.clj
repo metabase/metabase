@@ -1,5 +1,6 @@
 (ns metabase-enterprise.remote-sync.settings
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.remote-sync.source.git :as git]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -12,8 +13,10 @@
   :type :boolean
   :visibility :authenticated
   :export? false
-  :encryption :no
-  :default true)
+  :setter :none
+  :getter (fn [] (some? (setting/get :remote-sync-url)))
+  :audit :never
+  :doc false)
 
 (defsetting remote-sync-branch
   (deferred-tru "The remote branch to sync with, e.g. `main`")
@@ -92,14 +95,20 @@
   "Check that the given git settings are valid and update if they are. Throws exception if they are not.
    NOTE: If the remote-sync-token comes in as obfuscated, we will not update the existing settings.
    A nil value will clear it out"
-  [{:keys [remote-sync-token] :as settings}]
-  (let [current-token (setting/get :remote-sync-token)
-        obfuscated? (= remote-sync-token (setting/obfuscate-value current-token))
-        token-to-check (if obfuscated? current-token remote-sync-token)
-        default-branch (check-git-settings (assoc settings :remote-sync-token token-to-check))]
+  [{:keys [remote-sync-url remote-sync-token] :as settings}]
+
+  (if (str/blank? remote-sync-url)
     (t2/with-transaction [_conn]
-      (doseq [k [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-enabled :remote-sync-auto-import]]
-        (when (not (and (= k :remote-sync-token) obfuscated?))
-          (setting/set! k (k settings))))
-      (when (nil? (setting/get :remote-sync-branch))
-        (setting/set! :remote-sync-branch default-branch)))))
+      (setting/set! :remote-sync-url nil)
+      (setting/set! :remote-sync-token nil)
+      (setting/set! :remote-sync-branch nil))
+    (let [current-token  (setting/get :remote-sync-token)
+          obfuscated?    (= remote-sync-token (setting/obfuscate-value current-token))
+          token-to-check (if obfuscated? current-token remote-sync-token)
+          default-branch (check-git-settings (assoc settings :remote-sync-token token-to-check))]
+      (t2/with-transaction [_conn]
+        (doseq [k [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-auto-import]]
+          (when (not (and (= k :remote-sync-token) obfuscated?))
+            (setting/set! k (k settings))))
+        (when (nil? (setting/get :remote-sync-branch))
+          (setting/set! :remote-sync-branch default-branch))))))

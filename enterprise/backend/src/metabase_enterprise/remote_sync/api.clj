@@ -1,7 +1,5 @@
 (ns metabase-enterprise.remote-sync.api
   (:require
-   [clojure.string :as str]
-   [diehard.core :as dh]
    [medley.core :as m]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
@@ -9,69 +7,15 @@
    [metabase-enterprise.remote-sync.schema :as remote-sync.schema]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
-   [metabase-enterprise.remote-sync.source.ingestable :as source.ingestable]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.collections.models.collection :as collection]
-   [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
-
-(defn- run-async!
-  [task-type branch f]
-  (let [{task-id :id
-         existing? :existing?}
-        (cluster-lock/with-cluster-lock impl/cluster-lock
-          (if-let [{id :id} (remote-sync.task/current-task)]
-            {:existing? true :id id}
-            (remote-sync.task/create-sync-task! task-type api/*current-user-id*)))]
-    (api/check-400 (not existing?) "Remote sync in progress")
-    (u.jvm/in-virtual-thread*
-     (dh/with-timeout {:interrupt? true
-                       :timeout-ms (* (settings/remote-sync-task-time-limit-ms) 10)}
-       (let [result (f task-id)]
-         (case (:status result)
-           :success (t2/with-transaction [_conn]
-                      (settings/remote-sync-branch! branch)
-                      (remote-sync.task/complete-sync-task! task-id))
-           :error (remote-sync.task/fail-sync-task! task-id (:message result))
-           (remote-sync.task/fail-sync-task! task-id "Unexpected Error")))))
-    task-id))
-
-(defn- async-import!
-  [branch force? import-args]
-  (let [ingestable-source (source.p/->ingestable (source/source-from-settings branch) {:path-filters [#"collections/.*"]})
-        source-version (source.ingestable/ingestable-version ingestable-source)
-        last-imported-version (remote-sync.task/last-import-version)
-        has-dirty? (remote-sync.object/dirty-global?)]
-    (when (and has-dirty? (not force?))
-      (throw (ex-info "There are unsaved changes in the Remote Sync collection which will be overwritten by the import. Force the import to discard these changes."
-                      {:status-code 400
-                       :conflicts true})))
-    (if (and (not force?) (= last-imported-version source-version))
-      (do (log/infof "Skipping import: source version %s matches last imported version" source-version)
-          (settings/remote-sync-branch! branch)
-          nil)
-      (run-async! "import" branch (fn [task-id] (impl/import! ingestable-source task-id import-args))))))
-
-(defn- async-export!
-  [branch force? message]
-  (let [source (source/source-from-settings branch)
-        last-task-version (remote-sync.task/last-version)
-        current-source-version (source.ingestable/ingestable-version (source.p/->ingestable source {}))]
-    (when (and (not force?) (some? last-task-version) (not= last-task-version current-source-version))
-      (throw (ex-info "Cannot export changes that will overwrite new changes in the branch."
-                      {:status-code 400
-                       :conflicts true})))
-    (run-async! "export" branch (fn [task-id] (impl/export! source
-                                                            task-id
-                                                            message)))))
 
 (api.macros/defendpoint :post "/import" :- remote-sync.schema/ImportResponse
   "Reload Metabase content from Git repository source of truth.
@@ -80,7 +24,7 @@
   - Fetch the latest changes from the configured git repository
   - Load the updated content using the serialization/deserialization system
 
-  If `force=false` (default) and there are unsaved changes in the Remote Sync collection, 
+  If `force=false` (default) and there are unsaved changes in the Remote Sync collection,
   the import returns a 400 response.
 
   Requires superuser permissions."
@@ -90,9 +34,9 @@
                               [:force {:optional true} :boolean]]]
   (api/check-superuser)
   (when-not (settings/remote-sync-enabled)
-    (throw (ex-info "Git sync is paused. Please resume it to perform import operations."
+    (throw (ex-info "Remote sync is not configured."
                     {:status-code 400})))
-  (let [task-id (async-import! (or branch (settings/remote-sync-branch)) force {})]
+  (let [task-id (impl/async-import! (or branch (settings/remote-sync-branch)) force {})]
     {:status :success
      :task_id task-id
      :message (when-not task-id "No changes since last import")}))
@@ -131,21 +75,21 @@
                                        [:force {:optional true} :boolean]]
   (api/check-superuser)
   (when-not (settings/remote-sync-enabled)
-    (throw (ex-info "Git sync is paused. Please resume it to perform export operations."
+    (throw (ex-info "Remote sync is not configured."
                     {:status-code 400})))
   (when (= (settings/remote-sync-type) :production)
     (throw (ex-info "Exports are only allowed when remote-sync-type is set to 'development'" {:status-code 400})))
   {:message "Export task started"
-   :task_id (async-export! (or branch (settings/remote-sync-branch))
-                           (or force false)
-                           (or message "Exported from Metabase"))})
+   :task_id (impl/async-export! (or branch (settings/remote-sync-branch))
+                                (or force false)
+                                (or message "Exported from Metabase"))})
 
 (defn- task-with-status
   "Returns the status of a sync task.
-  
+
   Args:
     task (map): A remote sync task record
-  
+
   Returns:
     map: The task record with a :status field added, which can be:
          :errored - Task failed with an error
@@ -181,7 +125,6 @@
    _query-params
    {:keys [remote-sync-type] :as settings}
    :- [:map
-       [:remote-sync-enabled {:optional true} [:maybe :boolean]]
        [:remote-sync-url {:optional true} [:maybe :string]]
        [:remote-sync-token {:optional true} [:maybe :string]]
        [:remote-sync-type {:optional true} [:maybe [:enum :production :development]]]
@@ -199,13 +142,13 @@
   (cond (and (settings/remote-sync-enabled)
              (= :production (settings/remote-sync-type)))
         {:success true
-         :task_id (async-import! (settings/remote-sync-branch) true {})}
+         :task_id (impl/async-import! (settings/remote-sync-branch) true {})}
 
         (and (settings/remote-sync-enabled)
              (= :development (settings/remote-sync-type))
              (nil? (collection/remote-synced-collection)))
         {:success true
-         :task_id (async-import! (settings/remote-sync-branch) false {:create-collection? true})}
+         :task_id (impl/async-import! (settings/remote-sync-branch) false {:create-collection? true})}
 
         :else
         {:success true}))
@@ -273,7 +216,7 @@
       (source.p/create-branch source new_branch (settings/remote-sync-branch))
       {:status "success"
        :message (str "Stashing to " new_branch)
-       :task_id (async-export! new_branch false message)}
+       :task_id (impl/async-export! new_branch false message)}
       (catch Exception e
         (throw (ex-info (format "Failed to stash changes to branch: %s" (ex-message e))
                         {:status-code 400}))))))
