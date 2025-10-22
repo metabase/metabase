@@ -3,6 +3,8 @@ import type { Database, DatabaseId, InitialSyncStatus } from "./database";
 import type { DatasetData } from "./dataset";
 import type { Field, FieldId } from "./field";
 import type { Segment } from "./segment";
+import type { TransformId } from "./transform";
+import type { UserId } from "./user";
 
 export type ConcreteTableId = number;
 export type VirtualTableId = string; // e.g. "card__17" where 17 is a card id
@@ -18,6 +20,8 @@ export type TableVisibilityType =
   | "sensitive"
   | "technical"
   | "cruft";
+
+export type TableVisibilityType2 = string;
 
 export type TableFieldOrder = "database" | "alphabetical" | "custom" | "smart";
 
@@ -49,6 +53,13 @@ export type Table = {
   points_of_interest?: string;
   created_at: string;
   updated_at: string;
+
+  data_source: string;
+  visibility_type2: TableVisibilityType2;
+  owner_email: string;
+  owner_user_id: UserId;
+  transform_id: TransformId; // readonly
+  data_update_frequency: string; // readonly
 };
 
 export type SchemaName = string;
@@ -108,6 +119,11 @@ export interface UpdateTableRequest {
   points_of_interest?: string;
   show_in_getting_started?: boolean;
   field_order?: TableFieldOrder;
+
+  data_source?: string;
+  visibility_type2?: TableVisibilityType2;
+  owner_email?: string;
+  owner_user_id?: UserId;
 }
 
 export interface UpdateTableListRequest {
@@ -118,6 +134,11 @@ export interface UpdateTableListRequest {
   caveats?: string;
   points_of_interest?: string;
   show_in_getting_started?: boolean;
+
+  data_source?: string;
+  visibility_type2?: TableVisibilityType2;
+  owner_email?: string;
+  owner_user_id?: UserId;
 }
 
 export interface UpdateTableFieldsOrderRequest {
