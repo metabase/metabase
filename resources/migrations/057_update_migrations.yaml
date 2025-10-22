@@ -1907,6 +1907,55 @@ databaseChangeLog:
             WHERE legacy_query IS NOT NULL;
 
   - changeSet:
+      id: v57.2025-10-21T10:00:00
+      author: bronsa
+      comment: Create transform_watermark table to track incremental transform watermarks in app DB
+      changes:
+        - createTable:
+            tableName: transform_watermark
+            remarks: Stores watermark values for incremental transforms
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: transform_id
+                  type: int
+                  remarks: Reference to the transform
+                  constraints:
+                    nullable: false
+                    unique: true
+                    referencedTableName: transform
+                    referencedColumnNames: id
+                    foreignKeyName: fk_transform_watermark_transform_id
+                    deleteCascade: true
+              - column:
+                  name: watermark_value
+                  type: bigint
+                  remarks: The watermark value
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: When this watermark was first created
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: When this watermark was last updated
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
       id: v57.2025-10-21T14:14:22
       author: wotbrew
       comment: Add column metabase_field.database_is_pk
@@ -1981,56 +2030,6 @@ databaseChangeLog:
         - dropColumn:
             tableName: metabase_field
             columnName: database_default
-
-  - changeSet:
-      id: v57.2025-10-21T10:00:00
-      author: bronsa
-      comment: Create transform_watermark table to track incremental transform watermarks in app DB
-      changes:
-        - createTable:
-            tableName: transform_watermark
-            remarks: Stores watermark values for incremental transforms
-            columns:
-              - column:
-                  name: id
-                  type: int
-                  remarks: Unique ID
-                  autoIncrement: true
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-              - column:
-                  name: transform_id
-                  type: int
-                  remarks: Reference to the transform
-                  constraints:
-                    nullable: false
-                    unique: true
-                    referencedTableName: transform
-                    referencedColumnNames: id
-                    foreignKeyName: fk_transform_watermark_transform_id
-                    deleteCascade: true
-              - column:
-                  name: watermark_value
-                  type: bigint
-                  remarks: The watermark value
-                  constraints:
-                    nullable: true
-              - column:
-                  name: created_at
-                  type: ${timestamp_type}
-                  remarks: When this watermark was first created
-                  defaultValueComputed: current_timestamp
-                  constraints:
-                    nullable: false
-              - column:
-                  name: updated_at
-                  type: ${timestamp_type}
-                  remarks: When this watermark was last updated
-                  defaultValueComputed: current_timestamp
-                  constraints:
-                    nullable: false
-
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
