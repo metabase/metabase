@@ -7,10 +7,10 @@
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
    [metabase.appearance.core :as appearance]
+   [metabase.config.core :as config]
    [metabase.core.initialization-status :as init-status]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.server.auth-wrapper :as auth-wrapper]
-   [metabase.server.middleware.embedding-sdk-bundle :as mw.embedding-sdk-bundle]
    [metabase.server.routes.index :as index]
    [metabase.system.core :as system]
    [metabase.util :as u]
@@ -60,14 +60,15 @@
   ([_request respond _raise]
    (respond (health-handler))))
 
-#_{:clj-kondo/ignore [:discouraged-var]}
-(defroutes ^:private static-files-handler
-  (GET "/embedding-sdk.js" request
-    ((mw.embedding-sdk-bundle/serve-bundle-handler) request))
-
-  ;; fall back to serving _all_ other files under /app
-  (route/resources "/" {:root "frontend_client/app"})
-  (route/not-found {:status 404 :body "Not found."}))
+(def ^:private static-files-handler
+  (apply compojure/routes
+         (remove nil?
+                 [(when (and config/ee-available? (not *compile-files*))
+                    #_{:clj-kondo/ignore [:metabase/modules]}
+                    @(requiring-resolve 'metabase-enterprise.server.routes/static-files-handler))
+       ;; fall back to serving _all_ other files under /app
+                  (route/resources "/" {:root "frontend_client/app"})
+                  (route/not-found {:status 404 :body "Not found."})])))
 
 (mu/defn- api-handler :- ::api.macros/handler
   [api-routes :- ::api.macros/handler]
