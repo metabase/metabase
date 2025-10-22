@@ -30,6 +30,7 @@ interface PaletteResultListProps {
   items: (PaletteActionImpl | string)[];
   renderItem: (params: RenderParams) => React.ReactElement;
   maxHeight?: number;
+  minHeight?: number;
 }
 
 export const PaletteResultList = (props: PaletteResultListProps) => {
@@ -150,6 +151,7 @@ export const PaletteResultList = (props: PaletteResultListProps) => {
       ref={parentRef}
       style={{
         maxHeight: props.maxHeight || 400,
+        minHeight: props.minHeight || 0,
         overflow: "auto",
       }}
     >
