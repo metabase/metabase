@@ -72,6 +72,7 @@ function DataPermissionsPage({
           id: params.databaseId,
           include_hidden: true,
           remove_inactive: true,
+          skip_fields: true,
         }
       : skipToken,
   );
