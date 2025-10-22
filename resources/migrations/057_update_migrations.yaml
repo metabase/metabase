@@ -4,11 +4,6 @@ databaseChangeLog:
       id: v57.2025-08-01T10:00:00
       author: qnkhuat
       comment: Add undo/redo change tracking table
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: data_edit_undo_chain
       changes:
         - createTable:
             tableName: data_edit_undo_chain
@@ -96,11 +91,6 @@ databaseChangeLog:
       id: v57.2025-08-01T10:02:00
       author: qnkhuat
       comment: A table for generating atomic sequence numbers
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: sequences
       changes:
         - createTable:
             tableName: sequences
@@ -124,12 +114,6 @@ databaseChangeLog:
       id: v57.2025-08-15T10:00:00
       author: qnkhuat
       comment: Add metabase_table.is_writable
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - columnExists:
-                tableName: metabase_table
-                columnName: is_writable
       changes:
         - addColumn:
             tableName: metabase_table
@@ -1101,11 +1085,6 @@ databaseChangeLog:
       id: v57.2025-08-24T10:00:00
       author: kulyk
       comment: Create comment table for documents feature
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: comment
       changes:
         - createTable:
             tableName: comment
@@ -1257,11 +1236,6 @@ databaseChangeLog:
       id: v57.2025-09-01T17:15:00
       author: kulyk
       comment: Create comment_reaction table for comment reactions feature
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: comment_reaction
       changes:
         - createTable:
             tableName: comment_reaction
@@ -1356,10 +1330,6 @@ databaseChangeLog:
       id: v57.2025-09-08T17:50:00
       author: metamben
       comment: Drop old dependency table
-      preConditions:
-        - onFail: MARK_RAN
-        - tableExists:
-            tableName: dependency
       changes:
         - dropTable:
             tableName: dependency
@@ -1434,12 +1404,6 @@ databaseChangeLog:
       id: v57.2025-09-08T18:00:00
       author: metamben
       comment: Create dependency table to track dependencies in a general way
-
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: dependency
       changes:
         - createTable:
             tableName: dependency
@@ -1482,12 +1446,6 @@ databaseChangeLog:
       id: v57.2025-09-08T18:10:00
       author: metamben
       comment: Unique constraint to prevent duplicate dependencies
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - uniqueConstraintExists:
-                tableName: dependency
-                constraintName: idx_unique_dependency
       changes:
         - addUniqueConstraint:
             tableName: dependency
@@ -1498,12 +1456,6 @@ databaseChangeLog:
       id: v57.2025-09-08T18:20:00
       author: metamben
       comment: Index for finding dependencies FROM a specific entity
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: dependency
-                indexName: idx_dependency_from
       changes:
         - createIndex:
             tableName: dependency
@@ -1518,12 +1470,6 @@ databaseChangeLog:
       id: v57.2025-09-08T18:30:00
       author: metamben
       comment: Index for finding dependencies TO a specific entity
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: dependency
-                indexName: idx_dependency_to
       changes:
         - createIndex:
             tableName: dependency
@@ -1629,12 +1575,6 @@ databaseChangeLog:
       id: v57.2025-09-16T12:55:00
       author: stasgavrylov
       comment: Add content_html column to comment table for storing HTML-rendered content
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - columnExists:
-                tableName: comment
-                columnName: content_html
       changes:
         - addColumn:
             tableName: comment
@@ -1902,6 +1842,147 @@ databaseChangeLog:
             path: instance_analytics_views/view_log/v2/mysql-view_log.sql
             relativeToChangelogFile: true
 
+  - changeSet:
+      id: v57.2025-10-06T18:26:00
+      author: camsaul
+      comment: >-
+        In v57, we started persisting MBQL 5 in the app DB; to support rollbacks to v56 and older (which don't work
+        100% correctly with MBQL 5 in the app DB) I'm copying the old legacy query to a new column. Note that new
+        Cards created in 57 won't populate this column.
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: legacy_query
+                  type: ${text.type}
+                  remarks: >-
+                    Legacy MBQL version of the query (serialized as JSON) for existing Cards created before v57, to
+                    support rollbacks to v56. This column should be removed in v58.
+
+  - changeSet:
+      id: v57.2025-10-06T18:26:01
+      author: camsaul
+      comment: >-
+        Copy legacy MBQL queries from report_card.dataset_query to report_card.legacy_query to support rollbacks
+      changes:
+        - sql: >-
+            UPDATE report_card
+            SET legacy_query = dataset_query;
+      rollback:
+        - sql: >-
+            UPDATE report_card
+            SET dataset_query = legacy_query
+            WHERE legacy_query IS NOT NULL;
+
+  - changeSet:
+      id: v57.2025-10-06T18:26:02
+      author: camsaul
+      comment: >-
+        Copy legacy MBQL queries from Actions v1 query_action.dataset_query to query_action.legacy_query
+      changes:
+        - addColumn:
+            tableName: query_action
+            columns:
+              - column:
+                  name: legacy_query
+                  type: ${text.type}
+                  remarks: >-
+                    Legacy MBQL version of the query (serialized as JSON) for existing Query Actions created before
+                    v57, to support rollbacks to v56. This column should be removed in v58.
+
+  - changeSet:
+      id: v57.2025-10-06T18:26:03
+      author: camsaul
+      comment: >-
+        Copy legacy MBQL queries from Actions v1 query_action.dataset_query to query_action.legacy_query to support rollbacks
+      changes:
+        - sql: >-
+            UPDATE query_action
+            SET legacy_query = dataset_query;
+      rollback:
+        - sql: >-
+            UPDATE query_action
+            SET dataset_query = legacy_query
+            WHERE legacy_query IS NOT NULL;
+
+  - changeSet:
+      id: v57.2025-10-21T14:14:22
+      author: wotbrew
+      comment: Add column metabase_field.database_is_pk
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_is_pk
+                  remarks: Whether or not the field is part of the primary key (not user editable like semantic_type)
+                  type: ${boolean.type}
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: metabase_field
+            columnName: database_is_pk
+
+  - changeSet:
+      id: v57.2025-10-21T14:14:23
+      author: wotbrew
+      comment: Add column metabase_field.database_is_nullable
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_is_nullable
+                  remarks: Whether or not the field will accept nulls
+                  type: ${boolean.type}
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: metabase_field
+            columnName: database_is_nullable
+
+  - changeSet:
+      id: v57.2025-10-21T14:14:24
+      author: wotbrew
+      comment: Add column metabase_field.database_is_generated
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_is_generated
+                  remarks: Whether or not the column is computed and will not accept writes
+                  type: ${boolean.type}
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: metabase_field
+            columnName: database_is_generated
+
+  - changeSet:
+      id: v57.2025-10-21T14:14:25
+      author: wotbrew
+      comment: Add column metabase_field.database_default
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_default
+                  remarks: The dialect specific column default expression
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: metabase_field
+            columnName: database_default
+
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
@@ -1931,7 +2012,7 @@ databaseChangeLog:
 #
 # 2) Migrations should go in the ###_update_migrations.yaml file for the target version.
 #
-# 3) Run mage lint-migrations-file to run core.spec checks against any changes you make here. Liquibase is pretty
+# 3) Run mage lint-migrations to run core.spec checks against any changes you make here. Liquibase is pretty
 #    forgiving and won't complain if you accidentally mix up things like deleteCascade and onDelete: CASCADE. CI runs
 #    this check but it's nicer to know now instead of waiting for CI.
 #

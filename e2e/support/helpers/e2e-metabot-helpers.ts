@@ -1,9 +1,5 @@
 import type { StaticResponse } from "cypress/types/net-stubbing";
 
-import {
-  commandPaletteAction,
-  openCommandPalette,
-} from "./e2e-command-palette-helpers";
 import { appBar } from "./e2e-ui-elements-helpers";
 
 export function assertChatVisibility(visibility: "visible" | "not.visible") {
@@ -12,25 +8,12 @@ export function assertChatVisibility(visibility: "visible" | "not.visible") {
   );
 }
 
-export function openMetabotViaCommandPalette(assertVisibility = true) {
-  if (assertVisibility) {
-    assertChatVisibility("not.visible");
-  }
-
-  openCommandPalette();
-  commandPaletteAction("Ask me to do something, or ask me a question").click();
-
-  if (assertVisibility) {
-    assertChatVisibility("visible");
-  }
-}
-
 export function openMetabotViaShortcutKey(assertVisibility = true) {
   if (assertVisibility) {
     assertChatVisibility("not.visible");
   }
 
-  cy.get("body").type("{ctrl+b}{cmd+b}");
+  cy.get("body").type("{ctrl+e}{cmd+e}");
 
   if (assertVisibility) {
     assertChatVisibility("visible");
@@ -42,7 +25,7 @@ export function closeMetabotViaShortcutKey(assertVisibility = true) {
     assertChatVisibility("visible");
   }
 
-  cy.get("body").type("{ctrl+b}{cmd+b}");
+  cy.get("body").type("{ctrl+e}{cmd+e}");
 
   if (assertVisibility) {
     assertChatVisibility("not.visible");

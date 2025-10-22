@@ -1,6 +1,6 @@
 (ns metabase.lib.stage
   "Method implementations for a stage of a query."
-  (:refer-clojure :exclude [mapv some])
+  (:refer-clojure :exclude [mapv some #?(:clj for)])
   (:require
    [clojure.string :as str]
    [metabase.lib.aggregation :as lib.aggregation]
@@ -20,11 +20,12 @@
    [metabase.lib.stage.util]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
+   [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.namespaces :as shared.ns]
-   [metabase.util.performance :refer [mapv some]]))
+   [metabase.util.performance :refer [mapv some #?(:clj for)]]))
 
 (comment metabase.lib.stage.util/keep-me)
 
@@ -63,7 +64,7 @@
                        ;; do not truncate the desired column aliases coming back from a native query, because if a
                        ;; native query returns a 'crazy long' column name then we need to use that in the next stage.
                        ;; See [[metabase.lib.stage-test/propagate-crazy-long-native-identifiers-test]]
-                       (lib.field.util/add-source-and-desired-aliases-xform query (lib.util/non-truncating-unique-name-generator)))
+                       (lib.field.util/add-source-and-desired-aliases-xform query (lib.util.unique-name-generator/non-truncating-unique-name-generator)))
                  (:columns metadata))))))))
 
 (mu/defn- breakouts-columns :- [:maybe ::lib.metadata.calculation/visible-columns]

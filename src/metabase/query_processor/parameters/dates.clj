@@ -1,5 +1,8 @@
 (ns metabase.query-processor.parameters.dates
-  "Shared code for handling datetime parameters, used by both MBQL and native params implementations."
+  "Shared code for handling datetime parameters, used by both MBQL and native params implementations.
+
+  TODO -- move this into the `lib-be` module since it's not really QP-specific, it's something that would live in Lib
+  if it didn't have dependencies on [[metabase.util.date-2]]."
   (:refer-clojure :exclude [every? some])
   (:require
    [clojure.string :as str]

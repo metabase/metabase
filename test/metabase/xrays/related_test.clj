@@ -17,7 +17,7 @@
                                                     ["segment" 1]]
                                                    [:metric 1]]))))
 
-(deftest similiarity-test
+(deftest ^:parallel similiarity-test
   (mt/with-temp [:model/Card {card-id-1 :id} {:dataset_query (mt/mbql-query venues
                                                                {:aggregation  [[:sum $price]]
                                                                 :breakout     [$category_id]})}
@@ -104,7 +104,7 @@
         (m/update-existing :collections (partial filter (partial = (:collection-id *world*))))
         (m/update-existing :tables set))))
 
-(deftest related-segments-test
+(deftest ^:parallel related-segments-test
   (with-world
     (is (= {:table       (mt/id :venues)
             :metrics     (sort [metric-id-a metric-id-b])
@@ -113,7 +113,7 @@
            (->> (mt/user-http-request :crowberto :get 200 (format "segment/%s/related" segment-id-a))
                 result-mask)))))
 
-(deftest related-tables-test
+(deftest ^:parallel related-tables-test
   (with-world
     (is (= {:metrics     (sort [metric-id-a metric-id-b])
             :segments    (sort [segment-id-a segment-id-b])
@@ -147,7 +147,7 @@
         (is (= 0
                (count-related-fields)))))))
 
-(deftest recommended-dashboards-test
+(deftest ^:parallel recommended-dashboards-test
   (mt/with-temp [:model/Card          card-1        {}
                  :model/Card          card-2        {}
                  :model/Card          card-3        {}
@@ -161,4 +161,6 @@
     (binding [api/*current-user-id*              (mt/user->id :rasta)
               api/*current-user-permissions-set* (atom #{"/"})]
       (is (=? [{:id dash-id}]
-              (#'related/recommended-dashboards [card-1 card-2 card-3]))))))
+              ;; filter out dashboards unrelated to this test
+              (filter #(= (:id %) dash-id)
+                      (#'related/recommended-dashboards [card-1 card-2 card-3])))))))
