@@ -5,10 +5,9 @@ import { t } from "ttag";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import Link from "metabase/common/components/Link";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
-import { ActionIcon, Icon, Loader } from "metabase/ui";
+import { ActionIcon, Box, Icon, Loader, Text } from "metabase/ui";
 
 export const PublicLinksListing = <
   T extends { id: string | number; name: string },
@@ -37,7 +36,17 @@ export const PublicLinksListing = <
   }
 
   if (data.length === 0) {
-    return <LoadingAndErrorWrapper error={noLinksMessage} />;
+    return (
+      <Box
+        bg="bg-light"
+        bd="1px solid var(--mb-color-border)"
+        bdrs="xs"
+        px="md"
+        py="md"
+      >
+        <Text c="text-secondary">{noLinksMessage}</Text>
+      </Box>
+    );
   }
 
   return (

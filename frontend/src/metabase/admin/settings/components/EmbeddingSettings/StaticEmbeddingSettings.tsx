@@ -38,7 +38,12 @@ export function StaticEmbeddingSettings() {
       <SettingsSection>
         {isStaticEmbeddingEnabled && (
           <Box data-testid="embedded-resources">
-            <SettingTitle id="static-embeds">{t`Manage embeds`}</SettingTitle>
+            <SettingTitle
+              id="static-embeds"
+              fz="lg"
+              mb="md"
+            >{t`Published embeds`}</SettingTitle>
+
             <EmbeddedResources />
           </Box>
         )}
