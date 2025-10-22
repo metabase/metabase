@@ -80,7 +80,7 @@
   - Fetch the latest changes from the configured git repository
   - Load the updated content using the serialization/deserialization system
 
-  If `force=false` (default) and there are unsaved changes in the Remote Sync collection, 
+  If `force=false` (default) and there are unsaved changes in the Remote Sync collection,
   the import returns a 400 response.
 
   Requires superuser permissions."
@@ -142,10 +142,10 @@
 
 (defn- task-with-status
   "Returns the status of a sync task.
-  
+
   Args:
     task (map): A remote sync task record
-  
+
   Returns:
     map: The task record with a :status field added, which can be:
          :errored - Task failed with an error
