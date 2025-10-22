@@ -138,11 +138,11 @@
   "Activate table for `target` in `database` in the app db."
   [database target transform-id]
   (when-let [table (sync-table! database target {:create? true})]
-    (when-not (= {:active true
+    (when-not (= {:active         true
                   :data_authority :computed
                   ;; todo orphaned source if no longer target (detect target change?)
-                  :data_source "metabase-transform"
-                  :transform_id transform-id}
+                  :data_source    "metabase-transform"
+                  :transform_id   transform-id}
                  (select-keys table [:active :data_authority :data_source :transform_id]))
       (t2/update! :model/Table (:id table) {:active true
                                             :data_authority :computed
