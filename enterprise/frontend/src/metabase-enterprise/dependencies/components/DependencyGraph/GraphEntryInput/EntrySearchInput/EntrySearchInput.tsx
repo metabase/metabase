@@ -119,7 +119,7 @@ export function EntrySearchInput({
       )}
       w="20rem"
       searchable
-      autoFocus
+      autoFocus={!isGraphFetching}
       data-testid="graph-entry-search-input"
       onChange={handleChange}
       onSearchChange={setSearchValue}

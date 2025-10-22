@@ -7,12 +7,11 @@ import {
   useEdgesState,
   useNodesState,
 } from "@xyflow/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { t } from "ttag";
+import { useLayoutEffect, useMemo, useState } from "react";
 
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { skipToken } from "metabase/api";
 import { Group } from "metabase/ui";
-import { useLazyGetDependencyGraphQuery } from "metabase-enterprise/api";
+import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
 import type { DependencyEntry } from "metabase-types/api";
 
 import S from "./DependencyGraph.module.css";
@@ -36,11 +35,12 @@ type DependencyGraphProps = {
 };
 
 export function DependencyGraph({ entry }: DependencyGraphProps) {
-  const [fetchGraph, { isFetching }] = useLazyGetDependencyGraphQuery();
+  const { currentData: graph, isFetching } = useGetDependencyGraphQuery(
+    entry ?? skipToken,
+  );
   const [nodes, setNodes, onNodesChange] = useNodesState<NodeType>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [selection, setSelection] = useState<GraphSelection | null>(null);
-  const { sendErrorToast } = useMetadataToasts();
 
   const entryNode = useMemo(() => {
     return entry != null ? findNode(nodes, entry.id, entry.type) : null;
@@ -52,33 +52,19 @@ export function DependencyGraph({ entry }: DependencyGraphProps) {
       : null;
   }, [nodes, selection]);
 
-  const setGraph = useCallback(
-    (nodes: NodeType[], edges: Edge[], selection: GraphSelection | null) => {
-      setNodes(nodes);
-      setEdges(edges);
-      setSelection(selection);
-    },
-    [setEdges, setNodes],
-  );
-
-  useEffect(() => {
-    if (entry == null) {
-      setGraph([], [], null);
+  useLayoutEffect(() => {
+    if (entry == null || graph == null) {
+      setNodes([]);
+      setEdges([]);
+      setSelection(null);
       return;
     }
 
-    fetchGraph(entry).then(({ data: graph }) => {
-      if (graph == null) {
-        setGraph([], [], null);
-        sendErrorToast(t`Failed to load the dependency graph`);
-        return;
-      }
-
-      const { nodes: initialNodes, edges: initialEdges } =
-        getInitialGraph(graph);
-      setGraph(initialNodes, initialEdges, entry);
-    });
-  }, [entry, fetchGraph, setGraph, sendErrorToast]);
+    const { nodes: initialNodes, edges: initialEdges } = getInitialGraph(graph);
+    setNodes(initialNodes);
+    setEdges(initialEdges);
+    setSelection(entry);
+  }, [entry, graph, setNodes, setEdges]);
 
   const handlePanelClose = () => {
     setSelection(null);
