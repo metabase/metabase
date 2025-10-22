@@ -3,7 +3,7 @@ import type { Route } from "react-router";
 import { useAsync } from "react-use";
 import _ from "underscore";
 
-import { skipToken, useListTablesQuery } from "metabase/api";
+import { skipToken, useGetDatabaseMetadataQuery } from "metabase/api";
 import Databases from "metabase/entities/databases";
 import Groups from "metabase/entities/groups";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
@@ -66,13 +66,12 @@ function DataPermissionsPage({
     await dispatch({ type: LOAD_DATA_PERMISSIONS_FOR_GROUP, payload: result });
   }, []);
 
-  const { isLoading: isLoadingTables } = useListTablesQuery(
+  const { isLoading: isLoadingTables } = useGetDatabaseMetadataQuery(
     params.databaseId !== undefined
       ? {
-          dbId: params.databaseId,
+          id: params.databaseId,
           include_hidden: true,
           remove_inactive: true,
-          skip_fields: true,
         }
       : skipToken,
   );
