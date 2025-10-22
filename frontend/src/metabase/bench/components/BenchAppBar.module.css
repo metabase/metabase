@@ -2,10 +2,17 @@
   border-bottom: 1px solid var(--mb-color-border);
 }
 
+.toggleButton {
+  cursor: pointer;
+}
+
+.toggleButton:hover .icon {
+  color: var(--mb-color-brand);
+}
+
 .selectButton {
-  border: 1px solid var(--mb-color-border);
   border-radius: var(--mantine-radius-default);
-  background-color: var(--mb-color-bg-white);
+  background-color: transparent;
   transition: background-color 0.2s ease;
 }
 

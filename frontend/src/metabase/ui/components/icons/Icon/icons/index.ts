@@ -74,6 +74,8 @@ import check_component from "./check.svg?component";
 import check_source from "./check.svg?source";
 import check_filled_component from "./check_filled.svg?component";
 import check_filled_source from "./check_filled.svg?source";
+import chevron_dual_component from "./chevron_dual.svg?component";
+import chevron_dual_source from "./chevron_dual.svg?source";
 import chevrondown_component from "./chevrondown.svg?component";
 import chevrondown_source from "./chevrondown.svg?source";
 import chevronleft_component from "./chevronleft.svg?component";
@@ -626,6 +628,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     code_block: {
       component: code_block_component,
       source: code_block_source,
+    },
+    chevron_dual: {
+      component: chevron_dual_component,
+      source: chevron_dual_source,
     },
     chevrondown: {
       component: chevrondown_component,
@@ -1505,6 +1511,7 @@ export type IconName =
   | "chevronleft"
   | "chevronright"
   | "chevronup"
+  | "chevron_dual"
   | "click"
   | "clipboard"
   | "clock"

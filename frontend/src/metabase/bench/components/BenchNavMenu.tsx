@@ -91,8 +91,14 @@ export function BenchNavTitleMenu({
       width={200}
     >
       <Menu.Target>
-        <UnstyledButton mx="sm" h="2.25rem" w="1.5rem" onClick={onToggle}>
-          <LogoIcon size={24} />
+        <UnstyledButton
+          mx="sm"
+          ml={0}
+          h="2.25rem"
+          w="1.5rem"
+          onClick={onToggle}
+        >
+          <LogoIcon size={32} />
         </UnstyledButton>
       </Menu.Target>
       <Menu.Dropdown>
