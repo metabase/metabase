@@ -31,6 +31,7 @@ interface ScalarValueProps {
   gridSize?: VisualizationGridSize;
   totalNumGridCols?: number;
   fontFamily: string;
+  isSmartScalar?: boolean;
 }
 
 export const ScalarValue = ({
@@ -40,6 +41,7 @@ export const ScalarValue = ({
   gridSize,
   totalNumGridCols,
   fontFamily,
+  isSmartScalar = false,
 }: ScalarValueProps) => {
   const {
     other: { number: numberTheme },
@@ -65,6 +67,7 @@ export const ScalarValue = ({
             totalNumGridCols,
             width,
             gridSize.height,
+            isSmartScalar,
           )
         : 4,
     });
@@ -75,6 +78,7 @@ export const ScalarValue = ({
     totalNumGridCols,
     value,
     width,
+    isSmartScalar,
     numberTheme?.value?.fontSize,
   ]);
 

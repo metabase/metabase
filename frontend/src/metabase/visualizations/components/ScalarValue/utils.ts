@@ -59,12 +59,51 @@ export const findSize = ({
 
 const MAX_SIZE_SMALL = 2.25;
 const MAX_SIZE_LARGE = 7.5;
+const ABSOLUTE_MAX_SIZE = 7; // Maximum font size for any visualization
+
+/**
+ * Get the height-based maximum font size for a given card height.
+ * Different visualizations have different constraints due to their UI complexity.
+ */
+const getHeightBasedMaxSize = (
+  cardRowHeight: number | undefined,
+  isSmartScalar: boolean,
+): number => {
+  if (!cardRowHeight) {
+    return ABSOLUTE_MAX_SIZE;
+  }
+
+  if (isSmartScalar) {
+    // SmartScalar has additional UI elements (legend, previous value comparison)
+    // so needs more conservative sizing to prevent overflow
+    if (cardRowHeight <= 2) {
+      return 1.25;
+    } else if (cardRowHeight === 3) {
+      return 3;
+    } else if (cardRowHeight === 4) {
+      return 5.5;
+    } else {
+      // 5+ units tall
+      return ABSOLUTE_MAX_SIZE;
+    }
+  } else {
+    // Regular Scalar visualization
+    if (cardRowHeight <= 2) {
+      return 2.8;
+    } else if (cardRowHeight === 3) {
+      return 5;
+    } else {
+      return ABSOLUTE_MAX_SIZE;
+    }
+  }
+};
 
 export const getMaxFontSize = (
   cardColWidth: number,
   totalCols: number | undefined,
   cardWidth: number | undefined,
   cardRowHeight?: number,
+  isSmartScalar = false,
 ) => {
   if (totalCols != null && totalCols < DEFAULT_CARD_SIZE.width) {
     return MAX_SIZE_SMALL;
@@ -89,41 +128,41 @@ export const getMaxFontSize = (
 
   let maxSizeRem = widthBasedSizes[cardColWidth];
   if (maxSizeRem == null) {
-    // For 8+ units wide, continue with 0.25rem increments from 7 units (2.75rem)
-    maxSizeRem = Math.min(3 + (cardColWidth - 7) * 0.25, 7);
+    // For 8+ units wide, continue with 0.25rem increments from 7 units (3rem)
+    maxSizeRem = Math.min(3 + (cardColWidth - 7) * 0.25, ABSOLUTE_MAX_SIZE);
   }
 
   // Store the original width-based limit to ensure we don't exceed it
   const widthBasedLimit = maxSizeRem;
 
-  // Apply height-based constraints on top of width-based limits
-  if (cardRowHeight != null && cardRowHeight <= 2) {
-    // 2-unit tall cards can't exceed 2.8rem regardless of width
-    maxSizeRem = Math.min(maxSizeRem, 2.8);
-  } else if (cardRowHeight === 3) {
-    // 3-unit tall cards can't exceed 5rem regardless of width
-    maxSizeRem = Math.min(maxSizeRem, 5);
-  }
+  // Get the height-based maximum for this visualization type
+  const heightBasedMax = getHeightBasedMaxSize(cardRowHeight, isSmartScalar);
 
-  // Apply height bonus for cards taller than 2 units
+  // Apply height-based constraint
+  maxSizeRem = Math.min(maxSizeRem, heightBasedMax);
+
+  // Apply height bonus for cards taller than 2 units (but still respect height-based max)
   if (cardRowHeight != null && cardRowHeight > 2) {
     const heightBonus = (cardRowHeight - 2) * 0.25;
-    maxSizeRem += heightBonus;
+    maxSizeRem = Math.min(maxSizeRem + heightBonus, heightBasedMax);
 
     // Important: Cap at the width-based limit to prevent horizontal overflow
     // Height bonus shouldn't push us beyond what the width can accommodate
     maxSizeRem = Math.min(maxSizeRem, widthBasedLimit);
   }
 
-  // Final cap at 7rem maximum
-  maxSizeRem = Math.min(maxSizeRem, 7);
+  // Final cap at absolute maximum
+  maxSizeRem = Math.min(maxSizeRem, ABSOLUTE_MAX_SIZE);
 
   // Apply height constraints to baseSize as well for consistency
   let constrainedBaseSize = baseSize;
-  if (cardRowHeight != null && cardRowHeight <= 2) {
-    constrainedBaseSize = Math.min(baseSize, 2.5);
-  } else if (cardRowHeight === 3) {
-    constrainedBaseSize = Math.min(baseSize, 5);
+  if (cardRowHeight != null) {
+    // Use a conservative constraint based on height for baseSize
+    if (cardRowHeight <= 2) {
+      constrainedBaseSize = Math.min(baseSize, isSmartScalar ? 1.5 : 2.5);
+    } else if (cardRowHeight === 3) {
+      constrainedBaseSize = Math.min(baseSize, isSmartScalar ? 3.5 : 5);
+    }
   }
 
   // Create a graceful transition between baseSize constraint and maxSizeRem
