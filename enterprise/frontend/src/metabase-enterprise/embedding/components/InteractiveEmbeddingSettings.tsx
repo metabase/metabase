@@ -35,7 +35,7 @@ export function InteractiveEmbeddingSettings() {
     <SettingsPageWrapper title={t`Interactive embedding`}>
       <EmbeddingSettingsCard
         title={t`Enable interactive embedding`}
-        titleSize="lg"
+        titleProps={{ fz: "lg" }}
         // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
         description={t`Embed the full power of Metabase into your application to build a custom analytics experience and programmatically manage dashboards and data.`}
         settingKey="enable-embedding-interactive"
@@ -46,7 +46,7 @@ export function InteractiveEmbeddingSettings() {
         <AdminSettingInput
           name="embedding-app-origins-interactive"
           title={t`Authorized origins`}
-          titleProps={{ size: "lg", mb: "xs" }}
+          titleProps={{ fz: "lg", mb: "xs" }}
           description={<EmbeddingAppOriginDescription />}
           placeholder="https://*.example.com"
           inputType="text"
