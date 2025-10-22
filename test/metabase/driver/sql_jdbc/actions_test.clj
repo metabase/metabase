@@ -15,6 +15,10 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
+(use-fixtures :each (fn [t]
+                      (mt/with-test-user :rasta
+                        (t))))
+
 (mu/defn- cast-values :- ::lib.schema.actions/row
   [driver        :- :keyword
    column->value :- ::lib.schema.actions/row
