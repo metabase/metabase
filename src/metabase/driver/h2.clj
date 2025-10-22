@@ -396,9 +396,9 @@
 
 (defmethod sql.qp/date [:h2 :week]
   [_ _ expr]
-  (h2x/add-interval-honeysql-form :h2 (sql.qp/date :h2 :day expr)
-                                  (h2x/- 1 (sql.qp/date :h2 :day-of-week expr))
-                                  :day))
+  (sql.qp/add-interval-honeysql-form :h2 (sql.qp/date :h2 :day expr)
+                                     (h2x/- 1 (sql.qp/date :h2 :day-of-week expr))
+                                     :day))
 
 (defmethod sql.qp/date [:h2 :week-of-year-iso] [_ _ expr] (extract :iso_week expr))
 

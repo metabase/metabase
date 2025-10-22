@@ -759,7 +759,7 @@
     (qp.store/with-metadata-provider (mt/id)
       (mt/with-report-timezone-id! nil
         (doseq [initial-type [:date :datetime :timestamp]
-                :let         [form (h2x/add-interval-honeysql-form
+                :let         [form (sql.qp/add-interval-honeysql-form
                                     :bigquery-cloud-sdk
                                     (#'bigquery.qp/->temporal-type
                                      initial-type
@@ -1174,7 +1174,7 @@
     (is (= ["DATETIME_ADD(CAST(? AS datetime), INTERVAL 3 month)"
             #t "2022-04-22T18:27-08:00"]
            (let [t         #t "2022-04-22T18:27:00-08:00"
-                 hsql-form (h2x/add-interval-honeysql-form :bigquery-cloud-sdk t 3 :month)]
+                 hsql-form (sql.qp/add-interval-honeysql-form :bigquery-cloud-sdk t 3 :month)]
              (sql.qp/format-honeysql :bigquery-cloud-sdk hsql-form))))))
 
 (deftest ^:parallel custom-expression-with-space-in-having

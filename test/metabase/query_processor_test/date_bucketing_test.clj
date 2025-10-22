@@ -1223,10 +1223,10 @@
                                   ;; hardcode the whitelist here.
                                   (not (#{:vertica :bigquery-cloud-sdk} driver/*driver*)))
                            (sql.qp/compiled
-                            (h2x/add-interval-honeysql-form driver/*driver*
-                                                            (sql.qp/current-datetime-honeysql-form driver/*driver*)
-                                                            (* i interval-seconds)
-                                                            :second))
+                            (sql.qp/add-interval-honeysql-form driver/*driver*
+                                                               (sql.qp/current-datetime-honeysql-form driver/*driver*)
+                                                               (* i interval-seconds)
+                                                               :second))
                            (u.date/add :second (* i interval-seconds)))
                   (assert <>))])
              (let [shift (quot intervalCount 2)
@@ -1806,7 +1806,7 @@
                             #t "2022-03-31T00:00:00-00:00"]]
             (testing (format "%d %s ^%s %s" n unit (.getCanonicalName (class t)) (pr-str t))
               (let [march-31     (sql.qp/->honeysql driver/*driver* [:absolute-datetime t :day])
-                    june-31      (h2x/add-interval-honeysql-form driver/*driver* march-31 n unit)
+                    june-31      (sql.qp/add-interval-honeysql-form driver/*driver* march-31 n unit)
                     checkins     (mt/with-metadata-provider (mt/id)
                                    (sql.qp/->honeysql driver/*driver* (lib.metadata/table (qp.store/metadata-provider) (mt/id :checkins))))
                     honeysql     {:select [[june-31 :june_31]]

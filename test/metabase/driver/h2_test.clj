@@ -135,7 +135,7 @@
              [:inline 100500]
              (h2x/with-database-type-info :%now "timestamp")]
             "timestamp")
-           (h2x/add-interval-honeysql-form :h2 (sql.qp/current-datetime-honeysql-form :h2) 100.5 :second)))))
+           (sql.qp/add-interval-honeysql-form :h2 (sql.qp/current-datetime-honeysql-form :h2) 100.5 :second)))))
 
 (deftest ^:parallel add-interval-honeysql-form-test-2
   (testing "Non-fractional seconds should remain seconds, but be cast to longs"
@@ -145,7 +145,7 @@
              [:inline 100]
              (h2x/with-database-type-info :%now "timestamp")]
             "timestamp")
-           (h2x/add-interval-honeysql-form :h2 (sql.qp/current-datetime-honeysql-form :h2) 100.0 :second)))))
+           (sql.qp/add-interval-honeysql-form :h2 (sql.qp/current-datetime-honeysql-form :h2) 100.0 :second)))))
 
 (deftest ^:parallel clob-test
   (mt/test-driver :h2

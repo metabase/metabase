@@ -19,7 +19,6 @@
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -157,7 +156,7 @@
       ;; should ensure things continue to work.
       (let [literal      [:raw "timestamp '2022-11-16 04:21:00 US/Pacific'"]
             [sql & args] (sql.qp/format-honeysql :athena
-                                                 {:select [[(h2x/add-interval-honeysql-form :athena literal 1 :day)
+                                                 {:select [[(sql.qp/add-interval-honeysql-form :athena literal 1 :day)
                                                             :t]]})
             query        (mt/native-query {:query sql, :params args})]
         (mt/with-native-query-testing-context query

@@ -275,7 +275,7 @@
   (if (some interval? args)
     (if-let [[field intervals] (u/pick-first (complement interval?) args)]
       (reduce (fn [hsql-form [_ amount unit]]
-                (h2x/add-interval-honeysql-form driver hsql-form amount unit))
+                (sql.qp/add-interval-honeysql-form driver hsql-form amount unit))
               (sql.qp/->honeysql driver field)
               intervals)
       (throw (ex-info "Summing intervals is not supported" {:args args})))

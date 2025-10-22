@@ -448,9 +448,9 @@
    expr]
   (let [offset (driver.common/start-of-week-offset driver)]
     (if (not= offset 0)
-      (h2x/add-interval-honeysql-form driver
-                                      (truncate-fn (h2x/add-interval-honeysql-form driver expr offset :day))
-                                      (- offset) :day)
+      (add-interval-honeysql-form driver
+                                  (truncate-fn (add-interval-honeysql-form driver expr offset :day))
+                                  (- offset) :day)
       (truncate-fn expr))))
 
 (mu/defn adjust-day-of-week
@@ -1138,7 +1138,7 @@
   (if (some interval? args)
     (if-let [[field intervals] (u/pick-first (complement interval?) args)]
       (reduce (fn [hsql-form [_ amount unit]]
-                (h2x/add-interval-honeysql-form driver hsql-form amount unit))
+                (add-interval-honeysql-form driver hsql-form amount unit))
               (->honeysql driver field)
               intervals)
       (throw (ex-info "Summing intervals is not supported" {:args args})))
@@ -1160,7 +1160,7 @@
   (if (interval? (first other-args))
     (reduce (fn [hsql-form [_ amount unit]]
               ;; We are adding negative amount. Inspired by `->honeysql [:sql :datetime-subtract]`.
-              (h2x/add-interval-honeysql-form driver hsql-form (- amount) unit))
+              (add-interval-honeysql-form driver hsql-form (- amount) unit))
             (->honeysql driver first-arg)
             other-args)
     (into [:-]
@@ -1342,7 +1342,7 @@
   [driver [_ amount unit]]
   (date driver unit (if (zero? amount)
                       (current-datetime-honeysql-form driver)
-                      (h2x/add-interval-honeysql-form driver (current-datetime-honeysql-form driver) amount unit))))
+                      (add-interval-honeysql-form driver (current-datetime-honeysql-form driver) amount unit))))
 
 (defmethod ->honeysql [:sql :temporal-extract]
   [driver [_ mbql-expr unit]]
@@ -1350,11 +1350,11 @@
 
 (defmethod ->honeysql [:sql :datetime-add]
   [driver [_ arg amount unit]]
-  (h2x/add-interval-honeysql-form driver (->honeysql driver arg) amount unit))
+  (add-interval-honeysql-form driver (->honeysql driver arg) amount unit))
 
 (defmethod ->honeysql [:sql :datetime-subtract]
   [driver [_ arg amount unit]]
-  (h2x/add-interval-honeysql-form driver (->honeysql driver arg) (- amount) unit))
+  (add-interval-honeysql-form driver (->honeysql driver arg) (- amount) unit))
 
 (defn datetime-diff-check-args
   "This util function is used by SQL implementations of ->honeysql for the `:datetime-diff` clause.
