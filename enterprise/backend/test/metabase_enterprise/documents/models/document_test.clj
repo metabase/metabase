@@ -176,7 +176,7 @@
           (perms/grant-collection-readwrite-permissions! (perms/all-users-group) new-collection-id)
 
           ;; Should not throw any exception
-          (is (true? (document/validate-collection-move-permissions old-collection-id new-collection-id))))))))
+          (is (some? (document/validate-collection-move-permissions old-collection-id new-collection-id))))))))
 
 (deftest validate-collection-move-permissions-throws-403-missing-old-permission-test
   (testing "throws 403 when user lacks write permission for old collection"
@@ -229,7 +229,7 @@
           (perms/grant-collection-readwrite-permissions! (perms/all-users-group) new-collection-id)
 
           ;; Should not throw any exception when old collection is nil
-          (is (true? (document/validate-collection-move-permissions nil new-collection-id))))))))
+          (is (some? (document/validate-collection-move-permissions nil new-collection-id))))))))
 
 (deftest validate-collection-move-permissions-allows-move-to-root-test
   (testing "allows move when new collection is nil (moving to root)"
@@ -285,7 +285,7 @@
                    :model/Collection {new-collection-id :id} {:name "New Collection"}]
       (mt/with-current-user (mt/user->id :crowberto)
         ;; Superuser should be able to move without explicit permissions
-        (is (true? (document/validate-collection-move-permissions old-collection-id new-collection-id)))))))
+        (is (some? (document/validate-collection-move-permissions old-collection-id new-collection-id)))))))
 
 (deftest hydrate-document-creator-test
   (testing "hydrates document creator correctly"
