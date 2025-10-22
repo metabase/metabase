@@ -33,7 +33,14 @@ export function getDependencyGroupTitle(
   if (groups.length === 0) {
     return t`Nothing uses this`;
   }
-  return node.type === "transform" ? t`Generates` : t`Used by`;
+  if (
+    node.type === "transform" &&
+    groups.length === 1 &&
+    groups[0].type === "table"
+  ) {
+    return t`Generates`;
+  }
+  return t`Used by`;
 }
 
 export function getDependentGroupLabel({
