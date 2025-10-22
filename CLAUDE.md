@@ -226,6 +226,9 @@ Review pull requests with a focus on:
   **Why?** Code is read many more times than it is written, and clearer variable names make using and tweaking your
   code easier for others.
 
+  Conventions used widely in our codebase (like `mp` for a Metadata Provider) are acceptable; one-offs like `zs'` are
+  not.
+
 - Avoid misleading variable and function names. The names of a variable or function should clearly and unambiguously
   describe its purpose and match what it does.
 
