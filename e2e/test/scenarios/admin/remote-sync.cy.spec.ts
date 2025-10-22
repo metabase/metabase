@@ -1,3 +1,8 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { Collection } from "metabase-types/api";
+
+const { PRODUCTS_ID } = SAMPLE_DATABASE;
+
 const { H } = cy;
 
 const SYNCED_COLLECTION_NAME = "Remote Sync Test Collection";
@@ -8,7 +13,7 @@ function configureGit(syncType: "development" | "production") {
   cy.request("PUT", "/api/ee/remote-sync/settings", {
     "remote-sync-branch": "main",
     "remote-sync-type": syncType,
-    "remote-sync-url": "file://" + LOCAL_GIT_PATH,
+    "remote-sync-url": LOCAL_GIT_URL,
     "remote-sync-enabled": true,
   });
 }
@@ -24,19 +29,20 @@ function setupGitSync() {
   cy.signInAsAdmin();
   H.activateToken("bleeding-edge");
 
-  configureGit("production");
-  H.snapshot("remote-sync-setup");
-}
+  configureGit("development");
 
-function cleanupGitSync() {}
-
-xdescribe("Remote Sync", () => {
-  before(() => {
-    setupGitSync();
+  cy.request("/api/collection").then(({ body: collections }) => {
+    cy.wrap(collections.find((c: Collection) => c.type === "remote-synced")).as(
+      "library",
+    );
   });
 
-  after(() => {
-    cleanupGitSync();
+  // H.snapshot("remote-sync-setup");
+}
+
+describe("Remote Sync", () => {
+  before(() => {
+    setupGitSync();
   });
 
   describe("remote sync admin settings page", () => {
@@ -134,11 +140,44 @@ xdescribe("Remote Sync", () => {
     });
   });
 
-  it("can export changes to git", () => {
-    setupGitSync();
-    H.createQuestion({
-      name: "Remote Sync Test Question",
+  it.only("can export changes to git", () => {
+    const REMOTE_QUESTION_NAME = "Remote Sync Test Question";
+
+    cy.get("@library").then(({ id }) => {
+      H.createQuestion({
+        name: REMOTE_QUESTION_NAME,
+        query: {
+          "source-table": PRODUCTS_ID,
+        },
+        collection_id: id,
+      });
     });
+
+    cy.visit("/");
+
+    // Ensure that status icon is present
+    cy.findByTestId("main-navbar-root")
+      .findByRole("link", { name: /Library/ })
+      .findByTestId("remote-sync-status")
+      .should("exist");
+    cy.findByTestId("main-navbar-root")
+      .findByRole("link", { name: /Library/ })
+      .click();
+
+    H.collectionTable().findByText(REMOTE_QUESTION_NAME).should("exist");
+
+    cy.findByTestId("main-navbar-root")
+      .findByRole("button", { name: /upload/ })
+      .click();
+
+    H.modal()
+      .button(/Push changes/)
+      .click();
+
+    cy.findByTestId("main-navbar-root")
+      .findByRole("link", { name: /Library/ })
+      .findByTestId("remote-sync-status")
+      .should("not.exist");
   });
 
   it("can set up development mode", () => {
