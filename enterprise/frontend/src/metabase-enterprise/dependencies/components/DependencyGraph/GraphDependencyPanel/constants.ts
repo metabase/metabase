@@ -1,3 +1,4 @@
+// order of options matches the UI
 export const FILTER_OPTIONS = [
   "verified",
   "in-dashboard",
@@ -5,4 +6,5 @@ export const FILTER_OPTIONS = [
   "not-in-personal-collection",
 ] as const;
 
-export const SORT_COLUMNS = ["name", "location", "view-count"] as const;
+// order of options matches the UI
+export const SORT_COLUMNS = ["view-count", "name", "location"] as const;
