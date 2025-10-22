@@ -79,7 +79,7 @@
   :encryption :no
   :default (* 1000 60 5))
 
-(defn check-git-settings
+(defn- check-git-settings
   "Check that the given settings are valid and update if they are. Throws exception if they are not.
   Returns the default branch of the repo if successful."
   [{:keys [remote-sync-url remote-sync-token]}]

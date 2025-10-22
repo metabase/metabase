@@ -52,6 +52,7 @@
                                          :progress 0
                                          :started_at (mi/now)}
                                         additional-fields)))
+
 (defn cancel-sync-task!
   "Mark a sync task as cancelled.
 

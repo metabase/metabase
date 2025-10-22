@@ -9,7 +9,6 @@
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
-   [metabase.models.interface :as mi]
    [metabase.queries.core :as card]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util :as u]

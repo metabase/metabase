@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as rst]
+   [metabase-enterprise.remote-sync.test-helpers :as th]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -12,19 +13,7 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
-
-;;; ------------------------------------------------------------------------------------------------
-;;; Helper Functions
-;;; ------------------------------------------------------------------------------------------------
-
-(defn- cleanup-sync-tasks
-  "Clean up all remote sync tasks for testing."
-  [f]
-  (t2/delete! :model/RemoteSyncTask)
-  (f)
-  (t2/delete! :model/RemoteSyncTask))
-
-(use-fixtures :each cleanup-sync-tasks)
+(use-fixtures :each th/clean-remote-sync-state)
 
 ;;; ------------------------------------------------------------------------------------------------
 ;;; Tests for create-sync-task!

@@ -59,6 +59,7 @@
     (next-method (assoc source :commit-ish commit-ref) opts)
     (throw (ex-info (str "Unable to find branch " (:commit-ish source) " to read from") {:url remote-url
                                                                                          :branch (:commit-ish source)}))))
+
 (defn- remote-sync-path
   [opts entity]
   (let [base-path (serdes/storage-path entity opts)
