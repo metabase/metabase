@@ -19,6 +19,7 @@ import {
   useImportChangesMutation,
 } from "metabase-enterprise/api";
 
+import { BRANCH_KEY } from "../constants";
 import { useSyncStatus } from "../hooks/use-sync-status";
 
 import { BranchPicker } from "./BranchPicker";
@@ -44,7 +45,7 @@ export const SyncedCollectionsSidebarSection = ({
   const hasSyncedCollections = syncedCollections.length > 0;
   const isAdmin = useSelector(getUserIsAdmin);
 
-  const { value: currentBranch } = useAdminSetting("remote-sync-branch");
+  const { value: currentBranch } = useAdminSetting(BRANCH_KEY);
   const [importChanges] = useImportChangesMutation();
   const [syncConflictVariant, setSyncConflictVariant] =
     useState<SyncConflictVariant>();

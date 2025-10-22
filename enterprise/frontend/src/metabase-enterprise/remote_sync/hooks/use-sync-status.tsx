@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useGetRemoteSyncCurrentTaskQuery } from "metabase-enterprise/api";
 
 import { SyncProgressModal } from "../components/SyncProgressModal";
+import { REMOTE_SYNC_KEY } from "../constants";
 import {
   getErrorMessage,
   getIsError,
@@ -16,7 +17,7 @@ import { modalDismissed } from "../sync-task-slice";
 const SYNC_STATUS_POLL_INTERVAL = 2000;
 
 export const useSyncStatus = () => {
-  const isRemoteSyncEnabled = useSetting("remote-sync-enabled");
+  const isRemoteSyncEnabled = useSetting(REMOTE_SYNC_KEY);
   const dispatch = useDispatch();
 
   const showModal = useSelector(getShowModal);

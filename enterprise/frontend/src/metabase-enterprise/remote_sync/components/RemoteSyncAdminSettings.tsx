@@ -44,12 +44,15 @@ import type {
   SettingDefinition,
 } from "metabase-types/api";
 
-import { REMOTE_SYNC_SCHEMA } from "../constants";
-
-const URL_KEY = "remote-sync-url";
-const TOKEN_KEY = "remote-sync-token";
-const TYPE_KEY = "remote-sync-type";
-const BRANCH_KEY = "remote-sync-branch";
+import {
+  AUTO_IMPORT_KEY,
+  BRANCH_KEY,
+  REMOTE_SYNC_KEY,
+  REMOTE_SYNC_SCHEMA,
+  TOKEN_KEY,
+  TYPE_KEY,
+  URL_KEY,
+} from "../constants";
 
 export const RemoteSyncAdminSettings = (): JSX.Element => {
   const dispatch = useDispatch();
@@ -122,7 +125,7 @@ export const RemoteSyncAdminSettings = (): JSX.Element => {
     },
   );
 
-  const isGitSyncEnabled = useSetting("remote-sync-enabled");
+  const isGitSyncEnabled = useSetting(REMOTE_SYNC_KEY);
   const isDirty = !!dirtyData?.dirty?.length;
 
   const handlePullChanges = useCallback(async () => {
@@ -246,7 +249,7 @@ export const RemoteSyncAdminSettings = (): JSX.Element => {
                       </Flex>
                       <FormSwitch
                         size="sm"
-                        name="remote-sync-auto-import"
+                        name={AUTO_IMPORT_KEY}
                         label={t`Auto-sync with git`}
                       />
                     </Stack>
