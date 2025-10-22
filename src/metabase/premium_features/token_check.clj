@@ -26,8 +26,12 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.string :as u.str]
+   [potemkin.types :as p]
    [toucan2.connection :as t2.conn]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (com.google.common.cache CacheBuilder RemovalCause RemovalNotification)
+   (java.util.concurrent TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
@@ -55,10 +59,6 @@
              ;; remove trailing slashes
              (str/replace  #"/$" "")))
    "https://token-check.metabase.com"))
-
-(def store-url
-  "Store URL, used as a fallback for token checks and for fetching the list of cloud gateway IPs."
-  "https://store.metabase.com")
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                TOKEN VALIDATION                                                |
@@ -206,18 +206,11 @@
     (dh/with-circuit-breaker *store-circuit-breaker*
       (dh/with-timeout {:timeout-ms fetch-token-status-timeout-ms
                         :interrupt? true}
-        (try (fetch-token-and-parse-body* token base-url site-uuid)
-             (catch Exception e
-               (throw e)))))
-    (catch dev.failsafe.TimeoutExceededException _e
-      {:valid         false
-       :status        (tru "Unable to validate token")
-       :error-details (tru "Token validation timed out.")})
-    (catch dev.failsafe.CircuitBreakerOpenException _e
-      {:valid         false
-       :status        (tru "Unable to validate token")
-       :error-details (tru "Token validation is currently unavailable.")})
+        (fetch-token-and-parse-body* token base-url site-uuid)))
     ;; other exceptions are wrapped by Diehard in a FailsafeException. Unwrap them before rethrowing.
+    (catch dev.failsafe.CircuitBreakerOpenException _e
+      (throw (ex-info (tru "Token validation is currently unavailable.")
+                      {:cause :circuit-breaker})))
     (catch dev.failsafe.FailsafeException e
       (throw (.getCause e)))))
 
@@ -245,9 +238,16 @@
     (when (> (t2/count :model/User :is_active true, :type :personal) max-users)
       (throw (Exception. (trs "You have reached the maximum number of users ({0}) for your plan. Please upgrade to add more users." max-users))))))
 
+(p/defprotocol+ GracePeriod
+  "A protocol for providing a grace period for token features in the event they are not fetchable for a little while."
+  (save! [_ token features] "Save the features for a particular token.")
+  (retrieve [_ token] "Attempt to retrieve features associated with a token. This is best effort, perhaps never set,
+  perhaps has timed out. Possible this is nil."))
+
 (mu/defn- fetch-token-status* :- TokenStatus
-  "Fetch info about the validity of `token` from the MetaStore."
-  [token :- TokenStr]
+  "Fetch info about the validity of `token` from the MetaStore. Will check the token-check-url, fall back to the
+  store-url. If neither of these return a 2xx or 4xx value throw an error."
+  [token :- TokenStr grace-period]
   ;; NB that we fetch any settings from this thread, not inside on of the futures in the inner fetch calls.  We
   ;; will have taken a lock to call through to here, and could create a deadlock with the future's thread.  See
   ;; https://github.com/metabase/metabase/pull/38029/
@@ -255,23 +255,20 @@
         ;; attempt to query the metastore API about the status of this token. If the request doesn't complete in a
         ;; reasonable amount of time throw a timeout exception
         (let [site-uuid (premium-features.settings/site-uuid-for-premium-features-token-checks)]
-          (try (fetch-token-and-parse-body token token-check-url site-uuid)
-               (catch Exception e1
-                 (log/errorf e1 "Error fetching token status from %s:" token-check-url)
-                 ;; Try the fallback URL, which was the default URL prior to 45.2
-                 (try (fetch-token-and-parse-body token store-url site-uuid)
-                      ;; if there was an error fetching the token from both the normal and fallback URLs, log the
-                      ;; first error and return a generic message about the token being invalid. This message
-                      ;; will get displayed in the Settings page in the admin panel so we do not want something
-                      ;; complicated
-                      (catch Exception e2
-                        (log/errorf e2 "Error fetching token status from %s:" store-url)
-                        (let [body (u/ignore-exceptions (some-> (ex-data e1) :body json/decode+kw))]
-                          (or
-                           body
-                           {:valid         false
-                            :status        (tru "Unable to validate token")
-                            :error-details (.getMessage e1)})))))))
+          (try (u/prog1 (fetch-token-and-parse-body token token-check-url site-uuid)
+                 (when (some? <>)
+                   (save! grace-period token <>)))
+               (catch Exception e
+                 (log/errorf e "Error fetching token status from %s:" token-check-url)
+                 (let [body (u/ignore-exceptions (some-> (ex-data e) :body json/decode+kw))]
+                   (or
+                    (u/prog1 (retrieve grace-period token)
+                      (when (some? <>)
+                        (log/info "Using token from grace period")))
+                    body
+                    {:valid         false
+                     :status        (tru "Unable to validate token")
+                     :error-details (.getMessage e)})))))
 
         (mr/validate [:re AirgapToken] token)
         (do
@@ -290,20 +287,60 @@
 (let [lock (Object.)]
   (defn- fetch-token-status
     "Locked version of `fetch-token-status*` allowing one request at a time."
-    [token]
+    [token grace-period]
     (when *token-check-happening*
       (throw (ex-info "Token check is being called recursively, there is a good chance some `defenterprise` is causing this"
                       {:pass-thru true})))
     (locking lock
       (binding [*token-check-happening* true]
-        (fetch-token-status* token)))))
+        (fetch-token-status* token grace-period)))))
 
 (declare token-valid-now?)
+
+(defn make-grace-period
+  "Create a grace period of n units. This is just an expiring map using a guava cache. Note this is not sensitive to read times but to write times.
+
+
+  (let [grace (make-grace-period 20 TimeUnit/MILLISECONDS)]
+    (save! grace \"token\" #{\"features\"})
+    (println \"found tokens?: \"
+             (if (= (retrieve grace \"token\") #{\"features\"})
+               \"🟢\"
+               \"🔴\"))
+    (Thread/sleep 40)
+    (println \"expecting not to find tokens?: \"
+             (if (retrieve grace \"token\")
+               \"🔴\"
+               \"🟢\")))
+  found tokens?:  🟢
+  expecting not to find tokens?:  🟢
+  nil"
+  [^long n ^TimeUnit units]
+  (let [guava-cache (.. (CacheBuilder/newBuilder)
+                        (expireAfterWrite n units)
+                        (removalListener (fn [^RemovalNotification rn]
+                                           (let [cause (.getCause rn)]
+                                             (when (= RemovalCause/EXPIRED cause)
+                                               (log/warnf "Removing token: %s from grace period cache"
+                                                          (u.str/mask (.getKey rn)))))))
+                        (build))]
+    (reify GracePeriod
+      (save! [_ token features] (.put guava-cache token features))
+      (retrieve [_ token]
+        (let [value (.get guava-cache token (constantly ::not-present))]
+          (when-not (identical? value ::not-present)
+            value))))))
+
+(defonce ^{:doc "A grace period of 36 hours means that token features would be good for 24 hours after the last
+  successful token check happens, since we cache those features for 12 hours. Note this records the entire response
+  back from the token check, so will include quotas, plan alias, etc."}
+  grace-period
+  (make-grace-period 36 TimeUnit/HOURS))
 
 (mu/defn- valid-token->features :- [:set ms/NonBlankString]
   [token :- TokenStr]
   (assert ((requiring-resolve 'metabase.app-db.core/db-is-set-up?)) "Metabase DB is not yet set up")
-  (let [{:keys [valid status features error-details] :as token-status} (fetch-token-status token)]
+  (let [{:keys [valid status features error-details] :as token-status} (fetch-token-status token grace-period)]
     ;; if token isn't valid throw an Exception with the `:status` message
     (when-not valid
       (throw (ex-info status
@@ -320,7 +357,8 @@
 (defn -token-status
   "Getter for the [[metabase.premium-features.settings/token-status]] setting."
   []
-  (some-> (premium-features.settings/premium-embedding-token) (fetch-token-status)))
+  (some-> (premium-features.settings/premium-embedding-token)
+          (fetch-token-status grace-period)))
 
 (defn -set-premium-embedding-token!
   "Setter for the [[metabase.premium-features.settings/token-status]] setting."
@@ -372,7 +410,7 @@
   "Returns a string representing the instance's current plan, if included in the last token status request."
   []
   (some-> (premium-features.settings/premium-embedding-token)
-          fetch-token-status
+          (fetch-token-status grace-period)
           :plan-alias))
 
 (mu/defn quotas :- [:maybe [:sequential [:map]]]
@@ -380,7 +418,7 @@
   []
   (memoize/memo-clear! fetch-token-and-parse-body*)
   (some-> (premium-features.settings/premium-embedding-token)
-          fetch-token-status
+          (fetch-token-status grace-period)
           :quotas))
 
 (defn has-any-features?
