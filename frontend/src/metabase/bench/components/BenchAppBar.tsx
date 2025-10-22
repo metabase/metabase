@@ -68,7 +68,18 @@ export function BenchAppBar() {
           shadow="md"
           offset={16}
           withinPortal
-          portalProps={{ style: { marginBottom: 16 } }}
+          middlewares={{
+            shift: { padding: { top: 16, right: 4, bottom: 16, left: 4 } },
+            size: {
+              apply({ availableHeight, elements }) {
+                Object.assign(elements.floating.style, {
+                  height: `${availableHeight}px`,
+                  overflowY: "auto",
+                });
+              },
+              padding: { top: 16, right: 4, bottom: 16, left: 4 },
+            },
+          }}
         >
           <Menu.Target>
             <UnstyledButton h={32} px="sm" className={S.selectButton}>
