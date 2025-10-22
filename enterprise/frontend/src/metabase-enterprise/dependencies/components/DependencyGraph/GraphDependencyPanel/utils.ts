@@ -136,20 +136,33 @@ export function canSortByColumn(
   groupType: DependencyGroupType,
   column: SortColumn,
 ): boolean {
-  const type = getDependencyType(groupType);
   switch (column) {
     case "name":
       return true;
     case "location":
-    case "view-count":
-      switch (type) {
-        case "card":
+      switch (groupType) {
+        case "question":
+        case "model":
+        case "metric":
           return true;
         case "table":
         case "transform":
         case "snippet":
           return false;
       }
+      break;
+    case "view-count":
+      switch (groupType) {
+        case "question":
+          return true;
+        case "model":
+        case "metric":
+        case "table":
+        case "transform":
+        case "snippet":
+          return false;
+      }
+      break;
   }
 }
 

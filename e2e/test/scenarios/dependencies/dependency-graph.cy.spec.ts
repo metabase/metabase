@@ -9,12 +9,15 @@ import type {
   DependencyType,
   NativeQuerySnippetId,
   TableId,
+  TransformId,
 } from "metabase-types/api";
 
 const BASE_URL = "/dependencies";
 const TABLE_NAME = "scoreboard_actions";
 const TABLE_DISPLAY_NAME = "Scoreboard Actions";
 const TABLE_ID_ALIAS = "tableId";
+const TRANSFORM_TABLE_NAME = "transform_table";
+const TRANSFORM_TABLE_DISPLAY_NAME = "Transform Table";
 const TABLE_BASED_QUESTION_NAME = "Table-based question";
 const TABLE_BASED_MODEL_NAME = "Table-based model";
 const TABLE_BASED_METRIC_NAME = "Table-based metric";
@@ -378,6 +381,18 @@ describe("scenarios > dependencies > dependency graph", () => {
       });
     });
 
+    it("should display dependencies for a transform and navigate to them", () => {
+      createTableBasedTransform(TABLE_NAME).then(({ body: transform }) => {
+        runTransformAndWaitForSuccess(transform.id);
+        visitGraphForEntity(transform.id, "transform");
+      });
+      verifyPanelNavigation({
+        itemTitle: TABLE_BASED_TRANSFORM_NAME,
+        groupTitle: "1 table",
+        dependentItemTitle: TRANSFORM_TABLE_DISPLAY_NAME,
+      });
+    });
+
     it("should display dependencies for a snippet and navigate to them", () => {
       createEmptySnippet().then(({ body: snippet }) => {
         createSnippetBasedQuestion(TABLE_NAME, snippet.id, snippet.name);
@@ -608,7 +623,7 @@ function createTableBasedTransform(tableName: string) {
         database: WRITABLE_DB_ID,
         type: "native",
         native: {
-          query: `SELECT team_name, score from ${tableName}`,
+          query: `SELECT * from ${tableName}`,
           "template-tags": {},
         },
       },
@@ -617,7 +632,7 @@ function createTableBasedTransform(tableName: string) {
       type: "table",
       database: WRITABLE_DB_ID,
       schema: "public",
-      name: "transform_table",
+      name: TRANSFORM_TABLE_NAME,
     },
   });
 }
@@ -639,7 +654,7 @@ function createCardBasedTransform(cardId: CardId) {
       type: "table",
       database: WRITABLE_DB_ID,
       schema: "public",
-      name: "transform_table",
+      name: TRANSFORM_TABLE_NAME,
     },
   });
 }
@@ -662,7 +677,7 @@ function createMetricBasedTransform(tableId: TableId, metricId: CardId) {
       type: "table",
       database: WRITABLE_DB_ID,
       schema: "public",
-      name: "transform_table",
+      name: TRANSFORM_TABLE_NAME,
     },
   });
 }
@@ -698,9 +713,14 @@ function createSnippetBasedTransform(
       type: "table",
       database: WRITABLE_DB_ID,
       schema: "public",
-      name: "transform_table",
+      name: TRANSFORM_TABLE_NAME,
     },
   });
+}
+
+function runTransformAndWaitForSuccess(transformId: TransformId) {
+  cy.request("POST", `/api/ee/transform/${transformId}/run`);
+  H.waitForSucceededTransformRuns();
 }
 
 function createEmptySnippet() {
