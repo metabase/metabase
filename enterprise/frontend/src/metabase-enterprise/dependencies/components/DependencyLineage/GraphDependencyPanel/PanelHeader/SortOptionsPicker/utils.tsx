@@ -2,23 +2,22 @@ import { t } from "ttag";
 
 import { FixedSizeIcon } from "metabase/ui";
 
+import { SORT_COLUMNS } from "../../constants";
+import type { SortColumn } from "../../types";
+
 import type { SortColumnItem, SortDirectionItem } from "./types";
 
 export function getSortColumnItems(): SortColumnItem[] {
-  return [
-    {
-      value: "view-count",
-      label: t`View count`,
-    },
-    {
-      value: "name",
-      label: t`Name`,
-    },
-    {
-      value: "location",
-      label: t`Location`,
-    },
-  ];
+  const allLabels: Record<SortColumn, string> = {
+    name: t`Name`,
+    location: t`Location`,
+    "view-count": t`View count`,
+  };
+
+  return SORT_COLUMNS.map((column) => ({
+    value: column,
+    label: allLabels[column],
+  }));
 }
 
 export function getSortDirectionItems(): SortDirectionItem[] {

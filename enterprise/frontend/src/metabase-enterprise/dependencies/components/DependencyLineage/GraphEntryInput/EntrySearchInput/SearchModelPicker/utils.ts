@@ -2,35 +2,27 @@ import { t } from "ttag";
 
 import type { SearchResponse } from "metabase-types/api";
 
-import type { EnabledSearchModel } from "../../constants";
+import {
+  ENABLED_SEARCH_MODELS,
+  type EnabledSearchModel,
+} from "../../constants";
 
 import type { SearchModelItem } from "./types";
 
 export function getSearchModelItems(data: SearchResponse): SearchModelItem[] {
-  const mapping: Record<EnabledSearchModel, SearchModelItem> = {
-    table: {
-      value: "table",
-      label: t`Tables`,
-    },
-    card: {
-      value: "card",
-      label: t`Questions`,
-    },
-    dataset: {
-      value: "dataset",
-      label: t`Models`,
-    },
-    metric: {
-      value: "metric",
-      label: t`Metrics`,
-    },
-    transform: {
-      value: "transform",
-      label: t`Transforms`,
-    },
+  const allLabels: Record<EnabledSearchModel, string> = {
+    table: t`Tables`,
+    card: t`Questions`,
+    dataset: t`Models`,
+    metric: t`Metrics`,
+    transform: t`Transforms`,
   };
 
-  const allItems = Object.values(mapping);
+  const allItems = ENABLED_SEARCH_MODELS.map((model) => ({
+    value: model,
+    label: allLabels[model],
+  }));
+
   const availableModels = data.available_models ?? [];
   return allItems.filter((item) => availableModels.includes(item.value));
 }
