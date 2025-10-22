@@ -441,7 +441,7 @@
 (defn- pg-interval [amount unit]
   (with-database-type-info [::postgres-interval amount unit] "interval"))
 
-(defn- ->pg-timestamp
+(defn ->pg-timestamp
   "Cast to timestamp, preserving timestamptz if present."
   [honeysql-form]
   (cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "timestamp with time zone" "date"} honeysql-form))
