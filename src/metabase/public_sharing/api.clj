@@ -268,7 +268,7 @@
    {:keys [parameters]} :- [:map
                             [:parameters {:optional true} [:maybe ms/JSONString]]]]
   (public-sharing.validation/check-public-sharing-enabled)
-  (validate-card-in-public-document! uuid card-id)
+  (validate-card-in-public-document uuid card-id)
   ;; Run the query as admin since public documents are available to everyone anyway
   (u/prog1 (process-query-for-card-with-id
             card-id
