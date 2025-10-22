@@ -4,7 +4,6 @@
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [toucan2.core :as t2]))
 
