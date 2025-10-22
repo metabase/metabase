@@ -5,6 +5,8 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (defmulti type->model
   "Conversion from representation type (keyword) to Toucan model keyword."
   {:arglists '([type])}
@@ -31,6 +33,21 @@
   ;; TODO: raw `:collection` key could be fragile; use name?
   (entity-id (:ref representation) (:collection representation)))
 
+(defn add-entity-id-from-ref-hash
+  "Add a stable entity-id to a representation based on its ref and collection ref."
+  [representation]
+  (assoc representation :entity-id (generate-entity-id representation)))
+
+(defn add-entity-id-random
+  "Add an unstable entity-id to a representation. It should be random so that it never collides."
+  [representation]
+  (assoc representation :entity-id (u/generate-nano-id)))
+
+(defn remove-entity-id
+  "Remove the entity id from a representation (if it has one)."
+  [representation]
+  (dissoc representation :entity-id))
+
 (defn find-collection-id
   "Find collection ID by name or ref. Returns nil if not found."
   [collection-ref]
@@ -56,13 +73,13 @@
 
 (defn refs
   "Returns all refs present in the entity-map, recursively walking to discover them."
-  [entity]
+  [representation]
   (let [v (volatile! [])]
     (walk/postwalk (fn [node]
                      (when (ref? node)
                        (vswap! v conj node))
                      node)
-                   (dissoc entity :ref))
+                   representation)
     (set (map unref @v))))
 
 (defn ->ref
@@ -70,12 +87,29 @@
   [id type]
   (format "ref:%s-%s" (name type) id))
 
-(defn hydrate-env-var
-  "If it begins with \"env:\", hydrates...?"
-  [x]
-  (when (and (string? x)
-             (str/starts-with? x "env:"))
-    (subs x 4)))
+(defn env-var?
+  "Is it an env var?
+
+   Env vars are useful for storing credentials for databases in representations. They are expanded during import."
+  [s]
+  (and (string? s)
+       (str/starts-with? s "env:")))
+
+(defn un-env-var
+  "Turn env var string into an env var name."
+  [s]
+  (when (env-var? s)
+    ;; "env:"
+    (subs s 4)))
+
+(defn hydrate-env-vars
+  "Given a representation, hydrate all env vars with their values looked up from the environment."
+  [representation]
+  (walk/postwalk (fn [x]
+                   (if (env-var? x)
+                     (System/getenv (un-env-var x))
+                     x))
+                 representation))
 
 (defn- ref->id*
   [entity-ref ref-index]
@@ -140,12 +174,12 @@
 
 (defn table-refs
   "Returns all table refs present in the representation, recursively walking to discover them."
-  [entity]
-  (let [v (volatile! [])]
+  [representation]
+  (let [v (volatile! #{})]
     (walk/postwalk (fn [node]
                      (when (or (table-ref? node)
                                (field-ref? node))
-                       (vswap! v conj node))
+                       (vswap! v conj (dissoc node :field)))
                      node)
-                   entity)
-    (into #{} (map #(dissoc % :field)) @v)))
+                   representation)
+    @v))

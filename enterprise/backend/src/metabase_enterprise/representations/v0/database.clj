@@ -13,13 +13,13 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (defmethod import/type->schema [:v0 :database] [_]
   ::database)
 
 (defmethod export/representation-type :model/Database [_entity]
   :database)
-
-(set! *warn-on-reflection* true)
 
 ;;; ------------------------------------ Schema Definitions ------------------------------------
 
@@ -123,13 +123,6 @@
    [:connection_details :any]
    [:schemas {:optional true} [:sequential ::schema]]])
 
-(defn- hydrate-env-vars [database]
-  (walk/prewalk (fn [node]
-                  (if-some [var (v0-common/hydrate-env-var node)]
-                    (System/getenv var)
-                    node))
-                database))
-
 (defmethod v0-common/type->model :database
   [_]
   :model/Database)
@@ -139,7 +132,7 @@
   (-> representation
       (set/rename-keys {:connection_details :details})
       (select-keys [:name :engine :description :details :schemas :ref])
-      (hydrate-env-vars)))
+      (v0-common/hydrate-env-vars)))
 
 (defmethod import/persist! [:v0 :database]
   [representation ref-index]
