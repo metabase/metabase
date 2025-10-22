@@ -100,7 +100,11 @@
 
 (defmethod import/yaml->toucan [:v0 :question]
   [representation ref-index]
-  (let [database-id (v0-common/ref->id (:database representation) ref-index)
+  (let [database-id (-> ref-index
+                        (v0-common/lookup-entity (:database representation))
+                        (v0-common/ensure-not-nil)
+                        (v0-common/ensure-correct-type :database)
+                        :id)
         query (-> (assoc representation :database database-id)
                   (v0-mbql/import-dataset-query ref-index))]
     {:creator_id (or api/*current-user-id* config/internal-mb-user-id)

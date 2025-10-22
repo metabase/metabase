@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
+   [metabase-enterprise.representations.lookup :as lookup]
    [metabase-enterprise.representations.v0.card]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.v0.mbql :as v0-mbql]
@@ -259,7 +260,13 @@
   [{model-name :name
     :keys [_type _ref entity-id description database collection columns] :as representation}
    ref-index]
-  (let [database-id (v0-common/resolve-database-id database ref-index)
+  (let [database-id (-> ref-index
+                        (v0-common/lookup-entity database)
+                        (v0-common/ensure-correct-type :database)
+                        (or (lookup/lookup-by-name :database database))
+                        (or (lookup/lookup-by-id   :database database))
+                        :id
+                        (v0-common/ensure-not-nil))
         dataset-query (-> (assoc representation :database database-id)
                           (v0-mbql/import-dataset-query ref-index))
         ;; An alternative:

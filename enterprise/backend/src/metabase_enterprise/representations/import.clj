@@ -223,7 +223,8 @@
           ordered (order-representations normalized)]
       (reduce (fn [index entity]
                 (try
-                  (let [persisted (persist! (assoc entity :collection collection-id) index)]
+                  (let [persisted (persist! (assoc entity :collection collection-id)
+                                            (v0-common/map-entity-index index))]
                     (assoc index (:ref entity) persisted))
                   (catch Exception e
                     (log/warn e (format "Failed to persist entity with ref %s" (:ref entity)))

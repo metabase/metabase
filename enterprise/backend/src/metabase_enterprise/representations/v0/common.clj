@@ -121,40 +121,6 @@
                      x))
                  representation))
 
-(defn- ref->id*
-  [entity-ref ref-index]
-  (cond
-    (integer? entity-ref)
-    entity-ref
-
-    (ref? entity-ref)
-    (->> (unref entity-ref)
-         (get ref-index)
-         :id)))
-
-(defn ref->id
-  "Find ID by name or ref. Returns nil if not found."
-  [entity-ref ref-index]
-  (or (ref->id* entity-ref ref-index)
-      (throw
-       (ex-info "Could not process entity ref!"
-                {:entity-ref entity-ref
-                 :ref-index ref-index}))))
-
-(defn resolve-database-id
-  "Finds database-id, either by finding it in the ref-index or by looking it up by name.
-  `database-ref` can be one of:
-   - integer: assumed to be ID
-   - ref: we look it up in the ref-index
-   - string: we assume this is database-name and try to find it"
-  [database-ref ref-index]
-  (or (ref->id* database-ref ref-index)
-      (when (string? database-ref)
-        (t2/select-one-pk :model/Database :name database-ref))
-      (throw (ex-info "Could not resolve database!"
-                      {:database-ref database-ref
-                       :ref-index ref-index}))))
-
 (def representations-export-dir
   "The dir where POC import/export representations are stored."
   "local/representations/")
@@ -195,22 +161,15 @@
     @v))
 
 (defprotocol EntityLookup
-  (lookup [this expected-type ref]))
+  (lookup-entity [this ref])
+  (lookup-id     [this ref]))
 
 (defrecord MapEntityIndex [idx]
   EntityLookup
-  (lookup [_this expected-type ref]
-    (let [entity (get idx (unref ref))]
-      (when (nil? entity)
-        (throw (ex-info (str "Cannot find ref in index: " ref)
-                        {:ref ref
-                         :index idx})))
-      (when (not= expected-type
-                  (representation-type entity))
-        (throw (ex-info (str "Not returning the expected type from the index; expected type: " expected-type "; toucan model: " (t2/model entity))
-                        {:entity entity
-                         :expected-type expected-type})))
-      (:id entity))))
+  (lookup-entity [_this ref]
+    (get idx (unref ref)))
+  (lookup-id [this ref]
+    (:id (lookup-id this ref))))
 
 (defn map-entity-index
   "Create a new index from a map of ref -> toucan entity.
@@ -222,13 +181,35 @@
 ;; Use this bad boy for testing where you want to parse a ref that looks like ref:question-45 to have it return 45
 (defrecord ParseRefEntityIndex []
   EntityLookup
-  (lookup [_this expected-type ref]
+  (lookup-id [_this ref]
+    (let [ur (unref ref)
+          [_type id] (str/split ur #"-")
+          id (Long/parseLong id)]
+      id))
+  (lookup-entity [_this ref]
     (let [ur (unref ref)
           [type id] (str/split ur #"-")
           id (Long/parseLong id)]
-      (when (not= expected-type type)
-        (throw (ex-info (str "Expected type not found in ref")
-                        {:expected-type expected-type
-                         :ref ref
-                         :type type})))
-      id)))
+      (t2/select-one (type->model type) :id id))))
+
+(defn ensure-not-nil [entity]
+  (when (nil? entity)
+    (throw (ex-info "Entity not found." {})))
+  entity)
+
+(defn ensure-correct-type [entity expected-type]
+  (when (and entity
+             (not= expected-type (representation-type entity)))
+    (throw (ex-info "Entity is not the correct type. Expected: " expected-type "; Actual: " (representation-type entity)
+                    {:entity entity
+                     :expected-type expected-type
+                     :actual-type (representation-type entity)})))
+  entity)
+
+(defn ensure-correct-model-type [entity expected-type]
+  (when (not= expected-type (t2/model entity))
+    (throw (ex-info (str "Entity is not the correct model type. Expected: " expected-type "; Actual: " (t2/model entity))
+                    {:entity entity
+                     :expected-type expected-type
+                     :actual-type (t2/model entity)})))
+  entity)

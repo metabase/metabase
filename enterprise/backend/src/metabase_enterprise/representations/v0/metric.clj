@@ -228,7 +228,11 @@
   [{metric-name :name
     :keys [description database collection columns] :as representation}
    ref-index]
-  (let [database-id (v0-common/ref->id database ref-index)
+  (let [database-id (-> ref-index
+                        (v0-common/lookup-entity database)
+                        (v0-common/ensure-not-nil)
+                        (v0-common/ensure-correct-type :database)
+                        :id)
         dataset-query (v0-mbql/import-dataset-query representation ref-index)]
     (when-not database-id
       (throw (ex-info (str "Database not found: " database)

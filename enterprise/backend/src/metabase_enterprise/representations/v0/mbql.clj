@@ -22,19 +22,22 @@
   (cond
     ;; ref to another card/question:
     (v0-common/ref? source-table)
-    (str "card__" (v0-common/ref->id source-table ref-index))
+    (str "card__" (-> ref-index
+                      (v0-common/lookup-id source-table)
+                      (v0-common/ensure-not-nil)))
 
     ;; map with database ref - resolve database and lookup table
     (v0-common/table-ref? source-table)
-    (let [db-id (v0-common/ref->id (:database source-table) ref-index)
+    (let [db-id (-> ref-index
+                    (v0-common/lookup-entity (:database source-table))
+                    (v0-common/ensure-not-nil)
+                    (v0-common/ensure-correct-type :database)
+                    :id)
           table-id (t2/select-one-fn :id :model/Table
                                      :db_id db-id
                                      :schema (:schema source-table)
                                      :name (:table source-table))]
-      (when (nil? table-id)
-        (throw (ex-info "Could not find matching table."
-                        {:table-ref source-table})))
-      table-id)
+      (v0-common/ensure-not-nil table-id))
 
     ;; Not a ref -- leave it be
     :else
@@ -57,14 +60,20 @@
    (fn [node]
      (if (v0-common/field-ref? node)
        ;; It's a field map - resolve it to [:field id]
-       (let [db-id (v0-common/ref->id (:database node) ref-index)
-             table-id (t2/select-one-fn :id :model/Table
-                                        :db_id db-id
-                                        :schema (:schema node)
-                                        :name (:table node))
-             field-id (t2/select-one-fn :id :model/Field
-                                        :table_id table-id
-                                        :name (:field node))]
+       (let [db-id (-> ref-index
+                       (v0-common/lookup-entity (:database node))
+                       (v0-common/ensure-not-nil)
+                       (v0-common/ensure-correct-type :database)
+                       :id)
+             table-id (v0-common/ensure-not-nil
+                       (t2/select-one-fn :id :model/Table
+                                         :db_id db-id
+                                         :schema (:schema node)
+                                         :name (:table node)))
+             field-id (v0-common/ensure-not-nil
+                       (t2/select-one-fn :id :model/Field
+                                         :table_id table-id
+                                         :name (:field node)))]
          [:field field-id])
        node))
    mbql-query))
@@ -166,7 +175,11 @@
   "Returns Metabase's dataset_query format, given a representation.
    Converts representation format to Metabase's internal dataset_query structure."
   [{:keys [query mbql_query lib_query database] :as representation} ref-index]
-  (let [database-id (v0-common/ref->id database ref-index)]
+  (let [database-id (-> ref-index
+                        (v0-common/lookup-entity database)
+                        (v0-common/ensure-not-nil)
+                        (v0-common/ensure-correct-type :database)
+                        :id)]
     (cond
       ;; Native SQL query - simple case
       query

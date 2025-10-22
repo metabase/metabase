@@ -3,6 +3,7 @@
   (:require
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
+   [metabase-enterprise.representations.lookup :as lookup]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.v0.mbql :as v0-mbql]
    [metabase-enterprise.representations.yaml :as rep-yaml]
@@ -121,16 +122,16 @@
 (defmethod import/yaml->toucan [:v0 :transform]
   [{:keys [database] :as representation}
    ref-index]
-  (let [database-id (try
-                      (v0-common/ref->id database ref-index)
-                      (catch Exception e
-                        (log/errorf e "Error resolving database ref: %s" database)
-                        (t2/select-one-fn :id :model/Database :name database)))
+  (let [database-id (-> ref-index
+                        (v0-common/lookup-entity database)
+                        (v0-common/ensure-correct-type :database)
+                        (or (lookup/lookup-by-name :database database))
+                        (or (lookup/lookup-by-id   :database database))
+                        :id
+                        (v0-common/ensure-not-nil))
         query (v0-mbql/import-dataset-query representation ref-index)]
-    (when-not database-id
-      (throw (ex-info (str "Database not found: " database)
-                      {:database database})))
-    {:entity_id (or (:entity_id representation)
+    {:database database-id
+     :entity_id (or (:entity_id representation)
                     (v0-common/generate-entity-id (assoc representation :collection "transforms")))
      :name (:name representation)
      :description (or (:description representation) "")
