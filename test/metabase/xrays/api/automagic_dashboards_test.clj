@@ -238,12 +238,10 @@
       (is (some?
            (api-call! "table/%s/compare/segment/%s"
                       [(mt/id :venues) segment-id]))))
-
     (testing "GET /api/automagic-dashboards/table/:id/rule/example/indepth/compare/segment/:segment-id"
       (is (some?
            (api-call! "table/%s/rule/example/indepth/compare/segment/%s"
                       [(mt/id :venues) segment-id]))))
-
     (testing "GET /api/automagic-dashboards/adhoc/:id/cell/:cell-query/compare/segment/:segment-id"
       (is (some?
            (api-call! "adhoc/%s/cell/%s/compare/segment/%s"
