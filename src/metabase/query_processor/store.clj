@@ -228,8 +228,7 @@
   function if you REALLY need to do this sort of conversion.)"
   {:deprecated "0.48.0"}
   [lib-metadata-col :- [:map
-                        [:= [:lib/type :metadata/column]]]]
-  (let [model :metadata/column]
-    (-> lib-metadata-col
-        lib/lib-metadata-column->legacy-metadata-column
-        (vary-meta assoc :type model))))
+                        [:lib/type [:= :metadata/column]]]]
+  (-> lib-metadata-col
+      lib/lib-metadata-column->legacy-metadata-column
+      (vary-meta assoc :type :metadata/column)))
