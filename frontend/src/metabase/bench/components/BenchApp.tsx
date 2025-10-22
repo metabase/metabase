@@ -1,12 +1,13 @@
-import { useDisclosure } from "@mantine/hooks";
+import cx from "classnames";
 import type React from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 
+import { BenchLayoutProvider } from "metabase/bench/context/BenchLayoutContext";
 import { PLUGIN_METABOT } from "metabase/plugins";
-import { Box, Group, Stack, rem } from "metabase/ui";
+import { Box, Flex, Stack } from "metabase/ui";
 
+import S from "./BenchApp.module.css";
 import { BenchAppBar } from "./BenchAppBar";
-import { BenchNav } from "./BenchNav";
 
 export const ResizeHandle = ({
   direction = "horizontal",
@@ -15,18 +16,16 @@ export const ResizeHandle = ({
   direction?: "horizontal" | "vertical";
   handleSize?: number;
 }) => {
-  const directionProps = {
-    horizontal: { cursor: "col-resize", height: "100%", width: handleSize },
-    vertical: { cursor: "row-resize", width: "100%", height: handleSize },
-  };
-
   return (
     <Box pos="relative">
       <PanelResizeHandle
+        className={cx(S.resizeHandle, {
+          [S.resizeHandleHorizontal]: direction === "horizontal",
+          [S.resizeHandleVertical]: direction === "vertical",
+        })}
         style={{
-          position: "absolute",
-          zIndex: 9,
-          ...directionProps[direction],
+          width: direction === "horizontal" ? handleSize : undefined,
+          height: direction === "vertical" ? handleSize : undefined,
         }}
       />
     </Box>
@@ -34,59 +33,25 @@ export const ResizeHandle = ({
 };
 
 export const BenchApp = ({ children }: { children: React.ReactNode }) => {
-  const [showBenchNav, { toggle }] = useDisclosure(true);
-
   return (
-    <Group
-      h="100vh"
-      style={{ overflow: "hidden" }}
-      gap={0}
-      justify="stretch"
-      align="stretch"
-      wrap="nowrap"
-    >
-      {showBenchNav && (
-        <Box
-          id="bench-nav"
-          style={{
-            overflow: "auto",
-            height: "100%",
-            width: rem(240),
-            flexShrink: 0,
-          }}
-        >
-          <BenchNav />
-        </Box>
-      )}
-      <Stack
-        gap={0}
-        style={{
-          flex: 1,
-          height: "100%",
-          width: showBenchNav ? `calc(100% - ${rem(240)})` : "100%",
-          position: "relative",
-        }}
-      >
-        <BenchAppBar onSidebarToggle={toggle} isSidebarOpen={showBenchNav} />
-        <PanelGroup
-          id="workbench-layout"
-          autoSaveId="workbench-layout"
-          direction="horizontal"
-          style={{ width: "100%" }}
-        >
-          <Panel
-            id="bench-main"
-            order={2}
-            style={{
-              overflow: "auto",
-            }}
+    <BenchLayoutProvider>
+      <Stack h="100vh" gap={0} style={{ overflow: "hidden" }}>
+        <BenchAppBar />
+        <Flex flex={1} style={{ overflow: "hidden" }}>
+          <PanelGroup
+            id="workbench-layout"
+            autoSaveId="workbench-layout"
+            direction="horizontal"
+            className={S.panelGroup}
           >
-            {children}
-          </Panel>
-          <BenchMetabot />
-        </PanelGroup>
+            <Panel id="bench-main" order={2} className={S.mainPanel}>
+              {children}
+            </Panel>
+            <BenchMetabot />
+          </PanelGroup>
+        </Flex>
       </Stack>
-    </Group>
+    </BenchLayoutProvider>
   );
 };
 
@@ -103,7 +68,7 @@ function BenchMetabot() {
         id="bench-metabot"
         maxSize={30}
         minSize={10}
-        style={{ height: "100%" }}
+        className={S.metabotPanel}
         order={9}
       >
         <PLUGIN_METABOT.Metabot

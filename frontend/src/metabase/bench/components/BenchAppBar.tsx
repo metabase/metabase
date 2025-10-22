@@ -1,45 +1,86 @@
+import { useState } from "react";
+
+import { useBenchLayoutContext } from "metabase/bench/context/BenchLayoutContext";
+import { useBenchCurrentTab } from "metabase/bench/hooks/useBenchCurrentTab";
 import { PLUGIN_METABOT } from "metabase/plugins";
-import { ActionIcon, Box, Group, Icon } from "metabase/ui";
+import {
+  ActionIcon,
+  Flex,
+  Group,
+  Icon,
+  Menu,
+  Text,
+  UnstyledButton,
+} from "metabase/ui";
 
-interface BenchToolbarProps {
-  onSidebarToggle: () => void;
-  isSidebarOpen: boolean;
-}
+import S from "./BenchAppBar.module.css";
+import { BenchNavMenu, BenchNavTitleMenu } from "./BenchNavMenu";
 
-export function BenchAppBar({
-  onSidebarToggle,
-  isSidebarOpen,
-}: BenchToolbarProps) {
+export function BenchAppBar() {
   const metabot = PLUGIN_METABOT.useMetabotAgent();
+  const currentTab = useBenchCurrentTab();
+  const { onTogglePanel, isPanelCollapsed } = useBenchLayoutContext();
+  const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
+  const [isTitleMenuOpen, setIsTitleMenuOpen] = useState(false);
+
+  const hasPanelControl = onTogglePanel !== undefined;
 
   return (
-    <Box
-      style={{
-        height: "48px",
-        borderBottom: "1px solid var(--mb-color-border)",
-        padding: "0 16px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-      }}
+    <Flex
+      h={48}
+      w="100%"
+      className={S.appBar}
+      align="center"
+      justify="space-between"
+      px="md"
     >
-      {/* Left navigation buttons */}
-      <Group gap="xs">
-        <ActionIcon onClick={onSidebarToggle}>
-          <Icon name={isSidebarOpen ? "sidebar_open" : "sidebar_closed"} />
-        </ActionIcon>
-      </Group>
+      <Group gap="sm" wrap="nowrap">
+        <BenchNavTitleMenu
+          isOpen={isTitleMenuOpen}
+          onToggle={() => setIsTitleMenuOpen(!isTitleMenuOpen)}
+          onClose={() => setIsTitleMenuOpen(false)}
+        />
 
-      {/* Search input - centered with max-width */}
-      {/* <TextInput
-        placeholder="Search..."
-        leftSection={<Icon name="search" size={16} />}
-        style={{
-          flex: 1,
-          maxWidth: "600px",
-          margin: "0 16px",
-        }}
-      /> */}
+        <Menu
+          opened={isNavMenuOpen}
+          onChange={setIsNavMenuOpen}
+          position="bottom"
+          shadow="md"
+          offset={16}
+        >
+          <Menu.Target>
+            <UnstyledButton h={32} px="sm" miw={220} className={S.selectButton}>
+              <Flex align="center" justify="space-between" h="100%">
+                <Flex align="center" gap="xs">
+                  <Icon name={currentTab.icon} size={16} c="text-secondary" />
+                  <Text size="md">{currentTab.getLabel()}</Text>
+                </Flex>
+                <Icon name="chevrondown" size={12} c="text-secondary" />
+              </Flex>
+            </UnstyledButton>
+          </Menu.Target>
+          <Menu.Dropdown p={0}>
+            <BenchNavMenu onClose={() => setIsNavMenuOpen(false)} />
+          </Menu.Dropdown>
+        </Menu>
+
+        {hasPanelControl && (
+          <ActionIcon
+            w={32}
+            h={32}
+            bdrs="md"
+            onClick={onTogglePanel}
+            variant="subtle"
+            c="text-light"
+            bd="1px solid var(--mb-color-border)"
+          >
+            <Icon
+              size={18}
+              name={!isPanelCollapsed ? "sidebar_open" : "sidebar_closed"}
+            />
+          </ActionIcon>
+        )}
+      </Group>
 
       <Group gap="xs">
         {metabot && (
@@ -51,6 +92,6 @@ export function BenchAppBar({
           </ActionIcon>
         )}
       </Group>
-    </Box>
+    </Flex>
   );
 }
