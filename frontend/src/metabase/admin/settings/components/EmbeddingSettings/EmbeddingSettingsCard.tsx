@@ -30,7 +30,6 @@ export function EmbeddingSettingsCard({
 }: {
   title: string;
   titleProps?: TextProps;
-  titleSize?: string;
   description: string;
   settingKey:
     | "enable-embedding-sdk"
