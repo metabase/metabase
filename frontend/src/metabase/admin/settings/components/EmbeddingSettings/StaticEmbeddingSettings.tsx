@@ -35,8 +35,8 @@ export function StaticEmbeddingSettings() {
         <EmbeddingSecretKeyWidget />
       </SettingsSection>
 
-      <SettingsSection>
-        {isStaticEmbeddingEnabled && (
+      {isStaticEmbeddingEnabled && (
+        <SettingsSection>
           <Box data-testid="embedded-resources">
             <SettingTitle
               id="static-embeds"
@@ -46,8 +46,9 @@ export function StaticEmbeddingSettings() {
 
             <EmbeddedResources />
           </Box>
-        )}
-      </SettingsSection>
+        </SettingsSection>
+      )}
+
       <PLUGIN_CONTENT_TRANSLATION.ContentTranslationConfiguration />
 
       <RelatedSettingsSection items={getStaticEmbeddingRelatedSettingItems()} />
