@@ -2,7 +2,8 @@
   (:require
    [malli.core :as mc]
    [malli.util :as mut]
-   [metabase.legacy-mbql.schema :as mbql.s]
+   ;; legacy usages, do not use legacy MBQL stuff in new code.
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]

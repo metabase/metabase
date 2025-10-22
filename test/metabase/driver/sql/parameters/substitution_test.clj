@@ -20,7 +20,6 @@
   (is (=? [:field
            (meta/id :venues :id)
            {:base-type                                                           :type/BigInteger
-            :temporal-unit                                                       nil
             :metabase.query-processor.util.add-alias-info/source-table           (meta/id :venues)
             :metabase.driver.sql.parameters.substitution/compiling-field-filter? true}]
           (#'sql.params.substitution/field->field-filter-clause

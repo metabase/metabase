@@ -24,7 +24,8 @@
    [clojure.set :as set]
    [malli.core :as mc]
    [medley.core :as m]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ;; legacy usage -- do not use in new code
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -379,6 +380,8 @@
                        (if (dimension-param-mapping? v)
                          (let [parsed-id (-> (if (keyword? k) (keyname k) k)
                                              parse-json-string
+                                             ;; legacy usage -- do not use in new code
+                                             #_{:clj-kondo/ignore [:deprecated-var]}
                                              mbql.normalize/normalize-tokens)]
                            [parsed-id (cond-> v
                                         (:source v) (assoc ::param-mapping-source
