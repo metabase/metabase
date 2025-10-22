@@ -12,7 +12,7 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Get Date
+    - name: Get current week of year
       id: get-date
       run: |
         echo "week-of-year=$(/bin/date "+%G-%V")" >> $GITHUB_OUTPUT
