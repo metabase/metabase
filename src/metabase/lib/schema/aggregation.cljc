@@ -126,7 +126,7 @@
              :metric]]
   (lib.hierarchy/derive tag ::aggregation-clause-tag))
 
-(defn aggregation-expression?
+(defn- aggregation-expression?
   "A clause is a valid aggregation if it is an aggregation clause, or it is an expression that transitively contains
   a single aggregation clause."
   [x]

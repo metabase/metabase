@@ -36,7 +36,7 @@
    [metabase.xrays.automagic-dashboards.util :as magic.util]
    [metabase.xrays.automagic-dashboards.visualization-macros :as visualization]))
 
-(mu/defn add-breakouts-and-filter :- ::ads/grounded-metric.definition
+(mu/defn add-breakouts-and-filters :- ::ads/grounded-metric.definition
   "Add breakouts and filters to a query based on the breakout fields and filter clauses"
   [metric-def     :- ::ads/grounded-metric.definition
    breakouts      :- [:maybe [:sequential ::lib.schema.metadata/column]]
@@ -246,8 +246,8 @@
            (update :metric-definition (fn [metric-definition]
                                         (-> metric-definition
                                             (add-aggregations final-aggregate)
-                                            (add-breakouts-and-filter (for [field (vals merged-dims)]
-                                                                        (interesting/field->metadata field))
-                                                                      (mapv (comp :filter simple-grounded-filters)
-                                                                            card-filters)))))
+                                            (add-breakouts-and-filters (for [field (vals merged-dims)]
+                                                                         (interesting/field->metadata field))
+                                                                       (mapv (comp :filter simple-grounded-filters)
+                                                                             card-filters)))))
            (add-dataset-query base-context))))))
