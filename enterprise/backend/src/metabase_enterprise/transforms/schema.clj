@@ -8,8 +8,7 @@
   [:map
    [:type [:= "keyset"]]
    ;; only available for mbql and python transforms
-   [:keyset-filter-ref {:optional true} ::lib.metadata.column/column-unique-key]
-   ;; TODO: we should rename this to keyset-ref
+   [:keyset-filter-unique-key {:optional true} ::lib.metadata.column/column-unique-key]
    [:keyset-column :string]])
 
 (mr/def ::source-incremental-strategy

@@ -87,7 +87,7 @@ type NewTransformValues = {
   targetSchema: string | null;
   incremental: boolean;
   keysetColumn: string | null;
-  keysetFilterRef: string | null;
+  keysetFilterUniqueKey: string | null;
   sourceStrategy: "keyset";
   targetStrategy: "append";
 };
@@ -105,7 +105,7 @@ const NEW_TRANSFORM_SCHEMA = Yup.object({
       then: (schema) => schema.required(Errors.required),
       otherwise: (schema) => schema.nullable(),
     }),
-  keysetFilterRef: Yup.string().nullable(),
+  keysetFilterUniqueKey: Yup.string().nullable(),
   sourceStrategy: Yup.string().oneOf(["keyset"]).required(),
   targetStrategy: Yup.string().oneOf(["append"]).required(),
 });
@@ -180,7 +180,7 @@ function SourceStrategyFields({ source }: SourceStrategyFieldsProps) {
           />
           {isMbqlQuery && libQuery && (
             <KeysetColumnSelect
-              name="keysetFilterRef"
+              name="keysetFilterUniqueKey"
               label={t`Source Filter Field`}
               placeholder={t`Select a field to filter on`}
               description={t`Which field from the source to use in the incremental filter`}
@@ -189,7 +189,7 @@ function SourceStrategyFields({ source }: SourceStrategyFieldsProps) {
           )}
           {isPythonTransform && source["source-tables"] && (
             <PythonKeysetColumnSelect
-              name="keysetFilterRef"
+              name="keysetFilterUniqueKey"
               label={t`Source Filter Field`}
               placeholder={t`Select a field to filter on`}
               description={t`Which field from the source to use in the incremental filter`}
@@ -368,7 +368,7 @@ function getInitialValues(
     targetSchema: schemas?.[0] || null,
     incremental: initialIncremental,
     keysetColumn: initialIncremental ? "id" : null,
-    keysetFilterRef: null,
+    keysetFilterUniqueKey: null,
     sourceStrategy: "keyset",
     targetStrategy: "append",
   };
@@ -383,7 +383,7 @@ function getCreateRequest(
     targetSchema,
     incremental,
     keysetColumn,
-    keysetFilterRef,
+    keysetFilterUniqueKey,
     sourceStrategy,
     targetStrategy,
   }: NewTransformValues,
@@ -396,7 +396,9 @@ function getCreateRequest(
         "source-incremental-strategy": {
           type: sourceStrategy,
           "keyset-column": keysetColumn!,
-          ...(keysetFilterRef && { "keyset-filter-ref": keysetFilterRef }),
+          ...(keysetFilterUniqueKey && {
+            "keyset-filter-unique-key": keysetFilterUniqueKey,
+          }),
         },
       }
     : source;

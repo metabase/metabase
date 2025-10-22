@@ -61,7 +61,7 @@ type IncrementalValues = {
   incremental: boolean;
   sourceStrategy: "keyset";
   keysetColumn: string | null;
-  keysetFilterRef: string | null;
+  keysetFilterUniqueKey: string | null;
   targetStrategy: "append";
 };
 
@@ -75,7 +75,7 @@ const INCREMENTAL_SCHEMA = Yup.object({
       then: (schema) => schema.required(Errors.required),
       otherwise: (schema) => schema.nullable(),
     }),
-  keysetFilterRef: Yup.string().nullable(),
+  keysetFilterUniqueKey: Yup.string().nullable(),
   targetStrategy: Yup.string().oneOf(["append"]).required(),
 });
 
@@ -135,8 +135,8 @@ function UpdateIncrementalForm({
           "source-incremental-strategy": {
             type: "keyset" as const,
             "keyset-column": values.keysetColumn!,
-            ...(values.keysetFilterRef && {
-              "keyset-filter-ref": values.keysetFilterRef,
+            ...(values.keysetFilterUniqueKey && {
+              "keyset-filter-unique-key": values.keysetFilterUniqueKey,
             }),
           },
         }
@@ -221,7 +221,7 @@ function UpdateIncrementalForm({
                     />
                     {isMbqlQuery && libQuery && (
                       <KeysetColumnSelect
-                        name="keysetFilterRef"
+                        name="keysetFilterUniqueKey"
                         label={t`Source Filter Field`}
                         placeholder={t`Select a field to filter on`}
                         description={t`Which field from the source to use in the incremental filter`}
@@ -257,16 +257,16 @@ function getInitialValues(transform: Transform): IncrementalValues {
   const strategy = transform.source["source-incremental-strategy"];
   const columnName =
     strategy?.type === "keyset" ? strategy["keyset-column"] : null;
-  const fieldRef =
-    strategy?.type === "keyset" && strategy["keyset-filter-ref"]
-      ? strategy["keyset-filter-ref"]
+  const filterUniqueKey =
+    strategy?.type === "keyset" && strategy["keyset-filter-unique-key"]
+      ? strategy["keyset-filter-unique-key"]
       : null;
 
   return {
     incremental: isIncremental,
     sourceStrategy: "keyset",
     keysetColumn: isIncremental ? columnName : null,
-    keysetFilterRef: isIncremental ? fieldRef : null,
+    keysetFilterUniqueKey: isIncremental ? filterUniqueKey : null,
     targetStrategy: "append",
   };
 }
