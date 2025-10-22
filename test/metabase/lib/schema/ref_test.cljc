@@ -65,3 +65,7 @@
                           "effective-type"       "type/Float"
                           "lib/original-binning" {"strategy" "num-bins", "num-bins" 50}}
                          "TOTAL_2"]))))
+
+(deftest ^:parallel normalize-field-ref-remove-nil-values-test
+  (is (= [:field {:lib/uuid "d01f4c83-0fe5-4329-80f3-2bbea1f27c3b"} 100]
+         (lib/normalize ["field" {"temporal-unit" nil, "lib/uuid" "d01f4c83-0fe5-4329-80f3-2bbea1f27c3b"} 100]))))

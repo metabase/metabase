@@ -280,7 +280,7 @@
                          (u/one-or-many value)
                          value)]
           :when (contains? slug->value slug)]
-      (assoc (select-keys param [:type :target :slug])
+      (assoc (select-keys param [:type :target :slug :id])
              :value value))))
 
 ;;; ---------------------------- Card Fns used by both /api/embed and /api/preview_embed -----------------------------

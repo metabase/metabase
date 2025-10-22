@@ -49,7 +49,8 @@
    [:dataset_query      {:optional true} [:maybe ::query]]
    [:parameters         {:optional true} [:maybe [:ref ::parameters.schema/parameters]]]
    [:parameter_mappings {:optional true} [:maybe [:ref ::parameters.schema/parameter-mappings]]]
-   [:type               {:optional true} [:maybe ::lib.schema.metadata/card.type]]])
+   [:type               {:optional true} [:maybe ::lib.schema.metadata/card.type]]
+   [:result_metadata    {:optional true} [:maybe [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]])
 
 (mu/defn normalize-card :- [:maybe ::card]
   "Normalize a `card` so it satisfies the `::card` schema."
