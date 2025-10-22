@@ -385,7 +385,7 @@
      clauses
      (range (count clauses)))))
 
-(mu/defn walk-clauses-in-stage :- ::lib.schema/stage
+(mu/defn walk-clauses-in-stage :- [:maybe ::lib.schema/stage.mbql]
   "Walk all the clauses in a stage. Calls
 
     (f clause)
