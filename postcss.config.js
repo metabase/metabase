@@ -1,8 +1,6 @@
 /* eslint-env node */
 /* eslint-disable import/no-commonjs */
 
-const path = require("path");
-
 module.exports = {
   plugins: [
     // Import other CSS files
