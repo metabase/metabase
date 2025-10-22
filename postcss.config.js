@@ -23,7 +23,7 @@ module.exports = {
     /**
      * Import custom media queries and provide them globally available
      *
-     * in perfect world we should provide only breakpoints with custom media
+     * In a perfect world we should provide only breakpoints with custom media
      * definition, but some core files are not loaded elsewhere, so we add it here
      * e.g. not importing layout.module.css breaks metabot input as it has @media definitions
      */
