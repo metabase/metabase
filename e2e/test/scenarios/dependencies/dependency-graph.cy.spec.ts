@@ -2,12 +2,25 @@ const { H } = cy;
 
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import type { IconName } from "metabase/ui";
-import type { DependencyId, DependencyType, TableId } from "metabase-types/api";
+import type {
+  CardId,
+  DependencyId,
+  DependencyType,
+  TableId,
+} from "metabase-types/api";
 
 const BASE_URL = "/dependencies";
 const TABLE_NAME = "scoreboard_actions";
 const TABLE_DISPLAY_NAME = "Scoreboard Actions";
 const TABLE_ID_ALIAS = "tableId";
+const TABLE_BASED_QUESTION_NAME = "Table-based question";
+const TABLE_BASED_MODEL_NAME = "Table-based model";
+const TABLE_BASED_METRIC_NAME = "Table-based metric";
+const TABLE_BASED_TRANSFORM_NAME = "Table-based transform";
+const CARD_BASED_QUESTION_NAME = "Card-based question";
+const CARD_BASED_MODEL_NAME = "Card-based model";
+const CARD_BASED_METRIC_NAME = "Card-based metric";
+const CARD_BASED_TRANSFORM_NAME = "Card-based transform";
 
 describe("scenarios > dependencies > dependency graph", () => {
   beforeEach(() => {
@@ -112,12 +125,12 @@ describe("scenarios > dependencies > dependency graph", () => {
         isRecentItem: true,
       });
       testEntitySearch({
-        itemName: "Table-based metric",
+        itemName: TABLE_BASED_METRIC_NAME,
         itemIcon: "metric",
         isRecentItem: false,
       });
       testEntitySearch({
-        itemName: "Table-based transform",
+        itemName: TABLE_BASED_TRANSFORM_NAME,
         itemIcon: "refresh_downstream",
         isRecentItem: false,
       });
@@ -150,13 +163,13 @@ describe("scenarios > dependencies > dependency graph", () => {
       });
       testEntityPicker({
         tabName: "Collections",
-        itemName: "Table-based metric",
+        itemName: TABLE_BASED_METRIC_NAME,
         itemLevel: 1,
         itemIcon: "metric",
       });
       testEntityPicker({
         tabName: "Transforms",
-        itemName: "Table-based transform",
+        itemName: TABLE_BASED_TRANSFORM_NAME,
         itemLevel: 0,
         itemIcon: "refresh_downstream",
       });
@@ -175,7 +188,7 @@ describe("scenarios > dependencies > dependency graph", () => {
         cy.findByLabelText(TABLE_DISPLAY_NAME)
           .should("be.visible")
           .and("not.have.attr", "aria-selected", "true");
-        cy.findByLabelText("Table-based question")
+        cy.findByLabelText(TABLE_BASED_QUESTION_NAME)
           .should("be.visible")
           .and("have.attr", "aria-selected", "true");
       });
@@ -186,7 +199,7 @@ describe("scenarios > dependencies > dependency graph", () => {
         cy.findByLabelText(TABLE_DISPLAY_NAME)
           .should("be.visible")
           .and("have.attr", "aria-selected", "true");
-        cy.findByLabelText("Table-based question")
+        cy.findByLabelText(TABLE_BASED_QUESTION_NAME)
           .should("be.visible")
           .and("not.have.attr", "aria-selected", "true");
       });
@@ -203,7 +216,10 @@ describe("scenarios > dependencies > dependency graph", () => {
       groupTitle: string;
       dependentItemTitle: string;
     }) {
-      dependencyGraph().findByLabelText(itemTitle).contains(groupTitle).click();
+      dependencyGraph()
+        .findByLabelText(itemTitle)
+        .findByText(groupTitle)
+        .click();
       graphDependencyPanel()
         .findByLabelText(dependentItemTitle)
         .findByText(dependentItemTitle)
@@ -222,23 +238,55 @@ describe("scenarios > dependencies > dependency graph", () => {
       });
       verifyPanelNavigation({
         itemTitle: TABLE_DISPLAY_NAME,
-        groupTitle: "question",
-        dependentItemTitle: "Table-based question",
+        groupTitle: "1 question",
+        dependentItemTitle: TABLE_BASED_QUESTION_NAME,
       });
       verifyPanelNavigation({
         itemTitle: TABLE_DISPLAY_NAME,
-        groupTitle: "model",
-        dependentItemTitle: "Table-based model",
+        groupTitle: "1 model",
+        dependentItemTitle: TABLE_BASED_MODEL_NAME,
       });
       verifyPanelNavigation({
         itemTitle: TABLE_DISPLAY_NAME,
-        groupTitle: "metric",
-        dependentItemTitle: "Table-based metric",
+        groupTitle: "1 metric",
+        dependentItemTitle: TABLE_BASED_METRIC_NAME,
       });
       verifyPanelNavigation({
         itemTitle: TABLE_DISPLAY_NAME,
-        groupTitle: "transform",
-        dependentItemTitle: "Table-based transform",
+        groupTitle: "1 transform",
+        dependentItemTitle: TABLE_BASED_TRANSFORM_NAME,
+      });
+    });
+
+    it("should display dependencies for a question and navigate to them", () => {
+      getScoreboardTableId()
+        .then((tableId) => createTableBasedQuestion(tableId))
+        .then(({ body: card }) => {
+          createCardBasedQuestion(card.id);
+          createCardBasedModel(card.id);
+          createCardBasedMetric(card.id);
+          createCardBasedTransform(card.id);
+          visitGraphForEntity(card.id, "card");
+        });
+      verifyPanelNavigation({
+        itemTitle: TABLE_BASED_QUESTION_NAME,
+        groupTitle: "1 question",
+        dependentItemTitle: CARD_BASED_QUESTION_NAME,
+      });
+      verifyPanelNavigation({
+        itemTitle: TABLE_BASED_QUESTION_NAME,
+        groupTitle: "1 model",
+        dependentItemTitle: CARD_BASED_MODEL_NAME,
+      });
+      verifyPanelNavigation({
+        itemTitle: TABLE_BASED_QUESTION_NAME,
+        groupTitle: "1 metric",
+        dependentItemTitle: CARD_BASED_METRIC_NAME,
+      });
+      verifyPanelNavigation({
+        itemTitle: TABLE_BASED_QUESTION_NAME,
+        groupTitle: "1 transform",
+        dependentItemTitle: CARD_BASED_TRANSFORM_NAME,
       });
     });
   });
@@ -278,7 +326,7 @@ function getScoreboardTableId() {
 
 function createTableBasedQuestion(tableId: TableId) {
   return H.createQuestion({
-    name: "Table-based question",
+    name: TABLE_BASED_QUESTION_NAME,
     type: "question",
     query: {
       "source-table": tableId,
@@ -286,9 +334,19 @@ function createTableBasedQuestion(tableId: TableId) {
   });
 }
 
+function createCardBasedQuestion(cardId: CardId) {
+  return H.createQuestion({
+    name: CARD_BASED_QUESTION_NAME,
+    type: "question",
+    query: {
+      "source-table": `card__${cardId}`,
+    },
+  });
+}
+
 function createTableBasedModel(tableId: TableId) {
   return H.createQuestion({
-    name: "Table-based model",
+    name: TABLE_BASED_MODEL_NAME,
     type: "model",
     query: {
       "source-table": tableId,
@@ -296,9 +354,19 @@ function createTableBasedModel(tableId: TableId) {
   });
 }
 
+function createCardBasedModel(cardId: CardId) {
+  return H.createQuestion({
+    name: CARD_BASED_MODEL_NAME,
+    type: "model",
+    query: {
+      "source-table": `card__${cardId}`,
+    },
+  });
+}
+
 function createTableBasedMetric(tableId: TableId) {
   return H.createQuestion({
-    name: "Table-based metric",
+    name: TABLE_BASED_METRIC_NAME,
     type: "metric",
     query: {
       "source-table": tableId,
@@ -306,9 +374,19 @@ function createTableBasedMetric(tableId: TableId) {
   });
 }
 
+function createCardBasedMetric(cardId: CardId) {
+  return H.createQuestion({
+    name: CARD_BASED_METRIC_NAME,
+    type: "metric",
+    query: {
+      "source-table": `card__${cardId}`,
+    },
+  });
+}
+
 function createTableBasedTransform(tableName: string) {
   return H.createTransform({
-    name: "Table-based transform",
+    name: TABLE_BASED_TRANSFORM_NAME,
     source: {
       type: "query",
       query: {
@@ -317,6 +395,28 @@ function createTableBasedTransform(tableName: string) {
         native: {
           query: `SELECT team_name, score from ${tableName}`,
           "template-tags": {},
+        },
+      },
+    },
+    target: {
+      type: "table",
+      database: WRITABLE_DB_ID,
+      schema: "public",
+      name: "transform_table",
+    },
+  });
+}
+
+function createCardBasedTransform(cardId: CardId) {
+  return H.createTransform({
+    name: CARD_BASED_TRANSFORM_NAME,
+    source: {
+      type: "query",
+      query: {
+        database: WRITABLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": `card__${cardId}`,
         },
       },
     },
