@@ -9,6 +9,8 @@ import {
 } from "metabase-enterprise/metabot/hooks";
 import { useMetabotReactions } from "metabase-enterprise/metabot/hooks/use-metabot-reactions";
 
+import S from "./MetabotQuestion.module.css";
+
 export function MetabotChatHistory() {
   const metabot = useMetabotAgent();
   const { messages, errorMessages } = metabot;
@@ -33,6 +35,7 @@ export function MetabotChatHistory() {
       gap={0}
       style={{ overflowY: "auto" }}
       p="md"
+      className={S.chatHistory}
     >
       {hasMessages ? (
         <Messages
