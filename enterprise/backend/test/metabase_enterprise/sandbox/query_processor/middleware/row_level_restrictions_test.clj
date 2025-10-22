@@ -36,6 +36,8 @@
 (comment
   query-perms/keep-me)
 
+(def sandboxing-disabled-error #"Sandboxing is a paid feature")
+
 (defn- identifier
   ([table-key]
    (qp.store/with-metadata-provider (mt/id)
@@ -274,19 +276,29 @@
         (filter #(isa? driver/hierarchy % :sql))
         (mt/normal-drivers-with-feature :nested-queries)))
 
+(defmacro ^:private fails-without-token
+  "built to make small assertions that sandboxing DOES NOT WORK without a valid token enabling the feature, and that
+  instead an exception is thrown informing the user that sandboxing is disabled."
+  [& body]
+  `(testing "and it fails when the feature isn't available"
+     (mt/with-premium-features #{}
+       (~'is (~'thrown-with-msg? clojure.lang.ExceptionInfo sandboxing-disabled-error ~@body)))))
+
 (deftest e2e-test-1
   (mt/test-drivers (e2e-test-drivers)
     (testing "Basic test around querying a table by a user with segmented only permissions and a GTAP question that is a native query"
       (met/with-gtaps! {:gtaps {:venues (venues-category-native-gtap-def)}, :attributes {"cat" 50}}
         (is (= [[10]]
-               (run-venues-count-query)))))))
+               (run-venues-count-query)))
+        (fails-without-token (run-venues-count-query))))))
 
 (deftest e2e-test-2
   (mt/test-drivers (e2e-test-drivers)
     (testing "Basic test around querying a table by a user with segmented only permissions and a GTAP question that is MBQL"
       (met/with-gtaps! {:gtaps {:venues (venues-category-mbql-gtap-def)}, :attributes {"cat" 50}}
         (is (= [[10]]
-               (run-venues-count-query)))))))
+               (run-venues-count-query)))
+        (fails-without-token (run-venues-count-query))))))
 
 (deftest e2e-test-3
   (mt/test-drivers (e2e-test-drivers)
@@ -296,7 +308,8 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Query requires user attribute `cat`"
-             (mt/run-mbql-query venues {:aggregation [[:count]]})))))))
+             (mt/run-mbql-query venues {:aggregation [[:count]]})))
+        (fails-without-token (mt/run-mbql-query venues {:aggregation [[:count]]}))))))
 
 (deftest e2e-test-4
   (mt/test-drivers (e2e-test-drivers)
@@ -306,14 +319,16 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Query requires user attribute `cat`"
-             (mt/run-mbql-query venues {:aggregation [[:count]]})))))))
+             (mt/run-mbql-query venues {:aggregation [[:count]]})))
+        (fails-without-token (mt/run-mbql-query venues {:aggregation [[:count]]}))))))
 
 (deftest e2e-test-5
   (mt/test-drivers (e2e-test-drivers)
     (testing "Another basic test, same as above, but with a numeric string that needs to be coerced"
       (met/with-gtaps! {:gtaps {:venues (venues-category-mbql-gtap-def)}, :attributes {"cat" "50"}}
         (is (= [[10]]
-               (run-venues-count-query)))))))
+               (run-venues-count-query)))
+        (fails-without-token (run-venues-count-query))))))
 
 (deftest e2e-test-6
   (mt/test-drivers (e2e-test-drivers)
@@ -322,7 +337,8 @@
                                               :remappings {:cat ["variable" [:field (mt/id :venues :latitude) nil]]}}}
                         :attributes {"cat" "34.1018"}}
         (is (= [[3]]
-               (run-venues-count-query)))))))
+               (run-venues-count-query)))
+        (fails-without-token (run-venues-count-query))))))
 
 (deftest e2e-test-7
   (mt/test-drivers (e2e-test-drivers)
@@ -331,7 +347,8 @@
                                               :remappings {:something.different ["variable" ["template-tag" "cat"]]}}}
                         :attributes {"something.different" 50}}
         (is (= [[10]]
-               (run-venues-count-query)))))))
+               (run-venues-count-query)))
+        (fails-without-token (run-venues-count-query))))))
 
 (deftest e2e-test-8
   (mt/test-drivers (e2e-test-drivers)
@@ -341,7 +358,9 @@
                (mt/formatted-rows
                 [int str]
                 (mt/run-mbql-query venues
-                  {:limit 2, :order-by [[:asc [:field (mt/id :venues :id)]]]}))))))))
+                  {:limit 2, :order-by [[:asc [:field (mt/id :venues :id)]]]}))))
+        (fails-without-token (mt/run-mbql-query venues
+                               {:limit 2, :order-by [[:asc [:field (mt/id :venues :id)]]]}))))))
 
 (deftest e2e-test-9
   (mt/test-drivers (e2e-test-drivers)
@@ -349,7 +368,8 @@
       (met/with-gtaps! {:gtaps      {:venues (dissoc (venues-category-mbql-gtap-def) :query)}
                         :attributes {"cat" 50}}
         (is (= [[10]]
-               (run-venues-count-query)))))))
+               (run-venues-count-query)))
+        (fails-without-token (run-venues-count-query))))))
 
 (deftest e2e-test-10
   (mt/test-drivers (e2e-test-drivers)
@@ -357,7 +377,8 @@
       (met/with-gtaps! {:gtaps      {:venues (dissoc (venues-category-mbql-gtap-def) :query)}
                         :attributes {"cat" "50"}}
         (is (= [[10]]
-               (run-venues-count-query)))))))
+               (run-venues-count-query)))
+        (fails-without-token (run-venues-count-query))))))
 
 (deftest e2e-test-11
   (mt/test-drivers (e2e-test-drivers)
@@ -365,7 +386,10 @@
       (met/with-gtaps-for-user! :crowberto {:gtaps      {:venues (venues-category-mbql-gtap-def)}
                                             :attributes {"cat" 50}}
         (is (= [[100]]
-               (run-venues-count-query)))))))
+               (run-venues-count-query)))
+        (testing "this works the same without sandboxing enabled"
+          (mt/with-premium-features #{}
+            (= [[100]] (run-venues-count-query))))))))
 
 (deftest e2e-test-12
   (mt/test-drivers (e2e-test-drivers)
@@ -375,7 +399,13 @@
         (mt/with-test-user :rasta
           (request/as-admin
             (is (= [[100]]
-                   (run-venues-count-query)))))))))
+                   (run-venues-count-query)))))
+        (mt/with-premium-features #{}
+          (testing "This works the same without sandboxing enabled"
+            (mt/with-test-user :rasta
+              (request/as-admin
+                (= [[100]]
+                   (run-venues-count-query))))))))))
 
 (deftest e2e-test-13
   (mt/test-drivers (e2e-test-drivers)
@@ -395,7 +425,14 @@
                                  (qp/process-query {:database (mt/id)
                                                     :type     :query
                                                     :query    {:source-table (mt/id :venues)
-                                                               :limit        1}}))))))))))))))
+                                                               :limit        1}})))))
+                  (mt/with-premium-features #{}
+                    (testing "this works the same without sandboxing enabled"
+                      (mt/with-test-user :rasta
+                        (binding [qp.perms/*card-id* (u/the-id card)]
+                          (is (= 1
+                                 (count (mt/rows
+                                         (qp/process-query (mt/mbql-query venues {:limit 1})))))))))))))))))))
 
 (deftest e2e-test-14
   (mt/test-drivers (e2e-test-drivers)
@@ -412,7 +449,15 @@
               (is (= [[100]]
                      (mt/format-rows-by
                       [int]
-                      (mt/rows (qp/process-query query))))))))))))
+                      (mt/rows (qp/process-query query)))))))
+          (mt/with-premium-features #{}
+            (testing "this works the same without sandboxing enabled"
+              (mt/with-test-user :rasta
+                (mt/with-native-query-testing-context query
+                  (is (= [[100]]
+                         (mt/format-rows-by
+                          [int]
+                          (mt/rows (qp/process-query query))))))))))))))
 
 ;; Test that we can follow FKs to related tables and breakout by columns on those related tables. This test has
 ;; several things wrapped up which are detailed below
@@ -437,7 +482,8 @@
                                      :venues   nil}
                         :attributes {"user" 5}}
         (is (= [[1 10] [2 36] [3 4] [4 5]]
-               (run-checkins-count-broken-out-by-price-query)))))))
+               (run-checkins-count-broken-out-by-price-query)))
+        (fails-without-token (run-checkins-count-broken-out-by-price-query))))))
 
 (deftest e2e-fks-test-2
   (mt/test-drivers (row-level-restrictions-fk-drivers)
@@ -448,7 +494,8 @@
                                      :venues   (venues-price-mbql-gtap-def)}
                         :attributes {"user" 5, "price" 1}}
         (is (= #{[nil 45] [1 10]}
-               (set (run-checkins-count-broken-out-by-price-query))))))))
+               (set (run-checkins-count-broken-out-by-price-query))))
+        (fails-without-token (run-checkins-count-broken-out-by-price-query))))))
 
 (deftest e2e-fks-test-3
   (mt/test-drivers (row-level-restrictions-fk-drivers)
@@ -457,7 +504,8 @@
                                      :venues   (dissoc (venues-price-mbql-gtap-def) :query)}
                         :attributes {"user" 5, "price" 1}}
         (is (= #{[nil 45] [1 10]}
-               (set (run-checkins-count-broken-out-by-price-query))))))))
+               (set (run-checkins-count-broken-out-by-price-query))))
+        (fails-without-token (run-checkins-count-broken-out-by-price-query))))))
 
 (deftest e2e-fks-test-4
   (mt/test-drivers (row-level-restrictions-fk-drivers)
@@ -475,7 +523,11 @@
                   (mt/run-mbql-query checkins
                     {:aggregation [[:count]]
                      :order-by    [[:asc $venue_id->venues.price]]
-                     :breakout    [$venue_id->venues.price $user_id->users.name]}))))))))))
+                     :breakout    [$venue_id->venues.price $user_id->users.name]}))))))
+        (fails-without-token (mt/run-mbql-query checkins
+                               {:aggregation [[:count]]
+                                :order-by [[:asc $venue_id->venues.price]]
+                                :breakout [$venue_id->venues.price $user_id->users.name]}))))))
 
 (defn- run-query-returning-remark! [run-query-fn]
   (let [remark (atom nil)
@@ -508,25 +560,31 @@
                 (mt/rows
                  (mt/run-mbql-query venues
                    {:aggregation [[:count]]
-                    :breakout    [$price]})))))))))
+                    :breakout    [$price]})))))
+        (fails-without-token (mt/run-mbql-query venues
+                               {:aggregation [[:count]]
+                                :breakout [$price]}))))))
 
 (deftest sql-with-join-test
   (mt/test-drivers (into #{}
                          (filter #(driver.u/supports? % :parameterized-sql nil))
-                         (row-level-restrictions-fk-sql-drivers))
+                         (sandboxing-fk-sql-drivers))
     (testing (str "If we use a parameterized SQL GTAP that joins a Table the user doesn't have access to, does it "
                   "still work? (EE #230) If we pass the query in directly without anything that would require nesting "
                   "it, it should work")
-      (is (= [[2  1]
-              [72 1]]
-             (mt/format-rows-by
-              [int int identity int]
-              (mt/rows
-               (met/with-gtaps! {:gtaps      {:checkins (parameterized-sql-with-join-gtap-def)}
-                                 :attributes {"user" 1}}
+      (met/with-gtaps! {:gtaps      {:checkins (parameterized-sql-with-join-gtap-def)}
+                        :attributes {"user" 1}}
+        (is (= [[2  1]
+                [72 1]]
+               (mt/format-rows-by
+                [int int identity int]
+                (mt/rows
                  (mt/run-mbql-query checkins
                    {:order-by [[:asc $id]]
-                    :limit 2})))))))))
+                    :limit 2})))))
+        (fails-without-token (mt/run-mbql-query checkins
+                               {:order-by [[:asc $id]]
+                                :limit 2}))))))
 
 (deftest sql-with-join-test-2
   (mt/test-drivers (into #{}
@@ -575,7 +633,8 @@
         (met/with-gtaps! {:gtaps      {:venues (venues-category-mbql-gtap-def)}
                           :attributes {"cat" 50}}
           (is (=? (expected-cols)
-                  (cols)))))
+                  (cols)))
+          (fails-without-token (cols))))
 
       (testing "A query with an equivalent native query sandbox should have the same metadata"
         (met/with-gtaps! {:gtaps {:venues {:query (mt/native-query
@@ -589,7 +648,8 @@
                                            :remappings {:cat ["variable" ["template-tag" "cat"]]}}}
                           :attributes {"cat" 50}}
           (is (=? (expected-cols)
-                  (cols)))))
+                  (cols)))
+          (fails-without-token (cols))))
 
       (testing (str "If columns are added/removed/reordered we should still merge in metadata for the columns we're "
                     "able to match from the original Table")
@@ -605,7 +665,8 @@
                           :attributes {"cat" 50}}
           (let [[id-col name-col _ _ longitude-col price-col] (expected-cols)]
             (is (=? [name-col id-col longitude-col price-col]
-                    (cols)))))))))
+                    (cols)))
+            (fails-without-token (cols))))))))
 
 (deftest sql-with-joins-test
   (testing "Should be able to use a Saved Question with no source Metadata as a GTAP (EE #525)"
@@ -633,7 +694,14 @@
                              :condition    [:= $venue_id &Venue.venues.id]
                              :alias        "Venue"}]
                  :order-by [[:asc $id]]
-                 :limit    3})))))))
+                 :limit    3}))))
+      (fails-without-token (qp/process-query (mt/mbql-query checkins
+                                               {:joins [{:fields :all
+                                                         :source-table $$venues
+                                                         :condition [:= $venue_id &Venue.venues.id]
+                                                         :alias "Venue"}]
+                                                :order-by [[:asc $id]]
+                                                :limit 3}))))))
 
 (deftest run-sql-queries-to-infer-columns-test
   (testing "Run SQL queries to infer the columns when used as GTAPS (#13716)\n"
@@ -657,6 +725,14 @@
           (testing "GTAP Card should not yet current have result_metadata"
             (is (= nil
                    (t2/select-one-fn :result_metadata :model/Card :id venues-gtap-card-id))))
+          (fails-without-token (mt/run-mbql-query venues
+                                 {:fields   [$id $name] ; joined fields get appended automatically because we specify :all :below
+                                  :joins    [{:fields       :all
+                                              :source-table $$venues
+                                              :condition    [:= $id &Venue.id]
+                                              :alias        "Venue"}]
+                                  :order-by [[:asc $id]]
+                                  :limit    3}))
           (testing "Should be able to run the query"
             (is (= [[1 "Red Medicine" 1 "Red Medicine"]]
                    (mt/rows
@@ -715,7 +791,8 @@
        (fn [{:keys [run-query]}]
          (testing "Query without weird stuff going on should work"
            (is (= [[1 "Red Medicine" 1 "Red Medicine"]]
-                  (mt/rows (run-query))))))))))
+                  (mt/rows (run-query))))
+           (fails-without-token (run-query))))))))
 
 (deftest run-queries-to-infer-columns-error-on-column-type-changes-test-2
   (testing "If we have to run a query to infer columns (see above) we should validate column constraints (#14099)\n"
@@ -729,7 +806,8 @@
            (is (thrown-with-msg?
                 clojure.lang.ExceptionInfo
                 #"Sandbox Questions can't return columns that have different types than the Table they are sandboxing"
-                (run-query)))))))))
+                (run-query))))
+         (fails-without-token (run-query)))))))
 
 (deftest run-queries-to-infer-columns-error-on-column-type-changes-test-3
   (testing "If we have to run a query to infer columns (see above) we should validate column constraints (#14099)\n"
@@ -742,7 +820,8 @@
          (fn [{:keys [run-query]}]
            (testing "Should throw an Exception when running the query"
              (is (= [[1 "Red Medicine" 1 "Red Medicine"]]
-                    (mt/rows (run-query)))))))))))
+                    (mt/rows (run-query)))))
+           (fails-without-token (run-query))))))))
 
 (deftest dont-cache-sandboxes-test
   (cache-test/with-mock-cache! [save-chan]
@@ -1232,3 +1311,10 @@
         (is (nil? (t2/select-one-fn :result_metadata :model/Card sandbox-card-id)))
         (is (= 10 (count (mt/rows (streaming.test-util/process-query-basic-streaming :api (mt/mbql-query venues))))))
         (is (not (nil? (t2/select-one-fn :result_metadata :model/Card sandbox-card-id))))))))
+
+(deftest sandboxing-throws-on-ee-without-token
+  (mt/test-drivers (e2e-test-drivers)
+    (testing "Basic test around querying a table by a user with segmented only permissions and a GTAP question that is a native query"
+      (met/with-gtaps! {:gtaps {:venues (venues-category-native-sandbox-def)}, :attributes {"cat" 50}}
+        (mt/with-premium-features #{}
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo sandboxing-disabled-error (run-venues-count-query))))))))
