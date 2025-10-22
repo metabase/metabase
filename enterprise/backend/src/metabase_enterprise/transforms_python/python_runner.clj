@@ -207,7 +207,7 @@
   (let [{:keys [objects]} shared-storage
         {:keys [output output-manifest events]} objects
         url-for-path             (fn [path] (:url (get objects path)))
-        table-name->url          (update-vals #p table-name->id #(url-for-path [:table % :data]))
+        table-name->url          (update-vals table-name->id #(url-for-path [:table % :data]))
         table-name->manifest-url (update-vals table-name->id #(url-for-path [:table % :manifest]))
         payload                  {:code                code
                                   :library             (t2/select-fn->fn :path :source :model/PythonLibrary)
