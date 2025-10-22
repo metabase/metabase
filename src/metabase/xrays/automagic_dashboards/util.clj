@@ -136,6 +136,6 @@
   [query f & args]
   (when (seq query)
     (case (lib/normalized-mbql-version query)
-      :mbql-version/legacy (binding [lib.schema/*HACK-disable-join-alias-in-field-ref-validation* true]
+      :mbql-version/legacy (binding [lib.schema/*HACK-disable-ref-validation* true]
                              (apply f (lib-be/normalize-query query) args))
       :mbql-version/mbql5  (apply f query args))))
