@@ -37,7 +37,7 @@ export function getListRequest(
 function isMatchingSearchQuery(
   node: DependencyNode,
   lowerCaseSearchQuery: string,
-) {
+): boolean {
   return getNodeLabel(node).toLowerCase().includes(lowerCaseSearchQuery);
 }
 
@@ -95,14 +95,14 @@ export function canFilterByOption(
   }
 }
 
-export function canFilter(groupType: DependencyGroupType) {
+export function canFilter(groupType: DependencyGroupType): boolean {
   return FILTER_OPTIONS.some((option) => canFilterByOption(groupType, option));
 }
 
 function isMatchingFilters(
   node: DependencyNode,
   filterOptions: FilterOption[],
-) {
+): boolean {
   if (filterOptions.length === 0) {
     return true;
   }
@@ -165,7 +165,7 @@ function compareNodes(
   node1: DependencyNode,
   node2: DependencyNode,
   { column, direction }: SortOptions,
-) {
+): number {
   const result = COMPARATORS[column](node1, node2);
   const factor = direction === "asc" ? 1 : -1;
   return result * factor;
@@ -174,7 +174,7 @@ function compareNodes(
 export function getVisibleNodes(
   nodes: DependencyNode[],
   options: SearchOptions,
-) {
+): DependencyNode[] {
   const lowerCaseSearchQuery = options.searchQuery.toLowerCase();
   const visibleNodes = nodes.filter(
     (node) =>
