@@ -11,13 +11,7 @@ module.exports = {
     // Rebase/inline URLs
     require("postcss-url")(),
 
-    /**
-     * Import custom media queries and provide them globally available
-     *
-     * In a perfect world we should provide only breakpoints with custom media
-     * definition, but some core files are not loaded elsewhere, so we add it here
-     * e.g. not importing layout.module.css breaks metabot input as it has @media definitions
-     */
+    // import custom media queries and provide them globally available
     require("@csstools/postcss-global-data")({
       files: ["frontend/src/metabase/css/core/breakpoints.module.css"],
     }),
