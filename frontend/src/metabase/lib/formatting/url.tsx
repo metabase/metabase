@@ -3,6 +3,7 @@ import cx from "classnames";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import Link from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";
 import { getDataFromClicked } from "metabase-lib/v1/parameters/utils/click-behavior";
 import { isURL } from "metabase-lib/v1/types/utils/isa";
@@ -42,7 +43,8 @@ export function formatUrl(value: string, options: OptionsType = {}) {
     const text = getLinkText(value, options);
     const className = cx(CS.link, CS.linkWrappable);
 
-    if (isSameOrSiteUrlOrigin(url)) {
+    // on the react sdk we treat all user provided urls as external links
+    if (isSameOrSiteUrlOrigin(url) && !isEmbeddingSdk()) {
       return (
         <Link className={className} to={url}>
           {text}
