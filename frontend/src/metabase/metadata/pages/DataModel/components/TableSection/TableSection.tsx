@@ -16,6 +16,8 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
   ActionIcon,
+  Card,
+  Flex,
   Group,
   Icon,
   Loader,
@@ -180,6 +182,10 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
           onNameChange={handleNameChange}
           onDescriptionChange={handleDescriptionChange}
         />
+
+        <Flex>
+          <Card>Visibility: {table.visibility_type2 ?? "N/A"}</Card>
+        </Flex>
 
         <Group
           align="center"

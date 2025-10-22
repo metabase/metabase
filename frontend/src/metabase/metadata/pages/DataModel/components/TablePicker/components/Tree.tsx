@@ -8,6 +8,7 @@ import { useExpandedState, useTableLoader } from "../hooks";
 import type { ChangeOptions, DatabaseNode, TreePath } from "../types";
 import { flatten } from "../utils";
 
+import { EditVisibilityType2Modal } from "./EditVisibilityType2Modal";
 import { EmptyState } from "./EmptyState";
 import { Results } from "./Results";
 
@@ -21,6 +22,7 @@ export function Tree({ path, onChange }: Props) {
   const { isExpanded, toggle } = useExpandedState(path);
   const { tree, reload } = useTableLoader(path);
   const [selectedItems, setSelectedItems] = useState<Set<TableId>>(new Set());
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const items = flatten(tree, {
     isExpanded,
@@ -71,6 +73,10 @@ export function Tree({ path, onChange }: Props) {
     }
   }, [databaseId, schemaName, tree, toggle, isExpanded, onChange]);
 
+  function onEditSelectedItems() {
+    setIsModalOpen(true);
+  }
+
   if (isEmpty) {
     return <EmptyState title={t`No data to show`} />;
   }
@@ -88,10 +94,6 @@ export function Tree({ path, onChange }: Props) {
     });
   }
 
-  function onEditSelectedItems() {
-    console.log({ selectedItems });
-  }
-
   return (
     <>
       <Results
@@ -107,10 +109,19 @@ export function Tree({ path, onChange }: Props) {
       <Flex justify="center">
         {selectedItems.size > 0 && (
           <Button onClick={onEditSelectedItems}>
-            Edit {selectedItems.size} items
+            {t`Edit ${selectedItems.size} items`}
           </Button>
         )}
       </Flex>
+      <EditVisibilityType2Modal
+        tables={selectedItems}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onUpdate={() => {
+          reload(path);
+          setSelectedItems(new Set());
+        }}
+      />
     </>
   );
 }
