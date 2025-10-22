@@ -33,6 +33,13 @@ export const GetCodeStep = () => {
 
   const authType = settings.useExistingUserSession ? "user-session" : "sso";
 
+  const handleCodeSnippetCopied = () => {
+    // Embed Flow: track code copied
+    trackEmbedWizardCodeCopied(
+      settings.useExistingUserSession ? "user_session" : "sso",
+    );
+  };
+
   return (
     <Stack gap="md">
       <Card p="md">
@@ -102,12 +109,14 @@ export const GetCodeStep = () => {
         </Text>
 
         <Stack gap="sm">
-          <CodeEditor
-            language="html"
-            value={snippet}
-            readOnly
-            lineNumbers={false}
-          />
+          <div onCopy={handleCodeSnippetCopied}>
+            <CodeEditor
+              language="html"
+              value={snippet}
+              readOnly
+              lineNumbers={false}
+            />
+          </div>
 
           <CopyButton value={snippet}>
             {({ copied, copy }: { copied: boolean; copy: () => void }) => (
@@ -115,7 +124,7 @@ export const GetCodeStep = () => {
                 leftSection={<Icon name="copy" size={16} />}
                 onClick={() => {
                   copy();
-                  trackEmbedWizardCodeCopied();
+                  handleCodeSnippetCopied();
                 }}
               >
                 {copied ? t`Copied!` : t`Copy code`}

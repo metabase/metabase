@@ -461,7 +461,11 @@
     ;;
     ;; Added by [[metabase.lib.metadata.result-metadata]] primarily for legacy/backward-compatibility purposes with
     ;; legacy viz settings. This should not be used for anything other than that.
-    [:field-ref {:optional true} [:maybe [:ref :metabase.legacy-mbql.schema/Reference]]]
+    [:field-ref {:optional true} [:maybe #?(:cljs [:or
+                                                   [:ref :metabase.legacy-mbql.schema/Reference]
+                                                   [:fn {:error/message "JS array"}
+                                                    array?]]
+                                            :clj  [:ref :metabase.legacy-mbql.schema/Reference])]]
     ;;
     [:source {:optional true} [:maybe [:ref ::column.legacy-source]]]
     ;;

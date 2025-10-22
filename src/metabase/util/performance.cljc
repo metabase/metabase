@@ -332,7 +332,7 @@
           (with-meta (meta form))
           outer))
 
-    (vector? form)
+    (and (vector? form) (not (map-entry? form)))
     (-> (reduce-kv (fn [v idx el]
                      (let [el' (inner el)]
                        (if (identical? el' el)

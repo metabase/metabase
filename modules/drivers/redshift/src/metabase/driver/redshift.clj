@@ -460,7 +460,7 @@
 (defmethod sql-jdbc.conn/connection-details->spec :redshift
   [_ {:keys [host port db dbname], :as opts}]
   (when (and db dbname)
-    (throw (ex-info "Redshift connection details cannot contain both 'db' and 'dbname' options" {})))
+    (log/warn "Redshift connection details should not contain both 'db' and 'dbname' options. Ignoring 'dbname'."))
   (sql-jdbc.common/handle-additional-options
    (merge
     {:classname                     "com.amazon.redshift.jdbc42.Driver"
