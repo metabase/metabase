@@ -8,6 +8,8 @@ import { Box, Card } from "metabase/ui";
 import { useListNodeDependentsQuery } from "metabase-enterprise/api";
 import type { DependencyGroupType, DependencyNode } from "metabase-types/api";
 
+import { DEPENDENTS_SEARCH_THRESHOLD } from "../constants";
+
 import S from "./GraphDependencyPanel.module.css";
 import { PanelBody } from "./PanelBody";
 import { PanelHeader } from "./PanelHeader";
@@ -68,7 +70,7 @@ export function GraphDependencyPanel({
         searchText={searchText}
         filterOptions={filterOptions}
         sortOptions={sortOptions}
-        hasSearch={nodes.length > 1}
+        hasSearch={nodes.length >= DEPENDENTS_SEARCH_THRESHOLD}
         onSearchTextChange={setSearchText}
         onFilterOptionsChange={setFilterOptions}
         onSortOptionsChange={setSortOptions}
