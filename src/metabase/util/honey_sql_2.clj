@@ -441,6 +441,11 @@
 (defn- pg-interval [amount unit]
   (with-database-type-info [::postgres-interval amount unit] "interval"))
 
+(defn- ->pg-timestamp
+  "Cast to timestamp, preserving timestamptz if present."
+  [honeysql-form]
+  (cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "timestamp with time zone" "date"} honeysql-form))
+
 (defmulti add-interval-honeysql-form
   "Return a HoneySQL form that represents addition of some temporal interval to the original `hsql-form`.
   `unit` is one of the units listed in [[metabase.util.date-2/add-units]].
@@ -467,7 +472,7 @@
     (cast "date" (+ hsql-form (pg-interval amount unit)))
 
     :else
-    (let [hsql-form (->timestamp hsql-form)]
+    (let [hsql-form (->pg-timestamp hsql-form)]
       (-> (+ hsql-form (pg-interval amount unit))
           (with-type-info (type-info hsql-form))))))
 
@@ -475,7 +480,7 @@
   [db-type hsql-form amount unit]
   ;; MySQL doesn't support `:millisecond` as an option, but does support fractional seconds
   (if (= unit :millisecond)
-    (recur db-type hsql-form (/ amount 1000.0) :second)
+    (recur db-type hsql-form (clojure.core// amount 1000.0) :second)
     [:date_add hsql-form [:raw (clojure.core/format "INTERVAL %s %s" amount (name unit))]]))
 
 (defn- dateadd-h2 [unit amount expr]
@@ -498,7 +503,7 @@
     ;; for application DB purposes) convert to `:millisecond`
     (and (= unit :second)
          (not (zero? (rem amount 1))))
-    (recur driver hsql-form (* amount 1000.0) :millisecond)
+    (recur driver hsql-form (clojure.core/* amount 1000.0) :millisecond)
 
     :else
     (dateadd-h2 unit amount hsql-form)))
