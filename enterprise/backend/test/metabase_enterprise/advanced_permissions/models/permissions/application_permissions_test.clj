@@ -46,10 +46,12 @@
       (with-new-group-and-current-graph group-id current-graph
         (let [new-graph (assoc-in current-graph [:groups group-id] {:setting      :yes
                                                                     :monitoring   :no
-                                                                    :subscription :no})
+                                                                    :subscription :no
+                                                                    :transforms   :no})
               _ (g-perms/update-graph! new-graph)
               updated-graph (g-perms/graph)]
-          (is (partial= (:groups new-graph) (:groups updated-graph)))
+          (is (= (:groups new-graph) (:groups updated-graph)))
+          (is (=? (:groups new-graph) (:groups updated-graph)))
           (is (= (inc (:revision current-graph)) (:revision updated-graph)))
           (is (< initial-revision (a-perm-revision/latest-id)))))))
 
@@ -94,7 +96,8 @@
       (let [current-graph         (g-perms/graph)
             new-graph             (assoc-in current-graph [:groups group-id] {:setting      :yes
                                                                               :subscription :yes
-                                                                              :monitoring   :no})
+                                                                              :monitoring   :no
+                                                                              :transforms   :no})
             _                     (g-perms/update-graph! new-graph)
             updated-graph         (g-perms/graph)]
         (is (= (:groups new-graph) (:groups updated-graph)))
