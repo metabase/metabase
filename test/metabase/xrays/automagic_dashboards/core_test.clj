@@ -913,15 +913,16 @@
           (mt/with-test-user :rasta
             (automagic-dashboards.test/with-rollback-only-transaction
               (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id) =
-              (let [dashboard                   (magic/automagic-analysis entity {:cell-query cell-query :show :all})
-                    dashcards                   (:dashcard dashboard)
-                    _                           (is (pos? (count dashcards)))
-                    all-dashcard-filters        (keep #(some-> %
-                                                               (get-in [:card :dataset_query])
-                                                               not-empty
-                                                               lib/filters)
-                                                      dashcards)
+              (let [all-dashcard-filters        (->> (magic/automagic-analysis entity {:cell-query cell-query :show :all})
+                                                     :dashcards
+                                                     (keep #(some-> %
+                                                                    (get-in [:card :dataset_query])
+                                                                    not-empty
+                                                                    lib/filters
+                                                                    #_(magic.util/do-with-legacy-query get-in [:query :filter]))))
                     filter-contains-cell-query? #(= cell-query (some #{cell-query} %))]
+                (is (= :wow
+                       all-dashcard-filters))
                 (is (pos? (count all-dashcard-filters)))
                 (is (every? filter-contains-cell-query? all-dashcard-filters))))))))))
 
