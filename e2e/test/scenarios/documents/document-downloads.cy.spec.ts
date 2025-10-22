@@ -134,12 +134,11 @@ describe("scenarios > documents > downloads", () => {
     // Should see permission denied message
     cy.findByRole("status").should(
       "contain.text",
-      "Sorry, you don't have permission to see that.",
+      "Sorry, you don’t have permission to see that.",
     );
 
-    // No card menu should be visible
-    H.documentContent()
-      .findByRole("button", { name: /ellipsis/ })
-      .should("not.exist");
+    // Document content should not render and no card menu should be visible
+    H.documentContent().should("not.exist");
+    cy.findByRole("button", { name: /ellipsis/ }).should("not.exist");
   });
 });
