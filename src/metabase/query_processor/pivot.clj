@@ -385,7 +385,7 @@
         metadata-provider  (or (:lib/metadata query)
                                (lib-be/application-database-metadata-provider (:database query)))
         query              (lib/query metadata-provider query)
-        unique-name-fn     (lib.util/unique-name-generator)
+        unique-name-fn     (lib/unique-name-generator)
         returned-columns   (->> (lib/returned-columns query)
                                 (mapv #(update % :name unique-name-fn)))
         aggregations       (filter #(= (:lib/source %) :source/aggregations)

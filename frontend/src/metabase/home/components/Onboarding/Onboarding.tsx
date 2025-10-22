@@ -569,8 +569,8 @@ export const Onboarding = () => {
               <Accordion.Panel>
                 <Stack gap="lg">
                   <VideoTutorial
-                    id="pbkECx-1Cos"
-                    si="r1KRkR0CJ3BmHOOE"
+                    id="MPw5__mVg58"
+                    si="jaUgne1VDg6VXprJ"
                     title="How to create an alert?"
                   />
                   {shouldConfigureCommunicationChannels && (

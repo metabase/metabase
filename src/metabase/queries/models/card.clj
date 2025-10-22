@@ -670,31 +670,28 @@
   (update card :result_metadata (fn [cols]
                                   (mapv #(dissoc % :ident :model/inner_ident) cols))))
 
-(mu/defn- upgrade-card-schema-to-latest :- [:map
-                                            [:result_metadata {:optional true} [:maybe
-                                                                                [:sequential
-                                                                                 ::lib.schema.metadata/lib-or-legacy-column]]]]
-  [card]
-  (if (and (:id card)
-           (or (:dataset_query card)
-               (:result_metadata card)
-               (:database_id card)
-               (:type card)))
-    ;; A plausible select to run the after-select logic on.
-    (if-not (:card_schema card)
-      ;; Plausible but no :card_schema - error.
-      (throw (ex-info "Cannot SELECT a Card without including :card_schema"
-                      {:card-id (:id card)}))
-      ;; Plausible and has the schema, so run the upgrades over it.
-      (loop [card card]
-        (if (= (:card_schema card) current-schema-version)
-          card
-          (let [new-version (inc (:card_schema card))]
-            (recur (assoc (upgrade-card-schema-to card new-version)
-                          :card_schema new-version))))))
-
-    ;; Some sort of odd query like an aggregation over cards. Just return it as-is.
-    card))
+(mu/defn- upgrade-card-schema-to-latest :- ::queries.schema/card
+  [card :- :map]
+  (-> (if (and (:id card)
+               (or (:dataset_query card)
+                   (:result_metadata card)
+                   (:database_id card)
+                   (:type card)))
+        ;; A plausible select to run the after-select logic on.
+        (if-not (:card_schema card)
+          ;; Plausible but no :card_schema - error.
+          (throw (ex-info "Cannot SELECT a Card without including :card_schema"
+                          {:card-id (:id card)}))
+          ;; Plausible and has the schema, so run the upgrades over it.
+          (loop [card card]
+            (if (= (:card_schema card) current-schema-version)
+              card
+              (let [new-version (inc (:card_schema card))]
+                (recur (assoc (upgrade-card-schema-to card new-version)
+                              :card_schema new-version))))))
+        ;; Some sort of odd query like an aggregation over cards. Just return it as-is.
+        card)
+      queries.schema/normalize-card))
 
 (t2/define-after-select :model/Card
   [card]

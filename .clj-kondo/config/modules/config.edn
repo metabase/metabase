@@ -119,9 +119,9 @@
            metabase.analyze.query-results}
    :uses #{config
            driver
-           legacy-mbql
            lib
            models
+           query-processor
            sync
            util}}
 
@@ -596,7 +596,6 @@
            metabase.legacy-mbql.schema
            metabase.legacy-mbql.util}
    :uses #{lib
-           models
            types
            util}}
 
@@ -711,8 +710,7 @@
 
   models
   {:team "DevEx"
-   :api  #{metabase.models.dispatch
-           metabase.models.humanization
+   :api  #{metabase.models.humanization
            metabase.models.init
            metabase.models.interface
            metabase.models.resolution
@@ -785,7 +783,6 @@
    :uses #{api
            app-db
            classloader
-           legacy-mbql
            lib
            lib-be
            models
@@ -924,7 +921,6 @@
            eid-translation
            embedding
            events
-           legacy-mbql
            lib
            lib-be
            models
@@ -1335,7 +1331,6 @@
            appearance
            driver
            events
-           legacy-mbql
            lib
            model-persistence
            models
