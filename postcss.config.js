@@ -3,15 +3,6 @@
 
 const path = require("path");
 
-const glob = require("glob");
-
-const SRC_PATH = path.join(__dirname, "frontend/src/metabase");
-const CSS_SRC = glob
-  .sync(path.join(SRC_PATH, "css/core/**/*.css"))
-  // index.css imports all other files inside it
-  // we can't just use index.css as styles are not applied correctly
-  .filter((file) => !file.includes("index.css"));
-
 module.exports = {
   plugins: [
     // Import other CSS files
@@ -28,7 +19,7 @@ module.exports = {
      * e.g. not importing layout.module.css breaks metabot input as it has @media definitions
      */
     require("@csstools/postcss-global-data")({
-      files: CSS_SRC,
+      files: ["frontend/src/metabase/css/core/breakpoints.module.css"],
     }),
 
     // Modern CSS features & your custom-media definitions
