@@ -433,7 +433,7 @@
   `amount` is usually an integer, but can be floating-point for units like seconds.
 
   This multimethod can be extended by drivers in their respective namespaces."
-  {:arglists '([db-type hsql-form amount unit])}
+  {:added "0.34.2" :arglists '([db-type hsql-form amount unit])}
   (fn [db-type _hsql-form _amount _unit]
     (keyword db-type)))
 
