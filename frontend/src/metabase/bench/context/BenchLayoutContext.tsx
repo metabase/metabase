@@ -1,4 +1,11 @@
-import { type ReactNode, createContext, useContext, useState } from "react";
+import {
+  type ReactNode,
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+} from "react";
 
 interface BenchLayoutContextValue {
   onTogglePanel?: () => void;
@@ -17,19 +24,25 @@ export function BenchLayoutProvider({ children }: { children: ReactNode }) {
     isCollapsed: boolean;
   } | null>(null);
 
-  const registerPanelControl = (onToggle: () => void, isCollapsed: boolean) => {
-    setPanelControl({ onToggle, isCollapsed });
-    return () => setPanelControl(null);
-  };
+  const registerPanelControl = useCallback(
+    (onToggle: () => void, isCollapsed: boolean) => {
+      setPanelControl({ onToggle, isCollapsed });
+      return () => setPanelControl(null);
+    },
+    [],
+  );
+
+  const contextValue = useMemo(
+    () => ({
+      onTogglePanel: panelControl?.onToggle,
+      isPanelCollapsed: panelControl?.isCollapsed,
+      registerPanelControl,
+    }),
+    [panelControl?.onToggle, panelControl?.isCollapsed, registerPanelControl],
+  );
 
   return (
-    <BenchLayoutContext.Provider
-      value={{
-        onTogglePanel: panelControl?.onToggle,
-        isPanelCollapsed: panelControl?.isCollapsed,
-        registerPanelControl,
-      }}
-    >
+    <BenchLayoutContext.Provider value={contextValue}>
       {children}
     </BenchLayoutContext.Provider>
   );

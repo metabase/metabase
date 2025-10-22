@@ -1,5 +1,11 @@
 import { useDisclosure } from "@mantine/hooks";
-import { type ReactElement, type ReactNode, useEffect, useRef } from "react";
+import {
+  type ReactElement,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+} from "react";
 import {
   type ImperativePanelHandle,
   Panel,
@@ -26,11 +32,15 @@ export const BenchLayout = ({
   const [isCollapsed, { toggle: toggleCollapsed }] = useDisclosure(false);
   const { registerPanelControl } = useBenchLayoutContext();
 
+  const stableToggleCollapsed = useCallback(() => {
+    toggleCollapsed();
+  }, [toggleCollapsed]);
+
   useEffect(() => {
     if (nav) {
-      return registerPanelControl(toggleCollapsed, isCollapsed);
+      return registerPanelControl(stableToggleCollapsed, isCollapsed);
     }
-  }, [isCollapsed, nav, registerPanelControl, toggleCollapsed]);
+  }, [isCollapsed, nav, registerPanelControl, stableToggleCollapsed]);
 
   return (
     <PanelGroup
