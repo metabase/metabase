@@ -1,11 +1,16 @@
 /* eslint-env node */
 /* eslint-disable import/no-commonjs */
+
 const path = require("path");
 
 const glob = require("glob");
 
 const SRC_PATH = path.join(__dirname, "frontend/src/metabase");
-const CSS_SRC = glob.sync(path.join(SRC_PATH, "css/**/*.css"));
+const CSS_SRC = glob
+  .sync(path.join(SRC_PATH, "css/core/**/*.css"))
+  // index.css imports all other files inside it
+  // we can't just use index.css as styles are not applied correctly
+  .filter((file) => !file.includes("index.css"));
 
 module.exports = {
   plugins: [
@@ -15,10 +20,19 @@ module.exports = {
     // Rebase/inline URLs
     require("postcss-url")(),
 
+    /**
+     * Import custom media queries and provide them globally available
+     *
+     * in perfect world we should provide only breakpoints with custom media
+     * definition, but some core files are not loaded elsewhere, so we add it here
+     */
+    require("@csstools/postcss-global-data")({
+      files: CSS_SRC,
+    }),
+
     // Modern CSS features & your custom-media definitions
     require("postcss-preset-env")({
       stage: 2,
-      importFrom: CSS_SRC,
       features: {
         "custom-media-queries": true,
         "custom-properties": true,
