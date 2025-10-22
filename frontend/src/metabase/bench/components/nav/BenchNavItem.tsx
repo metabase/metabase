@@ -7,13 +7,19 @@ import { Icon, NavLink } from "metabase/ui";
 
 import S from "./BenchNavItem.module.css";
 
+interface BenchNavItemProps extends NavLinkProps {
+  url: string;
+  icon: IconName;
+  onClick?: () => void;
+}
+
 export const BenchNavItem = ({
   url,
   icon,
   label,
   className,
   ...rest
-}: { url: string; icon: IconName } & NavLinkProps) => {
+}: BenchNavItemProps) => {
   const pathname = usePath();
   const isActive = pathname?.includes(url);
 
