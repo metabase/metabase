@@ -29,21 +29,25 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Representation Normalization ;;
 
+;; TODO: Move to representations repo
 (defmulti type->schema
   "Returns the schema for a given type keyword.
    Each v0 namespace implements this for its own type."
   {:arglists '([{:keys [version type]}])}
   (juxt :version :type))
 
+;; TODO: move to representations repo
 (defmethod type->schema :default
   [{:keys [version type] :as schema}]
   (throw (ex-info (format "Unknown version: %s or type: %s" version type) schema)))
 
+;; TODO: move to representations repo
 (defn normalize-type
   "Convert the type and version of the representation to keywords."
   [representation]
   (reduce #(update %1 %2 keyword) representation [:version :type]))
 
+;; TODO: move to representations repo
 (defn normalize-representation
   "Ensures type is set correctly and de-encodes base64 if necessary."
   [representation]
