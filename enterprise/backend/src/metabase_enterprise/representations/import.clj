@@ -87,15 +87,27 @@
 (defn order-representations
   "Order representations topologically by ref dependency"
   [representations]
-  (loop [acc []
+  (loop [iterations (count representations) ;; should take at most one iteration per representation
+         acc []
          remaining (set representations)]
-    (if (empty? remaining)
+    (cond
+      (empty? remaining) ;; we're done!
       acc
+
+      (neg? iterations) ;; we've used too many iterations, probably in a cycle
+      (throw (ex-info "Used too many iterations. Cycle?"
+                      {:representations representations}))
+
+      :else
       (let [done (set (map :ref acc))
             ready (filter #(set/subset? (v0-common/refs %) done)
                           remaining)
-            acc' (into acc ready)]
-        (recur acc' (set/difference remaining (set acc')))))))
+            acc' (into acc ready)
+            next-remaining (set/difference remaining (set acc'))]
+        (when (= remaining next-remaining)
+          (throw (ex-info "No progress made. Cycle?"
+                          {:representations representations})))
+        (recur (dec iterations) acc' next-remaining)))))
 
 (defn- file->collection-id
   [^java.io.File file]
