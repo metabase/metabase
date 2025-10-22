@@ -411,7 +411,7 @@
   [:sum [:case (sql.qp/->honeysql driver pred) (sql.qp/->honeysql driver field)
          :else 0]])
 
-(defmethod h2x/add-interval-honeysql-form :clickhouse
+(defmethod sql.qp/add-interval-honeysql-form :clickhouse
   [_ dt amount unit]
   (h2x/+ dt [:raw (format "INTERVAL %d %s" (int amount) (name unit))]))
 

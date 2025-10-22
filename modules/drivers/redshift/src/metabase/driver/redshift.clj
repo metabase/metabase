@@ -246,7 +246,7 @@
             external-assumed-type
             assumed-type)))))
 
-(defmethod h2x/add-interval-honeysql-form :redshift
+(defmethod sql.qp/add-interval-honeysql-form :redshift
   [_ hsql-form amount unit]
   (let [hsql-form (h2x/->timestamp hsql-form)]
     (-> [:dateadd (h2x/literal unit) amount hsql-form]

@@ -133,7 +133,7 @@
 
 (sql/register-fn! ::mod #'format-mod)
 
-(defmethod h2x/add-interval-honeysql-form :starburst
+(defmethod sql.qp/add-interval-honeysql-form :starburst
   [_ hsql-form amount unit]
   (let [type-info   (h2x/type-info hsql-form)
         out-form [:date_add (h2x/literal unit) [:inline amount] hsql-form]]

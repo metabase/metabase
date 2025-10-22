@@ -274,7 +274,7 @@
   (->> (sql.qp/->honeysql driver value)
        (h2x/cast "long varchar")))
 
-(defmethod h2x/add-interval-honeysql-form :vertica
+(defmethod sql.qp/add-interval-honeysql-form :vertica
   [_ hsql-form amount unit]
   ;; using `timestampadd` instead of `+ (INTERVAL)` because vertica add inteval for month, or year
   ;; by adding the equivalent number of days, not adding the unit compoinent.

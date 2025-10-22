@@ -101,7 +101,7 @@
       (h2x/database-type expr)
       (h2x/with-database-type-info (h2x/database-type expr)))))
 
-(defmethod h2x/add-interval-honeysql-form :presto-jdbc
+(defmethod sql.qp/add-interval-honeysql-form :presto-jdbc
   [_driver expr amount unit]
   (date-add unit amount expr))
 

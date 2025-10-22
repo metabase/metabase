@@ -190,7 +190,7 @@
   [driver [_ arg p]]
   [:percentile (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver p)])
 
-(defmethod h2x/add-interval-honeysql-form :hive-like
+(defmethod sql.qp/add-interval-honeysql-form :hive-like
   [driver hsql-form amount unit]
   (if (= unit :quarter)
     (recur driver hsql-form (* amount 3) :month)

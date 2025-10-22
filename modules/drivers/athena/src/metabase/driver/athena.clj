@@ -300,7 +300,7 @@
   [_driver _precision expr]
   (from-unixtime-nanos expr))
 
-(defmethod h2x/add-interval-honeysql-form :athena
+(defmethod sql.qp/add-interval-honeysql-form :athena
   [_driver hsql-form amount unit]
   [:date_add
    (h2x/literal (name unit))
