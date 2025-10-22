@@ -11,7 +11,7 @@ import { EmbeddingHub } from "./EmbeddingHub";
 export const EmbeddingHubAdminSettingsPage = () => {
   return (
     <Stack mx="auto" py="xl" gap="xl" maw={800}>
-      <Stack gap="xs" ml="3rem">
+      <Stack gap="xs">
         <Title
           order={1}
           c="var(--mb-color-text-primary)"

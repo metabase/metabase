@@ -104,6 +104,26 @@
        nil))
     @has-native-stage?))
 
+(mu/defn any-native-stage-not-introduced-by-sandbox?
+  "Sandboxing can introduce native stages to a query, because, for example, a table can be replaced with a Question that
+  is based on a native query.
+
+  Sometimes we need to check whether the query has a native stage that was introduced at the 'user level' (this could
+  be the user's question itself, or one of the sources of their question, e.g. if the user makes Card A -> Card B ->
+  Card C where Card C is a native question), rather than a native stage that was introduced by a sandbox (e.g. Card A
+  -> Table B, which is swapped by a sandbox for Card C where Card C is a native question)."
+  [query :- ::lib.schema/query]
+  (let [has-native-stage? (volatile! false)]
+    (lib.walk/walk-stages
+     query
+     (fn [_query _path stage]
+       (when (and (not @has-native-stage?)
+                  (not (:query-permissions/sandboxed-table stage))
+                  (= (:lib/type stage) :mbql.stage/native))
+         (vreset! has-native-stage? true))
+       nil))
+    @has-native-stage?))
+
 (mu/defn all-field-ids :- [:set ::lib.schema.id/field]
   "Set of all Field IDs referenced in `:field` refs in a query or MBQL clause."
   [query-or-clause :- [:or

@@ -1426,6 +1426,11 @@
     "@csstools/css-parser-algorithms" "^3.0.5"
     "@csstools/css-tokenizer" "^3.0.4"
 
+"@csstools/postcss-global-data@^3.1.0":
+  version "3.1.0"
+  resolved "https://registry.yarnpkg.com/@csstools/postcss-global-data/-/postcss-global-data-3.1.0.tgz#06b33f28b7cac6ad112deeef12b9f05c0a085497"
+  integrity sha512-qfS0bUxBukuyxEyxTTZG+px2xwAQPf7Qk6B7lFdjWnovb/O6h0t3sxrVY81nJLh7z0KvEMhjxTURNtEmOrADpQ==
+
 "@csstools/postcss-gradients-interpolation-method@^5.0.12":
   version "5.0.12"
   resolved "https://registry.yarnpkg.com/@csstools/postcss-gradients-interpolation-method/-/postcss-gradients-interpolation-method-5.0.12.tgz#0955cce4d97203b861bf66742bbec611b2f3661c"
