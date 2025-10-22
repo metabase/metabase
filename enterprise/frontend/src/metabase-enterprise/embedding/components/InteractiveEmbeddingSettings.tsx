@@ -8,7 +8,7 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import { EmbeddingToggle } from "metabase/admin/settings/components/EmbeddingSettings/EmbeddingToggle";
+import { EmbeddingSettingsCard } from "metabase/admin/settings/components/EmbeddingSettings";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { UpsellDevInstances } from "metabase/admin/upsells";
@@ -36,12 +36,16 @@ export function InteractiveEmbeddingSettings() {
 
   return (
     <SettingsPageWrapper title={t`Interactive embedding`}>
-      <SettingsSection>
-        <EmbeddingToggle
-          settingKey="enable-embedding-interactive"
-          label={t`Enable interactive embedding`}
-        />
+      <EmbeddingSettingsCard
+        title={t`Enable interactive embedding`}
+        // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
+        description={t`Embed the full power of Metabase into your application to build a custom analytics experience and programmatically manage dashboards and data.`}
+        settingKey="enable-embedding-interactive"
+        links={[{ icon: "bolt", title: t`Quick start`, href: quickStartUrl }]}
+        titleFontSize="lg"
+      />
 
+      <SettingsSection>
         <Box>
           <SettingHeader id="get-started" title={t`Get started`} />
           <Button

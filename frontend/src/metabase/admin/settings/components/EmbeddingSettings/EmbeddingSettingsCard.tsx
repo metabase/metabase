@@ -10,12 +10,12 @@ import {
   Text,
 } from "metabase/ui";
 
-import { EmbeddingToggle } from "../../EmbeddingToggle";
-import S from "../EmbeddingSdkSettings.module.css";
+import S from "./EmbeddingSettings.module.css";
+import { EmbeddingToggle } from "./EmbeddingToggle";
 
 type LinkItem = { icon: IconName; title: string; href: string };
 
-export function SdkSettingsCard({
+export function EmbeddingSettingsCard({
   title,
   description,
   settingKey,
@@ -24,26 +24,30 @@ export function SdkSettingsCard({
   rightSideContent,
   alertInfoText,
   actionButton,
+  testId,
+  titleFontSize = "h3",
 }: {
   title: string;
   description: string;
-  settingKey: "enable-embedding-sdk" | "enable-embedding-simple";
+  settingKey:
+    | "enable-embedding-sdk"
+    | "enable-embedding-simple"
+    | "enable-embedding-static"
+    | "enable-embedding-interactive";
   isFeatureEnabled?: boolean;
   links?: LinkItem[];
   rightSideContent?: React.ReactNode;
   alertInfoText?: React.ReactNode;
   actionButton?: React.ReactNode;
+  testId?: string;
+  titleFontSize?: string;
 }) {
   const hasLinksContent = links && links.length > 0;
 
   return (
-    <Flex
-      direction="column"
-      className={S.SectionCard}
-      data-testid="sdk-setting-card"
-    >
+    <Flex direction="column" className={S.SectionCard} data-testid={testId}>
       <Stack gap="sm" px="xl" py="lg">
-        <Text fz="h3" fw={600} c="text-dark">
+        <Text fz={titleFontSize} fw={600} c="text-dark">
           {title}
         </Text>
 
