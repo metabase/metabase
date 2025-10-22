@@ -13,24 +13,12 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
-(defn- affected-collections
-  "Get all remote-synced collections."
+(defn- all-top-level-remote-synced-collections
+  "Get all top-level remote-synced collections."
   []
   (t2/select-pks-vec :model/Collection :type "remote-synced"))
 
-(defn sync-objects!
-  "Setup the remote-sync-object table with the imported-entities.
-  
-  Deletes all existing remote sync object entries and creates new ones
-  for the imported entities with 'synced' status.
-  
-  Args:
-    timestamp: Instant when the sync operation started
-    imported-entities: Map of model names to sets of entity IDs that were imported
-  
-  Returns:
-    The result of the insert operation"
-  [timestamp imported-entities]
+(defn- sync-objects!
   "Populate the remote-sync-object table with imported entities.
 
   Args:
@@ -51,7 +39,7 @@
                              :status_changed_at timestamp})))]
     (t2/insert! :model/RemoteSyncObject inserts)))
 
-(defn- clean-synced!
+(defn- remove-unsynced!
   "Delete any remote sync content that was NOT part of the import"
   [synced-collection-ids imported-entities]
   (when (seq synced-collection-ids)
@@ -136,7 +124,7 @@
                                      (into {}))]
           (remote-sync.task/update-progress! task-id 0.8)
           (t2/with-transaction [_conn]
-            (clean-synced! (affected-collections) imported-entities)
+            (remove-unsynced! (all-top-level-remote-synced-collections) imported-entities)
             (sync-objects! sync-timestamp imported-entities)
             (when (and create-collection? (nil? (collection/remote-synced-collection)))
               (collection/create-remote-synced-collection!)))
