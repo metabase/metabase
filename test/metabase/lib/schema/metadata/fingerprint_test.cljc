@@ -1,7 +1,7 @@
 (ns metabase.lib.schema.metadata.fingerprint-test
   "Basic tests to make sure the fingerprint generatation code is doing something that makes sense."
   (:require
-   [clojure.test :refer :all]
+   [clojure.test :refer [deftest is testing]]
    [malli.error :as me]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]

@@ -178,14 +178,18 @@
 
 (defmethod search.engine/reindex! :search.engine/appdb
   [_ {:keys [in-place?]}]
-  (search.index/ensure-ready!)
-  (if in-place?
-    (when-let [table (search.index/active-table)]
-      ;; keep the current table, just delete its contents
-      (t2/delete! table))
-    (search.index/maybe-create-pending!))
-  (u/prog1 (populate-index! (if in-place? :search/updating :search/reindexing))
-    (search.index/activate-table!)))
+  (try
+    (search.index/ensure-ready!)
+    (if in-place?
+      (when-let [table (search.index/active-table)]
+        ;; keep the current table, just delete its contents
+        (t2/delete! table))
+      (search.index/maybe-create-pending!))
+    (u/prog1 (populate-index! (if in-place? :search/updating :search/reindexing))
+      (search.index/activate-table!))
+    (catch Throwable e
+      (log/error e "Error during reindexing")
+      (throw e))))
 
 (derive :event/setting-update ::settings-changed-event)
 

@@ -10,14 +10,15 @@
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.schema :as mbql.s]
+   ;; legacy usage -- do not use in new code
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -60,10 +61,10 @@
   from the original Table being sandboxed."
   [col       :- [:or
                  ::lib.schema.metadata/column
-                 ::mbql.s/legacy-column-metadata]
+                 ::qp.schema/result-metadata.column]
    table-col :- [:maybe [:or
                          ::lib.schema.metadata/column
-                         ::mbql.s/legacy-column-metadata]]]
+                         ::qp.schema/result-metadata.column]]]
   ;; These errors might get triggered by API endpoints or by the QP (this code is used in the
   ;; `sandboxing` middleware). So include `:type` and `:status-code` information in the ExceptionInfo
   ;; data so it can be passed along if applicable.

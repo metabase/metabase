@@ -455,9 +455,9 @@
     [:lib/source ::lib.schema.metadata/column.source]]])
 
 (mr/def ::returned-column
+  "Schema for a returned column as returned by [[returned-columns]]; includes all the normal metadata but is also
+  guaranteed to have `:lib/source`, `:lib/source-column-alias`, and `:lib/desired-column-alias`."
   [:merge
-   ;; visible column is just the normal column metadata schema but also requires `:lib/source` and
-   ;; `:lib/source-column-alias`
    [:ref ::visible-column]
    [:map
     [:lib/desired-column-alias ::lib.schema.metadata/desired-column-alias]]])
