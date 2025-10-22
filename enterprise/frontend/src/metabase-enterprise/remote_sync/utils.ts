@@ -46,15 +46,15 @@ export const getSyncStatusIcon = (status: RemoteSyncEntityStatus): IconName => {
 export const getSyncStatusColor = (status: RemoteSyncEntityStatus): string => {
   switch (status) {
     case "create":
-      return "var(--mb-base-color-palm-50)";
+      return "var(--mb-color-success)";
     case "removed":
     case "delete":
-      return "var(--mb-base-color-lobster-50)";
+      return "var(--mb-color-danger)";
     case "update":
     case "touch":
-      return "var(--mb-base-color-blue-50)";
+      return "var(--mb-color-saturated-blue)";
     default:
-      return "var(--mb-base-color-orion-50)";
+      return "var(--mb-color-info)";
   }
 };
 
