@@ -49,19 +49,18 @@
   suitable for Metabot. Takes a map with :id and :source keys."
   [{:keys [id source]}]
   (try
-    (let [transform-to-check (api/check-404 (t2/select-one :model/Transform :id id))]
-      (api/read-check transform-to-check)
-      (let [result (if (= (keyword (:type source)) :query)
-                     (let [database-id   (-> source :query :database)
-                           base-provider (lib-be/application-database-metadata-provider database-id)
-                           original      (lib.metadata/transform base-provider id)
-                           transform     (cond-> original
-                                           source (assoc :source source))
-                           edits         {:transform [transform]}
-                           breakages     (dependencies/errors-from-proposed-edits base-provider edits)]
-                       (format-broken-transforms id breakages))
-                     ;; If this is a non-SQL query, we don't do any checks yet, so just return success
-                     {:success true :bad_transforms []})]
-        {:structured_output result}))
+    (let [result (if (= (keyword (:type source)) :query)
+                   (let [database-id   (-> source :query :database)
+                         base-provider (lib-be/application-database-metadata-provider database-id)
+                         original      (lib.metadata/transform base-provider id)
+                         _             (api/read-check original)
+                         transform     (cond-> original
+                                         source (assoc :source source))
+                         edits         {:transform [transform]}
+                         breakages     (dependencies/errors-from-proposed-edits base-provider edits)]
+                     (format-broken-transforms id breakages))
+                   ;; If this is a non-SQL query, we don't do any checks yet, so just return success
+                   {:success true :bad_transforms []})]
+      {:structured_output result})
     (catch Exception e
       (metabot-v3.tools.u/handle-agent-error e))))
