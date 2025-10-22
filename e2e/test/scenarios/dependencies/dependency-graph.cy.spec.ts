@@ -21,6 +21,10 @@ const CARD_BASED_QUESTION_NAME = "Card-based question";
 const CARD_BASED_MODEL_NAME = "Card-based model";
 const CARD_BASED_METRIC_NAME = "Card-based metric";
 const CARD_BASED_TRANSFORM_NAME = "Card-based transform";
+const METRIC_BASED_QUESTION_NAME = "Metric-based question";
+const METRIC_BASED_MODEL_NAME = "Metric-based model";
+const METRIC_BASED_METRIC_NAME = "Metric-based metric";
+const METRIC_BASED_TRANSFORM_NAME = "Metric-based transform";
 
 describe("scenarios > dependencies > dependency graph", () => {
   beforeEach(() => {
@@ -289,6 +293,70 @@ describe("scenarios > dependencies > dependency graph", () => {
         dependentItemTitle: CARD_BASED_TRANSFORM_NAME,
       });
     });
+
+    it("should display dependencies for a model and navigate to them", () => {
+      getScoreboardTableId()
+        .then((tableId) => createTableBasedModel(tableId))
+        .then(({ body: card }) => {
+          createCardBasedQuestion(card.id);
+          createCardBasedModel(card.id);
+          createCardBasedMetric(card.id);
+          createCardBasedTransform(card.id);
+          visitGraphForEntity(card.id, "card");
+        });
+      verifyPanelNavigation({
+        itemTitle: TABLE_BASED_MODEL_NAME,
+        groupTitle: "1 question",
+        dependentItemTitle: CARD_BASED_QUESTION_NAME,
+      });
+      verifyPanelNavigation({
+        itemTitle: TABLE_BASED_MODEL_NAME,
+        groupTitle: "1 model",
+        dependentItemTitle: CARD_BASED_MODEL_NAME,
+      });
+      verifyPanelNavigation({
+        itemTitle: TABLE_BASED_MODEL_NAME,
+        groupTitle: "1 metric",
+        dependentItemTitle: CARD_BASED_METRIC_NAME,
+      });
+      verifyPanelNavigation({
+        itemTitle: TABLE_BASED_MODEL_NAME,
+        groupTitle: "1 transform",
+        dependentItemTitle: CARD_BASED_TRANSFORM_NAME,
+      });
+    });
+
+    it("should display dependencies for a metric and navigate to them", () => {
+      getScoreboardTableId().then((tableId) =>
+        createTableBasedMetric(tableId).then(({ body: card }) => {
+          createMetricBasedQuestion(tableId, card.id);
+          createMetricBasedModel(tableId, card.id);
+          createMetricBasedMetric(tableId, card.id);
+          createMetricBasedTransform(tableId, card.id);
+          visitGraphForEntity(card.id, "card");
+        }),
+      );
+      verifyPanelNavigation({
+        itemTitle: TABLE_BASED_METRIC_NAME,
+        groupTitle: "1 question",
+        dependentItemTitle: METRIC_BASED_QUESTION_NAME,
+      });
+      verifyPanelNavigation({
+        itemTitle: TABLE_BASED_METRIC_NAME,
+        groupTitle: "1 model",
+        dependentItemTitle: METRIC_BASED_MODEL_NAME,
+      });
+      verifyPanelNavigation({
+        itemTitle: TABLE_BASED_METRIC_NAME,
+        groupTitle: "1 metric",
+        dependentItemTitle: METRIC_BASED_METRIC_NAME,
+      });
+      verifyPanelNavigation({
+        itemTitle: TABLE_BASED_METRIC_NAME,
+        groupTitle: "1 transform",
+        dependentItemTitle: METRIC_BASED_TRANSFORM_NAME,
+      });
+    });
   });
 });
 
@@ -344,6 +412,17 @@ function createCardBasedQuestion(cardId: CardId) {
   });
 }
 
+function createMetricBasedQuestion(tableId: TableId, metricId: CardId) {
+  return H.createQuestion({
+    name: METRIC_BASED_QUESTION_NAME,
+    type: "question",
+    query: {
+      "source-table": tableId,
+      aggregation: [["metric", metricId]],
+    },
+  });
+}
+
 function createTableBasedModel(tableId: TableId) {
   return H.createQuestion({
     name: TABLE_BASED_MODEL_NAME,
@@ -364,6 +443,17 @@ function createCardBasedModel(cardId: CardId) {
   });
 }
 
+function createMetricBasedModel(tableId: TableId, metricId: CardId) {
+  return H.createQuestion({
+    name: METRIC_BASED_MODEL_NAME,
+    type: "model",
+    query: {
+      "source-table": tableId,
+      aggregation: [["metric", metricId]],
+    },
+  });
+}
+
 function createTableBasedMetric(tableId: TableId) {
   return H.createQuestion({
     name: TABLE_BASED_METRIC_NAME,
@@ -380,6 +470,17 @@ function createCardBasedMetric(cardId: CardId) {
     type: "metric",
     query: {
       "source-table": `card__${cardId}`,
+    },
+  });
+}
+
+function createMetricBasedMetric(tableId: TableId, metricId: CardId) {
+  return H.createQuestion({
+    name: METRIC_BASED_METRIC_NAME,
+    type: "metric",
+    query: {
+      "source-table": tableId,
+      aggregation: [["metric", metricId]],
     },
   });
 }
@@ -417,6 +518,29 @@ function createCardBasedTransform(cardId: CardId) {
         type: "query",
         query: {
           "source-table": `card__${cardId}`,
+        },
+      },
+    },
+    target: {
+      type: "table",
+      database: WRITABLE_DB_ID,
+      schema: "public",
+      name: "transform_table",
+    },
+  });
+}
+
+function createMetricBasedTransform(tableId: TableId, metricId: CardId) {
+  return H.createTransform({
+    name: METRIC_BASED_TRANSFORM_NAME,
+    source: {
+      type: "query",
+      query: {
+        database: WRITABLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": tableId,
+          aggregation: [["metric", metricId]],
         },
       },
     },
