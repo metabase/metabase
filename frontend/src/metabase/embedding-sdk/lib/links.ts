@@ -54,6 +54,5 @@ export function convertLinkColumnToClickBehavior(
         linkText == null && colName ? `{{${colName}}}` : linkText,
       linkTemplate: linkURL == null && colName ? `{{${colName}}}` : linkURL,
     },
-    column_settings: {},
   };
 }
