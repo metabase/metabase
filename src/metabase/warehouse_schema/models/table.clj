@@ -32,22 +32,26 @@
                     `:type/Temporal`s, and from there on in alphabetical order."
   #{:database :alphabetical :custom :smart})
 
-(def writable-data-authority-types
-  "Valid values we can configure for `Table.data_authority`.
-  `:unconfigured`  - no data authority status has been set yet;
-  `:authoritative` - this table is the authoritative source of truth;
-  `:computed`      - this table is derived/computed from other authoritative sources within metabase;
-  `:ingested`      - this table is ingested from external sources;"
-  #{:unconfigured :authoritative :computed :ingested})
+(def writable-data-source-types
+  "Valid values we can configure for `Table.data_source`.
+  `:unconfigured`              - no data source status has been set yet;
+  `:source-data`               - this table is the authoritative source of truth;
+  `:transforms`                - this table is derived/computed from other authoritative sources within metabase;
+  `:ingested`                  - this table is ingested from external sources;
+  `:metabase-transformations`  - a transformation within metabase, e.g. a transform/python transform target table;
+  `:uploaded-data`             - a table created as part of a csv upload;"
+  #{:unconfigured :source-data :transforms :ingested :metabase-transformations :uploaded-data})
 
-(def readable-data-authority-types
-  "Valid values we can return for `Table.data_authority`.
-  `:unconfigured`  - no data authority status has been set yet;
-  `:authoritative` - this table is the authoritative source of truth;
-  `:computed`      - this table is derived/computed from other authoritative sources within metabase;
-  `:ingested`      - this table is ingested from external sources;
-  `:unknown`       - fallback for an unexpected value from the database, e.g. from a newer version we rolled back from."
-  (conj writable-data-authority-types :unknown))
+(def readable-data-source-types
+  "Valid values we can return for `Table.data_source`.
+  `:unconfigured`              - no data source status has been set yet;
+  `:source-data`               - this table is the authoritative source of truth;
+  `:transforms`                - this table is derived/computed from other authoritative sources within metabase;
+  `:ingested`                  - this table is ingested from external sources;
+  `:metabase-transformations`  - a transformation within metabase, e.g. a transform/python transform target table;
+  `:uploaded-data`             - a table created as part of a csv upload;
+  `:unknown`                   - fallback for an unexpected value from the database, e.g. from a newer version we rolled back from."
+  (conj writable-data-source-types :unknown))
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
@@ -63,18 +67,18 @@
   ;; cause duplication rather than good matching if the two instances are later linked by serdes.
   #_(derive :hook/entity-id))
 
-(def ^:private transform-data-authority
+(def ^:private transform-data-source
   {:out (fn [value]
           (let [kw (some-> value keyword)]
-            (if (contains? writable-data-authority-types kw)
+            (if (contains? writable-data-source-types kw)
               kw
-              (do (log/warnf "Unknown data_authority value from database: %s, converting to :unknown" value)
+              (do (log/warnf "Unknown data_source value from database: %s, converting to :unknown" value)
                   :unknown))))
    :in  (fn [value]
           (let [kw (some-> value keyword)]
-            (when-not (contains? writable-data-authority-types kw)
-              (throw (ex-info (str "Illegal value for data_authority: " kw)
-                              {:field       :data_authority
+            (when-not (contains? writable-data-source-types kw)
+              (throw (ex-info (str "Illegal value for data_source: " kw)
+                              {:field       :data_source
                                :value       value
                                :status-code 400}))))
           (some-> value name))})
@@ -84,7 +88,7 @@
    :visibility_type mi/transform-keyword
    :field_order     mi/transform-keyword
    ;; Warning: by using a transform to handle unexpected enum values, serialization becomes lossy
-   :data_authority  transform-data-authority})
+   :data_source     transform-data-source})
 
 (methodical/defmethod t2/model-for-automagic-hydration [:default :table]
   [_original-model _k]
@@ -113,10 +117,10 @@
         current-active (:active original-table)
         new-active     (:active changes)]
 
-    ;; Prevent setting data_authority back to unconfigured once configured
-    (when (and (not= (keyword (:data_authority original-table :unconfigured)) :unconfigured)
-               (= (keyword (:data_authority changes)) :unconfigured))
-      (throw (ex-info "Cannot set data_authority back to unconfigured once it has been configured"
+    ;; Prevent setting data_source back to unconfigured once configured
+    (when (and (not= (keyword (:data_source original-table :unconfigured)) :unconfigured)
+               (= (keyword (:data_source changes)) :unconfigured))
+      (throw (ex-info "Cannot set data_source back to unconfigured once it has been configured"
                       {:status-code 400})))
 
     (cond
@@ -360,7 +364,7 @@
 (defmethod serdes/make-spec "Table" [_model-name _opts]
   {:copy      [:name :description :entity_type :active :display_name :visibility_type :schema
                :points_of_interest :caveats :show_in_getting_started :field_order :initial_sync_status :is_upload
-               :database_require_filter :is_defective_duplicate :unique_table_helper :is_writable :data_authority]
+               :database_require_filter :is_defective_duplicate :unique_table_helper :is_writable :data_source]
    :skip      [:estimated_row_count :view_count]
    :transform {:created_at (serdes/date)
                :archived_at (serdes/date)

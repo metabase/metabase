@@ -1906,6 +1906,43 @@ databaseChangeLog:
             SET dataset_query = legacy_query
             WHERE legacy_query IS NOT NULL;
 
+  - changeSet:
+      id: v57.2025-10-22T09:48:00
+      author: wotbrew
+      comment: >-
+        Rename data_authority column to data_source
+      changes:
+        - renameColumn:
+            tableName: metabase_table
+            oldColumnName: data_authority
+            newColumnName: data_source
+            columnDataType: varchar(20)
+
+  - changeSet:
+      id: v57.2025-10-22T09:49:00
+      author: wotbrew
+      comment: >-
+        Update data_source values according to new enum spec
+      changes:
+        - sql: >-
+            UPDATE metabase_table
+            SET data_source =
+              CASE data_source
+                WHEN 'authoritative' THEN 'source-data'
+                WHEN 'ingested' THEN 'ingested'
+                WHEN 'computed' THEN 'transformations'
+                ELSE 'unconfigured'
+              END;
+      rollback:
+        - sql: >-
+            UPDATE metabase_table
+            SET data_source =
+              CASE data_source
+                WHEN 'source-data' THEN 'authoritative'
+                WHEN 'transformations' THEN 'computed'
+                ELSE data_source
+              END;
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

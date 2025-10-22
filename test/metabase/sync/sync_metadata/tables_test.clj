@@ -273,7 +273,7 @@
           (is (= "sensitive_table" (:name new-table)))
           (is (nil? (:archived_at new-table))))))))
 
-(deftest sample-database-tables-data-authority-test
+(deftest sample-database-tables-data-source-test
   (testing "Tables from sample databases should be marked as :ingested"
     (mt/with-temp [:model/Database sample-db {:is_sample true}
                    :model/Database normal-db {:is_sample false}]
@@ -282,18 +282,18 @@
 
         (testing "creating a table in a sample database"
           (let [created-table (sync-tables/create-table! sample-db sample-table-metadata)]
-            (is (= :ingested (:data_authority created-table)))))
+            (is (= :ingested (:data_source created-table)))))
 
         (testing "creating a table in a normal database"
           (let [created-table (sync-tables/create-table! normal-db normal-table-metadata)]
-            (is (= :unconfigured (:data_authority created-table)))))
+            (is (= :unconfigured (:data_source created-table)))))
 
         (testing "reactivating a table in a sample database"
-          (mt/with-temp [:model/Table existing-table {:db_id          (:id sample-db)
-                                                      :name           "existing_sample_table"
-                                                      :active         false
-                                                      :data_authority :computed}]
+          (mt/with-temp [:model/Table existing-table {:db_id      (:id sample-db)
+                                                      :name       "existing_sample_table"
+                                                      :active     false
+                                                      :data_source :transforms}]
             (sync-tables/create-or-reactivate-table! sample-db {:name "existing_sample_table"})
             (let [updated-table (t2/select-one :model/Table (:id existing-table))]
-              (is (= :ingested (:data_authority updated-table)))
+              (is (= :ingested (:data_source updated-table)))
               (is (:active updated-table)))))))))

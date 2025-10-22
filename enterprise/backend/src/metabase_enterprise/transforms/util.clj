@@ -143,8 +143,8 @@
   "Activate table for `target` in `database` in the app db."
   [database target]
   (when-let [table (sync-table! database target {:create? true})]
-    (when (or (not (:active table)) (not (= (:data_authority table) :computed)))
-      (t2/update! :model/Table (:id table) {:active true, :data_authority :computed}))))
+    (when (or (not (:active table)) (not (= (:data_source table) :transforms)))
+      (t2/update! :model/Table (:id table) {:active true, :data_source :transforms}))))
 
 (defn deactivate-table!
   "Deactivate table for `target` in `database` in the app db."
