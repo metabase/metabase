@@ -1,29 +1,28 @@
 import type { DependencyGroupType, SearchModel } from "metabase-types/api";
 
-// make sure that new dependency types are explicitly mapped to a search model
-const GROUP_TYPE_TO_SEARCH_MODEL: Record<
-  DependencyGroupType,
-  SearchModel | undefined
+export type EnabledSearchModel = (typeof ENABLED_SEARCH_MODELS)[number];
+
+export const ENABLED_SEARCH_MODELS = [
+  "card",
+  "dataset",
+  "metric",
+  "table",
+  "transform",
+] as const satisfies SearchModel[];
+
+export const ENABLED_SEARCH_MODEL_TO_GROUP_TYPE: Record<
+  EnabledSearchModel,
+  DependencyGroupType
 > = {
-  question: "card",
-  model: "dataset",
+  card: "question",
+  dataset: "model",
   metric: "metric",
   table: "table",
   transform: "transform",
-  snippet: undefined,
 };
 
-export const SEARCH_MODELS: SearchModel[] = Object.entries(
-  GROUP_TYPE_TO_SEARCH_MODEL,
-)
-  .map(([_groupType, model]) => model)
-  .filter((model) => model != null);
+export const SEARCH_MODELS: SearchModel[] = ENABLED_SEARCH_MODELS;
 
 export const SEARCH_MODEL_TO_GROUP_TYPE: Partial<
   Record<SearchModel, DependencyGroupType>
-> = Object.fromEntries(
-  Object.entries(GROUP_TYPE_TO_SEARCH_MODEL).map(([groupType, model]) => [
-    model,
-    groupType,
-  ]),
-);
+> = ENABLED_SEARCH_MODEL_TO_GROUP_TYPE;

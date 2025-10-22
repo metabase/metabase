@@ -5,7 +5,11 @@ import { push } from "react-router-redux";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Card } from "metabase/ui";
-import type { DependencyEntry, DependencyNode } from "metabase-types/api";
+import type {
+  DependencyEntry,
+  DependencyNode,
+  SearchModel,
+} from "metabase-types/api";
 
 import { EntryButton } from "./EntryButton";
 import { EntryPickerModal } from "./EntryPickerModal";
@@ -21,7 +25,8 @@ export function GraphEntryInput({
   node,
   isGraphFetching,
 }: GraphEntryInputProps) {
-  const [searchModels, setSearchModels] = useState(SEARCH_MODELS);
+  const [searchModels, setSearchModels] =
+    useState<SearchModel[]>(SEARCH_MODELS);
   const dispatch = useDispatch();
   const [isPickerOpened, { open: openPicker, close: closePicker }] =
     useDisclosure();
