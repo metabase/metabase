@@ -1,5 +1,3 @@
-import type { CollectionId } from "metabase-types/api";
-
 import { browseDatabase } from "./browse";
 import { collection } from "./collections";
 import { dashboard } from "./dashboards";
