@@ -251,6 +251,10 @@
         user-metadata
         inferred-metadata))
 
+(defmethod v0-common/type->model :model
+  [_]
+  :model/Card)
+
 (defmethod import/yaml->toucan [:v0 :model]
   [{model-name :name
     :keys [_type _ref entity-id description database collection columns] :as representation}

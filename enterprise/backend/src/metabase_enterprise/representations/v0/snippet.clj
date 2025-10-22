@@ -74,6 +74,10 @@
 
 ;;; ------------------------------------ Ingestion ------------------------------------
 
+(defmethod v0-common/type->model :snippet
+  [_]
+  :model/NativeQuerySnippet)
+
 (defmethod import/yaml->toucan [:v0 :snippet]
   [{:keys [_ref name description sql collection entity-id] :as representation}
    _ref-index]

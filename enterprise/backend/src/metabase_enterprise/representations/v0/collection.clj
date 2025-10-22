@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
+   [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase.collections.api :as coll.api]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util :as u]
@@ -71,6 +72,10 @@
                                                  :archived? false})
        :data
        (mapv model->url)))
+
+(defmethod v0-common/type->model :collection
+  [_]
+  :model/Collection)
 
 (defmethod import/yaml->toucan [:v0 :collection]
   [{collection-name :name

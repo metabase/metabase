@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
+   [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
@@ -10,6 +11,10 @@
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
+
+(deftest type->model-test
+  (testing "type->model returns correct model for :snippet"
+    (is (= :model/NativeQuerySnippet (v0-common/type->model :snippet)))))
 
 (defn- run-snippet-export-import-test! [name description content exp-tags]
   (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id :as snippet} {:name name

@@ -214,6 +214,10 @@
     (fn [{:keys [query mbql_query]}]
       (= 1 (count (filter some? [query mbql_query]))))]])
 
+(defmethod v0-common/type->model :metric
+  [_]
+  :model/Card)
+
 ;;; ------------------------------------ INGESTION ------------------------------------
 
 ;;; ---------------------------- Column Metadata Processing -----------------------------

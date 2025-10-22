@@ -38,3 +38,6 @@
             ref-index {(v0-common/unref (:database rep))
                        (t2/select-one :model/Database (mt/id))}]
         (is (rep/persist! rep ref-index))))))
+
+(deftest metric->card
+  (is (= :model/Card (v0-common/type->model :metric))))

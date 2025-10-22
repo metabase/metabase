@@ -2,12 +2,17 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.representations.core :as rep]
+   [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.yaml :as rep-yaml]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
+
+(deftest type->model-test
+  (testing "type->model returns correct model for :database"
+    (is (= :model/Database (v0-common/type->model :database)))))
 
 (deftest export-import
   (testing "Testing export then import roundtrip"

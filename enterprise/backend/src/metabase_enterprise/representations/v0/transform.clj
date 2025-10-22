@@ -114,6 +114,10 @@
 
 ;;; ------------------------------------ Ingestion Functions ------------------------------------
 
+(defmethod v0-common/type->model :transform
+  [_]
+  :model/Transform)
+
 (defmethod import/yaml->toucan [:v0 :transform]
   [{:keys [database] :as representation}
    ref-index]

@@ -5,25 +5,15 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-(def type->model
-  "Map from representation type strings to Toucan model keywords.
+(defmulti type->model
+  "Conversion from representation type (keyword) to Toucan model keyword."
+  {:arglists '([type])}
+  identity)
 
-  Representation types are human-readable identifiers used in YAML files,
-  while model keywords are used internally by Toucan for database operations."
-  {:question    :model/Card
-   :metric      :model/Card
-   :model       :model/Card
-   :database    :model/Database
-   :transform   :model/Transform
-   :snippet     :model/NativeQuerySnippet
-   :collection  :model/Collection
-   "question"   :model/Card
-   "metric"     :model/Card
-   "model"      :model/Card
-   "database"   :model/Database
-   "transform"  :model/Transform
-   "snippet"    :model/NativeQuerySnippet
-   "collection" :model/Collection})
+(defmethod type->model :default
+  [type]
+  (throw (ex-info (str "Cannot convert type to model for type: " type)
+                  {:type type})))
 
 (defn entity-id
   "Generates an entity-id stably from ref and collection-ref."

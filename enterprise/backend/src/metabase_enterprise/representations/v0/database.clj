@@ -130,6 +130,10 @@
                     node))
                 database))
 
+(defmethod v0-common/type->model :database
+  [_]
+  :model/Database)
+
 (defmethod import/yaml->toucan [:v0 :database]
   [representation _ref-index]
   (-> representation
