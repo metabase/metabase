@@ -612,6 +612,7 @@
            metabase.lib.join.util
            metabase.lib.metadata
            metabase.lib.metadata.cached-provider
+           metabase.lib.metadata.column
            metabase.lib.metadata.invocation-tracker
            metabase.lib.metadata.protocols
            metabase.lib.metadata.result-metadata

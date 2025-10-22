@@ -13,7 +13,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
