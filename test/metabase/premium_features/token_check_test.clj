@@ -189,17 +189,26 @@
             (is (= #{"fake" "features"} (token-check/*token-features*)))))
         (testing "When service goes down, continue in grace period"
           (let [called? (atom false)]
-           (binding [http/request (fn [& _]
-                                    (reset! called? true)
-                                    {:status 500})]
-             (is (= #{"fake" "features"} (token-check/*token-features*)))
-             (is (not @called?) "We should memoize token values")
-             ;; simulate cache expiration after 12 hours
-             (token-check/clear-cache)
-             (is (= #{"fake" "features"} (token-check/*token-features*)))
-             (is @called? "Did not hit the network!")
-             (is (= {:valid true :status "fake" :features ["fake" "features"]}
-                    (token-check/retrieve token-check/grace-period token))))))))))
+            (binding [http/request (fn [& _]
+                                     (reset! called? true)
+                                     {:status 500})]
+              (is (= #{"fake" "features"} (token-check/*token-features*)))
+              (is (not @called?) "We should memoize token values")
+              ;; simulate cache expiration after 12 hours
+              (token-check/clear-cache)
+              (is (= #{"fake" "features"} (token-check/*token-features*)))
+              (is @called? "Did not hit the network!")
+              (is (= {:valid true :status "fake" :features ["fake" "features"]}
+                     (token-check/retrieve token-check/grace-period token)))))))))
+  (testing "Setting a new value populates the grace period cache"
+    (let [new-token (tu/random-token)]
+      (binding [http/request (fn [& _] {:status 200
+                                        :body "{\"valid\":true,\"status\":\"fake\",\"features\":[\"fake\",\"features\"]}"})]
+        (mt/discard-setting-changes [premium-embedding-token]
+          (premium-features.settings/premium-embedding-token! new-token)
+          (is (= #{"fake" "features"} (token-check/*token-features*)))
+          (is (= {:valid true :status "fake" :features ["fake" "features"]}
+                 (token-check/retrieve token-check/grace-period new-token))))))))
 
 (deftest token-status-setting-test
   (testing "If a `premium-embedding-token` has been set, the `token-status` setting should return the response
