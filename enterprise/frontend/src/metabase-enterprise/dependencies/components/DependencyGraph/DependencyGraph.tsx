@@ -67,7 +67,7 @@ export function DependencyGraph({ entry }: DependencyGraphProps) {
         getInitialGraph(graph);
       setNodes(initialNodes);
       setEdges(initialEdges);
-      setSelection(entry);
+      setSelection(null);
     }
   }, [entry, graph, error, setNodes, setEdges]);
 

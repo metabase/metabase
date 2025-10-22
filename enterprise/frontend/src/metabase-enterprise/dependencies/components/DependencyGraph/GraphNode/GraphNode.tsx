@@ -9,6 +9,7 @@ import { type MouseEvent, memo, useContext } from "react";
 
 import {
   Box,
+  Card,
   FixedSizeIcon,
   Group,
   Pill,
@@ -19,7 +20,12 @@ import type { DependencyNode } from "metabase-types/api";
 
 import { GraphContext } from "../GraphContext";
 import type { GraphSelection, NodeType } from "../types";
-import { getNodeIcon, getNodeLabel, isSameNode } from "../utils";
+import {
+  getNodeIcon,
+  getNodeLabel,
+  getNodeTypeLabel,
+  isSameNode,
+} from "../utils";
 
 import S from "./GraphNode.module.css";
 import type { DependentGroup } from "./types";
@@ -48,32 +54,41 @@ export const GraphNode = memo(function ItemNode({
 
   return (
     <>
-      <Stack
+      <Card
         className={cx(S.card, { [S.selected]: isSelected })}
-        p="md"
-        gap="sm"
+        p="lg"
+        withBorder
         aria-label={label}
         aria-selected={isSelected}
         data-testid="graph-node"
         onClick={handleClick}
       >
-        <Group gap="sm" lh="1rem">
-          <FixedSizeIcon name={getNodeIcon(node)} c="brand" />
-          {label}
-        </Group>
-        <Box c="text-secondary" fz="sm" lh="1rem">
-          {getDependencyGroupTitle(node, groups)}
-        </Box>
-        {groups.map((group) => (
-          <DependencyGroupButton
-            key={group.type}
-            node={node}
-            group={group}
-            selection={selection}
-            onSelectionChange={setSelection}
-          />
-        ))}
-      </Stack>
+        <Stack gap="sm">
+          <Group gap="xs">
+            <FixedSizeIcon name={getNodeIcon(node)} c="brand" />
+            <Box fz="sm" fw="bold" lh="1rem">
+              {getNodeTypeLabel(node)}
+            </Box>
+          </Group>
+          <Box fw="bold" lh="1rem">
+            {label}
+          </Box>
+        </Stack>
+        <Stack mt="md" gap="sm" align="start">
+          <Box c="text-secondary" fz="sm" lh="1rem">
+            {getDependencyGroupTitle(node, groups)}
+          </Box>
+          {groups.map((group) => (
+            <DependencyGroupButton
+              key={group.type}
+              node={node}
+              group={group}
+              selection={selection}
+              onSelectionChange={setSelection}
+            />
+          ))}
+        </Stack>
+      </Card>
       {sources.length > 0 && (
         <Handle type="source" position={Position.Left} isConnectable={false} />
       )}

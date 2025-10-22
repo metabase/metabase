@@ -254,3 +254,24 @@ export function getDependencyType(
       return groupType;
   }
 }
+
+export function getNodeTypeLabel(node: DependencyNode): string {
+  switch (node.type) {
+    case "card":
+      switch (node.data.type) {
+        case "question":
+          return t`Question`;
+        case "model":
+          return t`Model`;
+        case "metric":
+          return t`Metric`;
+      }
+      break;
+    case "table":
+      return t`Table`;
+    case "transform":
+      return t`Transform`;
+    case "snippet":
+      return t`Snippet`;
+  }
+}
