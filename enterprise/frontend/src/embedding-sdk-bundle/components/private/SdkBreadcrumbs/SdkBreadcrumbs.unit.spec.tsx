@@ -111,7 +111,7 @@ describe("SdkBreadcrumbs", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText("Last edited by")).toBeInTheDocument();
+      expect(screen.getByText("This collection is empty")).toBeInTheDocument();
     });
 
     expect(
