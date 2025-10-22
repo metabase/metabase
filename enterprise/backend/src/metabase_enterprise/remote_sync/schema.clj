@@ -17,7 +17,7 @@
    [:id pos-int?]
    [:sync_task_type TaskType]
    [:initiated_by {:optional true} [:maybe pos-int?]]
-   [:progress [:maybe [:double {:min 0.0 :max 1.0}]]]
+   [:progress [:maybe [:float {:min 0.0 :max 1.0}]]]
    [:started_at :any]
    [:ended_at {:optional true} [:maybe :any]]
    [:last_progress_report_at {:optional true} [:maybe :any]]
