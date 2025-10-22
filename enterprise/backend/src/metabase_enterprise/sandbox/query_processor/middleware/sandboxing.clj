@@ -361,7 +361,7 @@
   "Pre-processing middleware. Replaces source tables a User was querying against with source queries that (presumably)
   restrict the rows returned, based on presence of sandboxes."
   ;; run this even when the `:sandboxes` feature is not enabled, so that we can assert that it *is* enabled if
-  ;; impersonation is configured. (Throwing here is better than silently ignoring the configured routing.)
+  ;; sandboxing is configured. (Throwing here is better than silently ignoring the configured sandbox.)
   :feature :none
   [query]
   (apply-sandboxing* query))

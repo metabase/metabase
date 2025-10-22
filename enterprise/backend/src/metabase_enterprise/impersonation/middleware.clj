@@ -10,7 +10,7 @@
 (defenterprise apply-impersonation
   "Pre-processing middleware. Adds a key to the query. Currently used solely for caching."
   ;; run this even when the `:advanced-permissions` feature is not enabled, so that we can assert that it *is* enabled
-  ;; if impersonation is configured. (Throwing here is better than silently ignoring the configured routing.)
+  ;; if impersonation is configured. (Throwing here is better than silently ignoring the configured impersonation.)
   :feature :none
   [query]
   (if-let [role (impersonation.driver/connection-impersonation-role
@@ -23,7 +23,7 @@
 (defenterprise apply-impersonation-postprocessing
   "Post-processing middleware. Binds the dynamic var"
   ;; run this even when the `:advanced-permissions` feature is not enabled, so that we can assert that it *is* enabled
-  ;; if impersonation is configured. (Throwing here is better than silently ignoring the configured routing.)
+  ;; if impersonation is configured. (Throwing here is better than silently ignoring the configured impersonation.)
   :feature :none
   [qp]
   (fn [query rff]
