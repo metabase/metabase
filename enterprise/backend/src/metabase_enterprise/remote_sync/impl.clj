@@ -14,12 +14,23 @@
    [toucan2.core :as t2]))
 
 (defn- affected-collections
-  "Get all collections that are descendants of those in the sync and the ones synced"
+  "Get all remote-synced collections."
   []
-  ;; Otherwise get all remote-synced collections
   (t2/select-pks-vec :model/Collection :type "remote-synced"))
 
 (defn sync-objects!
+  "Setup the remote-sync-object table with the imported-entities.
+  
+  Deletes all existing remote sync object entries and creates new ones
+  for the imported entities with 'synced' status.
+  
+  Args:
+    timestamp: Instant when the sync operation started
+    imported-entities: Map of model names to sets of entity IDs that were imported
+  
+  Returns:
+    The result of the insert operation"
+  [timestamp imported-entities]
   "Populate the remote-sync-object table with imported entities.
 
   Args:

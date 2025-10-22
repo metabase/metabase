@@ -52,6 +52,6 @@
                  (triggers/with-identity cleanup-trigger-key)
                  (triggers/start-now)
                  (triggers/with-schedule
-                   ;; Run daily at 2:19 AM
+                   ;; Run daily at 2:29 AM
                   (cron/cron-schedule "0 29 2 * * ?")))]
     (task/schedule-task! job trigger)))

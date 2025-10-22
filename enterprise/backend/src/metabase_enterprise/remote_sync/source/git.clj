@@ -28,7 +28,7 @@
       (.call command)
       (catch Exception e
         (analytics/inc! :metabase-remote-sync/git-operations-failed analytics-labels)
-        (throw (ex-info (format "Git %s failed: %s" (:operation analytics-labels) (.getMessage e))
+        (throw (ex-info (format "Git %s failed: %s" (:operation analytics-labels) (ex-message e))
                         analytics-labels e))))))
 
 (defn- call-remote-command [^TransportCommand command {:keys [^String token]}]
@@ -42,7 +42,7 @@
           (.call))
       (catch Exception e
         (analytics/inc! :metabase-remote-sync/git-operations-failed analytics-labels)
-        (throw (ex-info (format "Git %s failed: %s" (-> command .getClass .getName) (.getMessage e))
+        (throw (ex-info (format "Git %s failed: %s" (-> command .getClass .getName) (ex-message e))
                         analytics-labels e))))))
 
 (defn- qualify-branch [branch]
@@ -104,7 +104,7 @@
                                           (.setBare true)) {:token token})
           (log/info "Successfully cloned repository" {:dir dir}))
         (catch Exception e
-          (throw (ex-info (format "Failed to clone git repository: %s" (.getMessage e))
+          (throw (ex-info (format "Failed to clone git repository: %s" (ex-message e))
                           {:url   url
                            :dir   dir
                            :error (.getMessage e)} e)))))))

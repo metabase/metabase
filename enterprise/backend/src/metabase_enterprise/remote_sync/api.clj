@@ -77,10 +77,19 @@
   "Reload Metabase content from Git repository source of truth.
 
   This endpoint will:
+  - Fetch the latest changes from the configured git repository
+  - Load the updated content using the serialization/deserialization system
+
+  If `force=false` (default) and there are unsaved changes in the Remote Sync collection, 
+  the import returns a 400 response.
+
+  Requires superuser permissions."
+
+  This endpoint will:
   1. Fetch the latest changes from the configured git repository
   2. Load the updated content using the serialization/deserialization system
 
-  If force=false (default) and there are unsaved changes in the Remote Sync collection, the import return a 400 response.
+  If force=false (default) and there are unsaved changes in the Remote Sync collection, the import action will return a 400 response.
 
   Requires superuser permissions."
   [_route
@@ -103,7 +112,7 @@
   {:is_dirty (remote-sync.object/dirty-global?)})
 
 (api.macros/defendpoint :get "/dirty" :- remote-sync.schema/DirtyResponse
-  "Return dirty models from a any remote-sync collection"
+  "Return dirty models from any remote-synced collection"
   []
   (api/check-superuser)
   {:dirty (into []
@@ -111,7 +120,17 @@
                 (remote-sync.object/dirty-for-global))})
 
 (api.macros/defendpoint :post "/export" :- remote-sync.schema/ExportResponse
-  "Export the current state of the Remote Sync collection to a Source
+  "Export the current state of the Remote Sync collection to a Source.
+
+  This endpoint will:
+  - Fetch the latest changes from the source
+  - Create a branch or subdirectory (depending on source support)
+    If no branch is supplied, use the configured export branch
+  - Export the Remote Sync collection via serialization to the branch or subdirectory
+  - Commit the changes if possible
+  - Sync to the source if possible
+
+  Requires superuser permissions."
   This endpoint will:
   1. Fetch the latest changes from the source
   2. Create a branch or subdirectory -- depending on source support
@@ -138,7 +157,20 @@
                            (or force false)
                            (or message "Exported from Metabase"))})
 
-(defn- task-status [task]
+(defn- task-status
+  "Returns the status of a sync task.
+  
+  Args:
+    task (map): A remote sync task record
+  
+  Returns:
+    map: The task record with a :status field added, which can be:
+         :errored - Task failed with an error
+         :successful - Task completed successfully
+         :cancelled - Task was cancelled by user
+         :timed-out - Task exceeded time limit
+         :running - Task is currently executing"
+  [task]
   (assoc task :status (cond
                         (remote-sync.task/failed? task) :errored
                         (remote-sync.task/successful? task) :successful
