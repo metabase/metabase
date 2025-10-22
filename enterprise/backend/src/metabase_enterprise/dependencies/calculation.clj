@@ -2,7 +2,7 @@
   (:require
    [metabase-enterprise.dependencies.native-validation :as deps.native]
    [metabase-enterprise.dependencies.schema :as deps.schema]
-   [metabase-enterprise.documents.models.document :as m.document]
+   [metabase-enterprise.documents.prose-mirror :as prose-mirror]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
@@ -32,8 +32,13 @@
 
 (mu/defn upstream-deps:card :- ::deps.schema/upstream-deps
   "Given a Toucan `:model/Card`, return its upstream dependencies as a map from the kind to a set of IDs."
-  [{query :dataset_query :as _toucan-card} :- ::queries.schema/card]
-  (upstream-deps:query query))
+  [{query :dataset_query :as card} :- ::queries.schema/card]
+  (let [query-deps (upstream-deps:query query)
+        param-cards (keep #(-> % :values_source_config :card_id) (:parameters card))]
+    (reduce (fn [deps card-id]
+              (update deps :card (fnil conj #{}) card-id))
+            query-deps
+            param-cards)))
 
 (mu/defn upstream-deps:transform :- ::deps.schema/upstream-deps
   "Given a Transform (in Toucan form), return its upstream dependencies."
@@ -109,8 +114,26 @@
     {:card all-card-ids
      :dashboard all-dashboard-ids}))
 
+;; Modified implementation of documents.models.document/document-deps
+(defn- document-deps
+  [{:keys [content_type] :as document}]
+  (when (= content_type prose-mirror/prose-mirror-content-type)
+    (prose-mirror/collect-ast document (fn document-deps [{:keys [type attrs]}]
+                                         (cond
+                                           (and (= prose-mirror/smart-link-type type)
+                                                (#{"card" "dashboard" "table"} (:model attrs)))
+                                           [(keyword (:model attrs)) (:entityId attrs)]
+
+                                           (= prose-mirror/card-embed-type type)
+                                           [:card (:id attrs)]
+
+                                           :else
+                                           nil)))))
+
 (mu/defn upstream-deps:document :- ::deps.schema/upstream-deps
   "Given a document, return its upstream dependencies"
   [{_document-id :id :as document}]
-  (let [card-ids (or (#'m.document/document-deps document) #{})]
-    {:card card-ids}))
+  (reduce (fn [deps [dep-type dep-id]]
+            (update deps dep-type (fnil conj #{}) dep-id))
+          {}
+          (document-deps document)))
