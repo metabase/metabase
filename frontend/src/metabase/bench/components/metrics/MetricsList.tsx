@@ -34,6 +34,7 @@ import {
   runQuestionQuery,
   updateQuestion,
 } from "metabase/query_builder/actions";
+import { shouldShowQuestionSettingsSidebar } from "metabase/query_builder/components/view/sidebars/QuestionSettingsSidebar";
 import { useCreateQuestion } from "metabase/query_builder/containers/use-create-question";
 import { useSaveQuestion } from "metabase/query_builder/containers/use-save-question";
 import {
@@ -259,21 +260,24 @@ export const MetricsLayout = ({
 const MetricHeader = ({
   actions,
   params,
+  question,
 }: {
   actions?: ReactNode;
   params: QueryParams;
+  question: Question;
 }) => {
+  const enableSettingsSidebar = shouldShowQuestionSettingsSidebar(question);
   return (
     <BenchPaneHeader
       title={
         <BenchTabs
           tabs={[
             { label: t`Query`, to: `/bench/metric/${params.slug}` },
-            {
+            enableSettingsSidebar && {
               label: t`Settings`,
               to: `/bench/metric/${params.slug}/settings`,
             },
-          ]}
+          ].filter((t) => !!t)}
         />
       }
       actions={actions}
@@ -344,6 +348,7 @@ export const MetricEditor = ({
       Header={(headerProps) => (
         <MetricHeader
           params={params}
+          question={question}
           actions={
             !question.isSaved() ? (
               <Button
@@ -386,7 +391,7 @@ export const MetricSettings = ({ params }: { params: { slug: string } }) => {
   }
   return (
     <>
-      <MetricHeader params={params} />
+      <MetricHeader params={params} question={question} />
       <Box mx="md" mt="sm" maw={480}>
         <SidesheetCard title={t`Caching`}>
           <PLUGIN_CACHING.SidebarCacheSection

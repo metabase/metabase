@@ -20,7 +20,9 @@ import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
 import { useDispatch, useSelector } from "metabase/lib/redux/hooks";
 import { ModelCacheManagementSection } from "metabase/query_builder/components/view/sidebars/ModelCacheManagementSection";
+import { shouldShowQuestionSettingsSidebar } from "metabase/query_builder/components/view/sidebars/QuestionSettingsSidebar";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
+import { getQuestion } from "metabase/query_builder/selectors";
 import { getUser } from "metabase/selectors/user";
 import {
   Box,
@@ -223,32 +225,43 @@ export const ModelsLayout = ({
   );
 };
 
-const ModelEditorHeader = withRouter(
+const ModelHeader = withRouter(
   ({
-    buttons,
+    question,
+    actions,
     params,
   }: {
-    buttons?: ReactNode;
+    question: Question;
+    actions?: ReactNode;
     params: { slug: string; tab?: string };
   }) => {
+    const enableSettingsSidebar = shouldShowQuestionSettingsSidebar(question);
     return (
       <BenchPaneHeader
         title={
           <BenchTabs
             tabs={[
               { label: t`Query`, to: `/bench/model/${params.slug}` },
-              {
+              enableSettingsSidebar && {
                 label: t`Settings`,
                 to: `/bench/model/${params.slug}/settings`,
               },
-            ]}
+            ].filter((t) => !!t)}
           />
         }
-        actions={buttons}
+        actions={actions}
       />
     );
   },
 );
+
+const ModelEditorHeader = ({ buttons }: { buttons?: ReactNode }) => {
+  const question = useSelector(getQuestion);
+  if (!question) {
+    return null;
+  }
+  return <ModelHeader question={question} actions={buttons} />;
+};
 
 export const ModelEditor = (props: {
   location: Location;
@@ -279,7 +292,7 @@ export const ModelSettings = ({ params }: { params: { slug: string } }) => {
   }
   return (
     <>
-      <ModelEditorHeader />
+      <ModelHeader question={question} />
       <Box mx="md" mt="sm" maw={480}>
         <SidesheetCard title={t`Caching`}>
           <ModelCacheManagementSection model={question} />
