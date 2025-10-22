@@ -56,10 +56,7 @@ function ItemName({
 
   return (
     <Flex align="center" gap="sm">
-      <Icon
-        name={collectionIcon.name}
-        c="brand"
-      />
+      <Icon name={collectionIcon.name} c="brand" />
       {type === "snippet-collections" ? (
         <SnippetCollectionName id={collectionId} />
       ) : (
