@@ -66,15 +66,10 @@ export const PublicLinksListing = <
 
             return (
               <tr key={item.id}>
-                <td>
-                  {internalUrl ? (
-                    <Link to={internalUrl} className={CS.textWrap}>
-                      {item.name}
-                    </Link>
-                  ) : (
-                    item.name
-                  )}
-                </td>
+                <Link to={internalUrl} className={cx(CS.flex, CS.fullWidth)}>
+                  <td>{item.name}</td>
+                </Link>
+
                 {publicUrl && (
                   <td>
                     <ExternalLink
