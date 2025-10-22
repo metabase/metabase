@@ -18,10 +18,10 @@ interface BenchFlatListItemProps {
   label: ReactNode;
   icon: IconName;
   subtitle?: ReactNode;
-  tags?: string[];
+  thirdLine?: ReactNode;
 
   href?: string;
-  isActive: boolean;
+  isActive?: boolean;
   rightGroup?: ReactNode;
 }
 
@@ -29,6 +29,7 @@ export const BenchFlatListItem = ({
   label,
   icon,
   subtitle,
+  thirdLine,
   href,
   isActive,
   rightGroup,
@@ -62,7 +63,7 @@ export const BenchFlatListItem = ({
               )}
             </Box>
 
-            {/*{tags && <TagList className={S.tags} tags={tags} />}*/}
+            {thirdLine}
           </Stack>
           {rightGroup}
         </Group>
