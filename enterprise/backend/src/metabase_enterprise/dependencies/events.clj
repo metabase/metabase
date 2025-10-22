@@ -129,11 +129,14 @@
 (methodical/defmethod events/publish-event! ::dashboard-deps
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    ;; TODO(rileythomp): Would it be better to hydrate the dashboard here
-    ;; with all the card ids that we need? And then pull those card ids
-    ;; out in deps.calculation/upstream-deps:dashboard?
     (t2/with-transaction [_conn]
-      (models.dependency/replace-dependencies! :dashboard (:id object) (deps.calculation/upstream-deps:dashboard object))
+      (let [dashboard-id (:id object)
+            dashcards (t2/select :model/DashboardCard :dashboard_id dashboard-id)
+            series-card-ids (when (seq dashcards)
+                              (t2/select-fn-set :card_id :model/DashboardCardSeries
+                                                :dashboardcard_id [:in (map :id dashcards)]))
+            dashboard (assoc object :dashcards dashcards :series-card-ids series-card-ids)]
+        (models.dependency/replace-dependencies! :dashboard dashboard-id (deps.calculation/upstream-deps:dashboard dashboard)))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
         (t2/update! :model/Dashboard (:id object)
                     {:dependency_analysis_version models.dependency/current-dependency-analysis-version})))))
@@ -168,7 +171,7 @@
   (when (premium-features/has-feature? :dependencies)
     (t2/delete! :model/Dependency :from_entity_type :document :from_entity_id (:id object))))
 
-;; ### Documents
+;; ### Sandboxes
 (derive ::sandbox-deps :metabase/event)
 (derive :event/sandbox-create ::sandbox-deps)
 (derive :event/sandbox-update ::sandbox-deps)
