@@ -25,11 +25,11 @@ export const getEntityIcon = (entityType?: string) => {
 
 export const ENTITY_ICON_COLORS = [
   "text-primary",
-  "brand",
-  "filter",
-  "syntax-parameters",
-  "danger",
-  "success",
+  color("accent0"),
+  color("accent1"),
+  color("accent2"),
+  color("accent3"),
+  color("accent6"),
 ];
 
 export function getIconBackground(iconColor?: string) {
