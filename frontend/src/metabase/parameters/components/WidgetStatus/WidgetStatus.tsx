@@ -41,6 +41,7 @@ export const WidgetStatus = ({
             pt={4}
             pb={4}
             onClick={handleClick}
+            role="button"
           >
             <Icon
               name="close"
@@ -60,6 +61,7 @@ export const WidgetStatus = ({
             pt={4}
             pb={4}
             onClick={handleClick}
+            role="button"
           >
             <Icon
               name="revert"
