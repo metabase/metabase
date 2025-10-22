@@ -16,6 +16,7 @@ import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import { useInstanceLocale } from "metabase/common/hooks/use-instance-locale";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
+import { PLUGIN_SELECTORS } from "metabase/plugins";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { setOptions } from "metabase/redux/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
@@ -57,6 +58,11 @@ export const ComponentProviderInternal = ({
   }, [reduxStore, fontFamily]);
 
   useEffect(() => {
+    if (pluginsConfig?.getNoDataIllustration) {
+      PLUGIN_SELECTORS.getNoDataIllustration =
+        pluginsConfig.getNoDataIllustration;
+    }
+    console.log(reduxStore.getState());
     reduxStore.dispatch(setPlugins(pluginsConfig || null));
   }, [reduxStore, pluginsConfig]);
 

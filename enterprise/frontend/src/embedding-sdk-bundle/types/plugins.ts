@@ -38,4 +38,5 @@ export type MetabaseDashboardPluginsConfig = {
 export type MetabasePluginsConfig = {
   mapQuestionClickActions?: MetabaseClickActionPluginsConfig;
   dashboard?: MetabaseDashboardPluginsConfig;
+  getNoDataIllustration?: () => string | null;
 };

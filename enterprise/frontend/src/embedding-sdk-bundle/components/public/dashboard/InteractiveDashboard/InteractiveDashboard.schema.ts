@@ -42,6 +42,7 @@ const propsSchema: Yup.SchemaOf<InteractiveDashboardProps> = Yup.object({
   plugins: Yup.object({
     mapQuestionClickActions: Yup.mixed().optional(),
     dashboard: Yup.mixed().optional(),
+    noResultsIllustration: Yup.mixed().optional(),
   })
     .optional()
     .noUnknown(),
