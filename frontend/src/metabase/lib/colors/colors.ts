@@ -632,6 +632,14 @@ export const colorConfig = {
     light: baseColors.orionAlpha[10],
     dark: baseColors.orionAlphaInverse[10],
   },
+  link: {
+    light: baseColors.ocean[50],
+    dark: baseColors.ocean[40],
+  },
+  "link-hover": {
+    light: baseColors.ocean[60],
+    dark: baseColors.ocean[30],
+  },
 };
 
 export const colors: Record<keyof typeof colorConfig, string> = {

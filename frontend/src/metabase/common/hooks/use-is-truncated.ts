@@ -5,10 +5,12 @@ import resizeObserver from "metabase/lib/resize-observer";
 
 type UseIsTruncatedProps = {
   disabled?: boolean;
+  ignoreHeightTruncation?: boolean;
 };
 
 export const useIsTruncated = <E extends Element>({
   disabled = false,
+  ignoreHeightTruncation = false,
 }: UseIsTruncatedProps = {}) => {
   const ref = useRef<E | null>(null);
   const [isTruncated, setIsTruncated] = useState(false);
@@ -21,7 +23,7 @@ export const useIsTruncated = <E extends Element>({
     }
 
     const handleResize = () => {
-      setIsTruncated(getIsTruncated(element));
+      setIsTruncated(getIsTruncated(element, ignoreHeightTruncation));
     };
 
     handleResize();
@@ -30,16 +32,23 @@ export const useIsTruncated = <E extends Element>({
     return () => {
       resizeObserver.unsubscribe(element, handleResize);
     };
-  }, [disabled]);
+  }, [disabled, ignoreHeightTruncation]);
 
   return { isTruncated, ref };
 };
 
-const getIsTruncated = (element: Element): boolean => {
+const getIsTruncated = (
+  element: Element,
+  ignoreHeightTruncation = false,
+): boolean => {
   const range = document.createRange();
   range.selectNodeContents(element);
   const elementRect = element.getBoundingClientRect();
   const rangeRect = range.getBoundingClientRect();
+
+  if (ignoreHeightTruncation) {
+    return rangeRect.width > elementRect.width;
+  }
 
   return (
     rangeRect.height > elementRect.height || rangeRect.width > elementRect.width
@@ -48,6 +57,7 @@ const getIsTruncated = (element: Element): boolean => {
 
 export const useAreAnyTruncated = <E extends Element>({
   disabled = false,
+  ignoreHeightTruncation = false,
 }: UseIsTruncatedProps = {}) => {
   const ref = useRef(new Map<string, E>());
   const [truncationStatusByKey, setTruncationStatusByKey] = useState<
@@ -64,7 +74,7 @@ export const useAreAnyTruncated = <E extends Element>({
 
     [...elementsMap.entries()].forEach(([elementKey, element]) => {
       const handleResize = () => {
-        const isTruncated = getIsTruncated(element);
+        const isTruncated = getIsTruncated(element, ignoreHeightTruncation);
         setTruncationStatusByKey((statuses) => {
           const newStatuses = new Map(statuses);
           newStatuses.set(elementKey, isTruncated);
@@ -81,7 +91,7 @@ export const useAreAnyTruncated = <E extends Element>({
     return () => {
       unsubscribeFns.forEach((fn) => fn());
     };
-  }, [disabled]);
+  }, [disabled, ignoreHeightTruncation]);
 
   const areAnyTruncated = [...truncationStatusByKey.values()].some(Boolean);
   return { areAnyTruncated, ref };

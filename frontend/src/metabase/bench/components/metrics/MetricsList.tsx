@@ -2,7 +2,6 @@ import cx from "classnames";
 import type { Location } from "history";
 import type React from "react";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router";
 import { push } from "react-router-redux";
 import { useLocalStorage, useMount, usePrevious } from "react-use";
 import { t } from "ttag";
@@ -14,6 +13,7 @@ import {
   useListCollectionsTreeQuery,
 } from "metabase/api";
 import { listTag } from "metabase/api/tags";
+import { BenchFlatListItem } from "metabase/bench/components/shared/BenchFlatListItem";
 import { getIcon } from "metabase/browse/models/utils";
 import ActionButton from "metabase/common/components/ActionButton/ActionButton";
 import Button from "metabase/common/components/Button";
@@ -48,15 +48,7 @@ import {
 import { MetricEditor as QBMetricEditor } from "metabase/querying/metrics/components/MetricEditor/MetricEditor";
 import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
-import {
-  Box,
-  Center,
-  FixedSizeIcon,
-  Flex,
-  Loader,
-  NavLink,
-  Text,
-} from "metabase/ui";
+import { Box, Center, Loader, Text } from "metabase/ui";
 import Question from "metabase-lib/v1/Question";
 import type { RawSeries, SearchResult } from "metabase-types/api";
 
@@ -75,6 +67,8 @@ import {
   type SearchResultModal,
   SearchResultModals,
 } from "../shared/SearchResultModals";
+
+import S from "./MetricsList.module.css";
 
 function MetricsList({
   activeId,
@@ -205,28 +199,20 @@ function MetricListItem({
   const icon = getIcon({ type: "dataset", ...metric });
   return (
     <Box mb="sm" pos="relative">
-      <NavLink
-        component={Link}
-        to={`/bench/metric/${metric.id}`}
-        active={active}
-        label={
-          <>
-            <Flex gap="sm" align="center">
-              <FixedSizeIcon {...icon} size={16} c="brand" />
-              <Text fw="bold" c={active ? "brand" : undefined}>
-                {metric.name}
-              </Text>
-            </Flex>
-            <Flex gap="sm" c="text-light" ml="lg">
-              <FixedSizeIcon name="folder" />
-              <EllipsifiedCollectionPath collection={metric.collection} />
-            </Flex>
-          </>
+      <BenchFlatListItem
+        label={metric.name}
+        icon={icon.name}
+        subtitle={
+          <EllipsifiedCollectionPath
+            className={S.collectionPath}
+            collection={metric.collection}
+            ignoreHeightTruncation
+          />
         }
+        href={`/bench/metric/${metric.id}`}
+        isActive={active}
+        rightGroup={renderMoreMenu(metric)}
       />
-      <Box pos="absolute" right="0.25rem" top="0.25rem">
-        {renderMoreMenu(metric)}
-      </Box>
     </Box>
   );
 }

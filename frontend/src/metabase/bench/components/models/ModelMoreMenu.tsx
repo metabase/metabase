@@ -17,7 +17,13 @@ export const ModelMoreMenu = ({
   return (
     <Menu position="bottom-end">
       <Menu.Target>
-        <ActionIcon>
+        <ActionIcon
+          onClick={(e) => {
+            // prevent triggering route change
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+        >
           <Icon name="ellipsis" />
         </ActionIcon>
       </Menu.Target>
