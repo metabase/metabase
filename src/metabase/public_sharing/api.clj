@@ -241,7 +241,7 @@
     (when (= @prose-mirror-content-type (:content_type document))
       (set (@card-ids-fn document)))))
 
-(defn- validate-card-in-public-document!
+(defn- validate-card-in-public-document
   "Validates that a card exists and is embedded in the public document.
   Throws a 404 if the card doesn't exist, is archived, or isn't in the document."
   [uuid card-id]
@@ -295,7 +295,7 @@
                                                       [:format_rows   {:default false} ms/BooleanValue]
                                                       [:pivot_results {:default false} ms/BooleanValue]]]
   (public-sharing.validation/check-public-sharing-enabled)
-  (validate-card-in-public-document! uuid card-id)
+  (validate-card-in-public-document uuid card-id)
   (process-query-for-card-with-id
    card-id
    export-format

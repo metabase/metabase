@@ -311,7 +311,7 @@
 
 ;;; ------------------------------------------------ Card Downloads --------------------------------------------------
 
-(defn- validate-card-in-document!
+(defn- validate-card-in-document
   "Validates that a card exists in a document and both are accessible.
   Throws appropriate API errors if validation fails."
   [document-id card-id]
@@ -350,7 +350,7 @@
                                          [:sequential [:map-of :keyword :any]]]]
        [:format_rows   {:default false} ms/BooleanValue]
        [:pivot_results {:default false} ms/BooleanValue]]]
-  (validate-card-in-document! document-id card-id)
+  (validate-card-in-document document-id card-id)
   (qp.card/process-query-for-card
    card-id export-format
    :parameters  parameters
