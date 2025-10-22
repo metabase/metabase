@@ -84,7 +84,14 @@ export function canFilterByOption(
     case "in-dashboard":
     case "in-official-collection":
     case "not-in-personal-collection":
-      return type === "card";
+      switch (type) {
+        case "card":
+          return true;
+        case "table":
+        case "transform":
+        case "snippet":
+          return false;
+      }
   }
 }
 
@@ -135,7 +142,14 @@ export function canSortByColumn(
       return true;
     case "location":
     case "view-count":
-      return type === "card";
+      switch (type) {
+        case "card":
+          return true;
+        case "table":
+        case "transform":
+        case "snippet":
+          return false;
+      }
   }
 }
 
