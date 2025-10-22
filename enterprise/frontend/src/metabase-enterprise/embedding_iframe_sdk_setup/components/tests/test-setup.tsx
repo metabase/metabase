@@ -32,6 +32,7 @@ export const setup = (options?: {
   jwtReady?: boolean;
   urlSearchParams?: string;
 }) => {
+  const mockDatabase = createMockDatabase();
   const mockDashboard = createMockDashboard();
   setupRecentViewsAndSelectionsEndpoints([], ["selections", "views"]);
   setupSearchEndpoints([]);
@@ -39,7 +40,7 @@ export const setup = (options?: {
   setupDashboardQueryMetadataEndpoint(
     mockDashboard,
     createMockDashboardQueryMetadata({
-      databases: [createMockDatabase()],
+      databases: [mockDatabase],
     }),
   );
   setupUpdateSettingsEndpoint();
