@@ -194,7 +194,7 @@
    _query-params
    {:keys [name document collection_id collection_position cards] :as body} :- DocumentUpdateOptions]
   (let [existing-document (api/check-404 (get-document document-id))]
-    (api/check-403 (mi/can-write? existing-document))
+    (api/write-check existing-document)
     (when (api/column-will-change? :collection_id existing-document body)
       (m.document/validate-collection-move-permissions (:collection_id existing-document) collection_id))
 
@@ -232,7 +232,7 @@
   "Permanently deletes an archived Document."
   [{:keys [document-id]} :- [:map [:document-id ms/PositiveInt]]]
   (let [document (api/check-404 (t2/select-one :model/Document :id document-id))]
-    (api/check-403 (mi/can-write? document))
+    (api/write-check document)
     (when-not (:archived document)
       (let [msg (tru "Document must be archived before it can be deleted.")]
         (throw (ex-info msg {:status-code 400, :errors {:archived msg}}))))
