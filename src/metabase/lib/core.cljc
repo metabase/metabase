@@ -33,6 +33,7 @@
    [metabase.lib.limit :as lib.limit]
    [metabase.lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.column]
    [metabase.lib.metadata.composed-provider :as lib.metadata.composed-provider]
    [metabase.lib.metadata.protocols]
    [metabase.lib.metric :as lib.metric]
@@ -90,6 +91,7 @@
          lib.limit/keep-me
          metabase.lib.metadata/keep-me
          lib.metadata.calculation/keep-me
+         metabase.lib.metadata.column/keep-me
          lib.metadata.composed-provider/keep-me
          metabase.lib.metadata.protocols/keep-me
          lib.metric/keep-me
@@ -356,6 +358,9 @@
   suggested-name
   type-of
   visible-columns]
+ [metabase.lib.metadata.column
+  column-unique-key
+  column-with-unique-key]
  [lib.metadata.composed-provider
   composed-metadata-provider]
  [metabase.lib.metadata.protocols
