@@ -1,4 +1,4 @@
-import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
+import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
 import {
   getSelectionPosition,
   getUrlTarget,
@@ -60,7 +60,7 @@ describe("parseDataUri", () => {
 
 describe("shouldOpenInBlankWindow", () => {
   afterEach(() => {
-    EMBEDDING_SDK_CONFIG.isEmbeddingSdk = false;
+    jest.restoreAllMocks();
   });
 
   it("should return false for same origin links by default", () => {
@@ -69,8 +69,8 @@ describe("shouldOpenInBlankWindow", () => {
     expect(result).toBe(false);
   });
 
-  it("should always return true when in embedding SDK", () => {
-    EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
+  it("should always return true when in embedding SDK", async () => {
+    await mockIsEmbeddingSdk();
     const url = `${window.location.origin}/dashboard/1`;
     const result = shouldOpenInBlankWindow(url);
     expect(result).toBe(true);
@@ -79,7 +79,7 @@ describe("shouldOpenInBlankWindow", () => {
 
 describe("getUrlTarget", () => {
   afterEach(() => {
-    EMBEDDING_SDK_CONFIG.isEmbeddingSdk = false;
+    jest.restoreAllMocks();
   });
 
   it("should return _self for same origin links by default", () => {
@@ -88,8 +88,8 @@ describe("getUrlTarget", () => {
     expect(result).toBe("_self");
   });
 
-  it("should always return _blank when in the embedding SDK", () => {
-    EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
+  it("should always return _blank when in the embedding SDK", async () => {
+    await mockIsEmbeddingSdk();
     const url = `${window.location.origin}/dashboard/1`;
     const result = getUrlTarget(url);
     expect(result).toBe("_blank");
