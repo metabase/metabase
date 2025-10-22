@@ -4,8 +4,10 @@ import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import type { IconName } from "metabase/ui";
 import type {
   CardId,
+  CardType,
   DependencyId,
   DependencyType,
+  NativeQuerySnippetId,
   TableId,
 } from "metabase-types/api";
 
@@ -21,10 +23,16 @@ const CARD_BASED_QUESTION_NAME = "Card-based question";
 const CARD_BASED_MODEL_NAME = "Card-based model";
 const CARD_BASED_METRIC_NAME = "Card-based metric";
 const CARD_BASED_TRANSFORM_NAME = "Card-based transform";
+const CARD_BASED_SNIPPET_NAME = "Card-based snippet";
 const METRIC_BASED_QUESTION_NAME = "Metric-based question";
 const METRIC_BASED_MODEL_NAME = "Metric-based model";
 const METRIC_BASED_METRIC_NAME = "Metric-based metric";
 const METRIC_BASED_TRANSFORM_NAME = "Metric-based transform";
+const EMPTY_SNIPPET_NAME = "Empty snippet";
+const SNIPPET_BASED_QUESTION_NAME = "Snippet-based question";
+const SNIPPET_BASED_MODEL_NAME = "Snippet-based model";
+const SNIPPET_BASED_TRANSFORM_NAME = "Snippet-based transform";
+const SNIPPET_BASED_SNIPPET_NAME = "Snippet-based snippet";
 
 describe("scenarios > dependencies > dependency graph", () => {
   beforeEach(() => {
@@ -270,6 +278,7 @@ describe("scenarios > dependencies > dependency graph", () => {
           createCardBasedModel(card.id);
           createCardBasedMetric(card.id);
           createCardBasedTransform(card.id);
+          createCardBasedSnippet(card.id);
           visitGraphForEntity(card.id, "card");
         });
       verifyPanelNavigation({
@@ -291,6 +300,11 @@ describe("scenarios > dependencies > dependency graph", () => {
         itemTitle: TABLE_BASED_QUESTION_NAME,
         groupTitle: "1 transform",
         dependentItemTitle: CARD_BASED_TRANSFORM_NAME,
+      });
+      verifyPanelNavigation({
+        itemTitle: TABLE_BASED_QUESTION_NAME,
+        groupTitle: "1 snippet",
+        dependentItemTitle: CARD_BASED_SNIPPET_NAME,
       });
     });
 
@@ -302,6 +316,7 @@ describe("scenarios > dependencies > dependency graph", () => {
           createCardBasedModel(card.id);
           createCardBasedMetric(card.id);
           createCardBasedTransform(card.id);
+          createCardBasedSnippet(card.id);
           visitGraphForEntity(card.id, "card");
         });
       verifyPanelNavigation({
@@ -323,6 +338,11 @@ describe("scenarios > dependencies > dependency graph", () => {
         itemTitle: TABLE_BASED_MODEL_NAME,
         groupTitle: "1 transform",
         dependentItemTitle: CARD_BASED_TRANSFORM_NAME,
+      });
+      verifyPanelNavigation({
+        itemTitle: TABLE_BASED_MODEL_NAME,
+        groupTitle: "1 snippet",
+        dependentItemTitle: CARD_BASED_SNIPPET_NAME,
       });
     });
 
@@ -355,6 +375,36 @@ describe("scenarios > dependencies > dependency graph", () => {
         itemTitle: TABLE_BASED_METRIC_NAME,
         groupTitle: "1 transform",
         dependentItemTitle: METRIC_BASED_TRANSFORM_NAME,
+      });
+    });
+
+    it("should display dependencies for a snippet and navigate to them", () => {
+      createEmptySnippet().then(({ body: snippet }) => {
+        createSnippetBasedQuestion(TABLE_NAME, snippet.id, snippet.name);
+        createSnippetBasedModel(TABLE_NAME, snippet.id, snippet.name);
+        createSnippetBasedTransform(TABLE_NAME, snippet.id, snippet.name);
+        createSnippetBasedSnippet(snippet.name);
+        visitGraphForEntity(snippet.id, "snippet");
+      });
+      verifyPanelNavigation({
+        itemTitle: EMPTY_SNIPPET_NAME,
+        groupTitle: "1 question",
+        dependentItemTitle: SNIPPET_BASED_QUESTION_NAME,
+      });
+      verifyPanelNavigation({
+        itemTitle: EMPTY_SNIPPET_NAME,
+        groupTitle: "1 model",
+        dependentItemTitle: SNIPPET_BASED_MODEL_NAME,
+      });
+      verifyPanelNavigation({
+        itemTitle: EMPTY_SNIPPET_NAME,
+        groupTitle: "1 transform",
+        dependentItemTitle: SNIPPET_BASED_TRANSFORM_NAME,
+      });
+      verifyPanelNavigation({
+        itemTitle: EMPTY_SNIPPET_NAME,
+        groupTitle: "1 snippet",
+        dependentItemTitle: SNIPPET_BASED_SNIPPET_NAME,
       });
     });
   });
@@ -392,66 +442,128 @@ function getScoreboardTableId() {
   return cy.get<number>(`@${TABLE_ID_ALIAS}`);
 }
 
-function createTableBasedQuestion(tableId: TableId) {
+function createTableBasedCard(name: string, type: CardType, tableId: TableId) {
   return H.createQuestion({
-    name: TABLE_BASED_QUESTION_NAME,
-    type: "question",
+    name,
+    type,
     query: {
       "source-table": tableId,
+    },
+  });
+}
+
+function createTableBasedQuestion(tableId: TableId) {
+  return createTableBasedCard(TABLE_BASED_QUESTION_NAME, "question", tableId);
+}
+
+function createTableBasedModel(tableId: TableId) {
+  return createTableBasedCard(TABLE_BASED_MODEL_NAME, "model", tableId);
+}
+
+function createCardBasedCard(name: string, type: CardType, cardId: CardId) {
+  return H.createQuestion({
+    name,
+    type,
+    query: {
+      "source-table": `card__${cardId}`,
     },
   });
 }
 
 function createCardBasedQuestion(cardId: CardId) {
+  return createCardBasedCard(CARD_BASED_QUESTION_NAME, "question", cardId);
+}
+
+function createCardBasedModel(cardId: CardId) {
+  return createCardBasedCard(CARD_BASED_MODEL_NAME, "model", cardId);
+}
+
+function createMetricBasedCard(
+  name: string,
+  type: CardType,
+  tableId: TableId,
+  metricId: CardId,
+) {
   return H.createQuestion({
-    name: CARD_BASED_QUESTION_NAME,
-    type: "question",
+    name,
+    type,
     query: {
-      "source-table": `card__${cardId}`,
+      "source-table": tableId,
+      aggregation: [["metric", metricId]],
     },
   });
 }
 
 function createMetricBasedQuestion(tableId: TableId, metricId: CardId) {
-  return H.createQuestion({
-    name: METRIC_BASED_QUESTION_NAME,
-    type: "question",
-    query: {
-      "source-table": tableId,
-      aggregation: [["metric", metricId]],
-    },
-  });
-}
-
-function createTableBasedModel(tableId: TableId) {
-  return H.createQuestion({
-    name: TABLE_BASED_MODEL_NAME,
-    type: "model",
-    query: {
-      "source-table": tableId,
-    },
-  });
-}
-
-function createCardBasedModel(cardId: CardId) {
-  return H.createQuestion({
-    name: CARD_BASED_MODEL_NAME,
-    type: "model",
-    query: {
-      "source-table": `card__${cardId}`,
-    },
-  });
+  return createMetricBasedCard(
+    METRIC_BASED_QUESTION_NAME,
+    "question",
+    tableId,
+    metricId,
+  );
 }
 
 function createMetricBasedModel(tableId: TableId, metricId: CardId) {
-  return H.createQuestion({
-    name: METRIC_BASED_MODEL_NAME,
-    type: "model",
-    query: {
-      "source-table": tableId,
-      aggregation: [["metric", metricId]],
+  return createMetricBasedCard(
+    METRIC_BASED_MODEL_NAME,
+    "model",
+    tableId,
+    metricId,
+  );
+}
+
+function createSnippetBasedCard(
+  name: string,
+  type: CardType,
+  tableName: string,
+  snippetId: NativeQuerySnippetId,
+  snippetName: string,
+) {
+  return H.createNativeQuestion({
+    name,
+    type,
+    native: {
+      query: `SELECT * FROM ${tableName} WHERE {{snippet:${snippetName}}}`,
+      "template-tags": {
+        [`snippet:${snippetName}`]: {
+          id: "4b77cc1f-ea70-4ef6-84db-58432fce6928",
+          name: `snippet:${snippetName}`,
+          "display-name": `snippet:${snippetName}`,
+          type: "snippet",
+          "snippet-id": snippetId,
+          "snippet-name": snippetName,
+        },
+      },
     },
   });
+}
+
+function createSnippetBasedQuestion(
+  tableName: string,
+  snippetId: NativeQuerySnippetId,
+  snippetName: string,
+) {
+  return createSnippetBasedCard(
+    SNIPPET_BASED_QUESTION_NAME,
+    "question",
+    tableName,
+    snippetId,
+    snippetName,
+  );
+}
+
+function createSnippetBasedModel(
+  tableName: string,
+  snippetId: NativeQuerySnippetId,
+  snippetName: string,
+) {
+  return createSnippetBasedCard(
+    SNIPPET_BASED_MODEL_NAME,
+    "model",
+    tableName,
+    snippetId,
+    snippetName,
+  );
 }
 
 function createTableBasedMetric(tableId: TableId) {
@@ -460,6 +572,7 @@ function createTableBasedMetric(tableId: TableId) {
     type: "metric",
     query: {
       "source-table": tableId,
+      aggregation: [["count"]],
     },
   });
 }
@@ -470,6 +583,7 @@ function createCardBasedMetric(cardId: CardId) {
     type: "metric",
     query: {
       "source-table": `card__${cardId}`,
+      aggregation: [["count"]],
     },
   });
 }
@@ -550,5 +664,62 @@ function createMetricBasedTransform(tableId: TableId, metricId: CardId) {
       schema: "public",
       name: "transform_table",
     },
+  });
+}
+
+function createSnippetBasedTransform(
+  tableName: string,
+  snippetId: NativeQuerySnippetId,
+  snippetName: string,
+) {
+  return H.createTransform({
+    name: SNIPPET_BASED_TRANSFORM_NAME,
+    source: {
+      type: "query",
+      query: {
+        database: WRITABLE_DB_ID,
+        type: "native",
+        native: {
+          query: `SELECT * FROM ${tableName} WHERE {{snippet:${snippetName}}}`,
+          "template-tags": {
+            [`snippet:${snippetName}`]: {
+              id: "4b77cc1f-ea70-4ef6-84db-58432fce6928",
+              name: `snippet:${snippetName}`,
+              "display-name": `snippet:${snippetName}`,
+              type: "snippet",
+              "snippet-id": snippetId,
+              "snippet-name": snippetName,
+            },
+          },
+        },
+      },
+    },
+    target: {
+      type: "table",
+      database: WRITABLE_DB_ID,
+      schema: "public",
+      name: "transform_table",
+    },
+  });
+}
+
+function createEmptySnippet() {
+  return H.createSnippet({
+    name: EMPTY_SNIPPET_NAME,
+    content: "1 = 1",
+  });
+}
+
+function createCardBasedSnippet(cardId: CardId) {
+  return H.createSnippet({
+    name: CARD_BASED_SNIPPET_NAME,
+    content: `{{#${cardId}}}`,
+  });
+}
+
+function createSnippetBasedSnippet(snippetName: string) {
+  return H.createSnippet({
+    name: SNIPPET_BASED_SNIPPET_NAME,
+    content: `{{snippet:${snippetName}}}`,
   });
 }
