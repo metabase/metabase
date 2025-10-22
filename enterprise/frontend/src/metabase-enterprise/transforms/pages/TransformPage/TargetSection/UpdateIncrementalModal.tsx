@@ -128,14 +128,6 @@ function UpdateIncrementalForm({
   }, [libQuery]);
 
   const handleSubmit = async (values: IncrementalValues) => {
-    // Parse the keyset filter ref if it's a stringified JSON (from the dropdown)
-    const parsedFilterRef = values.keysetFilterRef
-      ? values.keysetFilterRef.startsWith("[") ||
-        values.keysetFilterRef.startsWith("{")
-        ? JSON.parse(values.keysetFilterRef)
-        : values.keysetFilterRef
-      : null;
-
     // Build the source with incremental strategy if enabled
     const source = values.incremental
       ? {
@@ -143,7 +135,9 @@ function UpdateIncrementalForm({
           "source-incremental-strategy": {
             type: "keyset" as const,
             "keyset-column": values.keysetColumn!,
-            ...(parsedFilterRef && { "keyset-filter-ref": parsedFilterRef }),
+            ...(values.keysetFilterRef && {
+              "keyset-filter-ref": values.keysetFilterRef,
+            }),
           },
         }
       : {
@@ -265,27 +259,14 @@ function getInitialValues(transform: Transform): IncrementalValues {
     strategy?.type === "keyset" ? strategy["keyset-column"] : null;
   const fieldRef =
     strategy?.type === "keyset" && strategy["keyset-filter-ref"]
-      ? JSON.stringify(strategy["keyset-filter-ref"])
+      ? strategy["keyset-filter-ref"]
       : null;
 
-  console.log("UpdateIncrementalModal - getInitialValues:", {
-    isIncremental,
-    strategy,
-    columnName,
-    columnNameType: typeof columnName,
-    fieldRef,
-    fieldRefType: typeof fieldRef,
-  });
-
-  const result = {
+  return {
     incremental: isIncremental,
     sourceStrategy: "keyset",
     keysetColumn: isIncremental ? columnName : null,
     keysetFilterRef: isIncremental ? fieldRef : null,
     targetStrategy: "append",
   };
-
-  console.log("UpdateIncrementalModal - returning initialValues:", result);
-
-  return result;
 }

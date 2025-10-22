@@ -35,23 +35,28 @@ export function KeysetColumnSelect({
         Lib.isNumeric(column),
       );
 
-      // Convert to select options
-      return numericColumns.map((column) => {
+      // Convert to select options with unique keys
+      const seenKeys = new Set<string>();
+      const uniqueColumns: Array<{ value: string; label: string }> = [];
+
+      numericColumns.forEach((column) => {
         const columnInfo = Lib.displayInfo(query, stageIndex, column);
-        // Get the field ref for this column
-        const fieldRef = Lib.ref(column);
+        const uniqueKey = Lib.columnUniqueKey(column);
 
-        // Use table name + column name for the label to handle duplicates
-        const label = columnInfo.table?.displayName
-          ? `${columnInfo.table.displayName} → ${columnInfo.displayName}`
-          : columnInfo.displayName;
+        // Only add if we haven't seen this key before
+        if (!seenKeys.has(uniqueKey)) {
+          seenKeys.add(uniqueKey);
 
-        return {
-          // Use the stringified field ref as the value
-          value: JSON.stringify(fieldRef),
-          label,
-        };
+          // Use table name + column name for the label to handle duplicates
+          const label = columnInfo.table?.displayName
+            ? `${columnInfo.table.displayName} → ${columnInfo.displayName}`
+            : columnInfo.displayName;
+
+          uniqueColumns.push({ value: uniqueKey, label });
+        }
       });
+
+      return uniqueColumns;
     } catch (error) {
       // If we can't extract columns (e.g., invalid query), return empty array
       console.error(

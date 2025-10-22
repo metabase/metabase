@@ -203,8 +203,8 @@
   (t2/select-one-fn :watermark_value :model/TransformWatermark :transform_id transform-id))
 
 (defn- source->keyset-fitler-ref
-  [source-incremental-strategy]
-  (some->> source-incremental-strategy :keyset-filter-ref (lib/normalize ::lib.schema.ref/ref)))
+  [query source-incremental-strategy]
+  (some->> source-incremental-strategy :keyset-filter-ref (lib/column-with-unique-key query)))
 
 (defn preprocess-incremental-query
   "Preprocess a query for incremental transform execution by adding watermark filtering.
@@ -224,7 +224,7 @@
       (update query :parameters conj {:type :number
                                       :target [:variable [:template-tag "watermark"]]
                                       :value watermark-value})
-      (lib/filter query (lib/> (source->keyset-fitler-ref source-incremental-strategy) watermark-value)))
+      (lib/filter query (lib/> (source->keyset-fitler-ref query source-incremental-strategy) watermark-value)))
     query))
 
 (defn compile-source

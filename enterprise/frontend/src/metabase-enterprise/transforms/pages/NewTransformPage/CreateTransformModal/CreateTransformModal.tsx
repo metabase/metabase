@@ -389,13 +389,6 @@ function getCreateRequest(
   }: NewTransformValues,
   databaseId: number,
 ): CreateTransformRequest {
-  // Parse the keyset filter ref if it's a stringified JSON (from the dropdown)
-  const parsedFilterRef = keysetFilterRef
-    ? keysetFilterRef.startsWith("[") || keysetFilterRef.startsWith("{")
-      ? JSON.parse(keysetFilterRef)
-      : keysetFilterRef
-    : null;
-
   // Build the source with incremental strategy if enabled
   const transformSource: TransformSource = incremental
     ? {
@@ -403,7 +396,7 @@ function getCreateRequest(
         "source-incremental-strategy": {
           type: sourceStrategy,
           "keyset-column": keysetColumn!,
-          ...(parsedFilterRef && { "keyset-filter-ref": parsedFilterRef }),
+          ...(keysetFilterRef && { "keyset-filter-ref": keysetFilterRef }),
         },
       }
     : source;

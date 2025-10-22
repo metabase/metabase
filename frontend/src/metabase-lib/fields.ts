@@ -52,12 +52,6 @@ export function fieldValuesSearchInfo(
   return ML.field_values_search_info(query, column);
 }
 
-export function ref(
-  column: ColumnMetadata | MetricMetadata | SegmentMetadata,
-): Clause {
-  return ML.ref(column);
-}
-
 export function legacyRef(
   query: Query,
   stageIndex: number,
