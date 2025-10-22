@@ -1,0 +1,25 @@
+name: Get cache
+description: Composite action that abstracts working with cache for different environments
+
+inputs:
+  path:
+    description: "Path(s) to dependencies"
+    required: true
+  cache-name:
+    description: "Cache name or identifier (e.g. Cypress, npm, m2...)"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Get Date
+      id: get-date
+      run: |
+        echo "week-of-year=$(/bin/date "+%G-%V")" >> $GITHUB_OUTPUT
+      shell: bash
+    - name: Get Cypress cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ inputs.path }}
+        key: ${{ runner.os }}-${{ inputs.cache-name }}-${{ steps.get-date.outputs.week-of-year }}
+        restore-keys: ${{ runner.os }}-${{ inputs.cache-name}}-
