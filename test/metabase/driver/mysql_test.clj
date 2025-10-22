@@ -46,7 +46,7 @@
                       ;; 2. Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these
                       ;;    tests.
                       (binding [sync-util/*log-exceptions-and-continue?* false]
-                        (thunk))))
+                        (mt/with-test-user :rasta (thunk)))))
 
 (deftest all-zero-dates-test
   (mt/test-driver :mysql

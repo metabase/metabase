@@ -5,6 +5,7 @@
    [metabase-enterprise.advanced-permissions.query-processor.middleware.permissions
     :as ee.qp.perms]
    [metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions :as row-level-restrictions]
+   [metabase-enterprise.test :as met]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.permissions.core :as perms]
@@ -24,7 +25,7 @@
   (let [all-users-group-id (u/the-id (perms/all-users-group))
         db-id              (u/the-id db-or-id)
         revision           (:revision (data-perms.graph/api-graph))]
-    (mt/with-premium-features #{:advanced-permissions}
+    (mt/with-additional-premium-features #{:advanced-permissions}
       (perms.test-util/with-restored-data-perms!
         (data-perms.graph/update-data-perms-graph! {:revision revision
                                                     :groups   {all-users-group-id {db-id {:download graph}}}})
@@ -160,11 +161,7 @@
 (deftest check-download-permissions-when-advanced-mbql-sandboxed-test
   (testing "Applying a basic sandbox does not affect the download permissions for a table"
     (mt/with-current-user (mt/user->id :rasta)
-      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query checkins {:filter [:> $date "2014-01-01"]})}
-                     :model/GroupTableAccessPolicy _ {:group_id             (u/the-id (perms/all-users-group))
-                                                      :table_id             (mt/id :checkins)
-                                                      :card_id              card-id
-                                                      :attribute_remappings {}}]
+      (met/with-gtaps! {:gtaps {:checkins {:query (mt/mbql-query checkins {:filter [:> $date "2014-01-01"]})}}}
         (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :users)      :full
                                                            (mt/id :categories) :none
                                                            (mt/id :venues)     :limited
@@ -181,11 +178,7 @@
 (deftest check-download-permissions-when-advanced-sql-sandboxed-test
   (testing "Applying a advanced sandbox does not affect the download permissions for a table"
     (mt/with-current-user (mt/user->id :rasta)
-      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/native-query {:query "SELECT ID FROM CHECKINS"})}
-                     :model/GroupTableAccessPolicy _ {:group_id             (u/the-id (perms/all-users-group))
-                                                      :table_id             (mt/id :checkins)
-                                                      :card_id              card-id
-                                                      :attribute_remappings {}}]
+      (met/with-gtaps! {:gtaps {:checkins {:query (mt/native-query {:query "SELECT ID FROM CHECKINS"})}}}
         (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :users)      :full
                                                            (mt/id :categories) :none
                                                            (mt/id :venues)     :limited
@@ -193,11 +186,11 @@
                                                            (mt/id :products)   :limited
                                                            (mt/id :people)     :limited
                                                            (mt/id :reviews)    :limited
-                                                           (mt/id :orders)     :limited}}})
-        (mt/with-metadata-provider (mt/id)
-          (let [with-sandbox (apply-row-level-permissions (mbql-download-query 'checkins))]
-            (is (= with-sandbox
-                   (check-download-permisions with-sandbox)))))))))
+                                                           (mt/id :orders)     :limited}}}
+          (mt/with-metadata-provider (mt/id)
+            (let [with-sandbox (apply-row-level-permissions (mbql-download-query 'checkins))]
+              (is (= with-sandbox
+                     (check-download-permissions with-sandbox))))))))))
 
 ;;; +----------------------------------------------------------------------- -----------------------------------------+
 ;;; |                                                E2E tests                                                       |
@@ -438,11 +431,7 @@
   (testing "Do we correctly check download perms for queries that involve a sandbox? (#57861)"
     (mt/with-full-data-perms-for-all-users!
       (with-redefs [ee.qp.perms/max-rows-in-limited-downloads 3]
-        (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/native-query {:query "SELECT ID FROM CHECKINS"})}
-                       :model/GroupTableAccessPolicy _ {:group_id             (u/the-id (perms/all-users-group))
-                                                        :table_id             (mt/id :checkins)
-                                                        :card_id              card-id
-                                                        :attribute_remappings {}}]
+        (met/with-gtaps! {:gtaps {:checkins {:query (mt/native-query {:query "SELECT ID FROM CHECKINS"})}}}
           (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :categories) :none
                                                              (mt/id :checkins)   :full}}}
             (streaming-test/do-test!
