@@ -99,7 +99,10 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
           name,
         },
       }),
-      invalidatesTags: () => [tag("remote-sync-branches")],
+      invalidatesTags: () => [
+        tag("remote-sync-branches"),
+        tag("session-properties"),
+      ],
     }),
     getRemoteSyncCurrentTask: builder.query<RemoteSyncTask, void>({
       query: () => ({
