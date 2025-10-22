@@ -29,7 +29,8 @@
     "frontend/src/**/*",
     "enterprise/frontend/src/**/*",
     "frontend/test/**/*",
-    "enterprise/frontend/test/**/*"
+    "enterprise/frontend/test/**/*",
+    "target/cljs_dev/**/*"
   ],
   "exclude": [
     "node_modules",
