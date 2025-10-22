@@ -37,7 +37,6 @@ export const WidgetStatus = ({
           <Box
             aria-label={t`Clear`}
             h={24}
-            pr={4}
             pt={4}
             pb={4}
             onClick={handleClick}
@@ -57,7 +56,6 @@ export const WidgetStatus = ({
           <Box
             aria-label={t`Reset filter to default state`}
             h={24}
-            pr={4}
             pt={4}
             pb={4}
             onClick={handleClick}
