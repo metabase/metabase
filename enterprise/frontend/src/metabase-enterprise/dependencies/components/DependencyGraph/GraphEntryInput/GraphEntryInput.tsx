@@ -32,7 +32,7 @@ export function GraphEntryInput({
     useDisclosure();
 
   const handleEntryChange = (newEntry: DependencyEntry | null) => {
-    dispatch(push(Urls.dependencyLineage(newEntry ? { entry: newEntry } : {})));
+    dispatch(push(Urls.dependencyGraph(newEntry ? { entry: newEntry } : {})));
   };
 
   const handlePickerChange = (newEntry: DependencyEntry) => {

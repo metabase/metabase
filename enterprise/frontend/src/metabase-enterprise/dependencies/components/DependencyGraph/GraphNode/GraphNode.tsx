@@ -53,6 +53,7 @@ export const GraphNode = memo(function ItemNode({
         p="md"
         gap="sm"
         aria-label={label}
+        aria-selected={isSelected}
         data-testid="graph-node"
         onClick={handleClick}
       >

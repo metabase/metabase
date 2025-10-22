@@ -1,11 +1,11 @@
 import * as Urls from "metabase/lib/urls";
 import type { DependencyType } from "metabase-types/api";
 
-import type { DependencyLineageRawParams } from "../../types";
+import type { DependencyGraphRawParams } from "../../types";
 
 export function parseParams(
-  params: DependencyLineageRawParams = {},
-): Urls.DependencyLineageParams {
+  params: DependencyGraphRawParams = {},
+): Urls.DependencyGraphParams {
   const id = Urls.extractEntityId(params.id);
   const type = parseDependencyType(params.type);
   return {

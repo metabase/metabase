@@ -1,4 +1,4 @@
-export type DependencyLineageRawParams = {
+export type DependencyGraphRawParams = {
   id?: string;
   type?: string;
 };

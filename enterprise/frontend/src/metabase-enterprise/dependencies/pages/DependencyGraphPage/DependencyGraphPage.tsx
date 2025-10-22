@@ -1,10 +1,10 @@
 import { DependencyGraph } from "../../components/DependencyGraph";
-import type { DependencyLineageRawParams } from "../../types";
+import type { DependencyGraphRawParams } from "../../types";
 
 import { parseParams } from "./utils";
 
 type DependencyGraphPageProps = {
-  params?: DependencyLineageRawParams;
+  params?: DependencyGraphRawParams;
 };
 
 export function DependencyGraphPage({ params }: DependencyGraphPageProps) {

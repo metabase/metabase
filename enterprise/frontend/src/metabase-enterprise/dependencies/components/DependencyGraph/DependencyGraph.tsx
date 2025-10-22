@@ -7,9 +7,11 @@ import {
   useEdgesState,
   useNodesState,
 } from "@xyflow/react";
-import { useLayoutEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Group } from "metabase/ui";
 import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
 import type { DependencyEntry } from "metabase-types/api";
@@ -35,12 +37,15 @@ type DependencyGraphProps = {
 };
 
 export function DependencyGraph({ entry }: DependencyGraphProps) {
-  const { currentData: graph, isFetching } = useGetDependencyGraphQuery(
-    entry ?? skipToken,
-  );
+  const {
+    data: graph,
+    isFetching,
+    error,
+  } = useGetDependencyGraphQuery(entry ?? skipToken);
   const [nodes, setNodes, onNodesChange] = useNodesState<NodeType>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [selection, setSelection] = useState<GraphSelection | null>(null);
+  const { sendErrorToast } = useMetadataToasts();
 
   const entryNode = useMemo(() => {
     return entry != null ? findNode(nodes, entry.id, entry.type) : null;
@@ -52,19 +57,25 @@ export function DependencyGraph({ entry }: DependencyGraphProps) {
       : null;
   }, [nodes, selection]);
 
-  useLayoutEffect(() => {
-    if (entry == null || graph == null) {
+  useEffect(() => {
+    if (entry == null || error != null) {
       setNodes([]);
       setEdges([]);
       setSelection(null);
-      return;
+    } else if (graph != null) {
+      const { nodes: initialNodes, edges: initialEdges } =
+        getInitialGraph(graph);
+      setNodes(initialNodes);
+      setEdges(initialEdges);
+      setSelection(entry);
     }
+  }, [entry, graph, error, setNodes, setEdges]);
 
-    const { nodes: initialNodes, edges: initialEdges } = getInitialGraph(graph);
-    setNodes(initialNodes);
-    setEdges(initialEdges);
-    setSelection(entry);
-  }, [entry, graph, setNodes, setEdges]);
+  useEffect(() => {
+    if (error != null) {
+      sendErrorToast(t`Failed to load dependencies`);
+    }
+  }, [error, sendErrorToast]);
 
   const handlePanelClose = () => {
     setSelection(null);
@@ -79,7 +90,7 @@ export function DependencyGraph({ entry }: DependencyGraphProps) {
         fitView
         minZoom={MIN_ZOOM}
         maxZoom={MAX_ZOOM}
-        data-testid="dependency-lineage"
+        data-testid="dependency-graph"
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
       >

@@ -66,7 +66,7 @@ export function getNodeTableInfo(node: DependencyNode): NodeTableInfo | null {
   return {
     title: {
       label: table.display_name,
-      url: Urls.dependencyLineage({ entry: { id: table.id, type: "table" } }),
+      url: Urls.dependencyGraph({ entry: { id: table.id, type: "table" } }),
     },
     metadata: {
       label: t`View metadata`,

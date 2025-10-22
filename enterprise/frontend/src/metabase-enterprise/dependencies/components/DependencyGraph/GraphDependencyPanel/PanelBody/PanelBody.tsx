@@ -48,7 +48,7 @@ function ListItem({ node }: ListItemProps) {
         <GraphLink
           label={getNodeLabel(node)}
           icon={getNodeIcon(node)}
-          url={Urls.dependencyLineage({ entry: node })}
+          url={Urls.dependencyGraph({ entry: node })}
         />
         {viewCount != null ? (
           <Box c="text-secondary" fz="sm" lh="1rem">

@@ -3,6 +3,7 @@ const { H } = cy;
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { IconName } from "metabase/ui";
+import type { DependencyId, DependencyType } from "metabase-types/api";
 
 const BASE_URL = "/dependencies";
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -16,7 +17,7 @@ describe("scenarios > dependencies > dependency graph", () => {
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "Animals" });
   });
 
-  describe("entity selection", () => {
+  describe("entity search", () => {
     function testEntitySearch({
       itemName,
       itemIcon,
@@ -27,14 +28,14 @@ describe("scenarios > dependencies > dependency graph", () => {
       isRecentItem: boolean;
     }) {
       cy.log(`verify that "${itemName}" can be found via search`);
-      entrySearchInput().clear().type(itemName);
+      graphEntrySearchInput().clear().type(itemName);
       H.popover().findByText(itemName).click();
-      entryButton().should("have.text", itemName);
-      entryButton().icon(itemIcon).should("be.visible");
-      entryButton().icon("close").click();
+      graphEntryButton().should("have.text", itemName);
+      graphEntryButton().icon(itemIcon).should("be.visible");
+      graphEntryButton().icon("close").click();
 
       if (isRecentItem) {
-        entrySearchInput().click();
+        graphEntrySearchInput().click();
         H.popover().findByText(itemName).should("be.visible");
       }
     }
@@ -51,17 +52,17 @@ describe("scenarios > dependencies > dependency graph", () => {
       itemIcon: IconName;
     }) {
       cy.log(`verify that "${itemName}" can be selected in the picker`);
-      entrySearchInput().click();
+      graphEntrySearchInput().click();
       H.popover().findByText("Browse all").click();
       H.entityPickerModal().within(() => {
         H.entityPickerModalTab(tabName).click();
         H.entityPickerModalItem(itemLevel, itemName).click();
       });
-      entryButton().should("have.text", itemName);
-      entryButton().icon(itemIcon).should("be.visible");
+      graphEntryButton().should("have.text", itemName);
+      graphEntryButton().icon(itemIcon).should("be.visible");
 
       cy.log(`verify that "${itemName}" is selected when the picker is opened`);
-      entryButton().click();
+      graphEntryButton().click();
       H.entityPickerModal().within(() => {
         H.entityPickerModalItem(itemLevel, itemName).should(
           "have.attr",
@@ -70,10 +71,10 @@ describe("scenarios > dependencies > dependency graph", () => {
         );
         cy.findByLabelText("Close").click();
       });
-      entryButton().icon("close").click();
+      graphEntryButton().icon("close").click();
 
       cy.log(`verify that "${itemName}" can be found via search"`);
-      entrySearchInput().click();
+      graphEntrySearchInput().click();
       H.popover().findByText("Browse all").click();
       H.entityPickerModal().within(() => {
         H.entityPickerModalTab(tabName).click();
@@ -81,9 +82,9 @@ describe("scenarios > dependencies > dependency graph", () => {
         cy.findByText(/result for/).should("be.visible");
         cy.findByText(itemName).click();
       });
-      entryButton().should("have.text", itemName);
-      entryButton().icon(itemIcon).should("be.visible");
-      entryButton().icon("close").click();
+      graphEntryButton().should("have.text", itemName);
+      graphEntryButton().icon(itemIcon).should("be.visible");
+      graphEntryButton().icon("close").click();
     }
 
     it("should be able to use inline search for all supported entity types", () => {
@@ -107,7 +108,7 @@ describe("scenarios > dependencies > dependency graph", () => {
         isRecentItem: true,
       });
       testEntitySearch({
-        itemName: "Orders Metric",
+        itemName: "Orders metric",
         itemIcon: "metric",
         isRecentItem: false,
       });
@@ -143,7 +144,7 @@ describe("scenarios > dependencies > dependency graph", () => {
       });
       testEntityPicker({
         tabName: "Collections",
-        itemName: "Orders Metric",
+        itemName: "Orders metric",
         itemLevel: 1,
         itemIcon: "metric",
       });
@@ -155,23 +156,71 @@ describe("scenarios > dependencies > dependency graph", () => {
       });
     });
   });
+
+  describe("focusing an entity", () => {
+    it("should be possible to select an entity via search", () => {
+      createQuestion().then(({ body: card }) => {
+        visitGraphForEntity(card.id, "card");
+      });
+      dependencyGraph().within(() => {
+        cy.findByLabelText("Orders")
+          .should("be.visible")
+          .and("not.have.attr", "aria-selected", "true");
+        cy.findByLabelText("Orders question")
+          .should("be.visible")
+          .and("have.attr", "aria-selected", "true");
+      });
+
+      graphSelectionInput().click();
+      H.popover().findByText("Orders").click();
+      dependencyGraph().within(() => {
+        cy.findByLabelText("Orders")
+          .should("be.visible")
+          .and("have.attr", "aria-selected", "true");
+        cy.findByLabelText("Orders question")
+          .should("be.visible")
+          .and("not.have.attr", "aria-selected", "true");
+      });
+    });
+  });
 });
 
 function visitGraph() {
   cy.visit(BASE_URL);
 }
 
-function entryButton() {
+function visitGraphForEntity(id: DependencyId, type: DependencyType) {
+  return cy.visit(`/${BASE_URL}/${type}/${id}`);
+}
+
+function dependencyGraph() {
+  return cy.findByTestId("dependency-graph");
+}
+
+function graphEntryButton() {
   return cy.findByTestId("graph-entry-button");
 }
 
-function entrySearchInput() {
+function graphEntrySearchInput() {
   return cy.findByTestId("graph-entry-search-input");
 }
 
+function graphSelectionInput() {
+  return cy.findByTestId("graph-selection-input");
+}
+
+function createQuestion() {
+  return H.createQuestion({
+    name: "Orders question",
+    query: {
+      "source-table": ORDERS_ID,
+    },
+  });
+}
+
 function createMetric() {
-  H.createQuestion({
-    name: "Orders Metric",
+  return H.createQuestion({
+    name: "Orders metric",
     type: "metric",
     query: {
       "source-table": ORDERS_ID,
@@ -181,7 +230,7 @@ function createMetric() {
 }
 
 function createSqlTransform() {
-  H.createTransform({
+  return H.createTransform({
     name: "SQL transform",
     source: {
       type: "query",

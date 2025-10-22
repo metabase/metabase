@@ -2,10 +2,10 @@ import type { DependencyEntry } from "metabase-types/api";
 
 const BASE_URL = `/dependencies`;
 
-export type DependencyLineageParams = {
+export type DependencyGraphParams = {
   entry?: DependencyEntry;
 };
 
-export function dependencyLineage({ entry }: DependencyLineageParams) {
+export function dependencyGraph({ entry }: DependencyGraphParams) {
   return entry ? `${BASE_URL}/${entry.type}/${entry.id}` : BASE_URL;
 }
