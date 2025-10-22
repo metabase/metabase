@@ -34,7 +34,7 @@
   Question transformation:
 
   - Set default display"
-  (:refer-clojure :exclude [for])
+  (:refer-clojure :exclude [some])
   (:require
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]

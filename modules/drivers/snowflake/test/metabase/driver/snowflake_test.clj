@@ -440,21 +440,23 @@
     (testing "make sure describe-table uses the NAME FROM DETAILS too"
       (is (= {:name   "categories"
               :schema "PUBLIC"
-              :fields #{{:name              "id"
-                         :database-type     "NUMBER"
-                         :base-type         :type/Number
-                         :pk?               true
-                         :database-position 0
+              :fields #{{:name                       "id"
+                         :database-type              "NUMBER"
+                         :base-type                  :type/Number
+                         :pk?                        true
+                         :database-position          0
                          :database-is-auto-increment true
-                         :database-required false
-                         :json-unfolding    false}
-                        {:name              "name"
-                         :database-type     "VARCHAR"
-                         :base-type         :type/Text
-                         :database-position 1
+                         :database-is-nullable       false
+                         :database-required          false
+                         :json-unfolding             false}
+                        {:name                       "name"
+                         :database-type              "VARCHAR"
+                         :base-type                  :type/Text
+                         :database-position          1
                          :database-is-auto-increment false
-                         :database-required true
-                         :json-unfolding    false}}}
+                         :database-is-nullable       false
+                         :database-required          true
+                         :json-unfolding             false}}}
              (driver/describe-table :snowflake (assoc (mt/db) :name "ABC") (t2/select-one :model/Table :id (mt/id :categories))))))))
 
 (deftest ^:parallel describe-table-fks-test
