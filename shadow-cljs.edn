@@ -19,7 +19,6 @@
                       :warnings        {:fn-deprecated false}}
    :closure-defines {goog.debug.LOGGING_ENABLED true}
    :entries    [metabase.dashboards.constants
-                metabase.legacy-mbql.js
                 metabase.lib.column-group
                 metabase.lib.js
                 metabase.lib.limit
@@ -41,4 +40,5 @@
   {:target           :node-test
    :output-to        "target/node-tests.js"
    :ns-regexp        "-test$"
-   :compiler-options {:reader-features #{:cljs-test}}}}}
+   :compiler-options {:reader-features #{:cljs-test}
+                      :warnings        {:fn-deprecated false}}}}}
