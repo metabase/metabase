@@ -24,13 +24,13 @@
 (set! *warn-on-reflection* true)
 
 (defn- run-async!
-  [ttype branch f]
+  [task-type branch f]
   (let [{task-id :id
          existing? :existing?}
         (cluster-lock/with-cluster-lock impl/cluster-lock
           (if-let [{id :id} (remote-sync.task/current-task)]
             {:existing? true :id id}
-            (remote-sync.task/create-sync-task! ttype api/*current-user-id*)))]
+            (remote-sync.task/create-sync-task! task-type api/*current-user-id*)))]
     (api/check-400 (not existing?) "Remote sync in progress")
     (u.jvm/in-virtual-thread*
      (dh/with-timeout {:interrupt? true
@@ -84,14 +84,6 @@
   the import returns a 400 response.
 
   Requires superuser permissions."
-
-  This endpoint will:
-  1. Fetch the latest changes from the configured git repository
-  2. Load the updated content using the serialization/deserialization system
-
-  If force=false (default) and there are unsaved changes in the Remote Sync collection, the import action will return a 400 response.
-
-  Requires superuser permissions."
   [_route
    _query
    {:keys [branch force]} :- [:map [:branch {:optional true} ms/NonBlankString]
@@ -131,15 +123,6 @@
   - Sync to the source if possible
 
   Requires superuser permissions."
-  This endpoint will:
-  1. Fetch the latest changes from the source
-  2. Create a branch or subdirectory -- depending on source support
-     If no branch is supplied use the configured export branch.
-  3. Export the Remote Sync collection via serialization to the branch or subdirectory
-  4. If possible commit the changes
-  5. If possible sync to the source.
-
-  Requires superuser permissions."
   [_route
    _query
    {:keys [message branch force]}] :- [:map
@@ -157,7 +140,7 @@
                            (or force false)
                            (or message "Exported from Metabase"))})
 
-(defn- task-status
+(defn- task-with-status
   "Returns the status of a sync task.
   
   Args:
@@ -182,7 +165,7 @@
   "Get the current sync task"
   []
   (when-let [task (remote-sync.task/most-recent-task)]
-    (task-status task)))
+    (task-with-status task)))
 
 (api.macros/defendpoint :post "/current-task/cancel" :- remote-sync.schema/SyncTask
   "Cancels the current task if one is running"
@@ -190,7 +173,7 @@
   (let [task (remote-sync.task/most-recent-task)]
     (api/check-400 (and (some? task) (remote-sync.task/running? task)) "No active task to cancel")
     (remote-sync.task/cancel-sync-task! (:id task))
-    (task-status (remote-sync.task/most-recent-task))))
+    (task-with-status (remote-sync.task/most-recent-task))))
 
 (api.macros/defendpoint :put "/settings" :- remote-sync.schema/SettingsUpdateResponse
   "Update Git Sync related settings. You must be a superuser to do this."
