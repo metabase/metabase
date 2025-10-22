@@ -102,7 +102,7 @@
                  (:xrays/filters metric-definition)
                  (as-> $query (reduce lib/filter $query (:xrays/filters metric-definition)))
 
-                 model?
+                 (not model?)
                  (as-> $query (reduce
                                lib/filter
                                $query

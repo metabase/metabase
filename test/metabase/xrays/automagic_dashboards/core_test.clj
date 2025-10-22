@@ -913,18 +913,29 @@
           (mt/with-test-user :rasta
             (automagic-dashboards.test/with-rollback-only-transaction
               (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id) =
-              (let [all-dashcard-filters        (->> (magic/automagic-analysis entity {:cell-query cell-query :show :all})
-                                                     :dashcards
-                                                     (keep #(some-> %
-                                                                    (get-in [:card :dataset_query])
-                                                                    not-empty
-                                                                    lib/filters
-                                                                    #_(magic.util/do-with-legacy-query get-in [:query :filter]))))
-                    filter-contains-cell-query? #(= cell-query (some #{cell-query} %))]
-                (is (= :wow
-                       all-dashcard-filters))
-                (is (pos? (count all-dashcard-filters)))
-                (is (every? filter-contains-cell-query? all-dashcard-filters))))))))))
+              (let [dashcards (:dashcards (magic/automagic-analysis entity {:cell-query cell-query :show :all}))]
+                (is (= ["# Summary"
+                        "Total Venues"
+                        "Distinct Category ID"
+                        "# Where these Venues are"
+                        "Venues by coordinates"
+                        "# How these Venues are distributed"
+                        "Venues per Price"]
+                       (map (some-fn (comp :name :card) (comp :text :visualization_settings)) dashcards)))
+                (let [all-dashcard-filters (keep #(some-> %
+                                                          (get-in [:card :dataset_query])
+                                                          not-empty
+                                                          lib/filters)
+                                                 dashcards)]
+                  (is (=? [[[:> {} [:field {:base-type :type/Integer} (mt/id :venues :price)] 10]
+                            [:= {} [:field {} (mt/id :venues :category_id)] 2]]
+                           [[:> {} [:field {:base-type :type/Integer} (mt/id :venues :price)] 10]
+                            [:= {} [:field {} (mt/id :venues :category_id)] 2]]
+                           [[:> {} [:field {:base-type :type/Integer} (mt/id :venues :price)] 10]
+                            [:= {} [:field {} (mt/id :venues :category_id)] 2]]
+                           [[:> {} [:field {:base-type :type/Integer} (mt/id :venues :price)] 10]
+                            [:= {} [:field {} (mt/id :venues :category_id)] 2]]]
+                          all-dashcard-filters)))))))))))
 
 (deftest complicated-card-cell-test
   (mt/with-non-admin-groups-no-root-collection-perms
