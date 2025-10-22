@@ -193,3 +193,42 @@
                      node)
                    representation)
     @v))
+
+(defprotocol EntityLookup
+  (lookup [this expected-type ref]))
+
+(defrecord MapEntityIndex [idx]
+  EntityLookup
+  (lookup [_this expected-type ref]
+    (let [entity (get idx (unref ref))]
+      (when (nil? entity)
+        (throw (ex-info (str "Cannot find ref in index: " ref)
+                        {:ref ref
+                         :index idx})))
+      (when (not= expected-type
+                  (representation-type entity))
+        (throw (ex-info (str "Not returning the expected type from the index; expected type: " expected-type "; toucan model: " (t2/model entity))
+                        {:entity entity
+                         :expected-type expected-type})))
+      (:id entity))))
+
+(defn map-entity-index
+  "Create a new index from a map of ref -> toucan entity.
+
+  This index only looks up by ref and throws if it's not found. It will check the expected type."
+  [mp]
+  (->MapEntityIndex mp))
+
+;; Use this bad boy for testing where you want to parse a ref that looks like ref:question-45 to have it return 45
+(defrecord ParseRefEntityIndex []
+  EntityLookup
+  (lookup [_this expected-type ref]
+    (let [ur (unref ref)
+          [type id] (str/split ur #"-")
+          id (Long/parseLong id)]
+      (when (not= expected-type type)
+        (throw (ex-info (str "Expected type not found in ref")
+                        {:expected-type expected-type
+                         :ref ref
+                         :type type})))
+      id)))
