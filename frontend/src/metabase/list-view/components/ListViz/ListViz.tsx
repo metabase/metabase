@@ -60,6 +60,9 @@ const vizDefinition = {
     "list.entity_icon_enabled": {
       default: true,
     },
+    "list.use_image_column": {
+      default: false,
+    },
     "list.columns": {
       getDefault: ([
         {
@@ -319,20 +322,15 @@ export const ListViz = ({
     entityIcon,
     entityIconColor,
     entityIconEnabled,
+    useImageColumn,
   }: {
     left?: string[];
     right?: string[];
     entityIcon?: string;
     entityIconColor?: string;
     entityIconEnabled?: boolean;
+    useImageColumn?: boolean;
   }) => {
-    // const newSettings = {
-    //   "list.columns": {
-    //     left,
-    //     right,
-    //   },
-    //   "list.entity_icon": entityIcon,
-    // };
     const settings = { ...(question?.settings() || {}) };
     if (left && right) {
       settings["list.columns"] = {
@@ -348,6 +346,9 @@ export const ListViz = ({
     }
     if (entityIconEnabled !== undefined) {
       settings["list.entity_icon_enabled"] = entityIconEnabled;
+    }
+    if (useImageColumn !== undefined) {
+      settings["list.use_image_column"] = useImageColumn;
     }
 
     const nextQuestion = question?.updateSettings(settings);

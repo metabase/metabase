@@ -331,6 +331,7 @@ export type VisualizationSettings = {
   "list.entity_icon"?: string;
   "list.entity_icon_color"?: string;
   "list.entity_icon_enabled"?: boolean;
+  "list.use_image_column"?: boolean;
 
   [key: string]: any;
 } & EmbedVisualizationSettings;

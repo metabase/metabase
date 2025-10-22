@@ -28,13 +28,13 @@ import {
   Flex,
   Icon,
   type IconName,
+  Image,
   Menu,
   SimpleGrid,
   Stack,
   Switch,
   Text,
 } from "metabase/ui";
-import { color } from "metabase/ui/utils/colors";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type * as Lib from "metabase-lib";
 import type { DatasetColumn, DatasetData, RowValues } from "metabase-types/api";
@@ -65,6 +65,7 @@ export const ListViewConfiguration = ({
     entityIcon?: string;
     entityIconColor?: string;
     entityIconEnabled?: boolean;
+    useImageColumn?: boolean;
   }) => void;
   settings?: ComputedVisualizationSettings;
   columnsMetadata: Lib.ColumnMetadata[];
@@ -72,7 +73,7 @@ export const ListViewConfiguration = ({
   const { cols } = data;
 
   // Use the same default inference as the list view
-  const { titleColumn, rightColumns } = useListColumns(
+  const { imageColumn, titleColumn, rightColumns } = useListColumns(
     cols,
     settings?.["list.columns"],
   );
@@ -93,8 +94,9 @@ export const ListViewConfiguration = ({
     );
   }, [rightColumns]);
 
-  // Selected icon state
-  const [selectedEntityIcon, setSelectedEntityIcon] = useState<string>(
+  // Local state duplication for selected settings to immediately reflect
+  // list item preview changes.
+  const [selectedEntityIcon, setSelectedEntityIcon] = useState<string | null>(
     () => settings?.["list.entity_icon"] || getEntityIcon(entityType),
   );
   const [selectedIconColor, setSelectedIconColor] = useState<string>(
@@ -103,15 +105,16 @@ export const ListViewConfiguration = ({
   const [entityIconEnabled, setEntityIconEnabled] = useState<boolean>(
     () => settings?.["list.entity_icon_enabled"] as boolean,
   );
+  const [useImageColumn, setUseImageColumn] = useState<boolean>(
+    () => settings?.["list.use_image_column"] as boolean,
+  );
 
-  // All options from cols
+  // Exclude options already used by any of the two selects, but keep the ones
+  // selected in the respective select so tags render properly
   const allOptions = cols.map((col) => ({
     value: col.name,
     label: col.display_name,
   }));
-
-  // Exclude options already used by any of the two selects, but keep the ones
-  // selected in the respective select so tags render properly
   const used = new Set([...leftValues, ...rightValues]);
   const leftOptions = allOptions.filter(
     (opt) => !used.has(opt.value) || leftValues.includes(opt.value),
@@ -120,19 +123,18 @@ export const ListViewConfiguration = ({
     (opt) => !used.has(opt.value) || rightValues.includes(opt.value),
   );
 
+  const previewSample = useMemo(
+    () => generatePreviewSample(data.rows, columnsMetadata),
+    [data.rows, columnsMetadata],
+  );
+
   const findColByName = (name?: string): DatasetColumn | undefined =>
     cols.find((c) => c.name === name);
-
   const selectedTitleColumn = findColByName(leftValues[0]);
   const selectedRightColumns = rightValues
     .slice(0, 5)
     .map(findColByName)
     .filter(Boolean) as DatasetColumn[];
-
-  const previewSample = useMemo(
-    () => generatePreviewSample(data.rows, columnsMetadata),
-    [data.rows, columnsMetadata],
-  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -144,12 +146,14 @@ export const ListViewConfiguration = ({
     entityIcon,
     entityIconColor,
     entityIconEnabled,
+    useImageColumn,
   }: {
     left?: string[];
     right?: string[];
-    entityIcon?: string;
+    entityIcon?: string | null;
     entityIconColor?: string;
     entityIconEnabled?: boolean;
+    useImageColumn?: boolean;
   }) => {
     if (left) {
       setLeftValues(left);
@@ -157,7 +161,7 @@ export const ListViewConfiguration = ({
     if (right) {
       setRightValues(right);
     }
-    if (entityIcon) {
+    if (entityIcon !== undefined) {
       setSelectedEntityIcon(entityIcon);
     }
     if (entityIconColor) {
@@ -166,7 +170,17 @@ export const ListViewConfiguration = ({
     if (entityIconEnabled !== undefined) {
       setEntityIconEnabled(entityIconEnabled);
     }
-    onChange({ left, right, entityIcon, entityIconColor, entityIconEnabled });
+    if (useImageColumn !== undefined) {
+      setUseImageColumn(useImageColumn);
+    }
+    onChange({
+      left,
+      right,
+      entityIcon,
+      entityIconColor,
+      entityIconEnabled,
+      useImageColumn,
+    });
   };
 
   const {
@@ -242,17 +256,28 @@ export const ListViewConfiguration = ({
                         : "var(--mb-color-white)",
                     }}
                   >
-                    <Icon
-                      tooltip="Entity icon"
-                      name={
-                        entityIconEnabled
-                          ? (selectedEntityIcon as IconName)
-                          : "ban"
-                      }
-                      size="1rem"
-                      className={S.listEntityIcon}
-                      c={entityIconEnabled ? selectedIconColor : "text-light"}
-                    />
+                    {useImageColumn && entityIconEnabled && imageColumn ? (
+                      <Image
+                        src={previewSample[cols.indexOf(imageColumn)]}
+                        alt=""
+                        w={32}
+                        h={32}
+                        radius="xl"
+                        style={{ flexShrink: 0 }}
+                      />
+                    ) : (
+                      <Icon
+                        tooltip="Entity icon"
+                        name={
+                          entityIconEnabled
+                            ? (selectedEntityIcon as IconName)
+                            : "ban"
+                        }
+                        size="1rem"
+                        className={S.listEntityIcon}
+                        c={entityIconEnabled ? selectedIconColor : "text-light"}
+                      />
+                    )}
                   </ActionIcon>
                 </Flex>
               </Menu.Target>
@@ -273,7 +298,6 @@ export const ListViewConfiguration = ({
                     }}
                     checked={entityIconEnabled}
                     onChange={(e) => {
-                      // setSelectedIconEnabled(e.currentTarget.checked);
                       onConfigurationChange({
                         left: leftValues,
                         right: rightValues,
@@ -284,18 +308,48 @@ export const ListViewConfiguration = ({
                 </Box>
                 <Menu.Divider m={0} />
                 <SimpleGrid cols={5} p="md">
+                  {imageColumn && (
+                    <ActionIcon
+                      radius="lg"
+                      p="md"
+                      className={cx(S.imageColumn, {
+                        [S.selected]: useImageColumn && entityIconEnabled,
+                      })}
+                      onClick={() => {
+                        onConfigurationChange({
+                          left: leftValues,
+                          right: rightValues,
+                          useImageColumn: true,
+                          entityIcon: null,
+                        });
+                      }}
+                    >
+                      <Image
+                        src={previewSample[cols.indexOf(imageColumn)]}
+                        alt=""
+                        w={32}
+                        h={32}
+                        style={{ flexShrink: 0 }}
+                      />
+                    </ActionIcon>
+                  )}
                   {Object.entries(ENTITY_ICONS).map(([key, iconName]) => (
                     <Flex justify="center" align="center" key={key}>
                       <ActionIcon
                         w="2rem"
                         h="2rem"
                         radius="lg"
+                        className={cx({
+                          [S.selected]:
+                            selectedEntityIcon === iconName &&
+                            entityIconEnabled,
+                        })}
                         onClick={() => {
-                          // setSelectedEntityIcon(iconName);
                           onConfigurationChange({
                             left: leftValues,
                             right: rightValues,
                             entityIcon: iconName as string,
+                            useImageColumn: false,
                           });
                         }}
                       >
@@ -387,9 +441,15 @@ export const ListViewConfiguration = ({
             row={previewSample}
             cols={cols}
             settings={settings as ComputedVisualizationSettings}
-            entityIcon={entityIconEnabled ? selectedEntityIcon : undefined}
+            entityIcon={
+              entityIconEnabled && selectedEntityIcon
+                ? selectedEntityIcon
+                : undefined
+            }
             entityIconColor={selectedIconColor}
-            imageColumn={undefined}
+            imageColumn={
+              entityIconEnabled && useImageColumn ? imageColumn : undefined
+            }
             titleColumn={selectedTitleColumn}
             rightColumns={selectedRightColumns}
             onClick={() => {}}
@@ -426,9 +486,9 @@ function useExternalDragOverlay({
   onConfigurationChange: (values: {
     left: string[];
     right: string[];
-    entityIcon?: string;
+    entityIcon?: string | null;
   }) => void;
-  selectedEntityIcon: string;
+  selectedEntityIcon: string | null;
 }) {
   // Active drag state for overlay
   const [activeId, setActiveId] = useState<string | null>(null);

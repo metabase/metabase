@@ -60,6 +60,7 @@ export function ListView({
     settings?.["list.entity_icon"] || getEntityIcon(entityType);
   const entityIconColor = settings?.["list.entity_icon_color"];
   const entityIconEnabled = settings?.["list.entity_icon_enabled"];
+  const useImageColumn = settings?.["list.use_image_column"];
 
   return (
     <Stack
@@ -124,7 +125,11 @@ export function ListView({
                     settings={settings}
                     entityIcon={entityIconEnabled ? entityIcon : undefined}
                     entityIconColor={entityIconColor}
-                    imageColumn={imageColumn}
+                    imageColumn={
+                      entityIconEnabled && useImageColumn
+                        ? imageColumn
+                        : undefined
+                    }
                     titleColumn={titleColumn}
                     rightColumns={rightColumns}
                     onClick={() => isInteractive && openObjectDetail(index)}

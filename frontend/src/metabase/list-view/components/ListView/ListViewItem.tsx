@@ -37,16 +37,17 @@ export function ListViewItem({
   className,
   onClick,
 }: ListViewItemProps) {
+  const imgSrc = (imageColumn && row[cols.indexOf(imageColumn)]) || null;
   return (
     <Box
       className={cx(styles.listItem, className, {
-        [styles.withIcon]: !!entityIcon,
+        [styles.withIcon]: !!(entityIcon || imageColumn),
       })}
       onClick={onClick}
       style={style}
     >
       {/* Entity Type Icon */}
-      {entityIcon && (
+      {entityIcon && !imageColumn && (
         <Box
           w={32}
           h={32}
@@ -62,20 +63,23 @@ export function ListViewItem({
           <Icon name={entityIcon as IconName} size={16} c={entityIconColor} />
         </Box>
       )}
+      {imageColumn && (
+        <Image
+          src={imgSrc}
+          alt=""
+          w={32}
+          h={32}
+          radius="xl"
+          style={{
+            flexShrink: 0,
+            visibility: !!imgSrc ? "visible" : "hidden",
+          }}
+        />
+      )}
 
       {/* Title and Subtitle Content */}
       <div>
         <Flex align="center" gap="md" style={{ flexShrink: 0 }}>
-          {imageColumn && (
-            <Image
-              src={row[cols.indexOf(imageColumn)]}
-              alt=""
-              w={32}
-              h={32}
-              radius="xl"
-              style={{ flexShrink: 0 }}
-            />
-          )}
           <div style={{ minWidth: 0, flex: 1 }}>
             {titleColumn && (
               <Text
