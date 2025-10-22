@@ -18,7 +18,7 @@
 (defmethod import/type->schema [:v0 :database] [_]
   ::database)
 
-(defmethod export/representation-type :model/Database [_entity]
+(defmethod v0-common/representation-type :model/Database [_entity]
   :database)
 
 ;;; ------------------------------------ Schema Definitions ------------------------------------

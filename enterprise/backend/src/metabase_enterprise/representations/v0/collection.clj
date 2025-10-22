@@ -13,7 +13,7 @@
 (defmethod import/type->schema [:v0 :collection] [_]
   ::collection)
 
-(defmethod export/representation-type :model/Collection [_entity]
+(defmethod v0-common/representation-type :model/Collection [_entity]
   :collection)
 
 ;;; ------------------------------------ Schema Definitions ------------------------------------

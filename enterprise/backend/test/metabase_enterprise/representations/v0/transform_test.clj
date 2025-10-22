@@ -94,3 +94,7 @@
               rep2 (yaml/parse-string yaml)
               rep2 (rep/normalize-representation rep2)]
           (is (=? (dissoc rep :ref) rep2)))))))
+
+(deftest representation-type-test
+  (doseq [entity (t2/select :model/Transform)]
+    (is (= :transform (v0-common/representation-type entity)))))

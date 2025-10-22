@@ -76,3 +76,7 @@
           (is (= (:name export-1) (:name export-2)))
           (is (= (:description export-1) (:description export-2)))
           (is (= (:type export-1) (:type export-2))))))))
+
+(deftest representation-type-test
+  (doseq [entity (t2/select :model/Collection)]
+    (is (= :collection (v0-common/representation-type entity)))))

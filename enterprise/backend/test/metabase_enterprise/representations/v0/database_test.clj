@@ -47,3 +47,7 @@
             database2 (rep/persist! rep)
             database2 (t2/select-one :model/Database :id (:id database2))]
         (is (=? database database2))))))
+
+(deftest representation-type-test
+  (doseq [entity (t2/select :model/Database)]
+    (is (= :database (v0-common/representation-type entity)))))

@@ -111,3 +111,7 @@
 
 (deftest question->card
   (is (= :model/Card (v0-common/type->model :question))))
+
+(deftest representation-type-test
+  (doseq [entity (t2/select :model/Card :type :question)]
+    (is (= :question (v0-common/representation-type entity)))))

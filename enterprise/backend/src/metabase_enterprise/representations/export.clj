@@ -17,16 +17,6 @@
   (def export-entity nil)
   (def representation-type nil))
 
-(defmulti representation-type
-  "Returns the representation type for an entity (e.g., :question, :model, :metric).
-   For plain maps (like MBQL data), uses :type field. For Toucan models, uses t2/model."
-  {:arglists '[[entity]]}
-  t2/model)
-
-(defmethod representation-type :default [entity]
-  (throw (ex-info (str "Unknown entity type: " (t2/model entity))
-                  {:entity entity})))
-
 (defmulti export-entity
   "Export a Metabase entity to its human-readable representation format.
    Dispatches on [model type] for Cards, [model nil] for other entities."

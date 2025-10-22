@@ -15,7 +15,7 @@
 (defmethod import/type->schema [:v0 :transform] [_]
   ::transform)
 
-(defmethod export/representation-type :model/Transform [_entity]
+(defmethod v0-common/representation-type :model/Transform [_entity]
   :transform)
 
 ;;; ------------------------------------ Schema Definitions ------------------------------------

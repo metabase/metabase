@@ -4,6 +4,7 @@
    [metabase-enterprise.representations.core :as rep]
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.lookup :as lookup]
+   [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.yaml :as yaml]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -17,7 +18,7 @@
                  :model/NativeQuerySnippet]
           entity (t2/select model)]
     (let [id (:id entity)
-          rep-type (export/representation-type entity)]
+          rep-type (v0-common/representation-type entity)]
       (is (= id (:id (lookup/lookup-by-id rep-type id)))))))
 
 (deftest lookup-by-entity-id-test
@@ -29,7 +30,7 @@
                  ]
           entity (t2/select model)]
     (let [entity-id (:entity_id entity)
-          rep-type (export/representation-type entity)]
+          rep-type (v0-common/representation-type entity)]
       (is (= (:id entity) (:id (lookup/lookup-by-entity-id rep-type entity-id)))))))
 
 (deftest lookup-by-name-test
@@ -42,9 +43,9 @@
       (doseq [[name group] (group-by :name entities)]
         (if (= 1 (count group))
           (let [entity (first group)
-                rep-type (export/representation-type entity)]
+                rep-type (v0-common/representation-type entity)]
             (is (= (:id entity) (:id (lookup/lookup-by-name rep-type name)))))
           (let [entity (first group)
-                rep-type (export/representation-type entity)]
+                rep-type (v0-common/representation-type entity)]
             (is (thrown? clojure.lang.ExceptionInfo
                          (lookup/lookup-by-name rep-type name)))))))))

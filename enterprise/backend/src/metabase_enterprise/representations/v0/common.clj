@@ -17,6 +17,16 @@
   (throw (ex-info (str "Cannot convert type to model for type: " type)
                   {:type type})))
 
+(defmulti representation-type
+  "Returns the representation type for an entity (e.g., :question, :model, :metric).
+   For plain maps (like MBQL data), uses :type field. For Toucan models, uses t2/model."
+  {:arglists '[[entity]]}
+  t2/model)
+
+(defmethod representation-type :default [entity]
+  (throw (ex-info (str "Unknown entity type: " (t2/model entity))
+                  {:entity entity})))
+
 (defn entity-id
   "Generates an entity-id stably from ref and collection-ref."
   [ref collection-ref]

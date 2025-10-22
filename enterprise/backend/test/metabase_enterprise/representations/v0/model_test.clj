@@ -174,3 +174,7 @@
           (testing "User edits persist through the full cycle"
             (is (not= original-subtotal-name (:display_name final-subtotal))
                 "Final export should have edited name, not original"))))))
+
+(deftest representation-type-test
+  (doseq [entity (t2/select :model/Card :type :model)]
+    (is (= :model (v0-common/representation-type entity)))))

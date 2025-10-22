@@ -217,3 +217,7 @@
                        persisted-snippet)))
              (finally
                (t2/delete! :model/NativeQuerySnippet :id (inc snippet-id))))))))
+
+(deftest representation-type-test
+  (doseq [entity (t2/select :model/Snippet)]
+    (is (= :snippet (v0-common/representation-type entity)))))
