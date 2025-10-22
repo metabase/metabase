@@ -31,7 +31,7 @@ export const CreateModelMenu = () => {
           component={ForwardRefLink}
           to={newQuestion({
             mode: "bench",
-            type: "native",
+            DEPRECATED_RAW_MBQL_type: "native",
             creationType: "native_question",
             cardType: "model",
           })}
