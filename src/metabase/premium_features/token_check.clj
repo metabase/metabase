@@ -327,9 +327,10 @@
     (reify GracePeriod
       (save! [_ token features] (.put guava-cache token features))
       (retrieve [_ token]
-        (let [value (.get guava-cache token (constantly ::not-present))]
-          (when-not (identical? value ::not-present)
-            value))))))
+        (when token
+          (let [value (.get guava-cache token (constantly ::not-present))]
+            (when-not (identical? value ::not-present)
+              value)))))))
 
 (defonce ^{:doc "A grace period of 36 hours means that token features would be good for 24 hours after the last
   successful token check happens, since we cache those features for 12 hours. Note this records the entire response
