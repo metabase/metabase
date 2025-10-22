@@ -17,6 +17,7 @@ type LinkItem = { icon: IconName; title: string; href: string };
 
 export function EmbeddingSettingsCard({
   title,
+  titleSize = "h3",
   description,
   settingKey,
   isFeatureEnabled = true,
@@ -25,9 +26,9 @@ export function EmbeddingSettingsCard({
   alertInfoText,
   actionButton,
   testId,
-  titleFontSize = "h3",
 }: {
   title: string;
+  titleSize?: string;
   description: string;
   settingKey:
     | "enable-embedding-sdk"
@@ -40,14 +41,13 @@ export function EmbeddingSettingsCard({
   alertInfoText?: React.ReactNode;
   actionButton?: React.ReactNode;
   testId?: string;
-  titleFontSize?: string;
 }) {
   const hasLinksContent = links && links.length > 0;
 
   return (
     <Flex direction="column" className={S.SectionCard} data-testid={testId}>
       <Stack gap="sm" px="xl" py="lg">
-        <Text fz={titleFontSize} fw={600} c="text-dark">
+        <Text fz={titleSize} fw={600} c="text-dark">
           {title}
         </Text>
 
