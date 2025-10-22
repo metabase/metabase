@@ -8,13 +8,12 @@ import type {
   CardType,
   DependencyEntry,
   DependencyNode,
-  RecentItem,
   SearchModel,
   SearchResponse,
 } from "metabase-types/api";
 
 import { getDependencyType } from "../../utils";
-import { SEARCH_MODELS, SEARCH_MODEL_TO_GROUP_TYPE } from "../constants";
+import { SEARCH_MODEL_TO_GROUP_TYPE } from "../constants";
 
 import type { EntryPickerItem } from "./types";
 
@@ -111,10 +110,6 @@ export function getEntryPickerValue(
   if (groupType != null) {
     return { id: item.id, type: getDependencyType(groupType) };
   }
-}
-
-export function getSupportedRecentItems(recentItems: RecentItem[]) {
-  return recentItems.filter((item) => SEARCH_MODELS.includes(item.model));
 }
 
 export function hasAvailableModels(

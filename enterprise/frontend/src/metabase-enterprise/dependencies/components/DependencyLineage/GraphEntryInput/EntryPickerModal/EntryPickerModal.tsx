@@ -43,7 +43,6 @@ import {
   getEntryPickerItem,
   getEntryPickerValue,
   getQuestionPickerItem,
-  getSupportedRecentItems,
   getTablePickerValue,
   getTransformPickerItem,
   hasAvailableModels,
@@ -154,7 +153,6 @@ export function EntryPickerModal({
       initialValue={selectedItem}
       selectedItem={selectedItem ?? null}
       options={ENTITY_PICKER_OPTIONS}
-      recentFilter={getSupportedRecentItems}
       recentsContext={RECENTS_CONTEXT}
       isLoadingTabs={isSearchLoading}
       canSelectItem
