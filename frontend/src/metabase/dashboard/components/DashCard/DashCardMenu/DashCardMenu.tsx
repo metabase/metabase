@@ -3,8 +3,6 @@ import cx from "classnames";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-/* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
-import { transformSdkQuestion } from "embedding-sdk-bundle/lib/transform-question";
 import {
   canDownloadResults,
   canEditQuestion,
@@ -14,6 +12,7 @@ import {
   useDashboardContext,
 } from "metabase/dashboard/context";
 import { getParameterValuesBySlugMap } from "metabase/dashboard/selectors";
+import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
 import { useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { QuestionDownloadWidget } from "metabase/query_builder/components/QuestionDownloadWidget";

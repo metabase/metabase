@@ -325,8 +325,7 @@ describe("InteractiveQuestion", () => {
 
     const columnTitle = screen.getByTestId("column_title");
     await userEvent.clear(columnTitle);
-    await userEvent.type(columnTitle, "A New Test Column");
-    await userEvent.tab();
+    await userEvent.paste("A New Test Column");
 
     expect(
       await screen.findByTestId("draggable-item-A New Test Column"),

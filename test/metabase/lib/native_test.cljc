@@ -23,11 +23,8 @@
 
 (deftest ^:parallel snippet-tag-test
   (are [exp input] (= exp (set (keys (lib.native/extract-template-tags input))))
-    #{"snippet:   foo  "} "SELECT * FROM table WHERE {{snippet:   foo  }} AND some_field IS NOT NULL"
+    #{"snippet:   foo"} "SELECT * FROM table WHERE {{snippet:   foo  }} AND some_field IS NOT NULL"
     #{"snippet:   foo  *#&@"} "SELECT * FROM table WHERE {{snippet:   foo  *#&@}}"
-    ;; TODO: This logic should trim the whitespace and unify these two snippet names.
-    ;; I think this is a bug in the original code but am aiming to reproduce it exactly for now.
-    ;; Tech debt issue: #39378
     #{"snippet: foo" "snippet:foo"} "SELECT * FROM table WHERE {{snippet: foo}} AND {{snippet:foo}}"))
 
 (deftest ^:parallel card-tag-test
@@ -47,18 +44,11 @@
                             :snippet-name "foo"
                             :id           string?}}
             (lib.native/extract-template-tags "SELECT * FROM table WHERE {{snippet:foo}}")))
-    (is (=? {"snippet:foo"  {:type         :snippet
-                             :name         "snippet:foo"
-                             :snippet-name "foo"
-                             :id           string?}
-             "snippet: foo" {:type         :snippet
+    (is (=? {"snippet: foo" {:type         :snippet
                              :name         "snippet: foo"
                              :snippet-name "foo"
                              :id           string?}}
-            ;; TODO: This should probably be considered a bug - whitespace matters for the name.
-            ;; Tech debt issue: #39378
             (lib.native/extract-template-tags "SELECT * FROM {{snippet: foo}} WHERE {{snippet:foo}}"))))
-
   (testing "renaming a variable"
     (let [old-tag {:type         :text
                    :name         "foo"
@@ -95,7 +85,7 @@
 
   (testing "general case, add and remove"
     (let [mktag (fn [base]
-                  (merge {:type    :text
+                  (merge {:type         :text
                           :display-name (u.humanization/name->human-readable-name :simple (:name base))
                           :id           string?}
                          base))
@@ -110,12 +100,12 @@
                         :snippet-name "another snippet"
                         :type         :snippet})
 
-          c1    (mktag {:name    "#123-card-1"
-                        :type    :card
-                        :card-id 123})
-          c2    (mktag {:name    "#321"
-                        :type    :card
-                        :card-id 321})]
+          c1 (mktag {:name    "#123-card-1"
+                     :type    :card
+                     :card-id 123})
+          c2 (mktag {:name    "#321"
+                     :type    :card
+                     :card-id 321})]
       (is (=? {"foo"                   v1
                "#123-card-1"           c1
                "snippet:first snippet" (dissoc s1 :snippet-id)}

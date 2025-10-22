@@ -464,6 +464,7 @@
                   :last-edited-at :r.timestamp
                   :last-viewed-at true
                   :pinned         [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
+                  :verified       [:= "verified" :mr.status]
                   :view-count     true
                   :created-at     true
                   :updated-at     true}

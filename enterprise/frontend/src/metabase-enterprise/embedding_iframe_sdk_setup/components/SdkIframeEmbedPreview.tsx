@@ -73,9 +73,9 @@ export const SdkIframeEmbedPreview = () => {
   const metabaseConfig = useMemo(
     () => ({
       instanceUrl,
-      useExistingUserSession: true,
       theme: derivedTheme,
       ...(localeOverride ? { locale: localeOverride } : {}),
+      useExistingUserSession: true,
     }),
     [instanceUrl, localeOverride, derivedTheme],
   );
@@ -135,13 +135,16 @@ export const SdkIframeEmbedPreview = () => {
             drills: s.drills,
             "with-title": s.withTitle,
             "with-downloads": s.withDownloads,
-            "initial-sql-parameters": s.initialSqlParameters
-              ? JSON.stringify(s.initialSqlParameters)
-              : undefined,
             "is-save-enabled": s.isSaveEnabled,
             "target-collection": s.targetCollection,
             "entity-types": s.entityTypes
               ? JSON.stringify(s.entityTypes)
+              : undefined,
+            "initial-sql-parameters": s.initialSqlParameters
+              ? JSON.stringify(s.initialSqlParameters)
+              : undefined,
+            "hidden-parameters": s.hiddenParameters
+              ? JSON.stringify(s.hiddenParameters)
               : undefined,
           }),
         )
@@ -170,7 +173,10 @@ export const SdkIframeEmbedPreview = () => {
         )
         .exhaustive()}
 
-      <EmbedPreviewLoadingOverlay isVisible={isLoading} />
+      <EmbedPreviewLoadingOverlay
+        isVisible={isLoading}
+        bg={settings.theme?.colors?.background}
+      />
     </Card>
   );
 };

@@ -1,5 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import { P, match } from "ts-pattern";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
@@ -8,13 +8,13 @@ import { QuestionPickerModal } from "metabase/common/components/Pickers/Question
 import { ActionIcon, Card, Group, Icon, Stack, Text } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 
-import { trackEmbedWizardResourceSelected } from "../analytics";
 import { useSdkIframeEmbedSetupContext } from "../context";
 import type {
   SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupRecentItem,
   SdkIframeEmbedSetupRecentItemType,
 } from "../types";
+import { getResourceIdFromSettings } from "../utils/get-default-sdk-iframe-embed-setting";
 
 import { SelectEmbedResourceMissingRecents } from "./SelectEmbedResourceMissingRecents";
 import { SelectEmbedResourceRecentItemCard } from "./SelectEmbedResourceRecentItemCard";
@@ -44,11 +44,7 @@ export const SelectEmbedResourceStep = () => {
     .with("chart", () => recentQuestions)
     .exhaustive();
 
-  const selectedItemId = match(settings)
-    .with({ initialCollection: P.nonNullable }, (s) => s.initialCollection)
-    .with({ dashboardId: P.nonNullable }, (s) => s.dashboardId)
-    .with({ questionId: P.nonNullable }, (s) => s.questionId)
-    .otherwise(() => undefined);
+  const selectedItemId = getResourceIdFromSettings(settings);
 
   const updateEmbedSettings = (
     experience: SdkIframeEmbedSetupExperience,
@@ -62,13 +58,6 @@ export const SelectEmbedResourceStep = () => {
         settings.initialCollection === id)
     ) {
       return;
-    }
-
-    const numericResourceId = typeof id === "string" ? parseInt(id) : id;
-
-    // Only track the resource id if it is a valid numeric id.
-    if (!isNaN(numericResourceId)) {
-      trackEmbedWizardResourceSelected(numericResourceId, experience);
     }
 
     if (experience === "dashboard") {
@@ -85,6 +74,7 @@ export const SelectEmbedResourceStep = () => {
 
         // Clear parameters
         initialSqlParameters: {},
+        hiddenParameters: [],
       });
     } else if (experience === "browser") {
       updateSettings({

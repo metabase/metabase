@@ -7,6 +7,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib-be.metadata.jvm :as lib-be.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.model-persistence.core :as model-persistence]
@@ -43,7 +44,8 @@
   is a wrapper for the function of the same name in the QP util namespace; it adds additional permissions checking as
   well."
   [outer-query]
-  (when-let [source-card-id (qp.util/query->source-card-id outer-query)]
+  (when-let [source-card-id (and ((complement #{:internal "internal"}) (:type outer-query))
+                                 (qp.util/query->source-card-id outer-query))]
     (log/infof "Source query for this query is Card %s" (pr-str source-card-id))
     (api/read-check :model/Card source-card-id)
     source-card-id))
@@ -165,7 +167,8 @@
    _query-params
    query :- [:map
              [:database ms/PositiveInt]]]
-  (queries/batch-fetch-query-metadata [query]))
+  (lib-be.metadata.jvm/with-metadata-provider-cache
+    (queries/batch-fetch-query-metadata [query])))
 
 (api.macros/defendpoint :post "/native"
   "Fetch a native version of an MBQL query."

@@ -3,6 +3,7 @@ import _ from "underscore";
 
 import Button from "metabase/common/components/Button";
 import { color } from "metabase/lib/colors";
+import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import { getRelativeTime } from "metabase/lib/time-dayjs";
 import type { RevisionOrModerationEvent } from "metabase/plugins";
 import { Icon, Tooltip } from "metabase/ui";
@@ -59,9 +60,14 @@ export function Timeline({
                   </Tooltip>
                 )}
               </EventHeader>
-              <Timestamp dateTime={timestamp}>
-                {getRelativeTime(timestamp)}
-              </Timestamp>
+              <Tooltip
+                position="bottom"
+                label={formatDateTimeWithUnit(timestamp, "default")}
+              >
+                <Timestamp dateTime={timestamp}>
+                  {getRelativeTime(timestamp)}
+                </Timestamp>
+              </Tooltip>
               {revision?.has_multiple_changes && <div>{description}</div>}
             </EventBody>
           </TimelineEvent>

@@ -7,7 +7,7 @@ import type InternalQuestion from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 
 import type { SdkDashboardId } from "./dashboard";
-import type { SdkEntityId } from "./entity-id";
+import type { SdkEntityId } from "./entity";
 
 export type { MetabaseQuestion } from "metabase/embedding-sdk/types/question";
 

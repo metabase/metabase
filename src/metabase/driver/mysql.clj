@@ -508,7 +508,8 @@
 (defmethod sql.qp/->honeysql [:mysql :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
   (let [expr       (sql.qp/->honeysql driver arg)
-        timestamp? (h2x/is-of-type? expr "timestamp")]
+        timestamp? (or (sql.qp.u/field-with-tz? arg)
+                       (h2x/is-of-type? expr "timestamp"))]
     (sql.u/validate-convert-timezone-args timestamp? target-timezone source-timezone)
     (h2x/with-database-type-info
      [:convert_tz expr (or source-timezone (driver-api/results-timezone-id)) target-timezone]

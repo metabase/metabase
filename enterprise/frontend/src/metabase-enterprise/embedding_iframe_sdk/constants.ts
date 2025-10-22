@@ -38,6 +38,7 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "withTitle",
     "withDownloads",
     "initialSqlParameters",
+    "hiddenParameters",
     "drills",
     "entityTypes",
   ] satisfies (keyof QuestionEmbedOptions)[],

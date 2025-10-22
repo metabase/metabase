@@ -51,6 +51,7 @@ export default class VisualizationResult extends Component {
   render() {
     const {
       question,
+      token,
       isDirty,
       queryBuilderMode,
       navigateToNewCardInsideQB,
@@ -143,6 +144,7 @@ export default class VisualizationResult extends Component {
             canToggleSeriesVisibility
             metadata={question.metadata()}
             timelineEvents={timelineEvents}
+            token={token}
             selectedTimelineEventIds={selectedTimelineEventIds}
             handleVisualizationClick={this.props.handleVisualizationClick}
             onOpenTimelines={this.props.onOpenTimelines}

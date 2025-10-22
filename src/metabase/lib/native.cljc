@@ -23,7 +23,7 @@
   #"\{\{\s*([A-Za-z0-9_\.]+)\s*\}\}")
 
 (def ^:private snippet-tag-regex
-  #"\{\{\s*(snippet:\s*[^}]+)\s*\}\}")
+  #"\{\{\s*(snippet:\s*[^}]*[^}\s])\s*\}\}")
 
 (def ^:private card-tag-regex
   #"\{\{\s*(#([0-9]*)(-[a-z0-9-]*)?)\s*\}\}")

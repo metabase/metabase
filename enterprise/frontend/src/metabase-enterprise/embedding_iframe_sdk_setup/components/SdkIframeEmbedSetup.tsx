@@ -52,7 +52,7 @@ const SdkIframeEmbedSetupContent = () => {
                 onClick={handleNext}
                 disabled={!canGoNext || !isSimpleEmbeddingEnabled}
               >
-                {currentStep === "select-embed-options" ? t`Get Code` : t`Next`}
+                {currentStep === "select-embed-options" ? t`Get code` : t`Next`}
               </Button>
             )}
           </Group>
