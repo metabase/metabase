@@ -18,7 +18,7 @@ export function QueryPreview({
   transformEditor: TransformEditorValue;
 }) {
   return (
-    <Box pos="relative">
+    <Box style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <EditorVisualization
         question={question}
         result={result}

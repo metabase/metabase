@@ -1,6 +1,9 @@
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { DraftTransformSource } from "metabase-types/api";
+import type {
+  DraftTransformSource,
+  QueryTransformSource,
+} from "metabase-types/api";
 
 import { useQueryResults } from "./use-query-results";
 import { useQueryState } from "./use-query-state";
@@ -38,7 +41,14 @@ export function useTransformEditor(
   initialSource: DraftTransformSource,
   proposedSource?: DraftTransformSource,
 ): TransformEditorValue {
-  const queryState = useQueryState(initialSource.query, proposedSource?.query);
+  if (initialSource.type !== "query") {
+    throw new Error("useTransformEditor can only be used with query sources");
+  }
+
+  const proposedQuery =
+    proposedSource?.type === "query" ? proposedSource.query : undefined;
+
+  const queryState = useQueryState(initialSource.query, proposedQuery);
   const queryResults = useQueryResults(
     queryState.question,
     queryState.proposedQuestion,

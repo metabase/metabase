@@ -1,3 +1,4 @@
 .root {
-  overflow: auto;
+  overflow: visible;
+  flex-shrink: 0;
 }

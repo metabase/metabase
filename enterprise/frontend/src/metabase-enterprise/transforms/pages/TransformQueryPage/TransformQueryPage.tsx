@@ -18,21 +18,25 @@ import type {
 import { QueryEditor } from "../../components/QueryEditor";
 import { getTransformUrl } from "../../urls";
 
-export function TransformQueryPage({
+export interface TransformQueryPageHandlers {
+  handleSaveSource: (source: TransformSource) => Promise<void>;
+  handleCancel: () => void;
+  isSaving: boolean;
+  checkData: any;
+  isConfirmationShown: boolean;
+  handleSaveAfterConfirmation: () => void;
+  handleCloseConfirmation: () => void;
+}
+
+export function useTransformQueryPageHandlers({
   transform,
   setSource,
-  proposedSource,
-  acceptProposed,
   clearProposed,
-  transformEditor,
 }: {
   transform: Transform;
   setSource: (source: DraftTransformSource) => void;
-  proposedSource: TransformSource | undefined;
-  acceptProposed: (source: TransformSource) => void;
   clearProposed: () => void;
-  transformEditor: TransformEditorValue;
-}) {
+}): TransformQueryPageHandlers {
   const [updateTransform, { isLoading: isSaving }] =
     useUpdateTransformMutation();
   const dispatch = useDispatch();
@@ -66,11 +70,52 @@ export function TransformQueryPage({
   };
 
   const handleCancel = () => {
-    // set to initial source to fix isDirty calc on route leave
     setSource(transform.source);
     clearProposed();
     dispatch(push(getTransformUrl(transform.id)));
   };
+
+  return {
+    handleSaveSource,
+    handleCancel,
+    isSaving: isSaving || isCheckingDependencies,
+    checkData,
+    isConfirmationShown,
+    handleSaveAfterConfirmation,
+    handleCloseConfirmation,
+  };
+}
+
+export function TransformQueryPage({
+  transform,
+  setSource,
+  proposedSource,
+  acceptProposed,
+  clearProposed,
+  transformEditor,
+  onSave,
+  onCancel,
+  isSaving = false,
+}: {
+  transform: Transform;
+  setSource: (source: DraftTransformSource) => void;
+  proposedSource: TransformSource | undefined;
+  acceptProposed: (source: TransformSource) => void;
+  clearProposed: () => void;
+  transformEditor: TransformEditorValue;
+  onSave?: (source: TransformSource) => Promise<void>;
+  onCancel?: () => void;
+  isSaving?: boolean;
+}) {
+  const internalHandlers = useTransformQueryPageHandlers({
+    transform,
+    setSource,
+    clearProposed,
+  });
+
+  const handleSaveSource = onSave ?? internalHandlers.handleSaveSource;
+  const handleCancel = onCancel ?? internalHandlers.handleCancel;
+  const actualIsSaving = isSaving || internalHandlers.isSaving;
 
   return (
     <>
@@ -80,7 +125,7 @@ export function TransformQueryPage({
         proposedSource={
           proposedSource?.type === "query" ? proposedSource : undefined
         }
-        isSaving={isSaving || isCheckingDependencies}
+        isSaving={actualIsSaving}
         onChange={setSource}
         onSave={handleSaveSource}
         onCancel={handleCancel}
@@ -88,12 +133,12 @@ export function TransformQueryPage({
         onAcceptProposed={acceptProposed}
         transformEditor={transformEditor}
       />
-      {isConfirmationShown && checkData != null && (
+      {internalHandlers.isConfirmationShown && internalHandlers.checkData != null && (
         <PLUGIN_DEPENDENCIES.CheckDependenciesModal
-          checkData={checkData}
+          checkData={internalHandlers.checkData}
           opened
-          onSave={handleSaveAfterConfirmation}
-          onClose={handleCloseConfirmation}
+          onSave={internalHandlers.handleSaveAfterConfirmation}
+          onClose={internalHandlers.handleCloseConfirmation}
         />
       )}
     </>
