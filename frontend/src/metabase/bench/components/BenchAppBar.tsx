@@ -14,8 +14,8 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 
-import { BenchNavMenu, BenchNavTitleMenu } from "./BenchNavMenu";
 import S from "./BenchAppBar.module.css";
+import { BenchNavMenu, BenchNavTitleMenu } from "./BenchNavMenu";
 
 export function BenchAppBar() {
   const metabot = PLUGIN_METABOT.useMetabotAgent();
@@ -27,15 +27,12 @@ export function BenchAppBar() {
   const hasPanelControl = onTogglePanel !== undefined;
 
   return (
-    <Box
+    <Flex
       h={48}
       w="100%"
-      style={{
-        borderBottom: "1px solid var(--mb-color-border)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-      }}
+      className={S.appBar}
+      align="center"
+      justify="space-between"
       px="md"
     >
       <Group gap="md" wrap="nowrap">
@@ -52,12 +49,7 @@ export function BenchAppBar() {
           shadow="md"
         >
           <Menu.Target>
-            <UnstyledButton
-              h={32}
-              px="sm"
-              miw={180}
-              className={S.selectButton}
-            >
+            <UnstyledButton h={32} px="sm" miw={180} className={S.selectButton}>
               <Flex align="center" justify="space-between" h="100%">
                 <Flex align="center" gap="xs">
                   <Icon name={currentTab.icon} size={16} />
@@ -94,6 +86,6 @@ export function BenchAppBar() {
           </ActionIcon>
         )}
       </Group>
-    </Box>
+    </Flex>
   );
 }

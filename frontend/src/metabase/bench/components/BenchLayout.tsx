@@ -1,10 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import {
-  type ReactElement,
-  type ReactNode,
-  useEffect,
-  useRef,
-} from "react";
+import { type ReactElement, type ReactNode, useEffect, useRef } from "react";
 import {
   type ImperativePanelHandle,
   Panel,
@@ -16,6 +11,7 @@ import { NoDataError } from "metabase/common/components/errors/NoDataError";
 import { Center, Flex } from "metabase/ui";
 
 import { ResizeHandle } from "./BenchApp";
+import S from "./BenchLayout.module.css";
 
 export const BenchLayout = ({
   children,
@@ -49,32 +45,17 @@ export const BenchLayout = ({
             id="bench-app-nav"
             order={1}
             defaultSize={20}
-            minSize={15}
-            maxSize={40}
-            style={{
-              borderRight: "1px solid var(--mb-color-border)",
-              height: "100%",
-              overflow: "hidden",
-            }}
+            minSize={10}
+            maxSize={25}
+            className={S.navPanel}
           >
             {nav}
           </Panel>
           <ResizeHandle />
         </>
       )}
-      <Panel
-        id="bench-app-main"
-        order={2}
-        style={{
-          height: "100%",
-          overflow: "auto",
-        }}
-      >
-        <Flex
-          direction="column"
-          h="100%"
-          style={{ overflow: "auto", flex: "1" }}
-        >
+      <Panel id="bench-app-main" order={2} className={S.mainPanel}>
+        <Flex direction="column" h="100%" style={{ overflow: "auto" }} flex={1}>
           {children}
         </Flex>
       </Panel>

@@ -1,11 +1,12 @@
-import { useDisclosure } from "@mantine/hooks";
+import cx from "classnames";
 import type React from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 
 import { BenchLayoutProvider } from "metabase/bench/context/BenchLayoutContext";
 import { PLUGIN_METABOT } from "metabase/plugins";
-import { Box, Stack } from "metabase/ui";
+import { Box, Flex, Stack } from "metabase/ui";
 
+import S from "./BenchApp.module.css";
 import { BenchAppBar } from "./BenchAppBar";
 
 export const ResizeHandle = ({
@@ -15,18 +16,16 @@ export const ResizeHandle = ({
   direction?: "horizontal" | "vertical";
   handleSize?: number;
 }) => {
-  const directionProps = {
-    horizontal: { cursor: "col-resize", height: "100%", width: handleSize },
-    vertical: { cursor: "row-resize", width: "100%", height: handleSize },
-  };
-
   return (
     <Box pos="relative">
       <PanelResizeHandle
+        className={cx(S.resizeHandle, {
+          [S.resizeHandleHorizontal]: direction === "horizontal",
+          [S.resizeHandleVertical]: direction === "vertical",
+        })}
         style={{
-          position: "absolute",
-          zIndex: 9,
-          ...directionProps[direction],
+          width: direction === "horizontal" ? handleSize : undefined,
+          height: direction === "vertical" ? handleSize : undefined,
         }}
       />
     </Box>
@@ -38,25 +37,19 @@ export const BenchApp = ({ children }: { children: React.ReactNode }) => {
     <BenchLayoutProvider>
       <Stack h="100vh" gap={0} style={{ overflow: "hidden" }}>
         <BenchAppBar />
-        <Box style={{ flex: 1, overflow: "hidden", display: "flex" }}>
+        <Flex flex={1} style={{ overflow: "hidden" }}>
           <PanelGroup
             id="workbench-layout"
             autoSaveId="workbench-layout"
             direction="horizontal"
-            style={{ width: "100%", height: "100%" }}
+            className={S.panelGroup}
           >
-            <Panel
-              id="bench-main"
-              order={2}
-              style={{
-                overflow: "auto",
-              }}
-            >
+            <Panel id="bench-main" order={2} className={S.mainPanel}>
               {children}
             </Panel>
             <BenchMetabot />
           </PanelGroup>
-        </Box>
+        </Flex>
       </Stack>
     </BenchLayoutProvider>
   );
@@ -75,7 +68,7 @@ function BenchMetabot() {
         id="bench-metabot"
         maxSize={30}
         minSize={10}
-        style={{ height: "100%" }}
+        className={S.metabotPanel}
         order={9}
       >
         <PLUGIN_METABOT.Metabot

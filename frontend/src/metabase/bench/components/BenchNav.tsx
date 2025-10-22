@@ -8,17 +8,12 @@ import ExternalLink from "metabase/common/components/ExternalLink";
 import LogoIcon from "metabase/common/components/LogoIcon";
 import { Box, Icon, Menu, Stack, Text, UnstyledButton } from "metabase/ui";
 
+import S from "./BenchNav.module.css";
+
 export function BenchNav() {
   return (
     <Box h="100%" data-testid="bench-nav">
-      <Stack
-        style={{
-          flexShrink: 0,
-          borderRight: "1px solid var(--mb-color-border)",
-        }}
-        gap="sm"
-        h="100%"
-      >
+      <Stack className={S.navContainer} gap="sm" h="100%">
         <Box data-testid="sidebar-top">
           <Box px="xl" py="md">
             <BenchNavTitleMenu />
