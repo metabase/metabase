@@ -4,6 +4,7 @@
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
    [metabase.lib.binning :as lib.binning]
+   [metabase.lib.convert.metadata-to-legacy :as lib.convert.metadata-to-legacy]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.field :as lib.field]
@@ -1790,11 +1791,9 @@
                    meta/metadata-provider
                    (lib.tu.macros/mbql-query products
                      {:joins  [{:source-query    q1
-                                :source-metadata (for [col (lib/returned-columns
-                                                            (lib/query meta/metadata-provider {:database (meta/id), :type :query, :query q1}))]
-                                                   (-> col
-                                                       (dissoc :lib/type)
-                                                       (update-keys u/->snake_case_en)))
+                                :source-metadata (map lib.convert.metadata-to-legacy/lib-metadata-column->legacy-metadata-column
+                                                      (lib/returned-columns
+                                                       (lib/query meta/metadata-provider {:database (meta/id), :type :query, :query q1})))
                                 :alias           "Question 54"
                                 :condition       [:= $id [:field %orders.id {:join-alias "Question 54"}]]
                                 :fields          [[:field %orders.id {:join-alias "Question 54"}]

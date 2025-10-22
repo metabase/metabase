@@ -3,13 +3,17 @@
   (:require
    #?(:clj [metabase.util.performance :refer [for]])
    [clojure.string :as str]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.types.core]
    [metabase.util.malli.registry :as mr]))
 
 (comment metabase.types.core/keep-me)
 
 (defn mbql-clause?
-  "True if `x` is an MBQL clause (a sequence with a keyword as its first arg)."
+  "True if `x` is an MBQL clause (a sequence with a keyword as its first arg).
+
+  Deprecated: Use [[metabase.lib.core/clause?]] going forward."
+  {:deprecated "0.57.0"}
   [x]
   (and (sequential? x)
        (not (map-entry? x))
@@ -19,7 +23,10 @@
   "If `x` is an MBQL clause, and an instance of clauses defined by keyword(s) `k-or-ks`?
 
     (is-clause? :count [:count 10])        ; -> true
-    (is-clause? #{:+ :- :* :/} [:+ 10 20]) ; -> true"
+    (is-clause? #{:+ :- :* :/} [:+ 10 20]) ; -> true
+
+  Deprecated: use [[metabase.lib.core/clause-of-type?]] going forward."
+  {:deprecated "0.57.0"}
   [k-or-ks x]
   (and
    (mbql-clause? x)
@@ -32,7 +39,10 @@
 
     (check-clause :count [:count 10]) ; => [:count 10]
     (check-clause? #{:+ :- :* :/} [:+ 10 20]) ; -> [:+ 10 20]
-    (check-clause :sum [:count 10]) ; => nil"
+    (check-clause :sum [:count 10]) ; => nil
+
+  DEPRECATED: use [[metabase.lib.core/clause-of-type?]] going forward"
+  {:deprecated "0.57.0"}
   [k-or-ks x]
   (when (is-clause? k-or-ks x)
     x))
@@ -58,11 +68,15 @@
   [:and
    {:description (str "schema for a valid legacy MBQL " :tag " clause")}
    [:fn
-    {:error/message (str "must be a `" tag "` clause")}
+    {:error/message    (str "must be a `" tag "` clause")
+     :decode/normalize (fn [x]
+                         (when (and (sequential? x)
+                                    ((some-fn keyword? string?) (first x)))
+                           (update (vec x) 0 keyword)))}
     (partial is-clause? tag)]
    (into
     [:catn
-     ["tag" [:= tag]]]
+     ["tag" [:= {:decode/normalize lib.schema.common/normalize-keyword} tag]]]
     (for [[arg-name arg-schema] (partition 2 arg-schemas)]
       [arg-name (clause-arg-schema arg-schema)]))])
 

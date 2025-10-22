@@ -31,7 +31,7 @@
 (mu/defmethod current-user-download-perms-level :mbql.stage/mbql
   [{db-id :database, :as query} :- ::lib.schema/query]
   (let [{:keys [table-ids native?]} (query-perms/query->source-ids query)
-        perms (if (or native? (lib/any-native-stage? query))
+        perms (if (or native? (lib/any-native-stage-not-introduced-by-sandbox? query))
                 ;; If we detect any native subqueries/joins, even with source-card IDs, require full native
                 ;; download perms
                 #{(perms/native-download-permission-for-user api/*current-user-id* db-id)}

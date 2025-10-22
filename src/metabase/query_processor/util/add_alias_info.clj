@@ -51,7 +51,6 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -80,7 +79,7 @@
 
 (defn- escape-fn []
   {:pre [(keyword? driver/*driver*)]}
-  (let [f      (lib.util/unique-name-generator)
+  (let [f      (lib/unique-name-generator)
         driver driver/*driver*]
     (fn [s]
       (->> s
@@ -440,8 +439,8 @@
   [query                                                                              :- ::lib.schema/query
    {:keys [globally-unique-join-aliases?], :or {globally-unique-join-aliases? false}} :- [:maybe ::options]]
   (let [make-join-alias-unique-name-generator (if globally-unique-join-aliases?
-                                                (constantly (lib.util/unique-name-generator))
-                                                lib.util/unique-name-generator)]
+                                                (constantly (lib/unique-name-generator))
+                                                lib/unique-name-generator)]
     (lib.walk/walk-stages
      query
      (fn [_query _path stage]
