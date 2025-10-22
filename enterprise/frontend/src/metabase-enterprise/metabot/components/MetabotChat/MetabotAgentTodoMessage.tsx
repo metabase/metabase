@@ -36,6 +36,7 @@ export const AgentTodoListMessage = ({
         className={S.todoHeader}
         py="sm"
         px="md"
+        data-testid="todo-list-header"
       >
         <Flex align="center" justify="center">
           <Icon name="list" size=".75rem" mr="xs" c="brand" />
