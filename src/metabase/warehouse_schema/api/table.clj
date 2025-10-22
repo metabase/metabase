@@ -112,7 +112,9 @@
    body]
   (when-let [changes (not-empty (u/select-keys-when body
                                                     :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
-                                                    :present [:description :caveats :points_of_interest :visibility_type :data_authority]))]
+                                                    :present [:description :caveats :points_of_interest :visibility_type :data_authority
+                                                              ;; bulk-metadata-editing
+                                                              :data_source :visibility_type2 :owner_email :owner_user_id]))]
     (t2/update! :model/Table id changes))
   (let [updated-table        (t2/select-one :model/Table :id id)
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
@@ -165,7 +167,12 @@
             [:points_of_interest      {:optional true} [:maybe :string]]
             [:show_in_getting_started {:optional true} [:maybe :boolean]]
             [:field_order             {:optional true} [:maybe FieldOrder]]
-            [:data_authority          {:optional true} [:maybe ::data-authority-write]]]]
+            [:data_authority          {:optional true} [:maybe ::data-authority-write]]
+            ;; bulk-metadata-editing
+            [:data_source             {:optional true} [:maybe :string]]
+            [:visibility_type2        {:optional true} [:maybe :string]]
+            [:owner_email             {:optional true} [:maybe :string]]
+            [:owner_user_id           {:optional true} [:maybe :int]]]]
   (first (update-tables! [id] body)))
 
 (api.macros/defendpoint :put "/"
@@ -181,7 +188,12 @@
                                [:caveats                 {:optional true} [:maybe :string]]
                                [:points_of_interest      {:optional true} [:maybe :string]]
                                [:show_in_getting_started {:optional true} [:maybe :boolean]]
-                               [:data_authority          {:optional true} [:maybe ::data-authority-write]]]]
+                               [:data_authority          {:optional true} [:maybe ::data-authority-write]]
+                               ;; bulk-metadata-editing
+                               [:data_source             {:optional true} [:maybe :string]]
+                               [:visibility_type2        {:optional true} [:maybe :string]]
+                               [:owner_email             {:optional true} [:maybe :string]]
+                               [:owner_user_id           {:optional true} [:maybe :int]]]]
   (update-tables! ids body))
 
 (api.macros/defendpoint :get "/:id/query_metadata"
