@@ -9,14 +9,28 @@
 
 (deftest order-representations-self-reference-test
   (testing "order-representations throws exception when representation refers to itself"
-    (let [reps [{:ref "a" :database "ref:a"}]]
-      (is (thrown? Exception (import/order-representations reps))))))
+    (let [reps [{:ref "a" :database "ref:a"}]
+          result (future (try
+                           (import/order-representations reps)
+                           (catch Exception e e)))]
+      (is (instance? Exception (deref result 100 ::timeout))
+          "Expected exception to be thrown")
+      (when (= ::timeout (deref result 0 ::timeout))
+        (future-cancel result)
+        (is false "order-representations took longer than 100ms, likely infinite loop")))))
 
 (deftest order-representations-circular-reference-test
   (testing "order-representations throws exception when representations have circular dependency"
     (let [reps [{:ref "a" :database "ref:b"}
-                {:ref "b" :database "ref:a"}]]
-      (is (thrown? Exception (import/order-representations reps))))))
+                {:ref "b" :database "ref:a"}]
+          result (future (try
+                           (import/order-representations reps)
+                           (catch Exception e e)))]
+      (is (instance? Exception (deref result 100 ::timeout))
+          "Expected exception to be thrown")
+      (when (= ::timeout (deref result 0 ::timeout))
+        (future-cancel result)
+        (is false "order-representations took longer than 100ms, likely infinite loop")))))
 
 (deftest order-representations-empty-test
   (testing "order-representations handles empty list"
