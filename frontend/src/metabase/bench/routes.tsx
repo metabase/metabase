@@ -13,7 +13,7 @@ import { DataModel } from "metabase/metadata/pages/DataModel";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { GlossaryContainer } from "metabase/reference/glossary/GlossaryContainer";
 
-import { BenchApp } from "./components/BenchApp";
+import { BenchApp, BenchIndex } from "./components/BenchApp";
 import { EmptySailboat } from "./components/BenchLayout";
 import { OverviewPage } from "./components/OverviewPage";
 import {
@@ -33,8 +33,8 @@ import {
 
 export const getBenchRoutes = () => (
   <Route path="/bench">
+    <IndexRoute component={BenchIndex} />
     <Route title={t`Bench`} component={BenchApp}>
-      <IndexRedirect to="overview" />
       <Route path="overview" component={() => <OverviewPage />} />
       {PLUGIN_TRANSFORMS.getTransformRoutes()}
       <Route path="segment" component={SegmentApp}>

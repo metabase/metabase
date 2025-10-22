@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useBenchLayoutContext } from "metabase/bench/context/BenchLayoutContext";
 import { useBenchCurrentTab } from "metabase/bench/hooks/useBenchCurrentTab";
@@ -13,15 +13,19 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 
+import { useRememberBenchTab } from "../hooks/useBenchRememberTab";
+
 import S from "./BenchAppBar.module.css";
 import { BenchNavMenu, BenchNavTitleMenu } from "./BenchNavMenu";
 
 export function BenchAppBar() {
   const metabot = PLUGIN_METABOT.useMetabotAgent();
   const currentTab = useBenchCurrentTab();
+  const { getTab, setTab } = useRememberBenchTab();
   const { onTogglePanel } = useBenchLayoutContext();
-  const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
+  const [isNavMenuOpen, setIsNavMenuOpen] = useState(() => !getTab());
   const [isTitleMenuOpen, setIsTitleMenuOpen] = useState(false);
+  useEffect(() => setTab(currentTab.id), [currentTab.id, setTab]);
 
   const hasPanelControl = onTogglePanel !== undefined;
 
