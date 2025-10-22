@@ -132,27 +132,24 @@ export function getNodeIconWithType(
 export function getNodeLink(node: DependencyNode): NodeLink | undefined {
   return match(node)
     .with({ type: "card" }, (node) => ({
-      label: getNodeLabel(node),
+      label: match(node.data.type)
+        .with("question", () => t`View this question`)
+        .with("model", () => t`View this model`)
+        .with("metric", () => t`View this metric`)
+        .exhaustive(),
       url: Urls.question({
         id: node.id,
         name: node.data.name,
         type: node.data.type,
       }),
-      tooltip: match(node.data.type)
-        .with("question", () => t`View this question`)
-        .with("model", () => t`View this model`)
-        .with("metric", () => t`View this metric`)
-        .exhaustive(),
     }))
     .with({ type: "table" }, (node) => ({
-      label: getNodeLabel(node),
+      label: t`View metadata`,
       url: Urls.dataModelTable(node.data.db_id, node.data.schema, node.id),
-      tooltip: t`View metadata`,
     }))
     .with({ type: "transform" }, (node) => ({
-      label: getNodeLabel(node),
+      label: t`View this transform`,
       url: Urls.transform(node.id),
-      tooltip: t`View this transform`,
     }))
     .with({ type: "snippet" }, () => undefined)
     .exhaustive();
@@ -193,25 +190,6 @@ export function getNodeLocationInfo(
         },
       ],
     }))
-    .with(
-      { type: "transform", data: { table: { db: P.nonNullable } } },
-      (node) => ({
-        icon: "database",
-        parts: [
-          {
-            label: node.data.table.db.name,
-            url: Urls.dataModelDatabase(node.data.table.db_id),
-          },
-          {
-            label: node.data.table.schema,
-            url: Urls.dataModelSchema(
-              node.data.table.db_id,
-              node.data.table.schema,
-            ),
-          },
-        ],
-      }),
-    )
     .with(
       { type: P.union("card", "table", "transform", "snippet") },
       () => undefined,

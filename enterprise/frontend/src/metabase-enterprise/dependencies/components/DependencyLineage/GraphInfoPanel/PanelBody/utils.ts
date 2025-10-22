@@ -1,9 +1,10 @@
 import { P, match } from "ts-pattern";
-import { msgid, ngettext } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
-import type { NodeLink } from "metabase-enterprise/dependencies/components/DependencyLineage/types";
 import type { DependencyNode } from "metabase-types/api";
+
+import type { NodeTableInfo } from "./types";
 
 export function getNodeCreatedAt(node: DependencyNode) {
   return match(node)
@@ -33,20 +34,41 @@ export function getNodeLastEditedBy(node: DependencyNode) {
     .exhaustive();
 }
 
-export function getNodeGeneratedTableInfo(
+export function getNodeTableInfo(
   node: DependencyNode,
-): NodeLink | undefined {
-  const tableInfo = match(node)
+): NodeTableInfo | undefined {
+  const table = match(node)
     .with({ type: "transform" }, (node) => node.data.table)
     .with({ type: P.union("card", "table", "snippet") }, () => undefined)
     .exhaustive();
 
-  if (tableInfo != null && typeof tableInfo.id === "number") {
-    return {
-      label: tableInfo.display_name,
-      url: Urls.dataModelTable(tableInfo.db_id, tableInfo.schema, tableInfo.id),
-    };
+  if (table == null || typeof table.id !== "number") {
+    return;
   }
+
+  return {
+    title: {
+      label: table.display_name,
+      url: Urls.dependencyLineage({ entry: { id: table.id, type: "table" } }),
+    },
+    metadata: {
+      label: t`View metadata`,
+      url: Urls.dataModelTable(table.db_id, table.schema, table.id),
+    },
+    location: table.db && {
+      icon: "database",
+      parts: [
+        {
+          label: table.db.name,
+          url: Urls.dataModelDatabase(table.db.id),
+        },
+        {
+          label: table.schema,
+          url: Urls.dataModelSchema(table.db.id, table.schema),
+        },
+      ],
+    },
+  };
 }
 
 export function getNodeFields(node: DependencyNode) {

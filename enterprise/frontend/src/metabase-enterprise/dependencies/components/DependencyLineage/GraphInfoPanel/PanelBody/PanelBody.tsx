@@ -7,6 +7,8 @@ import { Box, FixedSizeIcon, Group, Stack, Title } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DependencyNode } from "metabase-types/api";
 
+import { GraphBreadcrumbs } from "../../GraphBreadcrumbs";
+import { GraphExternalLink } from "../../GraphExternalLink";
 import { GraphLink } from "../../GraphLink";
 import { getNodeDescription } from "../../utils";
 
@@ -16,9 +18,9 @@ import {
   getNodeCreatedBy,
   getNodeFields,
   getNodeFieldsLabel,
-  getNodeGeneratedTableInfo,
   getNodeLastEditedAt,
   getNodeLastEditedBy,
+  getNodeTableInfo,
 } from "./utils";
 
 type PanelBodyProps = {
@@ -94,20 +96,22 @@ function CreatorAndLastEditorSection({ node }: SectionProps) {
 }
 
 function GeneratedTableSection({ node }: SectionProps) {
-  const link = getNodeGeneratedTableInfo(node);
-  if (link == null) {
+  const info = getNodeTableInfo(node);
+  if (info == null) {
     return null;
   }
 
   return (
     <Stack gap="sm">
       <Title order={6}>{t`Generated table`}</Title>
-      <GraphLink
-        label={link.label}
-        icon="table"
-        url={link.url}
-        target="_blank"
-      />
+      <Group justify="space-between">
+        <GraphLink label={info.title.label} icon="table" url={info.title.url} />
+        <GraphExternalLink
+          label={info.metadata.label}
+          url={info.metadata.url}
+        />
+      </Group>
+      {info.location && <GraphBreadcrumbs location={info.location} withIcon />}
     </Stack>
   );
 }

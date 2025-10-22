@@ -8,12 +8,11 @@ type GraphLinkProps = {
   label: string;
   icon: IconName;
   url: string;
-  target?: string;
 };
 
-export function GraphLink({ label, icon, url, target }: GraphLinkProps) {
+export function GraphLink({ label, icon, url }: GraphLinkProps) {
   return (
-    <Box className={S.link} component={Link} to={url} target={target}>
+    <Box className={S.link} component={Link} to={url}>
       <Flex gap="sm" align="center">
         <FixedSizeIcon name={icon} c="brand" />
         <Box lh="h4">{label}</Box>

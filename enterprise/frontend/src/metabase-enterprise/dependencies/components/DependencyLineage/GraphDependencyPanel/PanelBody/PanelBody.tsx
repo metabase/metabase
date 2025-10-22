@@ -1,22 +1,12 @@
 import { memo } from "react";
 
-import { ForwardRefLink } from "metabase/common/components/Link";
 import * as Urls from "metabase/lib/urls";
-import {
-  ActionIcon,
-  Box,
-  FixedSizeIcon,
-  Group,
-  Stack,
-  Tooltip,
-  rem,
-} from "metabase/ui";
+import { Box, Group, Stack } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
 import { GraphBreadcrumbs } from "../../GraphBreadcrumbs";
+import { GraphExternalLink } from "../../GraphExternalLink";
 import { GraphLink } from "../../GraphLink";
-import { ACTION_ICON_PADDING } from "../../constants";
-import type { NodeLink } from "../../types";
 import {
   getNodeIcon,
   getNodeId,
@@ -55,11 +45,17 @@ function ListItem({ node }: ListItemProps) {
   return (
     <Stack className={S.item} p="lg" gap="sm">
       <Group justify="space-between">
-        <ListItemTitle node={node} />
+        <GraphLink
+          label={getNodeLabel(node)}
+          icon={getNodeIcon(node)}
+          url={Urls.dependencyLineage({ entry: node })}
+        />
         {viewCount != null ? (
-          <ListItemViewCount viewCount={viewCount} />
+          <Box c="text-secondary" fz="sm">
+            {getNodeViewCountLabel(viewCount)}
+          </Box>
         ) : link != null ? (
-          <ListItemLink link={link} />
+          <GraphExternalLink label={link.label} url={link.url} />
         ) : null}
       </Group>
       {(location != null || (link != null && viewCount != null)) && (
@@ -67,52 +63,11 @@ function ListItem({ node }: ListItemProps) {
           {location != null && (
             <GraphBreadcrumbs location={location} withIcon />
           )}
-          {link != null && viewCount != null && <ListItemLink link={link} />}
+          {link != null && viewCount != null && (
+            <GraphExternalLink label={link.label} url={link.url} />
+          )}
         </Group>
       )}
     </Stack>
-  );
-}
-
-type ListItemTitleProps = {
-  node: DependencyNode;
-};
-
-function ListItemTitle({ node }: ListItemTitleProps) {
-  const label = getNodeLabel(node);
-  const icon = getNodeIcon(node);
-  const url = Urls.dependencyLineage({ entry: node });
-
-  return <GraphLink label={label} icon={icon} url={url} />;
-}
-
-type ListItemViewCountProps = {
-  viewCount: number;
-};
-
-function ListItemViewCount({ viewCount }: ListItemViewCountProps) {
-  return (
-    <Box c="text-secondary" fz="sm">
-      {getNodeViewCountLabel(viewCount)}
-    </Box>
-  );
-}
-type ListItemLinkProps = {
-  link: NodeLink;
-};
-
-function ListItemLink({ link }: ListItemLinkProps) {
-  return (
-    <Tooltip label={link.tooltip}>
-      <ActionIcon
-        component={ForwardRefLink}
-        to={link.url}
-        target="_blank"
-        m={rem(-ACTION_ICON_PADDING)}
-        aria-label={link.tooltip}
-      >
-        <FixedSizeIcon name="external" />
-      </ActionIcon>
-    </Tooltip>
   );
 }

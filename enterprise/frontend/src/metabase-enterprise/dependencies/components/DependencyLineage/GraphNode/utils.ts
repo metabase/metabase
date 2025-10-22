@@ -1,15 +1,11 @@
 import { match } from "ts-pattern";
-import { msgid, ngettext } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import type { DependencyNode } from "metabase-types/api";
 
 import type { DependentGroup } from "./types";
 
 export function getDependentGroups(node: DependencyNode): DependentGroup[] {
-  if (node.type === "transform") {
-    return [];
-  }
-
   const {
     question = 0,
     model = 0,
@@ -29,6 +25,16 @@ export function getDependentGroups(node: DependencyNode): DependentGroup[] {
   ];
 
   return groups.filter(({ count }) => count !== 0);
+}
+
+export function getDependencyGroupTitle(
+  node: DependencyNode,
+  groups: DependentGroup[],
+) {
+  if (groups.length === 0) {
+    return t`Nothing uses this`;
+  }
+  return node.type === "transform" ? t`Generates` : t`Used by`;
 }
 
 export function getDependentGroupLabel({ type, count }: DependentGroup) {

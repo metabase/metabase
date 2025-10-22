@@ -15,7 +15,6 @@ export type NodeType = Node<DependencyNode>;
 export type NodeLink = {
   label: string;
   url: string;
-  tooltip?: string;
 };
 
 export type NodeLocation = {

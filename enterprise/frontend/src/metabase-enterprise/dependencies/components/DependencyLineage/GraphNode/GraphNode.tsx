@@ -6,7 +6,6 @@ import {
 } from "@xyflow/react";
 import cx from "classnames";
 import { type MouseEvent, memo, useContext } from "react";
-import { t } from "ttag";
 
 import {
   Box,
@@ -24,7 +23,11 @@ import { getNodeIcon, getNodeLabel, isSameNode } from "../utils";
 
 import S from "./GraphNode.module.css";
 import type { DependentGroup } from "./types";
-import { getDependentGroupLabel, getDependentGroups } from "./utils";
+import {
+  getDependencyGroupTitle,
+  getDependentGroupLabel,
+  getDependentGroups,
+} from "./utils";
 
 type GraphNodeProps = NodeProps<NodeType>;
 
@@ -58,20 +61,18 @@ export const GraphNode = memo(function ItemNode({
           <FixedSizeIcon name={getNodeIcon(node)} c="brand" />
           {label}
         </Group>
-        {groups.length > 0 && (
-          <>
-            <Box c="text-secondary" fz="sm" lh="1rem">{t`Used by`}</Box>
-            {groups.map((group) => (
-              <DependencyGroupButton
-                key={group.type}
-                node={node}
-                group={group}
-                selection={selection}
-                onSelectionChange={setSelection}
-              />
-            ))}
-          </>
-        )}
+        <Box c="text-secondary" fz="sm" lh="1rem">
+          {getDependencyGroupTitle(node, groups)}
+        </Box>
+        {groups.map((group) => (
+          <DependencyGroupButton
+            key={group.type}
+            node={node}
+            group={group}
+            selection={selection}
+            onSelectionChange={setSelection}
+          />
+        ))}
       </Stack>
       {sources.length > 0 && (
         <Handle type="source" position={Position.Left} isConnectable={false} />

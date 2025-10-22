@@ -78,8 +78,8 @@ describe("getNodeLink", () => {
         }),
       }),
       expectedLink: {
+        label: "View this question",
         url: "/question/1-my-question",
-        tooltip: "View this question",
       },
     },
     {
@@ -91,8 +91,8 @@ describe("getNodeLink", () => {
         }),
       }),
       expectedLink: {
+        label: "View this model",
         url: "/model/1-my-model",
-        tooltip: "View this model",
       },
     },
     {
@@ -104,8 +104,8 @@ describe("getNodeLink", () => {
         }),
       }),
       expectedLink: {
+        label: "View this metric",
         url: "/metric/1-my-metric",
-        tooltip: "View this metric",
       },
     },
     {
@@ -117,8 +117,8 @@ describe("getNodeLink", () => {
         }),
       }),
       expectedLink: {
+        label: "View metadata",
         url: "/admin/datamodel/database/2/schema/2:not%20public/table/1",
-        tooltip: "View metadata",
       },
     },
   ])("should get the node link", ({ node, expectedLink }) => {
