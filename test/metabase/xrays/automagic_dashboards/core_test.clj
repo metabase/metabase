@@ -32,7 +32,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest ^:paralell normalize-query-filter-test
+(deftest ^:parallel normalize-query-filter-test
   (is (=? {:query-filter [[:= {} [:field {} 1] 2]]}
           (lib/normalize ::magic/automagic-analysis.opts {:query-filter [:= [:field 1 nil] 2]}))))
 

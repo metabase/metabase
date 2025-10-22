@@ -609,7 +609,7 @@
                               {:id (mt/id :categories)}])}
        (mt/user-http-request :crowberto :get 200 (str "automagic-dashboards/table/" (mt/id :venues) "/query_metadata")))))
 
-(deftest ^:paralell allow-equals-in-base-64-encoding-for-now-test
+(deftest ^:parallel allow-equals-in-base-64-encoding-for-now-test
   (testing "Allow `=` in the route part of X-Rays API requests... for now"
     (doseq [schema [::api.magic/base-64-encoded-json
                     ::api.magic/entity-id-or-query]]
