@@ -17,7 +17,7 @@ runs:
       run: |
         echo "week-of-year=$(/bin/date "+%G-%V")" >> $GITHUB_OUTPUT
       shell: bash
-    - name: Get Cypress cache
+    - name: Get ${{ inputs.cache-name }} cache
       uses: actions/cache@v4
       with:
         path: ${{ inputs.path }}
