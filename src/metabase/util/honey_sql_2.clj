@@ -505,8 +505,7 @@
 
 (defmethod add-interval-honeysql-form :default
   [db-type hsql-form amount unit]
-  (throw (ex-info "metabase.util.honey-sql-2/add-interval-honeysql-form not implemented for driver {0}. You might want to be calling metabase.driver.sql.query-processor/add-interval-honeysql-form instead."
-                  db-type
+  (throw (ex-info (clojure.core/format "metabase.util.honey-sql-2/add-interval-honeysql-form not implemented for db-type %s. You might want to be calling metabase.driver.sql.query-processor/add-interval-honeysql-form instead." db-type)
                   {:db-type db-type
                    :hsql-form hsql-form
                    :amount amount
