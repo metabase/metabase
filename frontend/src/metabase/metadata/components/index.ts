@@ -16,3 +16,4 @@ export * from "./SortableFieldList";
 export * from "./SyncTableSchemaButton";
 export * from "./TableBreadcrumbs";
 export * from "./UnfoldJsonPicker";
+export * from "./VisibilityInput";

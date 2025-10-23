@@ -11,6 +11,7 @@ import {
   FieldOrderPicker,
   NameDescriptionInput,
   SortableFieldList,
+  VisibilityInput,
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
@@ -25,7 +26,12 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
-import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
+import type {
+  FieldId,
+  Table,
+  TableFieldOrder,
+  TableVisibilityType2,
+} from "metabase-types/api";
 
 import type { RouteParams } from "../../types";
 import { getUrl, parseRouteParams } from "../../utils";
@@ -34,6 +40,7 @@ import { ResponsiveButton } from "../ResponsiveButton";
 import { FieldList } from "./FieldList";
 import S from "./TableSection.module.css";
 import { useResponsiveButtons } from "./hooks";
+import { TitledSection } from "../TitledSection";
 
 interface Props {
   params: RouteParams;
@@ -98,6 +105,26 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
     }
   };
 
+  const handleVisibilityTypeChange = async (
+    visibilityType: TableVisibilityType2,
+  ) => {
+    const { error } = await updateTable({
+      id: table.id,
+      visibility_type2: visibilityType,
+    });
+
+    if (error) {
+      sendErrorToast(t`Failed to update table visibility`);
+    } else {
+      sendSuccessToast(t`Table visibility updated`, async () => {
+        const { error } = await updateTable({
+          id: table.id,
+          visibility_type2: table.visibility_type2,
+        });
+        sendUndoToast(error);
+      });
+    }
+  };
   const handleFieldOrderTypeChange = async (fieldOrder: TableFieldOrder) => {
     const { error } = await updateTableSorting({
       id: table.id,
@@ -183,9 +210,12 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
           onDescriptionChange={handleDescriptionChange}
         />
 
-        <Flex>
-          <Card>Visibility: {table.visibility_type2 ?? "N/A"}</Card>
-        </Flex>
+        <TitledSection title={t`Metadata`}>
+          <VisibilityInput
+            value={table.visibility_type2}
+            onChange={handleVisibilityTypeChange}
+          />
+        </TitledSection>
 
         <Group
           align="center"

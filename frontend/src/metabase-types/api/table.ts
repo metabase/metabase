@@ -21,7 +21,7 @@ export type TableVisibilityType =
   | "technical"
   | "cruft";
 
-export type TableVisibilityType2 = string;
+export type TableVisibilityType2 = "gold" | "silver" | "bronze" | "copper";
 
 export type TableFieldOrder = "database" | "alphabetical" | "custom" | "smart";
 
