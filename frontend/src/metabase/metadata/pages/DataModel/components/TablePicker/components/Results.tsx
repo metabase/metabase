@@ -5,7 +5,7 @@ import { Link } from "react-router";
 
 import CS from "metabase/css/core/index.css";
 import { Box, Checkbox, Flex, Icon, Skeleton, rem } from "metabase/ui";
-import type { TableId } from "metabase-types/api";
+import type { SchemaName, TableId } from "metabase-types/api";
 
 import { getUrl } from "../../../utils";
 import { TYPE_ICONS } from "../constants";
@@ -17,7 +17,13 @@ import type {
   TableItem,
   TreePath,
 } from "../types";
-import { isItemWithHiddenExpandIcon } from "../utils";
+import {
+  getSchemaId,
+  isItemWithHiddenExpandIcon,
+  noManuallySelectedTables,
+  getParentSchema,
+  areTablesSelected,
+} from "../utils";
 
 import { BulkTableVisibilityToggle } from "./BulkTableVisibilityToggle";
 import S from "./Results.module.css";
@@ -36,8 +42,9 @@ interface Props {
   withMassToggle?: boolean;
   onItemClick?: (path: TreePath) => void;
   onSelectedIndexChange?: (index: number) => void;
-  onItemToggle?: (tableId: TableId) => void;
+  onItemToggle?: (item: FlatItem) => void;
   selectedItems?: Set<TableId>;
+  selectedSchemas?: Set<SchemaName>;
 }
 
 export function Results({
@@ -51,6 +58,7 @@ export function Results({
   onSelectedIndexChange,
   onItemToggle,
   selectedItems,
+  selectedSchemas,
 }: Props) {
   const [activeItem, setActiveItem] = useState<
     { type: ItemType; id: number | string } | undefined
@@ -162,9 +170,6 @@ export function Results({
             (child) => child.type === "table",
           );
           const typedValue = value as TreePath | undefined;
-          const isItemSelected =
-            item.type === "table" &&
-            selectedItems?.has(item.value?.tableId ?? "");
 
           const handleItemSelect = (open?: boolean) => {
             if (disabled) {
@@ -336,33 +341,99 @@ export function Results({
                 </Flex>
               </Flex>
 
-              {type === "table" && (
-                <Box>
-                  {" "}
-                  <Checkbox
-                    size="xs"
-                    checked={isItemSelected}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                    }}
-                    onChange={(event) => {
-                      const tableId = item.value?.tableId;
-                      if (!tableId) {
-                        return;
-                      }
-                      event.stopPropagation();
-                      onItemToggle?.(tableId);
-                    }}
-                  />
-                </Box>
-              )}
-
+              <ElementCheckbox
+                item={item}
+                selectedItems={selectedItems}
+                selectedSchemas={selectedSchemas}
+                onItemToggle={onItemToggle}
+                allItems={items}
+              />
             </Flex>
           );
         })}
       </Box>
     </Box>
   );
+}
+
+function ElementCheckbox({
+  item,
+  selectedItems,
+  selectedSchemas,
+  onItemToggle,
+  allItems,
+}: {
+  item: FlatItem;
+  allItems: FlatItem[];
+  selectedItems: Set<TableId> | undefined;
+  selectedSchemas: Set<SchemaName> | undefined;
+  onItemToggle: ((item: FlatItem) => void) | undefined;
+}) {
+  // console.log({
+  //   isParentSchemaSelected: isParentSchemaSelected(item, selectedSchemas),
+  //   noManuallySelectedTables: noManuallySelectedTables(
+  //     getParentSchema(item, allItems),
+  //     allItems,
+  //     selectedItems,
+  //   ),
+  // });
+  const isItemSelected =
+    item.type === "table" && selectedItems?.has(item.value?.tableId ?? "");
+
+  const isSchemaItemSelected =
+    item.type === "schema" && selectedSchemas?.has(getSchemaId(item) ?? "");
+  const schemaTablesSelected =
+    item.type === "schema" && areTablesSelected(item, allItems, selectedItems);
+  const isIndeterminate = schemaTablesSelected === "some" ? true : undefined;
+
+  const isChecked =
+    isItemSelected ||
+    isSchemaItemSelected ||
+    schemaTablesSelected === "all" ||
+    isIndeterminate;
+
+  if (item.type === "schema") {
+    // console.log({
+    //   item: getSchemaId(item),
+    //   isItemSelected,
+    //   isSchemaItemSelected,
+    //   schemaTablesSelected,
+    //   indeterminate: schemaTablesSelected === "some",
+    //   isIndeterminate,
+    //   isChecked,
+    // });
+  }
+
+  return (
+    <Checkbox
+      size="sm"
+      checked={isChecked}
+      onClick={(event) => {
+        event.stopPropagation();
+      }}
+      onChange={() => {
+        onItemToggle?.(item);
+      }}
+      {...(isIndeterminate ? { indeterminate: true } : {})}
+    />
+  );
+}
+
+function isParentSchemaSelected(
+  item: FlatItem,
+  selectedSchemas: Set<SchemaName> | undefined,
+) {
+  if (item.type !== "table") {
+    return false;
+  }
+
+  const parentSchemaId = getSchemaId(item);
+
+  if (!parentSchemaId) {
+    return false;
+  }
+
+  return selectedSchemas?.has(parentSchemaId);
 }
 
 function Loading() {

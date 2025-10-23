@@ -1,3 +1,5 @@
+import type { TableId } from "metabase-types/api";
+
 import { getUrl as getUrl_ } from "../../utils";
 
 import { CHILD_TYPES, UNNAMED_SCHEMA_NAME } from "./constants";
@@ -240,4 +242,96 @@ export function loadingItem(
     isLoading: true,
     key: Math.random().toString(),
   };
+}
+
+export function getSchemaId(item: FlatItem) {
+  if (item.type !== "table" && item.type !== "schema") {
+    return undefined;
+  }
+  return `${item.value?.databaseId}:${item.value?.schemaName}`;
+}
+
+export function isParentSchemaSelected(
+  item: FlatItem,
+  selectedSchemas: Set<string> | undefined,
+) {
+  if (item.type !== "table") {
+    return false;
+  }
+
+  const parentSchemaId = getSchemaId(item);
+
+  if (!parentSchemaId) {
+    return false;
+  }
+
+  return selectedSchemas?.has(parentSchemaId);
+}
+
+export function noManuallySelectedTables(
+  schema: FlatItem | undefined,
+  items: FlatItem[],
+  selectedItems: Set<TableId> | undefined,
+) {
+  if (!schema) {
+    return false;
+  }
+  // return true;
+  const children = items.filter((x) => x.parent === schema.key);
+
+  return !children.some(
+    (child) =>
+      child.type === "table" && selectedItems?.has(child.value?.tableId ?? ""),
+  );
+}
+
+export function getParentSchema(tableItem: FlatItem, allItems: FlatItem[]) {
+  return allItems.find(
+    (x) => x.type === "schema" && getSchemaId(x) === getSchemaId(tableItem),
+  );
+}
+
+export function getSchemaTables(schema: FlatItem, allItems: FlatItem[]) {
+  const result = allItems.filter(
+    (x) =>
+      x.type === "table" &&
+      getSchemaId(schema) === getSchemaId(x) &&
+      x.value?.tableId,
+  );
+
+  return result;
+}
+
+export function getSchemaTableIds(schema: FlatItem, allItems: FlatItem[]) {
+  return getSchemaTables(schema, allItems).map((x) => x.value?.tableId ?? "");
+}
+
+export function getParentSchemaTables(item: FlatItem, allItems: FlatItem[]) {
+  const parentSchema = getParentSchema(item, allItems);
+
+  if (!parentSchema) {
+    return [];
+  }
+
+  return allItems.filter(
+    (x) => x.type === "table" && getSchemaId(parentSchema) === getSchemaId(x),
+  );
+}
+
+export function areTablesSelected(
+  schema: FlatItem,
+  allItems: FlatItem[],
+  selectedItems: Set<TableId> | undefined,
+): "all" | "some" | "none" {
+  const tables = getSchemaTables(schema, allItems);
+  if (tables.length === 0) {
+    return "none";
+  }
+  if (tables.every((x) => selectedItems?.has(x.value?.tableId ?? ""))) {
+    return "all";
+  }
+  if (tables.some((x) => selectedItems?.has(x.value?.tableId ?? ""))) {
+    return "some";
+  }
+  return "none";
 }

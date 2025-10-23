@@ -5,8 +5,14 @@ import { Button, Flex } from "metabase/ui";
 import type { TableId } from "metabase-types/api";
 
 import { useExpandedState, useTableLoader } from "../hooks";
-import type { ChangeOptions, DatabaseNode, TreePath } from "../types";
-import { flatten } from "../utils";
+import type { ChangeOptions, DatabaseNode, FlatItem, TreePath } from "../types";
+import {
+  areTablesSelected,
+  flatten,
+  getSchemaId,
+  getSchemaTableIds,
+  noManuallySelectedTables,
+} from "../utils";
 
 import { EditTableMetadataModal } from "./EditTableMetadataModal";
 import { EmptyState } from "./EmptyState";
@@ -22,6 +28,9 @@ export function Tree({ path, onChange }: Props) {
   const { isExpanded, toggle } = useExpandedState(path);
   const { tree, reload } = useTableLoader(path);
   const [selectedItems, setSelectedItems] = useState<Set<TableId>>(new Set());
+  const [selectedSchemas, setSelectedSchemas] = useState<Set<string>>(
+    new Set(),
+  );
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const items = flatten(tree, {
@@ -73,6 +82,39 @@ export function Tree({ path, onChange }: Props) {
     }
   }, [databaseId, schemaName, tree, toggle, isExpanded, onChange]);
 
+  useEffect(() => {
+    const expandedSelectedSchemaItems = items.filter(
+      (x) =>
+        x.type === "schema" &&
+        selectedSchemas.has(getSchemaId(x) ?? "") &&
+        isExpanded(x.key),
+    );
+
+    expandedSelectedSchemaItems.forEach((x) => {
+      if (noManuallySelectedTables(x, items, selectedItems)) {
+        // when expanding a schema, let's select all the tables in that schema
+        const tableIds = getSchemaTableIds(x, items);
+        if (tableIds.length === 0) {
+          return;
+        }
+
+        setSelectedItems((prev) => {
+          const newSet = new Set(prev);
+          tableIds.forEach((x) => {
+            newSet.add(x);
+          });
+          return newSet;
+        });
+
+        setSelectedSchemas((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(getSchemaId(x) ?? "");
+          return newSet;
+        });
+      }
+    });
+  }, [isExpanded, selectedSchemas, items, selectedItems]);
+
   function onEditSelectedItems() {
     setIsModalOpen(true);
   }
@@ -81,17 +123,42 @@ export function Tree({ path, onChange }: Props) {
     return <EmptyState title={t`No data to show`} />;
   }
 
-  function onItemToggle(tableId: TableId) {
-    setSelectedItems((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(tableId)) {
-        newSet.delete(tableId);
+  function onItemToggle(item: FlatItem) {
+    if (item.type === "table") {
+      setSelectedItems((prev) => {
+        const newSet = new Set(prev);
+        if (newSet.has(item.value?.tableId ?? "")) {
+          newSet.delete(item.value?.tableId ?? "");
+        } else {
+          newSet.add(item.value?.tableId ?? "");
+        }
+        return newSet;
+      });
+    }
+    if (item.type === "schema") {
+      if (isExpanded(item.key)) {
+        if (areTablesSelected(item, items, selectedItems) === "all") {
+          setSelectedItems(() => {
+            return new Set();
+          });
+        } else {
+          setSelectedItems(() => {
+            return new Set(getSchemaTableIds(item, items));
+          });
+        }
       } else {
-        newSet.add(tableId);
+        setSelectedSchemas((prev) => {
+          const newSet = new Set(prev);
+          const schemaId = getSchemaId(item);
+          if (schemaId && newSet.has(schemaId)) {
+            newSet.delete(schemaId);
+          } else {
+            newSet.add(schemaId);
+          }
+          return newSet;
+        });
       }
-
-      return newSet;
-    });
+    }
   }
 
   return (
@@ -105,8 +172,9 @@ export function Tree({ path, onChange }: Props) {
         onItemClick={onChange}
         onItemToggle={onItemToggle}
         selectedItems={selectedItems}
+        selectedSchemas={selectedSchemas}
       />
-      <Flex justify="center" gap="sm" direction="column" in>
+      <Flex justify="center" gap="sm" direction="column">
         {selectedItems.size > 0 && (
           <>
             <Flex justify="center">
