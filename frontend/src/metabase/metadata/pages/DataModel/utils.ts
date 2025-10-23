@@ -15,7 +15,10 @@ export function parseRouteParams(params: RouteParams): ParsedRouteParams {
     tableId: Urls.extractEntityId(params.tableId),
     fieldId: Urls.extractEntityId(params.fieldId),
 
-    collectionId: params.collectionId,
+    collectionId:
+      params.collectionId === "root"
+        ? params.collectionId
+        : Urls.extractEntityId(params.collectionId),
     modelId: Urls.extractEntityId(params.modelId),
     fieldName: params.fieldName,
   };

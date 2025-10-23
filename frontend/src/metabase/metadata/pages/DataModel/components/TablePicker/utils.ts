@@ -62,6 +62,16 @@ export function expandPath(
       schemaName: undefined,
       databaseId: undefined,
     })]: true,
+
+    [toKey({
+      ...path,
+      modelId: undefined,
+    })]: true,
+    [toKey({
+      ...path,
+      modelId: undefined,
+      collectionId: undefined,
+    })]: true,
   };
 }
 
