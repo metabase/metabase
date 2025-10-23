@@ -11,6 +11,7 @@ import {
   BenchFlatListItem,
   BenchFlatListItemContent,
 } from "metabase/bench/components/shared/BenchFlatListItem";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Tree } from "metabase/common/components/tree";
 import type {
@@ -256,7 +257,16 @@ function TransformsFlatList({
         label={transform.name}
         subtitle={transform.target.name}
         isActive={transform.id === selectedId}
-        tags={tagNames}
+        thirdLine={
+          <Ellipsified
+            fw="bold"
+            fz="sm"
+            lh="1rem"
+            c="var(--mb-color-feedback-unknown)"
+          >
+            {tagNames.join(" · ")}
+          </Ellipsified>
+        }
       />
     );
   });

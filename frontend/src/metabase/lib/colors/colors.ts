@@ -379,6 +379,10 @@ export const colorConfig = {
     light: whitelabelColors.filter || baseColors.octopus[50],
     dark: whitelabelColors.filter || baseColors.octopus[40],
   },
+  "feedback-unknown": {
+    light: baseColors.octopus[60],
+    dark: baseColors.octopus[50],
+  },
   focus: {
     light: baseColors.blue[20],
     dark: baseColors.blue[50],
