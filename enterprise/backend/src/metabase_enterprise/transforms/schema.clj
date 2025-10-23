@@ -1,6 +1,7 @@
 (ns metabase-enterprise.transforms.schema
   (:require
    [metabase.lib.metadata.column :as lib.metadata.column]
+   [metabase.lib.schema :as lib.schema]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -21,7 +22,7 @@
    [:query
     [:map
      [:type [:= "query"]]
-     [:query [:map [:database :int]]]
+     [:query [:or ::lib.schema/query [:map [:database :int]]]]
      [:source-incremental-strategy {:optional true} ::source-incremental-strategy]]]
    [:python
     [:map {:closed true}
