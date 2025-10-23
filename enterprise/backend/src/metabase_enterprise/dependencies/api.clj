@@ -141,7 +141,7 @@
    :document [:name :description :view_count
               :created_at :creator
               :collection :collection_id]
-   :sandbox [:group_id :table_id :card_id  :attribute_remappings]})
+   :sandbox [:group_id :table_id :card_id :attribute_remappings]})
 
 (defn- format-subentity [entity]
   (case (t2/model entity)
