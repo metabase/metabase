@@ -200,7 +200,7 @@
     (mapcat (fn [[entity-type entity-ids]]
               (->> (cond-> (t2/select (entity-model entity-type)
                                       :id [:in entity-ids])
-                     (= entity-type :card)      (-> (t2/hydrate :creator :dashboard :collection :moderation_reviews)
+                     (= entity-type :card)      (-> (t2/hydrate :creator :dashboard [:collection :is_personal] :moderation_reviews)
                                                     (->> (map collection.root/hydrate-root-collection))
                                                     (revisions/with-last-edit-info :card))
                      (= entity-type :table)     (t2/hydrate :fields :db)

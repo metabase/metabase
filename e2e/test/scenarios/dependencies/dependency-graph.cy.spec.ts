@@ -1,10 +1,17 @@
 const { H } = cy;
 
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import {
+  ADMIN_PERSONAL_COLLECTION_ID,
+  FIRST_COLLECTION_ID,
+  ORDERS_DASHBOARD_ID,
+  SECOND_COLLECTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import type { IconName } from "metabase/ui";
 import type {
   CardId,
   CardType,
+  CollectionId,
   DependencyId,
   DependencyType,
   NativeQuerySnippetId,
@@ -208,7 +215,7 @@ describe("scenarios > dependencies > dependency graph", () => {
     });
   });
 
-  describe("dependency types", () => {
+  describe("dependent types", () => {
     function verifyPanelNavigation({
       itemTitle,
       groupTitle,
@@ -424,6 +431,98 @@ describe("scenarios > dependencies > dependency graph", () => {
       });
     });
   });
+
+  describe("dependent filtering", () => {
+    function verifyFilter({
+      filterName,
+      visibleItems,
+      hiddenItems,
+    }: {
+      filterName: string;
+      visibleItems: string[];
+      hiddenItems: string[];
+    }) {
+      graphDependencyPanel().icon("filter").click();
+      H.popover().findByText(filterName).click();
+      graphDependencyPanel().within(() => {
+        visibleItems.forEach((item) =>
+          cy.findByText(item).should("be.visible"),
+        );
+        hiddenItems.forEach((item) => cy.findByText(item).should("not.exist"));
+      });
+      H.popover().findByText(filterName).click();
+      graphDependencyPanel().icon("filter").click();
+    }
+
+    it("should be able to filter questions", () => {
+      makeCollectionOfficial(FIRST_COLLECTION_ID);
+      getScoreboardTableId().then((tableId) => {
+        createTableBasedQuestion({
+          name: "Verified question",
+          tableId,
+        }).then(({ body: card }) => {
+          verifyCard(card.id);
+        });
+        createTableBasedQuestion({
+          name: "Question in dashboard",
+          tableId,
+          dashboardId: ORDERS_DASHBOARD_ID,
+        });
+        createTableBasedQuestion({
+          name: "Question in root collection",
+          tableId,
+        });
+        createTableBasedQuestion({
+          name: "Question in official collection",
+          tableId,
+          collectionId: FIRST_COLLECTION_ID,
+        });
+        createTableBasedQuestion({
+          name: "Question in regular collection",
+          tableId,
+          collectionId: SECOND_COLLECTION_ID,
+        });
+        createTableBasedQuestion({
+          name: "Question in personal collection",
+          tableId,
+          collectionId: ADMIN_PERSONAL_COLLECTION_ID,
+        });
+        visitGraphForEntity(tableId, "table");
+      });
+      dependencyGraph()
+        .findByLabelText(TABLE_DISPLAY_NAME)
+        .findByText("6 questions")
+        .click();
+      verifyFilter({
+        filterName: "Verified",
+        visibleItems: ["Verified question"],
+        hiddenItems: ["Question in official collection"],
+      });
+      verifyFilter({
+        filterName: "In a dashboard",
+        visibleItems: ["Question in dashboard"],
+        hiddenItems: ["Verified question", "Question in regular collection"],
+      });
+      verifyFilter({
+        filterName: "In an official collection",
+        visibleItems: ["Question in official collection"],
+        hiddenItems: [
+          "Verified question",
+          "Question in dashboard",
+          "Question in root collection",
+        ],
+      });
+      verifyFilter({
+        filterName: "Not in personal collection",
+        visibleItems: [
+          "Question in dashboard",
+          "Question in root collection",
+          "Question in regular collection",
+        ],
+        hiddenItems: ["Question in personal collection"],
+      });
+    });
+  });
 });
 
 function visitGraph() {
@@ -458,37 +557,79 @@ function getScoreboardTableId() {
   return cy.get<number>(`@${TABLE_ID_ALIAS}`);
 }
 
+function makeCollectionOfficial(collectionId: CollectionId) {
+  cy.request("PUT", `/api/collection/${collectionId}`, {
+    authority_level: "official",
+  });
+}
+
+function verifyCard(cardId: CardId) {
+  cy.request("POST", "/api/moderation-review", {
+    status: "verified",
+    moderated_item_id: cardId,
+    moderated_item_type: "card",
+  });
+}
+
 function createTableBasedCard({
   name,
   type,
   tableId,
+  collectionId,
+  dashboardId,
 }: {
   name: string;
   type: CardType;
   tableId: TableId;
+  collectionId?: number | null;
+  dashboardId?: number | null;
 }) {
   return H.createQuestion({
     name,
     type,
+    database: WRITABLE_DB_ID,
     query: {
       "source-table": tableId,
     },
+    collection_id: collectionId,
+    dashboard_id: dashboardId,
   });
 }
 
-function createTableBasedQuestion({ tableId }: { tableId: TableId }) {
+function createTableBasedQuestion({
+  name = TABLE_BASED_QUESTION_NAME,
+  tableId,
+  collectionId = null,
+  dashboardId = null,
+}: {
+  name?: string;
+  tableId: TableId;
+  collectionId?: number | null;
+  dashboardId?: number | null;
+}) {
   return createTableBasedCard({
-    name: TABLE_BASED_QUESTION_NAME,
+    name,
     type: "question",
     tableId,
+    collectionId: collectionId,
+    dashboardId,
   });
 }
 
-function createTableBasedModel({ tableId }: { tableId: TableId }) {
+function createTableBasedModel({
+  name = TABLE_BASED_MODEL_NAME,
+  tableId,
+  collectionId,
+}: {
+  name?: string;
+  tableId: TableId;
+  collectionId?: number | null;
+}) {
   return createTableBasedCard({
-    name: TABLE_BASED_MODEL_NAME,
+    name,
     type: "model",
     tableId,
+    collectionId,
   });
 }
 
@@ -504,6 +645,7 @@ function createCardBasedCard({
   return H.createQuestion({
     name,
     type,
+    database: WRITABLE_DB_ID,
     query: {
       "source-table": `card__${cardId}`,
     },
@@ -540,6 +682,7 @@ function createMetricBasedCard({
   return H.createQuestion({
     name,
     type,
+    database: WRITABLE_DB_ID,
     query: {
       "source-table": tableId,
       aggregation: [["metric", metricId]],
@@ -593,6 +736,7 @@ function createSnippetBasedCard({
   return H.createNativeQuestion({
     name,
     type,
+    database: WRITABLE_DB_ID,
     native: {
       query: `SELECT * FROM ${tableName} WHERE {{snippet:${snippetName}}}`,
       "template-tags": {
@@ -649,6 +793,7 @@ function createTableBasedMetric({ tableId }: { tableId: TableId }) {
   return H.createQuestion({
     name: TABLE_BASED_METRIC_NAME,
     type: "metric",
+    database: WRITABLE_DB_ID,
     query: {
       "source-table": tableId,
       aggregation: [["count"]],
@@ -660,6 +805,7 @@ function createCardBasedMetric({ cardId }: { cardId: CardId }) {
   return H.createQuestion({
     name: CARD_BASED_METRIC_NAME,
     type: "metric",
+    database: WRITABLE_DB_ID,
     query: {
       "source-table": `card__${cardId}`,
       aggregation: [["count"]],
@@ -677,6 +823,7 @@ function createMetricBasedMetric({
   return H.createQuestion({
     name: METRIC_BASED_METRIC_NAME,
     type: "metric",
+    database: WRITABLE_DB_ID,
     query: {
       "source-table": tableId,
       aggregation: [["metric", metricId]],
