@@ -23,6 +23,13 @@ export type TableVisibilityType =
 
 export type TableVisibilityType2 = "gold" | "silver" | "bronze" | "copper";
 
+export type TableDataSource =
+  | "ingested"
+  | "transformation"
+  | "metabase-transformation"
+  | "source-data"
+  | "uploaded-data";
+
 export type TableFieldOrder = "database" | "alphabetical" | "custom" | "smart";
 
 export type Table = {
@@ -54,8 +61,8 @@ export type Table = {
   created_at: string;
   updated_at: string;
 
-  data_source: string;
-  visibility_type2: TableVisibilityType2;
+  data_source: TableDataSource | null;
+  visibility_type2: TableVisibilityType2 | null;
   owner_email: string;
   owner_user_id: UserId;
   transform_id: TransformId; // readonly
@@ -120,8 +127,8 @@ export interface UpdateTableRequest {
   show_in_getting_started?: boolean;
   field_order?: TableFieldOrder;
 
-  data_source?: string;
-  visibility_type2?: TableVisibilityType2;
+  data_source?: TableDataSource | null;
+  visibility_type2?: TableVisibilityType2 | null;
   owner_email?: string;
   owner_user_id?: UserId;
 }
@@ -135,8 +142,8 @@ export interface UpdateTableListRequest {
   points_of_interest?: string;
   show_in_getting_started?: boolean;
 
-  data_source?: string;
-  visibility_type2?: TableVisibilityType2;
+  data_source?: TableDataSource | null;
+  visibility_type2?: TableVisibilityType2 | null;
   owner_email?: string;
   owner_user_id?: UserId;
 }
