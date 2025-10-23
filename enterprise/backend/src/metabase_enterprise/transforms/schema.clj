@@ -7,9 +7,11 @@
 (mr/def ::keyset-strategy
   [:map
    [:type [:= "keyset"]]
-   ;; only available for mbql and python transforms
+   [:keyset-column :string]
+   ;; required for mbql and python transforms
    [:keyset-filter-unique-key {:optional true} ::lib.metadata.column/column-unique-key]
-   [:keyset-column :string]])
+   ;; required for python transforms
+   [:query-limit {:optional true} :int]])
 
 (mr/def ::source-incremental-strategy
   [:multi {:dispatch :type}

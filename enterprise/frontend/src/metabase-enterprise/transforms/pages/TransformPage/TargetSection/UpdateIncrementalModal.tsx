@@ -65,22 +65,42 @@ type IncrementalValues = {
   sourceStrategy: "keyset";
   keysetColumn: string | null;
   keysetFilterUniqueKey: string | null;
+  queryLimit: number | null;
   targetStrategy: "append";
 };
 
-const INCREMENTAL_SCHEMA = Yup.object({
-  incremental: Yup.boolean().required(),
-  sourceStrategy: Yup.string().oneOf(["keyset"]).required(),
-  keysetColumn: Yup.string()
-    .nullable()
-    .when("incremental", {
-      is: true,
-      then: (schema) => schema.required(Errors.required),
-      otherwise: (schema) => schema.nullable(),
-    }),
-  keysetFilterUniqueKey: Yup.string().nullable(),
-  targetStrategy: Yup.string().oneOf(["append"]).required(),
-});
+function getValidationSchema(transform: Transform) {
+  const isPythonTransform =
+    transform.source.type === "python" &&
+    transform.source["source-tables"] &&
+    Object.keys(transform.source["source-tables"]).length === 1;
+
+  return Yup.object({
+    incremental: Yup.boolean().required(),
+    sourceStrategy: Yup.string().oneOf(["keyset"]).required(),
+    keysetColumn: Yup.string()
+      .nullable()
+      .when("incremental", {
+        is: true,
+        then: (schema) => schema.required(Errors.required),
+        otherwise: (schema) => schema.nullable(),
+      }),
+    keysetFilterUniqueKey: Yup.string().nullable(),
+    queryLimit: Yup.number()
+      .nullable()
+      .positive(t`Query limit must be a positive number`)
+      .integer(t`Query limit must be an integer`)
+      .when("incremental", {
+        is: true,
+        then: (schema) =>
+          isPythonTransform
+            ? schema.required(t`Query limit is required for Python transforms`)
+            : schema.nullable(),
+        otherwise: (schema) => schema.nullable(),
+      }),
+    targetStrategy: Yup.string().oneOf(["append"]).required(),
+  });
+}
 
 type UpdateIncrementalFormProps = {
   transform: Transform;
@@ -96,6 +116,10 @@ function UpdateIncrementalForm({
   const [updateTransform] = useUpdateTransformMutation();
   const metadata = useSelector(getMetadata);
   const initialValues = useMemo(() => getInitialValues(transform), [transform]);
+  const validationSchema = useMemo(
+    () => getValidationSchema(transform),
+    [transform],
+  );
 
   // Convert DatasetQuery to Lib.Query via Question
   const libQuery = useMemo(() => {
@@ -151,6 +175,9 @@ function UpdateIncrementalForm({
             ...(values.keysetFilterUniqueKey && {
               "keyset-filter-unique-key": values.keysetFilterUniqueKey,
             }),
+            ...(values.queryLimit != null && {
+              "query-limit": values.queryLimit,
+            }),
           },
         }
       : {
@@ -188,7 +215,7 @@ function UpdateIncrementalForm({
   return (
     <FormProvider
       initialValues={initialValues}
-      validationSchema={INCREMENTAL_SCHEMA}
+      validationSchema={validationSchema}
       onSubmit={handleSubmit}
     >
       {({ values }) => (
@@ -252,6 +279,15 @@ function UpdateIncrementalForm({
                           sourceTables={transform.source["source-tables"]}
                         />
                       )}
+                    {isPythonTransform && (
+                      <FormTextInput
+                        name="queryLimit"
+                        label={t`Query Limit`}
+                        placeholder={t`e.g., 1000`}
+                        description={t`Maximum number of rows to fetch from the source table per run (required for Python transforms)`}
+                        type="number"
+                      />
+                    )}
                   </>
                 )}
                 <FormSelect
@@ -285,12 +321,17 @@ function getInitialValues(transform: Transform): IncrementalValues {
     strategy?.type === "keyset" && strategy["keyset-filter-unique-key"]
       ? strategy["keyset-filter-unique-key"]
       : null;
+  const queryLimit =
+    strategy?.type === "keyset" && strategy["query-limit"]
+      ? strategy["query-limit"]
+      : null;
 
   return {
     incremental: isIncremental,
     sourceStrategy: "keyset",
     keysetColumn: isIncremental ? columnName : null,
     keysetFilterUniqueKey: isIncremental ? filterUniqueKey : null,
+    queryLimit: isIncremental ? queryLimit : null,
     targetStrategy: "append",
   };
 }

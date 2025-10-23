@@ -88,27 +88,47 @@ type NewTransformValues = {
   incremental: boolean;
   keysetColumn: string | null;
   keysetFilterUniqueKey: string | null;
+  queryLimit: number | null;
   sourceStrategy: "keyset";
   targetStrategy: "append";
 };
 
-const NEW_TRANSFORM_SCHEMA = Yup.object({
-  name: Yup.string().required(Errors.required),
-  description: Yup.string().nullable(),
-  targetName: Yup.string().required(Errors.required),
-  targetSchema: Yup.string().nullable(),
-  incremental: Yup.boolean().required(),
-  keysetColumn: Yup.string()
-    .nullable()
-    .when("incremental", {
-      is: true,
-      then: (schema) => schema.required(Errors.required),
-      otherwise: (schema) => schema.nullable(),
-    }),
-  keysetFilterUniqueKey: Yup.string().nullable(),
-  sourceStrategy: Yup.string().oneOf(["keyset"]).required(),
-  targetStrategy: Yup.string().oneOf(["append"]).required(),
-});
+function getValidationSchema(source: TransformSource) {
+  const isPythonTransform =
+    source.type === "python" &&
+    source["source-tables"] &&
+    Object.keys(source["source-tables"]).length === 1;
+
+  return Yup.object({
+    name: Yup.string().required(Errors.required),
+    description: Yup.string().nullable(),
+    targetName: Yup.string().required(Errors.required),
+    targetSchema: Yup.string().nullable(),
+    incremental: Yup.boolean().required(),
+    keysetColumn: Yup.string()
+      .nullable()
+      .when("incremental", {
+        is: true,
+        then: (schema) => schema.required(Errors.required),
+        otherwise: (schema) => schema.nullable(),
+      }),
+    keysetFilterUniqueKey: Yup.string().nullable(),
+    queryLimit: Yup.number()
+      .nullable()
+      .positive(t`Query limit must be a positive number`)
+      .integer(t`Query limit must be an integer`)
+      .when("incremental", {
+        is: true,
+        then: (schema) =>
+          isPythonTransform
+            ? schema.required(t`Query limit is required for Python transforms`)
+            : schema.nullable(),
+        otherwise: (schema) => schema.nullable(),
+      }),
+    sourceStrategy: Yup.string().oneOf(["keyset"]).required(),
+    targetStrategy: Yup.string().oneOf(["append"]).required(),
+  });
+}
 
 type SourceStrategyFieldsProps = {
   source: TransformSource;
@@ -194,6 +214,15 @@ function SourceStrategyFields({ source }: SourceStrategyFieldsProps) {
               placeholder={t`Select a field to filter on`}
               description={t`Which field from the source to use in the incremental filter`}
               sourceTables={source["source-tables"]}
+            />
+          )}
+          {isPythonTransform && (
+            <FormTextInput
+              name="queryLimit"
+              label={t`Query Limit`}
+              placeholder={t`e.g., 1000`}
+              description={t`Maximum number of rows to fetch from the source table per run (required for Python transforms)`}
+              type="number"
             />
           )}
         </>
@@ -292,6 +321,8 @@ function CreateTransformForm({
     [schemas, initialIncremental],
   );
 
+  const validationSchema = useMemo(() => getValidationSchema(source), [source]);
+
   if (isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
@@ -311,7 +342,7 @@ function CreateTransformForm({
   return (
     <FormProvider
       initialValues={initialValues}
-      validationSchema={NEW_TRANSFORM_SCHEMA}
+      validationSchema={validationSchema}
       onSubmit={handleSubmit}
     >
       <Form>
@@ -369,6 +400,7 @@ function getInitialValues(
     incremental: initialIncremental,
     keysetColumn: initialIncremental ? "id" : null,
     keysetFilterUniqueKey: null,
+    queryLimit: null,
     sourceStrategy: "keyset",
     targetStrategy: "append",
   };
@@ -384,6 +416,7 @@ function getCreateRequest(
     incremental,
     keysetColumn,
     keysetFilterUniqueKey,
+    queryLimit,
     sourceStrategy,
     targetStrategy,
   }: NewTransformValues,
@@ -398,6 +431,9 @@ function getCreateRequest(
           "keyset-column": keysetColumn!,
           ...(keysetFilterUniqueKey && {
             "keyset-filter-unique-key": keysetFilterUniqueKey,
+          }),
+          ...(queryLimit != null && {
+            "query-limit": queryLimit,
           }),
         },
       }
