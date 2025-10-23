@@ -41,7 +41,8 @@
       mi/json-in))
 
 (t2/deftransforms :model/Transform
-  {:source      {:out transform-source-out, :in transform-source-in}
+  {:type        mi/transform-keyword
+   :source      {:out transform-source-out, :in transform-source-in}
    :target      mi/transform-json
    :run_trigger mi/transform-keyword})
 
