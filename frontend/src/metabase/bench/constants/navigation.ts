@@ -26,9 +26,15 @@ const OVERVIEW_ITEM: BenchNavItem = {
 
 export const BENCH_NAV_SECTIONS: BenchNavSection[] = [
   {
-    id: "data-structuring",
-    getTitle: () => t`Data structuring`,
+    id: "data",
+    getTitle: () => t`Data`,
     items: [
+      {
+        id: "metadata",
+        url: "/bench/metadata",
+        icon: "database",
+        getLabel: () => t`Metadata`,
+      },
       {
         id: "transforms",
         url: "/bench/transforms",
@@ -54,8 +60,8 @@ export const BENCH_NAV_SECTIONS: BenchNavSection[] = [
     ],
   },
   {
-    id: "library",
-    getTitle: () => t`Library`,
+    id: "modeling",
+    getTitle: () => t`Modeling`,
     items: [
       {
         id: "metric",
@@ -74,7 +80,24 @@ export const BENCH_NAV_SECTIONS: BenchNavSection[] = [
         url: "/bench/segment",
         icon: "segment",
         getLabel: () => t`Segments`,
-        nested: true,
+      },
+      {
+        id: "glossary",
+        url: "/bench/glossary",
+        icon: "globe",
+        getLabel: () => t`Glossary`,
+      },
+    ],
+  },
+  {
+    id: "tools",
+    getTitle: () => t`Tools`,
+    items: [
+      {
+        id: "dependency-graph",
+        url: "/bench/dependencies",
+        icon: "network",
+        getLabel: () => t`Dependency graph`,
       },
       {
         id: "snippet",
@@ -87,30 +110,6 @@ export const BENCH_NAV_SECTIONS: BenchNavSection[] = [
         url: "/bench/library/common.py",
         icon: "code_block",
         getLabel: () => t`Python Library`,
-      },
-    ],
-  },
-  {
-    id: "organization",
-    getTitle: () => t`Organization`,
-    items: [
-      {
-        id: "metadata",
-        url: "/bench/metadata",
-        icon: "database",
-        getLabel: () => t`Metadata`,
-      },
-      {
-        id: "dependencies",
-        url: "/bench/dependencies",
-        icon: "beaker",
-        getLabel: () => t`Dependencies`,
-      },
-      {
-        id: "glossary",
-        url: "/bench/glossary",
-        icon: "globe",
-        getLabel: () => t`Glossary`,
       },
     ],
   },
