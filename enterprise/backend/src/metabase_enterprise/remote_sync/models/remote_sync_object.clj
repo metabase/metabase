@@ -80,7 +80,7 @@
               [[:inline "timeline"] :model]
               [:rs_obj.status :sync_status]]})
 
-(defn- dirty
+(defn- build-dirty-union-all
   "Build a HoneySQL select statement that returns dirty children of a collection.
 
   Args:
@@ -116,4 +116,4 @@
     A sequence of model maps that have changed since the last remote sync,
     including details about their current state and sync status."
   []
-  (t2/query (dirty items-select)))
+  (t2/query (build-dirty-union-all items-select)))

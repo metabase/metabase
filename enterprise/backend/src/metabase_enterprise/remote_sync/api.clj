@@ -202,9 +202,9 @@
   Requires superuser permissions."
   [_route
    _query
-   {:keys [new_branch message]} :- [:map
-                                    [:new_branch ms/NonBlankString]
-                                    [:message ms/NonBlankString]]]
+   {new-branch :new_branch message :message} :- [:map
+                                                 [:new_branch ms/NonBlankString]
+                                                 [:message ms/NonBlankString]]]
   (api/check-superuser)
   (when (not= (settings/remote-sync-type) :development)
     (throw (ex-info "Stash is only allowed when remote-sync-type is set to 'development'" {:status-code 400})))
@@ -213,10 +213,10 @@
       (throw (ex-info "Git source not configured"
                       {:status-code 400})))
     (try
-      (source.p/create-branch source new_branch (settings/remote-sync-branch))
+      (source.p/create-branch source new-branch (settings/remote-sync-branch))
       {:status "success"
-       :message (str "Stashing to " new_branch)
-       :task_id (impl/async-export! new_branch false message)}
+       :message (str "Stashing to " new-branch)
+       :task_id (impl/async-export! new-branch false message)}
       (catch Exception e
         (throw (ex-info (format "Failed to stash changes to branch: %s" (ex-message e))
                         {:status-code 400}))))))

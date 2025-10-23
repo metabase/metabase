@@ -33,13 +33,13 @@
 
   Args:
     timestamp: The instant timestamp when the sync occurred.
-    imported-entities: A map where keys are model names (strings) and values are sets of entity IDs that were imported.
+    imported-entities-by-model: A map where keys are model names (strings) and values are sets of entity IDs that were imported.
 
   Returns:
     The result of inserting RemoteSyncObject records into the database."
-  [timestamp imported-entities]
+  [timestamp imported-entities-by-model]
   (t2/delete! :model/RemoteSyncObject)
-  (let [inserts (->> imported-entities
+  (let [inserts (->> imported-entities-by-model
                      (mapcat (fn [[model entity-ids]]
                                (t2/select [(keyword "model" model) :id] :entity_id [:in entity-ids])))
                      (map (fn [{:keys [id] :as model}]
@@ -54,11 +54,11 @@
 
   Args:
     synced-collection-ids: A sequence of collection IDs that are remote-synced.
-    imported-entities: A map where keys are model names (strings) and values are sets of entity IDs that were imported.
+    imported-entities-by-model: A map where keys are model names (strings) and values are sets of entity IDs that were imported.
 
   Returns:
     nil. Deletes are performed as side effects."
-  [synced-collection-ids imported-entities]
+  [synced-collection-ids imported-entities-by-model]
   (when (seq synced-collection-ids)
     (doseq [model [:model/Collection
                    :model/Card
@@ -67,7 +67,7 @@
                    :model/Timeline
                    :model/Document]
             :let [serdes-model (name model)
-                  entity-ids (get imported-entities serdes-model [])]]
+                  entity-ids (get imported-entities-by-model serdes-model [])]]
       (if (= model :model/Collection)
         (t2/delete! :model/Collection
                     :id [:in synced-collection-ids]
@@ -161,16 +161,16 @@
                                          (source.ingestable/wrap-progress-ingestable task-id 0.7))
                   load-result (serdes/with-cache
                                 (serialization/load-metabase! ingestable-source))
-                  imported-entities (->> (:seen load-result)
-                                         (map last) ; Get the last element of each path (the entity itself)
-                                         (group-by :model)
-                                         (map (fn [[model entities]]
-                                                [model (set (map :id entities))]))
-                                         (into {}))]
+                  imported-entities-by-model (->> (:seen load-result)
+                                                  (map last) ; Get the last element of each path (the entity itself)
+                                                  (group-by :model)
+                                                  (map (fn [[model entities]]
+                                                         [model (set (map :id entities))]))
+                                                  (into {}))]
               (remote-sync.task/update-progress! task-id 0.8)
               (t2/with-transaction [_conn]
-                (remove-unsynced! (all-top-level-remote-synced-collections) imported-entities)
-                (sync-objects! sync-timestamp imported-entities)
+                (remove-unsynced! (all-top-level-remote-synced-collections) imported-entities-by-model)
+                (sync-objects! sync-timestamp imported-entities-by-model)
                 (when (and create-collection? (nil? (collection/remote-synced-collection)))
                   (collection/create-remote-synced-collection!)))
               (remote-sync.task/update-progress! task-id 0.95)
@@ -285,20 +285,20 @@
   Args:
     task-type: The type of task to run, either 'import' or 'export'.
     branch: The branch name to update in settings upon successful completion.
-    f: A function that takes a task-id and performs the sync operation, returning a status map.
+    sync-fn: A function that takes a task-id and performs the sync operation, returning a status map.
 
   Returns:
     The task ID of the created sync task.
 
   Raises:
     ExceptionInfo: If a sync task is already in progress (status 400)."
-  [task-type branch f]
+  [task-type branch sync-fn]
   (let [{task-id :id existing? :existing?} (create-task-with-lock task-type)]
     (api/check-400 (not existing?) "Remote sync in progress")
     (u.jvm/in-virtual-thread*
      (dh/with-timeout {:interrupt? true
                        :timeout-ms (* (settings/remote-sync-task-time-limit-ms) 10)}
-       (handle-task-result (f task-id) task-id branch)))
+       (handle-task-result (sync-fn task-id) task-id branch)))
     task-id))
 
 (defn async-import!

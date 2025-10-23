@@ -92,10 +92,9 @@
   Raises:
     ExceptionInfo: If cloning fails (network issues, invalid URL, authentication failure, etc.)."
   [{:keys [^String url ^String token] :as args}]
-  (let [dir (io/file (System/getProperty "java.io.tmpdir") "metabase-git" (-> (str/join ":" [url token]) buddy-hash/sha1 codecs/bytes->hex))
-        existing-git (existing-git-repo dir args)]
-    (if existing-git
-      existing-git
+  (let [dir (io/file (System/getProperty "java.io.tmpdir") "metabase-git" (-> (str/join ":" [url token]) buddy-hash/sha1 codecs/bytes->hex))]
+    (if-let [repo (existing-git-repo dir args)]
+      repo
       (try
         (log/info "Cloning repository" {:url url :dir dir})
         (u/prog1 (call-remote-command (-> (Git/cloneRepository)

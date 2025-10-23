@@ -54,7 +54,7 @@
                   valid-types #{:production :development}
                   value (or (valid-types (keyword new-value))
                             (throw (ex-info "Remote-sync-type set to an unsupported value"
-                                            {:value   new-value
+                                            {:value new-value
                                              :options (seq valid-types)})))]
               (setting/set-value-of-type! :keyword :remote-sync-type value))))
 
@@ -83,8 +83,18 @@
   :default (* 1000 60 5))
 
 (defn- check-git-settings
-  "Check that the given settings are valid and update if they are. Throws exception if they are not.
-  Returns the default branch of the repo if successful."
+  "Validate that git repository settings are correct by attempting to connect.
+
+  Args:
+    settings: A map containing:
+      - :remote-sync-url - The git repository URL to validate.
+      - :remote-sync-token - (Optional) Authentication token for the repository.
+
+  Returns:
+    The default branch name of the repository as a string if successful.
+
+  Raises:
+    ExceptionInfo: If unable to connect to the git repository with the provided settings."
   [{:keys [remote-sync-url remote-sync-token]}]
   (try
     (git/default-branch (git/git-source remote-sync-url "HEAD" remote-sync-token))
@@ -92,9 +102,30 @@
       (throw (ex-info "Unable to connect to git repository with the provided settings" {:cause (.getMessage e)} e)))))
 
 (defn check-and-update-remote-settings!
-  "Check that the given git settings are valid and update if they are. Throws exception if they are not.
-   NOTE: If the remote-sync-token comes in as obfuscated, we will not update the existing settings.
-   A nil value will clear it out"
+  "Validate and update git sync settings in the application database.
+
+  This function validates the provided git settings by attempting to connect to the repository.
+  If successful, updates the settings in the database. If the URL is blank, clears all git sync settings.
+
+  Args:
+    settings: A map containing git sync configuration:
+      - :remote-sync-url - The git repository URL. A blank value clears all git sync settings.
+      - :remote-sync-token - (Optional) Authentication token. If obfuscated (matches the existing token),
+        the existing token is preserved rather than overwritten.
+      - :remote-sync-type - (Optional) The sync type (:production or :development).
+      - :remote-sync-branch - (Optional) The branch name to sync with.
+      - :remote-sync-auto-import - (Optional) Whether to enable automatic imports.
+
+  Returns:
+    nil. Updates are performed as side effects to the application database settings.
+
+  Raises:
+    ExceptionInfo: If the git settings are invalid or if unable to connect to the repository.
+
+  Notes:
+    - When remote-sync-url is blank, clears url, token, and branch settings.
+    - When remote-sync-token is obfuscated, preserves the existing token value.
+    - If no branch is specified, uses the repository's default branch."
   [{:keys [remote-sync-url remote-sync-token] :as settings}]
 
   (if (str/blank? remote-sync-url)
@@ -102,8 +133,8 @@
       (setting/set! :remote-sync-url nil)
       (setting/set! :remote-sync-token nil)
       (setting/set! :remote-sync-branch nil))
-    (let [current-token  (setting/get :remote-sync-token)
-          obfuscated?    (= remote-sync-token (setting/obfuscate-value current-token))
+    (let [current-token (setting/get :remote-sync-token)
+          obfuscated? (= remote-sync-token (setting/obfuscate-value current-token))
           token-to-check (if obfuscated? current-token remote-sync-token)
           default-branch (check-git-settings (assoc settings :remote-sync-token token-to-check))]
       (t2/with-transaction [_conn]
