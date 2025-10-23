@@ -217,3 +217,29 @@
         (is (= {:card #{table-card-id}
                 :dashboard #{target-dashboard-id}}
                (calculation/upstream-deps:dashboard dashboard)))))))
+
+(deftest ^:parallel upstream-deps-document-test
+  (let [mp (mt/metadata-provider)
+        products-id (mt/id :products)
+        products (lib.metadata/table mp products-id)]
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}
+                   :model/Card {embedded-card-id :id} {:dataset_query (lib/query mp products)}
+                   :model/Dashboard {dashboard-id :id} {}
+                   :model/Document document {:content_type "application/json+vnd.prose-mirror"
+                                             :document {:type "doc"
+                                                        :content [{:type "paragraph"
+                                                                   :content [{:type "smartLink"
+                                                                              :attrs {:entityId card-id
+                                                                                      :model "card"}}
+                                                                             {:type "smartLink"
+                                                                              :attrs {:entityId dashboard-id
+                                                                                      :model "dashboard"}}
+                                                                             {:type "smartLink"
+                                                                              :attrs {:entityId products-id
+                                                                                      :model "table"}}]}
+                                                                  {:type "cardEmbed"
+                                                                   :attrs {:id embedded-card-id}}]}}]
+      (is (= {:card #{card-id embedded-card-id}
+              :dashboard #{dashboard-id}
+              :table #{products-id}}
+             (calculation/upstream-deps:document document))))))
