@@ -81,17 +81,22 @@
       (is (= :error (:status result)))
       (is (re-find #"Failed to reload from git repository" (:message result))))))
 
+;; We need to make sure the task-id we use to track the Remote Sync is not bound to a transactions because of the behavior of
+;; update-sync-progress. So the follow two tests cannot use with-temp to create models
 (deftest import!-skips-when-version-matches-without-force-test
   (testing "import! skips import when source version matches last imported version and force? is false"
-    (let [mock-source (test-helpers/create-mock-source)
-          source-version (source.p/version mock-source)]
-      ;; First import to establish the version
-      (mt/with-temp [:model/RemoteSyncTask {_task-id-1 :id} {:sync_task_type "import"
-                                                             :initiated_by (mt/user->id :rasta)
-                                                             :ended_at :%now
-                                                             :version source-version}]
-        (let [task-id-2 (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import"
-                                                                        :initiated_by (mt/user->id :rasta)})
+    (mt/with-model-cleanup [:model/RemoteSyncTask]
+      (let [mock-source (test-helpers/create-mock-source)
+            source-version (source.p/version mock-source)
+            task-defaults (mt/with-temp-defaults :model/RemoteSyncTask)]
+        (t2/insert! :model/RemoteSyncTask (merge task-defaults
+                                                 {:sync_task_type "import"
+                                                  :initiated_by (mt/user->id :rasta)
+                                                  :ended_at :%now
+                                                  :version source-version}))
+        (let [task-id-2 (t2/insert-returning-pk! :model/RemoteSyncTask (merge task-defaults
+                                                                              {:sync_task_type "import"
+                                                                               :initiated_by (mt/user->id :rasta)}))
               result (impl/import! mock-source task-id-2 :force? false)]
           (is (= :success (:status result)))
           (is (= source-version (:version result)))
@@ -99,23 +104,28 @@
 
 (deftest import!-proceeds-when-version-matches-with-force-test
   (testing "import! proceeds with import when source version matches last imported version but force? is true"
-    (let [mock-source (test-helpers/create-mock-source)
-          source-version (source.p/version mock-source)]
-      (mt/with-temp [:model/Collection {_coll-id :id} {:name "Test Collection"
-                                                       :type "remote-synced"
-                                                       :entity_id "test-collection-1xxxx"
-                                                       :location "/"}]
-        ;; First import to establish the version
-        (mt/with-temp [:model/RemoteSyncTask {_task-id-1 :id} {:sync_task_type "import"
-                                                               :initiated_by (mt/user->id :rasta)
-                                                               :ended_at :%now
-                                                               :version source-version}]
-          (let [task-id-2 (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import"
-                                                                          :initiated_by (mt/user->id :rasta)})
-                result (impl/import! mock-source task-id-2 :force? true)]
-            (is (= :success (:status result)))
-            (is (= source-version (:version result)))
-            (is (= "Successfully reloaded from git repository" (:message result)))))))))
+    (mt/with-model-cleanup [:model/Collection :model/RemoteSyncTask]
+      (let [mock-source (test-helpers/create-mock-source)
+            source-version (source.p/version mock-source)
+            coll-defaults (mt/with-temp-defaults :model/Collection)
+            task-defaults (mt/with-temp-defaults :model/RemoteSyncTask)]
+        (t2/insert! :model/Collection (merge coll-defaults
+                                             {:name "Test Collection"
+                                              :type "remote-synced"
+                                              :entity_id "test-collection-1xxxx"
+                                              :location "/"}))
+        (t2/insert! :model/RemoteSyncTask (merge task-defaults
+                                                 {:sync_task_type "import"
+                                                  :initiated_by (mt/user->id :rasta)
+                                                  :ended_at :%now
+                                                  :version source-version}))
+        (let [task-id-2 (t2/insert-returning-pk! :model/RemoteSyncTask (merge task-defaults
+                                                                              {:sync_task_type "import"
+                                                                               :initiated_by (mt/user->id :rasta)}))
+              result (impl/import! mock-source task-id-2 :force? true)]
+          (is (= :success (:status result)))
+          (is (= source-version (:version result)))
+          (is (= "Successfully reloaded from git repository" (:message result))))))))
 
 ;; export! tests
 
