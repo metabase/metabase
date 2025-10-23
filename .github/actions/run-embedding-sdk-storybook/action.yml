@@ -7,8 +7,6 @@ runs:
 
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
-      with:
-        m2-cache-key: "cljs"
 
     - name: Compile CLJS
       run: yarn build-pure:cljs
