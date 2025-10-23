@@ -93,6 +93,8 @@ export interface MetabaseProviderProps
    * @internal This prop is a part of `ComponentProvider` on 57, but we don't have that here yet.
    */
   reduxStore?: SdkStore;
+
+  isLocalHost?: boolean;
 }
 
 interface InternalMetabaseProviderProps extends MetabaseProviderProps {
@@ -111,9 +113,10 @@ export const MetabaseProviderInternal = ({
   errorComponent,
   loaderComponent,
   allowConsoleLog,
+  isLocalHost,
 }: InternalMetabaseProviderProps): JSX.Element => {
   const { fontFamily } = theme ?? {};
-  useInitData({ authConfig, allowConsoleLog });
+  useInitData({ authConfig, allowConsoleLog, isLocalHost });
 
   useEffect(() => {
     if (fontFamily) {
@@ -156,6 +159,7 @@ export const MetabaseProviderInternal = ({
             <SdkUsageProblemDisplay
               authConfig={authConfig}
               allowConsoleLog={allowConsoleLog}
+              isLocalHost={isLocalHost}
             />
             <PortalContainer />
           </Box>
