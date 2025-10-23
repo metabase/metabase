@@ -1,5 +1,6 @@
 (ns metabase-enterprise.dependencies.init
   (:require
+   #_[metabase-enterprise.dependencies.task.analysis]
    [metabase-enterprise.dependencies.events]
    [metabase-enterprise.dependencies.schema]
    [metabase-enterprise.dependencies.settings]
