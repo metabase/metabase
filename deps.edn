@@ -141,7 +141,7 @@
   org.apache.tika/tika-core                 {:mvn/version "3.2.2"}
   org.apache.xmlgraphics/batik-all          {:mvn/version "1.19"}               ; SVG -> image
   org.bouncycastle/bcpkix-jdk18on           {:mvn/version "1.81"}               ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
-  org.bouncycastle/bcprov-jdk18on           {:mvn/version "1.81"}
+  org.bouncycastle/bcprov-jdk18on           {:mvn/version "1.82"}
   org.clj-commons/claypoole                 {:mvn/version "1.2.2"}              ; Threadpool tools for Clojure
   org.clj-commons/dirigiste                 {:mvn/version "1.0.4"}              ; Instrumented object pooling
   org.clj-commons/hickory                   {:mvn/version "0.7.7"               ; Parse HTML into Clojure data structures
