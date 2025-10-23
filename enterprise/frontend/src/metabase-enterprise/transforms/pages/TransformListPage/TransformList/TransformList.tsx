@@ -7,8 +7,10 @@ import { useListDatabasesQuery } from "metabase/api";
 import { ItemsListSection } from "metabase/bench/components/ItemsListSection/ItemsListSection";
 import { ItemsListSettings } from "metabase/bench/components/ItemsListSection/ItemsListSettings";
 import { ItemsListTreeNode } from "metabase/bench/components/ItemsListSection/ItemsListTreeNode";
-import { BenchFlatListItem } from "metabase/bench/components/shared/BenchFlatListItem";
-import { Ellipsified } from "metabase/common/components/Ellipsified";
+import {
+  BenchFlatListItem,
+  BenchFlatListItemContent,
+} from "metabase/bench/components/shared/BenchFlatListItem";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Tree } from "metabase/common/components/tree";
 import type {
@@ -16,7 +18,7 @@ import type {
   TreeNodeProps,
 } from "metabase/common/components/tree/types";
 import { useDispatch } from "metabase/lib/redux";
-import { Box, FixedSizeIcon, Flex, Text } from "metabase/ui";
+import { Box } from "metabase/ui";
 import {
   useListTransformTagsQuery,
   useListTransformsQuery,
@@ -38,20 +40,15 @@ const TransformsTreeNode = (props: TreeNodeProps) => (
       if (!transform) {
         return;
       }
+
       return (
-        <Box fw="normal" p="sm" style={{ overflow: "hidden" }} c="text-primary">
-          <Text fz="xs" lh={1} c="text-secondary" mb="xs">
-            {transform.name}
-          </Text>
-          <Flex align="center">
-            <FixedSizeIcon
-              name="enter_or_return"
-              size={8}
-              style={{ transform: "scaleX(-1)" }}
-            />
-            <FixedSizeIcon name="table2" ml="sm" />
-            <Ellipsified ml="xs">{transform.target.name}</Ellipsified>
-          </Flex>
+        <Box p="sm" style={{ overflow: "hidden" }}>
+          <BenchFlatListItemContent
+            label={transform.name}
+            icon="table2"
+            subtitle={transform.target.name}
+            isActive={props.isSelected}
+          />
         </Box>
       );
     }}

@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 
@@ -14,24 +15,19 @@ import {
 
 import S from "./BenchFlatListItem.module.css";
 
-interface BenchFlatListItemProps {
-  label: ReactNode;
-  icon: IconName;
-  subtitle?: ReactNode;
-  thirdLine?: ReactNode;
-
+interface BenchFlatListItemProps extends BenchFlatListItemContentProps {
   href?: string;
   isActive?: boolean;
-  rightGroup?: ReactNode;
 }
 
 export const BenchFlatListItem = ({
+  href,
+  isActive,
+
   label,
   icon,
   subtitle,
   thirdLine,
-  href,
-  isActive,
   rightGroup,
 }: BenchFlatListItemProps) => {
   return (
@@ -41,33 +37,70 @@ export const BenchFlatListItem = ({
       to={href}
       active={isActive}
       label={
-        <Group className={S.itemRoot} gap="sm" align="flex-start" wrap="nowrap">
-          <FixedSizeIcon className={S.icon} size={16} name={icon} />
-          <Stack className={S.content} gap="sm">
-            <Ellipsified
-              fw="bold"
-              size="md"
-              lh="1rem"
-              c="inherit"
-              ignoreHeightTruncation
-            >
-              {label}
-            </Ellipsified>
-            <Box className={S.subtitle}>
-              {typeof subtitle === "string" ? (
-                <Text size="sm" lh="1rem" c="inherit">
-                  {subtitle}
-                </Text>
-              ) : (
-                subtitle
-              )}
-            </Box>
-
-            {thirdLine}
-          </Stack>
-          {rightGroup}
-        </Group>
+        <BenchFlatListItemContent
+          label={label}
+          icon={icon}
+          subtitle={subtitle}
+          thirdLine={thirdLine}
+          rightGroup={rightGroup}
+        />
       }
     />
+  );
+};
+
+interface BenchFlatListItemContentProps {
+  label: ReactNode;
+  icon: IconName;
+  subtitle?: ReactNode;
+  thirdLine?: ReactNode;
+  rightGroup?: ReactNode;
+  isActive?: boolean;
+}
+
+export const BenchFlatListItemContent = ({
+  label,
+  icon,
+  subtitle,
+  thirdLine,
+  rightGroup,
+  isActive,
+}: BenchFlatListItemContentProps) => {
+  const isOnlyLabel = !subtitle && !thirdLine;
+
+  return (
+    <Group
+      className={cx(S.itemRoot, isActive && S.isActive)}
+      gap="sm"
+      align="flex-start"
+      wrap="nowrap"
+    >
+      <FixedSizeIcon className={S.icon} size={16} name={icon} />
+      <Stack className={S.content} gap="xs">
+        <Ellipsified
+          fw={isOnlyLabel ? "normal" : "bold"}
+          size="md"
+          lh="1rem"
+          c="inherit"
+          ignoreHeightTruncation
+        >
+          {label}
+        </Ellipsified>
+        {subtitle && (
+          <Box className={S.subtitle}>
+            {typeof subtitle === "string" ? (
+              <Text size="sm" lh="1rem" c="inherit">
+                {subtitle}
+              </Text>
+            ) : (
+              subtitle
+            )}
+          </Box>
+        )}
+
+        {thirdLine}
+      </Stack>
+      {rightGroup}
+    </Group>
   );
 };

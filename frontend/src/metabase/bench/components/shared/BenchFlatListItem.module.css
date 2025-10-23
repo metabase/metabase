@@ -2,7 +2,7 @@
   color: var(--mb-color-text-primary);
 
   .icon {
-    color: var(--mb-color-accent0);
+    color: var(--mb-color-border-interactive);
   }
 
   .content {
@@ -16,6 +16,14 @@
 
   .tags {
     color: var(--mb-color-admin-navbar);
+  }
+}
+
+.itemRoot.isActive {
+  color: var(--mb-color-link-hover);
+
+  .subtitle {
+    color: var(--mb-color-link);
   }
 }
 
