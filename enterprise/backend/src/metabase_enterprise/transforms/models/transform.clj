@@ -21,6 +21,11 @@
 (doseq [trait [:metabase/model :hook/entity-id :hook/timestamped?]]
   (derive :model/Transform trait))
 
+;; Only superusers can access transforms
+(doto :model/Transform
+  (derive ::mi/read-policy.superuser)
+  (derive ::mi/write-policy.superuser))
+
 (defn- transform-source-out [m]
   (-> m
       mi/json-out-without-keywordization

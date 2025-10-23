@@ -42,7 +42,7 @@
      :bad_cards (into [] (comp (filter (fn [card]
                                          (if (mi/can-read? card)
                                            card
-                                           (do (log/warnf "Eliding broken card %d - not readable by the user" (:id card))
+                                           (do (log/debugf "Eliding broken card %d - not readable by the user" (:id card))
                                                nil))))
                                (map (fn [card]
                                       (-> card
@@ -148,15 +148,7 @@
    :type entity-type
    :data (->> (select-keys entity (entity-keys entity-type))
               (m/map-vals format-subentity))
-   :dependents (usages [entity-type id])})
-
-#_(defn- expanded-entity-keys [entity-type]
-    (case entity-type
-      :table [:id :name :display_name :description :db_id :schema]
-      :card [:id :name :description :type :display :collection_id :dashboard_id]
-      :snippet [:id :name :description]
-      :transform [:id :name :description]
-      []))
+   :dependents_count (usages [entity-type id])})
 
 (defn- entity-model [entity-type]
   (case entity-type
@@ -164,13 +156,6 @@
     :card :model/Card
     :snippet :model/NativeQuerySnippet
     :transform :model/Transform))
-
-#_(defn- fetch-all-entities [entity-type & extra-conditions]
-    (apply t2/select-fn-vec
-           (fn [entity]
-             [entity-type (:id entity)])
-           [(entity-model entity-type) :id]
-           extra-conditions))
 
 (defn- calc-usages
   "Calculates the count of direct dependents for all nodes in `nodes`, based on `graph`. "
