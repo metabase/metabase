@@ -199,7 +199,9 @@
               (testing "succeed if user's group has `setting` permission,"
                 (perms/grant-application-permissions! group :setting)
                 (get-public-dashboards user 200)
-                (get-embeddable-dashboards user 200)
+                (get-embeddable-dashboards user 200))
+              (testing "and `public-link` permission for deleting a public dashboard"
+                (perms/grant-application-permissions! group :public-link)
                 (delete-public-dashboard! user 204)))))))))
 
 (deftest action-api-test
@@ -280,7 +282,9 @@
               (testing "succeed if user's group has `setting` permission,"
                 (perms/grant-application-permissions! group :setting)
                 (get-public-cards user 200)
-                (get-embeddable-cards user 200)
+                (get-embeddable-cards user 200))
+              (testing "and `public-link` permission for deleting a public card"
+                (perms/grant-application-permissions! group :public-link)
                 (delete-public-card! user 204)))))))))
 
 (deftest persistence-test
