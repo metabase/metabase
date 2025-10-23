@@ -43,13 +43,15 @@
      :message (when-not task-id "No changes since last import")}))
 
 (api.macros/defendpoint :get "/is-dirty" :- remote-sync.schema/IsDirtyResponse
-  "Check if any remote-synced collection has remote sync changes that are not saved."
+  "Check if any remote-synced collection or collection item has local changes that have not been pushed
+  to the git repository."
   []
   (api/check-superuser)
   {:is_dirty (remote-sync.object/dirty-global?)})
 
 (api.macros/defendpoint :get "/dirty" :- remote-sync.schema/DirtyResponse
-  "Return dirty models from any remote-synced collection"
+  "Return all models with changes that have not been pushed to the git repository in any remote-synced
+  collection."
   []
   (api/check-superuser)
   {:dirty (into []

@@ -217,10 +217,6 @@
     {:status :error
      :message "Remote sync source is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."}))
 
-(def cluster-lock
-  "Shared cluster lock name for remote-sync tasks"
-  ::remote-sync-task)
-
 (defn create-task-with-lock!
   "Takes a cluster-wide lock and either returns an existing in-progress RemoteSyncTask ID or creates a new one.
 
@@ -228,7 +224,7 @@
   If a task is already running, returns {:existing? true :id <existing-task-id>}. Otherwise creates a new task and
   returns {:id <new-task-id>}."
   [task-type]
-  (cluster-lock/with-cluster-lock cluster-lock
+  (cluster-lock/with-cluster-lock ::remote-sync-task
     (if-let [{id :id} (remote-sync.task/current-task)]
       {:existing? true :id id}
       (remote-sync.task/create-sync-task! task-type api/*current-user-id*))))

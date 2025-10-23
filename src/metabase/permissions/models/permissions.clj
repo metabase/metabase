@@ -279,7 +279,7 @@
 (defmethod mi/perms-objects-set :perms/use-parent-collection-perms
   [instance read-or-write]
   (if (or (= read-or-write :read)
-          (remote-sync/editable? (or (:collection instance) (:collection_id instance))))
+          (remote-sync/collection-editable? (or (:collection instance) (:collection_id instance))))
     (perms-objects-set-for-parent-collection instance read-or-write)
     ;; We need to return a dummy permissions string that cannot possibly be long to a user in
     ;; the case where an instance is not syncable due to remote-sync being in ':production' mode

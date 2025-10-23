@@ -33,6 +33,8 @@
 
 (defn- call-remote-command [^TransportCommand command {:keys [^String token]}]
   (let [analytics-labels {:operation (-> command .getClass .getName) :remote true}
+        ;; GitHub convention: use "x-access-token" as username when authenticating with a personal access token
+        ;; For Gitlab any values can be used as the user name so x-access-token works just as well
         credentials-provider (when token (UsernamePasswordCredentialsProvider. "x-access-token" token))]
     (analytics/inc! :metabase-remote-sync/git-operations analytics-labels)
 
