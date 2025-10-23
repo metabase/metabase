@@ -4,6 +4,8 @@
    [clojure.core.async.impl.dispatch :as a.impl.dispatch]
    [metabase.app-db.connection-pool-setup :as connection-pool-setup]
    [metabase.app-db.env :as mdb.env]
+   [metabase.config.core :as config]
+   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan2.connection :as t2.conn]
@@ -138,25 +140,94 @@
   []
   (pos? *transaction-depth*))
 
-(defn- do-transaction [^java.sql.Connection connection f]
-  (letfn [(thunk []
-            (let [savepoint (.setSavepoint connection)]
-              (try
-                (let [result (f connection)]
-                  (when (= *transaction-depth* 1)
-                    ;; top-level transaction, commit
-                    (.commit connection))
-                  result)
-                (catch Throwable txn-e
-                  (try
-                    (.rollback connection savepoint)
-                    (catch Exception rollback-e
-                      (throw (ex-info
-                              (str "Error rolling back after previous error: " (ex-message txn-e))
-                              {:rollback-error rollback-e}
-                              txn-e))))
+(def ^:private mysql-deadlock-error-codes
+  "This is taken from
+  https://github.com/mariadb-corporation/mariadb-connector-j/blob/5222bfb7b30f8bcb71447b03d86843e872d19ec2/src/main/java/org/mariadb/jdbc/export/ExceptionFactory.java#L26"
+  #{1205 1213 1614})
 
-                  (throw txn-e)))))]
+(def ^:private ^Long mysql-deadlock-max-retries 3)
+
+(defn- do-with-mysql-deadlock-retries
+  "MySQL and MariaDB are fussy and tend to deadlock a lot when rolling back or committing in a transaction when lots of
+  parallel threads are doing the same thing (this is mostly a problem in heavily-parallelized tests); the recommended
+  best practice is to wait for a short delay and then retry.
+
+  This code wraps the `java.sql.Connection` `.rollback()` and `.commit()` calls below and retries them a few times if
+  they fail because of a MySQL deadlock error."
+  [thunk]
+  (if-not (= (db-type) :mysql)
+    (thunk)
+    (letfn [(f [retry-count]
+              (try
+                (thunk)
+                (catch java.sql.SQLException e
+                  (when-not (mysql-deadlock-error-codes (.getErrorCode e))
+                    (throw e))
+                  (let [next-retry-count (inc retry-count)]
+                    (when (> next-retry-count mysql-deadlock-max-retries)
+                      (throw e))
+                    ;; ~~exponential~~ linear backoff: wait 100ms before retrying, then 200ms, and so forth
+                    (Thread/sleep (long (* 100 next-retry-count)))
+                    (f next-retry-count)))))]
+      (f 0))))
+
+(defn- rollback!
+  ([^java.sql.Connection connection]
+   (do-with-mysql-deadlock-retries (fn [] (.rollback connection))))
+  ([^java.sql.Connection connection ^java.sql.Savepoint savepoint]
+   (do-with-mysql-deadlock-retries (fn [] (.rollback connection savepoint)))))
+
+(defn- commit! [^java.sql.Connection connection]
+  (do-with-mysql-deadlock-retries (fn [] (.commit connection))))
+
+;;; this code is here to help us find code that incorrectly commits its changes inside a nested transaction, thus it
+;;; only does anything in tests or dev (and only for H2)
+(defn- h2-session-has-uncommited-changes? [^java.sql.Connection conn]
+  (when (and (or config/is-dev? config/is-test?)
+             (= (db-type) :h2))
+    (with-open [stmt (.createStatement conn)
+                rset (.executeQuery stmt "SELECT contains_uncommitted FROM information_schema.sessions WHERE session_id = session_id();")]
+      (when (.next rset)
+        (.getObject rset 1)))))
+
+(defn- do-transaction [^java.sql.Connection connection f options]
+  (letfn [(thunk []
+            (assert (false? (.getAutoCommit connection)))
+            (let [savepoint                (.setSavepoint connection (format "app_db_savepoint_%d" *transaction-depth*))
+                  had-uncommitted-changes? (h2-session-has-uncommited-changes? connection)]
+              (try
+                (let [result (try
+                               (f connection)
+                               (catch Throwable txn-e
+                                 (try
+                                   (rollback! connection savepoint)
+                                   (catch Exception rollback-e
+                                     (throw (ex-info
+                                             (str "Error rolling back after previous error: " (ex-message txn-e))
+                                             {:rollback-error rollback-e}
+                                             txn-e))))
+                                 (throw txn-e)))]
+                  (when (and had-uncommitted-changes?
+                             (not (h2-session-has-uncommited-changes? connection)))
+                    (throw (ex-info "Nested transaction unexpected committed its changes. Look at the stacktrace to find the offending code and fix it." {})))
+                  (cond
+                    ;; for rollback-only connections (mostly used in tests) we can roll back to the last save point. For
+                    ;; top-level transactions, we can just rollback everything -- this seems to work more reliably than
+                    ;; rolling back to a top-level save point.
+                    (:rollback-only options)
+                    (if (= *transaction-depth* 1)
+                      (rollback! connection)
+                      (try
+                        (rollback! connection savepoint)
+                        (catch Throwable e
+                          (log/warn e "Failed to roll back to nested savepoint: this probably means code inside the transaction incorrectly committed changes"))))
+
+                    ;; top-level transaction without `:rollback-only`, commit
+                    (= *transaction-depth* 1)
+                    (commit! connection))
+                  result)
+                (finally
+                  (.releaseSavepoint connection savepoint)))))]
     ;; optimization: don't set and unset autocommit if it's already false
     (if (.getAutoCommit connection)
       (try
@@ -170,6 +241,14 @@
   ;; in toucan2.jdbc.connection, there is a 'defmethod' for t2.conn/do-with-transaction java.sql.Connection
   ;; since we don't want our implementation to be overwritten, we need to require it here first before defininng ours
   t2.jdbc.conn/keepme)
+
+(def ^:private ^:dynamic *rollback-only-transaction* false)
+
+(defn in-rollback-only-transaction?
+  "Whether we are currently in a `:rollback-only` transaction. Avoid doing anything that will trigger a `COMMIT`, like
+  creating new tables (ok in some DBs)."
+  []
+  *rollback-only-transaction*)
 
 (methodical/defmethod t2.conn/do-with-transaction java.sql.Connection
   "Support nested transactions without introducing a lock like `next.jdbc` does, as that can cause deadlocks -- see
@@ -197,8 +276,9 @@
                     {:options options}))
 
     :else
-    (binding [*transaction-depth* (inc *transaction-depth*)]
-      (do-transaction connection f))))
+    (binding [*transaction-depth*         (inc *transaction-depth*)
+              *rollback-only-transaction* (or *rollback-only-transaction* (:rollback-only options))]
+      (do-transaction connection f options))))
 
 (methodical/defmethod t2.pipeline/transduce-query :before :default
   "Make sure application database calls are not done inside core.async dispatch pool threads. This is done relatively

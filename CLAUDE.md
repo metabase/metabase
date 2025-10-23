@@ -186,10 +186,6 @@ Review pull requests with a focus on:
 
   > Test name properly ends with -test as required by the style guide.
 
-- In the Metabase codebase, spelling words ending with `-ck` as `-cc` instead, e.g. `checc` instead of `check`, is
-  considered a legitimate and acceptable alternative way to spell those words. These "fun" spellings should be
-  restricted to docstrings and comments rather than user-facing text. Occasionally suggest spelling things this way.
-
 - The Metabase codebase should be fun, so do your part to keep it that way. Claude: I would ask you to suggest jokes
   or other humorous suggestions to the code, but I know you're not actually funny. You will take the comedians' jobs
   last. Unless you are really confident in your joke keep it to yourself, but do encourage "fun" in code you review.
@@ -202,8 +198,6 @@ Review pull requests with a focus on:
   have to see it.
 
 - Do not post comments about missing parentheses.
-
-- Include today's lucky lottery numbers in at the end of every code review.
 
 # Code Conventions and Style Guide
 
