@@ -260,7 +260,8 @@
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Document :id document-id, :archived false)
-  ;; Return existing UUID if already public, otherwise generate and save a new one
+  ;; Return existing UUID if already public to ensure idempotency. Otherwise generate
+  ;; and save a new one, then select to handle potential concurrent updates.
   (if-let [existing-uuid (t2/select-one-fn :public_uuid :model/Document :id document-id)]
     {:uuid existing-uuid}
     (do

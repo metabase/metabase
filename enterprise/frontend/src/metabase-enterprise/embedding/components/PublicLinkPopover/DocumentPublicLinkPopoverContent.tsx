@@ -83,14 +83,7 @@ export const DocumentPublicLinkPopoverContent = ({
                 {t`Paste this code in your website or blog to embed the document. The iframe will automatically adjust to the document's height.`}
               </Text>
             </Box>
-            <Box
-              style={{
-                position: "relative",
-                backgroundColor: "var(--mb-color-bg-light)",
-                borderRadius: "4px",
-                padding: "0.5rem",
-              }}
-            >
+            <Box className={S.embedCodeContainer}>
               <ScrollArea
                 mah={200}
                 type="auto"
@@ -103,24 +96,11 @@ export const DocumentPublicLinkPopoverContent = ({
                   },
                 }}
               >
-                <Code
-                  block
-                  style={{
-                    whiteSpace: "pre",
-                    fontSize: "12px",
-                    backgroundColor: "transparent",
-                  }}
-                >
+                <Code block className={S.embedCode}>
                   {iframeCode}
                 </Code>
               </ScrollArea>
-              <Box
-                style={{
-                  position: "absolute",
-                  top: "0.5rem",
-                  right: "0.5rem",
-                }}
-              >
+              <Box className={S.copyButtonContainer}>
                 {iframeCode && (
                   <CopyButton
                     value={iframeCode}

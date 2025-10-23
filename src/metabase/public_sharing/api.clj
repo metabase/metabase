@@ -200,7 +200,11 @@
 
 ;; Cache expensive requiring-resolve calls for document-related functions
 (def ^:private prose-mirror-content-type
-  "Cached reference to the ProseMirror content type constant from the enterprise documents module."
+  "Cached reference to the ProseMirror content type constant from the enterprise documents module.
+
+  Uses requiring-resolve with delay to avoid direct dependency on enterprise code, allowing this
+  OSS module to work regardless of whether the documents feature is available. The delay ensures
+  the constant is only resolved once and cached for performance."
   (delay @(requiring-resolve 'metabase-enterprise.documents.prose-mirror/prose-mirror-content-type)))
 
 (def ^:private card-ids-fn
@@ -226,15 +230,15 @@
   (let [document (api/check-404 (apply t2/select-one [:model/Document :id :name :document :content_type :created_at :updated_at]
                                        :archived false, conditions))
         ;; Extract card IDs from the document's ProseMirror content so we can hydrate them
-        card-ids (when (= @prose-mirror-content-type (:content_type document))
-                   (@card-ids-fn document))
+        embedded-card-ids (when (= @prose-mirror-content-type (:content_type document))
+                            (@card-ids-fn document))
         ;; Hydrate the cards so the frontend has all the metadata it needs upfront
-        cards (when (seq card-ids)
-                (let [cards (t2/select :model/Card :id [:in card-ids] :archived false)]
-                  (zipmap (map :id cards)
-                          (map remove-card-non-public-columns cards))))]
+        hydrated-cards (when (seq embedded-card-ids)
+                         (let [cards (t2/select :model/Card :id [:in embedded-card-ids] :archived false)]
+                           (zipmap (map :id cards)
+                                   (map remove-card-non-public-columns cards))))]
     (-> document
-        (assoc :cards cards)
+        (assoc :cards hydrated-cards)
         (dissoc :content_type)
         remove-document-non-public-columns)))
 
@@ -253,9 +257,9 @@
   Throws a 404 if the card doesn't exist, is archived, or isn't in the document."
   [uuid card-id]
   (api/check-404 (t2/select-one-pk :model/Card :id card-id :archived false))
-  (let [card-ids (document-card-ids uuid)]
+  (let [embedded-card-ids (document-card-ids uuid)]
     ;; Make sure this card is actually in the document — we don't want people using this endpoint to query arbitrary cards
-    (api/check-404 (contains? card-ids card-id))))
+    (api/check-404 (contains? embedded-card-ids card-id))))
 
 (api.macros/defendpoint :get "/document/:uuid"
   "Fetch a publicly-accessible Document. Does not require auth credentials. Public sharing must be enabled.
