@@ -1056,7 +1056,7 @@
         (is (= []
                (magic/candidate-tables db)))))))
 
-(deftest ^:parallel enhance-table-stats-test
+(deftest enhance-table-stats-test
   (mt/with-temp [:model/Database {db-id :id} {}
                  :model/Table    {table-id :id} {:db_id db-id}
                  :model/Field    _ {:table_id table-id :semantic_type :type/PK}
@@ -1068,7 +1068,7 @@
                       (-> (#'magic/load-tables-with-enhanced-table-stats [[:= :id table-id]])
                           first)))))))
 
-(deftest ^:parallel enhance-table-stats-fk-test
+(deftest enhance-table-stats-fk-test
   (mt/with-temp [:model/Database {db-id :id}    {}
                  :model/Table    {table-id :id} {:db_id db-id}
                  :model/Field    _              {:table_id table-id :semantic_type :type/PK}
