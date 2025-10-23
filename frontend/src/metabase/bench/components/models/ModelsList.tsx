@@ -67,6 +67,7 @@ function ModelsList({
   const dispatch = useDispatch();
   const { isLoading: isLoadingModels, data: modelsData } = useFetchModels({
     filter_items_in_personal_collection: undefined, // include all models
+    wait_for_reindex: true,
   });
   const { isLoading: isLoadingCollections, data: collections } =
     useListCollectionsTreeQuery({ "exclude-archived": true });

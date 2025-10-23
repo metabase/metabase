@@ -80,7 +80,9 @@ function MetricsList({
   onOpenModal: (modal: SearchResultModal) => void;
 }) {
   const dispatch = useDispatch();
-  const { isLoading: isLoadingMetrics, data: metricsData } = useFetchMetrics();
+  const { isLoading: isLoadingMetrics, data: metricsData } = useFetchMetrics({
+    wait_for_reindex: true,
+  });
   const { isLoading: isLoadingCollections, data: collections } =
     useListCollectionsTreeQuery({ "exclude-archived": true });
   const metrics = useMemo(
