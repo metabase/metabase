@@ -9,10 +9,6 @@ inputs:
   clojure-version:
     required: true
     default: '1.12.0.1488'
-  m2-cache-key:
-    description: 'Key to cache M2 packages from Maven Central'
-    required: true
-    default: 'm2'
 
 runs:
   using: "composite"
@@ -32,12 +28,16 @@ runs:
       shell: bash
       run: |
         curl -o ci-test-config.json https://raw.githubusercontent.com/metabase/metabase/refs/heads/master/ci-test-config.json
+
+    - name: Get current week of year
+      id: get-date
+      run: |
+        echo "week-of-year=$(/bin/date "+%G-%V")" >> $GITHUB_OUTPUT
+      shell: bash
     - name: Get M2 cache
       uses: actions/cache@v4
       with:
         path: |
           ~/.m2
           ~/.gitlibs
-        key: ${{ runner.os }}-${{ inputs.m2-cache-key }}-${{ hashFiles('**/deps.edn') }}
-        restore-keys: |
-          ${{ runner.os }}-${{ inputs.m2-cache-key }}-
+        key: ${{ runner.os }}-m2-${{ steps.get-date.outputs.week-of-year }}
