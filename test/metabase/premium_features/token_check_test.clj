@@ -94,9 +94,19 @@
           token      (tu/random-token)]
       (binding [http/request (fn [& _]
                                (swap! call-count inc)
-                               {:status 400 :body "{\"valid\": false, \"status\": \"fake\"}"})]
+                               {:status  400
+                                :headers {"content-type" "application/json"}
+                                :body    "{\"valid\": false, \"status\": \"fake\"}"})]
         (dotimes [_ 10] (#'token-check/fetch-token-status token))
-        (is (= 1 @call-count))))))
+        (is (= 1 @call-count))))
+    (testing "Even if result is not json, it's still cached"
+      (let [call-count (atom 0)
+            token (tu/random-token)]
+        (binding [http/request (fn [& _]
+                                 (swap! call-count inc)
+                                 {:status 400 :body "you'll never guess"})]
+          (dotimes [_ 10] (#'token-check/fetch-token-status token))
+          (is (= 1 @call-count)))))))
 
 (deftest fetch-token-does-not-cache-exceptions
   (testing "For timeouts, 5XX errors, etc. we don't cache the result"
@@ -134,6 +144,7 @@
 (deftest ^:parallel fetch-token-status-test-4
   (testing "With a valid token"
     (let [result (token-status-response (tu/random-token) {:status 200
+                                                           :headers {"content-type" "application/json"}
                                                            :body   token-response-fixture})]
       (is (:valid result))
       (is (contains? (set (:features result)) "test")))))
