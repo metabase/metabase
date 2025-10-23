@@ -36,16 +36,9 @@
 (mr/def ::append-config
   [:map [:type [:= "append"]]])
 
-#_(mr/def ::merge-config
-    [:map
-     [:type [:= "merge"]]
-     [:primary-key [:sequential :string]]
-     [:update-columns {:optional true} [:sequential :string]]]) ; columns to update on conflict
-
 (mr/def ::target-incremental-strategy
   [:multi {:dispatch :type}
-   ["append" ::append-config]
-   #_["merge" ::merge-config]])
+   ["append" ::append-config]])
 
 (mr/def ::table-target
   [:map
