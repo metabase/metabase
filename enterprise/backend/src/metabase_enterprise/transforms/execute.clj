@@ -57,9 +57,8 @@
        (when-not (every? (fn [feature] (driver.u/supports? (:engine database) feature database)) features)
          (throw (ex-info "The database does not support the requested transform target type."
                          {:driver driver, :database database, :features features})))
-
-       (let [;; mark the execution as started and notify any observers
-             {run-id :id} (transforms.util/try-start-unless-already-running id run-method)]
+       ;; mark the execution as started and notify any observers
+       (let [{run-id :id} (transforms.util/try-start-unless-already-running id run-method)]
          (when start-promise
            (deliver start-promise [:started run-id]))
          (log/info "Executing transform" id "with target" (pr-str target))
