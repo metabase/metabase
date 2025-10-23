@@ -128,7 +128,10 @@
 
 (defmethod ->reference [:string :xrays/Metric]
   [_ {:keys [name full-name]}]
-  (or full-name name))
+  (or full-name
+      (if (map? name)
+        (or (:display-name name) (:name name))
+        name)))
 
 (defmethod ->reference [:mbql :xrays/Metric]
   [_ {:keys [id definition]}]
@@ -447,7 +450,7 @@
                            ;; metric x-rays talk about "this" in the template
                            (when (mi/instance-of? :xrays/Metric entity)
                              [{:metric-name       "this"
-                               :metric-title      (:name entity)
+                               :metric-title      (->reference :string entity)
                                :metric-definition {:aggregation [(->reference :mbql entity)]}
                                :metric-score      dashboard-templates/max-score}])))
      :filters (grounded-filters filter-specs dims)}))
