@@ -2,6 +2,7 @@ import { useMemo } from "react";
 
 import { skipToken, useSearchQuery } from "metabase/api";
 import { isSyncCompleted } from "metabase/lib/syncing";
+import { LEAF_ITEM_ICON_COLOR } from "metabase/metadata/pages/DataModel/components/TablePicker/constants";
 import type { SearchResult, TableId } from "metabase-types/api";
 
 import type { DatabaseNode, SchemaNode, TableNode, TreeNode } from "../types";
@@ -74,6 +75,7 @@ export function useSearch(query: string) {
               schemaName: tableSchema,
               tableId: id,
             },
+            icon: { name: "table2", color: LEAF_ITEM_ICON_COLOR },
             disabled: !isSyncCompleted(result),
           });
           schemaNode.children.push(tableNode);

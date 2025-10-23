@@ -1,4 +1,5 @@
 import cx from "classnames";
+import type { LocationDescriptor } from "history";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 
@@ -16,7 +17,7 @@ import {
 import S from "./BenchFlatListItem.module.css";
 
 interface BenchFlatListItemProps extends BenchFlatListItemContentProps {
-  href?: string;
+  href: LocationDescriptor;
   isActive?: boolean;
 }
 

@@ -1,6 +1,6 @@
 import type { Location } from "history";
 import { type ReactNode, useMemo, useState } from "react";
-import { Link, withRouter } from "react-router";
+import { withRouter } from "react-router";
 import { push, replace } from "react-router-redux";
 import { useLocalStorage } from "react-use";
 import { t } from "ttag";
@@ -27,7 +27,7 @@ import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import { getQuestion } from "metabase/query_builder/selectors";
 import { getUser } from "metabase/selectors/user";
 import { Box, Center, Loader, Text } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
+import Question from "metabase-lib/v1/Question";
 import type { SearchResult } from "metabase-types/api";
 
 import { BenchLayout } from "../BenchLayout";
@@ -283,7 +283,9 @@ export const ModelEditor = (props: {
 
 export const ModelSettings = ({ params }: { params: { slug: string } }) => {
   const { data: card } = useGetCardQuery({ id: +params.slug });
-  const question = useMemo(() => card && new Question(card), [card]);
+  const question = useMemo(() => {
+    return card && new Question(card);
+  }, [card]);
   if (!question) {
     return null;
   }
