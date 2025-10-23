@@ -8,11 +8,11 @@
    [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql.util :as sql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
-   [metabase.test.data.sql :as sql.tx]
    [toucan2.core :as t2]))
 
 (defn- make-incremental-source-query
@@ -22,7 +22,7 @@
    :type "native"
    :native {:query (format "SELECT * FROM %s [[WHERE id > {{watermark}}]]"
                            (if schema
-                             (sql.tx/qualify-and-quote driver/*driver* nil schema "transforms_products")
+                             (sql.u/quote-name driver/*driver* :table schema "transforms_products")
                              "transforms_products"))
             :template-tags {"watermark" {:id "watermark"
                                          :name "watermark"
