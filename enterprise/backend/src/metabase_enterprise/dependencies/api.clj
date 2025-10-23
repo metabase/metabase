@@ -4,6 +4,7 @@
    [metabase-enterprise.dependencies.core :as dependencies]
    [metabase-enterprise.dependencies.models.dependency :as dependency]
    [metabase.analyze.core :as analyze]
+   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
@@ -37,8 +38,8 @@
         broken-transform-ids (keys transform)
         broken-transforms (when (seq broken-transform-ids)
                             (t2/select :model/Transform :id [:in broken-transform-ids]))]
-    {:success   (and (empty? broken-card-ids)
-                     (empty? broken-transform-ids))
+    {:success (and (empty? broken-card-ids)
+                   (empty? broken-transform-ids))
      :bad_cards (into [] (comp (filter (fn [card]
                                          (if (mi/can-read? card)
                                            card
@@ -56,48 +57,50 @@
   [_route-params
    _query-params
    body :- ::card-body]
-  (let [database-id    (-> body :dataset_query :database)
-        base-provider  (lib-be/application-database-metadata-provider database-id)
-        original       (lib.metadata/card base-provider (:id body))
-        card           (-> original
-                           (assoc :dataset-query (:dataset_query body)
-                                  :type          (:type body (:type original)))
+  (api/read-check :model/Card (:id body))
+  (let [database-id (-> body :dataset_query :database)
+        base-provider (lib-be/application-database-metadata-provider database-id)
+        original (lib.metadata/card base-provider (:id body))
+        card (-> original
+                 (assoc :dataset-query (:dataset_query body)
+                        :type (:type body (:type original)))
                            ;; Remove the old `:result-metadata` from the card, it's likely wrong now.
-                           (dissoc :result-metadata)
+                 (dissoc :result-metadata)
                            ;; But if the request includes `:result_metadata`, use that. It may be from a native card
                            ;; that's been run before saving the card.
-                           (cond-> #_card
-                            (:result_metadata body) (assoc :result-metadata (:result_metadata body))))
-        edits          {:card [card]}
-        breakages      (dependencies/errors-from-proposed-edits base-provider edits)]
+                 (cond-> #_card
+                  (:result_metadata body) (assoc :result-metadata (:result_metadata body))))
+        edits {:card [card]}
+        breakages (dependencies/errors-from-proposed-edits base-provider edits)]
     (broken-cards-response breakages)))
 
 (mr/def ::transform-body
   [:map
-   [:id     {:optional false} ms/PositiveInt]
-   [:name   {:optional true}  :string]
+   [:id {:optional false} ms/PositiveInt]
+   [:name {:optional true} :string]
    ;; TODO (Cam 10/8/25) -- no idea what the correct schema for these is supposed to be -- it was just `map` before --
    ;; this is my attempt to guess it
-   [:source {:optional true}  [:maybe [:map
-                                       [:type  {:optional true} :keyword]
-                                       [:query {:optional true} ::queries.schema/query]]]]
-   [:target {:optional true}  [:maybe ms/Map]]])
+   [:source {:optional true} [:maybe [:map
+                                      [:type {:optional true} :keyword]
+                                      [:query {:optional true} ::queries.schema/query]]]]
+   [:target {:optional true} [:maybe ms/Map]]])
 
 (api.macros/defendpoint :post "/check_transform"
   "Check a proposed edit to a transform, and return the card, transform, etc. IDs for things that will break."
   [_route-params
    _query-params
    {:keys [id source target] :as _body} :- ::transform-body]
+  (api/read-check :model/Transform id)
   (if (= (keyword (:type source))
          :query)
-    (let [database-id   (-> source :query :database)
+    (let [database-id (-> source :query :database)
           base-provider (lib-be/application-database-metadata-provider database-id)
-          original      (lib.metadata/transform base-provider id)
-          transform     (-> original
-                            (cond-> #_transform source (assoc :source source))
-                            (cond-> #_transform target (assoc :target target)))
-          edits         {:transform [transform]}
-          breakages     (dependencies/errors-from-proposed-edits base-provider edits)]
+          original (lib.metadata/transform base-provider id)
+          transform (-> original
+                        (cond-> #_transform source (assoc :source source))
+                        (cond-> #_transform target (assoc :target target)))
+          edits {:transform [transform]}
+          breakages (dependencies/errors-from-proposed-edits base-provider edits)]
       (broken-cards-response breakages))
     ;; if this isn't a sql query, just claim it works
     {:success true}))
@@ -108,20 +111,21 @@
    _query-params
    {:keys [id content], snippet-name :name}
    :- [:map
-       [:id      {:optional false} ms/PositiveInt]
-       [:name    {:optional true}  native-query-snippets/NativeQuerySnippetName]
-       [:content {:optional true}  :string]]]
-  (let [original  (t2/select-one :model/NativeQuerySnippet id)
-        _         (when (and snippet-name
-                             (not= snippet-name (:name original))
-                             (t2/exists? :model/NativeQuerySnippet :name snippet-name))
-                    (throw (ex-info (tru "A snippet with that name already exists. Please pick a different name.")
-                                    {:status-code 400})))
-        snippet   (cond-> (m/assoc-some original
-                                        :lib/type :metadata/native-query-snippet
-                                        :name snippet-name
-                                        :content content)
-                    content native-query-snippets/add-template-tags)
+       [:id {:optional false} ms/PositiveInt]
+       [:name {:optional true} native-query-snippets/NativeQuerySnippetName]
+       [:content {:optional true} :string]]]
+  (api/read-check :model/NativeQuerySnippet id)
+  (let [original (t2/select-one :model/NativeQuerySnippet id)
+        _ (when (and snippet-name
+                     (not= snippet-name (:name original))
+                     (t2/exists? :model/NativeQuerySnippet :name snippet-name))
+            (throw (ex-info (tru "A snippet with that name already exists. Please pick a different name.")
+                            {:status-code 400})))
+        snippet (cond-> (m/assoc-some original
+                                      :lib/type :metadata/native-query-snippet
+                                      :name snippet-name
+                                      :content content)
+                  content native-query-snippets/add-template-tags)
         breakages (dependencies/errors-from-proposed-edits {:snippet [snippet]})]
     (broken-cards-response breakages)))
 
@@ -150,12 +154,35 @@
               (m/map-vals format-subentity))
    :dependents_count (usages [entity-type id])})
 
-(defn- entity-model [entity-type]
-  (case entity-type
-    :table :model/Table
-    :card :model/Card
-    :snippet :model/NativeQuerySnippet
-    :transform :model/Transform))
+(def ^:private entity-model
+  {:table :model/Table
+   :card :model/Card
+   :snippet :model/NativeQuerySnippet
+   :transform :model/Transform})
+
+(defn- readable-node?
+  "Check if the user can read the entity represented by `[entity-type entity-id]`."
+  [[entity-type entity-id]]
+  (if-let [model (entity-model entity-type)]
+    (try
+      (mi/can-read? model entity-id)
+      (catch Exception e
+        (log/debugf e "Couldn't determine if %s with id %s is readble"
+                    (some-> entity-type name) entity-id)
+        false))
+    (do
+      (log/warn "Cannot determine the model of" (some-> entity-type name))
+      false)))
+
+(defn- readable-graph-dependencies
+  "Return a permission-aware dependency graph that only includes readable entities."
+  []
+  (dependency/filtered-graph-dependencies readable-node?))
+
+(defn- readable-graph-dependents
+  "Return a permission-aware dependent graph that only includes readable entities."
+  []
+  (dependency/filtered-graph-dependents readable-node?))
 
 (defn- calc-usages
   "Calculates the count of direct dependents for all nodes in `nodes`, based on `graph`. "
@@ -185,10 +212,10 @@
     (mapcat (fn [[entity-type entity-ids]]
               (->> (cond-> (t2/select (entity-model entity-type)
                                       :id [:in entity-ids])
-                     (= entity-type :card)      (-> (t2/hydrate :creator :dashboard [:collection :is_personal] :moderation_reviews)
-                                                    (->> (map collection.root/hydrate-root-collection))
-                                                    (revisions/with-last-edit-info :card))
-                     (= entity-type :table)     (t2/hydrate :fields :db)
+                     (= entity-type :card) (-> (t2/hydrate :creator :dashboard [:collection :is_personal] :moderation_reviews)
+                                               (->> (map collection.root/hydrate-root-collection))
+                                               (revisions/with-last-edit-info :card))
+                     (= entity-type :table) (t2/hydrate :fields :db)
                      (= entity-type :transform) (t2/hydrate :table-with-db-and-fields))
                    (mapv #(entity-value entity-type % usages))))
             nodes-by-type)))
@@ -202,12 +229,13 @@
   [_route-params
    {:keys [id type]} :- [:map
                          [:id {:optional true} ms/PositiveInt]
-                         [:type {:optional true} (ms/enum-decode-keyword [:table :card :snippet :transform])]]]
+                         [:type {:optional true} (ms/enum-decode-keyword (vec (keys entity-model)))]]]
+  (api/read-check (entity-model type) id)
   (let [starting-nodes [[type id]]
-        upstream-graph (dependency/graph-dependencies)
+        upstream-graph (readable-graph-dependencies)
         ;; cache the downstream graph specifically, because between calculating transitive children and calculating
         ;; edges, we'll call this multiple times on the same nodes.
-        downstream-graph (graph/cached-graph (dependency/graph-dependents))
+        downstream-graph (graph/cached-graph (readable-graph-dependents))
         nodes (into (set starting-nodes)
                     (graph/transitive upstream-graph starting-nodes))
         edges (graph/calc-edges downstream-graph nodes)]
@@ -217,7 +245,7 @@
 (def ^:private dependents-args
   [:map
    [:id ms/PositiveInt]
-   [:type (ms/enum-decode-keyword [:table :card :snippet :transform])]
+   [:type (ms/enum-decode-keyword (vec (keys entity-model)))]
    [:dependent_type (ms/enum-decode-keyword [:table :card :snippet :transform])]
    [:dependent_card_type {:optional true} (ms/enum-decode-keyword
                                            [:question :model :metric])]])
@@ -230,7 +258,8 @@
   and :type. For :snippet -> :name. For :transform -> :name."
   [_route-params
    {:keys [id type dependent_type dependent_card_type]} :- dependents-args]
-  (let [downstream-graph (graph/cached-graph (dependency/graph-dependents))
+  (api/read-check (entity-model type) id)
+  (let [downstream-graph (graph/cached-graph (readable-graph-dependents))
         nodes (-> (graph/children-of downstream-graph [[type id]])
                   (get [type id]))]
     (->> (expanded-nodes downstream-graph nodes)

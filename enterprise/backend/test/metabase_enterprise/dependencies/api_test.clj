@@ -4,8 +4,12 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.queries.models.card :as card]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (defn card-with-query
   "Create a card map with the given name and dataset query."
@@ -158,7 +162,7 @@
   (testing "POST /api/ee/dependencies/check_transform"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/Transform {_transform-id :id :as transform} {}]
-        (let [response (mt/user-http-request :rasta :post 200 "ee/dependencies/check_transform" transform)]
+        (let [response (mt/user-http-request :crowberto :post 200 "ee/dependencies/check_transform" transform)]
           (is (= {:bad_cards [], :bad_transforms [], :success true}
                  response)))))))
 
@@ -207,7 +211,7 @@
         (mt/with-temp [:model/User user {:email "me@wherever.com"}]
           (let [{card-id-1 :id :as dependency-card} (card/create-card! (basic-card) user)
                 {card-id-2 :id} (card/create-card! (wrap-card dependency-card) user)
-                response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph" :id card-id-2 :type "card")
+                response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph" :id card-id-2 :type "card")
                 creator {:email "me@wherever.com"
                          :id (:id user)}]
             (is (=? {:edges
@@ -293,3 +297,100 @@
                       :id card-id-2
                       :type "card"}]
                     response))))))))
+
+(deftest check-card-permissions-test
+  (testing "POST /api/ee/dependencies/check_card requires read permissions on the input card"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection collection {}
+                       :model/User user {:email "test@test.com"}]
+          (mt/with-model-cleanup [:model/Card]
+            (let [card (card/create-card! (assoc (basic-card) :collection_id (u/the-id collection)) user)]
+              (testing "Returns 403 when user lacks read permissions"
+                (is (= "You don't have permissions to do that."
+                       (mt/user-http-request :rasta :post 403 "ee/dependencies/check_card"
+                                             (assoc card :name "Modified name")))))
+              (testing "Returns 200 when user has read permissions"
+                (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+                (is (=? {:success true}
+                        (mt/user-http-request :rasta :post 200 "ee/dependencies/check_card"
+                                              (assoc card :name "Modified name"))))))))))))
+
+(deftest check-snippet-permissions-test
+  (testing "POST /api/ee/dependencies/check_snippet requires native query execution permissions"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/NativeQuerySnippet snippet {:name "test snippet"
+                                                          :content "SELECT 1"
+                                                          :creator_id (mt/user->id :crowberto)}]
+          ;; remove native permissions
+          (with-redefs [snippet.perms/has-any-native-permissions? (constantly false)]
+            (testing "Returns 403 when user lacks native query execution permissions"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :post 403 "ee/dependencies/check_snippet"
+                                           {:id (:id snippet)
+                                            :content "SELECT 2"})))))
+          ;; Grant native query permissions
+          (testing "Returns 200 when user has native query execution permissions"
+            (mt/user-http-request :rasta :post 200 "ee/dependencies/check_snippet"
+                                  {:id (:id snippet)
+                                   :content "SELECT 2"})))))))
+
+(deftest check-transform-permissions-test
+  (testing "POST /api/ee/dependencies/check_transform requires read permissions on the input transform"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/Transform transform {:name "test transform"}]
+        (testing "Returns 403 when user is not an admin (only admins can read transforms)"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :post 403 "ee/dependencies/check_transform"
+                                       {:id (:id transform)
+                                        :source (:source transform)
+                                        :target (:target transform)}))))
+        (testing "Returns 200 when user is an admin"
+          (is (=? {:success true}
+                  (mt/user-http-request :crowberto :post 200 "ee/dependencies/check_transform"
+                                        {:id (:id transform)
+                                         :source (:source transform)
+                                         :target (:target transform)}))))))))
+
+(deftest graph-permissions-test
+  (testing "GET /api/ee/dependencies/graph requires read permissions on the starting entity"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection collection {}
+                       :model/User user {:email "test@test.com"}]
+          (mt/with-model-cleanup [:model/Card]
+            (let [card (card/create-card! (assoc (basic-card) :collection_id (u/the-id collection)) user)]
+              (testing "Returns 403 when user lacks read permissions"
+                (is (= "You don't have permissions to do that."
+                       (mt/user-http-request :rasta :get 403 "ee/dependencies/graph"
+                                             :id (:id card)
+                                             :type "card"))))
+              (testing "Returns 200 when user has read permissions"
+                (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+                (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
+                                      :id (:id card)
+                                      :type "card")))))))))
+
+(deftest graph-dependents-permissions-test
+  (testing "GET /api/ee/dependencies/graph/dependents requires read permissions on the starting entity"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection collection {}
+                       :model/User user {:email "test@test.com"}]
+          (mt/with-model-cleanup [:model/Card]
+            (let [{card-id :id} (card/create-card! (assoc (basic-card) :collection_id (:id collection)) user)]
+              (testing "Returns 403 when user lacks read permissions"
+                (is (= "You don't have permissions to do that."
+                       (mt/user-http-request :rasta :get 403 "ee/dependencies/graph/dependents"
+                                             :id card-id
+                                             :type "card"
+                                             :dependent_type "card"
+                                             :dependent_card_type "question"))))
+              (testing "Returns 200 when user has read permissions"
+                (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+                (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
+                                      :id card-id
+                                      :type "card"
+                                      :dependent_type "card"
+                                      :dependent_card_type "question")))))))))
