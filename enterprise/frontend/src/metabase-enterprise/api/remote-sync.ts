@@ -47,6 +47,10 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
           force,
         },
       }),
+      /**
+       * Tags invalidation for import happens in the middleware after the import task is successful.
+       * @see remote-sync-middleware.ts
+       */
     }),
     getRemoteSyncChanges: builder.query<RemoteSyncChangesResponse, void>({
       query: () => ({

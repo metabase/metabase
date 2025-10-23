@@ -9,6 +9,7 @@ interface CollectionPathProps {
   segments: CollectionPathSegment[];
 }
 
+// TODO: see if we can use the CollectionBreadcrumb component here
 export const CollectionPath = ({ segments }: CollectionPathProps) => {
   return (
     <Group gap="sm" wrap="wrap">

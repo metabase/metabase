@@ -1,7 +1,12 @@
 import type { UserId } from "metabase-types/api/user";
 
 import type { CardId } from "./card";
-import type { Collection, CollectionId, LastEditInfo } from "./collection";
+import type {
+  Collection,
+  CollectionId,
+  CollectionType,
+  LastEditInfo,
+} from "./collection";
 import type { Dashboard, DashboardId } from "./dashboard";
 import type { DatabaseId, InitialSyncStatus } from "./database";
 import type { Field } from "./field";
@@ -89,7 +94,7 @@ export interface SearchResult<
   pk_ref: FieldReference | null;
   table_schema: string | null;
   collection_authority_level: "official" | null;
-  type?: "instance-analytics" | "trash" | "remote-synced" | null;
+  type?: CollectionType;
   updated_at: string;
   moderated_status: ModerationReviewStatus | null;
   model_id: CardId | null;

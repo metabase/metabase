@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { getCollectionPathAsString } from "metabase/collections/utils";
 import type { IconName } from "metabase/ui";
 import type {
   Collection,
@@ -130,42 +129,6 @@ export const buildCollectionMap = (
   return map;
 };
 
-export const getCollectionFullPath = (
-  collectionId: number | undefined,
-  collectionMap: Map<number, Collection>,
-): string => {
-  if (!collectionId) {
-    return t`Root`;
-  }
-
-  const collection = collectionMap.get(collectionId);
-  if (!collection) {
-    return t`Root`;
-  }
-
-  if (collection.effective_ancestors) {
-    return getCollectionPathAsString(collection);
-  }
-
-  if (collection.location) {
-    const locationParts = collection.location.split("/").filter(Boolean);
-    const pathParts: string[] = [];
-
-    locationParts.forEach((idStr) => {
-      const parentId = parseInt(idStr);
-      const parent = collectionMap.get(parentId);
-      if (parent) {
-        pathParts.push(parent.name);
-      }
-    });
-
-    pathParts.push(collection.name);
-    return pathParts.join(" / ");
-  }
-
-  return collection.name;
-};
-
 export const getCollectionPathSegments = (
   collectionId: number | undefined,
   collectionMap: Map<number, Collection>,
@@ -189,8 +152,10 @@ export const getCollectionPathSegments = (
     return segments;
   }
 
-  if (collection.location) {
-    const locationParts = collection.location.split("/").filter(Boolean);
+  if (collection.effective_location) {
+    const locationParts = collection.effective_location
+      .split("/")
+      .filter(Boolean);
 
     locationParts.forEach((idStr) => {
       const parentId = parseInt(idStr);

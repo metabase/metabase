@@ -111,7 +111,7 @@ export const AllChangesView = ({
                 <Group
                   p="sm"
                   gap="sm"
-                  mb={group.items.length > 0 ? "12px" : 0}
+                  mb={group.items.length > 0 ? "0.75rem" : 0}
                   bg="bg-light"
                   bdrs="md"
                 >
@@ -130,7 +130,7 @@ export const AllChangesView = ({
                 </Group>
                 {group.items.length > 0 && (
                   <Stack
-                    gap="12px"
+                    gap="0.75rem"
                     ml="md"
                     pl="xs"
                     style={{

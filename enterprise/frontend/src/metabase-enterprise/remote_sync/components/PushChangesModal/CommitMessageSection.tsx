@@ -21,7 +21,7 @@ export const CommitMessageSection = ({
       maxRows={5}
       styles={{
         input: {
-          fontSize: "14px",
+          fontSize: "0.875rem",
         },
       }}
     />

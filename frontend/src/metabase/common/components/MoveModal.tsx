@@ -94,7 +94,7 @@ export const MoveModal = ({
   ]);
 
   const handleMove = useCallback(
-    async (destination: CollectionPickerValueItem) => {
+    (destination: CollectionPickerValueItem) => {
       // GROSS:
       // - CollectionPicker's `onChange` prop isn't generic to its `models` prop, so
       //   `onChange`'s destination arg isn't narrowed based on the `models` passed in. This
