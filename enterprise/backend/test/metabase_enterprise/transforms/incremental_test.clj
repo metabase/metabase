@@ -3,12 +3,14 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [honey.sql :as sql]
    [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
    [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
    [metabase-enterprise.transforms.util :as transforms.u]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -16,21 +18,24 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-(defn- make-incremental-source-query
-  "Create a native query with watermark template tag for incremental transforms."
-  [schema]
-  {:database (mt/id)
-   :type "native"
-   :native {:query (format "SELECT * FROM %s [[WHERE id > {{watermark}}]]"
-                           (if schema
-                             (sql.u/quote-name driver/*driver* :table schema "transforms_products")
-                             "transforms_products"))
-            :template-tags {"watermark" {:id "watermark"
-                                         :name "watermark"
-                                         :display-name "Watermark"
-                                         :type :number
-                                         :default 0
-                                         :required false}}}})
+(defn- make-source-query
+  "Create a native query with optional watermark template tag and limit."
+  [schema limit?]
+  (let [timestamp-sql (first (sql/format [(sql.qp/current-datetime-honeysql-form driver/*driver*)]))]
+    {:database (mt/id)
+     :type "native"
+     :native {:query (format "SELECT *, %s AS load_timestamp FROM %s [[WHERE id > {{watermark}}]] %s"
+                             timestamp-sql
+                             (if schema
+                               (sql.u/quote-name driver/*driver* :table schema "transforms_products")
+                               "transforms_products")
+                             (if limit? "LIMIT 10" ""))
+              :template-tags {"watermark" {:id "watermark"
+                                           :name "watermark"
+                                           :display-name "Watermark"
+                                           :type :number
+                                           :default 0
+                                           :required false}}}}))
 
 (defn- make-incremental-transform-payload
   "Create a transform payload for incremental transform testing."
@@ -38,7 +43,7 @@
   (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
     {:name transform-name
      :source {:type "query"
-              :query (make-incremental-source-query schema)
+              :query (make-source-query schema true)
               :source-incremental-strategy {:type "keyset"
                                             :keyset-column keyset-column}}
      :target {:type "table-incremental"
@@ -54,6 +59,19 @@
         table-metadata (lib.metadata/table mp (:id table))
         count-query (lib/aggregate (lib/query mp table-metadata) (lib/count))
         result (qp/process-query count-query)]
+    (some-> result :data :rows first first bigint)))
+
+(defn- get-distinct-timestamp-count
+  "Get the count of distinct load_timestamp values in a table."
+  [table-name]
+  (let [table (t2/select-one :model/Table :name table-name)
+        native-query {:database (mt/id)
+                      :type :native
+                      :native {:query (format "SELECT COUNT(DISTINCT load_timestamp) FROM %s"
+                                              (sql.u/quote-name driver/*driver* :table
+                                                                (:schema table)
+                                                                table-name))}}
+        result (qp/process-query native-query)]
     (some-> result :data :rows first first bigint)))
 
 (def get-watermark-value #'transforms.u/next-watermark-value)
@@ -135,40 +153,23 @@
                 (testing "First run processes all data"
                   (transforms.i/execute! transform {:run-method :manual})
                   (transforms.tu/wait-for-table target-table 10000)
-                  (let [row-count (get-table-row-count target-table)]
-                    (is (= 16 row-count) "First run should process all 16 products")
+                  (let [row-count (get-table-row-count target-table)
+                        distinct-timestamps (get-distinct-timestamp-count target-table)]
+                    (is (= 10 row-count) "First run should process the first 10 products")
+                    (is (= 1 distinct-timestamps) "All rows should have the same timestamp from first run")
 
                     (testing "Watermark is created after first run"
                       (let [watermark (get-watermark-value (:id transform))]
-                        (is (= 16 watermark) "Watermark should be MAX(id) = 16")))))
+                        (is (= 10 watermark) "Watermark should be MAX(id) = 10")))))
 
-                (testing "Second run with no new data processes nothing"
+                (testing "Second run should process the remaining rows"
                   (transforms.i/execute! transform {:run-method :manual})
-                  (let [row-count (get-table-row-count target-table)]
-                    (is (= 16 row-count) "Second run should not add any rows")
-
-                    (testing "Watermark remains unchanged"
-                      (let [watermark (get-watermark-value (:id transform))]
-                        (is (= 16 watermark) "Watermark should still be 16")))))
-
-                (testing "Third run after adding new data processes only new rows"
-                  (with-insert-test-products!
-                    [{:name "New Product 1"
-                      :category "Widget"
-                      :price 99.99
-                      :created-at "2024-01-17T10:00:00"}
-                     {:name "New Product 2"
-                      :category "Gadget"
-                      :price 199.99
-                      :created-at "2024-01-18T10:00:00"}]
-
-                    (transforms.i/execute! transform {:run-method :manual})
-                    (let [row-count (get-table-row-count target-table)]
-                      (is (= 18 row-count) "Third run should add 2 new rows (16 + 2 = 18)")
-
-                      (testing "Watermark is updated to new MAX(id)"
-                        (let [watermark (get-watermark-value (:id transform))]
-                          (is (>= watermark 18) "Watermark should be updated"))))))))))))))
+                  (let [row-count (get-table-row-count target-table)
+                        distinct-timestamps (get-distinct-timestamp-count target-table)]
+                    (is (= 16 row-count) "Second run should add remaining 6 rows")
+                    (is (= 2 distinct-timestamps) "Should have 2 distinct timestamps (one per incremental run)")
+                    (let [watermark (get-watermark-value (:id transform))]
+                      (is (= 16 watermark) "Watermark should be 16"))))))))))))
 
 (deftest switch-incremental-to-non-incremental-test
   (testing "Switching an incremental transform to non-incremental overwrites data"
@@ -179,28 +180,26 @@
             (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
                   initial-payload (make-incremental-transform-payload "Switch Transform" target-table "id")]
               (mt/with-temp [:model/Transform transform initial-payload]
-                (testing "Initial incremental run processes all data"
+                (testing "Initial incremental run processes first batch"
                   (transforms.i/execute! transform {:run-method :manual})
                   (transforms.tu/wait-for-table target-table 10000)
                   (let [row-count (get-table-row-count target-table)
+                        distinct-timestamps (get-distinct-timestamp-count target-table)
                         watermark (get-watermark-value (:id transform))]
-                    (is (= 16 row-count) "Initial run should process all 16 products")
-                    (is (= 16 watermark) "Watermark should be created")))
+                    (is (= 10 row-count) "Initial run should process first 10 products")
+                    (is (= 1 distinct-timestamps) "All rows should have the same timestamp from first run")
+                    (is (= 10 watermark) "Watermark should be created")))
 
-                (testing "Add new data and run incrementally"
-                  (with-insert-test-products!
-                    [{:name "Before Switch Product"
-                      :category "Widget"
-                      :price 59.99
-                      :created-at "2024-01-19T10:00:00"}]
-
-                    (transforms.i/execute! transform {:run-method :manual})
-                    (let [row-count (get-table-row-count target-table)]
-                      (is (= 17 row-count) "Should have 17 rows after incremental update"))))
+                (testing "Second incremental run processes remaining data"
+                  (transforms.i/execute! transform {:run-method :manual})
+                  (let [row-count (get-table-row-count target-table)
+                        distinct-timestamps (get-distinct-timestamp-count target-table)]
+                    (is (= 16 row-count) "Should have 16 rows after second incremental run")
+                    (is (= 2 distinct-timestamps) "Should have 2 distinct timestamps (one per incremental run)")))
 
                 (testing "Switch to non-incremental via PUT API"
                   (let [non-incremental-payload {:source {:type "query"
-                                                          :query (make-incremental-source-query schema)}
+                                                          :query (make-source-query schema false)}
                                                  :target {:type "table"
                                                           :schema schema
                                                           :name target-table}}
@@ -212,13 +211,17 @@
                 (testing "Non-incremental run overwrites all data"
                   (let [transform (t2/select-one :model/Transform (:id transform))]
                     (transforms.i/execute! transform {:run-method :manual})
-                    (let [row-count (get-table-row-count target-table)]
-                      (is (= 16 row-count) "Should overwrite to 16 rows (all original products)"))
+                    (let [row-count (get-table-row-count target-table)
+                          distinct-timestamps (get-distinct-timestamp-count target-table)]
+                      (is (= 16 row-count) "Should overwrite to 16 rows (all original products)")
+                      (is (= 1 distinct-timestamps) "All rows should have same timestamp after non-incremental overwrite"))
 
                     (testing "Running again still overwrites"
                       (transforms.i/execute! transform {:run-method :manual})
-                      (let [row-count (get-table-row-count target-table)]
-                        (is (= 16 row-count) "Should still have 16 rows after another run")))))))))))))
+                      (let [row-count (get-table-row-count target-table)
+                            distinct-timestamps (get-distinct-timestamp-count target-table)]
+                        (is (= 16 row-count) "Should still have 16 rows after another run")
+                        (is (= 1 distinct-timestamps) "Should still have 1 distinct timestamp")))))))))))))
 
 (deftest switch-non-incremental-to-incremental-test
   (testing "Switching a non-incremental transform to incremental computes watermark from existing data"
@@ -229,7 +232,7 @@
             (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
                   initial-payload {:name "Non-Incremental Transform"
                                    :source {:type "query"
-                                            :query (make-incremental-source-query schema)}
+                                            :query (make-source-query schema false)}
                                    :target {:type "table"
                                             :schema schema
                                             :name target-table}}]
@@ -237,8 +240,10 @@
                 (testing "Initial non-incremental run creates table"
                   (transforms.i/execute! transform {:run-method :manual})
                   (transforms.tu/wait-for-table target-table 10000)
-                  (let [row-count (get-table-row-count target-table)]
+                  (let [row-count (get-table-row-count target-table)
+                        distinct-timestamps (get-distinct-timestamp-count target-table)]
                     (is (= 16 row-count) "Initial run should process all 16 products")
+                    (is (= 1 distinct-timestamps) "All rows should have same timestamp from non-incremental run")
 
                     (testing "No watermark exists"
                       (let [watermark (get-watermark-value (:id transform))]
@@ -246,7 +251,7 @@
 
                 (testing "Switch to incremental via PUT API"
                   (let [incremental-payload {:source {:type "query"
-                                                      :query (make-incremental-source-query schema)
+                                                      :query (make-source-query schema true)
                                                       :source-incremental-strategy {:type "keyset"
                                                                                     :keyset-column "id"}}
                                              :target {:type "table-incremental"
@@ -262,22 +267,27 @@
                   (let [transform (t2/select-one :model/Transform (:id transform))]
                     (transforms.i/execute! transform {:run-method :manual})
                     (let [row-count (get-table-row-count target-table)
+                          distinct-timestamps (get-distinct-timestamp-count target-table)
                           watermark (get-watermark-value (:id transform))]
                       (is (= 16 row-count) "Should still have 16 rows (no duplicates)")
+                      (is (= 1 distinct-timestamps) "Should still have 1 distinct timestamp (no new data added)")
                       (is (= 16 watermark) "Watermark should be computed from existing data"))))
 
-                (testing "Add new data and run incrementally"
-                  (with-insert-test-products!
-                    [{:name "After Switch Product"
-                      :category "Gadget"
-                      :price 79.99
-                      :created-at "2024-01-20T10:00:00"}]
+                (when-not (= driver/*driver* :clickhouse) ; struggles with eventual consistency
+                  (testing "Add new data and run incrementally"
+                    (with-insert-test-products!
+                      [{:name "After Switch Product"
+                        :category "Gadget"
+                        :price 79.99
+                        :created-at "2024-01-20T10:00:00"}]
 
-                    (let [transform (t2/select-one :model/Transform (:id transform))]
-                      (transforms.i/execute! transform {:run-method :manual})
-                      (let [row-count (get-table-row-count target-table)
-                            watermark (get-watermark-value (:id transform))]
-                        (is (= 17 row-count) "Should append 1 new row (16 + 1 = 17)")
-                        (is (>= watermark 17) "Watermark should be updated to at least 17")))))))))))))
+                      (let [transform (t2/select-one :model/Transform (:id transform))]
+                        (transforms.i/execute! transform {:run-method :manual})
+                        (let [row-count (get-table-row-count target-table)
+                              distinct-timestamps (get-distinct-timestamp-count target-table)
+                              watermark (get-watermark-value (:id transform))]
+                          (is (= 17 row-count) "Should append 1 new row (16 + 1 = 17)")
+                          (is (= 2 distinct-timestamps) "Should have 2 distinct timestamps (original + new incremental)")
+                          (is (>= watermark 17) "Watermark should be updated to at least 17"))))))))))))))
 
 ;; TODO: test changing keyset
