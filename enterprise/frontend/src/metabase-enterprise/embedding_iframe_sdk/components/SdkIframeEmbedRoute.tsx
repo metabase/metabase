@@ -84,6 +84,7 @@ export const SdkIframeEmbedRoute = () => {
       theme={theme}
       locale={locale}
       reduxStore={store}
+      isLocalHost={embedSettings._isLocalhost}
     >
       <Box h="100vh" bg={theme?.colors?.background}>
         <SdkIframeEmbedView settings={embedSettings} />

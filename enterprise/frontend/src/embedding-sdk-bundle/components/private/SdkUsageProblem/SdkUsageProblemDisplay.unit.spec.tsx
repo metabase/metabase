@@ -6,7 +6,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { screen, within } from "__support__/ui";
-import * as IsLocalhostModule from "embedding-sdk-bundle/lib/is-localhost";
+import * as IsLocalhostModule from "embedding-sdk-bundle/lib/get-is-localhost";
 import { setUsageProblem } from "embedding-sdk-bundle/store/reducer";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import {

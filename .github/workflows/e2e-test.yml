@@ -143,6 +143,11 @@ jobs:
             --env grepTags="-@mongo+-@python+-@flaky+-@OSS+-@skip",grepOmitFiltered=true \
             --spec "$SPEC_PATH" \
             --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+        # Trunk Quarantine controls the final state of the run in the CI!
+        # Even if this step fails, we let it pass and then `trunk-io/analytics-uploader` determines whether to fail or to
+        # pass the whole job, based on the quarantine list.
+        # We only want to "continue on error" (ignore failures) when the Trunk upload is active - i.e. not on drafts!
+        continue-on-error: ${{ !(github.event_name == 'pull_request' && github.event.pull_request.draft == true) }}
 
       - name: Run Tagged EE Cypress tests on ${{ inputs.name }}
         if: ${{ inputs.specs }}
@@ -155,18 +160,25 @@ jobs:
           --env grepTags="${{inputs.tags && format('{0}+-@skip', inputs.tags) || '-@skip'}}",grepOmitFiltered=true \
           --spec "$SPEC_PATH" \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+        # Trunk Quarantine controls the final state of the run in the CI!
+        # Even if this step fails, we let it pass and then `trunk-io/analytics-uploader` determines whether to fail or to
+        # pass the whole job, based on the quarantine list.
+        # We only want to "continue on error" (ignore failures) when the Trunk upload is active - i.e. not on drafts!
+        continue-on-error: ${{ !(github.event_name == 'pull_request' && github.event.pull_request.draft == true) }}
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
         with:
           input-path: ./target/junit
+          # Related to our custom upload to S3
           output-name: e2e-${{ inputs.name }}
-          variant: e2e-tests
           bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
           aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
+          # Related to Trunk uploader
+          variant: e2e-tests
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
       - name: Upload Cypress Artifacts upon failure

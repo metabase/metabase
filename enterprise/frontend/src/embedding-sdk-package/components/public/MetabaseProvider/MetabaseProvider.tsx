@@ -20,7 +20,6 @@ const MetabaseProviderInitDataWrapper = memo(function InitDataWrapper() {
   const useInitData = getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.useInitData;
   const useLogVersionInfo =
     getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.useLogVersionInfo;
-
   useInitData?.();
   useLogVersionInfo?.();
 
