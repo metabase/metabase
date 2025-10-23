@@ -414,6 +414,8 @@ describe("scenarios > organization > timelines > question", () => {
           cy.button("Create").click();
         });
 
+        H.modal().should("not.exist"); // wait for modal to close
+
         cy.log("remove all other events except the new one");
         toggleEventVisibility("RC1").should("not.be.checked");
         toggleEventVisibility("RC2").should("not.be.checked");
