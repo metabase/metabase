@@ -273,7 +273,8 @@
    (fn [_] {:user_id (rasta-id)
             :is_creation false
             :is_reversion false
-            :timestamp (t/zoned-date-time)})
+            :timestamp (t/zoned-date-time)
+            :metabase.revisions.models.revision/internal-use-only true})
 
    :model/Segment
    (fn [_] (default-timestamped

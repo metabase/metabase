@@ -180,12 +180,11 @@
             ;; Remove card_schema to simulate pre-v0.55 revision
             old-card-data   (dissoc serialized-card :card_schema)]
         ;; Manually create a revision without :card_schema to simulate pre-v0.55 data
-        (t2/insert! :model/Revision
-                    {:model    "Card"
-                     :model_id card-id
-                     :user_id  (mt/user->id :rasta)
-                     :object   old-card-data
-                     :message  "Test revision without card_schema"})
+        (revision/insert-revision! {:model    "Card"
+                                     :model_id card-id
+                                     :user_id  (mt/user->id :rasta)
+                                     :object   old-card-data
+                                     :message  "Test revision without card_schema"})
 
         (testing "Can fetch revisions without error through API"
           (let [revisions (revision/revisions+details :model/Card card-id)]

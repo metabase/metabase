@@ -69,27 +69,75 @@
      (->> (graph/transitive graph starters) ; This returns a flat list.
           (u/group-by first second conj #{})))))
 
+(defn replace-dependencies-bulk!
+  "Replace dependencies for multiple entities of the same type in a single set of database operations.
+
+  Takes `entity-type` and a collection of maps with `:entity-id` and `:dependencies-by-type`.
+
+  Example:
+  (replace-dependencies-bulk! :card
+    [{:entity-id 1, :dependencies-by-type {:card #{10 20}, :table #{5}}}
+     {:entity-id 2, :dependencies-by-type {:table #{6}}}])
+
+  This performs a 3-way diff for each entity (comparing current vs. desired dependencies),
+  then executes all deletions and insertions in single batched database operations."
+  [entity-type entities-with-deps]
+  (when (seq entities-with-deps)
+    (let [entity-ids (mapv :entity-id entities-with-deps)
+
+          ;; Fetch ALL current dependencies for these entities in one query
+          current-deps (t2/select [:model/Dependency :id :from_entity_id :to_entity_type :to_entity_id]
+                                  :from_entity_type entity-type
+                                  :from_entity_id [:in entity-ids])
+
+          ;; Group current dependencies by entity-id for lookup
+          current-by-entity (group-by :from_entity_id current-deps)
+
+          ;; Calculate all deletions and insertions across all entities
+          {to-remove :remove
+           to-add :add} (reduce
+                         (fn [acc {:keys [entity-id dependencies-by-type]}]
+                           (let [current (get current-by-entity entity-id)
+                                 ;; Build set of current [type id] pairs for this entity
+                                 current-set (into #{}
+                                                   (map (juxt :to_entity_type :to_entity_id))
+                                                   current)
+                                 ;; Build set of desired [type id] pairs for this entity
+                                 desired-set (into #{}
+                                                   (for [[to-type ids] dependencies-by-type
+                                                         id ids]
+                                                     [to-type id]))
+
+                                 ;; Find dependency IDs to remove (in current but not in desired)
+                                 remove-ids (into #{}
+                                                  (keep (fn [{:keys [id to_entity_type to_entity_id]}]
+                                                          (when-not (desired-set [to_entity_type to_entity_id])
+                                                            id)))
+                                                  current)
+
+                                 ;; Find dependency rows to add (in desired but not in current)
+                                 add-rows (for [[to-type to-id] desired-set
+                                                :when (not (current-set [to-type to-id]))]
+                                            {:from_entity_type entity-type
+                                             :from_entity_id entity-id
+                                             :to_entity_type to-type
+                                             :to_entity_id to-id})]
+                             (-> acc
+                                 (update :remove into remove-ids)
+                                 (update :add into add-rows))))
+                         {:remove #{}, :add []}
+                         entities-with-deps)]
+
+      (t2/with-transaction [_conn]
+        (when (seq to-remove)
+          (t2/delete! :model/Dependency :id [:in to-remove]))
+        (when (seq to-add)
+          (t2/insert! :model/Dependency to-add))))))
+
 (defn replace-dependencies!
   "Replace the dependencies of the entity of type `entity-type` with id `entity-id` with
-  the ones specified in `dependencies-by-type`. "
+  the ones specified in `dependencies-by-type`."
   [entity-type entity-id dependencies-by-type]
-  (let [current-dependencies (t2/select [:model/Dependency :id :to_entity_type :to_entity_id]
-                                        :from_entity_type entity-type
-                                        :from_entity_id entity-id)
-        to-remove (keep (fn [{:keys [id to_entity_type to_entity_id]}]
-                          (when-not (get-in dependencies-by-type [to_entity_type to_entity_id])
-                            id))
-                        current-dependencies)
-        current-by-type (-> (group-by :to_entity_type current-dependencies)
-                            (update-vals #(into #{} (map :to_entity_id) %)))
-        to-add (for [[to-entity-type ids] dependencies-by-type
-                     to-entity-id (set/difference ids (current-by-type to-entity-type))]
-                 {:from_entity_type entity-type
-                  :from_entity_id   entity-id
-                  :to_entity_type   to-entity-type
-                  :to_entity_id     to-entity-id})]
-    (t2/with-transaction [_conn]
-      (when (seq to-remove)
-        (t2/delete! :model/Dependency :id [:in to-remove]))
-      (when (seq to-add)
-        (t2/insert! :model/Dependency to-add)))))
+  (replace-dependencies-bulk! entity-type
+                              [{:entity-id entity-id
+                                :dependencies-by-type dependencies-by-type}]))

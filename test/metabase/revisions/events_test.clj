@@ -57,7 +57,7 @@
 (deftest card-create-test
   (testing :event/card-create
     (mt/with-temp [:model/Card {card-id :id, :as card} (card-properties)]
-      (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :crowberto)})
+      (events/publish-event! :event/card-create {:object card :previous-object nil :user-id (mt/user->id :crowberto)})
       (is (=? {:model        "Card"
                :model_id     card-id
                :user_id      (mt/user->id :crowberto)
@@ -71,7 +71,7 @@
 (deftest card-update-test
   (testing :event/card-update
     (mt/with-temp [:model/Card {card-id :id, :as card} (card-properties)]
-      (events/publish-event! :event/card-update {:object card :user-id (mt/user->id :crowberto)})
+      (events/publish-event! :event/card-update {:object card :previous-object nil :user-id (mt/user->id :crowberto)})
       (is (=? {:model        "Card"
                :model_id     card-id
                :user_id      (mt/user->id :crowberto)
@@ -85,7 +85,7 @@
 (deftest card-update-shoud-not-contains-public-info-test
   (testing :event/card-update
     (mt/with-temp [:model/Card {card-id :id, :as card} (card-properties)]
-      (events/publish-event! :event/card-update {:object card :user-id (mt/user->id :crowberto)})
+      (events/publish-event! :event/card-update {:object card :previous-object nil :user-id (mt/user->id :crowberto)})
       ;; we don't want the public_uuid and made_public_by_id to be recorded in a revision
       ;; otherwise revert a card to earlier revision might toggle the public sharing settings
       (is (empty? (set/intersection #{:public_uuid :made_public_by_id}
@@ -98,7 +98,7 @@
   (testing :event/dashboard-create
     (mt/with-test-user :rasta
       (mt/with-temp [:model/Dashboard {dashboard-id :id, :as dashboard}]
-        (events/publish-event! :event/dashboard-create {:object dashboard :user-id (mt/user->id :rasta)})
+        (events/publish-event! :event/dashboard-create {:object dashboard :previous-object nil :user-id (mt/user->id :rasta)})
         (is (= {:model        "Dashboard"
                 :model_id     dashboard-id
                 :user_id      (mt/user->id :rasta)
@@ -113,7 +113,7 @@
   (testing :event/dashboard-update
     (mt/with-test-user :rasta
       (mt/with-temp [:model/Dashboard {dashboard-id :id, :as dashboard}]
-        (events/publish-event! :event/dashboard-update {:object dashboard :user-id (mt/user->id :rasta)})
+        (events/publish-event! :event/dashboard-update {:object dashboard :previous-object nil :user-id (mt/user->id :rasta)})
         (is (= {:model        "Dashboard"
                 :model_id     dashboard-id
                 :user_id      (mt/user->id :rasta)
@@ -128,7 +128,7 @@
   (testing :event/dashboard-update
     (mt/with-test-user :rasta
       (mt/with-temp [:model/Dashboard {dashboard-id :id, :as dashboard}]
-        (events/publish-event! :event/dashboard-update {:object dashboard :user-id (mt/user->id :rasta)})
+        (events/publish-event! :event/dashboard-update {:object dashboard :previous-object nil :user-id (mt/user->id :rasta)})
 
        ;; we don't want the public_uuid and made_public_by_id to be recorded in a revision
        ;; otherwise revert a card to earlier revision might toggle the public sharing settings
@@ -143,6 +143,7 @@
                    :model/Card          {card-id :id}                     (card-properties)
                    :model/DashboardCard dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]
       (events/publish-event! :event/dashboard-update {:object  dashboard
+                                                      :previous-object nil
                                                       :user-id (mt/user->id :rasta)})
       (is (= {:model        "Dashboard"
               :model_id     dashboard-id
@@ -161,7 +162,7 @@
                    :model/Card          {card-id :id}                     (card-properties)
                    :model/DashboardCard dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]
       (t2/delete! (t2/table-name :model/DashboardCard), :id (:id dashcard))
-      (events/publish-event! :event/dashboard-update {:object dashboard :user-id (mt/user->id :rasta)})
+      (events/publish-event! :event/dashboard-update {:object dashboard :previous-object nil :user-id (mt/user->id :rasta)})
       (is (= {:model        "Dashboard"
               :model_id     dashboard-id
               :user_id      (mt/user->id :rasta)
@@ -178,7 +179,7 @@
                    :model/Card          {card-id :id}                     (card-properties)
                    :model/DashboardCard dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]
       (t2/update! :model/DashboardCard (:id dashcard) {:size_x 3})
-      (events/publish-event! :event/dashboard-update {:object dashboard :user-id (mt/user->id :crowberto)})
+      (events/publish-event! :event/dashboard-update {:object dashboard :previous-object nil :user-id (mt/user->id :crowberto)})
       (is (= {:model        "Dashboard"
               :model_id     dashboard-id
               :user_id      (mt/user->id :crowberto)
@@ -208,7 +209,7 @@
        :model/DashboardTab  {dashtab-id :id}                  {:name         "First tab"
                                                                :position     0
                                                                :dashboard_id dashboard-id}]
-      (events/publish-event! :event/dashboard-update {:object dashboard :user-id (mt/user->id :rasta)})
+      (events/publish-event! :event/dashboard-update {:object dashboard :previous-object nil :user-id (mt/user->id :rasta)})
       (is (= {:model        "Dashboard"
               :model_id     dashboard-id
               :user_id      (mt/user->id :rasta)
@@ -231,7 +232,7 @@
                                                                :position     0
                                                                :dashboard_id dashboard-id}]
       (t2/update! :model/DashboardTab dashtab-id {:name "New name"})
-      (events/publish-event! :event/dashboard-update {:object dashboard :user-id (mt/user->id :rasta)})
+      (events/publish-event! :event/dashboard-update {:object dashboard :previous-object nil :user-id (mt/user->id :rasta)})
       (is (= {:model        "Dashboard"
               :model_id     dashboard-id
               :user_id      (mt/user->id :rasta)
@@ -254,7 +255,7 @@
                                                                :position     0
                                                                :dashboard_id dashboard-id}]
       (t2/delete! :model/DashboardTab dashtab-id)
-      (events/publish-event! :event/dashboard-update {:object dashboard :user-id (mt/user->id :rasta)})
+      (events/publish-event! :event/dashboard-update {:object dashboard :previous-object nil :user-id (mt/user->id :rasta)})
       (is (= {:model        "Dashboard"
               :model_id     dashboard-id
               :user_id      (mt/user->id :rasta)

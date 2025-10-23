@@ -25,3 +25,19 @@
       (persisted-info/turn-on-model! user-id card))
     (catch Throwable e
       (log/warnf e "Failed to process persisted-info event. %s" topic))))
+
+(derive ::events :metabase/event)
+(derive :event/cards-create ::events)
+(derive :event/cards-update ::events)
+
+(methodical/defmethod events/publish-event! ::events
+  [topic events]
+  (when (model-persistence.settings/persisted-models-enabled)
+    (doseq [{:keys [object user-id]} events
+            :when (and (= (:type object) :model)
+                       (t2/select-one-fn (fn [db] (get-in db [:settings :persist-models-enabled])) :model/Database :id (:database_id object))
+                       (not (t2/exists? :model/PersistedInfo :card_id (:id object))))]
+      (try
+        (persisted-info/turn-on-model! user-id object)
+        (catch Throwable e
+          (log/warnf e "Failed to process persisted-info event. %s" topic))))))

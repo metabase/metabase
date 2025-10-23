@@ -96,14 +96,13 @@
       (create-card-revision! (:id card) true :rasta)
       (t2/update! :model/Card {:name "something else"})
       (create-card-revision! (:id card) false :rasta)
-      (t2/insert! :model/Revision
-                  :model        "Card"
-                  :model_id     id
-                  :user_id      (mt/user->id :rasta)
-                  :object       (revision/serialize-instance :model/Card (:id card) card)
-                  :message      "because i wanted to"
-                  :is_creation  false
-                  :is_reversion true)
+      (revision/insert-revision! {:model        "Card"
+                                   :model_id     id
+                                   :user_id      (mt/user->id :rasta)
+                                   :object       (revision/serialize-instance :model/Card (:id card) card)
+                                   :message      "because i wanted to"
+                                   :is_creation  false
+                                   :is_reversion true})
       (is (=? [{:is_reversion         true
                 :is_creation          false
                 :message              "because i wanted to"

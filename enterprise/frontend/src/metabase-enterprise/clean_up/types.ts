@@ -22,3 +22,29 @@ export type ListStaleCollectionItemsRequest = {
 export type ListStaleCollectionItemsResponse = {
   data: StaleCollectionItem[];
 } & PaginationResponse;
+
+export type ArchivedItemRef = {
+  id: number;
+  model: "card" | "dashboard";
+};
+
+export type BulkArchiveStaleItemsRequest = {
+  id: CollectionId;
+  before_date?: string;
+  is_recursive?: boolean;
+};
+
+export type BulkArchiveStaleItemsResponse = {
+  total_archived: number;
+  cards_archived: number;
+  dashboards_archived: number;
+  archived_ids: ArchivedItemRef[];
+};
+
+export type BulkUnarchiveItemsRequest = {
+  items: ArchivedItemRef[];
+};
+
+export type BulkUnarchiveItemsResponse = {
+  total_unarchived: number;
+};
