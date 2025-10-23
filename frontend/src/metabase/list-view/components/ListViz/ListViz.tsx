@@ -370,6 +370,7 @@ export const ListViz = ({
           data={data}
           settings={settings}
           onChange={updateListSettings}
+          entityType={entityType}
           columnsMetadata={columnsMetadata}
         />
       ) : (

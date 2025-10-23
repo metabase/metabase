@@ -42,7 +42,12 @@ import type { DatasetColumn, DatasetData, RowValues } from "metabase-types/api";
 import { useListColumns } from "./ListView";
 import S from "./ListView.module.css";
 import { ListViewItem } from "./ListViewItem";
-import { ENTITY_ICONS, ENTITY_ICON_COLORS, getIconBackground } from "./styling";
+import {
+  ENTITY_ICONS,
+  ENTITY_ICON_COLORS,
+  getEntityIcon,
+  getIconBackground,
+} from "./styling";
 
 const MAX_LEFT_COLUMNS = 1;
 const MAX_RIGHT_COLUMNS = 5;
@@ -53,6 +58,7 @@ export const ListViewConfiguration = ({
   onChange,
   settings,
   columnsMetadata,
+  entityType,
 }: {
   data: DatasetData;
   onChange: (settings: {
@@ -65,6 +71,7 @@ export const ListViewConfiguration = ({
   }) => void;
   settings?: ComputedVisualizationSettings;
   columnsMetadata: Lib.ColumnMetadata[];
+  entityType?: string;
 }) => {
   const { cols } = data;
 
@@ -93,7 +100,10 @@ export const ListViewConfiguration = ({
   // Local state duplication for selected settings to immediately reflect
   // list item preview changes.
   const [selectedEntityIcon, setSelectedEntityIcon] = useState<string | null>(
-    () => settings?.["list.entity_icon"] || null,
+    () =>
+      !settings?.["list.entity_icon"] && settings?.["list.use_image_column"]
+        ? null
+        : settings?.["list.entity_icon"] || getEntityIcon(entityType),
   );
   const [selectedIconColor, setSelectedIconColor] = useState<string>(
     () => settings?.["list.entity_icon_color"] as string,
