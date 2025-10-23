@@ -43,7 +43,7 @@
   (testing "POST /api/ee/dependencies/check_card"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/User user {:email "me@wherever.com"}]
-        (mt/with-model-cleanup [:model/Card]
+        (mt/with-model-cleanup [:model/Card :model/Dependency]
           (let [card (card/create-card! (basic-card) user)
                 response (mt/user-http-request :rasta :post 200 "ee/dependencies/check_card"
                                                (assoc (card/create-card! (basic-card "Product question" :products)
@@ -57,7 +57,7 @@
     (mt/dataset test-data
       (mt/with-premium-features #{:dependencies}
         (mt/with-temp [:model/User user {:email "test@test.com"}]
-          (mt/with-model-cleanup [:model/Card]
+          (mt/with-model-cleanup [:model/Card :model/Dependency]
             (let [mp (mt/metadata-provider)
                   ;; Create base card querying real orders table
                   base-card (card/create-card! (basic-card) user)
@@ -87,7 +87,7 @@
     (mt/dataset test-data
       (mt/with-premium-features #{:dependencies}
         (mt/with-temp [:model/User user {:email "test@test.com"}]
-          (mt/with-model-cleanup [:model/Card]
+          (mt/with-model-cleanup [:model/Card :model/Dependency]
             (let [mp (mt/metadata-provider)
                   orders-query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                   base-query (-> orders-query
@@ -125,7 +125,7 @@
     (mt/dataset test-data
       (mt/with-premium-features #{:dependencies}
         (mt/with-temp [:model/User user {:email "test@test.com"}]
-          (mt/with-model-cleanup [:model/Card]
+          (mt/with-model-cleanup [:model/Card :model/Dependency]
             (let [mp (mt/metadata-provider)
                   ;; Create base card querying real orders table
                   base-card (card/create-card! (basic-card) user)
@@ -181,7 +181,7 @@
         (mt/with-temp [:model/User user {:email "test@test.com"}
                        :model/NativeQuerySnippet {snippet-id :id snippet-name :name} {:name "filter-snippet"
                                                                                       :content "WHERE SUBTOTAL > 100"}]
-          (mt/with-model-cleanup [:model/Card]
+          (mt/with-model-cleanup [:model/Card :model/Dependency]
             (let [tag-name (str "snippet: " snippet-name)
                   mp (mt/metadata-provider)
                   native-query (-> (lib/native-query mp (format "SELECT * FROM ORDERS %s" (str "{{" tag-name "}}")))
@@ -207,7 +207,7 @@
 (deftest graph-test
   (testing "GET /api/ee/dependencies/graph"
     (mt/with-premium-features #{:dependencies}
-      (mt/with-model-cleanup [:model/Card]
+      (mt/with-model-cleanup [:model/Card :model/Dependency]
         (mt/with-temp [:model/User user {:email "me@wherever.com"}]
           (let [{card-id-1 :id :as dependency-card} (card/create-card! (basic-card) user)
                 {card-id-2 :id} (card/create-card! (wrap-card dependency-card) user)
@@ -252,7 +252,7 @@
   (testing "GET /api/ee/dependencies/graph with table as root node"
     (mt/dataset test-data
       (mt/with-premium-features #{:dependencies}
-        (mt/with-model-cleanup [:model/Card]
+        (mt/with-model-cleanup [:model/Card :model/Dependency]
           (mt/with-temp [:model/User user {:email "test@test.com"}]
             (let [_card-1 (card/create-card! (basic-card "Card 1" :orders) user)
                   _card-2 (card/create-card! (basic-card "Card 2" :orders) user)
@@ -270,7 +270,7 @@
 (deftest dependents-test
   (testing "GET /api/ee/dependencies/graph/dependents"
     (mt/with-premium-features #{:dependencies}
-      (mt/with-model-cleanup [:model/Card]
+      (mt/with-model-cleanup [:model/Card :model/Dependency]
         (mt/with-temp [:model/User user {:email "me@wherever.com"}]
           (let [{card-id-1 :id :as dependency-card} (card/create-card! (basic-card) user)
                 {card-id-2 :id} (card/create-card! (wrap-card dependency-card) user)
@@ -304,7 +304,7 @@
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp [:model/Collection collection {}
                        :model/User user {:email "test@test.com"}]
-          (mt/with-model-cleanup [:model/Card]
+          (mt/with-model-cleanup [:model/Card :model/Dependency]
             (let [card (card/create-card! (assoc (basic-card) :collection_id (u/the-id collection)) user)]
               (testing "Returns 403 when user lacks read permissions"
                 (is (= "You don't have permissions to do that."
@@ -359,7 +359,7 @@
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp [:model/Collection collection {}
                        :model/User user {:email "test@test.com"}]
-          (mt/with-model-cleanup [:model/Card]
+          (mt/with-model-cleanup [:model/Card :model/Dependency]
             (let [card (card/create-card! (assoc (basic-card) :collection_id (u/the-id collection)) user)]
               (testing "Returns 403 when user lacks read permissions"
                 (is (= "You don't have permissions to do that."
@@ -378,7 +378,7 @@
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp [:model/Collection collection {}
                        :model/User user {:email "test@test.com"}]
-          (mt/with-model-cleanup [:model/Card]
+          (mt/with-model-cleanup [:model/Card :model/Dependency]
             (let [{card-id :id} (card/create-card! (assoc (basic-card) :collection_id (:id collection)) user)]
               (testing "Returns 403 when user lacks read permissions"
                 (is (= "You don't have permissions to do that."
