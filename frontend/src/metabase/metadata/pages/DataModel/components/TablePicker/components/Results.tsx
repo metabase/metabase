@@ -357,50 +357,6 @@ export function Results({
                 </Box>
               )}
 
-              {withMassToggle &&
-                type === "database" &&
-                value?.databaseId !== undefined &&
-                hasTableChildren &&
-                !disabled && (
-                  <BulkTableVisibilityToggle
-                    className={S.massVisibilityToggle}
-                    tables={children.flatMap((child) =>
-                      child.type === "table" && child.table != null
-                        ? [child.table]
-                        : [],
-                    )}
-                    onUpdate={() => reload?.(value)}
-                  />
-                )}
-
-              {withMassToggle &&
-                type === "schema" &&
-                value?.schemaName !== undefined &&
-                hasTableChildren &&
-                !disabled && (
-                  <BulkTableVisibilityToggle
-                    className={S.massVisibilityToggle}
-                    tables={children.flatMap((child) =>
-                      child.type === "table" && child.table != null
-                        ? [child.table]
-                        : [],
-                    )}
-                    onUpdate={() => reload?.(value)}
-                  />
-                )}
-
-              {type === "table" &&
-                value?.tableId !== undefined &&
-                item.table &&
-                !disabled && (
-                  <TableVisibilityToggle
-                    className={cx(S.visibilityToggle, {
-                      [S.hidden]: item.table.visibility_type == null,
-                    })}
-                    table={item.table}
-                    onUpdate={() => reload?.(value)}
-                  />
-                )}
             </Flex>
           );
         })}
