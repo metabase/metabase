@@ -2,7 +2,6 @@ import { useCallback, useState } from "react";
 import { c, t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
-import * as Urls from "metabase/lib/urls";
 import {
   useCreateBranchMutation,
   useExportChangesMutation,
@@ -12,7 +11,6 @@ import {
   type SyncError,
   parseSyncError,
 } from "metabase-enterprise/remote_sync/utils";
-import type { Collection } from "metabase-types/api";
 
 export const usePushChangesAction = () => {
   const [exportChanges, { isLoading: isPushingChanges }] =
@@ -100,7 +98,7 @@ export const useStashToNewBranchAction = (existingBranches: string[]) => {
   };
 };
 
-export const useDiscardChangesAndImportAction = (collections: Collection[]) => {
+export const useDiscardChangesAndImportAction = () => {
   const [importChanges, { isLoading: isImporting }] =
     useImportChangesMutation();
   const [sendToast] = useToast();
@@ -111,12 +109,6 @@ export const useDiscardChangesAndImportAction = (collections: Collection[]) => {
         try {
           await importChanges({ branch: targetBranch, force: true }).unwrap();
           closeModal();
-
-          if (collections.length) {
-            // Navigate to base the collection page with a full reload to make sure
-            // the current page exists, and we don't have any dirty state left in the UI
-            window.location.href = Urls.collection(collections[0]);
-          }
         } catch (error) {
           sendToast({
             message: c("{0} is the GitHub branch name")
@@ -125,7 +117,7 @@ export const useDiscardChangesAndImportAction = (collections: Collection[]) => {
           });
         }
       },
-      [collections, importChanges, sendToast],
+      [importChanges, sendToast],
     ),
     isImporting,
   };

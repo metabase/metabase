@@ -38,7 +38,7 @@ export const BranchNameInput = (props: BranchNameInputProps) => {
       label={t`Name for your new branch`}
       mt="lg"
       onChange={(event) => setValue(event.target.value.trim())}
-      placeholder="your-branch-name"
+      placeholder={t`your-branch-name`}
       value={value}
       labelProps={{
         mb: "sm",

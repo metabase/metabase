@@ -45,10 +45,11 @@
 (def ^:private metadata-type->schema
   {:metadata/card ::lib.schema.metadata/card})
 
-(defn instance->metadata
+(mu/defn instance->metadata
   "Convert a (presumably) Toucan 2 instance of an application database model with `snake_case` keys to a MLv2 style
   metadata instance with `:lib/type` and `kebab-case` keys."
-  [instance metadata-type]
+  [instance      :- :map
+   metadata-type :- :keyword]
   (let [normalize (if-let [schema (get metadata-type->schema metadata-type)]
                     (fn [instance]
                       (lib.normalize/normalize schema instance))

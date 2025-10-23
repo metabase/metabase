@@ -41,7 +41,7 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
   const { stashToNewBranch, isStashing } =
     useStashToNewBranchAction(existingBranches);
   const { discardChangesAndImport, isImporting } =
-    useDiscardChangesAndImportAction(collections);
+    useDiscardChangesAndImportAction();
   const isForcingPush = variant === "push" && optionValue === "push";
 
   const handleContinueButtonClick = async () => {

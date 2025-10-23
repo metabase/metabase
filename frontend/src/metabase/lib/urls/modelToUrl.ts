@@ -1,3 +1,5 @@
+import type { CollectionId } from "metabase-types/api";
+
 import { browseDatabase } from "./browse";
 import { collection } from "./collections";
 import { dashboard } from "./dashboards";
@@ -13,7 +15,7 @@ export type UrlableModel = {
   database?: {
     id: number;
   };
-  collection_id?: number;
+  collection_id?: CollectionId | null;
 };
 
 export function modelToUrl(item: UrlableModel) {

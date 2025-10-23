@@ -2,8 +2,10 @@
   (:require
    [metabase.premium-features.core :refer [defenterprise]]))
 
-(defenterprise editable?
-  "Should remote-synced collections be editable. Always true on OSS"
+(defenterprise collection-editable?
+  "Returns if remote-synced collections are editable. Takes a collection to check for eligability.
+
+  Always true on OSS."
   metabase-enterprise.remote-sync.core
   [_collection]
   true)

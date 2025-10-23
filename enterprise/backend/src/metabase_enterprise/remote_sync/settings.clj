@@ -82,18 +82,21 @@
   :encryption :no
   :default (* 1000 60 5))
 
-(defn- check-git-settings!
+(defn check-git-settings!
   "Validates git repository settings by attempting to connect and retrieve the default branch.
 
   Takes a map with :remote-sync-url (required) and :remote-sync-token (optional) keys. Returns the repository's
   default branch name as a string if the connection succeeds.
 
   Throws ExceptionInfo if unable to connect to the repository with the provided settings."
-  [{:keys [remote-sync-url remote-sync-token]}]
-  (try
-    (git/default-branch (git/git-source remote-sync-url "HEAD" remote-sync-token))
-    (catch Exception e
-      (throw (ex-info "Unable to connect to git repository with the provided settings" {:cause (.getMessage e)} e)))))
+  ([] (when (setting/get :remote-sync-enabled) (check-git-settings! {:remote-sync-url   (setting/get :remote-sync-url)
+                                                                     :remote-sync-token (setting/get :remote-sync-token)})))
+
+  ([{:keys [remote-sync-url remote-sync-token]}]
+   (try
+     (git/default-branch (git/git-source remote-sync-url "HEAD" remote-sync-token))
+     (catch Exception e
+       (throw (ex-info "Unable to connect to git repository with the provided settings" {:cause (.getMessage e)} e))))))
 
 (defn check-and-update-remote-settings!
   "Validates and updates git sync settings in the application database.
@@ -116,10 +119,8 @@
     (let [current-token (setting/get :remote-sync-token)
           obfuscated? (= remote-sync-token (setting/obfuscate-value current-token))
           token-to-check (if obfuscated? current-token remote-sync-token)
-          default-branch (check-git-settings! (assoc settings :remote-sync-token token-to-check))]
+          _ (check-git-settings! (assoc settings :remote-sync-token token-to-check))]
       (t2/with-transaction [_conn]
         (doseq [k [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-auto-import]]
           (when (not (and (= k :remote-sync-token) obfuscated?))
-            (setting/set! k (k settings))))
-        (when (nil? (setting/get :remote-sync-branch))
-          (setting/set! :remote-sync-branch default-branch))))))
+            (setting/set! k (k settings))))))))

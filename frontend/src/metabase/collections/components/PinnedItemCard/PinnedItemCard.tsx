@@ -9,7 +9,7 @@ import type {
 } from "metabase/collections/types";
 import EventSandbox from "metabase/common/components/EventSandbox";
 import { getIcon } from "metabase/lib/icon";
-import { type UrlableModel, modelToUrl } from "metabase/lib/urls";
+import { modelToUrl } from "metabase/lib/urls";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Tooltip } from "metabase/ui";
 import { Flex, type IconName, Skeleton } from "metabase/ui";
@@ -120,7 +120,7 @@ function PinnedItemCard({
   return (
     <ItemLink
       className={className}
-      to={item ? (modelToUrl(item as UrlableModel) ?? "/") : undefined}
+      to={item ? (modelToUrl(item) ?? "/") : undefined}
       onClick={onClick}
     >
       <ItemCard flat>

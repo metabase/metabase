@@ -89,7 +89,6 @@ export interface SearchResult<
   pk_ref: FieldReference | null;
   table_schema: string | null;
   collection_authority_level: "official" | null;
-  type?: "instance-analytics" | "trash" | "remote-synced" | null;
   updated_at: string;
   moderated_status: ModerationReviewStatus | null;
   model_id: CardId | null;

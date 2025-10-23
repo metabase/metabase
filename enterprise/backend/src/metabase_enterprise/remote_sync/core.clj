@@ -16,7 +16,7 @@
  [source.p
   ->ingestable])
 
-(defenterprise editable?
+(defenterprise collection-editable?
   "Determines if a remote-synced collection should be editable.
 
   Takes a collection to check for editability.

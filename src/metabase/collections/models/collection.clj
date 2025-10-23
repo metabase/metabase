@@ -136,6 +136,14 @@
                                                     :type     remote-synced-collection-type
                                                     :location "/"}))
 
+(defonce ^:dynamic ^:private *clearing-remote-sync* false)
+
+(defn clear-remote-synced-collection!
+  "Marks any remote-synced-collection as non-remote-synced"
+  []
+  (binding [*clearing-remote-sync* true]
+    (t2/update! :model/Collection :type remote-synced-collection-type {:type nil})))
+
 (methodical/defmethod t2/table-name :model/Collection [_model] :collection)
 
 (methodical/defmethod t2/model-for-automagic-hydration [#_model :default #_k :collection]
@@ -171,7 +179,7 @@
   ([instance]
    (and (not (default-audit-collection? instance))
         (not (is-trash-or-descendant? instance))
-        (remote-sync/editable? instance)
+        (remote-sync/collection-editable? instance)
         (mi/current-user-has-full-permissions? :write instance)))
   ([_model pk]
    (mi/can-write? (t2/select-one :model/Collection pk))))
@@ -1631,8 +1639,9 @@
           (throw (ex-info msg {:status-code 400, :errors {:namespace msg}})))))
     (assert-valid-namespace (merge (select-keys collection-before-updates [:namespace]) collection-updates))
     ;; (3.5) Check remote-synced validation rules
-    (let [merged-collection (merge collection-before-updates collection-updates)]
-      (assert-valid-remote-synced-parent merged-collection))
+    (when-not *clearing-remote-sync*
+      (let [merged-collection (merge collection-before-updates collection-updates)]
+        (assert-valid-remote-synced-parent merged-collection)))
     ;; (4) If we're moving a Collection from a location on a Personal Collection hierarchy to a location not on one,
     ;; or vice versa, we need to grant/revoke permissions as appropriate (see above for more details)
     (when (api/column-will-change? :location collection-before-updates collection-updates)
@@ -2060,8 +2069,9 @@
   (when (seq items)
     (for [item items]
       (assoc item :can_delete (boolean (and
-                                        (not (or (= :model/Collection (t2/model item))
-                                                 (collection.root/is-root-collection? item)))
+                                        (not (collection.root/is-root-collection? item))
+                                        (or (not (= :model/Collection (t2/model item)))
+                                            api/*is-superuser?*)
                                         (:archived item)
                                         (mi/can-write? item)))))))
 
