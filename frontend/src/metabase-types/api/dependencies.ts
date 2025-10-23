@@ -18,7 +18,7 @@ type BaseDependencyNode<TType extends DependencyType, TData> = {
   id: DependencyId;
   type: TType;
   data: TData;
-  dependents_count?: DependentsCount;
+  dependents_count?: DependentsCount | null;
 };
 
 export type TableDependencyNodeData = Pick<
@@ -48,7 +48,7 @@ export type CardDependencyNodeData = Pick<
   | "last-edit-info"
   | "moderation_reviews"
 > & {
-  view_count?: number;
+  view_count?: number | null;
 };
 
 export type SnippetDependencyNodeData = Pick<
