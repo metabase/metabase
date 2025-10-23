@@ -196,8 +196,7 @@
 (deftest e2e
   (testing "token check hits the network"
     (let [storage               (atom {})
-          grace                 #_(token-check/make-grace-period 200 TimeUnit/MILLISECONDS)
-                                (reify token-check/GracePeriod
+          grace                 (reify token-check/GracePeriod
                                   (save! [_ token features] (swap! storage assoc token features))
                                   (retrieve [_ token] (get @storage token)))
           token                 (tu/random-token)
