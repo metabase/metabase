@@ -8,7 +8,7 @@ import { useExpandedState, useTableLoader } from "../hooks";
 import type { ChangeOptions, DatabaseNode, TreePath } from "../types";
 import { flatten } from "../utils";
 
-import { EditVisibilityType2Modal } from "./EditVisibilityType2Modal";
+import { EditTableMetadataModal } from "./EditTableMetadataModal";
 import { EmptyState } from "./EmptyState";
 import { Results } from "./Results";
 
@@ -113,7 +113,7 @@ export function Tree({ path, onChange }: Props) {
           </Button>
         )}
       </Flex>
-      <EditVisibilityType2Modal
+      <EditTableMetadataModal
         tables={selectedItems}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
