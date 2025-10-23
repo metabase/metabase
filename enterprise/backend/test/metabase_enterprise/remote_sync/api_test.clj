@@ -490,7 +490,7 @@
 (deftest settings-update-succeeds-test
   (testing "PUT /api/ee/remote-sync/settings successfully updates settings"
     (let [mock-main (test-helpers/create-mock-source)]
-      (with-redefs [settings/check-git-settings (constantly nil)
+      (with-redefs [settings/check-git-settings! (constantly nil)
                     source/source-from-settings (constantly mock-main)]
         (mt/with-temporary-setting-values [remote-sync-url nil
                                            remote-sync-type :development]
@@ -504,7 +504,7 @@
 (deftest settings-update-triggers-import-in-production-test
   (testing "PUT /api/ee/remote-sync/settings triggers import when type is production"
     (let [mock-main (test-helpers/create-mock-source)]
-      (with-redefs [settings/check-git-settings (constantly nil)
+      (with-redefs [settings/check-git-settings! (constantly nil)
                     source/source-from-settings (constantly mock-main)]
         (mt/with-temporary-setting-values [remote-sync-type :production
                                            remote-sync-branch "main"
