@@ -115,7 +115,10 @@ const input = async () => {
   return chatInput.querySelector('[contenteditable="true"]')!;
 };
 const enterChatMessage = async (message: string, send = true) => {
-  await userEvent.type(await input(), message);
+  // using userEvent.type works locally but in CI characters are sometimes dropped
+  // so "Who is your favorite?" becomes something like "Woi or fvrite?"
+  // hard coded delay is a temp fix to work around this...
+  await userEvent.type(await input(), message, { delay: 10 });
   if (send) {
     fireEvent.focus(await input());
     await userEvent.keyboard("{Enter}");

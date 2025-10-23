@@ -2,11 +2,13 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupDatabaseEndpoints } from "__support__/server-mocks";
 import { setupSearchEndpoints } from "__support__/server-mocks/search";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import type { SuggestionModel } from "metabase-enterprise/rich_text_editing/tiptap/extensions/shared/types";
 import { createMockUser } from "metabase-types/api/mocks";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockSearchResult } from "metabase-types/api/mocks/search";
 import { createMockState } from "metabase-types/store/mocks";
 
@@ -103,23 +105,25 @@ describe("MetabotChatEditor", () => {
   });
 
   it("should only search selected @mention model when selected", async () => {
+    const db = createSampleDatabase();
+    setupDatabaseEndpoints(db);
     setupSearchEndpoints([
       createMockSearchResult({
-        id: 1,
-        name: "Test Database",
+        id: db.id,
+        name: db.name,
         model: "database",
       }),
     ]);
     setup();
 
-    await userEvent.type(getEditor(), "@d{Enter}Test");
-    expect(getEditor()).toHaveTextContent("@Test");
+    await userEvent.type(getEditor(), "@d{Enter}Sample");
+    expect(getEditor()).toHaveTextContent("@Sample");
 
-    expect(await screen.findByText("Test Database")).toBeInTheDocument();
+    expect(await screen.findByText("Sample Database")).toBeInTheDocument();
 
     await userEvent.keyboard("{Enter}");
 
-    expect(getEditor()).toHaveTextContent("Test Database");
+    expect(getEditor()).toHaveTextContent("Sample Database");
   });
 
   it("should search all models if @mention input doesn't match any search model name", async () => {
