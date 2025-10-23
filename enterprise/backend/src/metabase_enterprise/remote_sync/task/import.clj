@@ -26,13 +26,13 @@
           last-imported-version (remote-sync.task/last-import-version)]
       (if (= last-imported-version source-version)
         (log/infof "Skipping auto-import: source version %s matches last imported version" source-version)
-        (let [{task-id :id existing? :existing?} (impl/create-task-with-lock "import")]
+        (let [{task-id :id existing? :existing?} (impl/create-task-with-lock! "import")]
           (if existing?
             (log/info "Remote sync already in progress, not auto-importing")
             (dh/with-timeout {:interrupt? true
                               :timeout-ms (* (settings/remote-sync-task-time-limit-ms) 10)}
               (log/info "Auto-importing remote-sync collections")
-              (impl/handle-task-result (impl/import! source task-id) task-id))))))))
+              (impl/handle-task-result! (impl/import! source task-id) task-id))))))))
 
 (task/defjob ^{:doc "Auto-imports any remote collections."} AutoImport [_]
   (auto-import!))

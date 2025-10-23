@@ -18,7 +18,7 @@
 (set! *warn-on-reflection* true)
 
 (api.macros/defendpoint :post "/import" :- remote-sync.schema/ImportResponse
-  "Reload Metabase content from Git repository source of truth.
+  "Import Metabase content from Git repository source of truth.
 
   This endpoint will:
   - Fetch the latest changes from the configured git repository

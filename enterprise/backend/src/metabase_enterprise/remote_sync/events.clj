@@ -21,7 +21,7 @@
 
    Args:
        model (map): The model instance with collection_id field.
-           collection_id (int): ID of the collection containing the model.
+       collection_id (int): ID of the collection containing the model.
 
    Returns:
        bool: True if the model is in a remote-synced collection, false otherwise."

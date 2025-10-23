@@ -54,10 +54,7 @@
 
   Args:
     synced-collection-ids: A sequence of collection IDs that are remote-synced.
-    imported-entities-by-model: A map where keys are model names (strings) and values are sets of entity IDs that were imported.
-
-  Returns:
-    nil. Deletes are performed as side effects."
+    imported-entities-by-model: A map where keys are model names (strings) and values are sets of entity IDs that were imported."
   [synced-collection-ids imported-entities-by-model]
   (when (seq synced-collection-ids)
     (doseq [model [:model/Collection
@@ -245,7 +242,7 @@
   "Shared cluster lock name for remote-sync tasks"
   ::remote-sync-task)
 
-(defn create-task-with-lock
+(defn create-task-with-lock!
   "Take a cluster-wide lock to return either a new RemoteSyncTask id or an existing in-progress task id.
 
   Args:
@@ -260,16 +257,13 @@
       {:existing? true :id id}
       (remote-sync.task/create-sync-task! task-type api/*current-user-id*))))
 
-(defn handle-task-result
+(defn handle-task-result!
   "Handle the outcome of running import! or export! updating the RemoteSyncTask object tracking it with the outcome.
 
   Args:
     result: A map with :status key (either :success or :error) and optional :message key.
     task-id: The RemoteSyncTask identifier to update.
-    branch: (Optional) The branch name to update in settings upon successful completion.
-
-  Returns:
-    nil. Updates are performed as side effects on the RemoteSyncTask record."
+    branch: (Optional) The branch name to update in settings upon successful completion. "
   [result task-id & [branch]]
   (case (:status result)
     :success (t2/with-transaction [_conn]
@@ -293,12 +287,12 @@
   Raises:
     ExceptionInfo: If a sync task is already in progress (status 400)."
   [task-type branch sync-fn]
-  (let [{task-id :id existing? :existing?} (create-task-with-lock task-type)]
+  (let [{task-id :id existing? :existing?} (create-task-with-lock! task-type)]
     (api/check-400 (not existing?) "Remote sync in progress")
     (u.jvm/in-virtual-thread*
      (dh/with-timeout {:interrupt? true
                        :timeout-ms (* (settings/remote-sync-task-time-limit-ms) 10)}
-       (handle-task-result (sync-fn task-id) task-id branch)))
+       (handle-task-result! (sync-fn task-id) task-id branch)))
     task-id))
 
 (defn async-import!
