@@ -128,7 +128,7 @@
                   field-metadata (lib.metadata/field metadata-provider (:id field))
                   mbql-query (-> (lib/query metadata-provider table-metadata)
                                  (lib/aggregate (lib/max field-metadata)))
-                  watermark-value (-> mbql-query qp/process-query :data :rows first first bigint)]
+                  watermark-value (some-> mbql-query qp/process-query :data :rows first first bigint)]
               (log/infof "Computed watermark value: %s" watermark-value)
               (if (t2/exists? :model/TransformWatermark :transform_id id)
                 (t2/update! :model/TransformWatermark {:transform_id id} {:watermark_value watermark-value})
