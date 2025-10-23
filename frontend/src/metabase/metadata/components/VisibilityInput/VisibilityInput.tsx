@@ -1,7 +1,6 @@
-import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { ActionIcon, Group, Icon, Stack, Text, Tooltip } from "metabase/ui";
+import { Group, Icon, SegmentedControl, Stack, Text } from "metabase/ui";
 import type { TableVisibilityType2 } from "metabase-types/api";
 
 interface Props {
@@ -10,8 +9,6 @@ interface Props {
 }
 
 export const VisibilityInput = ({ value, onChange }: Props) => {
-  const rating = getRatingValue(value);
-
   return (
     <Stack gap="sm">
       <Text
@@ -21,56 +18,48 @@ export const VisibilityInput = ({ value, onChange }: Props) => {
         size="md"
       >{t`Visibility`}</Text>
 
-      <Group gap="xs">
-        <Tooltip label={t`Copper`}>
-          <ActionIcon
-            aria-label={t`Copper`}
-            opacity={rating >= 0 ? 1 : 0.5}
-            onClick={() => onChange("copper")}
-          >
-            <Icon c="#B87333" name="recents" size={24} />
-          </ActionIcon>
-        </Tooltip>
-
-        <Tooltip label={t`Bronze`}>
-          <ActionIcon
-            aria-label={t`Bronze`}
-            opacity={rating >= 1 ? 1 : 0.5}
-            onClick={() => onChange("bronze")}
-          >
-            <Icon c="#CD7F32" name="recents" size={24} />
-          </ActionIcon>
-        </Tooltip>
-
-        <Tooltip label={t`Silver`}>
-          <ActionIcon
-            aria-label={t`Silver`}
-            opacity={rating >= 2 ? 1 : 0.5}
-            onClick={() => onChange("silver")}
-          >
-            <Icon c="#C0C0C0" name="recents" size={24} />
-          </ActionIcon>
-        </Tooltip>
-
-        <Tooltip label={t`Gold`}>
-          <ActionIcon
-            aria-label={t`Gold`}
-            opacity={rating >= 3 ? 1 : 0.5}
-            onClick={() => onChange("gold")}
-          >
-            <Icon c="#FFD700" name="recents" size={24} />
-          </ActionIcon>
-        </Tooltip>
-      </Group>
+      <SegmentedControl<TableVisibilityType2>
+        data={[
+          {
+            value: "copper",
+            label: (
+              <Group align="center" gap="sm" justify="center">
+                <Icon c="#B87333" name="recents" />
+                <span>{t`Copper`}</span>
+              </Group>
+            ),
+          },
+          {
+            value: "bronze",
+            label: (
+              <Group align="center" gap="sm" justify="center">
+                <Icon c="#CD7F32" name="recents" />
+                <span>{t`Bronze`}</span>
+              </Group>
+            ),
+          },
+          {
+            value: "silver",
+            label: (
+              <Group align="center" gap="sm" justify="center">
+                <Icon c="#C0C0C0" name="recents" />
+                <span>{t`Silver`}</span>
+              </Group>
+            ),
+          },
+          {
+            value: "gold",
+            label: (
+              <Group align="center" gap="sm" justify="center">
+                <Icon c="#FFD700" name="recents" />
+                <span>{t`Gold`}</span>
+              </Group>
+            ),
+          },
+        ]}
+        value={value}
+        onChange={onChange}
+      />
     </Stack>
   );
 };
-
-function getRatingValue(visibility: TableVisibilityType2): number {
-  return match(visibility)
-    .with("copper", () => 0)
-    .with("bronze", () => 1)
-    .with("silver", () => 2)
-    .with("gold", () => 3)
-    .exhaustive();
-}
