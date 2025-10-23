@@ -6,6 +6,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -2175,3 +2176,121 @@
             (is (contains? public-doc-ids (:id active-doc))))
           (testing "Archived document should not be in the list"
             (is (= 1 (count public-docs)))))))))
+
+(deftest download-document-card-test
+  (testing "POST /api/ee/document/:document-id/card/:card-id/query/:export-format"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Card {card-id :id} {:name "Test Card"
+                                                :dataset_query (mt/mbql-query venues {:limit 10})
+                                                :display :table
+                                                :collection_id coll-id}
+                     :model/Document {doc-id :id} {:name "Test Document"
+                                                   :collection_id coll-id
+                                                   :document {:type "doc"
+                                                              :content [{:type "cardEmbed"
+                                                                         :attrs {:id card-id}}]}}]
+        (t2/update! :model/Card card-id {:document_id doc-id})
+
+        (mt/with-group-for-user [group :rasta {:name "Rasta Group"}]
+          (testing "Read-only users can download"
+            (perms/grant-collection-read-permissions! group coll-id)
+            (let [response (mt/user-http-request :rasta
+                                                 :post 200
+                                                 (format "ee/document/%s/card/%s/query/csv" doc-id card-id)
+                                                 {:parameters []
+                                                  :format_rows false
+                                                  :pivot_results false})]
+              (is (some? response))
+              (is (string? response))))
+
+          (testing "No access returns 403"
+            (perms/revoke-collection-permissions! group coll-id)
+            (mt/user-http-request :rasta
+                                  :post 403
+                                  (format "ee/document/%s/card/%s/query/csv" doc-id card-id)
+                                  {:parameters []
+                                   :format_rows false
+                                   :pivot_results false}))
+
+          (testing "Card not in document returns 404"
+            (perms/grant-collection-read-permissions! group coll-id)
+            (mt/with-temp [:model/Card {other-card-id :id} {:name "Other Card"
+                                                            :dataset_query (mt/mbql-query venues {:limit 5})
+                                                            :display :table
+                                                            :collection_id coll-id}]
+              (mt/user-http-request :rasta
+                                    :post 404
+                                    (format "ee/document/%s/card/%s/query/csv" doc-id other-card-id)
+                                    {:parameters []
+                                     :format_rows false
+                                     :pivot_results false})))
+
+          (testing "Archived document returns 404"
+            (t2/update! :model/Document doc-id {:archived true})
+            (mt/user-http-request :rasta
+                                  :post 404
+                                  (format "ee/document/%s/card/%s/query/csv" doc-id card-id)
+                                  {:parameters []
+                                   :format_rows false
+                                   :pivot_results false})))))))
+
+(deftest download-document-card-respects-download-permissions-test
+  (testing "POST /api/ee/document/:document-id/card/:card-id/query/:export-format respects database download permissions"
+    (mt/with-premium-features #{:documents :advanced-permissions}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection {coll-id :id} {}
+                       :model/Card {card-id :id} {:name "Test Card"
+                                                  :dataset_query (mt/mbql-query venues {:limit 10})
+                                                  :display :table
+                                                  :collection_id coll-id}
+                       :model/Document {doc-id :id} {:name "Test Document"
+                                                     :collection_id coll-id
+                                                     :document {:type "doc"
+                                                                :content [{:type "cardEmbed"
+                                                                           :attrs {:id card-id}}]}}]
+          (t2/update! :model/Card card-id {:document_id doc-id})
+
+          (let [all-users-group (perms/all-users-group)]
+            ;; Grant collection read permissions so user can access the document
+            (perms/grant-collection-read-permissions! all-users-group coll-id)
+
+            (testing "User without download permissions yields permissions error in body (streaming uses 200)"
+              ;; Set download permissions to :no (no downloads allowed) for All Users group
+              (data-perms/set-database-permission! all-users-group (mt/id) :perms/download-results :no)
+
+              (is (malli= [:map
+                           [:status [:= "failed"]]
+                           [:error_type [:= "missing-required-permissions"]]
+                           [:ex-data [:map
+                                      [:permissions-error? [:= true]]]]]
+                          (mt/user-http-request :rasta
+                                                :post 200
+                                                (format "ee/document/%s/card/%s/query/csv" doc-id card-id)
+                                                {:parameters []
+                                                 :format_rows false
+                                                 :pivot_results false}))))
+
+            (testing "User with limited download permissions (10k rows) can download"
+              (data-perms/set-database-permission! all-users-group (mt/id) :perms/download-results :ten-thousand-rows)
+
+              (let [response (mt/user-http-request :rasta
+                                                   :post 200
+                                                   (format "ee/document/%s/card/%s/query/csv" doc-id card-id)
+                                                   {:parameters []
+                                                    :format_rows false
+                                                    :pivot_results false})]
+                (is (some? response))
+                (is (string? response))))
+
+            (testing "User with full download permissions can download"
+              (data-perms/set-database-permission! all-users-group (mt/id) :perms/download-results :one-million-rows)
+
+              (let [response (mt/user-http-request :rasta
+                                                   :post 200
+                                                   (format "ee/document/%s/card/%s/query/csv" doc-id card-id)
+                                                   {:parameters []
+                                                    :format_rows false
+                                                    :pivot_results false})]
+                (is (some? response))
+                (is (string? response))))))))))
