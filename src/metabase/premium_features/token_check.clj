@@ -200,7 +200,7 @@
   (retrieve [_ token] "Attempt to retrieve features associated with a token. This is best effort, perhaps never set,
   perhaps has timed out. Possible this is nil."))
 
-(mu/defn- fetch-token-status* :- TokenStatus
+(mu/defn- decode-token* :- TokenStatus
   "Decode a token. If you get a positive response about the token, even if it is not valid, return that. Errors will
   be caught further up with appropriate fall backs, retry strategies, and grace periods for features."
   [token :- TokenStr]
@@ -228,7 +228,7 @@
 
 (def ^{:arglists '([token])} decode-token
   "Decode a token. Memoized for 12 hours."
-  (memoize/ttl fetch-token-status* :ttl/threshold token-status-cache-ttl))
+  (memoize/ttl decode-token* :ttl/threshold token-status-cache-ttl))
 
 (defn clear-cache!
   "Clear the token cache so that [[fetch-token-and-parse-body]] will return the latest data."
