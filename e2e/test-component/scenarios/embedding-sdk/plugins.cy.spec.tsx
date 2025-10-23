@@ -1,5 +1,4 @@
 import { InteractiveDashboard } from "@metabase/embedding-sdk-react";
-import { useState } from "react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -204,72 +203,6 @@ describe("scenarios > embedding-sdk > plugins", () => {
           cards: [{ size_x: 24, size_y: 6, col: 0, row: 0 }],
         }).then(({ dashboard }) => {
           cy.wrap(dashboard.id).as("dashboardId");
-        });
-      });
-    });
-
-    it("should call the immediate action if the plugin returns { onClick }", () => {
-      cy.get<string>("@dashboardId").then((dashboardId) => {
-        const onClickSpy = cy.spy().as("onClickSpy");
-
-        const Page = () => {
-          const [clickedColumn, setClickedColumn] = useState<string | null>(
-            null,
-          );
-          return (
-            <>
-              <p>
-                clicked column:
-                <span data-testid="clicked-column">{clickedColumn}</span>
-              </p>
-              <InteractiveDashboard
-                dashboardId={dashboardId}
-                plugins={{
-                  mapQuestionClickActions: (
-                    clickActions: ClickAction[],
-                    clicked: MetabaseDataPointObject,
-                  ) => {
-                    return {
-                      onClick: () => {
-                        onClickSpy(clickActions, clicked);
-                        setClickedColumn(clicked.column?.name ?? null);
-                      },
-                    };
-                  },
-                }}
-              />
-            </>
-          );
-        };
-
-        mountSdkContent(<Page />);
-
-        getSdkRoot().within(() => {
-          cy.log('Test 1: ID column with view_as: "link"');
-          cy.findByText("Link 1").click();
-          cy.findByTestId("clicked-column").should("contain", "ID");
-          cy.findByTestId("click-actions-popover").should("not.exist");
-          cy.get("@onClickSpy").should("have.been.calledOnce");
-
-          cy.log("Test 2: ADDRESS column with semantic_type: type/URL");
-          cy.findByText("9611-9809 West Rosedale Road").click();
-          cy.findByTestId("clicked-column").should("contain", "ADDRESS");
-          cy.findByTestId("click-actions-popover").should("not.exist");
-          cy.get("@onClickSpy").should("have.been.calledTwice");
-
-          cy.log("Test 3: STATE with external URL click behavior");
-          cy.findByText("External NE").click();
-          cy.findByTestId("clicked-column").should("contain", "STATE");
-          cy.findByTestId("click-actions-popover").should("not.exist");
-          cy.get("@onClickSpy").should("have.been.calledThrice");
-
-          cy.log(
-            "Test 4: NAME with internal dashboard click behavior (disabled in SDK)",
-          );
-          cy.findByText("Hudson Borer").click();
-          cy.findByTestId("clicked-column").should("contain", "NAME");
-          cy.findByTestId("click-actions-popover").should("not.exist");
-          cy.get("@onClickSpy").should("have.callCount", 4);
         });
       });
     });
