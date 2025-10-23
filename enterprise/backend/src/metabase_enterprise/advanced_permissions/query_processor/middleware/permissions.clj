@@ -2,14 +2,12 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
-   [metabase.lib.schema :as lib.schema]
-   [metabase.lib.walk :as lib.walk]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.query.permissions :as query-perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]))
+   [metabase.util.i18n :refer [tru]]))
 
 (def ^:private max-rows-in-limited-downloads 10000)
 
@@ -30,30 +28,17 @@
   [{database-id :database}]
   (data-perms/native-download-permission-for-user api/*current-user-id* database-id))
 
-(mu/defn any-native-stage-not-introduced-by-sandbox?
-  "Sandboxing can introduce native stages to a query, because, for example, a table can be replaced with a Question that
-  is based on a native query.
-
-  Sometimes we need to check whether the query has a native stage that was introduced at the 'user level' (this could
-  be the user's question itself, or one of the sources of their question, e.g. if the user makes Card A -> Card B ->
-  Card C where Card C is a native question), rather than a native stage that was introduced by a sandbox (e.g. Card A
-  -> Table B, which is swapped by a sandbox for Card C where Card C is a native question)."
-  [query :- ::lib.schema/query]
-  (let [has-native-stage? (volatile! false)]
-    (lib.walk/walk-stages
-     query
-     (fn [_query _path stage]
-       (when (and (not @has-native-stage?)
-                  (not (:query-permissions/sandboxed-table stage))
-                  (= (:lib/type stage) :mbql.stage/native))
-         (vreset! has-native-stage? true))
-       nil))
-    @has-native-stage?))
+(defn- any-native-stage?
+  "Returns true if any stage of this query is native."
+  [query]
+  (boolean (lib.util.match/match-one query
+             (m :guard (every-pred map? :native #(not (:metabase.models.query.permissions/gtapped-table %))))
+             true)))
 
 (defmethod current-user-download-perms-level :query
   [{db-id :database, :as query}]
   (let [{:keys [table-ids native?]} (query-perms/query->source-ids query)
-        perms (if (or native? (any-native-stage-not-introduced-by-sandbox? query))
+        perms (if (or native? (any-native-stage? query))
                 ;; If we detect any native subqueries/joins, even with source-card IDs, require full native
                 ;; download perms
                 #{(data-perms/native-download-permission-for-user api/*current-user-id* db-id)}
