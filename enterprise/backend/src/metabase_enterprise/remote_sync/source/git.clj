@@ -215,12 +215,12 @@
 
 (defn- path-prefix
   "Extract the unique collection identifier from a serialized file path.
-  
+
   Args:
     path: A file path string like \"collections/abc123_CollectionName/...\"
-  
+
   Returns:
-    The collection prefix (e.g., \"collections/abc123\") which remains stable even 
+    The collection prefix (e.g., \"collections/abc123\") which remains stable even
     when collection names change, or the original path if no collection prefix is found."
   [path]
   (let [matcher (re-matcher #"^(collections/[^/]{21})_[^/]+/" path)]
