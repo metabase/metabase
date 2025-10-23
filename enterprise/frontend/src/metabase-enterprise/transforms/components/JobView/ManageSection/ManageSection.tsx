@@ -3,11 +3,11 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Button, Icon } from "metabase/ui";
 
 import { SplitSection } from "../../../components/SplitSection";
-import { getJobListUrl } from "../../../urls";
 import type { TransformJobInfo } from "../types";
 
 import { DeleteJobModal } from "./DeleteJobModal";
@@ -41,7 +41,7 @@ function DeleteJobButton({ job }: DeleteJobButtonProps) {
 
   const handleDelete = () => {
     sendSuccessToast(t`Job deleted`);
-    dispatch(push(getJobListUrl()));
+    dispatch(push(Urls.transformJobList()));
   };
 
   return (
