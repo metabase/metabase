@@ -204,11 +204,18 @@
   (delay @(requiring-resolve 'metabase-enterprise.documents.prose-mirror/prose-mirror-content-type)))
 
 (def ^:private card-ids-fn
-  "Cached reference to the card-ids function from the enterprise documents module."
+  "Cached reference to the card-ids function from the enterprise documents module.
+
+  Uses requiring-resolve to avoid direct dependency on enterprise code, allowing this OSS module
+  to work regardless of whether the documents feature is available. The delay ensures the function
+  is only resolved once and cached for performance."
   (delay (requiring-resolve 'metabase-enterprise.documents.prose-mirror/card-ids)))
 
 (defn- remove-document-non-public-columns
-  "Strip out internal fields that shouldn't be exposed publicly, like collection_id or permissions info."
+  "Strip out internal fields that shouldn't be exposed publicly.
+
+  Removes sensitive fields like collection_id, creator_id, permissions info, public_uuid, and made_public_by_id.
+  Only keeps fields safe for public consumption: id, name, document content, timestamps, and hydrated cards."
   [document]
   (select-keys document [:id :name :document :created_at :updated_at :cards]))
 
@@ -241,7 +248,7 @@
     (when (= @prose-mirror-content-type (:content_type document))
       (set (@card-ids-fn document)))))
 
-(defn- validate-card-in-public-document
+(defn- validate-card-in-public-document!
   "Validates that a card exists and is embedded in the public document.
   Throws a 404 if the card doesn't exist, is archived, or isn't in the document."
   [uuid card-id]
@@ -251,7 +258,11 @@
     (api/check-404 (contains? card-ids card-id))))
 
 (api.macros/defendpoint :get "/document/:uuid"
-  "Fetch a publicly-accessible Document. Does not require auth credentials. Public sharing must be enabled."
+  "Fetch a publicly-accessible Document. Does not require auth credentials. Public sharing must be enabled.
+
+  Returns a Document with sensitive fields removed (excludes collection_id, permissions, creator details, etc.).
+  Includes all embedded Cards with their metadata hydrated so the frontend doesn't need separate authenticated
+  requests for each card."
   [{:keys [uuid]} :- [:map
                       [:uuid ms/UUIDString]]]
   (public-sharing.validation/check-public-sharing-enabled)
@@ -268,7 +279,7 @@
    {:keys [parameters]} :- [:map
                             [:parameters {:optional true} [:maybe ms/JSONString]]]]
   (public-sharing.validation/check-public-sharing-enabled)
-  (validate-card-in-public-document uuid card-id)
+  (validate-card-in-public-document! uuid card-id)
   ;; Run the query as admin since public documents are available to everyone anyway
   (u/prog1 (process-query-for-card-with-id
             card-id
@@ -278,8 +289,8 @@
     (events/publish-event! :event/card-read {:object-id card-id :user-id api/*current-user-id* :context :question})))
 
 (api.macros/defendpoint :post "/document/:uuid/card/:card-id/:export-format"
-  "Fetch a Card embedded in a public Document and return query results in the specified format. Does not require auth
-  credentials. Public sharing must be enabled."
+  "Fetch a Card embedded in a public Document and return query results in the specified format.
+  Does not require auth credentials. Public sharing must be enabled."
   [{:keys [uuid card-id export-format]} :- [:map
                                             [:uuid          ms/UUIDString]
                                             [:card-id       ms/PositiveInt]
@@ -295,7 +306,7 @@
                                                       [:format_rows   {:default false} ms/BooleanValue]
                                                       [:pivot_results {:default false} ms/BooleanValue]]]
   (public-sharing.validation/check-public-sharing-enabled)
-  (validate-card-in-public-document uuid card-id)
+  (validate-card-in-public-document! uuid card-id)
   (process-query-for-card-with-id
    card-id
    export-format
