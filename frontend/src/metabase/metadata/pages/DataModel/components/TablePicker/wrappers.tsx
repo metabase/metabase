@@ -11,6 +11,7 @@ export function RouterTablePicker({
   databaseId,
   schemaName,
   tableId,
+  collectionId,
   modelId,
   className,
 }: TreePath & { className?: string }) {
@@ -19,6 +20,7 @@ export function RouterTablePicker({
     databaseId,
     schemaName,
     tableId,
+    collectionId,
     modelId,
   });
 
@@ -45,9 +47,10 @@ export function RouterTablePicker({
       databaseId,
       schemaName,
       tableId,
+      collectionId,
       modelId,
     });
-  }, [databaseId, schemaName, tableId, modelId]);
+  }, [databaseId, schemaName, tableId, collectionId, modelId]);
 
   return <TablePicker path={value} className={className} onChange={onChange} />;
 }

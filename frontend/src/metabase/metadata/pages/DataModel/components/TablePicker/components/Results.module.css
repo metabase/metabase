@@ -10,8 +10,8 @@
   cursor: pointer;
   padding-left: var(--mantine-spacing-sm);
   padding-right: var(--mantine-spacing-sm);
-  left: var(--mantine-spacing-xl);
-  right: var(--mantine-spacing-xl);
+  left: 0;
+  right: 0;
 
   &:focus-visible,
   &.selected {

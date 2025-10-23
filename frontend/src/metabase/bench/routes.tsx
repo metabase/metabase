@@ -7,6 +7,7 @@ import {
   SegmentApp,
   UpdateSegmentForm,
 } from "metabase/admin/datamodel/containers/SegmentApp";
+import { MetadataLayout } from "metabase/bench/components/metadata/MetadataLayout";
 import NotFoundFallbackPage from "metabase/common/components/NotFoundFallbackPage";
 import { Route } from "metabase/hoc/Title";
 import { DataModel } from "metabase/metadata/pages/DataModel";
@@ -61,7 +62,7 @@ export const getBenchRoutes = () => (
       </Route>
       <Route path="glossary" component={GlossaryContainer} />
       <Route path="dependencies" component={EmptySailboat} />
-      <Route path="metadata">
+      <Route path="metadata" component={MetadataLayout}>
         <Route title={t`Table Metadata`}>
           <IndexRedirect to="database" />
           <Route path="database" component={DataModel} />
