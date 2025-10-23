@@ -10,15 +10,11 @@ import {
   type QuestionPickerValueItem,
 } from "metabase/common/components/Pickers/QuestionPicker";
 import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { Button, Center, Icon, Loader, Menu } from "metabase/ui";
 import { trackTransformCreate } from "metabase-enterprise/transforms/analytics";
 import { doesDatabaseSupportTransforms } from "metabase-enterprise/transforms/utils";
-
-import {
-  getNewTransformFromCardUrl,
-  getNewTransformFromTypeUrl,
-} from "../../../urls";
 
 export function CreateTransformMenu() {
   const dispatch = useDispatch();
@@ -34,7 +30,7 @@ export function CreateTransformMenu() {
   };
 
   const handlePickerChange = (item: QuestionPickerValueItem) => {
-    dispatch(push(getNewTransformFromCardUrl(item.id)));
+    dispatch(push(Urls.newTransformFromCard(item.id)));
   };
 
   const { data: databases, isLoading } = useListDatabasesQuery({
@@ -62,7 +58,7 @@ export function CreateTransformMenu() {
               <Menu.Label>{t`Create your transform with…`}</Menu.Label>
               <Menu.Item
                 component={ForwardRefLink}
-                to={getNewTransformFromTypeUrl("query")}
+                to={Urls.newTransformFromType("query")}
                 leftSection={<Icon name="notebook" />}
                 onClick={() => {
                   trackTransformCreate({
@@ -75,7 +71,7 @@ export function CreateTransformMenu() {
               </Menu.Item>
               <Menu.Item
                 component={ForwardRefLink}
-                to={getNewTransformFromTypeUrl("native")}
+                to={Urls.newTransformFromType("native")}
                 leftSection={<Icon name="sql" />}
                 onClick={() => {
                   trackTransformCreate({
