@@ -2261,6 +2261,8 @@
               util
               warehouses
               enterprise/dependencies
+              enterprise/llm
+              enterprise/transforms
               enterprise/transforms-python}}
 
   enterprise/permission-debug
