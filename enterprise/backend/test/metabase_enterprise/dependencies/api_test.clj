@@ -39,6 +39,24 @@
         card-meta (lib.metadata/card mp (:id inner-card))]
     (card-with-query "Downstream card" (lib/query mp card-meta))))
 
+(defn wrap-two-cards
+  "Construct a card depending on both `card1` and `card2` via a join."
+  [card1 card2]
+  (let [mp (mt/metadata-provider)
+        card1-meta (lib.metadata/card mp (:id card1))
+        card2-meta (lib.metadata/card mp (:id card2))
+        base-query (lib/query mp card1-meta)
+        card1-cols (lib/returned-columns base-query card1-meta)
+        card2-cols (lib/returned-columns base-query card2-meta)
+        join-clause (-> (lib/join-clause card2-meta)
+                        (lib/with-join-alias "joined")
+                        (lib/with-join-conditions
+                         [(lib/= (first card1-cols)
+                                 (-> (first card2-cols)
+                                     (lib/with-join-alias "joined")))])
+                        (lib/with-join-fields :all))]
+    (card-with-query "Card with join" (lib/join base-query join-clause))))
+
 (deftest check-card-test
   (testing "POST /api/ee/dependencies/check_card"
     (mt/with-premium-features #{:dependencies}
@@ -394,3 +412,119 @@
                                       :type "card"
                                       :dependent_type "card"
                                       :dependent_card_type "question")))))))))
+
+(deftest graph-filtering-test
+  (testing "GET /api/ee/dependencies/graph filters out upstream nodes the user cannot read"
+    (mt/dataset test-data
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-non-admin-groups-no-root-collection-perms
+          (mt/with-temp [:model/Collection readable-collection {}
+                         :model/Collection unreadable-collection {}
+                         :model/User user {:email "test@test.com"}]
+            (mt/with-model-cleanup [:model/Card :model/Dependency]
+              (let [readable-base (card/create-card! (assoc (basic-card "Readable")
+                                                            :collection_id (:id readable-collection)) user)
+                    unreadable-base (card/create-card! (assoc (basic-card "Unreadable")
+                                                              :collection_id (:id unreadable-collection)) user)
+                    top-card (card/create-card! (assoc (wrap-two-cards readable-base unreadable-base)
+                                                       :collection_id (:id readable-collection))
+                                                user)]
+                (perms/grant-collection-read-permissions! (perms-group/all-users) readable-collection)
+                (testing "User sees complete upstream graph through readable path"
+                  (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
+                                                       :id (:id top-card)
+                                                       :type "card")
+                        nodes (set (map (juxt :type :id) (:nodes response)))
+                        expected-nodes #{["card" (:id top-card)] ["card" (:id readable-base)] ["table" (mt/id :orders)]}]
+                    (is (= expected-nodes nodes)
+                        "Should see top-card, readable-base, and :orders table")))
+                (testing "Edges show complete readable dependency chain"
+                  (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
+                                                       :id (:id top-card)
+                                                       :type "card")
+                        edges (set (:edges response))
+                        expected-edges #{{:from_entity_id (:id top-card)
+                                          :from_entity_type "card"
+                                          :to_entity_id (:id readable-base)
+                                          :to_entity_type "card"}
+                                         {:from_entity_id (:id readable-base)
+                                          :from_entity_type "card"
+                                          :to_entity_id (mt/id :orders)
+                                          :to_entity_type "table"}}]
+                    (is (= expected-edges edges)
+                        "Should have edges: top-card->readable-base and readable-base->orders")))))))))))
+
+(deftest graph-dependents-filtering-test
+  (testing "GET /api/ee/dependencies/graph/dependents filters out nodes the user cannot read"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection readable-collection {}
+                       :model/Collection unreadable-collection {}
+                       :model/User user {:email "test@test.com"}]
+          (mt/with-model-cleanup [:model/Card :model/Dependency]
+            (let [base-card (card/create-card! (assoc (basic-card) :collection_id (:id readable-collection)) user)
+                  readable-dependent (card/create-card! (assoc (wrap-card base-card)
+                                                               :collection_id (:id readable-collection))
+                                                        user)
+                  unreadable-dependent (card/create-card! (assoc (wrap-card base-card)
+                                                                 :collection_id (:id unreadable-collection))
+                                                          user)]
+              (perms/grant-collection-read-permissions! (perms-group/all-users) readable-collection)
+              (testing "User sees only readable dependents"
+                (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
+                                                     :id (:id base-card)
+                                                     :type "card"
+                                                     :dependent_type "card"
+                                                     :dependent_card_type "question")
+                      dependent-ids (set (map :id response))]
+                  (is (contains? dependent-ids (:id readable-dependent)))
+                  (is (not (contains? dependent-ids (:id unreadable-dependent)))))))))))))
+
+(deftest graph-multi-level-filtering-test
+  (testing "GET /api/ee/dependencies/graph includes upstream nodes if ANY path to them is readable"
+    (mt/dataset test-data
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-non-admin-groups-no-root-collection-perms
+          (mt/with-temp [:model/Collection readable-collection {}
+                         :model/Collection unreadable-collection {}
+                         :model/User user {:email "test@test.com"}]
+            (mt/with-model-cleanup [:model/Card :model/Dependency]
+              (let [base-card (card/create-card! (assoc (basic-card) :collection_id (:id readable-collection)) user)
+                    unreadable-middle (card/create-card! (assoc (wrap-card base-card)
+                                                                :collection_id (:id unreadable-collection))
+                                                         user)
+                    readable-alternate (card/create-card! (assoc (wrap-card base-card)
+                                                                 :collection_id (:id readable-collection))
+                                                          user)
+                    end-card (card/create-card! (assoc (wrap-two-cards unreadable-middle readable-alternate)
+                                                       :collection_id (:id readable-collection))
+                                                user)]
+                (perms/grant-collection-read-permissions! (perms-group/all-users) readable-collection)
+                (testing "Diamond pattern: complete upstream graph via readable path"
+                  (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
+                                                       :id (:id end-card)
+                                                       :type "card")
+                        nodes (set (map (juxt :type :id) (:nodes response)))
+                        expected-nodes #{["card" (:id end-card)] ["card" (:id readable-alternate)]
+                                         ["card" (:id base-card)] ["table" (mt/id :orders)]}]
+                    (is (= expected-nodes nodes)
+                        "Should see end-card, readable-alternate, base-card, and :orders table")))
+                (testing "Edges show complete readable dependency chain"
+                  (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
+                                                       :id (:id end-card)
+                                                       :type "card")
+                        edges (set (:edges response))
+                        expected-edges #{{:from_entity_id (:id end-card)
+                                          :from_entity_type "card"
+                                          :to_entity_id (:id readable-alternate)
+                                          :to_entity_type "card"}
+                                         {:from_entity_id (:id readable-alternate)
+                                          :from_entity_type "card"
+                                          :to_entity_id (:id base-card)
+                                          :to_entity_type "card"}
+                                         {:from_entity_id (:id base-card)
+                                          :from_entity_type "card"
+                                          :to_entity_id (mt/id :orders)
+                                          :to_entity_type "table"}}]
+                    (is (= expected-edges edges)
+                        "Should have edges through readable path only")))))))))))
