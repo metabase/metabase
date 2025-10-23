@@ -119,8 +119,8 @@ describe("scenarios > dependencies > dependency graph", () => {
 
     it("should be able to use inline search for all supported entity types", () => {
       getScoreboardTableId().then((tableId) => {
-        createTableBasedMetric(tableId);
-        createTableBasedTransform(TABLE_NAME);
+        createTableBasedMetric({ tableId });
+        createTableBasedTransform({ tableName: TABLE_NAME });
       });
       visitGraph();
 
@@ -153,8 +153,8 @@ describe("scenarios > dependencies > dependency graph", () => {
 
     it("should be able to use the entity picker for all supported entity types", () => {
       getScoreboardTableId().then((tableId) => {
-        createTableBasedMetric(tableId);
-        createTableBasedTransform(TABLE_NAME);
+        createTableBasedMetric({ tableId });
+        createTableBasedTransform({ tableName: TABLE_NAME });
       });
 
       visitGraph();
@@ -194,7 +194,7 @@ describe("scenarios > dependencies > dependency graph", () => {
   describe("entity focus", () => {
     it("should be possible to select an entity via search", () => {
       getScoreboardTableId().then((tableId) => {
-        createTableBasedQuestion(tableId).then(({ body: card }) => {
+        createTableBasedQuestion({ tableId }).then(({ body: card }) => {
           visitGraphForEntity(card.id, "card");
         });
       });
@@ -232,10 +232,10 @@ describe("scenarios > dependencies > dependency graph", () => {
 
     it("should display dependencies for a table and navigate to them", () => {
       getScoreboardTableId().then((tableId) => {
-        createTableBasedQuestion(tableId);
-        createTableBasedModel(tableId);
-        createTableBasedMetric(tableId);
-        createTableBasedTransform(TABLE_NAME);
+        createTableBasedQuestion({ tableId });
+        createTableBasedModel({ tableId });
+        createTableBasedMetric({ tableId });
+        createTableBasedTransform({ tableName: TABLE_NAME });
         visitGraphForEntity(tableId, "table");
       });
       verifyPanelNavigation({
@@ -262,13 +262,13 @@ describe("scenarios > dependencies > dependency graph", () => {
 
     it("should display dependencies for a question and navigate to them", () => {
       getScoreboardTableId()
-        .then((tableId) => createTableBasedQuestion(tableId))
+        .then((tableId) => createTableBasedQuestion({ tableId }))
         .then(({ body: card }) => {
-          createCardBasedQuestion(card.id);
-          createCardBasedModel(card.id);
-          createCardBasedMetric(card.id);
-          createCardBasedTransform(card.id);
-          createCardBasedSnippet(card.id);
+          createCardBasedQuestion({ cardId: card.id });
+          createCardBasedModel({ cardId: card.id });
+          createCardBasedMetric({ cardId: card.id });
+          createCardBasedTransform({ cardId: card.id });
+          createCardBasedSnippet({ cardId: card.id });
           visitGraphForEntity(card.id, "card");
         });
       verifyPanelNavigation({
@@ -300,13 +300,13 @@ describe("scenarios > dependencies > dependency graph", () => {
 
     it("should display dependencies for a model and navigate to them", () => {
       getScoreboardTableId()
-        .then((tableId) => createTableBasedModel(tableId))
+        .then((tableId) => createTableBasedModel({ tableId }))
         .then(({ body: card }) => {
-          createCardBasedQuestion(card.id);
-          createCardBasedModel(card.id);
-          createCardBasedMetric(card.id);
-          createCardBasedTransform(card.id);
-          createCardBasedSnippet(card.id);
+          createCardBasedQuestion({ cardId: card.id });
+          createCardBasedModel({ cardId: card.id });
+          createCardBasedMetric({ cardId: card.id });
+          createCardBasedTransform({ cardId: card.id });
+          createCardBasedSnippet({ cardId: card.id });
           visitGraphForEntity(card.id, "card");
         });
       verifyPanelNavigation({
@@ -338,11 +338,11 @@ describe("scenarios > dependencies > dependency graph", () => {
 
     it("should display dependencies for a metric and navigate to them", () => {
       getScoreboardTableId().then((tableId) =>
-        createTableBasedMetric(tableId).then(({ body: card }) => {
-          createMetricBasedQuestion(tableId, card.id);
-          createMetricBasedModel(tableId, card.id);
-          createMetricBasedMetric(tableId, card.id);
-          createMetricBasedTransform(tableId, card.id);
+        createTableBasedMetric({ tableId }).then(({ body: card }) => {
+          createMetricBasedQuestion({ tableId, metricId: card.id });
+          createMetricBasedModel({ tableId, metricId: card.id });
+          createMetricBasedMetric({ tableId, metricId: card.id });
+          createMetricBasedTransform({ tableId, metricId: card.id });
           visitGraphForEntity(card.id, "card");
         }),
       );
@@ -369,10 +369,12 @@ describe("scenarios > dependencies > dependency graph", () => {
     });
 
     it("should display dependencies for a transform and navigate to them", () => {
-      createTableBasedTransform(TABLE_NAME).then(({ body: transform }) => {
-        runTransformAndWaitForSuccess(transform.id);
-        visitGraphForEntity(transform.id, "transform");
-      });
+      createTableBasedTransform({ tableName: TABLE_NAME }).then(
+        ({ body: transform }) => {
+          runTransformAndWaitForSuccess(transform.id);
+          visitGraphForEntity(transform.id, "transform");
+        },
+      );
       verifyPanelNavigation({
         itemTitle: TABLE_BASED_TRANSFORM_NAME,
         groupTitle: "1 table",
@@ -382,10 +384,22 @@ describe("scenarios > dependencies > dependency graph", () => {
 
     it("should display dependencies for a snippet and navigate to them", () => {
       createEmptySnippet().then(({ body: snippet }) => {
-        createSnippetBasedQuestion(TABLE_NAME, snippet.id, snippet.name);
-        createSnippetBasedModel(TABLE_NAME, snippet.id, snippet.name);
-        createSnippetBasedTransform(TABLE_NAME, snippet.id, snippet.name);
-        createSnippetBasedSnippet(snippet.name);
+        createSnippetBasedQuestion({
+          tableName: TABLE_NAME,
+          snippetId: snippet.id,
+          snippetName: snippet.name,
+        });
+        createSnippetBasedModel({
+          tableName: TABLE_NAME,
+          snippetId: snippet.id,
+          snippetName: snippet.name,
+        });
+        createSnippetBasedTransform({
+          tableName: TABLE_NAME,
+          snippetId: snippet.id,
+          snippetName: snippet.name,
+        });
+        createSnippetBasedSnippet({ snippetName: snippet.name });
         visitGraphForEntity(snippet.id, "snippet");
       });
       verifyPanelNavigation({
@@ -444,7 +458,15 @@ function getScoreboardTableId() {
   return cy.get<number>(`@${TABLE_ID_ALIAS}`);
 }
 
-function createTableBasedCard(name: string, type: CardType, tableId: TableId) {
+function createTableBasedCard({
+  name,
+  type,
+  tableId,
+}: {
+  name: string;
+  type: CardType;
+  tableId: TableId;
+}) {
   return H.createQuestion({
     name,
     type,
@@ -454,15 +476,31 @@ function createTableBasedCard(name: string, type: CardType, tableId: TableId) {
   });
 }
 
-function createTableBasedQuestion(tableId: TableId) {
-  return createTableBasedCard(TABLE_BASED_QUESTION_NAME, "question", tableId);
+function createTableBasedQuestion({ tableId }: { tableId: TableId }) {
+  return createTableBasedCard({
+    name: TABLE_BASED_QUESTION_NAME,
+    type: "question",
+    tableId,
+  });
 }
 
-function createTableBasedModel(tableId: TableId) {
-  return createTableBasedCard(TABLE_BASED_MODEL_NAME, "model", tableId);
+function createTableBasedModel({ tableId }: { tableId: TableId }) {
+  return createTableBasedCard({
+    name: TABLE_BASED_MODEL_NAME,
+    type: "model",
+    tableId,
+  });
 }
 
-function createCardBasedCard(name: string, type: CardType, cardId: CardId) {
+function createCardBasedCard({
+  name,
+  type,
+  cardId,
+}: {
+  name: string;
+  type: CardType;
+  cardId: CardId;
+}) {
   return H.createQuestion({
     name,
     type,
@@ -472,20 +510,33 @@ function createCardBasedCard(name: string, type: CardType, cardId: CardId) {
   });
 }
 
-function createCardBasedQuestion(cardId: CardId) {
-  return createCardBasedCard(CARD_BASED_QUESTION_NAME, "question", cardId);
+function createCardBasedQuestion({ cardId }: { cardId: CardId }) {
+  return createCardBasedCard({
+    name: CARD_BASED_QUESTION_NAME,
+    type: "question",
+    cardId,
+  });
 }
 
-function createCardBasedModel(cardId: CardId) {
-  return createCardBasedCard(CARD_BASED_MODEL_NAME, "model", cardId);
+function createCardBasedModel({ cardId }: { cardId: CardId }) {
+  return createCardBasedCard({
+    name: CARD_BASED_MODEL_NAME,
+    type: "model",
+    cardId,
+  });
 }
 
-function createMetricBasedCard(
-  name: string,
-  type: CardType,
-  tableId: TableId,
-  metricId: CardId,
-) {
+function createMetricBasedCard({
+  name,
+  type,
+  tableId,
+  metricId,
+}: {
+  name: string;
+  type: CardType;
+  tableId: TableId;
+  metricId: CardId;
+}) {
   return H.createQuestion({
     name,
     type,
@@ -496,31 +547,49 @@ function createMetricBasedCard(
   });
 }
 
-function createMetricBasedQuestion(tableId: TableId, metricId: CardId) {
-  return createMetricBasedCard(
-    METRIC_BASED_QUESTION_NAME,
-    "question",
+function createMetricBasedQuestion({
+  tableId,
+  metricId,
+}: {
+  tableId: TableId;
+  metricId: CardId;
+}) {
+  return createMetricBasedCard({
+    name: METRIC_BASED_QUESTION_NAME,
+    type: "question",
     tableId,
     metricId,
-  );
+  });
 }
 
-function createMetricBasedModel(tableId: TableId, metricId: CardId) {
-  return createMetricBasedCard(
-    METRIC_BASED_MODEL_NAME,
-    "model",
+function createMetricBasedModel({
+  tableId,
+  metricId,
+}: {
+  tableId: TableId;
+  metricId: CardId;
+}) {
+  return createMetricBasedCard({
+    name: METRIC_BASED_MODEL_NAME,
+    type: "model",
     tableId,
     metricId,
-  );
+  });
 }
 
-function createSnippetBasedCard(
-  name: string,
-  type: CardType,
-  tableName: string,
-  snippetId: NativeQuerySnippetId,
-  snippetName: string,
-) {
+function createSnippetBasedCard({
+  name,
+  type,
+  tableName,
+  snippetId,
+  snippetName,
+}: {
+  name: string;
+  type: CardType;
+  tableName: string;
+  snippetId: NativeQuerySnippetId;
+  snippetName: string;
+}) {
   return H.createNativeQuestion({
     name,
     type,
@@ -540,35 +609,43 @@ function createSnippetBasedCard(
   });
 }
 
-function createSnippetBasedQuestion(
-  tableName: string,
-  snippetId: NativeQuerySnippetId,
-  snippetName: string,
-) {
-  return createSnippetBasedCard(
-    SNIPPET_BASED_QUESTION_NAME,
-    "question",
+function createSnippetBasedQuestion({
+  tableName,
+  snippetId,
+  snippetName,
+}: {
+  tableName: string;
+  snippetId: NativeQuerySnippetId;
+  snippetName: string;
+}) {
+  return createSnippetBasedCard({
+    name: SNIPPET_BASED_QUESTION_NAME,
+    type: "question",
     tableName,
     snippetId,
     snippetName,
-  );
+  });
 }
 
-function createSnippetBasedModel(
-  tableName: string,
-  snippetId: NativeQuerySnippetId,
-  snippetName: string,
-) {
-  return createSnippetBasedCard(
-    SNIPPET_BASED_MODEL_NAME,
-    "model",
+function createSnippetBasedModel({
+  tableName,
+  snippetId,
+  snippetName,
+}: {
+  tableName: string;
+  snippetId: NativeQuerySnippetId;
+  snippetName: string;
+}) {
+  return createSnippetBasedCard({
+    name: SNIPPET_BASED_MODEL_NAME,
+    type: "model",
     tableName,
     snippetId,
     snippetName,
-  );
+  });
 }
 
-function createTableBasedMetric(tableId: TableId) {
+function createTableBasedMetric({ tableId }: { tableId: TableId }) {
   return H.createQuestion({
     name: TABLE_BASED_METRIC_NAME,
     type: "metric",
@@ -579,7 +656,7 @@ function createTableBasedMetric(tableId: TableId) {
   });
 }
 
-function createCardBasedMetric(cardId: CardId) {
+function createCardBasedMetric({ cardId }: { cardId: CardId }) {
   return H.createQuestion({
     name: CARD_BASED_METRIC_NAME,
     type: "metric",
@@ -590,7 +667,13 @@ function createCardBasedMetric(cardId: CardId) {
   });
 }
 
-function createMetricBasedMetric(tableId: TableId, metricId: CardId) {
+function createMetricBasedMetric({
+  tableId,
+  metricId,
+}: {
+  tableId: TableId;
+  metricId: CardId;
+}) {
   return H.createQuestion({
     name: METRIC_BASED_METRIC_NAME,
     type: "metric",
@@ -601,7 +684,7 @@ function createMetricBasedMetric(tableId: TableId, metricId: CardId) {
   });
 }
 
-function createTableBasedTransform(tableName: string) {
+function createTableBasedTransform({ tableName }: { tableName: string }) {
   return H.createTransform({
     name: TABLE_BASED_TRANSFORM_NAME,
     source: {
@@ -624,7 +707,7 @@ function createTableBasedTransform(tableName: string) {
   });
 }
 
-function createCardBasedTransform(cardId: CardId) {
+function createCardBasedTransform({ cardId }: { cardId: CardId }) {
   return H.createTransform({
     name: CARD_BASED_TRANSFORM_NAME,
     source: {
@@ -646,7 +729,13 @@ function createCardBasedTransform(cardId: CardId) {
   });
 }
 
-function createMetricBasedTransform(tableId: TableId, metricId: CardId) {
+function createMetricBasedTransform({
+  tableId,
+  metricId,
+}: {
+  tableId: TableId;
+  metricId: CardId;
+}) {
   return H.createTransform({
     name: METRIC_BASED_TRANSFORM_NAME,
     source: {
@@ -669,11 +758,15 @@ function createMetricBasedTransform(tableId: TableId, metricId: CardId) {
   });
 }
 
-function createSnippetBasedTransform(
-  tableName: string,
-  snippetId: NativeQuerySnippetId,
-  snippetName: string,
-) {
+function createSnippetBasedTransform({
+  tableName,
+  snippetId,
+  snippetName,
+}: {
+  tableName: string;
+  snippetId: NativeQuerySnippetId;
+  snippetName: string;
+}) {
   return H.createTransform({
     name: SNIPPET_BASED_TRANSFORM_NAME,
     source: {
@@ -717,14 +810,14 @@ function createEmptySnippet() {
   });
 }
 
-function createCardBasedSnippet(cardId: CardId) {
+function createCardBasedSnippet({ cardId }: { cardId: CardId }) {
   return H.createSnippet({
     name: CARD_BASED_SNIPPET_NAME,
     content: `{{#${cardId}}}`,
   });
 }
 
-function createSnippetBasedSnippet(snippetName: string) {
+function createSnippetBasedSnippet({ snippetName }: { snippetName: string }) {
   return H.createSnippet({
     name: SNIPPET_BASED_SNIPPET_NAME,
     content: `{{snippet:${snippetName}}}`,
