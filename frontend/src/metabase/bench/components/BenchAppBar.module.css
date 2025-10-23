@@ -1,0 +1,21 @@
+.appBar {
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
+.toggleButton {
+  cursor: pointer;
+}
+
+.toggleButton:hover .icon {
+  color: var(--mb-color-brand);
+}
+
+.selectButton {
+  border-radius: var(--mantine-radius-default);
+  background-color: transparent;
+  transition: background-color 0.2s ease;
+}
+
+.selectButton:hover {
+  background-color: var(--mb-color-bg-light);
+}

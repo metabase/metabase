@@ -105,7 +105,10 @@ type OwnProps = {
   openDataReferenceAtQuestion?: (id: CardId) => void;
   openSnippetModalWithSelectedText?: () => void;
   insertSnippet?: (snippet: NativeQuerySnippet) => void;
-  setIsNativeEditorOpen?: (isOpen: boolean) => void;
+  setIsNativeEditorOpen?: (
+    isOpen: boolean,
+    isShowingDataReference?: boolean,
+  ) => void;
   setParameterValue?: (parameterId: ParameterId, value: string) => void;
   onOpenModal?: (modalType: QueryModalType) => void;
   toggleDataReference: () => void;
@@ -159,7 +162,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
     const { question, setIsNativeEditorOpen, isInitiallyOpen } = this.props;
 
     if (typeof isInitiallyOpen !== "undefined") {
-      setIsNativeEditorOpen?.(isInitiallyOpen);
+      setIsNativeEditorOpen?.(isInitiallyOpen, !question.isSaved());
       return;
     }
 

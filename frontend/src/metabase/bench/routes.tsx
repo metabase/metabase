@@ -13,11 +13,19 @@ import { DataModel } from "metabase/metadata/pages/DataModel";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { GlossaryContainer } from "metabase/reference/glossary/GlossaryContainer";
 
-import { BenchApp } from "./components/BenchApp";
+import { BenchApp, BenchIndex } from "./components/BenchApp";
 import { EmptySailboat } from "./components/BenchLayout";
 import { OverviewPage } from "./components/OverviewPage";
-import { MetricEditor, MetricsLayout } from "./components/metrics/MetricsList";
-import { ModelEditor, ModelsLayout } from "./components/models/ModelsList";
+import {
+  MetricEditor,
+  MetricSettings,
+  MetricsLayout,
+} from "./components/metrics/MetricsList";
+import {
+  ModelEditor,
+  ModelSettings,
+  ModelsLayout,
+} from "./components/models/ModelsList";
 import {
   SnippetEditor,
   SnippetsLayout,
@@ -25,8 +33,8 @@ import {
 
 export const getBenchRoutes = () => (
   <Route path="/bench">
+    <IndexRoute component={BenchIndex} />
     <Route title={t`Bench`} component={BenchApp}>
-      <IndexRedirect to="overview" />
       <Route path="overview" component={() => <OverviewPage />} />
       {PLUGIN_TRANSFORMS.getTransformRoutes()}
       <Route path="segment" component={SegmentApp}>
@@ -39,10 +47,12 @@ export const getBenchRoutes = () => (
         <IndexRoute component={EmptySailboat} />
         <Route path="new/:type" component={ModelEditor} />
         <Route path=":slug" component={ModelEditor} />
+        <Route path=":slug/settings" component={ModelSettings} />
       </Route>
       <Route path="metric" component={MetricsLayout}>
         <IndexRoute component={EmptySailboat} />
         <Route path=":slug" component={MetricEditor} />
+        <Route path=":slug/settings" component={MetricSettings} />
       </Route>
       <Route path="snippet" component={SnippetsLayout}>
         <IndexRoute component={EmptySailboat} />

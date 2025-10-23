@@ -1,25 +1,31 @@
 import cx from "classnames";
 import type { Location } from "history";
 import type React from "react";
-import { useEffect, useMemo } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { push } from "react-router-redux";
 import { useLocalStorage, useMount, usePrevious } from "react-use";
 import { t } from "ttag";
 import { noop } from "underscore";
 
-import { searchApi, useListCollectionsTreeQuery } from "metabase/api";
+import {
+  searchApi,
+  useGetCardQuery,
+  useListCollectionsTreeQuery,
+} from "metabase/api";
 import { listTag } from "metabase/api/tags";
 import { getIcon } from "metabase/browse/models/utils";
 import ActionButton from "metabase/common/components/ActionButton/ActionButton";
 import Button from "metabase/common/components/Button";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
+import { SidesheetCard } from "metabase/common/components/Sidesheet/SidesheetCard";
 import { Tree } from "metabase/common/components/tree/Tree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { useFetchMetrics } from "metabase/common/hooks/use-fetch-metrics";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { newQuestion } from "metabase/lib/urls/questions";
+import { PLUGIN_CACHING } from "metabase/plugins";
 import {
   type QueryParams,
   cancelQuery,
@@ -28,6 +34,7 @@ import {
   runQuestionQuery,
   updateQuestion,
 } from "metabase/query_builder/actions";
+import { shouldShowQuestionSettingsSidebar } from "metabase/query_builder/components/view/sidebars/QuestionSettingsSidebar";
 import { useCreateQuestion } from "metabase/query_builder/containers/use-create-question";
 import { useSaveQuestion } from "metabase/query_builder/containers/use-save-question";
 import {
@@ -50,6 +57,7 @@ import {
   NavLink,
   Text,
 } from "metabase/ui";
+import Question from "metabase-lib/v1/Question";
 import type { RawSeries, SearchResult } from "metabase-types/api";
 
 import { BenchLayout } from "../BenchLayout";
@@ -60,14 +68,22 @@ import {
 } from "../ItemsListSection/ItemsListSection";
 import { ItemsListSettings } from "../ItemsListSection/ItemsListSettings";
 import { ItemsListTreeNode } from "../ItemsListSection/ItemsListTreeNode";
+import { ModelMoreMenu } from "../models/ModelMoreMenu";
 import { getTreeItems } from "../models/utils";
+import { BenchTabs } from "../shared/BenchTabs";
+import {
+  type SearchResultModal,
+  SearchResultModals,
+} from "../shared/SearchResultModals";
 
 function MetricsList({
   activeId,
   onCollapse,
+  onOpenModal,
 }: {
   activeId: number | null;
   onCollapse?: () => void;
+  onOpenModal: (modal: SearchResultModal) => void;
 }) {
   const dispatch = useDispatch();
   const { isLoading: isLoadingMetrics, data: metricsData } = useFetchMetrics();
@@ -97,6 +113,10 @@ function MetricsList({
       dispatch(push(`/bench/metric/${item.id}`));
     }
   };
+
+  const renderMoreMenu = (item: SearchResult) => (
+    <ModelMoreMenu item={item} onOpenModal={onOpenModal} />
+  );
 
   return (
     <ItemsListSection
@@ -149,6 +169,13 @@ function MetricsList({
               onSelect={handleMetricSelect}
               emptyState={<Text c="text-light">{t`No models found`}</Text>}
               TreeNode={ItemsListTreeNode}
+              rightSection={(item) =>
+                item.data ? (
+                  <div onClick={(e) => e.stopPropagation()}>
+                    {renderMoreMenu(item.data as SearchResult)}
+                  </div>
+                ) : null
+              }
             />
           </Box>
         ) : (
@@ -157,6 +184,7 @@ function MetricsList({
               key={metric.id}
               metric={metric}
               active={metric.id === activeId}
+              renderMoreMenu={renderMoreMenu}
             />
           ))
         )
@@ -168,13 +196,15 @@ function MetricsList({
 function MetricListItem({
   metric,
   active,
+  renderMoreMenu,
 }: {
   metric: SearchResult;
   active?: boolean;
+  renderMoreMenu: (metric: SearchResult) => ReactNode;
 }) {
   const icon = getIcon({ type: "dataset", ...metric });
   return (
-    <Box mb="sm">
+    <Box mb="sm" pos="relative">
       <NavLink
         component={Link}
         to={`/bench/metric/${metric.id}`}
@@ -194,6 +224,9 @@ function MetricListItem({
           </>
         }
       />
+      <Box pos="absolute" right="0.25rem" top="0.25rem">
+        {renderMoreMenu(metric)}
+      </Box>
     </Box>
   );
 }
@@ -205,10 +238,50 @@ export const MetricsLayout = ({
   children: React.ReactNode;
   params: { slug: string };
 }) => {
+  const [modal, setModal] = useState<SearchResultModal | null>(null);
+  const onClose = () => setModal(null);
   return (
-    <BenchLayout nav={<MetricsList activeId={+params.slug} />} name="model">
+    <BenchLayout
+      nav={<MetricsList activeId={+params.slug} onOpenModal={setModal} />}
+      name="metric"
+    >
       {children}
+      {modal && (
+        <SearchResultModals
+          activeId={+params.slug}
+          modal={modal}
+          onClose={onClose}
+        />
+      )}
     </BenchLayout>
+  );
+};
+
+const MetricHeader = ({
+  actions,
+  params,
+  question,
+}: {
+  actions?: ReactNode;
+  params: QueryParams;
+  question: Question;
+}) => {
+  const enableSettingsSidebar = shouldShowQuestionSettingsSidebar(question);
+  return (
+    <BenchPaneHeader
+      title={
+        <BenchTabs
+          tabs={[
+            { label: t`Query`, to: `/bench/metric/${params.slug}` },
+            enableSettingsSidebar && {
+              label: t`Settings`,
+              to: `/bench/metric/${params.slug}/settings`,
+            },
+          ].filter((t) => !!t)}
+        />
+      }
+      actions={actions}
+    />
   );
 };
 
@@ -273,8 +346,9 @@ export const MetricEditor = ({
       onRunQuery={() => dispatch(runQuestionQuery())}
       onCancelQuery={() => dispatch(cancelQuery())}
       Header={(headerProps) => (
-        <BenchPaneHeader
-          title={question.displayName() ?? t`New metric`}
+        <MetricHeader
+          params={params}
+          question={question}
           actions={
             !question.isSaved() ? (
               <Button
@@ -305,5 +379,38 @@ export const MetricEditor = ({
         />
       )}
     />
+  );
+};
+
+export const MetricSettings = ({ params }: { params: { slug: string } }) => {
+  const { data: card } = useGetCardQuery({ id: +params.slug });
+  const question = useMemo(() => card && new Question(card), [card]);
+  const [page, setPage] = useState<"default" | "caching">("default");
+  if (!question) {
+    return null;
+  }
+  return (
+    <>
+      <MetricHeader params={params} question={question} />
+      <Box mx="md" mt="sm" maw={480}>
+        <SidesheetCard title={t`Caching`}>
+          <PLUGIN_CACHING.SidebarCacheSection
+            model="question"
+            item={question}
+            setPage={setPage}
+            key={page}
+          />
+        </SidesheetCard>
+      </Box>
+      {page === "caching" && (
+        <PLUGIN_CACHING.SidebarCacheForm
+          item={question}
+          model="question"
+          onBack={() => setPage("default")}
+          onClose={() => setPage("default")}
+          pt="md"
+        />
+      )}
+    </>
   );
 };
