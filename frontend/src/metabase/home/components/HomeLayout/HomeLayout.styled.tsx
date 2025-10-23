@@ -16,15 +16,15 @@ export const LayoutRoot = styled.div`
   background-color: var(--mb-color-bg-light);
 
   ${breakpointMinMedium} {
-    padding: 3rem 4rem;
+    padding: 3rem 6rem;
   }
 
   ${breakpointMinLarge} {
-    padding: 4rem 7rem 2rem;
+    padding: 4rem 10rem;
   }
 
   ${breakpointMinExtraLarge} {
-    padding: 10rem 15rem 4rem;
+    padding: 10rem 15rem 6rem;
   }
 `;
 
@@ -37,7 +37,7 @@ export const LayoutBody = styled.div`
   }
 
   ${breakpointMinLarge} {
-    margin-top: 6rem;
+    margin-top: 4rem;
   }
 `;
 
