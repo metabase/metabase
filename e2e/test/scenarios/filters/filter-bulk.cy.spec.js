@@ -2,14 +2,15 @@ const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { ORDERS_ID, ORDERS, PEOPLE_ID, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
+const { ORDERS_TINY_ID, ORDERS_TINY, PEOPLE_ID, PRODUCTS_ID, PRODUCTS } =
+  SAMPLE_DATABASE;
 
 const rawQuestionDetails = {
   dataset_query: {
     database: SAMPLE_DB_ID,
     type: "query",
     query: {
-      "source-table": ORDERS_ID,
+      "source-table": ORDERS_TINY_ID,
     },
   },
 };
@@ -39,11 +40,11 @@ const filteredQuestionDetails = {
     database: SAMPLE_DB_ID,
     type: "query",
     query: {
-      "source-table": ORDERS_ID,
+      "source-table": ORDERS_TINY_ID,
       filter: [
         "and",
-        [">", ["field", ORDERS.QUANTITY, null], 20],
-        ["<", ["field", ORDERS.QUANTITY, null], 30],
+        [">", ["field", ORDERS_TINY.QUANTITY, null], 20],
+        ["<", ["field", ORDERS_TINY.QUANTITY, null], 30],
       ],
     },
   },
@@ -54,8 +55,10 @@ const aggregatedQuestionDetails = {
     database: SAMPLE_DB_ID,
     type: "query",
     query: {
-      "source-table": ORDERS_ID,
-      breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+      "source-table": ORDERS_TINY_ID,
+      breakout: [
+        ["field", ORDERS_TINY.CREATED_AT, { "temporal-unit": "month" }],
+      ],
       aggregation: [["count"]],
     },
   },
@@ -254,22 +257,22 @@ describe("scenarios > filters > bulk filtering", () => {
       H.createSegment({
         name: SEGMENT_1_NAME,
         description: "All orders with a total under $100.",
-        table_id: ORDERS_ID,
+        table_id: ORDERS_TINY_ID,
         definition: {
-          "source-table": ORDERS_ID,
+          "source-table": ORDERS_TINY_ID,
           aggregation: [["count"]],
-          filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+          filter: ["<", ["field", ORDERS_TINY.TOTAL, null], 100],
         },
       });
 
       H.createSegment({
         name: SEGMENT_2_NAME,
         description: "All orders with a discount",
-        table_id: ORDERS_ID,
+        table_id: ORDERS_TINY_ID,
         definition: {
-          "source-table": ORDERS_ID,
+          "source-table": ORDERS_TINY_ID,
           aggregation: [["count"]],
-          filter: [">", ["field", ORDERS.DISCOUNT, null], 0],
+          filter: [">", ["field", ORDERS_TINY.DISCOUNT, null], 0],
         },
       });
     });
@@ -321,7 +324,7 @@ describe("scenarios > filters > bulk filtering", () => {
           database: SAMPLE_DB_ID,
           type: "query",
           query: {
-            "source-table": ORDERS_ID,
+            "source-table": ORDERS_TINY_ID,
             filter: ["segment", 1],
           },
         },
