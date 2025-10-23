@@ -15,7 +15,7 @@ import { useGetTransformQuery } from "metabase-enterprise/api";
 import type { TableDataSource, TransformId } from "metabase-types/api";
 
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
-  transformId: TransformId | null;
+  transformId?: TransformId | null;
   value: TableDataSource | null;
   onChange: (value: TableDataSource | null) => void;
 }

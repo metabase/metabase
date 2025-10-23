@@ -2,10 +2,14 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { useUpdateTableListMutation } from "metabase/api";
-import { VisibilityInput } from "metabase/metadata/components";
+import { DataSourceInput, VisibilityInput } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Button, Flex, Modal, Stack, Text, rem } from "metabase/ui";
-import type { TableId, TableVisibilityType2 } from "metabase-types/api";
+import { Button, Flex, Modal, Stack, rem } from "metabase/ui";
+import type {
+  TableDataSource,
+  TableId,
+  TableVisibilityType2,
+} from "metabase-types/api";
 
 interface Props {
   tables: Set<TableId>;
@@ -24,6 +28,12 @@ export function EditVisibilityType2Modal({
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
   const [visibilityType2, setVisibilityType2] =
     useState<TableVisibilityType2>("copper");
+  const [dataSource, setDataSource] = useState<TableDataSource | null>(null);
+
+  const reset = () => {
+    setVisibilityType2("copper");
+    setDataSource(null);
+  };
 
   const handleSubmit = async () => {
     if (!visibilityType2) {
@@ -33,6 +43,7 @@ export function EditVisibilityType2Modal({
     const { error } = await updateTableList({
       ids: Array.from(tables),
       visibility_type2: visibilityType2,
+      data_source: dataSource,
     });
 
     onUpdate?.();
@@ -44,12 +55,12 @@ export function EditVisibilityType2Modal({
     }
 
     onClose();
-    setVisibilityType2("copper");
+    reset();
   };
 
   const handleClose = () => {
     onClose();
-    setVisibilityType2("copper");
+    reset();
   };
 
   return (
@@ -57,18 +68,16 @@ export function EditVisibilityType2Modal({
       opened={isOpen}
       padding="xl"
       size={rem(512)}
-      title={t`Edit visibility type for ${tables.size} tables`}
+      title={t`Edit ${tables.size} tables`} // TODO: pluralize with ngettext
       onClose={handleClose}
     >
       <Stack gap="md" pt="sm">
-        <Text c="text-secondary" size="sm">
-          {t`Edit visibility type for ${tables.size} tables`}
-        </Text>
-
         <VisibilityInput
           value={visibilityType2}
           onChange={setVisibilityType2}
         />
+
+        <DataSourceInput value={dataSource} onChange={setDataSource} />
 
         <Flex justify="flex-end" gap="sm">
           <Button variant="subtle" onClick={handleClose} disabled={isLoading}>
