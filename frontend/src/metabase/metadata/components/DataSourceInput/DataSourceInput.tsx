@@ -82,7 +82,7 @@ export const DataSourceInput = ({
 function getData(value: TableDataSource | null) {
   const data = [
     { value: "ingested", label: t`Ingested` },
-    { value: "transformation", label: t`Transformation (other tools)` },
+    { value: "transform", label: t`Transformation (other tools)` },
     { value: "source-data", label: t`Source data` },
     { value: "uploaded-data", label: t`Uploaded data` },
   ];
@@ -95,7 +95,7 @@ function getData(value: TableDataSource | null) {
 }
 
 function stringifyValue(value: TableDataSource | null): string {
-  return String(value);
+  return value === null ? "null" : value;
 }
 
 function parseValue(value: string): TableDataSource | null {
