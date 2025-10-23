@@ -186,9 +186,9 @@
                     {:dependency_analysis_version models.dependency/current-dependency-analysis-version})))))
 
 (derive ::sandbox-delete :metabase/event)
-(derive :event/sandbox-delete ::document-delete)
+(derive :event/sandbox-delete ::sandbox-delete)
 
 (methodical/defmethod events/publish-event! ::sandbox-delete
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (t2/delete! :model/Dependency :from_entity_type :document :from_entity_id (:id object))))
+    (t2/delete! :model/Dependency :from_entity_type :sandbox :from_entity_id (:id object))))

@@ -126,7 +126,7 @@
               (events/publish-event! :event/dashboard-delete {:object updated-dashboard :user-id api/*current-user-id*})
               (is (empty? (t2/select :model/Dependency :from_entity_id dashboard-id))))))))))
 
-(deftest dashboard-update-sets-correct-dependencies
+(deftest document-update-sets-correct-dependencies
   (mt/with-test-user :rasta
     (let [mp (mt/metadata-provider)
           products-id (mt/id :products)
@@ -177,3 +177,33 @@
             (t2/delete! :model/Document document-id)
             (events/publish-event! :event/document-delete {:object document :user-id api/*current-user-id*})
             (is (empty? (t2/select :model/Dependency :from_entity_id document-id)))))))))
+
+(deftest sandbox-update-sets-correct-dependencies
+  (mt/with-premium-features #{:sandboxes}
+    (mt/with-test-user :rasta
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp  [:model/PermissionsGroup {group-id :id} {:name "sandbox group"}
+                        :model/Card {card1-id :id} {}
+                        :model/Card {card2-id :id} {}
+                        :model/Sandbox {sandbox-id :id :as sandbox} {:group_id group-id
+                                                                     :table_id (mt/id :products)
+                                                                     :card_id card1-id}]
+          (events/publish-event! :event/sandbox-create {:object sandbox :user-id api/*current-user-id*})
+          (is (=? #{{:from_entity_type :sandbox
+                     :from_entity_id sandbox-id
+                     :to_entity_type :card
+                     :to_entity_id card1-id}}
+                  (into #{} (map #(dissoc % :id)
+                                 (t2/select :model/Dependency :from_entity_id sandbox-id)))))
+          (t2/update! :model/Sandbox sandbox-id (assoc sandbox :card_id card2-id))
+          (let [updated-sandbox (t2/select-one :model/Sandbox :id sandbox-id)]
+            (events/publish-event! :event/sandbox-update {:object updated-sandbox :user-id api/*current-user-id*})
+            (is (=? #{{:from_entity_type :sandbox
+                       :from_entity_id sandbox-id
+                       :to_entity_type :card
+                       :to_entity_id card2-id}}
+                    (into #{} (map #(dissoc % :id)
+                                   (t2/select :model/Dependency :from_entity_id sandbox-id)))))
+            (t2/delete! :model/Sandbox sandbox-id)
+            (events/publish-event! :event/sandbox-delete {:object sandbox :user-id api/*current-user-id*})
+            (is (empty? (t2/select :model/Dependency :from_entity_id sandbox-id)))))))))
