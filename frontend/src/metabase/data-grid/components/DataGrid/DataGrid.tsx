@@ -52,6 +52,7 @@ export interface DataGridProps<TData>
     DataGridStylesProps {
   emptyState?: React.ReactNode;
   showRowsCount?: boolean;
+  showColumnHeaders?: boolean;
   isColumnReorderingDisabled?: boolean;
   theme?: DataGridTheme;
 }
@@ -69,6 +70,7 @@ export const DataGrid = function DataGrid<TData>({
   styles,
   enablePagination,
   showRowsCount,
+  showColumnHeaders = true,
   getTotalHeight,
   getVisibleRows,
   isColumnReorderingDisabled,
@@ -170,84 +172,86 @@ export const DataGrid = function DataGrid<TData>({
             }}
             onWheel={onWheel}
           >
-            <div
-              data-testid="table-header"
-              className={cx(S.headerContainer, classNames?.headerContainer)}
-              style={{
-                backgroundColor: stickyElementsBackgroundColor,
-                ...styles?.headerContainer,
-              }}
-            >
-              {table.getHeaderGroups().map((headerGroup) => (
-                <div
-                  key={headerGroup.id}
-                  className={cx(S.row, classNames?.row)}
-                  style={{
-                    height: `${HEADER_HEIGHT}px`,
-                    backgroundColor,
-                    ...styles?.row,
-                  }}
-                >
-                  {virtualPaddingLeft ? (
-                    <div style={{ width: virtualPaddingLeft }} />
-                  ) : null}
-                  <SortableContext
-                    items={table.getState().columnOrder}
-                    strategy={horizontalListSortingStrategy}
+            {showColumnHeaders && (
+              <div
+                data-testid="table-header"
+                className={cx(S.headerContainer, classNames?.headerContainer)}
+                style={{
+                  backgroundColor: stickyElementsBackgroundColor,
+                  ...styles?.headerContainer,
+                }}
+              >
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <div
+                    key={headerGroup.id}
+                    className={cx(S.row, classNames?.row)}
+                    style={{
+                      height: `${HEADER_HEIGHT}px`,
+                      backgroundColor,
+                      ...styles?.row,
+                    }}
                   >
-                    {virtualColumns.map((virtualColumn) => {
-                      const header = headerGroup.headers[virtualColumn.index];
-                      const headerCell = flexRender(
-                        header.column.columnDef.header,
-                        header.getContext(),
-                      );
-                      const width = header.column.getSize();
-                      const isPinned = header.column.getIsPinned();
-                      const style: React.CSSProperties = isPinned
-                        ? {
-                            width,
-                            position: "sticky",
-                            left: `${virtualColumn.start}px`,
-                            zIndex: PINNED_COLUMN_Z_INDEX,
-                            backgroundColor: stickyElementsBackgroundColor,
-                          }
-                        : {
-                            width,
-                          };
+                    {virtualPaddingLeft ? (
+                      <div style={{ width: virtualPaddingLeft }} />
+                    ) : null}
+                    <SortableContext
+                      items={table.getState().columnOrder}
+                      strategy={horizontalListSortingStrategy}
+                    >
+                      {virtualColumns.map((virtualColumn) => {
+                        const header = headerGroup.headers[virtualColumn.index];
+                        const headerCell = flexRender(
+                          header.column.columnDef.header,
+                          header.getContext(),
+                        );
+                        const width = header.column.getSize();
+                        const isPinned = header.column.getIsPinned();
+                        const style: React.CSSProperties = isPinned
+                          ? {
+                              width,
+                              position: "sticky",
+                              left: `${virtualColumn.start}px`,
+                              zIndex: PINNED_COLUMN_Z_INDEX,
+                              backgroundColor: stickyElementsBackgroundColor,
+                            }
+                          : {
+                              width,
+                            };
 
-                      const headerContent = isPinned ? (
-                        headerCell
-                      ) : (
-                        <SortableHeader
-                          className={cx(S.headerCell, classNames?.headerCell)}
-                          style={{
-                            backgroundColor: stickyElementsBackgroundColor,
-                            ...styles?.headerCell,
-                          }}
-                          isColumnReorderingDisabled={
-                            isColumnReorderingDisabled
-                          }
-                          header={header}
-                          onClick={onHeaderCellClick}
-                        >
-                          {headerCell}
-                        </SortableHeader>
-                      );
+                        const headerContent = isPinned ? (
+                          headerCell
+                        ) : (
+                          <SortableHeader
+                            className={cx(S.headerCell, classNames?.headerCell)}
+                            style={{
+                              backgroundColor: stickyElementsBackgroundColor,
+                              ...styles?.headerCell,
+                            }}
+                            isColumnReorderingDisabled={
+                              isColumnReorderingDisabled
+                            }
+                            header={header}
+                            onClick={onHeaderCellClick}
+                          >
+                            {headerCell}
+                          </SortableHeader>
+                        );
 
-                      return (
-                        <div key={header.id} style={style}>
-                          {headerContent}
-                        </div>
-                      );
-                    })}
-                  </SortableContext>
-                  {!isAddColumnButtonSticky ? addColumnButton : null}
-                  {virtualPaddingRight ? (
-                    <div style={{ width: virtualPaddingRight }} />
-                  ) : null}
-                </div>
-              ))}
-            </div>
+                        return (
+                          <div key={header.id} style={style}>
+                            {headerContent}
+                          </div>
+                        );
+                      })}
+                    </SortableContext>
+                    {!isAddColumnButtonSticky ? addColumnButton : null}
+                    {virtualPaddingRight ? (
+                      <div style={{ width: virtualPaddingRight }} />
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            )}
 
             {rowsCount === 0 && emptyState}
 

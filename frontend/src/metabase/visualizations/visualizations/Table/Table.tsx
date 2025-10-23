@@ -236,6 +236,20 @@ class Table extends Component<TableProps, TableState> {
       },
       readDependencies: [DataGrid.COLUMN_FORMATTING_SETTING, "table.pivot"],
     },
+    "table.show_column_headers": {
+      get section() {
+        return t`Columns`;
+      },
+      get title() {
+        return t`Show column headers`;
+      },
+      get description() {
+        return t`Toggle to show or hide the column header row`;
+      },
+      widget: "toggle",
+      inline: true,
+      default: true,
+    },
   };
 
   static columnSettings = (column: DatasetColumn) => {
@@ -540,6 +554,7 @@ class Table extends Component<TableProps, TableState> {
         question={this.state.question}
         data={data}
         isPivoted={isPivoted}
+        showColumnHeaders={settings["table.show_column_headers"] !== false}
         getColumnTitle={this.getColumnTitle}
         getColumnSortDirection={this.getColumnSortDirection}
       />

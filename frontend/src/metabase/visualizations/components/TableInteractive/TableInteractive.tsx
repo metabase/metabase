@@ -101,6 +101,7 @@ interface TableProps extends VisualizationProps {
   scrollToLastColumn?: boolean;
   theme: MantineTheme;
   renderEmptyMessage?: boolean;
+  showColumnHeaders?: boolean;
   getColumnTitle: (columnIndex: number) => string;
   getColumnSortDirection: (columnIndex: number) => OrderByDirection | undefined;
   renderTableHeader: HeaderCellWithColumnInfoProps["renderTableHeader"];
@@ -158,6 +159,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     scrollToLastColumn,
     token,
     uuid,
+    showColumnHeaders = true,
     getColumnTitle,
     renderTableHeader,
     visualizationIsClickable,
@@ -817,6 +819,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         {...tableProps}
         styles={dataGridStyles}
         showRowsCount={isDashboard}
+        showColumnHeaders={showColumnHeaders}
         isColumnReorderingDisabled={isColumnReorderingDisabled}
         emptyState={emptyState}
         onBodyCellClick={handleBodyCellClick}
