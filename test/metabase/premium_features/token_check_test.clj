@@ -233,16 +233,6 @@
                (#'token-check/token-information token grace)))
         (is (= 3 @call-count))))))
 
-(comment
-  (-> (first (ns-publics *ns*)) second meta :test)
-  (let [tests (->> (ns-publics *ns*)
-                   (filter (fn [[_s v]] (-> v meta :test))))]
-    (doseq [[ts tv] tests]
-      (println "testing: " ts)
-      (time (clojure.test/run-test-var tv))
-      (dotimes [_ 2] (println "***"))))
-  )
-
 (deftest token-status-setting-test
   (testing "If a `premium-embedding-token` has been set, the `token-status` setting should return the response
             from the store.metabase.com endpoint for that token."
