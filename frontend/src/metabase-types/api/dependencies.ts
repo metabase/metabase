@@ -12,7 +12,8 @@ export type DependencyType =
   | "transform"
   | "snippet"
   | "dashboard"
-  | "document";
+  | "document"
+  | "sandbox";
 export type DependencyGroupType = CardType | Exclude<DependencyType, "card">;
 
 export type DependencyEntry = {
@@ -73,6 +74,7 @@ export type DashboardDependencyNodeData = Pick<
   | "last-edit-info"
   | "collection_id"
   | "collection"
+  | "moderation_reviews"
 > & {
   view_count?: number | null;
 };
@@ -114,13 +116,16 @@ export type DocumentDependencyNode = BaseDependencyNode<
   DocumentDependencyNodeData
 >;
 
+export type SandboxDependencyNode = BaseDependencyNode<"sandbox", null>;
+
 export type DependencyNode =
   | TableDependencyNode
   | TransformDependencyNode
   | CardDependencyNode
   | SnippetDependencyNode
   | DashboardDependencyNode
-  | DocumentDependencyNode;
+  | DocumentDependencyNode
+  | SandboxDependencyNode;
 
 export type DependencyEdge = {
   from_entity_id: DependencyId;

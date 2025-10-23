@@ -19,6 +19,7 @@ export function getNodeCreatedAt(node: DependencyNode): string | null {
     case "table":
     case "transform":
     case "snippet":
+    case "sandbox":
       return null;
   }
 }
@@ -32,6 +33,7 @@ export function getNodeCreatedBy(node: DependencyNode): CardCreatorInfo | null {
     case "table":
     case "transform":
     case "snippet":
+    case "sandbox":
       return null;
   }
 }
@@ -45,6 +47,7 @@ export function getNodeLastEditedAt(node: DependencyNode): string | null {
     case "transform":
     case "snippet":
     case "document":
+    case "sandbox":
       return null;
   }
 }
@@ -58,6 +61,7 @@ export function getNodeLastEditedBy(node: DependencyNode): LastEditInfo | null {
     case "transform":
     case "snippet":
     case "document":
+    case "sandbox":
       return null;
   }
 }
@@ -107,6 +111,7 @@ export function getNodeFields(node: DependencyNode): Field[] {
     case "snippet":
     case "dashboard":
     case "document":
+    case "sandbox":
       return [];
   }
 }

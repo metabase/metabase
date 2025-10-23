@@ -29,5 +29,7 @@ export function getHeaderLabel(
       return t`Dashboards that use ${nodeLabel}`;
     case "document":
       return t`Documents that use ${nodeLabel}`;
+    case "sandbox":
+      return t`Sandboxes that use ${nodeLabel}`;
   }
 }

@@ -16,6 +16,7 @@ import type {
   DependencyNode,
   DocumentDependencyNode,
   PythonLibrary,
+  SandboxDependencyNode,
   SnippetDependencyNode,
   TableDependencyNode,
   Transform,
@@ -34,6 +35,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "gsheets-status",
   "document",
   "comment",
+  "sandbox",
   "transform-tag",
   "transform-job",
   "transform-job-via-tag",
@@ -219,6 +221,12 @@ function provideDocumentDependencyNodeTags(
   ];
 }
 
+function provideSandboxDependencyNodeTags(
+  node: SandboxDependencyNode,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("sandbox", node.id)];
+}
+
 export function provideDependencyNodeTags(
   node: DependencyNode,
 ): TagDescription<EnterpriseTagType>[] {
@@ -235,6 +243,8 @@ export function provideDependencyNodeTags(
       return provideDashboardDependencyNodeTags(node);
     case "document":
       return provideDocumentDependencyNodeTags(node);
+    case "sandbox":
+      return provideSandboxDependencyNodeTags(node);
   }
 }
 
