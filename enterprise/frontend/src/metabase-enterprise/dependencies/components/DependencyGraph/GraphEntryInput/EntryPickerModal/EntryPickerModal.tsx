@@ -21,8 +21,6 @@ import {
   isActivityModel,
 } from "metabase-types/api";
 
-import { SEARCH_MODELS } from "../constants";
-
 import {
   ENTITY_PICKER_OPTIONS,
   QUESTION_FOLDER_MODELS,
@@ -63,7 +61,7 @@ export function EntryPickerModal({
   const [tablesPath, setTablesPath] = useState<TablePickerStatePath>();
   const [questionsPath, setQuestionsPath] = useState<QuestionPickerStatePath>();
   const { data: searchResponse, isLoading: isSearchLoading } = useSearchQuery({
-    models: SEARCH_MODELS,
+    models: ["card"],
     limit: 0,
     calculate_available_models: true,
   });

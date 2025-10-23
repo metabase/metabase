@@ -182,7 +182,7 @@
     (t2/with-transaction [_conn]
       (models.dependency/replace-dependencies! :sandbox (:id object) (deps.calculation/upstream-deps:sandbox object))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
-        (t2/update! :model/Sandbox (:id object)
+        (t2/update! :model/Document (:id object)
                     {:dependency_analysis_version models.dependency/current-dependency-analysis-version})))))
 
 (derive ::sandbox-delete :metabase/event)

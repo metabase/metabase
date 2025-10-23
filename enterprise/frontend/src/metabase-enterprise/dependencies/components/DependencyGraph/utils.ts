@@ -87,11 +87,24 @@ export function findNode(
 }
 
 export function getNodeLabel(node: DependencyNode): string {
-  return node.type === "table" ? node.data.display_name : node.data.name;
+  switch (node.type) {
+    case "table":
+      return node.data.display_name;
+    case "sandbox":
+      return t`Sandbox`;
+    default:
+      return node.data.name;
+  }
 }
 
 export function getNodeDescription(node: DependencyNode): string | null {
-  return node.data.description;
+  switch (node.type) {
+    case "document":
+    case "sandbox":
+      return null;
+    default:
+      return node.data.description;
+  }
 }
 
 export function getNodeIcon(node: DependencyNode): IconName {
@@ -127,6 +140,12 @@ export function getNodeIconWithType(
       return "refresh_downstream";
     case "snippet":
       return "sql";
+    case "dashboard":
+      return "dashboard";
+    case "document":
+      return "document";
+    case "sandbox":
+      return "lock";
   }
 }
 
@@ -162,7 +181,18 @@ export function getNodeLink(node: DependencyNode): NodeLink | null {
         label: t`View this transform`,
         url: Urls.transform(node.id),
       };
+    case "dashboard":
+      return {
+        label: `View this dashboard`,
+        url: Urls.dashboard({ id: node.id, name: node.data.name }),
+      };
+    case "document":
+      return {
+        label: `View this document`,
+        url: Urls.document({ id: node.id }),
+      };
     case "snippet":
+    case "sandbox":
       return null;
   }
 }
@@ -201,8 +231,20 @@ export function getNodeLocationInfo(node: DependencyNode): NodeLink[] | null {
         ];
       }
       return null;
+    case "dashboard":
+    case "document":
+      if (node.data.collection != null) {
+        return [
+          {
+            label: node.data.collection.name,
+            url: Urls.collection(node.data.collection),
+          },
+        ];
+      }
+      return null;
     case "transform":
     case "snippet":
+    case "sandbox":
       return null;
   }
 }
@@ -215,9 +257,13 @@ export function getNodeViewCount(node: DependencyNode): number | null {
       return node.data.type === "question"
         ? (node.data.view_count ?? null)
         : null;
+    case "dashboard":
+    case "document":
+      return node.data.view_count ?? null;
     case "table":
     case "transform":
     case "snippet":
+    case "sandbox":
       return null;
   }
 }
@@ -264,5 +310,11 @@ export function getNodeTypeInfo(node: DependencyNode): NodeTypeInfo {
       return { label: t`Transform`, color: "warning" };
     case "snippet":
       return { label: t`Snippet`, color: "text-secondary" };
+    case "dashboard":
+      return { label: t`Dashboard`, color: "filter" };
+    case "document":
+      return { label: t`Document`, color: "text-secondary" };
+    case "sandbox":
+      return { label: t`Sandbox`, color: "text-secondary" };
   }
 }
