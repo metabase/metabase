@@ -5,12 +5,21 @@ import type { State } from "metabase-types/store";
 // Store the original selector function to preserve Enterprise/OSS behavior
 const originalGetNoDataIllustration = PLUGIN_SELECTORS.getNoDataIllustration;
 
+// Flag to ensure initialization happens only once
+let isInitialized = false;
+
 /**
  * Initialize SDK plugins by overriding core plugin selectors to be SDK-aware.
  * This allows the SDK to provide custom implementations while maintaining
  * backward compatibility with Enterprise and OSS versions.
  */
 export const initializeSdkPlugins = () => {
+  if (isInitialized) {
+    return;
+  }
+
+  isInitialized = true;
+
   // Override the selector to be SDK-aware
   PLUGIN_SELECTORS.getNoDataIllustration = (state: State) => {
     try {
