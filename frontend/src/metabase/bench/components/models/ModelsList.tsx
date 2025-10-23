@@ -12,6 +12,7 @@ import {
 } from "metabase/api";
 import { TAG_TYPE_MAPPING, listTag } from "metabase/api/tags";
 import { getTreeItems } from "metabase/bench/components/models/utils";
+import { BenchFlatListItem } from "metabase/bench/components/shared/BenchFlatListItem";
 import { getIcon } from "metabase/browse/models/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
 import { SidesheetCard } from "metabase/common/components/Sidesheet/SidesheetCard";
@@ -25,16 +26,8 @@ import { shouldShowQuestionSettingsSidebar } from "metabase/query_builder/compon
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import { getQuestion } from "metabase/query_builder/selectors";
 import { getUser } from "metabase/selectors/user";
-import {
-  Box,
-  Center,
-  FixedSizeIcon,
-  Flex,
-  Loader,
-  NavLink,
-  Text,
-} from "metabase/ui";
-import Question from "metabase-lib/v1/Question";
+import { Box, Center, Loader, Text } from "metabase/ui";
+import type Question from "metabase-lib/v1/Question";
 import type { SearchResult } from "metabase-types/api";
 
 import { BenchLayout } from "../BenchLayout";
@@ -50,6 +43,7 @@ import {
 
 import { CreateModelMenu } from "./CreateModelMenu";
 import { ModelMoreMenu } from "./ModelMoreMenu";
+import S from "./ModelsList.module.css";
 
 const sidebarFeatures: Required<SidebarFeatures> = {
   dataReference: true,
@@ -182,28 +176,20 @@ function ModelListItem({
   const icon = getIcon({ type: "dataset", ...model });
   return (
     <Box mb="sm" pos="relative">
-      <NavLink
-        component={Link}
-        to={`/bench/model/${model.id}`}
-        active={active}
-        label={
-          <>
-            <Flex gap="sm" align="center">
-              <FixedSizeIcon {...icon} size={16} c="brand" />
-              <Text fw="bold" c={active ? "brand" : undefined}>
-                {model.name}
-              </Text>
-            </Flex>
-            <Flex gap="sm" c="text-light" ml="lg">
-              <FixedSizeIcon name="folder" />
-              <EllipsifiedCollectionPath collection={model.collection} />
-            </Flex>
-          </>
+      <BenchFlatListItem
+        label={model.name}
+        icon={icon.name}
+        subtitle={
+          <EllipsifiedCollectionPath
+            collection={model.collection}
+            className={S.collectionPath}
+            ignoreHeightTruncation
+          />
         }
+        href={`/bench/model/${model.id}`}
+        isActive={active}
+        rightGroup={renderMoreMenu(model)}
       />
-      <Box pos="absolute" right="0.25rem" top="0.25rem">
-        {renderMoreMenu(model)}
-      </Box>
     </Box>
   );
 }

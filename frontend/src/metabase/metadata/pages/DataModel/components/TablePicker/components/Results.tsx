@@ -16,7 +16,7 @@ import type {
   TableItem,
   TreePath,
 } from "../types";
-import { isItemWithHiddenExpandIcon } from "../utils";
+import { isItemWithHiddenExpandIcon, isLeafNode } from "../utils";
 
 import { BulkTableVisibilityToggle } from "./BulkTableVisibilityToggle";
 import S from "./Results.module.css";
@@ -302,7 +302,7 @@ export function Results({
                       {...((item as CollectionItem).icon || {
                         name: TYPE_ICONS[type],
                       })}
-                      className={S.icon}
+                      className={cx(S.icon, isLeafNode(item) && S.leafIcon)}
                     />
                   </Flex>
 

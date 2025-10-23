@@ -1,5 +1,4 @@
 import { useCallback, useState } from "react";
-import { Link } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 import { noop } from "underscore";
@@ -12,7 +11,7 @@ import {
 } from "metabase/api/snippet";
 import { getErrorMessage } from "metabase/api/utils";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
-import { Ellipsified } from "metabase/common/components/Ellipsified";
+import { BenchFlatListItem } from "metabase/bench/components/shared/BenchFlatListItem";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import SnippetForm, {
@@ -20,7 +19,7 @@ import SnippetForm, {
 } from "metabase/query_builder/components/template_tags/SnippetForm/SnippetForm";
 import { SnippetSidebar } from "metabase/query_builder/components/template_tags/SnippetSidebar/SnippetSidebar";
 import { getUser } from "metabase/selectors/user";
-import { Box, FixedSizeIcon, Flex, NavLink } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
 import type {
   CreateSnippetRequest,
   NativeQuerySnippet,
@@ -62,18 +61,11 @@ function SnippetListItem({
 }) {
   return (
     <Box mb="sm" mx="md">
-      <NavLink
-        component={Link}
-        to={`/bench/snippet/${snippet.id}`}
-        active={active}
-        label={
-          <Flex gap="sm" align="center">
-            <FixedSizeIcon name="snippet" size={16} c="brand" />
-            <Ellipsified fw="bold" c={active ? "brand" : undefined}>
-              {snippet.name}
-            </Ellipsified>
-          </Flex>
-        }
+      <BenchFlatListItem
+        icon="snippet"
+        href={`/bench/snippet/${snippet.id}`}
+        label={snippet.name}
+        isActive={active}
       />
     </Box>
   );

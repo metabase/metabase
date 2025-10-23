@@ -32,7 +32,7 @@ export const BENCH_NAV_SECTIONS: BenchNavSection[] = [
       {
         id: "transforms",
         url: "/bench/transforms",
-        icon: "sql",
+        icon: "transform",
         getLabel: () => t`Transforms`,
       },
       {
@@ -72,7 +72,7 @@ export const BENCH_NAV_SECTIONS: BenchNavSection[] = [
       {
         id: "segment",
         url: "/bench/segment",
-        icon: "filter",
+        icon: "segment",
         getLabel: () => t`Segments`,
         nested: true,
       },

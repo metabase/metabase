@@ -92,7 +92,10 @@ function SegmentListAppInner({ onCollapse, ...props }: SegmentListAppProps) {
       prev.children?.push({
         id: segment.id,
         name: segment.name,
-        icon: "segment",
+        icon: {
+          color: "var(--mb-color-border-interactive)",
+          name: "segment",
+        },
         data: segment,
       });
     });

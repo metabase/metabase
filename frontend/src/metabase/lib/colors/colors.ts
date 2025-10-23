@@ -334,6 +334,10 @@ export const colorConfig = {
     light: baseColors.orion[20],
     dark: baseColors.orionAlphaInverse[20],
   },
+  "border-interactive": {
+    light: baseColors.ocean[40],
+    dark: baseColors.ocean[60],
+  },
   "brand-alpha-04": {
     //all of these colors derived from brand should be reworked to fit the values in the new color palette, and to have semantic names
     light: `color-mix(in srgb, var(--mb-color-brand) 4%, transparent)`,
@@ -375,6 +379,10 @@ export const colorConfig = {
     light: whitelabelColors.filter || baseColors.octopus[50],
     dark: whitelabelColors.filter || baseColors.octopus[40],
   },
+  "feedback-unknown": {
+    light: baseColors.octopus[60],
+    dark: baseColors.octopus[50],
+  },
   focus: {
     light: baseColors.blue[20],
     dark: baseColors.blue[50],
@@ -394,6 +402,14 @@ export const colorConfig = {
   "icon-secondary": {
     light: baseColors.brand[20],
     dark: baseColors.brand[20],
+  },
+  link: {
+    light: baseColors.ocean[50],
+    dark: baseColors.ocean[40],
+  },
+  "link-hover": {
+    light: baseColors.ocean[60],
+    dark: baseColors.ocean[30],
   },
   "metabase-brand": {
     light: baseColors.blue[40], // not for whitelabeling
