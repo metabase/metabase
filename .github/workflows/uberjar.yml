@@ -134,7 +134,8 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
-          can-update-cache: true
+          # We want only the ee uberjar to update the cache to avoid race conditions!
+          can-update-cache: ${{ matrix.edition == 'ee' }}
           java-version: "${{ needs.get-build-requirements.outputs.java_version || 21 }}"
       - name: Build
         run: ./bin/build.sh
