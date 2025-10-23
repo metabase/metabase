@@ -4,6 +4,7 @@ import { type JSX, memo, useEffect, useId, useRef } from "react";
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
 import { SdkIncompatibilityWithInstanceBanner } from "embedding-sdk-bundle/components/private/SdkVersionCompatibilityHandler/SdkIncompatibilityWithInstanceBanner";
 import { useInitDataInternal } from "embedding-sdk-bundle/hooks/private/use-init-data";
+import { initializeSdkPlugins } from "embedding-sdk-bundle/plugins";
 import { getSdkStore } from "embedding-sdk-bundle/store";
 import {
   setErrorComponent,
@@ -16,7 +17,6 @@ import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import { useInstanceLocale } from "metabase/common/hooks/use-instance-locale";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
-import { PLUGIN_SELECTORS } from "metabase/plugins";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { setOptions } from "metabase/redux/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
@@ -58,11 +58,8 @@ export const ComponentProviderInternal = ({
   }, [reduxStore, fontFamily]);
 
   useEffect(() => {
-    if (pluginsConfig?.getNoDataIllustration) {
-      PLUGIN_SELECTORS.getNoDataIllustration =
-        pluginsConfig.getNoDataIllustration;
-    }
-    console.log(reduxStore.getState());
+    // Initialize SDK plugins to make selectors SDK-aware
+    initializeSdkPlugins();
     reduxStore.dispatch(setPlugins(pluginsConfig || null));
   }, [reduxStore, pluginsConfig]);
 
