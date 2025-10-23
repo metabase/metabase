@@ -161,32 +161,6 @@
               (is (=? {:status "success" :task_id int?} resp))
               (is (remote-sync.task/successful? completed-task)))))))))
 
-(deftest import-skips-when-version-unchanged-but-updates-branch-test
-  (testing "POST /api/ee/remote-sync/import skips import when version matches but still updates branch setting"
-    (let [mock-main (test-helpers/create-mock-source)
-          initial-branch "main"
-          new-branch "feature"]
-      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
-                                         remote-sync-token "test-token"
-                                         remote-sync-branch initial-branch]
-        ;; First import to establish the version
-        (with-redefs [source/source-from-settings (constantly mock-main)]
-          (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {})]
-            (wait-for-task-completion task_id))
-
-          ;; Verify initial branch is set
-          (is (= initial-branch (settings/remote-sync-branch)))
-
-          ;; Now try to import with same version but different branch
-          (let [response (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:branch new-branch})]
-            ;; Should skip the import (no task_id returned)
-            (is (nil? (:task_id response)))
-            (is (= "success" (:status response)))
-            (is (= "No changes since last import" (:message response)))
-
-            ;; But branch setting should be updated
-            (is (= new-branch (settings/remote-sync-branch)))))))))
-
 ;;; ------------------------------------------------- Export Endpoint -------------------------------------------------
 
 (deftest export-errors-in-production-mode-test
@@ -281,8 +255,7 @@
           (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                              remote-sync-token "test-token"
                                              remote-sync-branch "main"]
-            (with-redefs [source/source-from-settings (constantly mock-source)
-                          source.ingestable/ingestable-version (constantly "mock-version")]
+            (with-redefs [source/source-from-settings (constantly mock-source)]
               (is (= "Cannot export changes that will overwrite new changes in the branch."
                      (:message (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {}))))
               (testing "Can export when the versions match"
@@ -301,8 +274,7 @@
           (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                              remote-sync-token "test-token"
                                              remote-sync-branch "main"]
-            (with-redefs [source/source-from-settings (constantly mock-source)
-                          source.ingestable/ingestable-version (constantly "mock-version")]
+            (with-redefs [source/source-from-settings (constantly mock-source)]
               (testing "Can export with force"
                 (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:force true})))))))))
 

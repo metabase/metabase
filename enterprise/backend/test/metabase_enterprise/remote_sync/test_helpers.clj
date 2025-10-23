@@ -225,11 +225,6 @@ width: fixed
         branches-atom (atom #{["main" "main-ref"] ["develop" "develop-ref"]})]
     (->MockSource "test-source" "https://test.example.com" branch fail-mode files-atom branches-atom)))
 
-(defn create-mock-source-ingestable
-  "Calls source.p/->ingestable with a mock source"
-  [& args]
-  (source.p/->ingestable (apply create-mock-source args) {}))
-
 (defn clean-object
   "Reset the object table before running tests to prevent existing extries from affecting dirty state checks"
   [f]

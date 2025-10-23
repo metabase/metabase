@@ -114,15 +114,3 @@
         (ingest-content (second target))
         (catch Exception e
           (throw (ex-info "Unable to ingest file" {:abs-path serdes-path} e)))))))
-
-(defn ingestable-version
-  "Get the version identifier from an ingestable source.
-
-  Args:
-    ingestable: An IngestableSource instance or wrapper containing an IngestableSource.
-
-  Returns:
-    A version identifier string from the underlying source (e.g., a git SHA)."
-  [ingestable]
-  (let [ingestable (or (:ingestable ingestable) ingestable)]
-    (source.p/version (:source ingestable))))

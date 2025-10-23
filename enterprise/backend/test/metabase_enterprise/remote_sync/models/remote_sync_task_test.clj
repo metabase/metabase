@@ -345,7 +345,7 @@
 (deftest timed-out?-returns-false-at-boundary-test
   (testing "timed-out? returns false at time limit boundary"
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))
-          boundary-time (t/minus (t/offset-date-time) (t/minutes 59))]
+          boundary-time (t/minus (t/offset-date-time) (t/minutes 4))]
       (try
         (t2/update! :model/RemoteSyncTask (:id task)
                     {:last_progress_report_at boundary-time})
