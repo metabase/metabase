@@ -34,7 +34,7 @@
 
 (use-fixtures :once
   (fixtures/initialize :db)
-  ;; TODO: this seems silly, maybe there's a better way?
+  ;; TODO (edpaget 10/23/25): this seems silly, maybe there's a better way?
   (fn [f] (mt/dataset test-data
             (mt/id)
             (f))))
