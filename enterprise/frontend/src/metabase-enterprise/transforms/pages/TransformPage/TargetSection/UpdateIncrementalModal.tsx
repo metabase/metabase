@@ -240,8 +240,8 @@ function UpdateIncrementalForm({
 
                   return isNativeQuery ? (
                     <Alert variant="info" icon="info">
-                      {t`Ensure your query contains WHERE filter on the keyset column. You may want to use:`}{" "}
-                      <strong>{`[[AND id > {{watermark}}]]`}</strong>
+                          {t`Ensure your query contains WHERE filter on the keyset column (and potentially a LIMIT). You may want to use:`}{" "}
+                          <strong>{`[[AND id > {{watermark}}]] [[LIMIT {{limit}}]]`}</strong>
                     </Alert>
                   ) : null;
                 })()}
