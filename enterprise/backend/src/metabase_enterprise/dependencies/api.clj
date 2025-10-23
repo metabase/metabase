@@ -125,7 +125,7 @@
         breakages (dependencies/errors-from-proposed-edits {:snippet [snippet]})]
     (broken-cards-response breakages)))
 
-(def ^:private entity-keys
+(def ^:private entity->keys
   {:table [:name :description :display_name :db_id :db :schema :fields]
    :card [:name :type :display :database_id :view_count
           :created_at :creator :description
@@ -152,11 +152,11 @@
 (defn- entity-value [entity-type {:keys [id] :as entity} usages]
   {:id id
    :type entity-type
-   :data (->> (select-keys entity (entity-keys entity-type))
+   :data (->> (select-keys entity (entity->keys entity-type))
               (m/map-vals format-subentity))
    :dependents_count (usages [entity-type id])})
 
-(def ^:private entity-model
+(def ^:private entity->model
   {:table :model/Table
    :card :model/Card
    :snippet :model/NativeQuerySnippet
@@ -191,7 +191,7 @@
         nodes-by-type (->> (group-by first nodes)
                            (m/map-vals #(map second %)))]
     (mapcat (fn [[entity-type entity-ids]]
-              (->> (cond-> (t2/select (entity-model entity-type)
+              (->> (cond-> (t2/select (entity->model entity-type)
                                       :id [:in entity-ids])
                      (= entity-type :card)      (-> (t2/hydrate :creator :dashboard [:collection :is_personal] :moderation_reviews)
                                                     (->> (map collection.root/hydrate-root-collection))
@@ -209,12 +209,12 @@
 
 (api.macros/defendpoint :get "/graph"
   "This endpoint takes an :id and a supported entity :type, and returns a graph of all its upstream dependencies.
-  The graph is represented by a list of :nodes, where each node has an :id, :type, and :data (which depends on
-  the node type), and a list of :edges which matches the :model/Dependency format."
+  The graph is represented by a list of :nodes and a list of :edges. Each node has an :id, :type, :data (which
+  depends on the node type), and a map of :dependent_counts per entity type. Each edge is a :model/Dependency"
   [_route-params
    {:keys [id type]} :- [:map
                          [:id {:optional true} ms/PositiveInt]
-                         [:type {:optional true} (ms/enum-decode-keyword (keys entity-model))]]]
+                         [:type {:optional true} (ms/enum-decode-keyword (keys entity->model))]]]
   (let [starting-nodes [[type id]]
         upstream-graph (dependency/graph-dependencies)
         ;; cache the downstream graph specifically, because between calculating transitive children and calculating
@@ -229,8 +229,8 @@
 (def ^:private dependents-args
   [:map
    [:id ms/PositiveInt]
-   [:type (ms/enum-decode-keyword (keys entity-model))]
-   [:dependent_type (ms/enum-decode-keyword (keys entity-model))]
+   [:type (ms/enum-decode-keyword (keys entity->model))]
+   [:dependent_type (ms/enum-decode-keyword (keys entity->model))]
    [:dependent_card_type {:optional true} (ms/enum-decode-keyword
                                            [:question :model :metric])]])
 
