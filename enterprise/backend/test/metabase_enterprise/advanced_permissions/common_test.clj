@@ -755,6 +755,51 @@
             (mt/user-http-request :rasta :post 200 (format "database/%d/rescan_values" (mt/id))))
           (is (= [1 2 3 4] (t2/select-one-fn :values :model/FieldValues, :field_id (mt/id :venues :price)))))))))
 
+(deftest refingerprint-field-test
+  (mt/with-temp [:model/Database {db-id :id} {:engine "h2", :details (:details (mt/db))}
+                 :model/Table {table-id :id} {:db_id db-id}
+                 :model/Field {field-id :id} {:table_id table-id :name "test_field"}]
+    (testing "POST /api/database/:id/field/:field-id/refingerprint"
+      (testing "endpoint can only be called if authenticated"
+        ;; Assuming mt/user-http-request requires authentication; test with a valid user
+        (mt/with-all-users-data-perms-graph! {db-id {:details :yes}}
+          (mt/user-http-request :rasta :post 200 (format "database/%d/field/%d/refingerprint" db-id field-id))))
+
+      (testing "returns 404 if database id does not exist"
+        (mt/user-http-request :rasta :post 404 (format "database/%d/field/%d/refingerprint" Integer/MAX_VALUE field-id)))
+
+      (testing "returns 404 if field id does not exist"
+        (mt/user-http-request :rasta :post 404 (format "database/%d/field/%d/refingerprint" db-id Integer/MAX_VALUE)))
+
+      (testing "returns 404 if table id does not exist (but field belongs to non-existent table)"
+        ;; This might be covered by field not existing, but to be explicit
+        (mt/with-temp [:model/Field {bad-field-id :id} {:table_id Integer/MAX_VALUE :name "bad_field"}]
+          (mt/user-http-request :rasta :post 404 (format "database/%d/field/%d/refingerprint" db-id bad-field-id))))
+
+      (testing "fingerprint changes if field values change"
+        ;; First, set initial values and refingerprint
+        (t2/update! :model/Field field-id {:fingerprint nil}) ; reset
+        (mt/user-http-request :rasta :post 200 (format "database/%d/field/%d/refingerprint" db-id field-id))
+        (let [initial-fingerprint (t2/select-one-fn :fingerprint :model/Field :id field-id)]
+          (t2/update! :model/FieldValues :field_id field-id {:values [10 20 30 40]})
+          (mt/user-http-request :rasta :post 200 (format "database/%d/field/%d/refingerprint" db-id field-id))
+          (let [updated-fingerprint (t2/select-one-fn :fingerprint :model/Field :id field-id)]
+            (is (not= initial-fingerprint updated-fingerprint))))))))
+
+(deftest refingerprint-table-test
+  (mt/with-temp [:model/Database {db-id :id} {:engine "h2", :details (:details (mt/db))}
+                 :model/Table {table-id :id} {:db_id db-id :name "test_table"}]
+    (testing "POST /api/database/:id/table/:table-id/refingerprint"
+      (testing "endpoint can only be called if authenticated"
+        (mt/with-all-users-data-perms-graph! {db-id {:details :yes}}
+          (mt/user-http-request :rasta :post 200 (format "database/%d/table/%d/refingerprint" db-id table-id))))
+
+      (testing "returns 404 if database id does not exist"
+        (mt/user-http-request :rasta :post 404 (format "database/%d/table/%d/refingerprint" Integer/MAX_VALUE table-id)))
+
+      (testing "returns 404 if table id does not exist"
+        (mt/user-http-request :rasta :post 404 (format "database/%d/table/%d/refingerprint" db-id Integer/MAX_VALUE))))))
+
 (deftest fetch-db-test
   (mt/with-temp [:model/Database {db-id :id}]
     (testing "A non-admin without self-service perms for a DB cannot fetch the DB normally"
