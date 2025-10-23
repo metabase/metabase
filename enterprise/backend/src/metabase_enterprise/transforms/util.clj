@@ -199,21 +199,34 @@
   "Preprocess a query for incremental transform execution by adding watermark filtering.
 
   For native queries, injects the watermark value into the query's :parameters vector as a
-  template tag variable named 'watermark'.
+  template tag variable named `watermark`, and limit as `limit`.
 
   For MBQL queries, adds a filter clause that constrains the keyset column to values greater
-  than the current watermark.
+  than the current watermark and enforces limit.
 
   If no watermark value exists for the transform (i.e., this is the first run), returns the
   query unchanged to allow a full initial load."
   [query source-incremental-strategy transform-id]
-  (if-let [watermark-value (next-watermark-value transform-id)]
+  (let [watermark-value (next-watermark-value transform-id)
+        limit (-> source-incremental-strategy :query-limit)]
     (if (lib.query/native? query)
-      (update query :parameters conj {:type :number
-                                      :target [:variable [:template-tag "watermark"]]
-                                      :value watermark-value})
-      (lib/filter query (lib/> (source->keyset-filter-unique-key query source-incremental-strategy) watermark-value)))
-    query))
+      (cond-> query
+        watermark-value
+        (update :parameters conj
+                {:type :number
+                 :target [:variable [:template-tag "watermark"]]
+                 :value watermark-value})
+        limit
+        (update :parameters conj
+                {:type :number
+                 :target [:variable [:template-tag "limit"]]
+                 :value limit}))
+      (cond-> query
+        watermark-value
+        (lib/filter (lib/> (source->keyset-filter-unique-key query source-incremental-strategy) watermark-value))
+
+        limit
+        (lib/limit limit)))))
 
 (defn compile-source
   "Compile the source query of a transform."

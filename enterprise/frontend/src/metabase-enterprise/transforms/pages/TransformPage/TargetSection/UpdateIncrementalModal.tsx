@@ -279,12 +279,12 @@ function UpdateIncrementalForm({
                           sourceTables={transform.source["source-tables"]}
                         />
                       )}
-                    {isPythonTransform && (
+                    {(
                       <FormTextInput
                         name="queryLimit"
                         label={t`Query Limit`}
                         placeholder={t`e.g., 1000`}
-                        description={t`Maximum number of rows to fetch from the source table per run (required for Python transforms)`}
+                        description={t`Maximum number of rows to fetch from the source table per run`}
                         type="number"
                       />
                     )}

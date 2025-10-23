@@ -305,8 +305,7 @@
         (let [db-id       (t2/select-one-fn :db_id (t2/table-name :model/Table) :id table-id)
               driver      (t2/select-one-fn :engine :model/Database db-id)
               fields-meta (fields-metadata driver table-id)
-              manifest    (generate-manifest table-id fields-meta)
-              limit       (or limit (-> source :source-incremental-strategy :query-limit))]
+              manifest    (generate-manifest table-id fields-meta)]
           (transforms.instrumentation/with-stage-timing [run-id [:export :dwh-to-file]]
             (let [query (build-table-query table-id (:source-incremental-strategy source) transform-id limit)]
               (write-query-data-to-file!

@@ -72,7 +72,7 @@ export function useInsertSnippetHandler({
   };
 }
 
-const ALLOWED_TRANSFORM_VARIABLES = ["watermark"];
+const ALLOWED_TRANSFORM_VARIABLES = ["watermark", "limit"];
 
 export function getValidationResult(query: Lib.Query): QueryValidationResult {
   const { isNative } = Lib.queryDisplayInfo(query);

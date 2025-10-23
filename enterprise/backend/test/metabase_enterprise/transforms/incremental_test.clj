@@ -14,28 +14,23 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-metadata :as meta]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
 (defn- make-source-query
   "Create a native query with optional watermark template tag and limit."
-  [schema limit?]
-  (let [timestamp-sql (first (sql/format [(sql.qp/current-datetime-honeysql-form driver/*driver*)]))]
-    {:database (mt/id)
-     :type "native"
-     :native {:query (format "SELECT *, %s AS load_timestamp FROM %s [[WHERE id > {{watermark}}]] %s"
-                             timestamp-sql
-                             (if schema
-                               (sql.u/quote-name driver/*driver* :table schema "transforms_products")
-                               "transforms_products")
-                             (if limit? "LIMIT 10" ""))
-              :template-tags {"watermark" {:id "watermark"
-                                           :name "watermark"
-                                           :display-name "Watermark"
-                                           :type :number
-                                           :default 0
-                                           :required false}}}}))
+  [schema]
+  (let [timestamp-sql (first (sql/format [(sql.qp/current-datetime-honeysql-form driver/*driver*)]))
+        query (format "SELECT *, %s AS load_timestamp FROM %s [[WHERE id > {{watermark}}]] [[LIMIT {{limit}}]]"
+                      timestamp-sql
+                      (if schema
+                        (sql.u/quote-name driver/*driver* :table schema "transforms_products")
+                        "transforms_products"))]
+    (-> (lib/native-query meta/metadata-provider query)
+        (dissoc :lib/metadata)
+        (assoc :database (mt/id)))))
 
 (defn- make-incremental-transform-payload
   "Create a transform payload for incremental transform testing."
@@ -43,8 +38,9 @@
   (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
     {:name transform-name
      :source {:type "query"
-              :query (make-source-query schema true)
+              :query (make-source-query schema)
               :source-incremental-strategy {:type "keyset"
+                                            :query-limit 10
                                             :keyset-column keyset-column}}
      :target {:type "table-incremental"
               :schema schema
@@ -199,7 +195,7 @@
 
                 (testing "Switch to non-incremental via PUT API"
                   (let [non-incremental-payload {:source {:type "query"
-                                                          :query (make-source-query schema false)}
+                                                          :query (make-source-query schema)}
                                                  :target {:type "table"
                                                           :schema schema
                                                           :name target-table}}
@@ -232,7 +228,7 @@
             (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
                   initial-payload {:name "Non-Incremental Transform"
                                    :source {:type "query"
-                                            :query (make-source-query schema false)}
+                                            :query (make-source-query schema)}
                                    :target {:type "table"
                                             :schema schema
                                             :name target-table}}]
@@ -251,8 +247,9 @@
 
                 (testing "Switch to incremental via PUT API"
                   (let [incremental-payload {:source {:type "query"
-                                                      :query (make-source-query schema true)
+                                                      :query (make-source-query schema)
                                                       :source-incremental-strategy {:type "keyset"
+                                                                                    :query-limit 10
                                                                                     :keyset-column "id"}}
                                              :target {:type "table-incremental"
                                                       :schema schema

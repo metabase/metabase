@@ -10,7 +10,8 @@ import Question from "metabase-lib/v1/Question";
 import type { DatasetQuery, ParameterValuesMap } from "metabase-types/api";
 
 type TransformParameters = {
-  transformId?: number;
+    transformId?: number;
+    queryLimit?: number;
 };
 
 export function useQueryResults(
@@ -57,6 +58,8 @@ export function useQueryResults(
         const tagName = param.target[1][1];
         if (tagName === "watermark") {
           parameterValues[param.id] = transformParameters.transformId;
+        } else if (tagName === "limit") {
+            parameterValues[param.id] = transformParameters.queryLimit;
         }
       }
     }

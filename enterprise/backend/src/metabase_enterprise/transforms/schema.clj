@@ -10,7 +10,6 @@
    [:keyset-column :string]
    ;; required for mbql and python transforms
    [:keyset-filter-unique-key {:optional true} ::lib.metadata.column/column-unique-key]
-   ;; required for python transforms
    [:query-limit {:optional true} :int]])
 
 (mr/def ::source-incremental-strategy

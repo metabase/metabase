@@ -41,6 +41,7 @@ type QueryEditorProps = {
   onSave: (source: QueryTransformSource) => void;
   onCancel: () => void;
   transformId?: number;
+  queryLimit?: number;
 };
 
 export function QueryEditor({
@@ -50,6 +51,7 @@ export function QueryEditor({
   onSave,
   onCancel,
   transformId,
+  queryLimit,
 }: QueryEditorProps) {
   const { question, isQueryDirty, setQuestion } = useQueryState(
     initialSource.query,
@@ -65,6 +67,7 @@ export function QueryEditor({
     cancelQuery,
   } = useQueryResults(question, {
     transformId,
+    queryLimit,
   });
   const { isNative } = Lib.queryDisplayInfo(question.query());
   const [isShowingNativeQueryPreview, toggleNativeQueryPreview] = useToggle();
