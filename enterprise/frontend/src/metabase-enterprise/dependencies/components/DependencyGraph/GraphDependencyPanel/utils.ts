@@ -43,34 +43,62 @@ function isMatchingSearchQuery(
 
 const FILTERS: Record<FilterOption, FilterCallback> = {
   verified: (node) => {
-    if (node.type !== "card") {
-      return false;
+    switch (node.type) {
+      case "card": {
+        const lastReview = node.data.moderation_reviews?.find(
+          (review) => review.most_recent,
+        );
+        return lastReview != null && lastReview.status === "verified";
+      }
+      case "table":
+      case "transform":
+      case "snippet":
+      case "dashboard":
+      case "document":
+        return false;
     }
-    const lastReview = node.data.moderation_reviews?.find(
-      (review) => review.most_recent,
-    );
-    return lastReview != null && lastReview.status === "verified";
   },
   "in-dashboard": (node) => {
-    if (node.type !== "card") {
-      return false;
+    switch (node.type) {
+      case "card": {
+        const dashboard = node.data.dashboard;
+        return dashboard != null;
+      }
+      case "table":
+      case "transform":
+      case "snippet":
+      case "dashboard":
+      case "document":
+        return false;
     }
-    const dashboard = node.data.dashboard;
-    return dashboard != null;
   },
   "in-official-collection": (node) => {
-    if (node.type !== "card") {
-      return false;
+    switch (node.type) {
+      case "card":
+      case "dashboard":
+      case "document": {
+        const collection = node.data.collection;
+        return collection != null && collection.authority_level === "official";
+      }
+      case "table":
+      case "transform":
+      case "snippet":
+        return false;
     }
-    const collection = node.data.collection;
-    return collection != null && collection.authority_level === "official";
   },
   "not-in-personal-collection": (node) => {
-    if (node.type !== "card") {
-      return false;
+    switch (node.type) {
+      case "card":
+      case "dashboard":
+      case "document": {
+        const collection = node.data.collection;
+        return collection != null && !collection.is_personal;
+      }
+      case "table":
+      case "transform":
+      case "snippet":
+        return false;
     }
-    const collection = node.data.collection;
-    return collection != null && !collection.is_personal;
   },
 };
 
@@ -82,10 +110,23 @@ export function canFilterByOption(
   switch (option) {
     case "verified":
     case "in-dashboard":
+      switch (type) {
+        case "card":
+          return true;
+        case "table":
+        case "transform":
+        case "snippet":
+        case "dashboard":
+        case "document":
+          return false;
+      }
+      break;
     case "in-official-collection":
     case "not-in-personal-collection":
       switch (type) {
         case "card":
+        case "dashboard":
+        case "document":
           return true;
         case "table":
         case "transform":
@@ -144,6 +185,8 @@ export function canSortByColumn(
         case "question":
         case "model":
         case "metric":
+        case "dashboard":
+        case "document":
           return true;
         case "table":
         case "transform":
@@ -154,6 +197,8 @@ export function canSortByColumn(
     case "view-count":
       switch (groupType) {
         case "question":
+        case "dashboard":
+        case "document":
           return true;
         case "model":
         case "metric":
