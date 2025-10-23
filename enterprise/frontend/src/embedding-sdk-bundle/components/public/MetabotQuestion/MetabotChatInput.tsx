@@ -1,5 +1,5 @@
-import type { LegacyRef } from "react";
 import cx from "classnames";
+import type { LegacyRef } from "react";
 import { t } from "ttag";
 
 import { useSdkDispatch } from "embedding-sdk-bundle/store";

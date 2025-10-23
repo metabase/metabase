@@ -141,7 +141,7 @@ export const AgentSuggestionMessage = ({
       shadow="none"
       radius="md"
       bg="white"
-      style={{ border: `1px solid var(--mb-color-border)` }}
+      className={S.container}
       data-testid="metabot-chat-suggestion"
     >
       <Group
@@ -149,9 +149,7 @@ export const AgentSuggestionMessage = ({
         align="center"
         justify="space-between"
         onClick={toggle}
-        style={{
-          borderBottom: opened ? `1px solid var(--mb-color-border)` : "",
-        }}
+        className={cx(opened && S.headerOpened)}
       >
         <Flex align="center" gap="sm">
           <Icon name="refresh_downstream" size="1rem" c="text-secondary" />
