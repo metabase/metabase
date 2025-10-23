@@ -97,17 +97,17 @@
   and order bys into the new final stage. This is because lots of our SQL databases don't really like when you do
   stuff like this:
 
-    SELECT (x + 1) AS x_1
+    SELECT (x + ?) AS x_1
     FROM my_table
-    GROUP BY (x + 1)
-    ORDER BY (x + 1) ASC
+    GROUP BY (x + ?)
+    ORDER BY (x + ?) ASC
 
-  Why? They are dumb and can't figure out `x + 1` is the same thing, especially if this was parameterized e.g. `x +
-  ?`. So instead we will introduce an additional stage that will give us SQL that looks like this:
+  Why? They are dumb and can't figure out `x + ?` is the same thing. So instead we will introduce an additional stage
+  that will give us SQL that looks like this:
 
     SELECT x_1 AS x_1
     FROM (
-      SELECT (x + 1) AS x_1
+      SELECT (x + ?) AS x_1
       FROM my_table
     ) source
     GROUP BY x_1
