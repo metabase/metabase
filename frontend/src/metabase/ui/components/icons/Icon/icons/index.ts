@@ -344,6 +344,8 @@ import refresh_component from "./refresh.svg?component";
 import refresh_source from "./refresh.svg?source";
 import refresh_downstream_component from "./refresh_downstream.svg?component";
 import refresh_downstream_source from "./refresh_downstream.svg?source";
+import repository_component from "./repository.svg?component";
+import repository_source from "./repository.svg?source";
 import return_component from "./return.svg?component";
 import return_source from "./return.svg?source";
 import revert_component from "./revert.svg?component";
@@ -1223,6 +1225,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: refresh_downstream_component,
       source: refresh_downstream_source,
     },
+    repository: {
+      component: repository_component,
+      source: repository_source,
+    },
     rocket: {
       component: rocket_component,
       source: rocket_source,
@@ -1662,6 +1668,7 @@ export type IconName =
   | "reference"
   | "refresh"
   | "refresh_downstream"
+  | "repository"
   | "rocket"
   | "ruler"
   | "schema"
