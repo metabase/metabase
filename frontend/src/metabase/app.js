@@ -1,5 +1,6 @@
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
+import "@xyflow/react/dist/style.css";
 
 import "regenerator-runtime/runtime";
 
