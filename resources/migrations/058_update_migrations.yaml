@@ -815,6 +815,97 @@ databaseChangeLog:
         - sql:
             sql: UPDATE collection SET type = 'remote-synced' WHERE is_remote_synced = true
 
+  - changeSet:
+      id: v57.2025-10-22T14:12:00
+      author: bshepherdson
+      comment: Create analysis finding table
+      changes:
+        - createTable:
+            tableName: analysis_finding
+            remarks: Findings from analysis of cards, transforms, dashboards, etc.
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: analyzed_entity_type
+                  type: varchar(20)
+                  remarks: The type of the analyzed entity
+                  constraints:
+                    nullable: false
+              - column:
+                  name: analyzed_entity_id
+                  type: int
+                  remarks: The ID of the analyzed entity
+                  constraints:
+                    nullable: false
+              - column:
+                  name: analysis_version
+                  remarks: The version of the analysis that was performed
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: analyzed_at
+                  remarks: The timestamp of when the analysis was performed
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: result
+                  type: varchar(20)
+                  remarks: The result of the analysis - ok, broken, etc.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: finding_details
+                  type: ${text.type}
+                  remarks: Arbitrary EDN text of the findings
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v57.2025-10-28T14:55:00
+      author: bshepherdson
+      comment: Unique constraint to prevent duplicate analyses
+      changes:
+        - addUniqueConstraint:
+            tableName: analysis_finding
+            columnNames: analyzed_entity_type, analyzed_entity_id
+            constraintName: idx_unique_analysis_finding
+
+  - changeSet:
+      id: v57.2025-10-22T14:13:00
+      author: bshepherdson
+      comment: Index for analysis_finding by analyzed entity
+      changes:
+        - createIndex:
+            tableName: analysis_finding
+            indexName: idx_analyzed_entity
+            columns:
+              - column:
+                  name: analyzed_entity_type
+              - column:
+                  name: analyzed_entity_id
+
+  - changeSet:
+      id: v57.2025-10-22T14:14:00
+      author: bshepherdson
+      comment: Index for analysis_finding by analysis result
+      changes:
+        - createIndex:
+            tableName: analysis_finding
+            indexName: idx_analysis_result
+            columns:
+              - column:
+                  name: result
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
