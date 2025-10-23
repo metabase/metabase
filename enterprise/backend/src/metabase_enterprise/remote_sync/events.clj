@@ -17,29 +17,17 @@
  ;; Helper functions for model change tracking
 
 (defn- model-in-remote-synced-collection?
-  "Check if a model (card, dashboard, document) is in a remote-synced collection.
-
-   Args:
-       model (map): The model instance with collection_id field.
-       collection_id (int): ID of the collection containing the model.
-
-   Returns:
-       bool: True if the model is in a remote-synced collection, false otherwise."
+  "Checks if a model (card, dashboard, document) is in a remote-synced collection. Takes a model instance with a
+  collection_id field. Returns true if the model is in a remote-synced collection, false otherwise."
   [{:keys [collection_id]}]
   (boolean
    (collections/remote-synced-collection? collection_id)))
 
 (defn- create-or-update-remote-sync-object-entry!
-  "Create or update a remote sync object entry for a model change.
-
-   Args:
-       model-type (str): Type of model ('Card', 'Dashboard', 'Document', 'Collection').
-       model-id (int): ID of the affected model.
-       status (str): Status of the sync ('create', 'update', 'removed', 'delete', 'error', 'synced').
-       user-id (int, optional): ID of the user making the change. Defaults to current user.
-
-   Returns:
-       map: The create or update remote sync object entry."
+  "Creates or updates a remote sync object entry for a model change. Takes a model-type (type of model: 'Card',
+  'Dashboard', 'Document', 'Collection'), a model-id (ID of the affected model), a status (status of the sync:
+  'create', 'update', 'removed', 'delete', 'error', 'synced'), and an optional user-id (ID of the user making
+  the change). Returns the created or updated remote sync object entry."
   [model-type model-id status & [_user-id]]
   (let [existing (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id)]
     (cond
@@ -52,9 +40,9 @@
 
       (not existing)
       (t2/insert! :model/RemoteSyncObject
-                  {:model_type      model-type
-                   :model_id        model-id
-                   :status          status
+                  {:model_type model-type
+                   :model_id model-id
+                   :status status
                    :status_changed_at (t/offset-date-time)}))))
 
 ;; Model change tracking event handlers

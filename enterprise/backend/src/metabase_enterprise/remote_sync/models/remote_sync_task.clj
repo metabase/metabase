@@ -31,18 +31,14 @@
 ;;; ------------------------------------------- Helper Functions -------------------------------------------
 
 (mu/defn create-sync-task!
-  "Create a new remote sync task.
+  "Creates a new remote sync task.
 
-  Args:
-    sync-task-type: Type of sync task, either 'import' or 'export'.
-    user-id: (Optional) ID of the user who initiated the task.
-    additional-fields: (Optional) Map of additional fields to include in the task record.
+  Takes a sync-task-type (either 'import' or 'export'), an optional user-id (ID of the user who initiated the task),
+  and optional additional-fields (map of additional fields to include in the task record).
 
-  Returns:
-    The created RemoteSyncTask instance.
+  Returns the created RemoteSyncTask instance.
 
-  Raises:
-    ExceptionInfo: If a running task already exists."
+  Throws ExceptionInfo if a running task already exists."
   [sync-task-type :- ::remote-sync-task-type
    user-id :- [:maybe pos-int?] &
    [additional-fields :- [:map]]]
@@ -54,18 +50,14 @@
                                         additional-fields)))
 
 (defn cancel-sync-task!
-  "Mark a sync task as cancelled.
+  "Marks a sync task as cancelled.
 
-  Args:
-    task-id: The ID of the sync task to cancel.
+  Takes the ID of the sync task to cancel.
 
-  Returns:
-    The number of rows updated (should be 1 if successful).
+  Returns the number of rows updated (should be 1 if successful).
 
-  Notes:
-    This signal will be checked in update-progress! to stop further processing.
-    The worker thread must manually check this flag rather than being interrupted,
-    as interrupting Quartz threads can cause issues."
+  This signal will be checked in update-progress! to stop further processing. Note that the worker thread must
+  manually check this flag rather than being interrupted, as interrupting Quartz threads can cause issues."
   [task-id]
   (t2/update! :model/RemoteSyncTask task-id
               {:cancelled true
@@ -73,71 +65,58 @@
                :error_message "Task cancelled"}))
 
 (defn update-progress!
-  "Update the progress of a sync task.
+  "Updates the progress of a sync task.
 
-  Args:
-    task-id: The ID of the sync task to update.
-    progress: Progress value between 0.0 and 1.0.
+  Takes the ID of the sync task to update and a progress value between 0.0 and 1.0.
 
-  Returns:
-    The number of rows updated (should be 1 if successful).
+  Returns the number of rows updated (should be 1 if successful).
 
-  Raises:
-    ExceptionInfo: If the task has been marked as cancelled."
+  Throws ExceptionInfo if the task has been marked as cancelled."
   [task-id progress]
   (when (true? (t2/select-one-fn :cancelled :model/RemoteSyncTask :id task-id))
-    (throw (ex-info "Remote sync task has been cancelled" {:task-id    task-id
+    (throw (ex-info "Remote sync task has been cancelled" {:task-id task-id
                                                            :cancelled? true})))
   (t2/update! :model/RemoteSyncTask task-id
               {:progress progress
                :last_progress_report_at (mi/now)}))
 
 (defn set-version!
-  "Set the version value for a sync task.
+  "Sets the version value for a sync task.
 
-  Args:
-    task-id: The ID of the sync task to update.
-    version: The version identifier string to set (typically a git SHA).
+  Takes the ID of the sync task to update and a version identifier string to set (typically a git SHA).
 
-  Returns:
-    The number of rows updated (should be 1 if successful)."
+  Returns the number of rows updated (should be 1 if successful)."
   [task-id version]
   (t2/update! :model/RemoteSyncTask task-id
               {:version version}))
 
 (defn complete-sync-task!
-  "Mark a sync task as completed.
+  "Marks a sync task as completed.
 
-  Args:
-    task-id: The ID of the sync task to mark as completed.
+  Takes the ID of the sync task to mark as completed.
 
-  Returns:
-    The number of rows updated (should be 1 if successful)."
+  Returns the number of rows updated (should be 1 if successful)."
   [task-id]
   (t2/update! :model/RemoteSyncTask task-id
               {:progress 1.0
                :ended_at (mi/now)}))
 
 (defn fail-sync-task!
-  "Mark a sync task as failed.
+  "Marks a sync task as failed.
 
-  Args:
-    task-id: The ID of the sync task to mark as failed.
-    error-msg: The error message describing why the task failed.
+  Takes the ID of the sync task to mark as failed and an error message describing why the task failed.
 
-  Returns:
-    The number of rows updated (should be 1 if successful)."
+  Returns the number of rows updated (should be 1 if successful)."
   [task-id error-msg]
   (t2/update! :model/RemoteSyncTask task-id
               {:ended_at (mi/now)
                :error_message error-msg}))
 
 (defn current-task
-  "Get the current active sync task.
+  "Gets the current active sync task.
 
-  Returns:
-    The most recent RemoteSyncTask that is still running (started but not ended,
-    and has reported progress within the time limit), or nil if no active task exists."
+  Returns the most recent RemoteSyncTask that is still running (started but not ended, and has reported progress
+  within the time limit), or nil if no active task exists."
   []
   (t2/select-one :model/RemoteSyncTask
                  {:where [:and
@@ -151,10 +130,9 @@
                              [:id :desc]]}))
 
 (defn most-recent-task
-  "Get the most recently run task, including currently running tasks.
+  "Gets the most recently run task, including currently running tasks.
 
-  Returns:
-    The most recent RemoteSyncTask (running or completed), or nil if no tasks exist."
+  Returns the most recent RemoteSyncTask (running or completed), or nil if no tasks exist."
   []
   (t2/select-one :model/RemoteSyncTask
                  {:where [:and
@@ -164,97 +142,85 @@
                              [:id :desc]]}))
 
 (defn most-recent-successful-task
-  "Get the most recent successful task, optionally filtered by type.
+  "Gets the most recent successful task, optionally filtered by type.
 
-  Args:
-    task-type: (Optional) The sync task type to filter by ('import' or 'export'). If nil, returns the most recent successful task of any type.
+  Takes an optional task-type parameter (either 'import' or 'export'). If nil, returns the most recent successful
+  task of any type.
 
-  Returns:
-    The most recent successfully completed RemoteSyncTask matching the criteria, or nil if none exists."
+  Returns the most recent successfully completed RemoteSyncTask matching the criteria, or nil if none exists."
   [task-type]
   (t2/select-one :model/RemoteSyncTask
-                 {:where    (cond-> [:and
-                                     [:<> nil :ended_at]
-                                     [:= false :cancelled]
-                                     [:= nil :error_message]]
-                              (some? task-type)
-                              (conj [:= task-type :sync_task_type]))
-                  :limit    1
+                 {:where (cond-> [:and
+                                  [:<> nil :ended_at]
+                                  [:= false :cancelled]
+                                  [:= nil :error_message]]
+                           (some? task-type)
+                           (conj [:= task-type :sync_task_type]))
+                  :limit 1
                   :order-by [[:started_at :desc]
                              [:id :desc]]}))
 
 (defn last-import-version
-  "Get the version most recently successfully imported.
+  "Gets the version most recently successfully imported.
 
-  Returns:
-    The version string from the most recent successful import task, or nil if no successful imports exist."
+  Returns the version string from the most recent successful import task, or nil if no successful imports exist."
   []
   (:version (most-recent-successful-task "import")))
 
 (defn last-version
-  "Get the version that any changes are built off of.
+  "Gets the version that any changes are built off of.
 
-  Returns:
-    The version string from the most recent successful task (either export or import), or nil if no successful tasks exist."
+  Returns the version string from the most recent successful task (either export or import), or nil if no successful
+  tasks exist."
   []
   (:version (most-recent-successful-task nil)))
 
 (defn running?
-  "Check if a task is currently running.
+  "Checks if a task is currently running.
 
-  Args:
-    task: A RemoteSyncTask instance.
+  Takes a RemoteSyncTask instance.
 
-  Returns:
-    Boolean - true if the task has started but not ended (ended_at is nil), false otherwise."
+  Returns true if the task has started but not ended (ended_at is nil), false otherwise."
   [task]
   (nil? (:ended_at task)))
 
 (defn successful?
-  "Check if a task completed successfully.
+  "Checks if a task completed successfully.
 
-  Args:
-    task: A RemoteSyncTask instance.
+  Takes a RemoteSyncTask instance.
 
-  Returns:
-    Boolean - true if the task completed without being cancelled or encountering errors, false otherwise."
+  Returns true if the task completed without being cancelled or encountering errors, false otherwise."
   [task]
   (and (false? (:cancelled task))
        (nil? (:error_message task))
        (some? (:ended_at task))))
 
 (defn failed?
-  "Check if a task failed.
+  "Checks if a task failed.
 
-  Args:
-    task: A RemoteSyncTask instance.
+  Takes a RemoteSyncTask instance.
 
-  Returns:
-    Boolean - true if the task completed with an error but was not cancelled, false otherwise."
+  Returns true if the task completed with an error but was not cancelled, false otherwise."
   [task]
   (and (false? (:cancelled task))
        (some? (:error_message task))
        (some? (:ended_at task))))
 
 (defn cancelled?
-  "Check if a task was cancelled.
+  "Checks if a task was cancelled.
 
-  Args:
-    task: A RemoteSyncTask instance.
+  Takes a RemoteSyncTask instance.
 
-  Returns:
-    Boolean - true if the task was cancelled, false otherwise."
+  Returns true if the task was cancelled, false otherwise."
   [task]
   (:cancelled task))
 
 (defn timed-out?
-  "Check if a task has timed out.
+  "Checks if a task has timed out.
 
-  Args:
-    task: A RemoteSyncTask instance.
+  Takes a RemoteSyncTask instance.
 
-  Returns:
-    Boolean - true if the task is incomplete and has not reported progress within the time limit, false otherwise."
+  Returns true if the task is incomplete and has not reported progress within the time limit, false otherwise."
   [task]
   (and (nil? (:ended_at task))
        (t/< (:last_progress_report_at task)

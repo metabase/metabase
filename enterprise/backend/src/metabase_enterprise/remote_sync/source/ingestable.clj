@@ -43,15 +43,13 @@
       (callback <> serdes-path))))
 
 (defn wrap-progress-ingestable
-  "Wrap an Ingestable to track and update progress during ingestion.
+  "Wraps an Ingestable to track and update progress during ingestion.
 
-  Args:
-    task-id: The integer ID of the RemoteSyncTask model to update with progress.
-    normalize: The maximum progress ratio value (progress will be calculated as a fraction of this number).
-    ingestable: An Ingestable object to wrap with progress tracking.
+  Takes a task-id (the integer ID of the RemoteSyncTask model to update with progress), a normalize value (the
+  maximum progress ratio value, with progress calculated as a fraction of this number), and an ingestable (an
+  Ingestable object to wrap with progress tracking).
 
-  Returns:
-    A CallbackIngestable instance that updates task progress as items are ingested."
+  Returns a CallbackIngestable instance that updates task progress as items are ingested."
   [task-id normalize ingestable]
   (let [total (count (serialization/ingest-list ingestable))
         calls (atom 0)]
@@ -87,15 +85,13 @@
     (serialization/ingest-one ingestable serdes-path)))
 
 (defn wrap-root-dep-ingestable
-  "Wrap an Ingestable to filter items by root dependencies.
+  "Wraps an Ingestable to filter items by root dependencies.
 
-  Args:
-    root-dependencies: A sequence of serdes dependency maps in the format [{:model MODEL_NAME :id ENTITY_ID}].
-    ingestable: The source Ingestable object to wrap.
+  Takes root-dependencies (a sequence of serdes dependency maps in the format [{:model MODEL_NAME :id ENTITY_ID}])
+  and an ingestable (the source Ingestable object to wrap).
 
-  Returns:
-    A RootDependencyIngestable instance that filters ingest-list results to only include
-    items sharing one of the specified root dependencies."
+  Returns a RootDependencyIngestable instance that filters ingest-list results to only include items sharing one of
+  the specified root dependencies."
   [root-dependencies ingestable]
   (->RootDependencyIngestable ingestable root-dependencies (atom {})))
 

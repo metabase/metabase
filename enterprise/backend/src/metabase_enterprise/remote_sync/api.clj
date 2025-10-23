@@ -85,18 +85,11 @@
                                 (or message "Exported from Metabase"))})
 
 (defn- task-with-status
-  "Returns a task object with the status added
+  "Returns a task record with a :status field added based on the task's state.
 
-  Args:
-    task (map): A remote sync task record
-
-  Returns:
-    map: The task record with a :status field added, which can be:
-         :errored - Task failed with an error
-         :successful - Task completed successfully
-         :cancelled - Task was cancelled by user
-         :timed-out - Task exceeded time limit
-         :running - Task is currently executing"
+  Takes a remote sync task record map and adds a :status key that can be :errored (failed with error), :successful
+  (completed successfully), :cancelled (cancelled by user), :timed-out (exceeded time limit), or :running
+  (currently executing)."
   [task]
   (assoc task :status (cond
                         (remote-sync.task/failed? task) :errored

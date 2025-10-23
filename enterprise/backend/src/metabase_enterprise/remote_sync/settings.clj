@@ -83,18 +83,12 @@
   :default (* 1000 60 5))
 
 (defn- check-git-settings!
-  "Validate that git repository settings are correct by attempting to connect.
+  "Validates git repository settings by attempting to connect and retrieve the default branch.
 
-  Args:
-    settings: A map containing:
-      - :remote-sync-url - The git repository URL to validate.
-      - :remote-sync-token - (Optional) Authentication token for the repository.
+  Takes a map with :remote-sync-url (required) and :remote-sync-token (optional) keys. Returns the repository's
+  default branch name as a string if the connection succeeds.
 
-  Returns:
-    The default branch name of the repository as a string if successful.
-
-  Raises:
-    ExceptionInfo: If unable to connect to the git repository with the provided settings."
+  Throws ExceptionInfo if unable to connect to the repository with the provided settings."
   [{:keys [remote-sync-url remote-sync-token]}]
   (try
     (git/default-branch (git/git-source remote-sync-url "HEAD" remote-sync-token))
@@ -102,30 +96,16 @@
       (throw (ex-info "Unable to connect to git repository with the provided settings" {:cause (.getMessage e)} e)))))
 
 (defn check-and-update-remote-settings!
-  "Validate and update git sync settings in the application database.
+  "Validates and updates git sync settings in the application database.
 
-  This function validates the provided git settings by attempting to connect to the repository.
-  If successful, updates the settings in the database. If the URL is blank, clears all git sync settings.
+  Takes a settings map containing :remote-sync-url, :remote-sync-token, :remote-sync-type, :remote-sync-branch, and
+  :remote-sync-auto-import keys. If the URL is blank, clears all git sync settings (url, token, and branch).
+  Otherwise, validates the settings by connecting to the repository, then updates the settings in a transaction.
 
-  Args:
-    settings: A map containing git sync configuration:
-      - :remote-sync-url - The git repository URL. A blank value clears all git sync settings.
-      - :remote-sync-token - (Optional) Authentication token. If obfuscated (matches the existing token),
-        the existing token is preserved rather than overwritten.
-      - :remote-sync-type - (Optional) The sync type (:production or :development).
-      - :remote-sync-branch - (Optional) The branch name to sync with.
-      - :remote-sync-auto-import - (Optional) Whether to enable automatic imports.
+  If the token is obfuscated (matches the existing token), preserves the existing token value rather than
+  overwriting it. If no branch is specified, uses the repository's default branch.
 
-  Returns:
-    nil. Updates are performed as side effects to the application database settings.
-
-  Raises:
-    ExceptionInfo: If the git settings are invalid or if unable to connect to the repository.
-
-  Notes:
-    - When remote-sync-url is blank, clears url, token, and branch settings.
-    - When remote-sync-token is obfuscated, preserves the existing token value.
-    - If no branch is specified, uses the repository's default branch."
+  Throws ExceptionInfo if the git settings are invalid or if unable to connect to the repository."
   [{:keys [remote-sync-url remote-sync-token] :as settings}]
 
   (if (str/blank? remote-sync-url)

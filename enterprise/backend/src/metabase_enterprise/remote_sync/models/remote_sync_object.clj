@@ -81,13 +81,11 @@
               [:rs_obj.status :sync_status]]})
 
 (defn- build-dirty-union-all
-  "Build a HoneySQL select statement that returns dirty children of a collection.
+  "Builds a HoneySQL select statement that returns dirty children of a collection.
 
-  Args:
-    select-options: A map of model-type to HoneySQL select clause configurations.
+  Takes a map of model-type to HoneySQL select clause configurations.
 
-  Returns:
-    A HoneySQL union-all query that counts dirty objects across all synced model types."
+  Returns a HoneySQL union-all query that counts dirty objects across all synced model types."
   [select-options]
   (let [queries (mapv (fn [[table entity-type]]
                         (let [id-col (keyword (str (name table) ".id"))]
@@ -102,18 +100,16 @@
     {:union-all queries}))
 
 (defn dirty-global?
-  "Check if any collection has changes since the last sync.
+  "Checks if any collection has changes since the last sync.
 
-  Returns:
-    Boolean - true if any remote-synced object has a status other than 'synced', false otherwise."
+  Returns true if any remote-synced object has a status other than 'synced', false otherwise."
   []
   (t2/exists? :model/RemoteSyncObject :status [:not= "synced"]))
 
 (defn dirty-for-global
-  "Get all models in any collection that are dirty with their sync status.
+  "Gets all models in any collection that are dirty with their sync status.
 
-  Returns:
-    A sequence of model maps that have changed since the last remote sync,
-    including details about their current state and sync status."
+  Returns a sequence of model maps that have changed since the last remote sync, including details about their
+  current state and sync status."
   []
   (t2/query (build-dirty-union-all items-select)))
