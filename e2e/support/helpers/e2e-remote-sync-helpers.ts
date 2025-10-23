@@ -2,6 +2,8 @@ import yamljs from "yamljs";
 
 import type { Collection } from "metabase-types/api";
 
+import { navigationSidebar } from "./e2e-ui-elements-helpers";
+
 export const LOCAL_GIT_PATH =
   Cypress.config("projectRoot") + "/e2e/tmp/test-repo";
 export const LIBRARY_FIXTURE_PATH =
@@ -91,10 +93,13 @@ export const wrapLibraryCollection = (alias = "library", n = 0) => {
   });
 };
 
+export const getSyncStatusIndicators = () =>
+  navigationSidebar().findAllByTestId("remote-sync-status");
+
 export const updateRemoteQuestion = (
   updateFn: (val: Record<string, any>) => Record<string, any>,
-  commitMessage = "Local Update",
   assertionsFn?: (val: Record<string, any>) => void,
+  commitMessage = "Local Update",
 ) => {
   wrapLibraryFiles();
   cy.get("@libraryFiles").then((libraryFiles) => {

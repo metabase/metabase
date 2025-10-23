@@ -1,6 +1,5 @@
-import yamljs from "yamljs";
-
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import type { Collection } from "metabase-types/api";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -42,17 +41,14 @@ describe("Remote Sync", () => {
       cy.visit("/");
 
       // Ensure that status icon is present
-      cy.findByTestId("main-navbar-root")
-        .findByRole("link", { name: /Library/ })
-        .findByTestId("remote-sync-status")
-        .should("exist");
-      cy.findByTestId("main-navbar-root")
+      H.getSyncStatusIndicators().should("have.length.greaterThan", 0);
+      H.navigationSidebar()
         .findByRole("link", { name: /Library/ })
         .click();
 
       H.collectionTable().findByText(REMOTE_QUESTION_NAME).should("exist");
 
-      cy.findByTestId("main-navbar-root")
+      H.navigationSidebar()
         .findByRole("button", { name: "Push to Git" })
         .click();
 
@@ -60,33 +56,20 @@ describe("Remote Sync", () => {
         .button(/Push changes/)
         .click();
 
-      cy.findByTestId("main-navbar-root")
+      H.navigationSidebar()
         .findByRole("link", { name: /Library/ })
         .findByTestId("remote-sync-status", { timeout: 10000 })
         .should("not.exist");
 
-      H.wrapLibraryFiles();
-
-      cy.get("@libraryFiles").then((libraryFiles) => {
-        const questionFilePath = (libraryFiles as unknown as string[]).find(
-          (file) => file.includes("remote_sync_test_question.yaml"),
-        );
-
-        const fullPath = `${H.LOCAL_GIT_PATH}/${questionFilePath}`;
-
-        cy.readFile(fullPath).then((str) => {
-          const doc = yamljs.parse(str);
-
-          //Assert that the name of the question is correct
-          expect(doc.name).to.equal(REMOTE_QUESTION_NAME);
-
-          //Next, Update the name and pull in the changes
+      H.updateRemoteQuestion(
+        (doc) => {
           doc.name = UPDATED_REMOTE_QUESTION_NAME;
-
-          cy.writeFile(fullPath, yamljs.stringify(doc));
-          cy.exec("git -C " + H.LOCAL_GIT_PATH + " commit -am 'Local Update'");
-        });
-      });
+          return doc;
+        },
+        (doc) => {
+          expect(doc.name).to.equal(REMOTE_QUESTION_NAME);
+        },
+      );
 
       cy.findByTestId("main-navbar-root")
         .findByRole("button", { name: "Pull from Git" })
@@ -95,6 +78,108 @@ describe("Remote Sync", () => {
       H.collectionTable()
         .findByText(UPDATED_REMOTE_QUESTION_NAME, { timeout: 10000 })
         .should("exist");
+    });
+
+    it("should not allow you to move content to the library that references non library items", () => {
+      cy.intercept("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`).as(
+        "updateDashboard",
+      );
+
+      cy.visit("/collection/root");
+
+      H.getSyncStatusIndicators().should("have.length", 0);
+
+      H.openCollectionItemMenu("Orders in a dashboard");
+      H.popover().findByText("Move").click();
+
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Collections").click();
+        H.entityPickerModalItem(1, "Library").click();
+        cy.button("Move").click();
+      });
+
+      cy.wait("@updateDashboard").then((req) => {
+        expect(req.response?.statusCode).to.eq(400);
+        expect(req.response?.body.message).to.contain(
+          "non-remote-synced dependencies",
+        );
+      });
+
+      H.entityPickerModal().button("Cancel").click();
+      H.openCollectionItemMenu("Orders, Count");
+      H.popover().findByText("Move").click();
+
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Browse").click();
+        H.entityPickerModalItem(1, "Library").click();
+        cy.button("Move").click();
+      });
+
+      H.getSyncStatusIndicators().should("have.length", 1);
+    });
+
+    it("should allow you to create new branches and switch between them", () => {
+      const NEW_BRANCH_NAME = `new-branch-${Date.now()}`;
+
+      cy.visit("/collection/root");
+
+      H.navigationSidebar().findByTestId("branch-picker-button").click();
+      H.popover()
+        .findByPlaceholderText("Find or create a branch...")
+        .type(NEW_BRANCH_NAME);
+      H.popover()
+        .findByRole("option", { name: /Create branch/ })
+        .click();
+
+      H.navigationSidebar()
+        .findByTestId("branch-picker-button")
+        .should("contain.text", NEW_BRANCH_NAME);
+
+      // Move something into the library
+
+      H.openCollectionItemMenu("Orders, Count");
+      H.popover().findByText("Move").click();
+
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Browse").click();
+        H.entityPickerModalItem(1, "Library").click();
+        cy.button("Move").click();
+      });
+
+      H.getSyncStatusIndicators().should("have.length", 1);
+
+      H.navigationSidebar()
+        .findByRole("treeitem", { name: /Library/ })
+        .click();
+      H.collectionTable().findByText("Orders, Count").should("exist");
+
+      H.navigationSidebar()
+        .findByRole("button", { name: "Push to Git" })
+        .click();
+
+      H.modal()
+        .button(/Push changes/)
+        .click();
+
+      H.navigationSidebar()
+        .findByRole("button", { name: "Push to Git", timeout: 10000 })
+        .should("not.exist");
+
+      cy.wait(2000);
+      cy.reload();
+
+      H.collectionTable().findByText("Orders, Count").should("exist");
+      H.navigationSidebar().findByTestId("branch-picker-button").click();
+      H.popover().findByRole("option", { name: "main" }).click();
+
+      //TODO: Find a better way to do this
+
+      cy.wait(500);
+      H.modal().should("not.exist");
+
+      cy.reload();
+      cy.wait(500);
+      cy.reload();
     });
   });
 
