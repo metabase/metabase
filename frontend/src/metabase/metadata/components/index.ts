@@ -1,5 +1,6 @@
 export * from "./CoercionStrategyPicker";
 export * from "./CurrencyPicker";
+export * from "./DataSourceInput";
 export * from "./DiscardFieldValuesButton";
 export * from "./DiscardTableFieldValuesButton";
 export * from "./FieldOrderPicker";

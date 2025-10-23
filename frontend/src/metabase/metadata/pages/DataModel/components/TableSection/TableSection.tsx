@@ -8,6 +8,7 @@ import {
 } from "metabase/api";
 import EmptyState from "metabase/common/components/EmptyState";
 import {
+  DataSourceInput,
   FieldOrderPicker,
   NameDescriptionInput,
   SortableFieldList,
@@ -27,6 +28,7 @@ import {
 import type {
   FieldId,
   Table,
+  TableDataSource,
   TableFieldOrder,
   TableVisibilityType2,
 } from "metabase-types/api";
@@ -123,6 +125,26 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
       });
     }
   };
+
+  const handleDataSourceChange = async (dataSource: TableDataSource | null) => {
+    const { error } = await updateTable({
+      id: table.id,
+      data_source: dataSource,
+    });
+
+    if (error) {
+      sendErrorToast(t`Failed to update data source`);
+    } else {
+      sendSuccessToast(t`Table data source updated`, async () => {
+        const { error } = await updateTable({
+          id: table.id,
+          data_source: table.data_source,
+        });
+        sendUndoToast(error);
+      });
+    }
+  };
+
   const handleFieldOrderTypeChange = async (fieldOrder: TableFieldOrder) => {
     const { error } = await updateTableSorting({
       id: table.id,
@@ -212,6 +234,11 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
           <VisibilityInput
             value={table.visibility_type2 ?? "copper"}
             onChange={handleVisibilityTypeChange}
+          />
+
+          <DataSourceInput
+            value={table.data_source}
+            onChange={handleDataSourceChange}
           />
         </TitledSection>
 
