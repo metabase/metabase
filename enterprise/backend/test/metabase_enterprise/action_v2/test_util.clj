@@ -23,11 +23,11 @@
     (:id table)))
 
 (defn- create-test-table! [db table-name column-map create-table-opts]
-  (let [_  (driver/create-table! (:engine db)
-                                 (:id db)
-                                 table-name
-                                 column-map
-                                 create-table-opts)]
+  (let [_  (mt/as-admin (driver/create-table! (:engine db)
+                                              (:id db)
+                                              table-name
+                                              column-map
+                                              create-table-opts))]
     (sync-new-table! db table-name)))
 
 (defn toggle-data-editing-enabled! [db-id on-or-off]

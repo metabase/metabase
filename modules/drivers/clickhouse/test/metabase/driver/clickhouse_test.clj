@@ -24,6 +24,9 @@
     `(mt/with-dynamic-redefs ~bindings ~@body)
     `(mt/with-dynamic-fn-redefs ~bindings ~@body)))
 
+(use-fixtures :each (fn [thunk]
+                      (mt/with-test-user :rasta (thunk))))
+
 (deftest ^:parallel clickhouse-version
   (mt/test-driver :clickhouse
     (t2.with-temp/with-temp
@@ -179,15 +182,16 @@
       [:model/Database db
        {:engine  :clickhouse
         :details (mt/dbdef->connection-details :clickhouse :db {:database-name "default"})}]
-      (let [table (keyword (format "insert_table_%s" (System/currentTimeMillis)))]
-        (driver/create-table! :clickhouse (:id db) table {:id "Int64", :name "String"})
-        (try
-          (driver/insert-into! :clickhouse (:id db) table [:id :name] [[42 "Bob"] [43 "Alice"]])
-          (is (= #{{:id 42, :name "Bob"}
-                   {:id 43, :name "Alice"}}
-                 (set (sql-jdbc/query :clickhouse db {:select [:*] :from [table]}))))
-          (finally
-            (driver/drop-table! :clickhouse (:id db) table)))))))
+      (mt/with-test-user :rasta
+        (let [table (keyword (format "insert_table_%s" (System/currentTimeMillis)))]
+          (driver/create-table! :clickhouse (:id db) table {:id "Int64", :name "String"})
+          (try
+            (driver/insert-into! :clickhouse (:id db) table [:id :name] [[42 "Bob"] [43 "Alice"]])
+            (is (= #{{:id 42, :name "Bob"}
+                     {:id 43, :name "Alice"}}
+                   (set (sql-jdbc/query :clickhouse db {:select [:*] :from [table]}))))
+            (finally
+              (driver/drop-table! :clickhouse (:id db) table))))))))
 
 (deftest ^:parallel percentile-test
   (mt/test-driver

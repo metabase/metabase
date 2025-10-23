@@ -436,29 +436,24 @@
                   "querying of a card as a nested query. Part of the row level perms check is looking at the table (or "
                   "card) to see if row level permissions apply. This was broken when it wasn't expecting a card and "
                   "only expecting resolved source-tables")
-      (let [mp    (lib.tu/mock-metadata-provider
-                   (mt/metadata-provider)
-                   {:cards [{:id            1
-                             :dataset-query (mt/mbql-query venues)}]})
-            query (lib/query
-                   mp
-                   (mt/mbql-query nil
-                     {:source-table "card__1"
-                      :aggregation  [["count"]]}))]
-        (mt/with-test-user :rasta
-          (mt/with-native-query-testing-context query
-            (is (= [[100]]
-                   (mt/format-rows-by
-                    [int]
-                    (mt/rows (qp/process-query query)))))))
-        (mt/with-premium-features #{}
-          (testing "this works the same without sandboxing enabled"
-            (mt/with-test-user :rasta
-              (mt/with-native-query-testing-context query
-                (is (= [[100]]
-                       (mt/format-rows-by
-                        [int]
-                        (mt/rows (qp/process-query query)))))))))))))
+      (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues)}]
+        (let [query (mt/mbql-query nil
+                      {:source-table (format "card__%s" (u/the-id card))
+                       :aggregation [["count"]]})]
+          (mt/with-test-user :rasta
+            (mt/with-native-query-testing-context query
+              (is (= [[100]]
+                     (mt/format-rows-by
+                      [int]
+                      (mt/rows (qp/process-query query)))))))
+          (mt/with-premium-features #{}
+            (testing "this works the same without sandboxing enabled"
+              (mt/with-test-user :rasta
+                (mt/with-native-query-testing-context query
+                  (is (= [[100]]
+                         (mt/format-rows-by
+                          [int]
+                          (mt/rows (qp/process-query query))))))))))))))
 
 ;; Test that we can follow FKs to related tables and breakout by columns on those related tables. This test has
 ;; several things wrapped up which are detailed below
@@ -569,11 +564,11 @@
 (deftest sql-with-join-test
   (mt/test-drivers (into #{}
                          (filter #(driver.u/supports? % :parameterized-sql nil))
-                         (sandboxing-fk-sql-drivers))
+                         (row-level-restrictions-fk-sql-drivers))
     (testing (str "If we use a parameterized SQL GTAP that joins a Table the user doesn't have access to, does it "
                   "still work? (EE #230) If we pass the query in directly without anything that would require nesting "
                   "it, it should work")
-      (met/with-gtaps! {:gtaps      {:checkins (parameterized-sql-with-join-sandbox-def)}
+      (met/with-gtaps! {:gtaps      {:checkins (parameterized-sql-with-join-gtap-def)}
                         :attributes {"user" 1}}
         (let [query (mt/mbql-query checkins
                       {:order-by [[:asc $id]]
@@ -587,26 +582,6 @@
                     (qp/process-query query)))))
           (fails-without-token (mt/with-native-query-testing-context query
                                  (qp/process-query query))))))))
-
-(deftest sql-with-join-test-2
-  (mt/test-drivers (into #{}
-                         (filter #(driver.u/supports? % :parameterized-sql nil))
-                         (sandboxing-fk-sql-drivers))
-    (testing (str "If we use a parameterized SQL GTAP that joins a Table the user doesn't have access to, does it "
-                  "still work? (EE #230) If we pass the query in directly without anything that would require nesting "
-                  "it, it should work")
-      (met/with-gtaps! {:gtaps {:checkins (parameterized-sql-with-join-sandbox-def)}
-                        :attributes {"user" 1}}
-        (is (= [[2 1]
-                [72 1]]
-               (mt/format-rows-by
-                [int int]
-                (mt/rows
-                 (mt/run-mbql-query checkins
-                   {:order-by [[:asc $id]]
-                    :limit 2})))))
-        (fails-without-token (mt/run-mbql-query checkins {:order-by [[:asc $id]]
-                                                          :limit 2}))))))
 
 (deftest sql-with-join-test-2
   (mt/test-drivers (into #{}
@@ -1618,6 +1593,6 @@
 (deftest sandboxing-throws-on-ee-without-token
   (mt/test-drivers (e2e-test-drivers)
     (testing "Basic test around querying a table by a user with segmented only permissions and a GTAP question that is a native query"
-      (met/with-gtaps! {:gtaps {:venues (venues-category-native-sandbox-def)}, :attributes {"cat" 50}}
+      (met/with-gtaps! {:gtaps {:venues (venues-category-native-gtap-def)}, :attributes {"cat" 50}}
         (mt/with-premium-features #{}
           (is (thrown-with-msg? clojure.lang.ExceptionInfo sandboxing-disabled-error (run-venues-count-query))))))))
