@@ -6,11 +6,11 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
+   [metabase.lib.test-util.places-cam-likes-metadata-provider :as lib.tu.places-cam-likes-metadata-provider]
    [metabase.query-processor :as qp]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.query-processor.util.nest-query :as nest-query]
-   [metabase.lib.test-util.places-cam-likes-metadata-provider :as lib.tu.places-cam-likes-metadata-provider]
    [metabase.test :as mt]))
 
 (defn- nest-expressions-mbql5 [query]
@@ -594,5 +594,5 @@
                              :filter       [:or
                                             [:field 2 nil]
                                             [:field "LIKED" {:base-type :type/Boolean}]
-                                            [:expression "T" {:base-type :type/Boolean}]],}}
+                                            [:expression "T" {:base-type :type/Boolean}]]}}
              (nest-expressions query))))))
