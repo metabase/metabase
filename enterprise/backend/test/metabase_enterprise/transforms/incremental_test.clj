@@ -6,6 +6,7 @@
    [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
    [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
+   [metabase-enterprise.transforms.util :as transforms.u]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.util :as sql.u]
@@ -55,10 +56,7 @@
         result (qp/process-query count-query)]
     (some-> result :data :rows first first bigint)))
 
-(defn- get-watermark-value
-  "Get the watermark value for a transform."
-  [transform-id]
-  (t2/select-one-fn (comp bigint :watermark_value) :model/TransformWatermark :transform_id transform-id))
+(def get-watermark-value #'transforms.u/next-watermark-value)
 
 (defn- insert-test-products!
   "Insert new products into the transforms_products table."
@@ -113,7 +111,7 @@
                   (is (= "id" (-> transform :source :source-incremental-strategy :keyset-column)))
 
                   (testing "No watermark exists initially"
-                    (is (nil? (t2/select-one :model/TransformWatermark :transform_id (:id transform)))))
+                    (is (nil? (get-watermark-value (:id transform)))))
 
                   (testing "Can retrieve transform via API"
                     (let [retrieved (mt/user-http-request :crowberto :get 200 (format "ee/transform/%d" (:id transform)))]
@@ -281,52 +279,5 @@
                             watermark (get-watermark-value (:id transform))]
                         (is (= 17 row-count) "Should append 1 new row (16 + 1 = 17)")
                         (is (>= watermark 17) "Watermark should be updated to at least 17")))))))))))))
-
-(deftest flush-watermark-test
-  (testing "Flushing a watermark causes the next run to reprocess all data"
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-      (mt/with-premium-features #{:transforms}
-        (mt/dataset transforms-dataset/transforms-test
-          (with-transform-cleanup! [target-table "flush_watermark_test"]
-            (let [transform-payload (make-incremental-transform-payload "Flush Watermark Transform" target-table "id")]
-              (mt/with-temp [:model/Transform transform transform-payload]
-                (testing "First run processes all data and creates watermark"
-                  (transforms.i/execute! transform {:run-method :manual})
-                  (transforms.tu/wait-for-table target-table 10000)
-                  (let [row-count (get-table-row-count target-table)
-                        watermark (get-watermark-value (:id transform))]
-                    (is (= 16 row-count) "First run should process all 16 products")
-                    (is (= 16 watermark) "Watermark should be MAX(id) = 16")))
-
-                (testing "Second run with no new data processes nothing (fixpoint)"
-                  (transforms.i/execute! transform {:run-method :manual})
-                  (let [row-count (get-table-row-count target-table)]
-                    (is (= 16 row-count) "Second run should not add any rows")))
-
-                (testing "Flush watermark via API"
-                  (mt/user-http-request :crowberto :post 204 (format "ee/transform/%d/flush-watermark" (:id transform)))
-                  (let [watermark (get-watermark-value (:id transform))]
-                    (is (nil? watermark) "Watermark should be deleted after flush")))
-
-                (testing "Run after flush reprocesses all data"
-                  (let [transform (t2/select-one :model/Transform (:id transform))]
-                    (transforms.i/execute! transform {:run-method :manual})
-                    (let [row-count (get-table-row-count target-table)
-                          watermark (get-watermark-value (:id transform))]
-                      (is (= 32 row-count) "Should append all 16 products again (16 + 16 = 32)")
-                      (is (= 16 watermark) "Watermark should be recomputed to MAX(id) = 16"))))
-
-                (testing "Cannot flush watermark for non-incremental transform"
-                  (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
-                        non-incremental-payload {:source {:type "query"
-                                                          :query (make-incremental-source-query schema)}
-                                                 :target {:type "table"
-                                                          :schema schema
-                                                          :name target-table}}]
-                    (mt/user-http-request :crowberto :put 200 (format "ee/transform/%d" (:id transform))
-                                          non-incremental-payload)
-                    (is (= "Only transforms with keyset incremental strategy can have their watermark flushed."
-                           (mt/user-http-request :crowberto :post 400 (format "ee/transform/%d/flush-watermark" (:id transform))))
-                        "Should return 400 for non-keyset incremental transform")))))))))))
 
 ;; TODO: test changing keyset

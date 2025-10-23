@@ -172,17 +172,12 @@
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "put transform" id)
   (api/check-superuser)
-  (let [old (t2/select-one :model/Transform id)
-        new (merge old body)
-        old-keyset-column (-> old :source :source-incremental-strategy :keyset-column)
-        new-keyset-column (-> new :source :source-incremental-strategy :keyset-column)
-        keyset-changed? (and new-keyset-column
-                             (not= old-keyset-column new-keyset-column))
-        transform (t2/with-transaction [_]
+  (let [transform (t2/with-transaction [_]
                     ;; Cycle detection should occur within the transaction to avoid race
-                    (let [target-fields #(-> % :target (select-keys [:schema :name]))]
+                    (let [old (t2/select-one :model/Transform id)
+                          new (merge old body)
+                          target-fields #(-> % :target (select-keys [:schema :name]))]
                       ;; we must validate on a full transform object
-
                       (check-feature-enabled! new)
                       (check-database-feature new)
                       (when (transforms.util/query-transform? old)
@@ -197,13 +192,7 @@
                     ;; Update tag associations if provided
                     (when (contains? body :tag_ids)
                       (transform.model/update-transform-tags! id (:tag_ids body)))
-                    (let [updated-transform (t2/select-one :model/Transform id)]
-                      ;; Recompute watermark if keyset column changed
-                      (when keyset-changed?
-                        (log/infof "Keyset column changed from %s to %s, recomputing watermark"
-                                   old-keyset-column new-keyset-column)
-                        (transforms.util/maybe-upsert-watermark! updated-transform (transforms.i/target-db-id updated-transform)))
-                      (t2/hydrate updated-transform :transform_tag_ids)))]
+                    (t2/hydrate (t2/select-one :model/Transform id) :transform_tag_ids))]
     (events/publish-event! :event/transform-update {:object transform :user-id api/*current-user-id*})
     transform))
 
@@ -237,20 +226,6 @@
     (when (transforms.util/python-transform? transform)
       (transforms.canceling/cancel-run! (:id run))))
   nil)
-
-(api.macros/defendpoint :post "/:id/flush-watermark"
-  "Flush the watermark for an incremental transform with keyset strategy.
-  This will cause the next run to recompute the watermark from scratch."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
-  (log/info "flushing watermark for transform" id)
-  (api/check-superuser)
-  (let [transform (api/check-404 (t2/select-one :model/Transform id))]
-    (api/check-400 (= :keyset (some-> transform :source :source-incremental-strategy :type keyword))
-                   (deferred-tru "Only transforms with keyset incremental strategy can have their watermark flushed."))
-    (t2/delete! :model/TransformWatermark :transform_id id)
-    (log/infof "Watermark flushed for transform %d" id)
-    nil))
 
 (api.macros/defendpoint :post "/:id/run"
   "Run a transform."

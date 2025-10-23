@@ -110,32 +110,6 @@
    (log/info "Syncing target" (pr-str target) "for transform")
    (activate-table-and-mark-computed! database target)))
 
-(defn maybe-upsert-watermark!
-  "Update the watermark value in the app DB for an incremental transform with keyset strategy.
-   Computes the MAX value of the watermark field from the transform output table and stores it in the app DB."
-  [{:keys [id source target]} db-id]
-  (when (= :keyset (some-> source :source-incremental-strategy :type keyword))
-    (let [watermark-field-name (-> source :source-incremental-strategy :keyset-column)
-          table (target-table db-id target)]
-      (when table
-        (log/info "Upserting watermark for transform" id "with field" watermark-field-name)
-        (try
-          (when-let [field (t2/select-one :model/Field
-                                          :table_id (:id table)
-                                          :name watermark-field-name)]
-            (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
-                  table-metadata (lib.metadata/table metadata-provider (:id table))
-                  field-metadata (lib.metadata/field metadata-provider (:id field))
-                  mbql-query (-> (lib/query metadata-provider table-metadata)
-                                 (lib/aggregate (lib/max field-metadata)))
-                  watermark-value (some-> mbql-query qp/process-query :data :rows first first bigint)]
-              (log/infof "Computed watermark value: %s" watermark-value)
-              (if (t2/exists? :model/TransformWatermark :transform_id id)
-                (t2/update! :model/TransformWatermark {:transform_id id} {:watermark_value watermark-value})
-                (t2/insert! :model/TransformWatermark {:transform_id id :watermark_value watermark-value}))))
-          (catch Exception e
-            (log/error e "Failed to upsert watermark for transform" id)))))))
-
 (defn target-table-exists?
   "Test if the target table of a transform already exists."
   [{:keys [target] :as transform}]
@@ -197,9 +171,25 @@
   [query]
   (assoc-in query [:middleware :disable-remaps?] true))
 
+(defn- is-keyset-incremental? [source]
+  (= :keyset (some-> source :source-incremental-strategy :type keyword)))
+
 (defn- next-watermark-value
   [transform-id]
-  (t2/select-one-fn :watermark_value :model/TransformWatermark :transform_id transform-id))
+  (let [{:keys [source target] :as transform} (t2/select-one :model/Transform transform-id)
+        db-id (transforms.i/target-db-id transform)
+        watermark-field-name (-> source :source-incremental-strategy :keyset-column)]
+    (when (is-keyset-incremental? source)
+      (when-let [table (target-table db-id target)]
+        (when-let [field (t2/select-one :model/Field
+                                        :table_id (:id table)
+                                        :name watermark-field-name)]
+          (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
+                table-metadata (lib.metadata/table metadata-provider (:id table))
+                field-metadata (lib.metadata/field metadata-provider (:id field))
+                mbql-query (-> (lib/query metadata-provider table-metadata)
+                               (lib/aggregate (lib/max field-metadata)))]
+            (some-> mbql-query qp/process-query :data :rows first first bigint)))))))
 
 (defn- source->keyset-filter-unique-key
   [query source-incremental-strategy]
@@ -217,8 +207,7 @@
   If no watermark value exists for the transform (i.e., this is the first run), returns the
   query unchanged to allow a full initial load."
   [query source-incremental-strategy transform-id]
-  (if-let [watermark-value (when (= :keyset (some-> source-incremental-strategy :type keyword))
-                             (next-watermark-value transform-id))]
+  (if-let [watermark-value (next-watermark-value transform-id)]
     (if (lib.query/native? query)
       (update query :parameters conj {:type :number
                                       :target [:variable [:template-tag "watermark"]]
@@ -228,13 +217,11 @@
 
 (defn compile-source
   "Compile the source query of a transform."
-  ([source]
-   (compile-source source nil))
-  ([{query-type :type :as source} transform-id]
-   (case (keyword query-type)
-     :query
-     (let [query-with-params (preprocess-incremental-query (:query source) (:source-incremental-strategy source) transform-id)]
-       (:query (qp.compile/compile-with-inline-parameters (massage-sql-query query-with-params)))))))
+  [{query-type :type :as source} transform-id]
+  (case (keyword query-type)
+    :query
+    (let [query-with-params (preprocess-incremental-query (:query source) (:source-incremental-strategy source) transform-id)]
+      (:query (qp.compile/compile-with-inline-parameters (massage-sql-query query-with-params))))))
 
 (defn required-database-features
   "Returns the database features necessary to execute `transform`."

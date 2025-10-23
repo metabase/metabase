@@ -8,7 +8,6 @@ import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button, Card, Group, Icon } from "metabase/ui";
 import { PythonEditor } from "metabase-enterprise/transforms-python/components/PythonEditor";
-import { useFlushTransformWatermarkMutation } from "metabase-enterprise/api";
 import type { Transform } from "metabase-types/api";
 
 import { QueryView } from "../../../components/QueryView";
@@ -31,7 +30,6 @@ export function ManageSection({ transform }: ManageSectionProps) {
       rightSection={
         <Group>
           <EditQueryButton transform={transform} />
-          <FlushWatermarkButton transform={transform} />
           <DeleteTransformButton transform={transform} />
         </Group>
       }
@@ -72,44 +70,6 @@ function EditQueryButton({ transform }: EditQueryButtonProps) {
 type DeleteTransformButtonProps = {
   transform: Transform;
 };
-
-type FlushWatermarkButtonProps = {
-  transform: Transform;
-};
-
-function FlushWatermarkButton({ transform }: FlushWatermarkButtonProps) {
-  const [flushWatermark] = useFlushTransformWatermarkMutation();
-  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
-
-  // Only show for transforms with keyset incremental strategy
-  const sourceStrategy = (transform.source as any)[
-    "source-incremental-strategy"
-  ];
-  const hasKeysetStrategy = sourceStrategy?.type === "keyset";
-
-  if (!hasKeysetStrategy) {
-    return null;
-  }
-
-  const handleFlush = async () => {
-    try {
-      await flushWatermark(transform.id).unwrap();
-      sendSuccessToast(t`Watermark flushed. The next run will recompute it.`);
-    } catch (error) {
-      sendErrorToast(t`Failed to flush watermark`);
-    }
-  };
-
-  return (
-    <Button
-      leftSection={<Icon name="refresh" aria-hidden />}
-      disabled={isTransformRunning(transform)}
-      onClick={handleFlush}
-    >
-      {t`Flush watermark`}
-    </Button>
-  );
-}
 
 function DeleteTransformButton({ transform }: DeleteTransformButtonProps) {
   const dispatch = useDispatch();

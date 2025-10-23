@@ -92,7 +92,6 @@
     :model/TransformJobRun
     :model/TransformJobTransformTag
     :model/TransformTransformTag
-    :model/TransformWatermark
     :model/PythonLibrary
     :model/Undo
     :model/User
