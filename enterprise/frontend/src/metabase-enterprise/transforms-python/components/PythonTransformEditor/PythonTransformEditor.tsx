@@ -13,12 +13,11 @@ import type {
 import { PythonDataPicker } from "./PythonDataPicker";
 import { PythonEditorBody } from "./PythonEditorBody";
 import { PythonEditorResults } from "./PythonEditorResults";
+import { useTestPythonTransform } from "./hooks";
 import {
   getValidationResult,
   isPythonTransformSource,
   updateTransformSignature,
-  useShouldShowPythonDebugger,
-  useTestPythonTransform,
 } from "./utils";
 
 export type PythonTransformSourceDraft = {
@@ -48,7 +47,7 @@ export function PythonTransformEditor({
   const [source, setSource] = useState(initialSource);
   const [isSourceDirty, setIsSourceDirty] = useState(false);
 
-  const { isRunning, isDirty, cancel, run, executionResult } =
+  const { isRunning, cancel, run, executionResult } =
     useTestPythonTransform(source);
 
   const handleScriptChange = (body: string) => {
@@ -87,12 +86,7 @@ export function PythonTransformEditor({
     }
   };
 
-  const showDebugger = useShouldShowPythonDebugger();
-
   const handleCmdEnter = () => {
-    if (!showDebugger) {
-      return;
-    }
     if (isRunning) {
       cancel();
     } else if (isRunnable && isPythonTransformSource(source)) {
@@ -130,19 +124,17 @@ export function PythonTransformEditor({
           <PythonEditorBody
             isRunnable={isRunnable && isPythonTransformSource(source)}
             isRunning={isRunning}
-            isDirty={isDirty}
+            isDirty
             onRun={run}
             onCancel={cancel}
             source={source.body}
             onChange={handleScriptChange}
-            withDebugger={showDebugger}
+            withDebugger
           />
-          {showDebugger && (
-            <PythonEditorResults
-              isRunning={isRunning}
-              executionResult={executionResult}
-            />
-          )}
+          <PythonEditorResults
+            isRunning={isRunning}
+            executionResult={executionResult}
+          />
         </Stack>
       </Flex>
     </Stack>
