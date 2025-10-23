@@ -819,14 +819,13 @@
 
 (deftest ^:parallel expression-with-duplicate-column-name-test
   (testing "Can we use expression with same column name as table (#14267)"
-    (is (= '{:select   [source.CATEGORY_2 AS CATEGORY_2
+    (is (= '{:select   [source.CATEGORY AS CATEGORY
                         COUNT (*)         AS count]
-             :from     [{:select [PRODUCTS.CATEGORY            AS CATEGORY
-                                  CONCAT (PRODUCTS.CATEGORY ?) AS CATEGORY_2]
+             :from     [{:select [CONCAT (PRODUCTS.CATEGORY ?) AS CATEGORY]
                          :from   [PRODUCTS]}
                         AS source]
-             :group-by [source.CATEGORY_2]
-             :order-by [source.CATEGORY_2 ASC]
+             :group-by [source.CATEGORY]
+             :order-by [source.CATEGORY ASC]
              :limit    [1]}
            (-> (lib.tu.macros/mbql-query products
                  {:expressions {:CATEGORY [:concat $category "2"]}
