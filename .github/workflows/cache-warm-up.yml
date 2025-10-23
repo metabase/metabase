@@ -15,22 +15,23 @@ jobs:
         run: |
           echo "week-of-year=$(/bin/date "+%G-%V")" >> $GITHUB_ENV
         shell: bash
-      # - name: Delete the cache
-      #   env:
-      #     GH_TOKEN: ${{ github.token }}
-      #   run: |
-      #     gh api \
-      #       --method DELETE \
-      #       -H "Accept: application/vnd.github+json" \
-      #       -H "X-GitHub-Api-Version: 2022-11-28" \
-      #       /repos/${{ github.repository }}/actions/caches?key=${{ runner.os }}-m2-${{ env.week-of-year }}
+
       - name: Prepare backend
         uses: ./.github/actions/prepare-backend
         with:
           java-version: 21
       - name: Pre-resolve dependencies
-        # run: clojure -A:build:dev:ee:ee-dev:drivers:drivers-dev:cljs -P
-        run: clojure -A:eastwood -P
+        run: clojure -A:build:dev:ee:ee-dev:drivers:drivers-dev:cljs -P
+        # run: clojure -A:eastwood -P
+      - name: Delete the cache
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api \
+            --method DELETE \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            /repos/${{ github.repository }}/actions/caches?key=${{ runner.os }}-m2-${{ env.week-of-year }}
       - name: Update M2 cache
         uses: actions/cache/save@v4
         with:
