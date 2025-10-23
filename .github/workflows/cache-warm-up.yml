@@ -19,7 +19,7 @@ jobs:
             --method DELETE \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
-            /repos/${{ github.repository_owner }}/${{ github.repository.name }}/actions/caches?key=${{ runner.os }}-m2-${{ steps.get-date.outputs.week-of-year }}
+            /repos/${{ github.repository }}/actions/caches?key=${{ runner.os }}-m2-${{ steps.get-date.outputs.week-of-year }}
       - name: Prepare backend
         uses: ./.github/actions/prepare-backend
         with:
