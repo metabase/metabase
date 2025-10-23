@@ -81,7 +81,7 @@
                                  [:not-in entity-ids]
                                  :entity_id))))))
 
-(defn decode-source-error
+(defn source-error-message
   "Handle constructing sensible messages for errors from remote sync sources.
 
   Args:
@@ -124,7 +124,7 @@
       (log/errorf e "Failed to reload from git repository: %s" (ex-message e))
       (analytics/inc! :metabase-remote-sync/imports-failed)
       {:status :error
-       :message (decode-source-error e)
+       :message (source-error-message e)
        :version (source.p/version source)
 
        :details {:error-type (type e)}})))
@@ -231,7 +231,7 @@
             (if (:cancelled? (ex-data e))
               (log/info "Export to git repository was cancelled")
               (do
-                (analytics/inc! :metabase-remote-sync/imports-failed)
+                (analytics/inc! :metabase-remote-sync/exports-failed)
                 (remote-sync.task/fail-sync-task! task-id (ex-message e))
                 {:status :error
                  :version (source.p/version source)

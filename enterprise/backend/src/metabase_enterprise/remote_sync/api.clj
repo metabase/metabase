@@ -85,7 +85,7 @@
                                 (or message "Exported from Metabase"))})
 
 (defn- task-with-status
-  "Returns the status of a sync task.
+  "Returns a task object with the status added
 
   Args:
     task (map): A remote sync task record
@@ -167,7 +167,7 @@
         {:items branch-list})
       (catch Exception e
         (log/errorf e "Failed to get branches from git source: %s" (ex-message e))
-        (let [error-msg (impl/decode-source-error e)]
+        (let [error-msg (impl/source-error-message e)]
           (throw (ex-info error-msg {:status-code 400}
                           e)))))
     (throw (ex-info "Git source not configured. Please configure MB_GIT_SOURCE_REPO_URL environment variable."

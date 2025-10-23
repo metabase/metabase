@@ -14,10 +14,10 @@
          :remote-sync-type    :production
          :remote-sync-branch  "test-branch"
          :remote-sync-token   nil}]
-    (with-redefs [settings/check-git-settings (fn [{:keys [remote-sync-token]}]
-                                                ;; git should always be checked with a nil or full token
-                                                (is (or (nil? remote-sync-token) (#{full-token other-token} remote-sync-token)))
-                                                true)]
+    (with-redefs [settings/check-git-settings! (fn [{:keys [remote-sync-token]}]
+                                                 ;; git should always be checked with a nil or full token
+                                                 (is (or (nil? remote-sync-token) (#{full-token other-token} remote-sync-token)))
+                                                 true)]
       (mt/with-temporary-setting-values [:remote-sync-token nil
                                          :remote-sync-url nil
                                          :remote-sync-type nil

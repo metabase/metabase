@@ -82,7 +82,7 @@
   :encryption :no
   :default (* 1000 60 5))
 
-(defn- check-git-settings
+(defn- check-git-settings!
   "Validate that git repository settings are correct by attempting to connect.
 
   Args:
@@ -136,7 +136,7 @@
     (let [current-token (setting/get :remote-sync-token)
           obfuscated? (= remote-sync-token (setting/obfuscate-value current-token))
           token-to-check (if obfuscated? current-token remote-sync-token)
-          default-branch (check-git-settings (assoc settings :remote-sync-token token-to-check))]
+          default-branch (check-git-settings! (assoc settings :remote-sync-token token-to-check))]
       (t2/with-transaction [_conn]
         (doseq [k [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-auto-import]]
           (when (not (and (= k :remote-sync-token) obfuscated?))

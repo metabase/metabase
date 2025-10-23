@@ -108,7 +108,7 @@
                            :dir   dir
                            :error (.getMessage e)} e)))))))
 
-(defn ->commit-id
+(defn commit-sha
   "Resolve a branch name or commit-ish string to a full commit reference.
 
   Args:
@@ -118,7 +118,7 @@
   Returns:
     The full commit SHA string, or nil if the commit-ish cannot be resolved."
   ([{:keys [^String commit-ish] :as source}]
-   (->commit-id source commit-ish))
+   (commit-sha source commit-ish))
 
   ([{:keys [^Git git]} ^String commit-ish]
    (when-let [ref (.resolve (.getRepository git) commit-ish)]
@@ -138,7 +138,7 @@
       - :id - The abbreviated commit SHA (8 characters)
       - :parent - The abbreviated parent commit SHA (8 characters), or nil if no parent"
   [{:keys [^Git git] :as source}]
-  (when-let [ref (->commit-id source)]
+  (when-let [ref (commit-sha source)]
     (when-let [branch-id (.resolve (.getRepository git) ref)]
       (let [log-result (call-command (-> (.log git)
                                          (.add branch-id)))]
@@ -157,7 +157,7 @@
   Returns:
     A sorted sequence of relative file path strings from the repository root."
   [{:keys [^Git git] :as source}]
-  (when-let [ref (->commit-id source)]
+  (when-let [ref (commit-sha source)]
     (let [repo (.getRepository git)
           rev-walk (RevWalk. repo)
           commit-id (.resolve repo ref)
@@ -181,7 +181,7 @@
     The file contents as a UTF-8 string, or nil if the file does not exist at the specified path."
   [{:keys [^Git git] :as source} ^String path]
   (let [repo (.getRepository git)]
-    (when-let [ref (->commit-id source)]
+    (when-let [ref (commit-sha source)]
       (when-let [object-id (.resolve repo (str ref ":" path))]
         (let [loader (.open repo object-id)]
           (String. (.getBytes loader) "UTF-8"))))))
@@ -369,7 +369,7 @@
     (write-files! this message files))
 
   (version [this]
-    (->commit-id this)))
+    (commit-sha this)))
 
 (def ^:private get-repo
   (memoize

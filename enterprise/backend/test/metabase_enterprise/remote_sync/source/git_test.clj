@@ -121,13 +121,13 @@
 (deftest get-commit-ref
   (mt/with-temp-dir [remote-dir nil]
     (let [[source _remote] (init-source! "master" remote-dir :branches ["branch-1" "branch-2"])
-          master-ref (git/->commit-id source "master")]
+          master-ref (git/commit-sha source "master")]
       (is (string? master-ref))
-      (is (= master-ref (git/->commit-id source (#'git/->commit-id source "master"))))
-      (is (not= master-ref (git/->commit-id source (#'git/->commit-id source "branch-1"))))
-      (is (not= master-ref (git/->commit-id source (#'git/->commit-id source "branch-2"))))
+      (is (= master-ref (git/commit-sha source (#'git/commit-sha source "master"))))
+      (is (not= master-ref (git/commit-sha source (#'git/commit-sha source "branch-1"))))
+      (is (not= master-ref (git/commit-sha source (#'git/commit-sha source "branch-2"))))
 
-      (is (nil? (git/->commit-id source "invalid"))))))
+      (is (nil? (git/commit-sha source "invalid"))))))
 
 (deftest log
   (mt/with-temp-dir [remote-dir nil]
@@ -361,7 +361,7 @@
     (let [[master remote] (init-source! "master" remote-dir
                                         :files {"master.txt" "File in master"
                                                 "subdir/path.txt" "File in subdir"})
-          original-ref (git/->commit-id master "master")]
+          original-ref (git/commit-sha master "master")]
 
       (source.p/write-files! master "Update file" [{:path "master.txt" :content "Updated file in master"}
                                                    {:path "new-file.txt" :content "New file in master"}])
@@ -378,7 +378,7 @@
             initial-version (source.p/version master)]
         (is (string? initial-version) "version should return a string")
         (is (= 40 (count initial-version)) "version should be a full SHA-1 hash (40 characters)")
-        (is (= (git/->commit-id master "master") initial-version)
+        (is (= (git/commit-sha master "master") initial-version)
             "version should match the commit id for the branch")
 
         (testing "version changes after writing files"
@@ -386,7 +386,7 @@
           (let [new-version (source.p/version master)]
             (is (not= initial-version new-version) "version should change after commit")
             (is (= 40 (count new-version)) "new version should also be a full SHA-1 hash")
-            (is (= (git/->commit-id master "master") new-version)
+            (is (= (git/commit-sha master "master") new-version)
                 "new version should match the new commit id")))
 
         (testing "version is consistent across multiple calls"
@@ -403,7 +403,7 @@
                 "different branches should have different versions")))
 
         (testing "version matches specific commit ref"
-          (let [commit-ref (git/->commit-id master "master")
+          (let [commit-ref (git/commit-sha master "master")
                 source-with-ref (->source! commit-ref remote)]
             (is (= commit-ref (source.p/version source-with-ref))
                 "version should work with explicit commit refs")))))))

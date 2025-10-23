@@ -29,7 +29,7 @@
   (boolean
    (collections/remote-synced-collection? collection_id)))
 
-(defn- create-remote-sync-object-entry!
+(defn- create-or-update-remote-sync-object-entry!
   "Create or update a remote sync object entry for a model change.
 
    Args:
@@ -81,13 +81,13 @@
       in-remote-synced?
       (do
         (log/infof "Creating remote sync object entry for card %s (status: %s)" (:id object) status)
-        (create-remote-sync-object-entry! "Card" (:id object) status user-id))
+        (create-or-update-remote-sync-object-entry! "Card" (:id object) status user-id))
 
       ;; Card was tracked but moved out of remote-synced collection - mark as removed
       (and existing-entry (not in-remote-synced?))
       (do
         (log/infof "Card %s moved out of remote-synced collection, marking as removed" (:id object))
-        (create-remote-sync-object-entry! "Card" (:id object) "removed" user-id)))))
+        (create-or-update-remote-sync-object-entry! "Card" (:id object) "removed" user-id)))))
 
 ;; Dashboard events
 (derive ::dashboard-change-event :metabase/event)
@@ -111,13 +111,13 @@
       in-remote-synced?
       (do
         (log/infof "Creating remote sync object entry for dashboard %s (status: %s)" (:id object) status)
-        (create-remote-sync-object-entry! "Dashboard" (:id object) status user-id))
+        (create-or-update-remote-sync-object-entry! "Dashboard" (:id object) status user-id))
 
       ;; Dashboard was tracked but moved out of remote-synced collection - mark as removed
       (and existing-entry (not in-remote-synced?))
       (do
         (log/infof "Dashboard %s moved out of remote-synced collection, marking as removed" (:id object))
-        (create-remote-sync-object-entry! "Dashboard" (:id object) "removed" user-id)))))
+        (create-or-update-remote-sync-object-entry! "Dashboard" (:id object) "removed" user-id)))))
 
 ;; Document events
 (derive ::document-change-event :metabase/event)
@@ -141,13 +141,13 @@
       in-remote-synced?
       (do
         (log/infof "Creating remote sync object entry for document %s (status: %s)" (:id object) status)
-        (create-remote-sync-object-entry! "Document" (:id object) status user-id))
+        (create-or-update-remote-sync-object-entry! "Document" (:id object) status user-id))
 
       ;; Document was tracked but moved out of remote-synced collection - mark as removed
       (and existing-entry (not in-remote-synced?))
       (do
         (log/infof "Document %s moved out of remote-synced collection, marking as removed" (:id object))
-        (create-remote-sync-object-entry! "Document" (:id object) "removed" user-id)))))
+        (create-or-update-remote-sync-object-entry! "Document" (:id object) "removed" user-id)))))
 
 ;; Native query snippet events
 (derive ::snippet-change-event :metabase/event)
@@ -171,13 +171,13 @@
       in-remote-synced?
       (do
         (log/infof "Creating remote sync object entry for snippet %s (status: %s)" (:id object) status)
-        (create-remote-sync-object-entry! "NativeQuerySnippet" (:id object) status user-id))
+        (create-or-update-remote-sync-object-entry! "NativeQuerySnippet" (:id object) status user-id))
 
       ;; Snippet was tracked but moved out of remote-synced collection - mark as removed
       (and existing-entry (not in-remote-synced?))
       (do
         (log/infof "Snippet %s moved out of remote-synced collection, marking as removed" (:id object))
-        (create-remote-sync-object-entry! "NativeQuerySnippet" (:id object) "removed" user-id)))))
+        (create-or-update-remote-sync-object-entry! "NativeQuerySnippet" (:id object) "removed" user-id)))))
 
 ;; Collection create/update events - derive from common parent for shared handling
 (derive ::collection-change-event :metabase/event)
@@ -199,13 +199,13 @@
       is-remote-synced?
       (do
         (log/infof "Creating remote sync object entry for collection %s (status: %s)" (:id object) status)
-        (create-remote-sync-object-entry! "Collection" (:id object) status user-id))
+        (create-or-update-remote-sync-object-entry! "Collection" (:id object) status user-id))
 
       ;; Collection was remote-synced but type changed - mark as removed
       (and existing-entry (not is-remote-synced?))
       (do
         (log/infof "Collection %s type changed from remote-synced, marking as removed" (:id object))
-        (create-remote-sync-object-entry! "Collection" (:id object) "removed" user-id)))))
+        (create-or-update-remote-sync-object-entry! "Collection" (:id object) "removed" user-id)))))
 
 ;; Timeline events
 (derive ::timeline-change-event :metabase/event)
@@ -228,10 +228,10 @@
       in-remote-synced?
       (do
         (log/infof "Creating remote sync object entry for timeline %s (status: %s)" (:id object) status)
-        (create-remote-sync-object-entry! "Timeline" (:id object) status user-id))
+        (create-or-update-remote-sync-object-entry! "Timeline" (:id object) status user-id))
 
       ;; Timeline was tracked but moved out of remote-synced collection - mark as removed
       (and existing-entry (not in-remote-synced?))
       (do
         (log/infof "Timeline %s moved out of remote-synced collection, marking as removed" (:id object))
-        (create-remote-sync-object-entry! "Timeline" (:id object) "removed" user-id)))))
+        (create-or-update-remote-sync-object-entry! "Timeline" (:id object) "removed" user-id)))))

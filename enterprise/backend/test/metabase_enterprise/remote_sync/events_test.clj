@@ -574,7 +574,7 @@
     (mt/with-current-user (mt/user->id :rasta)
       (t2/delete! :model/RemoteSyncObject)
 
-      (#'lib.events/create-remote-sync-object-entry! "Card" 123 "create" 456)
+      (#'lib.events/create-or-update-remote-sync-object-entry! "Card" 123 "create" 456)
 
       (let [entries (t2/select :model/RemoteSyncObject)]
         (is (= 1 (count entries)))
@@ -591,7 +591,7 @@
       ;; Create initial entry with "update" status at time T1
       (let [clock-t1 (t/mock-clock (t/instant "2024-01-01T10:00:00Z") (t/zone-id "UTC"))]
         (t/with-clock clock-t1
-          (#'lib.events/create-remote-sync-object-entry! "Dashboard" 789 "update"))
+          (#'lib.events/create-or-update-remote-sync-object-entry! "Dashboard" 789 "update"))
 
         (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "Dashboard" :model_id 789)
               initial-time (:status_changed_at initial-entry)]
@@ -599,7 +599,7 @@
           ;; Update to synced status at time T2 (1 hour later)
           (let [clock-t2 (t/mock-clock (t/instant "2024-01-01T11:00:00Z") (t/zone-id "UTC"))]
             (t/with-clock clock-t2
-              (#'lib.events/create-remote-sync-object-entry! "Dashboard" 789 "synced")))
+              (#'lib.events/create-or-update-remote-sync-object-entry! "Dashboard" 789 "synced")))
 
           (let [entries (t2/select :model/RemoteSyncObject :model_type "Dashboard" :model_id 789)]
             ;; Should still be just one entry
@@ -620,14 +620,14 @@
       ;; Create initial entry with "create" status at time T1
       (let [clock-t1 (t/mock-clock (t/instant "2024-01-01T10:00:00Z") (t/zone-id "UTC"))]
         (t/with-clock clock-t1
-          (#'lib.events/create-remote-sync-object-entry! "Dashboard" 789 "create"))
+          (#'lib.events/create-or-update-remote-sync-object-entry! "Dashboard" 789 "create"))
 
         (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "Dashboard" :model_id 789)]
 
           ;; Try to update to synced status at time T2 (1 hour later)
           (let [clock-t2 (t/mock-clock (t/instant "2024-01-01T11:00:00Z") (t/zone-id "UTC"))]
             (t/with-clock clock-t2
-              (#'lib.events/create-remote-sync-object-entry! "Dashboard" 789 "synced")))
+              (#'lib.events/create-or-update-remote-sync-object-entry! "Dashboard" 789 "synced")))
 
           (let [entries (t2/select :model/RemoteSyncObject :model_type "Dashboard" :model_id 789)]
             ;; Should still be just one entry
@@ -645,7 +645,7 @@
     (mt/with-current-user (mt/user->id :rasta)
       (t2/delete! :model/RemoteSyncObject)
 
-      (#'lib.events/create-remote-sync-object-entry! "Collection" 999 "create")
+      (#'lib.events/create-or-update-remote-sync-object-entry! "Collection" 999 "create")
 
       (let [entries (t2/select :model/RemoteSyncObject)]
         (is (= 1 (count entries)))
