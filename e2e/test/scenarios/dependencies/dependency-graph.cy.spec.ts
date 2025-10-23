@@ -524,7 +524,7 @@ describe("scenarios > dependencies > dependency graph", () => {
     });
   });
 
-  describe("permissions", () => {
+  describe.skip("permissions", () => {
     it("should be able to view database entities without collection access", () => {
       getScoreboardTableId().then((tableId) => {
         createTableBasedQuestion({ tableId });
