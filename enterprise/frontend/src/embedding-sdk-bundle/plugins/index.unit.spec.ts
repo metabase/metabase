@@ -1,4 +1,3 @@
-import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
 import { PLUGIN_SELECTORS } from "metabase/plugins";
 
 import { initializeSdkPlugins } from "./index";
@@ -36,11 +35,11 @@ describe("SDK Plugin Initialization", () => {
         sdk: {
           plugins: mockSdkPlugins,
         },
-      } as SdkStoreState;
+      };
 
       initializeSdkPlugins();
 
-      const result = PLUGIN_SELECTORS.getNoDataIllustration(mockState);
+      const result = PLUGIN_SELECTORS.getNoDataIllustration(mockState as any);
 
       expect(result).toBe(mockSdkIllustration);
       expect(mockSdkPlugins.getNoDataIllustration).toHaveBeenCalled();
@@ -55,13 +54,13 @@ describe("SDK Plugin Initialization", () => {
         sdk: {
           plugins: mockSdkPlugins,
         },
-      } as SdkStoreState;
+      };
 
       initializeSdkPlugins();
 
       // Should not throw an error when SDK plugin returns null
       expect(() => {
-        PLUGIN_SELECTORS.getNoDataIllustration(mockState);
+        PLUGIN_SELECTORS.getNoDataIllustration(mockState as any);
       }).not.toThrow();
 
       expect(mockSdkPlugins.getNoDataIllustration).toHaveBeenCalled();
@@ -76,13 +75,13 @@ describe("SDK Plugin Initialization", () => {
         sdk: {
           plugins: mockSdkPlugins,
         },
-      } as SdkStoreState;
+      };
 
       initializeSdkPlugins();
 
       // Should not throw an error when SDK plugin returns undefined
       expect(() => {
-        PLUGIN_SELECTORS.getNoDataIllustration(mockState);
+        PLUGIN_SELECTORS.getNoDataIllustration(mockState as any);
       }).not.toThrow();
     });
 
@@ -91,13 +90,13 @@ describe("SDK Plugin Initialization", () => {
         sdk: {
           plugins: null,
         },
-      } as SdkStoreState;
+      };
 
       initializeSdkPlugins();
 
       // Should not throw an error when no SDK plugins are available
       expect(() => {
-        PLUGIN_SELECTORS.getNoDataIllustration(mockState);
+        PLUGIN_SELECTORS.getNoDataIllustration(mockState as any);
       }).not.toThrow();
     });
 
@@ -112,7 +111,7 @@ describe("SDK Plugin Initialization", () => {
         sdk: {
           plugins: mockSdkPlugins,
         },
-      } as SdkStoreState;
+      };
 
       initializeSdkPlugins();
 
@@ -122,7 +121,7 @@ describe("SDK Plugin Initialization", () => {
 
       // Should not throw an error even when SDK plugin throws
       expect(() => {
-        PLUGIN_SELECTORS.getNoDataIllustration(mockState);
+        PLUGIN_SELECTORS.getNoDataIllustration(mockState as any);
       }).not.toThrow();
 
       expect(consoleSpy).toHaveBeenCalledWith(
