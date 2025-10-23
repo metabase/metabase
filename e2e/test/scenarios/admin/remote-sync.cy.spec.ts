@@ -1,5 +1,7 @@
+import yamljs from "yamljs";
+
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { Collection } from "metabase-types/api";
+import type { Collection } from "metabase-types/api";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -18,6 +20,44 @@ function configureGit(syncType: "development" | "production") {
   });
 }
 
+// This is a bit strange, but when working locally we write directly to the .git folder, not the working
+// directory. git will see an empty working directory and assume we have deleted files, so by stashing
+// unstaged changes, we will reset the working directory to what is in the .git folder
+const resetRepo = () => {
+  cy.exec("git -C " + LOCAL_GIT_PATH + " add .");
+  cy.exec("git -C " + LOCAL_GIT_PATH + " stash");
+};
+
+const wrapLibraryFiles = () => {
+  resetRepo();
+  cy.task("readDirectory", LOCAL_GIT_PATH).then((files) => {
+    cy.wrap(
+      (files as string[]).filter(
+        (file: string) => !file.includes(".git") && file.includes(".yaml"),
+      ),
+    ).as("libraryFiles");
+  });
+};
+
+const wrapLibraryCollection = (n = 0) => {
+  if (n > 3) {
+    throw new Error("Could not find library colleciton");
+  }
+
+  cy.request("/api/collection").then(({ body: collections }) => {
+    const libraryCollection = collections.find(
+      (c: Collection) => c.type === "remote-synced",
+    );
+
+    if (libraryCollection) {
+      cy.wrap(libraryCollection).as("library");
+    } else {
+      cy.wait(500);
+      wrapLibraryCollection(n + 1);
+    }
+  });
+};
+
 function setupGitSync() {
   H.restore();
   cy.exec("rm -rf " + LOCAL_GIT_PATH);
@@ -31,13 +71,7 @@ function setupGitSync() {
 
   configureGit("development");
 
-  cy.request("/api/collection").then(({ body: collections }) => {
-    cy.wrap(collections.find((c: Collection) => c.type === "remote-synced")).as(
-      "library",
-    );
-  });
-
-  // H.snapshot("remote-sync-setup");
+  wrapLibraryCollection();
 }
 
 describe("Remote Sync", () => {
@@ -140,16 +174,19 @@ describe("Remote Sync", () => {
     });
   });
 
-  it.only("can export changes to git", () => {
+  it("can export changes to git", () => {
     const REMOTE_QUESTION_NAME = "Remote Sync Test Question";
 
-    cy.get("@library").then(({ id }) => {
+    const UPDATED_REMOTE_QUESTION_NAME = "Updated Question Name";
+
+    cy.get("@library").then((libraryCollection) => {
       H.createQuestion({
         name: REMOTE_QUESTION_NAME,
         query: {
           "source-table": PRODUCTS_ID,
         },
-        collection_id: id,
+        collection_id: (libraryCollection as unknown as Collection)
+          .id as number,
       });
     });
 
@@ -167,7 +204,7 @@ describe("Remote Sync", () => {
     H.collectionTable().findByText(REMOTE_QUESTION_NAME).should("exist");
 
     cy.findByTestId("main-navbar-root")
-      .findByRole("button", { name: /upload/ })
+      .findByRole("button", { name: "Push to Git" })
       .click();
 
     H.modal()
@@ -176,8 +213,41 @@ describe("Remote Sync", () => {
 
     cy.findByTestId("main-navbar-root")
       .findByRole("link", { name: /Library/ })
-      .findByTestId("remote-sync-status")
+      .findByTestId("remote-sync-status", { timeout: 10000 })
       .should("not.exist");
+
+    resetRepo();
+
+    wrapLibraryFiles();
+
+    cy.get("@libraryFiles").then((libraryFiles) => {
+      const questionFilePath = (libraryFiles as unknown as string[]).find(
+        (file) => file.includes("remote_sync_test_question.yaml"),
+      );
+
+      const fullPath = `${LOCAL_GIT_PATH}/${questionFilePath}`;
+
+      cy.readFile(fullPath).then((str) => {
+        const doc = yamljs.parse(str);
+
+        //Assert that the name of the question is correct
+        expect(doc.name).to.equal(REMOTE_QUESTION_NAME);
+
+        //Next, Update the name and pull in the changes
+        doc.name = UPDATED_REMOTE_QUESTION_NAME;
+
+        cy.writeFile(fullPath, yamljs.stringify(doc));
+        cy.exec("git -C " + LOCAL_GIT_PATH + " commit -am 'Local Update'");
+      });
+    });
+
+    cy.findByTestId("main-navbar-root")
+      .findByRole("button", { name: "Pull from Git" })
+      .click();
+
+    H.collectionTable()
+      .findByText(UPDATED_REMOTE_QUESTION_NAME, { timeout: 10000 })
+      .should("exist");
   });
 
   it("can set up development mode", () => {
