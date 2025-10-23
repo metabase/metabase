@@ -12,7 +12,7 @@ export function getDependentGroups(node: DependencyNode): DependentGroup[] {
     table = 0,
     transform = 0,
     snippet = 0,
-  } = node.dependents ?? {};
+  } = node.dependents_count ?? {};
 
   const groups: DependentGroup[] = [
     { type: "question", count: question },

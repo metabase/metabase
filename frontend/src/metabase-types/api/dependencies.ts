@@ -12,13 +12,13 @@ export type DependencyEntry = {
   type: DependencyType;
 };
 
-export type DependentStats = Partial<Record<DependencyGroupType, number>>;
+export type DependentsCount = Partial<Record<DependencyGroupType, number>>;
 
 type BaseDependencyNode<TType extends DependencyType, TData> = {
   id: DependencyId;
   type: TType;
   data: TData;
-  dependents?: DependentStats;
+  dependents_count?: DependentsCount;
 };
 
 export type TableDependencyNodeData = Pick<

@@ -73,7 +73,7 @@ export function createMockTableDependencyNode(
     id: 1,
     type: "table",
     data: createMockTableDependencyNodeData(),
-    dependents: {},
+    dependents_count: {},
     ...opts,
   };
 }
@@ -85,7 +85,7 @@ export function createMockCardDependencyNode(
     id: 1,
     type: "card",
     data: createMockCardDependencyNodeData(),
-    dependents: {},
+    dependents_count: {},
     ...opts,
   };
 }
@@ -97,7 +97,7 @@ export function createMockTransformDependencyNode(
     id: 1,
     type: "transform",
     data: createMockTransformDependencyNodeData(),
-    dependents: {},
+    dependents_count: {},
     ...opts,
   };
 }
@@ -109,7 +109,7 @@ export function createMockSnippetDependencyNode(
     id: 1,
     type: "snippet",
     data: createMockSnippetDependencyNodeData(),
-    dependents: {},
+    dependents_count: {},
     ...opts,
   };
 }
