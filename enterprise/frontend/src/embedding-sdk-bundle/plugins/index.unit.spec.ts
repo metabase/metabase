@@ -66,6 +66,8 @@ describe("SDK Plugin Initialization", () => {
         PLUGIN_SELECTORS.getNoDataIllustration(mockState);
       }).not.toThrow();
 
+      expect(PLUGIN_SELECTORS.getNoDataIllustration(mockState)).toBeDefined();
+
       expect(mockSdkPlugins.getNoDataIllustration).toHaveBeenCalled();
     });
 
@@ -162,6 +164,8 @@ describe("SDK Plugin Initialization", () => {
       expect(() => {
         PLUGIN_SELECTORS.getNoObjectIllustration(mockState);
       }).not.toThrow();
+
+      expect(PLUGIN_SELECTORS.getNoObjectIllustration(mockState)).toBeDefined();
 
       expect(mockSdkPlugins.getNoObjectIllustration).toHaveBeenCalled();
     });

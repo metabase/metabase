@@ -43,12 +43,12 @@ export type MetabasePluginsConfig = {
    *
    * @returns A base64-encoded image string, or null to use the default illustration
    */
-  getNoDataIllustration?: () => string | null;
+  getNoDataIllustration?: () => string | null | undefined;
 
   /**
    * Provides a custom illustration to display when there is no object (e.g., no dashboards, no collections).
    *
    * @returns A base64-encoded image string, or null to use the default illustration
    */
-  getNoObjectIllustration?: () => string | null;
+  getNoObjectIllustration?: () => string | null | undefined;
 };
