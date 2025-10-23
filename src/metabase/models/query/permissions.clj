@@ -123,14 +123,14 @@
                           {:card-ids #{(:qp/stage-is-from-source-card m)}})
                         (query->source-ids (dissoc m :qp/stage-is-from-source-card) (:qp/stage-is-from-source-card m)))
 
-            (m :guard (every-pred map? :query-permissions/gtapped-table))
+            (m :guard (every-pred map? :metabase.models.query.permissions/gtapped-table))
             (merge-with merge-source-ids
-                        {:table-ids #{(:query-permissions/gtapped-table m)}}
+                        {:table-ids #{(:metabase.models.query.permissions/gtapped-table m)}}
                         (when-not parent-source-card-id
-                          {:table-query-ids #{(:query-permissions/gtapped-table m)}})
+                          {:table-query-ids #{(:metabase.models.query.permissions/gtapped-table m)}})
                         ;; Remove any :native sibling queries since they will be ones supplied by the gtap and we don't
                         ;; want to mark the whole query as native? if they exist
-                        (query->source-ids (dissoc m :query-permissions/gtapped-table :native) parent-source-card-id))
+                        (query->source-ids (dissoc m :metabase.models.query.permissions/gtapped-table :native) parent-source-card-id))
 
             (m :guard (every-pred map? :native))
             (when-not parent-source-card-id
