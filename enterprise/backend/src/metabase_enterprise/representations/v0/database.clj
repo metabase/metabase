@@ -132,7 +132,12 @@
   (-> representation
       (set/rename-keys {:connection_details :details})
       (select-keys [:name :engine :description :details :schemas :ref])
-      (v0-common/hydrate-env-vars)))
+      (v0-common/hydrate-env-vars)
+      (u/remove-nils)))
+
+(defmethod import/with-toucan-defaults [:v0 :database]
+  [toucan-entity]
+  toucan-entity)
 
 (defmethod import/persist! [:v0 :database]
   [representation ref-index]

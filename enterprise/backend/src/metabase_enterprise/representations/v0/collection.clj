@@ -93,6 +93,10 @@
       :description description
       :location location})))
 
+(defmethod import/with-toucan-defaults [:v0 :collection]
+  [toucan-entity]
+  toucan-entity)
+
 (defn- persist!
   [new-collection]
   (log/debug "Creating new collection" (:name new-collection))

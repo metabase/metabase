@@ -107,15 +107,23 @@
                         :id)
         query (-> (assoc representation :database database-id)
                   (v0-mbql/import-dataset-query ref-index))]
-    {:creator_id (or api/*current-user-id* config/internal-mb-user-id)
-     :name (:name representation)
-     :description (or (:description representation) "")
-     :display (or (:display representation) :table)
-     :dataset_query query
-     :visualization_settings {}
-     :database_id database-id
-     :query_type (if (= (name (:type query)) "native") :native :query)
-     :type :question}))
+    (-> {:name (:name representation)
+         :description (:description representation)
+         :display (:display representation)
+         :dataset_query query
+         :database_id database-id
+         :query_type (if (= (name (:type query)) "native") :native :query)
+         :type :question}
+        u/remove-nils)))
+
+(defmethod import/with-toucan-defaults [:v0 :question]
+  [toucan-entity]
+  (merge-with #(or %1 %2)
+              toucan-entity
+              {:description ""
+               :visualization_settings {}
+               :display :table
+               :creator_id (or api/*current-user-id* config/internal-mb-user-id)}))
 
 (defmethod import/persist! [:v0 :question]
   [representation ref-index]

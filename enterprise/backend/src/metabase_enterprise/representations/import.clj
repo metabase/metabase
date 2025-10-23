@@ -15,7 +15,7 @@
 (defmulti persist!
   "Ingest a validated representation and create/update the entity in the database.
    Dispatches on the :type field of the representation."
-  {:arglists '([entity ref-index])}
+  {:arglists '([representation ref-index])}
   (fn [entity _ref-index] ((juxt :version :type) entity)))
 
 (defmulti yaml->toucan
@@ -23,7 +23,12 @@
    Returns a map with keys matching the Toucan model fields.
    Does NOT insert into the database - just transforms the data.
    Dispatches on the :version and :type fields of the representation."
-  {:arglists '([entity ref-index])}
+  {:arglists '([representation ref-index])}
+  (fn [entity _ref-index] ((juxt :version :type) entity)))
+
+(defmulti with-toucan-defaults
+  "Adds default, required values to a toucan representation."
+  {:arglists '([toucan-entity])}
   (fn [entity _ref-index] ((juxt :version :type) entity)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

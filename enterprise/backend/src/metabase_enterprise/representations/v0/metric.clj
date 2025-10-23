@@ -234,25 +234,25 @@
                         (v0-common/ensure-correct-type :database)
                         :id)
         dataset-query (v0-mbql/import-dataset-query representation ref-index)]
-    (when-not database-id
-      (throw (ex-info (str "Database not found: " database)
-                      {:database database})))
-    (merge
-     {;; Core fields
-      :name metric-name
-      :description (or description "")
-      :display :table ; Metrics are typically displayed as tables
-      :dataset_query dataset-query
-      :visualization_settings {}
-      :database_id database-id
-      :query_type (if (= (:type dataset-query) "native") :native :query)
-      :type :metric}
-     ;; Result metadata with column definitions
-     (when columns
-       {:result_metadata columns})
-     ;; Optional collection
-     (when-let [coll-id (v0-common/find-collection-id collection)]
-       {:collection_id coll-id}))))
+    (-> {;; Core fields
+         :name metric-name
+         :description description
+         :dataset_query dataset-query
+         :database_id database-id
+         :query_type (if (= (name (:type dataset-query)) "native") :native :query)
+         :type :metric
+         :result_metadata columns
+         :collection_id (v0-common/find-collection-id collection)}
+        u/remove-nils)))
+
+(defmethod import/with-toucan-defaults [:v0 :metric]
+  [toucan-entity]
+  (merge-with #(or %1 %2)
+              toucan-entity
+              {:description ""
+               :visualization_settings {}
+               :display :table
+               :creator_id (or api/*current-user-id* config/internal-mb-user-id)}))
 
 (defmethod import/persist! [:v0 :metric]
   [representation ref-index]

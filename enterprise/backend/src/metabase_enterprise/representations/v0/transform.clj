@@ -130,16 +130,21 @@
                         :id
                         (v0-common/ensure-not-nil))
         query (v0-mbql/import-dataset-query representation ref-index)]
-    {:database database-id
-     :entity_id (or (:entity_id representation)
-                    (v0-common/generate-entity-id (assoc representation :collection "transforms")))
-     :name (:name representation)
-     :description (or (:description representation) "")
-     :source {:type "query"
-              :query query}
-     :target {:type "table"
-              :schema (-> representation :target_table :schema)
-              :name (-> representation :target_table :table)}}))
+    (-> {:database database-id
+         :name (:name representation)
+         :description (:description representation)
+         :source {:type "query"
+                  :query query}
+         :target {:type "table"
+                  :schema (-> representation :target_table :schema)
+                  :name (-> representation :target_table :table)}}
+        u/remove-nils)))
+
+(defmethod import/with-toucan-defaults [:v0 :transform]
+  [toucan-entity]
+  (merge-with #(or %1 %2)
+              toucan-entity
+              {:description ""}))
 
 (defn- set-up-tags [transform-id tags]
   (when (seq tags)

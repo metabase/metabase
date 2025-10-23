@@ -9,6 +9,7 @@
    [metabase.config.core :as config]
    [metabase.lib.native :as lib.native]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -81,13 +82,19 @@
 (defmethod import/yaml->toucan [:v0 :snippet]
   [{:keys [_ref name description sql collection entity-id] :as representation}
    _ref-index]
-  {:name name
-   :description description
-   :content sql
-   :creator_id (or api/*current-user-id* config/internal-mb-user-id)
-   :collection_id (v0-common/find-collection-id collection)
-   :entity_id (or entity-id (v0-common/generate-entity-id representation))
-   :template_tags (lib.native/recognize-template-tags sql)})
+  (-> {:name name
+       :description description
+       :content sql
+       :collection_id (v0-common/find-collection-id collection)
+       :template_tags (lib.native/recognize-template-tags sql)}
+      u/remove-nils))
+
+(defmethod import/with-toucan-defaults [:v0 :snippet]
+  [toucan-entity]
+  (merge-with #(or %1 %2)
+              toucan-entity
+              {:description ""
+               :creator_id (or api/*current-user-id* config/internal-mb-user-id)}))
 
 (defmethod import/persist! [:v0 :snippet]
   [representation ref-index]

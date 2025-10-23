@@ -258,7 +258,7 @@
 
 (defmethod import/yaml->toucan [:v0 :model]
   [{model-name :name
-    :keys [_type _ref entity-id description database collection columns] :as representation}
+    :keys [_type _ref description database collection columns] :as representation}
    ref-index]
   (let [database-id (-> ref-index
                         (v0-common/lookup-entity database)
@@ -276,21 +276,25 @@
         ;; 4. Pass the result of that into `lib/returned-columns`
         ;; No idea which is better.
         inferred-metadata (card.metadata/infer-metadata dataset-query)]
-    (merge
-     {:name                   model-name
-      :entity_id              (or entity-id
-                                  (v0-common/generate-entity-id representation))
-      :description            (or description "")
-      :display                :table
-      :dataset_query          dataset-query
-      :visualization_settings {}
-      :database_id            database-id
-      :query_type             (if (= (:type dataset-query) "native") :native :query)
-      :type                   :model}
-     (when columns
-       {:result_metadata (columns->result-metadata columns inferred-metadata)})
-     (when-let [coll-id (v0-common/find-collection-id collection)]
-       {:collection_id coll-id}))))
+    (-> {:name                   model-name
+         :description            description
+         :dataset_query          dataset-query
+         :database_id            database-id
+         :query_type             (if (= (name (:type dataset-query)) "native") :native :query)
+         :type                   :model
+         :result_metadata (when columns
+                            (columns->result-metadata columns inferred-metadata))
+         :collection_id   (v0-common/find-collection-id collection)}
+        u/remove-nils)))
+
+(defmethod import/with-toucan-defaults [:v0 :model]
+  [toucan-entity]
+  (merge-with #(or %1 %2)
+              toucan-entity
+              {:description ""
+               :visualization_settings {}
+               :display :table
+               :creator_id (or api/*current-user-id* config/internal-mb-user-id)}))
 
 (defmethod import/persist! [:v0 :model]
   [representation ref-index]
