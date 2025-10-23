@@ -482,6 +482,8 @@ import waterfall_component from "./waterfall.svg?component";
 import waterfall_source from "./waterfall.svg?source";
 import webhook_component from "./webhook.svg?component";
 import webhook_source from "./webhook.svg?source";
+import workbench_component from "./workbench.svg?component";
+import workbench_source from "./workbench.svg?source";
 import zoom_in_component from "./zoom_in.svg?component";
 import zoom_in_source from "./zoom_in.svg?source";
 import zoom_out_component from "./zoom_out.svg?component";
@@ -1447,6 +1449,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: webhook_component,
       source: webhook_source,
     },
+    workbench: {
+      component: workbench_component,
+      source: workbench_source,
+    },
     "10k": {
       component: ten_thousand_component,
       source: ten_thousand_source,
@@ -1722,6 +1728,7 @@ export type IconName =
   | "warning_triangle_filled"
   | "waterfall"
   | "webhook"
+  | "workbench"
   | "10k"
   | "1m"
   | "zoom_in"

@@ -1,415 +1,206 @@
-import { Box, Text } from "metabase/ui";
+import { Link } from "react-router";
+import { useLocalStorage } from "react-use";
+import { t } from "ttag";
 
-const jokes = [
-  {
-    setup: "Why did the data engineer break up with their database?",
-    punchline: "There were too many relationship issues",
-  },
-  {
-    setup: "What's a data engineer's favorite type of music?",
-    punchline: "Heavy metal... because they love their data pipelines",
-  },
-  {
-    setup: "Why do data engineers prefer dark mode?",
-    punchline: "Because the light attracts bugs in their ETL jobs",
-  },
-  {
-    setup: "How does a data engineer propose?",
-    punchline: "With a ring buffer",
-  },
-  {
-    setup: "Why did the data engineer go broke?",
-    punchline: "They kept losing their cache",
-  },
-  {
-    setup: "What do you call a data engineer who doesn't use version control?",
-    punchline: "Unemployed",
-  },
-  {
-    setup: "Why don't data engineers ever get lost?",
-    punchline: "They always follow the data pipeline",
-  },
-  {
-    setup: "What's a data engineer's favorite exercise?",
-    punchline: "Data squats... they're always cleaning",
-  },
-  {
-    setup: "Why did the data engineer quit their job?",
-    punchline: "They couldn't handle the throughput pressure",
-  },
-  {
-    setup: "How many data engineers does it take to change a light bulb?",
-    punchline: "None, that's a hardware problem",
-  },
-  {
-    setup: "Why do data engineers make terrible comedians?",
-    punchline: "Their jokes have too much latency",
-  },
-  {
-    setup: "What's a data engineer's favorite drink?",
-    punchline: "Java... but they'll settle for Python",
-  },
-  {
-    setup: "Why did the data engineer stay calm during the outage?",
-    punchline: "They had a backup plan",
-  },
-  {
-    setup: "What do you call a data engineer's autobiography?",
-    punchline: "A log file",
-  },
-  {
-    setup: "Why don't data engineers trust stairs?",
-    punchline: "They prefer step functions",
-  },
-  {
-    setup: "What's a data engineer's favorite movie?",
-    punchline: "The Matrix... obviously",
-  },
-  {
-    setup: "Why did the data engineer bring a ladder to work?",
-    punchline: "To reach the cloud",
-  },
-  {
-    setup: "How do data engineers stay in shape?",
-    punchline: "By doing data crunches",
-  },
-  {
-    setup: "Why was the data engineer always tired?",
-    punchline: "They worked the night batch",
-  },
-  {
-    setup: "What's a data engineer's least favorite season?",
-    punchline: "Fall... because of all the cascading failures",
-  },
-  {
-    setup: "Why did the data engineer become a gardener?",
-    punchline: "They were great at data seeding",
-  },
-  {
-    setup: "What do you call a lazy data engineer?",
-    punchline: "Someone who automates their automation",
-  },
-  {
-    setup: "Why don't data engineers like parties?",
-    punchline: "Too much unstructured data",
-  },
-  {
-    setup: "What's a data engineer's favorite game?",
-    punchline: "Minesweeper... they love finding hidden issues",
-  },
-  {
-    setup: "Why did the data engineer cross the road?",
-    punchline: "To get to the other pipeline",
-  },
-  {
-    setup: "What do you call a data engineer's pet?",
-    punchline: "A data retriever",
-  },
-  {
-    setup: "Why are data engineers bad at poker?",
-    punchline: "They always show their schemas",
-  },
-  {
-    setup: "What's a data engineer's favorite dessert?",
-    punchline: "Cookies... but only the session kind",
-  },
-  {
-    setup: "Why did the data engineer get glasses?",
-    punchline: "To improve their data visibility",
-  },
-  {
-    setup: "What do you call a data engineer who works out?",
-    punchline: "Buff-er overflow",
-  },
-  {
-    setup: "Why don't data engineers like surprises?",
-    punchline: "They prefer scheduled jobs",
-  },
-  {
-    setup: "What's a data engineer's favorite dance?",
-    punchline: "The shuffle",
-  },
-  {
-    setup: "Why did the data engineer become a chef?",
-    punchline: "They were already great at batch processing",
-  },
-  {
-    setup: "What do you call a data engineer's vacation?",
-    punchline: "Downtime",
-  },
-  {
-    setup: "Why are data engineers good at relationships?",
-    punchline: "They understand the importance of good connections",
-  },
-  {
-    setup: "What's a data engineer's favorite sport?",
-    punchline: "Data streaming",
-  },
-  {
-    setup: "Why did the data engineer go to therapy?",
-    punchline: "To work through their transformation issues",
-  },
-  {
-    setup: "What do you call a data engineer's diary?",
-    punchline: "A changelog",
-  },
-  {
-    setup: "Why don't data engineers like magic?",
-    punchline: "They prefer reproducible results",
-  },
-  {
-    setup: "What's a data engineer's favorite holiday?",
-    punchline: "Thanksgiving... they're grateful for idempotency",
-  },
-  {
-    setup: "Why did the data engineer become a plumber?",
-    punchline: "They were already fixing leaky pipelines",
-  },
-  {
-    setup: "What do you call a data engineer's nightmare?",
-    punchline: "A data swamp",
-  },
-  {
-    setup: "Why are data engineers bad at keeping secrets?",
-    punchline: "Everything ends up in the logs",
-  },
-  {
-    setup: "What's a data engineer's favorite board game?",
-    punchline: "Connect Four... billion rows",
-  },
-  {
-    setup: "Why did the data engineer join a band?",
-    punchline: "They wanted to work with better orchestration",
-  },
-  {
-    setup: "What do you call a data engineer's love letter?",
-    punchline: "A data stream",
-  },
-  {
-    setup: "Why don't data engineers like small talk?",
-    punchline: "They prefer big data",
-  },
-  {
-    setup: "What's a data engineer's favorite car?",
-    punchline: "A Tesla... because of the streaming data",
-  },
-  {
-    setup: "Why did the data engineer become a detective?",
-    punchline: "They were already good at data mining",
-  },
-  {
-    setup: "What do you call a data engineer's midlife crisis?",
-    punchline: "A schema migration",
-  },
-  {
-    setup: "Why are data engineers good at fishing?",
-    punchline: "They know how to handle data lakes",
-  },
-  {
-    setup: "What's a data engineer's favorite weather?",
-    punchline: "Cloudy with a chance of data",
-  },
-  {
-    setup: "Why did the data engineer become a librarian?",
-    punchline: "They loved organizing data warehouses",
-  },
-  {
-    setup: "What do you call a data engineer's bucket list?",
-    punchline: "An S3 bucket list",
-  },
-  {
-    setup: "Why don't data engineers like drama?",
-    punchline: "They prefer clean data",
-  },
-  {
-    setup: "What's a data engineer's favorite snack?",
-    punchline: "Byte-sized anything",
-  },
-  {
-    setup: "Why did the data engineer become a teacher?",
-    punchline: "They wanted to educate about data quality",
-  },
-  {
-    setup: "What do you call a data engineer's wedding?",
-    punchline: "A merge operation",
-  },
-  {
-    setup: "Why are data engineers bad at improvisation?",
-    punchline: "They need their schemas defined first",
-  },
-  {
-    setup: "What's a data engineer's favorite animal?",
-    punchline: "The Python",
-  },
-  {
-    setup: "Why did the data engineer go to the gym?",
-    punchline: "To work on their core... data model",
-  },
-  {
-    setup: "What do you call a data engineer's retirement?",
-    punchline: "Deprecated",
-  },
-  {
-    setup: "Why don't data engineers like cliffhangers?",
-    punchline: "They need closure on their transactions",
-  },
-  {
-    setup: "What's a data engineer's favorite TV show?",
-    punchline: "Breaking Batch",
-  },
-  {
-    setup: "Why did the data engineer become a bartender?",
-    punchline: "They were good at handling queues",
-  },
-  {
-    setup: "What do you call a data engineer's midday nap?",
-    punchline: "A sleep mode",
-  },
-  {
-    setup: "Why are data engineers good at meditation?",
-    punchline: "They practice data zen",
-  },
-  {
-    setup: "What's a data engineer's favorite pizza topping?",
-    punchline: "Sausage... links",
-  },
-  {
-    setup: "Why did the data engineer become a pilot?",
-    punchline: "They wanted to work with Airflow",
-  },
-  {
-    setup: "What do you call a data engineer's morning routine?",
-    punchline: "A bootstrap process",
-  },
-  {
-    setup: "Why don't data engineers like gossip?",
-    punchline: "They prefer verified data sources",
-  },
-  {
-    setup: "What's a data engineer's favorite superhero?",
-    punchline: "The Flash... for fast data processing",
-  },
-  {
-    setup: "Why did the data engineer become a musician?",
-    punchline: "They wanted to compose better queries",
-  },
-  {
-    setup: "What do you call a data engineer's shopping list?",
-    punchline: "A queue",
-  },
-  {
-    setup: "Why are data engineers bad at lying?",
-    punchline: "The audit logs always tell the truth",
-  },
-  {
-    setup: "What's a data engineer's favorite ice cream?",
-    punchline: "Vanilla... they love plain text",
-  },
-  {
-    setup: "Why did the data engineer become a doctor?",
-    punchline: "They were already diagnosing pipeline issues",
-  },
-  {
-    setup: "What do you call a data engineer's family tree?",
-    punchline: "A hierarchical data structure",
-  },
-  {
-    setup: "Why don't data engineers like chaos?",
-    punchline: "They prefer ordered data",
-  },
-  {
-    setup: "What's a data engineer's favorite book?",
-    punchline: "The Art of War... against data quality issues",
-  },
-  {
-    setup: "Why did the data engineer become a photographer?",
-    punchline: "They loved taking snapshots",
-  },
-  {
-    setup: "What do you call a data engineer's to-do list?",
-    punchline: "A backlog",
-  },
-  {
-    setup: "Why are data engineers good at puzzles?",
-    punchline: "They're used to joining tables",
-  },
-  {
-    setup: "What's a data engineer's favorite flower?",
-    punchline: "Tulips... two-lips for dual pipelines",
-  },
-  {
-    setup: "Why did the data engineer become a lawyer?",
-    punchline: "They were good at handling cases... statements",
-  },
-  {
-    setup: "What do you call a data engineer's road trip?",
-    punchline: "A data journey",
-  },
-  {
-    setup: "Why don't data engineers like mysteries?",
-    punchline: "They need their data documented",
-  },
-  {
-    setup: "What's a data engineer's favorite constellation?",
-    punchline: "The Big Dipper... for data lakes",
-  },
-  {
-    setup: "Why did the data engineer become an architect?",
-    punchline: "They were already designing data warehouses",
-  },
-  {
-    setup: "What do you call a data engineer's bedtime story?",
-    punchline: "A data tale",
-  },
-  {
-    setup: "Why are data engineers good at cooking?",
-    punchline: "They follow the recipe... or the DAG",
-  },
-  {
-    setup: "What's a data engineer's favorite card game?",
-    punchline: "Solitaire... they work alone a lot",
-  },
-  {
-    setup: "Why did the data engineer become a meteorologist?",
-    punchline: "They were already predicting data storms",
-  },
-  {
-    setup: "What do you call a data engineer's New Year's resolution?",
-    punchline: "A schema update",
-  },
-  {
-    setup: "Why don't data engineers like shortcuts?",
-    punchline: "They prefer the full pipeline",
-  },
-  {
-    setup: "What's a data engineer's favorite fruit?",
-    punchline: "Dates... for timestamps",
-  },
-  {
-    setup: "Why did the data engineer become a therapist?",
-    punchline: "They were good at handling emotional data",
-  },
-  {
-    setup: "What do you call a data engineer who's always late?",
-    punchline: "Someone with latency issues",
-  },
-];
+import { useSelector } from "metabase/lib/redux/hooks";
+import { getUserIsAdmin } from "metabase/selectors/user";
+import {
+  Box,
+  Button,
+  Card,
+  FixedSizeIcon,
+  Flex,
+  Grid,
+  type IconName,
+  Stack,
+  Text,
+} from "metabase/ui";
 
-export function getRandomJoke() {
-  const randomIndex = Math.floor(Math.random() * jokes.length);
-  return jokes[randomIndex];
-}
+const OverviewCard = ({
+  to,
+  icon,
+  heading,
+  body,
+}: {
+  to: string;
+  icon: IconName;
+  heading: string;
+  body: string;
+}) => {
+  return (
+    <Card
+      component={Link}
+      to={to}
+      shadow="inset 0 0 0 1px var(--mb-color-border)"
+      p="lg"
+      pb="1.25rem"
+      h="100%"
+    >
+      <Flex align="center" mb="md">
+        <Flex bdrs="xl" bg="background-light" p="sm" mr="md">
+          <FixedSizeIcon size={16} name={icon} c="brand" />
+        </Flex>
+        <Text component="h3" fz="lg" fw="bold" lh={1}>
+          {heading}
+        </Text>
+      </Flex>
+      <Text lh={1.43} c="text-secondary">
+        {body}
+      </Text>
+    </Card>
+  );
+};
+
+const initialBenchOverviewStorage = { dismissedBanner: false };
+
+const useBenchOverviewStorage = () =>
+  useLocalStorage("metabase-bench-overview", initialBenchOverviewStorage);
+
+const OverviewBanner = () => {
+  const [storage, updateStorage] = useBenchOverviewStorage();
+  if (storage?.dismissedBanner) {
+    return null;
+  }
+
+  return (
+    <Card
+      bg="color-mix(in srgb, var(--mb-color-brand) 10%, transparent)"
+      p="lg"
+      bdrs="lg"
+      shadow="none"
+    >
+      <Flex>
+        <Box mr="lg">
+          <FixedSizeIcon size={32} name="workbench" c="brand" />
+        </Box>
+        <Box mt="sm">
+          <Text component="h2" fz="lg" fw="bold" mb="sm" lh="sm">
+            {t`Welcome to the Workbench`}
+          </Text>
+          <Text lh={1.43} maw={520}>
+            {t`Here's where data analysts can create and manage the objects in your semantic layer for the rest of your team to use and explore.`}
+          </Text>
+        </Box>
+        <Box m="-sm" ml="auto">
+          <Button
+            variant="subtle"
+            size="compact-md"
+            color="primary"
+            leftSection={<FixedSizeIcon name="close" size={16} />}
+            aria-label={t`Dismiss`}
+            onClick={() =>
+              updateStorage((s) => ({ ...s, dismissedBanner: true }))
+            }
+          />
+        </Box>
+      </Flex>
+    </Card>
+  );
+};
 
 export const OverviewPage = () => {
-  const joke = getRandomJoke();
+  const isAdmin = useSelector(getUserIsAdmin);
+
   return (
-    <Box mb="md" ta="center" mt="10rem">
-      <Text size="lg" fw="bold">
-        {joke.setup}
-      </Text>
-      <Text size="md" mt="lg" c="text-light">
-        {joke.punchline}
-      </Text>
+    <Box h="100%" bg="background-light" style={{ overflow: "auto" }}>
+      <Stack mt="3rem" mb="4rem" maw="67rem" px="1rem" mx="auto" gap="3rem">
+        <OverviewBanner />
+        <section>
+          <Text component="h2" c="text-secondary" fw="bold" mb="lg" lh="sm">
+            {t`Clean up your schema`}
+          </Text>
+          <Grid>
+            <Grid.Col span={{ base: 12, sm: 4 }}>
+              <OverviewCard
+                to="/bench/metadata"
+                icon="table2"
+                heading={t`Metadata`}
+                body={t`Hide irrelevant tables, and format, describe, and add semantic types to columns.`}
+              />
+            </Grid.Col>
+            {isAdmin && (
+              <Grid.Col span={{ base: 12, sm: 4 }}>
+                <OverviewCard
+                  to="/bench/transforms"
+                  icon="transform"
+                  heading={t`Transforms`}
+                  body={t`Use SQL or python to join data and add columns. Run them on a schedule with jobs.`}
+                />
+              </Grid.Col>
+            )}
+          </Grid>
+        </section>
+        <section>
+          <Text component="h2" c="text-secondary" fw="bold" mb="lg" lh="sm">
+            {t`Model your data`}
+          </Text>
+          <Grid>
+            <Grid.Col span={{ base: 12, sm: 4 }}>
+              <OverviewCard
+                to="/bench/model"
+                icon="model"
+                heading={t`Models`}
+                body={t`Decorate your favorite tables and organize them into collections.`}
+              />
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, sm: 4 }}>
+              <OverviewCard
+                to="/bench/metric"
+                icon="metric"
+                heading={t`Metrics`}
+                body={t`Codify the KPIs and measures your organization keeps tabs on.`}
+              />
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, sm: 4 }}>
+              <OverviewCard
+                to="/bench/segment"
+                icon="segment"
+                heading={t`Segments`}
+                body={t`Define named subsets of tables that you can use as filters.`}
+              />
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, sm: 4 }}>
+              <OverviewCard
+                to="/bench/glossary"
+                icon="globe"
+                heading={t`Glossary`}
+                body={t`Define terms to help your team understand your data.`}
+              />
+            </Grid.Col>
+          </Grid>
+        </section>
+        <section>
+          <Text component="h2" c="text-secondary" fw="bold" mb="lg" lh="sm">
+            {t`Keep things running smoothly`}
+          </Text>
+          <Grid>
+            <Grid.Col span={{ base: 12, sm: 4 }}>
+              <OverviewCard
+                to="/bench/dependencies"
+                icon="network"
+                heading={t`Dependencies`}
+                body={t`Use the Dependency Graph to see what's upstream and downstream of anything.`}
+              />
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, sm: 4 }}>
+              <OverviewCard
+                to="/bench/snippet"
+                icon="snippet"
+                heading={t`SQL snippets`}
+                body={t`Define reusable bits of SQL for your whole team to use in your queries.`}
+              />
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, sm: 4 }}>
+              <OverviewCard
+                to="/bench/library/common.py"
+                icon="code_block"
+                heading={t`Python Library`}
+                body={t`A customizable function library for use with your Python transforms.`}
+              />
+            </Grid.Col>
+          </Grid>
+        </section>
+      </Stack>
     </Box>
   );
 };
