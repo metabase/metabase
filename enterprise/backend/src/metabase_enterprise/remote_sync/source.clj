@@ -55,7 +55,7 @@
 (methodical/defmethod source.p/->ingestable GitSource
   [{:keys [remote-url] :as source} opts]
   (git/fetch! source)
-  (if-let [commit-ref (git/->commit-id source)]
+  (if-let [commit-ref (git/commit-sha source)]
     (next-method (assoc source :commit-ish commit-ref) opts)
     (throw (ex-info (str "Unable to find branch " (:commit-ish source) " to read from") {:url remote-url
                                                                                          :branch (:commit-ish source)}))))
