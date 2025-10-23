@@ -142,6 +142,7 @@ export const AgentSuggestionMessage = ({
       radius="md"
       bg="white"
       style={{ border: `1px solid var(--mb-color-border)` }}
+      data-testid="metabot-chat-suggestion"
     >
       <Group
         p="md"

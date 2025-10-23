@@ -60,6 +60,7 @@ export function PythonEditorBody({
             <>
               <Tooltip label={t`Accept proposed changes`} position="left">
                 <Button
+                  data-testid="accept-proposed-changes-button"
                   variant="filled"
                   bg="success"
                   px="0"
@@ -71,6 +72,7 @@ export function PythonEditorBody({
               </Tooltip>
               <Tooltip label={t`Reject proposed changes`} position="left">
                 <Button
+                  data-testid="reject-proposed-changes-button"
                   w="2.5rem"
                   px="0"
                   variant="filled"
