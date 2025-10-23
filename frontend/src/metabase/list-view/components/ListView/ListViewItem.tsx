@@ -1,8 +1,7 @@
 import cx from "classnames";
 import type { CSSProperties } from "react";
 
-import { formatValue } from "metabase/lib/formatting";
-import { Box, Flex, Icon, type IconName, Image, Text } from "metabase/ui";
+import { Box, Flex, Icon, type IconName, Image } from "metabase/ui";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { DatasetColumn, DatasetData } from "metabase-types/api";
 
@@ -72,45 +71,36 @@ export function ListViewItem({
           radius="xl"
           style={{
             flexShrink: 0,
-            visibility: !!imgSrc ? "visible" : "hidden",
+            visibility: imgSrc ? "visible" : "hidden",
           }}
         />
       )}
 
       {/* Title and Subtitle Content */}
-      <div>
-        <Flex align="center" gap="md" style={{ flexShrink: 0 }}>
-          <div style={{ minWidth: 0, flex: 1 }}>
-            {titleColumn && (
-              <Text
-                fw="bold"
-                truncate
-                style={{ color: "var(--mb-color-brand)" }}
-              >
-                {formatValue(row[cols.indexOf(titleColumn)], {
-                  ...(settings.column?.(titleColumn) || {}),
-                  jsx: true,
-                  rich: true,
-                })}
-              </Text>
-            )}
-          </div>
-        </Flex>
-      </div>
+      <Flex align="center" gap="md" style={{ flexShrink: 0 }}>
+        {titleColumn && (
+          <ColumnValue
+            column={titleColumn}
+            settings={settings}
+            rawValue={row[cols.indexOf(titleColumn as DatasetColumn)]}
+            style={{
+              color: "var(--mb-color-brand)",
+              fontWeight: "bold",
+            }}
+          />
+        )}
+      </Flex>
 
       {/* Right Columns */}
-      {rightColumns.map((col, colIndex) => {
+      {rightColumns.map((col) => {
         const rawValue = row[cols.indexOf(col)];
-        const value = formatValue(rawValue, {
-          ...(settings.column?.(col) || {}),
-          jsx: true,
-          rich: true,
-        });
-
         return (
-          <div key={colIndex}>
-            <ColumnValue column={col} value={value} rawValue={rawValue} />
-          </div>
+          <ColumnValue
+            key={col.name}
+            settings={settings}
+            column={col}
+            rawValue={rawValue}
+          />
         );
       })}
     </Box>

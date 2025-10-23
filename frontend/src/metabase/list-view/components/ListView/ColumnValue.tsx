@@ -1,21 +1,20 @@
-import type { ReactNode } from "react";
-
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { Box, Flex, Text } from "metabase/ui";
+import { formatValue } from "metabase/lib/formatting";
+import { Badge, Box, Icon, Stack, Text } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { DatasetColumn } from "metabase-types/api";
-
-import styles from "./ListView.module.css";
 
 // Light background colors for category values
 const CATEGORY_COLORS = [
-  "color-mix(in srgb, var(--mb-color-brand) 8%, white)",
-  "color-mix(in srgb, var(--mb-color-success) 8%, white)",
-  "color-mix(in srgb, var(--mb-color-warning) 8%, white)",
-  "color-mix(in srgb, var(--mb-color-error) 8%, white)",
-  "color-mix(in srgb, var(--mb-color-filter) 8%, white)",
-  "color-mix(in srgb, var(--mb-color-summarize) 8%, white)",
-  "color-mix(in srgb, var(--mb-color-focus) 8%, white)",
-  "color-mix(in srgb, var(--mb-color-text-medium) 8%, white)",
+  "accent0",
+  "accent1",
+  "accent2",
+  "accent3",
+  "accent4",
+  "accent5",
+  "accent6",
+  "accent7",
 ];
 
 // Get a consistent color for a category value based on its hash
@@ -34,58 +33,185 @@ const getCategoryColor = (value: any, columnName: string) => {
   }, 0);
 
   const colorIndex = Math.abs(hash) % CATEGORY_COLORS.length;
-  return CATEGORY_COLORS[colorIndex];
+  return color(CATEGORY_COLORS[colorIndex]);
 };
 
 interface ColumnValueProps {
   column: DatasetColumn;
-  value: ReactNode;
+  settings: ComputedVisualizationSettings;
   rawValue: any;
+  style?: React.CSSProperties;
 }
 
-export function ColumnValue({ column, value, rawValue }: ColumnValueProps) {
-  const isBooleanColumn = column.base_type === "type/Boolean";
-  const isCategoryColumn = column.semantic_type === "type/Category";
-  const isScoreColumn = column.semantic_type === "type/Score";
-  const shouldGetCategoryStyling = isCategoryColumn || isScoreColumn;
+export function ColumnValue({
+  column,
+  settings,
+  rawValue,
+  style,
+}: ColumnValueProps) {
+  const columnSettings = settings.column?.(column) || {};
+  const value = formatValue(rawValue, {
+    ...columnSettings,
+    jsx: true,
+    rich: true,
+  });
+  if (!rawValue) {
+    return null;
+  }
 
-  if (isBooleanColumn) {
+  if (column.base_type === "type/Boolean") {
     return (
-      <Flex align="center" gap="xs">
-        <Box
-          w={8}
-          h={8}
-          style={{
-            borderRadius: "50%",
-            backgroundColor:
-              rawValue === true
-                ? "var(--mb-color-success)"
-                : "var(--mb-color-error)",
-            flexShrink: 0,
-          }}
-        />
-        <Text fw="bold" size="sm" c="text-secondary">
-          {value}
-        </Text>
-      </Flex>
+      <Badge
+        px="sm"
+        size="lg"
+        c="text-secondary"
+        variant="outline"
+        style={{
+          borderColor: "var(--mb-color-border-secondary)",
+          background: "var(--mb-color-bg-white)",
+          textTransform: "capitalize",
+        }}
+        leftSection={
+          <Icon
+            name={rawValue === true ? "check" : "close"}
+            size={12}
+            mr="xs"
+          />
+        }
+      >
+        {value}
+      </Badge>
     );
   }
 
-  if (shouldGetCategoryStyling && rawValue != null && rawValue !== "") {
-    return (
-      <Box
-        className={styles.categoryValue}
-        style={{ backgroundColor: getCategoryColor(rawValue, column.name) }}
-      >
-        <Ellipsified fw="bold" size="sm" c="text-secondary">
+  switch (column.semantic_type) {
+    case "type/PK":
+    case "type/FK":
+      if (!column.remapped_to_column) {
+        return (
+          <Badge
+            px="sm"
+            size="lg"
+            c="text-secondary"
+            variant="outline"
+            style={{ borderColor: "var(--mb-color-border-secondary)" }}
+            leftSection={<Icon name="label" size={16} />}
+          >
+            {value}
+          </Badge>
+        );
+      }
+      break;
+    case "type/Category":
+      return (
+        <Badge
+          px="sm"
+          size="lg"
+          c="text-secondary"
+          variant="outline"
+          style={{
+            borderColor: "var(--mb-color-border-secondary)",
+            background: "var(--mb-color-bg-white)",
+          }}
+          leftSection={
+            <Stack mr="0.25rem">
+              <Box
+                style={{
+                  borderRadius: "50%",
+                  width: "0.5rem",
+                  height: "0.5rem",
+                  backgroundColor: getCategoryColor(rawValue, column.name),
+                }}
+              />
+            </Stack>
+          }
+        >
+          {value}
+        </Badge>
+      );
+    case "type/Name":
+    case "type/Title":
+    case "type/Product":
+    case "type/Source":
+      return (
+        <Ellipsified
+          size="sm"
+          truncate
+          fw="bold"
+          style={style}
+          c={style?.color || "text-secondary"}
+        >
           {value}
         </Ellipsified>
-      </Box>
-    );
+      );
+    case "type/Email":
+    case "type/URL":
+    case "type/Quantity":
+    case "type/Score":
+      return (
+        <Ellipsified size="sm" fw="bold" style={style}>
+          {value}
+        </Ellipsified>
+      );
+    case "type/Percentage":
+      return (
+        <Badge
+          size="lg"
+          c="text-secondary"
+          variant="outline"
+          style={{
+            borderColor: "var(--mb-color-border-secondary)",
+            background: "var(--mb-color-bg-white)",
+          }}
+        >
+          <Text fw="bold">
+            {value?.toString().slice(0, -1)}
+            <span
+              style={{
+                color: "var(--mb-color-text-tertiary)",
+                paddingLeft: "0.25rem",
+              }}
+            >
+              %
+            </span>
+          </Text>
+        </Badge>
+      );
+    case "type/Currency": {
+      const [currencySymbol, currencyValue] = (
+        (formatValue(rawValue, {
+          ...(settings.column?.(column) || {}),
+          jsx: true,
+          rich: true,
+          split_currency: "|",
+        }) as string) || ""
+      ).split("|");
+      return (
+        <Text fw="bold">
+          <span
+            style={{
+              color: "var(--mb-color-text-tertiary)",
+              fontWeight: "normal",
+              paddingRight: "0.25rem",
+            }}
+          >
+            {currencySymbol}
+          </span>
+          {currencyValue?.slice(0, -1)}
+        </Text>
+      );
+    }
+    default:
+      break;
   }
 
   return (
-    <Ellipsified size="sm" c="text-secondary" truncate>
+    <Ellipsified
+      size="sm"
+      truncate
+      style={style}
+      c={style?.color || "text-secondary"}
+    >
       {value}
     </Ellipsified>
   );

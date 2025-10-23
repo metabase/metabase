@@ -42,12 +42,7 @@ import type { DatasetColumn, DatasetData, RowValues } from "metabase-types/api";
 import { useListColumns } from "./ListView";
 import S from "./ListView.module.css";
 import { ListViewItem } from "./ListViewItem";
-import {
-  ENTITY_ICONS,
-  ENTITY_ICON_COLORS,
-  getEntityIcon,
-  getIconBackground,
-} from "./styling";
+import { ENTITY_ICONS, ENTITY_ICON_COLORS, getIconBackground } from "./styling";
 
 const MAX_LEFT_COLUMNS = 1;
 const MAX_RIGHT_COLUMNS = 5;
@@ -55,13 +50,11 @@ type ContainerId = "left" | "right";
 
 export const ListViewConfiguration = ({
   data,
-  entityType,
   onChange,
   settings,
   columnsMetadata,
 }: {
   data: DatasetData;
-  entityType?: string;
   onChange: (settings: {
     left: string[];
     right: string[];

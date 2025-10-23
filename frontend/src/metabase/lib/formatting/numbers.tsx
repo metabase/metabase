@@ -21,6 +21,7 @@ export type FormatNumberOptions = {
   currency?: string;
   currency_in_header?: boolean;
   currency_style?: string;
+  split_currency?: string;
   decimals?: string | number;
   maximumFractionDigits?: number;
   minimumFractionDigits?: number;
@@ -147,10 +148,15 @@ export function formatNumber(
       // fixes issue where certain symbols, such as
       // czech Kč, and Bitcoin ₿, are not displayed
       if (options["currency"] && options["currency_style"] === "symbol") {
-        formatted = formatted.replace(
-          options["currency"],
-          getCurrencySymbol(options["currency"] as string),
-        );
+        const currencySymbol = getCurrencySymbol(options["currency"] as string);
+        if (options.split_currency) {
+          formatted = formatted
+            .replace(options["currency"], "")
+            .replace(currencySymbol, "");
+          return [currencySymbol, formatted].join(options.split_currency);
+        } else {
+          formatted = formatted.replace(options["currency"], currencySymbol);
+        }
       }
 
       return formatted;

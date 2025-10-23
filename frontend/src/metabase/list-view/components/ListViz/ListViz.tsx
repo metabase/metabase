@@ -326,7 +326,7 @@ export const ListViz = ({
   }: {
     left?: string[];
     right?: string[];
-    entityIcon?: string;
+    entityIcon?: string | null;
     entityIconColor?: string;
     entityIconEnabled?: boolean;
     useImageColumn?: boolean;
@@ -369,7 +369,6 @@ export const ListViz = ({
         <ListViewConfiguration
           data={data}
           settings={settings}
-          entityType={entityType}
           onChange={updateListSettings}
           columnsMetadata={columnsMetadata}
         />
