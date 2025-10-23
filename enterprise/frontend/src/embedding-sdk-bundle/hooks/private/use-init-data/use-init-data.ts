@@ -20,11 +20,13 @@ const registerVisualizationsOnce = _.once(registerVisualizations);
 interface InitDataLoaderParameters {
   authConfig: MetabaseAuthConfig;
   allowConsoleLog?: boolean;
+  isLocalHost?: boolean;
 }
 
 export const useInitData = ({
   authConfig,
   allowConsoleLog = true,
+  isLocalHost,
 }: InitDataLoaderParameters) => {
   // react calls some lifecycle hooks twice in dev mode, the auth init fires some http requests and when it's called twice,
   // it fires them twice as well, making debugging harder as they show up twice in the network tab and in the logs
@@ -59,7 +61,7 @@ export const useInitData = ({
     // Note: this check is not actually needed in prod, but some of our tests start with a loginStatus already initialized
     // and they don't mock the network requests so the tests fail
     if (loginStatus.status === "uninitialized") {
-      dispatch(initAuth(authConfig));
+      dispatch(initAuth({ ...authConfig, isLocalHost }));
     }
 
     const EMBEDDING_SDK_VERSION = getEmbeddingSdkVersion();

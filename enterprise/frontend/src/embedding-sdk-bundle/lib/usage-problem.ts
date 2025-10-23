@@ -10,7 +10,7 @@ import type {
 } from "embedding-sdk-bundle/types/usage-problem";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 
-import { getIsLocalhost } from "./is-localhost";
+import { getIsLocalhost } from "./get-is-localhost";
 
 interface SdkProblemOptions {
   authConfig: MetabaseAuthConfig;
@@ -18,6 +18,13 @@ interface SdkProblemOptions {
   hasTokenFeature: boolean;
   isDevelopmentMode?: boolean;
   session: MetabaseEmbeddingSessionToken | null;
+  /**
+   * Indicates whether the current environment is localhost.
+   * If not provided, it will be determined automatically based on window.location.
+   *
+   * @see getIsLocalhost()
+   */
+  isLocalHost?: boolean;
 }
 
 export const USAGE_PROBLEM_MESSAGES = {
@@ -60,13 +67,22 @@ export const USAGE_PROBLEM_DOC_URLS: Record<SdkUsageProblemKey, string> = {
 export function getSdkUsageProblem(
   options: SdkProblemOptions,
 ): SdkUsageProblem | null {
-  const { isEnabled, hasTokenFeature, authConfig, isDevelopmentMode, session } =
-    options;
+  const {
+    isEnabled,
+    hasTokenFeature,
+    authConfig,
+    isDevelopmentMode,
+    session,
+    isLocalHost,
+  } = options;
   const { apiKey } = authConfig;
 
   const isSSO = !apiKey;
   const isApiKey = !!apiKey;
-  const isLocalhost = getIsLocalhost();
+  // getIsLocalhost() checks for localhost based on window.location,
+  // but we want to allow overriding it via the isLocalHost parameter
+  // in case of a local app running a distant MB instance
+  const isLocalhost = isLocalHost ?? getIsLocalhost();
 
   /**
    * TODO: these checks for non-localhost environments are pending on

@@ -16,10 +16,12 @@ export function useSdkUsageProblem({
   authConfig,
   allowConsoleLog = true,
   session,
+  isLocalHost,
 }: {
   authConfig: MetabaseAuthConfig;
   allowConsoleLog?: boolean;
   session: MetabaseEmbeddingSessionToken | null;
+  isLocalHost?: boolean;
 }) {
   const hasLoggedRef = useRef(false);
 
@@ -57,8 +59,16 @@ export function useSdkUsageProblem({
       isEnabled,
       isDevelopmentMode,
       session,
+      isLocalHost,
     });
-  }, [authConfig, hasTokenFeature, isEnabled, isDevelopmentMode, session]);
+  }, [
+    authConfig,
+    hasTokenFeature,
+    isEnabled,
+    isDevelopmentMode,
+    session,
+    isLocalHost,
+  ]);
 
   useEffect(() => {
     // SDK components will stop rendering if a license error is detected.
