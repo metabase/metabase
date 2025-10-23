@@ -77,6 +77,7 @@ H.describeWithSnowplowEE("scenarios > metabot > transforms codegen", () => {
     describe("create new transform", () => {
       it("should create SQL transform via metabot", () => {
         visitTransformListPage();
+        H.openMetabotViaSearchButton(true);
 
         cy.log("Ask metabot for a new transform");
         H.mockMetabotResponse({
@@ -141,6 +142,7 @@ H.describeWithSnowplowEE("scenarios > metabot > transforms codegen", () => {
 
       it("should create Python transform via metabot", () => {
         visitTransformListPage();
+        H.openMetabotViaSearchButton(true);
 
         cy.log("Ask metabot for a new transform");
         H.mockMetabotResponse({
@@ -237,6 +239,7 @@ H.describeWithSnowplowEE("scenarios > metabot > transforms codegen", () => {
         }).as("transformId");
 
         visitTransformListPage();
+        H.openMetabotViaSearchButton(true);
 
         // Ask metabot for a change to existing transform
         cy.get("@transformId").then((transformId) => {
@@ -312,6 +315,7 @@ H.describeWithSnowplowEE("scenarios > metabot > transforms codegen", () => {
               sourceTables: { foo: tableId },
             }).then((transformId) => {
               visitTransformListPage();
+              H.openMetabotViaSearchButton(true);
 
               // Ask metabot for a change to existing transform
               cy.get("@transformId").then((transformId) => {
