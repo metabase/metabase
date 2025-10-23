@@ -103,12 +103,12 @@
   [body content-type]
   (let [encoding (or (parse-charset content-type) "UTF-8")]
     (cond
-      (string? body)                 (decode body true)
-      (instance? InputStream body)  (with-open [r (io/reader body :encoding encoding)]
+      (string? body)               (decode body true)
+      (instance? InputStream body) (with-open [r (io/reader body :encoding encoding)]
                                       (cheshire/parse-stream r true))
-      (instance? Reader body)       (cheshire/parse-stream body true)
-      (nil? body)                   nil
-      :else                         (decode body true))))
+      (instance? Reader body)      (cheshire/parse-stream body true)
+      (nil? body)                  nil
+      :else                        (decode body true))))
 
 (defn decode-body
   "Given a response map, decodes body if headers indicate it's a JSON response, or just slurps if it's not a string."
