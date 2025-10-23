@@ -12,9 +12,10 @@ body:
         Any issues open for help requests will be closed to keep from clogging up the issue tracker.
         Please use our [discussion forum](https://discourse.metabase.com) instead.
 
-        - We might close bug reports without sufficient information. Either provide repro steps or help us reproduce the issue.
+        - We might close bug reports without sufficient information. Either provide repro steps with the bundled sample dataset or help us reproduce the issue (if possible, include if possible the DDL of the dataset you're using with sample rows/documents).
         - Please check if the [bug already exists](https://github.com/metabase/metabase/labels/Type%3ABug). We will close duplicate reports.
         - Use as many screenshots or videos as possible to describe what you're seeing.
+        - Don't remove the tags, as we use these to notify our teams that your issue exists.
 
   - type: textarea
     id: bug-description
