@@ -2,9 +2,10 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { useUpdateTableListMutation } from "metabase/api";
+import { VisibilityInput } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Button, Flex, Modal, Select, Stack, Text, rem } from "metabase/ui";
-import type { TableId } from "metabase-types/api";
+import { Button, Flex, Modal, Stack, Text, rem } from "metabase/ui";
+import type { TableId, TableVisibilityType2 } from "metabase-types/api";
 
 interface Props {
   tables: Set<TableId>;
@@ -12,13 +13,6 @@ interface Props {
   onClose: () => void;
   onUpdate?: () => void;
 }
-
-const VISIBILITY_TYPE_OPTIONS = [
-  { value: "gold", label: "Gold" },
-  { value: "silver", label: "Silver" },
-  { value: "normal", label: "Normal" },
-  { value: "hidden", label: "Hidden" },
-];
 
 export function EditVisibilityType2Modal({
   tables,
@@ -28,7 +22,8 @@ export function EditVisibilityType2Modal({
 }: Props) {
   const [updateTableList, { isLoading }] = useUpdateTableListMutation();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
-  const [visibilityType2, setVisibilityType2] = useState<string | null>(null);
+  const [visibilityType2, setVisibilityType2] =
+    useState<TableVisibilityType2>("copper");
 
   const handleSubmit = async () => {
     if (!visibilityType2) {
@@ -49,12 +44,12 @@ export function EditVisibilityType2Modal({
     }
 
     onClose();
-    setVisibilityType2(null);
+    setVisibilityType2("copper");
   };
 
   const handleClose = () => {
     onClose();
-    setVisibilityType2(null);
+    setVisibilityType2("copper");
   };
 
   return (
@@ -70,13 +65,9 @@ export function EditVisibilityType2Modal({
           {t`Edit visibility type for ${tables.size} tables`}
         </Text>
 
-        <Select
-          label={t`Visibility Type`}
-          placeholder={t`Select visibility type`}
+        <VisibilityInput
           value={visibilityType2}
           onChange={setVisibilityType2}
-          data={VISIBILITY_TYPE_OPTIONS}
-          data-testid="visibility-type2-select"
         />
 
         <Flex justify="flex-end" gap="sm">

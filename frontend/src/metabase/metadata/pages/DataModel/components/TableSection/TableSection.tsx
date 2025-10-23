@@ -17,8 +17,6 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
   ActionIcon,
-  Card,
-  Flex,
   Group,
   Icon,
   Loader,
@@ -36,11 +34,11 @@ import type {
 import type { RouteParams } from "../../types";
 import { getUrl, parseRouteParams } from "../../utils";
 import { ResponsiveButton } from "../ResponsiveButton";
+import { TitledSection } from "../TitledSection";
 
 import { FieldList } from "./FieldList";
 import S from "./TableSection.module.css";
 import { useResponsiveButtons } from "./hooks";
-import { TitledSection } from "../TitledSection";
 
 interface Props {
   params: RouteParams;
@@ -212,7 +210,7 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
 
         <TitledSection title={t`Metadata`}>
           <VisibilityInput
-            value={table.visibility_type2}
+            value={table.visibility_type2 ?? "copper"}
             onChange={handleVisibilityTypeChange}
           />
         </TitledSection>
