@@ -1724,13 +1724,15 @@
            revisions
            settings
            task
-           util}}
+           util
+           enterprise/documents}}
 
   enterprise/documents
   {:team "UX West"
    :api  #{metabase-enterprise.documents.api
            metabase-enterprise.documents.core
-           metabase-enterprise.documents.init}
+           metabase-enterprise.documents.init
+           metabase-enterprise.documents.prose-mirror}
    :uses #{activity-feed
            api
            app-db
@@ -1876,6 +1878,7 @@
            app-db
            audit-app
            driver
+           events
            legacy-mbql
            lib
            models
