@@ -35,57 +35,6 @@
         card-meta (lib.metadata/card mp (:id inner-card))]
     (card-with-query "Downstream card" (lib/query mp card-meta))))
 
-(deftest graph-test
-  (testing "GET /api/ee/dependencies/graph"
-    (mt/with-premium-features #{:dependencies}
-      (mt/with-model-cleanup [:model/Card]
-        (mt/with-temp [:model/User user {:email "me@wherever.com"}]
-          (let [{card-id-1 :id :as dependency-card} (card/create-card! (basic-card) user)
-                {card-id-2 :id} (card/create-card! (wrap-card dependency-card) user)
-                response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph" :id card-id-2 :type "card")]
-            (is (=? {:edges
-                     #{{:from_entity_id card-id-2, :from_entity_type "card"
-                        :to_entity_id card-id-1, :to_entity_type "card"}
-                       {:from_entity_id card-id-1, :from_entity_type "card"
-                        :to_entity_id (mt/id :orders), :to_entity_type "table"}}
-                     :nodes
-                     [{:data
-                       {:collection
-                        {:metabase.collections.models.collection.root/is-root? true}
-                        :collection_id nil
-                        :creator
-                        {:email "me@wherever.com"
-                         :id (:id user)}
-                        :database_id (mt/id)
-                        :last-edit-info
-                        {:email "me@wherever.com"
-                         :id (:id user)}}
-                       :dependents {:question 1}
-                       :id card-id-1
-                       :type "card"}
-                      {:data
-                       {:collection
-                        {:metabase.collections.models.collection.root/is-root? true}
-                        :creator
-                        {:email "me@wherever.com"
-                         :id (:id user)}
-                        :database_id (mt/id)
-                        :last-edit-info
-                        {:email "me@wherever.com"
-                         :id (:id user)}
-                        :name "Downstream card"}
-                       :dependents nil
-                       :id card-id-2
-                       :type "card"}
-                      {:data
-                       {:db
-                        {:id (mt/id)}
-                        :db_id (mt/id)}
-                       :dependents {:question 1}
-                       :id (mt/id :orders)
-                       :type "table"}]}
-                    (update response :edges set)))))))))
-
 (deftest check-card-test
   (testing "POST /api/ee/dependencies/check_card"
     (mt/with-premium-features #{:dependencies}
@@ -251,6 +200,50 @@
                        :bad_transforms []}
                       response)))))))))
 
+(deftest graph-test
+  (testing "GET /api/ee/dependencies/graph"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/Card]
+        (mt/with-temp [:model/User user {:email "me@wherever.com"}]
+          (let [{card-id-1 :id :as dependency-card} (card/create-card! (basic-card) user)
+                {card-id-2 :id} (card/create-card! (wrap-card dependency-card) user)
+                response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph" :id card-id-2 :type "card")
+                creator {:email "me@wherever.com"
+                         :id (:id user)}]
+            (is (=? {:edges
+                     #{{:from_entity_id card-id-2, :from_entity_type "card"
+                        :to_entity_id card-id-1, :to_entity_type "card"}
+                       {:from_entity_id card-id-1, :from_entity_type "card"
+                        :to_entity_id (mt/id :orders), :to_entity_type "table"}}
+                     :nodes
+                     [{:data {:collection
+                              {:metabase.collections.models.collection.root/is-root? true}
+                              :collection_id nil
+                              :creator creator
+                              :database_id (mt/id)
+                              :last-edit-info creator}
+                       :dependents_count {:question 1}
+                       :id card-id-1
+                       :type "card"}
+                      {:data {:collection
+                              {:metabase.collections.models.collection.root/is-root? true}
+                              :creator creator
+                              :database_id (mt/id)
+                              :last-edit-info creator
+                              :name "Downstream card"}
+                       :dependents_count nil
+                       :id card-id-2
+                       :type "card"}
+                      {:data {:db
+                              {:id (mt/id)}
+                              :db_id (mt/id)}
+                       :dependents_count {:question int?}
+                       :id (mt/id :orders)
+                       :type "table"}]}
+                    (-> response
+                        (update :edges set)
+                        (update :nodes #(sort-by :type %)))))))))))
+
 (deftest graph-table-root-test
   (testing "GET /api/ee/dependencies/graph with table as root node"
     (mt/dataset test-data
@@ -266,7 +259,7 @@
                 (is (=? {:nodes [{:id (mt/id :orders)
                                   :type "table"
                                   :data {:db_id (mt/id)}
-                                  :dependents {:question 2}}]
+                                  :dependents_count {:question #(and (int? %) (>= % 2))}}]
                          :edges #{}}
                         (update response :edges set)))))))))))
 
@@ -296,7 +289,7 @@
                         :id (:id user)}
                        :name "Downstream card"
                        :type "question"}
-                      :dependents nil
+                      :dependents_count nil
                       :id card-id-2
                       :type "card"}]
                     response))))))))
