@@ -26,7 +26,6 @@ import type {
 } from "metabase-types/api";
 
 import { QueryEditor } from "../../components/QueryEditor";
-import { getTransformUrl } from "../../urls";
 
 type TransformQueryPageParams = {
   transformId: string;
@@ -101,7 +100,7 @@ export function TransformQueryPageBody({
       } else {
         sendSuccessToast(t`Transform query updated`);
         clearProposed();
-        dispatch(push(getTransformUrl(transform.id)));
+        dispatch(push(Urls.transform(transform.id)));
       }
     },
   });
@@ -117,7 +116,7 @@ export function TransformQueryPageBody({
     // set to initial source to fix isDirty calc on route leave
     setSource(transform.source);
     clearProposed();
-    dispatch(push(getTransformUrl(transform.id)));
+    dispatch(push(Urls.transform(transform.id)));
   };
 
   return (

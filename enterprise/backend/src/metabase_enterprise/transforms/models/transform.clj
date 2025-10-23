@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
+   [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -144,6 +145,21 @@
                          :tag_id       tag-id
                          :position     (get new-positions tag-id)})))))))
 
+;;; ----------------------------------------------- Search ----------------------------------------------------------
+
+(search.spec/define-spec "transform"
+  {:model :model/Transform
+   :attrs {:archived      false
+           :collection-id false
+           :creator-id    false
+           :database-id   false
+           :view-count    false
+           :created-at    true
+           :updated-at    true}
+   :search-terms [:name]
+   :render-terms {:transform-name :name
+                  :transform-id :id}})
+
 ;;; ------------------------------------------------- Serialization ------------------------------------------------
 
 (mi/define-batched-hydration-method tags
@@ -158,6 +174,29 @@
                                              {:order-by [[:position :asc]]}))]
       (for [transform transforms]
         (assoc transform :tags (get tag-mappings (u/the-id transform) []))))))
+
+(mi/define-batched-hydration-method table-with-db-and-fields
+  :table-with-db-and-fields
+  "Fetch tables with their fields. The tables show up under the `:table` property."
+  [transforms]
+  (let [table-key-fn (fn [{:keys [target] :as transform}]
+                       [(transforms.i/target-db-id transform) (:schema target) (:name target)])
+        table-keys (into #{} (map table-key-fn) transforms)
+        table-keys-with-schema (filter second table-keys)
+        table-keys-without-schema (keep (fn [[db-id schema table-name]]
+                                          (when-not schema
+                                            [db-id table-name]))
+                                        table-keys)
+        tables (-> (t2/select :model/Table
+                              {:where [:or
+                                       [:in [:composite :db_id :schema :name] table-keys-with-schema]
+                                       [:and
+                                        [:= :schema nil]
+                                        [:in [:composite :db_id :name] table-keys-without-schema]]]})
+                   (t2/hydrate :db :fields))
+        table-keys->table (m/index-by (juxt :db_id :schema :name) tables)]
+    (for [transform transforms]
+      (assoc transform :table (get table-keys->table (table-key-fn transform))))))
 
 (defmethod serdes/hash-fields :model/Transform
   [_transform]

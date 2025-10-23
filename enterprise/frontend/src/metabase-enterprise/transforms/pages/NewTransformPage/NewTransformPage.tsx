@@ -23,7 +23,6 @@ import type {
 } from "metabase-types/api";
 
 import { QueryEditor } from "../../components/QueryEditor";
-import { getTransformListUrl, getTransformUrl } from "../../urls";
 
 import {
   CreateTransformModal,
@@ -113,7 +112,7 @@ export function NewTransformPageInner({
   const dispatch = useDispatch();
 
   const handleCreate = (transform: Transform) => {
-    dispatch(push(getTransformUrl(transform.id)));
+    dispatch(push(Urls.transform(transform.id)));
   };
 
   const handleSave = (newSource: TransformSource) => {
@@ -123,7 +122,7 @@ export function NewTransformPageInner({
 
   const handleCancel = () => {
     setSource(initialSource);
-    dispatch(push(getTransformListUrl()));
+    dispatch(push(Urls.transformList()));
     clearProposed();
   };
 

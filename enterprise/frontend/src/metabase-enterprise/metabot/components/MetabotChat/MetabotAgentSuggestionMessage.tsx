@@ -253,8 +253,12 @@ function getSourceCode(
 
 function getTransformUrl(transform: SuggestedTransform): string {
   return match(transform)
-    .with({ id: P.number }, ({ id }) => Urls.transformEdit(id))
-    .with({ source: { type: "python" } }, Urls.newPythonTransform)
-    .with({ source: { type: "query" } }, Urls.newNativeTransform)
+    .with({ id: P.number }, ({ id }) => Urls.transformQuery(id))
+    .with({ source: { type: "python" } }, () =>
+      Urls.newTransformFromType("python"),
+    )
+    .with({ source: { type: "query" } }, () =>
+      Urls.newTransformFromType("native"),
+    )
     .exhaustive();
 }

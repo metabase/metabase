@@ -59,7 +59,7 @@
 
     (testing "created at"
       (is (= (cond-> #{"dashboard" "table" "dataset" "collection" "database" "action" "card" "metric"}
-               config/ee-available? (conj "document"))
+               config/ee-available? (conj "document" "transform"))
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:created-at "past3days"}))))

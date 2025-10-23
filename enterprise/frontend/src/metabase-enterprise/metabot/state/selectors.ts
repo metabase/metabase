@@ -22,7 +22,7 @@ export const getMetabot = (state: MetabotStoreState) => {
 export const getMetabotVisible = createSelector(
   [getMetabot, getLocation],
   (metabot, location) =>
-    location.pathname.startsWith(Urls.transforms()) ? true : metabot.visible,
+    location.pathname.startsWith(Urls.transformList()) ? true : metabot.visible,
 );
 
 export const getMessages = createSelector(
@@ -131,7 +131,7 @@ export const getProfile = createSelector(
       return profileOverride;
     }
 
-    return location.pathname.startsWith(Urls.transforms())
+    return location.pathname.startsWith(Urls.transformList())
       ? "transforms_codegen"
       : undefined;
   },
