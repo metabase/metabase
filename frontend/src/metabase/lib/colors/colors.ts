@@ -241,7 +241,7 @@ const baseColors = {
 export const colorConfig = {
   "accent-gray-dark": {
     light: baseColors.orion[20],
-    dark: baseColors.black,
+    dark: baseColors.orion[110],
   },
   "accent-gray-light": {
     light: baseColors.orion[5],
@@ -430,7 +430,7 @@ export const colorConfig = {
   },
   shadow: {
     light: baseColors.orionAlpha[20],
-    dark: `color-mix(in srgb, ${baseColors.black} 20%, transparent)`,
+    dark: `color-mix(in srgb, ${baseColors.orion[110]} 20%, transparent)`,
   },
   "success-darker": {
     //should be success-primary?
@@ -538,7 +538,7 @@ export const colorConfig = {
   },
   "tooltip-text": {
     light: baseColors.white,
-    dark: baseColors.white,
+    dark: baseColors.orionAlphaInverse[80],
   },
   warning: {
     light: baseColors.dubloon[30],
@@ -563,7 +563,7 @@ export const colorConfig = {
   white: {
     //should be changed to be semantic
     light: baseColors.white,
-    dark: baseColors.black,
+    dark: baseColors.orion[110],
   },
   // Legacy colors (keeping existing ones for backward compatibility)
   accent0: {
@@ -600,11 +600,11 @@ export const colorConfig = {
   },
   "bg-primary": {
     light: baseColors.white,
-    dark: baseColors.black,
+    dark: baseColors.orion[110],
   },
   "bg-secondary": {
     light: baseColors.orion[5],
-    dark: baseColors.black,
+    dark: baseColors.orion[100],
   },
   "bg-tertiary": {
     //I don't think this is used?
