@@ -1,8 +1,8 @@
 (ns metabase.xrays.automagic-dashboards.filters
   (:require
-   ;; legacy usage, do not use this in new code
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
-   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.core :as lib]
+   [metabase.lib.equality :as lib.equality]
+   [metabase.lib.schema :as lib.schema]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.malli :as mu]
@@ -121,7 +121,8 @@
   "Add up to `max-filters` filters to dashboard `dashboard`. The `dimensions` argument is a list of fields for which to
   create filters."
   [dashboard :- ::ads/dashboard
-   dimensions max-filters]
+   dimensions
+   max-filters]
   (let [fks (when-let [table-ids (not-empty (set (keep (comp :table_id :card)
                                                        (:dashcards dashboard))))]
               (field/with-targets (t2/select :model/Field
@@ -149,25 +150,7 @@
                 dashboard)))
           dashboard))))
 
-(defn- flatten-filter-clause
-  "Returns a sequence of filter subclauses making up `filter-clause` by flattening `:and` compound filters.
-
-    (flatten-filter-clause [:and
-                            [:= [:field 1 nil] 2]
-                            [:and
-                             [:= [:field 3 nil] 4]
-                             [:= [:field 5 nil] 6]]])
-    ;; -> ([:= [:field 1 nil] 2]
-           [:= [:field 3 nil] 4]
-           [:= [:field 5 nil] 6])"
-  [[clause-name, :as filter-clause]]
-  (when (seq filter-clause)
-    (if (= clause-name :and)
-      #_{:clj-kondo/ignore [:deprecated-var]}
-      (rest (mbql.u/simplify-compound-filter filter-clause))
-      [filter-clause])))
-
-(defn inject-refinement
+(mu/defn inject-refinement :- [:maybe ::lib.schema/filters]
   "Inject a filter refinement into an MBQL filter clause, returning a new filter clause.
 
   There are two reasons why we want to do this: 1) to reduce visual noise when we display applied filters; and 2) some
@@ -177,17 +160,19 @@
   of the latter. Therefore we can rewrite the combined clause to ommit the more broad version from the main clause.
   Assumes both filter clauses can be flattened by recursively merging `:and` claueses
   (ie. no `:and`s inside `:or` or `:not`)."
-  [filter-clause refinement]
-  (let [in-refinement?   (into #{}
-                               (map magic.util/collect-field-references)
-                               (flatten-filter-clause refinement))
-        existing-filters (->> filter-clause
-                              flatten-filter-clause
-                              (remove (comp in-refinement? magic.util/collect-field-references)))]
-    (if (seq existing-filters)
-      ;; since the filters are programatically generated they won't have passed thru normalization, so make sure we
-      ;; normalize them before passing them to `combine-filter-clauses`, which validates its input
-      #_{:clj-kondo/ignore [:deprecated-var]}
-      (apply mbql.u/combine-filter-clauses (map (partial mbql.normalize/normalize-fragment [:query :filter])
-                                                (cons refinement existing-filters)))
-      refinement)))
+  [filter-clauses :- [:maybe ::lib.schema/filters]
+   refinement     :- [:maybe vector?]]
+  (if (some? refinement)
+    ;; normalize refinement since it's read from the YAML files or whatever
+    (let [refinement        (lib/normalize refinement)
+          ;; TODO (Cam 10/21/2025) -- HACK -- I wanted to use [[lib/filter-parts]] for this but we need to pass in
+          ;; query as part of this. Maybe we can refactor this code so we can use that, or just add a new function to
+          ;; see if we have existing filters against a column.
+          refinement-column (nth refinement 2)
+          ;; remove any existing filters against the column in the refinement filter.
+          filter-clauses'   (into []
+                                  (remove (fn [a-filter]
+                                            (lib.equality/= (nth a-filter 2) refinement-column)))
+                                  (lib/simplify-filters filter-clauses))]
+      (lib/simplify-filters (conj filter-clauses' refinement)))
+    filter-clauses))

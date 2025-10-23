@@ -3282,3 +3282,27 @@
         (let [archived-child (t2/select-one :model/Collection :id child-id)]
           (is (true? (:archived archived-child))
               "Child should be archived"))))))
+
+(deftest can-delete-works
+  (mt/with-temp [:model/Collection collection {:archived true}
+                 :model/Dashboard dash {:archived true}
+                 :model/Card card {:archived true}
+                 :model/Collection non-archived-collection {:archived false}
+                 :model/Dashboard non-archived-dash {:archived false}
+                 :model/Card non-archived-card {:archived false}]
+    (testing "Admins can permanently delete collections"
+      (mt/with-test-user :crowberto
+        (is (= [true true true]
+               (map :can_delete (collection/can-delete [collection dash card]))))))
+    (testing "Regular users can permanently delete non-collections"
+      (mt/with-test-user :rasta
+        (is (= [false true true]
+               (map :can_delete (collection/can-delete [collection dash card]))))))
+    (testing "The root collection cannot be deleted"
+      (mt/with-test-user :crowberto
+        (is (= false (:can_delete (first (collection/can-delete [collection/root-collection])))))))
+    (testing "Non-archived things cannot be deleted"
+      (mt/with-test-user :crowberto
+        (is (= [false false false] (map :can_delete (collection/can-delete [non-archived-collection
+                                                                            non-archived-dash
+                                                                            non-archived-card]))))))))
