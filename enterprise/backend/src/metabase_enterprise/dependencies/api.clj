@@ -222,7 +222,7 @@
         downstream-graph (graph/cached-graph (dependency/graph-dependents))
         nodes (into (set starting-nodes)
                     (graph/transitive upstream-graph starting-nodes))
-        edges (graph/calc-edges downstream-graph nodes)]
+        edges (graph/calc-edges-between downstream-graph nodes)]
     {:nodes (expanded-nodes downstream-graph nodes)
      :edges edges}))
 
