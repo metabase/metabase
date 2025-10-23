@@ -58,7 +58,10 @@
                               :metadata/table-existence-check         true
                               :transforms/python                      true
                               :transforms/table                       true
-                              :jdbc/statements                        false}]
+                              :jdbc/statements                        false
+                              :describe-default-expr                  true
+                              :describe-is-nullable                   true
+                              :describe-is-generated                  true}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
 (mu/defmethod driver/database-supports? [:sqlserver :percentile-aggregations]

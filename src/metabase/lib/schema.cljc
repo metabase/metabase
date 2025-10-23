@@ -9,7 +9,6 @@
   (:refer-clojure :exclude [ref every? some select-keys])
   (:require
    [medley.core :as m]
-   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.schema.actions :as actions]
    [metabase.lib.schema.aggregation :as aggregation]
    [metabase.lib.schema.common :as common]
@@ -154,15 +153,15 @@
         form (-> (stage-with-joins-and-namespaced-keys-removed stage)
                  ;; also ignore expression refs inside `:parameters` since they still use legacy syntax these days.
                  (dissoc :parameters))]
-    (when (mbql.u/pred-matches-form? form pred)
-      (mbql.u/matching-locations form pred))))
+    (when (lib.schema.util/pred-matches-form? form pred)
+      (lib.schema.util/matching-locations form pred))))
 
 (defn- aggregation-ref-errors-for-stage [stage]
   (let [uuids (into #{} (map (comp :lib/uuid second)) (:aggregation stage))
         pred #(bad-ref-clause? :aggregation uuids %)
         form (stage-with-joins-and-namespaced-keys-removed stage)]
-    (when (mbql.u/pred-matches-form? form pred)
-      (mbql.u/matching-locations form pred))))
+    (when (lib.schema.util/pred-matches-form? form pred)
+      (lib.schema.util/matching-locations form pred))))
 
 (defn ref-errors-for-stage
   "Return the locations and the clauses with dangling expression or aggregation references.

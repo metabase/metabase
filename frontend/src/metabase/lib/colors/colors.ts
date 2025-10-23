@@ -278,9 +278,8 @@ export const colorConfig = {
   },
   "background-hover-light": {
     light: `color-mix(in srgb, var(--mb-color-brand) 5%, transparent)`, //baseColors.oceanAlpha[5],
-    dark: `color-mix(in srgb, var(--mb-color-brand) 15%, transparent)`, //baseColors.oceanAlpha[10],
+    dark: `color-mix(in srgb, var(--mb-color-brand) 5%, transparent)`, //baseColors.oceanAlpha[10],
   },
-
   "background-inverse": {
     light: baseColors.orion[80],
     dark: baseColors.orion[20],

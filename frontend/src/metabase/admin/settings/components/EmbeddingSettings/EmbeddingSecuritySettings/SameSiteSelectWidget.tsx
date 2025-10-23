@@ -13,18 +13,17 @@ const getSameSiteOptions = (): Options[] => [
   {
     value: "lax",
     name: t`Lax (default)`,
-    description: t`Allows cookies to be sent when a user is navigating to the origin site from an external site (like when following a link).`,
+    description: t`Allows Metabase session cookies to be shared on the same domain. Used for production instances on the same domain.`,
   },
   {
     value: "strict",
     name: t`Strict (not recommended)`,
-    // eslint-disable-next-line no-literal-metabase-strings -- admin settings
-    description: t`Never allows cookies to be sent on a cross-site request. Warning: this will prevent users from following external links to Metabase.`,
+    description: t`Does not allow Metabase session cookies to be shared with embedded instances. Use this if you do not want to enable session sharing with embedding.`,
   },
   {
     value: "none",
-    name: t`None`,
-    description: t`Allows all cross-site requests. Incompatible with most Safari and iOS-based browsers.`,
+    name: t`None (requires HTTPS)`,
+    description: t`Use "None" when your app and Metabase are hosted on different domains. Incompatible with Safari and iOS-based browsers.`,
   },
 ];
 
@@ -60,7 +59,7 @@ export function SameSiteSelectWidget() {
       settingDetails={settingDetails}
       settingKey="session-cookie-samesite"
     >
-      <Stack gap="md">
+      <Stack gap="xs">
         <SettingHeader
           id="session-cookie-samesite"
           title={t`SameSite cookie setting`}
@@ -90,7 +89,9 @@ export function SameSiteSelectWidget() {
                   maw="21rem"
                 >
                   <Text>{name}</Text>
-                  <Text c="text-light">{description}</Text>
+                  <Text c="text-secondary" size="sm" lh="lg">
+                    {description}
+                  </Text>
                 </Menu.Item>
               ))}
             </Menu.Dropdown>

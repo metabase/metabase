@@ -2,7 +2,8 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ;; legacy usages, do not use legacy MBQL stuff in new code.
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.date-2 :as u.date]

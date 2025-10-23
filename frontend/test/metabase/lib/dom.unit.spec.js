@@ -1,7 +1,10 @@
+import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
 import {
   getSelectionPosition,
+  getUrlTarget,
   parseDataUri,
   setSelectionPosition,
+  shouldOpenInBlankWindow,
 } from "metabase/lib/dom";
 
 describe("getSelectionPosition/setSelectionPosition", () => {
@@ -52,5 +55,43 @@ describe("parseDataUri", () => {
     const duration = Date.now() - start;
     expect(result).toBeNull();
     expect(duration).toBeLessThan(1000);
+  });
+});
+
+describe("shouldOpenInBlankWindow", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("should return false for same origin links by default", () => {
+    const url = `${window.location.origin}/dashboard/1`;
+    const result = shouldOpenInBlankWindow(url);
+    expect(result).toBe(false);
+  });
+
+  it("should always return true when in embedding SDK", async () => {
+    await mockIsEmbeddingSdk();
+    const url = `${window.location.origin}/dashboard/1`;
+    const result = shouldOpenInBlankWindow(url);
+    expect(result).toBe(true);
+  });
+});
+
+describe("getUrlTarget", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("should return _self for same origin links by default", () => {
+    const url = `${window.location.origin}/dashboard/1`;
+    const result = getUrlTarget(url);
+    expect(result).toBe("_self");
+  });
+
+  it("should always return _blank when in the embedding SDK", async () => {
+    await mockIsEmbeddingSdk();
+    const url = `${window.location.origin}/dashboard/1`;
+    const result = getUrlTarget(url);
+    expect(result).toBe("_blank");
   });
 });

@@ -4,6 +4,8 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
+import { advanceServerClockBy } from "../admin/performance/helpers/e2e-performance-helpers";
+
 describe("search > recently viewed", () => {
   beforeEach(() => {
     H.restore();
@@ -13,9 +15,11 @@ describe("search > recently viewed", () => {
     cy.findByTextEnsureVisible("Address");
 
     // "Orders" question
+    advanceServerClockBy(100);
     H.visitQuestion(ORDERS_QUESTION_ID);
 
     // "Orders in a dashboard" dashboard
+    advanceServerClockBy(100);
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     cy.findByTextEnsureVisible("Product ID");
 
@@ -61,6 +65,7 @@ describe("search > recently viewed", () => {
 
     cy.intercept("/api/dataset").as("dataset");
 
+    advanceServerClockBy(100);
     cy.findAllByTestId("recently-viewed-item-title").eq(2).click();
     cy.wait("@dataset");
 
