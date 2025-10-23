@@ -14,6 +14,20 @@ const removeDirectory = (path) => {
   return null;
 };
 
+const copyDirectory = ({ source, destination }) => {
+  console.log({ source, destination });
+  try {
+    if (fs.existsSync(source)) {
+      fs.cpSync(source, destination, { recursive: true });
+    } else {
+      console.log("Source directory does not exist", source);
+    }
+  } catch (error) {
+    console.log("Error while copying directory", source, destination, error);
+  }
+  return null;
+};
+
 const readDirectory = (path) => {
   try {
     if (fs.existsSync(path)) {
@@ -128,6 +142,7 @@ const verifyDownloadTasks = {
 
 export {
   readDirectory,
+  copyDirectory,
   removeDirectory,
   deleteDownloadsFolder,
   addCustomCommands,

@@ -7,6 +7,7 @@ import installLogsPrinter from "cypress-terminal-report/src/installLogsPrinter";
 import * as ciTasks from "./ci_tasks";
 import { collectFailingTests } from "./collectFailedTests";
 import {
+  copyDirectory,
   readDirectory,
   removeDirectory,
   verifyDownloadTasks,
@@ -130,6 +131,7 @@ const defaultConfig = {
       ...ciTasks,
       ...verifyDownloadTasks,
       readDirectory,
+      copyDirectory,
       removeDirectory,
       signJwt,
     });
