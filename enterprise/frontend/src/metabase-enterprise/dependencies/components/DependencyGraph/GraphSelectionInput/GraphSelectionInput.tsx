@@ -48,6 +48,7 @@ export function GraphSelectInput({ nodes }: GraphSelectInputProps) {
         >
           <Button
             leftSection={<FixedSizeIcon name="search" />}
+            data-testid="graph-selection-button"
             onClick={open}
           />
         </Tooltip>

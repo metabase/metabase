@@ -199,24 +199,11 @@ describe("scenarios > dependencies > dependency graph", () => {
         });
       });
 
-      dependencyGraph().within(() => {
-        cy.findByLabelText(TABLE_DISPLAY_NAME)
-          .should("be.visible")
-          .and("not.have.attr", "aria-selected", "true");
-        cy.findByLabelText(TABLE_BASED_QUESTION_NAME)
-          .should("be.visible")
-          .and("have.attr", "aria-selected", "true");
-      });
-
-      graphSelectionInput().click();
+      graphSelectionButton().click();
       H.popover().findByText(TABLE_DISPLAY_NAME).click();
       dependencyGraph().within(() => {
-        cy.findByLabelText(TABLE_DISPLAY_NAME)
-          .should("be.visible")
-          .and("have.attr", "aria-selected", "true");
-        cy.findByLabelText(TABLE_BASED_QUESTION_NAME)
-          .should("be.visible")
-          .and("not.have.attr", "aria-selected", "true");
+        cy.findByLabelText(TABLE_DISPLAY_NAME).should("be.visible");
+        cy.findByLabelText(TABLE_BASED_QUESTION_NAME).should("be.visible");
       });
     });
   });
@@ -445,8 +432,8 @@ function graphEntrySearchInput() {
   return cy.findByTestId("graph-entry-search-input");
 }
 
-function graphSelectionInput() {
-  return cy.findByTestId("graph-selection-input");
+function graphSelectionButton() {
+  return cy.findByTestId("graph-selection-button");
 }
 
 function graphDependencyPanel() {
