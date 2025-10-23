@@ -33,11 +33,11 @@
               lib/order-bys])))
 
 (def ^:private first-stage-keys
-  #{:expressions :joins :source-table :source-card})
+  #{:expressions :joins :source-table :source-card :filters})
 
 ;; TODO (Cam 10/22/25) -- somewhat duplicated with/copied
 ;; from [[metabase.query-processor.util.transformations.nest-breakouts/fields-used-in-breakouts-aggregations-or-expressions]]
-(defn- fields-needed-by-second-stage [stage]
+(defn- fields-needed-by-second-stage [query path stage]
   (let [stage' (apply dissoc stage first-stage-keys)
         refs (volatile! (transient []))]
     ;; temporarily disable enforcement since this stage is technically invalid since we removed all
@@ -48,30 +48,50 @@
        (fn [clause]
          (u/prog1 clause
            (when (lib/clause-of-type? clause #{:field :expression})
-             (vswap! refs conj! clause))))))
-    ;; use an ordered set so we preserve the order we saw things when we walked the query so the fields we return are
-    ;; determinate. Otherwise tests using this are liable to be flaky because results can change because test metadata
-    ;; has randomly generated IDs
+             ;; preserve the unbucketed/unbinned versions of things in the new first stage; we'll apply the
+             ;; binning/bucketing in the second stage instead
+             (let [unbucketed-ref (-> clause
+                                      (cond-> (lib/clause-of-type? clause :field) (lib/with-binning nil))
+                                      (lib/with-temporal-bucket nil)
+                                      ;; unset these just to be safe in case they were set -- they're technically
+                                      ;; allowed if the binning/bucketing is happening at this stage but they're no
+                                      ;; longer happening here so leaving them in place would be incorrect.
+                                      (lib/update-options dissoc
+                                                          :metabase.lib.field/original-temporal-unit
+                                                          :original-temporal-unit
+                                                          :lib/original-binning))]
+               (vswap! refs conj! unbucketed-ref)))))))
     (into
      []
-     (m/distinct-by (fn [[tag opts id-or-name]]
-                      [tag
-                       (select-keys opts [:join-alias :temporal-unit :bucketing])
-                       id-or-name]))
+     (comp (m/distinct-by (fn [[tag opts id-or-name]]
+                            [tag
+                             (select-keys opts [:join-alias])
+                             id-or-name]))
+           ;; if you are a psycho and have both a Field ID ref and a Field name ref to the same column the we need to
+           ;; deduplicate those otherwise this is going to result in queries with duplicate column
+           ;; names (see [[literal-boolean-expressions-and-fields-in-conditions-test]])
+           (m/distinct-by (fn [a-ref]
+                            (-> (lib.walk/apply-f-for-stage-at-path lib/metadata query path a-ref)
+                                ((juxt :lib/source-column-alias lib/current-join-alias))))))
      (persistent! @refs))))
 
-(defn- new-first-stage [stage]
+(defn- new-first-stage [query path stage]
   (-> stage
       (select-keys (conj first-stage-keys :lib/type))
-      (assoc :fields (lib/fresh-uuids (vec (fields-needed-by-second-stage stage))))))
+      (assoc :fields (lib/fresh-uuids (fields-needed-by-second-stage query path stage)))))
 
 (defn- new-second-stage [query path stage]
   (let [returned-cols (lib.walk/apply-f-for-stage-at-path lib/returned-columns query path)]
     (letfn [(update-ref [a-ref]
-              (let [col          (lib.walk/apply-f-for-stage-at-path lib/metadata query path a-ref)
-                    returned-col (m/find-first (partial lib.equality/= col) returned-cols)]
+              (let [col            (lib.walk/apply-f-for-stage-at-path lib/metadata query path a-ref)
+                    unbucketed-col (-> col
+                                       (lib/with-binning nil)
+                                       (lib/with-temporal-bucket nil))
+                    returned-col   (m/find-first (partial lib.equality/= unbucketed-col) returned-cols)]
                 (-> returned-col
                     lib/update-keys-for-col-from-previous-stage
+                    (lib/with-binning (lib/binning col))
+                    (lib/with-temporal-bucket (lib/raw-temporal-bucket col))
                     lib/ref)))]
       ;; temporarily disable enforcement since this stage will be invalid while we're messing with it... it will look
       ;; pretty nice when we're done tho.
@@ -88,7 +108,7 @@
   [query :- ::lib.schema/query
    path  :- ::lib.walk/path
    stage :- ::lib.schema/stage.mbql]
-  (let [new-first-stage (new-first-stage stage)]
+  (let [new-first-stage (new-first-stage query path stage)]
     [new-first-stage
      (new-second-stage (assoc-in query path new-first-stage) path stage)]))
 

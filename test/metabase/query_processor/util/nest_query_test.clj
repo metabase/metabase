@@ -10,6 +10,7 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.query-processor.util.nest-query :as nest-query]
+   [metabase.lib.test-util.places-cam-likes-metadata-provider :as lib.tu.places-cam-likes-metadata-provider]
    [metabase.test :as mt]))
 
 (defn- nest-expressions-mbql5 [query]
@@ -71,10 +72,10 @@
               {:source-query {:source-table $$venues
                               :expressions  {"favorite" [:value "good venue" {:base_type :type/Text}]}
                               :fields       [[:field %name nil]
-                                             [:expression "favorite" {}]]}
-               :filter       [:=
-                              [:field "NAME" {}]
-                              [:field "favorite" {:base-type :type/Text}]]
+                                             [:expression "favorite" {}]]
+                              :filter       [:=
+                                             [:field %name nil]
+                                             [:expression "favorite" {:base-type :type/Text}]]}
                :order-by     [[:asc *favorite/Text]]})
             (-> (lib/query
                  meta/metadata-provider
@@ -298,10 +299,9 @@
       (is (=? (lib.tu.macros/$ids venues
                 {:source-query {:source-table $$venues
                                 :expressions  {"test" [:* 1 1]}
-                                :fields       [[:field %price {:temporal-unit :day}]
+                                :fields       [[:field %price {:temporal-unit (symbol "nil #_\"key is not present.\"")}]
                                                [:expression "test" {}]]}
-                 :breakout     [[:field "PRICE" {:temporal-unit           (symbol "nil #_\"key is not present.\"")
-                                                 :inherited-temporal-unit :day}]
+                 :breakout     [[:field "PRICE" {:temporal-unit :day}]
                                 [:field "test" {}]]
                  :limit        1})
               (-> (lib/query
@@ -347,7 +347,7 @@
                                                              :fk-field-id  %product-id}]
                                              :expressions  {"pivot-grouping" [:abs 0]}
                                              :fields       [[:field %products.category {:join-alias "PRODUCTS__via__PRODUCT_ID"}]
-                                                            [:field %orders.created-at {:temporal-unit :year}]
+                                                            [:field %orders.created-at nil]
                                                             [:expression "pivot-grouping" {:base-type :type/Integer}]]}})))
             (-> (lib/query
                  meta/metadata-provider
@@ -365,13 +365,7 @@
                                    :alias        "PRODUCTS__via__PRODUCT_ID"
                                    :fk-field-id  %product-id
                                    :condition    [:= $product-id &PRODUCTS__via__PRODUCT_ID.products.id]}]}))
-                nest-expressions
-                ;; I'm tired of dealing with the nondeterministic order mentioned above, so just sort them by ID
-                ;; and call it a day for now.
-                #_(update-in [:source-query :fields] (fn [fields]
-                                                       (concat
-                                                        (take 3 fields)
-                                                        (sort-by (comp str second) (drop 3 fields))))))))))
+                nest-expressions)))))
 
 (deftest ^:parallel uniquify-aliases-test
   (is (=? (lib.tu.macros/$ids products
@@ -465,11 +459,11 @@
   (testing "clear temporal units from joined fields #48058"
     ;; TODO: The order here is not deterministic! It's coming
     ;; from [[metabase.query-processor.util.transformations.nest-breakouts]]
-    ;; or [[metabase.query-processor.util.nest-query]], which walks the query looking for refs in an arbitrary order,
+    ;; or [[metabase.query-processor.util.nest-query]], which walks the query looking for refs in an arbitrary order
     ;; and returns `m/distinct-by` over that random order. Changing the map keys on the inner query can perturb this
     ;; order; if you cause this test to fail based on shuffling the order of these joined fields, just edit the
     ;; expectation to match the new order. Tech debt issue: #39396
-    (is (=? {:source-query {:fields [[:field (meta/id :people :created-at) {:temporal-unit :hour-of-day
+    (is (=? {:source-query {:fields [[:field (meta/id :people :created-at) {:temporal-unit (symbol "nil #_\"key is not present.\"")
                                                                             :join-alias    "p"}]
                                      [:expression "double_total" {}]]}}
             (-> (lib/query
@@ -564,3 +558,41 @@
               "pivot-grouping"
               "sum"]
              (nth stages 2))))))
+
+(deftest ^:parallel literal-boolean-expressions-and-fields-in-conditions-test
+  (testing "mixing Field ID refs and Field Name refs to the same column should not result in broken queries"
+    (let [true-value  [:value true  {:base_type :type/Boolean}]
+          false-value [:value false {:base_type :type/Boolean}]
+          mp          lib.tu.places-cam-likes-metadata-provider/metadata-provider
+          query       (lib/query
+                       mp
+                       {:database 1
+                        :type     :query
+                        :query    {:expressions  {"T" true-value, "F" false-value}
+                                   :source-query {:source-table 1
+                                                  :fields       [[:field 2 nil]]}
+                                   :aggregation  [[:count-where [:expression "T"]]
+                                                  [:count-where [:expression "F"]]
+                                                  ;; only a true psycho would do this
+                                                  [:count-where [:field "LIKED" {:base-type :type/Boolean}]]
+                                                  [:count-where [:field 2 nil]]]
+                                   :filter       [:or
+                                                  [:field 2 nil]
+                                                  [:field "LIKED" {:base-type :type/Boolean}]
+                                                  [:expression "T"]]}})]
+      (is (= {:aggregation  [[:count-where [:field "T" {:base-type :type/Boolean}]]
+                             [:count-where [:field "F" {:base-type :type/Boolean}]]
+                             [:count-where [:field "LIKED" {:base-type :type/Boolean}]]
+                             [:count-where [:field "LIKED" {:base-type :type/Boolean}]]]
+              :source-query {:source-query {:fields [[:field 2 nil]], :source-table 1}
+                             :expressions  {"F" [:value false {:base_type :type/Boolean}]
+                                            "T" [:value true {:base_type :type/Boolean}]}
+                             :fields       [[:expression "T" {:base-type :type/Boolean}]
+                                            [:expression "F" {:base-type :type/Boolean}]
+                                            ;; make sure we do not include duplicate entries for `LIKED`/Field 2
+                                            [:field "LIKED" {:base-type :type/Boolean}]]
+                             :filter       [:or
+                                            [:field 2 nil]
+                                            [:field "LIKED" {:base-type :type/Boolean}]
+                                            [:expression "T" {:base-type :type/Boolean}]],}}
+             (nest-expressions query))))))
