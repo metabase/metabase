@@ -6,7 +6,11 @@ import type {
   QuestionPickerModel,
   QuestionPickerOptions,
 } from "metabase/common/components/Pickers/QuestionPicker";
-import type { RecentContexts, SearchModel } from "metabase-types/api";
+import type {
+  CollectionItemModel,
+  RecentContexts,
+  SearchModel,
+} from "metabase-types/api";
 
 import type { EntryPickerItemModel } from "./types";
 
@@ -27,6 +31,13 @@ export const QUESTION_MODELS: (EntryPickerItemModel & QuestionPickerModel)[] = [
   "card",
   "dataset",
   "metric",
+];
+
+export const QUESTION_MODELS_WITH_DASHBOARDS: CollectionItemModel[] = [
+  "card",
+  "dataset",
+  "metric",
+  "dashboard",
 ];
 
 export const QUESTION_FOLDER_MODELS: EntryPickerItemModel[] = [

@@ -27,6 +27,7 @@ import {
   ENTITY_PICKER_OPTIONS,
   QUESTION_FOLDER_MODELS,
   QUESTION_MODELS,
+  QUESTION_MODELS_WITH_DASHBOARDS,
   QUESTION_PICKER_OPTIONS,
   RECENTS_CONTEXT,
   TABLE_FOLDER_MODELS,
@@ -121,7 +122,7 @@ export function EntryPickerModal({
         render: ({ onItemSelect }) => (
           <QuestionPicker
             initialValue={value ? getQuestionPickerItem(value) : undefined}
-            models={QUESTION_MODELS}
+            models={QUESTION_MODELS_WITH_DASHBOARDS}
             options={QUESTION_PICKER_OPTIONS}
             path={questionsPath}
             onInit={onItemSelect}
