@@ -214,6 +214,51 @@
                                [:owner_user_id           {:optional true} [:maybe :int]]]]
   (update-tables! ids body))
 
+(api.macros/defendpoint :post "/edit"
+  "DEMOWARE: Edit tables associated with one or more databases/schemas
+  - the API will live somewhere else (at least needs to apply to models)
+  - auth lol
+  - return a kind of token or identifier for status/undo."
+  [_route-params
+   _query-params
+   {:keys [database_ids
+           schema_ids
+           table_ids]
+    :as body}
+   :- [:map
+       ;; disjunctive filters (e.g. db_id IN $database_ids OR id IN $table_ids)
+       [:database_ids {:optional true} [:sequential ms/PositiveInt]]
+       [:schema_ids {:optional true} [:sequential :string]] ;todo find schema
+       [:table_ids {:optional true} [:sequential ms/PositiveInt]]
+
+       ;; settables
+       [:visibility_type {:optional true} [:maybe :string]]
+       [:data_authority {:optional true} [:maybe :string]]
+       [:data_source {:optional true} [:maybe :string]]
+       [:visibility_type2 {:optional true} [:maybe :string]]
+       [:owner_email {:optional true} [:maybe :string]]
+       [:owner_user_id {:optional true} [:maybe :int]]]]
+  ;; todo so much
+  (let [schema-expr (fn [s] (let [[schema-db-id schema-name] (str/split s #"\:")]
+                              [:and [:= :db_id (parse-long schema-db-id)]
+                               [:= :schema schema-name]]))
+        where       (cond-> [:or false]
+                      (seq database_ids) (conj [:in :db_id (sort database_ids)])
+                      (seq table_ids)    (conj [:in :id    (sort table_ids)])
+                      (seq schema_ids)   (conj (into [:or] (map schema-expr) (sort schema_ids))))
+        set-ks      [:visibility_type
+                     :data_authority
+                     :data_source
+                     :visibility_type2
+                     :owner_email
+                     :owner_user_id]
+        set-map     (select-keys body set-ks)
+        stmt        {:update :metabase_table
+                     :set    set-map
+                     :where  where}]
+    (when (seq set-map) (t2/query stmt))
+    {}))
+
 (api.macros/defendpoint :get "/:id/query_metadata"
   "Get metadata about a `Table` useful for running queries.
    Returns DB, fields, field FKs, and field values.
