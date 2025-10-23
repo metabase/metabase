@@ -12,6 +12,7 @@ import {
   FieldOrderPicker,
   NameDescriptionInput,
   SortableFieldList,
+  UserInput,
   VisibilityInput,
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
@@ -31,6 +32,7 @@ import type {
   TableDataSource,
   TableFieldOrder,
   TableVisibilityType2,
+  UserId,
 } from "metabase-types/api";
 
 import type { RouteParams } from "../../types";
@@ -133,12 +135,54 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
     });
 
     if (error) {
-      sendErrorToast(t`Failed to update data source`);
+      sendErrorToast(t`Failed to update table data source`);
     } else {
       sendSuccessToast(t`Table data source updated`, async () => {
         const { error } = await updateTable({
           id: table.id,
           data_source: table.data_source,
+        });
+        sendUndoToast(error);
+      });
+    }
+  };
+
+  const handleOwnerEmailChange = async (email: string | null) => {
+    const { error } = await updateTable({
+      id: table.id,
+      owner_email: email,
+      owner_user_id: null,
+    });
+
+    if (error) {
+      sendErrorToast(t`Failed to update table owner`);
+    } else {
+      sendSuccessToast(t`Table owner updated`, async () => {
+        const { error } = await updateTable({
+          id: table.id,
+          owner_email: table.owner_email,
+          owner_user_id: table.owner_user_id,
+        });
+        sendUndoToast(error);
+      });
+    }
+  };
+
+  const handleOwnerUserIdChange = async (userId: UserId | null) => {
+    const { error } = await updateTable({
+      id: table.id,
+      owner_email: null,
+      owner_user_id: userId,
+    });
+
+    if (error) {
+      sendErrorToast(t`Failed to update table owner`);
+    } else {
+      sendSuccessToast(t`Table owner updated`, async () => {
+        const { error } = await updateTable({
+          id: table.id,
+          owner_email: table.owner_email,
+          owner_user_id: table.owner_user_id,
         });
         sendUndoToast(error);
       });
@@ -234,6 +278,14 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
           <VisibilityInput
             value={table.visibility_type2 ?? "copper"}
             onChange={handleVisibilityTypeChange}
+          />
+
+          <UserInput
+            email={table.owner_email}
+            label={t`Owner`}
+            userId={table.owner_user_id}
+            onEmailChange={handleOwnerEmailChange}
+            onUserIdChange={handleOwnerUserIdChange}
           />
 
           <DataSourceInput
