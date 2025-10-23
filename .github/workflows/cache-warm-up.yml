@@ -24,6 +24,7 @@ jobs:
         run: clojure -A:build:dev:ee:ee-dev:drivers:drivers-dev:cljs -P
         # run: clojure -A:eastwood -P
       - name: Check if the cache entry exists
+        id: cache-lookup
         uses: actions/cache/restore@v4
         with:
           path: |
@@ -32,6 +33,7 @@ jobs:
           key: ${{ runner.os }}-m2-${{ env.week-of-year }}
           lookup-only: true
       - name: Delete the cache
+        if: ${{ steps.cache-lookup.outputs.cache-hit == 'true' }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
