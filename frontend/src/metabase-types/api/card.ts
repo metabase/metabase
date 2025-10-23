@@ -27,10 +27,12 @@ import type { CardDisplayType, VisualizationDisplay } from "./visualization";
 import type { SmartScalarComparison } from "./visualization-settings";
 export type CardType = "model" | "question" | "metric";
 
-type CreatorInfo = Pick<
+export type CardCreatorInfo = Pick<
   UserInfo,
   "first_name" | "last_name" | "email" | "id" | "common_name"
 >;
+
+export type CardDashboardInfo = Pick<Dashboard, "id" | "name">;
 
 export interface Card<Q extends DatasetQuery = DatasetQuery>
   extends UnsavedCard<Q> {
@@ -56,7 +58,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   collection?: Collection | null;
   collection_id: number | null;
   collection_position: number | null;
-  dashboard: Pick<Dashboard, "id" | "name"> | null;
+  dashboard: CardDashboardInfo | null;
   dashboard_id: DashboardId | null;
   document_id?: DocumentId;
   dashboard_count: number | null;
@@ -74,7 +76,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   archived: boolean;
   is_remote_synced?: boolean;
 
-  creator?: CreatorInfo;
+  creator?: CardCreatorInfo;
   "last-edit-info"?: LastEditInfo;
   table_id?: TableId;
 }

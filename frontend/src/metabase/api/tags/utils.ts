@@ -598,6 +598,7 @@ export function provideTableTags(table: Table): TagDescription<TagType>[] {
     ...(table.fields ? provideFieldListTags(table.fields) : []),
     ...(table.fks ? provideForeignKeyListTags(table.fks) : []),
     ...(table.segments ? provideSegmentListTags(table.segments) : []),
+    ...(table.metrics ? provideCardListTags(table.metrics) : []),
   ];
 }
 

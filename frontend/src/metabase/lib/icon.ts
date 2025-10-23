@@ -43,6 +43,7 @@ export const modelIconMap: Record<IconModel, IconName> = {
   snippet: "unknown",
   document: "document",
   timeline: "calendar",
+  transform: "refresh_downstream",
 };
 
 export type IconData = {

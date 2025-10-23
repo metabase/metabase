@@ -6,6 +6,7 @@ import { AdminContentTable } from "metabase/common/components/AdminContentTable"
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { Card, FixedSizeIcon, Flex, Loader } from "metabase/ui";
 import {
   useListTransformJobTransformsQuery,
@@ -13,19 +14,21 @@ import {
   useListTransformTagsQuery,
 } from "metabase-enterprise/api";
 import { TimezoneIndicator } from "metabase-enterprise/transforms/components/TimezoneIndicator";
-import type { JobListParams } from "metabase-enterprise/transforms/types";
 import type { TransformJob, TransformJobId } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
 import { RunStatusInfo } from "../../../components/RunStatusInfo";
 import { TagList } from "../../../components/TagList";
-import { getJobUrl } from "../../../urls";
 import { parseTimestampWithTimezone } from "../../../utils";
 import { hasFilterParams } from "../utils";
 
 import S from "./JobList.module.css";
 
-export function JobList({ params }: { params: JobListParams }) {
+type JobListProps = {
+  params: Urls.TransformJobListParams;
+};
+
+export function JobList({ params }: JobListProps) {
   const systemTimezone = useSetting("system-timezone");
   const {
     data: jobs = [],
@@ -47,7 +50,7 @@ export function JobList({ params }: { params: JobListParams }) {
   const dispatch = useDispatch();
 
   const handleRowClick = (job: TransformJob) => {
-    dispatch(push(getJobUrl(job.id)));
+    dispatch(push(Urls.transformJob(job.id)));
   };
 
   if (isLoading || error != null) {
