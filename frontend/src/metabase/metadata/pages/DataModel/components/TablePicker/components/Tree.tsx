@@ -106,11 +106,21 @@ export function Tree({ path, onChange }: Props) {
         onItemToggle={onItemToggle}
         selectedItems={selectedItems}
       />
-      <Flex justify="center">
+      <Flex justify="center" gap="sm" direction="column" in>
         {selectedItems.size > 0 && (
-          <Button onClick={onEditSelectedItems}>
-            {t`Edit ${selectedItems.size} items`}
-          </Button>
+          <>
+            <Flex justify="center">
+              <Button onClick={onEditSelectedItems}>
+                {t`Edit ${selectedItems.size} items`}
+              </Button>
+            </Flex>
+            <Button
+              variant="transparent"
+              onClick={() => setSelectedItems(new Set())}
+            >
+              {t`Unselect all`}
+            </Button>
+          </>
         )}
       </Flex>
       <EditTableMetadataModal
