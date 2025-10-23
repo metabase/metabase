@@ -85,18 +85,19 @@
 (defn check-git-settings!
   "Validates git repository settings by attempting to connect and retrieve the default branch.
 
-  Takes a map with :remote-sync-url (required) and :remote-sync-token (optional) keys. Returns the repository's
-  default branch name as a string if the connection succeeds.
+  Takes a map with :remote-sync-url (required) and :remote-sync-token (optional) keys.
 
   Throws ExceptionInfo if unable to connect to the repository with the provided settings."
   ([] (when (setting/get :remote-sync-enabled) (check-git-settings! {:remote-sync-url   (setting/get :remote-sync-url)
                                                                      :remote-sync-token (setting/get :remote-sync-token)})))
 
   ([{:keys [remote-sync-url remote-sync-token]}]
-   (try
-     (git/default-branch (git/git-source remote-sync-url "HEAD" remote-sync-token))
-     (catch Exception e
-       (throw (ex-info "Unable to connect to git repository with the provided settings" {:cause (.getMessage e)} e))))))
+   (let [source
+         (try (git/git-source remote-sync-url "HEAD" remote-sync-token)
+              (catch Exception e
+                (throw (ex-info "Unable to connect to git repository with the provided settings" {:cause (.getMessage e)} e))))]
+     (when-not (git/has-data? source)
+       (throw (ex-info "Cannot connect to an uninitialized repository" {:url remote-sync-url}))))))
 
 (defn check-and-update-remote-settings!
   "Validates and updates git sync settings in the application database.

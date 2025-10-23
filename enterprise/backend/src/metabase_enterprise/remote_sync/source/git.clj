@@ -133,6 +133,15 @@
                                       :id (.name (.abbreviate commit 8))
                                       :parent (when (< 0 (.getParentCount commit)) (.name (.abbreviate (.getParent commit 0) 8)))}) log-result)))))
 
+(defn has-data?
+  "Checks if the git repository has any commits/data.
+
+  Takes a source map containing a :git Git instance and :commit-ish to check for data.
+
+  Returns true if the repository has at least one commit, false otherwise."
+  [{:keys [^Git git]}]
+  (< 0 (count (call-command (-> (.branchList git))))))
+
 (defn list-files
   "Lists all files in the git repository at the current commit.
 
