@@ -13,7 +13,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Get current week of year
         run: |
-          echo "week-of-year=$(/bin/date "+%G-%V")" >> $GITHUB_ENV
+          WEEK_OF_YEAR=$(/bin/date "+%G-%V")
+          echo "m2-cache-key=m2-${{ runner.os }}-$WEEK_OF_YEAR" >> $GITHUB_ENV
         shell: bash
 
       - name: Prepare backend
@@ -22,16 +23,7 @@ jobs:
           java-version: 21
       - name: Pre-resolve dependencies
         run: clojure -A:build:dev:ee:ee-dev:drivers:drivers-dev:cljs -P
-        # run: clojure -A:eastwood -P
-      - name: Remove token to test
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh api \
-            --method DELETE \
-            -H "Accept: application/vnd.github+json" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            /repos/${{ github.repository }}/actions/caches?key=${{ runner.os }}-m2-${{ env.week-of-year }}
+
       - name: Check if the cache entry exists
         id: cache-lookup
         uses: actions/cache/restore@v4
@@ -39,9 +31,9 @@ jobs:
           path: |
             ~/.m2
             ~/.gitlibs 
-          key: ${{ runner.os }}-m2-${{ env.week-of-year }}
+          key: ${{ env.m2-cache-key }}
           lookup-only: true
-      - name: Delete the cache
+      - name: Delete the cache entry if it exists
         if: ${{ steps.cache-lookup.outputs.cache-hit == 'true' }}
         env:
           GH_TOKEN: ${{ github.token }}
@@ -50,11 +42,11 @@ jobs:
             --method DELETE \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
-            /repos/${{ github.repository }}/actions/caches?key=${{ runner.os }}-m2-${{ env.week-of-year }}
+            /repos/${{ github.repository }}/actions/caches?key=${{ env.m2-cache-key }}
       - name: Update M2 cache
         uses: actions/cache/save@v4
         with:
           path: |
             ~/.m2
             ~/.gitlibs
-          key: ${{ runner.os }}-m2-${{ env.week-of-year }}
+          key: ${{ env.m2-cache-key }}
