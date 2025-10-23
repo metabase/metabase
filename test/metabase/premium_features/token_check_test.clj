@@ -54,7 +54,7 @@
                             {:site-uuid  (premium-features.settings/site-uuid-for-premium-features-token-checks)
                              :mb-version (:tag config/mb-version-info)})}
       (constantly token-check-response)}
-     (#'token-check/fetch-token-status* token grace-period))))
+     (#'token-check/token-information token grace-period))))
 
 (def ^:private token-response-fixture
   (json/encode {:valid    true
@@ -67,7 +67,7 @@
         print-token (apply str (concat (take 4 token) "..." (take-last 4 token)))]
     (testing "Do not log the token (#18249)"
       (mt/with-log-messages-for-level [messages :info]
-        (#'token-check/fetch-token-status* token no-op-grace)
+        (#'token-check/token-information token no-op-grace)
         (let [logs (mapv :message (messages))]
           (is (every? (complement #(re-find (re-pattern token) %)) logs))
           (is (= 1 (count (filter #(re-find (re-pattern print-token) %) logs)))))))))
@@ -86,7 +86,7 @@
       (is (= {:valid         false
               :status        "Unable to validate token"
               :error-details "network issues"}
-             (#'token-check/fetch-token-status (apply str (repeat 64 "b")) no-op-grace))))))
+             (#'token-check/token-information (apply str (repeat 64 "b")) no-op-grace))))))
 
 (deftest fetch-token-caches-successful-responses
   (testing "For successful responses, the result is cached"
@@ -95,7 +95,7 @@
       (binding [http/request (fn [& _]
                                (swap! call-count inc)
                                {:status 200 :body "{\"valid\": true, \"status\": \"fake\"}"})]
-        (dotimes [_ 10] (#'token-check/fetch-token-status token no-op-grace))
+        (dotimes [_ 10] (#'token-check/token-information token no-op-grace))
         (is (= 1 @call-count))))))
 
 (deftest fetch-token-caches-invalid-responses
@@ -105,7 +105,7 @@
       (binding [http/request (fn [& _]
                                (swap! call-count inc)
                                {:status 400 :body "{\"valid\": false, \"status\": \"fake\"}"})]
-        (dotimes [_ 10] (#'token-check/fetch-token-status token no-op-grace))
+        (dotimes [_ 10] (#'token-check/token-information token))
         (is (= 1 @call-count))))))
 
 (deftest fetch-token-does-not-cache-exceptions
@@ -115,7 +115,7 @@
       (binding [http/request (fn [& _]
                                (swap! call-count inc)
                                (throw (ex-info "oh, fiddlesticks" {})))]
-        (dotimes [_ 5] (#'token-check/fetch-token-status token no-op-grace))
+        (dotimes [_ 5] (#'token-check/token-information token))
         ;; Note that we have a fallback URL that gets hit in this case (see
         ;; https://github.com/metabase/metabase/issues/27036) and 2x5=10
         (is (= 5 @call-count))))))
@@ -126,7 +126,7 @@
     (binding [http/request (fn [& _]
                              (swap! call-count inc)
                              {:status 500})]
-      (dotimes [_ 10] (#'token-check/fetch-token-status token no-op-grace))
+      (dotimes [_ 10] (#'token-check/token-information token))
       ;; Same as above, we have a fallback URL that gets hit in this case (see
       ;; https://github.com/metabase/metabase/issues/27036) and 2x10=20
       (is (= 10 @call-count)))))
@@ -138,7 +138,7 @@
         (is (= {:valid false
                 :status "Unable to validate token"
                 :error-details "Token validation is currently unavailable."}
-               (#'token-check/fetch-token-status (tu/random-token) no-op-grace)))
+               (#'token-check/token-information (tu/random-token))))
         (is (= 0 @call-count))))))
 
 (deftest ^:parallel fetch-token-status-test-4
@@ -154,18 +154,18 @@
     ;; upstream in Cloud could break this. We probably want to catch that stuff anyway tho in tests rather than waiting
     ;; for bug reports to come in
     (is (partial= {:valid false, :status "Token does not exist."}
-                  (#'token-check/fetch-token-status* (tu/random-token) no-op-grace)))))
+                  (#'token-check/token-information (tu/random-token))))))
 
 (deftest fetch-token-does-not-call-db-when-cached
   (testing "No DB calls are made when checking token status if the status is cached"
     (let [token (tu/random-token)
-          _ (#'token-check/fetch-token-status token no-op-grace)
+          _ (#'token-check/token-information token)
           ;; Sigh. This is really quite horrific. But we need some wiggle room here: any endpoint that gets some setting
           ;; inside it is going to check to see whether it's time for an update check. If it is, it'll hit the DB to see
           ;; when settings were last updated, and the count will be incremented. Therefore, let's do this a few times...
           call-counts (repeatedly 3 (fn []
                                       (t2/with-call-count [call-count]
-                                        (#'token-check/fetch-token-status token no-op-grace)
+                                        (#'token-check/token-information token)
                                         (call-count))))]
       ;; ... and then make sure that *some* of the times, we didn't hit the DB again.
       (is (some zero? call-counts)))))
@@ -195,7 +195,7 @@
               (is (= #{"fake" "features"} (token-check/*token-features*)))
               (is (not @called?) "We should memoize token values")
               ;; simulate cache expiration after 12 hours
-              (token-check/clear-cache)
+              (token-check/clear-cache!)
               (is (= #{"fake" "features"} (token-check/*token-features*)))
               (is @called? "Did not hit the network!")
               (is (= {:valid true :status "fake" :features ["fake" "features"]}
