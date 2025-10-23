@@ -39,3 +39,7 @@ export type MetabasePluginsConfig = {
   mapQuestionClickActions?: MetabaseClickActionPluginsConfig;
   dashboard?: MetabaseDashboardPluginsConfig;
 };
+
+export type MetabaseGlobalPluginsConfig = {
+  handleLink?: (url: string) => void;
+} & MetabasePluginsConfig;
