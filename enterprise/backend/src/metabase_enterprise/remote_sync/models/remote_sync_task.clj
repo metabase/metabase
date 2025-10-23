@@ -234,3 +234,13 @@
    tasks k
    #(t2/select-pk->fn identity :model/User :id [:in (map :initiated_by tasks)])
    :initiated_by))
+
+(methodical/defmethod t2/batched-hydrate [:model/RemoteSyncTask :status]
+  [_model _k tasks]
+  (for [task tasks]
+    (assoc task :status (cond
+                          (failed? task) :errored
+                          (successful? task) :successful
+                          (cancelled? task) :cancelled
+                          (timed-out? task) :timed-out
+                          :else :running))))

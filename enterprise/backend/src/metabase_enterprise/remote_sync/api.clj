@@ -13,7 +13,8 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.collections.models.collection :as collection]
    [metabase.util.log :as log]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -84,25 +85,11 @@
                                 (or force false)
                                 (or message "Exported from Metabase"))})
 
-(defn- task-with-status
-  "Returns a task record with a :status field added based on the task's state.
-
-  Takes a remote sync task record map and adds a :status key that can be :errored (failed with error), :successful
-  (completed successfully), :cancelled (cancelled by user), :timed-out (exceeded time limit), or :running
-  (currently executing)."
-  [task]
-  (assoc task :status (cond
-                        (remote-sync.task/failed? task) :errored
-                        (remote-sync.task/successful? task) :successful
-                        (remote-sync.task/cancelled? task) :cancelled
-                        (remote-sync.task/timed-out? task) :timed-out
-                        :else :running)))
-
 (api.macros/defendpoint :get "/current-task" :- [:maybe remote-sync.schema/SyncTask]
   "Get the current sync task"
   []
   (when-let [task (remote-sync.task/most-recent-task)]
-    (task-with-status task)))
+    (t2/hydrate task :status)))
 
 (api.macros/defendpoint :post "/current-task/cancel" :- remote-sync.schema/SyncTask
   "Cancels the current task if one is running"
@@ -110,7 +97,7 @@
   (let [task (remote-sync.task/most-recent-task)]
     (api/check-400 (and (some? task) (remote-sync.task/running? task)) "No active task to cancel")
     (remote-sync.task/cancel-sync-task! (:id task))
-    (task-with-status (remote-sync.task/most-recent-task))))
+    (t2/hydrate (remote-sync.task/most-recent-task) :status)))
 
 (api.macros/defendpoint :put "/settings" :- remote-sync.schema/SettingsUpdateResponse
   "Update Git Sync related settings. You must be a superuser to do this."

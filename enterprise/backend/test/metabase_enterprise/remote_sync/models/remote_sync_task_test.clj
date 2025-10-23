@@ -143,6 +143,12 @@
       (is (= "rasta@metabase.com" (get-in hydrated-task [:initiated_by_user :email])))
       (rst/complete-sync-task! (:id task)))))
 
+(deftest hydration-of-status-test
+  (testing "hydrates status"
+    (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))
+          hydrated-task (t2/hydrate task :status)]
+      (is (= :running (:status hydrated-task))))))
+
 ;;; ------------------------------------------------------------------------------------------------
 ;;; Tests for Edge Cases and Error Handling
 ;;; ------------------------------------------------------------------------------------------------
@@ -208,7 +214,7 @@
       (is (thrown-with-msg? Exception #"A running task exists" (rst/create-sync-task! "import" (mt/user->id :rasta))))
       (rst/complete-sync-task! (:id task)))))
 
- ;;; ------------------------------------------------------------------------------------------------
+;;; ------------------------------------------------------------------------------------------------
 ;;; Tests for successful?, failed?, and timed-out?
 ;;; ------------------------------------------------------------------------------------------------
 
@@ -362,9 +368,9 @@
                             (rst/update-progress! (:id task) 0.5))))))
 
 (deftest most-recent-successful-task
-  (testing "When there are no tasks, most-recent-successful-task returns nil")
-  (is (nil? (rst/most-recent-successful-task "import")))
-  (is (nil? (rst/most-recent-successful-task nil)))
+  (testing "When there are no tasks, most-recent-successful-task returns nil"
+    (is (nil? (rst/most-recent-successful-task "import")))
+    (is (nil? (rst/most-recent-successful-task nil))))
   (testing "When there are no successful tasks, most-recent-successful-task returns nil"
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))]
       (rst/fail-sync-task! (:id task) "Test failure")

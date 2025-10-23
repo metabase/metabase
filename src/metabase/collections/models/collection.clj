@@ -1039,16 +1039,16 @@
         (recur to-traverse traversed accum)))))
 
 (defn remote-synced-dependents
-  "Find dependents of a model that are contained in the remote-synced collection the model is being moved from. For cards
-  checks if there are any other queries that reference this card. For collections checks dependents of all cards in the
-  collection or subcollections. For all other models it returns an empty seq. Only checks for immediate dependents.
+  "Finds dependents of a model that are contained in the remote-synced collection the model is being moved from.
 
-  Args:
-    original-collection-id: the id of the collection the model was originally at
-    model: the model to check dependents for.
+  For cards, checks if there are any other queries that reference this card. For collections, checks dependents of
+  all cards in the collection or subcollections. For all other models it returns an empty seq. Only checks for
+  immediate dependents.
 
-  Returns:
-    sequence of models immediately dependent on the provided model"
+  Takes original-collection-id (the id of the collection the model was originally at) and model (the model to check
+  dependents for).
+
+  Returns a sequence of models immediately dependent on the provided model."
   [original-collection-id {:keys [id archived] :as model}]
   (if-not original-collection-id
     []
@@ -1069,16 +1069,17 @@
         (get root-descendants [(name (t2/model model)) id] [])))))
 
 (defn non-remote-synced-dependencies
-  "Find dependencies of a model -- that are possible to contain in the remote-synced collection -- that are not contained the in Remote-synced
-  collection or in subcollections of the Remote-synced collection to model is being moved to.
+  "Finds dependencies of a model that are not contained in the Remote-synced collection.
+
+  Checks for dependencies that are possible to contain in the remote-synced collection but are not contained in the
+  Remote-synced collection or in subcollections of the Remote-synced collection the model is being moved to.
 
   Uses serdes/descendants to list dependencies of a model.
 
-  Args:
-    model: the model to check dependencies for
+  Takes model (the model to check dependencies for).
 
-  Returns:
-    sequence of models pairs for depedendencies of the given model that are not in the Remote-synced collection"
+  Returns a sequence of model pairs for dependencies of the given model that are not in the Remote-synced
+  collection."
   [{:keys [id] :as model}]
   (if-let [collection (t2/select-one :model/Collection :id (if (= (t2/model model) :model/Collection) (:id model) (:collection_id model)))]
     (let [root-collection-id (or (-> collection :location location-path->ids first)
@@ -1096,16 +1097,13 @@
     #{}))
 
 (defn check-non-remote-synced-dependencies
-  "Throws if a model has non-remote-synced-dependencies.
+  "Checks if a model has non-remote-synced-dependencies and throws if it does.
 
-  Args:
-    model: the model to check depedencies for
+  Takes model (the model to check dependencies for).
 
-  Returns:
-    the model
+  Returns the model if no non-remote-synced dependencies are found.
 
-  Raises:
-    ex-info object with non-remote-synced-dependencies and a 400 status code"
+  Throws an ex-info object with non-remote-synced-dependencies and a 400 status code if dependencies are found."
   [model]
   (when-let [non-remote-synced-deps (not-empty (non-remote-synced-dependencies model))]
     (throw (ex-info (str (deferred-tru "Model has non-remote-synced dependencies")) {:non-remote-synced-models non-remote-synced-deps
@@ -1113,17 +1111,13 @@
   model)
 
 (defn check-remote-synced-dependents
-  "Throws if a model has remote-synced-dependents.
+  "Checks if a model has remote-synced-dependents and throws if it does.
 
-  Args:
-    original-collection-id: where the model is being moved from
-    model: the model to check depedencies for
+  Takes original-collection-id (where the model is being moved from) and model (the model to check dependencies for).
 
-  Returns:
-    the model
+  Returns the model if no remote-synced dependents are found.
 
-  Raises:
-    ex-info object with remote-synced-dependencies and a 400 status code"
+  Throws an ex-info object with remote-synced-dependencies and a 400 status code if dependents are found."
   [original-collection-id model]
   (when-let [remote-synced-deps (not-empty (remote-synced-dependents original-collection-id model))]
     (throw (ex-info (str (deferred-tru "Model has remote-synced dependents")) {:remote-synced-models remote-synced-deps
@@ -1136,15 +1130,16 @@
         (or (first (location-path->ids location-b)) id-b)))
 
 (defn moving-into-remote-synced?
-  "Tests if a move from old-collection-id to new-collection-id means the object is moving from a non-remote-synced collection
-  or a remote-synced collection with a different root into a remote-synced collection.
+  "Tests if a move means the object is moving into a remote-synced collection.
 
-  Args:
-    old-collection-id: id of the collection the object is being moved from
-    new-collection-id: id of the collection the object is being moved to
+  Checks if a move from old-collection-id to new-collection-id means the object is moving from a non-remote-synced
+  collection or a remote-synced collection with a different root into a remote-synced collection.
 
-  Returns:
-    true if the old collection is not part of a remote-synced collection or shares a different root-parent and the new collection is."
+  Takes old-collection-id (id of the collection the object is being moved from) and new-collection-id (id of the
+  collection the object is being moved to).
+
+  Returns true if the old collection is not part of a remote-synced collection or shares a different root-parent and
+  the new collection is."
   [old-collection-id new-collection-id]
   (boolean
    (and (not (nil? new-collection-id))
@@ -1162,15 +1157,16 @@
                 true))))))
 
 (defn moving-from-remote-synced?
-  "Tests if a move from old-collection-id to new-collection-id means the object is moving from a remote-synced collection
-   into a non-remote-synced collection or a remote-sycned collection with a different root.
+  "Tests if a move means the object is moving from a remote-synced collection.
 
-  Args:
-    old-collection-id: id of the collection the object is being moved from
-    new-collection-id: id of the collection the object is being moved to
+  Checks if a move from old-collection-id to new-collection-id means the object is moving from a remote-synced
+  collection into a non-remote-synced collection or a remote-synced collection with a different root.
 
-  Returns:
-    true if the old collection is part of the remote-synced collection and the new collection is not or has a different remote-synced root."
+  Takes old-collection-id (id of the collection the object is being moved from) and new-collection-id (id of the
+  collection the object is being moved to).
+
+  Returns true if the old collection is part of the remote-synced collection and the new collection is not or has a
+  different remote-synced root."
   [old-collection-id new-collection-id]
   (boolean
    (and (not (nil? old-collection-id))
@@ -1188,17 +1184,16 @@
                 true))))))
 
 (defn check-for-remote-sync-update
-  "Check collection items for remote-sync integrity after the app database has been updated but before the transaction is committed
+  "Checks collection items for remote-sync integrity during an update transaction.
 
-  Args:
-    model-before-update: model being checked before changes have been applied
-    updates: map of changes that have been applied to the database
+  Verifies remote-sync integrity after the app database has been updated but before the transaction is committed.
 
-  Returns:
-    the model with the changes applied
+  Takes model-before-update (model being checked before changes have been applied, containing the updates map of
+  changes that have been applied to the database).
 
-  Raises
-    ex-info object if remote-sync integrity is violated"
+  Returns the model with the changes applied.
+
+  Throws an ex-info object if remote-sync integrity is violated."
   [{id :id collection-before-update :collection_id :as model-before-update}]
   (u/prog1 (t2/select-one (t2/model model-before-update) :id id)
     (let [{collection-after-update :collection_id :as model-after-update} <>]
@@ -1303,12 +1298,10 @@
 (mu/defn collection->descendant-ids :- [:maybe [:set ms/PositiveInt]]
   "Gets the IDs of all descendant collections for a given collection.
 
-  Args:
-    collection: A collection with location and ID or root collection.
-    additional-conditions: Optional additional conditions to filter descendants.
+  Takes collection (a collection with location and ID or root collection) and additional-conditions (optional
+  additional conditions to filter descendants).
 
-  Returns:
-    A set of positive integers representing descendant collection IDs, or nil if none exist."
+  Returns a set of positive integers representing descendant collection IDs, or nil if none exist."
   [collection :- CollectionWithLocationAndIDOrRoot, & additional-conditions]
   (apply t2/select-pks-set :model/Collection
          :location [:like (str (children-location collection) "%")]
