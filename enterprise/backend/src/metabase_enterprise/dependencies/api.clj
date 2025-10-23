@@ -42,7 +42,7 @@
      :bad_cards (into [] (comp (filter (fn [card]
                                          (if (mi/can-read? card)
                                            card
-                                           (do (log/warnf "Eliding broken card %d - not readable by the user" (:id card))
+                                           (do (log/debugf "Eliding broken card %d - not readable by the user" (:id card))
                                                nil))))
                                (map (fn [card]
                                       (-> card
@@ -151,7 +151,7 @@
    :type entity-type
    :data (->> (select-keys entity (entity-keys entity-type))
               (m/map-vals format-subentity))
-   :dependents (usages [entity-type id])})
+   :dependents_count (usages [entity-type id])})
 
 (defn- entity-model [entity-type]
   (case entity-type
@@ -191,7 +191,7 @@
     (mapcat (fn [[entity-type entity-ids]]
               (->> (cond-> (t2/select (entity-model entity-type)
                                       :id [:in entity-ids])
-                     (= entity-type :card)      (-> (t2/hydrate :creator :dashboard :collection :moderation_reviews)
+                     (= entity-type :card)      (-> (t2/hydrate :creator :dashboard [:collection :is_personal] :moderation_reviews)
                                                     (->> (map collection.root/hydrate-root-collection))
                                                     (revisions/with-last-edit-info :card))
                      (= entity-type :table)     (t2/hydrate :fields :db)

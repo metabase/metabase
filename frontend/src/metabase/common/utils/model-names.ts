@@ -1,6 +1,8 @@
 import { t } from "ttag";
 
-const TRANSLATED_NAME_BY_MODEL_TYPE: Record<string, string> = {
+import type { SearchModel } from "metabase-types/api";
+
+const TRANSLATED_NAME_BY_MODEL_TYPE: Record<SearchModel, string> = {
   get action() {
     return t`Action`;
   },
@@ -25,9 +27,6 @@ const TRANSLATED_NAME_BY_MODEL_TYPE: Record<string, string> = {
   get metric() {
     return t`Metric`;
   },
-  get pulse() {
-    return t`Pulse`;
-  },
   get segment() {
     return t`Segment`;
   },
@@ -37,7 +36,10 @@ const TRANSLATED_NAME_BY_MODEL_TYPE: Record<string, string> = {
   get document() {
     return t`Document`;
   },
+  get transform() {
+    return t`Transform`;
+  },
 };
 
-export const getTranslatedEntityName = (type: string) =>
+export const getTranslatedEntityName = (type: SearchModel) =>
   TRANSLATED_NAME_BY_MODEL_TYPE[type] || null;
