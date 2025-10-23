@@ -19,7 +19,6 @@ import {
   getNodeLabel,
   getNodeLink,
   getNodeLocationInfo,
-  getNodeTypeInfo,
 } from "../../utils";
 
 import S from "./PanelHeader.module.css";
@@ -32,12 +31,11 @@ type PanelHeaderProps = {
 export function PanelHeader({ node, onClose }: PanelHeaderProps) {
   const link = getNodeLink(node);
   const location = getNodeLocationInfo(node);
-  const typeInfo = getNodeTypeInfo(node);
 
   return (
     <Group className={S.root} p="lg" gap="0.75rem" wrap="nowrap">
       <Center w="2.75rem" h="2.75rem" bdrs="50%" bg="bg-secondary">
-        <FixedSizeIcon name={getNodeIcon(node)} c={typeInfo.color} size={20} />
+        <FixedSizeIcon name={getNodeIcon(node)} c="brand" size={20} />
       </Center>
       <Stack gap="xs" flex={1}>
         <Title order={3} lh="1.5rem">
