@@ -374,7 +374,7 @@
 
 (deftest ^:parallel dont-overwrite-existing-card-id-test
   (testing "Don't overwrite existing values of `[:info :card-id]`"
-    (qp.store/with-metadata-provider mock-metadata-provider
+    (qp.store/with-metadata-provider (mock-metadata-provider)
       (let [query (assoc (lib.tu.macros/mbql-query nil {:source-table "card__1"})
                          :info {:card-id Integer/MAX_VALUE})]
         (is (=? (assoc (lib.tu.macros/mbql-query nil

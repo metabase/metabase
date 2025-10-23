@@ -8,7 +8,6 @@
    [metabase-enterprise.test :as met]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
@@ -126,7 +125,7 @@
           (is (= (inc limited-download-max-rows)
                  (-> (native-download-query) limit-download-result-rows mt/rows count))))))))
 
-(defn- check-download-permisions [query]
+(defn- check-download-permissions [query]
   (let [qp (ee.qp.perms/check-download-permissions
             (fn [query _rff]
               query))]
@@ -141,23 +140,23 @@
         (is (thrown-with-msg?
              ExceptionInfo
              download-perms-error-msg
-             (check-download-permisions (mbql-download-query))))
+             (check-download-permissions (mbql-download-query))))
 
         (testing "No exception is thrown for non-download queries"
           (let [query (dissoc (mbql-download-query 'venues) :info)]
-            (is (= query (check-download-permisions query)))))))))
+            (is (= query (check-download-permissions query)))))))))
 
 (deftest check-download-permissions-test-2
   (testing "No exception is thrown if the user has any (full or limited) download permissions for the DB"
     (with-download-perms-for-db! (mt/id) :full
       (mt/with-current-user (mt/user->id :rasta)
         (is (= (mbql-download-query)
-               (check-download-permisions (mbql-download-query))))))
+               (check-download-permissions (mbql-download-query))))))
 
     (with-download-perms-for-db! (mt/id) :limited
       (mt/with-current-user (mt/user->id :rasta)
         (is (= (mbql-download-query)
-               (check-download-permisions (mbql-download-query))))))))
+               (check-download-permissions (mbql-download-query))))))))
 
 (deftest check-download-permissions-when-advanced-mbql-sandboxed-test
   (testing "Applying a basic sandbox does not affect the download permissions for a table"
@@ -174,7 +173,7 @@
           (mt/with-metadata-provider (mt/id)
             (let [with-sandbox (apply-row-level-permissions (mbql-download-query 'checkins))]
               (is (= with-sandbox
-                     (check-download-permisions with-sandbox))))))))))
+                     (check-download-permissions with-sandbox))))))))))
 
 (deftest check-download-permissions-when-advanced-sql-sandboxed-test
   (testing "Applying a advanced sandbox does not affect the download permissions for a table"

@@ -567,7 +567,7 @@
 (deftest sql-with-join-test
   (mt/test-drivers (into #{}
                          (filter #(driver.u/supports? % :parameterized-sql nil))
-                         (sandboxing-fk-sql-drivers))
+                         (row-level-restrictions-fk-sql-drivers))
     (testing (str "If we use a parameterized SQL GTAP that joins a Table the user doesn't have access to, does it "
                   "still work? (EE #230) If we pass the query in directly without anything that would require nesting "
                   "it, it should work")
@@ -1345,6 +1345,6 @@
 (deftest sandboxing-throws-on-ee-without-token
   (mt/test-drivers (e2e-test-drivers)
     (testing "Basic test around querying a table by a user with segmented only permissions and a GTAP question that is a native query"
-      (met/with-gtaps! {:gtaps {:venues (venues-category-native-sandbox-def)}, :attributes {"cat" 50}}
+      (met/with-gtaps! {:gtaps {:venues (venues-category-native-gtap-def)}, :attributes {"cat" 50}}
         (mt/with-premium-features #{}
           (is (thrown-with-msg? clojure.lang.ExceptionInfo sandboxing-disabled-error (run-venues-count-query))))))))
