@@ -72,19 +72,18 @@ export function getNodeTableInfo(node: DependencyNode): NodeTableInfo | null {
       label: t`View metadata`,
       url: Urls.dataModelTable(table.db_id, table.schema, table.id),
     },
-    location: table.db && {
-      icon: "database",
-      parts: [
-        {
-          label: table.db.name,
-          url: Urls.dataModelDatabase(table.db.id),
-        },
-        {
-          label: table.schema,
-          url: Urls.dataModelSchema(table.db.id, table.schema),
-        },
-      ],
-    },
+    location: table.db
+      ? [
+          {
+            label: table.db.name,
+            url: Urls.dataModelDatabase(table.db.id),
+          },
+          {
+            label: table.schema,
+            url: Urls.dataModelSchema(table.db.id, table.schema),
+          },
+        ]
+      : null,
   };
 }
 

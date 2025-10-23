@@ -103,12 +103,7 @@ export function DependencyGraph({ entry }: DependencyGraphProps) {
               node={entryNode?.data ?? null}
               isGraphFetching={isFetching}
             />
-            {nodes.length > 1 && (
-              <GraphSelectInput
-                nodes={nodes}
-                onSelectionChange={setSelection}
-              />
-            )}
+            {nodes.length > 1 && <GraphSelectInput nodes={nodes} />}
           </Group>
         </Panel>
         {selection != null && selection.withInfo && selectedNode != null && (

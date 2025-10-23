@@ -1,5 +1,5 @@
 .card {
-  min-width: 10rem;
+  min-width: 15rem;
 
   &:hover,
   &.selected {

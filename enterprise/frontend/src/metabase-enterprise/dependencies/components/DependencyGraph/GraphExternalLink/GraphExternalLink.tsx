@@ -1,7 +1,7 @@
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { ActionIcon, FixedSizeIcon, Tooltip, rem } from "metabase/ui";
 
-import { ACTION_ICON_PADDING } from "../constants";
+import { ACTION_ICON_PADDING, TOOLTIP_OPEN_DELAY } from "../constants";
 
 type GraphExternalLinkProps = {
   label: string;
@@ -10,7 +10,7 @@ type GraphExternalLinkProps = {
 
 export function GraphExternalLink({ label, url }: GraphExternalLinkProps) {
   return (
-    <Tooltip label={label}>
+    <Tooltip label={label} openDelay={TOOLTIP_OPEN_DELAY}>
       <ActionIcon
         component={ForwardRefLink}
         to={url}

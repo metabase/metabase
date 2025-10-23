@@ -117,8 +117,8 @@ const COMPARATORS: Record<SortColumn, SortCallback> = {
     return label1.localeCompare(label2);
   },
   location: (node1, node2) => {
-    const parts1 = getNodeLocationInfo(node1)?.parts ?? [];
-    const parts2 = getNodeLocationInfo(node2)?.parts ?? [];
+    const parts1 = getNodeLocationInfo(node1) ?? [];
+    const parts2 = getNodeLocationInfo(node2) ?? [];
     const minParts = parts1.length < parts2.length ? parts1 : parts2;
     const result = minParts
       .map((_link, i) => parts1[i].label.localeCompare(parts2[i].label))

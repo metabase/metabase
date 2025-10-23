@@ -2,7 +2,6 @@ import { t } from "ttag";
 
 import {
   ActionIcon,
-  Box,
   Center,
   FixedSizeIcon,
   Group,
@@ -44,14 +43,14 @@ export function PanelHeader({ node, onClose }: PanelHeaderProps) {
         </Title>
         {location != null && <GraphBreadcrumbs location={location} />}
       </Stack>
-      <Box m={rem(-ACTION_ICON_PADDING)}>
+      <Group m={rem(-ACTION_ICON_PADDING)} gap="xs">
         {link != null && (
           <GraphExternalLink label={link.label} url={link.url} />
         )}
         <ActionIcon aria-label={t`Close`} onClick={onClose}>
           <FixedSizeIcon name="close" />
         </ActionIcon>
-      </Box>
+      </Group>
     </Group>
   );
 }

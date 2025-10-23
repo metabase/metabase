@@ -62,7 +62,7 @@ function ListItem({ node }: ListItemProps) {
       {(location != null || (link != null && viewCount != null)) && (
         <Group justify={location != null ? "space-between" : "flex-end"}>
           {location != null && (
-            <GraphBreadcrumbs location={location} withIcon />
+            <GraphBreadcrumbs location={location} ml="1rem" pl="sm" />
           )}
           {link != null && viewCount != null && (
             <GraphExternalLink label={link.label} url={link.url} />

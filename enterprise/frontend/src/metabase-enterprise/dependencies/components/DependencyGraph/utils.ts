@@ -20,7 +20,6 @@ import type {
   GraphData,
   NodeId,
   NodeLink,
-  NodeLocation,
   NodeType,
   NodeTypeInfo,
 } from "./types";
@@ -168,47 +167,38 @@ export function getNodeLink(node: DependencyNode): NodeLink | null {
   }
 }
 
-export function getNodeLocationInfo(node: DependencyNode): NodeLocation | null {
+export function getNodeLocationInfo(node: DependencyNode): NodeLink[] | null {
   switch (node.type) {
     case "card":
       if (node.data.dashboard != null) {
-        return {
-          icon: "dashboard",
-          parts: [
-            {
-              label: node.data.dashboard.name,
-              url: Urls.dashboard(node.data.dashboard),
-            },
-          ],
-        };
+        return [
+          {
+            label: node.data.dashboard.name,
+            url: Urls.dashboard(node.data.dashboard),
+          },
+        ];
       }
       if (node.data.collection != null) {
-        return {
-          icon: "collection",
-          parts: [
-            {
-              label: node.data.collection.name,
-              url: Urls.collection(node.data.collection),
-            },
-          ],
-        };
+        return [
+          {
+            label: node.data.collection.name,
+            url: Urls.collection(node.data.collection),
+          },
+        ];
       }
       return null;
     case "table":
       if (node.data.db != null) {
-        return {
-          icon: "database",
-          parts: [
-            {
-              label: node.data.db.name,
-              url: Urls.dataModelDatabase(node.data.db_id),
-            },
-            {
-              label: node.data.schema,
-              url: Urls.dataModelSchema(node.data.db_id, node.data.schema),
-            },
-          ],
-        };
+        return [
+          {
+            label: node.data.db.name,
+            url: Urls.dataModelDatabase(node.data.db_id),
+          },
+          {
+            label: node.data.schema,
+            url: Urls.dataModelSchema(node.data.db_id, node.data.schema),
+          },
+        ];
       }
       return null;
     case "transform":

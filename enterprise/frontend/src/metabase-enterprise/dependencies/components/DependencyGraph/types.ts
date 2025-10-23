@@ -1,6 +1,5 @@
 import type { Edge, Node } from "@xyflow/react";
 
-import type { IconName } from "metabase/ui";
 import type {
   DependencyGroupType,
   DependencyId,
@@ -20,11 +19,6 @@ export type NodeTypeInfo = {
 export type NodeLink = {
   label: string;
   url: string;
-};
-
-export type NodeLocation = {
-  icon: IconName;
-  parts: NodeLink[];
 };
 
 export type GraphData = {

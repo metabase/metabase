@@ -1,26 +1,24 @@
 import { Fragment } from "react";
 import { Link } from "react-router";
 
-import { Box, Group, Icon } from "metabase/ui";
+import { Box, Group, type GroupProps } from "metabase/ui";
 
-import type { NodeLocation } from "../types";
+import type { NodeLink } from "../types";
 
 import S from "./GraphBreadcrumbs.module.css";
 
-type GraphBreadcrumbsProps = {
-  location: NodeLocation;
-  withIcon?: boolean;
+type GraphBreadcrumbsProps = GroupProps & {
+  location: NodeLink[];
 };
 
 export function GraphBreadcrumbs({
   location,
-  withIcon,
+  ...props
 }: GraphBreadcrumbsProps) {
   return (
-    <Group c="text-secondary" gap="sm" wrap="nowrap">
-      {withIcon && <Icon name={location.icon} />}
+    <Group c="text-secondary" gap="sm" wrap="nowrap" {...props}>
       <Group fz="sm" gap="xs">
-        {location.parts.map((part, partIndex) => (
+        {location.map((part, partIndex) => (
           <Fragment key={partIndex}>
             {partIndex > 0 && <Box>/</Box>}
             <Box

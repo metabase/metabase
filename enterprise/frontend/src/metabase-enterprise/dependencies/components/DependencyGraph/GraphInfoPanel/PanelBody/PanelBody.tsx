@@ -111,7 +111,9 @@ function GeneratedTableSection({ node }: SectionProps) {
           url={info.metadata.url}
         />
       </Group>
-      {info.location && <GraphBreadcrumbs location={info.location} withIcon />}
+      {info.location && (
+        <GraphBreadcrumbs location={info.location} ml="1rem" pl="sm" />
+      )}
     </Stack>
   );
 }

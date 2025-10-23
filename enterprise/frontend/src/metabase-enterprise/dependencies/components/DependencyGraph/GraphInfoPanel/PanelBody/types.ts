@@ -1,7 +1,7 @@
-import type { NodeLink, NodeLocation } from "../../types";
+import type { NodeLink } from "../../types";
 
 export type NodeTableInfo = {
   title: NodeLink;
   metadata: NodeLink;
-  location?: NodeLocation;
+  location: NodeLink[] | null;
 };
