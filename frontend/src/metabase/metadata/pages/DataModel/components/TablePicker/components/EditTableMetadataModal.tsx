@@ -18,7 +18,7 @@ interface Props {
   onUpdate?: () => void;
 }
 
-export function EditVisibilityType2Modal({
+export function EditTableMetadataModal({
   tables,
   isOpen,
   onClose,
@@ -36,7 +36,7 @@ export function EditVisibilityType2Modal({
   };
 
   const handleSubmit = async () => {
-    if (!visibilityType2) {
+    if (!visibilityType2 || !dataSource) {
       return;
     }
 
@@ -68,7 +68,7 @@ export function EditVisibilityType2Modal({
       opened={isOpen}
       padding="xl"
       size={rem(512)}
-      title={t`Edit ${tables.size} tables`} // TODO: pluralize with ngettext
+      title={t`Edit ${tables.size} tables`}
       onClose={handleClose}
     >
       <Stack gap="md" pt="sm">
