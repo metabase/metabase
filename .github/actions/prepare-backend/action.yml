@@ -62,3 +62,4 @@ runs:
           ~/.m2
           ~/.gitlibs
         key: ${{ runner.os }}-m2-${{ steps.get-date.outputs.week-of-year }}
+        restore-keys: ${{ runner.os }}-m2-
