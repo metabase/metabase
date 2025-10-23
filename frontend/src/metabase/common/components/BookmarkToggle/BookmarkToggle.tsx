@@ -57,6 +57,7 @@ const BookmarkToggle = forwardRef(function BookmarkToggle(
           name={iconName}
           className={cx(S.icon, {
             [S.iconAnimating]: isAnimating,
+            [S.actionIconBookmarked]: isBookmarked,
             [S.iconAnimatingBookmarked]: isAnimating && isBookmarked,
             [S.iconAnimatingUnbookmarked]: isAnimating && !isBookmarked,
           })}
