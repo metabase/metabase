@@ -14,8 +14,6 @@ import {
 } from "metabase/ui";
 import type { SearchModel } from "metabase-types/api";
 
-import { SEARCH_MODELS } from "../../constants";
-
 import S from "./SearchModelPicker.module.css";
 import { getSearchModelItems } from "./utils";
 
@@ -61,7 +59,7 @@ function SearchModelPopover({
   onSearchModelsChange,
 }: SearchModelPopoverProps) {
   const { data, isLoading } = useSearchQuery({
-    models: SEARCH_MODELS,
+    models: ["card"],
     limit: 0,
     calculate_available_models: true,
   });

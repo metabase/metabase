@@ -109,6 +109,17 @@ export function canFilterByOption(
   const type = getDependencyType(groupType);
   switch (option) {
     case "verified":
+      switch (type) {
+        case "card":
+        case "dashboard":
+          return true;
+        case "table":
+        case "transform":
+        case "snippet":
+        case "document":
+          return false;
+      }
+      break;
     case "in-dashboard":
       switch (type) {
         case "card":

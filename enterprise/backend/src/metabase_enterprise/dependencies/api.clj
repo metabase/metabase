@@ -135,8 +135,13 @@
            :moderation_reviews]
     :snippet [:name :description]
     :transform [:name :description :table]
-    :dashboard [:name :description]
-    :document [:name :description]
+    :dashboard [:name :description :view_count
+                :created_at :creator :last-edit-info
+                :collection :collection_id
+                :moderation_reviews]
+    :document [:name :description :view_count
+               :created_at :creator
+               :collection :collection_id]
     :sandbox [:group_id :table_id :card_id  :attribute_remappings]
     []))
 
@@ -196,9 +201,10 @@
                                                     (revisions/with-last-edit-info :card))
                      (= entity-type :table)     (t2/hydrate :fields :db)
                      (= entity-type :transform) (t2/hydrate :table-with-db-and-fields)
-                     (= entity-type :dashboard) (-> (t2/hydrate :creator :dashboard :collection :moderation_reviews)
-                                                    (->> (map collection.root/hydrate-root-collection)))
-                     (= entity-type :document) (-> (t2/hydrate :creator :collection)
+                     (= entity-type :dashboard) (-> (t2/hydrate :creator [:collection :is_personal] :moderation_reviews)
+                                                    (->> (map collection.root/hydrate-root-collection))
+                                                    (revisions/with-last-edit-info :dashboard))
+                     (= entity-type :document) (-> (t2/hydrate :creator [:collection :is_personal])
                                                    (->> (map collection.root/hydrate-root-collection)))
                      (= entity-type :sandbox) (t2/hydrate))
                    (mapv #(entity-value entity-type % usages))))
