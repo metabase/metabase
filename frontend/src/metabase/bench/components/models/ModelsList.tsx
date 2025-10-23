@@ -9,6 +9,7 @@ import {
   searchApi,
   useGetCardQuery,
   useListCollectionsTreeQuery,
+  useSearchQuery,
 } from "metabase/api";
 import { TAG_TYPE_MAPPING, listTag } from "metabase/api/tags";
 import { getTreeItems } from "metabase/bench/components/models/utils";
@@ -232,6 +233,15 @@ const ModelHeader = withRouter(
     params: { slug: string; tab?: string };
   }) => {
     const enableSettingsSidebar = shouldShowQuestionSettingsSidebar(question);
+
+    const { data } = useSearchQuery({
+      ids: [question.id()],
+      models: ["dataset"],
+    });
+
+    const modelCollectionId =
+      data?.data?.[0]?.collection && (data?.data?.[0]?.collection.id || "root");
+
     return (
       <BenchPaneHeader
         title={
@@ -241,6 +251,10 @@ const ModelHeader = withRouter(
               enableSettingsSidebar && {
                 label: t`Settings`,
                 to: `/bench/model/${params.slug}/settings`,
+              },
+              modelCollectionId && {
+                label: t`Metadata`,
+                to: `/bench/metadata/collection/${modelCollectionId}/model/${params.slug}`,
               },
             ].filter((t) => !!t)}
           />
