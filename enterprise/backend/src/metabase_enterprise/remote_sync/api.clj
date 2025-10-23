@@ -11,7 +11,6 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.collections.models.collection :as collection]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -119,21 +118,13 @@
     (settings/check-and-update-remote-settings! settings)
     (catch Exception e
       (throw (ex-info "Invalid git settings"
-                      {:error (ex-message e)
+                      {:error       (ex-message e)
                        :status-code 400} e))))
-  (cond (and (settings/remote-sync-enabled)
-             (= :production (settings/remote-sync-type)))
-        {:success true
-         :task_id (impl/async-import! (settings/remote-sync-branch) true {})}
-
-        (and (settings/remote-sync-enabled)
-             (= :development (settings/remote-sync-type))
-             (nil? (collection/remote-synced-collection)))
-        {:success true
-         :task_id (impl/async-import! (settings/remote-sync-branch) false {:create-collection? true})}
-
-        :else
-        {:success true}))
+  (let [task-id (impl/finish-remote-config!)]
+    (if task-id
+      {:success true
+       :task_id task-id}
+      {:success true})))
 
 (api.macros/defendpoint :get "/branches" :- remote-sync.schema/BranchesResponse
   "Get list of branches from the configured git source.

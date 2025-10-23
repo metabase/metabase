@@ -7,6 +7,7 @@
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
+   [metabase-enterprise.remote-sync.source.git :as git]
    [metabase-enterprise.remote-sync.source.ingestable :as source.ingestable]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.serialization.core :as serialization]
@@ -15,6 +16,7 @@
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.collections.models.collection :as collection]
    [metabase.models.serialization :as serdes]
+   [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
@@ -117,7 +119,6 @@
   "Imports and reloads Metabase entities from a remote source.
 
   Takes a Source instance, a RemoteSyncTask ID for progress tracking, and optional keyword arguments:
-  - :create-collection? - creates a remote-synced collection if none exists
   - :force? - forces import even when the source version matches the last imported version
 
   Loads serialized entities, removes entities not in the import, syncs the remote-sync-object table, and
@@ -125,7 +126,7 @@
 
   Returns a map with :status (either :success or :error), :version, and :message keys. Various exceptions may be
   thrown during import and are caught and converted to error status maps."
-  [source task-id & {:keys [create-collection? force?]}]
+  [source task-id & {:keys [force?]}]
   (log/info "Reloading remote entities from the remote source")
   (analytics/inc! :metabase-remote-sync/imports)
   (let [sync-timestamp (t/instant)]
@@ -152,7 +153,7 @@
               (t2/with-transaction [_conn]
                 (remove-unsynced! (all-top-level-remote-synced-collections) imported-entities-by-model)
                 (sync-objects! sync-timestamp imported-entities-by-model)
-                (when (and create-collection? (nil? (collection/remote-synced-collection)))
+                (when (and (nil? (collection/remote-synced-collection)) (= :development (settings/remote-sync-type)))
                   (collection/create-remote-synced-collection!)))
               (remote-sync.task/update-progress! task-id 0.95)
               (remote-sync.task/set-version!
@@ -298,3 +299,17 @@
                       {:status-code 400
                        :conflicts true})))
     (run-async! "export" branch (fn [task-id] (export! source task-id message)))))
+
+(defn finish-remote-config!
+  "Based on the current configuration, fill in any missing settings and finalize remote sync setup.
+
+  Returns the async-task id if an async task was started, otherwise nil."
+  []
+  (if (settings/remote-sync-enabled)
+    (do
+      (when (str/blank? (setting/get :remote-sync-branch))
+        (setting/set! :remote-sync-branch (git/default-branch (source/source-from-settings))))
+      (when (or (nil? (collection/remote-synced-collection)) (= :production (settings/remote-sync-type)))
+        (async-import! (settings/remote-sync-branch) true {})))
+    (u/prog1 nil
+      (collection/clear-remote-synced-collection!))))
