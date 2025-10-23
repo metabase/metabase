@@ -2246,6 +2246,49 @@ databaseChangeLog:
             tableName: metabase_field
             columnName: database_default
 
+  - changeSet:
+      id: v57.2025-10-23T19:55:50
+      author: noahmoss
+      comment: Add type column to transform table
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: type
+                  type: varchar(32)
+                  remarks: The type of transform ("python", "native", or "mbql")
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: transform
+            columnName: type
+
+  - changeSet:
+      id: v57.2025-10-23T19:56:00
+      author: noahmoss
+      comment: Backfill type column for existing transforms
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.BackfillTransformType"
+
+  - changeSet:
+      id: v57.2025-10-23T19:57:00
+      author: noahmoss
+      comment: Make transform.type column NOT NULL
+      changes:
+        - addNotNullConstraint:
+            tableName: transform
+            columnName: type
+            columnDataType: varchar(32)
+      rollback:
+        - dropNotNullConstraint:
+            tableName: transform
+            columnName: type
+            columnDataType: varchar(32)
+
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

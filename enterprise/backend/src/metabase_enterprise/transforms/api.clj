@@ -15,6 +15,7 @@
    [metabase.api.util.handlers :as handlers]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.lib.core :as lib]
    [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
    [metabase.util :as u]
@@ -107,6 +108,15 @@
     [:tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
   (get-transforms query-params))
 
+(defn- transform-source-type
+  "Compute the type field for a transform based on its source."
+  [source]
+  (case (keyword (:type source))
+    :python :python
+    :query  (if (lib/native-only-query? (:query source))
+              :native
+              :mbql)))
+
 (api.macros/defendpoint :post "/"
   "Create a new transform."
   [_route-params
@@ -126,8 +136,12 @@
              (deferred-tru "A table with that name already exists."))
   (let [transform (t2/with-transaction [_]
                     (let [tag-ids (:tag_ids body)
+                          transform-type (transform-source-type (:source body))
                           transform (t2/insert-returning-instance!
-                                     :model/Transform (select-keys body [:name :description :source :target :run_trigger]))]
+                                     :model/Transform
+                                     (-> body
+                                         (select-keys [:name :description :source :target :run_trigger])
+                                         (assoc :type transform-type)))]
                       ;; Add tag associations if provided
                       (when (seq tag-ids)
                         (transform.model/update-transform-tags! (:id transform) tag-ids))
@@ -200,10 +214,15 @@
                     ;; Cycle detection should occur within the transaction to avoid race
                     (let [old (t2/select-one :model/Transform id)
                           new (merge old body)
+                          new-type (transform-source-type (:source new))
                           target-fields #(-> % :target (select-keys [:schema :name]))]
                       ;; we must validate on a full transform object
                       (check-feature-enabled! new)
                       (check-database-feature new)
+                      ;; Validate that the source type hasn't changed
+                      (when (:source body)
+                        (api/check-400 (= (:type old) new-type)
+                                       (deferred-tru "Cannot change the type of a transform.")))
                       (when (transforms.util/query-transform? old)
                         (when-let [{:keys [cycle-str]} (transforms.ordering/get-transform-cycle new)]
                           (throw (ex-info (str "Cyclic transform definitions detected: " cycle-str)
