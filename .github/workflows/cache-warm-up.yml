@@ -23,7 +23,14 @@ jobs:
       - name: Pre-resolve dependencies
         run: clojure -A:build:dev:ee:ee-dev:drivers:drivers-dev:cljs -P
         # run: clojure -A:eastwood -P
-
+      - name: Check if the cache entry exists
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ~/.m2
+            ~/.gitlibs 
+          key: ${{ runner.os }}-m2-${{ env.week-of-year }}
+          lookup-only: true
       - name: Delete the cache
         env:
           GH_TOKEN: ${{ github.token }}
