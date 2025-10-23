@@ -29,6 +29,8 @@ runs:
       run: |
         curl -o ci-test-config.json https://raw.githubusercontent.com/metabase/metabase/refs/heads/master/ci-test-config.json
 
+    # This caching logic lives duplicated in the `prepare-frontend` action. We don't need the rest of this action there.
+    # Try keeping these caches in sync.
     - name: Get current week of year
       id: get-date
       run: |

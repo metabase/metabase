@@ -12,11 +12,20 @@ runs:
         node-version: ${{ inputs.node-version }} # this overrides, if present
         node-version-file: ".nvmrc"
 
+    # Note that this is the same caching logic from the `prepare-backend` action.
+    # Keep these caches in sync.
+    - name: Get current week of year
+      id: get-date
+      run: |
+        echo "week-of-year=$(/bin/date "+%G-%V")" >> $GITHUB_OUTPUT
+      shell: bash
     - name: Get M2 cache
       uses: actions/cache@v4
       with:
-        path: ~/.m2
-        key: ${{ runner.os }}-cljs-${{ hashFiles('**/shadow-cljs.edn') }}
+        path: |
+          ~/.m2
+          ~/.gitlibs
+        key: ${{ runner.os }}-m2-${{ steps.get-date.outputs.week-of-year }}
 
     - name: Get node_modules cache
       uses: actions/cache@v4
