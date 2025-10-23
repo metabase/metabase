@@ -319,7 +319,7 @@
                                           :unrestricted           :unrestricted
                                           ;; If the table is sandboxed, we set `view-data` to `unrestricted` since
                                           ;; sandboxes are stored separately in the `sandboxes` table
-                                          :sandboxed              :unrestricted
+                                          :sandboxed              :blocked
                                           :legacy-no-self-service :legacy-no-self-service
                                           :blocked                :blocked))))]
     (data-perms/set-table-permissions! group-id :perms/view-data new-table-perms)))
@@ -339,7 +339,7 @@
       (update-schema-level-view-data-permissions! group-id db-id schema new-schema-perms))
     (case new-db-perms
       (:unrestricted :impersonated)
-      (data-perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
+      (data-perms/set-database-permission! group-id db-id :perms/view-data :blocked)
 
       ;; Support setting legacy-no-self-service for testing purposes, though the UI shouldn't allow it normally
       :legacy-no-self-service

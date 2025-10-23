@@ -1549,7 +1549,8 @@
            query-processor
            util
            warehouses
-           enterprise/impersonation}}
+           enterprise/impersonation
+           enterprise/sandbox}}
 
   enterprise/ai-entity-analysis
   {:team "Metabot"
@@ -1804,7 +1805,8 @@
 
   enterprise/impersonation
   {:team "Drivers"
-   :api  #{metabase-enterprise.impersonation.api}
+   :api  #{metabase-enterprise.impersonation.api
+           metabase-enterprise.impersonation.core}
    :uses #{api
            audit-app
            driver
