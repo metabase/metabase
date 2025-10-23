@@ -7,7 +7,7 @@
   (deferred-tru "The OpenAI Model (e.g. ''gpt-4'', ''gpt-3.5-turbo'')")
   :encryption :no
   :visibility :settings-manager
-  :default "gpt-4-turbo-preview"
+  :default "gpt-4.1-mini"
   :export? false
   :doc false)
 
