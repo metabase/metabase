@@ -22,11 +22,16 @@ runs:
         chrome-version: 1097615
       id: setup-chrome
 
+    - name: Get current week of year
+      id: get-date
+      run: |
+        echo "week-of-year=$(/bin/date "+%G-%V")" >> $GITHUB_OUTPUT
+      shell: bash
     - name: Get Cypress cache
       uses: actions/cache@v4
       with:
         path: ~/.cache/Cypress
-        key: ${{ runner.os }}-Cypress-${{ hashFiles('**/yarn.lock') }}
+        key: ${{ runner.os }}-Cypress-${{ steps.get-date.outputs.week-of-year }}
     - name: Ensure that Cypress executable is ready
       run: |
         yarn cypress install

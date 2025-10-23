@@ -19,7 +19,11 @@
   because of Collection perms; throw an Exception if they are; otherwise return `true`. The query is still allowed to
   run if the current User has unrestricted data permissions from another Group. See the namespace documentation for
   [[metabase.collections.models.collection]] for more details."
-  :feature :advanced-permissions
+  ;; if a token check fails we don't want to fail open here
+  ;;
+  ;; run this even when the feature is not enabled - throwing here is better than silently ignoring the configured
+  ;; block.
+  :feature :none
   [{database-id :database :as query}]
   (let [{:keys [table-ids]} (query-perms/query->source-ids query)
         table-permissions   (map (partial perms/table-permission-for-user api/*current-user-id*

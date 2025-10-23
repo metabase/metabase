@@ -85,6 +85,7 @@ import type {
   Timeline,
   TimelineEvent,
   Transform,
+  TransformId,
   UpdateSnippetRequest,
   UpdateTransformRequest,
   User,
@@ -851,12 +852,25 @@ export const PLUGIN_SEMANTIC_SEARCH = {
   SearchSettingsWidget: PluginPlaceholder,
 };
 
+export type TransformPickerItem = {
+  id: TransformId;
+  name: string;
+  model: "transform";
+};
+
+export type TransformPickerProps = {
+  value: TransformPickerItem | undefined;
+  onItemSelect: (transform: TransformPickerItem) => void;
+};
+
 export type TransformsPlugin = {
+  TransformPicker: ComponentType<TransformPickerProps>;
   getAdminPaths(): AdminPath[];
   getAdminRoutes(): ReactNode;
 };
 
 export const PLUGIN_TRANSFORMS: TransformsPlugin = {
+  TransformPicker: PluginPlaceholder,
   getAdminPaths: () => [],
   getAdminRoutes: () => null,
 };
@@ -892,6 +906,8 @@ export const PLUGIN_TRANSFORMS_PYTHON: PythonTransformsPlugin = {
 };
 
 type DependenciesPlugin = {
+  isEnabled: boolean;
+  DependencyGraphPage: ComponentType;
   CheckDependenciesForm: ComponentType<CheckDependenciesFormProps>;
   CheckDependenciesModal: ComponentType<CheckDependenciesModalProps>;
   CheckDependenciesTitle: ComponentType;
@@ -945,6 +961,8 @@ function useCheckDependencies<TChange>({
 }
 
 export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
+  isEnabled: false,
+  DependencyGraphPage: PluginPlaceholder,
   CheckDependenciesForm: PluginPlaceholder,
   CheckDependenciesModal: PluginPlaceholder,
   CheckDependenciesTitle: PluginPlaceholder,

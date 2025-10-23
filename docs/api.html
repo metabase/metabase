@@ -946,7 +946,11 @@ redirect_from:
         }, {
           "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
         }, {
-          "$ref" : "#/components/schemas/metabase.lib.schema.id.segment"
+          "oneOf" : [ {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          }, {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.segment"
+          } ]
         } ]
       },
       "mbql.clause.share" : {
@@ -3298,7 +3302,7 @@ redirect_from:
       "metabase.analyze.query-results.ResultsMetadata" : {
         "type" : "array",
         "items" : {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.legacy-column-metadata"
+          "$ref" : "#/components/schemas/metabase.query-processor.schema..result-metadata.column"
         },
         "description" : "value must be an array of valid results column metadata maps.",
         "optional" : true
@@ -3606,6 +3610,225 @@ redirect_from:
         "description" : "schema for a valid legacy MBQL :tag clause",
         "allOf" : [ ]
       },
+      "metabase.legacy-mbql.schema..expression.options" : {
+        "description" : "Options for a legacy `:expression` ref in MBQL 4 are the same as in MBQL 5, except that `:lib/uuid` is optional and\n  it cannot be empty.",
+        "default" : { },
+        "type" : "object",
+        "properties" : {
+          "base-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
+          },
+          "database-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "display-name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "effective-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
+          },
+          "lib/uuid" : {
+            "type" : "string",
+            "minLength" : 36,
+            "maxLength" : 36
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "semantic-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.semantic-or-relation-type"
+          },
+          "temporal-unit" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
+          }
+        }
+      },
+      "metabase.legacy-mbql.schema..legacy-column-metadata.binning-info" : {
+        "type" : "object",
+        "properties" : {
+          "bin_width" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.binning.bin-width"
+          },
+          "binning_strategy" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.binning.strategy"
+          },
+          "num_bins" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.binning.num-bins"
+          },
+          "strategy" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.binning.strategy"
+          }
+        },
+        "required" : [ "strategy" ]
+      },
+      "metabase.legacy-mbql.schema..legacy-column-metadata.qualified-keys" : {
+        "type" : "object",
+        "properties" : {
+          "lib/external-remap" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.remapping.external"
+          },
+          "lib/source-column-alias" : {
+            "description" : "Name for a column as returned/projected by the previous stage of the query or source Table/source Card. The\n  left-hand side (LHS) of\n\n    SELECT lhs AS rhs",
+            "type" : "string"
+          },
+          "lib/type" : {
+            "default" : "metadata/column",
+            "const" : "metadata/column"
+          },
+          "lib/source-uuid" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.uuid"
+          },
+          "qp/implicit-field?" : {
+            "type" : "boolean"
+          },
+          "lib/ref-name" : {
+            "type" : "string"
+          },
+          "lib/deduplicated-name" : {
+            "type" : "string",
+            "description" : "The simply-deduplicated name that was historically used in QP results metadata (originally calculated by\n  the [[metabase.query-processor.middleware.annotate]] middleware, now calculated\n  by [[metabase.lib.middleware.result-metadata]]). This just adds suffixes to column names e.g. `ID` and `ID` become\n  `ID` and `ID_2`, respectively. Kept around because many old field refs use this column name."
+          },
+          "lib/original-expression-name" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "lib/card-id" : {
+            "description" : "Valid Card ID",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "lib/expression-name" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "lib/breakout?" : {
+            "type" : "boolean"
+          },
+          "metabase.lib.field/temporal-unit" : {
+            "type" : "string",
+            "enum" : [ "day", "day-of-month", "day-of-week", "day-of-year", "default", "hour", "hour-of-day", "millisecond", "minute", "minute-of-hour", "month", "month-of-year", "quarter", "quarter-of-year", "second", "second-of-minute", "week", "week-of-year", "year", "year-of-era" ]
+          },
+          "metabase.lib.field/binning" : {
+            "description" : "Schema for `:binning` options passed to a `:field` clause.",
+            "allOf" : [ {
+              "type" : "object",
+              "properties" : {
+                "strategy" : {
+                  "$ref" : "#/components/schemas/metabase.lib.schema.binning.strategy"
+                }
+              },
+              "required" : [ "strategy" ]
+            }, {
+              "oneOf" : [ {
+                "type" : "object",
+                "properties" : {
+                  "strategy" : {
+                    "const" : "default"
+                  }
+                },
+                "required" : [ "strategy" ]
+              }, {
+                "type" : "object",
+                "properties" : {
+                  "bin-width" : {
+                    "$ref" : "#/components/schemas/metabase.lib.schema.binning.bin-width"
+                  },
+                  "strategy" : {
+                    "const" : "bin-width"
+                  }
+                },
+                "required" : [ "strategy", "bin-width" ]
+              }, {
+                "type" : "object",
+                "properties" : {
+                  "num-bins" : {
+                    "$ref" : "#/components/schemas/metabase.lib.schema.binning.num-bins"
+                  },
+                  "strategy" : {
+                    "const" : "num-bins"
+                  }
+                },
+                "required" : [ "strategy", "num-bins" ]
+              } ]
+            } ]
+          },
+          "lib/model-display-name" : {
+            "type" : "string"
+          },
+          "lib/internal-remap" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.remapping.internal"
+          },
+          "metabase.lib.join/join-alias" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "lib/original-binning" : {
+            "description" : "Schema for `:binning` options passed to a `:field` clause.",
+            "allOf" : [ {
+              "type" : "object",
+              "properties" : {
+                "strategy" : {
+                  "$ref" : "#/components/schemas/metabase.lib.schema.binning.strategy"
+                }
+              },
+              "required" : [ "strategy" ]
+            }, {
+              "oneOf" : [ {
+                "type" : "object",
+                "properties" : {
+                  "strategy" : {
+                    "const" : "default"
+                  }
+                },
+                "required" : [ "strategy" ]
+              }, {
+                "type" : "object",
+                "properties" : {
+                  "bin-width" : {
+                    "$ref" : "#/components/schemas/metabase.lib.schema.binning.bin-width"
+                  },
+                  "strategy" : {
+                    "const" : "bin-width"
+                  }
+                },
+                "required" : [ "strategy", "bin-width" ]
+              }, {
+                "type" : "object",
+                "properties" : {
+                  "num-bins" : {
+                    "$ref" : "#/components/schemas/metabase.lib.schema.binning.num-bins"
+                  },
+                  "strategy" : {
+                    "const" : "num-bins"
+                  }
+                },
+                "required" : [ "strategy", "num-bins" ]
+              } ]
+            } ]
+          },
+          "lib/original-join-alias" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "lib/original-display-name" : {
+            "type" : "string"
+          },
+          "lib/source" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.source"
+          },
+          "lib/ref-display-name" : {
+            "type" : "string"
+          },
+          "lib/original-name" : {
+            "type" : "string",
+            "description" : "The original name of the column as it appeared in the very first place it came from (i.e., the physical name of the\n  column in the table it appears in). This should be the same as the `:lib/source-column-alias` for the very first\n  usage of the column.\n  Allowed to be blank because some databases like SQL Server allow blank column names."
+          },
+          "lib/desired-column-alias" : {
+            "description" : "Name we should use as a column alias for a column in this stage of a query. The desired column alias in stage N\n  becomes the source column alias in stage N+1. The right-hand side (RHS) in\n\n    SELECT lhs AS rhs",
+            "type" : "string"
+          }
+        }
+      },
       "metabase.legacy-mbql.schema./" : {
         "description" : "schema for a valid legacy MBQL :tag clause",
         "allOf" : [ ]
@@ -3824,47 +4047,65 @@ redirect_from:
         "enum" : [ "iso", "us", "instance" ]
       },
       "metabase.legacy-mbql.schema.FieldOptions" : {
-        "allOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "base-type" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
-            },
-            "binning" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning",
-              "description" : "Replaces `binning-strategy`.\n\n  Using binning requires the driver to support the `:binning` feature."
-            },
-            "inherited-temporal-unit" : {
-              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.DateTimeUnit"
-            },
-            "join-alias" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.join.alias",
-              "description" : "Replaces `joined-field`.\n\n  `:join-alias` is used to refer to a FieldOrExpression from a different Table/nested query that you are EXPLICITLY\n  JOINING against."
-            },
-            "source-field" : {
-              "description" : "Replaces `fk->`.\n\n  `:source-field` is used to refer to a FieldOrExpression from a different Table you would like IMPLICITLY JOINED to\n     the source table.\n\n  If both `:source-field` and `:join-alias` are supplied, `:join-alias` should be used to perform the join;\n  `:source-field` should be for information purposes only.",
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
-            },
-            "source-field-join-alias" : {
-              "description" : "The join alias of the source field used for an implicit join.",
-              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-            },
-            "source-field-name" : {
-              "description" : "The name or desired alias of the field used for an implicit join.",
-              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-            },
-            "temporal-unit" : {
-              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.DateTimeUnit",
-              "description" : "`:temporal-unit` is used to specify DATE BUCKETING for a FieldOrExpression that represents a moment in time of\n  some sort.\n\n  There is no requirement that all `:type/Temporal` derived FieldOrExpressions specify a `:temporal-unit`, but for\n  legacy reasons `:field` clauses that refer to `:type/DateTime` FieldOrExpressions will be automatically \"bucketed\"\n  in the `:breakout` and `:filter` clauses, but nowhere else. Auto-bucketing only applies to `:filter` clauses when\n  values for comparison are `yyyy-MM-dd` date strings. See the `auto-bucket-datetimes` middleware for more details.\n  `:field` clauses elsewhere will not be automatically bucketed, so drivers still need to make sure they do any\n  special datetime handling for plain `:field` clauses when their FieldOrExpression derives from `:type/DateTime`."
-            }
+        "default" : { },
+        "type" : "object",
+        "properties" : {
+          "binning" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
+          },
+          "inherited-temporal-unit" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
+          },
+          "database-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "metabase.lib.field/original-temporal-unit" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
+          },
+          "display-name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "source-field-name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "effective-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
+          },
+          "base-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
+          },
+          "lib/uuid" : {
+            "type" : "string",
+            "minLength" : 36,
+            "maxLength" : 36
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "metabase.lib.field/original-effective-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
+          },
+          "source-field" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+          },
+          "join-alias" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.join.alias"
+          },
+          "lib/original-binning" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
+          },
+          "temporal-unit" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
+          },
+          "source-field-join-alias" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "semantic-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.semantic-or-relation-type"
           }
-        }, {
-          "description" : "If `:base-type` is specified, the `:temporal-unit` must make sense, e.g. no bucketing by `:year`for\n  a `:type/Time` column.",
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.validate-temporal-unit"
-        }, {
-          "description" : "You cannot use `:binning` keys like `:strategy` in the top level.",
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.no-binning-options-at-top-level"
-        } ]
+        },
+        "description" : "Options for an MBQL 4 `:field` ref are the same as MBQL 5, except that `:lib/uuid` is not required and it cannot be\n  empty.",
+        "optional" : true
       },
       "metabase.legacy-mbql.schema.FieldOrExpressionDef" : {
         "description" : "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a\n  `:+` clause or a `:field` or `:value` clause.",
@@ -4757,7 +4998,6 @@ redirect_from:
           "description" : "schema for a valid legacy MBQL :tag clause",
           "allOf" : [ ]
         }, {
-          "description" : "Fields using names rather than integer IDs are required to specify `:base-type`.",
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.require-base-type-for-field-name"
         } ]
       },
@@ -4854,6 +5094,17 @@ redirect_from:
           "field_ref" : {
             "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Reference"
           },
+          "lib/external-remap" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.remapping.external"
+          },
+          "lib/source-column-alias" : {
+            "description" : "Name for a column as returned/projected by the previous stage of the query or source Table/source Card. The\n  left-hand side (LHS) of\n\n    SELECT lhs AS rhs",
+            "type" : "string"
+          },
+          "lib/type" : {
+            "default" : "metadata/column",
+            "const" : "metadata/column"
+          },
           "fingerprint" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.metadata.fingerprint.fingerprint"
           },
@@ -4861,13 +5112,91 @@ redirect_from:
             "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.visibility-type"
           },
           "base_type" : {
+            "default" : "type/*",
             "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
+          },
+          "lib/source-uuid" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.uuid"
+          },
+          "qp/implicit-field?" : {
+            "type" : "boolean"
+          },
+          "lib/ref-name" : {
+            "type" : "string"
           },
           "id" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
           },
+          "lib/deduplicated-name" : {
+            "type" : "string",
+            "description" : "The simply-deduplicated name that was historically used in QP results metadata (originally calculated by\n  the [[metabase.query-processor.middleware.annotate]] middleware, now calculated\n  by [[metabase.lib.middleware.result-metadata]]). This just adds suffixes to column names e.g. `ID` and `ID` become\n  `ID` and `ID_2`, respectively. Kept around because many old field refs use this column name."
+          },
+          "lib/original-expression-name" : {
+            "type" : "string",
+            "minLength" : 1
+          },
           "name" : {
             "type" : "string"
+          },
+          "lib/card-id" : {
+            "description" : "Valid Card ID",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "lib/expression-name" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "lib/breakout?" : {
+            "type" : "boolean"
+          },
+          "metabase.lib.field/temporal-unit" : {
+            "type" : "string",
+            "enum" : [ "day", "day-of-month", "day-of-week", "day-of-year", "default", "hour", "hour-of-day", "millisecond", "minute", "minute-of-hour", "month", "month-of-year", "quarter", "quarter-of-year", "second", "second-of-minute", "week", "week-of-year", "year", "year-of-era" ]
+          },
+          "metabase.lib.field/binning" : {
+            "description" : "Schema for `:binning` options passed to a `:field` clause.",
+            "allOf" : [ {
+              "type" : "object",
+              "properties" : {
+                "strategy" : {
+                  "$ref" : "#/components/schemas/metabase.lib.schema.binning.strategy"
+                }
+              },
+              "required" : [ "strategy" ]
+            }, {
+              "oneOf" : [ {
+                "type" : "object",
+                "properties" : {
+                  "strategy" : {
+                    "const" : "default"
+                  }
+                },
+                "required" : [ "strategy" ]
+              }, {
+                "type" : "object",
+                "properties" : {
+                  "bin-width" : {
+                    "$ref" : "#/components/schemas/metabase.lib.schema.binning.bin-width"
+                  },
+                  "strategy" : {
+                    "const" : "bin-width"
+                  }
+                },
+                "required" : [ "strategy", "bin-width" ]
+              }, {
+                "type" : "object",
+                "properties" : {
+                  "num-bins" : {
+                    "$ref" : "#/components/schemas/metabase.lib.schema.binning.num-bins"
+                  },
+                  "strategy" : {
+                    "const" : "num-bins"
+                  }
+                },
+                "required" : [ "strategy", "num-bins" ]
+              } ]
+            } ]
           },
           "semantic_type" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.common.semantic-or-relation-type"
@@ -4875,17 +5204,95 @@ redirect_from:
           "display_name" : {
             "type" : "string"
           },
+          "lib/model-display-name" : {
+            "type" : "string"
+          },
+          "lib/internal-remap" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.remapping.internal"
+          },
           "converted_timezone" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.expression.temporal.timezone-id"
           },
           "source" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.legacy-source"
           },
+          "metabase.lib.join/join-alias" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "binning_info" : {
+            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema..legacy-column-metadata.binning-info"
+          },
+          "lib/original-binning" : {
+            "description" : "Schema for `:binning` options passed to a `:field` clause.",
+            "allOf" : [ {
+              "type" : "object",
+              "properties" : {
+                "strategy" : {
+                  "$ref" : "#/components/schemas/metabase.lib.schema.binning.strategy"
+                }
+              },
+              "required" : [ "strategy" ]
+            }, {
+              "oneOf" : [ {
+                "type" : "object",
+                "properties" : {
+                  "strategy" : {
+                    "const" : "default"
+                  }
+                },
+                "required" : [ "strategy" ]
+              }, {
+                "type" : "object",
+                "properties" : {
+                  "bin-width" : {
+                    "$ref" : "#/components/schemas/metabase.lib.schema.binning.bin-width"
+                  },
+                  "strategy" : {
+                    "const" : "bin-width"
+                  }
+                },
+                "required" : [ "strategy", "bin-width" ]
+              }, {
+                "type" : "object",
+                "properties" : {
+                  "num-bins" : {
+                    "$ref" : "#/components/schemas/metabase.lib.schema.binning.num-bins"
+                  },
+                  "strategy" : {
+                    "const" : "num-bins"
+                  }
+                },
+                "required" : [ "strategy", "num-bins" ]
+              } ]
+            } ]
+          },
           "effective_type" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
           },
+          "lib/original-join-alias" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "lib/original-display-name" : {
+            "type" : "string"
+          },
           "unit" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
+          },
+          "lib/source" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.source"
+          },
+          "lib/ref-display-name" : {
+            "type" : "string"
+          },
+          "lib/original-name" : {
+            "type" : "string",
+            "description" : "The original name of the column as it appeared in the very first place it came from (i.e., the physical name of the\n  column in the table it appears in). This should be the same as the `:lib/source-column-alias` for the very first\n  usage of the column.\n  Allowed to be blank because some databases like SQL Server allow blank column names."
+          },
+          "lib/desired-column-alias" : {
+            "description" : "Name we should use as a column alias for a column in this stage of a query. The desired column alias in stage N\n  becomes the source column alias in stage N+1. The right-hand side (RHS) in\n\n    SELECT lhs AS rhs",
+            "type" : "string"
           }
         },
         "required" : [ "base_type", "display_name", "name" ]
@@ -4926,7 +5333,6 @@ redirect_from:
         "description" : "schema for a valid legacy MBQL :tag clause",
         "allOf" : [ ]
       },
-      "metabase.legacy-mbql.schema.no-binning-options-at-top-level" : { },
       "metabase.legacy-mbql.schema.not" : {
         "description" : "schema for a valid legacy MBQL :tag clause",
         "allOf" : [ ]
@@ -4987,7 +5393,9 @@ redirect_from:
         "description" : "schema for a valid legacy MBQL :tag clause",
         "allOf" : [ ]
       },
-      "metabase.legacy-mbql.schema.require-base-type-for-field-name" : { },
+      "metabase.legacy-mbql.schema.require-base-type-for-field-name" : {
+        "description" : "Fields using names rather than integer IDs are required to specify `:base-type`."
+      },
       "metabase.legacy-mbql.schema.round" : {
         "description" : "schema for a valid legacy MBQL :tag clause",
         "allOf" : [ ]
@@ -5069,7 +5477,6 @@ redirect_from:
         "description" : "schema for a valid legacy MBQL :tag clause",
         "allOf" : [ ]
       },
-      "metabase.legacy-mbql.schema.validate-temporal-unit" : { },
       "metabase.legacy-mbql.schema.value" : {
         "description" : "schema for a valid legacy MBQL :tag clause",
         "allOf" : [ ]
@@ -6247,6 +6654,7 @@ redirect_from:
               "$ref" : "#/components/schemas/metabase.lib.schema.metadata.deduplicated-name"
             },
             "base-type" : {
+              "default" : "type/*",
               "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
             },
             "lib/original-expression-name" : {
@@ -6523,6 +6931,7 @@ redirect_from:
                 "$ref" : "#/components/schemas/metabase.lib.schema.metadata.deduplicated-name"
               },
               "base-type" : {
+                "default" : "type/*",
                 "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
               },
               "lib/original-expression-name" : {
@@ -6744,6 +7153,19 @@ redirect_from:
       "metabase.lib.schema.parameter..target.legacy-field-ref" : {
         "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.field"
       },
+      "metabase.lib.schema.parameter..template-tag.tag-name" : {
+        "oneOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "id" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+            }
+          },
+          "required" : [ "id" ]
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+        } ]
+      },
       "metabase.lib.schema.parameter..variable.target" : {
         "oneOf" : [ {
           "$ref" : "#/components/schemas/metabase.lib.schema.parameter..target.legacy-field-ref"
@@ -6756,7 +7178,7 @@ redirect_from:
         "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
       },
       "metabase.lib.schema.parameter.parameter" : {
-        "description" : "Schema for the *value* of a parameter (e.g. a Dashboard parameter or a native query template tag) as passed in as\n  part of the `:parameters` list in a query.",
+        "description" : "Schema for the *value* of a parameter (e.g. a Dashboard parameter or a native query template tag) as passed in as\n  part of the `:parameters` list in a query.\n\n  Note that this is different from the parameter declarations that are saved as part of Dashboards and Cards; for THAT\n  schema refer to `:metabase.parameters.schema/parameter`.",
         "allOf" : [ {
           "type" : "object",
           "properties" : {
@@ -6802,12 +7224,6 @@ redirect_from:
           "$ref" : "#/components/schemas/metabase.lib.schema.parameter.text-tag"
         }, {
           "$ref" : "#/components/schemas/metabase.lib.schema.parameter..target.legacy-field-ref"
-        }, {
-          "$ref" : "#/components/schemas/metabase.lib.schema.parameter..target.legacy-field-ref"
-        }, {
-          "$ref" : "#/components/schemas/metabase.lib.schema.parameter..target.legacy-field-ref"
-        }, {
-          "$ref" : "#/components/schemas/metabase.lib.schema.parameter..target.legacy-field-ref"
         } ]
       },
       "metabase.lib.schema.parameter.template-tag" : {
@@ -6816,17 +7232,7 @@ redirect_from:
         "prefixItems" : [ {
           "const" : "template-tag"
         }, {
-          "oneOf" : [ {
-            "type" : "object",
-            "properties" : {
-              "id" : {
-                "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-              }
-            },
-            "required" : [ "id" ]
-          }, {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-          } ]
+          "$ref" : "#/components/schemas/metabase.lib.schema.parameter..template-tag.tag-name"
         } ]
       },
       "metabase.lib.schema.parameter.text-tag" : {
@@ -6853,6 +7259,7 @@ redirect_from:
         } ]
       },
       "metabase.lib.schema.parameter.widget-type" : {
+        "description" : "The type of widget to display in the FE UI for the user to use to pick values for this parameter.",
         "type" : "string",
         "enum" : [ "none", "number", "text", "date", "boolean", "date/single", "id", "category", "location/city", "location/state", "location/zip_code", "location/country", "date/range", "date/month-year", "date/quarter-year", "date/relative", "date/all-options", "temporal-unit", "number/!=", "number/<=", "number/=", "number/>=", "number/between", "string/!=", "string/=", "string/contains", "string/does-not-contain", "string/ends-with", "string/starts-with", "boolean/=" ]
       },
@@ -6977,6 +7384,9 @@ redirect_from:
           "display-name" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
           },
+          "source-field-name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
           "effective-type" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
           },
@@ -7004,6 +7414,9 @@ redirect_from:
           "temporal-unit" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
           },
+          "source-field-join-alias" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
           "semantic-type" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.common.semantic-or-relation-type"
           }
@@ -7027,6 +7440,9 @@ redirect_from:
             "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
           },
           "display-name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "source-field-name" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
           },
           "effective-type" : {
@@ -7055,6 +7471,9 @@ redirect_from:
           },
           "temporal-unit" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
+          },
+          "source-field-join-alias" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
           },
           "semantic-type" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.common.semantic-or-relation-type"
@@ -7376,8 +7795,8 @@ redirect_from:
         "enum" : [ "snippet", "card", "dimension", "number", "text", "date", "boolean", "temporal-unit" ]
       },
       "metabase.lib.schema.template-tag.widget-type" : {
-        "type" : "string",
-        "enum" : [ "none", "number", "text", "date", "boolean", "date/single", "id", "category", "location/city", "location/state", "location/zip_code", "location/country", "date/range", "date/month-year", "date/quarter-year", "date/relative", "date/all-options", "temporal-unit", "number/!=", "number/<=", "number/=", "number/>=", "number/between", "string/!=", "string/=", "string/contains", "string/does-not-contain", "string/ends-with", "string/starts-with", "boolean/=" ]
+        "description" : "Schema for valid values of `:widget-type` for a `:metabase.lib.schema.template-tag/field-filter` template tag.",
+        "$ref" : "#/components/schemas/metabase.lib.schema.parameter.widget-type"
       },
       "metabase.lib.schema.temporal-bucketing..unit.date" : {
         "type" : "string",
@@ -8150,6 +8569,12 @@ redirect_from:
           "parameters" : {
             "$ref" : "#/components/schemas/metabase.parameters.schema.parameters"
           },
+          "result_metadata" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.metadata.lib-or-legacy-column"
+            }
+          },
           "type" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.metadata..card.type"
           }
@@ -8217,6 +8642,10 @@ redirect_from:
             "allOf" : [ ]
           } ]
         } ]
+      },
+      "metabase.query-processor.schema..result-metadata.column" : {
+        "description" : "A single result metadata column as returned by the Query Processor.",
+        "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.legacy-column-metadata"
       },
       "metabase.query-processor.schema.export-format" : {
         "description" : "Schema for valid export formats for downloading query results.",

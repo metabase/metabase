@@ -728,10 +728,10 @@
                                            :parameter_mappings [{:parameter_id "_TEXT_"
                                                                  :card_id      card-id
                                                                  :target       [:dimension [:template-tag "not-existed-filter"]]}]}]
-      (mt/with-log-messages-for-level [messages [metabase.parameters.params :error]]
+      (mt/with-log-messages-for-level [messages [metabase.parameters.params :warn]]
         (is (some? (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id))))
-        (is (=? [{:level   :error
-                  :message "Could not find matching field clause for target: [:dimension [:template-tag \"not-existed-filter\"]]"}]
+        (is (=? [{:level   :warn
+                  :message "Could not find matching Field ID for target: \"not-existed-filter\""}]
                 (messages)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
