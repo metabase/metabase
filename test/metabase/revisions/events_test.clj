@@ -52,6 +52,7 @@
    :enable_embedding    false
    :embedding_params    nil
    :parameters          []
+   :dependency_analysis_version 0
    :archived_directly   (:archived_directly dashboard)})
 
 (deftest card-create-test
