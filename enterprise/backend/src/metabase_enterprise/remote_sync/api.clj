@@ -117,7 +117,7 @@
   (try
     (settings/check-and-update-remote-settings! settings)
     (catch Exception e
-      (throw (ex-info "Invalid git settings"
+      (throw (ex-info (or (ex-message e) "Invalid git settings")
                       {:error       (ex-message e)
                        :status-code 400} e))))
   (let [task-id (impl/finish-remote-config!)]
