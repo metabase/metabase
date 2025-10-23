@@ -53,12 +53,12 @@
         table-metadata (lib.metadata/table mp (:id table))
         count-query (lib/aggregate (lib/query mp table-metadata) (lib/count))
         result (qp/process-query count-query)]
-    (-> result :data :rows first first)))
+    (-> result :data :rows first first bigint)))
 
 (defn- get-watermark-value
   "Get the watermark value for a transform."
   [transform-id]
-  (t2/select-one-fn :watermark_value :model/TransformWatermark :transform_id transform-id))
+  (bigint (t2/select-one-fn :watermark_value :model/TransformWatermark :transform_id transform-id)))
 
 (defn- insert-test-products!
   "Insert new products into the transforms_products table."
