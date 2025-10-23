@@ -4,10 +4,7 @@
    [metabase-enterprise.dependencies.calculation :as calculation]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.test :as mt]
-   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (deftest ^:parallel upstream-deps-card-test
