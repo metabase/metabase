@@ -821,6 +821,7 @@
                                                                      (dissoc :id :table-id)))}]
       (mt/with-no-data-perms-for-all-users!
         (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
+        (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
         (let [query (mt/mbql-query checkins
                       {:joins [{:fields [[:field "ID" {:base-type :type/Integer, :join-alias "card"}]]
                                 :source-table (format "card__%d" card-id)

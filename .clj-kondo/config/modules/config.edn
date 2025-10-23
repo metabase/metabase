@@ -965,7 +965,6 @@
            models
            permissions
            query-processor
-           request
            util}}
 
   query-processor
@@ -1839,7 +1838,8 @@
 
   enterprise/impersonation
   {:team "Drivers"
-   :api  #{metabase-enterprise.impersonation.api}
+   :api  #{metabase-enterprise.impersonation.api
+           metabase-enterprise.impersonation.core}
    :uses #{api
            audit-app
            driver

@@ -2,12 +2,13 @@ import {
   DataPermission,
   DataPermissionValue,
 } from "metabase/admin/permissions/types";
+import { PLUGIN_DATA_PERMISSIONS } from "metabase/plugins";
 import Database from "metabase-lib/v1/metadata/Database";
 import Schema from "metabase-lib/v1/metadata/Schema";
 import type { SchemasPermissions } from "metabase-types/api";
 import { createMockDatabase, createMockSchema } from "metabase-types/api/mocks";
 
-import { upgradeViewPermissionsIfNeeded } from "./graph";
+import { upgradeViewPermissionsIfNeeded } from "./update";
 
 const groupId = 10;
 const databaseId = 20;
@@ -42,13 +43,13 @@ const createGraph = (viewPermissions: SchemasPermissions) => ({
 describe("upgradeViewPermissionsIfNeeded", () => {
   it.each([
     createGraph(DataPermissionValue.BLOCKED),
-    createGraph(DataPermissionValue.NO),
     createGraph({ [schema]: DataPermissionValue.UNRESTRICTED }),
     createGraph({ [schema]: { [tableId]: DataPermissionValue.UNRESTRICTED } }),
     createGraph({ [schema]: { [tableId]: DataPermissionValue.SANDBOXED } }),
   ])(
     "should upgrade data access permission if it is not fully granted except impersonated",
     (graph) => {
+      PLUGIN_DATA_PERMISSIONS.hasOrthogonalPermissions = true;
       const updatedGraph = upgradeViewPermissionsIfNeeded(
         graph,
         groupId,
@@ -81,6 +82,31 @@ describe("upgradeViewPermissionsIfNeeded", () => {
       [groupId]: {
         [databaseId]: {
           [DataPermission.VIEW_DATA]: DataPermissionValue.IMPERSONATED,
+        },
+      },
+    });
+  });
+
+  it.each([
+    createGraph(DataPermissionValue.BLOCKED),
+    createGraph({ [schema]: DataPermissionValue.UNRESTRICTED }),
+    createGraph({ [schema]: { [tableId]: DataPermissionValue.UNRESTRICTED } }),
+    createGraph({ [schema]: { [tableId]: DataPermissionValue.SANDBOXED } }),
+    createGraph(DataPermissionValue.IMPERSONATED),
+  ])("in OSS, should always set view permissions to unrestricted", (graph) => {
+    PLUGIN_DATA_PERMISSIONS.hasOrthogonalPermissions = false;
+    const updatedGraph = upgradeViewPermissionsIfNeeded(
+      graph,
+      groupId,
+      entityId,
+      DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
+      database,
+    );
+
+    expect(updatedGraph).toStrictEqual({
+      [groupId]: {
+        [databaseId]: {
+          [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED,
         },
       },
     });

@@ -76,7 +76,6 @@ import type {
   DependencyEntry,
   Document,
   Group,
-  GroupPermissions,
   GroupsPermissions,
   ModelCacheRefreshStatus,
   ParameterId,
@@ -203,22 +202,12 @@ export const PLUGIN_DATA_PERMISSIONS: {
     value: DataPermissionValue,
     database: Database,
   ) => boolean;
-
-  upgradeViewPermissionsIfNeeded:
-    | ((
-        permissions: GroupsPermissions,
-        groupId: number,
-        entityId: EntityId,
-        value: any,
-        database: Database,
-        permission: DataPermission,
-      ) => GroupPermissions)
-    | null;
+  hasOrthogonalPermissions: boolean;
 } = {
   permissionsPayloadExtraSelectors: [],
   hasChanges: [],
-  upgradeViewPermissionsIfNeeded: null,
   shouldRestrictNativeQueryPermissions: () => false,
+  hasOrthogonalPermissions: false,
 };
 
 // user form fields, e.x. login attributes

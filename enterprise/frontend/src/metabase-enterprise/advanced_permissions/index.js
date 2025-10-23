@@ -21,10 +21,7 @@ import {
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { ImpersonationModal } from "./components/ImpersonationModal";
-import {
-  shouldRestrictNativeQueryPermissions,
-  upgradeViewPermissionsIfNeeded,
-} from "./graph";
+import { shouldRestrictNativeQueryPermissions } from "./graph";
 import { advancedPermissionsSlice, getImpersonatedPostAction } from "./reducer";
 import { getImpersonations } from "./selectors";
 
@@ -153,10 +150,9 @@ export function initializePlugin() {
         push(getEditImpersonationUrl(entityId, groupId, view)),
     });
 
-    PLUGIN_DATA_PERMISSIONS.upgradeViewPermissionsIfNeeded =
-      upgradeViewPermissionsIfNeeded;
     PLUGIN_DATA_PERMISSIONS.shouldRestrictNativeQueryPermissions =
       shouldRestrictNativeQueryPermissions;
+    PLUGIN_DATA_PERMISSIONS.hasOrthogonalPermissions = true;
   }
 }
 

@@ -401,10 +401,10 @@ describe("issue 22695 ", () => {
 
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
-        [SAMPLE_DB_ID]: { "view-data": "blocked" },
+        [SAMPLE_DB_ID]: { "view-data": "blocked", "create-queries": "no" },
       },
       [DATA_GROUP]: {
-        [SAMPLE_DB_ID]: { "view-data": "blocked" },
+        [SAMPLE_DB_ID]: { "view-data": "blocked", "create-queries": "no" },
       },
     });
   });

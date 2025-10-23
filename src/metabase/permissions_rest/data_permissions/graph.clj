@@ -255,11 +255,14 @@
             (update-keys (fn [table-id] {:id table-id :db_id db-id :schema schema})))]
     (perms/set-table-permissions! group-id :perms/manage-table-metadata new-table-perms)))
 
+(defn- schema->tables [db-id schema]
+  (t2/select :model/Table :db_id db-id :schema (not-empty schema)))
+
 (defn- update-schema-level-metadata-permissions!
   [group-id db-id schema new-schema-perms]
   (if (map? new-schema-perms)
     (update-table-level-metadata-permissions! group-id db-id schema new-schema-perms)
-    (let [tables (t2/select :model/Table :db_id db-id :schema (not-empty schema))]
+    (let [tables (schema->tables db-id schema)]
       (when (seq tables)
         (case new-schema-perms
           :all
@@ -297,7 +300,7 @@
   [group-id db-id schema new-schema-perms]
   (if (map? new-schema-perms)
     (update-table-level-download-permissions! group-id db-id schema new-schema-perms)
-    (let [tables (t2/select :model/Table :db_id db-id :schema (not-empty schema))]
+    (let [tables (schema->tables db-id schema)]
       (when (seq tables)
         (case new-schema-perms
           :full
@@ -340,7 +343,7 @@
   [group-id db-id schema new-schema-perms]
   (if (map? new-schema-perms)
     (update-table-level-create-queries-permissions! group-id db-id schema new-schema-perms)
-    (let [tables (t2/select :model/Table :db_id db-id :schema (not-empty schema))]
+    (let [tables (schema->tables db-id schema)]
       (when (seq tables)
         (perms/set-table-permissions! group-id :perms/create-queries (zipmap tables (repeat new-schema-perms)))))))
 
@@ -363,7 +366,7 @@
                                           :unrestricted           :unrestricted
                                           ;; If the table is sandboxed, we set `view-data` to `unrestricted` since
                                           ;; sandboxes are stored separately in the `sandboxes` table
-                                          :sandboxed              :unrestricted
+                                          :sandboxed              :blocked
                                           :legacy-no-self-service :legacy-no-self-service
                                           :blocked                :blocked))))]
     (perms/set-table-permissions! group-id :perms/view-data new-table-perms)))
@@ -372,7 +375,7 @@
   [group-id db-id schema new-schema-perms]
   (if (map? new-schema-perms)
     (update-table-level-view-data-permissions! group-id db-id schema new-schema-perms)
-    (let [tables (t2/select :model/Table :db_id db-id :schema (not-empty schema))]
+    (let [tables (schema->tables db-id schema)]
       (when (seq tables)
         (perms/set-table-permissions! group-id :perms/view-data (zipmap tables (repeat new-schema-perms)))))))
 
@@ -382,14 +385,14 @@
     (doseq [[schema new-schema-perms] new-db-perms]
       (update-schema-level-view-data-permissions! group-id db-id schema new-schema-perms))
     (case new-db-perms
-      (:unrestricted :impersonated)
+      :unrestricted
       (perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
 
       ;; Support setting legacy-no-self-service for testing purposes, though the UI shouldn't allow it normally
       :legacy-no-self-service
       (perms/set-database-permission! group-id db-id :perms/view-data :legacy-no-self-service)
 
-      :blocked
+      (:impersonated :blocked)
       (do
         (when-not (premium-features/has-feature? :advanced-permissions)
           (throw (ee-permissions-exception :blocked)))

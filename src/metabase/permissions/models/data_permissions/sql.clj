@@ -40,7 +40,7 @@
 (mu/defmethod perm-type-to-least-int-case :perms/view-data
   [_ :- ::permissions.schema/data-permission-type
    column :- :keyword]
-  ;; blocked has a higher 'prioirty' than legacy-no-self-service when determining what permission level the user has
+  ;; blocked has a higher 'priority' than legacy-no-self-service when determining what permission level the user has
   (let [minimum-perm-value [:min
                             [:case
                              [:= column [:inline "unrestricted"]] [:inline 0]

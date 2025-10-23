@@ -179,12 +179,13 @@
 
 (defmethod mi/can-read? :model/Field
   ([instance]
-   (and (perms/user-has-permission-for-table?
-         api/*current-user-id*
-         :perms/view-data
-         :unrestricted
-         (field->db-id instance)
-         (:table_id instance))
+   (and (or (perms/user-has-permission-for-table?
+             api/*current-user-id*
+             :perms/view-data
+             :unrestricted
+             (field->db-id instance)
+             (:table_id instance))
+            (perms/sandboxed-table? (:table_id instance)))
         (perms/user-has-permission-for-table?
          api/*current-user-id*
          :perms/create-queries

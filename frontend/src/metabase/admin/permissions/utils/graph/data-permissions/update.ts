@@ -22,13 +22,15 @@ import {
 import { PLUGIN_DATA_PERMISSIONS } from "metabase/plugins";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Table from "metabase-lib/v1/metadata/Table";
-import type { GroupsPermissions } from "metabase-types/api";
+import type { GroupsPermissions, NativePermissions } from "metabase-types/api";
 
 import {
+  getEntityPermission,
   getFieldsPermission,
   getPermissionPath,
   getSchemasPermission,
 } from "./get";
+import { hasPermissionValueInSubgraph } from "./has";
 import { isRestrictivePermission } from "./utils";
 
 export function updatePermission(
@@ -264,6 +266,17 @@ export function restrictCreateQueriesPermissionsIfNeeded(
     );
   }
 
+  if (isRestrictivePermission(value)) {
+    permissions = updateEntityPermission(
+      permissions,
+      groupId,
+      entityId,
+      DataPermissionValue.NONE,
+      database,
+      DataPermission.DOWNLOAD,
+    );
+  }
+
   return permissions;
 }
 
@@ -341,6 +354,64 @@ export function inferAndUpdateEntityPermissions(
       schemasPermissionValue,
       database,
       permission,
+    );
+  }
+
+  return permissions;
+}
+
+export function upgradeViewPermissionsIfNeeded(
+  permissions: GroupsPermissions,
+  groupId: number,
+  entityId: EntityId,
+  value: NativePermissions,
+  database: Database,
+) {
+  // get permission for item up one level or db if we're already at the top most entity:
+  // table -> schema, schema -> database, database -> database
+  const parentOrDbEntityId = isTableEntityId(entityId)
+    ? _.pick(entityId, ["databaseId", "schemaName"])
+    : _.pick(entityId, ["databaseId"]);
+
+  const parentOrDbPermission = getEntityPermission(
+    permissions,
+    groupId,
+    parentOrDbEntityId,
+    DataPermission.VIEW_DATA,
+  );
+
+  const isGrantingNativeQueryAccess =
+    value === DataPermissionValue.QUERY_BUILDER_AND_NATIVE;
+  const parentIsBlocked =
+    parentOrDbPermission !== DataPermissionValue.UNRESTRICTED &&
+    parentOrDbPermission !== DataPermissionValue.IMPERSONATED;
+
+  const hasBlockedChild =
+    !isTableEntityId(entityId) &&
+    hasPermissionValueInSubgraph(
+      permissions,
+      groupId,
+      entityId,
+      database,
+      DataPermission.VIEW_DATA,
+      DataPermissionValue.BLOCKED,
+    );
+
+  const isGrantingQueryAccess = value !== DataPermissionValue.NO;
+
+  if (
+    isGrantingQueryAccess &&
+    ((isGrantingNativeQueryAccess && parentIsBlocked) ||
+      hasBlockedChild ||
+      !PLUGIN_DATA_PERMISSIONS.hasOrthogonalPermissions)
+  ) {
+    permissions = updateEntityPermission(
+      permissions,
+      groupId,
+      parentOrDbEntityId,
+      DataPermissionValue.UNRESTRICTED,
+      database,
+      DataPermission.VIEW_DATA,
     );
   }
 
