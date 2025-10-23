@@ -4,7 +4,10 @@
    [metabase-enterprise.dependencies.calculation :as calculation]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (deftest ^:parallel upstream-deps-card-test
@@ -243,3 +246,13 @@
               :dashboard #{dashboard-id}
               :table #{products-id}}
              (calculation/upstream-deps:document document))))))
+
+(deftest upstream-deps-sandbox-test
+  (mt/with-premium-features #{:sandboxes}
+    (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "sandbox group"}
+                   :model/Card {sandbox-card-id :id} {}
+                   :model/Sandbox sandbox {:group_id group-id
+                                           :table_id (mt/id :products)
+                                           :card_id sandbox-card-id}]
+      (is (= {:card #{sandbox-card-id}}
+             (calculation/upstream-deps:sandbox sandbox))))))
