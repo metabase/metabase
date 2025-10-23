@@ -5,8 +5,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
-   [metabase.permissions.models.permissions :as perms]
-   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.core :as perms]
    [metabase.queries.models.card :as card]
    [metabase.test :as mt]
    [metabase.util :as u]))
@@ -187,8 +186,9 @@
 (deftest check-snippet-test
   (testing "POST /api/ee/dependencies/check_snippet"
     (mt/with-premium-features #{:dependencies}
-      (mt/with-temp [:model/NativeQuerySnippet {_snippet-id :id :as snippet} {}]
-        (let [response (mt/user-http-request :rasta :post 200 "ee/dependencies/check_snippet" snippet)]
+      (mt/with-temp [:model/NativeQuerySnippet {_snippet-id :id :as snippet} {:name "test-snippet"
+                                                                              :content "WHERE ID > 10"}]
+        (let [response (mt/user-http-request :crowberto :post 200 "ee/dependencies/check_snippet" snippet)]
           (is (= {:bad_cards [], :bad_transforms [], :success true}
                  response)))))))
 
@@ -329,7 +329,7 @@
                        (mt/user-http-request :rasta :post 403 "ee/dependencies/check_card"
                                              (assoc card :name "Modified name")))))
               (testing "Returns 200 when user has read permissions"
-                (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+                (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
                 (is (=? {:success true}
                         (mt/user-http-request :rasta :post 200 "ee/dependencies/check_card"
                                               (assoc card :name "Modified name"))))))))))))
@@ -385,7 +385,7 @@
                                              :id (:id card)
                                              :type "card"))))
               (testing "Returns 200 when user has read permissions"
-                (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+                (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
                 (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
                                       :id (:id card)
                                       :type "card")))))))))
@@ -406,7 +406,7 @@
                                              :dependent_type "card"
                                              :dependent_card_type "question"))))
               (testing "Returns 200 when user has read permissions"
-                (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+                (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
                 (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
                                       :id card-id
                                       :type "card"
@@ -429,7 +429,7 @@
                     top-card (card/create-card! (assoc (wrap-two-cards readable-base unreadable-base)
                                                        :collection_id (:id readable-collection))
                                                 user)]
-                (perms/grant-collection-read-permissions! (perms-group/all-users) readable-collection)
+                (perms/grant-collection-read-permissions! (perms/all-users-group) readable-collection)
                 (testing "User sees complete upstream graph through readable path"
                   (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
                                                        :id (:id top-card)
@@ -469,7 +469,7 @@
                   unreadable-dependent (card/create-card! (assoc (wrap-card base-card)
                                                                  :collection_id (:id unreadable-collection))
                                                           user)]
-              (perms/grant-collection-read-permissions! (perms-group/all-users) readable-collection)
+              (perms/grant-collection-read-permissions! (perms/all-users-group) readable-collection)
               (testing "User sees only readable dependents"
                 (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
                                                      :id (:id base-card)
@@ -499,7 +499,7 @@
                     end-card (card/create-card! (assoc (wrap-two-cards unreadable-middle readable-alternate)
                                                        :collection_id (:id readable-collection))
                                                 user)]
-                (perms/grant-collection-read-permissions! (perms-group/all-users) readable-collection)
+                (perms/grant-collection-read-permissions! (perms/all-users-group) readable-collection)
                 (testing "Diamond pattern: complete upstream graph via readable path"
                   (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
                                                        :id (:id end-card)
@@ -528,3 +528,106 @@
                                           :to_entity_type "table"}}]
                     (is (= expected-edges edges)
                         "Should have edges through readable path only")))))))))))
+
+(deftest graph-filtering-all-unreadable-test
+  (testing "GET /api/ee/dependencies/graph returns only root node when all upstream dependencies are unreadable"
+    (mt/dataset test-data
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-non-admin-groups-no-root-collection-perms
+          (mt/with-temp [:model/Collection readable-collection {}
+                         :model/Collection unreadable-collection {}
+                         :model/User user {:email "test@test.com"}]
+            (mt/with-model-cleanup [:model/Card :model/Dependency]
+              (let [unreadable-base (card/create-card! (assoc (basic-card "Unreadable")
+                                                              :collection_id (:id unreadable-collection)) user)
+                    top-card (card/create-card! (assoc (wrap-card unreadable-base)
+                                                       :collection_id (:id readable-collection))
+                                                user)]
+                (perms/grant-collection-read-permissions! (perms/all-users-group) readable-collection)
+                (testing "User sees only the top card in the graph"
+                  (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
+                                                       :id (:id top-card)
+                                                       :type "card")
+                        nodes (set (map (juxt :type :id) (:nodes response)))]
+                    (is (= #{["card" (:id top-card)]} nodes)
+                        "Should see only top-card when all dependencies are unreadable")))
+                (testing "No edges when all dependencies are filtered"
+                  (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
+                                                       :id (:id top-card)
+                                                       :type "card")]
+                    (is (empty? (:edges response))
+                        "Should have no edges when all dependencies are filtered out")))))))))))
+
+(deftest graph-snippet-filtering-test
+  (testing "GET /api/ee/dependencies/graph/dependents filters snippet dependents based on card permissions"
+    (mt/dataset test-data
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-non-admin-groups-no-root-collection-perms
+          (mt/with-temp [:model/Collection readable-collection {}
+                         :model/Collection unreadable-collection {}
+                         :model/User user {:email "test@test.com"}
+                         :model/NativeQuerySnippet {snippet-id :id snippet-name :name} {:name "test-snippet"
+                                                                                        :content "WHERE ID > 10"}]
+            (mt/with-model-cleanup [:model/Card :model/Dependency]
+              (let [tag-name (str "snippet: " snippet-name)
+                    mp (mt/metadata-provider)
+                    native-query (fn []
+                                   (-> (lib/native-query mp (format "SELECT * FROM ORDERS %s" (str "{{" tag-name "}}")))
+                                       (lib/with-template-tags {tag-name {:name tag-name
+                                                                          :display-name (str "Snippet: " snippet-name)
+                                                                          :type :snippet
+                                                                          :snippet-name snippet-name
+                                                                          :snippet-id snippet-id}})))
+                    readable-card (card/create-card! {:name "Readable card with snippet"
+                                                      :dataset_query (native-query)
+                                                      :display :table
+                                                      :visualization_settings {}
+                                                      :collection_id (:id readable-collection)}
+                                                     user)
+                    unreadable-card (card/create-card! {:name "Unreadable card with snippet"
+                                                        :dataset_query (native-query)
+                                                        :display :table
+                                                        :visualization_settings {}
+                                                        :collection_id (:id unreadable-collection)}
+                                                       user)]
+                (perms/grant-collection-read-permissions! (perms/all-users-group) readable-collection)
+                (testing "User sees only readable cards as dependents of the snippet"
+                  (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
+                                                       :id snippet-id
+                                                       :type "snippet"
+                                                       :dependent_type "card"
+                                                       :dependent_card_type "question")
+                        dependent-ids (set (map :id response))]
+                    (is (contains? dependent-ids (:id readable-card))
+                        "Should see readable card as dependent")
+                    (is (not (contains? dependent-ids (:id unreadable-card)))
+                        "Should not see unreadable card as dependent")))))))))))
+
+(deftest graph-table-permission-filtering-test
+  (testing "GET /api/ee/dependencies/graph filters out tables when user lacks table permissions"
+    (mt/dataset test-data
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-non-admin-groups-no-root-collection-perms
+          (mt/with-temp [:model/Collection readable-collection {}
+                         :model/User user {:email "test@test.com"}]
+            (mt/with-temp-copy-of-db
+              (mt/with-model-cleanup [:model/Card :model/Dependency]
+                (mt/with-no-data-perms-for-all-users!
+                  (perms/set-table-permission! (perms/all-users-group) (mt/id :orders) :perms/view-data :blocked)
+                  (perms/set-table-permission! (perms/all-users-group) (mt/id :orders) :perms/create-queries :no)
+                  (let [card (card/create-card! (assoc (basic-card "Card on orders")
+                                                       :collection_id (:id readable-collection)) user)]
+                    (perms/grant-collection-read-permissions! (perms/all-users-group) readable-collection)
+                    (testing "User sees only the card, table is filtered out"
+                      (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
+                                                           :id (:id card)
+                                                           :type "card")
+                            nodes (set (map (juxt :type :id) (:nodes response)))]
+                        (is (= #{["card" (:id card)]} nodes)
+                            "Should see only the card, not the unreadable table")))
+                    (testing "No edges when table is filtered"
+                      (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
+                                                           :id (:id card)
+                                                           :type "card")]
+                        (is (empty? (:edges response))
+                            "Should have no edges when table is filtered out")))))))))))))
