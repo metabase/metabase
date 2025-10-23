@@ -7,84 +7,25 @@ const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const { H } = cy;
 
-const LOCAL_GIT_PATH = Cypress.config("projectRoot") + "/e2e/tmp/test-repo";
-const LIBRARY_FIXTURE_PATH =
-  Cypress.config("projectRoot") + "/e2e/support/assets/example_library";
-const LOCAL_GIT_URL = "file://" + LOCAL_GIT_PATH + "/.git";
+const LOCAL_GIT_URL = "file://" + H.LOCAL_GIT_PATH + "/.git";
 
 const REMOTE_QUESTION_NAME = "Remote Sync Test Question";
 
-function configureGit(syncType: "development" | "production") {
-  cy.request("PUT", "/api/ee/remote-sync/settings", {
-    "remote-sync-branch": "main",
-    "remote-sync-type": syncType,
-    "remote-sync-url": LOCAL_GIT_URL,
-    "remote-sync-enabled": true,
-  });
-}
-
-// This is a bit strange, but when working locally we write directly to the .git folder, not the working
-// directory. git will see an empty working directory and assume we have deleted files, so by stashing
-// unstaged changes, we will reset the working directory to what is in the .git folder
-const resetRepo = () => {
-  cy.exec("git -C " + LOCAL_GIT_PATH + " add .");
-  cy.exec("git -C " + LOCAL_GIT_PATH + " stash");
-};
-
-const wrapLibraryFiles = () => {
-  resetRepo();
-  cy.task("readDirectory", LOCAL_GIT_PATH).then((files) => {
-    cy.wrap(
-      (files as string[]).filter(
-        (file: string) => !file.includes(".git") && file.includes(".yaml"),
-      ),
-    ).as("libraryFiles");
-  });
-};
-
-const wrapLibraryCollection = (n = 0) => {
-  if (n > 3) {
-    throw new Error("Could not find library colleciton");
-  }
-
-  cy.request("/api/collection").then(({ body: collections }) => {
-    const libraryCollection = collections.find(
-      (c: Collection) => c.type === "remote-synced",
-    );
-
-    if (libraryCollection) {
-      cy.wrap(libraryCollection).as("library");
-    } else {
-      cy.wait(500);
-      wrapLibraryCollection(n + 1);
-    }
-  });
-};
-
-function setupGitSync() {
-  H.restore();
-  cy.exec("rm -rf " + LOCAL_GIT_PATH);
-  cy.exec("git init " + LOCAL_GIT_PATH);
-  cy.exec(
-    "git -C " + LOCAL_GIT_PATH + " commit --allow-empty -m 'Initial Commit'",
-  );
-
-  cy.signInAsAdmin();
-  H.activateToken("bleeding-edge");
-}
-
 describe("Remote Sync", () => {
   beforeEach(() => {
-    setupGitSync();
+    H.restore();
+    cy.signInAsAdmin();
+    H.activateToken("bleeding-edge");
+    H.setupGitSync();
   });
 
   describe("Development Mode", () => {
     beforeEach(() => {
-      configureGit("development");
-      wrapLibraryCollection();
+      H.configureGit("development");
+      H.wrapLibraryCollection();
     });
 
-    it("can export changes to git", () => {
+    it("can push and pull changes", () => {
       const UPDATED_REMOTE_QUESTION_NAME = "Updated Question Name";
 
       cy.get("@library").then((libraryCollection) => {
@@ -124,16 +65,14 @@ describe("Remote Sync", () => {
         .findByTestId("remote-sync-status", { timeout: 10000 })
         .should("not.exist");
 
-      resetRepo();
-
-      wrapLibraryFiles();
+      H.wrapLibraryFiles();
 
       cy.get("@libraryFiles").then((libraryFiles) => {
         const questionFilePath = (libraryFiles as unknown as string[]).find(
           (file) => file.includes("remote_sync_test_question.yaml"),
         );
 
-        const fullPath = `${LOCAL_GIT_PATH}/${questionFilePath}`;
+        const fullPath = `${H.LOCAL_GIT_PATH}/${questionFilePath}`;
 
         cy.readFile(fullPath).then((str) => {
           const doc = yamljs.parse(str);
@@ -145,7 +84,7 @@ describe("Remote Sync", () => {
           doc.name = UPDATED_REMOTE_QUESTION_NAME;
 
           cy.writeFile(fullPath, yamljs.stringify(doc));
-          cy.exec("git -C " + LOCAL_GIT_PATH + " commit -am 'Local Update'");
+          cy.exec("git -C " + H.LOCAL_GIT_PATH + " commit -am 'Local Update'");
         });
       });
 
@@ -187,19 +126,10 @@ describe("Remote Sync", () => {
     it("can set up production mode", () => {
       // Set up a library to connect to, otherwise production mode will be empty
       // Copy some files
-      cy.task("copyDirectory", {
-        source: LIBRARY_FIXTURE_PATH,
-        destination: LOCAL_GIT_PATH,
-      });
+      H.copyLibraryFixture();
 
       // Commit those files to the main branch
-      cy.exec(
-        "git -C " +
-          LOCAL_GIT_PATH +
-          " add .; git -C " +
-          LOCAL_GIT_PATH +
-          " commit -am 'Adding content to library'",
-      );
+      H.commitToLibrary();
 
       cy.visit("/admin/settings/remote-sync");
       cy.findByLabelText(/repository url/i)
@@ -226,7 +156,6 @@ describe("Remote Sync", () => {
     });
 
     it("shows an error if git settings are invalid", () => {
-      cy.signInAsAdmin();
       cy.intercept("PUT", "/api/ee/remote-sync/settings").as("saveSettings");
       cy.visit("/admin/settings/remote-sync");
       cy.findByLabelText(/repository url/i)
@@ -241,6 +170,60 @@ describe("Remote Sync", () => {
       cy.findByTestId("admin-layout-content")
         .findByText("Invalid git settings")
         .should("exist");
+    });
+  });
+
+  describe("production mode", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+      H.setupGitSync();
+    });
+
+    it("can change branches", () => {
+      const UPDATED_REMOTE_QUESTION_NAME = "New Name";
+
+      H.copyLibraryFixture();
+      H.commitToLibrary();
+      H.configureGit("production");
+
+      cy.visit("/");
+
+      H.navigationSidebar()
+        .findByRole("treeitem", { name: /Library/ })
+        .click();
+      H.collectionTable().findByText(REMOTE_QUESTION_NAME);
+
+      // Make a change, and commit it to the branch
+      H.checkoutLibraryBranch("test");
+      H.updateRemoteQuestion((doc) => {
+        doc.name = UPDATED_REMOTE_QUESTION_NAME;
+        return doc;
+      });
+
+      cy.visit("/admin/settings/remote-sync");
+      cy.findByLabelText("Sync branch").clear().type("test");
+      cy.button("Save changes").click();
+
+      cy.findByTestId("admin-layout-content")
+        .findByText("Success")
+        .should("exist");
+
+      cy.findByRole("dialog", { name: "Switch branches?" })
+        .button("Continue")
+        .click();
+
+      cy.findByRole("button", { name: "Save changes", timeout: 10000 }).should(
+        "be.disabled",
+      );
+
+      cy.visit("/");
+
+      H.navigationSidebar()
+        .findByRole("treeitem", { name: /Library/ })
+        .click();
+      H.collectionTable().findByText(UPDATED_REMOTE_QUESTION_NAME);
     });
   });
 });
