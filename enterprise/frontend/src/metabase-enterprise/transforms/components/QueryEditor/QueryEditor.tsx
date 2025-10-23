@@ -19,7 +19,6 @@ import { useQueryMetadata } from "../../hooks/use-query-metadata";
 import type { TransformEditorValue } from "../../hooks/use-transform-editor";
 
 import { EditorBody } from "./EditorBody";
-import { EditorHeader } from "./EditorHeader";
 import { EditorValidationCard } from "./EditorValidationCard";
 import S from "./QueryEditor.module.css";
 import { getValidationResult, useSelectedText } from "./utils";
@@ -129,20 +128,9 @@ export function QueryEditor({
         className={S.root}
         pos="relative"
         w="100%"
-        h="100%"
         data-testid="transform-query-editor"
         gap={0}
       >
-        <EditorHeader
-          validationResult={validationResult}
-          name={transform?.name}
-          isNew={isNew}
-          isSaving={isSaving}
-          hasProposedQuery={!!proposedSource}
-          isQueryDirty={isQueryDirty}
-          onSave={handleSave}
-          onCancel={onCancel}
-        />
         <EditorBody
           question={question}
           proposedQuestion={proposedQuestion}

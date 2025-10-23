@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Panel, PanelGroup } from "react-resizable-panels";
 import { t } from "ttag";
 
@@ -6,8 +6,13 @@ import { skipToken } from "metabase/api";
 import { ResizeHandle } from "metabase/bench/components/BenchApp";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
-import { Box, Card, Tabs } from "metabase/ui";
+import { Box, Card, Stack } from "metabase/ui";
 import { useGetTransformQuery } from "metabase-enterprise/api";
+import {
+  type EditorTab,
+  EditorHeader,
+} from "metabase-enterprise/transforms/components/QueryEditor/EditorHeader";
+import { getValidationResult } from "metabase-enterprise/transforms/components/QueryEditor/utils";
 import { useSourceState } from "metabase-enterprise/transforms/hooks/use-source-state";
 import {
   type TransformEditorValue,
@@ -16,7 +21,10 @@ import {
 import type { Transform, TransformId } from "metabase-types/api";
 
 import { POLLING_INTERVAL } from "../../constants";
-import { TransformQueryPage } from "../TransformQueryPage";
+import {
+  TransformQueryPage,
+  useTransformQueryPageHandlers,
+} from "../TransformQueryPage";
 
 import { DependenciesSection } from "./DependenciesSection";
 import { QueryPreview } from "./QueryPreview";
@@ -72,81 +80,93 @@ const TransformPageInner = ({ transform }: { transform: Transform }) => {
     useSourceState(transform.id, transform.source);
 
   const transformEditor = useTransformEditor(transform.source, proposedSource);
+  const [selectedTab, setSelectedTab] = useState<EditorTab>("preview");
 
-  return (
-    <PanelGroup
-      autoSaveId="transforms-editor-panel-layout"
-      direction="vertical"
-      style={{ height: "100%", width: "100%" }}
-    >
-      <Panel>
-        <TransformQueryPage
-          transform={transform}
-          setSource={setSource}
-          proposedSource={proposedSource}
-          acceptProposed={acceptProposed}
-          clearProposed={clearProposed}
-          transformEditor={transformEditor}
-        />
-      </Panel>
-      <ResizeHandle direction="vertical" />
-      <Panel minSize={5} style={{ backgroundColor: "transparent" }}>
-        <TransformDrawer
-          transform={transform}
-          transformEditor={transformEditor}
-        />
-      </Panel>
-    </PanelGroup>
+  const handlers = useTransformQueryPageHandlers({
+    transform,
+    setSource,
+    clearProposed,
+  });
+
+  const validationResult = useMemo(
+    () => getValidationResult(transformEditor.question.query()),
+    [transformEditor.question],
   );
-};
 
-export function TransformDrawer({
-  transform,
-  transformEditor,
-}: {
-  transform: Transform;
-  transformEditor: TransformEditorValue;
-}) {
   const isNew = !transform.id;
 
+  const renderTabContent = () => {
+    switch (selectedTab) {
+      case "preview":
+        return (
+          <Box
+            style={{
+              flex: 1,
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <TransformQueryPage
+              transform={transform}
+              setSource={setSource}
+              proposedSource={proposedSource}
+              acceptProposed={acceptProposed}
+              clearProposed={clearProposed}
+              transformEditor={transformEditor}
+              onSave={handlers.handleSaveSource}
+              onCancel={handlers.handleCancel}
+              isSaving={handlers.isSaving}
+            />
+            <Box style={{ flex: 1, overflow: "hidden", display: "flex" }}>
+              <QueryPreview transformEditor={transformEditor} />
+            </Box>
+          </Box>
+        );
+      case "run":
+        return (
+          <Box p="md" style={{ overflow: "auto", height: "100%" }}>
+            <RunSection transform={transform} />
+          </Box>
+        );
+      case "target":
+        return (
+          <Box p="md" style={{ overflow: "auto", height: "100%" }}>
+            <TargetSection transform={transform} />
+          </Box>
+        );
+      case "dependencies":
+        return (
+          <Box p="md" style={{ overflow: "auto", height: "100%" }}>
+            <DependenciesSection transform={transform} />
+          </Box>
+        );
+    }
+  };
+
   return (
-    <Card withBorder mx="sm" h="100%">
-      <Tabs defaultValue="preview" variant="pills">
-        <Tabs.List>
-          <Tabs.Tab name={t`Preview`} value="preview">{t`Preview`}</Tabs.Tab>
-          {!isNew && (
-            <>
-              <Tabs.Tab name={t`Run`} value="run">{t`Run`}</Tabs.Tab>
-              <Tabs.Tab name={t`Target`} value="target">{t`Target`}</Tabs.Tab>
-              <Tabs.Tab
-                name={t`Dependencies`}
-                value="dependencies"
-              >{t`Dependencies`}</Tabs.Tab>
-            </>
-          )}
-        </Tabs.List>
-        <Box p="md">
-          <Tabs.Panel value="preview">
-            <QueryPreview transformEditor={transformEditor} />
-          </Tabs.Panel>
-          {!isNew && (
-            <>
-              <Tabs.Panel value="run">
-                <RunSection transform={transform} />
-              </Tabs.Panel>
-              <Tabs.Panel value="target">
-                <TargetSection transform={transform} />
-              </Tabs.Panel>
-              <Tabs.Panel value="dependencies">
-                <DependenciesSection transform={transform} />
-              </Tabs.Panel>
-            </>
-          )}
-        </Box>
-      </Tabs>
-    </Card>
+    <Stack gap={0} h="100%" w="100%">
+      <EditorHeader
+        validationResult={validationResult}
+        isNew={isNew}
+        isQueryDirty={transformEditor.isQueryDirty}
+        isSaving={handlers.isSaving}
+        hasProposedQuery={!!proposedSource}
+        onSave={() => {
+          const source = proposedSource ?? {
+            type: "query" as const,
+            query: transformEditor.question.datasetQuery(),
+          };
+          void handlers.handleSaveSource(source);
+        }}
+        onCancel={handlers.handleCancel}
+        selectedTab={selectedTab}
+        onTabChange={setSelectedTab}
+      />
+      {renderTabContent()}
+    </Stack>
   );
-}
+};
 
 function getParsedParams({
   transformId,

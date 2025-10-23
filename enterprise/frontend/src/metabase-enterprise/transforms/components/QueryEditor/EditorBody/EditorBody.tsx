@@ -127,6 +127,7 @@ export function EditorBody({
       question={question}
       query={question.legacyNativeQuery()}
       resizableBoxProps={resizableBoxProps}
+      viewHeight="full"
       placeholder="SELECT * FROM TABLE_NAME"
       isRunnable={isRunnable}
       isRunning={isRunning}
@@ -160,7 +161,7 @@ export function EditorBody({
       proposedQuestion={proposedQuestion}
       onRejectProposed={onRejectProposed}
       onAcceptProposed={onAcceptProposed}
-      resizable={false}
+      resizable={true}
     />
   ) : (
     <ResizableBox

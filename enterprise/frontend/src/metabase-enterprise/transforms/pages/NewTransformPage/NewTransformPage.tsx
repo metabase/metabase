@@ -11,6 +11,7 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { Box } from "metabase/ui";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getMetabotSuggestedTransform } from "metabase-enterprise/metabot/state";
 import { useSourceState } from "metabase-enterprise/transforms/hooks/use-source-state";
@@ -28,7 +29,7 @@ import {
   useTransformEditor,
 } from "../../hooks/use-transform-editor";
 import { getTransformListUrl, getTransformUrl } from "../../urls";
-import { TransformDrawer } from "../TransformPage";
+import { QueryPreview } from "../TransformPage/QueryPreview";
 
 import {
   CreateTransformModal,
@@ -167,10 +168,9 @@ export function NewTransformPageInner({
         </Panel>
         <ResizeHandle direction="vertical" />
         <Panel minSize={5} style={{ backgroundColor: "transparent" }}>
-          <TransformDrawer
-            transform={{ source }}
-            transformEditor={transformEditor}
-          />
+          <Box mx="sm" h="100%">
+            <QueryPreview transformEditor={transformEditor} />
+          </Box>
         </Panel>
       </PanelGroup>
 

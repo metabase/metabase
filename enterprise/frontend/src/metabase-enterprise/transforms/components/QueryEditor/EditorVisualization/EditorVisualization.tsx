@@ -27,7 +27,7 @@ export function EditorVisualization({
   onCancelQuery,
 }: EditorVisualizationProps) {
   return (
-    <Box pos="relative" h="20rem">
+    <Box pos="relative" h="100%">
       <QueryVisualization
         question={question}
         result={result}
