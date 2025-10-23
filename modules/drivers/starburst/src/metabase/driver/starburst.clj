@@ -21,6 +21,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
@@ -66,7 +67,8 @@
                               :connection/multiple-databases   true
                               :metadata/key-constraints        false
                               :now                             true
-                              :database-routing                true}]
+                              :database-routing                true
+                              :connection-impersonation        true}]
   (defmethod driver/database-supports? [:starburst feature] [_ _ _] supported?))
 
 (defn- format-field
@@ -548,6 +550,16 @@
   (-> (.. rs getStatement getConnection)
       pooled-conn->starburst-conn))
 
+(defmethod driver.sql/default-database-role :starburst
+  [_driver _database]
+  :default-role)
+
+(defmethod driver/set-role! :starburst
+  [_driver ^Connection conn role]
+  (if (= role :default-role)
+    (.clearSessionUser ^TrinoConnection (.unwrap conn TrinoConnection))
+    (.setSessionUser ^TrinoConnection (.unwrap conn TrinoConnection) role)))
+
 (defmethod sql-jdbc.execute/do-with-connection-with-options :starburst
   [driver db-or-id-or-spec options f]
   (sql-jdbc.execute/do-with-resolved-connection
@@ -555,6 +567,16 @@
    db-or-id-or-spec
    options
    (fn [^java.sql.Connection conn]
+     (when-let [db (cond
+                  ;; id?
+                     (integer? db-or-id-or-spec)
+                     (driver-api/with-metadata-provider db-or-id-or-spec
+                       (driver-api/database (driver-api/metadata-provider)))
+                  ;; db?
+                     (u/id db-or-id-or-spec)     db-or-id-or-spec
+                  ;; otherwise it's a spec and we can't get the db
+                     :else nil)]
+       (sql-jdbc.execute/set-role-if-supported! driver conn db))
      (try
        (sql-jdbc.execute/set-best-transaction-level! driver conn)
        (let [underlying-conn (pooled-conn->starburst-conn conn)]
