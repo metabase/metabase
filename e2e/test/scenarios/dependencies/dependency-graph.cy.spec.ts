@@ -523,6 +523,53 @@ describe("scenarios > dependencies > dependency graph", () => {
       });
     });
   });
+
+  describe.skip("permissions", () => {
+    it("should be able to view database entities without collection access", () => {
+      getScoreboardTableId().then((tableId) => {
+        createTableBasedQuestion({ tableId });
+        createTableBasedModel({ tableId });
+        createTableBasedMetric({ tableId });
+        createTableBasedTransform({ tableName: TABLE_NAME });
+        cy.signIn("nocollection");
+        visitGraphForEntity(tableId, "table");
+      });
+
+      dependencyGraph().within(() => {
+        cy.findByLabelText(TABLE_DISPLAY_NAME).within(() => {
+          cy.findByText(/question/).should("not.exist");
+          cy.findByText(/model/).should("not.exist");
+          cy.findByText(/metric/).should("not.exist");
+          cy.findByText(/transform/).should("not.exist");
+        });
+      });
+    });
+
+    it("should be able to view collection entities without data access", () => {
+      getScoreboardTableId()
+        .then((tableId) => createTableBasedQuestion({ tableId }))
+        .then(({ body: card }) => {
+          createCardBasedQuestion({ cardId: card.id });
+          createCardBasedModel({ cardId: card.id });
+          createCardBasedMetric({ cardId: card.id });
+          createCardBasedTransform({ cardId: card.id });
+          createCardBasedSnippet({ cardId: card.id });
+          cy.signIn("nodata");
+          visitGraphForEntity(card.id, "card");
+        });
+
+      dependencyGraph().within(() => {
+        cy.findByLabelText(TABLE_DISPLAY_NAME).should("not.exist");
+        cy.findByLabelText(TABLE_BASED_QUESTION_NAME).within(() => {
+          cy.findByText("1 question").should("be.visible");
+          cy.findByText("1 model").should("be.visible");
+          cy.findByText("1 metric").should("be.visible");
+          cy.findByText("1 snippet").should("be.visible");
+          cy.findByText(/transform/).should("not.exist");
+        });
+      });
+    });
+  });
 });
 
 function visitGraph() {
