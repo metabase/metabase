@@ -63,8 +63,8 @@ export type Table = {
 
   data_source: TableDataSource | null;
   visibility_type2: TableVisibilityType2 | null;
-  owner_email: string;
-  owner_user_id: UserId;
+  owner_email: string | null;
+  owner_user_id: UserId | null;
   transform_id: TransformId | null; // readonly
   data_update_frequency: string; // readonly
 };
@@ -129,8 +129,8 @@ export interface UpdateTableRequest {
 
   data_source?: TableDataSource | null;
   visibility_type2?: TableVisibilityType2 | null;
-  owner_email?: string;
-  owner_user_id?: UserId;
+  owner_email?: string | null;
+  owner_user_id?: UserId | null;
 }
 
 export interface UpdateTableListRequest {
@@ -144,8 +144,8 @@ export interface UpdateTableListRequest {
 
   data_source?: TableDataSource | null;
   visibility_type2?: TableVisibilityType2 | null;
-  owner_email?: string;
-  owner_user_id?: UserId;
+  owner_email?: string | null;
+  owner_user_id?: UserId | null;
 }
 
 export interface UpdateTableFieldsOrderRequest {
