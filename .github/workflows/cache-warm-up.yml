@@ -1,0 +1,26 @@
+name: Cache Generator
+
+on:
+  push: # temp
+  schedule:
+    - cron: '0 3 * * 1'   # Mondays at 03:00 UTC
+  workflow_dispatch:      # manually update the cache
+
+jobs:
+  warm-m2-cache:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare backend
+        uses: ./.github/actions/prepare-backend
+        with:
+          java-version: 21
+      - name: Pre-resolve dependencies
+        run: clojure -A:build:dev:ee:ee-dev:drivers:drivers-dev:cljs -P
+      - name: Update M2 cache
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.m2
+            ~/.gitlibs
+          key: ${{ runner.os }}-m2-${{ steps.get-date.outputs.week-of-year }}

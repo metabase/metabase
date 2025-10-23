@@ -39,24 +39,8 @@ runs:
       run: |
         echo "week-of-year=$(/bin/date "+%G-%V")" >> $GITHUB_OUTPUT
       shell: bash
-
-    # Only job(s) that produce the most comprehensive cache should be able to update it.
-    # e.g. You don't want this on the linter job because it will produce a 5MB cache, compared to 500MB cache that the uberjar produces.
-    # Downloading missing dependencies is *way slower* than downloading the cache with some superfluous dependencies in it.
-    - name: Update M2 cache
-      id: update-m2-cache
-      uses: actions/cache/save@v4
-      if: ${{ inputs.can-update-cache == 'true' }}
-      with:
-        path: |
-          ~/.m2
-          ~/.gitlibs
-        key: ${{ runner.os }}-m2-${{ steps.get-date.outputs.week-of-year }}
-    # This caching logic lives duplicated in the `prepare-frontend` action. We don't need the rest of this action there.
-    # Try keeping these caches in sync.
     - name: Get M2 cache
       uses: actions/cache/restore@v4
-      if: ${{ steps.update-m2-cache.outcome == 'skipped' }}
       with:
         path: |
           ~/.m2
