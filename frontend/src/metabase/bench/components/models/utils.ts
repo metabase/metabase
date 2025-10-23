@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { LEAF_ITEM_ICON_COLOR } from "metabase/bench/constants/list";
 import { getIcon } from "metabase/browse/models/utils";
 import {
   currentUserPersonalCollections,
@@ -79,7 +80,7 @@ export function getTreeItems(
       (model): ITreeNodeItem => ({
         id: model.id,
         name: model.name,
-        icon: getIcon(model),
+        icon: getModelIconProps(model),
         data: model,
       }),
     );
@@ -104,9 +105,16 @@ export function getTreeItems(
         (m): ITreeNodeItem => ({
           id: m.id,
           name: m.name,
-          icon: getIcon(m),
+          icon: getModelIconProps(m),
           data: m,
         }),
       ),
   ];
+}
+
+function getModelIconProps(model: SearchResult) {
+  return {
+    ...getIcon(model),
+    color: LEAF_ITEM_ICON_COLOR,
+  };
 }

@@ -61,6 +61,7 @@ export type TableNode = {
   type: "table";
   label: string;
   key: string;
+  icon: IconProps;
   value: { databaseId: DatabaseId; schemaName: SchemaName; tableId: TableId };
   children: [];
   table?: Table;
@@ -80,6 +81,7 @@ export type ModelNode = {
   type: "model";
   label: string;
   key: string;
+  icon: IconProps;
   value: { collectionId: CollectionId; modelId: CardId };
   children: [];
 };

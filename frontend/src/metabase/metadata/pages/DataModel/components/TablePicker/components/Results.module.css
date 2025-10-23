@@ -37,6 +37,10 @@
   flex-shrink: 0;
 }
 
+.leafIcon {
+  opacity: 1;
+}
+
 .chevron {
   transition: transform 100ms ease-in-out;
   opacity: 0.35;

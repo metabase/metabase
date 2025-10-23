@@ -26,7 +26,7 @@ import type {
   SearchResult,
 } from "metabase-types/api";
 
-import { UNNAMED_SCHEMA_NAME } from "../constants";
+import { LEAF_ITEM_ICON_COLOR, UNNAMED_SCHEMA_NAME } from "../constants";
 import type {
   CollectionNode,
   DatabaseNode,
@@ -126,6 +126,7 @@ export function useTableLoader(path: TreePath) {
             label: table.display_name,
             value: { databaseId, schemaName, tableId: table.id },
             table,
+            icon: { name: "table2", color: LEAF_ITEM_ICON_COLOR },
             disabled: !isSyncCompleted(table),
           }),
         ) ?? []
@@ -213,6 +214,7 @@ export function useTableLoader(path: TreePath) {
               collectionId: collection.id,
               modelId: model.id,
             },
+            icon: { name: "model", color: LEAF_ITEM_ICON_COLOR },
           }),
       );
 
@@ -242,6 +244,7 @@ export function useTableLoader(path: TreePath) {
               collectionId: rootCollectionId,
               modelId: model.id,
             },
+            icon: { name: "model", color: LEAF_ITEM_ICON_COLOR },
           }),
         ),
     ];
