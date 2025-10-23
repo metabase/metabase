@@ -287,8 +287,8 @@
    [:operator [:multi {:dispatch string?}
                [true  :string]
                [false :keyword]]]
-   [:args     [:sequential :any]]
-   [:options {:optional true} ::options]])
+   [:args     [:schema {:decode/normalize vec} [:sequential :any]]]
+   [:options  {:optional true} ::options]])
 
 #?(:clj
    (defn- instance-of-class* [& classes]
