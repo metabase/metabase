@@ -86,12 +86,12 @@
             (try
               #_{:clj-kondo/ignore [:discouraged-var]}
               (let [validator* (validator schema)
-                    explainer* (mc/explainer schema)]
+                    explainer* (delay (mc/explainer schema))]
                 ;; for valid values, it's significantly faster to just call the validator. Let's optimize for the 99.9%
                 ;; of calls whose values are valid.
                 (fn schema-explainer [value]
                   (when-not (validator* value)
-                    (explainer* value))))
+                    (@explainer* value))))
               (catch #?(:clj Throwable :cljs :default) e
                 (throw (ex-info (str "Error making explainer for " (pr-str schema) ":" (ex-message e))
                                 {:schema schema}
