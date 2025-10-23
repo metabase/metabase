@@ -126,3 +126,54 @@
               (events/publish-event! :event/dashboard-delete {:object updated-dashboard :user-id api/*current-user-id*})
               (is (empty? (t2/select :model/Dependency :from_entity_id dashboard-id))))))))))
 
+(deftest dashboard-update-sets-correct-dependencies
+  (mt/with-test-user :rasta
+    (let [mp (mt/metadata-provider)
+          products-id (mt/id :products)
+          products (lib.metadata/table mp products-id)]
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp  [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}
+                        :model/Card {embedded-card-id :id} {:dataset_query (lib/query mp products)}
+                        :model/Dashboard {dashboard-id :id} {}
+                        :model/Document {document-id :id :as document} {:content_type "application/json+vnd.prose-mirror"
+                                                                        :document {:type "doc"
+                                                                                   :content [{:type "paragraph"
+                                                                                              :content [{:type "smartLink"
+                                                                                                         :attrs {:entityId card-id
+                                                                                                                 :model "card"}}]}
+                                                                                             {:type "cardEmbed"
+                                                                                              :attrs {:id embedded-card-id}}]}}]
+          (events/publish-event! :event/document-create {:object document :user-id api/*current-user-id*})
+          (is (=? #{{:from_entity_type :document
+                     :from_entity_id document-id
+                     :to_entity_type :card
+                     :to_entity_id card-id}
+                    {:from_entity_type :document
+                     :from_entity_id document-id
+                     :to_entity_type :card
+                     :to_entity_id embedded-card-id}}
+                  (into #{} (map #(dissoc % :id)
+                                 (t2/select :model/Dependency :from_entity_id document-id)))))
+          (let [updated-doc (assoc document :document {:type "doc"
+                                                       :content [{:type "paragraph"
+                                                                  :content [{:type "smartLink"
+                                                                             :attrs {:entityId dashboard-id
+                                                                                     :model "dashboard"}}
+                                                                            {:type "smartLink"
+                                                                             :attrs {:entityId products-id
+                                                                                     :model "table"}}]}]})]
+            (t2/update! :model/Document document-id updated-doc)
+            (events/publish-event! :event/document-update {:object updated-doc :user-id api/*current-user-id*})
+            (is (=? #{{:from_entity_type :document
+                       :from_entity_id document-id
+                       :to_entity_type :dashboard
+                       :to_entity_id dashboard-id}
+                      {:from_entity_type :document
+                       :from_entity_id document-id
+                       :to_entity_type :table
+                       :to_entity_id products-id}}
+                    (into #{} (map #(dissoc % :id)
+                                   (t2/select :model/Dependency :from_entity_id document-id)))))
+            (t2/delete! :model/Document document-id)
+            (events/publish-event! :event/document-delete {:object document :user-id api/*current-user-id*})
+            (is (empty? (t2/select :model/Dependency :from_entity_id document-id)))))))))
