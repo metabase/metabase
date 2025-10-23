@@ -496,7 +496,7 @@
    [:description            {:optional true} [:maybe ms/NonBlankString]]
    [:display                ms/NonBlankString]
    [:visualization_settings ms/Map]
-   [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
+   [:collection_id          {:optional true} [:maybe [:or ms/PositiveInt ms/NanoIdString]]]
    [:collection_position    {:optional true} [:maybe ms/PositiveInt]]
    [:result_metadata        {:optional true} [:maybe analyze/ResultsMetadata]]
    [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
@@ -508,7 +508,11 @@
   [_route-params
    _query-params
    {card-type :type, :as card} :- CardCreateSchema]
-  (let [card  (update card :dataset_query lib-be/normalize-query)
+  (let [[_ collection-id :as has-cid?] (find card :collection_id)
+        card (-> card
+                 (update :dataset_query lib-be/normalize-query)
+                 (cond-> (and has-cid? (some? collection-id))
+                   (update :collection_id #(eid-translation/->id-or-404 :collection %))))
         query (:dataset_query card)]
     (check-if-card-can-be-saved query card-type)
     ;; check that we have permissions to run the query that we're trying to save
