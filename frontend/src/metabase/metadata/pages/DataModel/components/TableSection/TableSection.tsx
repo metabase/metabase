@@ -237,6 +237,7 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
           />
 
           <DataSourceInput
+            transformId={table.transform_id}
             value={table.data_source}
             onChange={handleDataSourceChange}
           />

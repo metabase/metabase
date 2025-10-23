@@ -25,8 +25,8 @@ export type TableVisibilityType2 = "gold" | "silver" | "bronze" | "copper";
 
 export type TableDataSource =
   | "ingested"
-  | "transformation"
-  | "metabase-transformation"
+  | "transform"
+  | "metabase-transform"
   | "source-data"
   | "uploaded-data";
 
@@ -65,7 +65,7 @@ export type Table = {
   visibility_type2: TableVisibilityType2 | null;
   owner_email: string;
   owner_user_id: UserId;
-  transform_id: TransformId; // readonly
+  transform_id: TransformId | null; // readonly
   data_update_frequency: string; // readonly
 };
 

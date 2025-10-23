@@ -1,20 +1,62 @@
+import { Link } from "react-router";
 import { t } from "ttag";
 
-import { Select, type SelectProps } from "metabase/ui";
-import type { TableDataSource } from "metabase-types/api";
+import { skipToken } from "metabase/api";
+import {
+  Button,
+  Group,
+  Icon,
+  Select,
+  type SelectProps,
+  Stack,
+  Text,
+} from "metabase/ui";
+import { useGetTransformQuery } from "metabase-enterprise/api";
+import type { TableDataSource, TransformId } from "metabase-types/api";
 
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
+  transformId: TransformId | null;
   value: TableDataSource | null;
   onChange: (value: TableDataSource | null) => void;
 }
 
 export const DataSourceInput = ({
   comboboxProps,
+  transformId, // TODO handle null
   value,
   onChange,
   onFocus,
   ...props
 }: Props) => {
+  const { data: transform } = useGetTransformQuery(transformId ?? skipToken);
+
+  if (value === "metabase-transform") {
+    return (
+      <Stack gap="sm">
+        <Text
+          component="label"
+          flex="0 0 auto"
+          fw="bold"
+          size="md"
+        >{t`Data source`}</Text>
+
+        <Group>
+          <Button
+            component={Link}
+            h="auto"
+            leftSection={<Icon name="sql" />}
+            p={0}
+            to={`/bench/transforms/${transformId}`}
+            size="xs"
+            variant="subtle"
+          >
+            {transform?.name ?? t`Transform`}
+          </Button>
+        </Group>
+      </Stack>
+    );
+  }
+
   return (
     <Select
       comboboxProps={{
@@ -40,8 +82,7 @@ export const DataSourceInput = ({
 function getData(value: TableDataSource | null) {
   const data = [
     { value: "ingested", label: t`Ingested` },
-    { value: "metabase-transformation", label: t`Metabase transformation` },
-    { value: "transformation", label: t`Transformation (external)` },
+    { value: "transformation", label: t`Transformation (other tools)` },
     { value: "source-data", label: t`Source data` },
     { value: "uploaded-data", label: t`Uploaded data` },
   ];
