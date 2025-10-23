@@ -2,8 +2,10 @@
   "/api/table endpoints."
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.app-db.core :as app-db]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
@@ -14,7 +16,8 @@
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
    ;; legacy usage -- don't do things like this going forward
-   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]}
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.sync.core :as sync]
@@ -53,12 +56,27 @@
 
 (api.macros/defendpoint :get "/"
   "Get all `Tables`."
-  []
-  (as-> (t2/select :model/Table, :active true, {:order-by [[:name :asc]]}) tables
-    (t2/hydrate tables :db)
-    (into [] (comp (filter mi/can-read?)
-                   (map schema.table/present-table))
-          tables)))
+  [_
+   {:keys [term visibility_type2 data_source owner_user_id owner_email]}
+   :- [:map
+       ;; conjunctive search terms
+       [:term {:optional true} [:maybe :string]]
+       [:visibility_type2 {:optional true} [:maybe :string]]
+       [:data_source {:optional true} [:maybe :string]]
+       [:owner_user_id {:optional true} [:maybe :int]]
+       [:owner_email {:optional true} [:maybe :int]]]]
+  (let [like   (case (app-db/db-type) (:h2 :postgres) :ilike :like)
+        where  (cond-> [:and true]
+                 (not (str/blank? term)) (conj [like   :name             (str "%" term "%")]) ; todo parse
+                 visibility_type2        (conj [:=     :visibility_type2 visibility_type2])
+                 data_source             (conj [:=     :data_source      data_source])
+                 owner_user_id           (conj [:=     :owner_user_id    owner_user_id])
+                 owner_email             (conj [:=     :owner_email      owner_email]))]
+    (as-> (t2/select :model/Table, :active true, {:where where, :order-by [[:name :asc]]}) tables
+      (t2/hydrate tables :db)
+      (into [] (comp (filter mi/can-read?)
+                     (map schema.table/present-table))
+            tables))))
 
 (api.macros/defendpoint :get "/:id"
   "Get `Table` with ID."

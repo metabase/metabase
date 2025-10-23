@@ -125,6 +125,30 @@
                   (map #(select-keys % [:name :display_name :id :entity_type]))
                   set))))))
 
+(deftest ^:parallel list-table-filtering-test
+  (testing "term filtering"
+    (is (=? [{:display_name "Users"}]
+            (->> (mt/user-http-request :crowberto :get 200 "table" :term "Use")
+                 (filter #(= (:db_id %) (mt/id)))           ; prevent stray tables from affecting unit test results
+                 (map #(select-keys % [:display_name]))))))
+  (testing "filter composition"
+    (mt/with-temp [:model/Table {products2-id :id} {:name         "PrOdUcTs2"
+                                                    :display_name "Products2"
+                                                    :db_id        (mt/id)
+                                                    :active       true}]
+      (is (=? [{:display_name "People"}
+               {:display_name "Products"}
+               {:display_name "Products2"}]
+              (->> (mt/user-http-request :crowberto :get 200 "table" :term "P")
+                   (filter #(= (:db_id %) (mt/id)))         ; prevent stray tables from affecting unit test results
+                   (map #(select-keys % [:display_name])))))
+
+      (mt/user-http-request :crowberto :put 200 (format "table/%d" products2-id) {:visibility_type2 "gold"})
+      (is (=? [{:display_name "Products2"}]
+              (->> (mt/user-http-request :crowberto :get 200 "table" :term "P" :visibility_type2 "gold")
+                   (filter #(= (:db_id %) (mt/id)))         ; prevent stray tables from affecting unit test results
+                   (map #(select-keys % [:display_name]))))))))
+
 (deftest ^:parallel list-table-test-2
   (testing "GET /api/table"
     (testing "Schema is \"\" rather than nil, if not set"
