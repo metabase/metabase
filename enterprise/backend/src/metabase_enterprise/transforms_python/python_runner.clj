@@ -85,8 +85,7 @@
   `maybe-fixup-value` before JSON encoding."
   [^OutputStream os fields-meta {cols-meta :cols}]
   (let [filtered-col-meta (m/index-by :name fields-meta)
-        col-names (map :name cols-meta)
-        none? (volatile! true)]
+        col-names (map :name cols-meta)]
     (fn
       ([]
        (-> os
@@ -94,9 +93,6 @@
            (BufferedWriter.)))
 
       ([^BufferedWriter writer]
-       ;; Workaround for LocalStack, which doesn't support zero byte files.
-       (when @none?
-         (.write writer " "))
        (doto writer
          (.flush)
          (.close)))
@@ -109,7 +105,6 @@
                       (map (fn [[n v]]
                              (maybe-fixup-value (filtered-col-meta n) v)))
                       (zipmap (filter filtered-col-meta col-names)))]
-         (when @none? (vreset! none? false))
          (json/encode-to row-map writer {})
          (doto writer
            (.newLine)))))))

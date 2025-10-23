@@ -237,7 +237,6 @@
       (do
         (log/info "New table")
         (create-table-and-insert-data! driver db-id (table-schema table-name metadata) data-source))
-
       (insert-data! driver db-id (table-schema table-name metadata) data-source))))
 
 (defmethod transfer-file-to-db :table

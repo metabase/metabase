@@ -208,7 +208,7 @@
   query unchanged to allow a full initial load."
   [query source-incremental-strategy transform-id]
   (let [watermark-value (next-watermark-value transform-id)
-        limit (-> source-incremental-strategy :query-limit)]
+        limit           (-> source-incremental-strategy :query-limit)]
     (if (lib.query/native? query)
       (cond-> query
         watermark-value

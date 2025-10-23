@@ -1460,14 +1460,14 @@
 (defmethod insert-from-source! [::driver :jsonl-file]
   [driver db-id {:keys [columns] :as table-definition} {:keys [file]}]
   (with-open [rdr (io/reader file)]
-    (let [lines (line-seq rdr)
+    (let [lines     (line-seq rdr)
           data-rows (map (fn [line]
                            (let [m (json/decode line)]
                              (mapv (fn [column]
                                      (let [raw-val (get m (:name column))]
                                        (insert-col->val driver :jsonl-file column raw-val)))
                                    columns)))
-                         lines)]
+                         (filter (comp not empty?) lines))]
       (insert-from-source! driver db-id table-definition {:type :rows :data data-rows}))))
 
 (defmulti add-columns!
