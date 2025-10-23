@@ -119,18 +119,10 @@ function getContentCellHtmlString(content: React.ReactNode): string {
   // `renderToString` from react-dom/server will crash Embedding SDK (metabase#58393)
   // Therefore, `process.env` is needed to tree-shake react-dom/server out of the SDK.
   // `reactNodeToHtmlString` will throw "cannot flush when React is already rendering" error (metabase#61164),
-  if (process.env.IS_EMBEDDING_SDK) {
-    if (isContentCell(content)) {
-      const tag = content.type;
+  if (process.env.IS_EMBEDDING_SDK === "true") {
+    if (isLink(content)) {
       const { href, className, children } = content.props;
-
-      let attributes = `class="${className}"`;
-
-      if (href) {
-        attributes += ` href="${href}"`;
-      }
-
-      return `<${tag} ${attributes}>${children}</${tag}>`;
+      return `<a class="${className}" href="${href}">${children}</a>`;
     }
 
     return "";
@@ -139,16 +131,18 @@ function getContentCellHtmlString(content: React.ReactNode): string {
   return renderToString(content);
 }
 
-const isContentCell = (
+const isLink = (
   content: React.ReactNode,
-): content is React.ReactElement<
-  { href?: string; className: string; children: string },
-  string
-> =>
+): content is React.ReactElement<{
+  href?: string;
+  className: string;
+  children: string;
+}> =>
   Boolean(
     content &&
       typeof content === "object" &&
-      "type" in content &&
-      typeof content.props.children === "string" &&
-      typeof content.props.className === "string",
+      "props" in content &&
+      content.props &&
+      "href" in content.props &&
+      content.props.href,
   );
