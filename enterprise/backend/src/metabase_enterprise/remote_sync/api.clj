@@ -18,10 +18,10 @@
 (set! *warn-on-reflection* true)
 
 (api.macros/defendpoint :post "/import" :- remote-sync.schema/ImportResponse
-  "Import Metabase content from Git repository source of truth.
+  "Import Metabase content from configured Remote Sync source.
 
   This endpoint will:
-  - Fetch the latest changes from the configured git repository
+  - Fetch the latest changes from the configured source 
   - Load the updated content using the serialization/deserialization system
 
   If `force=false` (default) and there are unsaved changes in the Remote Sync collection,
@@ -43,14 +43,14 @@
 
 (api.macros/defendpoint :get "/is-dirty" :- remote-sync.schema/IsDirtyResponse
   "Check if any remote-synced collection or collection item has local changes that have not been pushed
-  to the git repository."
+  to the remote sync source."
   []
   (api/check-superuser)
   {:is_dirty (remote-sync.object/dirty-global?)})
 
 (api.macros/defendpoint :get "/dirty" :- remote-sync.schema/DirtyResponse
-  "Return all models with changes that have not been pushed to the git repository in any remote-synced
-  collection."
+  "Return all models with changes that have not been pushed to the remote sync source in any
+  remote-synced collection."
   []
   (api/check-superuser)
   {:dirty (into []
@@ -101,7 +101,7 @@
     (t2/hydrate (remote-sync.task/most-recent-task) :status)))
 
 (api.macros/defendpoint :put "/settings" :- remote-sync.schema/SettingsUpdateResponse
-  "Update Git Sync related settings. You must be a superuser to do this."
+  "Update Remote Sync related settings. You must be a superuser to do this."
   [_route-params
    _query-params
    {:keys [remote-sync-type] :as settings}
@@ -117,7 +117,7 @@
   (try
     (settings/check-and-update-remote-settings! settings)
     (catch Exception e
-      (throw (ex-info (or (ex-message e) "Invalid git settings")
+      (throw (ex-info (or (ex-message e) "Invalid settings")
                       {:error       (ex-message e)
                        :status-code 400} e))))
   (let [task-id (impl/finish-remote-config!)]
@@ -127,7 +127,7 @@
       {:success true})))
 
 (api.macros/defendpoint :get "/branches" :- remote-sync.schema/BranchesResponse
-  "Get list of branches from the configured git source.
+  "Get list of branches from the configured source.
 
   Returns a JSON object with branch names under the :items key.
 
@@ -139,11 +139,11 @@
       (let [branch-list (source.p/branches source)]
         {:items branch-list})
       (catch Exception e
-        (log/errorf e "Failed to get branches from git source: %s" (ex-message e))
+        (log/errorf e "Failed to get branches from source: %s" (ex-message e))
         (let [error-msg (impl/source-error-message e)]
           (throw (ex-info error-msg {:status-code 400}
                           e)))))
-    (throw (ex-info "Git source not configured. Please configure MB_GIT_SOURCE_REPO_URL environment variable."
+    (throw (ex-info "Source not configured. Please configure MB_GIT_SOURCE_REPO_URL environment variable."
                     {:status-code 400}))))
 
 (api.macros/defendpoint :post "/create-branch" :- remote-sync.schema/CreateBranchResponse
@@ -156,7 +156,7 @@
   (let [base-branch (or (remote-sync.task/last-version) (settings/remote-sync-branch))
         source (source/source-from-settings)]
     (when-not source
-      (throw (ex-info "Git source not configured"
+      (throw (ex-info "Source not configured"
                       {:status-code 400})))
     (when-not base-branch
       (throw (ex-info "Base commit not found"
@@ -183,7 +183,7 @@
     (throw (ex-info "Stash is only allowed when remote-sync-type is set to 'development'" {:status-code 400})))
   (let [source (source/source-from-settings)]
     (when (nil? source)
-      (throw (ex-info "Git source not configured"
+      (throw (ex-info "Source not configured"
                       {:status-code 400})))
     (try
       (source.p/create-branch source new-branch (settings/remote-sync-branch))
