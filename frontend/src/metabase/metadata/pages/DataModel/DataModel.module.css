@@ -17,7 +17,7 @@
 }
 
 .tablePicker {
-  min-height: auto !important;
+  height: 100%;
 }
 
 .modelsTree {

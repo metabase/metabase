@@ -19,6 +19,7 @@ export const BenchSideNav = ({ children }: PropsWithChildren) => {
       width={width ?? DEFAULT_WIDTH}
       handle={<ResizableBoxHandle />}
       onResizeStop={(_, { size }) => setWidth(size.width)}
+      style={{ height: "100%" }}
     >
       {children}
     </ResizableBox>

@@ -1,5 +1,5 @@
 import type { Location } from "history";
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { withRouter } from "react-router";
 import { push, replace } from "react-router-redux";
 import { useLocalStorage } from "react-use";
@@ -14,20 +14,23 @@ import {
 import { TAG_TYPE_MAPPING, listTag } from "metabase/api/tags";
 import { getTreeItems } from "metabase/bench/components/models/utils";
 import { BenchFlatListItem } from "metabase/bench/components/shared/BenchFlatListItem";
+import { useItemsListFilter } from "metabase/bench/hooks/useItemsListFilter";
 import { getIcon } from "metabase/browse/models/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
 import { SidesheetCard } from "metabase/common/components/Sidesheet/SidesheetCard";
-import { Tree } from "metabase/common/components/tree/Tree";
+import { VirtualizedFlatList } from "metabase/common/components/VirtualizedFlatList";
+import { VirtualizedTree } from "metabase/common/components/tree/VirtualizedTree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
 import { useDispatch, useSelector } from "metabase/lib/redux/hooks";
+import { EmptyState } from "metabase/metadata/pages/DataModel/components/TablePicker/components/EmptyState";
 import type { SidebarFeatures } from "metabase/query_builder/components/NativeQueryEditor/types";
 import { ModelCacheManagementSection } from "metabase/query_builder/components/view/sidebars/ModelCacheManagementSection";
 import { shouldShowQuestionSettingsSidebar } from "metabase/query_builder/components/view/sidebars/QuestionSettingsSidebar";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import { getQuestion } from "metabase/query_builder/selectors";
 import { getUser } from "metabase/selectors/user";
-import { Box, Center, Loader, Text } from "metabase/ui";
+import { Box, Center, Icon, Input, Loader } from "metabase/ui";
 import Question from "metabase-lib/v1/Question";
 import type { SearchResult } from "metabase-types/api";
 
@@ -65,8 +68,9 @@ function ModelsList({
   onOpenModal: (modal: SearchResultModal) => void;
 }) {
   const dispatch = useDispatch();
+
   const { isLoading: isLoadingModels, data: modelsData } = useFetchModels({
-    filter_items_in_personal_collection: undefined, // include all models
+    filter_items_in_personal_collection: undefined,
     wait_for_reindex: true,
   });
   const { isLoading: isLoadingCollections, data: collections } =
@@ -85,11 +89,25 @@ function ModelsList({
     "tree" | "alphabetical"
   >("metabase-bench-models-display");
   const currentUser = useSelector(getUser);
+
+  const {
+    query,
+    setQuery,
+    filteredItems: filteredModels,
+  } = useItemsListFilter(
+    models,
+    useCallback(
+      (model: SearchResult, lowerQuery: string) =>
+        model.name.toLowerCase().includes(lowerQuery),
+      [],
+    ),
+  );
+
   const treeData = useMemo(() => {
-    return display === "tree" && models && collections && currentUser
-      ? getTreeItems(collections, models, "dataset", currentUser.id)
+    return display === "tree" && filteredModels && collections && currentUser
+      ? getTreeItems(collections, filteredModels, "dataset", currentUser.id)
       : [];
-  }, [collections, currentUser, display, models]);
+  }, [collections, currentUser, display, filteredModels]);
 
   const handleModelSelect = (item: ITreeNodeItem) => {
     if (typeof item.id === "number") {
@@ -128,41 +146,56 @@ function ModelsList({
         />
       }
       onCollapse={onCollapse}
-      listItems={
-        !models || isLoading ? (
-          <Center>
-            <Loader />
-          </Center>
-        ) : display === "tree" ? (
-          <Box mx="-sm">
-            <Tree
-              data={treeData}
-              selectedId={activeId}
-              onSelect={handleModelSelect}
-              emptyState={<Text c="text-light">{t`No models found`}</Text>}
-              TreeNode={ItemsListTreeNode}
-              rightSection={(item) =>
-                item.data ? (
-                  <div onClick={(e) => e.stopPropagation()}>
-                    {renderMoreMenu(item.data as SearchResult)}
-                  </div>
-                ) : null
-              }
-            />
-          </Box>
-        ) : (
-          models.map((model) => (
-            <ModelListItem
-              key={model.id}
-              model={model}
-              active={model.id === activeId}
-              renderMoreMenu={renderMoreMenu}
-            />
-          ))
-        )
+      searchInput={
+        <Input
+          leftSection={<Icon name="search" />}
+          placeholder={t`Search models`}
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+        />
       }
+      listItems={renderModelsList()}
     />
   );
+
+  function renderModelsList() {
+    if (!models || isLoading) {
+      return (
+        <Center>
+          <Loader />
+        </Center>
+      );
+    }
+
+    if (filteredModels.length === 0) {
+      return <EmptyState title={t`No models found`} icon="model" />;
+    }
+
+    return display === "tree" ? (
+      <VirtualizedTree
+        data={treeData}
+        selectedId={activeId}
+        onSelect={handleModelSelect}
+        TreeNode={ItemsListTreeNode}
+        rightSection={(item) =>
+          item.data ? renderMoreMenu(item.data as SearchResult) : null
+        }
+      />
+    ) : (
+      <VirtualizedFlatList
+        items={filteredModels}
+        selectedId={activeId}
+        getItemId={(model) => model.id}
+        renderItem={(model) => (
+          <ModelListItem
+            model={model}
+            active={model.id === activeId}
+            renderMoreMenu={renderMoreMenu}
+          />
+        )}
+      />
+    );
+  }
 }
 
 function ModelListItem({

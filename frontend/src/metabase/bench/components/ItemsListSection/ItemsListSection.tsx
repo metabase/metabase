@@ -10,6 +10,8 @@ import {
   Icon,
 } from "metabase/ui";
 
+import S from "./ItemsListSection.module.css";
+
 export const ItemsListAddButton = (props: ButtonProps) => (
   <Button
     leftSection={<Icon name="add" />}
@@ -25,6 +27,7 @@ type ItemsListSectionProps = {
   listItems: React.ReactNode;
   onCollapse?: () => void;
   testId?: string;
+  searchInput?: React.ReactNode;
 };
 
 export const ItemsListSection = ({
@@ -33,16 +36,12 @@ export const ItemsListSection = ({
   listItems,
   onCollapse,
   testId,
+  searchInput,
 }: ItemsListSectionProps) => {
   const hasHeader = !!(settings || addButton || onCollapse);
 
   return (
-    <Box
-      data-testid={testId}
-      w="100%"
-      h="100%"
-      style={{ display: "flex", flexDirection: "column" }}
-    >
+    <Box data-testid={testId} className={S.container}>
       {hasHeader && (
         <Flex justify="space-between" align="center" px="md" py="sm">
           <Flex align="center" gap="sm">
@@ -57,16 +56,15 @@ export const ItemsListSection = ({
             )}
             {settings}
           </Flex>
-          {addButton && <Flex style={{ flexShrink: 0 }}>{addButton}</Flex>}
+          {addButton && <Flex className={S.addButtonWrapper}>{addButton}</Flex>}
         </Flex>
       )}
-      <Box
-        px="md"
-        pt={hasHeader ? undefined : "md"}
-        style={{ overflow: "auto", flex: 1 }}
-      >
-        {listItems}
-      </Box>
+      {searchInput && (
+        <Box px="md" pt={hasHeader ? undefined : "md"} pb="xs">
+          {searchInput}
+        </Box>
+      )}
+      <Box className={S.listItemsContainer}>{listItems}</Box>
     </Box>
   );
 };
