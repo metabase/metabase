@@ -16341,6 +16341,94 @@ redirect_from:
         "tags" : [ "/api/ee/dependencies" ]
       }
     },
+    "/api/ee/dependencies/graph" : {
+      "get" : {
+        "summary" : "GET /api/ee/dependencies/graph",
+        "description" : "TODO: This endpoint is supposed to take an :id and :type of an entity (currently :table, :card, :snippet,\n  or :transform) and return the entity with all its upstream and downstream dependencies that should be fetched\n  recursively. :edges match our :model/Dependency format. Each node in :nodes has :id, :type, and :data, and :data\n  depends on the node type. For :table, there should be :display_name. For :card, there should be :name\n  and :type. For :snippet -> :name. For :transform -> :name.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "id",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "type",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "table", "card", "snippet", "transform" ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/dependencies" ]
+      }
+    },
+    "/api/ee/dependencies/graph/dependents" : {
+      "get" : {
+        "summary" : "GET /api/ee/dependencies/graph/dependents",
+        "description" : "TODO: This endpoint is supposed to take an :id and :type of an entity (currently :table, :card, :snippet,\n  or :transform) and return the entity with all its upstream and downstream dependencies that should be fetched\n  recursively. :edges match our :model/Dependency format. Each node in :nodes has :id, :type, and :data, and :data\n  depends on the node type. For :table, there should be :display_name. For :card, there should be :name\n  and :type. For :snippet -> :name. For :transform -> :name.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "type",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "table", "card", "snippet", "transform" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "dependent_type",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "table", "card", "snippet", "transform" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "dependent_card_type",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "question", "model", "metric" ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/dependencies" ]
+      }
+    },
     "/api/ee/document/" : {
       "get" : {
         "summary" : "GET /api/ee/document/",
@@ -25843,7 +25931,7 @@ redirect_from:
             "type" : "array",
             "items" : {
               "type" : "string",
-              "enum" : [ "dashboard", "table", "dataset", "segment", "collection", "document", "database", "action", "indexed-entity", "metric", "card" ]
+              "enum" : [ "dashboard", "table", "dataset", "segment", "collection", "transform", "document", "database", "action", "indexed-entity", "metric", "card" ]
             }
           }
         }, {

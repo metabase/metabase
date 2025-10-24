@@ -1779,8 +1779,9 @@
   (when (seq items)
     (for [item items]
       (assoc item :can_delete (boolean (and
-                                        (not (or (= :model/Collection (t2/model item))
-                                                 (collection.root/is-root-collection? item)))
+                                        (not (collection.root/is-root-collection? item))
+                                        (or (not (= :model/Collection (t2/model item)))
+                                            api/*is-superuser?*)
                                         (:archived item)
                                         (mi/can-write? item)))))))
 

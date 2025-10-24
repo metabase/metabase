@@ -3,10 +3,12 @@ const { H } = cy;
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
+  ALL_USERS_GROUP_ID,
   FIRST_COLLECTION_ID,
   ORDERS_DASHBOARD_ID,
   SECOND_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { DataPermissionValue } from "metabase/admin/permissions/types";
 import type { IconName } from "metabase/ui";
 import type {
   CardId,
@@ -524,8 +526,17 @@ describe("scenarios > dependencies > dependency graph", () => {
     });
   });
 
-  describe.skip("permissions", () => {
+  describe("permissions", () => {
     it("should be able to view database entities without collection access", () => {
+      cy.updatePermissionsGraph({
+        [ALL_USERS_GROUP_ID]: {
+          [WRITABLE_DB_ID]: {
+            "view-data": DataPermissionValue.UNRESTRICTED,
+            "create-queries": DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
+          },
+        },
+      });
+
       getScoreboardTableId().then((tableId) => {
         createTableBasedQuestion({ tableId });
         createTableBasedModel({ tableId });
@@ -564,7 +575,7 @@ describe("scenarios > dependencies > dependency graph", () => {
           cy.findByText("1 question").should("be.visible");
           cy.findByText("1 model").should("be.visible");
           cy.findByText("1 metric").should("be.visible");
-          cy.findByText("1 snippet").should("be.visible");
+          cy.findByText(/snippet/).should("not.exist");
           cy.findByText(/transform/).should("not.exist");
         });
       });
