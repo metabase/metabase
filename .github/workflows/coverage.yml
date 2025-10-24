@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     strategy:
+      fail-fast: true
       matrix:
         shard: [1, 2]
         shard-total: [2]
@@ -36,8 +37,9 @@ jobs:
 
   merge-coverage:
     runs-on: ubuntu-22.04
-    timeout-minutes: 30
+    timeout-minutes: 10
     needs: fe-test-coverage
+    if: success()
     steps:
       - uses: actions/checkout@v4
       - name: Download all coverage artifacts
@@ -49,7 +51,7 @@ jobs:
         run: |
           mkdir -p coverage
           npx nyc merge coverage-artifacts coverage/coverage-final.json
-          npx nyc report --reporter=lcov --reporter=text
+          npx nyc report --temp-dir=coverage --reporter=lcov --reporter=text --report-dir=coverage
       - name: Upload merged coverage to codecov.io
         uses: codecov/codecov-action@v5
         with:
