@@ -21,7 +21,9 @@
 
 ;;; abstractions
 
-(defn chan? [x]
+(defn chan?
+  "Checks if argument is a `core.async/chan`"
+  [x]
   (satisfies? impl/Channel x))
 
 ;; we're using channels because of backpressure and ability to close them
@@ -200,7 +202,9 @@
           (throw (ex-info (.getMessage e) (json/decode-body res)))
           (throw e))))))
 
-(defn openai [& args]
+(defn openai
+  "Perform a request to OpenAI"
+  [& args]
   ;; pipe returns destination channel \o/
   (a/pipe (apply openai-raw args) (a/chan 64 openai->aisdk-xf)))
 
