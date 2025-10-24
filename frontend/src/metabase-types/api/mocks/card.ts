@@ -163,7 +163,6 @@ export const createMockColumnRangeFormattingSetting = (
 });
 
 export const createMockPieRow = (opts?: Partial<PieRow>): PieRow => ({
-  // eslint-disable-next-line no-color-literals
   color: "#7172AD",
   defaultColor: false,
   enabled: true,
