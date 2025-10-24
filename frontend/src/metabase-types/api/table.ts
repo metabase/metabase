@@ -95,6 +95,11 @@ export interface TableListQuery {
   include_editable_data_model?: boolean;
   remove_inactive?: boolean;
   skip_fields?: boolean;
+  term?: string;
+  visibility_type2?: string;
+  data_source?: string;
+  owner_user_id?: number;
+  owner_email?: string;
 }
 
 export interface ForeignKey {
