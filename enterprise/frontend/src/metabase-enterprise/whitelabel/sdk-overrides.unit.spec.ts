@@ -1,6 +1,6 @@
 import { PLUGIN_SELECTORS } from "metabase/plugins";
 
-import { initializeSdkPlugins } from "./index";
+import { initializeSdkPlugins } from "./sdk-overrides";
 
 describe("SDK Plugin Initialization", () => {
   let originalGetNoDataIllustration: typeof PLUGIN_SELECTORS.getNoDataIllustration;
@@ -50,43 +50,31 @@ describe("SDK Plugin Initialization", () => {
       expect(mockSdkPlugins.getNoDataIllustration).toHaveBeenCalled();
     });
 
-    it("should handle SDK plugin functions that return null", () => {
-      const mockSdkPlugins = {
-        getNoDataIllustration: jest.fn().mockReturnValue(null),
-      };
+    it.each([null, undefined])(
+      "should fall back to original selector when SDK plugin returns %s",
+      (pluginReturnValue) => {
+        const mockSdkPlugins = {
+          getNoDataIllustration: jest.fn().mockReturnValue(pluginReturnValue),
+        };
 
-      const mockState = {
-        sdk: {
-          plugins: mockSdkPlugins,
-        },
-      } as any;
+        const mockState = {
+          sdk: {
+            plugins: mockSdkPlugins,
+          },
+        } as any;
 
-      // Should not throw an error when SDK plugin returns null
-      expect(() => {
-        PLUGIN_SELECTORS.getNoDataIllustration(mockState);
-      }).not.toThrow();
+        // Should not throw an error when SDK plugin returns null
+        expect(() => {
+          PLUGIN_SELECTORS.getNoDataIllustration(mockState);
+        }).not.toThrow();
 
-      expect(PLUGIN_SELECTORS.getNoDataIllustration(mockState)).toBeDefined();
+        const result = PLUGIN_SELECTORS.getNoDataIllustration(mockState);
+        const originalResult = originalGetNoDataIllustration(mockState);
 
-      expect(mockSdkPlugins.getNoDataIllustration).toHaveBeenCalled();
-    });
-
-    it("should handle SDK plugin functions that return undefined", () => {
-      const mockSdkPlugins = {
-        getNoDataIllustration: jest.fn().mockReturnValue(undefined),
-      };
-
-      const mockState = {
-        sdk: {
-          plugins: mockSdkPlugins,
-        },
-      } as any;
-
-      // Should not throw an error when SDK plugin returns undefined
-      expect(() => {
-        PLUGIN_SELECTORS.getNoDataIllustration(mockState);
-      }).not.toThrow();
-    });
+        expect(result).toBe(originalResult);
+        expect(mockSdkPlugins.getNoDataIllustration).toHaveBeenCalled();
+      },
+    );
 
     it("should handle missing SDK plugins gracefully", () => {
       const mockState = {
@@ -228,44 +216,6 @@ describe("SDK Plugin Initialization", () => {
       );
 
       consoleSpy.mockRestore();
-    });
-
-    it("should fallback to original selector when SDK plugin returns null", () => {
-      const mockSdkPlugins = {
-        getNoObjectIllustration: jest.fn().mockReturnValue(null),
-      };
-
-      const mockState = {
-        sdk: {
-          plugins: mockSdkPlugins,
-        },
-      } as any;
-
-      const result = PLUGIN_SELECTORS.getNoObjectIllustration(mockState);
-
-      // Should call the SDK plugin and then fall back to original behavior
-      expect(mockSdkPlugins.getNoObjectIllustration).toHaveBeenCalled();
-      // The result will be from the original selector (test-file-stub in test environment)
-      expect(result).toBeDefined();
-    });
-
-    it("should fallback to original selector when SDK plugin returns undefined", () => {
-      const mockSdkPlugins = {
-        getNoObjectIllustration: jest.fn().mockReturnValue(undefined),
-      };
-
-      const mockState = {
-        sdk: {
-          plugins: mockSdkPlugins,
-        },
-      } as any;
-
-      const result = PLUGIN_SELECTORS.getNoObjectIllustration(mockState);
-
-      // Should call the SDK plugin and then fall back to original behavior
-      expect(mockSdkPlugins.getNoObjectIllustration).toHaveBeenCalled();
-      // The result will be from the original selector (test-file-stub in test environment)
-      expect(result).toBeDefined();
     });
   });
 });

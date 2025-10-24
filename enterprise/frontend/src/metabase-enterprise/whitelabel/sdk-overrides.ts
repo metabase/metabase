@@ -27,11 +27,9 @@ export const initializeSdkPlugins = () => {
     try {
       // Check if we're in an SDK context with plugins
       const sdkState = (state as SdkStoreState).sdk;
-      if (sdkState?.plugins?.getNoDataIllustration) {
-        const sdkResult = sdkState.plugins.getNoDataIllustration();
-        if (sdkResult !== null && sdkResult !== undefined) {
-          return sdkResult;
-        }
+      const sdkResult = sdkState?.plugins?.getNoDataIllustration?.();
+      if (sdkResult !== null && sdkResult !== undefined) {
+        return sdkResult;
       }
     } catch (error) {
       // Log error but don't break the application
@@ -46,11 +44,9 @@ export const initializeSdkPlugins = () => {
     try {
       // Check if we're in an SDK context with plugins
       const sdkState = (state as SdkStoreState).sdk;
-      if (sdkState?.plugins?.getNoObjectIllustration) {
-        const sdkResult = sdkState.plugins.getNoObjectIllustration();
-        if (sdkResult !== null && sdkResult !== undefined) {
-          return sdkResult;
-        }
+      const sdkResult = sdkState?.plugins?.getNoObjectIllustration?.();
+      if (sdkResult !== null && sdkResult !== undefined) {
+        return sdkResult;
       }
     } catch (error) {
       // Log error but don't break the application

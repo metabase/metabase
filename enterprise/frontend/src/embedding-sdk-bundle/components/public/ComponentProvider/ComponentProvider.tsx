@@ -4,7 +4,6 @@ import { type JSX, memo, useEffect, useId, useRef } from "react";
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
 import { SdkIncompatibilityWithInstanceBanner } from "embedding-sdk-bundle/components/private/SdkVersionCompatibilityHandler/SdkIncompatibilityWithInstanceBanner";
 import { useInitDataInternal } from "embedding-sdk-bundle/hooks/private/use-init-data";
-import { initializeSdkPlugins } from "embedding-sdk-bundle/plugins";
 import { getSdkStore } from "embedding-sdk-bundle/store";
 import {
   setErrorComponent,
@@ -58,8 +57,6 @@ export const ComponentProviderInternal = ({
   }, [reduxStore, fontFamily]);
 
   useEffect(() => {
-    // Initialize SDK plugins to make selectors SDK-aware
-    initializeSdkPlugins();
     reduxStore.dispatch(setPlugins(pluginsConfig || null));
   }, [reduxStore, pluginsConfig]);
 
