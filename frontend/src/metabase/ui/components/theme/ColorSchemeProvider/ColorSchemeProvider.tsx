@@ -10,7 +10,7 @@ import { useMedia } from "react-use";
 import { noop } from "underscore";
 
 import {
-  getIsEmbeddingIframe,
+  isEmbeddingIframe,
   isEmbeddingSdk,
 } from "metabase/embedding-sdk/config";
 
@@ -67,7 +67,7 @@ export function ColorSchemeProvider({
     if (forceColorScheme) {
       return forceColorScheme;
     }
-    if (getIsEmbeddingIframe()) {
+    if (isEmbeddingIframe()) {
       return "light";
     }
     return colorScheme === "auto" ? systemColorScheme : colorScheme;

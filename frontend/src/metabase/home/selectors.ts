@@ -1,7 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 import dayjs from "dayjs";
 
-import { getIsEmbeddingIframe } from "metabase/embedding-sdk/config";
+import { isEmbeddingIframe } from "metabase/embedding-sdk/config";
 import { getSetting } from "metabase/selectors/settings";
 import { getIsWhiteLabeling } from "metabase/selectors/whitelabel";
 import type { State } from "metabase-types/store";
@@ -21,8 +21,8 @@ export const getIsNewInstance = (state: State) => {
 };
 
 export const getCanAccessOnboardingPage = createSelector(
-  [getIsWhiteLabeling],
-  (isWhiteLabelled) => {
-    return !getIsEmbeddingIframe() && !isWhiteLabelled;
+  [getIsWhiteLabeling, isEmbeddingIframe],
+  (isWhiteLabelled, isEmbeddingIframe) => {
+    return !isEmbeddingIframe && !isWhiteLabelled;
   },
 );

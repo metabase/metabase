@@ -7,7 +7,7 @@ import {
   getDashboardId,
   getIsEditing as getIsEditingDashboard,
 } from "metabase/dashboard/selectors";
-import { getIsEmbeddingIframe } from "metabase/embedding-sdk/config";
+import { isEmbeddingIframe } from "metabase/embedding-sdk/config";
 import { PLUGIN_DOCUMENTS } from "metabase/plugins";
 import {
   getIsSavedQuestionChanged,
@@ -67,7 +67,7 @@ export const getIsCollectionPathVisible = createSelector(
     (state) => PLUGIN_DOCUMENTS.getCurrentDocument(state),
     getRouterPath,
     getEmbedOptions,
-    () => getIsEmbeddingIframe(),
+    isEmbeddingIframe,
   ],
   (question, dashboard, document, path, embedOptions, isEmbeddingIframe) => {
     if (isEmbeddingIframe && !embedOptions.breadcrumbs) {
@@ -101,7 +101,7 @@ export const getIsNavBarEnabled = createSelector(
     getRouterPath,
     getIsEditingDashboard,
     getEmbedOptions,
-    () => getIsEmbeddingIframe(),
+    isEmbeddingIframe,
   ],
   (currentUser, path, isEditingDashboard, embedOptions, isEmbeddingIframe) => {
     if (!currentUser || isEditingDashboard) {
@@ -147,7 +147,7 @@ export const getIsAppBarVisible = createSelector(
     getIsAdminApp,
     getIsEditingDashboard,
     getIsEmbeddedAppBarVisible,
-    () => getIsEmbeddingIframe(),
+    isEmbeddingIframe,
   ],
   (
     currentUser,
@@ -174,21 +174,21 @@ export const getIsAppBarVisible = createSelector(
 );
 
 export const getIsLogoVisible = createSelector(
-  [getEmbedOptions, () => getIsEmbeddingIframe()],
+  [getEmbedOptions, isEmbeddingIframe],
   (embedOptions, isEmbeddingIframe) => {
     return !isEmbeddingIframe || embedOptions.logo;
   },
 );
 
 export const getIsSearchVisible = createSelector(
-  [getEmbedOptions, () => getIsEmbeddingIframe()],
+  [getEmbedOptions, isEmbeddingIframe],
   (embedOptions, isEmbeddingIframe) => {
     return !isEmbeddingIframe || embedOptions.search;
   },
 );
 
 export const getIsNewButtonVisible = createSelector(
-  [getEmbedOptions, () => getIsEmbeddingIframe()],
+  [getEmbedOptions, isEmbeddingIframe],
   (embedOptions, isEmbeddingIframe) => {
     return !isEmbeddingIframe || embedOptions.new_button;
   },
@@ -237,7 +237,7 @@ export const getIsNavbarOpen: Selector<State, boolean> = createSelector(
     getEmbedOptions,
     getIsAppBarVisible,
     (state: State) => state.app.isNavbarOpen,
-    () => getIsEmbeddingIframe(),
+    isEmbeddingIframe,
   ],
   (embedOptions, isAppBarVisible, isNavbarOpen, isEmbeddingIframe) => {
     // in an embedded instance, when the app bar is hidden, but the nav bar is not

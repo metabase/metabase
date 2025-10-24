@@ -1,7 +1,7 @@
 import { createSelector } from "reselect";
 
 import {
-  getIsEmbeddingIframe,
+  isEmbeddingIframe,
   isEmbeddingSdk,
 } from "metabase/embedding-sdk/config";
 
@@ -12,7 +12,7 @@ export const getIsWebApp = createSelector(
   (siteUrl) => {
     const pathname = window.location.pathname.replace(siteUrl, "");
     return (
-      !getIsEmbeddingIframe() &&
+      !isEmbeddingIframe() &&
       !isEmbeddingSdk() &&
       !pathname.startsWith("/public/") &&
       !pathname.startsWith("/embed/")

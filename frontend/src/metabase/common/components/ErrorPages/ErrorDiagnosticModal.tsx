@@ -6,7 +6,7 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import { useSendBugReportMutation } from "metabase/api/bug-report";
 import { useSetting } from "metabase/common/hooks";
 import { useToggle } from "metabase/common/hooks/use-toggle";
-import { getIsEmbeddingIframe } from "metabase/embedding-sdk/config";
+import { isEmbeddingIframe } from "metabase/embedding-sdk/config";
 import { downloadObjectAsJson } from "metabase/lib/download";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { closeDiagnostics } from "metabase/redux/app";
@@ -177,7 +177,7 @@ export const ErrorDiagnosticModal = ({
 export const ErrorDiagnosticModalTrigger = () => {
   const [isModalOpen, setModalOpen] = useState(false);
 
-  if (getIsEmbeddingIframe()) {
+  if (isEmbeddingIframe()) {
     return null;
   }
 
