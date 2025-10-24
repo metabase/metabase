@@ -467,7 +467,7 @@
     (= unit :quarter)
     (recur db-type hsql-form (* 3 amount) :month)
 
-      ;; date + interval -> timestamp, so cast the expression back to date
+    ;; date + interval -> timestamp, so cast the expression back to date
     (is-of-type? hsql-form "date")
     (cast "date" (+ hsql-form (pg-interval amount unit)))
 
