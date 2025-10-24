@@ -71,8 +71,8 @@ export function getDependentGroupLabel({
       return ngettext(msgid`${count} document`, `${count} documents`, count);
     case "sandbox":
       return ngettext(
-        msgid`${count} permission rule`,
-        `${count} permission rules`,
+        msgid`${count} row and column security rule`,
+        `${count} row and column security rules`,
         count,
       );
   }

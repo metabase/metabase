@@ -203,7 +203,7 @@
                                                     (revisions/with-last-edit-info :dashboard))
                      (= entity-type :document) (-> (t2/hydrate :creator [:collection :is_personal])
                                                    (->> (map collection.root/hydrate-root-collection)))
-                     (= entity-type :sandbox) (t2/hydrate [:table :db]))
+                     (= entity-type :sandbox) (t2/hydrate [:table :db :fields]))
                    (mapv #(entity-value entity-type % usages))))
             nodes-by-type)))
 

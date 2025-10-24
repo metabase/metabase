@@ -91,7 +91,7 @@ export function getNodeLabel(node: DependencyNode): string {
     case "table":
       return node.data.display_name;
     case "sandbox":
-      return t`Row and column security rule`;
+      return node.data.table?.display_name ?? t`Row and column security rule`;
     default:
       return node.data.name;
   }
@@ -194,7 +194,7 @@ export function getNodeLink(node: DependencyNode): NodeLink | null {
     case "sandbox":
       if (node.data.table != null) {
         return {
-          label: `View this permission rule`,
+          label: `View this permission`,
           url: Urls.tableDataPermissions(
             node.data.table.db_id,
             node.data.table.schema,
@@ -326,6 +326,6 @@ export function getNodeTypeInfo(node: DependencyNode): NodeTypeInfo {
     case "document":
       return { label: t`Document`, color: "text-secondary" };
     case "sandbox":
-      return { label: t`Permission rule`, color: "error" };
+      return { label: t`Row and column security rule`, color: "error" };
   }
 }
