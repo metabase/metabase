@@ -7,6 +7,10 @@ import {
   type EntityPickerTab,
 } from "metabase/common/components/EntityPicker";
 import {
+  DashboardPicker,
+  type DashboardPickerStatePath,
+} from "metabase/common/components/Pickers/DashboardPicker";
+import {
   QuestionPicker,
   type QuestionPickerStatePath,
 } from "metabase/common/components/Pickers/QuestionPicker";
@@ -22,6 +26,7 @@ import {
 } from "metabase-types/api";
 
 import {
+  DASHBOARD_PICKER_OPTIONS,
   ENTITY_PICKER_OPTIONS,
   QUESTION_PICKER_OPTIONS,
   RECENTS_CONTEXT,
@@ -32,6 +37,7 @@ import type {
   EntryPickerItemModel,
 } from "./types";
 import {
+  getDashboardPickerItem,
   getEntryPickerItem,
   getEntryPickerValue,
   getMetricPickerItem,
@@ -57,6 +63,8 @@ export function EntryPickerModal({
   const [questionsPath, setQuestionsPath] = useState<QuestionPickerStatePath>();
   const [modelsPath, setModelsPath] = useState<QuestionPickerStatePath>();
   const [metricsPath, setMetricsPath] = useState<QuestionPickerStatePath>();
+  const [dashboardsPath, setDashboardsPath] =
+    useState<DashboardPickerStatePath>();
   const { data: searchResponse, isLoading: isSearchLoading } = useSearchQuery({
     models: ["card"],
     limit: 0,
@@ -160,11 +168,31 @@ export function EntryPickerModal({
           <QuestionPicker
             initialValue={value ? getMetricPickerItem(value) : undefined}
             models={["metric"]}
-            options={QUESTION_PICKER_OPTIONS}
+            options={DASHBOARD_PICKER_OPTIONS}
             path={metricsPath}
             onInit={onItemSelect}
             onItemSelect={onItemSelect}
             onPathChange={setMetricsPath}
+          />
+        ),
+      });
+    }
+
+    if (hasAvailableModels(searchResponse, ["dashboard"])) {
+      computedTabs.push({
+        id: "dashboards-tab",
+        displayName: t`Dashboards`,
+        models: ["dashboard"],
+        folderModels: ["collection"],
+        icon: "dashboard",
+        render: ({ onItemSelect }) => (
+          <DashboardPicker
+            initialValue={value ? getDashboardPickerItem(value) : undefined}
+            models={["dashboard"]}
+            options={QUESTION_PICKER_OPTIONS}
+            path={dashboardsPath}
+            onItemSelect={onItemSelect}
+            onPathChange={setDashboardsPath}
           />
         ),
       });
@@ -178,6 +206,7 @@ export function EntryPickerModal({
     questionsPath,
     modelsPath,
     metricsPath,
+    dashboardsPath,
   ]);
 
   const handleItemSelect = (item: EntryPickerItem) => {

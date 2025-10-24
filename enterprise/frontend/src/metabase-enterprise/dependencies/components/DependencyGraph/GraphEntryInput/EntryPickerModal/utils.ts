@@ -1,3 +1,4 @@
+import type { DashboardPickerItem } from "metabase/common/components/Pickers/DashboardPicker";
 import type { QuestionPickerItem } from "metabase/common/components/Pickers/QuestionPicker";
 import type {
   TablePickerItem,
@@ -104,6 +105,15 @@ export function getMetricPickerItem(
   return getCardPickerItem(node, "metric");
 }
 
+export function getDashboardPickerItem(
+  node: DependencyNode,
+): DashboardPickerItem | undefined {
+  if (node.type !== "dashboard") {
+    return;
+  }
+  return { id: node.id, model: "dashboard", name: node.data.name };
+}
+
 export function getEntryPickerItem(
   node: DependencyNode,
 ): EntryPickerItem | undefined {
@@ -112,7 +122,8 @@ export function getEntryPickerItem(
     getTransformPickerItem(node) ??
     getQuestionPickerItem(node) ??
     getModelPickerItem(node) ??
-    getMetricPickerItem(node)
+    getMetricPickerItem(node) ??
+    getDashboardPickerItem(node)
   );
 }
 
