@@ -92,7 +92,6 @@ function TransformQueryPageBody({ transform }: TransformQueryPageBodyProps) {
   };
 
   const handleCancel = () => {
-    // set to initial source to fix isDirty calc on route leave
     setSource(transform.source);
     clearProposed();
     dispatch(push(getTransformUrl(transform.id)));

@@ -119,6 +119,12 @@ export function PythonTransformEditor({
     }
   };
 
+  const handleCancel = () => {
+    setSource(initialSource);
+    setIsSourceDirty(false);
+    onCancel();
+  };
+
   useHotkeys([["mod+Enter", handleCmdEnter]], []);
 
   const validationResult = getValidationResult(saveSource);
@@ -137,7 +143,7 @@ export function PythonTransformEditor({
         isSaving={isSaving}
         hasProposedQuery={!!proposedSource}
         onSave={handleSave}
-        onCancel={onCancel}
+        onCancel={handleCancel}
         validationResult={validationResult}
         isQueryDirty={isSourceDirty}
       />

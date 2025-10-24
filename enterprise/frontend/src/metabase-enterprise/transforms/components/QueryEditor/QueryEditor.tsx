@@ -7,7 +7,7 @@ import type { SelectionRange } from "metabase/query_builder/components/NativeQue
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { NativeQueryPreview } from "metabase/querying/notebook/components/NativeQueryPreview";
 import { Center, Loader, Modal, Stack } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
+import Question from "metabase-lib/v1/Question";
 import type {
   NativeQuerySnippet,
   QueryTransformSource,
@@ -41,6 +41,7 @@ type QueryEditorProps = {
 
 export function QueryEditor({
   transform,
+  initialSource,
   proposedSource,
   isNew = true,
   isSaving = false,
@@ -97,6 +98,11 @@ export function QueryEditor({
     }
   };
 
+  const handleCancel = () => {
+    setQuestion(Question.create({ dataset_query: initialSource.query }));
+    onCancel();
+  };
+
   useHotkeys([["mod+Enter", handleCmdEnter]], []);
 
   const handleOpenModal = (type: QueryModalType) => {
@@ -145,7 +151,7 @@ export function QueryEditor({
           hasProposedQuery={!!proposedSource}
           isQueryDirty={isQueryDirty}
           onSave={handleSave}
-          onCancel={onCancel}
+          onCancel={handleCancel}
         />
         <EditorBody
           question={question}
