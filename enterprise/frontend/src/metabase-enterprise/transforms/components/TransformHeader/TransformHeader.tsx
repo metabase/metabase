@@ -28,6 +28,7 @@ export function TransformHeader({
           tabs={[
             { label: t`Query`, to: `/bench/transforms/1` },
             { label: t`Schedule`, to: `/bench/transforms/1/schedule` },
+            { label: t`Target`, to: `/bench/transforms/1/target` },
           ]}
         />
       }

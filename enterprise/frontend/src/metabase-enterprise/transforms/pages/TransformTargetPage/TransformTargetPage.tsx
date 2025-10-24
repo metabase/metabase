@@ -8,19 +8,23 @@ import type { Transform } from "metabase-types/api";
 
 import { TransformHeader } from "../../components/TransformHeader";
 import { POLLING_INTERVAL } from "../../constants";
-import { isTransformCanceling, isTransformRunning } from "../../utils";
+import {
+  isTransformCanceling,
+  isTransformRunning,
+  isTransformSyncing,
+} from "../../utils";
 
-import { ScheduleSection } from "./ScheduleSection";
+import { TargetSection } from "./TargetSection";
 
-type TransformSchedulePageParams = {
+type TransformTargetPageParams = {
   transformId: string;
 };
 
-type TransformSchedulePageProps = {
-  params: TransformSchedulePageParams;
+type TransformTargetPageProps = {
+  params: TransformTargetPageParams;
 };
 
-export function TransformSchedulePage({ params }: TransformSchedulePageProps) {
+export function TransformTargetPage({ params }: TransformTargetPageProps) {
   const [isPolling, setIsPolling] = useState(false);
   const transformId = Urls.extractEntityId(params.transformId);
   const {
@@ -42,7 +46,7 @@ export function TransformSchedulePage({ params }: TransformSchedulePageProps) {
   return (
     <div>
       <TransformHeader />
-      <ScheduleSection transform={transform} />
+      <TargetSection transform={transform} />
     </div>
   );
 }
@@ -50,6 +54,8 @@ export function TransformSchedulePage({ params }: TransformSchedulePageProps) {
 function isPollingNeeded(transform?: Transform) {
   return (
     transform != null &&
-    (isTransformRunning(transform) || isTransformCanceling(transform))
+    (isTransformRunning(transform) ||
+      isTransformCanceling(transform) ||
+      isTransformSyncing(transform))
   );
 }
