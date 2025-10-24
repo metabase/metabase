@@ -54,21 +54,22 @@
 
 (prefer-method driver/database-supports? [:starburst :set-timezone] [:sql-jdbc :set-timezone])
 
-(doseq [[feature supported?] {:set-timezone                    true
-                              :basic-aggregations              true
-                              :standard-deviation-aggregations true
-                              :expressions                     true
-                              :native-parameters               true
-                              :expression-aggregations         true
-                              :expression-literals             true
-                              :binning                         true
-                              :datetime-diff                   true
-                              :convert-timezone                true
-                              :connection/multiple-databases   true
-                              :metadata/key-constraints        false
-                              :now                             true
-                              :database-routing                true
-                              :connection-impersonation        true}]
+(doseq [[feature supported?] {:set-timezone                           true
+                              :basic-aggregations                     true
+                              :standard-deviation-aggregations        true
+                              :expressions                            true
+                              :native-parameters                      true
+                              :expression-aggregations                true
+                              :expression-literals                    true
+                              :binning                                true
+                              :datetime-diff                          true
+                              :convert-timezone                       true
+                              :connection/multiple-databases          true
+                              :metadata/key-constraints               false
+                              :now                                    true
+                              :database-routing                       true
+                              :connection-impersonation               true
+                              :connection-impersonation-requires-role true}]
   (defmethod driver/database-supports? [:starburst feature] [_ _ _] supported?))
 
 (defn- format-field
@@ -550,16 +551,6 @@
   (-> (.. rs getStatement getConnection)
       pooled-conn->starburst-conn))
 
-(defmethod driver.sql/default-database-role :starburst
-  [_driver _database]
-  :default-role)
-
-(defmethod driver/set-role! :starburst
-  [_driver ^Connection conn role]
-  (if (= role :default-role)
-    (.clearSessionUser ^TrinoConnection (.unwrap conn TrinoConnection))
-    (.setSessionUser ^TrinoConnection (.unwrap conn TrinoConnection) role)))
-
 (defmethod sql-jdbc.execute/do-with-connection-with-options :starburst
   [driver db-or-id-or-spec options f]
   (sql-jdbc.execute/do-with-resolved-connection
@@ -674,19 +665,6 @@
 ;;; |                                          SQL Statment Operations                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- impersonate-user
-  [^Connection conn]
-  (when (str/includes? (.getProperty (.getClientInfo conn) "ClientInfo" "") "impersonate:true")
-    #_{:clj-kondo/ignore [:deprecated-var]}
-    (let [email (get (deref (driver-api/current-user)) :email)]
-      (log/info "[starburst] Using legacy impersonation.")
-      (.setSessionUser ^TrinoConnection (.unwrap conn TrinoConnection) email))))
-
-(defn- remove-impersonation
-  [^Connection conn]
-  (when (str/includes? (.getProperty (.getClientInfo conn) "ClientInfo" "") "impersonate:true")
-    (.clearSessionUser ^TrinoConnection (.unwrap conn TrinoConnection))))
-
 ; Metabase tests require a specific error when an invalid number of parameters are passed
 (defn- handle-execution-error
   [^Exception e]
@@ -716,15 +694,11 @@
   (let [ps (proxy [java.sql.PreparedStatement] []
              (executeQuery []
                (try
-                 (let [rs (.executeQuery stmt)]
-                   (remove-impersonation conn)
-                   rs)
+                 (.executeQuery stmt)
                  (catch Throwable e (handle-execution-error e))))
              (execute []
                (try
-                 (let [rs (.execute stmt)]
-                   (remove-impersonation conn)
-                   rs)
+                 (.execute stmt)
                  (catch Throwable e (handle-execution-error e))))
              (setMaxRows [nb] (.setMaxRows stmt nb))
              (setObject
@@ -764,15 +738,11 @@
   (proxy [java.sql.PreparedStatement] []
     (executeQuery []
       (try
-        (let [rs (.executeQuery stmt)]
-          (remove-impersonation conn)
-          rs)
+        (.executeQuery stmt)
         (catch Throwable e (handle-execution-error e))))
     (execute []
       (try
-        (let [rs (.execute stmt)]
-          (remove-impersonation conn)
-          rs)
+        (.execute stmt)
         (catch Throwable e (handle-execution-error e))))
     (setMaxRows [nb] (.setMaxRows stmt nb))
     (cancel [] (.cancel stmt))
@@ -783,7 +753,6 @@
   [driver ^Connection conn ^String sql params]
   ;; with starburst driver, result set holdability must be HOLD_CURSORS_OVER_COMMIT
   ;; defining this method simply to omit setting the holdability
-  (impersonate-user conn)
   (let [stmt (.prepareStatement conn
                                 sql
                                 ResultSet/TYPE_FORWARD_ONLY
@@ -797,14 +766,12 @@
         (proxy-prepared-statement driver conn stmt params)
         (proxy-optimized-prepared-statement driver conn stmt params))
       (catch Throwable e
-        (remove-impersonation conn)
         (.close stmt)
         (throw e)))))
 
 (defmethod sql-jdbc.execute/statement :starburst
   [_ ^Connection conn]
   ;; and similarly for statement (do not set holdability)
-  (impersonate-user conn)
   (let [stmt (.createStatement conn
                                ResultSet/TYPE_FORWARD_ONLY
                                ResultSet/CONCUR_READ_ONLY)]
@@ -817,8 +784,7 @@
         (try
           (let [rs (.execute stmt sql)]
             rs)
-          (catch Throwable e (handle-execution-error e))
-          (finally (remove-impersonation conn))))
+          (catch Throwable e (handle-execution-error e))))
       (getResultSet [] (.getResultSet stmt))
       (setMaxRows [nb] (.setMaxRows stmt nb))
       (cancel [] (.cancel stmt))
@@ -965,15 +931,6 @@
     (str v)
     v))
 
-; The role defined in the database should be ignored only if:
-; - The impersonation flag is checked AND
-; - The current user is NOT the database user
-(defn- remove-role? [details-map]
-  (and
-   (:impersonation details-map)
-   #_{:clj-kondo/ignore [:deprecated-var]}
-   (not= (get (deref (driver-api/current-user)) :email) (:user details-map))))
-
 (defmethod sql-jdbc.conn/connection-details->spec :starburst
   [_ details-map]
   (let [props (-> details-map
@@ -989,9 +946,7 @@
                                   "Metabase %s [%s]"
                                   (:tag driver-api/mb-version-info "")
                                   driver-api/local-process-uuid))
-                  (cond-> (:impersonation details-map) (assoc :clientInfo "impersonate:true"))
                   (cond-> (:prepared-optimized details-map) (assoc :explicitPrepare "false"))
-                  (dissoc (if (remove-role? details-map) :roles :test))
 
                   ;; remove any Metabase specific properties that are not recognized by the starburst JDBC driver, which is
                   ;; very picky about properties (throwing an error if any are unrecognized)
@@ -1039,17 +994,13 @@
   [_]
   :monday)
 
-(defmethod driver.sql/set-role-statement :starburst
-  [_driver role]
-  (let [special-chars-pattern #"[^a-zA-Z0-9_]"
-        needs-quote           (re-find special-chars-pattern role)]
-    (if needs-quote
-      (format "SET SESSION AUTHORIZATION \"%s\";" role)
-      (format "SET SESSION AUTHORIZATION %s;" role))))
-
 (defmethod driver.sql/default-database-role :starburst
   [_driver database]
-  (get-in database [:details :user]))
+  (get-in database [:details :role]))
+
+(defmethod driver/set-role! :starburst
+  [_driver ^Connection conn role]
+  (.setSessionUser ^TrinoConnection (.unwrap conn TrinoConnection) role))
 
 (defmethod sql.qp/->honeysql [:starburst ::sql.qp/cast-to-text]
   [driver [_ expr]]
