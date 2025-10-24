@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { Button, Flex } from "metabase/ui";
-import type { TableId } from "metabase-types/api";
+import type { DatabaseId, TableId } from "metabase-types/api";
 
 import { useExpandedState, useTableLoader } from "../hooks";
 import type { ChangeOptions, DatabaseNode, FlatItem, TreePath } from "../types";
@@ -11,6 +11,7 @@ import {
   flatten,
   getSchemaId,
   getSchemaTableIds,
+  noManuallySelectedSchemas,
   noManuallySelectedTables,
 } from "../utils";
 
@@ -29,6 +30,9 @@ export function Tree({ path, onChange }: Props) {
   const { tree, reload } = useTableLoader(path);
   const [selectedItems, setSelectedItems] = useState<Set<TableId>>(new Set());
   const [selectedSchemas, setSelectedSchemas] = useState<Set<string>>(
+    new Set(),
+  );
+  const [selectedDatabases, setSelectedDatabases] = useState<Set<DatabaseId>>(
     new Set(),
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -115,6 +119,41 @@ export function Tree({ path, onChange }: Props) {
     });
   }, [isExpanded, selectedSchemas, items, selectedItems]);
 
+  useEffect(() => {
+    const expandedSelectedDatabaseItems = items.filter(
+      (x) =>
+        x.type === "database" &&
+        selectedDatabases.has(x.value?.databaseId ?? -1) &&
+        isExpanded(x.key),
+    );
+
+    expandedSelectedDatabaseItems.forEach((x) => {
+      if (noManuallySelectedSchemas(x, items, selectedSchemas)) {
+        // when expanding a db, let's select all the schemas in that db
+        const schemaIds = (x as unknown as DatabaseNode).children.map((y) =>
+          getSchemaId(y as unknown as FlatItem),
+        );
+        if (schemaIds.length === 0) {
+          return;
+        }
+
+        setSelectedSchemas((prev) => {
+          const newSet = new Set(prev);
+          schemaIds.forEach((z) => {
+            newSet.add(z ?? "");
+          });
+          return newSet;
+        });
+
+        setSelectedDatabases((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete((x as unknown as DatabaseNode).value?.databaseId ?? -1);
+          return newSet;
+        });
+      }
+    });
+  }, [isExpanded, selectedDatabases, items, selectedSchemas]);
+
   function onEditSelectedItems() {
     setIsModalOpen(true);
   }
@@ -134,6 +173,20 @@ export function Tree({ path, onChange }: Props) {
         }
         return newSet;
       });
+    }
+    if (item.type === "database") {
+      if (isExpanded(item.key)) {
+        item.children.forEach((child) => {
+          if (child.type === "schema") {
+            onItemToggle(child as unknown as FlatItem);
+          }
+        });
+      } else {
+        const databaseId = item.value?.databaseId;
+        if (databaseId) {
+          setSelectedDatabases((prev) => toggleInSet(prev, databaseId));
+        }
+      }
     }
     if (item.type === "schema") {
       if (isExpanded(item.key)) {
@@ -174,7 +227,8 @@ export function Tree({ path, onChange }: Props) {
     }
   }
 
-  const selectedItemsCount = selectedItems.size + selectedSchemas.size;
+  const selectedItemsCount =
+    selectedItems.size + selectedSchemas.size + selectedDatabases.size;
 
   return (
     <>
@@ -188,6 +242,7 @@ export function Tree({ path, onChange }: Props) {
         onItemToggle={onItemToggle}
         selectedItems={selectedItems}
         selectedSchemas={selectedSchemas}
+        selectedDatabases={selectedDatabases}
       />
       <Flex justify="center" gap="sm" direction="column">
         {selectedItemsCount > 0 && (
@@ -209,6 +264,7 @@ export function Tree({ path, onChange }: Props) {
       <EditTableMetadataModal
         tables={selectedItems}
         schemas={selectedSchemas}
+        databases={selectedDatabases}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onUpdate={() => {
@@ -218,4 +274,14 @@ export function Tree({ path, onChange }: Props) {
       />
     </>
   );
+}
+
+function toggleInSet<T>(set: Set<T>, item: T) {
+  const newSet = new Set(set);
+  if (newSet.has(item)) {
+    newSet.delete(item);
+  } else {
+    newSet.add(item);
+  }
+  return newSet;
 }

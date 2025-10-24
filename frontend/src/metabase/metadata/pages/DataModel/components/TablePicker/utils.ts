@@ -285,6 +285,23 @@ export function noManuallySelectedTables(
   );
 }
 
+export function noManuallySelectedSchemas(
+  database: FlatItem | undefined,
+  items: FlatItem[],
+  selectedSchemas: Set<string> | undefined,
+) {
+  if (!database) {
+    return false;
+  }
+  // return true;
+  const children = items.filter((x) => x.parent === database.key);
+
+  return !children.some(
+    (child) =>
+      child.type === "schema" && selectedSchemas?.has(getSchemaId(child) ?? ""),
+  );
+}
+
 export function getParentSchema(tableItem: FlatItem, allItems: FlatItem[]) {
   return allItems.find(
     (x) => x.type === "schema" && getSchemaId(x) === getSchemaId(tableItem),
@@ -331,6 +348,50 @@ export function areTablesSelected(
     return "all";
   }
   if (tables.some((x) => selectedItems?.has(x.value?.tableId ?? ""))) {
+    return "some";
+  }
+  return "none";
+}
+
+function getSchemas(database: FlatItem, allItems: FlatItem[]) {
+  return allItems.filter(
+    (x) =>
+      x.type === "schema" && x.value?.databaseId === database.value?.databaseId,
+  );
+}
+
+export function areSchemasSelected(
+  database: FlatItem,
+  allItems: FlatItem[],
+  selectedSchemas: Set<string> | undefined,
+  selectedItems: Set<TableId> | undefined,
+): "all" | "some" | "none" {
+  if (database.type !== "database") {
+    return "none";
+  }
+
+  const schemas = getSchemas(database, allItems);
+  if (schemas.length === 0) {
+    return "none";
+  }
+
+  console.log({ schemas, selectedSchemas, selectedItems });
+  if (
+    schemas.every(
+      (x) =>
+        selectedSchemas?.has(getSchemaId(x) ?? "") ||
+        areTablesSelected(x, x.children, selectedItems) === "all",
+    )
+  ) {
+    return "all";
+  }
+  if (
+    schemas.some(
+      (x) =>
+        selectedSchemas?.has(getSchemaId(x) ?? "") ||
+        areTablesSelected(x, x.children, selectedItems) !== "none",
+    )
+  ) {
     return "some";
   }
   return "none";

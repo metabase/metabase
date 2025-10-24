@@ -4,13 +4,22 @@ import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 
 import CS from "metabase/css/core/index.css";
-import { Box, Checkbox, Flex, Icon, Skeleton, rem } from "metabase/ui";
-import type { SchemaName, TableId } from "metabase-types/api";
+import {
+  Box,
+  Checkbox,
+  type CheckboxProps,
+  Flex,
+  Icon,
+  Skeleton,
+  rem,
+} from "metabase/ui";
+import type { DatabaseId, SchemaName, TableId } from "metabase-types/api";
 
 import { getUrl } from "../../../utils";
 import { TYPE_ICONS } from "../constants";
 import type {
   CollectionItem,
+  DatabaseNode,
   FlatItem,
   ItemType,
   ModelItem,
@@ -19,6 +28,7 @@ import type {
   TreePath,
 } from "../types";
 import {
+  areSchemasSelected,
   areTablesSelected,
   getSchemaId,
   isItemWithHiddenExpandIcon,
@@ -42,6 +52,7 @@ interface Props {
   onItemToggle?: (item: FlatItem) => void;
   selectedItems?: Set<TableId>;
   selectedSchemas?: Set<SchemaName>;
+  selectedDatabases?: Set<DatabaseId>;
 }
 
 export function Results({
@@ -54,6 +65,7 @@ export function Results({
   onItemToggle,
   selectedItems,
   selectedSchemas,
+  selectedDatabases,
 }: Props) {
   const [activeItem, setActiveItem] = useState<
     { type: ItemType; id: number | string } | undefined
@@ -340,6 +352,7 @@ export function Results({
                 item={item}
                 selectedItems={selectedItems}
                 selectedSchemas={selectedSchemas}
+                selectedDatabases={selectedDatabases}
                 onItemToggle={onItemToggle}
               />
             </Flex>
@@ -350,14 +363,22 @@ export function Results({
   );
 }
 
+// workaround to use indeterminate icon from the Checkbox component before
+// this fixed is released https://github.com/mantinedev/mantine/pull/8385
+const CheckboxDashIcon: CheckboxProps["icon"] = ({ ...others }) => (
+  <Icon name="dash" {...others} />
+);
+
 function ElementCheckbox({
   item,
   selectedItems,
   selectedSchemas,
+  selectedDatabases,
   onItemToggle,
 }: {
   item: FlatItem;
   selectedItems: Set<TableId> | undefined;
+  selectedDatabases: Set<DatabaseId> | undefined;
   selectedSchemas: Set<SchemaName> | undefined;
   onItemToggle: ((item: FlatItem) => void) | undefined;
 }) {
@@ -370,21 +391,37 @@ function ElementCheckbox({
     item.type === "schema" &&
     areTablesSelected(
       item,
-      (item as unknown as SchemaNode).children as unknown as FlatItem[],
+      ((item as unknown as SchemaNode).children as unknown as FlatItem[]) ?? [],
       selectedItems,
     );
-  const isIndeterminate = schemaTablesSelected === "some" ? true : undefined;
 
+  const isDatabaseItemSelected =
+    item.type === "database" &&
+    selectedDatabases?.has(item.value?.databaseId ?? -1);
+
+  const areSchemasSelectedResult =
+    item.type === "database" &&
+    areSchemasSelected(
+      item,
+      ((item as unknown as DatabaseNode).children as unknown as FlatItem[]) ??
+        [],
+      selectedSchemas,
+      selectedItems,
+    );
+
+  const areTablesIndeterminate =
+    schemaTablesSelected === "some" ? true : undefined;
+  const areSchemasIndeterminate =
+    areSchemasSelectedResult === "some" ? true : undefined;
+  const indeterminate = areTablesIndeterminate || areSchemasIndeterminate;
   const isChecked =
     (isItemSelected ||
       isSchemaItemSelected ||
       schemaTablesSelected === "all" ||
-      isIndeterminate) ??
+      indeterminate ||
+      isDatabaseItemSelected ||
+      areSchemasSelectedResult === "all") ??
     false;
-
-  if (item.type === "database") {
-    return null;
-  }
 
   return (
     <Checkbox
@@ -393,10 +430,11 @@ function ElementCheckbox({
       onClick={(event) => {
         event.stopPropagation();
       }}
+      icon={indeterminate ? CheckboxDashIcon : undefined}
       onChange={() => {
         onItemToggle?.(item);
       }}
-      indeterminate={isIndeterminate}
+      // indeterminate={indeterminate}
     />
   );
 }
