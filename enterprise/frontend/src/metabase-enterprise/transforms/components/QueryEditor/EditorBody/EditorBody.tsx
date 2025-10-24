@@ -134,9 +134,10 @@ export function EditorBody({
       isInitiallyOpen
       isShowingDataReference={isShowingDataReference}
       isShowingSnippetSidebar={isShowingSnippetSidebar}
-      isNativeEditorOpen
+      resizable
       hasTopBar
       hasRunButton
+      isNativeEditorOpen
       readOnly={false}
       hasParametersList={false}
       hasEditingSidebar={false}
@@ -160,7 +161,6 @@ export function EditorBody({
       proposedQuestion={proposedQuestion}
       onRejectProposed={onRejectProposed}
       onAcceptProposed={onAcceptProposed}
-      resizable={false}
     />
   ) : (
     <ResizableBox
@@ -240,5 +240,5 @@ function getHeaderHeight(isNative: boolean) {
 function useInitialEditorHeight(isNative: boolean) {
   const { height: windowHeight } = useWindowSize();
   const headerHeight = getHeaderHeight(isNative);
-  return Math.min(0.8 * (windowHeight - headerHeight), EDITOR_HEIGHT);
+  return Math.min(0.6 * (windowHeight - headerHeight), EDITOR_HEIGHT);
 }

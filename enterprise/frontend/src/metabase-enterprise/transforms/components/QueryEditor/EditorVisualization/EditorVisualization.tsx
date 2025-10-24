@@ -1,7 +1,9 @@
+import DebouncedFrame from "metabase/common/components/DebouncedFrame";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
-import { Box } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset, RawSeries } from "metabase-types/api";
+
+import S from "./EditorVisualization.module.css";
 
 type EditorVisualizationProps = {
   question: Question;
@@ -27,7 +29,7 @@ export function EditorVisualization({
   onCancelQuery,
 }: EditorVisualizationProps) {
   return (
-    <Box pos="relative" h="20rem">
+    <DebouncedFrame className={S.root}>
       <QueryVisualization
         question={question}
         result={result}
@@ -40,6 +42,6 @@ export function EditorVisualization({
         runQuestionQuery={onRunQuery}
         cancelQuery={onCancelQuery}
       />
-    </Box>
+    </DebouncedFrame>
   );
 }
