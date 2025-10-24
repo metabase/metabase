@@ -22,11 +22,14 @@ import {
 } from "metabase-types/api";
 
 import {
+  COLLECTION_FOLDER_MODELS,
   ENTITY_PICKER_OPTIONS,
+  METRIC_MODELS,
+  MODEL_MODELS,
   QUESTION_FOLDER_MODELS,
   QUESTION_MODELS,
-  QUESTION_MODELS_WITH_DASHBOARDS,
   QUESTION_PICKER_OPTIONS,
+  QUESTION_SELECTION_MODELS,
   RECENTS_CONTEXT,
   TABLE_FOLDER_MODELS,
   TABLE_MODELS,
@@ -41,6 +44,8 @@ import type {
 import {
   getEntryPickerItem,
   getEntryPickerValue,
+  getMetricPickerItem,
+  getModelPickerItem,
   getQuestionPickerItem,
   getTablePickerValue,
   getTransformPickerItem,
@@ -60,6 +65,8 @@ export function EntryPickerModal({
 }: EntryPickerModalProps) {
   const [tablesPath, setTablesPath] = useState<TablePickerStatePath>();
   const [questionsPath, setQuestionsPath] = useState<QuestionPickerStatePath>();
+  const [modelsPath, setModelsPath] = useState<QuestionPickerStatePath>();
+  const [metricsPath, setMetricsPath] = useState<QuestionPickerStatePath>();
   const { data: searchResponse, isLoading: isSearchLoading } = useSearchQuery({
     models: ["card"],
     limit: 0,
@@ -112,15 +119,15 @@ export function EntryPickerModal({
 
     if (hasAvailableModels(searchResponse, QUESTION_MODELS)) {
       computedTabs.push({
-        id: "collections-tab",
-        displayName: t`Collections`,
+        id: "questions-tab",
+        displayName: t`Questions`,
         models: QUESTION_MODELS,
         folderModels: QUESTION_FOLDER_MODELS,
-        icon: "folder",
+        icon: "table2",
         render: ({ onItemSelect }) => (
           <QuestionPicker
             initialValue={value ? getQuestionPickerItem(value) : undefined}
-            models={QUESTION_MODELS_WITH_DASHBOARDS}
+            models={QUESTION_SELECTION_MODELS}
             options={QUESTION_PICKER_OPTIONS}
             path={questionsPath}
             onInit={onItemSelect}
@@ -131,8 +138,57 @@ export function EntryPickerModal({
       });
     }
 
+    if (hasAvailableModels(searchResponse, MODEL_MODELS)) {
+      computedTabs.push({
+        id: "models-tab",
+        displayName: t`Models`,
+        models: MODEL_MODELS,
+        folderModels: COLLECTION_FOLDER_MODELS,
+        icon: "model",
+        render: ({ onItemSelect }) => (
+          <QuestionPicker
+            initialValue={value ? getModelPickerItem(value) : undefined}
+            models={MODEL_MODELS}
+            options={QUESTION_PICKER_OPTIONS}
+            path={modelsPath}
+            onInit={onItemSelect}
+            onItemSelect={onItemSelect}
+            onPathChange={setModelsPath}
+          />
+        ),
+      });
+    }
+
+    if (hasAvailableModels(searchResponse, METRIC_MODELS)) {
+      computedTabs.push({
+        id: "metrics-tab",
+        displayName: t`Metrics`,
+        models: METRIC_MODELS,
+        folderModels: COLLECTION_FOLDER_MODELS,
+        icon: "metric",
+        render: ({ onItemSelect }) => (
+          <QuestionPicker
+            initialValue={value ? getMetricPickerItem(value) : undefined}
+            models={METRIC_MODELS}
+            options={QUESTION_PICKER_OPTIONS}
+            path={metricsPath}
+            onInit={onItemSelect}
+            onItemSelect={onItemSelect}
+            onPathChange={setMetricsPath}
+          />
+        ),
+      });
+    }
+
     return computedTabs;
-  }, [value, searchResponse, tablesPath, questionsPath]);
+  }, [
+    value,
+    searchResponse,
+    tablesPath,
+    questionsPath,
+    modelsPath,
+    metricsPath,
+  ]);
 
   const handleItemSelect = (item: EntryPickerItem) => {
     const value = getEntryPickerValue(item);

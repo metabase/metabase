@@ -29,14 +29,10 @@ export const TRANSFORM_FOLDER_MODELS: EntryPickerItemModel[] = [];
 
 export const QUESTION_MODELS: (EntryPickerItemModel & QuestionPickerModel)[] = [
   "card",
-  "dataset",
-  "metric",
 ];
 
-export const QUESTION_MODELS_WITH_DASHBOARDS: CollectionItemModel[] = [
+export const QUESTION_SELECTION_MODELS: CollectionItemModel[] = [
   "card",
-  "dataset",
-  "metric",
   "dashboard",
 ];
 
@@ -44,6 +40,16 @@ export const QUESTION_FOLDER_MODELS: EntryPickerItemModel[] = [
   "collection",
   "dashboard",
 ];
+
+export const MODEL_MODELS: (EntryPickerItemModel & QuestionPickerModel)[] = [
+  "dataset",
+];
+
+export const METRIC_MODELS: (EntryPickerItemModel & QuestionPickerModel)[] = [
+  "metric",
+];
+
+export const COLLECTION_FOLDER_MODELS: EntryPickerItemModel[] = ["collection"];
 
 export const RECENTS_CONTEXT: RecentContexts[] = ["selections"];
 
