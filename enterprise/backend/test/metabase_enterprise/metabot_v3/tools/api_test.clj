@@ -1187,7 +1187,7 @@
                       (get-in [:structured_output :related_tables]))))))))
 
 (deftest get-transforms-test
-  (mt/with-premium-features #{:metabot-v3 :transforms}
+  (mt/with-premium-features #{:metabot-v3 :transforms :advanced-permissions}
     (let [conversation-id (str (random-uuid))
           rasta-ai-token (ai-session-token)
           crowberto-ai-token (ai-session-token :crowberto (str (random-uuid)))]
@@ -1220,7 +1220,7 @@
                                          ;; note: t2 not included because it's a (non-native) MBQL query
                                        (mt/obj->json->obj (select-keys t3 [:id :entity_id :name :description :source]))]
                    :conversation_id conversation-id}
-                  (-> (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-transforms"
+                  (-> (mt/user-http-request :crowberto :post 200 "ee/metabot-tools/get-transforms"
                                             {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
                                             {:conversation_id conversation-id})
                       (update :structured_output (fn [output]
@@ -1228,7 +1228,7 @@
                                                            output)))))))))))
 
 (deftest get-transform-test
-  (mt/with-premium-features #{:metabot-v3 :transforms}
+  (mt/with-premium-features #{:metabot-v3 :transforms :advanced-permissions}
     (let [conversation-id (str (random-uuid))
           rasta-ai-token (ai-session-token)
           crowberto-ai-token (ai-session-token :crowberto (str (random-uuid)))]
