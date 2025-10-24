@@ -146,7 +146,7 @@ export const RemoteSyncAdminSettings = () => {
       <SettingsSection>
         <Box flex={1} maw="52rem">
           <Flex align="flex-end" gap="sm" mb="xs">
-            <Title order={2}>{t`Git Sync`}</Title>
+            <Title order={2}>{t`Remote Sync`}</Title>
             {isRemoteSyncEnabled && (
               <Badge
                 style={{ textTransform: "none" }}
@@ -253,7 +253,7 @@ export const RemoteSyncAdminSettings = () => {
                       label={
                         isRemoteSyncEnabled
                           ? t`Save changes`
-                          : t`Set up Git Sync`
+                          : t`Set up Remote Sync`
                       }
                       variant="filled"
                       disabled={!dirty}
