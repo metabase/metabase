@@ -134,8 +134,7 @@ export const ContentTranslationConfiguration = () => {
                 ),
               }}
             >
-              {t`Don't put any sensitive data in the dictionary, since anyone can see the dictionary—including viewers of public links.
-              Uploading a new dictionary will replace the existing dictionary. See a list of _supported locales_.`}
+              {t`Don't put any sensitive data in the dictionary, since anyone can see the dictionary—including viewers of public links. Uploading a new dictionary will replace the existing dictionary. See a list of _supported locales_.`}
             </Markdown>
           </Stack>
 

@@ -20,7 +20,7 @@ export const SettingHeader = ({
       {title}
     </SettingTitle>
     {!!description && (
-      <Text mb="sm" maw="38rem" lh="xl" c="text-medium">
+      <Text mb="sm" lh="xl" c="text-medium">
         {description}
       </Text>
     )}
