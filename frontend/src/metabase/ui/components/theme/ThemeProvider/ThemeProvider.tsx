@@ -11,10 +11,12 @@ import {
   useState,
 } from "react";
 
-import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import {
+  getIsEmbeddingIframe,
+  isEmbeddingSdk,
+} from "metabase/embedding-sdk/config";
 import { parseHashOptions } from "metabase/lib/browser";
 import type { DisplayTheme } from "metabase/public/lib/types";
-import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 
 import { getThemeOverrides } from "../../../theme";
 import { ColorSchemeProvider, useColorScheme } from "../ColorSchemeProvider";

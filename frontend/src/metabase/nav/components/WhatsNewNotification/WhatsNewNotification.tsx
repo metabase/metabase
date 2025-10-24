@@ -4,8 +4,8 @@ import { t } from "ttag";
 import { updateSetting } from "metabase/admin/settings/settings";
 import { useGetVersionInfoQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
+import { getIsEmbeddingIframe } from "metabase/embedding-sdk/config";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getIsWhiteLabeling } from "metabase/selectors/whitelabel";
 import { Anchor, Flex, Icon, Paper, Stack, Text } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
@@ -16,7 +16,7 @@ import { getLatestEligibleReleaseNotes } from "./utils";
 
 export function WhatsNewNotification() {
   const dispatch = useDispatch();
-  const isEmbeddingIframe = useSelector(getIsEmbeddingIframe);
+  const isEmbeddingIframe = getIsEmbeddingIframe();
   const { data: versionInfo } = useGetVersionInfoQuery();
   const currentVersion = useSetting("version");
   const lastAcknowledgedVersion = useSetting("last-acknowledged-version");
