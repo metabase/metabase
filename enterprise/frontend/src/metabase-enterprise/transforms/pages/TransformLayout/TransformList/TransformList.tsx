@@ -20,6 +20,7 @@ import type {
   TreeNodeProps,
 } from "metabase/common/components/tree/types";
 import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { Box } from "metabase/ui";
 import {
   useListTransformTagsQuery,
@@ -29,7 +30,6 @@ import type { Transform, TransformTag } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
 import { getTagById, getTagList } from "../../../components/TagList";
-import { getTransformUrl } from "../../../urls";
 
 import { CreateTransformMenu } from "./CreateTransformMenu";
 
@@ -247,7 +247,7 @@ function TransformFlatListItem({
   return (
     <BenchFlatListItem
       icon="transform"
-      href={getTransformUrl(transform.id)}
+      href={Urls.transform(transform.id)}
       label={transform.name}
       subtitle={transform.target.name}
       isActive={transform.id === selectedId}

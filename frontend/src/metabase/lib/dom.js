@@ -1,6 +1,7 @@
 import querystring from "querystring";
 import _ from "underscore";
 
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isCypressActive, isStorybookActive } from "metabase/env";
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -364,6 +365,10 @@ export function shouldOpenInBlankWindow(
     blankOnDifferentOrigin = true,
   } = {},
 ) {
+  if (isEmbeddingSdk()) {
+    // always open in new window in modular embedding (react SDK + EAJS)
+    return true;
+  }
   const isMetaKey = event && event.metaKey != null ? event.metaKey : metaKey;
   const isCtrlKey = event && event.ctrlKey != null ? event.ctrlKey : ctrlKey;
 
@@ -440,6 +445,10 @@ export function isSameOrSiteUrlOrigin(url) {
 }
 
 export function getUrlTarget(url) {
+  if (isEmbeddingSdk()) {
+    // always open in new window in modular embedding (react SDK + EAJS)
+    return "_blank";
+  }
   return isSameOrSiteUrlOrigin(url) ? "_self" : "_blank";
 }
 

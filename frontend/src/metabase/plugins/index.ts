@@ -87,6 +87,7 @@ import type {
   Timeline,
   TimelineEvent,
   Transform,
+  TransformId,
   UpdateSnippetRequest,
   UpdateTransformRequest,
   User,
@@ -733,6 +734,7 @@ type PluginMetabotType = {
     visible: boolean;
     setVisible: (visible: boolean) => void;
   };
+  MetabotAdminAppBarButton: ComponentType;
 };
 
 export const PLUGIN_METABOT: PluginMetabotType = {
@@ -757,6 +759,7 @@ export const PLUGIN_METABOT: PluginMetabotType = {
   MetabotToggleButton: PluginPlaceholder,
   MetabotAppBarButton: PluginPlaceholder,
   useMetabotAgent: () => null,
+  MetabotAdminAppBarButton: PluginPlaceholder,
 };
 
 type DashCardMenuItemGetter = (
@@ -866,16 +869,27 @@ export const PLUGIN_SEMANTIC_SEARCH = {
   SearchSettingsWidget: PluginPlaceholder,
 };
 
+export type TransformPickerItem = {
+  id: TransformId;
+  name: string;
+  model: "transform";
+};
+
+export type TransformPickerProps = {
+  value: TransformPickerItem | undefined;
+  onItemSelect: (transform: TransformPickerItem) => void;
+};
+
 export type TransformsPlugin = {
   getTransformRoutes(): ReactNode;
   getTransformNavItems(isAdmin: boolean): BenchNavItem[];
-  ROOT_URL: string | null;
+  TransformPicker: ComponentType<TransformPickerProps>;
 };
 
 export const PLUGIN_TRANSFORMS: TransformsPlugin = {
   getTransformRoutes: () => null,
   getTransformNavItems: () => [],
-  ROOT_URL: null,
+  TransformPicker: PluginPlaceholder,
 };
 
 export type PythonTransformsPlugin = {
@@ -919,6 +933,8 @@ export const PLUGIN_TRANSFORMS_PYTHON: PythonTransformsPlugin = {
 };
 
 type DependenciesPlugin = {
+  isEnabled: boolean;
+  DependencyGraphPage: ComponentType;
   CheckDependenciesForm: ComponentType<CheckDependenciesFormProps>;
   CheckDependenciesModal: ComponentType<CheckDependenciesModalProps>;
   CheckDependenciesTitle: ComponentType;
@@ -972,6 +988,8 @@ function useCheckDependencies<TChange>({
 }
 
 export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
+  isEnabled: false,
+  DependencyGraphPage: PluginPlaceholder,
   CheckDependenciesForm: PluginPlaceholder,
   CheckDependenciesModal: PluginPlaceholder,
   CheckDependenciesTitle: PluginPlaceholder,

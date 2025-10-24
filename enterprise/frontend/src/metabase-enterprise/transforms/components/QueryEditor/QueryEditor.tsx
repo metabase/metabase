@@ -7,6 +7,10 @@ import type { SelectionRange } from "metabase/query_builder/components/NativeQue
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { NativeQueryPreview } from "metabase/querying/notebook/components/NativeQueryPreview";
 import { Center, Loader, Modal, Stack } from "metabase/ui";
+import { useQueryResults } from "metabase-enterprise/transforms/hooks/use-query-results";
+import { useQueryState } from "metabase-enterprise/transforms/hooks/use-query-state";
+import { useRegisterMetabotTransformContext } from "metabase-enterprise/transforms/hooks/use-register-transform-metabot-context";
+import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type {
   NativeQuerySnippet,
@@ -15,8 +19,6 @@ import type {
 } from "metabase-types/api";
 
 import { useQueryMetadata } from "../../hooks/use-query-metadata";
-import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";
-import type { TransformEditorValue } from "../../hooks/use-transform-editor";
 
 import { EditorBody } from "./EditorBody";
 import { EditorHeader } from "./EditorHeader";
@@ -36,7 +38,6 @@ type QueryEditorProps = {
   onCancel: () => void;
   onRejectProposed?: () => void;
   onAcceptProposed?: (query: QueryTransformSource) => void;
-  transformEditor: TransformEditorValue;
 };
 
 export function QueryEditor({
@@ -50,24 +51,22 @@ export function QueryEditor({
   onCancel,
   onRejectProposed,
   onAcceptProposed,
-  transformEditor,
 }: QueryEditorProps) {
+  const { question, proposedQuestion, isQueryDirty, setQuestion } =
+    useQueryState(initialSource.query, proposedSource?.query);
+  const { isInitiallyLoaded } = useQueryMetadata(question);
+
   const {
-    question,
-    proposedQuestion,
-    isQueryDirty,
-    setQuestion,
     isRunnable,
     isRunning,
     isResultDirty,
-    isNative,
     result,
     rawSeries,
     runQuery,
     cancelQuery,
-  } = transformEditor;
+  } = useQueryResults(question, proposedQuestion);
+  const { isNative } = Lib.queryDisplayInfo(question.query());
 
-  const { isInitiallyLoaded } = useQueryMetadata(question);
   const [isPreviewQueryModalOpen, togglePreviewQueryModal] = useToggle();
   const validationResult = getValidationResult(question.query());
 
@@ -145,7 +144,6 @@ export function QueryEditor({
         <EditorHeader
           transform={transform}
           validationResult={validationResult}
-          name={transform?.name}
           isNew={isNew}
           isSaving={isSaving}
           hasProposedQuery={!!proposedSource}

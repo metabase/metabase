@@ -389,6 +389,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
                   <>
                     <Tooltip label={t`Accept proposed changes`} position="top">
                       <Button
+                        data-testid="accept-proposed-changes-button"
                         variant="filled"
                         bg="success"
                         px="0"
@@ -407,6 +408,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
                     </Tooltip>
                     <Tooltip label={t`Reject proposed changes`} position="top">
                       <Button
+                        data-testid="reject-proposed-changes-button"
                         w="2.5rem"
                         px="0"
                         variant="filled"

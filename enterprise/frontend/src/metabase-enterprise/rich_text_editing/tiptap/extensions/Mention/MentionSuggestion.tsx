@@ -23,6 +23,7 @@ export interface MentionSuggestionProps {
   range: Range;
   query: string;
   searchModels?: SuggestionModel[];
+  canFilterSearchModels?: boolean;
   canBrowseAll?: boolean;
 }
 
@@ -41,6 +42,7 @@ const MentionSuggestionComponent = forwardRef<
     range,
     query,
     searchModels,
+    canFilterSearchModels = false,
     canBrowseAll = true,
   },
   ref,
@@ -78,6 +80,7 @@ const MentionSuggestionComponent = forwardRef<
     range,
     searchModels,
     onSelectEntity,
+    canFilterSearchModels,
     canBrowseAll,
   });
 
@@ -116,9 +119,11 @@ export const MentionSuggestion = MentionSuggestionComponent;
 
 export const createMentionSuggestion = ({
   searchModels,
+  canFilterSearchModels,
   canBrowseAll,
 }: {
   searchModels: SuggestionModel[];
+  canFilterSearchModels?: boolean;
   canBrowseAll?: boolean;
 }) => {
   return forwardRef<
@@ -130,6 +135,7 @@ export const createMentionSuggestion = ({
         {...props}
         ref={ref}
         searchModels={searchModels}
+        canFilterSearchModels={canFilterSearchModels}
         canBrowseAll={canBrowseAll}
       />
     );

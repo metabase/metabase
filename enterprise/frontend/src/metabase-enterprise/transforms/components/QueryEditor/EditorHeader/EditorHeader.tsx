@@ -10,7 +10,6 @@ import type { QueryValidationResult } from "../types";
 type EditorHeaderProps = {
   transform?: Transform;
   validationResult: QueryValidationResult;
-  name?: string;
   isNew: boolean;
   isQueryDirty: boolean;
   isSaving: boolean;

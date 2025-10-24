@@ -105,7 +105,7 @@ export const AgentSuggestionMessage = ({
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
 
-  const { suggestedTransform } = message.payload;
+  const { suggestedTransform, editorTransform } = message.payload;
   const isActive = useSelector((state) =>
     getIsSuggestedTransformActive(state, suggestedTransform.suggestionId),
   );
@@ -117,14 +117,14 @@ export const AgentSuggestionMessage = ({
     getTransformUrl(suggestedTransform),
   );
 
+  const canApply = !isViewing || !isActive;
+  const isNew = !isViewing && !editorTransform && suggestedTransform.id == null;
+
   const {
     data: originalTransform,
     isLoading,
     error,
   } = useGetOldTransform(message.payload);
-
-  const canApply = !isViewing || !isActive;
-  const isNew = !isViewing && !originalTransform;
 
   const oldSource = originalTransform
     ? getSourceCode(originalTransform, metadata)
@@ -141,16 +141,15 @@ export const AgentSuggestionMessage = ({
       shadow="none"
       radius="md"
       bg="bg-white"
-      style={{ border: `1px solid var(--mb-color-border)` }}
+      className={S.container}
+      data-testid="metabot-chat-suggestion"
     >
       <Group
         p="md"
         align="center"
         justify="space-between"
         onClick={toggle}
-        style={{
-          borderBottom: opened ? `1px solid var(--mb-color-border)` : "",
-        }}
+        className={cx(opened && S.headerOpened)}
       >
         <Flex align="center" gap="sm">
           <Icon name="refresh_downstream" size="1rem" c="text-secondary" />
@@ -252,8 +251,12 @@ function getSourceCode(
 
 function getTransformUrl(transform: SuggestedTransform): string {
   return match(transform)
-    .with({ id: P.number }, ({ id }) => Urls.transformEdit(id))
-    .with({ source: { type: "python" } }, Urls.newPythonTransform)
-    .with({ source: { type: "query" } }, Urls.newNativeTransform)
+    .with({ id: P.number }, ({ id }) => Urls.transformQuery(id))
+    .with({ source: { type: "python" } }, () =>
+      Urls.newTransformFromType("python"),
+    )
+    .with({ source: { type: "query" } }, () =>
+      Urls.newTransformFromType("native"),
+    )
     .exhaustive();
 }

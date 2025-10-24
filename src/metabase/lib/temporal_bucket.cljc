@@ -508,6 +508,7 @@
 
   This is expected to be called after `:unit` is added into column metadata, ie. in terms of annotate middleware, after
   the column metadata coming from a driver are merged with result of `column-info`."
+  {:deprecated "0.57.0"}
   [column-metadata]
   (if-some [temporal-unit (:unit column-metadata)]
     (update column-metadata :display_name ensure-ends-with-temporal-unit temporal-unit)

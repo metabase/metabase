@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import type { Location } from "history";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import type { Route } from "react-router";
 import { push } from "react-router-redux";
 
@@ -15,17 +15,13 @@ import { useSourceState } from "metabase-enterprise/transforms/hooks/use-source-
 import type {
   CardId,
   DraftTransform,
+  DraftTransformSource,
   LegacyDatasetQuery,
   Transform,
   TransformSource,
 } from "metabase-types/api";
 
 import { QueryEditor } from "../../components/QueryEditor";
-import {
-  type TransformEditorValue,
-  useTransformEditor,
-} from "../../hooks/use-transform-editor";
-import { getTransformListUrl, getTransformUrl } from "../../urls";
 
 import {
   CreateTransformModal,
@@ -69,11 +65,6 @@ export function NewTransformPage({
     getMetabotSuggestedTransform as any,
   ) as ReturnType<typeof getMetabotSuggestedTransform>;
 
-  const initialSource = useMemo(
-    () => getInitialTransformSource(card, type, suggestedTransform),
-    [type, card, suggestedTransform],
-  );
-
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
@@ -83,7 +74,11 @@ export function NewTransformPage({
       <NewTransformPageInner
         route={route}
         location={location}
-        initialSource={initialSource}
+        initialSource={getInitialTransformSource(
+          card,
+          type,
+          suggestedTransform,
+        )}
       />
     </>
   );
@@ -106,14 +101,17 @@ export function NewTransformPageInner({
     acceptProposed,
     clearProposed,
     isDirty,
-  } = useSourceState(undefined, initialSource);
+  } = useSourceState<TransformSource | DraftTransformSource>(
+    undefined,
+    initialSource,
+  );
 
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
   const dispatch = useDispatch();
 
   const handleCreate = (transform: Transform) => {
-    dispatch(push(getTransformUrl(transform.id)));
+    dispatch(push(Urls.transform(transform.id)));
   };
 
   const handleSave = (newSource: TransformSource) => {
@@ -123,7 +121,7 @@ export function NewTransformPageInner({
 
   const handleCancel = () => {
     setSource(initialSource);
-    dispatch(push(getTransformListUrl()));
+    dispatch(push(Urls.transformList()));
     clearProposed();
   };
 
@@ -142,8 +140,6 @@ export function NewTransformPageInner({
     acceptProposed(source);
   };
 
-  const transformEditor = useTransformEditor(source, proposedSource);
-
   useEffect(() => {
     setSource(initialSource);
   }, [initialSource, setSource]);
@@ -158,9 +154,7 @@ export function NewTransformPageInner({
         onCancel={handleCancel}
         onRejectProposed={clearProposed}
         onAcceptProposed={handleAcceptProposed}
-        transformEditor={transformEditor}
       />
-
       {isModalOpened && source && (
         <CreateTransformModal
           source={source as TransformSource}
@@ -171,7 +165,6 @@ export function NewTransformPageInner({
       )}
       <LeaveRouteConfirmModal
         key={location.key}
-        // TODO: make this calc correct
         isEnabled={isDirty && !isModalOpened}
         route={route}
         onConfirm={clearProposed}
@@ -188,7 +181,6 @@ interface NewTransformEditorBody {
   onCancel: () => void;
   onRejectProposed?: () => void;
   onAcceptProposed?: (query: TransformSource) => void;
-  transformEditor: TransformEditorValue;
 }
 
 function NewTransformEditorBody({
@@ -199,7 +191,6 @@ function NewTransformEditorBody({
   onCancel,
   onRejectProposed,
   onAcceptProposed,
-  transformEditor,
 }: NewTransformEditorBody) {
   if (initialSource.type === "python") {
     return (
@@ -230,7 +221,6 @@ function NewTransformEditorBody({
       onChange={onChange}
       onRejectProposed={onRejectProposed}
       onAcceptProposed={onAcceptProposed}
-      transformEditor={transformEditor}
     />
   );
 }

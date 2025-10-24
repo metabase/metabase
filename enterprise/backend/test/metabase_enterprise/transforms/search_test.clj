@@ -167,3 +167,40 @@
           (t2/delete! :model/Transform :id transform-id)
           (is (nil? (fetch-one "transform" :model_id (str transform-id)))
               "Transform should be removed from the search index after deletion"))))))
+
+(deftest transform-search-test
+  (mt/with-premium-features #{:transforms}
+    (search.tu/with-temp-index-table
+      (mt/as-admin
+        (testing "Transforms can be indexed and subsequently searched for"
+          (binding [search.ingestion/*force-sync* true]
+            (mt/with-temp [:model/Transform {transform-id :id}
+                           {:name "Customer Revenue Analysis"
+                            :description "Analyzes revenue by customer segment"
+                            :source {:type "query"
+                                     :query (mt/native-query {:query "SELECT customer_id, SUM(revenue) FROM orders GROUP BY customer_id"})}
+                            :target {:database (mt/id)
+                                     :table "customer_revenue"}}]
+              (ingest! "transform" [:= :this.id transform-id])
+              (testing "Can search by transform name"
+                (let [results (search.tu/search-results "Customer Revenue")]
+                  (is (seq results) "Search should return results")
+                  (is (some #(and (= "transform" (:model %))
+                                  (= transform-id (:id %)))
+                            results)
+                      "Results should include the transform")))
+              (testing "Can search by transform description"
+                (let [results (search.tu/search-results "customer segment")]
+                  (is (some #(and (= "transform" (:model %))
+                                  (= transform-id (:id %)))
+                            results)
+                      "Should find transform by description text")))
+              (testing "Can filter search results to transforms only"
+                (mt/with-temp [:model/Card _ {:name "Customer Revenue Card"
+                                              :database_id (mt/id)
+                                              :table_id (mt/id :orders)
+                                              :dataset_query (mt/native-query {:query "SELECT 1"})}]
+                  (ingest! "card" [:like :this.name "%Customer Revenue%"])
+                  (let [transform-only-results (search.tu/search-results "Customer Revenue" {:models #{"transform"}})]
+                    (is (every? #(= "transform" (:model %)) transform-only-results)
+                        "All results should be transforms when filtered")))))))))))

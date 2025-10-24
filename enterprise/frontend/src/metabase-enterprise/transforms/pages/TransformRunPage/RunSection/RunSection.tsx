@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { isResourceNotFoundError } from "metabase/lib/errors";
+import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Anchor, Box, Card, Divider, Group, Stack } from "metabase/ui";
 import {
@@ -20,7 +21,6 @@ import { RunButton } from "../../../components/RunButton";
 import { RunStatus } from "../../../components/RunStatus";
 import { TagMultiSelect } from "../../../components/TagMultiSelect";
 import { TitleSection } from "../../../components/TitleSection";
-import { getRunListUrl } from "../../../urls";
 
 type RunSectionProps = {
   transform: Transform;
@@ -79,7 +79,7 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
           <Anchor
             key="link"
             component={Link}
-            to={getRunListUrl({ transformIds: [id] })}
+            to={Urls.transformRunList({ transformIds: [id] })}
           >
             {t`See all runs`}
           </Anchor>

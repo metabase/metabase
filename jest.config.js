@@ -16,7 +16,6 @@ const esmPackages = [
   "property-information",
   "react-resizable-panels",
   "rehype-external-links",
-  "screenfull",
   "space-separated-tokens",
   "stringify-entities",
   "unist-util-visit-parents",

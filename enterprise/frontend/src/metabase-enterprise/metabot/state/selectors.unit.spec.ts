@@ -49,7 +49,12 @@ describe("metabot selectors", () => {
         ],
       });
       const message1 = getUserPromptForMessageId(state as any, "2");
-      expect(message1).toEqual({ id: "1", role: "user", message: "bleh" });
+      expect(message1).toEqual({
+        id: "1",
+        role: "user",
+        type: "text",
+        message: "bleh",
+      });
       const message2 = getUserPromptForMessageId(state as any, "4");
       expect(message2).toEqual({
         id: "3",
