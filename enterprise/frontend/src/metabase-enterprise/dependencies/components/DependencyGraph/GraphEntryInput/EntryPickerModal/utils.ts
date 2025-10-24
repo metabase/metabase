@@ -151,3 +151,10 @@ export function hasAvailableModels(
   const availableModels = response?.available_models ?? [];
   return models.some((model) => availableModels.includes(model));
 }
+
+export function selectOnlyCards(
+  onItemSelect: (item: QuestionPickerItem) => void,
+) {
+  return (item: QuestionPickerItem) =>
+    item.model === "card" ? onItemSelect(item) : undefined;
+}

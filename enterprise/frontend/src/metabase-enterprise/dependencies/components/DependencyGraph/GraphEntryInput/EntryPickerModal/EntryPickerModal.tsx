@@ -46,6 +46,7 @@ import {
   getTablePickerValue,
   getTransformPickerItem,
   hasAvailableModels,
+  selectOnlyCards,
 } from "./utils";
 
 type EntryPickerModalProps = {
@@ -128,8 +129,8 @@ export function EntryPickerModal({
             models={["card", "dashboard"]}
             options={QUESTION_PICKER_OPTIONS}
             path={questionsPath}
-            onInit={onItemSelect}
-            onItemSelect={onItemSelect}
+            onInit={selectOnlyCards(onItemSelect)}
+            onItemSelect={selectOnlyCards(onItemSelect)}
             onPathChange={setQuestionsPath}
           />
         ),
