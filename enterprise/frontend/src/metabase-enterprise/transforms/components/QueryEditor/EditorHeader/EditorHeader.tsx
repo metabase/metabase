@@ -50,6 +50,7 @@ export function EditorHeader({
           )}
         </Group>
       }
+      withBorder
     />
   );
 }

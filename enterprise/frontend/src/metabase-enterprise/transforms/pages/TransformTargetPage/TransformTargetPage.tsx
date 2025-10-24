@@ -46,7 +46,10 @@ export function TransformTargetPage({ params }: TransformTargetPageProps) {
 
   return (
     <div>
-      <BenchPaneHeader title={<TransformTabs transform={transform} />} />
+      <BenchPaneHeader
+        title={<TransformTabs transform={transform} />}
+        withBorder
+      />
       <TargetSection transform={transform} />
     </div>
   );

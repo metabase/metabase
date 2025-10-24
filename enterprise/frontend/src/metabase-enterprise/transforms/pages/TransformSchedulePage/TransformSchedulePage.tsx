@@ -42,7 +42,10 @@ export function TransformSchedulePage({ params }: TransformSchedulePageProps) {
 
   return (
     <div>
-      <BenchPaneHeader title={<TransformTabs transform={transform} />} />
+      <BenchPaneHeader
+        title={<TransformTabs transform={transform} />}
+        withBorder
+      />
       <ScheduleSection transform={transform} />
     </div>
   );
