@@ -107,7 +107,7 @@ function TableSection({ node }: SectionProps) {
   return (
     <Stack gap="sm" lh="1rem">
       <Title order={6}>{info.label}</Title>
-      <Group justify="space-between">
+      <Group justify="space-between" wrap="nowrap">
         <GraphLink label={info.title.label} icon="table" url={info.title.url} />
         <GraphExternalLink
           label={info.metadata.label}
