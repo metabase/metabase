@@ -12,11 +12,11 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   Form,
-  FormCheckbox,
   FormErrorMessage,
   FormProvider,
   FormSelect,
   FormSubmitButton,
+  FormSwitch,
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
@@ -371,7 +371,7 @@ function CreateTransformForm({
             label={t`Table name`}
             placeholder={t`descriptive_name`}
           />
-          <FormCheckbox name="incremental" label={t`Incremental?`} />
+          <FormSwitch name="incremental" label={t`Incremental?`} />
           <IncrementalNotice source={source} />
           <SourceStrategyFields source={source} />
           <TargetStrategyFields />

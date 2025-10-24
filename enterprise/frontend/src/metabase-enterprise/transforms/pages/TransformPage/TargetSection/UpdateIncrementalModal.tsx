@@ -4,11 +4,11 @@ import * as Yup from "yup";
 
 import {
   Form,
-  FormCheckbox,
   FormErrorMessage,
   FormProvider,
   FormSelect,
   FormSubmitButton,
+  FormSwitch,
   FormTextInput,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
@@ -221,7 +221,7 @@ function UpdateIncrementalForm({
       {({ values }) => (
         <Form>
           <Stack gap="lg">
-            <FormCheckbox
+            <FormSwitch
               name="incremental"
               label={t`Make this transform incremental`}
               description={t`Incremental transforms only process new or changed data`}
