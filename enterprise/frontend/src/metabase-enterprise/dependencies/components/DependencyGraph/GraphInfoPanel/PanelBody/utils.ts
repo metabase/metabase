@@ -4,6 +4,7 @@ import * as Urls from "metabase/lib/urls";
 import type {
   CardCreatorInfo,
   DependencyNode,
+  Field,
   LastEditInfo,
 } from "metabase-types/api";
 
@@ -12,10 +13,13 @@ import type { NodeTableInfo } from "./types";
 export function getNodeCreatedAt(node: DependencyNode): string | null {
   switch (node.type) {
     case "card":
+    case "dashboard":
+    case "document":
       return node.data.created_at;
     case "table":
     case "transform":
     case "snippet":
+    case "sandbox":
       return null;
   }
 }
@@ -23,10 +27,13 @@ export function getNodeCreatedAt(node: DependencyNode): string | null {
 export function getNodeCreatedBy(node: DependencyNode): CardCreatorInfo | null {
   switch (node.type) {
     case "card":
+    case "dashboard":
+    case "document":
       return node.data.creator ?? null;
     case "table":
     case "transform":
     case "snippet":
+    case "sandbox":
       return null;
   }
 }
@@ -34,10 +41,13 @@ export function getNodeCreatedBy(node: DependencyNode): CardCreatorInfo | null {
 export function getNodeLastEditedAt(node: DependencyNode): string | null {
   switch (node.type) {
     case "card":
+    case "dashboard":
       return node.data["last-edit-info"]?.timestamp ?? null;
     case "table":
     case "transform":
     case "snippet":
+    case "document":
+    case "sandbox":
       return null;
   }
 }
@@ -45,16 +55,19 @@ export function getNodeLastEditedAt(node: DependencyNode): string | null {
 export function getNodeLastEditedBy(node: DependencyNode): LastEditInfo | null {
   switch (node.type) {
     case "card":
+    case "dashboard":
       return node.data["last-edit-info"] ?? null;
     case "table":
     case "transform":
     case "snippet":
+    case "document":
+    case "sandbox":
       return null;
   }
 }
 
 export function getNodeTableInfo(node: DependencyNode): NodeTableInfo | null {
-  if (node.type !== "transform") {
+  if (node.type !== "transform" && node.type !== "sandbox") {
     return null;
   }
 
@@ -64,6 +77,7 @@ export function getNodeTableInfo(node: DependencyNode): NodeTableInfo | null {
   }
 
   return {
+    label: node.type === "transform" ? t`Generated table` : t`Restricted table`,
     title: {
       label: table.display_name,
       url: Urls.dependencyGraph({ entry: { id: table.id, type: "table" } }),
@@ -87,15 +101,18 @@ export function getNodeTableInfo(node: DependencyNode): NodeTableInfo | null {
   };
 }
 
-export function getNodeFields(node: DependencyNode) {
+export function getNodeFields(node: DependencyNode): Field[] {
   switch (node.type) {
     case "card":
       return node.data.result_metadata ?? [];
     case "table":
       return node.data.fields ?? [];
     case "transform":
+    case "sandbox":
       return node.data.table?.fields ?? [];
     case "snippet":
+    case "dashboard":
+    case "document":
       return [];
   }
 }
