@@ -98,13 +98,17 @@
         tr (table-ref (:table_id field))]
     (assoc tr :field (:name field))))
 
+(defn id->card-ref
+  [id]
+  (let [rep (export/export-entity (t2/select-one :model/Card :id id))]
+    (str "ref:" (:ref rep))))
+
 (defn- card-ref
   "Convert a card reference string (e.g. 'card__123') to a representation ref."
   [s]
   (let [[_type id] (str/split s #"__")
-        id (Long/parseLong id)
-        rep (export/export-entity (t2/select-one :model/Card :id id))]
-    (str "ref:" (:ref rep))))
+        id (Long/parseLong id)]
+    (id->card-ref id)))
 
 (defn ->ref-source-table
   "Convert source_table from IDs to representation refs for export."

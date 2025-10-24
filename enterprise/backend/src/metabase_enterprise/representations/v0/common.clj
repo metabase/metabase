@@ -213,3 +213,13 @@
                      :expected-type expected-type
                      :actual-type (t2/model entity)})))
   entity)
+
+(defn replace-refs-everywhere
+  "Replace all refs with whatever is in the ref-index."
+  [data ref-index]
+  (walk/postwalk
+   (fn [node]
+     (if (ref? node)
+       (lookup-id ref-index node)
+       node))
+   data))
