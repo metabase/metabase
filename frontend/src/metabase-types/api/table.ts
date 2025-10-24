@@ -158,6 +158,18 @@ export interface UpdateTableFieldsOrderRequest {
   field_order: FieldId[];
 }
 
+export interface EditTablesRequest {
+  database_ids?: DatabaseId[];
+  schema_ids?: SchemaId[];
+  table_ids?: TableId[];
+  visibility_type?: TableVisibilityType;
+  data_authority?: string;
+  data_source?: TableDataSource | null;
+  visibility_type2?: TableVisibilityType2 | null;
+  owner_email?: string | null;
+  owner_user_id?: UserId | null;
+}
+
 export type UploadManagementResponse = Table[];
 
 export interface DeleteUploadTableRequest {
