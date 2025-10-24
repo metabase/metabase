@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { createBenchAdminRouteGuard } from "metabase/bench/components/utils";
 import type { BenchNavItem } from "metabase/bench/constants/navigation";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { Route } from "metabase/hoc/Title";
@@ -22,7 +23,13 @@ if (hasPremiumFeature("transforms-python")) {
   PLUGIN_TRANSFORMS_PYTHON.SourceSection = SourceSection;
 
   PLUGIN_TRANSFORMS_PYTHON.getAdminRoutes = () => (
-    <Route path="library/:path" component={PythonLibraryEditorPage} />
+    <Route
+      path="library/:path"
+      component={createBenchAdminRouteGuard(
+        "transforms-python",
+        PythonLibraryEditorPage,
+      )}
+    />
   );
 
   PLUGIN_TRANSFORMS_PYTHON.getTransformNavItems = (

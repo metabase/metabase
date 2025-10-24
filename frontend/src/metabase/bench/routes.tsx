@@ -34,12 +34,12 @@ import {
   SnippetsLayout,
 } from "./components/snippets/SnippetsList";
 
-export const getBenchRoutes = (store, CanAccessSettings, isAdmin) => (
+export const getBenchRoutes = () => (
   <Route path="/bench">
     <IndexRoute component={BenchIndex} />
     <Route title={t`Bench`} component={BenchApp}>
       <Route path="overview" component={() => <OverviewPage />} />
-      {PLUGIN_TRANSFORMS.getTransformRoutes(isAdmin)}
+      {PLUGIN_TRANSFORMS.getTransformRoutes()}
       <Route path="segment" component={SegmentApp}>
         <Route path="new" component={CreateSegmentForm} />
         <Route path=":id" component={UpdateSegmentForm} />

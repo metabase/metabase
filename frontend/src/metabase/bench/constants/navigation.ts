@@ -33,13 +33,13 @@ export const getBenchNavSections = (isAdmin: boolean): BenchNavSection[] => {
       items: [
         ...(isAdmin
           ? [
-            {
-              id: "metadata",
-              url: "/bench/metadata",
-              icon: "database",
-              getLabel: () => t`Metadata`,
-            },
-          ]
+              {
+                id: "metadata",
+                url: "/bench/metadata",
+                icon: "database",
+                getLabel: () => t`Metadata`,
+              } as BenchNavItem,
+            ]
           : []),
         ...PLUGIN_TRANSFORMS.getTransformNavItems(isAdmin),
       ],
