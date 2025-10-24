@@ -172,19 +172,19 @@ describe("scenarios > dependencies > dependency graph", () => {
         itemIcon: "table",
       });
       testEntityPicker({
-        tabName: "Collections",
+        tabName: "Questions",
         itemName: "Orders, Count, Grouped by Created At (year)",
         itemLevel: 1,
         itemIcon: "line",
       });
       testEntityPicker({
-        tabName: "Collections",
+        tabName: "Models",
         itemName: "Orders Model",
         itemLevel: 1,
         itemIcon: "model",
       });
       testEntityPicker({
-        tabName: "Collections",
+        tabName: "Metrics",
         itemName: TABLE_BASED_METRIC_NAME,
         itemLevel: 1,
         itemIcon: "metric",
