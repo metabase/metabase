@@ -6,6 +6,8 @@ import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 
 import { JobEmptyPage } from "./pages/JobEmptyPage";
 import { JobLayout } from "./pages/JobLayout/JobLayout";
+import { JobPage } from "./pages/JobPage";
+import { NewJobPage } from "./pages/NewJobPage";
 import { NewTransformPage } from "./pages/NewTransformPage";
 import { TransformEmptyPage } from "./pages/TransformEmptyPage";
 import { TransformLayout } from "./pages/TransformLayout";
@@ -25,6 +27,8 @@ export const getTransformRoutes = () => (
     </Route>
     <Route title={t`Jobs`} path="jobs" component={JobLayout}>
       <IndexRoute component={JobEmptyPage} />
+      <Route path="new" component={NewJobPage} />
+      <Route path=":jobId" component={JobPage} />
     </Route>
     {PLUGIN_TRANSFORMS_PYTHON.getAdminRoutes()}
   </>
