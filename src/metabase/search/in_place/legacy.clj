@@ -311,9 +311,11 @@
    :description])
 
 (defmethod searchable-columns "transform"
-  [_ _]
-  [:name
-   :description])
+  [_ search-native-query]
+  (cond-> [:name
+           :description]
+    search-native-query
+    (conj :source)))
 
 (defmethod searchable-columns "indexed-entity"
   [_ _]
