@@ -15,7 +15,6 @@ import {
   getIsNavBarEnabled,
   getIsNavbarOpen,
   getIsNewButtonVisible,
-  getIsProfileLinkVisible,
   getIsQuestionLineageVisible,
   getIsSearchVisible,
 } from "metabase/selectors/app";
@@ -36,7 +35,7 @@ const mapStateToProps = (state: State, props: RouterProps) => ({
   isSearchVisible: getIsSearchVisible(state),
   isEmbeddingIframe: getIsEmbeddingIframe(),
   isNewButtonVisible: getIsNewButtonVisible(state),
-  isProfileLinkVisible: getIsProfileLinkVisible(state),
+  isProfileLinkVisible: !getIsEmbeddingIframe(),
   isCollectionPathVisible: getIsCollectionPathVisible(state, props),
   isQuestionLineageVisible: getIsQuestionLineageVisible(state, props),
   detailView: getDetailViewState(state),
