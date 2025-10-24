@@ -2,7 +2,16 @@ import { useDisclosure } from "@mantine/hooks";
 import { useDeferredValue, useState } from "react";
 import { t } from "ttag";
 
-import { Button, Group, Icon, Input, Popover, Stack, rem } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Group,
+  Icon,
+  Input,
+  Popover,
+  Stack,
+  rem,
+} from "metabase/ui";
 
 import type { RouteParams } from "../../../types";
 import type { ChangeOptions, TreePath } from "../types";
@@ -37,7 +46,12 @@ export function TablePicker({
   const filtersCount = getFiltersCount(filters);
 
   return (
-    <Stack data-testid="table-picker" mih={rem(200)} className={className}>
+    <Stack
+      data-testid="table-picker"
+      mih={rem(200)}
+      className={className}
+      style={{ overflow: "hidden" }}
+    >
       <Group gap="md" p="lg" pb={0}>
         <Input
           flex="1"
@@ -67,11 +81,13 @@ export function TablePicker({
         </Popover>
       </Group>
 
-      {deferredQuery === "" && filtersCount === 0 ? (
-        <Tree path={path} onChange={onChange} />
-      ) : (
-        <SearchNew query={deferredQuery} params={params} filters={filters} />
-      )}
+      <Box style={{ overflow: "auto" }}>
+        {deferredQuery === "" && filtersCount === 0 ? (
+          <Tree path={path} onChange={onChange} />
+        ) : (
+          <SearchNew query={deferredQuery} params={params} filters={filters} />
+        )}
+      </Box>
     </Stack>
   );
 }
