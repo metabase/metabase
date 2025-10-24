@@ -6,12 +6,14 @@ import {
   DataSourceInput,
   LayerInput,
   UserInput,
+  VisibilityInput,
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button, Flex, Modal, Stack, rem } from "metabase/ui";
 import type {
   TableDataSource,
   TableId,
+  TableVisibilityType,
   TableVisibilityType2,
   UserId,
 } from "metabase-types/api";
@@ -31,6 +33,9 @@ export function EditTableMetadataModal({
 }: Props) {
   const [updateTableList, { isLoading }] = useUpdateTableListMutation();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
+  const [visibilityType, setVisibilityType] = useState<
+    TableVisibilityType | undefined
+  >(undefined);
   const [visibilityType2, setVisibilityType2] = useState<
     TableVisibilityType2 | undefined
   >(undefined);
@@ -41,6 +46,7 @@ export function EditTableMetadataModal({
   const [userId, setUserId] = useState<UserId | null | undefined>(undefined);
 
   const reset = () => {
+    setVisibilityType(undefined);
     setVisibilityType2(undefined);
     setDataSource(undefined);
     setEmail(undefined);
@@ -50,6 +56,7 @@ export function EditTableMetadataModal({
   const handleSubmit = async () => {
     const { error } = await updateTableList({
       ids: Array.from(tables),
+      visibility_type: visibilityType,
       visibility_type2: visibilityType2,
       data_source: dataSource,
       owner_email: email,
@@ -77,6 +84,7 @@ export function EditTableMetadataModal({
     typeof email === "undefined" &&
     typeof dataSource === "undefined" &&
     typeof userId === "undefined" &&
+    typeof visibilityType === "undefined" &&
     typeof visibilityType2 === "undefined";
 
   return (
@@ -88,6 +96,8 @@ export function EditTableMetadataModal({
       onClose={handleClose}
     >
       <Stack gap="md" pt="sm">
+        <VisibilityInput value={visibilityType} onChange={setVisibilityType} />
+
         <LayerInput value={visibilityType2} onChange={setVisibilityType2} />
 
         <UserInput

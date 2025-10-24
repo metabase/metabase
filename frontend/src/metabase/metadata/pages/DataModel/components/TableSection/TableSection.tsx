@@ -14,6 +14,7 @@ import {
   NameDescriptionInput,
   SortableFieldList,
   UserInput,
+  VisibilityInput,
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
@@ -31,6 +32,7 @@ import type {
   Table,
   TableDataSource,
   TableFieldOrder,
+  TableVisibilityType,
   TableVisibilityType2,
   UserId,
 } from "metabase-types/api";
@@ -108,17 +110,36 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
   };
 
   const handleVisibilityTypeChange = async (
-    visibilityType: TableVisibilityType2,
+    visibilityType: TableVisibilityType,
   ) => {
     const { error } = await updateTable({
       id: table.id,
-      visibility_type2: visibilityType,
+      visibility_type: visibilityType,
     });
 
     if (error) {
       sendErrorToast(t`Failed to update table visibility`);
     } else {
       sendSuccessToast(t`Table visibility updated`, async () => {
+        const { error } = await updateTable({
+          id: table.id,
+          visibility_type: table.visibility_type,
+        });
+        sendUndoToast(error);
+      });
+    }
+  };
+
+  const handleLayerChange = async (visibilityType: TableVisibilityType2) => {
+    const { error } = await updateTable({
+      id: table.id,
+      visibility_type2: visibilityType,
+    });
+
+    if (error) {
+      sendErrorToast(t`Failed to update table layer`);
+    } else {
+      sendSuccessToast(t`Table layer updated`, async () => {
         const { error } = await updateTable({
           id: table.id,
           visibility_type2: table.visibility_type2,
@@ -275,9 +296,14 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
         />
 
         <TitledSection title={t`Metadata`}>
+          <VisibilityInput
+            value={table.visibility_type}
+            onChange={handleVisibilityTypeChange}
+          />
+
           <LayerInput
             value={table.visibility_type2 ?? "copper"}
-            onChange={handleVisibilityTypeChange}
+            onChange={handleLayerChange}
           />
 
           <UserInput
