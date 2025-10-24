@@ -165,23 +165,23 @@ export const getIsAppBarVisible = createSelector(
 );
 
 export const getIsLogoVisible = createSelector(
-  [getEmbedOptions],
-  (embedOptions) => {
-    return !getIsEmbeddingIframe() || embedOptions.logo;
+  [getEmbedOptions, () => getIsEmbeddingIframe()],
+  (embedOptions, isEmbeddingIframe) => {
+    return !isEmbeddingIframe || embedOptions.logo;
   },
 );
 
 export const getIsSearchVisible = createSelector(
-  [getEmbedOptions],
-  (embedOptions) => {
-    return !getIsEmbeddingIframe() || embedOptions.search;
+  [getEmbedOptions, () => getIsEmbeddingIframe()],
+  (embedOptions, isEmbeddingIframe) => {
+    return !isEmbeddingIframe || embedOptions.search;
   },
 );
 
 export const getIsNewButtonVisible = createSelector(
-  [getEmbedOptions],
-  (embedOptions) => {
-    return !getIsEmbeddingIframe() || embedOptions.new_button;
+  [getEmbedOptions, () => getIsEmbeddingIframe()],
+  (embedOptions, isEmbeddingIframe) => {
+    return !isEmbeddingIframe || embedOptions.new_button;
   },
 );
 

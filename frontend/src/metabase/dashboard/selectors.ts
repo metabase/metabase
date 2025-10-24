@@ -546,16 +546,17 @@ export function getEmbeddedParameterVisibility(
 }
 
 export const getIsHeaderVisible = createSelector(
-  [getEmbedOptions],
-  (embedOptions) =>
-    (isEmbeddingSdk() && getIsEmbeddingIframe()) ||
-    !getIsEmbeddingIframe() ||
+  [getEmbedOptions, () => getIsEmbeddingIframe()],
+  (embedOptions, isEmbeddingIframe) =>
+    (isEmbeddingSdk() && isEmbeddingIframe) ||
+    !isEmbeddingIframe ||
     !!embedOptions.header,
 );
 
 export const getIsAdditionalInfoVisible = createSelector(
-  [getEmbedOptions],
-  (embedOptions) => !getIsEmbeddingIframe() || !!embedOptions.additional_info,
+  [getEmbedOptions, () => getIsEmbeddingIframe()],
+  (embedOptions, isEmbeddingIframe) =>
+    !isEmbeddingIframe || !!embedOptions.additional_info,
 );
 
 export const getTabs = createSelector([getDashboard], (dashboard) => {
