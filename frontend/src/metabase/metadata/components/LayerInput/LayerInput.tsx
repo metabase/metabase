@@ -6,8 +6,8 @@ import { Group, Icon, Select, SelectItem, type SelectProps } from "metabase/ui";
 import type { TableVisibilityType2 } from "metabase-types/api";
 
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
-  value: TableVisibilityType2 | undefined;
-  onChange: (value: TableVisibilityType2) => void;
+  value: TableVisibilityType2 | null;
+  onChange: (value: TableVisibilityType2 | null) => void;
 }
 
 export const LayerInput = ({

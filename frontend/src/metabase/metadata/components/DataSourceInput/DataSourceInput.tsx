@@ -17,8 +17,8 @@ import type { TableDataSource, TransformId } from "metabase-types/api";
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   showMetabaseTransform?: boolean;
   transformId?: TransformId | null;
-  value: TableDataSource | null | undefined;
-  onChange: (value: TableDataSource | null) => void;
+  value: TableDataSource | "unknown" | null;
+  onChange: (value: TableDataSource | "unknown" | null) => void;
 }
 
 export const DataSourceInput = ({
@@ -74,44 +74,25 @@ export const DataSourceInput = ({
       data={getData(value, showMetabaseTransform)}
       label={t`Data source`}
       placeholder={t`Select a data source`}
-      value={stringifyValue(value)}
-      onChange={(value) => onChange(parseValue(value))}
+      value={value}
+      onChange={(value) => onChange(value)}
       {...props}
     />
   );
 };
 
 function getData(
-  value: TableDataSource | null | undefined,
+  value: TableDataSource | "unknown" | null,
   showMetabaseTransform?: boolean,
 ) {
-  const data = [
-    { value: "ingested", label: t`Ingested` },
+  return [
+    { value: "unknown" as const, label: t`Unknown` },
+    { value: "ingested" as const, label: t`Ingested` },
     showMetabaseTransform
-      ? { value: "metabase-transform", label: t`Metabase transform` }
+      ? { value: "metabase-transform" as const, label: t`Metabase transform` }
       : undefined,
-    { value: "transform", label: t`Transform` },
-    { value: "source-data", label: t`Source data` },
-    { value: "uploaded-data", label: t`Uploaded data` },
+    { value: "transform" as const, label: t`Transform` },
+    { value: "source-data" as const, label: t`Source data` },
+    { value: "uploaded-data" as const, label: t`Uploaded data` },
   ].filter((option) => option != null);
-
-  if (value === null) {
-    return [{ value: "null", label: t`Unknown` }, ...data];
-  }
-
-  return data;
-}
-
-function stringifyValue(
-  value: TableDataSource | null | undefined,
-): string | undefined {
-  if (typeof value === "undefined") {
-    return undefined;
-  }
-
-  return value === null ? "null" : value;
-}
-
-function parseValue(value: string): TableDataSource | null {
-  return value === "null" ? null : (value as TableDataSource);
 }

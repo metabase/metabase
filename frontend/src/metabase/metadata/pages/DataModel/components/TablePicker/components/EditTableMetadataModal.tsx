@@ -5,6 +5,7 @@ import { useEditTablesMutation } from "metabase/api";
 import {
   DataSourceInput,
   LayerInput,
+  type LimitedVisibilityType,
   UserInput,
   VisibilityInput,
 } from "metabase/metadata/components";
@@ -14,7 +15,6 @@ import type {
   SchemaId,
   TableDataSource,
   TableId,
-  TableVisibilityType,
   TableVisibilityType2,
   UserId,
 } from "metabase-types/api";
@@ -36,35 +36,41 @@ export function EditTableMetadataModal({
 }: Props) {
   const [editTables, { isLoading }] = useEditTablesMutation();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
-  const [visibilityType, setVisibilityType] = useState<
-    TableVisibilityType | undefined
-  >(undefined);
-  const [visibilityType2, setVisibilityType2] = useState<
-    TableVisibilityType2 | undefined
-  >(undefined);
+  const [visibilityType, setVisibilityType] =
+    useState<LimitedVisibilityType | null>(null);
+  const [visibilityType2, setVisibilityType2] =
+    useState<TableVisibilityType2 | null>(null);
   const [dataSource, setDataSource] = useState<
-    TableDataSource | null | undefined
-  >(undefined);
-  const [email, setEmail] = useState<string | null | undefined>(undefined);
-  const [userId, setUserId] = useState<UserId | null | undefined>(undefined);
+    TableDataSource | "unknown" | null
+  >(null);
+  const [email, setEmail] = useState<string | null>(null);
+  const [userId, setUserId] = useState<UserId | "unknown" | null>(null);
 
   const reset = () => {
-    setVisibilityType(undefined);
-    setVisibilityType2(undefined);
-    setDataSource(undefined);
-    setEmail(undefined);
-    setUserId(undefined);
+    setVisibilityType(null);
+    setVisibilityType2(null);
+    setDataSource(null);
+    setEmail(null);
+    setUserId(null);
   };
 
   const handleSubmit = async () => {
     const { error } = await editTables({
       table_ids: Array.from(tables),
       schema_ids: Array.from(schemas),
-      visibility_type: visibilityType,
-      visibility_type2: visibilityType2,
-      data_source: dataSource,
-      owner_email: email,
-      owner_user_id: userId,
+      visibility_type:
+        visibilityType === null
+          ? undefined
+          : visibilityType === "visible"
+            ? null
+            : "hidden",
+      visibility_type2: visibilityType2 ?? undefined,
+      data_source: dataSource === "unknown" ? null : (dataSource ?? undefined),
+      owner_email:
+        userId === "unknown" || typeof userId === "number"
+          ? null
+          : (email ?? undefined),
+      owner_user_id: userId === "unknown" ? null : (userId ?? undefined),
     });
 
     onUpdate?.();
@@ -85,11 +91,11 @@ export function EditTableMetadataModal({
   };
 
   const disabled =
-    typeof email === "undefined" &&
-    typeof dataSource === "undefined" &&
-    typeof userId === "undefined" &&
-    typeof visibilityType === "undefined" &&
-    typeof visibilityType2 === "undefined";
+    email == null &&
+    dataSource == null &&
+    userId == null &&
+    visibilityType == null &&
+    visibilityType2 == null;
 
   const count = tables.size + schemas.size;
 
@@ -102,11 +108,20 @@ export function EditTableMetadataModal({
       onClose={handleClose}
     >
       <Stack gap="md" pt="sm">
-        <VisibilityInput value={visibilityType} onChange={setVisibilityType} />
+        <VisibilityInput
+          clearable
+          value={visibilityType}
+          onChange={setVisibilityType}
+        />
 
-        <LayerInput value={visibilityType2} onChange={setVisibilityType2} />
+        <LayerInput
+          clearable
+          value={visibilityType2}
+          onChange={setVisibilityType2}
+        />
 
         <UserInput
+          clearable
           email={email}
           label={t`Owner`}
           userId={userId}
@@ -120,7 +135,11 @@ export function EditTableMetadataModal({
           }}
         />
 
-        <DataSourceInput value={dataSource} onChange={setDataSource} />
+        <DataSourceInput
+          clearable
+          value={dataSource}
+          onChange={setDataSource}
+        />
 
         <Flex justify="flex-end" gap="sm">
           <Button onClick={handleClose}>{t`Cancel`}</Button>

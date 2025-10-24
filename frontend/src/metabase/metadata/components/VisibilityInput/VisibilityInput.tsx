@@ -2,14 +2,13 @@ import type { FocusEvent } from "react";
 import { t } from "ttag";
 
 import { Select, type SelectProps } from "metabase/ui";
-import type { TableVisibilityType } from "metabase-types/api";
+
+export type LimitedVisibilityType = "visible" | "hidden";
 
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
-  value: TableVisibilityType | undefined;
-  onChange: (value: TableVisibilityType) => void;
+  value: LimitedVisibilityType | null;
+  onChange: (value: LimitedVisibilityType | null) => void;
 }
-
-type LimitedVisibilityType = "visible" | "hidden";
 
 export const VisibilityInput = ({
   comboboxProps,
@@ -23,15 +22,8 @@ export const VisibilityInput = ({
     onFocus?.(event);
   };
 
-  const limitedValue =
-    typeof value === "undefined"
-      ? undefined
-      : value === null
-        ? "visible"
-        : "hidden";
-
   return (
-    <Select<LimitedVisibilityType>
+    <Select
       comboboxProps={{
         middlewares: {
           flip: true,
@@ -48,8 +40,8 @@ export const VisibilityInput = ({
       ]}
       label={t`Visibility`}
       placeholder={t`Select visibility`}
-      value={limitedValue}
-      onChange={(value) => onChange(value === "visible" ? null : "hidden")}
+      value={value}
+      onChange={onChange}
       onFocus={handleFocus}
       {...props}
     />

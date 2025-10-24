@@ -4,7 +4,9 @@ import { t } from "ttag";
 import {
   DataSourceInput,
   LayerInput,
+  type LimitedVisibilityType,
   UserInput,
+  VisibilityInput,
 } from "metabase/metadata/components";
 import { Button, Flex, Stack } from "metabase/ui";
 import type {
@@ -14,10 +16,11 @@ import type {
 } from "metabase-types/api";
 
 export interface FilterState {
-  visibilityType2?: TableVisibilityType2;
-  dataSource?: TableDataSource | null;
-  ownerEmail?: string | null;
-  ownerUserId?: UserId | null;
+  visibilityType: LimitedVisibilityType | null;
+  visibilityType2: TableVisibilityType2 | null;
+  dataSource: TableDataSource | "unknown" | null;
+  ownerEmail: string | null;
+  ownerUserId: UserId | "unknown" | null;
 }
 
 interface Props {
@@ -27,77 +30,64 @@ interface Props {
 }
 
 export function FilterPopover({ filters, onClose, onSubmit }: Props) {
-  const [visibilityType2, setVisibilityType2] = useState<
-    TableVisibilityType2 | undefined
-  >(filters.visibilityType2);
-  const [dataSource, setDataSource] = useState<
-    TableDataSource | null | undefined
-  >(filters.dataSource);
-  const [ownerEmail, setOwnerEmail] = useState<string | null | undefined>(
-    filters.ownerEmail,
-  );
-  const [ownerUserId, setOwnerUserId] = useState<UserId | null | undefined>(
-    filters.ownerUserId,
-  );
-
-  const handleApply = () => {
-    const filters: FilterState = {};
-
-    // if (visibilityType2 !== undefined) {
-    filters.visibilityType2 = visibilityType2;
-    // }
-
-    // if (dataSource !== undefined) {
-    filters.dataSource = dataSource;
-    // }
-
-    // if (ownerEmail !== undefined || ownerUserId !== undefined) {
-    filters.ownerEmail = ownerEmail;
-    filters.ownerUserId = ownerUserId;
-    // }
-
-    onSubmit(filters);
-  };
+  const [form, setForm] = useState(filters);
 
   return (
-    <Stack gap="md" p="lg">
-      <LayerInput
-        clearable
-        value={visibilityType2}
-        onChange={setVisibilityType2}
-      />
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSubmit(form);
+      }}
+    >
+      <Stack gap="md" p="lg">
+        <VisibilityInput
+          clearable
+          value={form.visibilityType}
+          onChange={(visibilityType) => {
+            setForm((form) => ({ ...form, visibilityType }));
+          }}
+        />
 
-      <UserInput
-        clearable
-        email={ownerEmail}
-        label={t`Owner`}
-        userId={ownerUserId}
-        onEmailChange={(email) => {
-          setOwnerEmail(email);
-          setOwnerUserId(null);
-        }}
-        onUserIdChange={(userId) => {
-          setOwnerEmail(null);
-          setOwnerUserId(userId);
-        }}
-      />
+        <LayerInput
+          clearable
+          value={form.visibilityType2}
+          onChange={(visibilityType2) => {
+            setForm((form) => ({ ...form, visibilityType2 }));
+          }}
+        />
 
-      <DataSourceInput
-        clearable
-        showMetabaseTransform
-        value={dataSource}
-        onChange={setDataSource}
-      />
+        <UserInput
+          clearable
+          email={form.ownerEmail}
+          label={t`Owner`}
+          userId={form.ownerUserId}
+          onEmailChange={(ownerEmail) => {
+            setForm((form) => ({ ...form, ownerEmail, ownerUserId: null }));
+          }}
+          onUserIdChange={(ownerUserId) => {
+            setForm((form) => ({ ...form, ownerEmail: null, ownerUserId }));
+          }}
+        />
 
-      <Flex justify="flex-end" gap="sm">
-        <Button variant="subtle" onClick={onClose}>
-          {t`Cancel`}
-        </Button>
+        <DataSourceInput
+          clearable
+          showMetabaseTransform
+          value={form.dataSource}
+          onChange={(dataSource) => {
+            setForm((form) => ({ ...form, dataSource }));
+          }}
+        />
 
-        <Button variant="primary" onClick={handleApply}>
-          {t`Apply`}
-        </Button>
-      </Flex>
-    </Stack>
+        <Flex justify="flex-end" gap="sm">
+          <Button variant="subtle" onClick={onClose}>
+            {t`Cancel`}
+          </Button>
+
+          <Button variant="primary" type="submit">
+            {t`Apply`}
+          </Button>
+        </Flex>
+      </Stack>
+    </form>
   );
 }

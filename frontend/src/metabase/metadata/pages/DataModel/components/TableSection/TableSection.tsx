@@ -11,6 +11,7 @@ import {
   DataSourceInput,
   FieldOrderPicker,
   LayerInput,
+  type LimitedVisibilityType,
   NameDescriptionInput,
   SortableFieldList,
   UserInput,
@@ -32,7 +33,6 @@ import type {
   Table,
   TableDataSource,
   TableFieldOrder,
-  TableVisibilityType,
   TableVisibilityType2,
   UserId,
 } from "metabase-types/api";
@@ -110,11 +110,15 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
   };
 
   const handleVisibilityTypeChange = async (
-    visibilityType: TableVisibilityType,
+    visibilityType: LimitedVisibilityType | null,
   ) => {
+    if (visibilityType == null) {
+      return; // should never happen as the input is not clearable here
+    }
+
     const { error } = await updateTable({
       id: table.id,
-      visibility_type: visibilityType,
+      visibility_type: visibilityType === "visible" ? null : "hidden",
     });
 
     if (error) {
@@ -130,7 +134,13 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
     }
   };
 
-  const handleLayerChange = async (visibilityType: TableVisibilityType2) => {
+  const handleLayerChange = async (
+    visibilityType: TableVisibilityType2 | null,
+  ) => {
+    if (visibilityType == null) {
+      return; // should never happen as the input is not clearable here
+    }
+
     const { error } = await updateTable({
       id: table.id,
       visibility_type2: visibilityType,
@@ -149,10 +159,16 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
     }
   };
 
-  const handleDataSourceChange = async (dataSource: TableDataSource | null) => {
+  const handleDataSourceChange = async (
+    dataSource: TableDataSource | "unknown" | null,
+  ) => {
+    if (dataSource == null) {
+      return; // should never happen as the input is not clearable here
+    }
+
     const { error } = await updateTable({
       id: table.id,
-      data_source: dataSource,
+      data_source: dataSource === "unknown" ? null : dataSource,
     });
 
     if (error) {
@@ -189,11 +205,15 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
     }
   };
 
-  const handleOwnerUserIdChange = async (userId: UserId | null) => {
+  const handleOwnerUserIdChange = async (userId: UserId | "unknown" | null) => {
+    if (userId == null) {
+      return; // should never happen as the input is not clearable here
+    }
+
     const { error } = await updateTable({
       id: table.id,
       owner_email: null,
-      owner_user_id: userId,
+      owner_user_id: userId === "unknown" ? null : userId,
     });
 
     if (error) {
@@ -297,7 +317,7 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
 
         <TitledSection title={t`Metadata`}>
           <VisibilityInput
-            value={table.visibility_type}
+            value={table.visibility_type == null ? "visible" : "hidden"}
             onChange={handleVisibilityTypeChange}
           />
 
@@ -309,7 +329,11 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
           <UserInput
             email={table.owner_email}
             label={t`Owner`}
-            userId={table.owner_user_id}
+            userId={
+              !table.owner_email && !table.owner_user_id
+                ? "unknown"
+                : table.owner_user_id
+            }
             onEmailChange={handleOwnerEmailChange}
             onUserIdChange={handleOwnerUserIdChange}
           />

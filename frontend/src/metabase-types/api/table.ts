@@ -96,10 +96,11 @@ export interface TableListQuery {
   remove_inactive?: boolean;
   skip_fields?: boolean;
   term?: string;
-  visibility_type2?: string;
-  data_source?: string;
-  owner_user_id?: number;
-  owner_email?: string;
+  visibility_type?: TableVisibilityType;
+  visibility_type2?: TableVisibilityType2;
+  data_source?: string | null;
+  owner_user_id?: UserId | null;
+  owner_email?: string | null;
 }
 
 export interface ForeignKey {

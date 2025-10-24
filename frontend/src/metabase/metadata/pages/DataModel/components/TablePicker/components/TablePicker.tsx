@@ -24,14 +24,17 @@ export function TablePicker({
   className,
   onChange,
 }: TablePickerProps) {
-  // TODO: UXW-1857 - add search support
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
-  const [filters, setFilters] = useState<FilterState>({});
+  const [filters, setFilters] = useState<FilterState>({
+    visibilityType: null,
+    visibilityType2: null,
+    dataSource: null,
+    ownerEmail: null,
+    ownerUserId: null,
+  });
   const [isOpen, { toggle, close }] = useDisclosure();
-  const filtersCount = Object.values(filters).filter(
-    (value) => typeof value !== "undefined",
-  ).length;
+  const filtersCount = getFiltersCount(filters);
 
   return (
     <Stack data-testid="table-picker" mih={rem(200)} className={className}>
@@ -54,7 +57,6 @@ export function TablePicker({
           <Popover.Dropdown>
             <FilterPopover
               filters={filters}
-              isOpen={isOpen}
               onClose={close}
               onSubmit={(newFilters) => {
                 setFilters(newFilters);
@@ -72,4 +74,22 @@ export function TablePicker({
       )}
     </Stack>
   );
+}
+
+function getFiltersCount(filters: FilterState): number {
+  let count = 0;
+
+  if (filters.dataSource != null) {
+    ++count;
+  }
+
+  if (filters.visibilityType2 != null) {
+    ++count;
+  }
+
+  if (filters.ownerEmail != null || filters.ownerUserId != null) {
+    ++count;
+  }
+
+  return count;
 }

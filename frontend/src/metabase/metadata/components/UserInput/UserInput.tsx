@@ -7,10 +7,10 @@ import { Avatar, Group, Select, type SelectProps, Text } from "metabase/ui";
 import type { User, UserId } from "metabase-types/api";
 
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
-  email: string | null | undefined;
-  userId: UserId | null | undefined;
+  email: string | null;
+  userId: UserId | "unknown" | null;
   onEmailChange: (email: string) => void;
-  onUserIdChange: (value: UserId | null) => void;
+  onUserIdChange: (value: UserId | "unknown" | null) => void;
 }
 
 export const UserInput = ({
@@ -32,18 +32,23 @@ export const UserInput = ({
     onFocus?.(event);
   };
 
-  const handleChange = (value: string) => {
+  const handleChange = (value: string | null) => {
+    if (value == null) {
+      onUserIdChange(null);
+      return;
+    }
+
     const newValue = parseValue(value);
 
-    if (typeof newValue === "number" || newValue === null) {
+    if (typeof newValue === "number" || newValue === "unknown") {
       onUserIdChange(newValue);
     } else {
-      onEmailChange(newValue);
+      onEmailChange(value);
     }
   };
 
   return (
-    <Select
+    <Select<string | null>
       comboboxProps={{
         middlewares: {
           flip: true,
@@ -74,7 +79,7 @@ export const UserInput = ({
           </Group>
         );
       }}
-      value={email ? email : stringifyValue(userId)}
+      value={email ? email : userId ? String(userId) : null}
       onChange={handleChange}
       onFocus={handleFocus}
       onSearchChange={setSearch}
@@ -94,7 +99,7 @@ function getData(email: string | null, users: User[]): Option[] {
   return [
     {
       label: t`Unknown`,
-      value: stringifyValue(null) as string,
+      value: "unknown",
       type: "unknown" as const,
     },
     ...users.map((user) => ({
@@ -113,19 +118,13 @@ function getData(email: string | null, users: User[]): Option[] {
   ].filter((option) => option != null);
 }
 
-function stringifyValue(
-  value: UserId | string | null | undefined,
-): string | undefined {
-  if (typeof value === "undefined") {
-    return undefined;
-  }
-
-  return value === null ? "null" : String(value);
+function stringifyValue(value: UserId | "unknown" | null): string | null {
+  return value === null ? null : String(value);
 }
 
-function parseValue(value: string): UserId | string | null {
-  if (value === "null") {
-    return null;
+function parseValue(value: string): UserId | string | "unknown" {
+  if (value === "unknown") {
+    return "unknown";
   }
 
   if (isEmail(value)) {
