@@ -8,6 +8,8 @@ import {
   UpdateSegmentForm,
 } from "metabase/admin/datamodel/containers/SegmentApp";
 import { MetadataLayout } from "metabase/bench/components/metadata/MetadataLayout";
+import { createBenchAdminRouteGuard } from "metabase/bench/components/utils";
+import { Unauthorized } from "metabase/common/components/ErrorPages";
 import NotFoundFallbackPage from "metabase/common/components/NotFoundFallbackPage";
 import { Route } from "metabase/hoc/Title";
 import { DataModel } from "metabase/metadata/pages/DataModel";
@@ -32,12 +34,12 @@ import {
   SnippetsLayout,
 } from "./components/snippets/SnippetsList";
 
-export const getBenchRoutes = () => (
+export const getBenchRoutes = (store, CanAccessSettings, isAdmin) => (
   <Route path="/bench">
     <IndexRoute component={BenchIndex} />
     <Route title={t`Bench`} component={BenchApp}>
       <Route path="overview" component={() => <OverviewPage />} />
-      {PLUGIN_TRANSFORMS.getTransformRoutes()}
+      {PLUGIN_TRANSFORMS.getTransformRoutes(isAdmin)}
       <Route path="segment" component={SegmentApp}>
         <Route path="new" component={CreateSegmentForm} />
         <Route path=":id" component={UpdateSegmentForm} />
@@ -62,7 +64,10 @@ export const getBenchRoutes = () => (
       </Route>
       <Route path="glossary" component={GlossaryContainer} />
       <Route path="dependencies" component={EmptySailboat} />
-      <Route path="metadata" component={MetadataLayout}>
+      <Route
+        path="metadata"
+        component={createBenchAdminRouteGuard("metadata", MetadataLayout)}
+      >
         <Route title={t`Table Metadata`}>
           <IndexRedirect to="database" />
           <Route path="database" component={DataModel} />
@@ -97,6 +102,7 @@ export const getBenchRoutes = () => (
           />
         </Route>
       </Route>
+      <Route path="unauthorized" component={Unauthorized} />
       <Route path="*" component={NotFoundFallbackPage} />
     </Route>
   </Route>

@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { PLUGIN_TRANSFORMS, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import type { IconName } from "metabase/ui";
 
 export interface BenchNavItem {
@@ -24,103 +25,90 @@ const OVERVIEW_ITEM: BenchNavItem = {
   getLabel: () => t`Overview`,
 };
 
-export const BENCH_NAV_SECTIONS: BenchNavSection[] = [
-  {
-    id: "data",
-    getTitle: () => t`Data`,
-    items: [
-      {
-        id: "metadata",
-        url: "/bench/metadata",
-        icon: "database",
-        getLabel: () => t`Metadata`,
-      },
-      {
-        id: "transforms",
-        url: "/bench/transforms",
-        icon: "transform",
-        getLabel: () => t`Transforms`,
-      },
-      {
-        id: "jobs",
-        url: "/bench/jobs",
-        icon: "play_outlined",
-        getLabel: () => t`Jobs`,
-        parentId: "transforms",
-        nested: true,
-      },
-      {
-        id: "runs",
-        url: "/bench/runs",
-        icon: "list",
-        getLabel: () => t`Runs`,
-        parentId: "transforms",
-        nested: true,
-      },
-    ],
-  },
-  {
-    id: "modeling",
-    getTitle: () => t`Modeling`,
-    items: [
-      {
-        id: "metric",
-        url: "/bench/metric",
-        icon: "metric",
-        getLabel: () => t`Metrics`,
-      },
-      {
-        id: "model",
-        url: "/bench/model",
-        icon: "model",
-        getLabel: () => t`Models`,
-      },
-      {
-        id: "segment",
-        url: "/bench/segment",
-        icon: "segment",
-        getLabel: () => t`Segments`,
-      },
-      {
-        id: "glossary",
-        url: "/bench/glossary",
-        icon: "globe",
-        getLabel: () => t`Glossary`,
-      },
-    ],
-  },
-  {
-    id: "tools",
-    getTitle: () => t`Tools`,
-    items: [
-      {
-        id: "dependency-graph",
-        url: "/bench/dependencies",
-        icon: "network",
-        getLabel: () => t`Dependency graph`,
-      },
-      {
-        id: "snippet",
-        url: "/bench/snippet",
-        icon: "snippet",
-        getLabel: () => t`SQL snippets`,
-      },
-      {
-        id: "library",
-        url: "/bench/library/common.py",
-        icon: "code_block",
-        getLabel: () => t`Python Library`,
-      },
-    ],
-  },
-];
+export const getBenchNavSections = (isAdmin: boolean): BenchNavSection[] => {
+  const navSections: BenchNavSection[] = [
+    {
+      id: "data",
+      getTitle: () => t`Data`,
+      items: [
+        ...(isAdmin
+          ? [
+            {
+              id: "metadata",
+              url: "/bench/metadata",
+              icon: "database",
+              getLabel: () => t`Metadata`,
+            },
+          ]
+          : []),
+        ...PLUGIN_TRANSFORMS.getTransformNavItems(isAdmin),
+      ],
+    },
+    {
+      id: "modeling",
+      getTitle: () => t`Modeling`,
+      items: [
+        {
+          id: "metric",
+          url: "/bench/metric",
+          icon: "metric",
+          getLabel: () => t`Metrics`,
+        },
+        {
+          id: "model",
+          url: "/bench/model",
+          icon: "model",
+          getLabel: () => t`Models`,
+        },
+        {
+          id: "segment",
+          url: "/bench/segment",
+          icon: "segment",
+          getLabel: () => t`Segments`,
+        },
+        {
+          id: "glossary",
+          url: "/bench/glossary",
+          icon: "globe",
+          getLabel: () => t`Glossary`,
+        },
+      ],
+    },
+    {
+      id: "tools",
+      getTitle: () => t`Tools`,
+      items: [
+        {
+          id: "dependency-graph",
+          url: "/bench/dependencies",
+          icon: "network",
+          getLabel: () => t`Dependency graph`,
+        },
+        {
+          id: "snippet",
+          url: "/bench/snippet",
+          icon: "snippet",
+          getLabel: () => t`SQL snippets`,
+        },
+        ...PLUGIN_TRANSFORMS_PYTHON.getTransformNavItems(isAdmin),
+      ],
+    },
+  ];
 
-export const BENCH_NAV_ITEMS: BenchNavItem[] = [
-  OVERVIEW_ITEM,
-  ...BENCH_NAV_SECTIONS.flatMap((section) => section.items),
-];
+  return navSections.filter((section) => section.items.length > 0);
+};
 
-export function findNavItemByPath(pathname: string): BenchNavItem | null {
+export const getBenchNavItems = (isAdmin: boolean): BenchNavItem[] => {
+  return [
+    OVERVIEW_ITEM,
+    ...getBenchNavSections(isAdmin).flatMap((section) => section.items),
+  ];
+};
+
+export function findNavItemByPath(
+  pathname: string,
+  isAdmin: boolean,
+): BenchNavItem | null {
   if (!pathname) {
     return null;
   }
@@ -134,7 +122,9 @@ export function findNavItemByPath(pathname: string): BenchNavItem | null {
 
   const pathSegment = pathParts[benchIndex + 1];
 
-  return BENCH_NAV_ITEMS.find((item) => item.id === pathSegment) ?? null;
+  return (
+    getBenchNavItems(isAdmin).find((item) => item.id === pathSegment) ?? null
+  );
 }
 
 export { OVERVIEW_ITEM };

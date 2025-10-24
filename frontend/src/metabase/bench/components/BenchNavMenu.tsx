@@ -1,12 +1,15 @@
 import type { ReactNode } from "react";
+import { useMemo } from "react";
 import { Link } from "react-router";
 
 import { BenchNavItem } from "metabase/bench/components/nav/BenchNavItem";
 import {
-  BENCH_NAV_SECTIONS,
   OVERVIEW_ITEM,
+  getBenchNavSections,
 } from "metabase/bench/constants/navigation";
 import LogoIcon from "metabase/common/components/LogoIcon";
+import { useSelector } from "metabase/lib/redux";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Stack, Text, UnstyledButton } from "metabase/ui";
 
 import S from "./BenchNavMenu.module.css";
@@ -32,6 +35,9 @@ interface BenchNavMenuProps {
 }
 
 export function BenchNavMenu({ onClose }: BenchNavMenuProps) {
+  const isAdmin = useSelector(getUserIsAdmin);
+  const navSections = useMemo(() => getBenchNavSections(isAdmin), [isAdmin]);
+
   return (
     <Box w={320} data-testid="bench-nav-menu">
       <Stack gap={0} p="lg">
@@ -42,7 +48,7 @@ export function BenchNavMenu({ onClose }: BenchNavMenuProps) {
           onClick={onClose}
         />
 
-        {BENCH_NAV_SECTIONS.map((section) => (
+        {navSections.map((section) => (
           <BenchNavSection key={section.id} title={section.getTitle()}>
             {section.items.map((item) => {
               const navItem = (

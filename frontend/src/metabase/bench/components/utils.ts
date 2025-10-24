@@ -1,5 +1,9 @@
 import { useCallback, useLayoutEffect, useState } from "react";
+import { routerActions } from "react-router-redux";
+import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 import _ from "underscore";
+
+import { MetabaseReduxContext } from "metabase/lib/redux";
 
 /**
  * react-resizable-panels sizes are in percentages,
@@ -33,4 +37,21 @@ export const useAbsoluteSize = ({ groupId }: { groupId: string }) => {
   const getSizeFn = useCallback((px: number) => (px / width) * 100, [width]);
 
   return getSizeFn;
+};
+
+export const createBenchAdminRouteGuard = (
+  routeKey: string,
+  Component?: Function, // eslint-disable-line @typescript-eslint/ban-types
+) => {
+  const Wrapper = connectedReduxRedirect({
+    wrapperDisplayName: `CanAccess(${routeKey})`,
+    redirectPath: "/bench/unauthorized",
+    allowRedirectBack: false,
+    authenticatedSelector: (state) =>
+      Boolean(state.currentUser && state.currentUser.is_superuser),
+    redirectAction: routerActions.replace,
+    context: MetabaseReduxContext,
+  });
+
+  return Wrapper(Component ?? (({ children }) => children));
 };

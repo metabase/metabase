@@ -1,17 +1,20 @@
 import { useMemo } from "react";
 
 import {
-  BENCH_NAV_ITEMS,
   type BenchNavItem,
   findNavItemByPath,
+  getBenchNavItems,
 } from "metabase/bench/constants/navigation";
 import { usePath } from "metabase/common/hooks";
+import { useSelector } from "metabase/lib/redux";
+import { getUserIsAdmin } from "metabase/selectors/user";
 
 export function useBenchCurrentTab(): BenchNavItem {
   const pathname = usePath();
+  const isAdmin = useSelector(getUserIsAdmin);
 
   return useMemo(() => {
-    const item = pathname ? findNavItemByPath(pathname) : null;
-    return item ?? BENCH_NAV_ITEMS[0];
-  }, [pathname]);
+    const item = pathname ? findNavItemByPath(pathname, isAdmin) : null;
+    return item ?? getBenchNavItems(isAdmin)[0];
+  }, [isAdmin, pathname]);
 }
