@@ -41,5 +41,5 @@ export type MetabasePluginsConfig = {
 };
 
 export type MetabaseGlobalPluginsConfig = {
-  handleLink?: (url: string) => void;
+  handleLink?: (url: string) => boolean;
 } & MetabasePluginsConfig;
