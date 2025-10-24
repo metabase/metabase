@@ -1,9 +1,9 @@
-import { type FocusEvent, useMemo } from "react";
+import { type FocusEvent, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListUsersQuery } from "metabase/api";
 import { isEmail } from "metabase/lib/email";
-import { Avatar, Group, Select, type SelectProps } from "metabase/ui";
+import { Avatar, Group, Select, type SelectProps, Text } from "metabase/ui";
 import type { User, UserId } from "metabase-types/api";
 
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
@@ -22,9 +22,10 @@ export const UserInput = ({
   onUserIdChange,
   ...props
 }: Props) => {
+  const [search, setSearch] = useState(email ?? "");
   const { data: usersData } = useListUsersQuery();
   const users = useMemo(() => usersData?.data ?? [], [usersData]);
-  const data = useMemo(() => getData(email, users), [email, users]);
+  const data = useMemo(() => getData(search, users), [search, users]);
 
   const handleFocus = (event: FocusEvent<HTMLInputElement>) => {
     event.target.select();
@@ -57,16 +58,16 @@ export const UserInput = ({
       placeholder={t`Choose user or type an email`}
       nothingFoundMessage={t`Didn't find any results`}
       searchable
+      searchValue={search}
       renderOption={(item) => {
+        const option = item.option as Option;
         return (
           <Group gap="sm" p="sm">
-            <Avatar
-              name={
-                item.option.value === stringifyValue(null)
-                  ? t`?`
-                  : item.option.label
-              }
-            />
+            {option.type === "user" && <Avatar name={item.option.label} />}
+            {option.type === "unknown" && <Avatar name={t`?`} />}
+            {option.type === "email" && (
+              <Text c="text-secondary">{t`Email: `}</Text>
+            )}
 
             <span>{item.option.label}</span>
           </Group>
@@ -75,25 +76,39 @@ export const UserInput = ({
       value={email ? email : stringifyValue(userId)}
       onChange={handleChange}
       onFocus={handleFocus}
+      onSearchChange={setSearch}
       {...props}
     />
   );
 };
 
-function getData(email: string | null, users: User[]) {
+type Option = {
+  label: string;
+  value: string;
+  disabled?: boolean;
+  type: "email" | "user" | "unknown";
+};
+
+function getData(email: string | null, users: User[]): Option[] {
   return [
-    email == null
+    {
+      label: t`Unknown`,
+      value: stringifyValue(null),
+      type: "unknown" as const,
+    },
+    ...users.map((user) => ({
+      label: user.common_name,
+      value: stringifyValue(user.id),
+      type: "user" as const,
+    })),
+    email == null || email.trim().length === 0
       ? null
       : {
           label: email,
           value: email,
           disabled: !isEmail(email),
+          type: "email" as const,
         },
-    { label: t`Unknown`, value: stringifyValue(null) },
-    ...users.map((user) => ({
-      label: user.common_name,
-      value: stringifyValue(user.id),
-    })),
   ].filter((option) => option != null);
 }
 
