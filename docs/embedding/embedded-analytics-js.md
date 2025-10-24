@@ -385,6 +385,22 @@ To render a question (chart):
 To render a collection browser so people can navigate a collection and open dashboards or questions:
 
 ```html
+<metabase-browser initial-collection="14" read-only="false"></metabase-browser>
+```
+
+**Required parameters:**
+
+- `initial-collection` - This can be a collection ID or `root`. Use a collection ID (e.g., `14`) to start in a specific collection. Use `root` to start at the top-level, "Our Analytics" collection.
+
+**Optional parameters:**
+
+- `read-only` (default is true) – if true, people can interact with items (filter, summarize, drill-through) but cannot save. If false, they can create and edit items in the collection.
+
+### Metabot
+
+To render the AI chat interface:
+
+```html
 <metabase-metabot></metabase-metabot>
 ```
 
@@ -398,22 +414,6 @@ None.
   - `auto` (default): Metabot uses the `stacked` layout on mobile screens, and a `sidebar` layout on larger screens.
   - `stacked`: the question visualization stacks on top of the chat interface.
   - `sidebar`: the question visualization appears to the left of the chat interface, which is on a sidebar on the right.
-
-### Metabot
-
-To render the AI chat interface:
-
-```html
-<metabase-browser initial-collection="14" read-only="false"></metabase-browser>
-```
-
-**Required parameters:**
-
-- `initial-collection` - This can be a collection ID or `root`. Use a collection ID (e.g., `14`) to start in a specific collection. Use `root` to start at the top-level, "Our Analytics" collection.
-
-**Optional parameters:**
-
-- `read-only` (default is true) – if true, people can interact with items (filter, summarize, drill-through) but cannot save. If false, they can create and edit items in the collection.
 
 ## Embedding Metabase in a different domain
 
