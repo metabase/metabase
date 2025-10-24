@@ -96,7 +96,7 @@ export function SearchNew({ query, params, filters }: SearchNewProps) {
 
   return (
     <Stack>
-      <Stack gap={0} px="xl">
+      <Stack gap={0} px="lg">
         {tables.map((table) => {
           const breadcrumbs = table.schema
             ? `${table.db?.name} (${table.schema})`
