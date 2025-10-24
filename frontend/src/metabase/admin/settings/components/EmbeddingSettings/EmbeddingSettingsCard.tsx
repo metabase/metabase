@@ -8,7 +8,6 @@ import {
   type IconName,
   Stack,
   Text,
-  type TextProps,
 } from "metabase/ui";
 
 import S from "./EmbeddingSettings.module.css";
@@ -18,7 +17,6 @@ type LinkItem = { icon: IconName; title: string; href: string };
 
 export function EmbeddingSettingsCard({
   title,
-  titleProps,
   description,
   settingKey,
   isFeatureEnabled = true,
@@ -29,7 +27,6 @@ export function EmbeddingSettingsCard({
   testId,
 }: {
   title: string;
-  titleProps?: TextProps;
   description: string;
   settingKey:
     | "enable-embedding-sdk"
@@ -48,7 +45,7 @@ export function EmbeddingSettingsCard({
   return (
     <Flex direction="column" className={S.SectionCard} data-testid={testId}>
       <Stack gap="xs" px="xl" py="lg">
-        <Text fw={600} c="text-dark" fz="h4" {...titleProps}>
+        <Text fw={600} c="text-dark" fz="h4">
           {title}
         </Text>
 
