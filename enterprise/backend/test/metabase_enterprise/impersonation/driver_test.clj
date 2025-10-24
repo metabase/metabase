@@ -245,3 +245,28 @@
                     (doseq [statement ["REVOKE ALL PRIVILEGES ON TABLE \"products\" FROM \"impersonation_role\";"
                                        "DROP ROLE IF EXISTS \"impersonation_role\";"]]
                       (jdbc/execute! spec [statement]))))))))))))
+
+(deftest impersonated-throws-without-token-test
+  (mt/test-driver :postgres
+    (let [db-name "conn_impersonation_test"
+          details (mt/dbdef->connection-details :postgres :db {:database-name db-name})
+          spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
+      (postgres-test/drop-if-exists-and-create-db! db-name)
+      (doseq [statement ["DROP TABLE IF EXISTS PUBLIC.table_with_access;"
+                         "DROP TABLE IF EXISTS PUBLIC.table_without_access;"
+                         "CREATE TABLE PUBLIC.table_with_access (x INTEGER NOT NULL);"
+                         "CREATE TABLE PUBLIC.table_without_access (y INTEGER NOT NULL);"
+                         "DROP ROLE IF EXISTS \"impersonation.role\";"
+                         "CREATE ROLE \"impersonation.role\";"
+                         "REVOKE ALL PRIVILEGES ON DATABASE \"conn_impersonation_test\" FROM \"impersonation.role\";"
+                         "GRANT SELECT ON TABLE \"conn_impersonation_test\".PUBLIC.table_with_access TO \"impersonation.role\";"]]
+        (jdbc/execute! spec [statement]))
+      (mt/with-temp [:model/Database database {:engine :postgres, :details details}]
+        (mt/with-db database (sync/sync-database! database)
+          (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                         :attributes     {"impersonation_attr" "impersonation.role"}}
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Advanced Permissions is a paid feature not currently available"
+                                  (-> {:query "SELECT * FROM \"table_with_access\";"}
+                                      mt/native-query
+                                      mt/process-query
+                                      mt/rows)))))))))

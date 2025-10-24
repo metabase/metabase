@@ -18,6 +18,10 @@
 
 (set! *warn-on-reflection* true)
 
+(use-fixtures :each (fn [t]
+                      (mt/with-test-user :rasta
+                        (t))))
+
 (defmacro with-actions-test-data-and-actions-permissively-enabled!
   "Combines [[mt/with-actions-test-data-and-actions-enabled]] with full permissions."
   {:style/indent 0}

@@ -32,7 +32,7 @@
   "Returns true if any stage of this query is native."
   [query]
   (boolean (lib.util.match/match-one query
-             (m :guard (every-pred map? :native))
+             (m :guard (every-pred map? :native #(not (:metabase.models.query.permissions/gtapped-table %))))
              true)))
 
 (defmethod current-user-download-perms-level :query

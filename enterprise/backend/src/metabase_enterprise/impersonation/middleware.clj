@@ -2,14 +2,19 @@
   (:require
    [metabase-enterprise.impersonation.driver :as impersonation.driver]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.query-processor.store :as qp.store]))
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.util.i18n :refer [tru]]))
 
 (defenterprise apply-impersonation
   "Pre-processing middleware. Adds a key to the query. Currently used solely for caching."
-  :feature :advanced-permissions
+  ;; run this even when the `:advanced-permissions` feature is not enabled, so that we can assert that it *is* enabled
+  ;; if impersonation is configured. (Throwing here is better than silently ignoring the configured impersonation.)
+  :feature :none
   [query]
   (if-let [role (impersonation.driver/connection-impersonation-role
                  (lib.metadata/database (qp.store/metadata-provider)))]
-    (assoc query :impersonation/role role)
+    (do
+      (premium-features/assert-has-feature :advanced-permissions (tru "Advanced Permissions"))
+      (assoc query :impersonation/role role))
     query))
