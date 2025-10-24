@@ -379,10 +379,11 @@ function ElementCheckbox({
   const isIndeterminate = schemaTablesSelected === "some" ? true : undefined;
 
   const isChecked =
-    isItemSelected ||
-    isSchemaItemSelected ||
-    schemaTablesSelected === "all" ||
-    isIndeterminate;
+    (isItemSelected ||
+      isSchemaItemSelected ||
+      schemaTablesSelected === "all" ||
+      isIndeterminate) ??
+    false;
 
   if (item.type === "database") {
     return null;
@@ -398,7 +399,7 @@ function ElementCheckbox({
       onChange={() => {
         onItemToggle?.(item);
       }}
-      {...(isIndeterminate ? { indeterminate: true } : {})}
+      indeterminate={isIndeterminate}
     />
   );
 }
