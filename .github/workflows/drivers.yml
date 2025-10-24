@@ -1223,7 +1223,6 @@ jobs:
         upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
         logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
-  TODO(dpsutton, 2025-08-20): Re-enable starburst when we figure out why it randomly dies in CI
   be-tests-starburst-ee:
     needs: determine-driver-skips
     if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
@@ -1232,16 +1231,22 @@ jobs:
     env:
       CI: 'true'
       DRIVERS: starburst
-    services:
-      starburst:
-        image: trinodb/trino:latest
-        env:
-          CATALOG_MANAGEMENT: dynamic
-        ports:
-          - "8080:8080"
     name: Starburst
     steps:
     - uses: actions/checkout@v4
+    - name: Start Starburst container with mounted configuration files
+      run: |
+        docker run -d \
+          --name starburst \
+          -p 8080:8080 \
+          -e CATALOG_MANAGEMENT=dynamic \
+          -v ${{ github.workspace }}/modules/drivers/starburst/test/access-control.properties:/etc/access-control.properties:ro \
+          -v ${{ github.workspace }}/modules/drivers/starburst/test/rules.json:/etc/trino/rules.json:ro \
+          trinodb/trino:latest
+    - uses: ./.github/actions/await-port
+      with:
+        port: 8080
+      timeout-minutes: 5
     - name: Make plugins directory
       run: mkdir plugins
     - name: Test Starburst driver
