@@ -2,7 +2,7 @@ import type { Card, CardType } from "./card";
 import type { Dashboard } from "./dashboard";
 import type { Document } from "./document";
 import type { NativeQuerySnippet } from "./snippets";
-import type { Table } from "./table";
+import type { Table, TableId } from "./table";
 import type { Transform } from "./transform";
 
 export type DependencyId = number;
@@ -86,6 +86,11 @@ export type DocumentDependencyNodeData = Pick<
   view_count?: number | null;
 };
 
+export type SandboxDependencyNodeData = {
+  table_id: TableId;
+  table?: Table | null;
+};
+
 export type TableDependencyNode = BaseDependencyNode<
   "table",
   TableDependencyNodeData
@@ -116,7 +121,10 @@ export type DocumentDependencyNode = BaseDependencyNode<
   DocumentDependencyNodeData
 >;
 
-export type SandboxDependencyNode = BaseDependencyNode<"sandbox", null>;
+export type SandboxDependencyNode = BaseDependencyNode<
+  "sandbox",
+  SandboxDependencyNodeData
+>;
 
 export type DependencyNode =
   | TableDependencyNode

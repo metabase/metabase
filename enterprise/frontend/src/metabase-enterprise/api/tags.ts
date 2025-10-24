@@ -224,7 +224,10 @@ function provideDocumentDependencyNodeTags(
 function provideSandboxDependencyNodeTags(
   node: SandboxDependencyNode,
 ): TagDescription<EnterpriseTagType>[] {
-  return [idTag("sandbox", node.id)];
+  return [
+    idTag("sandbox", node.id),
+    ...(node.data.table ? provideTableTags(node.data.table) : []),
+  ];
 }
 
 export function provideDependencyNodeTags(

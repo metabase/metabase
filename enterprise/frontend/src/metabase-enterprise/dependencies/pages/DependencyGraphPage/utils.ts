@@ -21,6 +21,7 @@ function parseDependencyType(type: unknown): DependencyType | null {
     case "snippet":
     case "dashboard":
     case "document":
+    case "sandbox":
       return type;
     default:
       return null;

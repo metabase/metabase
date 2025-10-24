@@ -30,6 +30,6 @@ export function getHeaderLabel(
     case "document":
       return t`Documents that use ${nodeLabel}`;
     case "sandbox":
-      return t`Sandboxes that use ${nodeLabel}`;
+      return t`Row and column security rules that use ${nodeLabel}`;
   }
 }

@@ -91,7 +91,7 @@ export function getNodeLabel(node: DependencyNode): string {
     case "table":
       return node.data.display_name;
     case "sandbox":
-      return t`Sandbox`;
+      return node.data.table?.display_name ?? t`Row and column security rule`;
     default:
       return node.data.name;
   }
@@ -103,7 +103,7 @@ export function getNodeDescription(node: DependencyNode): string | null {
     case "sandbox":
       return null;
     default:
-      return node.data.description;
+      return node.data.description ?? "";
   }
 }
 
@@ -145,7 +145,7 @@ export function getNodeIconWithType(
     case "document":
       return "document";
     case "sandbox":
-      return "lock";
+      return "permissions_limited";
   }
 }
 
@@ -191,8 +191,19 @@ export function getNodeLink(node: DependencyNode): NodeLink | null {
         label: `View this document`,
         url: Urls.document({ id: node.id }),
       };
-    case "snippet":
     case "sandbox":
+      if (node.data.table != null) {
+        return {
+          label: `View this permission`,
+          url: Urls.tableDataPermissions(
+            node.data.table.db_id,
+            node.data.table.schema,
+            node.data.table.id,
+          ),
+        };
+      }
+      return null;
+    case "snippet":
       return null;
   }
 }
@@ -315,6 +326,6 @@ export function getNodeTypeInfo(node: DependencyNode): NodeTypeInfo {
     case "document":
       return { label: t`Document`, color: "text-secondary" };
     case "sandbox":
-      return { label: t`Sandbox`, color: "text-secondary" };
+      return { label: t`Row and column security rule`, color: "error" };
   }
 }
