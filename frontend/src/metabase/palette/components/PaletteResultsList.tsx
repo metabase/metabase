@@ -150,8 +150,8 @@ export const PaletteResultList = (props: PaletteResultListProps) => {
     <div
       ref={parentRef}
       style={{
-        maxHeight: props.maxHeight || 400,
-        minHeight: props.minHeight || 0,
+        maxHeight: props.maxHeight,
+        minHeight: props.minHeight,
         overflow: "auto",
       }}
     >
