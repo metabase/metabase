@@ -33,6 +33,10 @@ on:
     - cron: '0 3 * * 1'   # Mondays at 03:00 UTC
   workflow_dispatch:      # manually update the cache
 
+concurrency:
+  group: cache-generator
+  cancel-in-progress: true
+
 jobs:
   get-cache-keys:
     runs-on: ubuntu-22.04
