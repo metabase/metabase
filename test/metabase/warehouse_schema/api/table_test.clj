@@ -1186,10 +1186,17 @@
 ;; DEMOWARE bulk-editing APIS
 (deftest ^:parallel list-table-filtering-test
   (testing "term filtering"
+
     (is (=? [{:display_name "Users"}]
             (->> (mt/user-http-request :crowberto :get 200 "table" :term "Use")
                  (filter #(= (:db_id %) (mt/id)))           ; prevent stray tables from affecting unit test results
-                 (map #(select-keys % [:display_name]))))))
+                 (map #(select-keys % [:display_name])))))
+
+    (testing "wildcard"
+      (is (=? [{:display_name "Users"}]
+              (->> (mt/user-http-request :crowberto :get 200 "table" :term "*S*rs")
+                   (filter #(= (:db_id %) (mt/id)))         ; prevent stray tables from affecting unit test results
+                   (map #(select-keys % [:display_name])))))))
   (testing "filter composition"
     (mt/with-temp [:model/Table {products2-id :id} {:name         "PrOdUcTs2"
                                                     :display_name "Products2"

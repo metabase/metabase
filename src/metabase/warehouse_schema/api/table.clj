@@ -65,13 +65,14 @@
        [:data_source {:optional true} [:maybe :string]]
        [:owner_user_id {:optional true} [:maybe :int]]
        [:owner_email {:optional true} [:maybe :int]]]]
-  (let [like   (case (app-db/db-type) (:h2 :postgres) :ilike :like)
-        where  (cond-> [:and true]
-                 (not (str/blank? term)) (conj [like   :name             (str term "%")]) ; todo fancymode
-                 visibility_type2        (conj [:=     :visibility_type2 visibility_type2])
-                 data_source             (conj [:=     :data_source      data_source])
-                 owner_user_id           (conj [:=     :owner_user_id    owner_user_id])
-                 owner_email             (conj [:=     :owner_email      owner_email]))]
+  (let [like    (case (app-db/db-type) (:h2 :postgres) :ilike :like)
+        pattern (some-> term (str/replace "*" "%") (cond-> (not (str/ends-with? term "%")) (str "%")))
+        where   (cond-> [:and true]
+                  (not (str/blank? term)) (conj [like   :name             pattern])
+                  visibility_type2        (conj [:=     :visibility_type2 visibility_type2])
+                  data_source             (conj [:=     :data_source      data_source])
+                  owner_user_id           (conj [:=     :owner_user_id    owner_user_id])
+                  owner_email             (conj [:=     :owner_email      owner_email]))]
     (as-> (t2/select :model/Table, :active true, {:where where, :order-by [[:name :asc]]}) tables
       (t2/hydrate tables :db)
       (into [] (comp (filter mi/can-read?)
