@@ -1,15 +1,13 @@
-import type { DragEndEvent } from "@dnd-kit/core";
-import { DndContext, PointerSensor, useSensor } from "@dnd-kit/core";
-import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
+import { PointerSensor, useSensor } from "@dnd-kit/core";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { Sortable } from "metabase/common/components/Sortable";
+import type {
+  DragEndEvent,
+  RenderItemProps,
+} from "metabase/common/components/Sortable";
+import { Sortable, SortableList } from "metabase/common/components/Sortable";
 import { Form, FormProvider } from "metabase/forms";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { Flex, Icon, UnstyledButton } from "metabase/ui";
@@ -93,27 +91,14 @@ export function FormCreator({
     [validationSchema],
   );
 
-  const handleDragEnd = useCallback(
-    (event: DragEndEvent) => {
-      const { active, over } = event;
-
-      if (!formSettings.fields || !over || active.id === over.id) {
+  const handleSortEnd = useCallback(
+    ({ id, newIndex }: DragEndEvent) => {
+      if (!formSettings.fields) {
         return;
       }
 
-      // Get the ordered fields to determine indices
-      const fieldsWithIds = _.mapObject(formSettings.fields, (field, key) => ({
-        ...field,
-        id: key,
-      }));
-      const orderedFields = _.sortBy(Object.values(fieldsWithIds), "order");
-
-      const oldIndex = orderedFields.findIndex(
-        (field) => field.id === active.id,
-      );
-      const newIndex = orderedFields.findIndex((field) => field.id === over.id);
-
-      if (oldIndex === -1 || newIndex === -1) {
+      const oldIndex = form.fields.findIndex((field) => field.name === id);
+      if (oldIndex === -1) {
         return;
       }
 
@@ -127,7 +112,7 @@ export function FormCreator({
         fields: reorderedFields,
       });
     },
-    [formSettings],
+    [form.fields, formSettings],
   );
 
   const handleChangeFieldSettings = useCallback(
@@ -145,6 +130,32 @@ export function FormCreator({
       });
     },
     [formSettings],
+  );
+
+  const fieldSettings = formSettings.fields || {};
+
+  const renderItem = ({
+    item: field,
+    id,
+  }: RenderItemProps<(typeof form.fields)[number]>) => (
+    <Sortable
+      key={id}
+      id={id}
+      disabled={!isEditable}
+      as={FormFieldEditorDragContainer}
+      draggingStyle={{ opacity: 0.5 }}
+    >
+      {({ dragHandleRef, dragHandleListeners }) => (
+        <FormFieldEditor
+          field={field}
+          fieldSettings={fieldSettings[field.name]}
+          isEditable={isEditable}
+          onChange={handleChangeFieldSettings}
+          dragHandleRef={dragHandleRef}
+          dragHandleListeners={dragHandleListeners}
+        />
+      )}
+    </Sortable>
   );
 
   if (!parameters.length) {
@@ -170,8 +181,6 @@ export function FormCreator({
       </SidebarContent>
     );
   }
-
-  const fieldSettings = formSettings.fields || {};
 
   const showWarning = form.fields.some((field) => {
     const settings = fieldSettings[field.name];
@@ -209,39 +218,13 @@ export function FormCreator({
           onSubmit={ON_SUBMIT_NOOP}
         >
           <Form role="form" data-testid="action-form-editor">
-            <DndContext
-              onDragEnd={handleDragEnd}
+            <SortableList
+              items={form.fields}
+              getId={(field) => field.name}
+              renderItem={renderItem}
+              onSortEnd={handleSortEnd}
               sensors={[pointerSensor]}
-              modifiers={[restrictToVerticalAxis]}
-            >
-              <SortableContext
-                items={form.fields.map((field) => field.name)}
-                strategy={verticalListSortingStrategy}
-              >
-                {form.fields.map((field) => (
-                  <Sortable
-                    key={field.name}
-                    id={field.name}
-                    disabled={!isEditable}
-                    as={FormFieldEditorDragContainer}
-                    draggingStyle={{ opacity: 0.5 }}
-                  >
-                    {({ dragHandleRef, dragHandleListeners }) => (
-                      // <DragOverlay>
-                      <FormFieldEditor
-                        field={field}
-                        fieldSettings={fieldSettings[field.name]}
-                        isEditable={isEditable}
-                        onChange={handleChangeFieldSettings}
-                        dragHandleRef={dragHandleRef}
-                        dragHandleListeners={dragHandleListeners}
-                      />
-                      // </DragOverlay>
-                    )}
-                  </Sortable>
-                ))}
-              </SortableContext>
-            </DndContext>
+            />
           </Form>
         </FormProvider>
       </FormContainer>
