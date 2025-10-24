@@ -11,7 +11,7 @@ const DEFAULT_VIZ_SETTINGS: VisualizationSettings = {
 };
 
 export function useQueryState(
-  initialQuery: DatasetQuery,
+  initialQuery?: DatasetQuery,
   proposedQuery?: DatasetQuery,
 ) {
   const [query, setQuery] = useState(initialQuery);
@@ -55,7 +55,10 @@ export function useQueryState(
   }, [proposedQuery, metadata]);
 
   const isQueryDirty = useMemo(
-    () => !Lib.areLegacyQueriesEqual(query, initialQuery),
+    () =>
+      query != null &&
+      initialQuery != null &&
+      !Lib.areLegacyQueriesEqual(query, initialQuery),
     [query, initialQuery],
   );
 

@@ -38,7 +38,10 @@ export function useTransformEditor(
   initialSource: DraftTransformSource,
   proposedSource?: DraftTransformSource,
 ): TransformEditorValue {
-  const queryState = useQueryState(initialSource.query, proposedSource?.query);
+  const queryState = useQueryState(
+    initialSource.type === "query" ? initialSource.query : undefined,
+    proposedSource?.type === "query" ? proposedSource.query : undefined,
+  );
   const queryResults = useQueryResults(
     queryState.question,
     queryState.proposedQuestion,
