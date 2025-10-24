@@ -71,7 +71,9 @@ export const UserInput = ({
             {option.type === "user" && <Avatar name={item.option.label} />}
             {option.type === "unknown" && <Avatar name={t`?`} />}
             {option.type === "email" && (
-              <Text c="text-secondary">{t`Email: `}</Text>
+              <Text
+                c={item.checked ? "white" : "text-secondary"}
+              >{t`Email: `}</Text>
             )}
 
             {option.type === "unknown" && <i>{item.option.label}</i>}
