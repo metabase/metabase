@@ -12,6 +12,7 @@ import {
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button, Flex, Modal, Stack, rem } from "metabase/ui";
 import type {
+  DatabaseId,
   SchemaId,
   TableDataSource,
   TableId,
@@ -22,6 +23,7 @@ import type {
 interface Props {
   tables?: Set<TableId>;
   schemas?: Set<SchemaId>;
+  databases?: Set<DatabaseId>;
   isOpen: boolean;
   onClose: () => void;
   onUpdate?: () => void;
@@ -30,6 +32,7 @@ interface Props {
 export function EditTableMetadataModal({
   tables = new Set(),
   schemas = new Set(),
+  databases = new Set(),
   isOpen,
   onClose,
   onUpdate,
@@ -58,6 +61,7 @@ export function EditTableMetadataModal({
     const { error } = await editTables({
       table_ids: Array.from(tables),
       schema_ids: Array.from(schemas),
+      database_ids: Array.from(databases),
       visibility_type:
         visibilityType === null
           ? undefined
@@ -97,7 +101,7 @@ export function EditTableMetadataModal({
     visibilityType == null &&
     visibilityType2 == null;
 
-  const count = tables.size + schemas.size;
+  const count = tables.size + schemas.size + databases.size;
 
   return (
     <Modal
