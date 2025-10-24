@@ -23,6 +23,7 @@ import {
   type EntityId,
   type PermissionSubject,
 } from "metabase/admin/permissions/types";
+import type { BenchNavItem } from "metabase/bench/constants/navigation";
 import type {
   MetricFilterControlsProps,
   MetricFilterSettings,
@@ -867,11 +868,13 @@ export const PLUGIN_SEMANTIC_SEARCH = {
 
 export type TransformsPlugin = {
   getTransformRoutes(): ReactNode;
+  getTransformNavItems(isAdmin: boolean): BenchNavItem[];
   ROOT_URL: string | null;
 };
 
 export const PLUGIN_TRANSFORMS: TransformsPlugin = {
   getTransformRoutes: () => null,
+  getTransformNavItems: () => [],
   ROOT_URL: null,
 };
 
@@ -902,7 +905,7 @@ export type PythonTransformsPlugin = {
     onAcceptProposed?: (query: PythonTransformSource) => void;
   }>;
   getAdminRoutes: () => ReactNode;
-  getTransformsNavLinks: () => ReactNode;
+  getTransformNavItems: (isAdmin: boolean) => BenchNavItem[];
   getCreateTransformsMenuItems: () => ReactNode;
 };
 
@@ -911,7 +914,7 @@ export const PLUGIN_TRANSFORMS_PYTHON: PythonTransformsPlugin = {
   TransformEditor: NotFoundPlaceholder,
   SourceSection: PluginPlaceholder,
   getAdminRoutes: () => null,
-  getTransformsNavLinks: () => null,
+  getTransformNavItems: () => [],
   getCreateTransformsMenuItems: () => null,
 };
 

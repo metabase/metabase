@@ -1,6 +1,8 @@
 import { IndexRoute } from "react-router";
 import { t } from "ttag";
 
+import { createBenchAdminRouteGuard } from "metabase/bench/components/utils";
+import type { BenchNavItem } from "metabase/bench/constants/navigation";
 import { Route } from "metabase/hoc/Title";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 
@@ -16,9 +18,44 @@ import { TransformQueryPage } from "./pages/TransformQueryPage";
 import { TransformRunPage } from "./pages/TransformRunPage";
 import { TransformTargetPage } from "./pages/TransformTargetPage";
 
+export const getTransformNavItems = (isAdmin: boolean): BenchNavItem[] => {
+  if (!isAdmin) {
+    return [];
+  }
+
+  return [
+    {
+      id: "transforms",
+      url: "/bench/transforms",
+      icon: "transform",
+      getLabel: () => t`Transforms`,
+    },
+    {
+      id: "jobs",
+      url: "/bench/jobs",
+      icon: "play_outlined",
+      getLabel: () => t`Jobs`,
+      parentId: "transforms",
+      nested: true,
+    },
+    {
+      id: "runs",
+      url: "/bench/runs",
+      icon: "list",
+      getLabel: () => t`Runs`,
+      parentId: "transforms",
+      nested: true,
+    },
+  ];
+};
+
 export const getTransformRoutes = () => (
   <>
-    <Route title={t`Transforms`} path="transforms" component={TransformLayout}>
+    <Route
+      title={t`Transforms`}
+      path="transforms"
+      component={createBenchAdminRouteGuard("transforms", TransformLayout)}
+    >
       <IndexRoute component={TransformEmptyPage} />
       <Route path="new/:type" component={NewTransformPage} />
       <Route path="new/card/:cardId" component={NewTransformPage} />
@@ -26,12 +63,20 @@ export const getTransformRoutes = () => (
       <Route path=":transformId/run" component={TransformRunPage} />
       <Route path=":transformId/target" component={TransformTargetPage} />
     </Route>
-    <Route title={t`Jobs`} path="jobs" component={JobLayout}>
+    <Route
+      title={t`Jobs`}
+      path="jobs"
+      component={createBenchAdminRouteGuard("transforms", JobLayout)}
+    >
       <IndexRoute component={JobEmptyPage} />
       <Route path="new" component={NewJobPage} />
       <Route path=":jobId" component={JobPage} />
     </Route>
-    <Route title={t`Runs`} path="runs" component={RunListPage} />
+    <Route
+      title={t`Runs`}
+      path="runs"
+      component={createBenchAdminRouteGuard("transforms", RunListPage)}
+    />
     {PLUGIN_TRANSFORMS_PYTHON.getAdminRoutes()}
   </>
 );
