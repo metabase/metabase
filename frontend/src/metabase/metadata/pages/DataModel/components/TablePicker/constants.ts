@@ -19,3 +19,5 @@ export const TYPE_ICONS: Record<ItemType, IconName> = {
   collection: "collection",
   model: "model",
 };
+
+export const LEAF_ITEM_ICON_COLOR = "var(--mb-color-border-interactive)";

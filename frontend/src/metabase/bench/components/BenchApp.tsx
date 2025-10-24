@@ -1,6 +1,7 @@
 import cx from "classnames";
 import type React from "react";
-import { useEffect } from "react";
+import { type Ref, forwardRef, useEffect } from "react";
+import type { ResizeHandle as HandleAxis } from "react-resizable";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { replace } from "react-router-redux";
 
@@ -15,13 +16,43 @@ import { useRememberBenchTab } from "../hooks/useBenchRememberTab";
 import S from "./BenchApp.module.css";
 import { BenchAppBar } from "./BenchAppBar";
 
+interface ResizeHandleProps {
+  direction?: "horizontal" | "vertical";
+  handleSize?: number;
+}
+
+export const ResizableBoxHandle = forwardRef(function ResizableBoxHandle(
+  {
+    direction = "horizontal",
+    handleSize = 8,
+    ...props
+  }: ResizeHandleProps & { handleAxis?: HandleAxis },
+  ref: Ref<HTMLDivElement>,
+) {
+  const { handleAxis, ...rest } = props;
+  return (
+    <Box
+      ref={ref}
+      className={cx(S.resizeHandle, {
+        [S.resizeHandleHorizontal]: direction === "horizontal",
+        [S.resizeHandleVertical]: direction === "vertical",
+      })}
+      style={{
+        width: direction === "horizontal" ? handleSize : undefined,
+        height: direction === "vertical" ? handleSize : undefined,
+        top: 0,
+        left: handleAxis === "e" ? "100%" : undefined,
+        transform: direction === "horizontal" ? "translateX(-50%)" : undefined,
+      }}
+      {...rest}
+    />
+  );
+});
+
 export const ResizeHandle = ({
   direction = "horizontal",
   handleSize = 8,
-}: {
-  direction?: "horizontal" | "vertical";
-  handleSize?: number;
-}) => {
+}: ResizeHandleProps) => {
   return (
     <Box pos="relative">
       <PanelResizeHandle
@@ -85,7 +116,7 @@ function BenchMetabot() {
       <ResizeHandle />
       <Panel
         id="bench-metabot"
-        maxSize={30}
+        maxSize={24}
         minSize={10}
         className={S.metabotPanel}
         order={9}

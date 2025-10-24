@@ -24,6 +24,10 @@ export function isItemWithHiddenExpandIcon(item: FlatItem): boolean {
   return false;
 }
 
+export function isLeafNode(item: FlatItem): boolean {
+  return item.type === "model" || item.type === "table";
+}
+
 export function getUrl(value: TreePath) {
   return getUrl_({
     fieldId: undefined,
@@ -59,6 +63,16 @@ export function expandPath(
       tableId: undefined,
       schemaName: undefined,
       databaseId: undefined,
+    })]: true,
+
+    [toKey({
+      ...path,
+      modelId: undefined,
+    })]: true,
+    [toKey({
+      ...path,
+      modelId: undefined,
+      collectionId: undefined,
     })]: true,
   };
 }

@@ -1,0 +1,46 @@
+.itemRoot {
+  color: var(--mb-color-text-primary);
+
+  .icon {
+    color: var(--mb-color-border-interactive);
+  }
+
+  .content {
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .subtitle {
+    color: var(--mb-color-text-light);
+  }
+
+  .tags {
+    color: var(--mb-color-admin-navbar);
+  }
+}
+
+.itemRoot.isActive {
+  color: var(--mb-color-link-hover);
+
+  .subtitle {
+    color: var(--mb-color-link);
+  }
+}
+
+.navLink {
+  border-radius: 0.5rem;
+
+  &[data-active] {
+    .itemRoot {
+      color: var(--mb-color-link-hover);
+    }
+
+    .subtitle {
+      color: var(--mb-color-link);
+    }
+  }
+
+  &:not([data-active]):hover {
+    background-color: var(--mb-color-brand-lighter);
+  }
+}

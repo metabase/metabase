@@ -6,7 +6,11 @@
   cursor: pointer;
 }
 
-.toggleButton:hover .icon {
+.toggleIcon {
+  color: var(--mb-color-text-medium);
+}
+
+.toggleButton:hover .toggleIcon {
   color: var(--mb-color-brand);
 }
 

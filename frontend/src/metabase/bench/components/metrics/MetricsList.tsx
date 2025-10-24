@@ -1,8 +1,13 @@
 import cx from "classnames";
 import type { Location } from "history";
 import type React from "react";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { push } from "react-router-redux";
 import { useLocalStorage, useMount, usePrevious } from "react-use";
 import { t } from "ttag";
@@ -14,17 +19,21 @@ import {
   useListCollectionsTreeQuery,
 } from "metabase/api";
 import { listTag } from "metabase/api/tags";
+import { BenchFlatListItem } from "metabase/bench/components/shared/BenchFlatListItem";
+import { useItemsListFilter } from "metabase/bench/hooks/useItemsListFilter";
 import { getIcon } from "metabase/browse/models/utils";
 import ActionButton from "metabase/common/components/ActionButton/ActionButton";
 import Button from "metabase/common/components/Button";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
 import { SidesheetCard } from "metabase/common/components/Sidesheet/SidesheetCard";
-import { Tree } from "metabase/common/components/tree/Tree";
+import { VirtualizedFlatList } from "metabase/common/components/VirtualizedFlatList";
+import { VirtualizedTree } from "metabase/common/components/tree/VirtualizedTree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { useFetchMetrics } from "metabase/common/hooks/use-fetch-metrics";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { newQuestion } from "metabase/lib/urls/questions";
+import { EmptyState } from "metabase/metadata/pages/DataModel/components/TablePicker/components/EmptyState";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import {
   type QueryParams,
@@ -48,15 +57,7 @@ import {
 import { MetricEditor as QBMetricEditor } from "metabase/querying/metrics/components/MetricEditor/MetricEditor";
 import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
-import {
-  Box,
-  Center,
-  FixedSizeIcon,
-  Flex,
-  Loader,
-  NavLink,
-  Text,
-} from "metabase/ui";
+import { Box, Center, Icon, Input, Loader } from "metabase/ui";
 import Question from "metabase-lib/v1/Question";
 import type { RawSeries, SearchResult } from "metabase-types/api";
 
@@ -76,6 +77,8 @@ import {
   SearchResultModals,
 } from "../shared/SearchResultModals";
 
+import S from "./MetricsList.module.css";
+
 function MetricsList({
   activeId,
   onCollapse,
@@ -86,7 +89,10 @@ function MetricsList({
   onOpenModal: (modal: SearchResultModal) => void;
 }) {
   const dispatch = useDispatch();
-  const { isLoading: isLoadingMetrics, data: metricsData } = useFetchMetrics();
+
+  const { isLoading: isLoadingMetrics, data: metricsData } = useFetchMetrics({
+    wait_for_reindex: true,
+  });
   const { isLoading: isLoadingCollections, data: collections } =
     useListCollectionsTreeQuery({ "exclude-archived": true });
   const metrics = useMemo(
@@ -102,11 +108,25 @@ function MetricsList({
     "tree" | "alphabetical"
   >("metabase-bench-metrics-display");
   const currentUser = useSelector(getUser);
+
+  const {
+    query,
+    setQuery,
+    filteredItems: filteredMetrics,
+  } = useItemsListFilter(
+    metrics,
+    useCallback(
+      (metric: SearchResult, lowerQuery: string) =>
+        metric.name.toLowerCase().includes(lowerQuery),
+      [],
+    ),
+  );
+
   const treeData = useMemo(() => {
-    return metrics && collections && currentUser && display === "tree"
-      ? getTreeItems(collections, metrics, "metric", currentUser.id)
+    return filteredMetrics && collections && currentUser && display === "tree"
+      ? getTreeItems(collections, filteredMetrics, "metric", currentUser.id)
       : [];
-  }, [collections, currentUser, display, metrics]);
+  }, [collections, currentUser, display, filteredMetrics]);
 
   const handleMetricSelect = (item: ITreeNodeItem) => {
     if (typeof item.id === "number") {
@@ -120,7 +140,6 @@ function MetricsList({
 
   return (
     <ItemsListSection
-      sectionTitle={t`Metrics`}
       settings={
         <ItemsListSettings
           values={{ display }}
@@ -156,41 +175,56 @@ function MetricsList({
           }}
         />
       }
-      listItems={
-        !metrics || isLoading ? (
-          <Center>
-            <Loader />
-          </Center>
-        ) : display === "tree" ? (
-          <Box mx="-sm">
-            <Tree
-              data={treeData}
-              selectedId={activeId ?? undefined}
-              onSelect={handleMetricSelect}
-              emptyState={<Text c="text-light">{t`No models found`}</Text>}
-              TreeNode={ItemsListTreeNode}
-              rightSection={(item) =>
-                item.data ? (
-                  <div onClick={(e) => e.stopPropagation()}>
-                    {renderMoreMenu(item.data as SearchResult)}
-                  </div>
-                ) : null
-              }
-            />
-          </Box>
-        ) : (
-          metrics.map((metric) => (
-            <MetricListItem
-              key={metric.id}
-              metric={metric}
-              active={metric.id === activeId}
-              renderMoreMenu={renderMoreMenu}
-            />
-          ))
-        )
+      searchInput={
+        <Input
+          leftSection={<Icon name="search" />}
+          placeholder={t`Search metrics`}
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+        />
       }
+      listItems={renderMetricsList()}
     />
   );
+
+  function renderMetricsList() {
+    if (!metrics || isLoading) {
+      return (
+        <Center>
+          <Loader />
+        </Center>
+      );
+    }
+
+    if (filteredMetrics.length === 0) {
+      return <EmptyState title={t`No metrics found`} icon="metric" />;
+    }
+
+    return display === "tree" ? (
+      <VirtualizedTree
+        data={treeData}
+        selectedId={activeId ?? undefined}
+        onSelect={handleMetricSelect}
+        TreeNode={ItemsListTreeNode}
+        rightSection={(item) =>
+          item.data ? renderMoreMenu(item.data as SearchResult) : null
+        }
+      />
+    ) : (
+      <VirtualizedFlatList
+        items={filteredMetrics}
+        selectedId={activeId ?? undefined}
+        getItemId={(metric) => metric.id}
+        renderItem={(metric) => (
+          <MetricListItem
+            metric={metric}
+            active={metric.id === activeId}
+            renderMoreMenu={renderMoreMenu}
+          />
+        )}
+      />
+    );
+  }
 }
 
 function MetricListItem({
@@ -205,28 +239,20 @@ function MetricListItem({
   const icon = getIcon({ type: "dataset", ...metric });
   return (
     <Box mb="sm" pos="relative">
-      <NavLink
-        component={Link}
-        to={`/bench/metric/${metric.id}`}
-        active={active}
-        label={
-          <>
-            <Flex gap="sm" align="center">
-              <FixedSizeIcon {...icon} size={16} c="brand" />
-              <Text fw="bold" c={active ? "brand" : undefined}>
-                {metric.name}
-              </Text>
-            </Flex>
-            <Flex gap="sm" c="text-light" ml="lg">
-              <FixedSizeIcon name="folder" />
-              <EllipsifiedCollectionPath collection={metric.collection} />
-            </Flex>
-          </>
+      <BenchFlatListItem
+        label={metric.name}
+        icon={icon.name}
+        subtitle={
+          <EllipsifiedCollectionPath
+            className={S.collectionPath}
+            collection={metric.collection}
+            ignoreHeightTruncation
+          />
         }
+        href={`/bench/metric/${metric.id}`}
+        isActive={active}
+        rightGroup={renderMoreMenu(metric)}
       />
-      <Box pos="absolute" right="0.25rem" top="0.25rem">
-        {renderMoreMenu(metric)}
-      </Box>
     </Box>
   );
 }

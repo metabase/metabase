@@ -15,7 +15,7 @@ import EmptyState from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { ModelColumnsSection } from "metabase/metadata/pages/DataModel/components/models/ModelColumnsList";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Box, Flex, Stack, Title, rem } from "metabase/ui";
+import { Box, Flex, Stack, rem } from "metabase/ui";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { FieldName, UpdateFieldRequest } from "metabase-types/api";
 
@@ -23,10 +23,8 @@ import S from "./DataModel.module.css";
 import {
   FieldSection,
   FieldValuesModal,
-  NoDatabasesEmptyState,
   PreviewSection,
   type PreviewType,
-  RouterTablePicker,
   SyncOptionsModal,
   TableSection,
 } from "./components";
@@ -39,15 +37,8 @@ interface Props {
 }
 
 export const DataModel = ({ params }: Props) => {
-  const {
-    databaseId,
-    fieldId,
-    schemaName,
-    tableId,
-    collectionId,
-    modelId,
-    fieldName,
-  } = parseRouteParams(params);
+  const { databaseId, fieldId, tableId, collectionId, modelId, fieldName } =
+    parseRouteParams(params);
   const { data: databasesData, isLoading: isLoadingDatabases } =
     useListDatabasesQuery({ include_editable_data_model: true });
   const databaseExists = databasesData?.data?.some(
@@ -168,32 +159,8 @@ export const DataModel = ({ params }: Props) => {
     },
   );
 
-  if (databasesData?.data?.length === 0) {
-    return <NoDatabasesEmptyState />;
-  }
-
   return (
     <Flex bg="accent-gray-light" data-testid="data-model" h="100%">
-      <Stack
-        bg="bg-white"
-        className={S.column}
-        flex={COLUMN_CONFIG.nav.flex}
-        gap={0}
-        mih="100%"
-        maw={COLUMN_CONFIG.nav.max}
-        miw={COLUMN_CONFIG.nav.min}
-      >
-        <Title py="lg" px="xl" order={3}>{t`Metadata`}</Title>
-        <RouterTablePicker
-          className={S.tablePicker}
-          databaseId={databaseId}
-          schemaName={schemaName}
-          tableId={tableId}
-          modelId={modelId}
-          params={params}
-        />
-      </Stack>
-
       {databaseId != null && tableId == null && databaseExists === false && (
         <Stack
           className={S.column}

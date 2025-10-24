@@ -1,4 +1,3 @@
-import { Link } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -6,11 +5,10 @@ import {
   ItemsListAddButton,
   ItemsListSection,
 } from "metabase/bench/components/ItemsListSection/ItemsListSection";
-import { Ellipsified } from "metabase/common/components/Ellipsified";
+import { BenchFlatListItem } from "metabase/bench/components/shared/BenchFlatListItem";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
-import { Box, FixedSizeIcon, Indicator, NavLink, Text } from "metabase/ui";
 import { useListTransformJobsQuery } from "metabase-enterprise/api";
 import type { JobListParams } from "metabase-enterprise/transforms/types";
 import type { TransformJob } from "metabase-types/api";
@@ -48,7 +46,6 @@ export function JobList({
 
   return (
     <ItemsListSection
-      sectionTitle={t`Jobs`}
       onCollapse={onCollapse}
       addButton={
         <ItemsListAddButton onClick={() => dispatch(push(getNewJobUrl()))} />
@@ -82,46 +79,20 @@ const JobItem = ({
   systemTimezone: string;
   isActive?: boolean;
 }) => {
+  const subtitle =
+    job.last_run?.start_time &&
+    `${job.last_run?.status === "failed" ? t`Failed` : t`Last run`}: ${parseTimestampWithTimezone(
+      job.last_run.start_time,
+      systemTimezone,
+    ).format("lll")}`;
+
   return (
-    <NavLink
-      component={Link}
-      to={getJobUrl(job.id)}
-      active={isActive}
-      bdrs="lg"
-      leftSection={
-        <Indicator
-          offset={4}
-          disabled={job.last_run?.status !== "failed"}
-          color="error"
-          p="0.75rem"
-          bg="brand-lighter"
-          bdrs="lg"
-          pos="relative"
-          display="flex"
-        >
-          <FixedSizeIcon name="clock" size={24} c="brand" />
-        </Indicator>
-      }
-      label={
-        <Box style={{ overflow: "hidden" }}>
-          <Text fw="bold">{job.name}</Text>
-          {job.last_run?.start_time && (
-            <Ellipsified
-              ff="monospace"
-              fz="xs"
-              c="text-secondary"
-              showTooltip={false}
-            >
-              {job.last_run?.status === "failed" ? t`Failed` : t`Last run`}
-              {": "}
-              {parseTimestampWithTimezone(
-                job.last_run.start_time,
-                systemTimezone,
-              ).format("lll")}
-            </Ellipsified>
-          )}
-        </Box>
-      }
+    <BenchFlatListItem
+      label={job.name}
+      icon="play_outlined"
+      subtitle={subtitle}
+      href={getJobUrl(job.id)}
+      isActive={isActive}
     />
   );
 };

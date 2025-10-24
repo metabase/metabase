@@ -102,11 +102,6 @@ function ProfileLinkInner({
         event: `Navbar;Profile Dropdown;Enter Admin`,
       },
       {
-        title: t`Keyboard shortcuts`,
-        icon: null,
-        action: () => dispatch(setOpenModal("help")),
-      },
-      {
         title: t`Workbench`,
         icon: null,
         link: "/bench",
@@ -128,6 +123,11 @@ function ProfileLinkInner({
         icon: null,
         link: "/getting-started",
         event: `Navbar;Profile Dropdown;Getting Started`,
+      },
+      {
+        title: t`Keyboard shortcuts`,
+        icon: null,
+        action: () => dispatch(setOpenModal("help")),
       },
       {
         title: t`Report an issue`,

@@ -1,7 +1,6 @@
 import type React from "react";
 import { t } from "ttag";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import {
   ActionIcon,
   Box,
@@ -10,6 +9,8 @@ import {
   Flex,
   Icon,
 } from "metabase/ui";
+
+import S from "./ItemsListSection.module.css";
 
 export const ItemsListAddButton = (props: ButtonProps) => (
   <Button
@@ -21,50 +22,49 @@ export const ItemsListAddButton = (props: ButtonProps) => (
 );
 
 type ItemsListSectionProps = {
-  sectionTitle: React.ReactNode;
   addButton?: React.ReactNode;
   settings?: React.ReactNode | null;
   listItems: React.ReactNode;
   onCollapse?: () => void;
   testId?: string;
+  searchInput?: React.ReactNode;
 };
 
 export const ItemsListSection = ({
-  sectionTitle,
   addButton,
   settings,
   listItems,
   onCollapse,
   testId,
+  searchInput,
 }: ItemsListSectionProps) => {
+  const hasHeader = !!(settings || addButton || onCollapse);
+
   return (
-    <Box
-      data-testid={testId}
-      w="100%"
-      h="100%"
-      style={{ display: "flex", flexDirection: "column" }}
-    >
-      <Flex justify="space-between" align="center" p="md">
-        <Flex align="center" gap="sm">
-          {onCollapse && (
-            <ActionIcon
-              onClick={onCollapse}
-              aria-label={t`Collapse`}
-              color="brand"
-            >
-              <Icon name="arrow_left" c="brand" /> {}
-            </ActionIcon>
-          )}
-          <Ellipsified fz="lg" fw="bold">
-            {sectionTitle}
-          </Ellipsified>
+    <Box data-testid={testId} className={S.container}>
+      {hasHeader && (
+        <Flex justify="space-between" align="center" px="md" py="sm">
+          <Flex align="center" gap="sm">
+            {onCollapse && (
+              <ActionIcon
+                onClick={onCollapse}
+                aria-label={t`Collapse`}
+                color="brand"
+              >
+                <Icon name="arrow_left" c="brand" />
+              </ActionIcon>
+            )}
+            {settings}
+          </Flex>
+          {addButton && <Flex className={S.addButtonWrapper}>{addButton}</Flex>}
         </Flex>
-        <Flex style={{ flexShrink: 0 }}>{addButton}</Flex>
-      </Flex>
-      {settings}
-      <Box p="md" style={{ overflow: "auto" }}>
-        {listItems}
-      </Box>
+      )}
+      {searchInput && (
+        <Box px="md" pt={hasHeader ? undefined : "md"} pb="xs">
+          {searchInput}
+        </Box>
+      )}
+      <Box className={S.listItemsContainer}>{listItems}</Box>
     </Box>
   );
 };

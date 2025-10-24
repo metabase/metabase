@@ -13,6 +13,7 @@ export function RouterTablePicker({
   databaseId,
   schemaName,
   tableId,
+  collectionId,
   modelId,
   className,
   params,
@@ -22,6 +23,7 @@ export function RouterTablePicker({
     databaseId,
     schemaName,
     tableId,
+    collectionId,
     modelId,
   });
 
@@ -48,9 +50,10 @@ export function RouterTablePicker({
       databaseId,
       schemaName,
       tableId,
+      collectionId,
       modelId,
     });
-  }, [databaseId, schemaName, tableId, modelId]);
+  }, [databaseId, schemaName, tableId, collectionId, modelId]);
 
   return (
     <TablePicker

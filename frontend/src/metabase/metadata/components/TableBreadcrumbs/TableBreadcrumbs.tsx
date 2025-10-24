@@ -15,12 +15,14 @@ interface Props {
   className?: string;
   hideTableName?: boolean;
   tableId: TableId;
+  displayIcons?: boolean;
 }
 
 export const TableBreadcrumbs = ({
   className,
   hideTableName,
   tableId,
+  displayIcons = true,
 }: Props) => {
   const { data: table } = useGetTableQuery({ id: tableId });
 
@@ -41,9 +43,11 @@ export const TableBreadcrumbs = ({
       wrap="nowrap"
     >
       <Group align="center" className={S.breadcrumb} gap="xs" wrap="nowrap">
-        <Flex>
-          <Icon name="database" />
-        </Flex>
+        {displayIcons && (
+          <Flex>
+            <Icon name="database" />
+          </Flex>
+        )}
 
         <Ellipsified>{table.db.name}</Ellipsified>
       </Group>
@@ -53,9 +57,11 @@ export const TableBreadcrumbs = ({
           <Separator />
 
           <Group align="center" className={S.breadcrumb} gap="xs" wrap="nowrap">
-            <Flex>
-              <Icon name="folder" />
-            </Flex>
+            {displayIcons && (
+              <Flex>
+                <Icon name="folder" />
+              </Flex>
+            )}
 
             <Ellipsified>{table.schema}</Ellipsified>
           </Group>
@@ -67,9 +73,11 @@ export const TableBreadcrumbs = ({
           <Separator />
 
           <Group align="center" className={S.breadcrumb} gap="xs" wrap="nowrap">
-            <Flex>
-              <Icon name="table" />
-            </Flex>
+            {displayIcons && (
+              <Flex>
+                <Icon name="table" />
+              </Flex>
+            )}
 
             <Ellipsified>{table.display_name}</Ellipsified>
           </Group>

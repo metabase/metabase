@@ -3,7 +3,7 @@
   border-radius: var(--mantine-radius-md);
 
   &.isSelected {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-link-hover);
     background-color: var(--mb-color-brand-light);
   }
 

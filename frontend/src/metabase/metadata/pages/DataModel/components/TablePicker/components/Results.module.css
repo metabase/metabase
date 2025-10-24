@@ -1,7 +1,12 @@
 .results {
+  flex: 1;
   position: relative;
   overflow: auto;
-  height: 100%;
+  padding: var(--mantine-spacing-md);
+}
+
+.listContainer {
+  position: relative;
 }
 
 .item {
@@ -10,8 +15,8 @@
   cursor: pointer;
   padding-left: var(--mantine-spacing-sm);
   padding-right: var(--mantine-spacing-sm);
-  left: var(--mantine-spacing-xl);
-  right: var(--mantine-spacing-xl);
+  left: 0;
+  right: 0;
 
   &:focus-visible,
   &.selected {
@@ -35,6 +40,10 @@
 .icon {
   opacity: 0.5;
   flex-shrink: 0;
+}
+
+.leafIcon {
+  opacity: 1;
 }
 
 .chevron {

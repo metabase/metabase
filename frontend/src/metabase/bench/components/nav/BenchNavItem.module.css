@@ -3,6 +3,10 @@
   border-radius: 0.5rem;
 }
 
+.menuItem:hover {
+  background-color: var(--mb-color-bg-secondary);
+}
+
 .menuItemIcon {
   opacity: 0.5;
 }

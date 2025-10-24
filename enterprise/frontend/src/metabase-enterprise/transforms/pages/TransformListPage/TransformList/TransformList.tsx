@@ -7,16 +7,20 @@ import { useListDatabasesQuery } from "metabase/api";
 import { ItemsListSection } from "metabase/bench/components/ItemsListSection/ItemsListSection";
 import { ItemsListSettings } from "metabase/bench/components/ItemsListSection/ItemsListSettings";
 import { ItemsListTreeNode } from "metabase/bench/components/ItemsListSection/ItemsListTreeNode";
+import {
+  BenchFlatListItem,
+  BenchFlatListItemContent,
+} from "metabase/bench/components/shared/BenchFlatListItem";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import Link from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Tree } from "metabase/common/components/tree";
+import { VirtualizedFlatList } from "metabase/common/components/VirtualizedFlatList";
+import { VirtualizedTree } from "metabase/common/components/tree/VirtualizedTree";
 import type {
   ITreeNodeItem,
   TreeNodeProps,
 } from "metabase/common/components/tree/types";
 import { useDispatch } from "metabase/lib/redux";
-import { Box, FixedSizeIcon, Flex, NavLink, Text } from "metabase/ui";
+import { Box } from "metabase/ui";
 import {
   useListTransformTagsQuery,
   useListTransformsQuery,
@@ -24,7 +28,7 @@ import {
 import type { Transform, TransformTag } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
-import { TagList } from "../../../components/TagList";
+import { getTagById, getTagList } from "../../../components/TagList";
 import type { TransformListParams } from "../../../types";
 import { getTransformUrl } from "../../../urls";
 import { CreateTransformMenu } from "../CreateTransformMenu";
@@ -38,20 +42,15 @@ const TransformsTreeNode = (props: TreeNodeProps) => (
       if (!transform) {
         return;
       }
+
       return (
-        <Box fw="normal" p="sm" style={{ overflow: "hidden" }} c="text-primary">
-          <Text fz="xs" lh={1} c="text-secondary" mb="xs">
-            {transform.name}
-          </Text>
-          <Flex align="center">
-            <FixedSizeIcon
-              name="enter_or_return"
-              size={8}
-              style={{ transform: "scaleX(-1)" }}
-            />
-            <FixedSizeIcon name="table2" ml="sm" />
-            <Ellipsified ml="xs">{transform.target.name}</Ellipsified>
-          </Flex>
+        <Box p="sm" style={{ overflow: "hidden" }}>
+          <BenchFlatListItemContent
+            label={transform.name}
+            icon="table2"
+            subtitle={transform.target.name}
+            isActive={props.isSelected}
+          />
         </Box>
       );
     }}
@@ -165,7 +164,6 @@ export function TransformList({
 
   return (
     <ItemsListSection
-      sectionTitle={t`Transforms`}
       testId="transform-list-page"
       onCollapse={onCollapse}
       addButton={<CreateTransformMenu />}
@@ -206,59 +204,69 @@ export function TransformList({
             }
           />
         ) : display === "tree" ? (
-          <Box mx="-sm">
-            <Tree
-              initiallyExpanded
-              data={treeData}
-              selectedId={selectedId}
-              onSelect={(node) => {
-                if (typeof node.id === "number") {
-                  dispatch(push(`/bench/transforms/${node.id}`));
-                }
-              }}
-              TreeNode={TransformsTreeNode}
-            />
-          </Box>
+          <VirtualizedTree
+            initiallyExpanded
+            data={treeData}
+            selectedId={selectedId}
+            onSelect={(node) => {
+              if (typeof node.id === "number") {
+                dispatch(push(`/bench/transforms/${node.id}`));
+              }
+            }}
+            TreeNode={TransformsTreeNode}
+          />
         ) : (
-          <Box>
-            {transformsSorted.map((transform) => (
-              <TransformListItem
-                key={transform.id}
+          <VirtualizedFlatList
+            items={transformsSorted}
+            selectedId={selectedId}
+            getItemId={(transform) => transform.id}
+            estimateSize={72}
+            renderItem={(transform) => (
+              <TransformFlatListItem
                 transform={transform}
                 tags={tags}
-                isActive={transform.id === selectedId}
+                selectedId={selectedId}
               />
-            ))}
-          </Box>
+            )}
+          />
         )
       }
     />
   );
 }
 
-function TransformListItem({
-  transform,
-  tags,
-  isActive,
-}: {
+interface TransformFlatListItemProps {
   transform: Transform;
   tags: TransformTag[];
-  isActive?: boolean;
-}) {
+  selectedId?: Transform["id"];
+}
+
+function TransformFlatListItem({
+  transform,
+  tags,
+  selectedId,
+}: TransformFlatListItemProps) {
+  const tagById = useMemo(() => getTagById(tags), [tags]);
+  const tagNames = getTagList(transform.tag_ids ?? [], tagById).map(
+    (tag) => tag.name,
+  );
+
   return (
-    <NavLink
-      component={Link}
-      to={getTransformUrl(transform.id)}
-      active={isActive}
-      w="100%"
-      label={
-        <Box>
-          <Text fw="bold">{transform.name}</Text>
-          <Box c="text-light" fz="sm" mb="xs" ff="monospace">
-            {transform.target.name}
-          </Box>
-          <TagList tags={tags} tagIds={transform.tag_ids ?? []} />
-        </Box>
+    <BenchFlatListItem
+      icon="transform"
+      href={getTransformUrl(transform.id)}
+      label={transform.name}
+      subtitle={transform.target.name}
+      isActive={transform.id === selectedId}
+      thirdLine={
+        <Ellipsified
+          fw="bold"
+          fz="sm"
+          lh="1rem"
+          c="var(--mb-color-feedback-unknown)"
+        >
+          {tagNames.join(" · ")}
+        </Ellipsified>
       }
     />
   );

@@ -38,7 +38,7 @@ export function TablePicker({
 
   return (
     <Stack data-testid="table-picker" mih={rem(200)} className={className}>
-      <Group gap="md" p="xl" pb={0}>
+      <Group gap="md" p="lg" pb={0}>
         <Input
           flex="1"
           leftSection={<Icon name="search" />}

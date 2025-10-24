@@ -11,6 +11,7 @@ import {
   Flex,
   Icon,
   Skeleton,
+  Text,
   rem,
 } from "metabase/ui";
 import type { DatabaseId, SchemaName, TableId } from "metabase-types/api";
@@ -32,6 +33,7 @@ import {
   areTablesSelected,
   getSchemaId,
   isItemWithHiddenExpandIcon,
+  isLeafNode,
 } from "../utils";
 
 import S from "./Results.module.css";
@@ -149,8 +151,11 @@ export function Results({
   );
 
   return (
-    <Box ref={ref} px="xl" pb="lg" className={S.results}>
-      <Box style={{ height: virtual.getTotalSize() }}>
+    <Box ref={ref} className={S.results}>
+      <Box
+        className={S.listContainer}
+        style={{ height: virtual.getTotalSize() }}
+      >
         {virtualItems.map(({ start, index }) => {
           const item = items[index] as FlatItem;
           const {
@@ -272,6 +277,7 @@ export function Results({
               align="center"
               justify="space-between"
               gap="sm"
+              wrap="nowrap"
               className={cx(S.item, {
                 [S.active]: isActive,
                 [S.selected]: selectedIndex === index,
@@ -306,30 +312,28 @@ export function Results({
               onFocus={() => onSelectedIndexChange?.(index)}
             >
               <Flex align="center" mih={ITEM_MIN_HEIGHT} py="xs" w="100%">
-                <Flex align="flex-start" gap="xs" w="100%">
-                  <Flex align="center" gap="xs">
-                    <Icon
-                      name="chevronright"
-                      size={10}
-                      color="var(--mb-color-text-light)"
-                      className={cx(S.chevron, {
-                        [S.expanded]: isExpanded,
-                        [CS.hidden]: isItemWithHiddenExpandIcon(item),
-                      })}
-                    />
+                <Flex align="center" gap="xs" w="100%">
+                  <Icon
+                    name="chevronright"
+                    size={10}
+                    color="var(--mb-color-text-light)"
+                    className={cx(S.chevron, {
+                      [S.expanded]: isExpanded,
+                      [CS.hidden]: isItemWithHiddenExpandIcon(item),
+                    })}
+                  />
 
-                    <Icon
-                      {...((item as CollectionItem).icon || {
-                        name: TYPE_ICONS[type],
-                      })}
-                      className={S.icon}
-                    />
-                  </Flex>
+                  <Icon
+                    {...((item as CollectionItem).icon || {
+                      name: TYPE_ICONS[type],
+                    })}
+                    className={cx(S.icon, isLeafNode(item) && S.leafIcon)}
+                  />
 
                   {isLoading ? (
                     <Loading />
                   ) : (
-                    <Box
+                    <Text
                       className={S.label}
                       c={
                         type === "table" &&
@@ -341,9 +345,10 @@ export function Results({
                       }
                       data-testid="tree-item-label"
                       pl="sm"
+                      lineClamp={1}
                     >
                       {label}
-                    </Box>
+                    </Text>
                   )}
                 </Flex>
               </Flex>
