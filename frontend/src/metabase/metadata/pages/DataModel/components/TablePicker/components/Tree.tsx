@@ -138,18 +138,31 @@ export function Tree({ path, onChange }: Props) {
     if (item.type === "schema") {
       if (isExpanded(item.key)) {
         if (areTablesSelected(item, items, selectedItems) === "all") {
-          setSelectedItems(() => {
-            return new Set();
+          setSelectedItems((prev) => {
+            const tableIds = getSchemaTableIds(item, items);
+            const newSet = new Set(prev);
+            tableIds.forEach((x) => {
+              newSet.delete(x);
+            });
+            return newSet;
           });
         } else {
-          setSelectedItems(() => {
-            return new Set(getSchemaTableIds(item, items));
+          setSelectedItems((prev) => {
+            const tableIds = getSchemaTableIds(item, items);
+            const newSet = new Set(prev);
+            tableIds.forEach((x) => {
+              newSet.add(x);
+            });
+            return newSet;
           });
         }
       } else {
         setSelectedSchemas((prev) => {
           const newSet = new Set(prev);
           const schemaId = getSchemaId(item);
+          if (!schemaId) {
+            return newSet;
+          }
           if (schemaId && newSet.has(schemaId)) {
             newSet.delete(schemaId);
           } else {

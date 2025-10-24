@@ -369,14 +369,6 @@ function ElementCheckbox({
   selectedSchemas: Set<SchemaName> | undefined;
   onItemToggle: ((item: FlatItem) => void) | undefined;
 }) {
-  // console.log({
-  //   isParentSchemaSelected: isParentSchemaSelected(item, selectedSchemas),
-  //   noManuallySelectedTables: noManuallySelectedTables(
-  //     getParentSchema(item, allItems),
-  //     allItems,
-  //     selectedItems,
-  //   ),
-  // });
   const isItemSelected =
     item.type === "table" && selectedItems?.has(item.value?.tableId ?? "");
 
@@ -392,16 +384,8 @@ function ElementCheckbox({
     schemaTablesSelected === "all" ||
     isIndeterminate;
 
-  if (item.type === "schema") {
-    // console.log({
-    //   item: getSchemaId(item),
-    //   isItemSelected,
-    //   isSchemaItemSelected,
-    //   schemaTablesSelected,
-    //   indeterminate: schemaTablesSelected === "some",
-    //   isIndeterminate,
-    //   isChecked,
-    // });
+  if (item.type === "database") {
+    return null;
   }
 
   return (
@@ -417,23 +401,6 @@ function ElementCheckbox({
       {...(isIndeterminate ? { indeterminate: true } : {})}
     />
   );
-}
-
-function isParentSchemaSelected(
-  item: FlatItem,
-  selectedSchemas: Set<SchemaName> | undefined,
-) {
-  if (item.type !== "table") {
-    return false;
-  }
-
-  const parentSchemaId = getSchemaId(item);
-
-  if (!parentSchemaId) {
-    return false;
-  }
-
-  return selectedSchemas?.has(parentSchemaId);
 }
 
 function Loading() {
