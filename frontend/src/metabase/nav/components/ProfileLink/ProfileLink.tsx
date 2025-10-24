@@ -46,8 +46,9 @@ interface ProfileLinkProps {
   adminItems: AdminPath[];
   canAccessOnboardingPage: boolean;
   isNewInstance: boolean;
-  onLogout: () => void;
+  onLogout?: () => void;
   openDiagnostics: () => void;
+  excludeItems?: string[];
 }
 
 interface MenuItem {
@@ -66,6 +67,7 @@ function ProfileLinkInner({
   isNewInstance,
   onLogout,
   openDiagnostics,
+  excludeItems = [],
 }: ProfileLinkProps) {
   const [modalOpen, setModalOpen] = useState<string | null>(null);
   const version = useSetting("version") as MetabaseInfo["version"];
@@ -101,7 +103,7 @@ function ProfileLinkInner({
         link: "/admin",
         event: `Navbar;Profile Dropdown;Enter Admin`,
       },
-      {
+      !excludeItems.includes("workbench") && {
         title: t`Workbench`,
         icon: null,
         link: "/bench",
@@ -147,7 +149,7 @@ function ProfileLinkInner({
       {
         separator: true,
       },
-      {
+      onLogout && {
         title: t`Sign out`,
         icon: null,
         action: () => onLogout(),
