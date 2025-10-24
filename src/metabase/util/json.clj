@@ -92,8 +92,10 @@
   (decode source true))
 
 (defn decode-body
-  "Given a response map, decodes body if headers indicate it's a JSON response"
+  "Given a response map, decodes body if headers indicate it's a JSON response, or just slurps if it's not a string."
   [res]
-  (cond-> res
-    (str/starts-with? (get-in res [:headers "content-type"]) "application/json")
-    (update :body decode+kw)))
+  (let [ctype (get-in res [:headers "content-type"])]
+    (cond
+      (some-> ctype (str/starts-with? "application/json")) (update res :body decode+kw)
+      (string? (:body res))                                res
+      :else                                                (update res :body slurp))))
