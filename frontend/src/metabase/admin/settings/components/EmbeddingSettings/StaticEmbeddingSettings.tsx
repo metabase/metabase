@@ -26,7 +26,6 @@ export function StaticEmbeddingSettings() {
     <SettingsPageWrapper title={t`Static embedding`}>
       <EmbeddingSettingsCard
         title={t`Enable static embedding`}
-        titleProps={{ fz: "lg" }}
         description={t`A secure way to embed charts and dashboards when you don’t want to offer ad-hoc querying or chart drill-through.`}
         settingKey="enable-embedding-static"
       />

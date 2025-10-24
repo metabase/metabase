@@ -47,8 +47,8 @@ export function EmbeddingSettingsCard({
 
   return (
     <Flex direction="column" className={S.SectionCard} data-testid={testId}>
-      <Stack gap="sm" px="xl" py="lg">
-        <Text fw={600} c="text-dark" fz="h3" {...titleProps}>
+      <Stack gap="xs" px="xl" py="lg">
+        <Text fw={600} c="text-dark" fz="h4" {...titleProps}>
           {title}
         </Text>
 

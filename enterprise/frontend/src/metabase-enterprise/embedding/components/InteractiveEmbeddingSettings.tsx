@@ -34,7 +34,6 @@ export function InteractiveEmbeddingSettings() {
     <SettingsPageWrapper title={t`Interactive embedding`}>
       <EmbeddingSettingsCard
         title={t`Enable interactive embedding`}
-        titleProps={{ fz: "lg" }}
         description={t`Embed the full power of Metabase into your application to build a custom analytics experience and programmatically manage dashboards and data.`}
         settingKey="enable-embedding-interactive"
         links={[{ icon: "bolt", title: t`Quick start`, href: quickStartUrl }]}
