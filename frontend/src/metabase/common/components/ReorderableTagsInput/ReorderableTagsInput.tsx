@@ -220,6 +220,7 @@ export function ReorderableTagsInput({
         onDragOver={(e) => {
           // Allow dropping external items
           e.preventDefault();
+          e.stopPropagation();
         }}
         onDragEnter={(e) => {
           const related = e.relatedTarget as Node | null;
@@ -241,6 +242,7 @@ export function ReorderableTagsInput({
         }}
         onDrop={(e) => {
           e.preventDefault();
+          e.stopPropagation();
           const val = e.dataTransfer.getData("text/plain");
           if (!val) {
             return;

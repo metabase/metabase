@@ -404,7 +404,7 @@ export const ListViewConfiguration = ({
               </Menu.Dropdown>
             </Menu>
 
-            {/* Title + Subtitle */}
+            {/* Title */}
             <ReorderableTagsInput
               size="lg"
               miw="10rem"
@@ -418,7 +418,7 @@ export const ListViewConfiguration = ({
               placeholder={leftValues.length > 0 ? "" : t`Title`}
               data-testid="list-view-left-columns"
               containerId="left"
-              useExternalDnd={true}
+              useExternalDnd
               draggedItemId={activeId}
               currentDroppable={currentDroppable}
               styles={{
@@ -440,7 +440,7 @@ export const ListViewConfiguration = ({
               }
               data-testid="list-view-right-columns"
               containerId="right"
-              useExternalDnd={true}
+              useExternalDnd
               draggedItemId={activeId}
               currentDroppable={currentDroppable}
               styles={{ input: { paddingBlock: "0.5rem" } }}
