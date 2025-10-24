@@ -19,12 +19,9 @@ describe("Remote Sync", () => {
   });
 
   describe("Development Mode", () => {
-    beforeEach(() => {
+    it("can push and pull changes", () => {
       H.configureGit("development");
       H.wrapLibraryCollection();
-    });
-
-    it("can push and pull changes", () => {
       const UPDATED_REMOTE_QUESTION_NAME = "Updated Question Name";
 
       cy.get("@library").then((libraryCollection) => {
@@ -81,6 +78,8 @@ describe("Remote Sync", () => {
     });
 
     it("should not allow you to move content to the library that references non library items", () => {
+      H.configureGit("development");
+      H.wrapLibraryCollection();
       cy.intercept("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`).as(
         "updateDashboard",
       );
@@ -119,6 +118,8 @@ describe("Remote Sync", () => {
     });
 
     it("should allow you to create new branches and switch between them", () => {
+      H.configureGit("development");
+      H.wrapLibraryCollection();
       const NEW_BRANCH_NAME = `new-branch-${Date.now()}`;
 
       cy.visit("/collection/root");
@@ -179,6 +180,26 @@ describe("Remote Sync", () => {
 
       cy.reload();
       cy.wait(500);
+      cy.reload();
+    });
+
+    it("should show a warning modal when you try to push but are out of date", () => {
+      H.copyLibraryFixture();
+      H.commitToLibrary();
+      H.configureGit("development");
+      H.wrapLibraryCollection();
+
+      cy.visit("/collection/root");
+
+      // Make a change in metabase
+      H.moveCollectionItemToLibrary("Orders");
+
+      // Make a change outside metabase
+      H.updateRemoteQuestion((doc) => {
+        doc.name = "Sloan for Frontend Emperor";
+        return doc;
+      });
+
       cy.reload();
     });
   });

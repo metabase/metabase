@@ -2,7 +2,14 @@ import yamljs from "yamljs";
 
 import type { Collection } from "metabase-types/api";
 
-import { navigationSidebar } from "./e2e-ui-elements-helpers";
+import { openCollectionItemMenu } from "./e2e-collection-helpers";
+import {
+  entityPickerModal,
+  entityPickerModalItem,
+  entityPickerModalTab,
+  navigationSidebar,
+  popover,
+} from "./e2e-ui-elements-helpers";
 
 export const LOCAL_GIT_PATH =
   Cypress.config("projectRoot") + "/e2e/tmp/test-repo";
@@ -122,5 +129,16 @@ export const updateRemoteQuestion = (
       cy.writeFile(fullPath, yamljs.stringify(updatedDoc));
       cy.exec(`git -C ${LOCAL_GIT_PATH} commit -am '${commitMessage}'`);
     });
+  });
+};
+
+export const moveCollectionItemToLibrary = (name: string) => {
+  openCollectionItemMenu(name);
+  popover().findByText("Move").click();
+
+  entityPickerModal().within(() => {
+    entityPickerModalTab("Browse").click();
+    entityPickerModalItem(1, "Library").click();
+    cy.button("Move").click();
   });
 };
