@@ -61,7 +61,7 @@ export const PublicLinksListing = <
         </thead>
         <tbody>
           {data.map((item) => {
-            const internalUrl = getUrl?.(item);
+            const internalUrl = getUrl(item);
             const publicUrl = getPublicUrl?.(item);
 
             return (
