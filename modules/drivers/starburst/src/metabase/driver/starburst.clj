@@ -54,21 +54,21 @@
 
 (prefer-method driver/database-supports? [:starburst :set-timezone] [:sql-jdbc :set-timezone])
 
-(doseq [[feature supported?] {:set-timezone                           true
-                              :basic-aggregations                     true
-                              :standard-deviation-aggregations        true
-                              :expressions                            true
-                              :native-parameters                      true
-                              :expression-aggregations                true
-                              :expression-literals                    true
-                              :binning                                true
-                              :datetime-diff                          true
-                              :convert-timezone                       true
-                              :connection/multiple-databases          true
-                              :metadata/key-constraints               false
-                              :now                                    true
-                              :database-routing                       true
-                              :connection-impersonation               true}]
+(doseq [[feature supported?] {:set-timezone                    true
+                              :basic-aggregations              true
+                              :standard-deviation-aggregations true
+                              :expressions                     true
+                              :native-parameters               true
+                              :expression-aggregations         true
+                              :expression-literals             true
+                              :binning                         true
+                              :datetime-diff                   true
+                              :convert-timezone                true
+                              :connection/multiple-databases   true
+                              :metadata/key-constraints        false
+                              :now                             true
+                              :database-routing                true
+                              :connection-impersonation        true}]
   (defmethod driver/database-supports? [:starburst feature] [_ _ _] supported?))
 
 (defn- format-field
