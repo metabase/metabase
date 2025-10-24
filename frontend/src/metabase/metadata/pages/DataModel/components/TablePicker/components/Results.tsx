@@ -4,23 +4,39 @@ import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 
 import CS from "metabase/css/core/index.css";
-import { Box, Flex, Icon, Skeleton, Text, rem } from "metabase/ui";
+import {
+  Box,
+  Checkbox,
+  type CheckboxProps,
+  Flex,
+  Icon,
+  Skeleton,
+  Text,
+  rem,
+} from "metabase/ui";
+import type { DatabaseId, SchemaName, TableId } from "metabase-types/api";
 
 import { getUrl } from "../../../utils";
 import { TYPE_ICONS } from "../constants";
 import type {
   CollectionItem,
+  DatabaseNode,
   FlatItem,
   ItemType,
   ModelItem,
+  SchemaNode,
   TableItem,
   TreePath,
 } from "../types";
-import { isItemWithHiddenExpandIcon, isLeafNode } from "../utils";
+import {
+  areSchemasSelected,
+  areTablesSelected,
+  getSchemaId,
+  isItemWithHiddenExpandIcon,
+  isLeafNode,
+} from "../utils";
 
-import { BulkTableVisibilityToggle } from "./BulkTableVisibilityToggle";
 import S from "./Results.module.css";
-import { TableVisibilityToggle } from "./TableVisibilityToggle";
 
 const VIRTUAL_OVERSCAN = 5;
 const ITEM_MIN_HEIGHT = 32; // items can vary in size because of text wrapping
@@ -35,17 +51,23 @@ interface Props {
   withMassToggle?: boolean;
   onItemClick?: (path: TreePath) => void;
   onSelectedIndexChange?: (index: number) => void;
+  onItemToggle?: (item: FlatItem) => void;
+  selectedItems?: Set<TableId>;
+  selectedSchemas?: Set<SchemaName>;
+  selectedDatabases?: Set<DatabaseId>;
 }
 
 export function Results({
   items,
   path,
-  reload,
   selectedIndex,
   toggle,
-  withMassToggle,
   onItemClick,
   onSelectedIndexChange,
+  onItemToggle,
+  selectedItems,
+  selectedSchemas,
+  selectedDatabases,
 }: Props) {
   const [activeItem, setActiveItem] = useState<
     { type: ItemType; id: number | string } | undefined
@@ -331,55 +353,94 @@ export function Results({
                 </Flex>
               </Flex>
 
-              {withMassToggle &&
-                type === "database" &&
-                value?.databaseId !== undefined &&
-                hasTableChildren &&
-                !disabled && (
-                  <BulkTableVisibilityToggle
-                    className={S.massVisibilityToggle}
-                    tables={children.flatMap((child) =>
-                      child.type === "table" && child.table != null
-                        ? [child.table]
-                        : [],
-                    )}
-                    onUpdate={() => reload?.(value)}
-                  />
-                )}
-
-              {withMassToggle &&
-                type === "schema" &&
-                value?.schemaName !== undefined &&
-                hasTableChildren &&
-                !disabled && (
-                  <BulkTableVisibilityToggle
-                    className={S.massVisibilityToggle}
-                    tables={children.flatMap((child) =>
-                      child.type === "table" && child.table != null
-                        ? [child.table]
-                        : [],
-                    )}
-                    onUpdate={() => reload?.(value)}
-                  />
-                )}
-
-              {type === "table" &&
-                value?.tableId !== undefined &&
-                item.table &&
-                !disabled && (
-                  <TableVisibilityToggle
-                    className={cx(S.visibilityToggle, {
-                      [S.hidden]: item.table.visibility_type == null,
-                    })}
-                    table={item.table}
-                    onUpdate={() => reload?.(value)}
-                  />
-                )}
+              <ElementCheckbox
+                item={item}
+                selectedItems={selectedItems}
+                selectedSchemas={selectedSchemas}
+                selectedDatabases={selectedDatabases}
+                onItemToggle={onItemToggle}
+              />
             </Flex>
           );
         })}
       </Box>
     </Box>
+  );
+}
+
+// workaround to use indeterminate icon from the Checkbox component before
+// this fixed is released https://github.com/mantinedev/mantine/pull/8385
+const CheckboxDashIcon: CheckboxProps["icon"] = ({ ...others }) => (
+  <Icon name="dash" {...others} />
+);
+
+function ElementCheckbox({
+  item,
+  selectedItems,
+  selectedSchemas,
+  selectedDatabases,
+  onItemToggle,
+}: {
+  item: FlatItem;
+  selectedItems: Set<TableId> | undefined;
+  selectedDatabases: Set<DatabaseId> | undefined;
+  selectedSchemas: Set<SchemaName> | undefined;
+  onItemToggle: ((item: FlatItem) => void) | undefined;
+}) {
+  const isItemSelected =
+    item.type === "table" && selectedItems?.has(item.value?.tableId ?? "");
+
+  const isSchemaItemSelected =
+    item.type === "schema" && selectedSchemas?.has(getSchemaId(item) ?? "");
+  const schemaTablesSelected =
+    item.type === "schema" &&
+    areTablesSelected(
+      item,
+      ((item as unknown as SchemaNode).children as unknown as FlatItem[]) ?? [],
+      selectedItems,
+    );
+
+  const isDatabaseItemSelected =
+    item.type === "database" &&
+    selectedDatabases?.has(item.value?.databaseId ?? -1);
+
+  const areSchemasSelectedResult =
+    item.type === "database" &&
+    areSchemasSelected(
+      item,
+      ((item as unknown as DatabaseNode).children as unknown as FlatItem[]) ??
+        [],
+      selectedSchemas,
+      selectedItems,
+    );
+
+  const areTablesIndeterminate =
+    schemaTablesSelected === "some" ? true : undefined;
+  const areSchemasIndeterminate =
+    areSchemasSelectedResult === "some" ? true : undefined;
+  const indeterminate = areTablesIndeterminate || areSchemasIndeterminate;
+  const isChecked =
+    (isItemSelected ||
+      isSchemaItemSelected ||
+      schemaTablesSelected === "all" ||
+      indeterminate ||
+      isDatabaseItemSelected ||
+      areSchemasSelectedResult === "all") ??
+    false;
+
+  return (
+    <Checkbox
+      size="sm"
+      checked={isChecked}
+      onClick={(event) => {
+        event.stopPropagation();
+      }}
+      icon={indeterminate ? CheckboxDashIcon : undefined}
+      onChange={() => {
+        onItemToggle?.(item);
+      }}
+      // indeterminate={indeterminate}
+    />
   );
 }
 

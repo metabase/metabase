@@ -1,41 +1,115 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useDeferredValue, useState } from "react";
 import { t } from "ttag";
 
-import { Box, Icon, Input, Stack } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Group,
+  Icon,
+  Input,
+  Popover,
+  Stack,
+  rem,
+} from "metabase/ui";
 
+import type { RouteParams } from "../../../types";
 import type { ChangeOptions, TreePath } from "../types";
 
-import { Search } from "./Search";
-import S from "./TablePicker.module.css";
+import { FilterPopover, type FilterState } from "./FilterPopover";
+import { SearchNew } from "./SearchNew";
 import { Tree } from "./Tree";
 
 interface TablePickerProps {
+  params: RouteParams;
   path: TreePath;
   className?: string;
   onChange: (path: TreePath, options?: ChangeOptions) => void;
 }
 
-export function TablePicker({ path, className, onChange }: TablePickerProps) {
+export function TablePicker({
+  params,
+  path,
+  className,
+  onChange,
+}: TablePickerProps) {
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
+  const [filters, setFilters] = useState<FilterState>({
+    visibilityType: null,
+    visibilityType2: null,
+    dataSource: null,
+    ownerEmail: null,
+    ownerUserId: null,
+  });
+  const [isOpen, { toggle, close }] = useDisclosure();
+  const filtersCount = getFiltersCount(filters);
 
   return (
-    <Stack data-testid="table-picker" gap={0} h="100%" className={className}>
-      <Box px="md" pt="md" pb="xs">
+    <Stack
+      data-testid="table-picker"
+      mih={rem(200)}
+      className={className}
+      style={{ overflow: "hidden" }}
+    >
+      <Group gap="md" p="lg" pb={0}>
         <Input
+          flex="1"
           leftSection={<Icon name="search" />}
-          placeholder={t`Search tables`}
+          placeholder={t`Search (use * as a wildcard)`}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
-      </Box>
-      <Box className={S.contentContainer}>
-        {deferredQuery === "" ? (
+
+        <Popover width={rem(300)} position="bottom-start" opened={isOpen}>
+          <Popover.Target>
+            <Button leftSection={<Icon name="filter" />} onClick={toggle}>
+              {filtersCount === 0 ? t`Filter` : t`Filter (${filtersCount})`}
+            </Button>
+          </Popover.Target>
+
+          <Popover.Dropdown>
+            <FilterPopover
+              filters={filters}
+              onClose={close}
+              onSubmit={(newFilters) => {
+                setFilters(newFilters);
+                close();
+              }}
+            />
+          </Popover.Dropdown>
+        </Popover>
+      </Group>
+
+      <Box style={{ overflow: "auto" }}>
+        {deferredQuery === "" && filtersCount === 0 ? (
           <Tree path={path} onChange={onChange} />
         ) : (
-          <Search query={deferredQuery} path={path} onChange={onChange} />
+          <SearchNew query={deferredQuery} params={params} filters={filters} />
         )}
       </Box>
     </Stack>
   );
+}
+
+function getFiltersCount(filters: FilterState): number {
+  let count = 0;
+
+  if (filters.visibilityType != null) {
+    ++count;
+  }
+
+  if (filters.dataSource != null) {
+    ++count;
+  }
+
+  if (filters.visibilityType2 != null) {
+    ++count;
+  }
+
+  if (filters.ownerEmail != null || filters.ownerUserId != null) {
+    ++count;
+  }
+
+  return count;
 }

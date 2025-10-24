@@ -3,6 +3,8 @@ import type { Database, DatabaseId, InitialSyncStatus } from "./database";
 import type { DatasetData } from "./dataset";
 import type { Field, FieldId } from "./field";
 import type { Segment } from "./segment";
+import type { TransformId } from "./transform";
+import type { UserId } from "./user";
 
 export type ConcreteTableId = number;
 export type VirtualTableId = string; // e.g. "card__17" where 17 is a card id
@@ -18,6 +20,15 @@ export type TableVisibilityType =
   | "sensitive"
   | "technical"
   | "cruft";
+
+export type TableVisibilityType2 = "gold" | "silver" | "bronze" | "copper";
+
+export type TableDataSource =
+  | "ingested"
+  | "transform"
+  | "metabase-transform"
+  | "source-data"
+  | "uploaded-data";
 
 export type TableFieldOrder = "database" | "alphabetical" | "custom" | "smart";
 
@@ -49,6 +60,13 @@ export type Table = {
   points_of_interest?: string;
   created_at: string;
   updated_at: string;
+
+  data_source: TableDataSource | null;
+  visibility_type2: TableVisibilityType2 | null;
+  owner_email: string | null;
+  owner_user_id: UserId | null;
+  transform_id: TransformId | null; // readonly
+  data_update_frequency: string; // readonly
 };
 
 export type SchemaName = string;
@@ -77,6 +95,12 @@ export interface TableListQuery {
   include_editable_data_model?: boolean;
   remove_inactive?: boolean;
   skip_fields?: boolean;
+  term?: string;
+  visibility_type?: TableVisibilityType;
+  visibility_type2?: TableVisibilityType2;
+  data_source?: string | null;
+  owner_user_id?: UserId | null;
+  owner_email?: string | null;
 }
 
 export interface ForeignKey {
@@ -108,6 +132,11 @@ export interface UpdateTableRequest {
   points_of_interest?: string;
   show_in_getting_started?: boolean;
   field_order?: TableFieldOrder;
+
+  data_source?: TableDataSource | null;
+  visibility_type2?: TableVisibilityType2 | null;
+  owner_email?: string | null;
+  owner_user_id?: UserId | null;
 }
 
 export interface UpdateTableListRequest {
@@ -118,11 +147,28 @@ export interface UpdateTableListRequest {
   caveats?: string;
   points_of_interest?: string;
   show_in_getting_started?: boolean;
+
+  data_source?: TableDataSource | null;
+  visibility_type2?: TableVisibilityType2 | null;
+  owner_email?: string | null;
+  owner_user_id?: UserId | null;
 }
 
 export interface UpdateTableFieldsOrderRequest {
   id: TableId;
   field_order: FieldId[];
+}
+
+export interface EditTablesRequest {
+  database_ids?: DatabaseId[];
+  schema_ids?: SchemaId[];
+  table_ids?: TableId[];
+  visibility_type?: TableVisibilityType;
+  data_authority?: string;
+  data_source?: TableDataSource | null;
+  visibility_type2?: TableVisibilityType2 | null;
+  owner_email?: string | null;
+  owner_user_id?: UserId | null;
 }
 
 export type UploadManagementResponse = Table[];

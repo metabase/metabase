@@ -8,9 +8,14 @@ import {
 } from "metabase/api";
 import EmptyState from "metabase/common/components/EmptyState";
 import {
+  DataSourceInput,
   FieldOrderPicker,
+  LayerInput,
+  type LimitedVisibilityType,
   NameDescriptionInput,
   SortableFieldList,
+  UserInput,
+  VisibilityInput,
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
@@ -23,11 +28,19 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
-import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
+import type {
+  FieldId,
+  Table,
+  TableDataSource,
+  TableFieldOrder,
+  TableVisibilityType2,
+  UserId,
+} from "metabase-types/api";
 
 import type { RouteParams } from "../../types";
 import { getUrl, parseRouteParams } from "../../utils";
 import { ResponsiveButton } from "../ResponsiveButton";
+import { TitledSection } from "../TitledSection";
 
 import { FieldList } from "./FieldList";
 import S from "./TableSection.module.css";
@@ -90,6 +103,127 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
         const { error } = await updateTable({
           id: table.id,
           description: table.description ?? "",
+        });
+        sendUndoToast(error);
+      });
+    }
+  };
+
+  const handleVisibilityTypeChange = async (
+    visibilityType: LimitedVisibilityType | null,
+  ) => {
+    if (visibilityType == null) {
+      return; // should never happen as the input is not clearable here
+    }
+
+    const { error } = await updateTable({
+      id: table.id,
+      visibility_type: visibilityType === "visible" ? null : "hidden",
+    });
+
+    if (error) {
+      sendErrorToast(t`Failed to update table visibility`);
+    } else {
+      sendSuccessToast(t`Table visibility updated`, async () => {
+        const { error } = await updateTable({
+          id: table.id,
+          visibility_type: table.visibility_type,
+        });
+        sendUndoToast(error);
+      });
+    }
+  };
+
+  const handleLayerChange = async (
+    visibilityType: TableVisibilityType2 | null,
+  ) => {
+    if (visibilityType == null) {
+      return; // should never happen as the input is not clearable here
+    }
+
+    const { error } = await updateTable({
+      id: table.id,
+      visibility_type2: visibilityType,
+    });
+
+    if (error) {
+      sendErrorToast(t`Failed to update table layer`);
+    } else {
+      sendSuccessToast(t`Table layer updated`, async () => {
+        const { error } = await updateTable({
+          id: table.id,
+          visibility_type2: table.visibility_type2,
+        });
+        sendUndoToast(error);
+      });
+    }
+  };
+
+  const handleDataSourceChange = async (
+    dataSource: TableDataSource | "unknown" | null,
+  ) => {
+    if (dataSource == null) {
+      return; // should never happen as the input is not clearable here
+    }
+
+    const { error } = await updateTable({
+      id: table.id,
+      data_source: dataSource === "unknown" ? null : dataSource,
+    });
+
+    if (error) {
+      sendErrorToast(t`Failed to update table data source`);
+    } else {
+      sendSuccessToast(t`Table data source updated`, async () => {
+        const { error } = await updateTable({
+          id: table.id,
+          data_source: table.data_source,
+        });
+        sendUndoToast(error);
+      });
+    }
+  };
+
+  const handleOwnerEmailChange = async (email: string | null) => {
+    const { error } = await updateTable({
+      id: table.id,
+      owner_email: email,
+      owner_user_id: null,
+    });
+
+    if (error) {
+      sendErrorToast(t`Failed to update table owner`);
+    } else {
+      sendSuccessToast(t`Table owner updated`, async () => {
+        const { error } = await updateTable({
+          id: table.id,
+          owner_email: table.owner_email,
+          owner_user_id: table.owner_user_id,
+        });
+        sendUndoToast(error);
+      });
+    }
+  };
+
+  const handleOwnerUserIdChange = async (userId: UserId | "unknown" | null) => {
+    if (userId == null) {
+      return; // should never happen as the input is not clearable here
+    }
+
+    const { error } = await updateTable({
+      id: table.id,
+      owner_email: null,
+      owner_user_id: userId === "unknown" ? null : userId,
+    });
+
+    if (error) {
+      sendErrorToast(t`Failed to update table owner`);
+    } else {
+      sendSuccessToast(t`Table owner updated`, async () => {
+        const { error } = await updateTable({
+          id: table.id,
+          owner_email: table.owner_email,
+          owner_user_id: table.owner_user_id,
         });
         sendUndoToast(error);
       });
@@ -180,6 +314,36 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
           onNameChange={handleNameChange}
           onDescriptionChange={handleDescriptionChange}
         />
+
+        <TitledSection title={t`Metadata`}>
+          <VisibilityInput
+            value={table.visibility_type == null ? "visible" : "hidden"}
+            onChange={handleVisibilityTypeChange}
+          />
+
+          <LayerInput
+            value={table.visibility_type2 ?? "copper"}
+            onChange={handleLayerChange}
+          />
+
+          <UserInput
+            email={table.owner_email}
+            label={t`Owner`}
+            userId={
+              !table.owner_email && !table.owner_user_id
+                ? "unknown"
+                : table.owner_user_id
+            }
+            onEmailChange={handleOwnerEmailChange}
+            onUserIdChange={handleOwnerUserIdChange}
+          />
+
+          <DataSourceInput
+            transformId={table.transform_id}
+            value={table.data_source ?? "unknown"}
+            onChange={handleDataSourceChange}
+          />
+        </TitledSection>
 
         <Group
           align="center"

@@ -2,8 +2,10 @@
   "/api/table endpoints."
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.app-db.core :as app-db]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
@@ -14,7 +16,8 @@
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
    ;; legacy usage -- don't do things like this going forward
-   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]}
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.sync.core :as sync]
@@ -53,12 +56,31 @@
 
 (api.macros/defendpoint :get "/"
   "Get all `Tables`."
-  []
-  (as-> (t2/select :model/Table, :active true, {:order-by [[:name :asc]]}) tables
-    (t2/hydrate tables :db)
-    (into [] (comp (filter mi/can-read?)
-                   (map schema.table/present-table))
-          tables)))
+  [_
+   {:keys [term visibility_type visibility_type2 data_source owner_user_id owner_email]}
+   :- [:map
+       ;; conjunctive search terms
+       [:term {:optional true} :string]
+       [:visibility_type  {:optional true} :string]
+       [:visibility_type2 {:optional true} :string]
+       [:data_source {:optional true} :string]
+       [:owner_user_id {:optional true} [:or :int [:enum ""]]]
+       [:owner_email {:optional true} :string]]]
+  (let [like       (case (app-db/db-type) (:h2 :postgres) :ilike :like)
+        pattern    (some-> term (str/replace "*" "%") (cond-> (not (str/ends-with? term "%")) (str "%")))
+        empty-null (fn [x] (if (and (string? x) (str/blank? x)) nil x))
+        where      (cond-> [:and true]
+                     (not (str/blank? term)) (conj [like :name pattern])
+                     visibility_type         (conj [:= :visibility_type  (empty-null visibility_type)])
+                     visibility_type2        (conj [:= :visibility_type2 (empty-null visibility_type2)])
+                     data_source             (conj [:= :data_source      (empty-null data_source)])
+                     owner_user_id           (conj [:= :owner_user_id    (empty-null owner_user_id)])
+                     owner_email             (conj [:= :owner_email      (empty-null owner_email)]))]
+    (as-> (t2/select :model/Table, :active true, {:where where, :order-by [[:name :asc]]}) tables
+      (t2/hydrate tables :db)
+      (into [] (comp (filter mi/can-read?)
+                     (map schema.table/present-table))
+            tables))))
 
 (api.macros/defendpoint :get "/:id"
   "Get `Table` with ID."
@@ -112,7 +134,9 @@
    body]
   (when-let [changes (not-empty (u/select-keys-when body
                                                     :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
-                                                    :present [:description :caveats :points_of_interest :visibility_type :data_authority]))]
+                                                    :present [:description :caveats :points_of_interest :visibility_type :data_authority
+                                                              ;; bulk-metadata-editing
+                                                              :data_source :visibility_type2 :owner_email :owner_user_id]))]
     (t2/update! :model/Table id changes))
   (let [updated-table        (t2/select-one :model/Table :id id)
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
@@ -165,7 +189,12 @@
             [:points_of_interest      {:optional true} [:maybe :string]]
             [:show_in_getting_started {:optional true} [:maybe :boolean]]
             [:field_order             {:optional true} [:maybe FieldOrder]]
-            [:data_authority          {:optional true} [:maybe ::data-authority-write]]]]
+            [:data_authority          {:optional true} [:maybe ::data-authority-write]]
+            ;; bulk-metadata-editing
+            [:data_source             {:optional true} [:maybe :string]]
+            [:visibility_type2        {:optional true} [:maybe :string]]
+            [:owner_email             {:optional true} [:maybe :string]]
+            [:owner_user_id           {:optional true} [:maybe :int]]]]
   (first (update-tables! [id] body)))
 
 (api.macros/defendpoint :put "/"
@@ -181,8 +210,58 @@
                                [:caveats                 {:optional true} [:maybe :string]]
                                [:points_of_interest      {:optional true} [:maybe :string]]
                                [:show_in_getting_started {:optional true} [:maybe :boolean]]
-                               [:data_authority          {:optional true} [:maybe ::data-authority-write]]]]
+                               [:data_authority          {:optional true} [:maybe ::data-authority-write]]
+                               ;; bulk-metadata-editing
+                               [:data_source             {:optional true} [:maybe :string]]
+                               [:visibility_type2        {:optional true} [:maybe :string]]
+                               [:owner_email             {:optional true} [:maybe :string]]
+                               [:owner_user_id           {:optional true} [:maybe :int]]]]
   (update-tables! ids body))
+
+(api.macros/defendpoint :post "/edit"
+  "DEMOWARE: Edit tables associated with one or more databases/schemas
+  - the API will live somewhere else (at least needs to apply to models)
+  - auth lol
+  - return a kind of token or identifier for status/undo."
+  [_route-params
+   _query-params
+   {:keys [database_ids
+           schema_ids
+           table_ids]
+    :as body}
+   :- [:map
+       ;; disjunctive filters (e.g. db_id IN $database_ids OR id IN $table_ids)
+       [:database_ids {:optional true} [:sequential ms/PositiveInt]]
+       [:schema_ids {:optional true} [:sequential :string]] ;todo find schema
+       [:table_ids {:optional true} [:sequential ms/PositiveInt]]
+
+       ;; settables
+       [:visibility_type {:optional true} [:maybe :string]]
+       [:data_authority {:optional true} [:maybe :string]]
+       [:data_source {:optional true} [:maybe :string]]
+       [:visibility_type2 {:optional true} [:maybe :string]]
+       [:owner_email {:optional true} [:maybe :string]]
+       [:owner_user_id {:optional true} [:maybe :int]]]]
+  ;; todo so much
+  (let [schema-expr (fn [s]
+                      (let [[schema-db-id schema-name] (str/split s #"\:")]
+                        [:and [:= :db_id (parse-long schema-db-id)] [:= :schema schema-name]]))
+        where       (cond-> [:or false]
+                      (seq database_ids) (conj [:in :db_id (sort database_ids)])
+                      (seq table_ids)    (conj [:in :id    (sort table_ids)])
+                      (seq schema_ids)   (conj (into [:or] (map schema-expr) (sort schema_ids))))
+        set-ks      [:visibility_type
+                     :data_authority
+                     :data_source
+                     :visibility_type2
+                     :owner_email
+                     :owner_user_id]
+        set-map     (select-keys body set-ks)
+        stmt        {:update :metabase_table
+                     :set    set-map
+                     :where  where}]
+    (when (seq set-map) (t2/query stmt))
+    {}))
 
 (api.macros/defendpoint :get "/:id/query_metadata"
   "Get metadata about a `Table` useful for running queries.

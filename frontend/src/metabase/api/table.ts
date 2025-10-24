@@ -1,6 +1,7 @@
 import { updateMetadata } from "metabase/lib/redux/metadata";
 import { ForeignKeySchema, TableSchema } from "metabase/schema";
 import type {
+  EditTablesRequest,
   ForeignKey,
   GetTableDataRequest,
   GetTableQueryMetadataRequest,
@@ -101,6 +102,15 @@ export const tableApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("table"), tag("database"), tag("card")]),
     }),
+    editTables: builder.mutation<Record<string, never>, EditTablesRequest>({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/table/edit",
+        body,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [tag("table"), tag("database"), tag("card")]),
+    }),
     updateTableFieldsOrder: builder.mutation<
       Table,
       UpdateTableFieldsOrderRequest
@@ -160,6 +170,7 @@ export const {
   useLazyListTableForeignKeysQuery,
   useUpdateTableMutation,
   useUpdateTableListMutation,
+  useEditTablesMutation,
   useUpdateTableFieldsOrderMutation,
   useRescanTableFieldValuesMutation,
   useSyncTableSchemaMutation,
