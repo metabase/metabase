@@ -102,12 +102,8 @@ export const BaseSMTPConnectionForm = ({
   const { data: settingValues } = useGetSettingsQuery();
   const { data: settingsDetails } = useGetAdminSettingsDetailsQuery();
 
-  const initialValues = useMemo(() => {
-    const passwordKey = getFullFormKey("password");
-    const passwordValue =
-      settingsDetails?.[passwordKey]?.value ?? settingValues?.[passwordKey];
-
-    return {
+  const initialValues = useMemo(
+    () => ({
       [getFullFormKey("host")]: settingValues?.[getFullFormKey("host")] ?? "",
       [getFullFormKey("port")]:
         settingValues?.[getFullFormKey("port")]?.toString() ??
@@ -117,9 +113,11 @@ export const BaseSMTPConnectionForm = ({
         (secureMode ? "ssl" : "none"),
       [getFullFormKey("username")]:
         settingValues?.[getFullFormKey("username")] ?? "",
-      [passwordKey]: passwordValue ?? "",
-    };
-  }, [getFullFormKey, settingValues, settingsDetails, secureMode]);
+      [getFullFormKey("password")]:
+        settingValues?.[getFullFormKey("password")] ?? "",
+    }),
+    [getFullFormKey, settingValues, secureMode],
+  );
 
   const handleClearEmailSettings = useCallback(async () => {
     const result = await deleteMutation();
@@ -292,7 +290,7 @@ export const BaseSMTPConnectionForm = ({
                     name={getFullFormKey("password")}
                     type="password"
                     label={t`SMTP Password`}
-                    placeholder={t`Shhh...`}
+                    placeholder={"Shhh..."}
                   />
                 </SetByEnvVarWrapper>
 
