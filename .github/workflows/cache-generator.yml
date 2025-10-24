@@ -51,9 +51,6 @@ jobs:
     needs: get-cache-keys
     env:
       M2_CACHE_KEY: ${{ needs.get-cache-keys.outputs.m2-cache-key }}
-      M2_CACHE_PATHS: |
-        ~/.m2/repository
-        ~/.cache/some-other-path
     steps:
       - uses: actions/checkout@v4
       - name: Prepare backend
@@ -67,7 +64,9 @@ jobs:
       - name: Update M2 cache
         uses: ./.github/actions/update-cache
         with:
-          path: ${{ env.M2_CACHE_PATHS }}
+          path: |
+            ~/.m2
+            ~/.gitlibs
           key: ${{ env.M2_CACHE_KEY }}
 
   generate-node-modules-cache:
