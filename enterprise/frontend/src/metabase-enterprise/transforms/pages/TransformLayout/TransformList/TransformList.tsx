@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { push } from "react-router-redux";
 import { useLocalStorage } from "react-use";
 import { t } from "ttag";
@@ -148,6 +148,14 @@ export function TransformList({ selectedId, onCollapse }: TransformListProps) {
     return recursiveAlpha(root).children || [];
   }, [databaseData, display, transformsSorted]);
 
+  const getFlatListItemEstimateSize = useCallback((item: Transform) => {
+    return item.tag_ids?.length ? 72 : 56; // item with tags has third line, so it's taller
+  }, []);
+
+  const getTreeItemEstimateSize = useCallback((item: ITreeNodeItem) => {
+    return item.icon === "table2" ? 52 : 33;
+  }, []);
+
   if (isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
@@ -197,6 +205,7 @@ export function TransformList({ selectedId, onCollapse }: TransformListProps) {
                 dispatch(push(`/bench/transforms/${node.id}`));
               }
             }}
+            estimateSize={getTreeItemEstimateSize}
             TreeNode={TransformsTreeNode}
           />
         ) : (
@@ -204,7 +213,7 @@ export function TransformList({ selectedId, onCollapse }: TransformListProps) {
             items={transformsSorted}
             selectedId={selectedId}
             getItemId={(transform) => transform.id}
-            estimateSize={72}
+            estimateSize={getFlatListItemEstimateSize}
             renderItem={(transform) => (
               <TransformFlatListItem
                 transform={transform}
