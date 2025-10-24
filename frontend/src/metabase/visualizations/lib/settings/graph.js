@@ -651,7 +651,7 @@ export const GRAPH_AXIS_SETTINGS = {
         },
       ],
       vizSettings,
-    ) => getDefaultIsHistogram(cols[0]),
+    ) => cols[0] && getDefaultIsHistogram(cols[0]),
   },
   "graph.x_axis.scale": {
     get section() {

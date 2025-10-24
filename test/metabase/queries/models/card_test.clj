@@ -212,8 +212,8 @@
     (let [metadata (qp.preprocess/query->expected-cols (mt/mbql-query venues))]
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query   (mt/mbql-query venues)
                                                 :result_metadata metadata}]
-        (is (= (mt/derecordize metadata)
-               (mt/derecordize (t2/select-one-fn :result_metadata :model/Card :id card-id))))))))
+        (is (= metadata
+               (t2/select-one-fn :result_metadata :model/Card :id card-id)))))))
 
 (deftest populate-result-metadata-if-needed-test
   (doseq [[creating-or-updating f]

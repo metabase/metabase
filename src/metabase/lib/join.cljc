@@ -31,6 +31,7 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
+   [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
@@ -611,7 +612,7 @@
       condition)))
 
 (defn- generate-unique-name [base-name taken-names]
-  (let [generator (lib.util/unique-name-generator)]
+  (let [generator (lib.util.unique-name-generator/unique-name-generator)]
     (run! generator taken-names)
     (generator base-name)))
 

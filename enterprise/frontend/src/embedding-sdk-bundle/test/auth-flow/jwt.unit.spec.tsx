@@ -1,6 +1,10 @@
 import { screen } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
+import {
+  setupCurrentUserEndpoint,
+  setupPropertiesEndpoints,
+} from "__support__/server-mocks";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import { waitForRequest } from "__support__/utils";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
@@ -147,6 +151,11 @@ describe("Auth Flow - JWT", () => {
   it("should include the subpath when requesting the SSO endpoint", async () => {
     // we can't use the usual mocks here as they use mocks that don't expect the subpath
     const instanceUrlWithSubpath = `${MOCK_INSTANCE_URL}/subpath`;
+
+    // Set up base URL mocks FIRST, before subpath-specific mocks
+    // This test doesn't use the shared setup() function, so it needs its own mocks
+    setupCurrentUserEndpoint(createMockUser());
+    setupPropertiesEndpoints(createMockSettings());
 
     fetchMock.get(`${instanceUrlWithSubpath}/auth/sso`, {
       status: 200,

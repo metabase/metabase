@@ -1,7 +1,7 @@
 (ns metabase.legacy-mbql.schema
   "Schema for validating a *normalized* MBQL query. This is also the definitive grammar for MBQL, wow!"
   (:refer-clojure :exclude [count distinct min max + - / * and or not not-empty = < > <= >= time case concat replace
-                            abs float every? select-keys #?(:clj doseq)])
+                            abs float every? select-keys #?(:clj doseq) some])
   (:require
    [clojure.core :as core]
    [clojure.set :as set]
@@ -23,12 +23,13 @@
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.lib.schema.middleware-options :as lib.schema.middleware-options]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.settings :as lib.schema.settings]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [every? select-keys #?(:clj doseq)]]))
+   [metabase.util.performance :as perf :refer [every? select-keys #?(:clj doseq) some]]))
 
 ;; A NOTE ABOUT METADATA:
 ;;
@@ -173,7 +174,6 @@
 ;; [:= [:field 10 {:temporal-unit :day}] [:absolute-datetime #inst "2018-10-02" :day]]
 (mr/def ::absolute-datetime
   [:multi {:error/message "valid :absolute-datetime clause"
-           :doc/title     [:span [:code ":absolute-datetime"] " clause"]
            :dispatch      (fn [x]
                             (cond
                               (core/not (is-clause? :absolute-datetime x)) :invalid
@@ -266,112 +266,65 @@
 ;;    [:+ [:field 1 nil] [:field 2 nil]]
 ;;
 ;; As of 0.42.0 `:expression` references can have an optional options map
-(defclause ^{:requires-features #{:expressions}} expression
-  expression-name ::lib.schema.common/non-blank-string
-  options         (optional :map))
+(mr/def ::expression.options
+  "Options for a legacy `:expression` ref in MBQL 4 are the same as in MBQL 5, except that `:lib/uuid` is optional and
+  it cannot be empty."
+  [:and
+   [:merge
+    {:decode/normalize (fn [m]
+                         (when-let [m (lib.schema.ref/normalize-expression-options m)]
+                           (dissoc m :lib/uuid)))}
+    ::lib.schema.ref/expression.options
+    [:map
+     [:lib/uuid {:optional true} ::lib.schema.common/uuid]]]
+   (lib.schema.common/disallowed-keys {:lib/uuid "MBQL 4 refs should not have :lib/uuid"})
+   [:fn
+    {:error/message    "MBQL 4 :expression options should not be empty, use a nil map instead"
+     :decode/normalize perf/not-empty}
+    seq]])
+
+(mr/def ::expression
+  [:and
+   (helpers/clause
+    :expression
+    "expression-name" ::lib.schema.common/non-blank-string
+    "options"         [:optional ::expression.options])
+   [:fn
+    {:error/message   "Expression should not have empty opts"
+     :decode/normalize (fn [[tag expression-name opts]]
+                         (if (empty? opts)
+                           [tag expression-name]
+                           [tag expression-name opts]))}
+    (fn [[_tag _expression-name opts :as expression-ref]]
+      (core/or (core/= (core/count expression-ref) 2)
+               (seq opts)))]])
+
+(def expression
+  "Schema for an MBQL 4 :expression reference."
+  ^{:clause-name :expression} [:ref ::expression])
 
 (defmethod options-style-method :expression [_tag] ::options-style.last-unless-empty)
 
-(defn valid-temporal-unit-for-base-type?
-  "Whether `temporal-unit` (e.g. `:day`) is valid for the given `base-type` (e.g. `:type/Date`). If either is `nil` this
-  will return truthy. Accepts either map of `field-options` or `base-type` and `temporal-unit` passed separately."
-  ([{:keys [base-type temporal-unit] :as _field-options}]
-   (valid-temporal-unit-for-base-type? base-type temporal-unit))
-
-  ([base-type temporal-unit]
-   (if-let [units (when (core/and temporal-unit base-type)
-                    (condp #(isa? %2 %1) base-type
-                      :type/Date     date-bucketing-units
-                      :type/Time     time-bucketing-units
-                      :type/DateTime datetime-bucketing-units
-                      nil))]
-     (contains? units temporal-unit)
-     true)))
-
-(mr/def ::validate-temporal-unit
-  ;; TODO - consider breaking this out into separate constraints for the three different types so we can generate more
-  ;; specific error messages
-  [:fn
-   {:error/message "Invalid :temporal-unit for the specified :base-type."}
-   valid-temporal-unit-for-base-type?])
-
-(mr/def ::no-binning-options-at-top-level
-  (lib.schema.common/disallowed-keys
-   {:strategy ":binning keys like :strategy are not allowed at the top level of :field options."}))
-
-;;; TODO (Cam 9/12/25) -- aren't these basically the same as MBQL 5, except Lib UUID isn't required? Maybe we should
-;;; unify these schemas.
 (mr/def ::FieldOptions
-  [:and
-   [:map
-    {:error/message "field options"}
-    [:base-type {:optional true} [:maybe ::lib.schema.common/base-type]]
-
-    ;; Following option conveys temporal unit that was set on a ref in previous stages. For details refer to
-    ;; [:metabase.lib.schema.ref/field.options] schema.
-    [:inherited-temporal-unit {:optional true} [:maybe ::DateTimeUnit]]
-
-    [:source-field
-     {:optional true
-      :description
-      "Replaces `fk->`.
-
-  `:source-field` is used to refer to a FieldOrExpression from a different Table you would like IMPLICITLY JOINED to
-     the source table.
-
-  If both `:source-field` and `:join-alias` are supplied, `:join-alias` should be used to perform the join;
-  `:source-field` should be for information purposes only."} ::lib.schema.id/field]
-
-    [:source-field-name
-     {:optional true :description "The name or desired alias of the field used for an implicit join."}
-     ::lib.schema.common/non-blank-string]
-
-    [:source-field-join-alias
-     {:optional true :description "The join alias of the source field used for an implicit join."}
-     ::lib.schema.common/non-blank-string]
-
-    [:temporal-unit
-     {:optional true
-      :description
-      "`:temporal-unit` is used to specify DATE BUCKETING for a FieldOrExpression that represents a moment in time of
-  some sort.
-
-  There is no requirement that all `:type/Temporal` derived FieldOrExpressions specify a `:temporal-unit`, but for
-  legacy reasons `:field` clauses that refer to `:type/DateTime` FieldOrExpressions will be automatically \"bucketed\"
-  in the `:breakout` and `:filter` clauses, but nowhere else. Auto-bucketing only applies to `:filter` clauses when
-  values for comparison are `yyyy-MM-dd` date strings. See the `auto-bucket-datetimes` middleware for more details.
-  `:field` clauses elsewhere will not be automatically bucketed, so drivers still need to make sure they do any
-  special datetime handling for plain `:field` clauses when their FieldOrExpression derives from `:type/DateTime`."}
-     [:maybe ::DateTimeUnit]]
-
-    [:join-alias
-     {:optional true
-      :description
-      "Replaces `joined-field`.
-
-  `:join-alias` is used to refer to a FieldOrExpression from a different Table/nested query that you are EXPLICITLY
-  JOINING against."}
-     [:maybe ::lib.schema.join/alias]]
-
-    [:binning
-     {:optional true
-      :description
-      "Replaces `binning-strategy`.
-
-  Using binning requires the driver to support the `:binning` feature."}
-     [:maybe [:ref ::lib.schema.binning/binning]]]]
-
-   ;; additional validation
-   [:ref
-    {:description "If `:base-type` is specified, the `:temporal-unit` must make sense, e.g. no bucketing by `:year`for
-  a `:type/Time` column."}
-    ::validate-temporal-unit]
-
-   [:ref
-    {:description "You cannot use `:binning` keys like `:strategy` in the top level."}
-    ::no-binning-options-at-top-level]])
+  "Options for an MBQL 4 `:field` ref are the same as MBQL 5, except that `:lib/uuid` is not required and it cannot be
+  empty."
+  [:maybe
+   [:and
+    [:merge
+     {:decode/normalize (fn [m]
+                          (when-let [m (lib.schema.ref/normalize-field-options-map m)]
+                            (dissoc m :lib/uuid)))}
+     [:ref ::lib.schema.ref/field.options]
+     [:map
+      [:lib/uuid {:optional true} ::lib.schema.common/uuid]]]
+    (lib.schema.common/disallowed-keys {:lib/uuid "MBQL 4 refs should not have :lib/uuid"})
+    [:fn
+     {:error/message    "MBQL 4 :field ref options should not be empty, use nil instead"
+      :decode/normalize perf/not-empty}
+     seq]]])
 
 (mr/def ::require-base-type-for-field-name
+  "Fields using names rather than integer IDs are required to specify `:base-type`."
   [:fn
    {:error/message ":field clauses using a string field name must specify :base-type."}
    (fn [[_ id-or-name {:keys [base-type]}]]
@@ -383,25 +336,20 @@
 
 (mr/def ::field
   [:and
-   {:doc/title [:span [:code ":field"] " clause"]}
    (helpers/clause
     :field
     "id-or-name" [:or ::lib.schema.id/field :string]
     "options"    [:maybe [:ref ::FieldOptions]])
-   [:ref
-    {:description "Fields using names rather than integer IDs are required to specify `:base-type`."}
-    ::require-base-type-for-field-name]])
+   ::require-base-type-for-field-name])
 
 (def ^{:added "0.39.0"} field
   "Schema for a `:field` clause."
   ^{:clause-name :field} [:ref ::field])
 
 (mr/def ::field-or-expression-ref
-  [:schema
-   {:doc/title "`:field` or `:expression` ref"}
-   (one-of expression field)])
+  (one-of expression field))
 
-(def Field
+(def FieldOrExpressionRef
   "Schema for either a `:field` clause (reference to a Field) or an `:expression` clause (reference to an expression)."
   [:ref ::field-or-expression-ref])
 
@@ -469,7 +417,7 @@
    [:string            :string]
    [:string-expression StringExpression]
    [:value             value]
-   [:else              Field]])
+   [:else              FieldOrExpressionRef]])
 
 (def ^:private StringExpressionArg
   [:ref ::StringExpressionArg])
@@ -541,7 +489,7 @@
    [:aggregation         Aggregation]
    [:value               value]
    [:datetime-expression DatetimeExpression]
-   [:else                [:or [:ref ::DateOrDatetimeLiteral] Field]]])
+   [:else                [:or [:ref ::DateOrDatetimeLiteral] FieldOrExpressionRef]]])
 
 (def ^:private DateTimeExpressionArg
   [:ref ::DateTimeExpressionArg])
@@ -570,7 +518,7 @@
    [:string               :string]
    [:string-expression    StringExpression]
    [:value                value]
-   [:else                 Field]])
+   [:else                 FieldOrExpressionRef]])
 
 (def ^:private ExpressionArg
   [:ref ::ExpressionArg])
@@ -815,7 +763,7 @@
                        :relative-datetime
                        :else))}
    [:relative-datetime relative-datetime]
-   [:else              Field]])
+   [:else              FieldOrExpressionRef]])
 
 (mr/def ::EqualityComparable
   [:maybe
@@ -890,11 +838,11 @@
   lon-max   OrderComparable)
 
 ;; SUGAR CLAUSES: These are rewritten as `[:= <field> nil]` and `[:not= <field> nil]` respectively
-(defclause ^:sugar is-null,  field Field)
-(defclause ^:sugar not-null, field Field)
+(defclause ^:sugar is-null,  field FieldOrExpressionRef)
+(defclause ^:sugar not-null, field FieldOrExpressionRef)
 
 (mr/def ::Emptyable
-  [:or StringExpressionArg Field])
+  [:or StringExpressionArg FieldOrExpressionRef])
 
 (def Emptyable
   "Schema for a valid is-empty or not-empty argument."
@@ -964,7 +912,7 @@
 ;;
 ;; SUGAR: This is automatically rewritten as a filter clause with a relative-datetime value
 (defclause ^:sugar time-interval
-  field   Field
+  field   FieldOrExpressionRef
   n       [:or
            :int
            [:enum :current :last :next]]
@@ -974,12 +922,12 @@
 (defmethod options-style-method :time-interval [_tag] ::options-style.last-unless-empty)
 
 (defclause ^:sugar during
-  field   Field
+  field   FieldOrExpressionRef
   value   [:or ::lib.schema.literal/date ::lib.schema.literal/datetime]
   unit    ::DateTimeUnit)
 
 (defclause ^:sugar relative-time-interval
-  col           Field
+  col           FieldOrExpressionRef
   value         :int
   bucket        [:ref ::RelativeDatetimeUnit]
   offset-value  :int
@@ -1021,7 +969,7 @@
    [:boolean  BooleanExpression]
    [:value    value]
    [:segment  segment]
-   [:else     Field]])
+   [:else     FieldOrExpressionRef]])
 
 (def ^:private CaseClause
   [:tuple {:error/message ":case subclause"} Filter ExpressionArg])
@@ -1059,7 +1007,6 @@
   `:+` clause or a `:field` or `:value` clause."
   [:multi
    {:error/message ":field or :expression reference or expression"
-    :doc/title     "expression definition"
     :dispatch      (fn [x]
                      (cond
                        (is-clause? numeric-functions x)  :numeric
@@ -1079,7 +1026,7 @@
    [:if       case:if]
    [:offset   offset]
    [:value    value]
-   [:else     Field]])
+   [:else     FieldOrExpressionRef]])
 
 ;;; -------------------------------------------------- Aggregations --------------------------------------------------
 
@@ -1087,8 +1034,8 @@
 
 ;; cum-sum and cum-count are SUGAR because they're implemented in middleware. The clauses are swapped out with
 ;; `count` and `sum` aggregations respectively and summation is done in Clojure-land
-(defclause ^{:requires-features #{:basic-aggregations}} ^:sugar count,     field (optional Field))
-(defclause ^{:requires-features #{:basic-aggregations}} ^:sugar cum-count, field (optional Field))
+(defclause ^{:requires-features #{:basic-aggregations}} ^:sugar count,     field (optional FieldOrExpressionRef))
+(defclause ^{:requires-features #{:basic-aggregations}} ^:sugar cum-count, field (optional FieldOrExpressionRef))
 
 ;; technically aggregations besides count can also accept expressions as args, e.g.
 ;;
@@ -1422,31 +1369,98 @@
   "Normalize legacy column metadata when using [[metabase.lib.normalize/normalize]]."
   [m]
   (when (map? m)
-    (let [m (lib.schema.common/normalize-map-no-kebab-case m)]
-      ;; remove deprecated `:ident` key.
-      (dissoc m :ident))))
+    (-> m
+        lib.schema.common/normalize-map-no-kebab-case
+        ;; remove deprecated `:ident` key.
+        (dissoc :ident)
+        ;; set `display_name` to `name` if it's unset.
+        (as-> $m (cond-> $m
+                   (core/and (:name $m)
+                             (core/not (contains? $m :display_name)))
+                   (assoc :display_name (:name $m)))))))
+
+(mr/def ::legacy-column-metadata.binning-info
+  [:and
+   [:map
+    {:decode/normalize (fn [m]
+                         (when (map? m)
+                           (let [m (lib.schema.common/normalize-map-no-kebab-case m)]
+                             (cond-> m
+                               (core/and (:binning_strategy m)
+                                         (core/not (:strategy m)))
+                               (assoc :strategy (:binning_strategy m))))))}
+    [:strategy         [:ref ::lib.schema.binning/strategy]]
+    [:binning_strategy {:optional true} [:ref ::lib.schema.binning/strategy]]
+    [:bin_width        {:optional true} [:ref ::lib.schema.binning/bin-width]]
+    [:num_bins         {:optional true} [:ref ::lib.schema.binning/num-bins]]]
+   [:fn
+    {:error/message "bin_width is a required key when strategy is bin-width"}
+    (fn [m]
+      (if (core/= (:strategy m) :bin-width)
+        (contains? m :bin_width)
+        true))]
+   [:fn
+    {:error/message "num_bins is a required key when strategy is num-bins"}
+    (fn [m]
+      (if (core/= (:strategy m) :num-bins)
+        (contains? m :num_bins)
+        true))]
+   [:fn
+    {:error/message    "binning_strategy, if present, must be equal to strategy"
+     :decode/normalize (fn [m]
+                         (cond-> m
+                           (:binning_strategy m)
+                           (assoc :binning_strategy (:strategy m))))}
+    (fn [m]
+      (if (:binning_strategy m)
+        (core/= (:binning_strategy m) (:strategy m))
+        true))]])
+
+(defn- legacy-column-metadata-qualified-keys-schema
+  "In 56+ legacy column metadata can optionally include qualified keys from Lib-style metadata. Walk the Lib column
+  metadata schema and build a `:map` schema out of those keys."
+  []
+  (let [schema          (mr/resolve-schema ::lib.schema.metadata/column)
+        find-map-schema (fn find-map-schema [schema]
+                          (if (core/= (mc/type schema) :map)
+                            schema
+                            (some find-map-schema (mc/children schema))))
+        map-schema (find-map-schema schema)]
+    (into [:map]
+          (keep (fn [[k opts schema]]
+                  (when (qualified-keyword? k)
+                    [k (assoc opts :optional true) schema])))
+          (mc/children map-schema))))
+
+;;; TODO (Cam 10/20/25) -- it would be nice to come up with a way to automatically rebuild this if
+;;; `::lib.schema.metadata/column` changes
+(mr/def ::legacy-column-metadata.qualified-keys
+  (legacy-column-metadata-qualified-keys-schema))
 
 (mr/def ::legacy-column-metadata
   "Schema for a single legacy metadata column. This is the pre-Lib equivalent of
   `:metabase.lib.schema.metadata/column`."
   [:and
-   [:map
-    ;; this schema is allowed for Card `result_metadata` in Lib so `:decode/normalize` is used for those Lib use cases.
-    {:decode/normalize lib-normalize-legacy-column}
-    [:base_type          ::lib.schema.common/base-type]
-    [:display_name       :string]
-    [:name               :string]
-    [:effective_type     {:optional true} ::lib.schema.common/base-type]
-    [:converted_timezone {:optional true} [:maybe [:ref ::lib.schema.expression.temporal/timezone-id]]]
-    [:field_ref          {:optional true} [:maybe [:ref ::Reference]]]
-    ;; Fingerprint is required in order to use BINNING
-    [:fingerprint        {:optional true} [:maybe [:ref ::lib.schema.metadata.fingerprint/fingerprint]]]
-    [:id                 {:optional true} [:maybe ::lib.schema.id/field]]
-    ;; name is allowed to be empty in some databases like SQL Server.
-    [:semantic_type      {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
-    [:source             {:optional true} [:maybe [:ref ::lib.schema.metadata/column.legacy-source]]]
-    [:unit               {:optional true} [:maybe [:ref ::lib.schema.temporal-bucketing/unit]]]
-    [:visibility_type    {:optional true} [:maybe [:ref ::lib.schema.metadata/column.visibility-type]]]]
+   [:merge
+    [:map
+     ;; this schema is allowed for Card `result_metadata` in Lib so `:decode/normalize` is used for those Lib use cases.
+     {:decode/normalize lib-normalize-legacy-column}
+     [:base_type          {:default :type/*} ::lib.schema.common/base-type]
+     [:display_name       :string]
+     [:name               :string]
+     [:binning_info       {:optional true} [:maybe [:ref ::legacy-column-metadata.binning-info]]]
+     [:effective_type     {:optional true} ::lib.schema.common/base-type]
+     [:converted_timezone {:optional true} [:maybe [:ref ::lib.schema.expression.temporal/timezone-id]]]
+     [:field_ref          {:optional true} [:maybe [:ref ::Reference]]]
+     ;; Fingerprint is required in order to use BINNING
+     [:fingerprint        {:optional true} [:maybe [:ref ::lib.schema.metadata.fingerprint/fingerprint]]]
+     [:id                 {:optional true} [:maybe ::lib.schema.id/field]]
+     ;; name is allowed to be empty in some databases like SQL Server.
+     [:semantic_type      {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
+     [:source             {:optional true} [:maybe [:ref ::lib.schema.metadata/column.legacy-source]]]
+     [:unit               {:optional true} [:maybe [:ref ::lib.schema.temporal-bucketing/unit]]]
+     [:visibility_type    {:optional true} [:maybe [:ref ::lib.schema.metadata/column.visibility-type]]]]
+    [:ref ::legacy-column-metadata.qualified-keys]]
    (lib.schema.common/disallowed-keys
     {:lib/type "Legacy results metadata should not have :lib/type, use :metabase.lib.schema.metadata/column for Lib metadata"})
    (letfn [(disallowed-key? [k]
@@ -1609,7 +1623,7 @@
 (mr/def ::Fields
   [:schema
    {:error/message "Distinct, non-empty sequence of Field clauses"}
-   (helpers/distinct [:sequential {:min 1} Field])])
+   (helpers/distinct [:sequential {:min 1} FieldOrExpressionRef])])
 
 (mr/def ::OrderBys
   (helpers/distinct [:sequential {:min 1} [:ref ::OrderBy]]))
@@ -1620,7 +1634,7 @@
     [:source-query {:optional true} SourceQuery]
     [:source-table {:optional true} SourceTable]
     [:aggregation  {:optional true} [:sequential {:min 1} Aggregation]]
-    [:breakout     {:optional true} [:sequential {:min 1} Field]]
+    [:breakout     {:optional true} [:sequential {:min 1} FieldOrExpressionRef]]
     [:expressions  {:optional true} [:map-of ::lib.schema.common/non-blank-string [:ref ::FieldOrExpressionDef]]]
     [:fields       {:optional true} Fields]
     [:filter       {:optional true} Filter]
@@ -1628,7 +1642,6 @@
     [:order-by     {:optional true} [:ref ::OrderBys]]
     [:page         {:optional true} [:ref :metabase.lib.schema/page]]
     [:joins        {:optional true} [:ref ::Joins]]
-
     [:source-metadata
      {:optional true
       :description "Info about the columns of the source query. Added in automatically by middleware. This metadata is
@@ -1665,7 +1678,6 @@
 
 (mr/def ::dimension
   [:and
-   {:doc/title [:span [:code ":dimension"] " clause"]}
    [:fn {:error/message "must be a `:dimension` clause"} (partial helpers/is-clause? :dimension)]
    [:catn
     [:tag [:= :dimension]]
