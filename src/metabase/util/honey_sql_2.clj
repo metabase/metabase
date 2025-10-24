@@ -423,10 +423,10 @@
     :mysql    (with-database-type-info [:now [:inline 6]] "timestamp")
     :postgres (with-database-type-info :%now "timestamptz")))
 
-(defn- format-interval
+(defn- format-postgres-interval
   "Generate a Postgres 'INTERVAL' literal.
 
-    (sql/format-expr [::interval 2 :day])
+    (sql/format-expr [::postgres-interval 2 :day])
     =>
     [\"INTERVAL '2 day'\"]"
   ;; I tried to write this with Malli but couldn't figure out how to make it work. See
@@ -494,23 +494,25 @@
         (with-database-type-info (database-type expr)))))
 
 (defmethod add-interval-honeysql-form :h2
-  [driver hsql-form amount unit]
+  [db-type hsql-form amount unit]
   (cond
     (= unit :quarter)
-    (recur driver hsql-form (* amount 3) :month)
+    (recur db-type hsql-form (* amount 3) :month)
 
     ;; H2 only supports long ints in the `dateadd` amount field; since we want to support fractional seconds (at least
     ;; for application DB purposes) convert to `:millisecond`
     (and (= unit :second)
          (not (zero? (rem amount 1))))
-    (recur driver hsql-form (clojure.core/* amount 1000.0) :millisecond)
+    (recur db-type hsql-form (clojure.core/* amount 1000.0) :millisecond)
 
     :else
     (dateadd-h2 unit amount hsql-form)))
 
 (defmethod add-interval-honeysql-form :default
   [db-type hsql-form amount unit]
-  (throw (ex-info (clojure.core/format "metabase.util.honey-sql-2/add-interval-honeysql-form not implemented for db-type %s. You might want to be calling metabase.driver.sql.query-processor/add-interval-honeysql-form instead." db-type)
+  (throw (ex-info (clojure.core/format (str "metabase.util.honey-sql-2/add-interval-honeysql-form not implemented for db-type %s. "
+                                            "You might want to be calling metabase.driver.sql.query-processor/add-interval-honeysql-form instead.")
+                                       db-type)
                   {:db-type db-type
                    :hsql-form hsql-form
                    :amount amount

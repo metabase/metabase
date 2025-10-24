@@ -90,6 +90,7 @@
     (let [first-child (z/down zloc)]
       (when (= (z/tag first-child) :token)
         ;; Check all child symbols on the line since `require` might be called in a threading macro
+        ;; like (-> 'ns require)
         (some require-symbols (z/child-sexprs zloc))))))
 
 (mu/defn- find-required-namespace :- [:maybe simple-symbol?]
