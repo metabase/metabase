@@ -148,5 +148,5 @@ export function getTableMetadataUrl(
   schema: string | null,
   databaseId: DatabaseId,
 ) {
-  return `/admin/datamodel/database/${databaseId}/schema/${databaseId}:${encodeURIComponent(schema ?? "")}/table/${tableId}`;
+  return `/bench/metadata/database/${databaseId}/schema/${databaseId}:${encodeURIComponent(schema ?? "")}/table/${tableId}`;
 }
