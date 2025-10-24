@@ -29,10 +29,7 @@ const setup = async (
 describe("EditableDashboard", () => {
   it("should support dashboard editing", async () => {
     await setup();
-
-    await waitFor(() => {
-      expect(screen.getByTestId("dashboard-header")).toBeInTheDocument();
-    });
+    expect(await screen.findByTestId("dashboard-header")).toBeInTheDocument();
 
     const editButton = within(
       screen.getByTestId("dashboard-header"),
