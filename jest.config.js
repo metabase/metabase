@@ -14,6 +14,7 @@ const esmPackages = [
   "is-absolute-url",
   "jose",
   "property-information",
+  "react-resizable-panels",
   "rehype-external-links",
   "space-separated-tokens",
   "stringify-entities",

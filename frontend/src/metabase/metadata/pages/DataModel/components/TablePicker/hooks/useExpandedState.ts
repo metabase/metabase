@@ -9,13 +9,22 @@ import { expandPath, toKey } from "../utils";
 export function useExpandedState(path: TreePath) {
   const [state, setState] = useState(expandPath({}, path));
 
-  const { databaseId, schemaName, tableId } = path;
+  const { databaseId, schemaName, tableId, collectionId, modelId } = path;
 
+  // TODO: we should resolve selected collection parents and expand the whole subtree
   useEffect(() => {
-    // When the path changes, this means a user has navigated throught the browser back
+    // When the path changes, this means a user has navigated through the browser back
     // button, ensure the path is completely expanded.
-    setState((state) => expandPath(state, { databaseId, schemaName, tableId }));
-  }, [databaseId, schemaName, tableId]);
+    setState((state) =>
+      expandPath(state, {
+        databaseId,
+        schemaName,
+        tableId,
+        collectionId,
+        modelId,
+      }),
+    );
+  }, [databaseId, schemaName, tableId, collectionId, modelId]);
 
   const isExpanded = useCallback(
     (path: string | TreePath) => {

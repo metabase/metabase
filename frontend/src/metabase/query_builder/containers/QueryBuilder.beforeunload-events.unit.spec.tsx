@@ -18,7 +18,7 @@ import {
   triggerMetadataChange,
   triggerNativeQueryChange,
   triggerNotebookQueryChange,
-  waitForSaveChangesToBeEnabled,
+  waitForSaveButtonToBeEnabled,
   waitForSaveToBeEnabled,
 } from "./test-utils";
 
@@ -68,7 +68,7 @@ describe("QueryBuilder - beforeunload events", () => {
         });
 
         await triggerNotebookQueryChange();
-        await waitForSaveChangesToBeEnabled();
+        await waitForSaveButtonToBeEnabled();
 
         const mockEvent = callMockEvent(mockEventListener, "beforeunload");
         expect(mockEvent.preventDefault).toHaveBeenCalled();
@@ -96,7 +96,7 @@ describe("QueryBuilder - beforeunload events", () => {
         });
 
         await triggerMetadataChange();
-        await waitForSaveChangesToBeEnabled();
+        await waitForSaveButtonToBeEnabled();
 
         const mockEvent = callMockEvent(mockEventListener, "beforeunload");
         expect(mockEvent.preventDefault).toHaveBeenCalled();

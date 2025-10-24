@@ -160,7 +160,7 @@
   /application/monitoring/   -> permissions to access tools, audit and troubleshooting
   /application/subscription/ -> permisisons to create/edit subscriptions and alerts"
   [:and "application/"
-   [:or "setting/" "monitoring/" "subscription/"]])
+   [:or "setting/" "monitoring/" "subscription/" "transforms/"]])
 
 (def ^:private block-permissions-rx
   "Any path starting with /block/ is for BLOCK aka anti-permissions.

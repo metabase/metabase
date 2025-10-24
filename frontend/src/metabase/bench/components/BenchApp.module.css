@@ -1,0 +1,27 @@
+.resizeHandle {
+  position: absolute;
+  z-index: 9;
+}
+
+.resizeHandleHorizontal {
+  cursor: col-resize;
+  height: 100%;
+}
+
+.resizeHandleVertical {
+  cursor: row-resize;
+  width: 100%;
+}
+
+.panelGroup {
+  width: 100%;
+  height: 100%;
+}
+
+.mainPanel {
+  overflow: auto;
+}
+
+.metabotPanel {
+  height: 100%;
+}

@@ -1,24 +1,31 @@
-import { memo } from "react";
+import { type ChangeEvent, memo } from "react";
 import { t } from "ttag";
 
-import { useGetDatabaseQuery, useUpdateFieldMutation } from "metabase/api";
+import { useGetDatabaseQuery } from "metabase/api";
+import { canIndexModelField } from "metabase/entities/model-indexes/utils"; // eslint-disable-line no-restricted-imports
 import {
   FieldValuesTypePicker,
   FieldVisibilityPicker,
   UnfoldJsonPicker,
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import type {
+  FieldChangeParams,
+  MetadataEditMode,
+} from "metabase/metadata/pages/DataModel/types";
 import {
   canFieldUnfoldJson,
   getRawTableFieldId,
   isFieldJsonUnfolded,
 } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import { Switch } from "metabase/ui";
 import type {
   DatabaseId,
   Field,
   FieldValuesType,
   FieldVisibilityType,
+  Table,
 } from "metabase-types/api";
 
 import { trackMetadataChange } from "../../../analytics";
@@ -27,25 +34,42 @@ import { TitledSection } from "../../TitledSection";
 import { RemappingPicker } from "./RemappingPicker";
 
 interface Props {
+  mode: MetadataEditMode;
   databaseId: DatabaseId;
   field: Field;
+  table: Table; // use Table type for models as a temp hack
+  onFieldChange: (update: FieldChangeParams) => Promise<{ error?: unknown }>;
 }
 
-const BehaviorSectionBase = ({ databaseId, field }: Props) => {
-  const id = getRawTableFieldId(field);
-  const { data: database } = useGetDatabaseQuery({
-    id: databaseId,
-    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
-  });
-  const [updateField] = useUpdateFieldMutation();
+const BehaviorSectionBase = ({
+  mode,
+  databaseId,
+  field,
+  table,
+  onFieldChange,
+}: Props) => {
+  const fieldIdentity =
+    mode === "table" ? { id: getRawTableFieldId(field) } : { name: field.name };
+  const { data: database } = useGetDatabaseQuery(
+    {
+      id: databaseId,
+      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+    },
+    {
+      skip: mode !== "table",
+    },
+  );
+
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
+
+  const canIndex = canIndexModelField(field, table.fields);
 
   const handleVisibilityChange = async (
     visibilityType: FieldVisibilityType,
   ) => {
-    const { error } = await updateField({
-      id,
+    const { error } = await onFieldChange({
+      ...fieldIdentity,
       visibility_type: visibilityType,
     });
 
@@ -57,8 +81,8 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
       sendSuccessToast(
         t`Visibility of ${field.display_name} updated`,
         async () => {
-          const { error } = await updateField({
-            id,
+          const { error } = await onFieldChange({
+            ...fieldIdentity,
             visibility_type: field.visibility_type,
           });
           sendUndoToast(error);
@@ -68,8 +92,8 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
   };
 
   const handleFilteringChange = async (hasFieldValues: FieldValuesType) => {
-    const { error } = await updateField({
-      id,
+    const { error } = await onFieldChange({
+      ...fieldIdentity,
       has_field_values: hasFieldValues,
     });
 
@@ -81,9 +105,31 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
       sendSuccessToast(
         t`Filtering of ${field.display_name} updated`,
         async () => {
-          const { error } = await updateField({
-            id,
+          const { error } = await onFieldChange({
+            ...fieldIdentity,
             has_field_values: field.has_field_values,
+          });
+          sendUndoToast(error);
+        },
+      );
+    }
+  };
+
+  const handleShouldIndexChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const { error } = await onFieldChange({
+      ...fieldIdentity,
+      should_index: e.target.checked,
+    });
+
+    if (error) {
+      sendErrorToast(t`Failed to update indexing of ${field.display_name}`);
+    } else {
+      sendSuccessToast(
+        t`Indexing of ${field.display_name} updated`,
+        async () => {
+          const { error } = await onFieldChange({
+            ...fieldIdentity,
+            should_index: !e.target.checked,
           });
           sendUndoToast(error);
         },
@@ -94,8 +140,8 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
   const handleUnfoldJsonChange = async (
     jsonUnfolding: boolean,
   ): Promise<void> => {
-    const { error } = await updateField({
-      id,
+    const { error } = await onFieldChange({
+      ...fieldIdentity,
       json_unfolding: jsonUnfolding,
     });
 
@@ -113,8 +159,8 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
           ? t`JSON unfolding enabled for ${field.display_name}`
           : t`JSON unfolding disabled for ${field.display_name}`,
         async () => {
-          const { error } = await updateField({
-            id,
+          const { error } = await onFieldChange({
+            ...fieldIdentity,
             json_unfolding: field.json_unfolding ?? false,
           });
           sendUndoToast(error);
@@ -132,12 +178,14 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
         onChange={handleVisibilityChange}
       />
 
-      <FieldValuesTypePicker
-        description={t`How this field should be filtered`}
-        label={t`Filtering`}
-        value={field.has_field_values}
-        onChange={handleFilteringChange}
-      />
+      {mode === "table" && (
+        <FieldValuesTypePicker
+          description={t`How this field should be filtered`}
+          label={t`Filtering`}
+          value={field.has_field_values}
+          onChange={handleFilteringChange}
+        />
+      )}
 
       {database != null && (
         <RemappingPicker
@@ -154,6 +202,14 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
           label={t`Unfold JSON`}
           value={isFieldJsonUnfolded(field, database)}
           onChange={handleUnfoldJsonChange}
+        />
+      )}
+
+      {mode === "model" && canIndex && (
+        <Switch
+          checked={field.should_index ?? false}
+          label={t`Surface individual records in search by matching against this column`}
+          onChange={handleShouldIndexChange}
         />
       )}
     </TitledSection>

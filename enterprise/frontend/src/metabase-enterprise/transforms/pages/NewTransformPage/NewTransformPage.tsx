@@ -1,11 +1,10 @@
 import { useDisclosure } from "@mantine/hooks";
 import type { Location } from "history";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Route } from "react-router";
 import { push } from "react-router-redux";
 
 import { skipToken, useGetCardQuery } from "metabase/api";
-import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -71,7 +70,7 @@ export function NewTransformPage({
   }
 
   return (
-    <AdminSettingsLayout fullWidth>
+    <>
       <NewTransformPageInner
         route={route}
         location={location}
@@ -81,7 +80,7 @@ export function NewTransformPage({
           suggestedTransform,
         )}
       />
-    </AdminSettingsLayout>
+    </>
   );
 }
 
@@ -140,6 +139,10 @@ export function NewTransformPageInner({
     }
     acceptProposed(source);
   };
+
+  useEffect(() => {
+    setSource(initialSource);
+  }, [initialSource, setSource]);
 
   return (
     <>

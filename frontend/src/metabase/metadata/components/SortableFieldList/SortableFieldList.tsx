@@ -12,11 +12,11 @@ import type { Field, FieldId, Table } from "metabase-types/api";
 
 import { SortableFieldItem } from "../SortableFieldItem";
 
-interface Props {
-  activeFieldId?: FieldId;
+type Props = {
   table: Table;
+  activeFieldId?: FieldId;
   onChange: (fieldOrder: FieldId[]) => void;
-}
+};
 
 export const SortableFieldList = ({
   activeFieldId,
@@ -50,6 +50,7 @@ export const SortableFieldList = ({
 
           return (
             <SortableFieldItem
+              fieldId={getRawTableFieldId(field)}
               active={id === activeFieldId}
               disabled={isDragDisabled}
               field={field}

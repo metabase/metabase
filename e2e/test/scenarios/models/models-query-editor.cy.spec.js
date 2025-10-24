@@ -36,7 +36,7 @@ describe("scenarios > models query editor", () => {
       });
 
       cy.findByTestId("data-step-cell").contains("Orders");
-      cy.button("Save changes").should("be.disabled");
+      cy.button("Save").should("be.disabled");
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Row limit").click();
@@ -49,7 +49,7 @@ describe("scenarios > models query editor", () => {
         .should("contain", "37.65")
         .and("not.contain", "109.22");
 
-      cy.button("Save changes").click();
+      cy.button("Save").click();
       cy.wait("@updateCard");
 
       cy.url()
@@ -141,7 +141,7 @@ describe("scenarios > models query editor", () => {
       });
 
       cy.url().should("include", "/query");
-      cy.button("Save changes").should("be.disabled");
+      cy.button("Save").should("be.disabled");
 
       H.NativeEditor.focus().type("{backspace}2");
 
@@ -151,7 +151,7 @@ describe("scenarios > models query editor", () => {
         .should("contain", "37.65")
         .and("not.contain", "109.22");
 
-      cy.button("Save changes").click();
+      cy.button("Save").click();
       cy.wait("@updateCard");
 
       cy.get("[data-testid=cell-data]")
@@ -182,7 +182,7 @@ describe("scenarios > models query editor", () => {
       });
 
       cy.url().should("include", "/query");
-      cy.button("Save changes").should("be.disabled");
+      cy.button("Save").should("be.disabled");
 
       H.NativeEditor.focus().type("{backspace}2");
 
@@ -236,7 +236,7 @@ describe("scenarios > models query editor", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Syntax error in SQL/).should("not.exist");
 
-      cy.button("Save changes").click();
+      cy.button("Save").click();
       cy.wait("@updateCard");
 
       cy.get("[data-testid=cell-data]").contains(1);

@@ -1,14 +1,15 @@
 import { t } from "ttag";
 
-import Button from "metabase/common/components/Button";
-import EditBar from "metabase/common/components/EditBar";
-import { Tooltip } from "metabase/ui";
+import { BenchPaneHeader } from "metabase/bench/components/BenchPaneHeader";
+import { Button, Group, Tooltip } from "metabase/ui";
+import type { Transform } from "metabase-types/api";
 
+import { TransformTabs } from "../../TransformTabs";
 import type { QueryValidationResult } from "../types";
 
 type EditorHeaderProps = {
+  transform?: Transform;
   validationResult: QueryValidationResult;
-  name?: string;
   isNew: boolean;
   isQueryDirty: boolean;
   isSaving: boolean;
@@ -18,8 +19,8 @@ type EditorHeaderProps = {
 };
 
 export function EditorHeader({
+  transform,
   validationResult,
-  name,
   isNew,
   isQueryDirty,
   isSaving,
@@ -27,37 +28,30 @@ export function EditorHeader({
   onSave,
   onCancel,
 }: EditorHeaderProps) {
-  const canSave =
-    (isNew || isQueryDirty || hasProposedQuery) &&
-    validationResult.isValid &&
-    !isSaving;
+  const hasButtons = isNew || isQueryDirty || hasProposedQuery;
+  const canSave = validationResult.isValid && !isSaving;
 
   return (
-    <EditBar
-      title={getTitle(isNew, name)}
-      admin
-      buttons={[
-        <Button key="cancel" small onClick={onCancel}>{t`Cancel`}</Button>,
-        <Tooltip
-          key="save"
-          label={validationResult.errorMessage}
-          disabled={validationResult.errorMessage == null}
-        >
-          <Button onClick={onSave} primary small disabled={!canSave}>
-            {getSaveButtonLabel(isNew, isSaving)}
-          </Button>
-        </Tooltip>,
-      ]}
+    <BenchPaneHeader
+      title={transform && <TransformTabs transform={transform} />}
+      actions={
+        <Group>
+          {hasButtons && <Button onClick={onCancel}>{t`Cancel`}</Button>}
+          {hasButtons && (
+            <Tooltip
+              label={validationResult.errorMessage}
+              disabled={validationResult.errorMessage == null}
+            >
+              <Button onClick={onSave} variant="filled" disabled={!canSave}>
+                {getSaveButtonLabel(isNew, isSaving)}
+              </Button>
+            </Tooltip>
+          )}
+        </Group>
+      }
+      withBorder
     />
   );
-}
-
-function getTitle(isNew: boolean, name?: string) {
-  if (isNew) {
-    return t`You’re creating a new transform`;
-  } else {
-    return t`You’re editing the "${name}" transform`;
-  }
 }
 
 function getSaveButtonLabel(isNew: boolean, isSaving: boolean) {

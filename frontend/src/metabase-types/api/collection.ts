@@ -26,7 +26,7 @@ export type CollectionId =
   | "users"
   | "trash";
 
-export type CollectionContentModel = "card" | "dataset";
+export type CollectionContentModel = "card" | "dataset" | "metric";
 
 export type CollectionAuthorityLevel = "official" | null;
 

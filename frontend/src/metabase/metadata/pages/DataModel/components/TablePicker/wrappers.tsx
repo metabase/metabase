@@ -1,46 +1,58 @@
 import { useCallback, useEffect, useState } from "react";
-import { push, replace } from "react-router-redux";
+import { push } from "react-router-redux";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { getLocation } from "metabase/selectors/routing";
+import { useDispatch } from "metabase/lib/redux";
 
 import { TablePicker } from "./components";
-import type { ChangeOptions, TreePath } from "./types";
+import type { TreePath } from "./types";
 import { getUrl } from "./utils";
 
-export function RouterTablePicker(props: TreePath) {
+export function RouterTablePicker({
+  databaseId,
+  schemaName,
+  tableId,
+  collectionId,
+  modelId,
+  className,
+}: TreePath & { className?: string }) {
   const dispatch = useDispatch();
-  const [value, setValue] = useState(props);
-  const location = useSelector(getLocation);
-  const isSegments = location.pathname?.startsWith("/admin/datamodel/segment");
+  const [value, setValue] = useState<TreePath>({
+    databaseId,
+    schemaName,
+    tableId,
+    collectionId,
+    modelId,
+  });
 
   const onChange = useCallback(
-    (value: TreePath, options?: ChangeOptions) => {
+    (value: TreePath) => {
       setValue(value);
 
       // Update URL only when either opening a table or no table has been opened yet.
       // We want to keep user looking at a table when navigating databases/schemas.
-      const canUpdateUrl = value.tableId != null || props.tableId == null;
+      const canUpdateUrl =
+        value.tableId != null ||
+        value.modelId != null ||
+        (tableId == null && modelId == null);
 
       if (canUpdateUrl) {
-        if (options?.isAutomatic) {
-          // prevent auto-navigation from table-picker when Segments tab is open
-          if (!isSegments) {
-            dispatch(replace(getUrl(value)));
-          }
-        } else {
-          dispatch(push(getUrl(value)));
-        }
+        dispatch(push(getUrl(value)));
       }
     },
-    [dispatch, isSegments, props],
+    [dispatch, modelId, tableId],
   );
 
   useEffect(() => {
-    setValue(props);
-  }, [props]);
+    setValue({
+      databaseId,
+      schemaName,
+      tableId,
+      collectionId,
+      modelId,
+    });
+  }, [databaseId, schemaName, tableId, collectionId, modelId]);
 
-  return <TablePicker path={value} onChange={onChange} />;
+  return <TablePicker path={value} className={className} onChange={onChange} />;
 }
 
 export function UncontrolledTablePicker({

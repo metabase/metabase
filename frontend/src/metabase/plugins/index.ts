@@ -23,6 +23,7 @@ import {
   type EntityId,
   type PermissionSubject,
 } from "metabase/admin/permissions/types";
+import type { BenchNavItem } from "metabase/bench/constants/navigation";
 import type {
   MetricFilterControlsProps,
   MetricFilterSettings,
@@ -709,13 +710,14 @@ type PluginMetabotConfig = {
   hideSuggestedPrompts?: boolean;
   preventClose?: boolean;
   preventRetryMessage?: boolean;
-  suggestionModels: (SearchModel | "transform" | "user")[];
+  suggestionModels?: (SearchModel | "transform" | "user")[];
 };
 
 type PluginMetabotType = {
   isEnabled: () => boolean;
   Metabot: (props: {
     hide?: boolean;
+    w?: string;
     config?: PluginMetabotConfig;
   }) => React.ReactElement | null;
   defaultMetabotContextValue: MetabotContext;
@@ -728,6 +730,10 @@ type PluginMetabotType = {
   getMetabotVisible: (state: State) => boolean;
   MetabotToggleButton: ComponentType<{ className?: string }>;
   MetabotAppBarButton: ComponentType;
+  useMetabotAgent: () => null | {
+    visible: boolean;
+    setVisible: (visible: boolean) => void;
+  };
   MetabotAdminAppBarButton: ComponentType;
 };
 
@@ -752,6 +758,7 @@ export const PLUGIN_METABOT: PluginMetabotType = {
   getMetabotVisible: () => false,
   MetabotToggleButton: PluginPlaceholder,
   MetabotAppBarButton: PluginPlaceholder,
+  useMetabotAgent: () => null,
   MetabotAdminAppBarButton: PluginPlaceholder,
 };
 
@@ -874,15 +881,15 @@ export type TransformPickerProps = {
 };
 
 export type TransformsPlugin = {
+  getTransformRoutes(): ReactNode;
+  getTransformNavItems(isAdmin: boolean): BenchNavItem[];
   TransformPicker: ComponentType<TransformPickerProps>;
-  getAdminPaths(): AdminPath[];
-  getAdminRoutes(): ReactNode;
 };
 
 export const PLUGIN_TRANSFORMS: TransformsPlugin = {
+  getTransformRoutes: () => null,
+  getTransformNavItems: () => [],
   TransformPicker: PluginPlaceholder,
-  getAdminPaths: () => [],
-  getAdminRoutes: () => null,
 };
 
 export type PythonTransformsPlugin = {
@@ -912,7 +919,7 @@ export type PythonTransformsPlugin = {
     onAcceptProposed?: (query: PythonTransformSource) => void;
   }>;
   getAdminRoutes: () => ReactNode;
-  getTransformsNavLinks: () => ReactNode;
+  getTransformNavItems: (isAdmin: boolean) => BenchNavItem[];
   getCreateTransformsMenuItems: () => ReactNode;
 };
 
@@ -921,7 +928,7 @@ export const PLUGIN_TRANSFORMS_PYTHON: PythonTransformsPlugin = {
   TransformEditor: NotFoundPlaceholder,
   SourceSection: PluginPlaceholder,
   getAdminRoutes: () => null,
-  getTransformsNavLinks: () => null,
+  getTransformNavItems: () => [],
   getCreateTransformsMenuItems: () => null,
 };
 

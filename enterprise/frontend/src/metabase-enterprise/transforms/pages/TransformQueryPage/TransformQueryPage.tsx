@@ -4,7 +4,6 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
-import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
@@ -49,12 +48,8 @@ export function TransformQueryPage({
     error,
   } = useGetTransformQuery(transformId ?? skipToken);
 
-  if (isLoading || error != null) {
+  if (isLoading || error || transform == null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
-  }
-
-  if (transform == null) {
-    return <LoadingAndErrorWrapper error={t`Transform not found.`} />;
   }
 
   return (
@@ -72,18 +67,18 @@ type TransformQueryPageBodyProps = {
   route: Route;
 };
 
-export function TransformQueryPageBody({
+function TransformQueryPageBody({
   transform,
   location,
   route,
 }: TransformQueryPageBodyProps) {
   const [updateTransform, { isLoading: isSaving }] =
     useUpdateTransformMutation();
+  const { setSource, proposedSource, acceptProposed, clearProposed, isDirty } =
+    useSourceState<DraftTransformSource>(transform.id, transform.source);
   const dispatch = useDispatch();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
-  const { setSource, proposedSource, acceptProposed, clearProposed, isDirty } =
-    useSourceState<DraftTransformSource>(transform.id, transform.source);
 
   const {
     checkData,
@@ -113,14 +108,13 @@ export function TransformQueryPageBody({
   };
 
   const handleCancel = () => {
-    // set to initial source to fix isDirty calc on route leave
     setSource(transform.source);
     clearProposed();
     dispatch(push(Urls.transform(transform.id)));
   };
 
   return (
-    <AdminSettingsLayout fullWidth key={transform.id}>
+    <>
       <TransformEditorBody
         transform={transform}
         initialSource={transform.source}
@@ -146,7 +140,7 @@ export function TransformQueryPageBody({
         route={route}
         onConfirm={clearProposed}
       />
-    </AdminSettingsLayout>
+    </>
   );
 }
 

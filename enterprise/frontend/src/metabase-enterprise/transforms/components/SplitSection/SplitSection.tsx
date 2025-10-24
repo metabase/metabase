@@ -15,7 +15,7 @@ export function SplitSection({
   ...rest
 }: SplitSectionProps) {
   return (
-    <Group align="start" gap="5rem" {...rest}>
+    <Group align="start" {...rest}>
       <Stack flex={3} py="md" gap="md" maw="15rem">
         <Title order={4}>{label}</Title>
         <Text c="text-secondary">{description}</Text>

@@ -22,13 +22,13 @@ export function TagList({ tagIds, tags }: TagListProps) {
   );
 }
 
-function getTagById(
+export function getTagById(
   tags: TransformTag[],
 ): Record<TransformTagId, TransformTag> {
   return Object.fromEntries(tags.map((tag) => [tag.id, tag]));
 }
 
-function getTagList(
+export function getTagList(
   tagIds: TransformTagId[],
   tagById: Record<TransformTagId, TransformTag>,
 ) {

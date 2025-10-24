@@ -53,7 +53,7 @@ type EditorBodyProps = {
   onToggleDataReference: () => void;
   onToggleSnippetSidebar: () => void;
   onCancelQuery: () => void;
-  onInsertSnippet: (snippet: NativeQuerySnippet) => void;
+  onInsertSnippet?: (snippet: NativeQuerySnippet) => void;
   modalSnippet?: NativeQuerySnippet | null;
   onChangeModalSnippet: (snippet: NativeQuerySnippet | null) => void;
   onChangeNativeEditorSelection: (range: SelectionRange[]) => void;
@@ -134,11 +134,13 @@ export function EditorBody({
       isInitiallyOpen
       isShowingDataReference={isShowingDataReference}
       isShowingSnippetSidebar={isShowingSnippetSidebar}
-      isNativeEditorOpen
+      resizable
       hasTopBar
       hasRunButton
+      isNativeEditorOpen
       readOnly={false}
       hasParametersList={false}
+      hasEditingSidebar={false}
       handleResize={handleResize}
       runQuery={onRunQuery}
       cancelQuery={onCancelQuery}
@@ -238,5 +240,5 @@ function getHeaderHeight(isNative: boolean) {
 function useInitialEditorHeight(isNative: boolean) {
   const { height: windowHeight } = useWindowSize();
   const headerHeight = getHeaderHeight(isNative);
-  return Math.min(0.8 * (windowHeight - headerHeight), EDITOR_HEIGHT);
+  return Math.min(0.6 * (windowHeight - headerHeight), EDITOR_HEIGHT);
 }

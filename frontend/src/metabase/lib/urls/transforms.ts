@@ -9,7 +9,7 @@ import type {
   TransformTagId,
 } from "metabase-types/api";
 
-const ROOT_URL = "/admin/transforms";
+export const ROOT_URL = "/bench/transforms";
 
 export type TransformListParams = {
   lastRunStartTime?: string;
@@ -98,10 +98,18 @@ export function transformJobList({
   });
   const queryString = searchParams.toString();
   if (queryString.length > 0) {
-    return `${ROOT_URL}/jobs?${queryString}`;
+    return `/bench/jobs?${queryString}`;
   } else {
-    return `${ROOT_URL}/jobs`;
+    return `/bench/jobs`;
   }
+}
+
+export function getNewJobUrl() {
+  return `/bench/jobs/new`;
+}
+
+export function getJobUrl(id: TransformJobId) {
+  return `/bench/jobs/${id}`;
 }
 
 export function newTransformJob() {
@@ -146,9 +154,9 @@ export function transformRunList({
 
   const queryString = searchParams.toString();
   if (queryString.length > 0) {
-    return `${ROOT_URL}/runs?${queryString}`;
+    return `/bench/runs?${queryString}`;
   } else {
-    return `${ROOT_URL}/runs`;
+    return `/bench/runs`;
   }
 }
 
@@ -158,4 +166,12 @@ export function transformPythonLibrary({ path }: TransformPythonLibraryParams) {
 
 export function queryBuilderTable(tableId: TableId, databaseId: DatabaseId) {
   return `/question#?db=${databaseId}&table=${tableId}`;
+}
+
+export function getTableMetadataUrl(
+  tableId: TableId,
+  schema: string | null,
+  databaseId: DatabaseId,
+) {
+  return `/bench/metadata/database/${databaseId}/schema/${databaseId}:${encodeURIComponent(schema ?? "")}/table/${tableId}`;
 }

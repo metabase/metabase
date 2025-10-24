@@ -15,6 +15,8 @@
    [metabase.api.util.handlers :as handlers]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
    [metabase.util :as u]
@@ -88,7 +90,7 @@
 (defn get-transforms
   "Get a list of transforms."
   [& {:keys [last_run_start_time last_run_statuses tag_ids]}]
-  (api/check-superuser)
+  (api/check-403 (perms/current-user-has-application-permissions? :transforms))
   (let [transforms (t2/select :model/Transform)]
     (into []
           (comp (transforms.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
@@ -118,7 +120,7 @@
             [:target ::transform-target]
             [:run_trigger {:optional true} ::run-trigger]
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
-  (api/check-superuser)
+  (api/check-403 (perms/current-user-has-application-permissions? :transforms))
   (check-database-feature body)
   (check-feature-enabled! body)
   (api/check (not (transforms.util/target-table-exists? body))
@@ -139,8 +141,7 @@
 (defn get-transform
   "Get a specific transform."
   [id]
-  (api/check-superuser)
-  (let [{:keys [target] :as transform} (api/check-404 (t2/select-one :model/Transform id))
+  (let [{:keys [target] :as transform} (api/check-404 (api/read-check (t2/select-one :model/Transform id)))
         target-table (transforms.util/target-table (transforms.i/target-db-id transform) target :active true)]
     (-> transform
         (t2/hydrate :last_run :transform_tag_ids)
@@ -157,12 +158,11 @@
   "Get the dependencies of a specific transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api/check-superuser)
   (let [id->transform (t2/select-pk->fn identity :model/Transform)
-        _ (api/check-404 (get id->transform id))
+        _ (api/check-404 (api/read-check (get id->transform id)))
         global-ordering (transforms.ordering/transform-ordering (vals id->transform))
         dep-ids (get global-ordering id)]
-    (map id->transform dep-ids)))
+    (filter mi/can-read? (map id->transform dep-ids))))
 
 (api.macros/defendpoint :get "/run"
   "Get transform runs based on a set of filter params."
@@ -195,10 +195,9 @@
             [:target {:optional true} ::transform-target]
             [:run_trigger {:optional true} ::run-trigger]
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
-  (api/check-superuser)
   (let [transform (t2/with-transaction [_]
                     ;; Cycle detection should occur within the transaction to avoid race
-                    (let [old (t2/select-one :model/Transform id)
+                    (let [old (api/write-check (t2/select-one :model/Transform id))
                           new (merge old body)
                           target-fields #(-> % :target (select-keys [:schema :name]))]
                       ;; we must validate on a full transform object
@@ -224,7 +223,7 @@
   "Delete a transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api/check-superuser)
+  (api/write-check :model/Transform id)
   (t2/delete! :model/Transform id)
   nil)
 
@@ -232,7 +231,7 @@
   "Delete a transform's output table."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api/check-superuser)
+  (api/write-check :model/Transform id)
   (transforms.util/delete-target-table-by-id! id)
   nil)
 
@@ -240,7 +239,7 @@
   "Cancel the current run for a given transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api/check-superuser)
+  (api/write-check :model/Transform id)
   (let [transform (api/check-404 (t2/select-one :model/Transform id))
         run (api/check-404 (transform-run/running-run-for-transform-id id))]
     (transform-run-cancelation/mark-cancel-started-run! (:id run))
@@ -252,7 +251,7 @@
   "Run a transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api/check-superuser)
+  (api/write-check :model/Transform id)
   (let [transform (api/check-404 (t2/select-one :model/Transform id))
         _         (check-feature-enabled! transform)
         start-promise (promise)]

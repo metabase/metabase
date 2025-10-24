@@ -3,12 +3,20 @@ import cx from "classnames";
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 
-import { Box, Flex, Icon, Skeleton, rem } from "metabase/ui";
+import CS from "metabase/css/core/index.css";
+import { Box, Flex, Icon, Skeleton, Text, rem } from "metabase/ui";
 
 import { getUrl } from "../../../utils";
 import { TYPE_ICONS } from "../constants";
-import type { FlatItem, TreePath } from "../types";
-import { hasChildren } from "../utils";
+import type {
+  CollectionItem,
+  FlatItem,
+  ItemType,
+  ModelItem,
+  TableItem,
+  TreePath,
+} from "../types";
+import { isItemWithHiddenExpandIcon, isLeafNode } from "../utils";
 
 import { BulkTableVisibilityToggle } from "./BulkTableVisibilityToggle";
 import S from "./Results.module.css";
@@ -39,8 +47,17 @@ export function Results({
   onItemClick,
   onSelectedIndexChange,
 }: Props) {
-  const [activeTableId, setActiveTableId] = useState(path.tableId);
-  const ref = useRef<HTMLDivElement>(null);
+  const [activeItem, setActiveItem] = useState<
+    { type: ItemType; id: number | string } | undefined
+  >(() => {
+    if (path.tableId != null) {
+      return { type: "table", id: path.tableId };
+    }
+    if (path.modelId != null) {
+      return { type: "model", id: path.modelId };
+    }
+  });
+  const ref = useRef<HTMLDivElement | null>(null);
 
   const virtual = useVirtualizer({
     count: items.length,
@@ -90,11 +107,35 @@ export function Results({
     }
   }, [selectedIndex]);
 
+  useEffect(
+    function cleanSelectionOnPathChange() {
+      if (
+        !path.databaseId &&
+        !path.schemaName &&
+        !path.tableId &&
+        !path.collectionId &&
+        !path.modelId
+      ) {
+        setActiveItem(undefined);
+      }
+    },
+    [
+      path.collectionId,
+      path.databaseId,
+      path.modelId,
+      path.schemaName,
+      path.tableId,
+    ],
+  );
+
   return (
-    <Box ref={ref} px="xl" pb="lg" className={S.results}>
-      <Box style={{ height: virtual.getTotalSize() }}>
+    <Box ref={ref} className={S.results}>
+      <Box
+        className={S.listContainer}
+        style={{ height: virtual.getTotalSize() }}
+      >
         {virtualItems.map(({ start, index }) => {
-          const item = items[index];
+          const item = items[index] as FlatItem;
           const {
             value,
             label,
@@ -106,12 +147,19 @@ export function Results({
             parent,
             disabled,
           } = item;
-          const isActive = type === "table" && value?.tableId === activeTableId;
+          const isActive =
+            (item.type === "table" &&
+              activeItem?.type === "table" &&
+              item.value?.tableId === activeItem.id) ||
+            (item.type === "model" &&
+              activeItem?.type === "model" &&
+              item.value?.modelId === activeItem.id);
           const parentIndex = items.findIndex((item) => item.key === parent);
           const children = items.filter((item) => item.parent === key);
           const hasTableChildren = children.some(
             (child) => child.type === "table",
           );
+          const typedValue = value as TreePath | undefined;
 
           const handleItemSelect = (open?: boolean) => {
             if (disabled) {
@@ -120,12 +168,25 @@ export function Results({
 
             toggle?.(key, open);
 
-            if (value && (!isExpanded || type === "table")) {
+            if (
+              value &&
+              (!isExpanded || type === "table" || type === "model")
+            ) {
               onItemClick?.(value);
             }
 
-            if (type === "table") {
-              setActiveTableId(value?.tableId);
+            if (type === "table" && (value as TableItem["value"])?.tableId) {
+              setActiveItem({
+                type: "table",
+                id: (value as TableItem["value"]).tableId,
+              });
+            }
+
+            if (type === "model" && (value as ModelItem["value"])?.modelId) {
+              setActiveItem({
+                type: "model",
+                id: (value as ModelItem["value"]).modelId,
+              });
             }
           };
 
@@ -194,7 +255,8 @@ export function Results({
               align="center"
               justify="space-between"
               gap="sm"
-              className={cx(S.item, S[type], {
+              wrap="nowrap"
+              className={cx(S.item, {
                 [S.active]: isActive,
                 [S.selected]: selectedIndex === index,
               })}
@@ -207,13 +269,16 @@ export function Results({
                 pointerEvents: disabled ? "none" : undefined,
               }}
               to={getUrl({
-                databaseId: value?.databaseId,
+                databaseId: typedValue?.databaseId,
                 schemaName:
                   type === "schema" || type === "table"
-                    ? value?.schemaName
+                    ? typedValue?.schemaName
                     : undefined,
-                tableId: type === "table" ? value?.tableId : undefined,
+                tableId: type === "table" ? typedValue?.tableId : undefined,
                 fieldId: undefined,
+                collectionId: typedValue?.collectionId,
+                modelId: typedValue?.modelId,
+                fieldName: undefined,
               })}
               data-testid="tree-item"
               data-type={type}
@@ -225,26 +290,28 @@ export function Results({
               onFocus={() => onSelectedIndexChange?.(index)}
             >
               <Flex align="center" mih={ITEM_MIN_HEIGHT} py="xs" w="100%">
-                <Flex align="flex-start" gap="xs" w="100%">
-                  <Flex align="center" gap="xs">
-                    {hasChildren(type) && (
-                      <Icon
-                        name="chevronright"
-                        size={10}
-                        color="var(--mb-color-text-light)"
-                        className={cx(S.chevron, {
-                          [S.expanded]: isExpanded,
-                        })}
-                      />
-                    )}
+                <Flex align="center" gap="xs" w="100%">
+                  <Icon
+                    name="chevronright"
+                    size={10}
+                    color="var(--mb-color-text-light)"
+                    className={cx(S.chevron, {
+                      [S.expanded]: isExpanded,
+                      [CS.hidden]: isItemWithHiddenExpandIcon(item),
+                    })}
+                  />
 
-                    <Icon name={TYPE_ICONS[type]} className={S.icon} />
-                  </Flex>
+                  <Icon
+                    {...((item as CollectionItem).icon || {
+                      name: TYPE_ICONS[type],
+                    })}
+                    className={cx(S.icon, isLeafNode(item) && S.leafIcon)}
+                  />
 
                   {isLoading ? (
                     <Loading />
                   ) : (
-                    <Box
+                    <Text
                       className={S.label}
                       c={
                         type === "table" &&
@@ -256,9 +323,10 @@ export function Results({
                       }
                       data-testid="tree-item-label"
                       pl="sm"
+                      lineClamp={1}
                     >
                       {label}
-                    </Box>
+                    </Text>
                   )}
                 </Flex>
               </Flex>

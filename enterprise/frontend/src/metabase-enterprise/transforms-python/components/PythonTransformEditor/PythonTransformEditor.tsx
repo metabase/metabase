@@ -15,6 +15,7 @@ import type {
 import { PythonDataPicker } from "./PythonDataPicker";
 import { PythonEditorBody } from "./PythonEditorBody";
 import { PythonEditorResults } from "./PythonEditorResults";
+import S from "./PythonTransformEditor.module.css";
 import {
   getValidationResult,
   isPythonTransformSource,
@@ -118,6 +119,12 @@ export function PythonTransformEditor({
     }
   };
 
+  const handleCancel = () => {
+    setSource(initialSource);
+    setIsSourceDirty(false);
+    onCancel();
+  };
+
   useHotkeys([["mod+Enter", handleCmdEnter]], []);
 
   const validationResult = getValidationResult(saveSource);
@@ -131,42 +138,41 @@ export function PythonTransformEditor({
       gap={0}
     >
       <EditorHeader
+        transform={transform}
         isNew={isNew}
         isSaving={isSaving}
         hasProposedQuery={!!proposedSource}
         onSave={handleSave}
-        onCancel={onCancel}
+        onCancel={handleCancel}
         validationResult={validationResult}
         isQueryDirty={isSourceDirty}
       />
-      <Flex h="100%" w="100%">
+      <Flex className={S.main}>
         <PythonDataPicker
           database={saveSource["source-database"]}
           tables={saveSource["source-tables"]}
           onChange={handleDataChange}
         />
-        <Stack w="100%" h="100%" gap={0}>
-          <PythonEditorBody
-            isRunnable={isRunnable && isPythonTransformSource(source)}
-            isRunning={isRunning}
-            isDirty={isDirty}
-            onRun={run}
-            onCancel={cancel}
-            source={source.body}
-            proposedSource={proposedSource?.body}
-            onChange={handleScriptChange}
-            withDebugger={showDebugger}
-            onAcceptProposed={handleAcceptProposed}
-            onRejectProposed={onRejectProposed}
-          />
-          {showDebugger && (
-            <PythonEditorResults
-              isRunning={isRunning}
-              executionResult={executionResult}
-            />
-          )}
-        </Stack>
+        <PythonEditorBody
+          isRunnable={isRunnable && isPythonTransformSource(source)}
+          isRunning={isRunning}
+          isDirty={isDirty}
+          onRun={run}
+          onCancel={cancel}
+          source={source.body}
+          proposedSource={proposedSource?.body}
+          onChange={handleScriptChange}
+          withDebugger={showDebugger}
+          onAcceptProposed={handleAcceptProposed}
+          onRejectProposed={onRejectProposed}
+        />
       </Flex>
+      {showDebugger && (
+        <PythonEditorResults
+          isRunning={isRunning}
+          executionResult={executionResult}
+        />
+      )}
     </Stack>
   );
 }

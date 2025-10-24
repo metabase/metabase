@@ -297,6 +297,7 @@
   [search-context]
   (let [{:keys [created-at
                 created-by
+                context
                 last-edited-at
                 last-edited-by
                 models

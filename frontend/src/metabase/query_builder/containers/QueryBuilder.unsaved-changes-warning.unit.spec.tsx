@@ -39,8 +39,8 @@ import {
   triggerNotebookQueryChange,
   triggerVisualizationQueryChange,
   waitForNativeQueryEditorReady,
-  waitForSaveChangesToBeDisabled,
-  waitForSaveChangesToBeEnabled,
+  waitForSaveButtonToBeDisabled,
+  waitForSaveButtonToBeEnabled,
   waitForSaveToBeEnabled,
 } from "./test-utils";
 
@@ -191,7 +191,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
         });
 
         await triggerNotebookQueryChange();
-        await waitForSaveChangesToBeEnabled();
+        await waitForSaveButtonToBeEnabled();
 
         act(() => {
           history.push("/redirect");
@@ -207,10 +207,10 @@ describe("QueryBuilder - unsaved changes warning", () => {
         });
 
         await triggerNotebookQueryChange();
-        await waitForSaveChangesToBeEnabled();
+        await waitForSaveButtonToBeEnabled();
 
         await revertNotebookQueryChange();
-        await waitForSaveChangesToBeDisabled();
+        await waitForSaveButtonToBeDisabled();
 
         act(() => {
           history.push("/redirect");
@@ -228,7 +228,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
         });
 
         await triggerNotebookQueryChange();
-        await waitForSaveChangesToBeEnabled();
+        await waitForSaveButtonToBeEnabled();
 
         await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
@@ -242,10 +242,10 @@ describe("QueryBuilder - unsaved changes warning", () => {
         });
 
         await triggerNotebookQueryChange();
-        await waitForSaveChangesToBeEnabled();
+        await waitForSaveButtonToBeEnabled();
 
         await revertNotebookQueryChange();
-        await waitForSaveChangesToBeDisabled();
+        await waitForSaveButtonToBeDisabled();
 
         await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
@@ -266,11 +266,9 @@ describe("QueryBuilder - unsaved changes warning", () => {
         await waitForLoaderToBeRemoved();
 
         await triggerNotebookQueryChange();
-        await waitForSaveChangesToBeEnabled();
+        await waitForSaveButtonToBeEnabled();
 
-        await userEvent.click(
-          screen.getByRole("button", { name: "Save changes" }),
-        );
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
 
         await waitFor(() => {
           expect(history.getCurrentLocation().pathname).toEqual(
@@ -301,7 +299,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
         });
 
         await triggerMetadataChange();
-        await waitForSaveChangesToBeEnabled();
+        await waitForSaveButtonToBeEnabled();
 
         act(() => {
           history.push("/redirect");
@@ -350,7 +348,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
         });
 
         await triggerMetadataChange();
-        await waitForSaveChangesToBeEnabled();
+        await waitForSaveButtonToBeEnabled();
 
         await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
@@ -371,17 +369,15 @@ describe("QueryBuilder - unsaved changes warning", () => {
 
         /**
          * When initialRoute is `/model/${TEST_MODEL_CARD.id}/columns`,
-         * the QueryBuilder gets incompletely intialized.
+         * the QueryBuilder gets incompletely initialized.
          * This seems to affect only tests.
          */
         await userEvent.click(await screen.findByText("Columns"));
 
         await triggerMetadataChange();
-        await waitForSaveChangesToBeEnabled();
+        await waitForSaveButtonToBeEnabled();
 
-        await userEvent.click(
-          screen.getByRole("button", { name: "Save changes" }),
-        );
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
 
         await waitFor(() => {
           expect(history.getCurrentLocation().pathname).toEqual(
@@ -411,7 +407,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       });
 
       await triggerNotebookQueryChange();
-      await waitForSaveChangesToBeEnabled();
+      await waitForSaveButtonToBeEnabled();
 
       await userEvent.click(screen.getByTestId("editor-tabs-columns-name"));
 
@@ -420,7 +416,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       ).not.toBeInTheDocument();
 
       await triggerMetadataChange();
-      await waitForSaveChangesToBeEnabled();
+      await waitForSaveButtonToBeEnabled();
 
       await userEvent.click(screen.getByTestId("editor-tabs-query-name"));
 

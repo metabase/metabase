@@ -139,6 +139,12 @@ export type SearchRequest = {
   search_engine?: "appdb" | "in-place" | "semantic" | null;
   display_type?: string[] | null;
 
+  // HACK: This is currently only implemented client-side.
+  // Sometimes /search results are refreshed because of invalidateTags.
+  // But reindexing happens asynchronously on the BE so the data from those refreshes will be outdated.
+  // Opting into `wait_for_reindex` will put a slight delay on /search calls when there isn't a cached result yet.
+  wait_for_reindex?: boolean;
+
   // this should be in ListCollectionItemsRequest but legacy code expects them here
   collection?: CollectionId;
   namespace?: "snippets";
