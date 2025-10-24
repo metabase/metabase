@@ -941,6 +941,26 @@
                  (client/client creds :put 403 (format "user/%d" (u/the-id user))
                                 {:email "adifferentemail@metabase.com"}))))))))
 
+(deftest update-permissions-test-2
+  (testing "PUT /api/user/:id"
+    (testing "Google auth users can change their locale"
+      (mt/with-temp [:model/User user {:email "anemail@metabase.com"
+                                       :password "def123"
+                                       :sso_source "google"}]
+        (let [creds {:username "anemail@metabase.com"
+                     :password "def123"}]
+          (client/client creds :put 200 (format "user/%d" (u/the-id user))
+                         {:locale "id"}))))
+
+    (testing "LDAP users can change their locale"
+      (mt/with-temp [:model/User user {:email "anemail@metabase.com"
+                                       :password "def123"
+                                       :sso_source "ldap"}]
+        (let [creds {:username "anemail@metabase.com"
+                     :password "def123"}]
+          (client/client creds :put 200 (format "user/%d" (u/the-id user))
+                         {:locale "id"}))))))
+
 (defn- do-with-preserved-rasta-personal-collection-name! [thunk]
   (let [{collection-name :name, :keys [slug id]} (collection/user->personal-collection (mt/user->id :rasta))]
     (mt/with-temp-vals-in-db :model/Collection id {:name collection-name, :slug slug}
