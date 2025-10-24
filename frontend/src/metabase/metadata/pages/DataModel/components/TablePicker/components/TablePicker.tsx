@@ -32,7 +32,7 @@ export function TablePicker({
         <Input
           flex="1"
           leftSection={<Icon name="search" />}
-          placeholder={t`Search tables (use * as a wildcard)`}
+          placeholder={t`Search (use * as a wildcard)`}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
