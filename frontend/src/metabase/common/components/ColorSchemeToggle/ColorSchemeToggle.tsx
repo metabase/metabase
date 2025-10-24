@@ -1,41 +1,23 @@
 import { t } from "ttag";
 
-import { ActionIcon, type ActionIconProps, Icon, Tooltip } from "metabase/ui";
+import { Select, type SelectProps } from "metabase/ui";
 import { useColorScheme } from "metabase/ui/components/theme/ColorSchemeProvider";
-import type { ResolvedColorScheme } from "metabase/ui/components/theme/ColorSchemeProvider/ColorSchemeProvider";
 
-const iconMap: Record<ResolvedColorScheme, "sun" | "moon"> = {
-  light: "sun",
-  dark: "moon",
-};
-
-const getTooltipText = (
-  scheme: ResolvedColorScheme,
-  systemScheme: ResolvedColorScheme,
-): string => {
-  const baseText =
-    scheme === "dark" ? t`Switch to light mode` : t`Switch to dark mode`;
-
-  return systemScheme !== scheme
-    ? `${baseText} ${t`(system preference)`}`
-    : baseText;
-};
-
-export function ColorSchemeToggle(props: ActionIconProps & { id?: string }) {
-  const { resolvedColorScheme, systemColorScheme, toggleColorScheme } =
-    useColorScheme();
-
-  const tooltipText = getTooltipText(resolvedColorScheme, systemColorScheme);
+export function ColorSchemeToggle(
+  props: Omit<SelectProps, "data"> & { id?: string },
+) {
+  const { colorScheme, setColorScheme } = useColorScheme();
 
   return (
-    <Tooltip label={tooltipText}>
-      <ActionIcon
-        onClick={toggleColorScheme}
-        aria-label={tooltipText}
-        {...props}
-      >
-        <Icon name={iconMap[resolvedColorScheme]} />
-      </ActionIcon>
-    </Tooltip>
+    <Select
+      {...props}
+      value={colorScheme}
+      data={[
+        { value: "auto", label: t`Use system default` },
+        { value: "dark", label: t`Dark` },
+        { value: "light", label: t`Light` },
+      ]}
+      onChange={(val) => setColorScheme(val)}
+    />
   );
 }
