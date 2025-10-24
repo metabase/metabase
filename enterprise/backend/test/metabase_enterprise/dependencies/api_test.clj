@@ -45,14 +45,12 @@
         card1-meta (lib.metadata/card mp (:id card1))
         card2-meta (lib.metadata/card mp (:id card2))
         base-query (lib/query mp card1-meta)
-        card1-cols (lib/returned-columns base-query card1-meta)
-        card2-cols (lib/returned-columns base-query card2-meta)
+        card1-col (first (lib/returned-columns base-query card1-meta))
+        card2-col (first (lib/returned-columns base-query card2-meta))
         join-clause (-> (lib/join-clause card2-meta)
                         (lib/with-join-alias "joined")
-                        (lib/with-join-conditions
-                         [(lib/= (first card1-cols)
-                                 (-> (first card2-cols)
-                                     (lib/with-join-alias "joined")))])
+                        (lib/with-join-conditions [(lib/= card1-col
+                                                          (lib/with-join-alias card2-col "joined"))])
                         (lib/with-join-fields :all))]
     (card-with-query "Card with join" (lib/join base-query join-clause))))
 
@@ -71,109 +69,101 @@
 
 (deftest check-card-removing-column-breaks-downstream-test
   (testing "POST /api/ee/dependencies/check_card detects when removing a column breaks downstream cards"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "test@test.com"}]
-          (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (let [mp (mt/metadata-provider)
-                  ;; Create base card querying real orders table
-                  base-card (card/create-card! (basic-card) user)
-                  ;; Create dependent card that filters on TOTAL
-                  base-card-meta (lib.metadata/card mp (:id base-card))
-                  dependent-query (let [q (lib/query mp base-card-meta)
-                                        cols (lib/filterable-columns q)
-                                        total-col (m/find-first #(= (:id %) (mt/id :orders :total)) cols)]
-                                    (lib/filter q (lib/> total-col 100)))
-                  dependent-card (card/create-card!
-                                  (card-with-query "Dependent Card filtering on Total" dependent-query)
-                                  user)
-                  ;; Propose changing to products table (doesn't have TOTAL column, breaks downstream)
-                  proposed-query (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                  proposed-card {:id (:id base-card)
-                                 :type :question
-                                 :dataset_query proposed-query
-                                 :result_metadata nil}
-                  response (mt/user-http-request :rasta :post 200 "ee/dependencies/check_card" proposed-card)]
-              (is (=? {:success false
-                       :bad_cards [{:id (:id dependent-card)}]
-                       :bad_transforms []}
-                      response)))))))))
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/User user {:email "test@test.com"}]
+        (mt/with-model-cleanup [:model/Card :model/Dependency]
+          (let [mp (mt/metadata-provider)
+                base-card (card/create-card! (basic-card) user)
+                base-card-meta (lib.metadata/card mp (:id base-card))
+                dependent-query (let [q (lib/query mp base-card-meta)
+                                      cols (lib/filterable-columns q)
+                                      total-col (m/find-first #(= (:id %) (mt/id :orders :total)) cols)]
+                                  (lib/filter q (lib/> total-col 100)))
+                dependent-card (card/create-card!
+                                (card-with-query "Dependent Card filtering on Total" dependent-query)
+                                user)
+                ;; Propose changing to products table (doesn't have TOTAL column, breaks downstream)
+                proposed-query (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                proposed-card {:id (:id base-card)
+                               :type :question
+                               :dataset_query proposed-query
+                               :result_metadata nil}
+                response (mt/user-http-request :rasta :post 200 "ee/dependencies/check_card" proposed-card)]
+            (is (=? {:success false
+                     :bad_cards [{:id (:id dependent-card)}]
+                     :bad_transforms []}
+                    response))))))))
 
 (deftest check-card-renaming-expression-breaks-downstream-test
   (testing "POST /api/ee/dependencies/check_card detects when renaming an expression breaks downstream cards"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "test@test.com"}]
-          (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (let [mp (mt/metadata-provider)
-                  orders-query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                  base-query (-> orders-query
-                                 (lib/expression "Tax Rate"
-                                                 (lib// (lib.metadata/field mp (mt/id :orders :tax))
-                                                        (lib.metadata/field mp (mt/id :orders :subtotal)))))
-                  base-card (card/create-card!
-                             (card-with-query "Base Card with Tax Rate" base-query)
-                             user)
-                  dependent-query (let [q (lib/query mp (lib.metadata/card mp (:id base-card)))
-                                        cols (lib/filterable-columns q)
-                                        tax-rate-col (m/find-first #(= (:lib/deduplicated-name %) "Tax Rate") cols)]
-                                    (lib/filter q (lib/> tax-rate-col 0.06)))
-                  dependent-card (card/create-card!
-                                  (card-with-query "Dependent Card filtering on Tax Rate" dependent-query)
-                                  user)
-                  ;; renaming "Tax Rate" to "Sales Tax" should break downstream reference
-                  proposed-query (-> orders-query
-                                     (lib/expression "Sales Tax"
-                                                     (lib// (lib.metadata/field mp (mt/id :orders :tax))
-                                                            (lib.metadata/field mp (mt/id :orders :subtotal)))))
-                  proposed-card {:id (:id base-card)
-                                 :type :question
-                                 :dataset_query proposed-query
-                                 :result_metadata nil}
-                  response (mt/user-http-request :rasta :post 200 "ee/dependencies/check_card"
-                                                 proposed-card)]
-              (is (=? {:success false
-                       :bad_cards [{:id (:id dependent-card)}]
-                       :bad_transforms []}
-                      response)))))))))
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/User user {:email "test@test.com"}]
+        (mt/with-model-cleanup [:model/Card :model/Dependency]
+          (let [mp (mt/metadata-provider)
+                orders-query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                base-query (-> orders-query
+                               (lib/expression "Tax Rate"
+                                               (lib// (lib.metadata/field mp (mt/id :orders :tax))
+                                                      (lib.metadata/field mp (mt/id :orders :subtotal)))))
+                base-card (card/create-card!
+                           (card-with-query "Base Card with Tax Rate" base-query)
+                           user)
+                dependent-query (let [q (lib/query mp (lib.metadata/card mp (:id base-card)))
+                                      cols (lib/filterable-columns q)
+                                      tax-rate-col (m/find-first #(= (:lib/deduplicated-name %) "Tax Rate") cols)]
+                                  (lib/filter q (lib/> tax-rate-col 0.06)))
+                dependent-card (card/create-card!
+                                (card-with-query "Dependent Card filtering on Tax Rate" dependent-query)
+                                user)
+                ;; renaming "Tax Rate" to "Sales Tax" should break downstream reference
+                proposed-query (-> orders-query
+                                   (lib/expression "Sales Tax"
+                                                   (lib// (lib.metadata/field mp (mt/id :orders :tax))
+                                                          (lib.metadata/field mp (mt/id :orders :subtotal)))))
+                proposed-card {:id (:id base-card)
+                               :type :question
+                               :dataset_query proposed-query
+                               :result_metadata nil}
+                response (mt/user-http-request :rasta :post 200 "ee/dependencies/check_card"
+                                               proposed-card)]
+            (is (=? {:success false
+                     :bad_cards [{:id (:id dependent-card)}]
+                     :bad_transforms []}
+                    response))))))))
 
 (deftest check-card-breaks-multiple-downstream-cards-test
   (testing "POST /api/ee/dependencies/check_card detects when one change breaks multiple downstream cards"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "test@test.com"}]
-          (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (let [mp (mt/metadata-provider)
-                  ;; Create base card querying real orders table
-                  base-card (card/create-card! (basic-card) user)
-                  ;; Create first dependent card filtering on TOTAL
-                  base-card-meta (lib.metadata/card mp (:id base-card))
-                  dependent-query-1 (let [q (lib/query mp base-card-meta)
-                                          total-col (m/find-first #(= (:id %) (mt/id :orders :total))
-                                                                  (lib/filterable-columns q))]
-                                      (lib/filter q (lib/> total-col 100)))
-                  dependent-card-1 (card/create-card!
-                                    (card-with-query "First Dependent Card" dependent-query-1)
-                                    user)
-                  ;; Create second dependent card also using TOTAL
-                  dependent-query-2 (let [q (lib/query mp base-card-meta)
-                                          total-col (m/find-first #(= (:id %) (mt/id :orders :total))
-                                                                  (lib/filterable-columns q))]
-                                      (lib/filter q (lib/< total-col 50)))
-                  dependent-card-2 (card/create-card!
-                                    (card-with-query "Second Dependent Card" dependent-query-2)
-                                    user)
-                  ;; Propose changing to products table (no TOTAL, breaks both downstream cards)
-                  proposed-query (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                  proposed-card {:id (:id base-card)
-                                 :type :question
-                                 :dataset_query proposed-query
-                                 :result_metadata nil}
-                  response (mt/user-http-request :rasta :post 200 "ee/dependencies/check_card" proposed-card)]
-              (is (=? {:success false
-                       :bad_cards #{(:id dependent-card-1) (:id dependent-card-2)}
-                       :bad_transforms []}
-                      (update response :bad_cards #(into #{} (map :id) %)))))))))))
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/User user {:email "test@test.com"}]
+        (mt/with-model-cleanup [:model/Card :model/Dependency]
+          (let [mp (mt/metadata-provider)
+                base-card (card/create-card! (basic-card) user)
+                base-card-meta (lib.metadata/card mp (:id base-card))
+                dependent-query-1 (let [q (lib/query mp base-card-meta)
+                                        total-col (m/find-first #(= (:id %) (mt/id :orders :total))
+                                                                (lib/filterable-columns q))]
+                                    (lib/filter q (lib/> total-col 100)))
+                dependent-card-1 (card/create-card!
+                                  (card-with-query "First Dependent Card" dependent-query-1)
+                                  user)
+                dependent-query-2 (let [q (lib/query mp base-card-meta)
+                                        total-col (m/find-first #(= (:id %) (mt/id :orders :total))
+                                                                (lib/filterable-columns q))]
+                                    (lib/filter q (lib/< total-col 50)))
+                dependent-card-2 (card/create-card!
+                                  (card-with-query "Second Dependent Card" dependent-query-2)
+                                  user)
+                ;; Propose changing to products table (no TOTAL, breaks both downstream cards)
+                proposed-query (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                proposed-card {:id (:id base-card)
+                               :type :question
+                               :dataset_query proposed-query
+                               :result_metadata nil}
+                response (mt/user-http-request :rasta :post 200 "ee/dependencies/check_card" proposed-card)]
+            (is (=? {:success false
+                     :bad_cards #{(:id dependent-card-1) (:id dependent-card-2)}
+                     :bad_transforms []}
+                    (update response :bad_cards #(into #{} (map :id) %))))))))))
 
 (deftest check-transform-test
   (testing "POST /api/ee/dependencies/check_transform"
@@ -194,33 +184,32 @@
 
 (deftest check-snippet-content-change-breaks-cards-test
   (testing "POST /api/ee/dependencies/check_snippet detects when snippet content changes break dependent cards"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "test@test.com"}
-                       :model/NativeQuerySnippet {snippet-id :id snippet-name :name} {:name "filter-snippet"
-                                                                                      :content "WHERE SUBTOTAL > 100"}]
-          (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (let [tag-name (str "snippet: " snippet-name)
-                  mp (mt/metadata-provider)
-                  native-query (-> (lib/native-query mp (format "SELECT * FROM ORDERS %s" (str "{{" tag-name "}}")))
-                                   (lib/with-template-tags {tag-name {:name tag-name
-                                                                      :display-name (str "Snippet: " snippet-name)
-                                                                      :type :snippet
-                                                                      :snippet-name snippet-name
-                                                                      :snippet-id snippet-id}}))
-                  card (card/create-card! {:name "Card using snippet"
-                                           :dataset_query native-query
-                                           :display :table
-                                           :visualization_settings {}}
-                                          user)
-                  proposed-content "WHERE NONEXISTENT_COLUMN > 100"
-                  response (mt/user-http-request :rasta :post 200 "ee/dependencies/check_snippet"
-                                                 {:id snippet-id
-                                                  :content proposed-content})]
-              (is (=? {:success false
-                       :bad_cards [{:id (:id card)}]
-                       :bad_transforms []}
-                      response)))))))))
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/User user {:email "test@test.com"}
+                     :model/NativeQuerySnippet {snippet-id :id snippet-name :name} {:name "filter-snippet"
+                                                                                    :content "WHERE SUBTOTAL > 100"}]
+        (mt/with-model-cleanup [:model/Card :model/Dependency]
+          (let [tag-name (str "snippet: " snippet-name)
+                mp (mt/metadata-provider)
+                native-query (-> (lib/native-query mp (format "SELECT * FROM ORDERS %s" (str "{{" tag-name "}}")))
+                                 (lib/with-template-tags {tag-name {:name tag-name
+                                                                    :display-name (str "Snippet: " snippet-name)
+                                                                    :type :snippet
+                                                                    :snippet-name snippet-name
+                                                                    :snippet-id snippet-id}}))
+                card (card/create-card! {:name "Card using snippet"
+                                         :dataset_query native-query
+                                         :display :table
+                                         :visualization_settings {}}
+                                        user)
+                proposed-content "WHERE NONEXISTENT_COLUMN > 100"
+                response (mt/user-http-request :rasta :post 200 "ee/dependencies/check_snippet"
+                                               {:id snippet-id
+                                                :content proposed-content})]
+            (is (=? {:success false
+                     :bad_cards [{:id (:id card)}]
+                     :bad_transforms []}
+                    response))))))))
 
 (deftest graph-test
   (testing "GET /api/ee/dependencies/graph"
@@ -268,22 +257,21 @@
 
 (deftest graph-table-root-test
   (testing "GET /api/ee/dependencies/graph with table as root node"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-model-cleanup [:model/Card :model/Dependency]
-          (mt/with-temp [:model/User user {:email "test@test.com"}]
-            (let [_card-1 (card/create-card! (basic-card "Card 1" :orders) user)
-                  _card-2 (card/create-card! (basic-card "Card 2" :orders) user)
-                  response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
-                                                 :id (mt/id :orders)
-                                                 :type "table")]
-              (testing "table has no upstream dependencies, so only the table node is returned"
-                (is (=? {:nodes [{:id (mt/id :orders)
-                                  :type "table"
-                                  :data {:db_id (mt/id)}
-                                  :dependents_count {:question #(and (int? %) (>= % 2))}}]
-                         :edges #{}}
-                        (update response :edges set)))))))))))
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/Card :model/Dependency]
+        (mt/with-temp [:model/User user {:email "test@test.com"}]
+          (let [_card-1 (card/create-card! (basic-card "Card 1" :orders) user)
+                _card-2 (card/create-card! (basic-card "Card 2" :orders) user)
+                response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
+                                               :id (mt/id :orders)
+                                               :type "table")]
+            (testing "table has no upstream dependencies, so only the table node is returned"
+              (is (=? {:nodes [{:id (mt/id :orders)
+                                :type "table"
+                                :data {:db_id (mt/id)}
+                                :dependents_count {:question #(and (int? %) (>= % 2))}}]
+                       :edges #{}}
+                      (update response :edges set))))))))))
 
 (deftest dependents-test
   (testing "GET /api/ee/dependencies/graph/dependents"
@@ -415,44 +403,43 @@
 
 (deftest graph-filtering-test
   (testing "GET /api/ee/dependencies/graph filters out upstream nodes the user cannot read"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-non-admin-groups-no-root-collection-perms
-          (mt/with-temp [:model/Collection readable-collection {}
-                         :model/Collection unreadable-collection {}
-                         :model/User user {:email "test@test.com"}]
-            (mt/with-model-cleanup [:model/Card :model/Dependency]
-              (let [readable-base (card/create-card! (assoc (basic-card "Readable")
-                                                            :collection_id (:id readable-collection)) user)
-                    unreadable-base (card/create-card! (assoc (basic-card "Unreadable")
-                                                              :collection_id (:id unreadable-collection)) user)
-                    top-card (card/create-card! (assoc (wrap-two-cards readable-base unreadable-base)
-                                                       :collection_id (:id readable-collection))
-                                                user)]
-                (perms/grant-collection-read-permissions! (perms/all-users-group) readable-collection)
-                (testing "User sees complete upstream graph through readable path"
-                  (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
-                                                       :id (:id top-card)
-                                                       :type "card")
-                        nodes (set (map (juxt :type :id) (:nodes response)))
-                        expected-nodes #{["card" (:id top-card)] ["card" (:id readable-base)] ["table" (mt/id :orders)]}]
-                    (is (= expected-nodes nodes)
-                        "Should see top-card, readable-base, and :orders table")))
-                (testing "Edges show complete readable dependency chain"
-                  (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
-                                                       :id (:id top-card)
-                                                       :type "card")
-                        edges (set (:edges response))
-                        expected-edges #{{:from_entity_id (:id top-card)
-                                          :from_entity_type "card"
-                                          :to_entity_id (:id readable-base)
-                                          :to_entity_type "card"}
-                                         {:from_entity_id (:id readable-base)
-                                          :from_entity_type "card"
-                                          :to_entity_id (mt/id :orders)
-                                          :to_entity_type "table"}}]
-                    (is (= expected-edges edges)
-                        "Should have edges: top-card->readable-base and readable-base->orders")))))))))))
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection readable-collection {}
+                       :model/Collection unreadable-collection {}
+                       :model/User user {:email "test@test.com"}]
+          (mt/with-model-cleanup [:model/Card :model/Dependency]
+            (let [readable-base (card/create-card! (assoc (basic-card "Readable")
+                                                          :collection_id (:id readable-collection)) user)
+                  unreadable-base (card/create-card! (assoc (basic-card "Unreadable")
+                                                            :collection_id (:id unreadable-collection)) user)
+                  top-card (card/create-card! (assoc (wrap-two-cards readable-base unreadable-base)
+                                                     :collection_id (:id readable-collection))
+                                              user)]
+              (perms/grant-collection-read-permissions! (perms/all-users-group) readable-collection)
+              (testing "User sees complete upstream graph through readable path"
+                (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
+                                                     :id (:id top-card)
+                                                     :type "card")
+                      nodes (set (map (juxt :type :id) (:nodes response)))
+                      expected-nodes #{["card" (:id top-card)] ["card" (:id readable-base)] ["table" (mt/id :orders)]}]
+                  (is (= expected-nodes nodes)
+                      "Should see top-card, readable-base, and :orders table")))
+              (testing "Edges show complete readable dependency chain"
+                (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
+                                                     :id (:id top-card)
+                                                     :type "card")
+                      edges (set (:edges response))
+                      expected-edges #{{:from_entity_id (:id top-card)
+                                        :from_entity_type "card"
+                                        :to_entity_id (:id readable-base)
+                                        :to_entity_type "card"}
+                                       {:from_entity_id (:id readable-base)
+                                        :from_entity_type "card"
+                                        :to_entity_id (mt/id :orders)
+                                        :to_entity_type "table"}}]
+                  (is (= expected-edges edges)
+                      "Should have edges: top-card->readable-base and readable-base->orders"))))))))))
 
 (deftest graph-dependents-filtering-test
   (testing "GET /api/ee/dependencies/graph/dependents filters out nodes the user cannot read"
@@ -482,152 +469,146 @@
 
 (deftest graph-multi-level-filtering-test
   (testing "GET /api/ee/dependencies/graph includes upstream nodes if ANY path to them is readable"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-non-admin-groups-no-root-collection-perms
-          (mt/with-temp [:model/Collection readable-collection {}
-                         :model/Collection unreadable-collection {}
-                         :model/User user {:email "test@test.com"}]
-            (mt/with-model-cleanup [:model/Card :model/Dependency]
-              (let [base-card (card/create-card! (assoc (basic-card) :collection_id (:id readable-collection)) user)
-                    unreadable-middle (card/create-card! (assoc (wrap-card base-card)
-                                                                :collection_id (:id unreadable-collection))
-                                                         user)
-                    readable-alternate (card/create-card! (assoc (wrap-card base-card)
-                                                                 :collection_id (:id readable-collection))
-                                                          user)
-                    end-card (card/create-card! (assoc (wrap-two-cards unreadable-middle readable-alternate)
-                                                       :collection_id (:id readable-collection))
-                                                user)]
-                (perms/grant-collection-read-permissions! (perms/all-users-group) readable-collection)
-                (testing "Diamond pattern: complete upstream graph via readable path"
-                  (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
-                                                       :id (:id end-card)
-                                                       :type "card")
-                        nodes (set (map (juxt :type :id) (:nodes response)))
-                        expected-nodes #{["card" (:id end-card)] ["card" (:id readable-alternate)]
-                                         ["card" (:id base-card)] ["table" (mt/id :orders)]}]
-                    (is (= expected-nodes nodes)
-                        "Should see end-card, readable-alternate, base-card, and :orders table")))
-                (testing "Edges show complete readable dependency chain"
-                  (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
-                                                       :id (:id end-card)
-                                                       :type "card")
-                        edges (set (:edges response))
-                        expected-edges #{{:from_entity_id (:id end-card)
-                                          :from_entity_type "card"
-                                          :to_entity_id (:id readable-alternate)
-                                          :to_entity_type "card"}
-                                         {:from_entity_id (:id readable-alternate)
-                                          :from_entity_type "card"
-                                          :to_entity_id (:id base-card)
-                                          :to_entity_type "card"}
-                                         {:from_entity_id (:id base-card)
-                                          :from_entity_type "card"
-                                          :to_entity_id (mt/id :orders)
-                                          :to_entity_type "table"}}]
-                    (is (= expected-edges edges)
-                        "Should have edges through readable path only")))))))))))
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection readable-collection {}
+                       :model/Collection unreadable-collection {}
+                       :model/User user {:email "test@test.com"}]
+          (mt/with-model-cleanup [:model/Card :model/Dependency]
+            (let [base-card (card/create-card! (assoc (basic-card) :collection_id (:id readable-collection)) user)
+                  unreadable-middle (card/create-card! (assoc (wrap-card base-card)
+                                                              :collection_id (:id unreadable-collection))
+                                                       user)
+                  readable-alternate (card/create-card! (assoc (wrap-card base-card)
+                                                               :collection_id (:id readable-collection))
+                                                        user)
+                  end-card (card/create-card! (assoc (wrap-two-cards unreadable-middle readable-alternate)
+                                                     :collection_id (:id readable-collection))
+                                              user)]
+              (perms/grant-collection-read-permissions! (perms/all-users-group) readable-collection)
+              (testing "Diamond pattern: complete upstream graph via readable path"
+                (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
+                                                     :id (:id end-card)
+                                                     :type "card")
+                      nodes (set (map (juxt :type :id) (:nodes response)))
+                      expected-nodes #{["card" (:id end-card)] ["card" (:id readable-alternate)]
+                                       ["card" (:id base-card)] ["table" (mt/id :orders)]}]
+                  (is (= expected-nodes nodes)
+                      "Should see end-card, readable-alternate, base-card, and :orders table")))
+              (testing "Edges show complete readable dependency chain"
+                (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
+                                                     :id (:id end-card)
+                                                     :type "card")
+                      edges (set (:edges response))
+                      expected-edges #{{:from_entity_id (:id end-card)
+                                        :from_entity_type "card"
+                                        :to_entity_id (:id readable-alternate)
+                                        :to_entity_type "card"}
+                                       {:from_entity_id (:id readable-alternate)
+                                        :from_entity_type "card"
+                                        :to_entity_id (:id base-card)
+                                        :to_entity_type "card"}
+                                       {:from_entity_id (:id base-card)
+                                        :from_entity_type "card"
+                                        :to_entity_id (mt/id :orders)
+                                        :to_entity_type "table"}}]
+                  (is (= expected-edges edges)
+                      "Should have edges through readable path only"))))))))))
 
 (deftest graph-filtering-all-unreadable-test
   (testing "GET /api/ee/dependencies/graph returns only root node when all upstream dependencies are unreadable"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-non-admin-groups-no-root-collection-perms
-          (mt/with-temp [:model/Collection readable-collection {}
-                         :model/Collection unreadable-collection {}
-                         :model/User user {:email "test@test.com"}]
-            (mt/with-model-cleanup [:model/Card :model/Dependency]
-              (let [unreadable-base (card/create-card! (assoc (basic-card "Unreadable")
-                                                              :collection_id (:id unreadable-collection)) user)
-                    top-card (card/create-card! (assoc (wrap-card unreadable-base)
-                                                       :collection_id (:id readable-collection))
-                                                user)]
-                (perms/grant-collection-read-permissions! (perms/all-users-group) readable-collection)
-                (testing "User sees only the top card in the graph"
-                  (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
-                                                       :id (:id top-card)
-                                                       :type "card")
-                        nodes (set (map (juxt :type :id) (:nodes response)))]
-                    (is (= #{["card" (:id top-card)]} nodes)
-                        "Should see only top-card when all dependencies are unreadable")))
-                (testing "No edges when all dependencies are filtered"
-                  (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
-                                                       :id (:id top-card)
-                                                       :type "card")]
-                    (is (empty? (:edges response))
-                        "Should have no edges when all dependencies are filtered out")))))))))))
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection readable-collection {}
+                       :model/Collection unreadable-collection {}
+                       :model/User user {:email "test@test.com"}]
+          (mt/with-model-cleanup [:model/Card :model/Dependency]
+            (let [unreadable-base (card/create-card! (assoc (basic-card "Unreadable")
+                                                            :collection_id (:id unreadable-collection)) user)
+                  top-card (card/create-card! (assoc (wrap-card unreadable-base)
+                                                     :collection_id (:id readable-collection))
+                                              user)]
+              (perms/grant-collection-read-permissions! (perms/all-users-group) readable-collection)
+              (testing "User sees only the top card in the graph"
+                (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
+                                                     :id (:id top-card)
+                                                     :type "card")
+                      nodes (set (map (juxt :type :id) (:nodes response)))]
+                  (is (= #{["card" (:id top-card)]} nodes)
+                      "Should see only top-card when all dependencies are unreadable")))
+              (testing "No edges when all dependencies are filtered"
+                (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
+                                                     :id (:id top-card)
+                                                     :type "card")]
+                  (is (empty? (:edges response))
+                      "Should have no edges when all dependencies are filtered out"))))))))))
 
 (deftest graph-snippet-filtering-test
   (testing "GET /api/ee/dependencies/graph/dependents filters snippet dependents based on card permissions"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-non-admin-groups-no-root-collection-perms
-          (mt/with-temp [:model/Collection readable-collection {}
-                         :model/Collection unreadable-collection {}
-                         :model/User user {:email "test@test.com"}
-                         :model/NativeQuerySnippet {snippet-id :id snippet-name :name} {:name "test-snippet"
-                                                                                        :content "WHERE ID > 10"}]
-            (mt/with-model-cleanup [:model/Card :model/Dependency]
-              (let [tag-name (str "snippet: " snippet-name)
-                    mp (mt/metadata-provider)
-                    native-query (fn []
-                                   (-> (lib/native-query mp (format "SELECT * FROM ORDERS %s" (str "{{" tag-name "}}")))
-                                       (lib/with-template-tags {tag-name {:name tag-name
-                                                                          :display-name (str "Snippet: " snippet-name)
-                                                                          :type :snippet
-                                                                          :snippet-name snippet-name
-                                                                          :snippet-id snippet-id}})))
-                    readable-card (card/create-card! {:name "Readable card with snippet"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection readable-collection {}
+                       :model/Collection unreadable-collection {}
+                       :model/User user {:email "test@test.com"}
+                       :model/NativeQuerySnippet {snippet-id :id snippet-name :name} {:name "test-snippet"
+                                                                                      :content "WHERE ID > 10"}]
+          (mt/with-model-cleanup [:model/Card :model/Dependency]
+            (let [tag-name (str "snippet: " snippet-name)
+                  mp (mt/metadata-provider)
+                  native-query (fn []
+                                 (-> (lib/native-query mp (format "SELECT * FROM ORDERS %s" (str "{{" tag-name "}}")))
+                                     (lib/with-template-tags {tag-name {:name tag-name
+                                                                        :display-name (str "Snippet: " snippet-name)
+                                                                        :type :snippet
+                                                                        :snippet-name snippet-name
+                                                                        :snippet-id snippet-id}})))
+                  readable-card (card/create-card! {:name "Readable card with snippet"
+                                                    :dataset_query (native-query)
+                                                    :display :table
+                                                    :visualization_settings {}
+                                                    :collection_id (:id readable-collection)}
+                                                   user)
+                  unreadable-card (card/create-card! {:name "Unreadable card with snippet"
                                                       :dataset_query (native-query)
                                                       :display :table
                                                       :visualization_settings {}
-                                                      :collection_id (:id readable-collection)}
-                                                     user)
-                    unreadable-card (card/create-card! {:name "Unreadable card with snippet"
-                                                        :dataset_query (native-query)
-                                                        :display :table
-                                                        :visualization_settings {}
-                                                        :collection_id (:id unreadable-collection)}
-                                                       user)]
-                (perms/grant-collection-read-permissions! (perms/all-users-group) readable-collection)
-                (testing "User sees only readable cards as dependents of the snippet"
-                  (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
-                                                       :id snippet-id
-                                                       :type "snippet"
-                                                       :dependent_type "card"
-                                                       :dependent_card_type "question")
-                        dependent-ids (set (map :id response))]
-                    (is (contains? dependent-ids (:id readable-card))
-                        "Should see readable card as dependent")
-                    (is (not (contains? dependent-ids (:id unreadable-card)))
-                        "Should not see unreadable card as dependent")))))))))))
+                                                      :collection_id (:id unreadable-collection)}
+                                                     user)]
+              (perms/grant-collection-read-permissions! (perms/all-users-group) readable-collection)
+              (testing "User sees only readable cards as dependents of the snippet"
+                (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
+                                                     :id snippet-id
+                                                     :type "snippet"
+                                                     :dependent_type "card"
+                                                     :dependent_card_type "question")
+                      dependent-ids (set (map :id response))]
+                  (is (contains? dependent-ids (:id readable-card))
+                      "Should see readable card as dependent")
+                  (is (not (contains? dependent-ids (:id unreadable-card)))
+                      "Should not see unreadable card as dependent"))))))))))
 
 (deftest graph-table-permission-filtering-test
   (testing "GET /api/ee/dependencies/graph filters out tables when user lacks table permissions"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-non-admin-groups-no-root-collection-perms
-          (mt/with-temp [:model/Collection readable-collection {}
-                         :model/User user {:email "test@test.com"}]
-            (mt/with-temp-copy-of-db
-              (mt/with-model-cleanup [:model/Card :model/Dependency]
-                (mt/with-no-data-perms-for-all-users!
-                  (perms/set-table-permission! (perms/all-users-group) (mt/id :orders) :perms/view-data :blocked)
-                  (perms/set-table-permission! (perms/all-users-group) (mt/id :orders) :perms/create-queries :no)
-                  (let [card (card/create-card! (assoc (basic-card "Card on orders")
-                                                       :collection_id (:id readable-collection)) user)]
-                    (perms/grant-collection-read-permissions! (perms/all-users-group) readable-collection)
-                    (testing "User sees only the card, table is filtered out"
-                      (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
-                                                           :id (:id card)
-                                                           :type "card")
-                            nodes (set (map (juxt :type :id) (:nodes response)))]
-                        (is (= #{["card" (:id card)]} nodes)
-                            "Should see only the card, not the unreadable table")))
-                    (testing "No edges when table is filtered"
-                      (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
-                                                           :id (:id card)
-                                                           :type "card")]
-                        (is (empty? (:edges response))
-                            "Should have no edges when table is filtered out")))))))))))))
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection readable-collection {}
+                       :model/User user {:email "test@test.com"}]
+          (mt/with-temp-copy-of-db
+            (mt/with-model-cleanup [:model/Card :model/Dependency]
+              (mt/with-no-data-perms-for-all-users!
+                (let [card (card/create-card! (assoc (basic-card "Card on orders")
+                                                     :collection_id (:id readable-collection)) user)]
+                  (perms/grant-collection-read-permissions! (perms/all-users-group) readable-collection)
+                  (testing "User sees only the card, table is filtered out"
+                    (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
+                                                         :id (:id card)
+                                                         :type "card")
+                          nodes (set (map (juxt :type :id) (:nodes response)))]
+                      (is (= #{["card" (:id card)]} nodes)
+                          "Should see only the card, not the unreadable table")))
+                  (testing "No edges when table is filtered"
+                    (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
+                                                         :id (:id card)
+                                                         :type "card")]
+                      (is (empty? (:edges response))
+                          "Should have no edges when table is filtered out"))))))))))))
