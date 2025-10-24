@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
@@ -9,7 +10,7 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { DatabaseDataSelector } from "metabase/query_builder/components/DataSelector";
-import { Box, Button, Flex, Icon, Stack, Text } from "metabase/ui";
+import { ActionIcon, Box, Button, Icon, Stack, Text } from "metabase/ui";
 import type {
   Database,
   DatabaseId,
@@ -46,6 +47,8 @@ export function PythonDataPicker({
   const [tableSelections, setTableSelections] = useState<TableSelection[]>(
     getInitialTableSelections(tables),
   );
+
+  const [isCollapsed, { toggle: toggleCollapse }] = useDisclosure(false);
 
   useEffect(() => {
     setTableSelections(getInitialTableSelections(tables));
@@ -141,59 +144,63 @@ export function PythonDataPicker({
   };
 
   return (
-    <Flex
-      p="md"
-      direction="column"
-      gap="md"
-      w="100%"
-      data-testid="python-data-picker"
-    >
-      <Box>
-        <Text fw="bold">{t`Source database`}</Text>
-        <Text size="sm" c="text-light" mb="sm">
-          {t`Select the database that contains your source data.`}
-        </Text>
-
-        <DatabaseDataSelector
-          className={S.databaseSelector}
-          selectedDatabaseId={database}
-          setDatabaseFn={handleDatabaseChange}
-          databases={databases?.data ?? []}
-          databaseIsDisabled={(database: Database) =>
-            !hasFeature(database, "transforms/python")
-          }
+    <Stack p="md" gap="sm">
+      <ActionIcon onClick={toggleCollapse} py="md">
+        <Icon
+          name={isCollapsed ? "chevronright" : "chevronleft"}
+          c={isCollapsed ? "brand" : undefined}
         />
-      </Box>
-      {database && (
-        <Box>
-          <Text fw="bold">{t`Pick tables and alias them`}</Text>
-          <Text size="sm" c="text-light" mb="sm">
-            {t`Select tables to use as data sources and provide aliases that can be referenced in your Python script.`}
-          </Text>
-          <Stack gap="md">
-            {tableSelections.map((selection, index) => (
-              <SelectionInput
-                key={index}
-                selection={selection}
-                database={database}
-                tables={tables}
-                usedAliases={usedAliases}
-                availableTables={availableTables}
-                onChange={(selection) =>
-                  handleSelectionChange(index, selection)
-                }
-                onRemove={() => handleRemoveTable(index)}
-                disabled={isLoadingTables}
-              />
-            ))}
-            <AddTableButton
-              onClick={handleAddTable}
-              disabled={availableTables.length === 0}
+      </ActionIcon>
+      {!isCollapsed && (
+        <Stack gap="md" w="100%" data-testid="python-data-picker">
+          <Box>
+            <Text fw="bold">{t`Source database`}</Text>
+            <Text size="sm" c="text-light" mb="sm">
+              {t`Select the database that contains your source data.`}
+            </Text>
+
+            <DatabaseDataSelector
+              className={S.databaseSelector}
+              selectedDatabaseId={database}
+              setDatabaseFn={handleDatabaseChange}
+              databases={databases?.data ?? []}
+              databaseIsDisabled={(database: Database) =>
+                !hasFeature(database, "transforms/python")
+              }
             />
-          </Stack>
-        </Box>
+          </Box>
+          {database && (
+            <Box>
+              <Text fw="bold">{t`Pick tables and alias them`}</Text>
+              <Text size="sm" c="text-light" mb="sm">
+                {t`Select tables to use as data sources and provide aliases that can be referenced in your Python script.`}
+              </Text>
+              <Stack gap="md">
+                {tableSelections.map((selection, index) => (
+                  <SelectionInput
+                    key={index}
+                    selection={selection}
+                    database={database}
+                    tables={tables}
+                    usedAliases={usedAliases}
+                    availableTables={availableTables}
+                    onChange={(selection) =>
+                      handleSelectionChange(index, selection)
+                    }
+                    onRemove={() => handleRemoveTable(index)}
+                    disabled={isLoadingTables}
+                  />
+                ))}
+                <AddTableButton
+                  onClick={handleAddTable}
+                  disabled={availableTables.length === 0}
+                />
+              </Stack>
+            </Box>
+          )}
+        </Stack>
       )}
-    </Flex>
+    </Stack>
   );
 }
 

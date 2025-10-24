@@ -2,9 +2,18 @@ import type { ReactNode } from "react";
 import { ResizableBox } from "react-resizable";
 import { t } from "ttag";
 
-import Link from "metabase/common/components/Link";
+import { ForwardRefLink } from "metabase/common/components/Link";
 import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
-import { Box, Button, Checkbox, Flex, Icon, Stack, Tooltip } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  Button,
+  Flex,
+  Group,
+  Icon,
+  Stack,
+  Tooltip,
+} from "metabase/ui";
 import { SHARED_LIB_IMPORT_PATH } from "metabase-enterprise/transforms-python/constants";
 import { getPythonLibraryUrl } from "metabase-enterprise/transforms-python/urls";
 
@@ -138,22 +147,20 @@ function SharedLibraryActions({
   onChange: (source: string) => void;
 }) {
   return (
-    <Stack className={S.libraryActions} p="md" gap="sm">
-      <SharedLibraryImportToggle source={source} onChange={onChange} />
+    <Group className={S.libraryActions} p="md" gap="sm">
+      <SharedLibraryImportButton source={source} onChange={onChange} />
       <SharedLibraryEditLink />
-    </Stack>
+    </Group>
   );
 }
 
-function SharedLibraryImportToggle({
+function SharedLibraryImportButton({
   source,
   onChange,
 }: {
   source: string;
   onChange: (source: string) => void;
 }) {
-  const hasSharedLib = hasImport(source, SHARED_LIB_IMPORT_PATH);
-
   function handleToggleSharedLib() {
     if (hasImport(source, SHARED_LIB_IMPORT_PATH)) {
       onChange(removeImport(source, SHARED_LIB_IMPORT_PATH));
@@ -163,25 +170,24 @@ function SharedLibraryImportToggle({
   }
 
   return (
-    <Checkbox
-      label={t`Import common library`}
-      checked={hasSharedLib}
-      onChange={handleToggleSharedLib}
-      size="sm"
-    />
+    <Tooltip label={t`Import common library`}>
+      <ActionIcon onChange={handleToggleSharedLib}>
+        <Icon name="reference" c="text-dark" />
+      </ActionIcon>
+    </Tooltip>
   );
 }
 
 function SharedLibraryEditLink() {
   return (
-    <Flex
-      component={Link}
-      target="_blank"
-      to={getPythonLibraryUrl({ path: SHARED_LIB_IMPORT_PATH })}
-      gap="sm"
-    >
-      <Icon name="pencil" />
-      {t`Edit common library`}
-    </Flex>
+    <Tooltip label={t`Edit common library`}>
+      <ActionIcon
+        component={ForwardRefLink}
+        target="_blank"
+        to={getPythonLibraryUrl({ path: SHARED_LIB_IMPORT_PATH })}
+      >
+        <Icon name="pencil" c="text-dark" />
+      </ActionIcon>
+    </Tooltip>
   );
 }
