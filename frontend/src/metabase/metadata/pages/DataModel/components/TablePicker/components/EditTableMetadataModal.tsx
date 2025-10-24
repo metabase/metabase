@@ -106,7 +106,7 @@ export function EditTableMetadataModal({
       opened={isOpen}
       padding="xl"
       size={rem(512)}
-      title={t`Edit tables`}
+      title={t`Edit selected tables`}
       onClose={handleClose}
     >
       <Stack gap="md" pt="sm">
