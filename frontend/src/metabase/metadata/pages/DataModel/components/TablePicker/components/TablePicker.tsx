@@ -1,11 +1,13 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useDeferredValue, useState } from "react";
 import { t } from "ttag";
 
-import { Button, Group, Icon, Input, Stack, rem } from "metabase/ui";
+import { Button, Group, Icon, Input, Popover, Stack, rem } from "metabase/ui";
 
 import type { RouteParams } from "../../../types";
 import type { ChangeOptions, TreePath } from "../types";
 
+import { FilterPopover, type FilterState } from "./FilterPopover";
 import { SearchNew } from "./SearchNew";
 import { Tree } from "./Tree";
 
@@ -25,6 +27,11 @@ export function TablePicker({
   // TODO: UXW-1857 - add search support
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
+  const [filters, setFilters] = useState<FilterState>({});
+  const [isOpen, { toggle, close }] = useDisclosure();
+  const filtersCount = Object.values(filters).filter(
+    (value) => typeof value !== "undefined",
+  ).length;
 
   return (
     <Stack data-testid="table-picker" mih={rem(200)} className={className}>
@@ -37,13 +44,31 @@ export function TablePicker({
           onChange={(event) => setQuery(event.target.value)}
         />
 
-        <Button leftSection={<Icon name="filter" />}>{t`Filter`}</Button>
+        <Popover width={rem(300)} position="bottom-start" opened={isOpen}>
+          <Popover.Target>
+            <Button leftSection={<Icon name="filter" />} onClick={toggle}>
+              {filtersCount === 0 ? t`Filter` : t`Filter (${filtersCount})`}
+            </Button>
+          </Popover.Target>
+
+          <Popover.Dropdown>
+            <FilterPopover
+              filters={filters}
+              isOpen={isOpen}
+              onClose={close}
+              onSubmit={(newFilters) => {
+                setFilters(newFilters);
+                close();
+              }}
+            />
+          </Popover.Dropdown>
+        </Popover>
       </Group>
 
-      {deferredQuery === "" ? (
+      {deferredQuery === "" && filtersCount === 0 ? (
         <Tree path={path} onChange={onChange} />
       ) : (
-        <SearchNew query={deferredQuery} params={params} />
+        <SearchNew query={deferredQuery} params={params} filters={filters} />
       )}
     </Stack>
   );

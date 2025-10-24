@@ -20,14 +20,16 @@ import type { RouteParams } from "../../../types";
 import { getUrl, parseRouteParams } from "../../../utils";
 
 import { EditTableMetadataModal } from "./EditTableMetadataModal";
+import { type FilterState } from "./FilterPopover";
 import S from "./Results.module.css";
 
 interface SearchNewProps {
   query: string;
   params: RouteParams;
+  filters?: FilterState;
 }
 
-export function SearchNew({ query, params }: SearchNewProps) {
+export function SearchNew({ query, params, filters = {} }: SearchNewProps) {
   const routeParams = parseRouteParams(params);
   const [selectedItems, setSelectedItems] = useState<Set<TableId>>(new Set());
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -37,7 +39,10 @@ export function SearchNew({ query, params }: SearchNewProps) {
     refetch,
   } = useListTablesQuery({
     term: query,
-    visibility_type2: undefined,
+    visibility_type2: filters.visibilityType2,
+    data_source: filters.dataSource ?? undefined,
+    owner_user_id: filters.ownerUserId ?? undefined,
+    owner_email: filters.ownerEmail ?? undefined,
     include_hidden: true,
   });
 

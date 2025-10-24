@@ -15,6 +15,7 @@ import { useGetTransformQuery } from "metabase-enterprise/api";
 import type { TableDataSource, TransformId } from "metabase-types/api";
 
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
+  showMetabaseTransform?: boolean;
   transformId?: TransformId | null;
   value: TableDataSource | null | undefined;
   onChange: (value: TableDataSource | null) => void;
@@ -22,6 +23,7 @@ interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
 
 export const DataSourceInput = ({
   comboboxProps,
+  showMetabaseTransform,
   transformId, // TODO handle null
   value,
   onChange,
@@ -30,7 +32,7 @@ export const DataSourceInput = ({
 }: Props) => {
   const { data: transform } = useGetTransformQuery(transformId ?? skipToken);
 
-  if (value === "metabase-transform") {
+  if (value === "metabase-transform" && !showMetabaseTransform) {
     return (
       <Stack gap="sm">
         <Text
@@ -69,7 +71,7 @@ export const DataSourceInput = ({
         position: "bottom-start",
         ...comboboxProps,
       }}
-      data={getData(value)}
+      data={getData(value, showMetabaseTransform)}
       label={t`Data source`}
       placeholder={t`Select a data source`}
       value={stringifyValue(value)}
@@ -79,13 +81,19 @@ export const DataSourceInput = ({
   );
 };
 
-function getData(value: TableDataSource | null | undefined) {
+function getData(
+  value: TableDataSource | null | undefined,
+  showMetabaseTransform?: boolean,
+) {
   const data = [
     { value: "ingested", label: t`Ingested` },
-    { value: "transform", label: t`Transformation (other tools)` },
+    showMetabaseTransform
+      ? { value: "metabase-transform", label: t`Metabase transform` }
+      : undefined,
+    { value: "transform", label: t`Transform` },
     { value: "source-data", label: t`Source data` },
     { value: "uploaded-data", label: t`Uploaded data` },
-  ];
+  ].filter((option) => option != null);
 
   if (value === null) {
     return [{ value: "null", label: t`Unknown` }, ...data];
