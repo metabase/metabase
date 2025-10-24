@@ -6,6 +6,16 @@ import Text from "@tiptap/extension-text";
 import { EditorContent, useEditor } from "@tiptap/react";
 import cx from "classnames";
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
+import type { EditorView } from "@tiptap/pm/view";
+import { EditorContent, useEditor } from "@tiptap/react";
+import cx from "classnames";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+} from "react";
 import { t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
@@ -76,12 +86,23 @@ export const MetabotChatEditor = forwardRef<MetabotChatInputRef | null, Props>(
           render: createSuggestionRenderer(
             createMentionSuggestion({
               searchModels: suggestionModels,
+              canFilterSearchModels: true,
               canBrowseAll: false,
             }),
           ),
         },
       }),
     ];
+
+    const handleCopyCut = useCallback((view: EditorView, e: ClipboardEvent) => {
+      e.preventDefault();
+      const { from, to } = view.state.selection;
+      const slice = view.state.doc.slice(from, to);
+      const doc = view.state.schema.topNodeType.create(null, slice.content);
+      const serialized = serializeTiptapToMetabotMessage(doc.toJSON());
+      e.clipboardData?.setData("text/plain", serialized);
+      return true;
+    }, []);
 
     const editor = useEditor(
       {
@@ -96,31 +117,8 @@ export const MetabotChatEditor = forwardRef<MetabotChatInputRef | null, Props>(
         },
         editorProps: {
           handleDOMEvents: {
-            copy(view, e) {
-              e.preventDefault();
-              const { from, to } = view.state.selection;
-              const slice = view.state.doc.slice(from, to);
-              const doc = view.state.schema.topNodeType.create(
-                null,
-                slice.content,
-              );
-              const serialized = serializeTiptapToMetabotMessage(doc.toJSON());
-              e.clipboardData?.setData("text/plain", serialized);
-              return true;
-            },
-            cut(view, e) {
-              e.preventDefault();
-              const { from, to } = view.state.selection;
-              const slice = view.state.doc.slice(from, to);
-              const doc = view.state.schema.topNodeType.create(
-                null,
-                slice.content,
-              );
-              const serialized = serializeTiptapToMetabotMessage(doc.toJSON());
-              e.clipboardData?.setData("text/plain", serialized);
-              view.dispatch(view.state.tr.deleteSelection());
-              return true;
-            },
+            copy: handleCopyCut,
+            cut: handleCopyCut,
           },
           handleKeyDown: (view, event) => {
             if (event.key === "Enter") {
@@ -188,6 +186,7 @@ export const MetabotChatEditor = forwardRef<MetabotChatInputRef | null, Props>(
         </Box>
         <Box className={S.contentWrapper}>
           <EditorContent
+            data-testid="metabot-chat-input"
             editor={editor}
             className={cx(S.content, {
               [S.disabled]: disabled,

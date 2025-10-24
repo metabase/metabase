@@ -2,8 +2,14 @@
   (:require
    [metabase-enterprise.dependencies.core :as dependencies]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
+<<<<<<< HEAD
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.metadata :as lib.metadata]
+=======
+   [metabase.api.common :as api]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.models.interface :as mi]
+>>>>>>> master
    [toucan2.core :as t2]))
 
 (def ^:private ^:dynamic *max-reported-broken-transforms* 10)
@@ -20,11 +26,23 @@
                                              (disj broken-transform-ids edited-transform-id)))
                                (take *max-reported-broken-transforms* broken-transform-ids))
         broken-transforms    (when (seq transforms-to-report)
+<<<<<<< HEAD
                                (t2/select [:model/Transform :id :name] :id [:in transforms-to-report]))
         broken-card-ids      (set (keys card-errors))
         cards-to-report      (take *max-reported-broken-transforms* broken-card-ids)
         broken-cards         (when (seq cards-to-report)
                                (t2/select [:model/Card :id :name] :id [:in cards-to-report]))]
+=======
+                               (->> (t2/select :model/Transform :id [:in transforms-to-report])
+                                    (filter mi/can-read?)
+                                    (map #(select-keys % [:id :name]))))
+        broken-card-ids      (set (keys card-errors))
+        cards-to-report      (take *max-reported-broken-transforms* broken-card-ids)
+        broken-cards         (when (seq cards-to-report)
+                               (->> (t2/select :model/Card :id [:in cards-to-report])
+                                    (filter mi/can-read?)
+                                    (map #(select-keys % [:id :name]))))]
+>>>>>>> master
     {:success             (empty? broken-transform-ids)
      :bad_transform_count (count broken-transform-ids)
      :bad_transforms      (mapv
@@ -43,6 +61,7 @@
   suitable for Metabot. Takes a map with :id and :source keys."
   [{:keys [id source]}]
   (try
+<<<<<<< HEAD
     (let [result (if (= (keyword (:type source)) :query)
                    (let [database-id   (-> source :query :database)
                          base-provider (lib-be/application-database-metadata-provider database-id)
@@ -55,5 +74,21 @@
                    ;; If this is a non-SQL query, we don't do any checks yet, so just return success
                    {:success true :bad_transforms []})]
       {:structured_output result})
+=======
+    (let [transform-to-check (api/check-404 (t2/select-one :model/Transform :id id))]
+      (api/read-check transform-to-check)
+      (let [result (if (= (keyword (:type source)) :query)
+                     (let [database-id       (-> source :query :database)
+                           base-provider     (lib-be/application-database-metadata-provider database-id)
+                           metadata          (lib-be/instance->metadata transform-to-check :metadata/transform)
+                           updated-metadata  (cond-> metadata
+                                               source (assoc :source source))
+                           edits             {:transform [updated-metadata]}
+                           breakages         (dependencies/errors-from-proposed-edits base-provider edits)]
+                       (format-broken-transforms id breakages))
+                     ;; If this is a non-SQL query, we don't do any checks yet, so just return success
+                     {:success true :bad_transforms []})]
+        {:structured_output result}))
+>>>>>>> master
     (catch Exception e
       (metabot-v3.tools.u/handle-agent-error e))))

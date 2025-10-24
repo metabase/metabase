@@ -60,3 +60,43 @@ Range.prototype.getBoundingClientRect = () => ({
   top: 0,
   width: 0,
 });
+
+// Mock getClientRects for ProseMirror/TipTap compatibility in tests
+Range.prototype.getClientRects = () => ({
+  0: {
+    bottom: 0,
+    height: 0,
+    left: 0,
+    right: 0,
+    top: 0,
+    width: 0,
+  },
+  length: 1,
+  item: () => null,
+  [Symbol.iterator]: function* () {
+    yield this[0];
+  },
+});
+
+// Also mock for Elements which ProseMirror might try to call getClientRects on
+Element.prototype.getClientRects =
+  Element.prototype.getClientRects ||
+  (() => ({
+    0: {
+      bottom: 0,
+      height: 0,
+      left: 0,
+      right: 0,
+      top: 0,
+      width: 0,
+    },
+    length: 1,
+    item: () => null,
+    [Symbol.iterator]: function* () {
+      yield this[0];
+    },
+  }));
+
+// Mock elementFromPoint for ProseMirror/TipTap compatibility in tests
+document.elementFromPoint = document.elementFromPoint || (() => null);
+document.elementsFromPoint = document.elementsFromPoint || (() => []);

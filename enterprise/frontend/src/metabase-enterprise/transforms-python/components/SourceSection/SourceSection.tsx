@@ -3,13 +3,9 @@ import { t } from "ttag";
 import { skipToken, useGetTableQuery } from "metabase/api";
 import Link from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
+import * as Urls from "metabase/lib/urls";
 import { Box, Group, Icon, type IconName, Loader, Stack } from "metabase/ui";
 import { SplitSection } from "metabase-enterprise/transforms/components/SplitSection";
-import {
-  getBrowseDatabaseUrl,
-  getBrowseSchemaUrl,
-  getQueryBuilderUrl,
-} from "metabase-enterprise/transforms/urls";
 import type { Transform } from "metabase-types/api";
 
 import S from "./SourceSection.module.css";
@@ -70,7 +66,7 @@ function TableWithAlias({ alias, tableId, databaseId }: TableWithAliasProps) {
             <SourceItemLink
               label={table.db.name}
               icon="database"
-              to={getBrowseDatabaseUrl(table.db.id)}
+              to={Urls.dataModelDatabase(table.db.id)}
               data-testid="source-database-link"
             />
             <SourceItemDivider />
@@ -81,7 +77,7 @@ function TableWithAlias({ alias, tableId, databaseId }: TableWithAliasProps) {
             <SourceItemLink
               label={table.schema}
               icon="folder"
-              to={getBrowseSchemaUrl(databaseId, table.schema)}
+              to={Urls.dataModelSchema(databaseId, table.schema)}
             />
             <SourceItemDivider />
           </>
@@ -89,7 +85,7 @@ function TableWithAlias({ alias, tableId, databaseId }: TableWithAliasProps) {
         <SourceItemLink
           label={table?.display_name || table?.name || `Table ${tableId}`}
           icon="table2"
-          to={table ? getQueryBuilderUrl(table.id, table.db_id) : undefined}
+          to={table ? Urls.queryBuilderTable(table.id, table.db_id) : undefined}
         />
       </Group>
     </>

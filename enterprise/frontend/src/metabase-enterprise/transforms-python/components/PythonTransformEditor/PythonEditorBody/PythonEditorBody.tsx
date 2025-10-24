@@ -3,7 +3,6 @@ import { ResizableBox } from "react-resizable";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
-import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
 import {
   ActionIcon,
   Box,
@@ -14,14 +13,15 @@ import {
   Stack,
   Tooltip,
 } from "metabase/ui";
+import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
 import { SHARED_LIB_IMPORT_PATH } from "metabase-enterprise/transforms-python/constants";
-import { getPythonLibraryUrl } from "metabase-enterprise/transforms-python/urls";
 
 import { PythonEditor } from "../../PythonEditor";
 
 import S from "./PythonEditorBody.module.css";
 import { ResizableBoxHandle } from "./ResizableBoxHandle";
 import { hasImport, insertImport, removeImport } from "./utils";
+import { getPythonLibraryUrl } from "metabase-enterprise/transforms-python/urls";
 
 type PythonEditorBodyProps = {
   source: string;
@@ -65,34 +65,34 @@ export function PythonEditorBody({
         />
 
         <Stack m="1rem" gap="md" mt="auto">
-          {proposedSource !== undefined &&
-            onRejectProposed &&
-            onAcceptProposed && (
-              <>
-                <Tooltip label={t`Accept proposed changes`} position="left">
-                  <Button
-                    variant="filled"
-                    bg="success"
-                    px="0"
-                    w="2.5rem"
-                    onClick={onAcceptProposed}
-                  >
-                    <Icon name="check" />
-                  </Button>
-                </Tooltip>
-                <Tooltip label={t`Reject proposed changes`} position="left">
-                  <Button
-                    w="2.5rem"
-                    px="0"
-                    variant="filled"
-                    bg="danger"
-                    onClick={onRejectProposed}
-                  >
-                    <Icon name="close" />
-                  </Button>
-                </Tooltip>
-              </>
-            )}
+          {proposedSource && onRejectProposed && onAcceptProposed && (
+            <>
+              <Tooltip label={t`Accept proposed changes`} position="left">
+                <Button
+                  data-testid="accept-proposed-changes-button"
+                  variant="filled"
+                  bg="success"
+                  px="0"
+                  w="2.5rem"
+                  onClick={onAcceptProposed}
+                >
+                  <Icon name="check" />
+                </Button>
+              </Tooltip>
+              <Tooltip label={t`Reject proposed changes`} position="left">
+                <Button
+                  data-testid="reject-proposed-changes-button"
+                  w="2.5rem"
+                  px="0"
+                  variant="filled"
+                  bg="danger"
+                  onClick={onRejectProposed}
+                >
+                  <Icon name="close" />
+                </Button>
+              </Tooltip>
+            </>
+          )}
           {withDebugger && (
             <Box p="md">
               <RunButtonWithTooltip

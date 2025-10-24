@@ -48,6 +48,12 @@ title: Driver interface changelog
   you can pass to [[metabase.lib.core/order-by]] -- for example a Lib `:metadata/column` or an [MBQL 5]
   `metabase.driver-api.core/order-by-clause`.
 
+- `metabase.driver-api.core/nest-query` no longer automatically calls `metabase.driver-api.core/add-alias-info` on its
+  results, but it also no longer expect its input to have this information. If you were using both of these tools in
+  your driver, make change the order in which the are applied so `nest-query` happens first, followed by
+  `add-alias-info`. Note that drivers deriving from `:sql` do not need to make any changes, since this is done by the
+  base `:sql` driver implementation.
+
 ## Metabase 0.56.3
 
 - Added the driver multi-method `driver/describe-database*` that drivers should now implement instead of `driver/describe-database`.

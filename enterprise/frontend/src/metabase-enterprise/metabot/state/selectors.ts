@@ -20,7 +20,7 @@ export const getMetabot = (state: MetabotStoreState) => {
 };
 
 export const getMetabotVisible = createSelector(
-  [getMetabot, getLocation],
+  [getMetabot],
   (metabot) => metabot.visible,
 );
 

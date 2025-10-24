@@ -119,9 +119,9 @@
            metabase.analyze.query-results}
    :uses #{config
            driver
-           legacy-mbql
            lib
            models
+           query-processor
            sync
            util}}
 
@@ -594,7 +594,6 @@
            metabase.legacy-mbql.schema
            metabase.legacy-mbql.util}
    :uses #{lib
-           models
            types
            util}}
 
@@ -621,6 +620,7 @@
            metabase.lib.query
            metabase.lib.schema
            metabase.lib.schema.actions
+           metabase.lib.schema.aggregation
            metabase.lib.schema.binning
            metabase.lib.schema.common
            metabase.lib.schema.constraints
@@ -709,8 +709,7 @@
 
   models
   {:team "DevEx"
-   :api  #{metabase.models.dispatch
-           metabase.models.humanization
+   :api  #{metabase.models.humanization
            metabase.models.init
            metabase.models.interface
            metabase.models.resolution
@@ -783,7 +782,6 @@
    :uses #{api
            app-db
            classloader
-           legacy-mbql
            lib
            lib-be
            models
@@ -921,7 +919,6 @@
            eid-translation
            embedding
            events
-           legacy-mbql
            lib
            lib-be
            models
@@ -1099,7 +1096,8 @@
 
   segments
   {:team "Querying"
-   :api  #{metabase.segments.api}
+   :api  #{metabase.segments.api
+           metabase.segments.schema}
    :uses #{api
            events
            legacy-mbql
@@ -1324,7 +1322,6 @@
            collections
            driver
            events
-           legacy-mbql
            lib
            model-persistence
            models
@@ -1491,6 +1488,7 @@
            queries
            query-permissions
            query-processor
+           segments
            settings
            util
            warehouse-schema}}
@@ -1727,6 +1725,7 @@
            premium-features
            queries
            query-processor
+           revisions
            settings
            task
            util}}

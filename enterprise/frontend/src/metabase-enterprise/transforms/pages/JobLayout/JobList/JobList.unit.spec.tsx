@@ -6,9 +6,10 @@ import {
   setupListTransformJobsEndpoint,
   setupListTransformTagsEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import type { JobListParams } from "metabase-enterprise/transforms/types";
 import { getJobListUrl } from "metabase-enterprise/transforms/urls";
+import * as Urls from "metabase/lib/urls";
 import type {
   Transform,
   TransformJob,
@@ -32,7 +33,7 @@ type SetupOpts = {
   jobs?: TransformJob[];
   jobTransforms?: Map<TransformJobId, TransformListInfo>;
   tags?: TransformTag[];
-  params?: JobListParams;
+  params?: Urls.TransformJobListParams;
 };
 
 function setup({
@@ -54,10 +55,10 @@ function setup({
 
   renderWithProviders(
     <Route
-      path={getJobListUrl(params)}
+      path={Urls.transformJobList(params)}
       component={() => <JobList params={params} />}
     />,
-    { withRouter: true, initialRoute: getJobListUrl(params) },
+    { withRouter: true, initialRoute: Urls.transformJobList(params) },
   );
 }
 

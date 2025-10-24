@@ -22,6 +22,7 @@ type EditorHeaderProps = {
 export function EditorHeader({
   transform,
   validationResult,
+  name,
   isNew,
   isQueryDirty,
   isSaving,

@@ -41,6 +41,7 @@
   [model archived?]
   [:= (search.config/column-with-model-alias model :archived) archived?])
 
+<<<<<<< HEAD
 ;; Databases can't be archived
 (defmethod archived-clause "database"
   [_model archived?]
@@ -60,6 +61,15 @@
   (if-not archived?
     true-clause
     false-clause))
+=======
+;; Databases, transforms, and indexed-entities can't be archived
+(doseq [model ["database" "transform" "indexed-entity"]]
+  (defmethod archived-clause model
+    [_model archived?]
+    (if archived?
+      false-clause
+      true-clause)))
+>>>>>>> master
 
 ;; Table has an `:active` flag, but no `:archived` flag; never return inactive Tables
 (defmethod archived-clause "table"
@@ -193,7 +203,8 @@
       :else
       [:and [:>= dt-col start] [:< dt-col end]])))
 
-(doseq [model ["collection" "database" "table" "dashboard" "card" "dataset" "metric" "action" "document"]]
+(doseq [model ["collection" "database" "table" "dashboard" "card" "dataset" "metric" "action" "document"
+               "transform"]]
   (defmethod build-optional-filter-query [:created-at model]
     [_filter model query created-at]
     (sql.helpers/where query (date-range-filter-clause
@@ -319,6 +330,7 @@
                 display-type]} search-context
         feature->supported-models (feature->supported-models)]
     (cond-> models
+<<<<<<< HEAD
       (some? created-at)                   (set/intersection (:created-at feature->supported-models))
       (some? created-by)                   (set/intersection (:created-by feature->supported-models))
       (some? last-edited-at)               (set/intersection (:last-edited-at feature->supported-models))
@@ -329,6 +341,17 @@
       (some? has-temporal-dim)             (set/intersection (:has-temporal-dim feature->supported-models))
       (seq   display-type)                 (set/intersection (:display-type feature->supported-models))
       (not (#{:metabot :unknown} context)) (disj "transform"))))
+=======
+      (some? created-at)           (set/intersection (:created-at feature->supported-models))
+      (some? created-by)           (set/intersection (:created-by feature->supported-models))
+      (some? last-edited-at)       (set/intersection (:last-edited-at feature->supported-models))
+      (some? last-edited-by)       (set/intersection (:last-edited-by feature->supported-models))
+      (true? search-native-query)  (set/intersection (:search-native-query feature->supported-models))
+      (true? verified)             (set/intersection (:verified feature->supported-models))
+      (some? non-temporal-dim-ids) (set/intersection (:non-temporal-dim-ids feature->supported-models))
+      (some? has-temporal-dim)     (set/intersection (:has-temporal-dim feature->supported-models))
+      (seq   display-type)         (set/intersection (:display-type feature->supported-models)))))
+>>>>>>> master
 
 (mu/defn build-filters :- :map
   "Build the search filters for a model."

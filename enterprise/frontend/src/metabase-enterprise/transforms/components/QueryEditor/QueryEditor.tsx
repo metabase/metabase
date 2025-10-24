@@ -1,4 +1,4 @@
-import { useHotkeys, useToggle } from "@mantine/hooks";
+import { useDisclosure, useHotkeys, useToggle } from "@mantine/hooks";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -6,7 +6,9 @@ import { useListDatabasesQuery } from "metabase/api";
 import type { SelectionRange } from "metabase/query_builder/components/NativeQueryEditor/types";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { NativeQueryPreview } from "metabase/querying/notebook/components/NativeQueryPreview";
-import { Center, Loader, Modal, Stack } from "metabase/ui";
+import { Center, Flex, Loader, Modal, Stack } from "metabase/ui";
+import { useRegisterMetabotTransformContext } from "metabase-enterprise/transforms/hooks/use-register-transform-metabot-context";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type {
   NativeQuerySnippet,
@@ -36,11 +38,11 @@ type QueryEditorProps = {
   onCancel: () => void;
   onRejectProposed?: () => void;
   onAcceptProposed?: (query: QueryTransformSource) => void;
-  transformEditor: TransformEditorValue;
 };
 
 export function QueryEditor({
   transform,
+  initialSource,
   proposedSource,
   isNew = true,
   isSaving = false,
@@ -49,24 +51,20 @@ export function QueryEditor({
   onCancel,
   onRejectProposed,
   onAcceptProposed,
-  transformEditor,
 }: QueryEditorProps) {
+  const { question, proposedQuestion, isQueryDirty, setQuestion } =
+    useQueryState(initialSource.query, proposedSource?.query);
+  const { isInitiallyLoaded } = useQueryMetadata(question);
   const {
-    question,
-    proposedQuestion,
-    isQueryDirty,
-    setQuestion,
     isRunnable,
     isRunning,
     isResultDirty,
-    isNative,
     result,
     rawSeries,
     runQuery,
     cancelQuery,
-  } = transformEditor;
-
-  const { isInitiallyLoaded } = useQueryMetadata(question);
+  } = useQueryResults(question, proposedQuestion);
+  const { isNative } = Lib.queryDisplayInfo(question.query());
   const [isPreviewQueryModalOpen, togglePreviewQueryModal] = useToggle();
   const validationResult = getValidationResult(question.query());
 
@@ -170,6 +168,7 @@ export function QueryEditor({
           onToggleSnippetSidebar={() => null}
           onOpenModal={handleOpenModal}
           modalSnippet={modalSnippet}
+          onInsertSnippet={handleInsertSnippet}
           onChangeModalSnippet={setModalSnippet}
           onChangeNativeEditorSelection={setSelectionRange}
           nativeEditorSelectedText={selectedText}

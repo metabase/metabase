@@ -141,16 +141,15 @@ export const AgentSuggestionMessage = ({
       shadow="none"
       radius="md"
       bg="bg-white"
-      style={{ border: `1px solid var(--mb-color-border)` }}
+      className={S.container}
+      data-testid="metabot-chat-suggestion"
     >
       <Group
         p="md"
         align="center"
         justify="space-between"
         onClick={toggle}
-        style={{
-          borderBottom: opened ? `1px solid var(--mb-color-border)` : "",
-        }}
+        className={cx(opened && S.headerOpened)}
       >
         <Flex align="center" gap="sm">
           <Icon name="refresh_downstream" size="1rem" c="text-secondary" />
@@ -252,8 +251,12 @@ function getSourceCode(
 
 function getTransformUrl(transform: SuggestedTransform): string {
   return match(transform)
-    .with({ id: P.number }, ({ id }) => Urls.transformEdit(id))
-    .with({ source: { type: "python" } }, Urls.newPythonTransform)
-    .with({ source: { type: "query" } }, Urls.newNativeTransform)
+    .with({ id: P.number }, ({ id }) => Urls.transformQuery(id))
+    .with({ source: { type: "python" } }, () =>
+      Urls.newTransformFromType("python"),
+    )
+    .with({ source: { type: "query" } }, () =>
+      Urls.newTransformFromType("native"),
+    )
     .exhaustive();
 }

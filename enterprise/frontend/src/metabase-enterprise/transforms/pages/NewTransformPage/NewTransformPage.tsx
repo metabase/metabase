@@ -15,6 +15,7 @@ import { useSourceState } from "metabase-enterprise/transforms/hooks/use-source-
 import type {
   CardId,
   DraftTransform,
+  DraftTransformSource,
   LegacyDatasetQuery,
   Transform,
   TransformSource,
@@ -105,14 +106,17 @@ export function NewTransformPageInner({
     acceptProposed,
     clearProposed,
     isDirty,
-  } = useSourceState(undefined, initialSource);
+  } = useSourceState<TransformSource | DraftTransformSource>(
+    undefined,
+    initialSource,
+  );
 
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
   const dispatch = useDispatch();
 
   const handleCreate = (transform: Transform) => {
-    dispatch(push(getTransformUrl(transform.id)));
+    dispatch(push(Urls.transform(transform.id)));
   };
 
   const handleSave = (newSource: TransformSource) => {
@@ -122,7 +126,7 @@ export function NewTransformPageInner({
 
   const handleCancel = () => {
     setSource(initialSource);
-    dispatch(push(getTransformListUrl()));
+    dispatch(push(Urls.transformList()));
     clearProposed();
   };
 
@@ -153,9 +157,7 @@ export function NewTransformPageInner({
         onCancel={handleCancel}
         onRejectProposed={clearProposed}
         onAcceptProposed={handleAcceptProposed}
-        transformEditor={transformEditor}
       />
-
       {isModalOpened && source && (
         <CreateTransformModal
           source={source as TransformSource}
@@ -166,7 +168,6 @@ export function NewTransformPageInner({
       )}
       <LeaveRouteConfirmModal
         key={location.key}
-        // TODO: make this calc correct
         isEnabled={isDirty && !isModalOpened}
         route={route}
         onConfirm={clearProposed}
@@ -183,7 +184,6 @@ interface NewTransformEditorBody {
   onCancel: () => void;
   onRejectProposed?: () => void;
   onAcceptProposed?: (query: TransformSource) => void;
-  transformEditor: TransformEditorValue;
 }
 
 function NewTransformEditorBody({
@@ -194,7 +194,6 @@ function NewTransformEditorBody({
   onCancel,
   onRejectProposed,
   onAcceptProposed,
-  transformEditor,
 }: NewTransformEditorBody) {
   if (initialSource.type === "python") {
     return (
@@ -225,7 +224,6 @@ function NewTransformEditorBody({
       onChange={onChange}
       onRejectProposed={onRejectProposed}
       onAcceptProposed={onAcceptProposed}
-      transformEditor={transformEditor}
     />
   );
 }

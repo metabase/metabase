@@ -8,6 +8,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.util.malli :as mu]))
 
 (mu/defn inherited-column? :- :boolean
@@ -52,7 +53,7 @@
 
   The zero arity is a transducer version."
   ([]
-   (let [deduplicated-name-fn (lib.util/non-truncating-unique-name-generator)]
+   (let [deduplicated-name-fn (lib.util.unique-name-generator/non-truncating-unique-name-generator)]
      (map (fn [col]
             (assoc col
                    :lib/original-name     ((some-fn :lib/original-name :name) col)
@@ -86,12 +87,12 @@
    ;;    |                        x |                       x_2 |
    ;;
    (let [unique-name-generator (if (lib.util/native-stage? query -1)
-                                 (lib.util/non-truncating-unique-name-generator)
-                                 (lib.util/unique-name-generator))]
+                                 (lib.util.unique-name-generator/non-truncating-unique-name-generator)
+                                 (lib.util.unique-name-generator/unique-name-generator))]
      (add-source-and-desired-aliases-xform query unique-name-generator)))
 
   ([metadata-providerable :- ::lib.metadata.protocols/metadata-providerable
-    unique-name-fn        :- ::lib.util/unique-name-generator]
+    unique-name-fn        :- :metabase.lib.util.unique-name-generator/unique-name-generator]
    (comp (add-deduplicated-names)
          (map (fn [col]
                 (let [source-alias  ((some-fn :lib/source-column-alias :lib/original-name :name) col)

@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
+   [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase.api.common :as api]
    [metabase.events.core :as events]
@@ -9,7 +10,10 @@
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+<<<<<<< HEAD
    [metabase.permissions.core :as perms]
+=======
+>>>>>>> master
    [metabase.search.core :as search.core]
    [metabase.search.ingestion :as search]
    [metabase.search.spec :as search.spec]
@@ -24,6 +28,7 @@
 (doseq [trait [:metabase/model :hook/entity-id :hook/timestamped?]]
   (derive :model/Transform trait))
 
+<<<<<<< HEAD
 (defmethod mi/can-read? :model/Transform
   ([_instance]
    (perms/set-has-application-permission-of-type? @api/*current-user-permissions-set* :transforms))
@@ -35,6 +40,12 @@
    (perms/set-has-application-permission-of-type? @api/*current-user-permissions-set* :transforms))
   ([_model _pk]
    (perms/set-has-application-permission-of-type? @api/*current-user-permissions-set* :transforms)))
+=======
+;; Only superusers can access transforms
+(doto :model/Transform
+  (derive ::mi/read-policy.superuser)
+  (derive ::mi/write-policy.superuser))
+>>>>>>> master
 
 (defn- transform-source-out [m]
   (-> m
@@ -153,6 +164,21 @@
                          :tag_id       tag-id
                          :position     (get new-positions tag-id)})))))))
 
+;;; ----------------------------------------------- Search ----------------------------------------------------------
+
+(search.spec/define-spec "transform"
+  {:model :model/Transform
+   :attrs {:archived      false
+           :collection-id false
+           :creator-id    false
+           :database-id   false
+           :view-count    false
+           :created-at    true
+           :updated-at    true}
+   :search-terms [:name]
+   :render-terms {:transform-name :name
+                  :transform-id :id}})
+
 ;;; ------------------------------------------------- Serialization ------------------------------------------------
 
 (mi/define-batched-hydration-method tags
@@ -167,6 +193,29 @@
                                              {:order-by [[:position :asc]]}))]
       (for [transform transforms]
         (assoc transform :tags (get tag-mappings (u/the-id transform) []))))))
+
+(mi/define-batched-hydration-method table-with-db-and-fields
+  :table-with-db-and-fields
+  "Fetch tables with their fields. The tables show up under the `:table` property."
+  [transforms]
+  (let [table-key-fn (fn [{:keys [target] :as transform}]
+                       [(transforms.i/target-db-id transform) (:schema target) (:name target)])
+        table-keys (into #{} (map table-key-fn) transforms)
+        table-keys-with-schema (filter second table-keys)
+        table-keys-without-schema (keep (fn [[db-id schema table-name]]
+                                          (when-not schema
+                                            [db-id table-name]))
+                                        table-keys)
+        tables (-> (t2/select :model/Table
+                              {:where [:or
+                                       [:in [:composite :db_id :schema :name] table-keys-with-schema]
+                                       [:and
+                                        [:= :schema nil]
+                                        [:in [:composite :db_id :name] table-keys-without-schema]]]})
+                   (t2/hydrate :db :fields))
+        table-keys->table (m/index-by (juxt :db_id :schema :name) tables)]
+    (for [transform transforms]
+      (assoc transform :table (get table-keys->table (table-key-fn transform))))))
 
 (defmethod serdes/hash-fields :model/Transform
   [_transform]

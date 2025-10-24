@@ -39,7 +39,6 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.order-by :as lib.schema.order-by]
    [metabase.lib.schema.ref :as lib.schema.ref]
-   [metabase.lib.util :as lib.util]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.middleware.large-int :as large-int]
    [metabase.query-processor.schema :as qp.schema]
@@ -129,7 +128,7 @@
   ;;
   ;; TODO (Cam 7/23/25) -- this seems sorta busted, we should probably be using `:lib/desired-column-alias` here
   ;; instead.
-  (let [name-generator (lib.util/unique-name-generator)
+  (let [name-generator (lib/unique-name-generator)
         unique-name    (fn [field-id]
                          (assert (pos-int? field-id) (str "Invalid Field ID: " (pr-str field-id)))
                          (let [field (lib.metadata/field query field-id)]
