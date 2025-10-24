@@ -340,7 +340,7 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
 
           <DataSourceInput
             transformId={table.transform_id}
-            value={table.data_source}
+            value={table.data_source ?? "unknown"}
             onChange={handleDataSourceChange}
           />
         </TitledSection>

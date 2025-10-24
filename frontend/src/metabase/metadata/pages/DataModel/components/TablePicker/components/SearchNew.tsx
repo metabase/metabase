@@ -55,7 +55,7 @@ export function SearchNew({ query, params, filters }: SearchNewProps) {
         ? null
         : (filters.ownerUserId ?? undefined),
     owner_email: filters.ownerEmail ?? undefined,
-    include_hidden: true,
+    include_hidden: filters.visibilityType != null,
   });
 
   if (isLoading) {
