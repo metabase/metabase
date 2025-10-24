@@ -22,6 +22,7 @@ Currently you can choose to embed:
 - A question (chart). You can embed both questions built with the query builder and questions built with SQL.
 - Full graphical [query builder](../questions/query-builder/editor.md) to enable people to build their own charts and explorations.
 - A browser to navigate collections and open dashboards or questions.
+- [AI chat interface](./sdk/ai-chat.md).
 
 ## Quickstart
 
@@ -43,10 +44,10 @@ You can also follow the setup guide directly in Metabase in **Admin settings > E
 2. Choose the _type_ of entity to embed:
 
    - Dashboard
-   - Question
+   - Chart
    - Exploration (which will embed the Metabase query builder)
    - Browser
-   - Metabot question
+   - Metabot question (which will embed AI chat)
 
 3. Next, select the entity you want to embed. For browser, pick the collection you want people to start from.
 
@@ -358,7 +359,7 @@ To render a dashboard:
 
 ### Question
 
-To render a question (chart).
+To render a question (chart):
 
 ```html
 <metabase-question question-id="1"></metabase-question>
@@ -379,9 +380,28 @@ To render a question (chart).
 - `is-save-enabled` (default is false)
 - `target-collection` - this is to enforce saving into a particular collection. Values: regular ID, entity ID, `"personal”`, `"root”`
 
-- ### Browser
+### Browser
 
-To render a collection browser so people can navigate a collection and open dashboards or questions.
+To render a collection browser so people can navigate a collection and open dashboards or questions:
+
+```html
+<metabase-metabot></metabase-metabot>
+```
+
+**Required parameters:**
+
+None.
+
+**Optional parameters:**
+
+- `layout` (default is `auto`) – how should the visualization is positioned with respect to the chat interface. Possible values are:
+  - `auto` (default): Metabot uses the `stacked` layout on mobile screens, and a `sidebar` layout on larger screens.
+  - `stacked`: the question visualization stacks on top of the chat interface.
+  - `sidebar`: the question visualization appears to the left of the chat interface, which is on a sidebar on the right.
+
+### Metabot
+
+To render the AI chat interface:
 
 ```html
 <metabase-browser initial-collection="14" read-only="false"></metabase-browser>
