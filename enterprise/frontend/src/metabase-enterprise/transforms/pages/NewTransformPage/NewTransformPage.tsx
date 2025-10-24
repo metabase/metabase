@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import type { Location } from "history";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Route } from "react-router";
 import { push } from "react-router-redux";
 
@@ -69,6 +69,11 @@ export function NewTransformPage({
     getMetabotSuggestedTransform as any,
   ) as ReturnType<typeof getMetabotSuggestedTransform>;
 
+  const initialSource = useMemo(
+    () => getInitialTransformSource(card, type, suggestedTransform),
+    [type, card, suggestedTransform],
+  );
+
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
@@ -78,11 +83,7 @@ export function NewTransformPage({
       <NewTransformPageInner
         route={route}
         location={location}
-        initialSource={getInitialTransformSource(
-          card,
-          type,
-          suggestedTransform,
-        )}
+        initialSource={initialSource}
       />
     </>
   );
@@ -142,6 +143,10 @@ export function NewTransformPageInner({
   };
 
   const transformEditor = useTransformEditor(source, proposedSource);
+
+  useEffect(() => {
+    setSource(initialSource);
+  }, [initialSource, setSource]);
 
   return (
     <>
