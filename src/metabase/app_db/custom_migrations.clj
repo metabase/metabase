@@ -1809,8 +1809,6 @@
                                       (= (get-in query [:stages 0 :lib/type]) "mbql.stage/native")))
         transforms             (t2/query {:select [:id :source]
                                           :from   [:transform]})]
-    (def transforms transforms)
-    (def parsed-transform-source parse-transform-source)
     (doseq [{:keys [id source]} transforms]
       (let [parsed-source  (parse-transform-source source)
             source-type    (:type parsed-source)
