@@ -132,7 +132,7 @@
     (if source
       (try
         (let [source-version (source.p/version source)
-              last-imported-version (remote-sync.task/last-import-version)]
+              last-imported-version (remote-sync.task/last-version)]
           (if (and (not force?) (= last-imported-version source-version))
             (u/prog1 {:status :success
                       :version (source.p/version source)

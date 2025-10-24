@@ -23,8 +23,8 @@
     (let [branch (settings/remote-sync-branch)
           source (source/source-from-settings branch)
           source-version (source.p/version source)
-          last-imported-version (remote-sync.task/last-import-version)]
-      (if (= last-imported-version source-version)
+          last-version (remote-sync.task/last-version)]
+      (if (= last-version source-version)
         (log/infof "Skipping auto-import: source version %s matches last imported version" source-version)
         (let [{task-id :id existing? :existing?} (impl/create-task-with-lock! "import")]
           (if existing?

@@ -367,31 +367,28 @@
       (is (thrown-with-msg? Exception #"Remote sync task has been cancelled"
                             (rst/update-progress! (:id task) 0.5))))))
 
-(deftest most-recent-successful-task
-  (testing "When there are no tasks, most-recent-successful-task returns nil"
-    (is (nil? (rst/most-recent-successful-task "import")))
-    (is (nil? (rst/most-recent-successful-task nil))))
-  (testing "When there are no successful tasks, most-recent-successful-task returns nil"
+(deftest last-version
+  (testing "When there are no tasks, last-version returns nil"
+    (is (nil? (rst/last-version))))
+  (testing "When there are no successful tasks, last-version returns nil"
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))]
       (rst/fail-sync-task! (:id task) "Test failure")
-      (is (nil? (rst/most-recent-successful-task "import")))))
-  (testing "Returns last successful task"
+      (is (nil? (rst/last-version)))))
+  (testing "Returns last successful version"
     (let [successful-task (rst/create-sync-task! "import" (mt/user->id :rasta))]
       (rst/complete-sync-task! (:id successful-task))
-      (is (=? {:id (:id successful-task)} (rst/most-recent-successful-task "import")))
+      (rst/set-version! (:id successful-task) "version 1")
+      (is (= "version 1" (rst/last-version)))
       (testing "Ignores cancelled tasks"
         (rst/cancel-sync-task! (:id (rst/create-sync-task! "import" (mt/user->id :rasta))))
-        (is (=? {:id (:id successful-task)} (rst/most-recent-successful-task "import"))))
+        (is (= "version 1" (rst/last-version))))
       (testing "Ignores failed tasks"
         (rst/fail-sync-task! (:id (rst/create-sync-task! "import" (mt/user->id :rasta))) "Error")
-        (is (=? {:id (:id successful-task)} (rst/most-recent-successful-task "import"))))
+        (is (= "version 1" (rst/last-version))))
       (testing "Ignores incomplete tasks"
-        (is (=? {:id (:id successful-task)} (rst/most-recent-successful-task "import"))))
+        (is (= "version 1" (rst/last-version))))
       (testing "Returns newer successful tasks"
         (let [new-task (rst/create-sync-task! "import" (mt/user->id :rasta))]
           (rst/complete-sync-task! (:id new-task))
-          (is (=? {:id (:id new-task)} (rst/most-recent-successful-task "import")))))
-      (testing "Passing a nil type finds either type (import or export)"
-        (is (= "import" (:sync_task_type (rst/most-recent-successful-task nil))))
-        (rst/create-sync-task! "export" (mt/user->id :rasta))
-        (is (= "import" (:sync_task_type (rst/most-recent-successful-task nil))))))))
+          (rst/set-version! (:id new-task) "version 2")
+          (is (= "version 2" (rst/last-version))))))))

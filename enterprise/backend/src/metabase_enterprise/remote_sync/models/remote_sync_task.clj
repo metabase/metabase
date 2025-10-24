@@ -141,39 +141,21 @@
                   :order-by [[:started_at :desc]
                              [:id :desc]]}))
 
-(defn most-recent-successful-task
-  "Gets the most recent successful task, optionally filtered by type.
-
-  Takes an optional task-type parameter (either 'import' or 'export'). If nil, returns the most recent successful
-  task of any type.
-
-  Returns the most recent successfully completed RemoteSyncTask matching the criteria, or nil if none exists."
-  [task-type]
-  (t2/select-one :model/RemoteSyncTask
-                 {:where (cond-> [:and
-                                  [:<> nil :ended_at]
-                                  [:= false :cancelled]
-                                  [:= nil :error_message]]
-                           (some? task-type)
-                           (conj [:= task-type :sync_task_type]))
-                  :limit 1
-                  :order-by [[:started_at :desc]
-                             [:id :desc]]}))
-
-(defn last-import-version
-  "Gets the version most recently successfully imported.
-
-  Returns the version string from the most recent successful import task, or nil if no successful imports exist."
-  []
-  (:version (most-recent-successful-task "import")))
-
 (defn last-version
   "Gets the version that any changes are built off of.
 
   Returns the version string from the most recent successful task (either export or import), or nil if no successful
   tasks exist."
   []
-  (:version (most-recent-successful-task nil)))
+  (:version (t2/select-one :model/RemoteSyncTask
+                           {:where [:and
+                                    [:<> nil :ended_at]
+                                    [:= false :cancelled]
+                                    [:= nil :error_message]
+                                    [:<> nil :version]]
+                            :limit 1
+                            :order-by [[:started_at :desc]
+                                       [:id :desc]]})))
 
 (defn running?
   "Checks if a task is currently running.
