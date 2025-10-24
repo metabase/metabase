@@ -101,14 +101,12 @@ export function EditTableMetadataModal({
     visibilityType == null &&
     visibilityType2 == null;
 
-  const count = tables.size + schemas.size + databases.size;
-
   return (
     <Modal
       opened={isOpen}
       padding="xl"
       size={rem(512)}
-      title={t`Edit ${count} items`}
+      title={t`Edit tables`}
       onClose={handleClose}
     >
       <Stack gap="md" pt="sm">

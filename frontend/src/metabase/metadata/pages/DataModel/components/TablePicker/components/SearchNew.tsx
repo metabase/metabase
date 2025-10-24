@@ -176,7 +176,7 @@ export function SearchNew({ query, params, filters }: SearchNewProps) {
           {selectedItems.size > 0 && (
             <>
               <Button onClick={() => setIsModalOpen(true)}>
-                {t`Edit ${selectedItems.size} items`}
+                {t`Edit tables`}
               </Button>
               <Button
                 variant="transparent"

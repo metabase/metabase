@@ -248,9 +248,7 @@ export function Tree({ path, onChange }: Props) {
         {selectedItemsCount > 0 && (
           <>
             <Flex justify="center">
-              <Button onClick={onEditSelectedItems}>
-                {t`Edit ${selectedItemsCount} items`}
-              </Button>
+              <Button onClick={onEditSelectedItems}>{t`Edit tables`}</Button>
             </Flex>
             <Button
               variant="transparent"
