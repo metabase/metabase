@@ -174,6 +174,8 @@ export function Tree({ path, onChange }: Props) {
     }
   }
 
+  const selectedItemsCount = selectedItems.size + selectedSchemas.size;
+
   return (
     <>
       <Results
@@ -188,11 +190,11 @@ export function Tree({ path, onChange }: Props) {
         selectedSchemas={selectedSchemas}
       />
       <Flex justify="center" gap="sm" direction="column">
-        {selectedItems.size > 0 && (
+        {selectedItemsCount > 0 && (
           <>
             <Flex justify="center">
               <Button onClick={onEditSelectedItems}>
-                {t`Edit ${selectedItems.size} items`}
+                {t`Edit ${selectedItemsCount} items`}
               </Button>
             </Flex>
             <Button
@@ -206,6 +208,7 @@ export function Tree({ path, onChange }: Props) {
       </Flex>
       <EditTableMetadataModal
         tables={selectedItems}
+        schemas={selectedSchemas}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onUpdate={() => {

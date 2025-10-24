@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { useUpdateTableListMutation } from "metabase/api";
+import { useEditTablesMutation } from "metabase/api";
 import {
   DataSourceInput,
   LayerInput,
@@ -11,6 +11,7 @@ import {
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button, Flex, Modal, Stack, rem } from "metabase/ui";
 import type {
+  SchemaId,
   TableDataSource,
   TableId,
   TableVisibilityType,
@@ -19,19 +20,21 @@ import type {
 } from "metabase-types/api";
 
 interface Props {
-  tables: Set<TableId>;
+  tables?: Set<TableId>;
+  schemas?: Set<SchemaId>;
   isOpen: boolean;
   onClose: () => void;
   onUpdate?: () => void;
 }
 
 export function EditTableMetadataModal({
-  tables,
+  tables = new Set(),
+  schemas = new Set(),
   isOpen,
   onClose,
   onUpdate,
 }: Props) {
-  const [updateTableList, { isLoading }] = useUpdateTableListMutation();
+  const [editTables, { isLoading }] = useEditTablesMutation();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
   const [visibilityType, setVisibilityType] = useState<
     TableVisibilityType | undefined
@@ -54,8 +57,9 @@ export function EditTableMetadataModal({
   };
 
   const handleSubmit = async () => {
-    const { error } = await updateTableList({
-      ids: Array.from(tables),
+    const { error } = await editTables({
+      table_ids: Array.from(tables),
+      schema_ids: Array.from(schemas),
       visibility_type: visibilityType,
       visibility_type2: visibilityType2,
       data_source: dataSource,
@@ -66,9 +70,9 @@ export function EditTableMetadataModal({
     onUpdate?.();
 
     if (error) {
-      sendErrorToast(t`Failed to update tables`);
+      sendErrorToast(t`Failed to update items`);
     } else {
-      sendSuccessToast(t`Tables updated`);
+      sendSuccessToast(t`Items updated`);
     }
 
     onClose();
@@ -87,12 +91,14 @@ export function EditTableMetadataModal({
     typeof visibilityType === "undefined" &&
     typeof visibilityType2 === "undefined";
 
+  const count = tables.size + schemas.size;
+
   return (
     <Modal
       opened={isOpen}
       padding="xl"
       size={rem(512)}
-      title={t`Edit ${tables.size} tables`}
+      title={t`Edit ${count} items`}
       onClose={handleClose}
     >
       <Stack gap="md" pt="sm">
