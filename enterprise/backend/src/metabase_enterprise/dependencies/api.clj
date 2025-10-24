@@ -128,17 +128,23 @@
         breakages (dependencies/errors-from-proposed-edits {:snippet [snippet]})]
     (broken-cards-response breakages)))
 
-(defn- entity-keys [entity-type]
-  (case entity-type
-    :table [:name :description :display_name :db_id :db :schema :fields]
-    :card [:name :type :display :database_id :view_count
-           :created_at :creator :description
-           :result_metadata :last-edit-info
-           :collection :collection_id :dashboard :dashboard_id
-           :moderation_reviews]
-    :snippet [:name :description]
-    :transform [:name :description :table]
-    []))
+(def ^:private entity-keys
+  {:table [:name :description :display_name :db_id :db :schema :fields]
+   :card [:name :type :display :database_id :view_count
+          :created_at :creator :creator_id :description
+          :result_metadata :last-edit-info
+          :collection :collection_id :dashboard :dashboard_id
+          :moderation_reviews]
+   :snippet [:name :description]
+   :transform [:name :description :table]
+   :dashboard [:name :description :view_count
+               :created_at :creator :creator_id :last-edit-info
+               :collection :collection_id
+               :moderation_reviews]
+   :document [:name :description :view_count
+              :created_at :creator
+              :collection :collection_id]
+   :sandbox [:table :table_id]})
 
 (defn- format-subentity [entity]
   (case (t2/model entity)
@@ -157,7 +163,10 @@
   {:table :model/Table
    :card :model/Card
    :snippet :model/NativeQuerySnippet
-   :transform :model/Transform})
+   :transform :model/Transform
+   :dashboard :model/Dashboard
+   :document :model/Document
+   :sandbox :model/Sandbox})
 
 (defn- readable-node?
   "Check if the user can read the entity represented by `[entity-type entity-id]`."
@@ -211,20 +220,24 @@
     (mapcat (fn [[entity-type entity-ids]]
               (->> (cond-> (t2/select (entity-model entity-type)
                                       :id [:in entity-ids])
-                     (= entity-type :card) (-> (t2/hydrate :creator :dashboard [:collection :is_personal] :moderation_reviews)
-                                               (->> (map collection.root/hydrate-root-collection))
-                                               (revisions/with-last-edit-info :card))
-                     (= entity-type :table) (t2/hydrate :fields :db)
-                     (= entity-type :transform) (t2/hydrate :table-with-db-and-fields))
+                     (= entity-type :card)      (-> (t2/hydrate :creator :dashboard [:collection :is_personal] :moderation_reviews)
+                                                    (->> (map collection.root/hydrate-root-collection))
+                                                    (revisions/with-last-edit-info :card))
+                     (= entity-type :table)     (t2/hydrate :fields :db)
+                     (= entity-type :transform) (t2/hydrate :table-with-db-and-fields)
+                     (= entity-type :dashboard) (-> (t2/hydrate :creator [:collection :is_personal] :moderation_reviews)
+                                                    (->> (map collection.root/hydrate-root-collection))
+                                                    (revisions/with-last-edit-info :dashboard))
+                     (= entity-type :document)  (-> (t2/hydrate :creator [:collection :is_personal])
+                                                    (->> (map collection.root/hydrate-root-collection)))
+                     (= entity-type :sandbox)   (t2/hydrate [:table :db :fields]))
                    (mapv #(entity-value entity-type % usages))))
             nodes-by-type)))
 
 (api.macros/defendpoint :get "/graph"
-  "TODO: This endpoint is supposed to take an :id and :type of an entity (currently :table, :card, :snippet,
-  or :transform) and return the entity with all its upstream and downstream dependencies that should be fetched
-  recursively. :edges match our :model/Dependency format. Each node in :nodes has :id, :type, and :data, and :data
-  depends on the node type. For :table, there should be :display_name. For :card, there should be :name
-  and :type. For :snippet -> :name. For :transform -> :name."
+  "This endpoint takes an :id and a supported entity :type, and returns a graph of all its upstream dependencies.
+  The graph is represented by a list of :nodes and a list of :edges. Each node has an :id, :type, :data (which
+  depends on the node type), and a map of :dependent_counts per entity type. Each edge is a :model/Dependency"
   [_route-params
    {:keys [id type]} :- [:map
                          [:id {:optional true} ms/PositiveInt]
@@ -237,7 +250,7 @@
         downstream-graph (graph/cached-graph (readable-graph-dependents))
         nodes (into (set starting-nodes)
                     (graph/transitive upstream-graph starting-nodes))
-        edges (graph/calc-edges downstream-graph nodes)]
+        edges (graph/calc-edges-between downstream-graph nodes)]
     {:nodes (expanded-nodes downstream-graph nodes)
      :edges edges}))
 
@@ -245,16 +258,14 @@
   [:map
    [:id ms/PositiveInt]
    [:type (ms/enum-decode-keyword (vec (keys entity-model)))]
-   [:dependent_type (ms/enum-decode-keyword [:table :card :snippet :transform])]
+   [:dependent_type (ms/enum-decode-keyword (vec (keys entity-model)))]
    [:dependent_card_type {:optional true} (ms/enum-decode-keyword
                                            [:question :model :metric])]])
 
 (api.macros/defendpoint :get "/graph/dependents"
-  "TODO: This endpoint is supposed to take an :id and :type of an entity (currently :table, :card, :snippet,
-  or :transform) and return the entity with all its upstream and downstream dependencies that should be fetched
-  recursively. :edges match our :model/Dependency format. Each node in :nodes has :id, :type, and :data, and :data
-  depends on the node type. For :table, there should be :display_name. For :card, there should be :name
-  and :type. For :snippet -> :name. For :transform -> :name."
+  "This endpoint takes an :id, :type, :dependent_type, and an optional :dependent_card_type, and returns a list of
+   all that entity's dependents with :dependent_type. If the :dependent_type is :card, the dependents are further
+   filtered by :dependent_card_type."
   [_route-params
    {:keys [id type dependent_type dependent_card_type]} :- dependents-args]
   (api/read-check (entity-model type) id)
