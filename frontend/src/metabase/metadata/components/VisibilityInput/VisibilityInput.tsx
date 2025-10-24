@@ -4,7 +4,7 @@ import { Group, Icon, SegmentedControl, Stack, Text } from "metabase/ui";
 import type { TableVisibilityType2 } from "metabase-types/api";
 
 interface Props {
-  value: TableVisibilityType2;
+  value: TableVisibilityType2 | undefined;
   onChange: (value: TableVisibilityType2) => void;
 }
 
@@ -18,7 +18,7 @@ export const VisibilityInput = ({ value, onChange }: Props) => {
         size="md"
       >{t`Visibility`}</Text>
 
-      <SegmentedControl<TableVisibilityType2>
+      <SegmentedControl<TableVisibilityType2 | "null">
         data={[
           {
             value: "copper",
@@ -57,7 +57,7 @@ export const VisibilityInput = ({ value, onChange }: Props) => {
             ),
           },
         ]}
-        value={value}
+        value={value ?? "null"}
         onChange={onChange}
       />
     </Stack>

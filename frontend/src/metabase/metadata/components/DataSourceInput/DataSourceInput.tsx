@@ -16,7 +16,7 @@ import type { TableDataSource, TransformId } from "metabase-types/api";
 
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   transformId?: TransformId | null;
-  value: TableDataSource | null;
+  value: TableDataSource | null | undefined;
   onChange: (value: TableDataSource | null) => void;
 }
 
@@ -79,7 +79,7 @@ export const DataSourceInput = ({
   );
 };
 
-function getData(value: TableDataSource | null) {
+function getData(value: TableDataSource | null | undefined) {
   const data = [
     { value: "ingested", label: t`Ingested` },
     { value: "transform", label: t`Transformation (other tools)` },
@@ -94,7 +94,13 @@ function getData(value: TableDataSource | null) {
   return data;
 }
 
-function stringifyValue(value: TableDataSource | null): string {
+function stringifyValue(
+  value: TableDataSource | null | undefined,
+): string | undefined {
+  if (typeof value === "undefined") {
+    return undefined;
+  }
+
   return value === null ? "null" : value;
 }
 

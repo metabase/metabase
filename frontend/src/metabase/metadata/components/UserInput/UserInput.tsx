@@ -7,9 +7,9 @@ import { Avatar, Group, Select, type SelectProps, Text } from "metabase/ui";
 import type { User, UserId } from "metabase-types/api";
 
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
-  email: string | null;
-  userId: UserId | null;
-  onEmailChange: (email: string | null) => void;
+  email: string | null | undefined;
+  userId: UserId | null | undefined;
+  onEmailChange: (email: string) => void;
   onUserIdChange: (value: UserId | null) => void;
 }
 
@@ -55,7 +55,7 @@ export const UserInput = ({
         ...comboboxProps,
       }}
       data={data}
-      placeholder={t`Choose user or type an email`}
+      placeholder={t`Select user or type an email`}
       nothingFoundMessage={t`Didn't find any results`}
       searchable
       searchValue={search}

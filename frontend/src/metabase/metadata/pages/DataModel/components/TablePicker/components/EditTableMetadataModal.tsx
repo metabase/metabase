@@ -2,13 +2,18 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { useUpdateTableListMutation } from "metabase/api";
-import { DataSourceInput, VisibilityInput } from "metabase/metadata/components";
+import {
+  DataSourceInput,
+  UserInput,
+  VisibilityInput,
+} from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button, Flex, Modal, Stack, rem } from "metabase/ui";
 import type {
   TableDataSource,
   TableId,
   TableVisibilityType2,
+  UserId,
 } from "metabase-types/api";
 
 interface Props {
@@ -26,24 +31,29 @@ export function EditTableMetadataModal({
 }: Props) {
   const [updateTableList, { isLoading }] = useUpdateTableListMutation();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
-  const [visibilityType2, setVisibilityType2] =
-    useState<TableVisibilityType2>("copper");
-  const [dataSource, setDataSource] = useState<TableDataSource | null>(null);
+  const [visibilityType2, setVisibilityType2] = useState<
+    TableVisibilityType2 | undefined
+  >(undefined);
+  const [dataSource, setDataSource] = useState<
+    TableDataSource | null | undefined
+  >(undefined);
+  const [email, setEmail] = useState<string | undefined>(undefined);
+  const [userId, setUserId] = useState<UserId | null | undefined>(undefined);
 
   const reset = () => {
-    setVisibilityType2("copper");
-    setDataSource(null);
+    setVisibilityType2(undefined);
+    setDataSource(undefined);
+    setEmail(undefined);
+    setUserId(undefined);
   };
 
   const handleSubmit = async () => {
-    if (!visibilityType2 || !dataSource) {
-      return;
-    }
-
     const { error } = await updateTableList({
       ids: Array.from(tables),
       visibility_type2: visibilityType2,
       data_source: dataSource,
+      owner_email: email,
+      owner_user_id: userId,
     });
 
     onUpdate?.();
@@ -63,6 +73,12 @@ export function EditTableMetadataModal({
     reset();
   };
 
+  const disabled =
+    typeof email === "undefined" &&
+    typeof dataSource === "undefined" &&
+    typeof userId === "undefined" &&
+    typeof visibilityType2 === "undefined";
+
   return (
     <Modal
       opened={isOpen}
@@ -77,16 +93,30 @@ export function EditTableMetadataModal({
           onChange={setVisibilityType2}
         />
 
+        <UserInput
+          email={email}
+          label={t`Owner`}
+          userId={userId}
+          onEmailChange={(email) => {
+            setEmail(email);
+            setUserId(undefined);
+          }}
+          onUserIdChange={(userId) => {
+            setEmail(undefined);
+            setUserId(userId);
+          }}
+        />
+
         <DataSourceInput value={dataSource} onChange={setDataSource} />
 
         <Flex justify="flex-end" gap="sm">
-          <Button variant="subtle" onClick={handleClose} disabled={isLoading}>
-            {t`Cancel`}
-          </Button>
+          <Button onClick={handleClose}>{t`Cancel`}</Button>
+
           <Button
-            onClick={handleSubmit}
             loading={isLoading}
-            disabled={!visibilityType2}
+            disabled={disabled}
+            variant="primary"
+            onClick={handleSubmit}
           >
             {t`Update`}
           </Button>
