@@ -7,7 +7,6 @@ import type { SelectionRange } from "metabase/query_builder/components/NativeQue
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { NativeQueryPreview } from "metabase/querying/notebook/components/NativeQueryPreview";
 import { Center, Loader, Modal, Stack } from "metabase/ui";
-import { useRegisterMetabotTransformContext } from "metabase-enterprise/transforms/hooks/use-register-transform-metabot-context";
 import type Question from "metabase-lib/v1/Question";
 import type {
   NativeQuerySnippet,
@@ -16,11 +15,13 @@ import type {
 } from "metabase-types/api";
 
 import { useQueryMetadata } from "../../hooks/use-query-metadata";
+import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";
 import type { TransformEditorValue } from "../../hooks/use-transform-editor";
 
 import { EditorBody } from "./EditorBody";
 import { EditorHeader } from "./EditorHeader";
 import { EditorValidationCard } from "./EditorValidationCard";
+import { EditorVisualization } from "./EditorVisualization";
 import S from "./QueryEditor.module.css";
 import { getValidationResult, useSelectedText } from "./utils";
 
@@ -59,6 +60,8 @@ export function QueryEditor({
     isRunning,
     isResultDirty,
     isNative,
+    result,
+    rawSeries,
     runQuery,
     cancelQuery,
   } = transformEditor;
@@ -134,6 +137,7 @@ export function QueryEditor({
         gap={0}
       >
         <EditorHeader
+          transform={transform}
           validationResult={validationResult}
           name={transform?.name}
           isNew={isNew}
@@ -169,6 +173,17 @@ export function QueryEditor({
           onChangeModalSnippet={setModalSnippet}
           onChangeNativeEditorSelection={setSelectionRange}
           nativeEditorSelectedText={selectedText}
+        />
+        <EditorVisualization
+          question={question}
+          result={result}
+          rawSeries={rawSeries}
+          isNative={isNative}
+          isRunnable={isRunnable}
+          isRunning={isRunning}
+          isResultDirty={isResultDirty}
+          onRunQuery={runQuery}
+          onCancelQuery={() => undefined}
         />
         <EditorValidationCard validationResult={validationResult} />
       </Stack>

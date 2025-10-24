@@ -1,14 +1,19 @@
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { skipToken } from "metabase/api";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
-import { useUpdateTransformMutation } from "metabase-enterprise/api";
-import type { TransformEditorValue } from "metabase-enterprise/transforms/hooks/use-transform-editor";
+import {
+  useGetTransformQuery,
+  useUpdateTransformMutation,
+} from "metabase-enterprise/api";
 import type {
   DraftTransformSource,
   Transform,
@@ -16,25 +21,46 @@ import type {
 } from "metabase-types/api";
 
 import { QueryEditor } from "../../components/QueryEditor";
+import { useSourceState } from "../../hooks/use-source-state";
+import {
+  type TransformEditorValue,
+  useTransformEditor,
+} from "../../hooks/use-transform-editor";
 import { getTransformUrl } from "../../urls";
 
-export function TransformQueryPage({
-  transform,
-  setSource,
-  proposedSource,
-  acceptProposed,
-  clearProposed,
-  transformEditor,
-}: {
+type TransformQueryPageParams = {
+  transformId: string;
+};
+
+type TransformQueryPageProps = {
+  params: TransformQueryPageParams;
+};
+
+export function TransformQueryPage({ params }: TransformQueryPageProps) {
+  const transformId = Urls.extractEntityId(params.transformId);
+  const {
+    data: transform,
+    isLoading,
+    error,
+  } = useGetTransformQuery(transformId ?? skipToken);
+
+  if (isLoading || error || transform == null) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
+  return <TransformQueryPageBody transform={transform} />;
+}
+
+type TransformQueryPageBodyProps = {
   transform: Transform;
-  setSource: (source: DraftTransformSource) => void;
-  proposedSource: TransformSource | undefined;
-  acceptProposed: (source: TransformSource) => void;
-  clearProposed: () => void;
-  transformEditor: TransformEditorValue;
-}) {
+};
+
+function TransformQueryPageBody({ transform }: TransformQueryPageBodyProps) {
   const [updateTransform, { isLoading: isSaving }] =
     useUpdateTransformMutation();
+  const { setSource, proposedSource, acceptProposed, clearProposed } =
+    useSourceState(transform.id, transform.source);
+  const transformEditor = useTransformEditor(transform.source, proposedSource);
   const dispatch = useDispatch();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
@@ -74,7 +100,7 @@ export function TransformQueryPage({
 
   return (
     <>
-      <TransformEditorBody
+      <TransformSourceEditor
         transform={transform}
         initialSource={transform.source}
         proposedSource={
@@ -100,7 +126,7 @@ export function TransformQueryPage({
   );
 }
 
-interface TransformEditorBodyProps {
+interface TransformSourceEditorProps {
   transform: Transform;
   initialSource: TransformSource;
   proposedSource?: TransformSource;
@@ -113,7 +139,7 @@ interface TransformEditorBodyProps {
   transformEditor: TransformEditorValue;
 }
 
-function TransformEditorBody({
+function TransformSourceEditor({
   transform,
   initialSource,
   proposedSource,
@@ -124,7 +150,7 @@ function TransformEditorBody({
   onRejectProposed,
   onAcceptProposed,
   transformEditor,
-}: TransformEditorBodyProps) {
+}: TransformSourceEditorProps) {
   if (initialSource.type === "python") {
     return (
       <PLUGIN_TRANSFORMS_PYTHON.TransformEditor

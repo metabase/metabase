@@ -1,12 +1,10 @@
 import { useDisclosure } from "@mantine/hooks";
 import type { Location } from "history";
 import { useState } from "react";
-import { Panel, PanelGroup } from "react-resizable-panels";
 import type { Route } from "react-router";
 import { push } from "react-router-redux";
 
 import { skipToken, useGetCardQuery } from "metabase/api";
-import { ResizeHandle } from "metabase/bench/components/BenchApp";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -28,7 +26,6 @@ import {
   useTransformEditor,
 } from "../../hooks/use-transform-editor";
 import { getTransformListUrl, getTransformUrl } from "../../urls";
-import { TransformDrawer } from "../TransformPage";
 
 import {
   CreateTransformModal,
@@ -148,31 +145,16 @@ export function NewTransformPageInner({
 
   return (
     <>
-      <PanelGroup
-        autoSaveId="transforms-editor-panel-layout"
-        direction="vertical"
-        style={{ height: "100%", width: "100%" }}
-      >
-        <Panel>
-          <NewTransformEditorBody
-            initialSource={initialSource}
-            proposedSource={proposedSource}
-            onChange={setSource}
-            onSave={handleSave}
-            onCancel={handleCancel}
-            onRejectProposed={clearProposed}
-            onAcceptProposed={handleAcceptProposed}
-            transformEditor={transformEditor}
-          />
-        </Panel>
-        <ResizeHandle direction="vertical" />
-        <Panel minSize={5} style={{ backgroundColor: "transparent" }}>
-          <TransformDrawer
-            transform={{ source }}
-            transformEditor={transformEditor}
-          />
-        </Panel>
-      </PanelGroup>
+      <NewTransformEditorBody
+        initialSource={initialSource}
+        proposedSource={proposedSource}
+        onChange={setSource}
+        onSave={handleSave}
+        onCancel={handleCancel}
+        onRejectProposed={clearProposed}
+        onAcceptProposed={handleAcceptProposed}
+        transformEditor={transformEditor}
+      />
 
       {isModalOpened && source && (
         <CreateTransformModal
