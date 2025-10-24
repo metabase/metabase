@@ -24,11 +24,8 @@ jobs:
           WEEK_OF_YEAR=$(/bin/date "+%G-%V")
           CACHE_SUFFIX="${{ runner.os }}-$WEEK_OF_YEAR"
 
-          m2-cache-key=$M2_CACHE_PREFIX-$CACHE_SUFFIX
-          node-cache-key=$NODE_CACHE_PREFIX-$CACHE_SUFFIX
-
-          echo $m2-cache-key
-          echo $node-cache-key
+          echo "$M2_CACHE_PREFIX-$CACHE_SUFFIX"
+          echo "$NODE_CACHE_PREFIX-$CACHE_SUFFIX"
         shell: bash
 
       - name: Prepare backend
