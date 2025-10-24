@@ -69,7 +69,11 @@ export function ListView({
       style={{ "--grid-columns": Math.max(rightColumns.length, 1) }}
     >
       <Stack className={styles.listContainer}>
-        <div className={styles.listHeader}>
+        <div
+          className={cx(styles.listHeader, {
+            [styles.withIcon]: !!(entityIcon || imageColumn),
+          })}
+        >
           {/* Entity Type Icon Column Placeholder */}
           <div style={{ width: 32, flexShrink: 0 }} />
 
