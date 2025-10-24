@@ -19,7 +19,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.error-type :as qp.error-type]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
@@ -379,11 +379,12 @@
 (defenterprise apply-sandboxing
   "Pre-processing middleware. Replaces source tables a User was querying against with source queries that (presumably)
   restrict the rows returned, based on presence of sandboxes."
-  :feature :sandboxes
+  :feature :none
   [query]
   (if-not api/*is-superuser?*
     (or (when-let [table-id->gtap (when *current-user-id*
                                     (query->table-id->gtap query))]
+          (premium-features/assert-has-feature :sandboxes (tru "Sandboxing"))
           (let [gtapped-query (gtapped-query query table-id->gtap)]
             (if (not= query gtapped-query)
               ;; Applying GTAPs to the query may have introduced references to tables that are also sandboxed,
