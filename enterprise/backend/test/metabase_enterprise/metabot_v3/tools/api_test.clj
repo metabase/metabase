@@ -1310,8 +1310,6 @@
         (finally
           (when (seq saved-python-library)
             (t2/insert! :model/PythonLibrary saved-python-library)))))))
-<<<<<<< HEAD
-=======
 
 (deftest get-snippets-test
   (mt/with-premium-features #{:metabot-v3}
@@ -1429,4 +1427,3 @@
                                         {:arguments {:transform_id transform1-id
                                                      :source modified-source}
                                          :conversation_id conversation-id}))))))))
->>>>>>> master

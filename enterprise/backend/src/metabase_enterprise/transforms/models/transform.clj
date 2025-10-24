@@ -10,10 +10,7 @@
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-<<<<<<< HEAD
    [metabase.permissions.core :as perms]
-=======
->>>>>>> master
    [metabase.search.core :as search.core]
    [metabase.search.ingestion :as search]
    [metabase.search.spec :as search.spec]
@@ -28,7 +25,6 @@
 (doseq [trait [:metabase/model :hook/entity-id :hook/timestamped?]]
   (derive :model/Transform trait))
 
-<<<<<<< HEAD
 (defmethod mi/can-read? :model/Transform
   ([_instance]
    (perms/set-has-application-permission-of-type? @api/*current-user-permissions-set* :transforms))
@@ -40,12 +36,6 @@
    (perms/set-has-application-permission-of-type? @api/*current-user-permissions-set* :transforms))
   ([_model _pk]
    (perms/set-has-application-permission-of-type? @api/*current-user-permissions-set* :transforms)))
-=======
-;; Only superusers can access transforms
-(doto :model/Transform
-  (derive ::mi/read-policy.superuser)
-  (derive ::mi/write-policy.superuser))
->>>>>>> master
 
 (defn- transform-source-out [m]
   (-> m

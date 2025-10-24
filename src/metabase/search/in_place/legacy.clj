@@ -311,17 +311,11 @@
    :description])
 
 (defmethod searchable-columns "transform"
-<<<<<<< HEAD
-  [_ _]
-  [:name
-   :description])
-=======
   [_ search-native-query]
   (cond-> [:name
            :description]
     search-native-query
     (conj :source)))
->>>>>>> master
 
 (defmethod searchable-columns "indexed-entity"
   [_ _]

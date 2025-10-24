@@ -167,8 +167,6 @@
           (t2/delete! :model/Transform :id transform-id)
           (is (nil? (fetch-one "transform" :model_id (str transform-id)))
               "Transform should be removed from the search index after deletion"))))))
-<<<<<<< HEAD
-=======
 
 (deftest transform-search-test
   (mt/with-premium-features #{:transforms}
@@ -206,4 +204,3 @@
                   (let [transform-only-results (search.tu/search-results "Customer Revenue" {:models #{"transform"}})]
                     (is (every? #(= "transform" (:model %)) transform-only-results)
                         "All results should be transforms when filtered")))))))))))
->>>>>>> master

@@ -90,14 +90,9 @@
   [_route-params
    _query-params
    {:keys [id source target]} :- ::transform-body]
-<<<<<<< HEAD
-  (if (= (keyword (:type source)) :query)
-    (let [database-id   (-> source :query :database)
-=======
   (api/read-check :model/Transform id)
   (if (= (keyword (:type source)) :query)
     (let [database-id (-> source :query :database)
->>>>>>> master
           base-provider (lib-be/application-database-metadata-provider database-id)
           original (lib.metadata/transform base-provider id)
           transform (-> original
