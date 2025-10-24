@@ -60,11 +60,13 @@ describe("ContentTranslationConfiguration", () => {
 
       expect(
         screen.getByRole("button", {
-          name: /Download translation dictionary/i,
+          name: /Get translation dictionary template/i,
         }),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("button", { name: /Upload translation dictionary/i }),
+        screen.getByRole("button", {
+          name: /Upload edited translation dictionary/i,
+        }),
       ).toBeInTheDocument();
     });
   });
