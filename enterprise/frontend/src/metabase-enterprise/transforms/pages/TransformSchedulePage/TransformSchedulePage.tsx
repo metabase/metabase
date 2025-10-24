@@ -1,12 +1,13 @@
 import { useState } from "react";
 
 import { skipToken } from "metabase/api";
+import { BenchPaneHeader } from "metabase/bench/components/BenchPaneHeader";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
 import { useGetTransformQuery } from "metabase-enterprise/api";
 import type { Transform } from "metabase-types/api";
 
-import { TransformHeader } from "../../components/TransformHeader";
+import { TransformTabs } from "../../components/TransformTabs";
 import { POLLING_INTERVAL } from "../../constants";
 import { isTransformCanceling, isTransformRunning } from "../../utils";
 
@@ -41,7 +42,7 @@ export function TransformSchedulePage({ params }: TransformSchedulePageProps) {
 
   return (
     <div>
-      <TransformHeader />
+      <BenchPaneHeader title={<TransformTabs transform={transform} />} />
       <ScheduleSection transform={transform} />
     </div>
   );

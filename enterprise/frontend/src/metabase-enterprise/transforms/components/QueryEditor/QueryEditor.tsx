@@ -137,6 +137,7 @@ export function QueryEditor({
         gap={0}
       >
         <EditorHeader
+          transform={transform}
           validationResult={validationResult}
           name={transform?.name}
           isNew={isNew}
