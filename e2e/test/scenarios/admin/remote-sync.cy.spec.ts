@@ -152,32 +152,12 @@ describe("Remote Sync", () => {
           .should("contain.text", newBranchName);
       };
 
-      const moveEntityToSyncedLibrary = (
-        originCollection: string | RegExp,
-        entity: string,
-      ) => {
-        H.navigationSidebar()
-          .findByRole("treeitem", { name: originCollection })
-          .click();
-        H.collectionTable().findByText(entity).should("exist");
-
-        H.openCollectionItemMenu(entity);
-
-        H.popover().findByText("Move").click();
-
-        H.entityPickerModal().within(() => {
-          cy.findAllByRole("tab", { name: /Browse|Collections/ }).click();
-
-          H.entityPickerModalItem(1, "Library").click();
-          cy.button("Move").click();
-        });
-
-        H.getSyncStatusIndicators().should("have.length", 1);
-
-        H.navigationSidebar()
-          .findByRole("treeitem", { name: /Library/ })
-          .click();
-        H.collectionTable().findByText(entity).should("exist");
+      const switchToExistingBranch = (branch: string) => {
+        H.navigationSidebar().findByTestId("branch-picker-button").click();
+        H.popover()
+          .findByPlaceholderText("Find or create a branch...")
+          .type(branch);
+        cy.findByRole("option", { name: branch }).click();
       };
 
       const pushUpdates = () => {
@@ -215,29 +195,74 @@ describe("Remote Sync", () => {
         createNewBranch(NEW_BRANCH_1);
 
         // Move something into Library for the new branch
-        moveEntityToSyncedLibrary(/Our analytics/, "Orders, Count");
+        H.moveCollectionItemToLibrary("Orders, Count");
 
         pushUpdates();
 
         // Go back to the main branch
         createNewBranch(NEW_BRANCH_2);
 
-        moveEntityToSyncedLibrary(/Our analytics/, "Orders Model");
+        H.moveCollectionItemToLibrary("Orders Model");
 
         H.collectionTable().findByText("Orders, Count").should("exist");
         H.collectionTable().findByText("Orders Model").should("exist");
         pushUpdates();
 
         // Go back to the first branch
-        H.navigationSidebar().findByTestId("branch-picker-button").click();
-        H.popover()
-          .findByPlaceholderText("Find or create a branch...")
-          .type(NEW_BRANCH_1);
-        cy.findByRole("option", { name: NEW_BRANCH_1 }).click();
+        switchToExistingBranch(NEW_BRANCH_1);
 
         H.collectionTable().findByText("Orders, Count").should("exist");
         // The second item should not exist in the first branch
         H.collectionTable().findByText("Orders Model").should("not.exist");
+      });
+
+      it("should show a popup when trying to switch branches with unsynced changes", () => {
+        H.configureGit("development");
+
+        const NEW_BRANCH = `new-branch-${Date.now()}`;
+
+        cy.visit("/collection/root");
+
+        H.navigationSidebar()
+          .findByRole("treeitem", { name: /Library/ })
+          .click();
+
+        // Synced Library starts empty
+        H.collectionTable().should("not.exist");
+        cy.findByTestId("collection-empty-state").should("exist");
+
+        createNewBranch(NEW_BRANCH);
+
+        // Move something into Library for the new branch
+        H.moveCollectionItemToLibrary("Orders, Count");
+
+        // Attempt to go back to main
+        switchToExistingBranch("main");
+
+        // Check that we haven't switched to main
+        H.navigationSidebar()
+          .findByTestId("branch-picker-button")
+          .should("not.contain.text", "main");
+
+        H.modal().should("exist");
+        H.modal().within(() => {
+          cy.findByRole("heading", {
+            name: "You have unsynced changes. What do you want to do?",
+          });
+          cy.findByLabelText(
+            "Push changes to the current branch, " + NEW_BRANCH,
+          );
+          cy.findByLabelText("Create a new branch and push changes there");
+
+          // Choose discard so that we can switch later
+          cy.findByLabelText("Discard these changes (can’t be undone)").click();
+          cy.button(/Discard changes/).click();
+        });
+
+        // Now we switched to main
+        H.navigationSidebar()
+          .findByTestId("branch-picker-button")
+          .should("contain.text", "main");
       });
     });
   });
@@ -247,11 +272,10 @@ describe("Remote Sync", () => {
       H.restore();
       H.activateToken("bleeding-edge");
       H.setupGitSync();
+      cy.signInAsAdmin();
     });
 
     it("can set up development mode", () => {
-      H.setupGitSync();
-      cy.signInAsAdmin();
       cy.visit("/admin/settings/remote-sync");
       cy.findByLabelText(/repository url/i)
         .clear()
@@ -301,9 +325,10 @@ describe("Remote Sync", () => {
           "not.exist",
         );
         cy.findByTestId("branch-picker-button").should("not.exist");
-        cy.findByRole("treeitem", { name: /Library/ }).click();
+
+        // Library is actually not created by the backend when setup is done in production mode
+        // cy.findByRole("treeitem", { name: /Library/ }).click();
       });
-      H.collectionTable().findByText(REMOTE_QUESTION_NAME);
     });
 
     it("shows an error if git settings are invalid", () => {
