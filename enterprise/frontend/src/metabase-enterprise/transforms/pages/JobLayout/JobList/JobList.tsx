@@ -9,11 +9,11 @@ import { BenchFlatListItem } from "metabase/bench/components/shared/BenchFlatLis
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { useListTransformJobsQuery } from "metabase-enterprise/api";
 import type { TransformJob, TransformJobId } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
-import { getJobUrl, getNewJobUrl } from "../../../urls";
 import { parseTimestampWithTimezone } from "../../../utils";
 
 type JobListProps = {
@@ -34,7 +34,9 @@ export function JobList({ selectedId, onCollapse }: JobListProps) {
     <ItemsListSection
       onCollapse={onCollapse}
       addButton={
-        <ItemsListAddButton onClick={() => dispatch(push(getNewJobUrl()))} />
+        <ItemsListAddButton
+          onClick={() => dispatch(push(Urls.getNewJobUrl()))}
+        />
       }
       listItems={
         jobs.length === 0 ? (
@@ -75,7 +77,7 @@ const JobItem = ({
       label={job.name}
       icon="play_outlined"
       subtitle={subtitle}
-      href={getJobUrl(job.id)}
+      href={Urls.getJobUrl(job.id)}
       isActive={isActive}
     />
   );

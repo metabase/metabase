@@ -1,4 +1,4 @@
-import { useDisclosure, useHotkeys, useToggle } from "@mantine/hooks";
+import { useHotkeys, useToggle } from "@mantine/hooks";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -6,7 +6,9 @@ import { useListDatabasesQuery } from "metabase/api";
 import type { SelectionRange } from "metabase/query_builder/components/NativeQueryEditor/types";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { NativeQueryPreview } from "metabase/querying/notebook/components/NativeQueryPreview";
-import { Center, Flex, Loader, Modal, Stack } from "metabase/ui";
+import { Center, Loader, Modal, Stack } from "metabase/ui";
+import { useQueryResults } from "metabase-enterprise/transforms/hooks/use-query-results";
+import { useQueryState } from "metabase-enterprise/transforms/hooks/use-query-state";
 import { useRegisterMetabotTransformContext } from "metabase-enterprise/transforms/hooks/use-register-transform-metabot-context";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -17,8 +19,6 @@ import type {
 } from "metabase-types/api";
 
 import { useQueryMetadata } from "../../hooks/use-query-metadata";
-import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";
-import type { TransformEditorValue } from "../../hooks/use-transform-editor";
 
 import { EditorBody } from "./EditorBody";
 import { EditorHeader } from "./EditorHeader";
@@ -168,7 +168,6 @@ export function QueryEditor({
           onToggleSnippetSidebar={() => null}
           onOpenModal={handleOpenModal}
           modalSnippet={modalSnippet}
-          onInsertSnippet={handleInsertSnippet}
           onChangeModalSnippet={setModalSnippet}
           onChangeNativeEditorSelection={setSelectionRange}
           nativeEditorSelectedText={selectedText}

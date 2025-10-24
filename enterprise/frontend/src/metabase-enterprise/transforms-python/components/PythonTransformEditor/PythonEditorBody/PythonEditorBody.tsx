@@ -3,6 +3,8 @@ import { ResizableBox } from "react-resizable";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
+import * as Urls from "metabase/lib/urls";
+import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
 import {
   ActionIcon,
   Box,
@@ -13,7 +15,6 @@ import {
   Stack,
   Tooltip,
 } from "metabase/ui";
-import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
 import { SHARED_LIB_IMPORT_PATH } from "metabase-enterprise/transforms-python/constants";
 
 import { PythonEditor } from "../../PythonEditor";
@@ -21,7 +22,6 @@ import { PythonEditor } from "../../PythonEditor";
 import S from "./PythonEditorBody.module.css";
 import { ResizableBoxHandle } from "./ResizableBoxHandle";
 import { hasImport, insertImport, removeImport } from "./utils";
-import { getPythonLibraryUrl } from "metabase-enterprise/transforms-python/urls";
 
 type PythonEditorBodyProps = {
   source: string;
@@ -184,7 +184,7 @@ function SharedLibraryEditLink() {
       <ActionIcon
         component={ForwardRefLink}
         target="_blank"
-        to={getPythonLibraryUrl({ path: SHARED_LIB_IMPORT_PATH })}
+        to={Urls.transformPythonLibrary({ path: SHARED_LIB_IMPORT_PATH })}
       >
         <Icon name="pencil" c="text-dark" />
       </ActionIcon>

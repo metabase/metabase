@@ -22,11 +22,6 @@ import type {
 } from "metabase-types/api";
 
 import { QueryEditor } from "../../components/QueryEditor";
-import {
-  type TransformEditorValue,
-  useTransformEditor,
-} from "../../hooks/use-transform-editor";
-import { getTransformListUrl, getTransformUrl } from "../../urls";
 
 import {
   CreateTransformModal,
@@ -144,8 +139,6 @@ export function NewTransformPageInner({
     }
     acceptProposed(source);
   };
-
-  const transformEditor = useTransformEditor(source, proposedSource);
 
   return (
     <>

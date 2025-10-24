@@ -881,12 +881,12 @@ export type TransformPickerProps = {
 
 export type TransformsPlugin = {
   getTransformRoutes(): ReactNode;
-  ROOT_URL: string | null;
+  TransformPicker: ComponentType<TransformPickerProps>;
 };
 
 export const PLUGIN_TRANSFORMS: TransformsPlugin = {
   getTransformRoutes: () => null,
-  ROOT_URL: null,
+  TransformPicker: PluginPlaceholder,
 };
 
 export type PythonTransformsPlugin = {

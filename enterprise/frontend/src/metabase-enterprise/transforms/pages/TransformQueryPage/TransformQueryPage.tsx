@@ -4,7 +4,6 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
-import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
@@ -26,10 +25,6 @@ import type {
 } from "metabase-types/api";
 
 import { QueryEditor } from "../../components/QueryEditor";
-import {
-  type TransformEditorValue,
-  useTransformEditor,
-} from "../../hooks/use-transform-editor";
 
 type TransformQueryPageParams = {
   transformId: string;
@@ -79,14 +74,10 @@ export function TransformQueryPageBody({
 }: TransformQueryPageBodyProps) {
   const [updateTransform, { isLoading: isSaving }] =
     useUpdateTransformMutation();
-  const { setSource, proposedSource, acceptProposed, clearProposed } =
-    useSourceState(transform.id, transform.source);
-  const transformEditor = useTransformEditor(transform.source, proposedSource);
-  const dispatch = useDispatch();
-  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
-
   const { setSource, proposedSource, acceptProposed, clearProposed, isDirty } =
     useSourceState<DraftTransformSource>(transform.id, transform.source);
+  const dispatch = useDispatch();
+  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   const {
     checkData,
@@ -209,69 +200,6 @@ function TransformEditorBody({
       }
       onRejectProposed={onRejectProposed}
       onAcceptProposed={onAcceptProposed}
-    />
-  );
-}
-
-interface TransformSourceEditorProps {
-  transform: Transform;
-  initialSource: TransformSource;
-  proposedSource?: TransformSource;
-  isSaving?: boolean;
-  onChange?: (source: DraftTransformSource) => void;
-  onSave: (source: TransformSource) => void;
-  onCancel: () => void;
-  onRejectProposed?: () => void;
-  onAcceptProposed?: (source: TransformSource) => void;
-  transformEditor: TransformEditorValue;
-}
-
-function TransformSourceEditor({
-  transform,
-  initialSource,
-  proposedSource,
-  isSaving,
-  onChange,
-  onSave,
-  onCancel,
-  onRejectProposed,
-  onAcceptProposed,
-  transformEditor,
-}: TransformSourceEditorProps) {
-  if (initialSource.type === "python") {
-    return (
-      <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
-        transform={transform}
-        initialSource={initialSource}
-        proposedSource={
-          proposedSource?.type === "python" ? proposedSource : undefined
-        }
-        isNew={false}
-        isSaving={isSaving}
-        onChange={onChange}
-        onSave={onSave}
-        onCancel={onCancel}
-        onRejectProposed={onRejectProposed}
-        onAcceptProposed={onAcceptProposed}
-      />
-    );
-  }
-
-  return (
-    <QueryEditor
-      initialSource={initialSource}
-      transform={transform}
-      isNew={false}
-      isSaving={isSaving}
-      onSave={onSave}
-      onChange={onChange}
-      onCancel={onCancel}
-      proposedSource={
-        proposedSource?.type === "query" ? proposedSource : undefined
-      }
-      onRejectProposed={onRejectProposed}
-      onAcceptProposed={onAcceptProposed}
-      transformEditor={transformEditor}
     />
   );
 }
