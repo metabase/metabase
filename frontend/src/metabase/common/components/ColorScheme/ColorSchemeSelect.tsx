@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { Select, type SelectProps } from "metabase/ui";
 import { useColorScheme } from "metabase/ui/components/theme/ColorSchemeProvider";
 
-export function ColorSchemeToggle(
+export function ColorSchemeSelect(
   props: Omit<SelectProps, "data"> & { id?: string },
 ) {
   const { colorScheme, setColorScheme } = useColorScheme();

@@ -3,7 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
-import { ColorSchemeToggle } from "metabase/common/components/ColorSchemeToggle";
+import { ColorSchemeSelect } from "metabase/common/components/ColorScheme";
 import { CommunityLocalizationNotice } from "metabase/common/components/CommunityLocalizationNotice";
 import {
   Form,
@@ -114,7 +114,7 @@ const UserProfileForm = ({
               />
             </div>
             <FormSubmitButton
-              title={t`Update`}
+              label={t`Update`}
               disabled={!dirty}
               variant="primary"
             />
@@ -142,7 +142,7 @@ const ColorSchemeSwitcher = () => {
         {t`Theme`}
       </Text>
 
-      <ColorSchemeToggle />
+      <ColorSchemeSelect />
     </Box>
   );
 };

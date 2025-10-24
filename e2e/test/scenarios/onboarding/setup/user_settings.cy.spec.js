@@ -121,7 +121,7 @@ describe("user > settings", () => {
     cy.visit("/account/profile");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Use site default").click();
+    cy.findByDisplayValue("Use site default").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     H.popover().within(() => cy.findByText("Indonesian").click());
 
@@ -253,19 +253,18 @@ describe("user > settings", () => {
     it("should toggle through light and dark mode when clicking on the label or icon", () => {
       cy.visit("/account/profile");
 
-      cy.findByRole("img", { name: /sun/ }).click();
+      cy.findByDisplayValue("Light").click();
+      H.popover().findByText("Dark").click();
       assertDarkMode();
 
-      cy.findByRole("img", { name: /moon/ }).click();
+      cy.findByDisplayValue("Dark").click();
+      H.popover().findByText("Light").click();
       assertLightMode();
 
-      H.main()
-        .findByText(/Toggle between light and dark/)
-        .click();
-      assertDarkMode();
-
+      //Need to take focus off the inpout
+      H.navigationSidebar().findByRole("link", { name: /Home/ }).click();
       cy.realPress([metaKey, "Shift", "L"]);
-      assertLightMode();
+      assertDarkMode();
     });
   });
 });
