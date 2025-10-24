@@ -33,11 +33,11 @@
   "Given a Toucan `:model/Card`, return its upstream dependencies as a map from the kind to a set of IDs."
   [{query :dataset_query :as card} :- ::queries.schema/card]
   (let [query-deps (upstream-deps:query query)
-        param-cards (keep #(-> % :values_source_config :card_id) (:parameters card))]
+        param-card-ids (keep #(-> % :values_source_config :card_id) (:parameters card))]
     (reduce (fn [deps card-id]
               (update deps :card (fnil conj #{}) card-id))
             query-deps
-            param-cards)))
+            param-card-ids)))
 
 (mu/defn upstream-deps:transform :- ::deps.schema/upstream-deps
   "Given a Transform (in Toucan form), return its upstream dependencies."
@@ -69,29 +69,29 @@
   "Given a dashboard, return its upstream dependencies"
   [{:keys [dashcards series-card-ids] :as dashboard}]
   (let [card-ids (into #{} (keep :card_id dashcards))
-        parameter-cards (into #{} (keep (comp :card_id :values_source_config) (:parameters dashboard)))
-        vis-setting-ids (fn [link-type]
-                          (into #{} (keep (fn [dashcard]
-                                            (let [cb (:click_behavior (:visualization_settings dashcard))]
-                                              (when (= (:linkType cb) link-type)
-                                                (:targetId cb))))
-                                          dashcards)))
-        vis-setting-card-ids (vis-setting-ids "question")
-        vis-setting-dashboard-ids (vis-setting-ids "dashboard")
-        column-setting-ids (fn [link-type]
-                             (reduce into #{}
-                                     (map (fn [dashcard]
-                                            (keep (fn [[_col col-setting]]
-                                                    (let [cb (:click_behavior col-setting)]
-                                                      (when (= (:linkType cb) link-type)
-                                                        (:targetId cb))))
-                                                  (:column_settings (:visualization_settings dashcard))))
-                                          dashcards)))
-        column-setting-card-ids (column-setting-ids "question")
-        column-setting-dashboard-ids (column-setting-ids "dashboard")
+        param-card-ids (into #{} (keep (comp :card_id :values_source_config) (:parameters dashboard)))
+        vis-setting-target-ids (fn [link-type]
+                                 (into #{} (keep (fn [dashcard]
+                                                   (let [cb (:click_behavior (:visualization_settings dashcard))]
+                                                     (when (= (:linkType cb) link-type)
+                                                       (:targetId cb))))
+                                                 dashcards)))
+        vis-setting-card-ids (vis-setting-target-ids "question")
+        vis-setting-dashboard-ids (vis-setting-target-ids "dashboard")
+        column-setting-target-ids (fn [link-type]
+                                    (reduce into #{}
+                                            (map (fn [dashcard]
+                                                   (keep (fn [[_col col-setting]]
+                                                           (let [cb (:click_behavior col-setting)]
+                                                             (when (= (:linkType cb) link-type)
+                                                               (:targetId cb))))
+                                                         (:column_settings (:visualization_settings dashcard))))
+                                                 dashcards)))
+        column-setting-card-ids (column-setting-target-ids "question")
+        column-setting-dashboard-ids (column-setting-target-ids "dashboard")
         all-card-ids (reduce into #{} [card-ids
                                        series-card-ids
-                                       parameter-cards
+                                       param-card-ids
                                        vis-setting-card-ids
                                        column-setting-card-ids])
         all-dashboard-ids (into vis-setting-dashboard-ids column-setting-dashboard-ids)]
@@ -102,7 +102,7 @@
 (defn- document-deps
   [{:keys [content_type] :as document}]
   (when (= content_type prose-mirror/prose-mirror-content-type)
-    (prose-mirror/collect-ast document (fn document-deps [{:keys [type attrs]}]
+    (prose-mirror/collect-ast document (fn [{:keys [type attrs]}]
                                          (cond
                                            (and (= prose-mirror/smart-link-type type)
                                                 (#{"card" "dashboard" "table"} (:model attrs)))
