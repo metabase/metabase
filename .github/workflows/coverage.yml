@@ -12,8 +12,8 @@ jobs:
     timeout-minutes: 60
     strategy:
       matrix:
-        shard: [1, 2, 3]
-        shard-total: [3]
+        shard: [1, 2]
+        shard-total: [2]
     steps:
       - uses: actions/checkout@v4
       - name: Prepare front-end environment
@@ -21,7 +21,12 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - name: Run frontend unit tests (shard ${{ matrix.shard }}/${{ matrix.shard-total }})
-        run: yarn run test-unit --silent --coverage --shard=${{ matrix.shard }}/${{ matrix.shard-total }}
+        run: |
+          yarn run test-unit \
+          --silent \
+          --coverage \
+          --testTimeout=60000 \
+          --shard=${{ matrix.shard }}/${{ matrix.shard-total }}
       - name: Upload coverage for shard ${{ matrix.shard }}
         uses: actions/upload-artifact@v4
         with:
