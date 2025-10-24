@@ -1,70 +1,86 @@
+import type { FocusEvent } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { Group, Icon, SegmentedControl, Stack, Text } from "metabase/ui";
+import { Group, Icon, Select, SelectItem, type SelectProps } from "metabase/ui";
 import type { TableVisibilityType2 } from "metabase-types/api";
 
-interface Props {
+interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   value: TableVisibilityType2 | undefined;
   onChange: (value: TableVisibilityType2) => void;
 }
 
-export const VisibilityInput = ({ value, onChange }: Props) => {
-  return (
-    <Stack gap="sm">
-      <Text
-        component="label"
-        flex="0 0 auto"
-        fw="bold"
-        size="md"
-      >{t`Visibility`}</Text>
+export const VisibilityInput = ({
+  comboboxProps,
+  value,
+  onChange,
+  onFocus,
+  ...props
+}: Props) => {
+  const handleFocus = (event: FocusEvent<HTMLInputElement>) => {
+    event.target.select();
+    onFocus?.(event);
+  };
 
-      <SegmentedControl<TableVisibilityType2 | "null">
-        data={[
-          {
-            value: "copper",
-            label: (
-              <Group align="center" gap="sm" justify="center">
-                <Icon c="#B87333" name="recents" />
-                <span>{t`Copper`}</span>
-              </Group>
-            ),
+  return (
+    <Select
+      comboboxProps={{
+        middlewares: {
+          flip: true,
+          size: {
+            padding: 6,
           },
-          {
-            value: "bronze",
-            label: (
-              <Group align="center" gap="sm" justify="center">
-                <Icon c="#CD7F32" name="recents" />
-                <span>{t`Bronze`}</span>
-              </Group>
-            ),
-          },
-          {
-            value: "silver",
-            label: (
-              <Group align="center" gap="sm" justify="center">
-                <Icon c="#C0C0C0" name="recents" />
-                <span>{t`Silver`}</span>
-              </Group>
-            ),
-          },
-          {
-            value: "gold",
-            label: (
-              <Group align="center" gap="sm" justify="center">
-                <Icon c="#FFD700" name="recents" />
-                <span>{t`Gold`}</span>
-              </Group>
-            ),
-          },
-        ]}
-        value={value ?? "null"}
-        onChange={(value) => {
-          // sanity check
-          if (value !== "null") {
-            onChange(value);
-          }
-        }}
-      />
-    </Stack>
+        },
+        position: "bottom-start",
+        ...comboboxProps,
+      }}
+      data={[
+        { value: "copper", label: t`Copper` },
+        { value: "bronze", label: t`Bronze` },
+        { value: "silver", label: t`Silver` },
+        { value: "gold", label: t`Gold` },
+      ]}
+      label={t`Layer`}
+      renderOption={(item) => {
+        const selected = item.option.value === value;
+
+        return (
+          <SelectItem selected={selected}>
+            <Group align="center" gap="sm" justify="center">
+              <Icon c={getColor(item.option.value)} name="recents" />
+              <span>{item.option.label}</span>
+            </Group>
+          </SelectItem>
+        );
+      }}
+      leftSection={
+        value ? <Icon c={getColor(value)} name="recents" /> : undefined
+      }
+      placeholder={t`Select layer`}
+      value={value}
+      onChange={(value) => onChange(value)}
+      onFocus={handleFocus}
+      {...props}
+    />
   );
 };
+
+// TODO: remove `string | ` part.
+function getColor(value: string | TableVisibilityType2): string {
+  return match(value)
+    .with("copper", () => {
+      return "#B87333";
+    })
+    .with("bronze", () => {
+      return "#CD7F32";
+    })
+    .with("silver", () => {
+      return "#C0C0C0";
+    })
+    .with("gold", () => {
+      return "#FFD700";
+    })
+    .otherwise(() => {
+      return "#B87333";
+    });
+}
