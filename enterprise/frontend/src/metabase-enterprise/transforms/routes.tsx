@@ -9,6 +9,7 @@ import { JobLayout } from "./pages/JobLayout/JobLayout";
 import { JobPage } from "./pages/JobPage";
 import { NewJobPage } from "./pages/NewJobPage";
 import { NewTransformPage } from "./pages/NewTransformPage";
+import { RunListPage } from "./pages/RunListPage";
 import { TransformEmptyPage } from "./pages/TransformEmptyPage";
 import { TransformLayout } from "./pages/TransformLayout";
 import { TransformQueryPage } from "./pages/TransformQueryPage";
@@ -30,6 +31,7 @@ export const getTransformRoutes = () => (
       <Route path="new" component={NewJobPage} />
       <Route path=":jobId" component={JobPage} />
     </Route>
+    <Route title={t`Runs`} path="runs" component={RunListPage} />
     {PLUGIN_TRANSFORMS_PYTHON.getAdminRoutes()}
   </>
 );
