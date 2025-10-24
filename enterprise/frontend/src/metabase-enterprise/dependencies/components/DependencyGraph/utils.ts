@@ -326,6 +326,6 @@ export function getNodeTypeInfo(node: DependencyNode): NodeTypeInfo {
     case "document":
       return { label: t`Document`, color: "text-secondary" };
     case "sandbox":
-      return { label: t`Permission`, color: "error" };
+      return { label: t`Permission rule`, color: "error" };
   }
 }
