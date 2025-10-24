@@ -1,4 +1,5 @@
 (ns metabase.store-api.schema
+  "Malli schemas for Store API requests and responses."
   (:require
    [metabase.util.malli.registry :as mr]))
 
