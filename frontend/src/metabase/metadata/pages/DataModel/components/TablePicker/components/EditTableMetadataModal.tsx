@@ -66,9 +66,9 @@ export function EditTableMetadataModal({
     onUpdate?.();
 
     if (error) {
-      sendErrorToast(t`Failed to update visibility type`);
+      sendErrorToast(t`Failed to update tables`);
     } else {
-      sendSuccessToast(t`Visibility type updated`);
+      sendSuccessToast(t`Tables updated`);
     }
 
     onClose();
