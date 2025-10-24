@@ -60,7 +60,8 @@ ARG MGID=2000
 ARG MUID=2000
 
 RUN addgroup --gid $MGID --system $USERNAME \
-    && adduser --disabled-password --uid $MUID --disabled-password --ingroup $USERNAME $USERNAME
+RUN addgroup --gid $MGID --system $USERNAME \
+    && adduser --disabled-password --uid $MUID --ingroup $USERNAME $USERNAME
 
 # ensure writable directory exists for default H2 database location
 RUN mkdir -p /metabase.db && chown $USERNAME:$USERNAME /metabase.db
