@@ -113,7 +113,11 @@ const UserProfileForm = ({
                 mb="md"
               />
             </div>
-            <FormSubmitButton title={t`Update`} disabled={!dirty} primary />
+            <FormSubmitButton
+              title={t`Update`}
+              disabled={!dirty}
+              variant="primary"
+            />
             <FormErrorMessage />
           </Form>
         )}
