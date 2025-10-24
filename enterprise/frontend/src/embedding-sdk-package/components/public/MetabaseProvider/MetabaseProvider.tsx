@@ -10,7 +10,6 @@ import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-me
 import { useSdkLoadingState } from "embedding-sdk-shared/hooks/use-sdk-loading-state";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
-import { SDK_GLOBAL_PLUGINS } from "embedding-sdk-shared/lib/sdk-global-plugins";
 import { SdkLoadingState } from "embedding-sdk-shared/types/sdk-loading";
 
 /**
@@ -101,10 +100,6 @@ export const MetabaseProvider = memo(function MetabaseProvider({
   ...props
 }: MetabaseProviderProps) {
   const ensureSingleInstanceId = useId();
-
-  useEffect(() => {
-    SDK_GLOBAL_PLUGINS.handleLink = props.pluginsConfig?.handleLink;
-  }, [props.pluginsConfig?.handleLink]);
 
   return (
     <ClientSideOnlyWrapper ssrFallback={children}>

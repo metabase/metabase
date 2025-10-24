@@ -1,14 +1,17 @@
+import { ensureMetabaseProviderPropsStore } from "./ensure-metabase-provider-props-store";
+
 type HandleLinkFn = (url: string) => boolean | void;
 
 type SdkGlobalPlugins = {
   handleLink?: HandleLinkFn;
 };
 
-declare global {
-  interface Window {
-    SDK_GLOBAL_PLUGINS?: SdkGlobalPlugins;
-  }
-}
-
-window.SDK_GLOBAL_PLUGINS = window.SDK_GLOBAL_PLUGINS || {};
-export const SDK_GLOBAL_PLUGINS: SdkGlobalPlugins = window.SDK_GLOBAL_PLUGINS!;
+// `MetabaseProvider` and most of the sdk code are in two different bundles,
+// this mean we can't use an exported object as singleton to share the global
+// plugins between them. This function uses `ensureMetabaseProviderPropsStore`
+// to access the provider props across bundles
+export const getSdkGlobalPlugins = (): SdkGlobalPlugins => {
+  return (
+    ensureMetabaseProviderPropsStore().getState().props?.pluginsConfig || {}
+  );
+};
