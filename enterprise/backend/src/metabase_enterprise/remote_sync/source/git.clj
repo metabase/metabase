@@ -316,7 +316,7 @@
     (log/info "Deleting local branches without remote:" {:branches branches-to-delete})
     (doseq [branch-name branches-to-delete]
       (call-command (-> (.branchDelete git)
-                        (.setBranchNames (into-array String [branch-name]))
+                        (.setBranchNames ^"[Ljava.lang.String;" (into-array String [branch-name]))
                         (.setForce true))))
     {:deleted (count branches-to-delete)
      :branch-names branches-to-delete}))
