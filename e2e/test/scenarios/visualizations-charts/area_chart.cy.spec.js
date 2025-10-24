@@ -8,7 +8,7 @@ describe("scenarios > visualizations > area chart", () => {
     cy.signInAsNormalUser();
   });
 
-  describe("Data > series settings > Replace missing values", () => {
+  describe("Data > series settings > Replace missing values (metabase#20818)", () => {
     const SERIES_1_NAME = "series1";
     const SERIES_2_NAME = "series2";
     const queryWithNulls = {
