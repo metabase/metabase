@@ -67,7 +67,7 @@ export function getNodeLastEditedBy(node: DependencyNode): LastEditInfo | null {
 }
 
 export function getNodeTableInfo(node: DependencyNode): NodeTableInfo | null {
-  if (node.type !== "transform") {
+  if (node.type !== "transform" && node.type !== "sandbox") {
     return null;
   }
 
@@ -77,6 +77,7 @@ export function getNodeTableInfo(node: DependencyNode): NodeTableInfo | null {
   }
 
   return {
+    label: node.type === "transform" ? t`Generated table` : t`Restricted table`,
     title: {
       label: table.display_name,
       url: Urls.dependencyGraph({ entry: { id: table.id, type: "table" } }),
@@ -107,11 +108,11 @@ export function getNodeFields(node: DependencyNode): Field[] {
     case "table":
       return node.data.fields ?? [];
     case "transform":
+    case "sandbox":
       return node.data.table?.fields ?? [];
     case "snippet":
     case "dashboard":
     case "document":
-    case "sandbox":
       return [];
   }
 }

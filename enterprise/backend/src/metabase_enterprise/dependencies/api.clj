@@ -129,20 +129,20 @@
   (case entity-type
     :table [:name :description :display_name :db_id :db :schema :fields]
     :card [:name :type :display :database_id :view_count
-           :created_at :creator :description
+           :created_at :creator :creator_id :description
            :result_metadata :last-edit-info
            :collection :collection_id :dashboard :dashboard_id
            :moderation_reviews]
     :snippet [:name :description]
     :transform [:name :description :table]
     :dashboard [:name :description :view_count
-                :created_at :creator :last-edit-info
+                :created_at :creator :creator_id :last-edit-info
                 :collection :collection_id
                 :moderation_reviews]
     :document [:name :description :view_count
                :created_at :creator
                :collection :collection_id]
-    :sandbox [:group_id :table_id :card_id  :attribute_remappings]
+    :sandbox [:table :table_id]
     []))
 
 (defn- format-subentity [entity]
@@ -206,7 +206,7 @@
                                                     (revisions/with-last-edit-info :dashboard))
                      (= entity-type :document) (-> (t2/hydrate :creator [:collection :is_personal])
                                                    (->> (map collection.root/hydrate-root-collection)))
-                     (= entity-type :sandbox) (t2/hydrate))
+                     (= entity-type :sandbox) (t2/hydrate [:table :db]))
                    (mapv #(entity-value entity-type % usages))))
             nodes-by-type)))
 

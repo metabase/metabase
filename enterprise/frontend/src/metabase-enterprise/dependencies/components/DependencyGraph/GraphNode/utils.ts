@@ -36,15 +36,14 @@ export function getDependencyGroupTitle(
   node: DependencyNode,
   groups: DependentGroup[],
 ) {
+  if (node.type === "transform") {
+    return t`Generates`;
+  }
+  if (node.type === "sandbox") {
+    return t`Restricts table data`;
+  }
   if (groups.length === 0) {
     return t`Nothing uses this`;
-  }
-  if (
-    node.type === "transform" &&
-    groups.length === 1 &&
-    groups[0].type === "table"
-  ) {
-    return t`Generates`;
   }
   return t`Used by`;
 }
@@ -71,6 +70,10 @@ export function getDependentGroupLabel({
     case "document":
       return ngettext(msgid`${count} document`, `${count} documents`, count);
     case "sandbox":
-      return ngettext(msgid`${count} sandbox`, `${count} sandboxes`, count);
+      return ngettext(
+        msgid`${count} row and column security rule`,
+        `${count} row and column security rules`,
+        count,
+      );
   }
 }

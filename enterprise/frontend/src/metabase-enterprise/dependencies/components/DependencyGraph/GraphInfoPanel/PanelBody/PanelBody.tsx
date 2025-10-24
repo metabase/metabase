@@ -32,7 +32,7 @@ export function PanelBody({ node }: PanelBodyProps) {
     <Stack className={S.body} p="lg" gap="lg">
       <DescriptionSection node={node} />
       <CreatorAndLastEditorSection node={node} />
-      <GeneratedTableSection node={node} />
+      <TableSection node={node} />
       <FieldsSection node={node} />
     </Stack>
   );
@@ -44,10 +44,13 @@ type SectionProps = {
 
 function DescriptionSection({ node }: SectionProps) {
   const description = getNodeDescription(node);
+  if (description == null) {
+    return null;
+  }
 
   return (
     <Box c={description ? "text-primary" : "text-secondary"} lh="h4">
-      {description ?? t`No description`}
+      {description.length > 0 ? description : t`No description`}
     </Box>
   );
 }
@@ -95,7 +98,7 @@ function CreatorAndLastEditorSection({ node }: SectionProps) {
   );
 }
 
-function GeneratedTableSection({ node }: SectionProps) {
+function TableSection({ node }: SectionProps) {
   const info = getNodeTableInfo(node);
   if (info == null) {
     return null;
@@ -103,7 +106,7 @@ function GeneratedTableSection({ node }: SectionProps) {
 
   return (
     <Stack gap="sm" lh="1rem">
-      <Title order={6}>{t`Generated table`}</Title>
+      <Title order={6}>{info.label}</Title>
       <Group justify="space-between">
         <GraphLink label={info.title.label} icon="table" url={info.title.url} />
         <GraphExternalLink
