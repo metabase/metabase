@@ -689,7 +689,7 @@
 ; In the end, the exact same message is presented to the user when the number of arguments is
 ; incorrect except we now execute the query to display the error message
 (defn- proxy-optimized-prepared-statement
-  [driver ^Connection conn ^PreparedStatement stmt params]
+  [driver ^Connection _conn ^PreparedStatement stmt params]
   (let [ps (proxy [java.sql.PreparedStatement] []
              (executeQuery []
                (try
@@ -732,7 +732,7 @@
 
 ; Default prepared statement where set-parameters! is called before generating the proxy
 (defn- proxy-prepared-statement
-  [driver ^Connection conn ^PreparedStatement stmt params]
+  [driver ^Connection _conn ^PreparedStatement stmt params]
   (sql-jdbc.execute/set-parameters! driver stmt params)
   (proxy [java.sql.PreparedStatement] []
     (executeQuery []
