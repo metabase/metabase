@@ -13,14 +13,17 @@ export function parseParams(
   };
 }
 
-function parseDependencyType(type: unknown): DependencyType | undefined {
+function parseDependencyType(type: unknown): DependencyType | null {
   switch (type) {
     case "card":
     case "table":
     case "transform":
     case "snippet":
+    case "dashboard":
+    case "document":
+    case "sandbox":
       return type;
     default:
-      return undefined;
+      return null;
   }
 }
