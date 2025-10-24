@@ -10,34 +10,20 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import { useListTransformJobsQuery } from "metabase-enterprise/api";
-import type { JobListParams } from "metabase-enterprise/transforms/types";
-import type { TransformJob } from "metabase-types/api";
+import type { TransformJob, TransformJobId } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
 import { getJobUrl, getNewJobUrl } from "../../../urls";
 import { parseTimestampWithTimezone } from "../../../utils";
-import { hasFilterParams } from "../utils";
 
-export function JobList({
-  params,
-  selectedId,
-  onCollapse,
-}: {
-  params: JobListParams;
-  selectedId?: TransformJob["id"];
+type JobListProps = {
+  selectedId?: TransformJobId;
   onCollapse?: () => void;
-}) {
+};
+
+export function JobList({ selectedId, onCollapse }: JobListProps) {
   const systemTimezone = useSetting("system-timezone");
-  const {
-    data: jobs = [],
-    isLoading,
-    error,
-  } = useListTransformJobsQuery({
-    last_run_start_time: params.lastRunStartTime,
-    last_run_statuses: params.lastRunStatuses,
-    next_run_start_time: params.nextRunStartTime,
-    tag_ids: params.tagIds,
-  });
+  const { data: jobs = [], isLoading, error } = useListTransformJobsQuery({});
   const dispatch = useDispatch();
 
   if (isLoading || error != null) {
@@ -52,9 +38,7 @@ export function JobList({
       }
       listItems={
         jobs.length === 0 ? (
-          <ListEmptyState
-            label={hasFilterParams(params) ? t`No jobs found` : t`No jobs yet`}
-          />
+          <ListEmptyState label={t`No jobs yet`} />
         ) : (
           jobs.map((job) => (
             <JobItem

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { BenchLayout } from "metabase/bench/components/BenchLayout";
+import * as Urls from "metabase/lib/urls";
 
 import { TransformList } from "./TransformList";
 
@@ -14,7 +15,7 @@ type TransformLayoutProps = {
 };
 
 export function TransformLayout({ params, children }: TransformLayoutProps) {
-  const selectedId = params.transformId ? +params.transformId : undefined;
+  const selectedId = Urls.extractEntityId(params.transformId);
 
   return (
     <BenchLayout

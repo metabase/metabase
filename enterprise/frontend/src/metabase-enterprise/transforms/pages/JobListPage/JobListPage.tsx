@@ -7,9 +7,9 @@ import { Box, Button, Group, Icon, Stack, Title } from "metabase/ui";
 import { useListTransformTagsQuery } from "metabase-enterprise/api";
 
 import { getNewJobUrl } from "../../urls";
+import { JobList } from "../JobLayout/JobList";
 
 import { JobFilterList } from "./JobFilterList";
-import { JobList } from "./JobList";
 import { getParsedParams } from "./utils";
 
 type JobListPageProps = {
