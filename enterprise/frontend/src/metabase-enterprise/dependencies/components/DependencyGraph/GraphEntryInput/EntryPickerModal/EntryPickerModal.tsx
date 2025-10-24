@@ -22,19 +22,9 @@ import {
 } from "metabase-types/api";
 
 import {
-  COLLECTION_FOLDER_MODELS,
   ENTITY_PICKER_OPTIONS,
-  METRIC_MODELS,
-  MODEL_MODELS,
-  QUESTION_FOLDER_MODELS,
-  QUESTION_MODELS,
   QUESTION_PICKER_OPTIONS,
-  QUESTION_SELECTION_MODELS,
   RECENTS_CONTEXT,
-  TABLE_FOLDER_MODELS,
-  TABLE_MODELS,
-  TRANSFORM_FOLDER_MODELS,
-  TRANSFORM_MODELS,
 } from "./constants";
 import type {
   EntryPickerItem,
@@ -88,8 +78,8 @@ export function EntryPickerModal({
     computedTabs.push({
       id: "tables-tab",
       displayName: t`Tables`,
-      models: TABLE_MODELS,
-      folderModels: TABLE_FOLDER_MODELS,
+      models: ["table"],
+      folderModels: ["database", "schema"],
       icon: "table",
       render: ({ onItemSelect }) => (
         <TablePicker
@@ -101,12 +91,12 @@ export function EntryPickerModal({
       ),
     });
 
-    if (hasAvailableModels(searchResponse, TRANSFORM_MODELS)) {
+    if (hasAvailableModels(searchResponse, ["transform"])) {
       computedTabs.push({
         id: "transforms-tab",
         displayName: t`Transforms`,
-        models: TRANSFORM_MODELS,
-        folderModels: TRANSFORM_FOLDER_MODELS,
+        models: ["transform"],
+        folderModels: [],
         icon: "refresh_downstream",
         render: ({ onItemSelect }) => (
           <PLUGIN_TRANSFORMS.TransformPicker
@@ -117,17 +107,17 @@ export function EntryPickerModal({
       });
     }
 
-    if (hasAvailableModels(searchResponse, QUESTION_MODELS)) {
+    if (hasAvailableModels(searchResponse, ["card"])) {
       computedTabs.push({
         id: "questions-tab",
         displayName: t`Questions`,
-        models: QUESTION_MODELS,
-        folderModels: QUESTION_FOLDER_MODELS,
+        models: ["card"],
+        folderModels: ["collection", "dashboard"],
         icon: "table2",
         render: ({ onItemSelect }) => (
           <QuestionPicker
             initialValue={value ? getQuestionPickerItem(value) : undefined}
-            models={QUESTION_SELECTION_MODELS}
+            models={["card", "dashboard"]}
             options={QUESTION_PICKER_OPTIONS}
             path={questionsPath}
             onInit={onItemSelect}
@@ -138,17 +128,17 @@ export function EntryPickerModal({
       });
     }
 
-    if (hasAvailableModels(searchResponse, MODEL_MODELS)) {
+    if (hasAvailableModels(searchResponse, ["dataset"])) {
       computedTabs.push({
         id: "models-tab",
         displayName: t`Models`,
-        models: MODEL_MODELS,
-        folderModels: COLLECTION_FOLDER_MODELS,
+        models: ["dataset"],
+        folderModels: ["collection"],
         icon: "model",
         render: ({ onItemSelect }) => (
           <QuestionPicker
             initialValue={value ? getModelPickerItem(value) : undefined}
-            models={MODEL_MODELS}
+            models={["dataset"]}
             options={QUESTION_PICKER_OPTIONS}
             path={modelsPath}
             onInit={onItemSelect}
@@ -159,17 +149,17 @@ export function EntryPickerModal({
       });
     }
 
-    if (hasAvailableModels(searchResponse, METRIC_MODELS)) {
+    if (hasAvailableModels(searchResponse, ["metric"])) {
       computedTabs.push({
         id: "metrics-tab",
         displayName: t`Metrics`,
-        models: METRIC_MODELS,
-        folderModels: COLLECTION_FOLDER_MODELS,
+        models: ["metric"],
+        folderModels: ["collection"],
         icon: "metric",
         render: ({ onItemSelect }) => (
           <QuestionPicker
             initialValue={value ? getMetricPickerItem(value) : undefined}
-            models={METRIC_MODELS}
+            models={["metric"]}
             options={QUESTION_PICKER_OPTIONS}
             path={metricsPath}
             onInit={onItemSelect}
