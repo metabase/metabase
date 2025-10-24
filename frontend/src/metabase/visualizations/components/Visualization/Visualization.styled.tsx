@@ -10,9 +10,15 @@ export const VisualizationRoot = styled.div`
   height: 100%;
 `;
 
+interface VisualizationHeaderProps {
+  visualizationType?: string;
+}
+
 // Remember to update DASHCARD_HEADER_HEIGHT if height of this element changes
-export const VisualizationHeader = styled.div`
-  padding: 0.625rem 0.5rem 0.375rem 0.5rem;
+export const VisualizationHeader = styled.div<VisualizationHeaderProps>`
+  padding: 0.625rem 0.5rem
+    ${(props) => (props.visualizationType === "scalar" ? "0" : "0.375rem")}
+    0.5rem;
   flex-shrink: 0;
 `;
 
