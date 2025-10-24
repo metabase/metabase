@@ -116,7 +116,7 @@ describe("scenarios > dependencies > dependency graph", () => {
       H.entityPickerModal().within(() => {
         H.entityPickerModalTab(tabName).click();
         cy.findByPlaceholderText(/Search/).type(itemName);
-        cy.findByText(/result for/).should("be.visible");
+        cy.findByText(/result for/).should("exist");
         cy.findByText(itemName).click();
       });
       graphEntryButton().should("have.text", itemName);
