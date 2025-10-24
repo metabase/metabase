@@ -23,7 +23,6 @@ const utmTags = {
 };
 
 export function InteractiveEmbeddingSettings() {
-  // eslint-disable-next-line no-unconditional-metabase-links-render -- This is used in admin settings
   const { url: quickStartUrl } = useDocsUrl(
     "embedding/interactive-embedding-quick-start-guide",
     {
@@ -36,7 +35,6 @@ export function InteractiveEmbeddingSettings() {
       <EmbeddingSettingsCard
         title={t`Enable interactive embedding`}
         titleProps={{ fz: "lg" }}
-        // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
         description={t`Embed the full power of Metabase into your application to build a custom analytics experience and programmatically manage dashboards and data.`}
         settingKey="enable-embedding-interactive"
         links={[{ icon: "bolt", title: t`Quick start`, href: quickStartUrl }]}
