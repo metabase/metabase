@@ -14,7 +14,6 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.test-metadata :as meta]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -28,9 +27,19 @@
                       (if schema
                         (sql.u/quote-name driver/*driver* :table schema "transforms_products")
                         "transforms_products"))]
-    (-> (lib/native-query meta/metadata-provider query)
-        (dissoc :lib/metadata)
-        (assoc :database (mt/id)))))
+    {:database (mt/id)
+     :type :native
+     :native {:query query
+              :template-tags {"watermark" {:id "watermark"
+                                           :name "watermark"
+                                           :display-name "Watermark"
+                                           :type :number
+                                           :required false}
+                              "limit" {:id "limit"
+                                       :name "limit"
+                                       :display-name "Limit"
+                                       :type :number
+                                       :required false}}}}))
 
 (defn- make-incremental-mbql-query
   "Create an MBQL query for incremental transforms."
