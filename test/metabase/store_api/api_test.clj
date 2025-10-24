@@ -112,8 +112,8 @@
         (is (pos? (count response)))))))
 
 (deftest ^:parallel addons-endpoint-test
-  (testing "GET /api/store-api/addons"
-    (with-store-api-mocks
+  (with-store-api-mocks
+    (testing "GET /api/store-api/addons"
       (testing "should return a list of add-ons"
         (let [response (mt/user-http-request :rasta :get 200 "store-api/addons")]
           (is (sequential? response))
