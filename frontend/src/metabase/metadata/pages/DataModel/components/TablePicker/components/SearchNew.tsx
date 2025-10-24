@@ -1,4 +1,6 @@
+import cx from "classnames";
 import { useState } from "react";
+import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useListTablesQuery } from "metabase/api/table";
@@ -14,13 +16,19 @@ import {
 } from "metabase/ui";
 import type { TableId } from "metabase-types/api";
 
+import type { RouteParams } from "../../../types";
+import { getUrl, parseRouteParams } from "../../../utils";
+
 import { EditTableMetadataModal } from "./EditTableMetadataModal";
+import S from "./Results.module.css";
 
 interface SearchNewProps {
   query: string;
+  params: RouteParams;
 }
 
-export function SearchNew({ query }: SearchNewProps) {
+export function SearchNew({ query, params }: SearchNewProps) {
+  const routeParams = parseRouteParams(params);
   const [selectedItems, setSelectedItems] = useState<Set<TableId>>(new Set());
   const [isModalOpen, setIsModalOpen] = useState(false);
   const {
@@ -69,28 +77,61 @@ export function SearchNew({ query }: SearchNewProps) {
     <Stack>
       <Stack gap={0} px="xl">
         {tables.map((table) => {
-          const breadcrumbs = `${table.db?.name} (${table.schema})`;
+          const breadcrumbs = table.schema
+            ? `${table.db?.name} (${table.schema})`
+            : table.db?.name;
+          const active =
+            routeParams.databaseId === table.db_id &&
+            routeParams.schemaName === table.schema &&
+            routeParams.tableId === table.id;
 
           return (
-            <Flex key={table.id} py="xs" align="center" gap="sm">
+            <Flex
+              component={Link}
+              className={cx(S.item, {
+                [S.active]: active,
+              })}
+              key={table.id}
+              py="xs"
+              align="center"
+              gap="sm"
+              to={getUrl({
+                databaseId: table.db_id,
+                schemaName: table.schema,
+                tableId: table.id,
+                collectionId: undefined,
+                fieldId: undefined,
+                fieldName: undefined,
+                modelId: undefined,
+              })}
+              pos="relative"
+              left={0}
+              right={0}
+            >
               <Checkbox
                 size="sm"
                 onChange={() => onTableSelect(table.id)}
                 checked={selectedItems.has(table.id)}
+                onClick={(event) => event.stopPropagation()}
               />
               <Icon
                 name="table2"
-                color="var(--mb-color-text-light)"
+                color={active ? "brand" : "text-light"}
                 size={16}
               />
-              <Text fw={500} style={{ flex: 1 }}>
+              <Text
+                c={active ? "brand" : "text-light"}
+                fw={500}
+                style={{ flex: 1 }}
+              >
                 {table.display_name}
               </Text>
-              <BreadCrumbs breadcrumbs={breadcrumbs} />
+              <BreadCrumbs active={active} breadcrumbs={breadcrumbs} />
             </Flex>
           );
         })}
       </Stack>
+
       <Box>
         <Flex justify="center" direction="row" gap="sm">
           {selectedItems.size === 0 && (

@@ -190,6 +190,7 @@ export const DataModel = ({ params }: Props) => {
           schemaName={schemaName}
           tableId={tableId}
           modelId={modelId}
+          params={params}
         />
       </Stack>
 
