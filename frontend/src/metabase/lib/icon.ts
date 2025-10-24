@@ -15,7 +15,7 @@ export type IconModel =
   | SearchModel
   | CollectionItemModel
   | "schema"
-  | "timeline";
+  | "timeline"
   | "transform"
   | "user";
 
