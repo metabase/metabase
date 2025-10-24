@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { Button, Flex } from "metabase/ui";
+import {
+  BulkActionBar,
+  BulkActionButton,
+} from "metabase/common/components/BulkActionBar";
+import { Flex } from "metabase/ui";
 import type { DatabaseId, TableId } from "metabase-types/api";
 
 import { useExpandedState, useTableLoader } from "../hooks";
@@ -245,25 +249,24 @@ export function Tree({ path, onChange }: Props) {
         selectedDatabases={selectedDatabases}
       />
       <Flex justify="center" gap="sm" direction="column">
-        {selectedItemsCount > 0 && (
-          <>
-            <Flex justify="center">
-              <Button
-                onClick={onEditSelectedItems}
-              >{t`Edit selected tables`}</Button>
-            </Flex>
-            <Button
-              variant="transparent"
-              onClick={() => {
-                setSelectedItems(new Set());
-                setSelectedSchemas(new Set());
-                setSelectedDatabases(new Set());
-              }}
-            >
-              {t`Unselect all`}
-            </Button>
-          </>
-        )}
+        <BulkActionBar
+          opened={selectedItemsCount > 0 && !isModalOpen}
+          message={"" /* TODO: message */}
+        >
+          <BulkActionButton onClick={onEditSelectedItems}>
+            {t`Edit`}
+          </BulkActionButton>
+
+          <BulkActionButton
+            onClick={() => {
+              setSelectedItems(new Set());
+              setSelectedSchemas(new Set());
+              setSelectedDatabases(new Set());
+            }}
+          >
+            {t`Unselect all `}
+          </BulkActionButton>
+        </BulkActionBar>
       </Flex>
       <EditTableMetadataModal
         tables={selectedItems}

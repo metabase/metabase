@@ -5,6 +5,10 @@ import { t } from "ttag";
 
 import { useListTablesQuery } from "metabase/api/table";
 import {
+  BulkActionBar,
+  BulkActionButton,
+} from "metabase/common/components/BulkActionBar";
+import {
   Box,
   Button,
   Checkbox,
@@ -173,19 +177,19 @@ export function SearchNew({ query, params, filters }: SearchNewProps) {
               {t`Select all`}
             </Button>
           )}
-          {selectedItems.size > 0 && (
-            <>
-              <Button onClick={() => setIsModalOpen(true)}>
-                {t`Edit selected tables`}
-              </Button>
-              <Button
-                variant="transparent"
-                onClick={() => setSelectedItems(new Set())}
-              >
-                {t`Unselect all`}
-              </Button>
-            </>
-          )}
+
+          <BulkActionBar
+            opened={selectedItems.size > 0 && !isModalOpen}
+            message={"" /* TODO: message */}
+          >
+            <BulkActionButton onClick={() => setIsModalOpen(true)}>
+              {t`Edit`}
+            </BulkActionButton>
+
+            <BulkActionButton onClick={() => setSelectedItems(new Set())}>
+              {t`Unselect all `}
+            </BulkActionButton>
+          </BulkActionBar>
         </Flex>
       </Box>
       <EditTableMetadataModal
