@@ -286,6 +286,8 @@ import move_component from "./move.svg?component";
 import move_source from "./move.svg?source";
 import move_card_component from "./move_card.svg?component";
 import move_card_source from "./move_card.svg?source";
+import network_component from "./network.svg?component";
+import network_source from "./network.svg?source";
 import new_folder_component from "./new_folder.svg?component";
 import new_folder_source from "./new_folder.svg?source";
 import notebook_component from "./notebook.svg?component";
@@ -1047,6 +1049,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: new_folder_component,
       source: new_folder_source,
     },
+    network: {
+      component: network_component,
+      source: network_source,
+    },
     notebook: {
       component: notebook_component,
       source: notebook_source,
@@ -1620,6 +1626,7 @@ export type IconName =
   | "move"
   | "move_card"
   | "new_folder"
+  | "network"
   | "notebook"
   | "number"
   | "palette"
