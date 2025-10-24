@@ -286,6 +286,8 @@ import move_component from "./move.svg?component";
 import move_source from "./move.svg?source";
 import move_card_component from "./move_card.svg?component";
 import move_card_source from "./move_card.svg?source";
+import network_component from "./network.svg?component";
+import network_source from "./network.svg?source";
 import new_folder_component from "./new_folder.svg?component";
 import new_folder_source from "./new_folder.svg?source";
 import notebook_component from "./notebook.svg?component";
@@ -480,6 +482,8 @@ import waterfall_component from "./waterfall.svg?component";
 import waterfall_source from "./waterfall.svg?source";
 import webhook_component from "./webhook.svg?component";
 import webhook_source from "./webhook.svg?source";
+import workbench_component from "./workbench.svg?component";
+import workbench_source from "./workbench.svg?source";
 import zoom_in_component from "./zoom_in.svg?component";
 import zoom_in_source from "./zoom_in.svg?source";
 import zoom_out_component from "./zoom_out.svg?component";
@@ -1047,6 +1051,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: new_folder_component,
       source: new_folder_source,
     },
+    network: {
+      component: network_component,
+      source: network_source,
+    },
     notebook: {
       component: notebook_component,
       source: notebook_source,
@@ -1441,6 +1449,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: webhook_component,
       source: webhook_source,
     },
+    workbench: {
+      component: workbench_component,
+      source: workbench_source,
+    },
     "10k": {
       component: ten_thousand_component,
       source: ten_thousand_source,
@@ -1620,6 +1632,7 @@ export type IconName =
   | "move"
   | "move_card"
   | "new_folder"
+  | "network"
   | "notebook"
   | "number"
   | "palette"
@@ -1715,6 +1728,7 @@ export type IconName =
   | "warning_triangle_filled"
   | "waterfall"
   | "webhook"
+  | "workbench"
   | "10k"
   | "1m"
   | "zoom_in"
