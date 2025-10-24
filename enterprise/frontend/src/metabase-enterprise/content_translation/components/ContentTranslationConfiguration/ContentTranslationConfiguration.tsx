@@ -25,7 +25,16 @@ import {
   useFormContext,
 } from "metabase/forms";
 import { openSaveDialog } from "metabase/lib/dom";
-import { Button, Group, Icon, List, Loader, Stack, Text } from "metabase/ui";
+import {
+  Button,
+  Group,
+  Icon,
+  List,
+  Loader,
+  Stack,
+  Text,
+  Title,
+} from "metabase/ui";
 import { useUploadContentTranslationDictionaryMutation } from "metabase-enterprise/api";
 
 import { contentTranslationEndpoints } from "../../constants";
@@ -114,10 +123,11 @@ export const ContentTranslationConfiguration = () => {
       <SettingsSection data-testid="content-translation-configuration">
         <Stack>
           <Stack gap="sm">
-            <Text
+            <Title
               fz="lg"
+              lh="xs"
               fw={600}
-            >{t`Translate embedded dashboards and questions`}</Text>
+            >{t`Translate embedded dashboards and questions`}</Title>
 
             <Markdown c="text-secondary">{uploadDescription}</Markdown>
 
