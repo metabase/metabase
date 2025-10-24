@@ -101,7 +101,7 @@
   (testing "tools calls are mapped well"
     (is (= {:start                1
             :tool-input-start     2
-            :tool-input-delta     16
+            :tool-input-delta     34
             :tool-input-available 2
             :usage                1}
            (->> (json-resource "llm/openai-tool-calls.json")
@@ -109,10 +109,26 @@
                 (map :type)
                 frequencies)))
     (is (=? [{:type :start}
-             {:type :tool-input :function "get_time" :arguments {:tz "Europe/Kyiv"}}
-             {:type :tool-input :function "convert_currency" :arguments {:amount 100, :from "EUR", :to "UAH"}}
-             {:type :usage :usage {:total_tokens 205}}]
+             {:type :tool-input :function "analyze-data-trend" :arguments {}}
+             {:type :tool-input :function "analyze-data-trend" :arguments {}}
+             {:type :usage :usage {:total_tokens 225}}]
             (->> (json-resource "llm/openai-tool-calls.json")
+                 (into [] (comp self/openai->aisdk-xf self/aisdk-xf))))))
+  (testing "structured output is parsed too"
+    (is (= {:start      1
+            ;; TODO: we're representing it as just text but this needs to be improved maybe?
+            :text-start 1
+            :text-delta 32
+            :text-end   1
+            :usage      1}
+           (->> (json-resource "llm/openai-structured-output.json")
+                (into [] self/openai->aisdk-xf)
+                (map :type)
+                frequencies)))
+    (is (=? [{:type :start}
+             {:type :text :text string?}
+             {:type :usage :usage {:total_tokens 109}}]
+            (->> (json-resource "llm/openai-structured-output.json")
                  (into [] (comp self/openai->aisdk-xf self/aisdk-xf)))))))
 
 ;;; tool executor
