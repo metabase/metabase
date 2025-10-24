@@ -1,6 +1,13 @@
+import { isSyncCompleted } from "metabase/lib/syncing";
+import type { CardId, SearchResult, TableId } from "metabase-types/api";
+
 import { getUrl as getUrl_ } from "../../utils";
 
-import { CHILD_TYPES, UNNAMED_SCHEMA_NAME } from "./constants";
+import {
+  CHILD_TYPES,
+  LEAF_ITEM_ICON_COLOR,
+  UNNAMED_SCHEMA_NAME,
+} from "./constants";
 import type {
   CollectionNode,
   DatabaseNode,
@@ -10,6 +17,8 @@ import type {
   ModelNode,
   NodeKey,
   RootNode,
+  SchemaNode,
+  TableNode,
   TreeNode,
   TreePath,
 } from "./types";
@@ -254,4 +263,120 @@ export function loadingItem(
     isLoading: true,
     key: Math.random().toString(),
   };
+}
+
+export function buildTreeFromSearchResults(
+  searchResults:
+    | (SearchResult<TableId, "table"> | SearchResult<CardId, "dataset">)[]
+    | undefined,
+): TreeNode {
+  const tree: TreeNode = rootNode();
+
+  searchResults?.forEach((result) => {
+    const { model, id, name } = result;
+
+    if (model === "table") {
+      const { database_name, database_id, table_schema } = result;
+      const tableSchema = table_schema ?? "";
+
+      let databaseNode = tree.children.find(
+        (node) =>
+          node.type === "database" && node.value.databaseId === database_id,
+      ) as DatabaseNode | undefined;
+      if (!databaseNode) {
+        databaseNode = node<DatabaseNode>({
+          type: "database",
+          label: database_name || "",
+          value: {
+            databaseId: database_id,
+          },
+        });
+        tree.children.push(databaseNode);
+      }
+
+      let schemaNode = databaseNode.children.find((node) => {
+        return node.type === "schema" && node.value.schemaName === tableSchema;
+      }) as SchemaNode | undefined;
+      if (!schemaNode) {
+        schemaNode = node<SchemaNode>({
+          type: "schema",
+          label: tableSchema,
+          value: {
+            databaseId: database_id,
+            schemaName: tableSchema,
+          },
+        });
+        databaseNode.children.push(schemaNode);
+      }
+
+      let tableNode = schemaNode.children.find(
+        (node) => node.type === "table" && node.value.tableId === id,
+      );
+      if (!tableNode) {
+        tableNode = node<TableNode>({
+          type: "table",
+          label: name,
+          value: {
+            databaseId: database_id,
+            schemaName: tableSchema,
+            tableId: id,
+          },
+          icon: { name: "table2", color: LEAF_ITEM_ICON_COLOR },
+          disabled: !isSyncCompleted(result),
+        });
+        schemaNode.children.push(tableNode);
+      }
+    } else if (model === "dataset") {
+      const { collection } = result;
+      const collectionId = collection.id;
+
+      if (!collectionId) {
+        const rootModelNode = node<ModelNode>({
+          type: "model",
+          label: name,
+          value: {
+            collectionId: "root",
+            modelId: id,
+          },
+          icon: { name: "model", color: LEAF_ITEM_ICON_COLOR },
+        });
+        tree.children.push(rootModelNode);
+      } else {
+        let collectionNode = tree.children.find(
+          (node) =>
+            node.type === "collection" &&
+            node.value.collectionId === collectionId,
+        ) as CollectionNode | undefined;
+        if (!collectionNode) {
+          collectionNode = node<CollectionNode>({
+            type: "collection",
+            label: collection.name,
+            value: {
+              collectionId,
+            },
+            icon: { name: "collection" },
+          });
+          tree.children.push(collectionNode);
+        }
+
+        let modelNode = collectionNode.children.find(
+          (node) => node.type === "model" && node.value.modelId === id,
+        );
+        if (!modelNode) {
+          modelNode = node<ModelNode>({
+            type: "model",
+            label: name,
+            value: {
+              collectionId,
+              modelId: id,
+            },
+            icon: { name: "model", color: LEAF_ITEM_ICON_COLOR },
+          });
+          collectionNode.children.push(modelNode);
+        }
+      }
+    }
+  });
+
+  return tree;
 }
