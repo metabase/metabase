@@ -9,7 +9,7 @@ import type { ErrorDetailsProps } from "metabase/common/components/ErrorDetails/
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
-import { getIsEmbeddingIframe } from "metabase/selectors/embed";
+import { getIsEmbeddingIframe } from "metabase/embedding-sdk/config";
 import { Button, Icon, Tooltip } from "metabase/ui";
 
 import {

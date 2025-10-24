@@ -54,8 +54,8 @@ import {
   selectTab,
   undoDeleteTab,
 } from "metabase/dashboard/actions/tabs";
+import { getIsEmbeddingIframe } from "metabase/embedding-sdk/config";
 import { connect } from "metabase/lib/redux";
-import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import {
   canManageSubscriptions,
   getUserIsAdmin,
@@ -118,7 +118,7 @@ export const mapStateToProps = (state: State) => ({
   isNavigatingBackToDashboard: getIsNavigatingBackToDashboard(state),
   isLoading: getIsLoading(state),
   isLoadingWithoutCards: getIsLoadingWithoutCards(state),
-  isEmbeddingIframe: getIsEmbeddingIframe(state),
+  isEmbeddingIframe: getIsEmbeddingIframe(),
 });
 
 export const mapDispatchToProps = {

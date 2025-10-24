@@ -7,7 +7,10 @@ import {
   DASHBOARD_SLOW_TIMEOUT,
   SIDEBAR_NAME,
 } from "metabase/dashboard/constants";
-import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import {
+  getIsEmbeddingIframe,
+  isEmbeddingSdk,
+} from "metabase/embedding-sdk/config";
 import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import {
@@ -18,10 +21,7 @@ import {
 import { getParameterMappingOptions as _getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
-import {
-  getEmbedOptions,
-  getIsEmbeddingIframe,
-} from "metabase/selectors/embed";
+import { getEmbedOptions } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { getIsWebApp } from "metabase/selectors/web-app";
@@ -546,17 +546,16 @@ export function getEmbeddedParameterVisibility(
 }
 
 export const getIsHeaderVisible = createSelector(
-  [getIsEmbeddingIframe, getEmbedOptions],
-  (isEmbeddingIframe, embedOptions) =>
-    (isEmbeddingSdk() && isEmbeddingIframe) ||
-    !isEmbeddingIframe ||
+  [getEmbedOptions],
+  (embedOptions) =>
+    (isEmbeddingSdk() && getIsEmbeddingIframe()) ||
+    !getIsEmbeddingIframe() ||
     !!embedOptions.header,
 );
 
 export const getIsAdditionalInfoVisible = createSelector(
-  [getIsEmbeddingIframe, getEmbedOptions],
-  (isEmbeddingIframe, embedOptions) =>
-    !isEmbeddingIframe || !!embedOptions.additional_info,
+  [getEmbedOptions],
+  (embedOptions) => !getIsEmbeddingIframe() || !!embedOptions.additional_info,
 );
 
 export const getTabs = createSelector([getDashboard], (dashboard) => {

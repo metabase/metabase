@@ -9,8 +9,10 @@ import {
 import { useMedia } from "react-use";
 import { noop } from "underscore";
 
-import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { getIsEmbeddingIframe } from "metabase/selectors/embed";
+import {
+  getIsEmbeddingIframe,
+  isEmbeddingSdk,
+} from "metabase/embedding-sdk/config";
 
 export type ResolvedColorScheme = "light" | "dark";
 

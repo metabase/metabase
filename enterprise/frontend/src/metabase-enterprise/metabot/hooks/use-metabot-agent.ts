@@ -1,6 +1,7 @@
 import { isFulfilled } from "@reduxjs/toolkit";
 import { useCallback } from "react";
 
+import { isEmbedding } from "metabase/embedding-sdk/config";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetabotContext } from "metabase/metabot";
 
@@ -12,9 +13,7 @@ import {
   getIsLongMetabotConversation,
   getIsProcessing,
   getMessages,
-  getMetabotId,
   getMetabotReactionsState,
-  getMetabotRequestId,
   getMetabotVisible,
   getProfileOverride,
   getToolCalls,
@@ -23,6 +22,7 @@ import {
   setVisible as setVisibleAction,
   submitInput as submitInputAction,
 } from "../state";
+import { getMetabotId, useMetabotRequestId } from "../state/utils";
 
 export const useMetabotAgent = () => {
   const dispatch = useDispatch();
@@ -50,12 +50,12 @@ export const useMetabotAgent = () => {
     typeof getMetabotVisible
   >;
 
-  const metabotId = useSelector(getMetabotId as any) as ReturnType<
-    typeof getMetabotId
-  >;
-  const metabotRequestId = useSelector(
-    getMetabotRequestId as any,
-  ) as ReturnType<typeof getMetabotRequestId>;
+  const metabotId = getMetabotId(isEmbedding());
+
+  // const metabotRequestId = useSelector(
+  //   getMetabotRequestId as any,
+  // ) as ReturnType<typeof getMetabotRequestId>;
+  const metabotRequestId = useMetabotRequestId();
 
   const toolCalls = useSelector(getToolCalls as any) as ReturnType<
     typeof getToolCalls

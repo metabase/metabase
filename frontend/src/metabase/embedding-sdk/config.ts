@@ -1,3 +1,4 @@
+import { isWithinIframe } from "metabase/lib/dom";
 import type { SettingKey, TokenFeature } from "metabase-types/api";
 
 export const EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID = "metabase-sdk-portal-root";
@@ -45,3 +46,11 @@ export const EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG = {
  * such as sdk-based iframe embedding.
  **/
 export const isEmbeddingSdk = () => EMBEDDING_SDK_CONFIG.isEmbeddingSdk;
+
+export const isEmbedding = () => {
+  return isEmbeddingSdk() || isWithinIframe();
+};
+
+export const getIsEmbeddingIframe = (): boolean => {
+  return isWithinIframe();
+};

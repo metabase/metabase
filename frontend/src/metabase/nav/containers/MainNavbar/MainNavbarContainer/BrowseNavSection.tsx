@@ -3,8 +3,8 @@ import { c, t } from "ttag";
 
 import { useUserSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
+import { getIsEmbeddingIframe } from "metabase/embedding-sdk/config";
 import { useSelector } from "metabase/lib/redux";
-import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getEntityTypes } from "metabase/selectors/embedding-data-picker";
 import {
   ActionIcon,
@@ -44,7 +44,7 @@ export const BrowseNavSection = ({
   const { canPerformMeaningfulActions } = useAddDataPermissions();
   const [opened, { toggle }] = useDisclosure(expandBrowse);
   const entityTypes = useSelector(getEntityTypes);
-  const isEmbeddingIframe = useSelector(getIsEmbeddingIframe);
+  const isEmbeddingIframe = getIsEmbeddingIframe();
 
   const handleToggle = () => {
     toggle();

@@ -9,11 +9,11 @@ import Link, { ForwardRefLink } from "metabase/common/components/Link";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { useDocsUrl } from "metabase/common/hooks";
 import { useFetchMetrics } from "metabase/common/hooks/use-fetch-metrics";
+import { getIsEmbeddingIframe } from "metabase/embedding-sdk/config";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
 import { getHasDataAccess } from "metabase/selectors/data";
-import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import {
   ActionIcon,
   Box,
@@ -60,7 +60,7 @@ export function BrowseMetrics() {
 
   const databases = data?.data ?? [];
   const hasDataAccess = getHasDataAccess(databases);
-  const isEmbeddingIframe = useSelector(getIsEmbeddingIframe);
+  const isEmbeddingIframe = getIsEmbeddingIframe();
 
   const canCreateMetric = !isEmbeddingIframe && hasDataAccess;
 
