@@ -54,6 +54,7 @@ export function configureGit(
 // Prepare the local git repo and initializing with an empty commit
 export function setupGitSync() {
   cy.exec("rm -rf " + LOCAL_GIT_PATH);
+  cy.exec("git config --global init.defaultBranch main");
   cy.exec("git init " + LOCAL_GIT_PATH);
   cy.exec(
     `git -C ${LOCAL_GIT_PATH} config user.email 'toucan@metabase.com'; git -C ${LOCAL_GIT_PATH} config user.name 'Toucan Cam'`,

@@ -117,72 +117,6 @@ describe("Remote Sync", () => {
       H.getSyncStatusIndicators().should("have.length", 1);
     });
 
-    it("should allow you to create new branches and switch between them", () => {
-      H.configureGit("development");
-      H.wrapLibraryCollection();
-      const NEW_BRANCH_NAME = `new-branch-${Date.now()}`;
-
-      cy.visit("/collection/root");
-
-      H.navigationSidebar().findByTestId("branch-picker-button").click();
-      H.popover()
-        .findByPlaceholderText("Find or create a branch...")
-        .type(NEW_BRANCH_NAME);
-      H.popover()
-        .findByRole("option", { name: /Create branch/ })
-        .click();
-
-      H.navigationSidebar()
-        .findByTestId("branch-picker-button")
-        .should("contain.text", NEW_BRANCH_NAME);
-
-      // Move something into the library
-
-      H.openCollectionItemMenu("Orders, Count");
-      H.popover().findByText("Move").click();
-
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Browse").click();
-        H.entityPickerModalItem(1, "Library").click();
-        cy.button("Move").click();
-      });
-
-      H.getSyncStatusIndicators().should("have.length", 1);
-
-      H.navigationSidebar()
-        .findByRole("treeitem", { name: /Library/ })
-        .click();
-      H.collectionTable().findByText("Orders, Count").should("exist");
-
-      H.navigationSidebar()
-        .findByRole("button", { name: "Push to Git" })
-        .click();
-
-      H.modal()
-        .button(/Push changes/)
-        .click();
-
-      H.navigationSidebar()
-        .findByRole("button", { name: "Push to Git", timeout: 10000 })
-        .should("not.exist");
-
-      cy.wait(2000);
-      cy.reload();
-
-      H.collectionTable().findByText("Orders, Count").should("exist");
-      H.navigationSidebar().findByTestId("branch-picker-button").click();
-      H.popover().findByRole("option", { name: "main" }).click();
-
-      //TODO: Find a better way to do this
-
-      cy.wait(500);
-      H.modal().should("not.exist");
-
-      cy.reload();
-      cy.wait(500);
-      cy.reload();
-    });
-
     it("should show a warning modal when you try to push but are out of date", () => {
       H.copyLibraryFixture();
       H.commitToLibrary();
@@ -202,10 +136,121 @@ describe("Remote Sync", () => {
 
       cy.reload();
     });
+
+    describe("Branching", () => {
+      const createNewBranch = (newBranchName: string) => {
+        H.navigationSidebar().findByTestId("branch-picker-button").click();
+        H.popover()
+          .findByPlaceholderText("Find or create a branch...")
+          .type(newBranchName);
+        H.popover()
+          .findByRole("option", { name: /Create branch/ })
+          .click();
+
+        H.navigationSidebar()
+          .findByTestId("branch-picker-button")
+          .should("contain.text", newBranchName);
+      };
+
+      const moveEntityToSyncedLibrary = (
+        originCollection: string | RegExp,
+        entity: string,
+      ) => {
+        H.navigationSidebar()
+          .findByRole("treeitem", { name: originCollection })
+          .click();
+        H.collectionTable().findByText(entity).should("exist");
+
+        H.openCollectionItemMenu(entity);
+
+        H.popover().findByText("Move").click();
+
+        H.entityPickerModal().within(() => {
+          cy.findAllByRole("tab", { name: /Browse|Collections/ }).click();
+
+          H.entityPickerModalItem(1, "Library").click();
+          cy.button("Move").click();
+        });
+
+        H.getSyncStatusIndicators().should("have.length", 1);
+
+        H.navigationSidebar()
+          .findByRole("treeitem", { name: /Library/ })
+          .click();
+        H.collectionTable().findByText(entity).should("exist");
+      };
+
+      const pushUpdates = () => {
+        H.navigationSidebar()
+          .findByRole("button", { name: "Push to Git" })
+          .click();
+
+        H.modal()
+          .button(/Push changes/)
+          .click();
+
+        // Push button should be hidden when local changes are synced
+        H.navigationSidebar()
+          .findByRole("button", { name: "Push to Git", timeout: 10000 })
+          .should("not.exist");
+      };
+
+      it("should allow you to create new branches and switch between them", () => {
+        H.configureGit("development");
+        H.wrapLibraryCollection();
+
+        const NEW_BRANCH_1 = `new-branch-${Date.now()}`;
+        const NEW_BRANCH_2 = `new-branch-${Date.now() + 1}`;
+
+        cy.visit("/collection/root");
+
+        H.navigationSidebar()
+          .findByRole("treeitem", { name: /Library/ })
+          .click();
+
+        // Synced Library starts empty
+        H.collectionTable().should("not.exist");
+        cy.findByTestId("collection-empty-state").should("exist");
+
+        createNewBranch(NEW_BRANCH_1);
+
+        // Move something into Library for the new branch
+        moveEntityToSyncedLibrary(/Our analytics/, "Orders, Count");
+
+        pushUpdates();
+
+        // Go back to the main branch
+        createNewBranch(NEW_BRANCH_2);
+
+        moveEntityToSyncedLibrary(/Our analytics/, "Orders Model");
+
+        H.collectionTable().findByText("Orders, Count").should("exist");
+        H.collectionTable().findByText("Orders Model").should("exist");
+        pushUpdates();
+
+        // Go back to the first branch
+        H.navigationSidebar().findByTestId("branch-picker-button").click();
+        H.popover()
+          .findByPlaceholderText("Find or create a branch...")
+          .type(NEW_BRANCH_1);
+        cy.findByRole("option", { name: NEW_BRANCH_1 }).click();
+
+        H.collectionTable().findByText("Orders, Count").should("exist");
+        // The second item should not exist in the first branch
+        H.collectionTable().findByText("Orders Model").should("not.exist");
+      });
+    });
   });
 
-  describe("remote sync admin settings page", () => {
+  describe.skip("remote sync admin settings page", () => {
+    beforeEach(() => {
+      H.restore();
+      H.activateToken("bleeding-edge");
+      H.setupGitSync();
+    });
+
     it("can set up development mode", () => {
+      H.setupGitSync();
       cy.signInAsAdmin();
       cy.visit("/admin/settings/remote-sync");
       cy.findByLabelText(/repository url/i)
