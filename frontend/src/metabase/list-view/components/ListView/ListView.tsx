@@ -121,6 +121,7 @@ export function ListView({
                   <ListViewItem
                     key={key}
                     row={row}
+                    rows={rows}
                     cols={cols}
                     settings={settings}
                     entityIcon={entityIconEnabled ? entityIcon : undefined}

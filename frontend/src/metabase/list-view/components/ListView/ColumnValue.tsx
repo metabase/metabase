@@ -1,46 +1,20 @@
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { formatValue } from "metabase/lib/formatting";
-import { Badge, Box, Icon, Stack, Text } from "metabase/ui";
-import { color } from "metabase/ui/utils/colors";
+import { Badge, Box, Flex, Icon, Stack, Text } from "metabase/ui";
+import { MiniBarCell } from "metabase/visualizations/components/TableInteractive/cells/MiniBarCell";
+import { getColumnExtent } from "metabase/visualizations/lib/utils";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import type { DatasetColumn } from "metabase-types/api";
+import type { DatasetColumn, RowValues } from "metabase-types/api";
 
-// Light background colors for category values
-const CATEGORY_COLORS = [
-  "accent0",
-  "accent1",
-  "accent2",
-  "accent3",
-  "accent4",
-  "accent5",
-  "accent6",
-  "accent7",
-];
-
-// Get a consistent color for a category value based on its hash
-const getCategoryColor = (value: any, columnName: string) => {
-  if (value == null || value === "") {
-    return "var(--mb-color-background-light)";
-  }
-
-  const stringValue = String(value);
-
-  // Use a combination of column name and value for more consistent colors
-  const combinedString = `${columnName}:${stringValue}`;
-  const hash = combinedString.split("").reduce((a, b) => {
-    a = (a << 5) - a + b.charCodeAt(0);
-    return a & a;
-  }, 0);
-
-  const colorIndex = Math.abs(hash) % CATEGORY_COLORS.length;
-  return color(CATEGORY_COLORS[colorIndex]);
-};
+import { getCategoryColor } from "./styling";
 
 interface ColumnValueProps {
   column: DatasetColumn;
   settings: ComputedVisualizationSettings;
   rawValue: any;
   style?: React.CSSProperties;
+  rows: RowValues;
+  cols: DatasetColumn[];
 }
 
 export function ColumnValue({
@@ -48,6 +22,8 @@ export function ColumnValue({
   settings,
   rawValue,
   style,
+  rows,
+  cols,
 }: ColumnValueProps) {
   const columnSettings = settings.column?.(column) || {};
   const value = formatValue(rawValue, {
@@ -146,14 +122,36 @@ export function ColumnValue({
       );
     case "type/Email":
     case "type/URL":
-    case "type/Quantity":
-    case "type/Score":
       return (
         <Ellipsified size="sm" fw="bold" style={style}>
           {value}
         </Ellipsified>
       );
-    case "type/Percentage":
+    case "type/Quantity":
+    case "type/Score": {
+      const columnExtent = getColumnExtent(cols, rows, cols.indexOf(column));
+      const iconColor =
+        settings["list.entity_icon_color"] === "text-primary"
+          ? "var(--mb-color-brand)"
+          : settings["list.entity_icon_color"];
+      return (
+        <Flex direction="row" align="center" gap="sm">
+          <MiniBarCell
+            rowIndex={0}
+            columnId={column.name}
+            value={Number(value)}
+            barWidth="4rem"
+            barHeight="0.25rem"
+            barColor={iconColor}
+            extent={columnExtent}
+            columnSettings={columnSettings}
+            style={{ paddingInline: 0, marginLeft: 0, width: "auto" }}
+          />
+          <Text fw="bold">{value}</Text>
+        </Flex>
+      );
+    }
+    case "type/Percentage": {
       return (
         <Badge
           size="lg"
@@ -177,6 +175,7 @@ export function ColumnValue({
           </Text>
         </Badge>
       );
+    }
     case "type/Currency": {
       const [currencySymbol, currencyValue] = (
         (formatValue(rawValue, {

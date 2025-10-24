@@ -73,7 +73,7 @@ export const ListViewConfiguration = ({
   columnsMetadata: Lib.ColumnMetadata[];
   entityType?: string;
 }) => {
-  const { cols } = data;
+  const { cols, rows } = data;
 
   // Use the same default inference as the list view
   const { imageColumn, titleColumn, rightColumns } = useListColumns(
@@ -458,8 +458,9 @@ export const ListViewConfiguration = ({
         >
           <Text fw="bold">{t`Preview`}</Text>
           <ListViewItem
-            row={previewSample}
             cols={cols}
+            rows={rows}
+            row={previewSample}
             settings={settings as ComputedVisualizationSettings}
             entityIcon={
               entityIconEnabled && selectedEntityIcon

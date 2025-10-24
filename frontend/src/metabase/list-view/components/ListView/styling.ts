@@ -25,8 +25,8 @@ export const getEntityIcon = (entityType?: string) => {
 };
 
 export const ENTITY_ICON_COLORS = [
-  "text-primary",
-  color("accent0"),
+  color("text-primary"),
+  color("brand"),
   color("accent1"),
   color("accent2"),
   color("accent3"),
@@ -42,3 +42,33 @@ export function getIconBackground(iconColor?: string) {
     ? `color-mix(in srgb, ${color(iconColor)}, transparent 88%)`
     : "var(--mb-color-white)";
 }
+
+const CATEGORY_COLORS = [
+  "accent0",
+  "accent1",
+  "accent2",
+  "accent3",
+  "accent4",
+  "accent5",
+  "accent6",
+  "accent7",
+];
+
+// Get a consistent color for a category value based on its hash
+export const getCategoryColor = (value: any, columnName: string) => {
+  if (value == null || value === "") {
+    return "var(--mb-color-background-light)";
+  }
+
+  const stringValue = String(value);
+
+  // Use a combination of column name and value for more consistent colors
+  const combinedString = `${columnName}:${stringValue}`;
+  const hash = combinedString.split("").reduce((a, b) => {
+    a = (a << 5) - a + b.charCodeAt(0);
+    return a & a;
+  }, 0);
+
+  const colorIndex = Math.abs(hash) % CATEGORY_COLORS.length;
+  return color(CATEGORY_COLORS[colorIndex]);
+};

@@ -12,6 +12,7 @@ import { getIconBackground } from "./styling";
 export interface ListViewItemProps {
   className?: string;
   row: DatasetData["rows"][number];
+  rows: DatasetData["rows"];
   cols: DatasetColumn[];
   settings: ComputedVisualizationSettings;
   entityIcon?: string;
@@ -24,8 +25,9 @@ export interface ListViewItemProps {
 }
 
 export function ListViewItem({
-  row,
   cols,
+  rows,
+  row,
   settings,
   entityIcon,
   entityIconColor,
@@ -80,6 +82,8 @@ export function ListViewItem({
       <Flex align="center" gap="md" style={{ flexShrink: 0 }}>
         {titleColumn && (
           <ColumnValue
+            rows={rows}
+            cols={cols}
             column={titleColumn}
             settings={settings}
             rawValue={row[cols.indexOf(titleColumn as DatasetColumn)]}
@@ -97,6 +101,8 @@ export function ListViewItem({
         return (
           <ColumnValue
             key={col.name}
+            rows={rows}
+            cols={cols}
             settings={settings}
             column={col}
             rawValue={rawValue}
