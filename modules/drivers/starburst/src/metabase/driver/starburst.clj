@@ -68,8 +68,7 @@
                               :metadata/key-constraints               false
                               :now                                    true
                               :database-routing                       true
-                              :connection-impersonation               true
-                              :connection-impersonation-requires-role true}]
+                              :connection-impersonation               true}]
   (defmethod driver/database-supports? [:starburst feature] [_ _ _] supported?))
 
 (defn- format-field
@@ -996,7 +995,7 @@
 
 (defmethod driver.sql/default-database-role :starburst
   [_driver database]
-  (get-in database [:details :role]))
+  (get-in database [:details :user]))
 
 (defmethod driver/set-role! :starburst
   [_driver ^Connection conn role]
