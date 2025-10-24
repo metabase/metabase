@@ -3,7 +3,8 @@
   - done: figure out request cancellation
   - done: async tool calls appended to the same xf results
   - done: usage tracking - they'll go through and we can do whatever we want later on
-  - test structured output
+  - done: test structured output
+  - add anthropic api support to see how hard is to be heterogeneous
   - figure out what's lacking compared to ai-service"
   (:require
    [clj-http.client :as http]
@@ -12,6 +13,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [malli.json-schema :as mjs]
+   [malli.util :as mut]
    [metabase-enterprise.llm.settings :as llm]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -62,22 +64,21 @@
   (str "mb-" (random-uuid)))
 
 (defn openai->aisdk-xf
-  "Translates OpenAI streaming JSON responses into AI SDK v5 protocol format.
+  "Translates OpenAI /v1/responses streaming events into AI SDK v5 protocol format.
 
    https://ai-sdk.dev/docs/ai-sdk-ui/stream-protocol
 
-   OpenAI Format:
-   - Each chunk: {:id string :object string :created number :model string
-                  :choices [{:index number :delta {:content string :role string} :finish_reason string-or-nil}]}
-  AI SDK v5 Format (SSE protocol):
-  - Message parts: {:type :start, :messageId ...}
-  - Part types: start, text-start, text-delta, text-end, finish-step, finish
-  - Ends with: 'data: [DONE]\\n'"
+   OpenAI Responses Format:
+   - Each event: {:type \"response.output_text.delta\" :delta ...}
+                 {:type \"response.output_item.added\" :item {:id :type :output ...}}
+
+   AI SDK v5 Format (SSE protocol):
+   - Message parts: {:type :start, :messageId ...}
+   - Part types: start, text-start, text-delta, text-end, finish-step, finish
+   - Ends with: 'data: [DONE]\\n'"
   [rf]
   ;; we've got lots of state since aisdk has lots of start/stop/etc messages that raw openai does not
-  (let [started?     (volatile! false)
-        finished?    (volatile! false)
-        current-type (volatile! nil)
+  (let [current-type (volatile! nil)
         current-id   (volatile! nil)
         payload      (volatile! {})]
     ;; some notes about the approach:
@@ -88,76 +89,72 @@
     (fn
       ([result]
        (cond-> result
+         ;; in case the response was incomplete we'll close up latest type
          @current-type    (rf (merge {:type (case @current-type
-                                              :text  :text-end
-                                              :tools :tool-input-available)}
+                                              :text          :text-end
+                                              :function_call :tool-input-available)}
                                      @payload))
-         (not @finished?) (rf {:type :finish})
          true             (rf)))
-      ([result chunk]
-       (let [usage                   (:usage chunk)
-             {:keys [delta
-                     finish_reason]} (first (:choices chunk))
-             text                    (:content delta)
-             tools                   (first (:tool_calls delta))
-             ;; TODO: not everything possible handled yet
-             chunk-type              (when delta
-                                       (cond
-                                         tools         :tools
-                                         text          :text
-                                         (:role delta) :start))
-             chunk-id                (when delta
-                                       ;; try to find natural id, but use generated one if necessary
-                                       (or (cond
-                                             tools                        (:index tools)
-                                             ;; current-id will be reset at chunk start
-                                             (= chunk-type @current-type) @current-id)
-                                           (mkid)))
-             chunk-payload           (cond
-                                       tools {:toolName   (-> tools :function :name)
-                                              :toolCallId (:id tools)}
-                                       text  {:id chunk-id})]
-
+      ([result {t :type :keys [response item delta] :as chunk}]
+       (let [middle     (second (str/split t #"\."))
+             chunk-type (case middle
+                          "output_item"             (case (:type item)
+                                                      "message" :text
+                                                      (keyword (:type item)))
+                          "content_part"            :text
+                          "output_text"             :text
+                          "function_call_arguments" :function_call
+                          (keyword middle))
+             chunk-id   (or (case chunk-type
+                              ;; chunks that have natural id in API response go here
+                              :function_call (:call_id item)
+                              :text          (:id chunk)
+                              nil)
+                            @current-id
+                            (mkid))]
          (cond-> result
-           (not @started?)          (-> (u/prog1
-                                          (vreset! started? true))
-                                        (rf {:type :start :messageId (:id chunk)}))
+           (= t "response.created")           (rf {:type :start :messageId (:id response)})
            ;; time to finish previous chunk
-           (and @current-id
-                (not= chunk-id
-                      @current-id)) (-> (rf (merge {:type (case @current-type
-                                                            :text  :text-end
-                                                            :tools :tool-input-available)}
-                                                   @payload))
-                                        (u/prog1
-                                          (vreset! current-type nil)
-                                          (vreset! current-id nil)
-                                          (vreset! payload {})))
+           ;; this logic will skip most of the *.done types, but they seem to be always followed by one of those two?
+           (or (= t "response.output_item.done")
+               (and @current-id
+                    (not= chunk-id
+                          @current-id)))      (-> (rf (merge {:type (case @current-type
+                                                                      :text          :text-end
+                                                                      :function_call :tool-input-available)}
+                                                             @payload))
+                                                  (u/prog1
+                                                    (vreset! current-type nil)
+                                                    (vreset! current-id nil)
+                                                    (vreset! payload {})))
            ;; start of a new chunk
-           (and (or text tools)
-                (not= chunk-id
-                      @current-id)) (-> (u/prog1
-                                          (vreset! current-type chunk-type)
-                                          (vreset! current-id chunk-id)
-                                          (vswap! payload merge chunk-payload))
-                                        (rf (merge (case @current-type
-                                                     :text  {:type :text-start}
-                                                     :tools {:type :tool-input-start})
-                                                   @payload)))
+           (= t "response.output_item.added") (-> (u/prog1
+                                                    (vreset! current-type chunk-type)
+                                                    (vreset! current-id chunk-id)
+                                                    (vreset! payload
+                                                             (case @current-type
+                                                               ;; no :type in payloads since we'll use that for finish msg too
+                                                               :text          {:id chunk-id}
+                                                               :function_call {:toolCallId chunk-id
+                                                                               :toolName   (:name item)}
+                                                               nil)))
+                                                  (rf (merge (case @current-type
+                                                               :text          {:type :text-start}
+                                                               :function_call {:type :tool-input-start})
+                                                             @payload)))
            ;; just a middle of a chunk
-           (or text tools)          (rf (case @current-type
-                                          :text  {:type  :text-delta
-                                                  :id    @current-id
-                                                  :delta text}
-                                          :tools {:type           :tool-input-delta
-                                                  :toolCallId     (:toolCallId @payload)
-                                                  :inputTextDelta (-> tools :function :arguments)}))
-
-           finish_reason            (-> (u/prog1
-                                          (vreset! finished? true))
-                                        ;; finish messages in openai responses are confusing, let's skip them
-                                        #_(rf {:type :finish}))
-           usage         (rf {:type :usage :usage usage})))))))
+           delta                              (rf (case @current-type
+                                                    :text          {:type  :text-delta
+                                                                    :id    @current-id
+                                                                    :delta delta}
+                                                    :function_call {:type           :tool-input-delta
+                                                                    :toolCallId     (:toolCallId @payload)
+                                                                    :inputTextDelta delta}))
+           (= (:type chunk)
+              "response.completed")           (rf {:type  :usage
+                                                   :usage (:usage response)
+                                                   ;; non-standard extension, not in AISDK5
+                                                   :id    (:id response)})))))))
 
 (defn- tool->openai [tool]
   (let [{:keys [doc schema] :as tool} (if (map? tool) tool (meta tool))
@@ -166,32 +163,42 @@
                                         ;; strip that stuff we're appending in mu/defn
                                         (second (str/split doc #"\n\n  " 2))
                                         doc)]
-    {:type     "function"
-     :function {:name        (name (:name tool))
-                :description doc
-                :parameters  (mjs/transform params {:additionalProperties false})}}))
+    {:type        "function"
+     :name        (name (:name tool))
+     :description doc
+     :parameters  (mjs/transform params {:additionalProperties false})}))
 
 (mu/defn openai-raw
   "Perform a request to OpenAI"
-  [{:keys [model messages tools]
-    :or   {model    "gpt-4.1-mini"
-           messages [{:role "system" :content "Just tell something to a user"}]}}
+  [{:keys [model system input tools schema]
+    :or   {model "gpt-4.1-mini"
+           input [{:role "system" :content "Just tell something to a user"}]}}
    :- [:map
        [:model {:optional true} :string]
-       [:messages {:optional true} [:vector [:map
-                                             [:role [:enum "system" "user"]]
-                                             [:content :string]]]]
-       ;; :any because I failed typing function vars
-       [:tools {:optional true} [:sequential [:fn var?]]]]]
+       [:system {:optional true} :string]
+       [:input {:optional true} [:vector [:map
+                                          [:role [:enum "user" "assistant"]]
+                                          [:content :string]]]]
+       [:tools {:optional true} [:sequential [:fn var?]]]
+       ;; malli schema expected here
+       ;; TODO: check it's a `:map`
+       [:schema {:optional true} :any]]]
   (assert (llm/ee-openai-api-key) "No OpenAI API key!")
-  (let [req {:model          model
-             :stream         true
-             :stream_options {:include_usage true}
-             :messages       messages
-             :tool_choice    (when (seq tools) "auto")
-             :tools          (when (seq tools) (mapv tool->openai tools))}]
+  (let [req {:model        model
+             :stream       true
+             :store        false
+             :instructions system
+             :input        input
+             :tool_choice  (when (seq tools) "auto")
+             :tools        (when (seq tools) (mapv tool->openai tools))
+             :text         (when schema
+                             {:format {:type   "json_schema"
+                                       :strict true
+                                       :name   "schema"
+                                       ;; OpenAI insists on `{additionalProperties false}`
+                                       :schema (mjs/transform (mut/closed-schema schema))}})}]
     (try
-      (let [res (http/post "https://api.openai.com/v1/chat/completions"
+      (let [res (http/post "https://api.openai.com/v1/responses"
                            {:as      :stream
                             :headers {"Authorization" (str "Bearer " (llm/ee-openai-api-key))
                                       "Content-Type"  "application/json"}
@@ -392,9 +399,17 @@
   (def q (a/<!! (a/into [] (analyze-data-trend {:metric "revenue"
                                                 :values [100.0 120.0 145.0 160.0]
                                                 :period "Q1 2025"}))))
-  (def w (into [] (comp openai->aisdk-xf (tool-executor-rff TOOLS)) q))
+  (def w (into [] (comp openai->aisdk-xf #_(tool-executor-rff TOOLS)) q))
   (def e (into [] aisdk-xf w))
 
-  (def q (a/<!! (a/into [] (openai-raw {:messages [{:role "system" :content "You are a data analysis assistant. When users provide time-series data and ask for insights, use the analyze-data-trend tool to generate interpretations. Always call the tool rather than making up your own analysis."}
-                                                   {:role "user" :content "Can you analyze these trends? Revenue for Q1: [50000, 55000, 58000, 62000] and customer count: [100, 110, 105, 115]. What story do these numbers tell?"}]
-                                        :tools    (vals TOOLS)})))))
+  (def q (a/<!! (a/into [] (openai-raw
+                            {:system "You are a data analysis assistant. When users provide time-series data and ask for insights, use the analyze-data-trend tool to generate interpretations. Always call the tool rather than making up your own analysis."
+                             :input [{:role "user" :content "Can you analyze these trends? Revenue for Q1: [50000, 55000, 58000, 62000] and customer count: [100, 110, 105, 115]. What story do these numbers tell?"}]
+                             :tools    (vals TOOLS)}))))
+
+  (def q (a/<!! (a/into [] (openai-raw
+                            {:input [{:role "user" :content "Can you tell me currencies of three northmost American countries?"}]
+                             :schema [:map
+                                      [:currencies [:sequential [:map
+                                                                 [:country [:string {:description "Three-letter code"}]]
+                                                                 [:currency [:string {:description "Three-letter code"}]]]]]]})))))
