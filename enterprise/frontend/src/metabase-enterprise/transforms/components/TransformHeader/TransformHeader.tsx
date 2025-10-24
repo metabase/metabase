@@ -24,7 +24,12 @@ export function TransformHeader({
   return (
     <BenchPaneHeader
       title={
-        <BenchTabs tabs={[{ label: t`Query`, to: `/bench/transforms/1` }]} />
+        <BenchTabs
+          tabs={[
+            { label: t`Query`, to: `/bench/transforms/1` },
+            { label: t`Schedule`, to: `/bench/transforms/1/schedule` },
+          ]}
+        />
       }
       actions={
         <Group>

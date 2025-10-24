@@ -48,14 +48,14 @@ export function TransformQueryPage({ params }: TransformQueryPageProps) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  return <TransformPageBody transform={transform} />;
+  return <TransformQueryPageBody transform={transform} />;
 }
 
-type TransformPageBodyProps = {
+type TransformQueryPageBodyProps = {
   transform: Transform;
 };
 
-function TransformPageBody({ transform }: TransformPageBodyProps) {
+function TransformQueryPageBody({ transform }: TransformQueryPageBodyProps) {
   const [updateTransform, { isLoading: isSaving }] =
     useUpdateTransformMutation();
   const { setSource, proposedSource, acceptProposed, clearProposed } =
