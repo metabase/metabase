@@ -7,7 +7,6 @@
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
-   [metabase-enterprise.remote-sync.source.git :as git]
    [metabase-enterprise.remote-sync.source.ingestable :as source.ingestable]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.serialization.core :as serialization]
@@ -308,7 +307,7 @@
   (if (settings/remote-sync-enabled)
     (do
       (when (str/blank? (setting/get :remote-sync-branch))
-        (setting/set! :remote-sync-branch (git/default-branch (source/source-from-settings))))
+        (setting/set! :remote-sync-branch (source.p/default-branch (source/source-from-settings))))
       (when (or (nil? (collection/remote-synced-collection)) (= :production (settings/remote-sync-type)))
         (async-import! (settings/remote-sync-branch) true {})))
     (u/prog1 nil

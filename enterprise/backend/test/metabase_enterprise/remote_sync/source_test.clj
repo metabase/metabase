@@ -21,6 +21,9 @@
   (branches [_]
     ["main"])
 
+  (default-branch [_]
+    "main")
+
   (list-files [_]
     [])
 

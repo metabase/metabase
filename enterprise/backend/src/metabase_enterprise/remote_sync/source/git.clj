@@ -140,7 +140,7 @@
 
   Returns true if the repository has at least one commit, false otherwise."
   [{:keys [^Git git]}]
-  (< 0 (count (call-command (-> (.branchList git))))))
+  (< 0 (count (call-command (.branchList git)))))
 
 (defn list-files
   "Lists all files in the git repository at the current commit.
@@ -335,6 +335,9 @@
 
   (create-branch [source branch-name base-branch]
     (create-branch source branch-name base-branch))
+
+  (default-branch [this]
+    (default-branch this))
 
   (list-files [this]
     (list-files this))

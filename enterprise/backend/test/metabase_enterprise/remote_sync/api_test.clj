@@ -27,6 +27,8 @@
       (if error-on-branches?
         (throw (Exception. "Repository not found"))
         branches))
+    (default-branch [_]
+      "main")
     (list-files [_] [])
     (read-file [_ _] "")
     (write-files! [_ _ _] nil)

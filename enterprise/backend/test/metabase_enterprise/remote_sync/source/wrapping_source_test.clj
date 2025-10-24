@@ -12,6 +12,9 @@
   (branches [_]
     ["main"])
 
+  (default-branch [_]
+    "main")
+
   (list-files [_]
     (keys files))
 
@@ -92,6 +95,8 @@
                           nil)
                         (branches [_]
                           [])
+                        (default-branch [_]
+                          "main")
                         (list-files [_]
                           [])
                         (read-file [_ _path]
@@ -119,6 +124,8 @@
                           nil)
                         (branches [_]
                           [])
+                        (default-branch [_]
+                          "main")
                         (list-files [_]
                           [])
                         (read-file [_ _path]
@@ -146,6 +153,8 @@
                           nil)
                         (branches [_]
                           [])
+                        (default-branch [_]
+                          "main")
                         (list-files [_]
                           [])
                         (read-file [_ _path]

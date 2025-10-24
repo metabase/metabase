@@ -168,6 +168,9 @@ width: fixed
       ;; Default success case
       @branches-atom))
 
+  (default-branch [_this]
+    "main")
+
   (list-files [_this]
     (case fail-mode
       :list-files-error (throw (Exception. "Failed to list files"))

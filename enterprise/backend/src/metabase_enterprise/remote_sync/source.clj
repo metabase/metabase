@@ -27,6 +27,9 @@
   (branches [_]
     (source.p/branches original-source))
 
+  (default-branch [_]
+    (source.p/default-branch original-source))
+
   (list-files [_]
     (filter (fn [file-path]
               (some (fn [path-filter] (re-matches path-filter file-path)) path-filters))

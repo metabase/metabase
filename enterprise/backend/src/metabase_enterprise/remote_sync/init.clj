@@ -17,4 +17,4 @@
       (settings/check-git-settings!)
       (impl/finish-remote-config!)
       (catch Throwable e
-        (log/error e "Error during Remote Sync initialization: " (.getMessage e))))))
+        (log/error e "Error during Remote Sync initialization: " (ex-message e))))))

@@ -5,10 +5,13 @@
    [java-time.api :as t]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
+   [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase.app-db.core :as app-db]
+   [metabase.collections.models.collection :as collection]
    [metabase.search.core :as search]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -340,3 +343,93 @@
                 (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject :model_type "Collection" :model_id coll-id))))
                 (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id card-id))))
                 (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject :model_type "Dashboard" :model_id dash-id))))))))))))
+
+(deftest finish-remote-config!-sets-default-branch-when-blank-test
+  (testing "finish-remote-config! sets default branch when branch setting is blank"
+    (mt/with-model-cleanup [:model/RemoteSyncTask]
+      (let [mock-source (test-helpers/create-mock-source)
+            import-started? (atom false)]
+        (mt/with-temporary-setting-values [remote-sync-enabled true
+                                           remote-sync-url "https://github.com/test/repo.git"
+                                           remote-sync-branch ""]
+          (with-redefs [source/source-from-settings (constantly mock-source)
+                        impl/async-import! (fn [& _args] (reset! import-started? true) 123)]
+            (impl/finish-remote-config!)
+            (is (= "main" (setting/get :remote-sync-branch))
+                "Should set branch to default branch")
+            (is @import-started?
+                "Should start import when no collection exists")))))))
+
+(deftest finish-remote-config!-starts-import-when-no-collection-exists-test
+  (testing "finish-remote-config! starts import when no remote-synced collection exists"
+    (mt/with-model-cleanup [:model/RemoteSyncTask]
+      (let [mock-source (test-helpers/create-mock-source)
+            import-called? (atom false)
+            import-args (atom nil)]
+        (mt/with-temporary-setting-values [remote-sync-enabled true
+                                           remote-sync-url "https://github.com/test/repo.git"
+                                           remote-sync-branch "main"
+                                           remote-sync-type :development]
+          (with-redefs [source/source-from-settings (constantly mock-source)
+                        impl/async-import! (fn [branch force? args]
+                                             (reset! import-called? true)
+                                             (reset! import-args {:branch branch :force? force? :args args})
+                                             123)
+                        collection/remote-synced-collection (constantly nil)]
+            (let [task-id (impl/finish-remote-config!)]
+              (is (= 123 task-id)
+                  "Should return task ID from async-import!")
+              (is @import-called?
+                  "Should call async-import!")
+              (is (= {:branch "main" :force? true :args {}}
+                     @import-args)
+                  "Should call async-import! with correct arguments"))))))))
+
+(deftest finish-remote-config!-starts-import-in-production-mode-test
+  (testing "finish-remote-config! starts import in production mode even when collection exists"
+    (mt/with-model-cleanup [:model/RemoteSyncTask :model/Collection]
+      (let [mock-source (test-helpers/create-mock-source)
+            import-called? (atom false)]
+        (mt/with-temp [:model/Collection _ {:name "Remote Collection" :type "remote-synced" :location "/"}]
+          (mt/with-temporary-setting-values [remote-sync-enabled true
+                                             remote-sync-url "https://github.com/test/repo.git"
+                                             remote-sync-branch "main"
+                                             remote-sync-type :production]
+            (with-redefs [source/source-from-settings (constantly mock-source)
+                          impl/async-import! (fn [& _args] (reset! import-called? true) 123)]
+              (let [task-id (impl/finish-remote-config!)]
+                (is (= 123 task-id)
+                    "Should return task ID from async-import!")
+                (is @import-called?
+                    "Should call async-import! in production mode")))))))))
+
+(deftest finish-remote-config!-does-nothing-when-collection-exists-in-dev-mode-test
+  (testing "finish-remote-config! does nothing when collection exists in development mode"
+    (mt/with-model-cleanup [:model/Collection]
+      (let [mock-source (test-helpers/create-mock-source)
+            import-called? (atom false)]
+        (mt/with-temp [:model/Collection _ {:name "Remote Collection" :type "remote-synced" :location "/"}]
+          (mt/with-temporary-setting-values [remote-sync-enabled true
+                                             remote-sync-url "https://github.com/test/repo.git"
+                                             remote-sync-branch "main"
+                                             remote-sync-type :development]
+            (with-redefs [source/source-from-settings (constantly mock-source)
+                          impl/async-import! (fn [& _args] (reset! import-called? true) 123)]
+              (let [result (impl/finish-remote-config!)]
+                (is (nil? result)
+                    "Should return nil when nothing is done")
+                (is (not @import-called?)
+                    "Should not call async-import! when collection exists in dev mode")))))))))
+
+(deftest finish-remote-config!-clears-collection-when-disabled-test
+  (testing "finish-remote-config! clears remote-synced collection when remote sync is disabled"
+    (mt/with-model-cleanup [:model/Collection]
+      (let [clear-called? (atom false)]
+        (mt/with-temp [:model/Collection _ {:name "Remote Collection" :type "remote-synced" :location "/"}]
+          (mt/with-temporary-setting-values [remote-sync-enabled false]
+            (with-redefs [collection/clear-remote-synced-collection! (fn [] (reset! clear-called? true))]
+              (let [result (impl/finish-remote-config!)]
+                (is (nil? result)
+                    "Should return nil when remote sync is disabled")
+                (is @clear-called?
+                    "Should call clear-remote-synced-collection!")))))))))

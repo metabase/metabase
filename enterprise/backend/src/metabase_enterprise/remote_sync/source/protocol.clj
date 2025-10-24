@@ -18,6 +18,13 @@
 
     Returns the name of the newly created branch.")
 
+  (default-branch [source]
+    "Gets the default branch name from the remote source.
+
+    Takes a source instance implementing this protocol.
+
+    Returns the default branch name as a string, or nil if no default branch is found.")
+
   (list-files [source]
     "Lists all files available in the source.
 
