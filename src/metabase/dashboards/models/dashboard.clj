@@ -399,7 +399,8 @@
    :skip      [;; those stats are inherently local state
                :view_count :last_viewed_at
                ;; this is deprecated
-               :cache_ttl]
+               :cache_ttl
+               :dependency_analysis_version]
    :transform {:created_at             (serdes/date)
                :initially_published_at (serdes/date)
                :collection_id          (serdes/fk :model/Collection)

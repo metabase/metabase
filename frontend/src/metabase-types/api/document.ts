@@ -1,7 +1,7 @@
 import type { JSONContent } from "@tiptap/core";
 
 import type { Card } from "./card";
-import type { CollectionId } from "./collection";
+import type { Collection, CollectionId } from "./collection";
 import type { BaseUser, UserId } from "./user";
 
 export type DocumentId = number;
@@ -14,6 +14,7 @@ export type Document = {
   name: string;
   version: number;
   collection_id: CollectionId | null;
+  collection?: Collection | null;
   created_at: string;
   updated_at: string;
   archived: boolean;

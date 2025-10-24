@@ -155,7 +155,7 @@
 (defmethod serdes/make-spec "Document"
   [_model-name _opts]
   {:copy [:archived :archived_directly :content_type :entity_id :name :collection_position]
-   :skip [:view_count :last_viewed_at]
+   :skip [:view_count :last_viewed_at :dependency_analysis_version]
    :transform {:created_at (serdes/date)
                :updated_at (serdes/date)
                :document {:export-with-context export-document-content
