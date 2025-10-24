@@ -13,7 +13,7 @@ import { RunListPage } from "./pages/RunListPage";
 import { TransformEmptyPage } from "./pages/TransformEmptyPage";
 import { TransformLayout } from "./pages/TransformLayout";
 import { TransformQueryPage } from "./pages/TransformQueryPage";
-import { TransformSchedulePage } from "./pages/TransformSchedulePage";
+import { TransformRunPage } from "./pages/TransformRunPage";
 import { TransformTargetPage } from "./pages/TransformTargetPage";
 
 export const getTransformRoutes = () => (
@@ -23,7 +23,7 @@ export const getTransformRoutes = () => (
       <Route path="new/:type" component={NewTransformPage} />
       <Route path="new/card/:cardId" component={NewTransformPage} />
       <Route path=":transformId" component={TransformQueryPage} />
-      <Route path=":transformId/schedule" component={TransformSchedulePage} />
+      <Route path=":transformId/schedule" component={TransformRunPage} />
       <Route path=":transformId/target" component={TransformTargetPage} />
     </Route>
     <Route title={t`Jobs`} path="jobs" component={JobLayout}>

@@ -6,7 +6,16 @@ import { t } from "ttag";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { isResourceNotFoundError } from "metabase/lib/errors";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Anchor, Box, Divider, Group, Stack } from "metabase/ui";
+import {
+  Anchor,
+  Box,
+  Card,
+  Divider,
+  Group,
+  Stack,
+  Text,
+  Title,
+} from "metabase/ui";
 import {
   useCancelCurrentTransformRunMutation,
   useRunTransformMutation,
@@ -21,29 +30,35 @@ import { RunStatus } from "../../../components/RunStatus";
 import { TagMultiSelect } from "../../../components/TagMultiSelect";
 import { getRunListUrl } from "../../../urls";
 
-type ScheduleSectionProps = {
+type RunSectionProps = {
   transform: Transform;
 };
 
-export function ScheduleSection({ transform }: ScheduleSectionProps) {
+export function RunSection({ transform }: RunSectionProps) {
   return (
-    <div>
-      <Stack>
-        <Group p="lg" justify="space-between">
-          <RunStatusSection transform={transform} />
-          <RunButtonSection transform={transform} />
-        </Group>
-        <RunOutputSection transform={transform} />
+    <Stack gap="xl">
+      <Stack flex={1} gap="sm">
+        <Title order={4}>{t`Run this transform`}</Title>
+        <Text c="text-secondary">{t`This transform will be run whenever the jobs it belongs are scheduled`}</Text>
       </Stack>
-      <Divider />
-      <Group p="lg" gap="lg">
-        <Stack gap="sm">
-          <Box fw="bold">{t`Run it on a schedule with tags`}</Box>
-          <Box>{t`Jobs will run all transforms with their tags.`}</Box>
+      <Card p={0} shadow="none" withBorder>
+        <Stack>
+          <Group p="lg" justify="space-between">
+            <RunStatusSection transform={transform} />
+            <RunButtonSection transform={transform} />
+          </Group>
+          <RunOutputSection transform={transform} />
         </Stack>
-        <TagSection transform={transform} />
-      </Group>
-    </div>
+        <Divider />
+        <Group p="lg" gap="lg">
+          <Stack gap="sm">
+            <Box fw="bold">{t`Run it on a schedule with tags`}</Box>
+            <Box>{t`Jobs will run all transforms with their tags.`}</Box>
+          </Stack>
+          <TagSection transform={transform} />
+        </Group>
+      </Card>
+    </Stack>
   );
 }
 

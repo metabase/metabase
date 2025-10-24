@@ -4,6 +4,7 @@ import { skipToken } from "metabase/api";
 import { BenchPaneHeader } from "metabase/bench/components/BenchPaneHeader";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
+import { Flex } from "metabase/ui";
 import { useGetTransformQuery } from "metabase-enterprise/api";
 import type { Transform } from "metabase-types/api";
 
@@ -11,17 +12,17 @@ import { TransformTabs } from "../../components/TransformTabs";
 import { POLLING_INTERVAL } from "../../constants";
 import { isTransformCanceling, isTransformRunning } from "../../utils";
 
-import { ScheduleSection } from "./ScheduleSection";
+import { RunSection } from "./RunSection";
 
-type TransformSchedulePageParams = {
+type TransformRunPageParams = {
   transformId: string;
 };
 
-type TransformSchedulePageProps = {
-  params: TransformSchedulePageParams;
+type TransformRunPageProps = {
+  params: TransformRunPageParams;
 };
 
-export function TransformSchedulePage({ params }: TransformSchedulePageProps) {
+export function TransformRunPage({ params }: TransformRunPageProps) {
   const [isPolling, setIsPolling] = useState(false);
   const transformId = Urls.extractEntityId(params.transformId);
   const {
@@ -41,13 +42,21 @@ export function TransformSchedulePage({ params }: TransformSchedulePageProps) {
   }
 
   return (
-    <div>
+    <Flex direction="column" h="100%">
       <BenchPaneHeader
         title={<TransformTabs transform={transform} />}
         withBorder
       />
-      <ScheduleSection transform={transform} />
-    </div>
+      <Flex
+        direction="column"
+        align="center"
+        flex={1}
+        pt="3.5rem"
+        bg="bg-light"
+      >
+        <RunSection transform={transform} />
+      </Flex>
+    </Flex>
   );
 }
 
