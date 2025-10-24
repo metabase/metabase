@@ -8,7 +8,7 @@ import {
   SIDEBAR_NAME,
 } from "metabase/dashboard/constants";
 import {
-  getIsEmbeddingIframe,
+  isEmbeddingIframe,
   isEmbeddingSdk,
 } from "metabase/embedding-sdk/config";
 import { isNotNull } from "metabase/lib/types";
@@ -546,7 +546,7 @@ export function getEmbeddedParameterVisibility(
 }
 
 export const getIsHeaderVisible = createSelector(
-  [getEmbedOptions, () => getIsEmbeddingIframe()],
+  [getEmbedOptions, () => isEmbeddingIframe()],
   (embedOptions, isEmbeddingIframe) =>
     (isEmbeddingSdk() && isEmbeddingIframe) ||
     !isEmbeddingIframe ||
@@ -554,7 +554,7 @@ export const getIsHeaderVisible = createSelector(
 );
 
 export const getIsAdditionalInfoVisible = createSelector(
-  [getEmbedOptions, () => getIsEmbeddingIframe()],
+  [getEmbedOptions, () => isEmbeddingIframe()],
   (embedOptions, isEmbeddingIframe) =>
     !isEmbeddingIframe || !!embedOptions.additional_info,
 );

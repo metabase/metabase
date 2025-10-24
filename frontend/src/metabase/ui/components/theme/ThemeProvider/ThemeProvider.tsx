@@ -12,7 +12,7 @@ import {
 } from "react";
 
 import {
-  getIsEmbeddingIframe,
+  isEmbeddingIframe,
   isEmbeddingSdk,
 } from "metabase/embedding-sdk/config";
 import { parseHashOptions } from "metabase/lib/browser";
@@ -147,7 +147,7 @@ const useColorSchemeFromHash = ({
 
 export const ThemeProvider = (props: ThemeProviderProps) => {
   const schemeFromHash = useColorSchemeFromHash({
-    enabled: getIsEmbeddingIframe(),
+    enabled: isEmbeddingIframe(),
   });
   const forceColorScheme = props.displayTheme
     ? getColorSchemeFromDisplayTheme(props.displayTheme)

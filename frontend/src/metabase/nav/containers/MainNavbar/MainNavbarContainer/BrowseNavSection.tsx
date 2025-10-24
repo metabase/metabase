@@ -3,7 +3,7 @@ import { c, t } from "ttag";
 
 import { useUserSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { getIsEmbeddingIframe } from "metabase/embedding-sdk/config";
+import { isEmbeddingIframe } from "metabase/embedding-sdk/config";
 import { useSelector } from "metabase/lib/redux";
 import { getEntityTypes } from "metabase/selectors/embedding-data-picker";
 import {
@@ -44,14 +44,13 @@ export const BrowseNavSection = ({
   const { canPerformMeaningfulActions } = useAddDataPermissions();
   const [opened, { toggle }] = useDisclosure(expandBrowse);
   const entityTypes = useSelector(getEntityTypes);
-  const isEmbeddingIframe = getIsEmbeddingIframe();
 
   const handleToggle = () => {
     toggle();
     setExpandBrowse(!opened);
   };
 
-  const showAddDataButton = canPerformMeaningfulActions && !isEmbeddingIframe;
+  const showAddDataButton = canPerformMeaningfulActions && !isEmbeddingIframe();
 
   return (
     <div aria-selected={opened} role="tab">

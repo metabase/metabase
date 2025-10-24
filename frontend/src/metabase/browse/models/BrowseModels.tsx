@@ -12,7 +12,7 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { useDocsUrl } from "metabase/common/hooks";
 import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
-import { getIsEmbeddingIframe } from "metabase/embedding-sdk/config";
+import { isEmbeddingIframe } from "metabase/embedding-sdk/config";
 import { useSelector } from "metabase/lib/redux";
 import {
   PLUGIN_COLLECTIONS,
@@ -67,10 +67,9 @@ export const BrowseModels = () => {
   const databases = data?.data ?? [];
   const hasDataAccess = getHasDataAccess(databases);
   const hasNativeWrite = getHasNativeWrite(databases);
-  const isEmbeddingIframe = getIsEmbeddingIframe();
 
   const canCreateNewModel =
-    !isEmbeddingIframe && hasDataAccess && hasNativeWrite;
+    !isEmbeddingIframe() && hasDataAccess && hasNativeWrite;
 
   return (
     <BrowseContainer aria-labelledby={titleId}>

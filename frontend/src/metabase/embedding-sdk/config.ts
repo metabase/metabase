@@ -60,6 +60,6 @@ export const isEmbedding = () => {
  * Whether we are in an iframe.
  * @returns true if within an iframe
  */
-export const getIsEmbeddingIframe = (): boolean => {
+export const isEmbeddingIframe = (): boolean => {
   return isWithinIframe();
 };

@@ -9,7 +9,7 @@ import type { ErrorDetailsProps } from "metabase/common/components/ErrorDetails/
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
-import { getIsEmbeddingIframe } from "metabase/embedding-sdk/config";
+import { isEmbeddingIframe } from "metabase/embedding-sdk/config";
 import { Button, Icon, Tooltip } from "metabase/ui";
 
 import {
@@ -107,16 +107,14 @@ export const SmallGenericError = forwardRef<
   const [isModalOpen, { turnOn: openModal, turnOff: closeModal }] =
     useToggle(false);
 
-  const isEmbeddingIframe = getIsEmbeddingIframe();
-
-  const tooltipMessage = isEmbeddingIframe
+  const tooltipMessage = isEmbeddingIframe()
     ? message
     : message + t` Click for more information`;
 
   return (
     <ErrorPageRoot bordered={bordered} {...props} ref={ref}>
       <Tooltip label={tooltipMessage}>
-        {isEmbeddingIframe ? (
+        {isEmbeddingIframe() ? (
           <Icon name="warning" size={32} c="text-light" />
         ) : (
           <Button
