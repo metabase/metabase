@@ -49,6 +49,9 @@ export function setupGitSync() {
   cy.exec("rm -rf " + LOCAL_GIT_PATH);
   cy.exec("git init " + LOCAL_GIT_PATH);
   cy.exec(
+    `git -C ${LOCAL_GIT_PATH} config user.email 'toucan@metabase.com'; git -C ${LOCAL_GIT_PATH} config user.name 'Toucan Cam'`,
+  );
+  cy.exec(
     "git -C " + LOCAL_GIT_PATH + " commit --allow-empty -m 'Initial Commit'",
   );
 }
@@ -76,7 +79,7 @@ export const wrapLibraryFiles = (alias = "libraryFiles") => {
 // Wraps the library collection for use in tests
 export const wrapLibraryCollection = (alias = "library", n = 0) => {
   if (n > 3) {
-    throw new Error("Could not find library colleciton");
+    throw new Error("Could not find library collection");
   }
 
   cy.request("/api/collection").then(({ body: collections }) => {
