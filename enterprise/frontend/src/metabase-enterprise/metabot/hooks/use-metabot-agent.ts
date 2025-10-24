@@ -52,9 +52,6 @@ export const useMetabotAgent = () => {
 
   const metabotId = getMetabotId(isEmbedding());
 
-  // const metabotRequestId = useSelector(
-  //   getMetabotRequestId as any,
-  // ) as ReturnType<typeof getMetabotRequestId>;
   const metabotRequestId = useMetabotRequestId();
 
   const toolCalls = useSelector(getToolCalls as any) as ReturnType<

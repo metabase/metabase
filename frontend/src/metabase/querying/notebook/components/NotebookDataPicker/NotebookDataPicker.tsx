@@ -8,12 +8,12 @@ import {
   DataPickerModal,
   getDataPickerValue,
 } from "metabase/common/components/Pickers/DataPicker";
+import { isEmbedding } from "metabase/embedding-sdk/config";
 import { METAKEY } from "metabase/lib/browser";
-import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
+import { useDispatch, useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import { loadMetadataForTable } from "metabase/questions/actions";
-import { getIsEmbedding } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -61,7 +61,6 @@ export function NotebookDataPicker({
   const store = useStore();
   const dispatch = useDispatch();
   const onChangeRef = useLatest(onChange);
-  const isEmbedding = useSelector(getIsEmbedding);
 
   const handleChange = async (tableId: TableId) => {
     await dispatch(loadMetadataForTable(tableId));
@@ -74,7 +73,7 @@ export function NotebookDataPicker({
     }
   };
 
-  if (isEmbedding) {
+  if (isEmbedding()) {
     return (
       <EmbeddingDataPicker
         query={query}

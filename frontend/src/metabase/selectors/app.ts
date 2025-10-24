@@ -185,11 +185,6 @@ export const getIsNewButtonVisible = createSelector(
   },
 );
 
-export const getIsProfileLinkVisible = createSelector(
-  [],
-  () => !getIsEmbeddingIframe(),
-);
-
 export const getErrorPage = (state: State) => {
   return state.app.errorPage;
 };
