@@ -30,6 +30,7 @@ export function SearchNew({ query }: SearchNewProps) {
   } = useListTablesQuery({
     term: query,
     visibility_type2: undefined,
+    include_hidden: true,
   });
 
   if (isLoading) {

@@ -24,7 +24,7 @@ export function TablePicker({ path, className, onChange }: TablePickerProps) {
       <Box p="xl" pb={0}>
         <Input
           leftSection={<Icon name="search" />}
-          placeholder={t`Search tables`}
+          placeholder={t`Search tables (use * as a wildcard)`}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
