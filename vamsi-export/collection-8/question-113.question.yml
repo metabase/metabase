@@ -1,0 +1,6 @@
+name: Pokemon Cards
+type: question
+ref: question-113
+mbql_query:
+  source-table: [Postgres, public, pokemon_cards_2024_07_17t17_42_56_948262z_20240717174309]
+database: Postgres

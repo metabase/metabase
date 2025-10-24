@@ -1,7 +1,7 @@
 {:min-bb-version "1.12.208"
  ;; we put path as bin, and everything is in the ./mage subdirectory,
  ;; so the namespaces are mage.cli, mage.format, etc.
- :paths          ["mage" "test" "bin/lint-migrations-file/src"]
+ :paths ["mage" "test" "bin/lint-migrations-file/src" "representation"]
  :deps           {org.babashka/json {:mvn/version "0.1.6"}
                   metosin/malli     {:mvn/version "0.17.0"}
                   table/table       {:mvn/version "0.5.0"}
@@ -249,8 +249,7 @@
                (apply readability/check arguments))}
 
   ;; Uncomment this if you want to play with the example calculator task:
-  #_#_
-  -example-calculator
+  #_#_-example-calculator
   {;; `:doc` is a short docstring for the task, will be listed in `./bin/mage -h` and other help info.
    ;; Keep these short, they need to fit on one line in the output from `./bin/mage -h`.
    :doc        "The example calculator's task docstring"
@@ -309,4 +308,40 @@
    :requires [[mage.escherize.fix-whitespace :as fix-whitespace]]
    :examples [["mage -escherize-fix-whitespace '**/*.clj'" "Removes all lines like '  ' from all clj files"]]
    :arg-schema [:sequential [:string {:description "Glob pattern to match files"}]]
-   :task     (task! (fix-whitespace/run-clean parsed))}}}
+   :task (task! (fix-whitespace/run-clean parsed))}
+
+  export
+  {:doc "Export collections from Metabase instance to local filesystem"
+   :requires [[representation.cli :as repr-cli]
+              [representation.export :as repr-export]]
+   :task (let [opts [[nil "--mb-instance-url URL" "Metabase instance URL"]
+                     [nil "--mb-instance-api-key KEY" "Metabase API key"]
+                     [nil "--manifest PATH" "Path to manifest.yml file"
+                      :default "manifest.yml"]
+                     [nil "--collection NAMES" "Comma-separated collection names"]]
+               parsed (repr-cli/parse! opts)]
+           (repr-export/run parsed))}
+
+  import
+  {:doc "Import collections from local filesystem to Metabase instance"
+   :requires [[representation.cli :as repr-cli]
+              [representation.import :as repr-import]]
+   :task (let [opts [[nil "--mb-instance-url URL" "Metabase instance URL"]
+                     [nil "--mb-instance-api-key KEY" "Metabase API key"]
+                     [nil "--manifest PATH" "Path to manifest.yml file"
+                      :default "manifest.yml"]
+                     [nil "--collection NAMES" "Comma-separated collection names"]]
+               parsed (repr-cli/parse! opts)]
+           (repr-import/run parsed))}
+
+  lint
+  {:doc "Validate collections without importing to Metabase"
+   :requires [[representation.cli :as repr-cli]
+              [representation.lint :as repr-lint]]
+   :task (let [opts [[nil "--mb-instance-url URL" "Metabase instance URL"]
+                     [nil "--mb-instance-api-key KEY" "Metabase API key"]
+                     [nil "--manifest PATH" "Path to manifest.yml file"
+                      :default "manifest.yml"]
+                     [nil "--collection NAMES" "Comma-separated collection names"]]
+               parsed (repr-cli/parse! opts)]
+           (repr-lint/run parsed))}}}

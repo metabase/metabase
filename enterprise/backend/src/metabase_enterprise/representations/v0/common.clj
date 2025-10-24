@@ -1,0 +1,225 @@
+(ns metabase-enterprise.representations.v0.common
+  (:require
+   [clojure.string :as str]
+   [clojure.walk :as walk]
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
+
+(defmulti type->model
+  "Conversion from representation type (keyword) to Toucan model keyword."
+  {:arglists '([type])}
+  identity)
+
+(defmethod type->model :default
+  [type]
+  (throw (ex-info (str "Cannot convert type to model for type: " type)
+                  {:type type})))
+
+(defmulti representation-type
+  "Returns the representation type for an entity (e.g., :question, :model, :metric).
+   For plain maps (like MBQL data), uses :type field. For Toucan models, uses t2/model."
+  {:arglists '[[entity]]}
+  t2/model)
+
+(defmethod representation-type :default [entity]
+  (throw (ex-info (str "Unknown entity type: " (t2/model entity))
+                  {:entity entity})))
+
+(defn entity-id
+  "Generates an entity-id stably from ref and collection-ref."
+  [ref collection-ref]
+  (-> (str collection-ref "/" ref)
+      hash
+      str
+      u/generate-nano-id))
+
+(defn generate-entity-id
+  "Generate a stable entity-id from the representation's collection-ref and its own ref."
+  [representation]
+  ;; Behold the beauty of this mechanism!
+  ;; A bit hacky.
+  ;; TODO: raw `:collection` key could be fragile; use name?
+  (entity-id (:ref representation) (:collection representation)))
+
+(defn add-entity-id-from-ref-hash
+  "Add a stable entity-id to a representation based on its ref and collection ref."
+  [representation]
+  (assoc representation :entity-id (generate-entity-id representation)))
+
+(defn add-entity-id-random
+  "Add an unstable entity-id to a representation. It should be random so that it never collides."
+  [representation]
+  (assoc representation :entity-id (u/generate-nano-id)))
+
+(defn remove-entity-id
+  "Remove the entity id from a representation (if it has one)."
+  [representation]
+  (dissoc representation :entity-id))
+
+(defn find-collection-id
+  "Find collection ID by name or ref. Returns nil if not found."
+  [collection-ref]
+  (when collection-ref
+    (or
+     (when (integer? collection-ref) collection-ref)
+     ;; Try to find by slug or name
+     (t2/select-one-pk :model/Collection :slug collection-ref)
+     (t2/select-one-pk :model/Collection :name collection-ref))))
+
+(defn ref?
+  "Is it a ref?"
+  [x]
+  (and (string? x)
+       (str/starts-with? x "ref:")))
+
+(defn unref
+  "Unmake that ref."
+  [x]
+  (when (ref? x)
+    ;; "ref:"
+    (subs x 4)))
+
+(defn refs
+  "Returns all refs present in the entity-map, recursively walking to discover them."
+  [representation]
+  (let [v (volatile! [])]
+    (walk/postwalk (fn [node]
+                     (when (ref? node)
+                       (vswap! v conj node))
+                     node)
+                   representation)
+    (set (map unref @v))))
+
+(defn ->ref
+  "Constructs a ref with the shape \"ref:<type>-<id>\""
+  [id type]
+  (format "ref:%s-%s" (name type) id))
+
+(defn env-var?
+  "Is it an env var?
+
+   Env vars are useful for storing credentials for databases in representations. They are expanded during import."
+  [s]
+  (and (string? s)
+       (str/starts-with? s "env:")))
+
+(defn un-env-var
+  "Turn env var string into an env var name."
+  [s]
+  (when (env-var? s)
+    ;; "env:"
+    (subs s 4)))
+
+(defn hydrate-env-vars
+  "Given a representation, hydrate all env vars with their values looked up from the environment."
+  [representation]
+  (walk/postwalk (fn [x]
+                   (if (env-var? x)
+                     (System/getenv (un-env-var x))
+                     x))
+                 representation))
+
+(def representations-export-dir
+  "The dir where POC import/export representations are stored."
+  "local/representations/")
+
+(defn file-sys-name
+  "Creates a suitable filename."
+  [id name suffix]
+  (str id "_" (str/replace (u/lower-case-en name) " " "_") suffix))
+
+(defn table-ref?
+  "Is this a table ref?"
+  [x]
+  (and (map? x)
+       (contains? x :database)
+       (contains? x :schema)
+       (contains? x :table)
+       (not (contains? x :field))))
+
+(defn field-ref?
+  "Is this a field ref?"
+  [x]
+  (and (map? x)
+       (contains? x :database)
+       (contains? x :schema)
+       (contains? x :table)
+       (contains? x :field)))
+
+(defn table-refs
+  "Returns all table refs present in the representation, recursively walking to discover them."
+  [representation]
+  (let [v (volatile! #{})]
+    (walk/postwalk (fn [node]
+                     (when (or (table-ref? node)
+                               (field-ref? node))
+                       (vswap! v conj (dissoc node :field)))
+                     node)
+                   representation)
+    @v))
+
+(defprotocol EntityLookup
+  (lookup-entity [this ref])
+  (lookup-id     [this ref]))
+
+(defrecord MapEntityIndex [idx]
+  EntityLookup
+  (lookup-entity [_this ref]
+    (get idx (unref ref)))
+  (lookup-id [this ref]
+    (:id (lookup-id this ref))))
+
+(defn map-entity-index
+  "Create a new index from a map of ref -> toucan entity.
+
+  This index only looks up by ref and throws if it's not found. It will check the expected type."
+  [mp]
+  (->MapEntityIndex mp))
+
+;; Use this bad boy for testing where you want to parse a ref that looks like ref:question-45 to have it return 45
+(defrecord ParseRefEntityIndex []
+  EntityLookup
+  (lookup-id [_this ref]
+    (let [ur (unref ref)
+          [_type id] (str/split ur #"-")
+          id (Long/parseLong id)]
+      id))
+  (lookup-entity [_this ref]
+    (let [ur (unref ref)
+          [type id] (str/split ur #"-")
+          id (Long/parseLong id)]
+      (t2/select-one (type->model type) :id id))))
+
+(defn ensure-not-nil [entity]
+  (when (nil? entity)
+    (throw (ex-info "Entity not found." {})))
+  entity)
+
+(defn ensure-correct-type [entity expected-type]
+  (when (and entity
+             (not= expected-type (representation-type entity)))
+    (throw (ex-info "Entity is not the correct type. Expected: " expected-type "; Actual: " (representation-type entity)
+                    {:entity entity
+                     :expected-type expected-type
+                     :actual-type (representation-type entity)})))
+  entity)
+
+(defn ensure-correct-model-type [entity expected-type]
+  (when (not= expected-type (t2/model entity))
+    (throw (ex-info (str "Entity is not the correct model type. Expected: " expected-type "; Actual: " (t2/model entity))
+                    {:entity entity
+                     :expected-type expected-type
+                     :actual-type (t2/model entity)})))
+  entity)
+
+(defn replace-refs-everywhere
+  "Replace all refs with whatever is in the ref-index."
+  [data ref-index]
+  (walk/postwalk
+   (fn [node]
+     (if (ref? node)
+       (lookup-id ref-index node)
+       node))
+   data))

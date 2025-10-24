@@ -1,0 +1,46 @@
+name: Pokemon Cards Limited
+type: question
+ref: question-114
+mbql_query:
+  fields:
+  - - field
+    - _mb_row_id
+    - {base-type: type/BigInteger}
+  - - field
+    - id
+    - {base-type: type/Text}
+  - - field
+    - number
+    - {base-type: type/Text}
+  - - field
+    - name
+    - {base-type: type/Text}
+  - - field
+    - image_small
+    - {base-type: type/Text}
+  - - field
+    - supertype
+    - {base-type: type/Text}
+  - - field
+    - subtype1
+    - {base-type: type/Text}
+  - - field
+    - subtype2
+    - {base-type: type/Text}
+  - - field
+    - type1
+    - {base-type: type/Text}
+  - - field
+    - type2
+    - {base-type: type/Text}
+  - - field
+    - hp
+    - {base-type: type/BigInteger}
+  - - field
+    - evolves_from
+    - {base-type: type/Text}
+  - - field
+    - evolves_to
+    - {base-type: type/Text}
+  source-table: d7pof4oylWKgzbn69qZPm
+database: Postgres
