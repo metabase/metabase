@@ -1,5 +1,4 @@
 import {
-  calculateWeightedScore,
   getColorCategoryLabel,
   getColorForWeight,
 } from "metabase/visualizations/shared/utils/scoring";
@@ -80,106 +79,6 @@ describe("ResponseDistribution utils", () => {
       expect(getColorCategoryLabel(85, false)).toBe("Satisfactory");
       expect(getColorCategoryLabel(95, false)).toBe("Exceptional");
       expect(getColorCategoryLabel(50, true)).toBe("Choose Not to Answer");
-    });
-  });
-
-  describe("calculateScore", () => {
-    it("should calculate weighted average excluding CNA", () => {
-      const options = [
-        {
-          text: "A",
-          weight: 100,
-          count: 2,
-          percentage: 20,
-          isCNA: false,
-          color: "#2196F3",
-        },
-        {
-          text: "B",
-          weight: 80,
-          count: 3,
-          percentage: 30,
-          isCNA: false,
-          color: "#00A080",
-        },
-        {
-          text: "C",
-          weight: 60,
-          count: 5,
-          percentage: 50,
-          isCNA: false,
-          color: "#FAC849",
-        },
-      ];
-
-      // (100*2 + 80*3 + 60*5) / (2+3+5) = (200 + 240 + 300) / 10 = 740 / 10 = 74
-      expect(calculateWeightedScore(options)).toBe(74);
-    });
-
-    it("should exclude CNA options from calculation", () => {
-      const options = [
-        {
-          text: "A",
-          weight: 100,
-          count: 2,
-          percentage: 20,
-          isCNA: false,
-          color: "#2196F3",
-        },
-        {
-          text: "B",
-          weight: 80,
-          count: 3,
-          percentage: 30,
-          isCNA: false,
-          color: "#00A080",
-        },
-        {
-          text: "CNA",
-          weight: 0,
-          count: 5,
-          percentage: 50,
-          isCNA: true,
-          color: "#969696",
-        },
-      ];
-
-      // (100*2 + 80*3) / (2+3) = (200 + 240) / 5 = 440 / 5 = 88
-      expect(calculateWeightedScore(options)).toBe(88);
-    });
-
-    it("should return 0 for empty options", () => {
-      expect(calculateWeightedScore([])).toBe(0);
-    });
-
-    it("should return 0 when all options are CNA", () => {
-      const options = [
-        {
-          text: "CNA",
-          weight: 0,
-          count: 10,
-          percentage: 100,
-          isCNA: true,
-          color: "#969696",
-        },
-      ];
-
-      expect(calculateWeightedScore(options)).toBe(0);
-    });
-
-    it("should return 0 when total count is 0", () => {
-      const options = [
-        {
-          text: "A",
-          weight: 100,
-          count: 0,
-          percentage: 0,
-          isCNA: false,
-          color: "#2196F3",
-        },
-      ];
-
-      expect(calculateWeightedScore(options)).toBe(0);
     });
   });
 
@@ -360,7 +259,7 @@ describe("ResponseDistribution utils", () => {
 
       expect(result.options).toHaveLength(3);
       expect(result.totalResponses).toBe(10);
-      expect(result.overallScore).toBe(88); // (100*2 + 80*3) / 5
+      expect(result.overallScore).toBe(null); // No overall_score column provided
 
       // Check Option A
       expect(result.options[0].text).toBe("Option A");

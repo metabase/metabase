@@ -2,10 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { Tooltip } from "metabase/ui";
-import {
-  getColorForWeight,
-  halfRoundToEven,
-} from "metabase/visualizations/shared/utils/scoring";
+import { getColorForWeight } from "metabase/visualizations/shared/utils/scoring";
 import {
   getDefaultSize,
   getMinSize,
@@ -52,11 +49,23 @@ export function ResponseDistribution({
     );
   }
 
+  // Check if score should be shown
+  const showScore =
+    settings["response_distribution.show_overall_score"] ?? true;
+  const hasScore = overallScore !== null && Number.isFinite(overallScore);
+  const shouldShowScore = showScore && hasScore;
+
   // Get score badge color based on overall score
-  // Handle edge cases for score calculation
-  const safeScore = Number.isFinite(overallScore) ? overallScore : 0;
-  const roundedScore = halfRoundToEven(safeScore, 2);
+  // Score is pre-rounded in SQL, format for consistent 2-decimal display
+  const safeScore = hasScore ? overallScore : 0;
   const scoreBadgeColor = getColorForWeight(safeScore, false);
+  const formattedScore = safeScore.toFixed(2); // Format only, rounding done in SQL
+
+  // Helper to format percentages: remove .00 from whole numbers, keep 2 decimals otherwise
+  // 25.00 → "25", 12.50 → "12.50", 56.25 → "56.25", 0.00 → "0"
+  const formatPercentage = (percentage: number): string => {
+    return percentage % 1 === 0 ? percentage.toString() : percentage.toFixed(2);
+  };
 
   return (
     <div
@@ -68,13 +77,15 @@ export function ResponseDistribution({
       {/* Header with title and score badge */}
       <div className={styles.header}>
         <h3 className={styles.title}>{questionTitle}</h3>
-        <div
-          className={styles.scoreBadge}
-          role="status"
-          aria-label={t`Overall score: ${roundedScore.toFixed(2)}`}
-        >
-          {roundedScore.toFixed(2)}
-        </div>
+        {shouldShowScore && (
+          <div
+            className={styles.scoreBadge}
+            role="status"
+            aria-label={t`Overall score: ${formattedScore}`}
+          >
+            {formattedScore}
+          </div>
+        )}
       </div>
 
       {/* Segmented bar chart */}
@@ -97,7 +108,7 @@ export function ResponseDistribution({
           return (
             <Tooltip
               key={optionKey}
-              label={`${option.text}: ${option.percentage.toFixed(1)}% (${option.count})`}
+              label={`${option.text}: ${formatPercentage(widthPercentage)}% (${option.count})`}
               position="top"
             >
               <div
@@ -106,7 +117,7 @@ export function ResponseDistribution({
                   width: `${widthPercentage}%`,
                   backgroundColor: option.color,
                 }}
-                aria-label={`${option.text}: ${option.percentage.toFixed(1)}% with ${option.count} responses`}
+                aria-label={`${option.text}: ${formatPercentage(widthPercentage)}% with ${option.count} responses`}
               />
             </Tooltip>
           );
@@ -132,7 +143,7 @@ export function ResponseDistribution({
               />
               <div className={styles.optionText}>{option.text}</div>
               <div className={styles.optionStats}>
-                {`${option.percentage.toFixed(0)}% (${option.count})`}
+                {`${formatPercentage(option.percentage)}% (${option.count})`}
               </div>
             </div>
           );
@@ -167,7 +178,7 @@ Object.assign(ResponseDistribution, {
       );
     }
 
-    // Weight column is required for calculating the overall score
+    // Weight column is required for color coding
     if (!settings["response_distribution.option_weight_column"]) {
       throw new Error(
         t`Please select an option weight column in the settings.`,

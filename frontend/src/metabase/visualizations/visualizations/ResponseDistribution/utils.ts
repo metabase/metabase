@@ -1,9 +1,6 @@
 import type { DatasetData, VisualizationSettings } from "metabase-types/api";
 
-import {
-  calculateWeightedScore,
-  getColorForWeight,
-} from "../../shared/utils/scoring";
+import { getColorForWeight } from "../../shared/utils/scoring";
 
 export interface ProcessedOption {
   text: string;
@@ -17,7 +14,7 @@ export interface ProcessedOption {
 
 export interface ProcessedData {
   options: ProcessedOption[];
-  overallScore: number;
+  overallScore: number | null;
   totalResponses: number;
 }
 
@@ -95,6 +92,8 @@ export function processData(
   const countColumn = settings["response_distribution.response_count_column"];
   const totalColumn = settings["response_distribution.total_responses_column"];
   const isCNAColumn = settings["response_distribution.is_cna_column"];
+  const overallScoreColumn =
+    settings["response_distribution.overall_score_column"];
   const useCustomOrder =
     settings["response_distribution.use_custom_order"] ?? false;
   const orderColumn = settings["response_distribution.option_order_column"];
@@ -104,6 +103,10 @@ export function processData(
   const weightIdx = data.cols.findIndex((col) => col.name === weightColumn);
   const countIdx = data.cols.findIndex((col) => col.name === countColumn);
   const totalIdx = data.cols.findIndex((col) => col.name === totalColumn);
+  const overallScoreIdx =
+    overallScoreColumn !== null && overallScoreColumn !== undefined
+      ? data.cols.findIndex((col) => col.name === overallScoreColumn)
+      : null;
   const isCNAIdx =
     isCNAColumn !== null && isCNAColumn !== undefined
       ? data.cols.findIndex((col) => col.name === isCNAColumn)
@@ -166,8 +169,20 @@ export function processData(
   // Sort options
   const sortedOptions = sortOptions(options, useCustomOrder);
 
-  // Calculate overall score
-  const overallScore = calculateWeightedScore(sortedOptions);
+  // Get overall score from column if provided, otherwise return null
+  let overallScore: number | null = null;
+  if (
+    overallScoreIdx !== null &&
+    overallScoreIdx >= 0 &&
+    data.rows.length > 0
+  ) {
+    // Use pre-calculated facility-based score from query
+    const scoreValue = data.rows[0][overallScoreIdx];
+    overallScore =
+      scoreValue !== null && scoreValue !== undefined
+        ? Number(scoreValue)
+        : null;
+  }
 
   return {
     options: sortedOptions,

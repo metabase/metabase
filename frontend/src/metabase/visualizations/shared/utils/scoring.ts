@@ -126,58 +126,6 @@ export function getColorCategoryLabel(weight: number, isCNA: boolean): string {
 }
 
 /**
- * Interface for items used in score calculation
- */
-export interface ScoredItem {
-  weight: number;
-  count: number;
-  isCNA: boolean;
-}
-
-/**
- * Calculates weighted average score (0-100) excluding CNA responses.
- * Handles edge cases: NaN, Infinity, and division by zero.
- *
- * @param items - Array of items with weight, count, and isCNA properties
- * @returns Calculated score or 0 if invalid
- */
-export function calculateWeightedScore(items: ScoredItem[]): number {
-  const nonCNAItems = items.filter((item) => !item.isCNA);
-
-  if (nonCNAItems.length === 0) {
-    return 0;
-  }
-
-  const totalWeightedScore = nonCNAItems.reduce(
-    (sum, item) => sum + item.weight * item.count,
-    0,
-  );
-  const totalCount = nonCNAItems.reduce((sum, item) => sum + item.count, 0);
-
-  if (totalCount === 0 || !Number.isFinite(totalWeightedScore)) {
-    return 0;
-  }
-
-  const score = totalWeightedScore / totalCount;
-
-  // Return 0 for invalid scores (NaN, Infinity)
-  return Number.isFinite(score) ? score : 0;
-}
-
-/**
- * Formats a score for display (2 decimal places) using Banker's rounding
- *
- * @param score - Score value to format
- * @returns Formatted string
- */
-export function formatScore(score: number): string {
-  if (!Number.isFinite(score)) {
-    return "0.00";
-  }
-  return halfRoundToEven(score, 2).toFixed(2);
-}
-
-/**
  * All scoring color CSS variables as an object for easy reference
  */
 export const SCORING_COLOR_VARS = {

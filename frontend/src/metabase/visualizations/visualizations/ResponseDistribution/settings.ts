@@ -46,7 +46,39 @@ export const RESPONSE_DISTRIBUTION_SETTINGS = {
       return t`Option weight column`;
     },
     get description() {
-      return t`Column containing the weight for each option (required for calculating the overall score)`;
+      return t`Column containing the weight for each option (used for color coding)`;
+    },
+  },
+
+  "response_distribution.show_overall_score": {
+    get section() {
+      return t`Data`;
+    },
+    get title() {
+      return t`Show overall score`;
+    },
+    get description() {
+      return t`Display the overall score badge when available`;
+    },
+    widget: "toggle",
+    default: true,
+  },
+
+  "response_distribution.overall_score_column": {
+    ...fieldSetting("response_distribution.overall_score_column", {
+      fieldFilter: (col) => isNumeric(col),
+    })["response_distribution.overall_score_column"],
+    get section() {
+      return t`Data`;
+    },
+    get title() {
+      return t`Overall score column`;
+    },
+    get description() {
+      return t`Pre-calculated overall score to display`;
+    },
+    getHidden: (series: Series, settings: VisualizationSettings) => {
+      return !settings["response_distribution.show_overall_score"];
     },
   },
 

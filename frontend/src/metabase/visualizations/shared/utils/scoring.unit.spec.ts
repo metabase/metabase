@@ -1,9 +1,6 @@
 import {
   SCORE_THRESHOLDS,
   SCORING_COLOR_VARS,
-  type ScoredItem,
-  calculateWeightedScore,
-  formatScore,
   getColorCategoryLabel,
   getColorForWeight,
   getScoreCategory,
@@ -133,74 +130,6 @@ describe("scoring utilities", () => {
 
     it("should return correct label for exceptional", () => {
       expect(getColorCategoryLabel(95, false)).toBe("Exceptional");
-    });
-  });
-
-  describe("calculateWeightedScore", () => {
-    it("should calculate weighted average correctly", () => {
-      const items: ScoredItem[] = [
-        { weight: 100, count: 2, isCNA: false },
-        { weight: 80, count: 3, isCNA: false },
-      ];
-      // (100*2 + 80*3) / 5 = 440 / 5 = 88
-      expect(calculateWeightedScore(items)).toBe(88);
-    });
-
-    it("should exclude CNA responses from calculation", () => {
-      const items: ScoredItem[] = [
-        { weight: 100, count: 2, isCNA: false },
-        { weight: 80, count: 3, isCNA: false },
-        { weight: 0, count: 5, isCNA: true },
-      ];
-      // (100*2 + 80*3) / 5 = 440 / 5 = 88
-      expect(calculateWeightedScore(items)).toBe(88);
-    });
-
-    it("should return 0 when all responses are CNA", () => {
-      const items: ScoredItem[] = [{ weight: 0, count: 5, isCNA: true }];
-      expect(calculateWeightedScore(items)).toBe(0);
-    });
-
-    it("should return 0 when no items", () => {
-      expect(calculateWeightedScore([])).toBe(0);
-    });
-
-    it("should handle edge case with zero total count", () => {
-      const items: ScoredItem[] = [
-        { weight: 100, count: 0, isCNA: false },
-        { weight: 80, count: 0, isCNA: false },
-      ];
-      expect(calculateWeightedScore(items)).toBe(0);
-    });
-
-    it("should handle edge case with Infinity", () => {
-      const items: ScoredItem[] = [
-        { weight: Infinity, count: 1, isCNA: false },
-      ];
-      expect(calculateWeightedScore(items)).toBe(0);
-    });
-
-    it("should handle edge case with NaN", () => {
-      const items: ScoredItem[] = [{ weight: NaN, count: 1, isCNA: false }];
-      expect(calculateWeightedScore(items)).toBe(0);
-    });
-  });
-
-  describe("formatScore", () => {
-    it("should format valid scores to 2 decimal places using Banker's rounding", () => {
-      expect(formatScore(88.123456)).toBe("88.12");
-      expect(formatScore(100)).toBe("100.00");
-      expect(formatScore(0)).toBe("0.00");
-      // Test Banker's rounding specifically
-      expect(formatScore(54.165)).toBe("54.16"); // Round to even
-      expect(formatScore(54.155)).toBe("54.16"); // Round to even
-      expect(formatScore(54.175)).toBe("54.18"); // Round to even
-    });
-
-    it("should handle edge cases", () => {
-      expect(formatScore(NaN)).toBe("0.00");
-      expect(formatScore(Infinity)).toBe("0.00");
-      expect(formatScore(-Infinity)).toBe("0.00");
     });
   });
 

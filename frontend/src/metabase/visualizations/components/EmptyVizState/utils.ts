@@ -169,6 +169,19 @@ const emptyVizConfig: Record<SupportedDisplayType, EmptyVizConfig> = {
       return t`E.g., Count of customers grouped by State`;
     },
   },
+  response_distribution: {
+    get imgSrc() {
+      return getSubpathSafeUrl(
+        "app/assets/img/empty-states/visualizations/bar.svg",
+      );
+    },
+    get primaryText() {
+      return t`This visualization requires specific columns to be configured in the settings.`;
+    },
+    get secondaryText() {
+      return t`Configure the option text, weight, and count columns in visualization settings`;
+    },
+  },
   sankey: {
     get imgSrc() {
       return getSubpathSafeUrl(
@@ -218,6 +231,19 @@ const emptyVizConfig: Record<SupportedDisplayType, EmptyVizConfig> = {
     },
     get secondaryText() {
       return t`E.g. Count of orders grouped by Month`;
+    },
+  },
+  sql_pivot: {
+    get imgSrc() {
+      return getSubpathSafeUrl(
+        "app/assets/img/empty-states/visualizations/pivot.svg",
+      );
+    },
+    get primaryText() {
+      return t`Then pick an aggregate metric (such as Average or Sum) and multiple columns to group by.`;
+    },
+    get secondaryText() {
+      return t`E.g. Count of orders grouped by State and Product category`;
     },
   },
   waterfall: {

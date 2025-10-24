@@ -6,7 +6,10 @@ import { createMockCard, createMockColumn } from "metabase-types/api/mocks";
 
 import { ResponseDistribution } from "./ResponseDistribution";
 
-const createMockSeries = (rows: (string | number | boolean)[][]): Series => [
+const createMockSeries = (
+  rows: (string | number | boolean | null)[][],
+  includeScoreColumn = false,
+): Series => [
   {
     card: createMockCard({ display: "response_distribution" }),
     data: {
@@ -53,6 +56,16 @@ const createMockSeries = (rows: (string | number | boolean)[][]): Series => [
           base_type: "type/Number",
           source: "breakout",
         }),
+        ...(includeScoreColumn
+          ? [
+              createMockColumn({
+                name: "overall_score",
+                display_name: "Overall Score",
+                base_type: "type/Number",
+                source: "breakout",
+              }),
+            ]
+          : []),
       ],
       rows,
       native_form: {
@@ -96,7 +109,7 @@ describe("ResponseDistribution", () => {
     expect(screen.getByText("Test Question")).toBeInTheDocument();
   });
 
-  it("should display the overall score badge", () => {
+  it("should not display overall score badge when column is not provided", () => {
     const rows = [
       ["Test Question", "Option A", 100, 2, 10, false, 1],
       ["Test Question", "Option B", 80, 3, 10, false, 2],
@@ -111,8 +124,53 @@ describe("ResponseDistribution", () => {
       />,
     );
 
-    // Score should be (100*2 + 80*3) / 5 = 88
-    expect(screen.getByText("88.00")).toBeInTheDocument();
+    // Score badge should not appear when no overall_score column is provided
+    expect(screen.queryByText("88.00")).not.toBeInTheDocument();
+  });
+
+  it("should display overall score badge when column is provided", () => {
+    const rows = [
+      ["Test Question", "Option A", 100, 2, 10, false, 1, 88.5],
+      ["Test Question", "Option B", 80, 3, 10, false, 2, 88.5],
+      ["Test Question", "CNA", 0, 5, 10, true, 3, 88.5],
+    ];
+
+    renderWithProviders(
+      <ResponseDistribution
+        {...mockedProps}
+        rawSeries={createMockSeries(rows, true)}
+        settings={{
+          ...defaultSettings,
+          "response_distribution.overall_score_column": "overall_score",
+        }}
+      />,
+    );
+
+    // Score badge should appear with the provided score
+    expect(screen.getByText("88.50")).toBeInTheDocument();
+  });
+
+  it("should hide overall score badge when toggle is off", () => {
+    const rows = [
+      ["Test Question", "Option A", 100, 2, 10, false, 1, 88.5],
+      ["Test Question", "Option B", 80, 3, 10, false, 2, 88.5],
+      ["Test Question", "CNA", 0, 5, 10, true, 3, 88.5],
+    ];
+
+    renderWithProviders(
+      <ResponseDistribution
+        {...mockedProps}
+        rawSeries={createMockSeries(rows, true)}
+        settings={{
+          ...defaultSettings,
+          "response_distribution.overall_score_column": "overall_score",
+          "response_distribution.show_overall_score": false,
+        }}
+      />,
+    );
+
+    // Score badge should not appear when toggle is off
+    expect(screen.queryByText("88.50")).not.toBeInTheDocument();
   });
 
   it("should render legend items with correct text and stats", () => {
