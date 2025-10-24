@@ -21,7 +21,7 @@
   "Import Metabase content from configured Remote Sync source.
 
   This endpoint will:
-  - Fetch the latest changes from the configured source 
+  - Fetch the latest changes from the configured source
   - Load the updated content using the serialization/deserialization system
 
   If `force=false` (default) and there are unsaved changes in the Remote Sync collection,
