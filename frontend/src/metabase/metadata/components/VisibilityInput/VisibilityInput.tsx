@@ -58,7 +58,12 @@ export const VisibilityInput = ({ value, onChange }: Props) => {
           },
         ]}
         value={value ?? "null"}
-        onChange={onChange}
+        onChange={(value) => {
+          // sanity check
+          if (value !== "null") {
+            onChange(value);
+          }
+        }}
       />
     </Stack>
   );

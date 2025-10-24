@@ -37,7 +37,7 @@ export function EditTableMetadataModal({
   const [dataSource, setDataSource] = useState<
     TableDataSource | null | undefined
   >(undefined);
-  const [email, setEmail] = useState<string | undefined>(undefined);
+  const [email, setEmail] = useState<string | null | undefined>(undefined);
   const [userId, setUserId] = useState<UserId | null | undefined>(undefined);
 
   const reset = () => {

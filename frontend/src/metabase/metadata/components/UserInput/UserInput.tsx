@@ -112,7 +112,13 @@ function getData(email: string | null, users: User[]): Option[] {
   ].filter((option) => option != null);
 }
 
-function stringifyValue(value: UserId | string | null): string {
+function stringifyValue(
+  value: UserId | string | null | undefined,
+): string | undefined {
+  if (typeof value === "undefined") {
+    return undefined;
+  }
+
   return value === null ? "null" : String(value);
 }
 
