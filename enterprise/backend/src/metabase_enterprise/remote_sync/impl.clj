@@ -7,6 +7,7 @@
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
+   [metabase-enterprise.remote-sync.source.git :as git]
    [metabase-enterprise.remote-sync.source.ingestable :as source.ingestable]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.serialization.core :as serialization]
@@ -170,7 +171,7 @@
        :message "Remote sync source is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."})))
 
 (defn export!
-  "Exports remote-synced collections to a remote source repository.
+  "Exports remote-synced collections to a remote source repository. Assumes source has been fetched
 
   Takes a Source instance, a RemoteSyncTask ID for progress tracking, and a commit message string. Extracts all
   remote-synced collections, serializes their content, writes the files to the source, and updates all
@@ -278,6 +279,7 @@
       (throw (ex-info "There are unsaved changes in the Remote Sync collection which will be overwritten by the import. Force the import to discard these changes."
                       {:status-code 400
                        :conflicts true})))
+    (git/fetch! source)
     (run-async! "import" branch (fn [task-id] (import! source task-id (assoc import-args :force? force?))))))
 
 (defn async-export!
@@ -292,6 +294,7 @@
   [branch force? message]
   (let [source (source/source-from-settings branch)
         last-task-version (remote-sync.task/last-version)
+        _ (git/fetch! source)
         current-source-version (source.p/version source)]
     (when (and (not force?) (some? last-task-version) (not= last-task-version current-source-version))
       (throw (ex-info "Cannot export changes that will overwrite new changes in the branch."

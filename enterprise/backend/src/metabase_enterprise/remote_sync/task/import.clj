@@ -9,6 +9,7 @@
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
+   [metabase-enterprise.remote-sync.source.git :as git]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase.task.core :as task]
    [metabase.util.log :as log]))
@@ -22,6 +23,7 @@
              (settings/remote-sync-auto-import))
     (let [branch (settings/remote-sync-branch)
           source (source/source-from-settings branch)
+          _ (git/fetch! source)
           source-version (source.p/version source)
           last-version (remote-sync.task/last-version)]
       (if (= last-version source-version)

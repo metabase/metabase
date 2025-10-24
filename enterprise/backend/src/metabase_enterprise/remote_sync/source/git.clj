@@ -60,9 +60,10 @@
 
   Throws ExceptionInfo if the fetch operation fails."
   [{:keys [^Git git] :as git-source}]
-  (log/info "Fetching repository" {:repo (str git)})
-  (u/prog1 (call-remote-command (.fetch git) git-source))
-  (log/info "Successfully fetched repository" {:repo (str git)}))
+  (when (some? git)
+    (log/info "Fetching repository" {:repo (str git)})
+    (u/prog1 (call-remote-command (.fetch git) git-source))
+    (log/info "Successfully fetched repository")))
 
 (defn- existing-git-repo [^java.io.File dir {:keys [^String token]}]
   (io/make-parents dir)
