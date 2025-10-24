@@ -14,11 +14,14 @@
    [metabase-enterprise.metabot-v3.table-utils :as table-utils]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription
     :as metabot-v3.tools.create-dashboard-subscription]
+   [metabase-enterprise.metabot-v3.tools.dependencies :as metabot-v3.tools.dependencies]
    [metabase-enterprise.metabot-v3.tools.field-stats :as metabot-v3.tools.field-stats]
    [metabase-enterprise.metabot-v3.tools.filters :as metabot-v3.tools.filters]
    [metabase-enterprise.metabot-v3.tools.find-outliers :as metabot-v3.tools.find-outliers]
    [metabase-enterprise.metabot-v3.tools.generate-insights :as metabot-v3.tools.generate-insights]
    [metabase-enterprise.metabot-v3.tools.search :as metabot-v3.tools.search]
+   [metabase-enterprise.metabot-v3.tools.snippets :as metabot-v3.tools.snippets]
+   [metabase-enterprise.metabot-v3.tools.transforms :as metabot-v3.tools.transforms]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.api.macros :as api.macros]
    [metabase.api.response :as api.response]
@@ -620,6 +623,62 @@
     [:structured_output ::table-result]]
    [:map [:output :string]]])
 
+(mr/def ::basic-transform
+  [:map
+   {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:id :int]
+   [:name :string]
+   [:description {:optional true} [:maybe :string]]
+   [:entity_id {:optional true} [:maybe :string]]
+   ;; :source keys are not snake_cased to match what the FE expects / provides in user_is_viewing context
+   [:source ::metabot-v3.tools.transforms/transform-source]])
+
+(mr/def ::full-transform
+  [:merge
+   ::basic-transform
+   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+    [:created_at ms/TemporalString]
+    [:updated_at ms/TemporalString]
+    ;; :target keys are not snake_cased to match what the FE expects / provides in user_is_viewing context
+    [:target ::metabot-v3.tools.transforms/transform-target]]])
+
+(mr/def ::get-transforms-result
+  [:or
+   [:map
+    {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+    [:structured_output [:sequential ::basic-transform]]]
+   [:map [:output :string]]])
+
+(mr/def ::get-transform-details-arguments
+  [:and
+   [:map
+    [:transform_id :int]]
+   [:map {:encode/tool-api-request
+          #(set/rename-keys % {:transform_id :transform-id})}]])
+
+(mr/def ::get-transform-details-result
+  [:or
+   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+    [:structured_output [:sequential ::full-transform]]]
+   [:map [:output :string]]])
+
+(mr/def ::get-transform-python-library-details-arguments
+  [:and
+   [:map
+    [:path :string]]
+   [:map {:encode/tool-api-request
+          #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+
+(mr/def ::get-transform-python-library-details-result
+  [:or
+   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+    [:structured_output [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+                         [:source :string]
+                         [:path :string]
+                         [:created_at ms/TemporalString]
+                         [:updated_at ms/TemporalString]]]]
+   [:map [:output :string]]])
+
 (mr/def ::answer-sources-result
   [:or
    [:map
@@ -628,6 +687,36 @@
                          [:metrics [:sequential ::full-metric]]
                          [:models  [:sequential ::table-result]]]]]
    [:map [:output :string]]])
+
+(mr/def ::basic-snippet
+  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:id :int]
+   [:name :string]
+   [:description {:optional true} [:maybe :string]]])
+
+(mr/def ::full-snippet
+  [:merge
+   ::basic-snippet
+   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+    [:content :string]]])
+
+(mr/def ::get-snippets-result
+  "Schema for SQL snippet list results"
+  [:map
+   {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:structured_output [:sequential ::basic-snippet]]])
+
+(mr/def ::get-snippet-details-arguments
+  [:and
+   [:map
+    [:snippet_id :int]]
+   [:map {:encode/tool-api-request
+          #(set/rename-keys % {:snippet_id :snippet-id})}]])
+
+(mr/def ::get-snippet-details-result
+  "Schema for SQL snippet detail results"
+  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:structured_output ::full-snippet]])
 
 (api.macros/defendpoint :post "/answer-sources" :- [:merge ::answer-sources-result ::tool-request]
   "Return top level meta information about available information sources."
@@ -850,6 +939,54 @@
               (assoc :conversation_id conversation_id))
       (metabot-v3.context/log :llm.log/be->llm))))
 
+(api.macros/defendpoint :post "/get-transforms" :- [:merge ::get-transforms-result ::tool-request]
+  "Get a list of all known transforms."
+  [_route-params
+   _query-params
+   {:keys [conversation_id] :as body} :- ::tool-request]
+  (metabot-v3.context/log (assoc body :api :get-transforms) :llm.log/llm->be)
+  (doto (-> (mc/decode ::get-transforms-result
+                       (metabot-v3.tools.transforms/get-transforms)
+                       (mtx/transformer {:name :tool-api-response}))
+            (assoc :conversation_id conversation_id))
+    (metabot-v3.context/log :llm.log/be->llm)))
+
+(api.macros/defendpoint :post "/get-transform-details" :- [:merge ::get-transform-details-result ::tool-request]
+  "Get information about a transform."
+  [_route-params
+   _query-params
+   {:keys [arguments conversation_id] :as body} :- [:merge
+                                                    [:map [:arguments ::get-transform-details-arguments]]
+                                                    ::tool-request]]
+  (metabot-v3.context/log (assoc body :api :get-transform-details) :llm.log/llm->be)
+  (let [arguments (mc/encode ::get-transform-details-arguments arguments (mtx/transformer {:name :tool-api-request}))
+        transform-id (:transform-id arguments)]
+    (doto (-> (mc/decode ::get-transform-details-result
+                         (metabot-v3.tools.transforms/get-transform-details transform-id)
+                         (mtx/transformer {:name :tool-api-response}))
+              (assoc :conversation_id conversation_id))
+      (metabot-v3.context/log :llm.log/be->llm))))
+
+(api.macros/defendpoint :post "/get-transform-python-library-details" :- [:merge
+                                                                          ::get-transform-python-library-details-result
+                                                                          ::tool-request]
+  "Get information about a Python library by path."
+  [_route-params
+   _query-params
+   {:keys [arguments conversation_id] :as body} :- [:merge
+                                                    [:map [:arguments
+                                                           ::get-transform-python-library-details-arguments]]
+                                                    ::tool-request]]
+  (metabot-v3.context/log (assoc body :api :get-transform-python-library-details) :llm.log/llm->be)
+  (let [arguments (mc/encode ::get-transform-python-library-details-arguments
+                             arguments (mtx/transformer {:name :tool-api-request}))
+        path (:path arguments)]
+    (doto (-> (mc/decode ::get-transform-python-library-details-result
+                         (metabot-v3.tools.transforms/get-transform-python-library-details path)
+                         (mtx/transformer {:name :tool-api-response}))
+              (assoc :conversation_id conversation_id))
+      (metabot-v3.context/log :llm.log/be->llm))))
+
 (api.macros/defendpoint :post "/query-metric" :- [:merge ::filtering-result ::tool-request]
   "Construct a query from a metric."
   [_route-params
@@ -902,13 +1039,14 @@
 (mr/def ::search-arguments
   [:and
    [:map
-    [:term_queries     {:optional true} [:maybe [:sequential :string]]]
-    [:semantic_queries {:optional true} [:maybe [:sequential :string]]]
-    [:entity_types     {:optional true} [:maybe [:sequential [:enum "table" "model" "question" "dashboard" "metric" "database"]]]]
-    [:database_id      {:optional true} [:maybe :int]]
-    [:created_at       {:optional true} [:maybe ms/NonBlankString]]
-    [:last_edited_at   {:optional true} [:maybe ms/NonBlankString]]
-    [:limit            {:optional true, :default 50} [:and :int [:fn #(<= 1 % 100)]]]]
+    [:term_queries        {:optional true} [:maybe [:sequential :string]]]
+    [:semantic_queries    {:optional true} [:maybe [:sequential :string]]]
+    [:entity_types        {:optional true} [:maybe [:sequential [:enum "table" "model" "question" "dashboard" "metric" "database" "transform"]]]]
+    [:database_id         {:optional true} [:maybe :int]]
+    [:created_at          {:optional true} [:maybe ms/NonBlankString]]
+    [:last_edited_at      {:optional true} [:maybe ms/NonBlankString]]
+    [:search_native_query {:optional true, :default false} [:maybe :boolean]]
+    [:limit               {:optional true, :default 50} [:and :int [:fn #(<= 1 % 100)]]]]
    [:map {:encode/tool-api-request
           #(update-keys % (comp keyword u/->kebab-case-en))}]])
 
@@ -916,7 +1054,7 @@
   "Unified schema for search result items."
   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
    [:id :int]
-   [:type [:enum :table :model :dashboard :question :metric :database]]
+   [:type [:enum :table :model :dashboard :question :metric :database :transform]]
    [:name :string]
    [:display_name {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]
@@ -938,15 +1076,9 @@
                          [:total_count :int]]]]
    [:map [:output :string]]])
 
-(api.macros/defendpoint :post "/search" :- [:merge ::search-result ::tool-request]
-  "Enhanced search with term and semantic queries using Reciprocal Rank Fusion."
-  [_route-params
-   _query-params
-   {:keys [arguments conversation_id] :as body} :- [:merge
-                                                    [:map [:arguments {:optional true} ::search-arguments]]
-                                                    ::tool-request]
-   request]
-  (metabot-v3.context/log (assoc body :api :search) :llm.log/llm->be)
+(defn- search
+  "Shared handler for the /search and /search_v2 endpoints."
+  [arguments conversation_id request]
   (try
     (let [options (mc/encode ::search-arguments
                              arguments (mtx/transformer {:name :tool-api-request}))
@@ -965,6 +1097,103 @@
       (doto (-> {:output (str "Search failed: " (or (ex-message e) "Unknown error"))}
                 (assoc :conversation_id conversation_id))
         (metabot-v3.context/log :llm.log/be->llm)))))
+
+(api.macros/defendpoint :post "/search" :- [:merge ::search-result ::tool-request]
+  "Enhanced search with term and semantic queries using Reciprocal Rank Fusion."
+  [_route-params
+   _query-params
+   {:keys [arguments conversation_id] :as body} :- [:merge
+                                                    [:map [:arguments {:optional true} ::search-arguments]]
+                                                    ::tool-request]
+   request]
+  (metabot-v3.context/log (assoc body :api :search) :llm.log/llm->be)
+  (search arguments conversation_id request))
+
+(api.macros/defendpoint :post "/search_v2" :- [:merge ::search-result ::tool-request]
+  "Enhanced search with term and semantic queries using Reciprocal Rank Fusion. This is identical to /search, but
+  duplicated in order to add a new capability to AI service that indicates that Metabot can search transforms. The
+  /search endpoint is kept around for backward compatibility."
+  [_route-params
+   _query-params
+   {:keys [arguments conversation_id] :as body} :- [:merge
+                                                    [:map [:arguments {:optional true} ::search-arguments]]
+                                                    ::tool-request]
+   request]
+  (metabot-v3.context/log (assoc body :api :search_v2) :llm.log/llm->be)
+  (search arguments conversation_id request))
+
+(api.macros/defendpoint :post "/get-snippets" :- [:merge ::get-snippets-result ::tool-request]
+  "Get a list of all known SQL snippets."
+  [_route-params
+   _query-params
+   {:keys [conversation_id] :as body} :- ::tool-request]
+  (metabot-v3.context/log (assoc body :api :get-snippets) :llm.log/llm->be)
+  (doto (-> (mc/decode ::get-snippets-result
+                       (metabot-v3.tools.snippets/get-snippets)
+                       (mtx/transformer {:name :tool-api-response}))
+            (assoc :conversation_id conversation_id))
+    (metabot-v3.context/log :llm.log/be->llm)))
+
+(api.macros/defendpoint :post "/get-snippet-details" :- [:merge ::get-snippet-details-result ::tool-request]
+  "Get the content of a single SQL snippet."
+  [_route-params
+   _query-params
+   {:keys [arguments conversation_id] :as body} :- [:merge
+                                                    [:map [:arguments ::get-snippet-details-arguments]]
+                                                    ::tool-request]]
+
+  (metabot-v3.context/log (assoc body :api :get-snippet-details) :llm.log/llm->be)
+  (let [arguments (mc/encode ::get-snippet-details-arguments arguments (mtx/transformer {:name :tool-api-request}))
+        snippet-id (:snippet-id arguments)]
+    (doto (-> (mc/decode ::get-snippet-details-result
+                         (metabot-v3.tools.snippets/get-snippet-details snippet-id)
+                         (mtx/transformer {:name :tool-api-response}))
+              (assoc :conversation_id conversation_id))
+      (metabot-v3.context/log :llm.log/be->llm))))
+
+(mr/def ::check-transform-dependencies-arguments
+  [:and
+   [:map
+    [:transform_id :int]
+    [:source ::metabot-v3.tools.transforms/transform-source]]
+   [:map {:encode/tool-api-request
+          #(set/rename-keys % {:transform_id :id})}]])
+
+(mr/def ::broken-question
+  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:id :int]
+   [:name :string]])
+
+(mr/def ::broken-transform
+  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:id :int]
+   [:name :string]])
+
+(mr/def ::check-transform-dependencies-result
+  [:or
+   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+    [:structured_output [:map
+                         [:success :boolean]
+                         [:bad_transform_count :int]
+                         [:bad_transforms [:sequential ::broken-transform]]
+                         [:bad_question_count :int]
+                         [:bad_questions [:sequential ::broken-question]]]]]
+   [:map [:output :string]]])
+
+(api.macros/defendpoint :post "/check-transform-dependencies" :- [:merge ::check-transform-dependencies-result ::tool-request]
+  "Check a proposed edit to a transform and return details of cards or transforms that would be broken by the change."
+  [_route-params
+   _query-params
+   {:keys [arguments conversation_id] :as body} :- [:merge
+                                                    [:map [:arguments ::check-transform-dependencies-arguments]]
+                                                    ::tool-request]]
+  (metabot-v3.context/log (assoc body :api :check-transform-dependencies) :llm.log/llm->be)
+  (let [arguments (mc/encode ::check-transform-dependencies-arguments arguments (mtx/transformer {:name :tool-api-request}))]
+    (doto (-> (mc/decode ::check-transform-dependencies-result
+                         (metabot-v3.tools.dependencies/check-transform-dependencies arguments)
+                         (mtx/transformer {:name :tool-api-response}))
+              (assoc :conversation_id conversation_id))
+      (metabot-v3.context/log :llm.log/be->llm))))
 
 (defn- enforce-authentication
   "Middleware that returns a 401 response if no `ai-session` can be found for  `request`."

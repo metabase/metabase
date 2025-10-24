@@ -15,7 +15,9 @@ export type IconModel =
   | SearchModel
   | CollectionItemModel
   | "schema"
-  | "timeline";
+  | "timeline"
+  | "transform"
+  | "user";
 
 export type ObjectWithModel = {
   id?: unknown;
@@ -44,6 +46,7 @@ export const modelIconMap: Record<IconModel, IconName> = {
   document: "document",
   timeline: "calendar",
   transform: "refresh_downstream",
+  user: "person",
 };
 
 export type IconData = {

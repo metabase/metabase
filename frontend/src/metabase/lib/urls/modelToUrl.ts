@@ -7,6 +7,7 @@ import { document } from "./documents";
 import { metric, model } from "./models";
 import { question, tableRowsQuery } from "./questions";
 import { timeline } from "./timelines";
+import { transform } from "./transforms";
 
 export type UrlableModel = {
   id: number;
@@ -46,6 +47,8 @@ export function modelToUrl(item: UrlableModel) {
       return timeline(item);
     case "user":
       return null;
+    case "transform":
+      return transform(item.id);
     default:
       return null;
   }
