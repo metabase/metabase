@@ -254,7 +254,11 @@ export function Tree({ path, onChange }: Props) {
             </Flex>
             <Button
               variant="transparent"
-              onClick={() => setSelectedItems(new Set())}
+              onClick={() => {
+                setSelectedItems(new Set());
+                setSelectedSchemas(new Set());
+                setSelectedDatabases(new Set());
+              }}
             >
               {t`Unselect all`}
             </Button>
