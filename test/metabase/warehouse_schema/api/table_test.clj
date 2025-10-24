@@ -1213,7 +1213,14 @@
       (is (=? [{:display_name "Products2"}]
               (->> (mt/user-http-request :crowberto :get 200 "table" :term "P" :visibility_type2 "gold")
                    (filter #(= (:db_id %) (mt/id)))         ; prevent stray tables from affecting unit test results
-                   (map #(select-keys % [:display_name]))))))))
+                   (map #(select-keys % [:display_name])))))
+
+      (testing "empty filter"
+        (is (=? [{:display_name "People"}
+                 {:display_name "Products"}]
+                (->> (mt/user-http-request :crowberto :get 200 "table" :term "P" :visibility_type2 "")
+                     (filter #(= (:db_id %) (mt/id)))       ; prevent stray tables from affecting unit test results
+                     (map #(select-keys % [:display_name])))))))))
 
 (deftest ^:parallel bulk-edit-test
   (testing "can edit a bunch of things at once"
