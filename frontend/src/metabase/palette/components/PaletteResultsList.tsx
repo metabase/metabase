@@ -29,8 +29,8 @@ interface RenderParams<T = PaletteActionImpl | string> {
 interface PaletteResultListProps {
   items: (PaletteActionImpl | string)[];
   renderItem: (params: RenderParams) => React.ReactElement;
-  maxHeight?: number;
-  minHeight?: number;
+  maxHeight: number;
+  minHeight: number;
 }
 
 export const PaletteResultList = (props: PaletteResultListProps) => {
