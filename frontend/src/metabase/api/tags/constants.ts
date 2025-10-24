@@ -33,6 +33,7 @@ export const TAG_TYPES = [
   "snippet",
   "subscription",
   "subscription-channel",
+  "transform",
   "table",
   "task",
   "timeline",

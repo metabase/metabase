@@ -89,10 +89,9 @@
   "Check a proposed edit to a transform, and return the card, transform, etc. IDs for things that will break."
   [_route-params
    _query-params
-   {:keys [id source target] :as _body} :- ::transform-body]
+   {:keys [id source target]} :- ::transform-body]
   (api/read-check :model/Transform id)
-  (if (= (keyword (:type source))
-         :query)
+  (if (= (keyword (:type source)) :query)
     (let [database-id (-> source :query :database)
           base-provider (lib-be/application-database-metadata-provider database-id)
           original (lib.metadata/transform base-provider id)

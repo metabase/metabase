@@ -1073,6 +1073,7 @@
            audit-app
            collections
            config
+           driver
            events
            lib
            lib-be
@@ -1708,7 +1709,7 @@
   enterprise/dependencies
   {:team "Querying"
    :api  #{metabase-enterprise.dependencies.api
-           #_metabase-enterprise.dependencies.core
+           metabase-enterprise.dependencies.core
            metabase-enterprise.dependencies.init}
    :uses #{analyze
            api
@@ -1837,6 +1838,7 @@
            lib
            lib-be
            models
+           native-query-snippets
            permissions
            premium-features
            pulse
@@ -1853,7 +1855,10 @@
            util
            warehouse-schema
            warehouses
-           enterprise/documents}}
+           enterprise/dependencies
+           enterprise/documents
+           enterprise/transforms
+           enterprise/transforms-python}}
 
   enterprise/permission-debug
   {:team "UX West"
@@ -2014,6 +2019,7 @@
            lib-be
            models
            premium-features
+           queries
            query-processor
            request
            search

@@ -40,7 +40,8 @@
           (remove nil?)
           (for [search-model (:models search-ctx)
                 :let [spec (search.spec/spec search-model)]]
-            (when (and (visible-to? search-ctx spec) (every? (:attrs spec) required))
+            (when (and (visible-to? search-ctx spec)
+                       (every? (:attrs spec) required))
               (:name spec))))))
 
 (defn models-without-collection
