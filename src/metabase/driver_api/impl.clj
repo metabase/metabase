@@ -1,11 +1,15 @@
 (ns metabase.driver-api.impl
-  {:clj-kondo/config '{:linters
-                       ;; this is actually ok here since this is a drivers namespace
-                       {:discouraged-namespace {metabase.query-processor.store {:level :off}}}}}
+  {:clj-kondo/config
+   '{:linters
+     {:discouraged-namespace {metabase.legacy-mbql.util      {:level :off}
+                              metabase.query-processor.store {:level :off}}
+      :deprecated-namespace  {:exclude [metabase.query-processor.store]}}}}
   (:require
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.util.nest-query :as nest-query]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -53,3 +57,17 @@
       (type x))))
   ([x _]
    (dispatch-by-clause-name-or-class x)))
+
+(defn nest-expressions
+  "Wrapper around [[metabase.query-processor.util.nest-query/nest-expressions]] to allow it to work with legacy MBQL
+  inner queries. This is a temporary placeholder until we start migrating drivers to use Lib/MBQL 5 directly."
+  [lib-query-or-legacy-inner-query]
+  (if (:lib/type lib-query-or-legacy-inner-query)
+    (nest-query/nest-expressions lib-query-or-legacy-inner-query)
+    #_{:clj-kondo/ignore [:deprecated-var :discouraged-var]}
+    (-> lib-query-or-legacy-inner-query
+        (->> (lib/query-from-legacy-inner-query (qp.store/metadata-provider)
+                                                (:id (lib.metadata/database (qp.store/metadata-provider)))))
+        nest-query/nest-expressions
+        lib/->legacy-MBQL
+        :query)))

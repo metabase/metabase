@@ -8,6 +8,7 @@
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.driver :as driver]
+   [metabase.lib.query :as lib.query]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor.compile :as qp.compile]
@@ -41,6 +42,13 @@
   "Check if this is a query transform: native query / mbql query."
   [transform]
   (= :query (-> transform :source :type keyword)))
+
+(defn native-query-transform?
+  "Check if this is a native query transform"
+  [transform]
+  (when (query-transform? transform)
+    (let [query (-> transform :source :query)]
+      (lib.query/native? query))))
 
 (defn python-transform?
   "Check if this is a Python transform."

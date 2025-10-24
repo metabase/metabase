@@ -80,11 +80,13 @@ import type {
   PythonTransformSource,
   PythonTransformTableAliases,
   Revision,
+  SearchModel,
   Series,
   TableId,
   Timeline,
   TimelineEvent,
   Transform,
+  TransformId,
   UpdateSnippetRequest,
   UpdateTransformRequest,
   User,
@@ -702,9 +704,20 @@ export const PLUGIN_AI_ENTITY_ANALYSIS: PluginAIEntityAnalysis = {
   chartAnalysisRenderFormats: {},
 };
 
-type PLUGIN_METABOT_TYPE = {
+type PluginMetabotConfig = {
+  emptyText?: string;
+  hideSuggestedPrompts?: boolean;
+  preventClose?: boolean;
+  preventRetryMessage?: boolean;
+  suggestionModels: (SearchModel | "transform" | "user")[];
+};
+
+type PluginMetabotType = {
   isEnabled: () => boolean;
-  Metabot: (props: { hide?: boolean }) => React.ReactElement | null;
+  Metabot: (props: {
+    hide?: boolean;
+    config?: PluginMetabotConfig;
+  }) => React.ReactElement | null;
   defaultMetabotContextValue: MetabotContext;
   MetabotContext: React.Context<MetabotContext>;
   getMetabotProvider: () => ComponentType<{ children: React.ReactNode }>;
@@ -715,11 +728,13 @@ type PLUGIN_METABOT_TYPE = {
   getMetabotVisible: (state: State) => boolean;
   MetabotToggleButton: ComponentType<{ className?: string }>;
   MetabotAppBarButton: ComponentType;
+  MetabotAdminAppBarButton: ComponentType;
 };
 
-export const PLUGIN_METABOT: PLUGIN_METABOT_TYPE = {
+export const PLUGIN_METABOT: PluginMetabotType = {
   isEnabled: () => false,
-  Metabot: () => null,
+  Metabot: (_props: { hide?: boolean; config?: PluginMetabotConfig }) =>
+    null as React.ReactElement | null,
   defaultMetabotContextValue,
   MetabotContext: React.createContext(defaultMetabotContextValue),
   getMetabotProvider: () => {
@@ -737,6 +752,7 @@ export const PLUGIN_METABOT: PLUGIN_METABOT_TYPE = {
   getMetabotVisible: () => false,
   MetabotToggleButton: PluginPlaceholder,
   MetabotAppBarButton: PluginPlaceholder,
+  MetabotAdminAppBarButton: PluginPlaceholder,
 };
 
 type DashCardMenuItemGetter = (
@@ -846,12 +862,25 @@ export const PLUGIN_SEMANTIC_SEARCH = {
   SearchSettingsWidget: PluginPlaceholder,
 };
 
+export type TransformPickerItem = {
+  id: TransformId;
+  name: string;
+  model: "transform";
+};
+
+export type TransformPickerProps = {
+  value: TransformPickerItem | undefined;
+  onItemSelect: (transform: TransformPickerItem) => void;
+};
+
 export type TransformsPlugin = {
+  TransformPicker: ComponentType<TransformPickerProps>;
   getAdminPaths(): AdminPath[];
   getAdminRoutes(): ReactNode;
 };
 
 export const PLUGIN_TRANSFORMS: TransformsPlugin = {
+  TransformPicker: PluginPlaceholder,
   getAdminPaths: () => [],
   getAdminRoutes: () => null,
 };
@@ -860,17 +889,27 @@ export type PythonTransformsPlugin = {
   PythonRunnerSettingsPage: ComponentType;
   SourceSection: ComponentType<{ transform: Transform }>;
   TransformEditor: ComponentType<{
+    transform?: Transform | undefined;
     initialSource: {
       type: "python";
       body: string;
       "source-database": DatabaseId | undefined;
       "source-tables": PythonTransformTableAliases;
     };
+    proposedSource?: PythonTransformSource;
     isNew?: boolean;
     isSaving?: boolean;
     isRunnable?: boolean;
+    onChange?: (newSource: {
+      type: "python";
+      body: string;
+      "source-database": DatabaseId | undefined;
+      "source-tables": PythonTransformTableAliases;
+    }) => void;
     onSave: (newSource: PythonTransformSource) => void;
     onCancel: () => void;
+    onRejectProposed?: () => void;
+    onAcceptProposed?: (query: PythonTransformSource) => void;
   }>;
   getAdminRoutes: () => ReactNode;
   getTransformsNavLinks: () => ReactNode;
@@ -887,6 +926,8 @@ export const PLUGIN_TRANSFORMS_PYTHON: PythonTransformsPlugin = {
 };
 
 type DependenciesPlugin = {
+  isEnabled: boolean;
+  DependencyGraphPage: ComponentType;
   CheckDependenciesForm: ComponentType<CheckDependenciesFormProps>;
   CheckDependenciesModal: ComponentType<CheckDependenciesModalProps>;
   CheckDependenciesTitle: ComponentType;
@@ -940,6 +981,8 @@ function useCheckDependencies<TChange>({
 }
 
 export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
+  isEnabled: false,
+  DependencyGraphPage: PluginPlaceholder,
   CheckDependenciesForm: PluginPlaceholder,
   CheckDependenciesModal: PluginPlaceholder,
   CheckDependenciesTitle: PluginPlaceholder,

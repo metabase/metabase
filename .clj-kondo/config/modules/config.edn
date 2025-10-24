@@ -620,6 +620,7 @@
            metabase.lib.query
            metabase.lib.schema
            metabase.lib.schema.actions
+           metabase.lib.schema.aggregation
            metabase.lib.schema.binning
            metabase.lib.schema.common
            metabase.lib.schema.constraints
@@ -1072,6 +1073,7 @@
            audit-app
            collections
            config
+           driver
            events
            lib
            lib-be
@@ -1094,7 +1096,8 @@
 
   segments
   {:team "Querying"
-   :api  #{metabase.segments.api}
+   :api  #{metabase.segments.api
+           metabase.segments.schema}
    :uses #{api
            events
            legacy-mbql
@@ -1485,6 +1488,7 @@
            queries
            query-permissions
            query-processor
+           segments
            settings
            util
            warehouse-schema}}
@@ -1705,7 +1709,7 @@
   enterprise/dependencies
   {:team "Querying"
    :api  #{metabase-enterprise.dependencies.api
-           #_metabase-enterprise.dependencies.core
+           metabase-enterprise.dependencies.core
            metabase-enterprise.dependencies.init}
    :uses #{analyze
            api
@@ -1721,15 +1725,18 @@
            premium-features
            queries
            query-processor
+           revisions
            settings
            task
-           util}}
+           util
+           enterprise/documents}}
 
   enterprise/documents
   {:team "UX West"
    :api  #{metabase-enterprise.documents.api
            metabase-enterprise.documents.core
-           metabase-enterprise.documents.init}
+           metabase-enterprise.documents.init
+           metabase-enterprise.documents.prose-mirror}
    :uses #{activity-feed
            api
            app-db
@@ -1833,6 +1840,7 @@
            lib
            lib-be
            models
+           native-query-snippets
            permissions
            premium-features
            pulse
@@ -1849,7 +1857,10 @@
            util
            warehouse-schema
            warehouses
-           enterprise/documents}}
+           enterprise/dependencies
+           enterprise/documents
+           enterprise/transforms
+           enterprise/transforms-python}}
 
   enterprise/permission-debug
   {:team "UX West"
@@ -1875,6 +1886,7 @@
            app-db
            audit-app
            driver
+           events
            legacy-mbql
            lib
            models
@@ -2010,8 +2022,10 @@
            lib-be
            models
            premium-features
+           queries
            query-processor
            request
+           search
            settings
            sync
            task

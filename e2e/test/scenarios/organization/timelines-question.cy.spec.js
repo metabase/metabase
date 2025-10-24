@@ -338,7 +338,7 @@ describe("scenarios > organization > timelines > question", () => {
         cy.findByLabelText("Event name").type("RC2");
         cy.findByLabelText("Date").clear().type("10/20/2023");
         cy.button("Create").click();
-        cy.wait("@createEvent");
+        waitForTimelinesAfterCreatingAnEvent("RC2");
 
         H.undoToast().icon("close").click();
         H.echartsIcon("star").should("be.visible");
@@ -413,6 +413,9 @@ describe("scenarios > organization > timelines > question", () => {
 
           cy.button("Create").click();
         });
+        waitForTimelinesAfterCreatingAnEvent("Event at the end of range");
+
+        H.modal().should("not.exist"); // wait for modal to close
 
         cy.log("remove all other events except the new one");
         toggleEventVisibility("RC1").should("not.be.checked");
@@ -588,4 +591,10 @@ function toggleEventVisibility(eventName) {
 
 function timelineEventVisibility(eventName) {
   return timelineEventCard(eventName).findByRole("checkbox");
+}
+
+function waitForTimelinesAfterCreatingAnEvent(eventName) {
+  return timelineEventCard(eventName)
+    .findByText(/^Bobby Tables added this on/)
+    .should("be.visible");
 }
