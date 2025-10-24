@@ -42,6 +42,7 @@
      (let [db (get-in source [:query :database])
            {driver :engine :as database} (t2/select-one :model/Database db)
            transform-details {:db-id db
+                              :database database
                               :transform-id   id
                               :transform-type (keyword (:type target))
                               :conn-spec (driver/connection-spec driver database)

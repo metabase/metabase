@@ -128,9 +128,9 @@
     {:rows-affected (last (driver/execute-raw-queries! driver conn-spec queries))}))
 
 (defmethod driver/run-transform! [:sql :table-incremental]
-  [driver {:keys [conn-spec db-id output-table] :as transform-details} _opts]
-  (let [queries (if (driver/table-exists? driver db-id {:schema (namespace output-table)
-                                                        :name (name output-table)})
+  [driver {:keys [conn-spec database output-table] :as transform-details} _opts]
+  (let [queries (if (driver/table-exists? driver database {:schema (namespace output-table)
+                                                           :name (name output-table)})
                   (driver/compile-insert driver transform-details)
                   (driver/compile-transform driver transform-details))]
     {:rows-affected (last (driver/execute-raw-queries! driver conn-spec [queries]))}))

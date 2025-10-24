@@ -921,7 +921,7 @@
     (u.date/format (u.date/parse value))
 
     :type/DateTime
-    (u.date/format (u.date/parse value))
+    (u.date/format :iso-local-date-time (u.date/parse value))
 
     :type/DateTimeWithLocalTZ
     (u.date/format (u.date/parse value))
