@@ -1,7 +1,7 @@
 name: Get cache keys
 description: |
   Get deterministic cache keys for Maven and Node.js caches based on the centrally controlled cache prefix,
-  and the suffix based on the runner OS and a current week of the year.
+  and the suffix based on the runner OS and the current week of the year.
 
 outputs:
   m2-cache-key:
