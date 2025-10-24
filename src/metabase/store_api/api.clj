@@ -7,8 +7,8 @@
    [metabase.store-api.schema :as store-api.schema]
    [metabase.util.i18n :as i18n]))
 
-(defn- make-store-request
-  "Make a GET request to fetch infrom from public Metabase Store API endpoints."
+(defn- make-public-store-request!
+  "Make a GET request to fetch publicly available info from Metabase Store API endpoints."
   [endpoint]
   (if-let [url (store-api/store-api-url)]
     (:body (http/get (str url "/api/v2" endpoint) {:as :json}))
@@ -17,9 +17,9 @@
 (api.macros/defendpoint :get "/plans" :- [:sequential ::store-api.schema/Plan]
   "Fetch information about currently supported Metabase plans from the Metabase Store API."
   []
-  (make-store-request "/plan"))
+  (make-public-store-request! "/plan"))
 
 (api.macros/defendpoint :get "/addons" :- [:sequential ::store-api.schema/Addon]
   "Fetch the add-on information from the Metabase Store API."
   []
-  (make-store-request "/addons"))
+  (make-public-store-request! "/addons"))
