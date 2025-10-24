@@ -201,6 +201,7 @@
             (is (some #(str/includes? % "collection") (keys files-after-export)))
             (is (some #(str/includes? % "card") (keys files-after-export))))
 
+          (t2/delete! :model/RemoteSyncTask :id (:id export-task))
           ;; Then import - verify it succeeds and processes the exported files
           (let [import-task (t2/with-connection [_conn (app-db/app-db) (t2/insert-returning-instance! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})])
                 import-result (impl/import! mock-main (:id import-task))]
