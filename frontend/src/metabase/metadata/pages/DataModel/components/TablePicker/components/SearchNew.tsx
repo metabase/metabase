@@ -1,15 +1,33 @@
+import { useState } from "react";
 import { t } from "ttag";
 
 import { useListTablesQuery } from "metabase/api/table";
-import { Box, Checkbox, Flex, Icon, Loader, Stack, Text } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Checkbox,
+  Flex,
+  Icon,
+  Loader,
+  Stack,
+  Text,
+} from "metabase/ui";
+import type { TableId } from "metabase-types/api";
+
+import { EditTableMetadataModal } from "./EditTableMetadataModal";
 
 interface SearchNewProps {
   query: string;
-  onSelect?: (tableId: number) => void;
 }
 
-export function SearchNew({ query, onSelect }: SearchNewProps) {
-  const { data: tables, isLoading } = useListTablesQuery({
+export function SearchNew({ query }: SearchNewProps) {
+  const [selectedItems, setSelectedItems] = useState<Set<TableId>>(new Set());
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const {
+    data: tables,
+    isLoading,
+    refetch,
+  } = useListTablesQuery({
     term: query,
     visibility_type2: undefined,
   });
@@ -30,22 +48,84 @@ export function SearchNew({ query, onSelect }: SearchNewProps) {
     );
   }
 
-  return (
-    <Stack gap={0} px="xl">
-      {tables.map((table) => {
-        const breadcrumbs = `${table.db?.name} (${table.schema})`;
+  function onTableSelect(tableId: TableId) {
+    if (selectedItems.has(tableId)) {
+      setSelectedItems((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(tableId);
+        return newSet;
+      });
+    } else {
+      setSelectedItems((prev) => {
+        const newSet = new Set(prev);
+        newSet.add(tableId);
+        return newSet;
+      });
+    }
+  }
 
-        return (
-          <Flex key={table.id} py="xs" align="center" gap="sm">
-            <Checkbox size="sm" />
-            <Icon name="table2" color="var(--mb-color-text-light)" size={16} />
-            <Text fw={500} style={{ flex: 1 }}>
-              {table.display_name}
-            </Text>
-            <BreadCrumbs breadcrumbs={breadcrumbs} />
-          </Flex>
-        );
-      })}
+  return (
+    <Stack>
+      <Stack gap={0} px="xl">
+        {tables.map((table) => {
+          const breadcrumbs = `${table.db?.name} (${table.schema})`;
+
+          return (
+            <Flex key={table.id} py="xs" align="center" gap="sm">
+              <Checkbox
+                size="sm"
+                onChange={() => onTableSelect(table.id)}
+                checked={selectedItems.has(table.id)}
+              />
+              <Icon
+                name="table2"
+                color="var(--mb-color-text-light)"
+                size={16}
+              />
+              <Text fw={500} style={{ flex: 1 }}>
+                {table.display_name}
+              </Text>
+              <BreadCrumbs breadcrumbs={breadcrumbs} />
+            </Flex>
+          );
+        })}
+      </Stack>
+      <Box>
+        <Flex justify="center" direction="row" gap="sm">
+          {selectedItems.size === 0 && (
+            <Button
+              onClick={() =>
+                setSelectedItems(new Set(tables.map((table) => table.id)))
+              }
+              variant="transparent"
+            >
+              {t`Select all`}
+            </Button>
+          )}
+          {selectedItems.size > 0 && (
+            <>
+              <Button onClick={() => setIsModalOpen(true)}>
+                {t`Edit ${selectedItems.size} items`}
+              </Button>
+              <Button
+                variant="transparent"
+                onClick={() => setSelectedItems(new Set())}
+              >
+                {t`Unselect all`}
+              </Button>
+            </>
+          )}
+        </Flex>
+      </Box>
+      <EditTableMetadataModal
+        tables={selectedItems}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onUpdate={() => {
+          refetch();
+          setSelectedItems(new Set());
+        }}
+      />
     </Stack>
   );
 }
