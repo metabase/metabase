@@ -126,11 +126,11 @@ export function SearchNew({ query, params }: SearchNewProps) {
                   top: 4,
                 }}
                 name="table2"
-                color={active ? "brand" : "text-light"}
+                c={active ? "brand" : "text-light"}
                 size={16}
               />
               <Text
-                c={active ? "brand" : "text-light"}
+                c={active ? "brand" : "text-primary"}
                 fw={500}
                 style={{ flex: 1 }}
               >
