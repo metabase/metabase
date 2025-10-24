@@ -136,7 +136,9 @@ export function SearchNew({ query, params }: SearchNewProps) {
               >
                 {table.display_name}
               </Text>
-              <BreadCrumbs active={active} breadcrumbs={breadcrumbs} />
+              {breadcrumbs && (
+                <BreadCrumbs active={active} breadcrumbs={breadcrumbs} />
+              )}
             </Flex>
           );
         })}
