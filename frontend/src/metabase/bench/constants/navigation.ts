@@ -8,6 +8,7 @@ export interface BenchNavItem {
   url: string;
   icon: IconName;
   getLabel: () => string;
+  getDescription?: () => string;
   parentId?: string;
   nested?: boolean;
 }
@@ -15,6 +16,7 @@ export interface BenchNavItem {
 export interface BenchNavSection {
   id: string;
   getTitle: () => string;
+  getLongTitle: () => string;
   items: BenchNavItem[];
 }
 
@@ -23,6 +25,7 @@ const OVERVIEW_ITEM: BenchNavItem = {
   url: "/bench/overview",
   icon: "home",
   getLabel: () => t`Overview`,
+  getDescription: () => "",
 };
 
 export const getBenchNavSections = (
@@ -33,6 +36,7 @@ export const getBenchNavSections = (
     {
       id: "data",
       getTitle: () => t`Data`,
+      getLongTitle: () => t`Clean up your schema`,
       items: [
         ...(isAdmin
           ? [
@@ -41,6 +45,8 @@ export const getBenchNavSections = (
                 url: "/bench/metadata",
                 icon: "database",
                 getLabel: () => t`Metadata`,
+                getDescription: () =>
+                  t`Hide irrelevant tables, and format, describe, and add semantic types to columns.`,
               } as BenchNavItem,
             ]
           : []),
@@ -50,42 +56,54 @@ export const getBenchNavSections = (
     {
       id: "modeling",
       getTitle: () => t`Modeling`,
+      getLongTitle: () => t`Model your data`,
       items: [
         {
           id: "metric",
           url: "/bench/metric",
           icon: "metric",
           getLabel: () => t`Metrics`,
+          getDescription: () =>
+            t`Codify the KPIs and measures your organization keeps tabs on.`,
         },
         {
           id: "model",
           url: "/bench/model",
           icon: "model",
           getLabel: () => t`Models`,
+          getDescription: () =>
+            t`Decorate your favorite tables and organize them into collections.`,
         },
         {
           id: "segment",
           url: "/bench/segment",
           icon: "segment",
           getLabel: () => t`Segments`,
+          getDescription: () =>
+            t`Define named subsets of tables that you can use as filters.`,
         },
         {
           id: "glossary",
           url: "/bench/glossary",
           icon: "globe",
           getLabel: () => t`Glossary`,
+          getDescription: () =>
+            t`Define terms to help your team understand your data.`,
         },
       ],
     },
     {
       id: "tools",
       getTitle: () => t`Tools`,
+      getLongTitle: () => t`Keep things running smoothly`,
       items: [
         {
           id: "dependency-graph",
           url: "/bench/dependencies",
           icon: "network",
           getLabel: () => t`Dependency graph`,
+          getDescription: () =>
+            t`Use the Dependency Graph to see what's upstream and downstream of anything.`,
         },
         ...(hasNativeWrite
           ? [
@@ -94,6 +112,8 @@ export const getBenchNavSections = (
                 url: "/bench/snippet",
                 icon: "snippet" as const,
                 getLabel: () => t`SQL snippets`,
+                getDescription: () =>
+                  t`Define reusable bits of SQL for your whole team to use in your queries.`,
               },
             ]
           : []),

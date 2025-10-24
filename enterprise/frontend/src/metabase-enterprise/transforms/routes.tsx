@@ -29,6 +29,8 @@ export const getTransformNavItems = (isAdmin: boolean): BenchNavItem[] => {
       url: "/bench/transforms",
       icon: "transform",
       getLabel: () => t`Transforms`,
+      getDescription: () =>
+        t`Use SQL or python to join data and add columns. Run them on a schedule with jobs.`,
     },
     {
       id: "jobs",

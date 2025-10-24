@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Link } from "react-router";
 import { useLocalStorage } from "react-use";
 import { t } from "ttag";
@@ -17,6 +18,8 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
+
+import { getBenchNavSections } from "../constants/navigation";
 
 const OverviewCard = ({
   to,
@@ -104,108 +107,38 @@ export const OverviewPage = () => {
   const isAdmin = useSelector(getUserIsAdmin);
   const { data } = useListDatabasesQuery();
   const hasNativeWrite = getHasNativeWrite(data?.data ?? []);
+  const benchNavSections = useMemo(
+    () => getBenchNavSections(isAdmin, hasNativeWrite),
+    [isAdmin, hasNativeWrite],
+  );
 
   return (
     <Box h="100%" bg="background-light" style={{ overflow: "auto" }}>
       <Stack mt="3rem" mb="4rem" maw="67rem" px="1rem" mx="auto" gap="3rem">
         <OverviewBanner />
-        <section>
-          <Text component="h2" c="text-secondary" fw="bold" mb="lg" lh="sm">
-            {t`Clean up your schema`}
-          </Text>
-          <Grid>
-            <Grid.Col span={{ base: 12, sm: 4 }}>
-              <OverviewCard
-                to="/bench/metadata"
-                icon="table2"
-                heading={t`Metadata`}
-                body={t`Hide irrelevant tables, and format, describe, and add semantic types to columns.`}
-              />
-            </Grid.Col>
-            {isAdmin && (
-              <Grid.Col span={{ base: 12, sm: 4 }}>
-                <OverviewCard
-                  to="/bench/transforms"
-                  icon="transform"
-                  heading={t`Transforms`}
-                  body={t`Use SQL or python to join data and add columns. Run them on a schedule with jobs.`}
-                />
-              </Grid.Col>
-            )}
-          </Grid>
-        </section>
-        <section>
-          <Text component="h2" c="text-secondary" fw="bold" mb="lg" lh="sm">
-            {t`Model your data`}
-          </Text>
-          <Grid>
-            <Grid.Col span={{ base: 12, sm: 4 }}>
-              <OverviewCard
-                to="/bench/model"
-                icon="model"
-                heading={t`Models`}
-                body={t`Decorate your favorite tables and organize them into collections.`}
-              />
-            </Grid.Col>
-            <Grid.Col span={{ base: 12, sm: 4 }}>
-              <OverviewCard
-                to="/bench/metric"
-                icon="metric"
-                heading={t`Metrics`}
-                body={t`Codify the KPIs and measures your organization keeps tabs on.`}
-              />
-            </Grid.Col>
-            <Grid.Col span={{ base: 12, sm: 4 }}>
-              <OverviewCard
-                to="/bench/segment"
-                icon="segment"
-                heading={t`Segments`}
-                body={t`Define named subsets of tables that you can use as filters.`}
-              />
-            </Grid.Col>
-            <Grid.Col span={{ base: 12, sm: 4 }}>
-              <OverviewCard
-                to="/bench/glossary"
-                icon="globe"
-                heading={t`Glossary`}
-                body={t`Define terms to help your team understand your data.`}
-              />
-            </Grid.Col>
-          </Grid>
-        </section>
-        <section>
-          <Text component="h2" c="text-secondary" fw="bold" mb="lg" lh="sm">
-            {t`Keep things running smoothly`}
-          </Text>
-          <Grid>
-            <Grid.Col span={{ base: 12, sm: 4 }}>
-              <OverviewCard
-                to="/bench/dependencies"
-                icon="network"
-                heading={t`Dependencies`}
-                body={t`Use the Dependency Graph to see what's upstream and downstream of anything.`}
-              />
-            </Grid.Col>
-            {hasNativeWrite && (
-              <Grid.Col span={{ base: 12, sm: 4 }}>
-                <OverviewCard
-                  to="/bench/snippet"
-                  icon="snippet"
-                  heading={t`SQL snippets`}
-                  body={t`Define reusable bits of SQL for your whole team to use in your queries.`}
-                />
-              </Grid.Col>
-            )}
-            <Grid.Col span={{ base: 12, sm: 4 }}>
-              <OverviewCard
-                to="/bench/library/common.py"
-                icon="code_block"
-                heading={t`Python Library`}
-                body={t`A customizable function library for use with your Python transforms.`}
-              />
-            </Grid.Col>
-          </Grid>
-        </section>
+        {benchNavSections
+          .filter((section) => section.items.length)
+          .map((section) => (
+            <section key={section.id}>
+              <Text component="h2" c="text-secondary" fw="bold" mb="lg" lh="sm">
+                {section.getLongTitle()}
+              </Text>
+              <Grid>
+                {section.items
+                  .filter((item) => !item.nested)
+                  .map((item) => (
+                    <Grid.Col key={item.id} span={{ base: 12, sm: 4 }}>
+                      <OverviewCard
+                        to={item.url}
+                        icon={item.icon}
+                        heading={item.getLabel()}
+                        body={item.getDescription?.() || ""}
+                      />
+                    </Grid.Col>
+                  ))}
+              </Grid>
+            </section>
+          ))}
       </Stack>
     </Box>
   );

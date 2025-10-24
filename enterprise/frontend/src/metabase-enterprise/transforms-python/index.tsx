@@ -45,6 +45,8 @@ if (hasPremiumFeature("transforms-python")) {
         url: getPythonLibraryUrl({ path: SHARED_LIB_IMPORT_PATH }),
         icon: "code_block",
         getLabel: () => t`Python Library`,
+        getDescription: () =>
+          t`A customizable function library for use with your Python transforms.`,
       },
     ];
   };
