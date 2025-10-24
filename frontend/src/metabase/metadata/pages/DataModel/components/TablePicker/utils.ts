@@ -375,7 +375,6 @@ export function areSchemasSelected(
     return "none";
   }
 
-  console.log({ schemas, selectedSchemas, selectedItems });
   if (
     schemas.every(
       (x) =>
