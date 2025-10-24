@@ -298,10 +298,15 @@ const MetricHeader = ({
       title={
         <BenchTabs
           tabs={[
-            { label: t`Query`, to: `/bench/metric/${params.slug}` },
+            {
+              label: t`Query`,
+              to: `/bench/metric/${params.slug}`,
+              icon: "sql" as const,
+            },
             enableSettingsSidebar && {
               label: t`Settings`,
               to: `/bench/metric/${params.slug}/settings`,
+              icon: "gear" as const,
             },
           ].filter((t) => !!t)}
         />

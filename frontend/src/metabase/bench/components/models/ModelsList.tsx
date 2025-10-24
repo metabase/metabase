@@ -280,14 +280,20 @@ const ModelHeader = withRouter(
         title={
           <BenchTabs
             tabs={[
-              { label: t`Query`, to: `/bench/model/${params.slug}` },
+              {
+                label: t`Query`,
+                to: `/bench/model/${params.slug}`,
+                icon: "sql" as const,
+              },
               enableSettingsSidebar && {
                 label: t`Settings`,
                 to: `/bench/model/${params.slug}/settings`,
+                icon: "gear" as const,
               },
               modelCollectionId && {
                 label: t`Metadata`,
                 to: `/bench/metadata/collection/${modelCollectionId}/model/${params.slug}`,
+                icon: "database" as const,
               },
             ].filter((t) => !!t)}
           />
