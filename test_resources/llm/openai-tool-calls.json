@@ -1,1 +1,641 @@
-[{"service_tier":"default","created":1761129424,"choices":[{"index":0,"delta":{"role":"assistant","content":null},"logprobs":null,"finish_reason":null}],"system_fingerprint":"fp_4c2851f862","obfuscation":"TUwCz","usage":null,"id":"chatcmpl-CTQVEhwfDX7SYCiXO8MH66ASRZzQI","object":"chat.completion.chunk","model":"gpt-4.1-mini-2025-04-14"},{"service_tier":"default","created":1761129424,"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"call_wqXIGFJjChf73Gu6gemuxxws","type":"function","function":{"name":"get_time","arguments":""}}]},"logprobs":null,"finish_reason":null}],"system_fingerprint":"fp_4c2851f862","obfuscation":"cPID2gS","usage":null,"id":"chatcmpl-CTQVEhwfDX7SYCiXO8MH66ASRZzQI","object":"chat.completion.chunk","model":"gpt-4.1-mini-2025-04-14"},{"service_tier":"default","created":1761129424,"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"function":{"arguments":"{\"tz"}}]},"logprobs":null,"finish_reason":null}],"system_fingerprint":"fp_4c2851f862","obfuscation":"wZttj90Df27","usage":null,"id":"chatcmpl-CTQVEhwfDX7SYCiXO8MH66ASRZzQI","object":"chat.completion.chunk","model":"gpt-4.1-mini-2025-04-14"},{"service_tier":"default","created":1761129424,"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"function":{"arguments":"\": \"E"}}]},"logprobs":null,"finish_reason":null}],"system_fingerprint":"fp_4c2851f862","obfuscation":"aatPfo4ka","usage":null,"id":"chatcmpl-CTQVEhwfDX7SYCiXO8MH66ASRZzQI","object":"chat.completion.chunk","model":"gpt-4.1-mini-2025-04-14"},{"service_tier":"default","created":1761129424,"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"function":{"arguments":"urope/"}}]},"logprobs":null,"finish_reason":null}],"system_fingerprint":"fp_4c2851f862","obfuscation":"klDkLk5cpd","usage":null,"id":"chatcmpl-CTQVEhwfDX7SYCiXO8MH66ASRZzQI","object":"chat.completion.chunk","model":"gpt-4.1-mini-2025-04-14"},{"service_tier":"default","created":1761129424,"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"function":{"arguments":"Kyiv"}}]},"logprobs":null,"finish_reason":null}],"system_fingerprint":"fp_4c2851f862","obfuscation":"hlGolnG8EMlq","usage":null,"id":"chatcmpl-CTQVEhwfDX7SYCiXO8MH66ASRZzQI","object":"chat.completion.chunk","model":"gpt-4.1-mini-2025-04-14"},{"service_tier":"default","created":1761129424,"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"function":{"arguments":"\"}"}}]},"logprobs":null,"finish_reason":null}],"system_fingerprint":"fp_4c2851f862","obfuscation":"CqA9Q4KRnXjNS","usage":null,"id":"chatcmpl-CTQVEhwfDX7SYCiXO8MH66ASRZzQI","object":"chat.completion.chunk","model":"gpt-4.1-mini-2025-04-14"},{"service_tier":"default","created":1761129424,"choices":[{"index":0,"delta":{"tool_calls":[{"index":1,"id":"call_UdoJ7iQBBUaVDPAcWFJYAI1l","type":"function","function":{"name":"convert_currency","arguments":""}}]},"logprobs":null,"finish_reason":null}],"system_fingerprint":"fp_4c2851f862","obfuscation":"n5GQ63SfckZjzLX","usage":null,"id":"chatcmpl-CTQVEhwfDX7SYCiXO8MH66ASRZzQI","object":"chat.completion.chunk","model":"gpt-4.1-mini-2025-04-14"},{"service_tier":"default","created":1761129424,"choices":[{"index":0,"delta":{"tool_calls":[{"index":1,"function":{"arguments":"{\"am"}}]},"logprobs":null,"finish_reason":null}],"system_fingerprint":"fp_4c2851f862","obfuscation":"vFh77yf5B6H","usage":null,"id":"chatcmpl-CTQVEhwfDX7SYCiXO8MH66ASRZzQI","object":"chat.completion.chunk","model":"gpt-4.1-mini-2025-04-14"},{"service_tier":"default","created":1761129424,"choices":[{"index":0,"delta":{"tool_calls":[{"index":1,"function":{"arguments":"ount\""}}]},"logprobs":null,"finish_reason":null}],"system_fingerprint":"fp_4c2851f862","obfuscation":"0e6yxTVnp1","usage":null,"id":"chatcmpl-CTQVEhwfDX7SYCiXO8MH66ASRZzQI","object":"chat.completion.chunk","model":"gpt-4.1-mini-2025-04-14"},{"service_tier":"default","created":1761129424,"choices":[{"index":0,"delta":{"tool_calls":[{"index":1,"function":{"arguments":": 100,"}}]},"logprobs":null,"finish_reason":null}],"system_fingerprint":"fp_4c2851f862","obfuscation":"UbPnp2YsEj","usage":null,"id":"chatcmpl-CTQVEhwfDX7SYCiXO8MH66ASRZzQI","object":"chat.completion.chunk","model":"gpt-4.1-mini-2025-04-14"},{"service_tier":"default","created":1761129424,"choices":[{"index":0,"delta":{"tool_calls":[{"index":1,"function":{"arguments":" \"fr"}}]},"logprobs":null,"finish_reason":null}],"system_fingerprint":"fp_4c2851f862","obfuscation":"CPGSkB9r0cQ","usage":null,"id":"chatcmpl-CTQVEhwfDX7SYCiXO8MH66ASRZzQI","object":"chat.completion.chunk","model":"gpt-4.1-mini-2025-04-14"},{"service_tier":"default","created":1761129424,"choices":[{"index":0,"delta":{"tool_calls":[{"index":1,"function":{"arguments":"om\": "}}]},"logprobs":null,"finish_reason":null}],"system_fingerprint":"fp_4c2851f862","obfuscation":"nlaMJicqpx","usage":null,"id":"chatcmpl-CTQVEhwfDX7SYCiXO8MH66ASRZzQI","object":"chat.completion.chunk","model":"gpt-4.1-mini-2025-04-14"},{"service_tier":"default","created":1761129424,"choices":[{"index":0,"delta":{"tool_calls":[{"index":1,"function":{"arguments":"\"EUR\","}}]},"logprobs":null,"finish_reason":null}],"system_fingerprint":"fp_4c2851f862","obfuscation":"yL289sHy","usage":null,"id":"chatcmpl-CTQVEhwfDX7SYCiXO8MH66ASRZzQI","object":"chat.completion.chunk","model":"gpt-4.1-mini-2025-04-14"},{"service_tier":"default","created":1761129424,"choices":[{"index":0,"delta":{"tool_calls":[{"index":1,"function":{"arguments":" \"to"}}]},"logprobs":null,"finish_reason":null}],"system_fingerprint":"fp_4c2851f862","obfuscation":"fiTFYUqCxb6","usage":null,"id":"chatcmpl-CTQVEhwfDX7SYCiXO8MH66ASRZzQI","object":"chat.completion.chunk","model":"gpt-4.1-mini-2025-04-14"},{"service_tier":"default","created":1761129424,"choices":[{"index":0,"delta":{"tool_calls":[{"index":1,"function":{"arguments":"\": \"U"}}]},"logprobs":null,"finish_reason":null}],"system_fingerprint":"fp_4c2851f862","obfuscation":"YrCxtpLvf","usage":null,"id":"chatcmpl-CTQVEhwfDX7SYCiXO8MH66ASRZzQI","object":"chat.completion.chunk","model":"gpt-4.1-mini-2025-04-14"},{"service_tier":"default","created":1761129424,"choices":[{"index":0,"delta":{"tool_calls":[{"index":1,"function":{"arguments":"AH\"}"}}]},"logprobs":null,"finish_reason":null}],"system_fingerprint":"fp_4c2851f862","obfuscation":"W9IhvxD219y","usage":null,"id":"chatcmpl-CTQVEhwfDX7SYCiXO8MH66ASRZzQI","object":"chat.completion.chunk","model":"gpt-4.1-mini-2025-04-14"},{"service_tier":"default","created":1761129424,"choices":[{"index":0,"delta":{},"logprobs":null,"finish_reason":"tool_calls"}],"system_fingerprint":"fp_4c2851f862","obfuscation":"QH3S3RgpFSnvzT","usage":null,"id":"chatcmpl-CTQVEhwfDX7SYCiXO8MH66ASRZzQI","object":"chat.completion.chunk","model":"gpt-4.1-mini-2025-04-14"},{"service_tier":"default","created":1761129424,"choices":[],"system_fingerprint":"fp_4c2851f862","obfuscation":"MyKWtmd","usage":{"prompt_tokens":149,"completion_tokens":56,"total_tokens":205,"prompt_tokens_details":{"cached_tokens":0,"audio_tokens":0},"completion_tokens_details":{"reasoning_tokens":0,"audio_tokens":0,"accepted_prediction_tokens":0,"rejected_prediction_tokens":0}},"id":"chatcmpl-CTQVEhwfDX7SYCiXO8MH66ASRZzQI","object":"chat.completion.chunk","model":"gpt-4.1-mini-2025-04-14"}]
+[ {
+  "type" : "response.created",
+  "sequence_number" : 0,
+  "response" : {
+    "previous_response_id" : null,
+    "tool_choice" : "auto",
+    "top_logprobs" : 0,
+    "store" : false,
+    "top_p" : 1.0,
+    "service_tier" : "auto",
+    "tools" : [ {
+      "type" : "function",
+      "description" : "Return current time for a given IANA timezone.",
+      "name" : "get-time",
+      "parameters" : {
+        "type" : "object",
+        "properties" : {
+          "tz" : {
+            "description" : "IANA timezone, e.g. Europe/Bucharest",
+            "type" : "string"
+          }
+        },
+        "required" : [ "tz" ],
+        "additionalProperties" : false
+      },
+      "strict" : true
+    }, {
+      "type" : "function",
+      "description" : "Convert an amount between two ISO currencies using a dummy rate.",
+      "name" : "convert-currency",
+      "parameters" : {
+        "type" : "object",
+        "properties" : {
+          "amount" : {
+            "type" : "number"
+          },
+          "from" : {
+            "type" : "string"
+          },
+          "to" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "amount", "from", "to" ],
+        "additionalProperties" : false
+      },
+      "strict" : true
+    }, {
+      "type" : "function",
+      "description" : "Analyze a data trend by calling back to the LLM for natural language insights.\n  This demonstrates a recursive LLM call pattern commonly used in agentic workflows.",
+      "name" : "analyze-data-trend",
+      "parameters" : {
+        "type" : "object",
+        "properties" : {
+          "metric" : {
+            "description" : "The metric being analyzed, e.g. 'revenue', 'users'",
+            "type" : "string"
+          },
+          "values" : {
+            "description" : "Time series values",
+            "type" : "array",
+            "items" : {
+              "type" : "number"
+            }
+          },
+          "period" : {
+            "description" : "Time period, e.g. 'Q1 2025', 'last 6 months'",
+            "type" : "string"
+          }
+        },
+        "required" : [ "metric", "values", "period" ],
+        "additionalProperties" : false
+      },
+      "strict" : true
+    } ],
+    "instructions" : "You are a data analysis assistant. When users provide time-series data and ask for insights, use the analyze-data-trend tool to generate interpretations. Always call the tool rather than making up your own analysis.",
+    "background" : false,
+    "reasoning" : {
+      "effort" : null,
+      "summary" : null
+    },
+    "output" : [ ],
+    "usage" : null,
+    "safety_identifier" : null,
+    "prompt_cache_key" : null,
+    "incomplete_details" : null,
+    "status" : "in_progress",
+    "id" : "resp_0a93101cc19fa9880168fb5bd1d7d481a0a2913223de357104",
+    "max_output_tokens" : null,
+    "max_tool_calls" : null,
+    "truncation" : "disabled",
+    "error" : null,
+    "user" : null,
+    "metadata" : { },
+    "object" : "response",
+    "temperature" : 1.0,
+    "created_at" : 1761303506,
+    "parallel_tool_calls" : true,
+    "text" : {
+      "format" : {
+        "type" : "text"
+      },
+      "verbosity" : "medium"
+    },
+    "model" : "gpt-4.1-mini-2025-04-14"
+  }
+}, {
+  "type" : "response.in_progress",
+  "sequence_number" : 1,
+  "response" : {
+    "previous_response_id" : null,
+    "tool_choice" : "auto",
+    "top_logprobs" : 0,
+    "store" : false,
+    "top_p" : 1.0,
+    "service_tier" : "auto",
+    "tools" : [ {
+      "type" : "function",
+      "description" : "Return current time for a given IANA timezone.",
+      "name" : "get-time",
+      "parameters" : {
+        "type" : "object",
+        "properties" : {
+          "tz" : {
+            "description" : "IANA timezone, e.g. Europe/Bucharest",
+            "type" : "string"
+          }
+        },
+        "required" : [ "tz" ],
+        "additionalProperties" : false
+      },
+      "strict" : true
+    }, {
+      "type" : "function",
+      "description" : "Convert an amount between two ISO currencies using a dummy rate.",
+      "name" : "convert-currency",
+      "parameters" : {
+        "type" : "object",
+        "properties" : {
+          "amount" : {
+            "type" : "number"
+          },
+          "from" : {
+            "type" : "string"
+          },
+          "to" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "amount", "from", "to" ],
+        "additionalProperties" : false
+      },
+      "strict" : true
+    }, {
+      "type" : "function",
+      "description" : "Analyze a data trend by calling back to the LLM for natural language insights.\n  This demonstrates a recursive LLM call pattern commonly used in agentic workflows.",
+      "name" : "analyze-data-trend",
+      "parameters" : {
+        "type" : "object",
+        "properties" : {
+          "metric" : {
+            "description" : "The metric being analyzed, e.g. 'revenue', 'users'",
+            "type" : "string"
+          },
+          "values" : {
+            "description" : "Time series values",
+            "type" : "array",
+            "items" : {
+              "type" : "number"
+            }
+          },
+          "period" : {
+            "description" : "Time period, e.g. 'Q1 2025', 'last 6 months'",
+            "type" : "string"
+          }
+        },
+        "required" : [ "metric", "values", "period" ],
+        "additionalProperties" : false
+      },
+      "strict" : true
+    } ],
+    "instructions" : "You are a data analysis assistant. When users provide time-series data and ask for insights, use the analyze-data-trend tool to generate interpretations. Always call the tool rather than making up your own analysis.",
+    "background" : false,
+    "reasoning" : {
+      "effort" : null,
+      "summary" : null
+    },
+    "output" : [ ],
+    "usage" : null,
+    "safety_identifier" : null,
+    "prompt_cache_key" : null,
+    "incomplete_details" : null,
+    "status" : "in_progress",
+    "id" : "resp_0a93101cc19fa9880168fb5bd1d7d481a0a2913223de357104",
+    "max_output_tokens" : null,
+    "max_tool_calls" : null,
+    "truncation" : "disabled",
+    "error" : null,
+    "user" : null,
+    "metadata" : { },
+    "object" : "response",
+    "temperature" : 1.0,
+    "created_at" : 1761303506,
+    "parallel_tool_calls" : true,
+    "text" : {
+      "format" : {
+        "type" : "text"
+      },
+      "verbosity" : "medium"
+    },
+    "model" : "gpt-4.1-mini-2025-04-14"
+  }
+}, {
+  "type" : "response.output_item.added",
+  "sequence_number" : 2,
+  "output_index" : 0,
+  "item" : {
+    "id" : "fc_0a93101cc19fa9880168fb5bd37fe481a09db247297868375d",
+    "type" : "function_call",
+    "status" : "in_progress",
+    "arguments" : "",
+    "call_id" : "call_9lJIfuuW5IAKOb4kVfdqkoDJ",
+    "name" : "analyze-data-trend"
+  }
+}, {
+  "type" : "response.function_call_arguments.delta",
+  "sequence_number" : 3,
+  "item_id" : "fc_0a93101cc19fa9880168fb5bd37fe481a09db247297868375d",
+  "output_index" : 0,
+  "delta" : "{",
+  "obfuscation" : "FfJORXg2oHG3AnS"
+}, {
+  "type" : "response.function_call_arguments.delta",
+  "sequence_number" : 4,
+  "item_id" : "fc_0a93101cc19fa9880168fb5bd37fe481a09db247297868375d",
+  "output_index" : 0,
+  "delta" : "\"metric",
+  "obfuscation" : "OOeCNg38A"
+}, {
+  "type" : "response.function_call_arguments.delta",
+  "sequence_number" : 5,
+  "item_id" : "fc_0a93101cc19fa9880168fb5bd37fe481a09db247297868375d",
+  "output_index" : 0,
+  "delta" : "\":",
+  "obfuscation" : "3vZHLcv3Axrwrf"
+}, {
+  "type" : "response.function_call_arguments.delta",
+  "sequence_number" : 6,
+  "item_id" : "fc_0a93101cc19fa9880168fb5bd37fe481a09db247297868375d",
+  "output_index" : 0,
+  "delta" : "\"re",
+  "obfuscation" : "dlTxs2T5bkyLy"
+}, {
+  "type" : "response.function_call_arguments.delta",
+  "sequence_number" : 7,
+  "item_id" : "fc_0a93101cc19fa9880168fb5bd37fe481a09db247297868375d",
+  "output_index" : 0,
+  "delta" : "venue",
+  "obfuscation" : "KqGxPzytiD9"
+}, {
+  "type" : "response.function_call_arguments.delta",
+  "sequence_number" : 8,
+  "item_id" : "fc_0a93101cc19fa9880168fb5bd37fe481a09db247297868375d",
+  "output_index" : 0,
+  "delta" : "\",",
+  "obfuscation" : "FDXUoSyY2EQhnC"
+}, {
+  "type" : "response.function_call_arguments.delta",
+  "sequence_number" : 9,
+  "item_id" : "fc_0a93101cc19fa9880168fb5bd37fe481a09db247297868375d",
+  "output_index" : 0,
+  "delta" : "\"values",
+  "obfuscation" : "P8mXBHkzH"
+}, {
+  "type" : "response.function_call_arguments.delta",
+  "sequence_number" : 10,
+  "item_id" : "fc_0a93101cc19fa9880168fb5bd37fe481a09db247297868375d",
+  "output_index" : 0,
+  "delta" : "\":[",
+  "obfuscation" : "TOqgWWYWzFSot"
+}, {
+  "type" : "response.function_call_arguments.delta",
+  "sequence_number" : 11,
+  "item_id" : "fc_0a93101cc19fa9880168fb5bd37fe481a09db247297868375d",
+  "output_index" : 0,
+  "delta" : "50000,",
+  "obfuscation" : "QjrxQbMdS5"
+}, {
+  "type" : "response.function_call_arguments.delta",
+  "sequence_number" : 12,
+  "item_id" : "fc_0a93101cc19fa9880168fb5bd37fe481a09db247297868375d",
+  "output_index" : 0,
+  "delta" : "55000,",
+  "obfuscation" : "6KC3WM2QpB"
+}, {
+  "type" : "response.function_call_arguments.delta",
+  "sequence_number" : 13,
+  "item_id" : "fc_0a93101cc19fa9880168fb5bd37fe481a09db247297868375d",
+  "output_index" : 0,
+  "delta" : "58000,",
+  "obfuscation" : "qwbVBFQL9a"
+}, {
+  "type" : "response.function_call_arguments.delta",
+  "sequence_number" : 14,
+  "item_id" : "fc_0a93101cc19fa9880168fb5bd37fe481a09db247297868375d",
+  "output_index" : 0,
+  "delta" : "62000],",
+  "obfuscation" : "jIIrAVxqC"
+}, {
+  "type" : "response.function_call_arguments.delta",
+  "sequence_number" : 15,
+  "item_id" : "fc_0a93101cc19fa9880168fb5bd37fe481a09db247297868375d",
+  "output_index" : 0,
+  "delta" : "\"period",
+  "obfuscation" : "MjNe3ga8A"
+}, {
+  "type" : "response.function_call_arguments.delta",
+  "sequence_number" : 16,
+  "item_id" : "fc_0a93101cc19fa9880168fb5bd37fe481a09db247297868375d",
+  "output_index" : 0,
+  "delta" : "\":",
+  "obfuscation" : "hlb4qNhA2ESqoi"
+}, {
+  "type" : "response.function_call_arguments.delta",
+  "sequence_number" : 17,
+  "item_id" : "fc_0a93101cc19fa9880168fb5bd37fe481a09db247297868375d",
+  "output_index" : 0,
+  "delta" : "\"Q",
+  "obfuscation" : "SVkKv2AYdXJO8r"
+}, {
+  "type" : "response.function_call_arguments.delta",
+  "sequence_number" : 18,
+  "item_id" : "fc_0a93101cc19fa9880168fb5bd37fe481a09db247297868375d",
+  "output_index" : 0,
+  "delta" : "1",
+  "obfuscation" : "njRtFFC57dLndFB"
+}, {
+  "type" : "response.function_call_arguments.delta",
+  "sequence_number" : 19,
+  "item_id" : "fc_0a93101cc19fa9880168fb5bd37fe481a09db247297868375d",
+  "output_index" : 0,
+  "delta" : "\"}",
+  "obfuscation" : "h2JUplPrVIeMrm"
+}, {
+  "type" : "response.function_call_arguments.done",
+  "sequence_number" : 20,
+  "item_id" : "fc_0a93101cc19fa9880168fb5bd37fe481a09db247297868375d",
+  "output_index" : 0,
+  "arguments" : "{\"metric\":\"revenue\",\"values\":[50000,55000,58000,62000],\"period\":\"Q1\"}"
+}, {
+  "type" : "response.output_item.done",
+  "sequence_number" : 21,
+  "output_index" : 0,
+  "item" : {
+    "id" : "fc_0a93101cc19fa9880168fb5bd37fe481a09db247297868375d",
+    "type" : "function_call",
+    "status" : "completed",
+    "arguments" : "{\"metric\":\"revenue\",\"values\":[50000,55000,58000,62000],\"period\":\"Q1\"}",
+    "call_id" : "call_9lJIfuuW5IAKOb4kVfdqkoDJ",
+    "name" : "analyze-data-trend"
+  }
+}, {
+  "type" : "response.output_item.added",
+  "sequence_number" : 22,
+  "output_index" : 1,
+  "item" : {
+    "id" : "fc_0a93101cc19fa9880168fb5bd4078881a082a3ce11fa151383",
+    "type" : "function_call",
+    "status" : "in_progress",
+    "arguments" : "",
+    "call_id" : "call_vuD5KmaxyQ55WRKCMUZOJ4hz",
+    "name" : "analyze-data-trend"
+  }
+}, {
+  "type" : "response.function_call_arguments.delta",
+  "sequence_number" : 23,
+  "item_id" : "fc_0a93101cc19fa9880168fb5bd4078881a082a3ce11fa151383",
+  "output_index" : 1,
+  "delta" : "{",
+  "obfuscation" : "hPFTrRLvzBmokZu"
+}, {
+  "type" : "response.function_call_arguments.delta",
+  "sequence_number" : 24,
+  "item_id" : "fc_0a93101cc19fa9880168fb5bd4078881a082a3ce11fa151383",
+  "output_index" : 1,
+  "delta" : "\"metric",
+  "obfuscation" : "Adu9kuY84"
+}, {
+  "type" : "response.function_call_arguments.delta",
+  "sequence_number" : 25,
+  "item_id" : "fc_0a93101cc19fa9880168fb5bd4078881a082a3ce11fa151383",
+  "output_index" : 1,
+  "delta" : "\":",
+  "obfuscation" : "g1AXeVsaO2RqGC"
+}, {
+  "type" : "response.function_call_arguments.delta",
+  "sequence_number" : 26,
+  "item_id" : "fc_0a93101cc19fa9880168fb5bd4078881a082a3ce11fa151383",
+  "output_index" : 1,
+  "delta" : "\"customer",
+  "obfuscation" : "Qaz7W75"
+}, {
+  "type" : "response.function_call_arguments.delta",
+  "sequence_number" : 27,
+  "item_id" : "fc_0a93101cc19fa9880168fb5bd4078881a082a3ce11fa151383",
+  "output_index" : 1,
+  "delta" : " count",
+  "obfuscation" : "wfjVeuKAo8"
+}, {
+  "type" : "response.function_call_arguments.delta",
+  "sequence_number" : 28,
+  "item_id" : "fc_0a93101cc19fa9880168fb5bd4078881a082a3ce11fa151383",
+  "output_index" : 1,
+  "delta" : "\",",
+  "obfuscation" : "gfOmpFPNJUwnaq"
+}, {
+  "type" : "response.function_call_arguments.delta",
+  "sequence_number" : 29,
+  "item_id" : "fc_0a93101cc19fa9880168fb5bd4078881a082a3ce11fa151383",
+  "output_index" : 1,
+  "delta" : "\"values",
+  "obfuscation" : "OJWErZx0t"
+}, {
+  "type" : "response.function_call_arguments.delta",
+  "sequence_number" : 30,
+  "item_id" : "fc_0a93101cc19fa9880168fb5bd4078881a082a3ce11fa151383",
+  "output_index" : 1,
+  "delta" : "\":[",
+  "obfuscation" : "tNU3yBfiZND2w"
+}, {
+  "type" : "response.function_call_arguments.delta",
+  "sequence_number" : 31,
+  "item_id" : "fc_0a93101cc19fa9880168fb5bd4078881a082a3ce11fa151383",
+  "output_index" : 1,
+  "delta" : "100,",
+  "obfuscation" : "tF1hoVFzosb5"
+}, {
+  "type" : "response.function_call_arguments.delta",
+  "sequence_number" : 32,
+  "item_id" : "fc_0a93101cc19fa9880168fb5bd4078881a082a3ce11fa151383",
+  "output_index" : 1,
+  "delta" : "110,",
+  "obfuscation" : "8Fqgor9b46Oo"
+}, {
+  "type" : "response.function_call_arguments.delta",
+  "sequence_number" : 33,
+  "item_id" : "fc_0a93101cc19fa9880168fb5bd4078881a082a3ce11fa151383",
+  "output_index" : 1,
+  "delta" : "105,",
+  "obfuscation" : "FgQ1QmrIyit2"
+}, {
+  "type" : "response.function_call_arguments.delta",
+  "sequence_number" : 34,
+  "item_id" : "fc_0a93101cc19fa9880168fb5bd4078881a082a3ce11fa151383",
+  "output_index" : 1,
+  "delta" : "115],",
+  "obfuscation" : "sId2VdDMuFT"
+}, {
+  "type" : "response.function_call_arguments.delta",
+  "sequence_number" : 35,
+  "item_id" : "fc_0a93101cc19fa9880168fb5bd4078881a082a3ce11fa151383",
+  "output_index" : 1,
+  "delta" : "\"period",
+  "obfuscation" : "8s7X915fx"
+}, {
+  "type" : "response.function_call_arguments.delta",
+  "sequence_number" : 36,
+  "item_id" : "fc_0a93101cc19fa9880168fb5bd4078881a082a3ce11fa151383",
+  "output_index" : 1,
+  "delta" : "\":",
+  "obfuscation" : "heVDgIklzhMVMK"
+}, {
+  "type" : "response.function_call_arguments.delta",
+  "sequence_number" : 37,
+  "item_id" : "fc_0a93101cc19fa9880168fb5bd4078881a082a3ce11fa151383",
+  "output_index" : 1,
+  "delta" : "\"Q",
+  "obfuscation" : "q0Rm2YZL0sAMF5"
+}, {
+  "type" : "response.function_call_arguments.delta",
+  "sequence_number" : 38,
+  "item_id" : "fc_0a93101cc19fa9880168fb5bd4078881a082a3ce11fa151383",
+  "output_index" : 1,
+  "delta" : "1",
+  "obfuscation" : "i3kuywBLI7Q47C1"
+}, {
+  "type" : "response.function_call_arguments.delta",
+  "sequence_number" : 39,
+  "item_id" : "fc_0a93101cc19fa9880168fb5bd4078881a082a3ce11fa151383",
+  "output_index" : 1,
+  "delta" : "\"}",
+  "obfuscation" : "5hBqIqzHLLRtbw"
+}, {
+  "type" : "response.function_call_arguments.done",
+  "sequence_number" : 40,
+  "item_id" : "fc_0a93101cc19fa9880168fb5bd4078881a082a3ce11fa151383",
+  "output_index" : 1,
+  "arguments" : "{\"metric\":\"customer count\",\"values\":[100,110,105,115],\"period\":\"Q1\"}"
+}, {
+  "type" : "response.output_item.done",
+  "sequence_number" : 41,
+  "output_index" : 1,
+  "item" : {
+    "id" : "fc_0a93101cc19fa9880168fb5bd4078881a082a3ce11fa151383",
+    "type" : "function_call",
+    "status" : "completed",
+    "arguments" : "{\"metric\":\"customer count\",\"values\":[100,110,105,115],\"period\":\"Q1\"}",
+    "call_id" : "call_vuD5KmaxyQ55WRKCMUZOJ4hz",
+    "name" : "analyze-data-trend"
+  }
+}, {
+  "type" : "response.completed",
+  "sequence_number" : 42,
+  "response" : {
+    "previous_response_id" : null,
+    "tool_choice" : "auto",
+    "top_logprobs" : 0,
+    "store" : false,
+    "top_p" : 1.0,
+    "service_tier" : "default",
+    "tools" : [ {
+      "type" : "function",
+      "description" : "Return current time for a given IANA timezone.",
+      "name" : "get-time",
+      "parameters" : {
+        "type" : "object",
+        "properties" : {
+          "tz" : {
+            "description" : "IANA timezone, e.g. Europe/Bucharest",
+            "type" : "string"
+          }
+        },
+        "required" : [ "tz" ],
+        "additionalProperties" : false
+      },
+      "strict" : true
+    }, {
+      "type" : "function",
+      "description" : "Convert an amount between two ISO currencies using a dummy rate.",
+      "name" : "convert-currency",
+      "parameters" : {
+        "type" : "object",
+        "properties" : {
+          "amount" : {
+            "type" : "number"
+          },
+          "from" : {
+            "type" : "string"
+          },
+          "to" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "amount", "from", "to" ],
+        "additionalProperties" : false
+      },
+      "strict" : true
+    }, {
+      "type" : "function",
+      "description" : "Analyze a data trend by calling back to the LLM for natural language insights.\n  This demonstrates a recursive LLM call pattern commonly used in agentic workflows.",
+      "name" : "analyze-data-trend",
+      "parameters" : {
+        "type" : "object",
+        "properties" : {
+          "metric" : {
+            "description" : "The metric being analyzed, e.g. 'revenue', 'users'",
+            "type" : "string"
+          },
+          "values" : {
+            "description" : "Time series values",
+            "type" : "array",
+            "items" : {
+              "type" : "number"
+            }
+          },
+          "period" : {
+            "description" : "Time period, e.g. 'Q1 2025', 'last 6 months'",
+            "type" : "string"
+          }
+        },
+        "required" : [ "metric", "values", "period" ],
+        "additionalProperties" : false
+      },
+      "strict" : true
+    } ],
+    "instructions" : "You are a data analysis assistant. When users provide time-series data and ask for insights, use the analyze-data-trend tool to generate interpretations. Always call the tool rather than making up your own analysis.",
+    "background" : false,
+    "reasoning" : {
+      "effort" : null,
+      "summary" : null
+    },
+    "output" : [ {
+      "id" : "fc_0a93101cc19fa9880168fb5bd37fe481a09db247297868375d",
+      "type" : "function_call",
+      "status" : "completed",
+      "arguments" : "{\"metric\":\"revenue\",\"values\":[50000,55000,58000,62000],\"period\":\"Q1\"}",
+      "call_id" : "call_9lJIfuuW5IAKOb4kVfdqkoDJ",
+      "name" : "analyze-data-trend"
+    }, {
+      "id" : "fc_0a93101cc19fa9880168fb5bd4078881a082a3ce11fa151383",
+      "type" : "function_call",
+      "status" : "completed",
+      "arguments" : "{\"metric\":\"customer count\",\"values\":[100,110,105,115],\"period\":\"Q1\"}",
+      "call_id" : "call_vuD5KmaxyQ55WRKCMUZOJ4hz",
+      "name" : "analyze-data-trend"
+    } ],
+    "usage" : {
+      "input_tokens" : 139,
+      "input_tokens_details" : {
+        "cached_tokens" : 0
+      },
+      "output_tokens" : 86,
+      "output_tokens_details" : {
+        "reasoning_tokens" : 0
+      },
+      "total_tokens" : 225
+    },
+    "safety_identifier" : null,
+    "prompt_cache_key" : null,
+    "incomplete_details" : null,
+    "status" : "completed",
+    "id" : "resp_0a93101cc19fa9880168fb5bd1d7d481a0a2913223de357104",
+    "max_output_tokens" : null,
+    "max_tool_calls" : null,
+    "truncation" : "disabled",
+    "error" : null,
+    "user" : null,
+    "metadata" : { },
+    "object" : "response",
+    "temperature" : 1.0,
+    "created_at" : 1761303506,
+    "parallel_tool_calls" : true,
+    "text" : {
+      "format" : {
+        "type" : "text"
+      },
+      "verbosity" : "medium"
+    },
+    "model" : "gpt-4.1-mini-2025-04-14"
+  }
+} ]
