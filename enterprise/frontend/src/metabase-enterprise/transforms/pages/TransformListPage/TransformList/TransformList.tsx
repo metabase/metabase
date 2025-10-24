@@ -44,7 +44,7 @@ const TransformsTreeNode = (props: TreeNodeProps) => (
       }
 
       return (
-        <Box p="sm" style={{ overflow: "hidden" }}>
+        <Box p="sm" style={{ overflow: "hidden", fontWeight: "normal" }}>
           <BenchFlatListItemContent
             label={transform.name}
             icon="table2"
