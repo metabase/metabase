@@ -4,7 +4,6 @@
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [metabase.analytics.core :as analytics]
-   [metabase.app-db.core :as app-db]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.search.appdb.specialization.api :as specialization]
@@ -206,7 +205,7 @@
                 (catch Exception e
                   (log/error e "Error creating pending index table, cleaning up metadata")
                   (try
-                    (t2/with-connection [safe-conn (app-db/app-db)]
+                    (t2/with-connection [safe-conn (mdb/app-db)]
                       (t2/delete! :conn safe-conn :model/SearchIndexMetadata :index_name (name table-name)))
                     (catch Exception e
                       (log/warn e "Error clearing out search metadata after failure")))
