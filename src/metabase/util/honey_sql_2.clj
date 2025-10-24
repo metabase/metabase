@@ -436,7 +436,7 @@
          (#{:millisecond :second :minute :hour :day :week :month :year} unit)]}
   [(clojure.core/format "INTERVAL '%s %s'" (num amount) (name unit))])
 
-(sql/register-fn! ::postgres-interval #'format-interval)
+(sql/register-fn! ::postgres-interval #'format-postgres-interval)
 
 (defn- pg-interval [amount unit]
   (with-database-type-info [::postgres-interval amount unit] "interval"))
