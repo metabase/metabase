@@ -10,6 +10,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { Box } from "metabase/ui";
 import { useListTransformJobsQuery } from "metabase-enterprise/api";
 import type { TransformJob, TransformJobId } from "metabase-types/api";
 
@@ -42,14 +43,16 @@ export function JobList({ selectedId, onCollapse }: JobListProps) {
         jobs.length === 0 ? (
           <ListEmptyState label={t`No jobs yet`} />
         ) : (
-          jobs.map((job) => (
-            <JobItem
-              key={job.id}
-              job={job}
-              systemTimezone={systemTimezone ?? ""}
-              isActive={selectedId === job.id}
-            />
-          ))
+          <Box px="md">
+            {jobs.map((job) => (
+              <JobItem
+                key={job.id}
+                job={job}
+                systemTimezone={systemTimezone ?? ""}
+                isActive={selectedId === job.id}
+              />
+            ))}
+          </Box>
         )
       }
     />
@@ -82,25 +85,3 @@ const JobItem = ({
     />
   );
 };
-
-// type JobTransformCountProps = {
-//   jobId: TransformJobId;
-// };
-
-/**
- * we shouldn't be making N+1 requests like this, we should hydrate it on the list endpoint if we want it
- */
-// function JobTransformCount({ jobId }: JobTransformCountProps) {
-//   const {
-//     data = [],
-//     isLoading,
-//     error,
-//   } = useListTransformJobTransformsQuery(jobId);
-//   if (isLoading) {
-//     return <Loader size="sm" />;
-//   }
-//   if (error != null) {
-//     return <FixedSizeIcon name="warning" tooltip={getErrorMessage(error)} />;
-//   }
-//   return <>{data.length}</>;
-// }
