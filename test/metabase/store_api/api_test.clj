@@ -98,34 +98,32 @@
        ~@body)))
 
 (deftest ^:parallel plans-endpoint-test
-  (with-store-api-mocks
-    (testing "GET /api/store-api/plans"
+  (testing "GET /api/store-api/plans"
+    (with-store-api-mocks
       (testing "should return a list of plans"
         (let [response (mt/user-http-request :rasta :get 200 "store-api/plans")]
           (is (sequential? response))
           (is (= 2 (count response)))
           (is (= "Open Source" (-> response first :name)))
-          (is (= "Pro" (-> response second :name))))))
-    (testing "accessible without authentication"
-      (let [response (mt/client :get 200 "store-api/plans")]
-        (is (sequential? response))
-        (is (pos? (count response)))))))
-
+          (is (= "Pro" (-> response second :name)))))
+      (testing "accessible without authentication"
+        (let [response (mt/client :get 200 "store-api/plans")]
+          (is (sequential? response))
+          (is (pos? (count response))))))))
 (deftest ^:parallel addons-endpoint-test
-  (with-store-api-mocks
-    (testing "GET /api/store-api/addons"
+  (testing "GET /api/store-api/addons"
+    (with-store-api-mocks
       (testing "should return a list of add-ons"
         (let [response (mt/user-http-request :rasta :get 200 "store-api/addons")]
           (is (sequential? response))
           (is (= 2 (count response)))
           (is (= "Add-on 1" (-> response first :name)))
-          (is (= "Add-on 2" (-> response second :name)))))))
-  (testing "accessible without authentication"
-    (with-store-api-mocks
-      (let [response (mt/client :get 200 "store-api/addons")]
-        (is (sequential? response))
-        (is (pos? (count response)))))))
-
+          (is (= "Add-on 2" (-> response second :name)))))
+      (testing "accessible without authentication"
+        (with-store-api-mocks
+          (let [response (mt/client :get 200 "store-api/addons")]
+            (is (sequential? response))
+            (is (pos? (count response)))))))))
 (deftest ^:parallel error-if-store-api-url-is-not-configured
   (testing "GET /api/store-api/ without store-api-url configured will throw an error with nice message"
     (mt/with-dynamic-fn-redefs [store-api/store-api-url (constantly nil)]
