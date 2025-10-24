@@ -33,9 +33,7 @@
    {:keys [branch force]} :- [:map [:branch {:optional true} ms/NonBlankString]
                               [:force {:optional true} :boolean]]]
   (api/check-superuser)
-  (when-not (settings/remote-sync-enabled)
-    (throw (ex-info "Remote sync is not configured."
-                    {:status-code 400})))
+  (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
   (let [task-id (impl/async-import! (or branch (settings/remote-sync-branch)) force {})]
     {:status :success
      :task_id task-id
@@ -76,11 +74,8 @@
                                        [:branch {:optional true} ms/NonBlankString]
                                        [:force {:optional true} :boolean]]
   (api/check-superuser)
-  (when-not (settings/remote-sync-enabled)
-    (throw (ex-info "Remote sync is not configured."
-                    {:status-code 400})))
-  (when (= (settings/remote-sync-type) :production)
-    (throw (ex-info "Exports are only allowed when remote-sync-type is set to 'development'" {:status-code 400})))
+  (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
+  (api/check-400 (= (settings/remote-sync-type) :development) "Exports are only allowed when remote-sync-type is set to 'development'")
   {:message "Export task started"
    :task_id (impl/async-export! (or branch (settings/remote-sync-branch))
                                 (or force false)
@@ -111,9 +106,8 @@
        [:remote-sync-type {:optional true} [:maybe [:enum :production :development]]]
        [:remote-sync-branch {:optional true} [:maybe :string]]]]
   (api/check-superuser)
-  (when (and (remote-sync.object/dirty-global?) (= :production remote-sync-type))
-    (throw (ex-info "There are unsaved changes in the Remote Sync collection which will be overwritten switching to production mode."
-                    {:status-code 400})))
+  (api/check-400 (not (and (remote-sync.object/dirty-global?) (= :production remote-sync-type)))
+                 "There are unsaved changes in the Remote Sync collection which will be overwritten switching to production mode.")
   (try
     (settings/check-and-update-remote-settings! settings)
     (catch Exception e
@@ -134,7 +128,8 @@
   Requires superuser permissions."
   []
   (api/check-superuser)
-  (if-let [source (source/source-from-settings)]
+  (let [source (source/source-from-settings)]
+    (api/check-400 source "Source not configured. Please configure MB_GIT_SOURCE_REPO_URL environment variable.")
     (try
       (let [branch-list (source.p/branches source)]
         {:items branch-list})
@@ -142,9 +137,7 @@
         (log/errorf e "Failed to get branches from source: %s" (ex-message e))
         (let [error-msg (impl/source-error-message e)]
           (throw (ex-info error-msg {:status-code 400}
-                          e)))))
-    (throw (ex-info "Source not configured. Please configure MB_GIT_SOURCE_REPO_URL environment variable."
-                    {:status-code 400}))))
+                          e)))))))
 
 (api.macros/defendpoint :post "/create-branch" :- remote-sync.schema/CreateBranchResponse
   "Create a new branch from the current remote-sync branch and switches the current remote-sync branch to it.
@@ -155,12 +148,8 @@
   (api/check-superuser)
   (let [base-branch (or (remote-sync.task/last-version) (settings/remote-sync-branch))
         source (source/source-from-settings)]
-    (when-not source
-      (throw (ex-info "Source not configured"
-                      {:status-code 400})))
-    (when-not base-branch
-      (throw (ex-info "Base commit not found"
-                      {:status-code 400})))
+    (api/check-400 source "Source not configured")
+    (api/check-400 base-branch "Base commit not found")
     (try
       (source.p/create-branch source name base-branch)
       (settings/remote-sync-branch! name)
@@ -179,12 +168,9 @@
                                                  [:new_branch ms/NonBlankString]
                                                  [:message ms/NonBlankString]]]
   (api/check-superuser)
-  (when (not= (settings/remote-sync-type) :development)
-    (throw (ex-info "Stash is only allowed when remote-sync-type is set to 'development'" {:status-code 400})))
+  (api/check-400 (= (settings/remote-sync-type) :development) "Stash is only allowed when remote-sync-type is set to 'development'")
   (let [source (source/source-from-settings)]
-    (when (nil? source)
-      (throw (ex-info "Source not configured"
-                      {:status-code 400})))
+    (api/check-400 source  "Source not configured")
     (try
       (source.p/create-branch source new-branch (settings/remote-sync-branch))
       {:status "success"

@@ -73,7 +73,7 @@
 (deftest branches-endpoint-errors-when-git-not-configured-test
   (testing "GET /api/ee/remote-sync/branches errors when git source not configured"
     (with-redefs [source/source-from-settings (constantly nil)]
-      (is (= "Git source not configured. Please configure MB_GIT_SOURCE_REPO_URL environment variable."
+      (is (= "Source not configured. Please configure MB_GIT_SOURCE_REPO_URL environment variable."
              (mt/user-http-request :crowberto :get 400 "ee/remote-sync/branches"))))))
 
 (deftest branches-endpoint-handles-repository-errors-test
