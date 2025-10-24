@@ -1,5 +1,6 @@
 (ns metabase-enterprise.transforms.api
   (:require
+   [medley.core :as m]
    [metabase-enterprise.transforms.api.transform-job]
    [metabase-enterprise.transforms.api.transform-tag]
    [metabase-enterprise.transforms.canceling :as transforms.canceling]
@@ -8,6 +9,7 @@
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase-enterprise.transforms.models.transform-run-cancelation :as transform-run-cancelation]
    [metabase-enterprise.transforms.ordering :as transforms.ordering]
+   [metabase-enterprise.transforms.schema :as transforms.schema]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -15,6 +17,7 @@
    [metabase.api.util.handlers :as handlers]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.lib-be.core :as lib-be]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -29,26 +32,6 @@
          metabase-enterprise.transforms.api.transform-tag/keep-me)
 
 (set! *warn-on-reflection* true)
-
-(mr/def ::transform-source
-  [:multi {:dispatch (comp keyword :type)}
-   [:query
-    [:map
-     [:type [:= "query"]]
-     [:query [:map [:database :int]]]]]
-   [:python
-    [:map {:closed true}
-     [:source-database {:optional true} :int]
-     [:source-tables   [:map-of :string :int]]
-     [:type [:= "python"]]
-     [:body :string]]]])
-
-(mr/def ::transform-target
-  [:map
-   [:database {:optional true} :int]
-   [:type [:enum "table"]]
-   [:schema {:optional true} [:or ms/NonBlankString :nil]]
-   [:name :string]])
 
 (mr/def ::run-trigger
   [:enum "none" "global-schedule"])
@@ -70,13 +53,13 @@
   [transform]
   (let [database (api/check-400 (t2/select-one :model/Database (transforms.i/target-db-id transform))
                                 (deferred-tru "The target database cannot be found."))
-        feature (transforms.util/required-database-feature transform)]
+        features (transforms.util/required-database-features transform)]
     (api/check-400 (not (:is_sample database))
                    (deferred-tru "Cannot run transforms on the sample database."))
     (api/check-400 (not (:is_audit database))
                    (deferred-tru "Cannot run transforms on audit databases."))
-    (api/check-400 (driver.u/supports? (:engine database) feature database)
-                   (deferred-tru "The database does not support the requested transform target type."))
+    (api/check-400 (every? (fn [feature] (driver.u/supports? (:engine database) feature database)) features)
+                   (deferred-tru "The database does not support the requested transform features."))
     (api/check-400 (not (transforms.util/db-routing-enabled? database))
                    (deferred-tru "Transforms are not supported on databases with DB routing enabled."))))
 
@@ -109,13 +92,14 @@
    body :- [:map
             [:name :string]
             [:description {:optional true} [:maybe :string]]
-            [:source ::transform-source]
-            [:target ::transform-target]
+            [:source ::transforms.schema/transform-source]
+            [:target ::transforms.schema/transform-target]
             [:run_trigger {:optional true} ::run-trigger]
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (api/check-superuser)
   (check-database-feature body)
   (check-feature-enabled! body)
+
   (api/check (not (transforms.util/target-table-exists? body))
              403
              (deferred-tru "A table with that name already exists."))
@@ -184,8 +168,8 @@
    body :- [:map
             [:name {:optional true} :string]
             [:description {:optional true} [:maybe :string]]
-            [:source {:optional true} ::transform-source]
-            [:target {:optional true} ::transform-target]
+            [:source {:optional true} ::transforms.schema/transform-source]
+            [:target {:optional true} ::transforms.schema/transform-target]
             [:run_trigger {:optional true} ::run-trigger]
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "put transform" id)
@@ -194,6 +178,7 @@
                     ;; Cycle detection should occur within the transaction to avoid race
                     (let [old (t2/select-one :model/Transform id)
                           new (merge old body)
+                          new (m/update-existing-in new [:source :query] lib-be/normalize-query)
                           target-fields #(-> % :target (select-keys [:schema :name]))]
                       ;; we must validate on a full transform object
                       (check-feature-enabled! new)

@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import Button from "metabase/common/components/Button";
 import EditBar from "metabase/common/components/EditBar";
-import { Tooltip } from "metabase/ui";
+import { Flex, Text, Tooltip } from "metabase/ui";
 
 import type { QueryValidationResult } from "../types";
 
@@ -13,6 +13,7 @@ type EditorHeaderProps = {
   isSaving: boolean;
   onSave: () => void;
   onCancel: () => void;
+  transformId?: number;
 };
 
 export function EditorHeader({
@@ -22,6 +23,7 @@ export function EditorHeader({
   isSaving,
   onSave,
   onCancel,
+  transformId,
 }: EditorHeaderProps) {
   const canSave =
     (isNew || isQueryDirty) && validationResult.isValid && !isSaving;
@@ -48,9 +50,9 @@ export function EditorHeader({
 
 function getTitle(isNew: boolean) {
   if (isNew) {
-    return t`You’re creating a new transform`;
+    return t`You're creating a new transform`;
   } else {
-    return t`You’re editing a transform`;
+    return t`You're editing a transform`;
   }
 }
 

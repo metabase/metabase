@@ -40,6 +40,8 @@ type QueryEditorProps = {
   isSaving?: boolean;
   onSave: (source: QueryTransformSource) => void;
   onCancel: () => void;
+  transformId?: number;
+  queryLimit?: number;
 };
 
 export function QueryEditor({
@@ -48,6 +50,8 @@ export function QueryEditor({
   isSaving = false,
   onSave,
   onCancel,
+  transformId,
+  queryLimit,
 }: QueryEditorProps) {
   const { question, isQueryDirty, setQuestion } = useQueryState(
     initialSource.query,
@@ -61,7 +65,10 @@ export function QueryEditor({
     isResultDirty,
     runQuery,
     cancelQuery,
-  } = useQueryResults(question);
+  } = useQueryResults(question, {
+    transformId,
+    queryLimit,
+  });
   const { isNative } = Lib.queryDisplayInfo(question.query());
   const [isShowingNativeQueryPreview, toggleNativeQueryPreview] = useToggle();
   const [isPreviewQueryModalOpen, togglePreviewQueryModal] = useToggle();
@@ -72,7 +79,19 @@ export function QueryEditor({
   };
 
   const handleSave = () => {
-    onSave({ type: "query", query: question.datasetQuery() });
+    // Preserve the source-incremental-strategy when saving
+    const newSource: QueryTransformSource = {
+      type: "query",
+      query: question.datasetQuery(),
+    };
+
+    // Copy over the incremental strategy if it exists
+    if (initialSource["source-incremental-strategy"]) {
+      newSource["source-incremental-strategy"] =
+        initialSource["source-incremental-strategy"];
+    }
+
+    onSave(newSource);
   };
 
   const handleCmdEnter = () => {
@@ -152,6 +171,7 @@ export function QueryEditor({
           isQueryDirty={isQueryDirty}
           onSave={handleSave}
           onCancel={onCancel}
+          transformId={transformId}
         />
         <Flex h="100%" w="100%" mih="0">
           <Stack flex="2 1 100%" pos="relative">

@@ -98,6 +98,10 @@ export function TransformQueryPageBody({
       />
     );
   }
+
+  const queryLimit =
+    transform.source["source-incremental-strategy"]?.["query-limit"];
+
   return (
     <>
       <QueryEditor
@@ -106,6 +110,8 @@ export function TransformQueryPageBody({
         isSaving={isSaving || isCheckingDependencies}
         onSave={handleSaveSource}
         onCancel={handleCancel}
+        transformId={transform.id}
+        queryLimit={queryLimit}
       />
       {isConfirmationShown && checkData != null && (
         <PLUGIN_DEPENDENCIES.CheckDependenciesModal
