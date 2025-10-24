@@ -35,8 +35,6 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "cljs"
       - name: Restore ESLint cache
         uses: actions/cache@v4
         with:
@@ -63,8 +61,6 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "cljs"
       - run: yarn build-pure:cljs
         name: Compile CLJS
       - run: yarn type-check-pure
@@ -88,8 +84,6 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "cljs"
       - name: Run frontend unit tests
         run: yarn run test-unit --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }}
       - name: Upload Test Results
@@ -114,8 +108,6 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "cljs"
       - name: Run frontend timezones tests
         run: yarn run test-timezones
 
