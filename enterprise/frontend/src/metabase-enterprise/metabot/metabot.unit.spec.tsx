@@ -117,11 +117,13 @@ const input = async () => {
 const enterChatMessage = async (message: string, send = true) => {
   // using userEvent.type works locally but in CI characters are sometimes dropped
   // so "Who is your favorite?" becomes something like "Woi or fvrite?"
-  // hard coded delay is a temp fix to work around this...
-  await userEvent.type(await input(), message, { delay: 10 });
+  const editor = await input();
+  editor.textContent = message;
+  fireEvent.input(editor, {
+    target: { textContent: message },
+  });
   if (send) {
-    fireEvent.focus(await input());
-    await userEvent.keyboard("{Enter}");
+    await userEvent.type(await input(), "{Enter}");
   }
 };
 const closeChatButton = () => screen.findByTestId("metabot-close-chat");
