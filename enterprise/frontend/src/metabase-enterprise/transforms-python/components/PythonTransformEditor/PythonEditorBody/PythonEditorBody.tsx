@@ -111,7 +111,11 @@ function MaybeResizableBox({
   children?: ReactNode;
 }) {
   if (!resizable) {
-    return <Box h="100%">{children}</Box>;
+    return (
+      <Box w="100%" h="100%">
+        {children}
+      </Box>
+    );
   }
 
   return (

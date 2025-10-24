@@ -1,7 +1,7 @@
 import { useHotkeys } from "@mantine/hooks";
 import { useState } from "react";
 
-import { Stack } from "metabase/ui";
+import { Flex, Stack } from "metabase/ui";
 import { EditorHeader } from "metabase-enterprise/transforms/components/QueryEditor/EditorHeader";
 import { useRegisterMetabotTransformContext } from "metabase-enterprise/transforms/hooks/use-register-transform-metabot-context";
 import type {
@@ -15,6 +15,7 @@ import type {
 import { PythonDataPicker } from "./PythonDataPicker";
 import { PythonEditorBody } from "./PythonEditorBody";
 import { PythonEditorResults } from "./PythonEditorResults";
+import S from "./PythonTransformEditor.module.css";
 import {
   getValidationResult,
   isPythonTransformSource,
@@ -131,6 +132,7 @@ export function PythonTransformEditor({
       gap={0}
     >
       <EditorHeader
+        transform={transform}
         isNew={isNew}
         isSaving={isSaving}
         hasProposedQuery={!!proposedSource}
@@ -139,24 +141,26 @@ export function PythonTransformEditor({
         validationResult={validationResult}
         isQueryDirty={isSourceDirty}
       />
-      <PythonDataPicker
-        database={saveSource["source-database"]}
-        tables={saveSource["source-tables"]}
-        onChange={handleDataChange}
-      />
-      <PythonEditorBody
-        isRunnable={isRunnable && isPythonTransformSource(source)}
-        isRunning={isRunning}
-        isDirty={isDirty}
-        onRun={run}
-        onCancel={cancel}
-        source={source.body}
-        proposedSource={proposedSource?.body}
-        onChange={handleScriptChange}
-        withDebugger={showDebugger}
-        onAcceptProposed={handleAcceptProposed}
-        onRejectProposed={onRejectProposed}
-      />
+      <Flex className={S.main}>
+        <PythonDataPicker
+          database={saveSource["source-database"]}
+          tables={saveSource["source-tables"]}
+          onChange={handleDataChange}
+        />
+        <PythonEditorBody
+          isRunnable={isRunnable && isPythonTransformSource(source)}
+          isRunning={isRunning}
+          isDirty={isDirty}
+          onRun={run}
+          onCancel={cancel}
+          source={source.body}
+          proposedSource={proposedSource?.body}
+          onChange={handleScriptChange}
+          withDebugger={showDebugger}
+          onAcceptProposed={handleAcceptProposed}
+          onRejectProposed={onRejectProposed}
+        />
+      </Flex>
       {showDebugger && (
         <PythonEditorResults
           isRunning={isRunning}
