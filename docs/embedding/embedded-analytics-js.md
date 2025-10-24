@@ -413,7 +413,7 @@ None.
 - `layout` (default is `auto`) – how the visualization should be positioned with respect to the chat interface. Possible values are:
   - `auto` (default): Metabot uses the `stacked` layout on mobile screens, and a `sidebar` layout on larger screens.
   - `stacked`: the question visualization stacks on top of the chat interface.
-  - `sidebar`: the question visualization appears to the left of the chat interface, which is on a sidebar on the right.
+  - `sidebar`: the question visualization appears to the left of the chat interface, which is in the right sidebar.
 
 ## Embedding Metabase in a different domain
 
