@@ -4,9 +4,9 @@ import type { Collection } from "metabase-types/api";
 
 import { openCollectionItemMenu } from "./e2e-collection-helpers";
 import {
+  collectionTable,
   entityPickerModal,
   entityPickerModalItem,
-  entityPickerModalTab,
   navigationSidebar,
   popover,
 } from "./e2e-ui-elements-helpers";
@@ -134,12 +134,23 @@ export const updateRemoteQuestion = (
 };
 
 export const moveCollectionItemToLibrary = (name: string) => {
+  navigationSidebar()
+    .findByRole("treeitem", { name: /Our analytics/ })
+    .click();
+
   openCollectionItemMenu(name);
   popover().findByText("Move").click();
 
   entityPickerModal().within(() => {
-    entityPickerModalTab("Browse").click();
+    cy.findAllByRole("tab", { name: /Browse|Collections/ }).click();
     entityPickerModalItem(1, "Library").click();
     cy.button("Move").click();
   });
+
+  getSyncStatusIndicators().should("have.length", 1);
+
+  navigationSidebar()
+    .findByRole("treeitem", { name: /Library/ })
+    .click();
+  collectionTable().findByText(name).should("exist");
 };
