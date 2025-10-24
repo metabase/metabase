@@ -4,6 +4,7 @@
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [metabase.analytics.core :as analytics]
+   [metabase.app-db.core :as app-db]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.search.appdb.specialization.api :as specialization]
@@ -198,13 +199,17 @@
       (or pending
           (let [table-name (gen-table-name)]
             (log/infof "Creating pending index %s for lang %s" table-name (i18n/site-locale-string))
-            ;; We may fail to insert a new metadata row if we lose a race with another instance.
+          ;; We may fail to insert a new metadata row if we lose a race with another instance.
             (when (search-index-metadata/create-pending! :appdb *index-version-id* table-name)
               (try
                 (create-table! table-name)
                 (catch Exception e
                   (log/error e "Error creating pending index table, cleaning up metadata")
-                  (t2/delete! :model/SearchIndexMetadata :index_name (name table-name))
+                  (try
+                    (t2/with-connection [safe-conn (app-db/app-db)]
+                      (t2/delete! :conn safe-conn :model/SearchIndexMetadata :index_name (name table-name)))
+                    (catch Exception e
+                      (log/warn e "Error clearing out search metadata after failure")))
                   (sync-tracking-atoms!))))
             (let [pending (:pending (sync-tracking-atoms!))]
               (log/infof "New pending index %s" pending)
