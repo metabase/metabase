@@ -109,12 +109,22 @@ export function SearchNew({ query, params }: SearchNewProps) {
               right={0}
             >
               <Checkbox
+                style={{
+                  alignSelf: "flex-start",
+                  position: "relative",
+                  top: 4,
+                }}
                 size="sm"
                 onChange={() => onTableSelect(table.id)}
                 checked={selectedItems.has(table.id)}
                 onClick={(event) => event.stopPropagation()}
               />
               <Icon
+                style={{
+                  alignSelf: "flex-start",
+                  position: "relative",
+                  top: 4,
+                }}
                 name="table2"
                 color={active ? "brand" : "text-light"}
                 size={16}
