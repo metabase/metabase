@@ -67,9 +67,10 @@ export const getIsCollectionPathVisible = createSelector(
     (state) => PLUGIN_DOCUMENTS.getCurrentDocument(state),
     getRouterPath,
     getEmbedOptions,
+    () => getIsEmbeddingIframe(),
   ],
-  (question, dashboard, document, path, embedOptions) => {
-    if (getIsEmbeddingIframe() && !embedOptions.breadcrumbs) {
+  (question, dashboard, document, path, embedOptions, isEmbeddingIframe) => {
+    if (isEmbeddingIframe && !embedOptions.breadcrumbs) {
       return false;
     }
 
@@ -95,12 +96,18 @@ export const getIsQuestionLineageVisible = createSelector(
 );
 
 export const getIsNavBarEnabled = createSelector(
-  [getUser, getRouterPath, getIsEditingDashboard, getEmbedOptions],
-  (currentUser, path, isEditingDashboard, embedOptions) => {
+  [
+    getUser,
+    getRouterPath,
+    getIsEditingDashboard,
+    getEmbedOptions,
+    () => getIsEmbeddingIframe(),
+  ],
+  (currentUser, path, isEditingDashboard, embedOptions, isEmbeddingIframe) => {
     if (!currentUser || isEditingDashboard) {
       return false;
     }
-    if (getIsEmbeddingIframe() && !embedOptions.side_nav) {
+    if (isEmbeddingIframe && !embedOptions.side_nav) {
       return false;
     }
 
@@ -140,6 +147,7 @@ export const getIsAppBarVisible = createSelector(
     getIsAdminApp,
     getIsEditingDashboard,
     getIsEmbeddedAppBarVisible,
+    () => getIsEmbeddingIframe(),
   ],
   (
     currentUser,
@@ -148,12 +156,13 @@ export const getIsAppBarVisible = createSelector(
     isAdminApp,
     isEditingDashboard,
     isEmbeddedAppBarVisible,
+    isEmbeddingIframe,
   ) => {
     const isFullscreen = hash.includes("fullscreen");
 
     if (
       !currentUser ||
-      (getIsEmbeddingIframe() && !isEmbeddedAppBarVisible) ||
+      (isEmbeddingIframe && !isEmbeddedAppBarVisible) ||
       isAdminApp ||
       isEditingDashboard ||
       isFullscreen
@@ -228,12 +237,13 @@ export const getIsNavbarOpen: Selector<State, boolean> = createSelector(
     getEmbedOptions,
     getIsAppBarVisible,
     (state: State) => state.app.isNavbarOpen,
+    () => getIsEmbeddingIframe(),
   ],
-  (embedOptions, isAppBarVisible, isNavbarOpen) => {
+  (embedOptions, isAppBarVisible, isNavbarOpen, isEmbeddingIframe) => {
     // in an embedded instance, when the app bar is hidden, but the nav bar is not
     // we need to force the sidebar to be open or else it will be totally inaccessible
     if (
-      getIsEmbeddingIframe() &&
+      isEmbeddingIframe &&
       embedOptions.side_nav === true &&
       !isAppBarVisible
     ) {

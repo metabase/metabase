@@ -39,11 +39,11 @@ export const parseSlashCommand = (
 
 /**
  * Gets the appropriate Metabot ID based on the embedding context.
- * @param isEmbedding - Whether the application is running in an embedded context
+ * @param embedded - Whether the application is running in an embedded context
  * @returns The Metabot ID for embedded or default contexts
  */
-export const getMetabotId = (isEmbedding: boolean) => {
-  return isEmbedding ? FIXED_METABOT_IDS.EMBEDDED : FIXED_METABOT_IDS.DEFAULT;
+export const getMetabotId = (embedded: boolean) => {
+  return embedded ? FIXED_METABOT_IDS.EMBEDDED : FIXED_METABOT_IDS.DEFAULT;
 };
 
 /**

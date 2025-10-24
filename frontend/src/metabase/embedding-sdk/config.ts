@@ -47,10 +47,19 @@ export const EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG = {
  **/
 export const isEmbeddingSdk = () => EMBEDDING_SDK_CONFIG.isEmbeddingSdk;
 
+/**
+ * Whether we are in the Embedding SDK or its derivatives
+ * such as sdk-based iframe embedding.
+ * @returns true if SDK or in an iframe
+ */
 export const isEmbedding = () => {
   return isEmbeddingSdk() || isWithinIframe();
 };
 
+/**
+ * Whether we are in an iframe.
+ * @returns true if within an iframe
+ */
 export const getIsEmbeddingIframe = (): boolean => {
   return isWithinIframe();
 };

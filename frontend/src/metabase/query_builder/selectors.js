@@ -990,20 +990,20 @@ export const getTimeoutId = createSelector(
 );
 
 export const getIsHeaderVisible = createSelector(
-  [getEmbedOptions, () => getIsEmbeddingIframe()],
-  (embedOptions, isEmbeddingIframe) =>
+  [() => getIsEmbeddingIframe(), getEmbedOptions],
+  (isEmbeddingIframe, embedOptions) =>
     !isEmbeddingIframe || embedOptions.header,
 );
 
 export const getIsActionListVisible = createSelector(
-  [getEmbedOptions, () => getIsEmbeddingIframe()],
-  (embedOptions, isEmbeddingIframe) =>
+  [() => getIsEmbeddingIframe(), getEmbedOptions],
+  (isEmbeddingIframe, embedOptions) =>
     !isEmbeddingIframe || embedOptions.action_buttons,
 );
 
 export const getIsAdditionalInfoVisible = createSelector(
-  [getEmbedOptions, () => getIsEmbeddingIframe()],
-  (embedOptions, isEmbeddingIframe) =>
+  [() => getIsEmbeddingIframe(), getEmbedOptions],
+  (isEmbeddingIframe, embedOptions) =>
     !isEmbeddingIframe || embedOptions.additional_info,
 );
 
