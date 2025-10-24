@@ -239,9 +239,9 @@
        [:owner_email {:optional true} [:maybe :string]]
        [:owner_user_id {:optional true} [:maybe :int]]]]
   ;; todo so much
-  (let [schema-expr (fn [s] (let [[schema-db-id schema-name] (str/split s #"\:")]
-                              [:and [:= :db_id (parse-long schema-db-id)]
-                               [:= :schema schema-name]]))
+  (let [schema-expr (fn [s]
+                      (let [[schema-db-id schema-name] (str/split s #"\:")]
+                        [:and [:= :db_id (parse-long schema-db-id)] [:= :schema schema-name]]))
         where       (cond-> [:or false]
                       (seq database_ids) (conj [:in :db_id (sort database_ids)])
                       (seq table_ids)    (conj [:in :id    (sort table_ids)])
