@@ -32,7 +32,7 @@ export function ColumnValue({
     jsx: true,
     rich: true,
   });
-  if (!rawValue) {
+  if (rawValue == null) {
     return null;
   }
 
