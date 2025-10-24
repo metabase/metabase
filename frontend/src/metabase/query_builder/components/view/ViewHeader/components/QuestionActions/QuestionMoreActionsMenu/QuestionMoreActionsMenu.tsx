@@ -1,4 +1,5 @@
 import { Fragment, type JSX, useState } from "react";
+import { Link } from "react-router";
 import { c, t } from "ttag";
 import _ from "underscore";
 
@@ -188,6 +189,20 @@ export const QuestionMoreActionsMenu = ({
         onClick={onOpenSettingsSidebar}
       >
         {t`Edit settings`}
+      </Menu.Item>
+    ),
+    isModelOrMetric && (
+      <Menu.Item
+        key="workbench"
+        leftSection={<Icon name="workbench" />}
+        component={Link}
+        to={
+          isModel
+            ? `/bench/model/${question.id()}`
+            : `/bench/metric/${question.id()}`
+        }
+      >
+        {t`Open in Workbench`}
       </Menu.Item>
     ),
     (hasCollectionPermissions || hasDataPermissions) && (
