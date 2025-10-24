@@ -324,6 +324,7 @@
    :model/Transform
    (fn [_]
      {:name (str "Test Transform " (u/generate-nano-id))
+      :type :native
       :source {:type  "query"
                :query {:database (data/id)
                        :type     "native"
