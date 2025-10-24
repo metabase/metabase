@@ -4,7 +4,8 @@
    [clj-http.fake :as fake]
    [clojure.test :refer :all]
    [metabase.store-api.core :as store-api]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
@@ -83,14 +84,12 @@
 (defn- make-fake-routes
   "Create fake routes for the store API."
   [store-api-url]
-  {(str store-api-url "/api/v2/plan")
-   (constantly {:status  200
-                :headers {"content-type" "application/json"}
-                :body    mock-plans-response})
-   (str store-api-url "/api/v2/addons")
-   (constantly {:status  200
-                :headers {"content-type" "application/json"}
-                :body    mock-addons-response})})
+  {(str store-api-url "/api/v2/plan")   (constantly {:status  200
+                                                     :headers {"content-type" "application/json"}
+                                                     :body    (json/encode mock-plans-response)})
+   (str store-api-url "/api/v2/addons") (constantly {:status  200
+                                                     :headers {"content-type" "application/json"}
+                                                     :body    (json/encode mock-addons-response)})})
 
 (defmacro with-store-api-mocks [& body]
   `(let [store-url# (store-api/store-api-url)
@@ -99,18 +98,17 @@
        ~@body)))
 
 (deftest ^:parallel plans-endpoint-test
-  (testing "GET /api/store-api/plans"
-    (with-store-api-mocks
+  (with-store-api-mocks
+    (testing "GET /api/store-api/plans"
       (testing "should return a list of plans"
         (let [response (mt/user-http-request :rasta :get 200 "store-api/plans")]
-          (is (vector? response))
+          (is (sequential? response))
           (is (= 2 (count response)))
           (is (= "Open Source" (-> response first :name)))
-          (is (= "Pro" (-> response second :name)))))))
-  (testing "accessible without authentication"
-    (with-store-api-mocks
+          (is (= "Pro" (-> response second :name))))))
+    (testing "accessible without authentication"
       (let [response (mt/client :get 200 "store-api/plans")]
-        (is (vector? response))
+        (is (sequential? response))
         (is (pos? (count response)))))))
 
 (deftest ^:parallel addons-endpoint-test
@@ -118,12 +116,21 @@
     (with-store-api-mocks
       (testing "should return a list of add-ons"
         (let [response (mt/user-http-request :rasta :get 200 "store-api/addons")]
-          (is (vector? response))
+          (is (sequential? response))
           (is (= 2 (count response)))
           (is (= "Add-on 1" (-> response first :name)))
           (is (= "Add-on 2" (-> response second :name)))))))
   (testing "accessible without authentication"
     (with-store-api-mocks
       (let [response (mt/client :get 200 "store-api/addons")]
-        (is (vector? response))
+        (is (sequential? response))
         (is (pos? (count response)))))))
+
+(deftest ^:parallel error-if-store-api-url-is-not-configured
+  (testing "GET /api/store-api/ without store-api-url configured will throw an error with nice message"
+    (mt/with-dynamic-fn-redefs [store-api/store-api-url (constantly nil)]
+      (is (= "Please configure store-api-url"
+             (mt/user-http-request :rasta :get 400 "store-api/plans")))
+
+      (is (= "Please configure store-api-url"
+             (mt/user-http-request :rasta :get 400 "store-api/addons"))))))
