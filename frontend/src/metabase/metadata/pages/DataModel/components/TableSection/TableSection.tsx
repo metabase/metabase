@@ -10,10 +10,10 @@ import EmptyState from "metabase/common/components/EmptyState";
 import {
   DataSourceInput,
   FieldOrderPicker,
+  LayerInput,
   NameDescriptionInput,
   SortableFieldList,
   UserInput,
-  VisibilityInput,
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
@@ -275,7 +275,7 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
         />
 
         <TitledSection title={t`Metadata`}>
-          <VisibilityInput
+          <LayerInput
             value={table.visibility_type2 ?? "copper"}
             onChange={handleVisibilityTypeChange}
           />

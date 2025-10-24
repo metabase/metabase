@@ -4,8 +4,8 @@ import { t } from "ttag";
 import { useUpdateTableListMutation } from "metabase/api";
 import {
   DataSourceInput,
+  LayerInput,
   UserInput,
-  VisibilityInput,
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button, Flex, Modal, Stack, rem } from "metabase/ui";
@@ -88,10 +88,7 @@ export function EditTableMetadataModal({
       onClose={handleClose}
     >
       <Stack gap="md" pt="sm">
-        <VisibilityInput
-          value={visibilityType2}
-          onChange={setVisibilityType2}
-        />
+        <LayerInput value={visibilityType2} onChange={setVisibilityType2} />
 
         <UserInput
           email={email}

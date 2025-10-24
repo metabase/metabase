@@ -93,12 +93,12 @@ function getData(email: string | null, users: User[]): Option[] {
   return [
     {
       label: t`Unknown`,
-      value: stringifyValue(null),
+      value: stringifyValue(null) as string,
       type: "unknown" as const,
     },
     ...users.map((user) => ({
       label: user.common_name,
-      value: stringifyValue(user.id),
+      value: stringifyValue(user.id) as string,
       type: "user" as const,
     })),
     email == null || email.trim().length === 0

@@ -7,6 +7,7 @@ export * from "./FieldOrderPicker";
 export * from "./FieldValuesTypePicker";
 export * from "./FieldVisibilityPicker";
 export * from "./FkTargetPicker";
+export * from "./LayerInput";
 export * from "./NameDescriptionInput";
 export * from "./RescanFieldButton";
 export * from "./RescanTableFieldsButton";
