@@ -100,7 +100,7 @@ function TransformPageBody({ transform }: TransformPageBodyProps) {
 
   return (
     <>
-      <TransformQueryEditor
+      <TransformSourceEditor
         transform={transform}
         initialSource={transform.source}
         proposedSource={
@@ -126,7 +126,7 @@ function TransformPageBody({ transform }: TransformPageBodyProps) {
   );
 }
 
-interface TransformQueryEditorProps {
+interface TransformSourceEditorProps {
   transform: Transform;
   initialSource: TransformSource;
   proposedSource?: TransformSource;
@@ -139,7 +139,7 @@ interface TransformQueryEditorProps {
   transformEditor: TransformEditorValue;
 }
 
-function TransformQueryEditor({
+function TransformSourceEditor({
   transform,
   initialSource,
   proposedSource,
@@ -150,7 +150,7 @@ function TransformQueryEditor({
   onRejectProposed,
   onAcceptProposed,
   transformEditor,
-}: TransformQueryEditorProps) {
+}: TransformSourceEditorProps) {
   if (initialSource.type === "python") {
     return (
       <PLUGIN_TRANSFORMS_PYTHON.TransformEditor

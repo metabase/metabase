@@ -1,9 +1,6 @@
 import { t } from "ttag";
 
-import { BenchPaneHeader } from "metabase/bench/components/BenchPaneHeader";
-import { BenchTabs } from "metabase/bench/components/shared/BenchTabs";
-import { Button, Group, Tooltip } from "metabase/ui";
-
+import { TransformHeader } from "../../TransformHeader";
 import type { QueryValidationResult } from "../types";
 
 type EditorHeaderProps = {
@@ -26,29 +23,17 @@ export function EditorHeader({
   onSave,
   onCancel,
 }: EditorHeaderProps) {
-  const canSave =
-    (isNew || isQueryDirty || hasProposedQuery) &&
-    validationResult.isValid &&
-    !isSaving;
+  const hasButtons = isNew || isQueryDirty || hasProposedQuery;
+  const canSave = validationResult.isValid && !isSaving;
 
   return (
-    <BenchPaneHeader
-      title={
-        <BenchTabs tabs={[{ label: t`Query`, to: `/bench/transforms/1` }]} />
-      }
-      actions={
-        <Group>
-          <Button onClick={onCancel}>{t`Cancel`}</Button>
-          <Tooltip
-            label={validationResult.errorMessage}
-            disabled={validationResult.errorMessage == null}
-          >
-            <Button onClick={onSave} variant="filled" disabled={!canSave}>
-              {getSaveButtonLabel(isNew, isSaving)}
-            </Button>
-          </Tooltip>
-        </Group>
-      }
+    <TransformHeader
+      canSave={canSave}
+      hasButtons={hasButtons}
+      saveButtonLabel={getSaveButtonLabel(isNew, isSaving)}
+      saveButtonTooltip={validationResult.errorMessage}
+      onSave={onSave}
+      onCancel={onCancel}
     />
   );
 }
