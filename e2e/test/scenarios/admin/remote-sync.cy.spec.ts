@@ -191,7 +191,7 @@ describe("Remote Sync", () => {
         .clear()
         .type(LOCAL_GIT_URL);
       cy.findByTestId("admin-layout-content").findByText("Development").click();
-      cy.button("Set up Git Sync").click();
+      cy.button("Set up Remote Sync").click();
       cy.findByTestId("admin-layout-content")
         .findByText("Success")
         .should("exist");
@@ -222,7 +222,7 @@ describe("Remote Sync", () => {
         .type(LOCAL_GIT_URL);
 
       cy.findByTestId("admin-layout-content").findByText("Production").click();
-      cy.button("Set up Git Sync").click();
+      cy.button("Set up Remote Sync").click();
       cy.findByTestId("admin-layout-content")
         .findByText("Success")
         .should("exist");
@@ -246,7 +246,7 @@ describe("Remote Sync", () => {
       cy.findByLabelText(/repository url/i)
         .clear()
         .type("file://invalid-path");
-      cy.button("Set up Git Sync").click();
+      cy.button("Set up Remote Sync").click();
 
       cy.wait("@saveSettings").its("response.statusCode").should("eq", 400);
       cy.findByTestId("admin-layout-content")
