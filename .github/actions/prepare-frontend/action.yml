@@ -32,5 +32,5 @@ runs:
         key: ${{ steps.get-cache-keys.outputs.node-cache-key }}
 
     - run: |
-        yarn install --frozen-lockfile --prefer-offline && yarn patch-package
+        yarn install --frozen-lockfile --prefer-offline --check-files && yarn patch-package
       shell: bash
