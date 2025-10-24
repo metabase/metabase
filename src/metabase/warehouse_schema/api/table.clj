@@ -57,10 +57,11 @@
 (api.macros/defendpoint :get "/"
   "Get all `Tables`."
   [_
-   {:keys [term visibility_type2 data_source owner_user_id owner_email]}
+   {:keys [term visibility_type visibility_type2 data_source owner_user_id owner_email]}
    :- [:map
        ;; conjunctive search terms
        [:term {:optional true} :string]
+       [:visibility_type  {:optional true} :string]
        [:visibility_type2 {:optional true} :string]
        [:data_source {:optional true} :string]
        [:owner_user_id {:optional true} [:or :int [:enum ""]]]
@@ -70,6 +71,7 @@
         empty-null (fn [x] (if (and (string? x) (str/blank? x)) nil x))
         where      (cond-> [:and true]
                      (not (str/blank? term)) (conj [like :name pattern])
+                     visibility_type         (conj [:= :visibility_type  (empty-null visibility_type)])
                      visibility_type2        (conj [:= :visibility_type2 (empty-null visibility_type2)])
                      data_source             (conj [:= :data_source      (empty-null data_source)])
                      owner_user_id           (conj [:= :owner_user_id    (empty-null owner_user_id)])
