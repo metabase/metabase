@@ -49,7 +49,7 @@ export function EmbeddingSettingsCard({
           {title}
         </Text>
 
-        <Text c="var(--mb-color-text-secondary)" lh="lg" mb="md">
+        <Text c="var(--mb-color-text-secondary)" lh="lg" mb="md" maw="38rem">
           {description}
         </Text>
 
