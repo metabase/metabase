@@ -46,7 +46,6 @@ export function JobList({
 
   return (
     <ItemsListSection
-      sectionTitle={t`Jobs`}
       onCollapse={onCollapse}
       addButton={
         <ItemsListAddButton onClick={() => dispatch(push(getNewJobUrl()))} />

@@ -1,7 +1,6 @@
 import type React from "react";
 import { t } from "ttag";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import {
   ActionIcon,
   Box,
@@ -21,7 +20,6 @@ export const ItemsListAddButton = (props: ButtonProps) => (
 );
 
 type ItemsListSectionProps = {
-  sectionTitle: React.ReactNode;
   addButton?: React.ReactNode;
   settings?: React.ReactNode | null;
   listItems: React.ReactNode;
@@ -30,13 +28,14 @@ type ItemsListSectionProps = {
 };
 
 export const ItemsListSection = ({
-  sectionTitle,
   addButton,
   settings,
   listItems,
   onCollapse,
   testId,
 }: ItemsListSectionProps) => {
+  const hasHeader = !!(settings || addButton || onCollapse);
+
   return (
     <Box
       data-testid={testId}
@@ -44,25 +43,28 @@ export const ItemsListSection = ({
       h="100%"
       style={{ display: "flex", flexDirection: "column" }}
     >
-      <Flex justify="space-between" align="center" p="md">
-        <Flex align="center" gap="sm">
-          {onCollapse && (
-            <ActionIcon
-              onClick={onCollapse}
-              aria-label={t`Collapse`}
-              color="brand"
-            >
-              <Icon name="arrow_left" c="brand" /> {}
-            </ActionIcon>
-          )}
-          <Ellipsified fz="lg" fw="bold">
-            {sectionTitle}
-          </Ellipsified>
+      {hasHeader && (
+        <Flex justify="space-between" align="center" px="md" py="sm">
+          <Flex align="center" gap="sm">
+            {onCollapse && (
+              <ActionIcon
+                onClick={onCollapse}
+                aria-label={t`Collapse`}
+                color="brand"
+              >
+                <Icon name="arrow_left" c="brand" />
+              </ActionIcon>
+            )}
+            {settings}
+          </Flex>
+          {addButton && <Flex style={{ flexShrink: 0 }}>{addButton}</Flex>}
         </Flex>
-        <Flex style={{ flexShrink: 0 }}>{addButton}</Flex>
-      </Flex>
-      {settings}
-      <Box p="md" style={{ overflow: "auto" }}>
+      )}
+      <Box
+        px="md"
+        pt={hasHeader ? undefined : "md"}
+        style={{ overflow: "auto", flex: 1 }}
+      >
         {listItems}
       </Box>
     </Box>

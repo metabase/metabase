@@ -103,7 +103,6 @@ function ModelsList({
 
   return (
     <ItemsListSection
-      sectionTitle={t`Models`}
       addButton={<CreateModelMenu />}
       settings={
         <ItemsListSettings

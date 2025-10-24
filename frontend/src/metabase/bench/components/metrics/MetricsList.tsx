@@ -116,7 +116,6 @@ function MetricsList({
 
   return (
     <ItemsListSection
-      sectionTitle={t`Metrics`}
       settings={
         <ItemsListSettings
           values={{ display }}

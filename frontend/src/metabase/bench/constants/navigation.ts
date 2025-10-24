@@ -74,7 +74,6 @@ export const BENCH_NAV_SECTIONS: BenchNavSection[] = [
         url: "/bench/segment",
         icon: "segment",
         getLabel: () => t`Segments`,
-        nested: true,
       },
       {
         id: "snippet",

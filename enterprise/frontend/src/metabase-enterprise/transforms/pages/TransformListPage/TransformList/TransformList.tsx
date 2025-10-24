@@ -163,7 +163,6 @@ export function TransformList({
 
   return (
     <ItemsListSection
-      sectionTitle={t`Transforms`}
       testId="transform-list-page"
       onCollapse={onCollapse}
       addButton={<CreateTransformMenu />}
