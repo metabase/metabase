@@ -6,9 +6,6 @@ on:
     - cron: '0 3 * * 1'   # Mondays at 03:00 UTC
   workflow_dispatch:      # manually update the cache
 
-env:
-  M2_CACHE_KEY: M2-${{ runner.os }}-$(/bin/date "+%G-%V")
-
 jobs:
   warm-m2-cache:
     runs-on: ubuntu-22.04
