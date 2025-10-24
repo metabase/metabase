@@ -97,7 +97,7 @@ export const BenchIndex = () => {
   const { getTab } = useRememberBenchTab();
   const dispatch = useDispatch();
   const isAdmin = useSelector(getUserIsAdmin);
-  const navItems = useMemo(() => getBenchNavItems(isAdmin), [isAdmin]);
+  const navItems = useMemo(() => getBenchNavItems(isAdmin, true), [isAdmin]);
 
   useEffect(() => {
     const tabId = getTab();

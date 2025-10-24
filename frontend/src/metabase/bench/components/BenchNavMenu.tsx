@@ -1,7 +1,7 @@
-import type { ReactNode } from "react";
-import { useMemo } from "react";
+import { type ReactNode, useMemo } from "react";
 import { Link } from "react-router";
 
+import { useListDatabasesQuery } from "metabase/api/database";
 import { BenchNavItem } from "metabase/bench/components/nav/BenchNavItem";
 import {
   OVERVIEW_ITEM,
@@ -9,6 +9,7 @@ import {
 } from "metabase/bench/constants/navigation";
 import LogoIcon from "metabase/common/components/LogoIcon";
 import { useSelector } from "metabase/lib/redux";
+import { getHasNativeWrite } from "metabase/selectors/data";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Stack, Text, UnstyledButton } from "metabase/ui";
 
@@ -36,7 +37,12 @@ interface BenchNavMenuProps {
 
 export function BenchNavMenu({ onClose }: BenchNavMenuProps) {
   const isAdmin = useSelector(getUserIsAdmin);
-  const navSections = useMemo(() => getBenchNavSections(isAdmin), [isAdmin]);
+  const { data } = useListDatabasesQuery();
+  const hasNativeWrite = getHasNativeWrite(data?.data ?? []);
+  const navSections = useMemo(
+    () => getBenchNavSections(isAdmin, hasNativeWrite),
+    [isAdmin, hasNativeWrite],
+  );
 
   return (
     <Box w={320} data-testid="bench-nav-menu">

@@ -1,10 +1,15 @@
 import { t } from "ttag";
 
+import { useListDatabasesQuery } from "metabase/api/database";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { newQuestion } from "metabase/lib/urls/questions";
+import { getHasNativeWrite } from "metabase/selectors/data";
 import { Button, Icon, Menu } from "metabase/ui";
 
 export const CreateModelMenu = () => {
+  const { data } = useListDatabasesQuery();
+  const hasNativeWrite = getHasNativeWrite(data?.data ?? []);
+
   return (
     <Menu>
       <Menu.Target>
@@ -29,6 +34,8 @@ export const CreateModelMenu = () => {
         </Menu.Item>
         <Menu.Item
           component={ForwardRefLink}
+          disabled={!hasNativeWrite}
+          onClick={!hasNativeWrite ? (e) => e.preventDefault() : undefined}
           to={newQuestion({
             mode: "bench",
             DEPRECATED_RAW_MBQL_type: "native",

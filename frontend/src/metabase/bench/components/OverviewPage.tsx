@@ -2,7 +2,9 @@ import { Link } from "react-router";
 import { useLocalStorage } from "react-use";
 import { t } from "ttag";
 
+import { useListDatabasesQuery } from "metabase/api/database";
 import { useSelector } from "metabase/lib/redux/hooks";
+import { getHasNativeWrite } from "metabase/selectors/data";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   Box,
@@ -100,6 +102,8 @@ const OverviewBanner = () => {
 
 export const OverviewPage = () => {
   const isAdmin = useSelector(getUserIsAdmin);
+  const { data } = useListDatabasesQuery();
+  const hasNativeWrite = getHasNativeWrite(data?.data ?? []);
 
   return (
     <Box h="100%" bg="background-light" style={{ overflow: "auto" }}>
@@ -182,14 +186,16 @@ export const OverviewPage = () => {
                 body={t`Use the Dependency Graph to see what's upstream and downstream of anything.`}
               />
             </Grid.Col>
-            <Grid.Col span={{ base: 12, sm: 4 }}>
-              <OverviewCard
-                to="/bench/snippet"
-                icon="snippet"
-                heading={t`SQL snippets`}
-                body={t`Define reusable bits of SQL for your whole team to use in your queries.`}
-              />
-            </Grid.Col>
+            {hasNativeWrite && (
+              <Grid.Col span={{ base: 12, sm: 4 }}>
+                <OverviewCard
+                  to="/bench/snippet"
+                  icon="snippet"
+                  heading={t`SQL snippets`}
+                  body={t`Define reusable bits of SQL for your whole team to use in your queries.`}
+                />
+              </Grid.Col>
+            )}
             <Grid.Col span={{ base: 12, sm: 4 }}>
               <OverviewCard
                 to="/bench/library/common.py"

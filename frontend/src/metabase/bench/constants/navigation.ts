@@ -25,7 +25,10 @@ const OVERVIEW_ITEM: BenchNavItem = {
   getLabel: () => t`Overview`,
 };
 
-export const getBenchNavSections = (isAdmin: boolean): BenchNavSection[] => {
+export const getBenchNavSections = (
+  isAdmin: boolean,
+  hasNativeWrite: boolean,
+): BenchNavSection[] => {
   const navSections: BenchNavSection[] = [
     {
       id: "data",
@@ -84,12 +87,16 @@ export const getBenchNavSections = (isAdmin: boolean): BenchNavSection[] => {
           icon: "network",
           getLabel: () => t`Dependency graph`,
         },
-        {
-          id: "snippet",
-          url: "/bench/snippet",
-          icon: "snippet",
-          getLabel: () => t`SQL snippets`,
-        },
+        ...(hasNativeWrite
+          ? [
+              {
+                id: "snippet",
+                url: "/bench/snippet",
+                icon: "snippet" as const,
+                getLabel: () => t`SQL snippets`,
+              },
+            ]
+          : []),
         ...PLUGIN_TRANSFORMS_PYTHON.getTransformNavItems(isAdmin),
       ],
     },
@@ -98,16 +105,22 @@ export const getBenchNavSections = (isAdmin: boolean): BenchNavSection[] => {
   return navSections.filter((section) => section.items.length > 0);
 };
 
-export const getBenchNavItems = (isAdmin: boolean): BenchNavItem[] => {
+export const getBenchNavItems = (
+  isAdmin: boolean,
+  hasNativeWrite: boolean,
+): BenchNavItem[] => {
   return [
     OVERVIEW_ITEM,
-    ...getBenchNavSections(isAdmin).flatMap((section) => section.items),
+    ...getBenchNavSections(isAdmin, hasNativeWrite).flatMap(
+      (section) => section.items,
+    ),
   ];
 };
 
 export function findNavItemByPath(
   pathname: string,
   isAdmin: boolean,
+  hasNativeWrite: boolean,
 ): BenchNavItem | null {
   if (!pathname) {
     return null;
@@ -123,7 +136,9 @@ export function findNavItemByPath(
   const pathSegment = pathParts[benchIndex + 1];
 
   return (
-    getBenchNavItems(isAdmin).find((item) => item.id === pathSegment) ?? null
+    getBenchNavItems(isAdmin, hasNativeWrite).find(
+      (item) => item.id === pathSegment,
+    ) ?? null
   );
 }
 

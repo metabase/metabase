@@ -3,7 +3,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 import { noop } from "underscore";
 
-import { skipToken } from "metabase/api";
+import { skipToken, useListDatabasesQuery } from "metabase/api";
 import {
   useCreateSnippetMutation,
   useGetSnippetQuery,
@@ -12,12 +12,14 @@ import {
 import { getErrorMessage } from "metabase/api/utils";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import { BenchFlatListItem } from "metabase/bench/components/shared/BenchFlatListItem";
+import { Unauthorized } from "metabase/common/components/ErrorPages/ErrorPages";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import SnippetForm, {
   type SnippetFormValues,
 } from "metabase/query_builder/components/template_tags/SnippetForm/SnippetForm";
 import { SnippetSidebar } from "metabase/query_builder/components/template_tags/SnippetSidebar/SnippetSidebar";
+import { getHasNativeWrite } from "metabase/selectors/data";
 import { getUser } from "metabase/selectors/user";
 import { Box, Flex } from "metabase/ui";
 import type {
@@ -79,6 +81,18 @@ export const SnippetsLayout = ({
   params: { id?: string };
 }) => {
   const activeId = params.id ? parseInt(params.id, 10) : undefined;
+  const { data } = useListDatabasesQuery();
+  const hasNativeWrite = data?.data ? getHasNativeWrite(data.data) : null;
+  if (hasNativeWrite == null) {
+    return null;
+  }
+  if (hasNativeWrite === false) {
+    return (
+      <BenchLayout name="snippet">
+        <Unauthorized />
+      </BenchLayout>
+    );
+  }
 
   return (
     <BenchLayout nav={<SnippetsList activeId={activeId} />} name="snippet">
