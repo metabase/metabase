@@ -111,7 +111,6 @@ function SegmentListAppInner({ onCollapse, ...props }: SegmentListAppProps) {
 
   return (
     <ItemsListSection
-      sectionTitle={t`Segments`}
       testId="segment-list-app"
       onCollapse={onCollapse}
       addButton={

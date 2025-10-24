@@ -82,6 +82,12 @@ export const BENCH_NAV_SECTIONS: BenchNavSection[] = [
         getLabel: () => t`Segments`,
       },
       {
+        id: "snippet",
+        url: "/bench/snippet",
+        icon: "snippet",
+        getLabel: () => t`SQL snippets`,
+      },
+      {
         id: "glossary",
         url: "/bench/glossary",
         icon: "globe",

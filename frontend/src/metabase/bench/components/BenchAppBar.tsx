@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { t } from "ttag";
 
 import { useBenchLayoutContext } from "metabase/bench/context/BenchLayoutContext";
 import { useBenchCurrentTab } from "metabase/bench/hooks/useBenchCurrentTab";
@@ -10,6 +11,7 @@ import {
   Icon,
   Menu,
   Text,
+  Tooltip,
   UnstyledButton,
 } from "metabase/ui";
 
@@ -22,7 +24,7 @@ export function BenchAppBar() {
   const metabot = PLUGIN_METABOT.useMetabotAgent();
   const currentTab = useBenchCurrentTab();
   const { getTab, setTab } = useRememberBenchTab();
-  const { onTogglePanel } = useBenchLayoutContext();
+  const { onTogglePanel, isPanelCollapsed } = useBenchLayoutContext();
   const [isNavMenuOpen, setIsNavMenuOpen] = useState(() => !getTab());
   const [isTitleMenuOpen, setIsTitleMenuOpen] = useState(false);
   useEffect(() => setTab(currentTab.id), [currentTab.id, setTab]);
@@ -40,23 +42,24 @@ export function BenchAppBar() {
     >
       <Group gap="sm" wrap="nowrap">
         {hasPanelControl && (
-          <UnstyledButton
-            w={36}
-            h="100%"
-            display="flex"
-            style={{
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-            onClick={onTogglePanel}
-            className={S.toggleButton}
+          <Tooltip
+            label={isPanelCollapsed ? t`Open sidebar` : t`Close sidebar`}
           >
-            <Icon
-              size={20}
-              name="burger"
-              c={isTitleMenuOpen ? "brand" : "text-medium"}
-            />
-          </UnstyledButton>
+            <UnstyledButton
+              w={36}
+              h="100%"
+              display="flex"
+              style={{
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+              onClick={onTogglePanel}
+              className={S.toggleButton}
+              aria-label={t`Toggle sidebar`}
+            >
+              <Icon size={20} name="burger" className={S.toggleIcon} />
+            </UnstyledButton>
+          </Tooltip>
         )}
 
         <BenchNavTitleMenu

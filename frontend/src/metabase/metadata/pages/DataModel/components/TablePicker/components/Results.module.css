@@ -1,7 +1,12 @@
 .results {
+  flex: 1;
   position: relative;
   overflow: auto;
-  height: 100%;
+  padding: var(--mantine-spacing-md);
+}
+
+.listContainer {
+  position: relative;
 }
 
 .item {

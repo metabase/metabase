@@ -130,7 +130,10 @@ export function Results({
 
   return (
     <Box ref={ref} className={S.results}>
-      <Box style={{ height: virtual.getTotalSize() }}>
+      <Box
+        className={S.listContainer}
+        style={{ height: virtual.getTotalSize() }}
+      >
         {virtualItems.map(({ start, index }) => {
           const item = items[index] as FlatItem;
           const {

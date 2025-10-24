@@ -13,7 +13,8 @@ import {
 } from "metabase/bench/components/shared/BenchFlatListItem";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Tree } from "metabase/common/components/tree";
+import { VirtualizedFlatList } from "metabase/common/components/VirtualizedFlatList";
+import { VirtualizedTree } from "metabase/common/components/tree/VirtualizedTree";
 import type {
   ITreeNodeItem,
   TreeNodeProps,
@@ -43,7 +44,7 @@ const TransformsTreeNode = (props: TreeNodeProps) => (
       }
 
       return (
-        <Box p="sm" style={{ overflow: "hidden" }}>
+        <Box p="sm" style={{ overflow: "hidden", fontWeight: "normal" }}>
           <BenchFlatListItemContent
             label={transform.name}
             icon="table2"
@@ -163,7 +164,6 @@ export function TransformList({
 
   return (
     <ItemsListSection
-      sectionTitle={t`Transforms`}
       testId="transform-list-page"
       onCollapse={onCollapse}
       addButton={<CreateTransformMenu />}
@@ -204,70 +204,70 @@ export function TransformList({
             }
           />
         ) : display === "tree" ? (
-          <Box mx="-sm">
-            <Tree
-              initiallyExpanded
-              data={treeData}
-              selectedId={selectedId}
-              onSelect={(node) => {
-                if (typeof node.id === "number") {
-                  dispatch(push(`/bench/transforms/${node.id}`));
-                }
-              }}
-              TreeNode={TransformsTreeNode}
-            />
-          </Box>
+          <VirtualizedTree
+            initiallyExpanded
+            data={treeData}
+            selectedId={selectedId}
+            onSelect={(node) => {
+              if (typeof node.id === "number") {
+                dispatch(push(`/bench/transforms/${node.id}`));
+              }
+            }}
+            TreeNode={TransformsTreeNode}
+          />
         ) : (
-          <Box>
-            <TransformsFlatList
-              transforms={transformsSorted}
-              tags={tags}
-              selectedId={selectedId}
-            />
-          </Box>
+          <VirtualizedFlatList
+            items={transformsSorted}
+            selectedId={selectedId}
+            getItemId={(transform) => transform.id}
+            estimateSize={72}
+            renderItem={(transform) => (
+              <TransformFlatListItem
+                transform={transform}
+                tags={tags}
+                selectedId={selectedId}
+              />
+            )}
+          />
         )
       }
     />
   );
 }
 
-interface TransformsFlatListProps {
-  transforms: Transform[];
+interface TransformFlatListItemProps {
+  transform: Transform;
   tags: TransformTag[];
   selectedId?: Transform["id"];
 }
 
-function TransformsFlatList({
-  transforms,
+function TransformFlatListItem({
+  transform,
   tags,
   selectedId,
-}: TransformsFlatListProps) {
+}: TransformFlatListItemProps) {
   const tagById = useMemo(() => getTagById(tags), [tags]);
+  const tagNames = getTagList(transform.tag_ids ?? [], tagById).map(
+    (tag) => tag.name,
+  );
 
-  return transforms.map((transform) => {
-    const tagNames = getTagList(transform.tag_ids ?? [], tagById).map(
-      (tag) => tag.name,
-    );
-
-    return (
-      <BenchFlatListItem
-        key={transform.id}
-        icon="transform"
-        href={getTransformUrl(transform.id)}
-        label={transform.name}
-        subtitle={transform.target.name}
-        isActive={transform.id === selectedId}
-        thirdLine={
-          <Ellipsified
-            fw="bold"
-            fz="sm"
-            lh="1rem"
-            c="var(--mb-color-feedback-unknown)"
-          >
-            {tagNames.join(" · ")}
-          </Ellipsified>
-        }
-      />
-    );
-  });
+  return (
+    <BenchFlatListItem
+      icon="transform"
+      href={getTransformUrl(transform.id)}
+      label={transform.name}
+      subtitle={transform.target.name}
+      isActive={transform.id === selectedId}
+      thirdLine={
+        <Ellipsified
+          fw="bold"
+          fz="sm"
+          lh="1rem"
+          c="var(--mb-color-feedback-unknown)"
+        >
+          {tagNames.join(" · ")}
+        </Ellipsified>
+      }
+    />
+  );
 }

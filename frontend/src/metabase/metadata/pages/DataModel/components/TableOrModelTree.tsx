@@ -1,5 +1,3 @@
-import { t } from "ttag";
-
 import { useListDatabasesQuery } from "metabase/api";
 import { ItemsListSection } from "metabase/bench/components/ItemsListSection/ItemsListSection";
 import S from "metabase/metadata/pages/DataModel/DataModel.module.css";
@@ -22,7 +20,6 @@ export const TableOrModelTree = ({ params }: Props) => {
 
   return (
     <ItemsListSection
-      sectionTitle={t`Metadata`}
       testId="metadata-items-tree"
       listItems={
         databasesData?.data?.length === 0 ? (
