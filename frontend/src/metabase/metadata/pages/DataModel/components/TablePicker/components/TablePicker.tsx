@@ -1,7 +1,7 @@
 import { useDeferredValue, useState } from "react";
 import { t } from "ttag";
 
-import { Box, Icon, Input, Stack, rem } from "metabase/ui";
+import { Button, Group, Icon, Input, Stack, rem } from "metabase/ui";
 
 import type { RouteParams } from "../../../types";
 import type { ChangeOptions, TreePath } from "../types";
@@ -28,14 +28,17 @@ export function TablePicker({
 
   return (
     <Stack data-testid="table-picker" mih={rem(200)} className={className}>
-      <Box p="xl" pb={0}>
+      <Group gap="md" p="xl" pb={0}>
         <Input
+          flex="1"
           leftSection={<Icon name="search" />}
           placeholder={t`Search tables (use * as a wildcard)`}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
-      </Box>
+
+        <Button leftSection={<Icon name="filter" />}>{t`Filter`}</Button>
+      </Group>
 
       {deferredQuery === "" ? (
         <Tree path={path} onChange={onChange} />
