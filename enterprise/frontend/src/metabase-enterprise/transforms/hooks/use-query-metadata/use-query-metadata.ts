@@ -18,7 +18,7 @@ export function useQueryMetadata(question: Question) {
     );
     if (!_.isEqual(dependencies, dependenciesRef.current)) {
       dependenciesRef.current = dependencies;
-      loadMetadata(question.datasetQuery());
+      loadMetadata(question.datasetQuery(), true);
     }
   }, [question, loadMetadata]);
 
