@@ -69,7 +69,8 @@ export const UserInput = ({
               <Text c="text-secondary">{t`Email: `}</Text>
             )}
 
-            <span>{item.option.label}</span>
+            {option.type === "unknown" && <i>{item.option.label}</i>}
+            {option.type !== "unknown" && <span>{item.option.label}</span>}
           </Group>
         );
       }}
