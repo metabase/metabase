@@ -46,6 +46,8 @@ import audit_component from "./audit.svg?component";
 import audit_source from "./audit.svg?source";
 import badge_component from "./badge.svg?component";
 import badge_source from "./badge.svg?source";
+import ban_component from "./ban.svg?component";
+import ban_source from "./ban.svg?source";
 import bar_component from "./bar.svg?component";
 import bar_source from "./bar.svg?source";
 import bell_component from "./bell.svg?component";
@@ -70,6 +72,8 @@ import burger_component from "./burger.svg?component";
 import burger_source from "./burger.svg?source";
 import calendar_component from "./calendar.svg?component";
 import calendar_source from "./calendar.svg?source";
+import camera_component from "./camera.svg?component";
+import camera_source from "./camera.svg?source";
 import check_component from "./check.svg?component";
 import check_source from "./check.svg?source";
 import check_filled_component from "./check_filled.svg?component";
@@ -160,6 +164,8 @@ import eye_crossed_out_component from "./eye_crossed_out.svg?component";
 import eye_crossed_out_source from "./eye_crossed_out.svg?source";
 import eye_outline_component from "./eye_outline.svg?component";
 import eye_outline_source from "./eye_outline.svg?source";
+import factory_component from "./factory.svg?component";
+import factory_source from "./factory.svg?source";
 import field_component from "./field.svg?component";
 import field_source from "./field.svg?source";
 import fields_component from "./fields.svg?component";
@@ -268,6 +274,8 @@ import mail_component from "./mail.svg?component";
 import mail_source from "./mail.svg?source";
 import mail_filled_component from "./mail_filled.svg?component";
 import mail_filled_source from "./mail_filled.svg?source";
+import message_circle_component from "./message_circle.svg?component";
+import message_circle_source from "./message_circle.svg?source";
 import metabot_component from "./metabot.svg?component";
 import metabot_source from "./metabot.svg?source";
 import metabot_sad_component from "./metabot_sad.svg?component";
@@ -290,10 +298,14 @@ import notebook_component from "./notebook.svg?component";
 import notebook_source from "./notebook.svg?source";
 import number_component from "./number.svg?component";
 import number_source from "./number.svg?source";
+import octagon_alert_component from "./octagon_alert.svg?component";
+import octagon_alert_source from "./octagon_alert.svg?source";
 import official_collection_component from "./official_collection.svg?component";
 import official_collection_source from "./official_collection.svg?source";
 import ordered_list_component from "./ordered_list.svg?component";
 import ordered_list_source from "./ordered_list.svg?source";
+import package_component from "./package.svg?component";
+import package_source from "./package.svg?source";
 import palette_component from "./palette.svg?component";
 import palette_source from "./palette.svg?source";
 import pause_component from "./pause.svg?component";
@@ -400,6 +412,8 @@ import star_filled_component from "./star_filled.svg?component";
 import star_filled_source from "./star_filled.svg?source";
 import stepped_component from "./stepped.svg?component";
 import stepped_source from "./stepped.svg?source";
+import sticky_note_component from "./sticky-note.svg?component";
+import sticky_note_source from "./sticky-note.svg?source";
 import stop_component from "./stop.svg?component";
 import stop_source from "./stop.svg?source";
 import store_component from "./store.svg?component";
@@ -476,6 +490,8 @@ import waterfall_component from "./waterfall.svg?component";
 import waterfall_source from "./waterfall.svg?source";
 import webhook_component from "./webhook.svg?component";
 import webhook_source from "./webhook.svg?source";
+import zap_component from "./zap.svg?component";
+import zap_source from "./zap.svg?source";
 import zoom_in_component from "./zoom_in.svg?component";
 import zoom_in_source from "./zoom_in.svg?source";
 import zoom_out_component from "./zoom_out.svg?component";
@@ -571,6 +587,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: badge_component,
       source: badge_source,
     },
+    ban: {
+      component: ban_component,
+      source: ban_source,
+    },
     bar: {
       component: bar_component,
       source: bar_source,
@@ -614,6 +634,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     calendar: {
       component: calendar_component,
       source: calendar_source,
+    },
+    camera: {
+      component: camera_component,
+      source: camera_source,
     },
     check: {
       component: check_component,
@@ -782,6 +806,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     eye_outline: {
       component: eye_outline_component,
       source: eye_outline_source,
+    },
+    factory: {
+      component: factory_component,
+      source: factory_source,
     },
     field: {
       component: field_component,
@@ -1003,6 +1031,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: mail_filled_component,
       source: mail_filled_source,
     },
+    message_circle: {
+      component: message_circle_component,
+      source: message_circle_source,
+    },
     metabot: {
       component: metabot_component,
       source: metabot_source,
@@ -1046,6 +1078,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     number: {
       component: number_component,
       source: number_source,
+    },
+    package: {
+      component: package_component,
+      source: package_source,
     },
     palette: {
       component: palette_component,
@@ -1166,6 +1202,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     stepped: {
       component: stepped_component,
       source: stepped_source,
+    },
+    sticky_note: {
+      component: sticky_note_component,
+      source: sticky_note_source,
     },
     sort: {
       component: sort_component,
@@ -1393,6 +1433,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: verified_component,
       source: verified_source,
     },
+    octagon_alert: {
+      component: octagon_alert_component,
+      source: octagon_alert_source,
+    },
     official_collection: {
       component: official_collection_component,
       source: official_collection_source,
@@ -1437,6 +1481,7 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: one_million_component,
       source: one_million_source,
     },
+    zap: { component: zap_component, source: zap_source },
     zoom_in: {
       component: zoom_in_component,
       source: zoom_in_source,
@@ -1487,6 +1532,7 @@ export type IconName =
   | "arrow_split"
   | "audit"
   | "badge"
+  | "ban"
   | "bar"
   | "bell"
   | "birthday"
@@ -1498,6 +1544,7 @@ export type IconName =
   | "bubble"
   | "burger"
   | "calendar"
+  | "camera"
   | "check"
   | "check_filled"
   | "code_block"
@@ -1543,6 +1590,7 @@ export type IconName =
   | "eye"
   | "eye_crossed_out"
   | "eye_outline"
+  | "factory"
   | "field"
   | "fields"
   | "filter"
@@ -1598,6 +1646,7 @@ export type IconName =
   | "lock_filled"
   | "mail"
   | "mail_filled"
+  | "message_circle"
   | "metabot"
   | "metabot_sad"
   | "metric"
@@ -1609,6 +1658,8 @@ export type IconName =
   | "new_folder"
   | "notebook"
   | "number"
+  | "octagon_alert"
+  | "package"
   | "palette"
   | "pause"
   | "pencil"
@@ -1637,6 +1688,7 @@ export type IconName =
   | "subscription"
   | "straight"
   | "stepped"
+  | "sticky_note"
   | "sort"
   | "sort_arrows"
   | "sum"
@@ -1703,6 +1755,7 @@ export type IconName =
   | "webhook"
   | "10k"
   | "1m"
+  | "zap"
   | "zoom_in"
   | "zoom_out"
   | "scalar"

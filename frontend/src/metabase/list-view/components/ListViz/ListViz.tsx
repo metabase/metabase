@@ -54,6 +54,15 @@ const vizDefinition = {
     "list.entity_icon": {
       default: null,
     },
+    "list.entity_icon_color": {
+      default: "text-primary",
+    },
+    "list.entity_icon_enabled": {
+      default: true,
+    },
+    "list.use_image_column": {
+      default: false,
+    },
     "list.columns": {
       getDefault: ([
         {
@@ -311,19 +320,38 @@ export const ListViz = ({
     left,
     right,
     entityIcon,
+    entityIconColor,
+    entityIconEnabled,
+    useImageColumn,
   }: {
-    left: string[];
-    right: string[];
-    entityIcon?: string;
+    left?: string[];
+    right?: string[];
+    entityIcon?: string | null;
+    entityIconColor?: string;
+    entityIconEnabled?: boolean;
+    useImageColumn?: boolean;
   }) => {
-    const newSettings = {
-      "list.columns": {
+    const settings = { ...(question?.settings() || {}) };
+    if (left && right) {
+      settings["list.columns"] = {
         left,
         right,
-      },
-      "list.entity_icon": entityIcon,
-    };
-    const nextQuestion = question?.updateSettings(newSettings);
+      };
+    }
+    if (entityIcon !== undefined) {
+      settings["list.entity_icon"] = entityIcon;
+    }
+    if (entityIconColor !== undefined) {
+      settings["list.entity_icon_color"] = entityIconColor;
+    }
+    if (entityIconEnabled !== undefined) {
+      settings["list.entity_icon_enabled"] = entityIconEnabled;
+    }
+    if (useImageColumn !== undefined) {
+      settings["list.use_image_column"] = useImageColumn;
+    }
+
+    const nextQuestion = question?.updateSettings(settings);
     if (nextQuestion) {
       dispatch(updateQuestion(nextQuestion));
     }
@@ -341,8 +369,8 @@ export const ListViz = ({
         <ListViewConfiguration
           data={data}
           settings={settings}
-          entityType={entityType}
           onChange={updateListSettings}
+          entityType={entityType}
           columnsMetadata={columnsMetadata}
         />
       ) : (

@@ -6,7 +6,7 @@ import {
   type CellAlign,
   type CellFormatter,
 } from "metabase/data-grid";
-import { alpha, color } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import type { ColumnSettings } from "metabase-types/api";
 
 import S from "./MiniBarCell.module.css";
@@ -28,12 +28,16 @@ const resolveMax = (min: number, max: number, number_style: string) => {
 export interface MiniBarCellProps<TValue> {
   value: TValue;
   extent: [number, number];
-  formatter: CellFormatter<TValue>;
+  formatter?: CellFormatter<TValue>;
   backgroundColor?: string;
   align?: CellAlign;
   rowIndex: number;
   columnId: string;
   columnSettings: ColumnSettings;
+  style?: React.CSSProperties;
+  barWidth?: number | string;
+  barHeight?: number | string;
+  barColor?: string;
 }
 
 export const MiniBarCell = <TValue,>({
@@ -45,6 +49,10 @@ export const MiniBarCell = <TValue,>({
   rowIndex,
   columnId,
   columnSettings,
+  style,
+  barWidth = BAR_WIDTH,
+  barHeight = BAR_HEIGHT,
+  barColor = color("brand"),
 }: MiniBarCellProps<TValue>) => {
   if (typeof value !== "number") {
     return null;
@@ -55,7 +63,7 @@ export const MiniBarCell = <TValue,>({
   const resolvedMax = resolveMax(min, max, columnSettings["number_style"]);
   const barPercent =
     (Math.abs(value) / Math.max(Math.abs(min), Math.abs(resolvedMax))) * 100;
-  const barColor = isNegative ? color("error") : color("brand");
+  const barVizColor = isNegative ? color("error") : barColor;
 
   const barStyle = !hasNegative
     ? {
@@ -86,29 +94,32 @@ export const MiniBarCell = <TValue,>({
       className={S.root}
       backgroundColor={backgroundColor}
       align={align}
+      style={style}
     >
       <div className={S.minibarWrapper}>
         {/* TEXT VALUE */}
-        <div
-          className={cx(
-            CS.textEllipsis,
-            CS.textBold,
-            CS.textRight,
-            CS.flexFull,
-          )}
-          style={{ minWidth: LABEL_MIN_WIDTH }}
-        >
-          {formatter(value, rowIndex, columnId)}
-        </div>
+        {formatter ? (
+          <div
+            className={cx(
+              CS.textEllipsis,
+              CS.textBold,
+              CS.textRight,
+              CS.flexFull,
+            )}
+            style={{ minWidth: LABEL_MIN_WIDTH }}
+          >
+            {formatter(value, rowIndex, columnId)}
+          </div>
+        ) : null}
         {/* OUTER CONTAINER BAR */}
         <div
           data-testid="mini-bar-container"
           className={CS.ml1}
           style={{
             position: "relative",
-            width: BAR_WIDTH,
-            height: BAR_HEIGHT,
-            backgroundColor: alpha(barColor, 0.2),
+            width: barWidth,
+            height: barHeight,
+            backgroundColor: `color-mix(in srgb, ${barVizColor}, white 80%)`,
             borderRadius: BORDER_RADIUS,
           }}
         >
@@ -119,7 +130,7 @@ export const MiniBarCell = <TValue,>({
               position: "absolute",
               top: 0,
               bottom: 0,
-              backgroundColor: barColor,
+              backgroundColor: barVizColor,
               ...barStyle,
             }}
           />
