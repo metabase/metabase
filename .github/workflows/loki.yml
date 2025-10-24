@@ -1,6 +1,7 @@
 name: Loki Visual Regression Testing
 
 on:
+  push: # trigger the workflow
   pull_request:
   merge_group:
 
