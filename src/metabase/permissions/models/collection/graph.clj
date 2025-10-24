@@ -3,19 +3,14 @@
   for more details and for the code for generating and updating the *data* permissions graph."
   (:require
    [clojure.data :as data]
-   [com.climate.claypoole :as cp]
    [metabase.api.common :as api]
-   [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
-
    [metabase.permissions.models.collection-permission-graph-revision :as c-perm-revision]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.permissions.path :as permissions.path]
    [metabase.permissions.util :as perms.u]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -38,7 +33,7 @@
 (def ^:private PermissionsGraph
   [:map {:closed true}
    [:revision {:optional true} [:maybe :int]]
-   [:groups   [:map-of ms/PositiveInt GroupPermissionsGraph]]])
+   [:groups [:map-of ms/PositiveInt GroupPermissionsGraph]]])
 
 ;;; -------------------------------------------------- Fetch Graph ---------------------------------------------------
 ;;;
@@ -48,64 +43,16 @@
   []
   (var-get (requiring-resolve 'metabase.collections.models.collection/root-collection)))
 
-(defn- group-id->permissions-set []
-  (into {} (for [[group-id perms] (group-by :group_id (t2/select :model/Permissions))]
-             {group-id (set (map :object perms))})))
-
-(mu/defn- perms-type-for-collection :- CollectionPermissions
-  [permissions-set collection-or-id]
-  (cond
-    (perms/set-has-full-permissions? permissions-set (permissions.path/collection-readwrite-path collection-or-id)) :write
-    (perms/set-has-full-permissions? permissions-set (permissions.path/collection-read-path collection-or-id))      :read
-    :else                                                                                                           :none))
-
-(mu/defn- group-permissions-graph :- GroupPermissionsGraph
-  "Return the permissions graph for a single group having `permissions-set`."
-  [collection-namespace permissions-set collection-ids]
-  (into
-   {:root (perms-type-for-collection permissions-set (assoc (root-collection) :namespace collection-namespace))}
-   (for [collection-id collection-ids]
-     {collection-id (perms-type-for-collection permissions-set collection-id)})))
-
-(mu/defn- non-personal-collection-ids :- [:set ms/PositiveInt]
-  "Return a set of IDs of all Collections that are neither Personal Collections nor descendants of Personal
-  Collections (i.e., things that you can set Permissions for, and that should go in the graph.)"
-  [collection-namespace :- [:maybe ms/KeywordOrString]]
-  (let [personal-collection-ids (t2/select-pks-set :model/Collection :personal_owner_id [:not= nil])
-        honeysql-form           {:select [[:id :id]]
-                                 :from   [:collection]
-                                 :where  (into [:and
-                                                ;; Does 'NULL != "trash"'? Postgres says the answer is undefined, aka
-                                                ;; NULL, which... is falsey. :sob:
-                                                [:or [:= :type nil] [:not= :type "trash"]]
-                                                [:not :archived]
-                                                (perms/audit-namespace-clause :namespace (u/qualified-name collection-namespace))
-                                                [:= :personal_owner_id nil]]
-                                               (for [collection-id personal-collection-ids]
-                                                 [:not [:like :location (h2x/literal (format "/%d/%%" collection-id))]]))}]
-    (set (map :id (app-db/query honeysql-form)))))
-
-(defn- calculate-perm-groups [collection-namespace group-id->perms collection-ids]
-  (into {}
-        (cp/with-shutdown! [pool (+ 2 (cp/ncpus))]
-          (doall (cp/upmap pool
-                           (fn [group-id]
-                             [group-id
-                              (group-permissions-graph collection-namespace (group-id->perms group-id) collection-ids)])
-                           (t2/select-pks-set :model/PermissionsGroup))))))
-
 (defn- collection-permission-graph
   "Return the permission graph for the collections with id in `collection-ids` and the root collection."
-  ([collection-ids] (collection-permission-graph collection-ids nil))
-  ([collection-ids collection-namespace]
-   (let [group-id->perms (group-id->permissions-set)]
-     {:revision (c-perm-revision/latest-id)
-      :groups   (calculate-perm-groups collection-namespace group-id->perms collection-ids)})))
+  [group-perms]
+  {:revision (c-perm-revision/latest-id)
+   :groups group-perms})
 
 (defn- modify-instance-analytics-for-admins
   "In the graph, override the instance analytics collection within the admin group to read."
   [graph]
-  (let [admin-group-id      (:id (perms-group/admin))
+  (let [admin-group-id (:id (perms-group/admin))
         audit-collection-id (:id (audit/default-audit-collection))]
     (if (nil? audit-collection-id)
       graph
@@ -128,11 +75,94 @@
    (graph nil))
 
   ([collection-namespace :- [:maybe ms/KeywordOrString]]
-   (t2/with-transaction [_conn]
-     (-> collection-namespace
-         non-personal-collection-ids
-         (collection-permission-graph collection-namespace)
-         modify-instance-analytics-for-admins))))
+   (graph collection-namespace nil nil))
+
+  ([collection-namespace :- [:maybe ms/KeywordOrString]
+    collection-ids :- [:maybe [:set [:or [:= :root] ms/PositiveInt]]]
+    group-ids :- [:maybe [:set ms/PositiveInt]]]
+   (let [include-root? (or (nil? collection-ids) (contains? collection-ids :root))
+         root-object (str "/collection/"
+                          (when collection-namespace
+                            (str "namespace/" (name collection-namespace) "/"))
+                          "root/")]
+     (->> (t2/reducible-query
+           {:with [[:eligible_collections
+                    {:select [:id]
+                     :from [:collection]
+                     :where [:and
+                             [:or [:= :type nil] [:not= :type [:inline "trash"]]]
+                             (perms/audit-namespace-clause :namespace (u/qualified-name collection-namespace))
+                             [:not :archived]
+                             [:= :personal_owner_id nil]
+                             (let [ids-without-root (disj collection-ids :root)]
+                               (when (seq ids-without-root)
+                                 [:in :id ids-without-root]))
+                             [:not [:exists {:select [1]
+                                             :from [[:collection :pc]]
+                                             :where [:and
+                                                     [:not= :pc.personal_owner_id nil]
+                                                     [:like :collection.location
+                                                      [:raw "CONCAT('/', pc.id, '/%')"]]]}]]]}]
+                   [:relevant_permissions
+                    {:select [:group_id :collection_id :perm_value]
+                     :from [:permissions]
+                     :where (into [:and
+                                   [:= :perm_type [:inline "perms/collection-access"]]
+                                   [:not= :collection_id nil]]
+                                  (when (seq group-ids)
+                                    [[:in :group_id group-ids]]))}]]
+            :union-all
+            [;; Query 1: Root collection permissions
+             {:select [[:pg.id :group_id]
+                       [nil :collection_id]
+                       [[:max [:case [:= :p.object [:inline root-object]]
+                               [:inline 1]
+                               :else [:inline 0]]] :writable]
+                       [[:max [:case [:= :p.object [:inline (str root-object "read/")]]
+                               [:inline 1]
+                               :else [:inline 0]]] :readable]]
+              :from [[:permissions_group :pg]]
+              :join [[:permissions :p] [:and
+                                        [:= :p.group_id :pg.id]
+                                        [:or [:= :p.object [:inline root-object]]
+                                         [:= :p.object [:inline (str root-object "read/")]]]]]
+              :where (into [:and
+                            [[:inline include-root?]]]
+                           (when (seq group-ids)
+                             [[:in :pg.id group-ids]]))
+              :group-by [:pg.id]}
+
+                ;; Query 2: Regular collection permissions
+             {:select [[:pg.id :group_id]
+                       [:c.id :collection_id]
+                       [[:max [:case [:= :p.perm_value [:inline "read-and-write"]]
+                               [:inline 1]
+                               :else [:inline 0]]] :writable]
+                       [[:max [:case [:or [:= :p.perm_value [:inline "read-and-write"]]
+                                      [:= :p.perm_value [:inline "read"]]]
+                               [:inline 1]
+                               :else [:inline 0]]] :readable]]
+              :from [[:permissions_group :pg]]
+              :join [[:relevant_permissions :p] [:= :p.group_id :pg.id]
+                     [:eligible_collections :c] [:= :p.collection_id :c.id]]
+              :where [:not= :c.id nil]
+              :group-by [:pg.id :c.id]}
+
+             ;; Query 3: That wacky Administrators group
+             {:select [[(u/the-id (perms-group/admin)) :group_id]
+                       [:c.id :collection_id]
+                       [[:inline 1] :writable]
+                       [[:inline 1] :readable]]
+              :from [[:collection :c]]}]})
+          (reduce (fn [accum {group-id :group_id collection-id :collection_id :keys [writable readable]}]
+                    (assoc-in accum [group-id (or collection-id :root)]
+                              (cond
+                                (= writable 1) :write
+                                (= readable 1) :read
+                                :else :none)))
+                  {(u/the-id (perms-group/admin)) {:root :write}})
+          collection-permission-graph
+          modify-instance-analytics-for-admins))))
 
 ;;; -------------------------------------------------- Update Graph --------------------------------------------------
 
@@ -140,8 +170,8 @@
   "Update the permissions for group ID with `group-id` on collection with ID
   `collection-id` in the optional `collection-namespace` to `new-collection-perms`."
   [collection-namespace :- [:maybe ms/KeywordOrString]
-   group-id             :- ms/PositiveInt
-   collection-id        :- [:or [:= :root] ms/PositiveInt]
+   group-id :- ms/PositiveInt
+   collection-id :- [:or [:= :root] ms/PositiveInt]
    new-collection-perms :- CollectionPermissions]
   (let [collection-id (if (= collection-id :root)
                         (assoc (root-collection) :namespace collection-namespace)
@@ -150,13 +180,13 @@
     (perms/revoke-collection-permissions! group-id collection-id)
     (case new-collection-perms
       :write (perms/grant-collection-readwrite-permissions! group-id collection-id)
-      :read  (perms/grant-collection-read-permissions! group-id collection-id)
-      :none  nil)))
+      :read (perms/grant-collection-read-permissions! group-id collection-id)
+      :none nil)))
 
 (mu/defn- update-group-permissions!
   [collection-namespace :- [:maybe ms/KeywordOrString]
-   group-id             :- ms/PositiveInt
-   new-group-perms      :- GroupPermissionsGraph]
+   group-id :- ms/PositiveInt
+   new-group-perms :- GroupPermissionsGraph]
   (doseq [[collection-id new-perms] new-group-perms]
     (update-collection-permissions! collection-namespace group-id collection-id new-perms)))
 
@@ -171,7 +201,7 @@
   [current-revision-number]
   (when api/*current-user-id*
     (first (t2/insert-returning-instances! :model/CollectionPermissionGraphRevision
-                                           :id      (inc current-revision-number)
+                                           :id (inc current-revision-number)
                                            :user_id api/*current-user-id*
                                            :before ""
                                            :after ""))))
@@ -182,30 +212,65 @@
   [revision-id before changes]
   (future (t2/update! :model/CollectionPermissionGraphRevision revision-id {:before before :after changes})))
 
+(defn- personal-collection-ids
+  "Return a set of IDs from `collection-ids` that are personal Collections or descendants of personal Collections.
+  These should never appear in permission graphs or be editable via the graph API."
+  [collection-ids]
+  (when (seq collection-ids)
+    (t2/select-pks-set :model/Collection
+                       {:where [:and
+                                [:in :id collection-ids]
+                                [:or [:not= :personal_owner_id nil]
+                                 [:exists {:select [1]
+                                           :from [[:collection :pc]]
+                                           :where [:and
+                                                   [:not= :pc.personal_owner_id nil]
+                                                   [:like :collection.location
+                                                    [:raw "CONCAT('/', pc.id, '/%')"]]]}]]]})))
+
+(defn- remove-personal-collections-from-graph
+  "Remove any personal collection IDs from the graph. Personal collections cannot be edited via the graph API."
+  [graph collection-ids]
+  (let [personal-ids (personal-collection-ids collection-ids)]
+    (cond-> graph
+      (seq personal-ids) (update :groups update-vals #(apply dissoc % personal-ids)))))
+
+(defn- remove-collections-from-other-namespaces
+  "Remove any collection IDs from the graph that belong to another namespace from the graph being updated."
+  [graph collection-ids namespace]
+  (let [other-ns-ids (when (seq collection-ids)
+                       (t2/select-pks-set :model/Collection {:where [:and [:in :id collection-ids]
+                                                                     (cond-> [:or [:not= :namespace (some-> namespace name)]]
+                                                                       (some? namespace) (into [[:= :namespace nil]]))]}))]
+    (cond-> graph
+      (seq other-ns-ids) (update :groups update-vals #(apply dissoc % other-ns-ids)))))
+
 (mu/defn update-graph!
   "Update the Collections permissions graph for Collections of `collection-namespace` (default `nil`, the 'default'
   namespace). This works just like [[metabase.models.permission/update-data-perms-graph!]], but for Collections;
   refer to that function's extensive documentation to get a sense for how this works.
 
+  Personal collections and their descendants are automatically filtered out from the graph before processing,
+  as they cannot be edited via the graph API.
+
   If there are no changes, returns nil.
   If there are changes, returns the future that is used to call `fill-revision-details!`.
-  To run this syncronously deref the non-nil return value."
+  To run this synchronously deref the non-nil return value."
   ([new-graph]
    (update-graph! nil new-graph false))
 
   ([collection-namespace :- [:maybe ms/KeywordOrString]
-    new-graph            :- PermissionsGraph
-    force?               :- [:maybe boolean?]]
-   (let [old-graph          (graph collection-namespace)
-         old-perms          (:groups old-graph)
-         new-perms          (:groups new-graph)
-         ;; filter out any groups not in the old graph
-         new-perms          (select-keys new-perms (keys old-perms))
-         ;; filter out any collections not in the old graph
-         new-perms          (into {} (for [[group-id collection-id->perms] new-perms]
-                                       [group-id (select-keys collection-id->perms (keys (get old-perms group-id)))]))
-         [diff-old changes] (data/diff old-perms new-perms)]
-     (when-not force? (perms.u/check-revision-numbers old-graph new-graph))
+    new-graph :- PermissionsGraph
+    force? :- [:maybe boolean?]]
+   (let [new-group-ids (-> new-graph :groups keys set)
+         new-collection-ids (->> new-graph :groups vals (mapcat keys) set)
+         filtered-new-graph (-> (remove-personal-collections-from-graph new-graph new-collection-ids)
+                                (remove-collections-from-other-namespaces new-collection-ids collection-namespace))
+         old-graph (graph collection-namespace new-collection-ids new-group-ids)
+         [diff-old changes] (data/diff (:groups old-graph) (->> (:groups filtered-new-graph)
+                                                                (filter (comp seq second))
+                                                                (into {})))]
+     (when-not force? (perms.u/check-revision-numbers old-graph filtered-new-graph))
      (when (seq changes)
        (let [revision-id (t2/with-transaction [_conn]
                            (doseq [[group-id changes] changes]
