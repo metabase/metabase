@@ -33,7 +33,7 @@ export function ColumnValue({
     rich: true,
   });
   if (rawValue == null) {
-    return null;
+    return <div />;
   }
 
   if (column.base_type === "type/Boolean") {
