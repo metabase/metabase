@@ -325,8 +325,9 @@ export function open(
   if (isEmbeddingSdk()) {
     const globalPlugins = getSdkGlobalPlugins();
     if (globalPlugins?.handleLink) {
-      globalPlugins.handleLink(url);
-      return;
+      if (globalPlugins.handleLink(url)) {
+        return; // the plugin should return true to prevent the default behavior
+      }
     }
   }
 
