@@ -99,10 +99,10 @@ export function EditTableMetadataModal({
           userId={userId}
           onEmailChange={(email) => {
             setEmail(email);
-            setUserId(undefined);
+            setUserId(null);
           }}
           onUserIdChange={(userId) => {
-            setEmail(undefined);
+            setEmail(null);
             setUserId(userId);
           }}
         />
