@@ -29,10 +29,9 @@ import type { Transform, TransformTag } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
 import { getTagById, getTagList } from "../../../components/TagList";
-import type { TransformListParams } from "../../../types";
 import { getTransformUrl } from "../../../urls";
-import { CreateTransformMenu } from "../CreateTransformMenu";
-import { hasFilterParams } from "../utils";
+
+import { CreateTransformMenu } from "./CreateTransformMenu";
 
 const TransformsTreeNode = (props: TreeNodeProps) => (
   <ItemsListTreeNode
@@ -64,26 +63,17 @@ const lastModifiedSorter = <T extends { updated_at: string }>(a: T, b: T) =>
   a.updated_at < b.updated_at ? 1 : a.updated_at > b.updated_at ? -1 : 0;
 
 type TransformListProps = {
-  params: TransformListParams;
   selectedId?: Transform["id"];
   onCollapse?: () => void;
 };
 
-export function TransformList({
-  params,
-  selectedId,
-  onCollapse,
-}: TransformListProps) {
+export function TransformList({ selectedId, onCollapse }: TransformListProps) {
   const dispatch = useDispatch();
   const {
     data: transforms = [],
     isLoading: isLoadingTransforms,
     error: transformsError,
-  } = useListTransformsQuery({
-    last_run_start_time: params.lastRunStartTime,
-    last_run_statuses: params.lastRunStatuses,
-    tag_ids: params.tagIds,
-  });
+  } = useListTransformsQuery({});
   const {
     data: tags = [],
     isLoading: isLoadingTags,
@@ -196,13 +186,7 @@ export function TransformList({
       }
       listItems={
         transforms.length === 0 ? (
-          <ListEmptyState
-            label={
-              hasFilterParams(params)
-                ? t`No transforms found`
-                : t`No transforms yet`
-            }
-          />
+          <ListEmptyState label={t`No transforms yet`} />
         ) : display === "tree" ? (
           <VirtualizedTree
             initiallyExpanded

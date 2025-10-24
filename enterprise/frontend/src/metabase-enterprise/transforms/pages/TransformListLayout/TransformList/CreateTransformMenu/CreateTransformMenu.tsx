@@ -18,7 +18,7 @@ import { doesDatabaseSupportTransforms } from "metabase-enterprise/transforms/ut
 import {
   getNewTransformFromCardUrl,
   getNewTransformFromTypeUrl,
-} from "../../../urls";
+} from "../../../../urls";
 
 export function CreateTransformMenu() {
   const dispatch = useDispatch();

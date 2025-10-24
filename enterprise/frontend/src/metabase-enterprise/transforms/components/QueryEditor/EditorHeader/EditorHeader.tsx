@@ -1,5 +1,7 @@
 import { t } from "ttag";
 
+import { BenchPaneHeader } from "metabase/bench/components/BenchPaneHeader";
+import { BenchTabs } from "metabase/bench/components/shared/BenchTabs";
 import { Button, Group, Tooltip } from "metabase/ui";
 
 import type { QueryValidationResult } from "../types";
@@ -30,32 +32,24 @@ export function EditorHeader({
     !isSaving;
 
   return (
-    <Group
-      justify="flex-end"
-      p="sm"
-      style={{ zIndex: 24 /* FIXME: silly hack for prototyping */ }}
-      w="100%"
-    >
-      <Button
-        key="cancel"
-        onClick={onCancel}
-        size="compact-sm"
-      >{t`Cancel`}</Button>
-      <Tooltip
-        key="save"
-        label={validationResult.errorMessage}
-        disabled={validationResult.errorMessage == null}
-      >
-        <Button
-          onClick={onSave}
-          variant="filled"
-          disabled={!canSave}
-          size="compact-sm"
-        >
-          {getSaveButtonLabel(isNew, isSaving)}
-        </Button>
-      </Tooltip>
-    </Group>
+    <BenchPaneHeader
+      title={
+        <BenchTabs tabs={[{ label: t`Query`, to: `/bench/transforms/1` }]} />
+      }
+      actions={
+        <Group>
+          <Button onClick={onCancel}>{t`Cancel`}</Button>
+          <Tooltip
+            label={validationResult.errorMessage}
+            disabled={validationResult.errorMessage == null}
+          >
+            <Button onClick={onSave} variant="filled" disabled={!canSave}>
+              {getSaveButtonLabel(isNew, isSaving)}
+            </Button>
+          </Tooltip>
+        </Group>
+      }
+    />
   );
 }
 
