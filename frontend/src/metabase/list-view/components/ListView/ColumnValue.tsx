@@ -6,6 +6,7 @@ import { getColumnExtent } from "metabase/visualizations/lib/utils";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { DatasetColumn, RowValues } from "metabase-types/api";
 
+import styles from "./ListView.module.css";
 import { getCategoryColor } from "./styling";
 
 interface ColumnValueProps {
@@ -38,12 +39,11 @@ export function ColumnValue({
   if (column.base_type === "type/Boolean") {
     return (
       <Badge
-        px="sm"
+        className={styles.badge}
         size="lg"
         c="text-secondary"
         variant="outline"
         style={{
-          borderColor: "var(--mb-color-border-secondary)",
           background: "var(--mb-color-bg-white)",
           textTransform: "capitalize",
         }}
@@ -66,11 +66,9 @@ export function ColumnValue({
       if (!column.remapped_to_column) {
         return (
           <Badge
-            px="sm"
+            className={styles.badge}
             size="lg"
-            c="text-secondary"
             variant="outline"
-            style={{ borderColor: "var(--mb-color-border-secondary)" }}
             leftSection={<Icon name="label" size={16} />}
           >
             {value}
@@ -81,12 +79,10 @@ export function ColumnValue({
     case "type/Category":
       return (
         <Badge
-          px="sm"
+          className={styles.badge}
           size="lg"
-          c="text-secondary"
           variant="outline"
           style={{
-            borderColor: "var(--mb-color-border-secondary)",
             background: "var(--mb-color-bg-white)",
           }}
           leftSection={
@@ -101,6 +97,19 @@ export function ColumnValue({
               />
             </Stack>
           }
+        >
+          {value}
+        </Badge>
+      );
+    case "type/State":
+      return (
+        <Badge
+          className={styles.badge}
+          size="lg"
+          variant="outline"
+          style={{
+            background: "var(--mb-color-bg-white)",
+          }}
         >
           {value}
         </Badge>
@@ -155,10 +164,9 @@ export function ColumnValue({
       return (
         <Badge
           size="lg"
-          c="text-secondary"
+          className={styles.badge}
           variant="outline"
           style={{
-            borderColor: "var(--mb-color-border-secondary)",
             background: "var(--mb-color-bg-white)",
           }}
         >

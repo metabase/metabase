@@ -52,6 +52,13 @@
   &:hover {
     background-color: var(--mb-color-brand-lighter);
   }
+
+  /* Columns rendering */
+  .badge {
+    padding-inline: var(--mantine-spacing-sm);
+    color: var(--mb-color-text-secondary);
+    border-color: var(--mb-color-border-secondary);
+  }
 }
 
 .listItemVirtualized {
