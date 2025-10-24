@@ -19,13 +19,22 @@ RUN apk add -U bash fontconfig curl font-noto font-noto-arabic font-noto-hebrew 
 # add Metabase jar & add our run script to the image
 COPY ./metabase.jar ./run_metabase.sh /app/
 
+# Also used as the group name
+ARG USERNAME=metabase
+ARG MGID=2000
+ARG MUID=2000
+
+RUN addgroup --gid $MGID --system $USERNAME \
+    && adduser --disabled-password --uid $MUID --disabled-password --ingroup $USERNAME $USERNAME
+
+# ensure writable directory exists for default H2 database location
+RUN mkdir -p /metabase.db && chown $USERNAME:$USERNAME /metabase.db
+
+USER $USERNAME
+
 # expose our default runtime port
 EXPOSE 3000
 
-# if you have an H2 database that you want to initialize the new Metabase
-# instance with, mount it in the container as a volume that will match the
-# pattern /app/initial*.db:
-# $ docker run ... -v $PWD/metabase.db.mv.db:/app/initial.db.mv.db ...
-
 # run it
+ENV MB_DB_FILE=/metabase.db/metabase.db
 ENTRYPOINT ["/app/run_metabase.sh"]

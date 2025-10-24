@@ -67,7 +67,6 @@ RUN mkdir -p /metabase.db && chown $USERNAME:$USERNAME /metabase.db
 
 USER $USERNAME
 
-
 # expose our default runtime port
 EXPOSE 3000
 
