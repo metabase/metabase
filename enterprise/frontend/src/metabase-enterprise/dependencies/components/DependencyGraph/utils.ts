@@ -194,7 +194,7 @@ export function getNodeLink(node: DependencyNode): NodeLink | null {
     case "sandbox":
       if (node.data.table != null) {
         return {
-          label: `View this permission`,
+          label: `View this permission rule`,
           url: Urls.tableDataPermissions(
             node.data.table.db_id,
             node.data.table.schema,
