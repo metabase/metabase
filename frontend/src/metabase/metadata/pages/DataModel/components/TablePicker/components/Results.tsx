@@ -14,20 +14,17 @@ import type {
   FlatItem,
   ItemType,
   ModelItem,
+  SchemaNode,
   TableItem,
   TreePath,
 } from "../types";
 import {
+  areTablesSelected,
   getSchemaId,
   isItemWithHiddenExpandIcon,
-  noManuallySelectedTables,
-  getParentSchema,
-  areTablesSelected,
 } from "../utils";
 
-import { BulkTableVisibilityToggle } from "./BulkTableVisibilityToggle";
 import S from "./Results.module.css";
-import { TableVisibilityToggle } from "./TableVisibilityToggle";
 
 const VIRTUAL_OVERSCAN = 5;
 const ITEM_MIN_HEIGHT = 32; // items can vary in size because of text wrapping
@@ -50,10 +47,8 @@ interface Props {
 export function Results({
   items,
   path,
-  reload,
   selectedIndex,
   toggle,
-  withMassToggle,
   onItemClick,
   onSelectedIndexChange,
   onItemToggle,
@@ -346,7 +341,6 @@ export function Results({
                 selectedItems={selectedItems}
                 selectedSchemas={selectedSchemas}
                 onItemToggle={onItemToggle}
-                allItems={items}
               />
             </Flex>
           );
@@ -361,10 +355,8 @@ function ElementCheckbox({
   selectedItems,
   selectedSchemas,
   onItemToggle,
-  allItems,
 }: {
   item: FlatItem;
-  allItems: FlatItem[];
   selectedItems: Set<TableId> | undefined;
   selectedSchemas: Set<SchemaName> | undefined;
   onItemToggle: ((item: FlatItem) => void) | undefined;
@@ -375,7 +367,12 @@ function ElementCheckbox({
   const isSchemaItemSelected =
     item.type === "schema" && selectedSchemas?.has(getSchemaId(item) ?? "");
   const schemaTablesSelected =
-    item.type === "schema" && areTablesSelected(item, allItems, selectedItems);
+    item.type === "schema" &&
+    areTablesSelected(
+      item,
+      (item as unknown as SchemaNode).children as unknown as FlatItem[],
+      selectedItems,
+    );
   const isIndeterminate = schemaTablesSelected === "some" ? true : undefined;
 
   const isChecked =
