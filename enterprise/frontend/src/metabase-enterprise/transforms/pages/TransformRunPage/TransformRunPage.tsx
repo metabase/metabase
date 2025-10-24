@@ -47,14 +47,10 @@ export function TransformRunPage({ params }: TransformRunPageProps) {
         title={<TransformTabs transform={transform} />}
         withBorder
       />
-      <Flex
-        direction="column"
-        align="center"
-        flex={1}
-        pt="3.5rem"
-        bg="bg-light"
-      >
-        <RunSection transform={transform} />
+      <Flex flex={1} justify="center" p="xl" bg="bg-light">
+        <Flex flex={1} direction="column" maw="50rem">
+          <RunSection transform={transform} />
+        </Flex>
       </Flex>
     </Flex>
   );

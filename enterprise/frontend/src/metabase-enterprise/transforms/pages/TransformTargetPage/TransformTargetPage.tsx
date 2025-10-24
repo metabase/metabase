@@ -4,6 +4,7 @@ import { skipToken } from "metabase/api";
 import { BenchPaneHeader } from "metabase/bench/components/BenchPaneHeader";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
+import { Flex } from "metabase/ui";
 import { useGetTransformQuery } from "metabase-enterprise/api";
 import type { Transform } from "metabase-types/api";
 
@@ -45,13 +46,17 @@ export function TransformTargetPage({ params }: TransformTargetPageProps) {
   }
 
   return (
-    <div>
+    <Flex direction="column" h="100%">
       <BenchPaneHeader
         title={<TransformTabs transform={transform} />}
         withBorder
       />
-      <TargetSection transform={transform} />
-    </div>
+      <Flex flex={1} justify="center" p="xl" bg="bg-light">
+        <Flex flex={1} direction="column" maw="50rem">
+          <TargetSection transform={transform} />
+        </Flex>
+      </Flex>
+    </Flex>
   );
 }
 

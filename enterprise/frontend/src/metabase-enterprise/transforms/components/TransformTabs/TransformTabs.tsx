@@ -13,8 +13,8 @@ export function TransformTabs({ transform }: TransformTabsProps) {
       tabs={[
         { label: t`Query`, to: `/bench/transforms/${transform.id}` },
         {
-          label: t`Schedule`,
-          to: `/bench/transforms/${transform.id}/schedule`,
+          label: t`Run`,
+          to: `/bench/transforms/${transform.id}/run`,
         },
         {
           label: t`Target`,

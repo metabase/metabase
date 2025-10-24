@@ -6,16 +6,7 @@ import { t } from "ttag";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { isResourceNotFoundError } from "metabase/lib/errors";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import {
-  Anchor,
-  Box,
-  Card,
-  Divider,
-  Group,
-  Stack,
-  Text,
-  Title,
-} from "metabase/ui";
+import { Anchor, Box, Card, Divider, Group, Stack } from "metabase/ui";
 import {
   useCancelCurrentTransformRunMutation,
   useRunTransformMutation,
@@ -28,6 +19,7 @@ import type { Transform, TransformTagId } from "metabase-types/api";
 import { RunButton } from "../../../components/RunButton";
 import { RunStatus } from "../../../components/RunStatus";
 import { TagMultiSelect } from "../../../components/TagMultiSelect";
+import { TitleSection } from "../../../components/TitleSection";
 import { getRunListUrl } from "../../../urls";
 
 type RunSectionProps = {
@@ -36,11 +28,10 @@ type RunSectionProps = {
 
 export function RunSection({ transform }: RunSectionProps) {
   return (
-    <Stack gap="xl">
-      <Stack flex={1} gap="sm">
-        <Title order={4}>{t`Run this transform`}</Title>
-        <Text c="text-secondary">{t`This transform will be run whenever the jobs it belongs are scheduled`}</Text>
-      </Stack>
+    <TitleSection
+      label={t`Run this transform`}
+      description={t`This transform will be run whenever the jobs it belongs are scheduled.`}
+    >
       <Card p={0} shadow="none" withBorder>
         <Stack>
           <Group p="lg" justify="space-between">
@@ -58,7 +49,7 @@ export function RunSection({ transform }: RunSectionProps) {
           <TagSection transform={transform} />
         </Group>
       </Card>
-    </Stack>
+    </TitleSection>
   );
 }
 

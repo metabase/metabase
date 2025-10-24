@@ -23,7 +23,7 @@ export const getTransformRoutes = () => (
       <Route path="new/:type" component={NewTransformPage} />
       <Route path="new/card/:cardId" component={NewTransformPage} />
       <Route path=":transformId" component={TransformQueryPage} />
-      <Route path=":transformId/schedule" component={TransformRunPage} />
+      <Route path=":transformId/run" component={TransformRunPage} />
       <Route path=":transformId/target" component={TransformTargetPage} />
     </Route>
     <Route title={t`Jobs`} path="jobs" component={JobLayout}>

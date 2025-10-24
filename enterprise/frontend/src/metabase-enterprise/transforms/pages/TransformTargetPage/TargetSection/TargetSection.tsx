@@ -11,6 +11,7 @@ import CS from "metabase/css/core/index.css";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   Button,
+  Card,
   Divider,
   Group,
   Icon,
@@ -20,6 +21,7 @@ import {
 } from "metabase/ui";
 import type { Transform } from "metabase-types/api";
 
+import { TitleSection } from "../../../components/TitleSection";
 import {
   getBrowseDatabaseUrl,
   getBrowseSchemaUrl,
@@ -36,16 +38,21 @@ type TargetSectionProps = {
 
 export function TargetSection({ transform }: TargetSectionProps) {
   return (
-    <div>
-      <Group p="lg">
-        <TargetInfo transform={transform} />
-      </Group>
-      <Divider />
-      <Group p="lg">
-        <EditTargetButton transform={transform} />
-        <EditMetadataButton transform={transform} />
-      </Group>
-    </div>
+    <TitleSection
+      label={t`Transform target`}
+      description={t`Change what this transform generates and where.`}
+    >
+      <Card p={0} shadow="none" withBorder>
+        <Group p="lg">
+          <TargetInfo transform={transform} />
+        </Group>
+        <Divider />
+        <Group p="lg">
+          <EditTargetButton transform={transform} />
+          <EditMetadataButton transform={transform} />
+        </Group>
+      </Card>
+    </TitleSection>
   );
 }
 
