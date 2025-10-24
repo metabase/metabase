@@ -1,15 +1,20 @@
 (ns ^:mb/driver-tests metabase-enterprise.transforms.api-test
   "Tests for /api/transform endpoints."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase-enterprise.transforms.query-test-util :as query-test-util]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
-   [metabase-enterprise.transforms.test-util :refer [get-test-schema parse-instant utc-timestamp with-transform-cleanup!]]
+   [metabase-enterprise.transforms.test-util :refer [get-test-schema
+                                                     parse-instant
+                                                     utc-timestamp
+                                                     with-transform-cleanup!]]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -59,6 +64,76 @@
                                    :target {:type   "table"
                                             :schema schema
                                             :name   table-name}})))))))
+
+(deftest transform-type-detection-test
+  (testing "Transform type is automatically detected and set based on source"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/with-premium-features #{:transforms :transforms-python}
+        (mt/dataset transforms-dataset/transforms-test
+          (testing "MBQL query transforms are detected as :mbql"
+            (with-transform-cleanup! [table-name "mbql_transform"]
+              (let [mbql-query (mt/mbql-query transforms_products)
+                    schema (get-test-schema)
+                    response (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                                   {:name   "MBQL Transform"
+                                                    :source {:type  "query"
+                                                             :query mbql-query}
+                                                    :target {:type   "table"
+                                                             :schema schema
+                                                             :name   table-name}})]
+                (is (= "mbql" (:type response))))))
+
+          (testing "Native query transforms are detected as :native"
+            (with-transform-cleanup! [table-name "native_transform"]
+              (let [schema (get-test-schema)
+                    response (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                                   {:name   "Native Transform"
+                                                    :source {:type  "query"
+                                                             :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
+                                                    :target {:type   "table"
+                                                             :schema schema
+                                                             :name   table-name}})]
+                (is (= "native" (:type response))))))
+
+          (testing "Python transforms are detected as :python"
+            (with-transform-cleanup! [table-name "python_transform"]
+              (let [schema (get-test-schema)
+                    response (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                                   {:name   "My beautiful python runner"
+                                                    :source {:type          "python"
+                                                             :body          "print('hello world')"
+                                                             :source-tables {}}
+                                                    :target {:type     "table"
+                                                             :schema   schema
+                                                             :name     table-name
+                                                             :database (mt/id)}})]
+                (is (= "python" (:type response)))))))))))
+
+(deftest transform-type-immutable-test
+  (testing "Transform type cannot be changed after creation"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/with-premium-features #{:transforms}
+        (mt/dataset transforms-dataset/transforms-test
+          (with-transform-cleanup! [table-name "immutable_type_transform"]
+            (let [native-query (lib/native-query (mt/metadata-provider) "SELECT 1")
+                  mbql-query (mt/mbql-query transforms_products)
+                  schema (get-test-schema)
+                  created (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                                {:name   "Native Transform"
+                                                 :source {:type  "query"
+                                                          :query native-query}
+                                                 :target {:type   "table"
+                                                          :schema schema
+                                                          :name   table-name}})]
+              (is (= :native (:type created)))
+
+              (let [response (mt/user-http-request :crowberto :put 400
+                                                   (format "ee/transform/%s" (:id created))
+                                                   {:source {:type  "query"
+                                                             :query mbql-query}})]
+                (def response response)
+                (is (string? response))
+                (is (str/includes? response "Cannot change the type of a transform"))))))))))
 
 (deftest create-transform-feature-flag-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)

@@ -212,6 +212,7 @@
    :skip [:dependency_analysis_version]
    :transform {:created_at (serdes/date)
                :updated_at (serdes/date)
+               :type (serdes/kw)
                :source {:export #(update % :query serdes/export-mbql)
                         :import #(update % :query serdes/import-mbql)}
                :target {:export serdes/export-mbql :import serdes/import-mbql}
