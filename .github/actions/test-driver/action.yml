@@ -27,9 +27,11 @@ runs:
     - name: Test database driver
       run: clojure -X:dev:ci:ee:ee-dev:drivers:drivers-dev:test ${{ inputs.test-args }}
       shell: bash
+      id: run-test
+      continue-on-error: true # this is crucial for the Trunk Quarantine to work
     - name: Publish Test Report (JUnit)
       uses: dorny/test-reporter@v1
-      if: failure()
+      if: ${{ steps.run-test.outcome == 'failure' }}
       with:
         path: "target/junit/**/*_test.xml"
         name: JUnit Test Report ${{ inputs.junit-name }}
@@ -38,7 +40,7 @@ runs:
         list-tests: failed
         fail-on-error: false
     - name: Upload Logs on Failure
-      if: always() && !success()
+      if: ${{ steps.run-test.outcome == 'failure' }}
       uses: actions/upload-artifact@v4
       with:
         name: test-logs-${{ github.job }}
