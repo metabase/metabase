@@ -304,6 +304,23 @@
        (map #(str/replace-first (.getName ^Ref %) "refs/heads/" ""))
        sort))
 
+(defn- delete-branches-without-remote!
+  [{:keys [^Git git] :as source}]
+  (let [remote-branches (set (branches source))
+        local-refs (call-command (.branchList git))
+        branches-to-delete (keep (fn [^Ref ref]
+                                   (let [branch-name (str/replace-first (.getName ref) "refs/heads/" "")]
+                                     (when (not (remote-branches branch-name))
+                                       branch-name)))
+                                 local-refs)]
+    (log/info "Deleting local branches without remote:" {:branches branches-to-delete})
+    (doseq [branch-name branches-to-delete]
+      (call-command (-> (.branchDelete git)
+                        (.setBranchNames (into-array String [branch-name]))
+                        (.setForce true))))
+    {:deleted (count branches-to-delete)
+     :branch-names branches-to-delete}))
+
 (defn create-branch
   "Creates a new branch in the git repository from an existing branch.
 
@@ -315,6 +332,7 @@
   Throws ExceptionInfo if the base branch is not found or if the new branch already exists."
   [{:keys [^Git git] :as source} branch-name base-commit-ish]
   (fetch! source)
+  (delete-branches-without-remote! source)
   (let [repo (.getRepository git)
         new-branch-ref (qualify-branch branch-name)
         base-commit-id (.resolve repo base-commit-ish)]
