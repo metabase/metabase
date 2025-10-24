@@ -1,6 +1,7 @@
 import type { EmbeddingParameters } from "metabase/public/lib/types";
 import type {
   BaseEntityId,
+  CardCreatorInfo,
   CardDisplayType,
   ClickBehavior,
   Collection,
@@ -44,6 +45,7 @@ export interface Dashboard {
   entity_id: BaseEntityId;
   created_at: string;
   creator_id: UserId;
+  creator?: CardCreatorInfo;
   updated_at: string;
   collection?: Collection | null;
   collection_id: CollectionId | null;

@@ -24,23 +24,16 @@
 (deftest ^:parallel ->applicable-models-test
   (testing "without optional filters"
     (testing "return :models as is"
-      (is (= (disj search.config/all-models "transform")
+      (is (= search.config/all-models
              (search.filter/search-context->applicable-models
               default-search-ctx)))
       (is (= #{}
              (search.filter/search-context->applicable-models
               (assoc default-search-ctx :models #{}))))
-      (is (= (disj search.config/all-models "transform")
+      (is (= search.config/all-models
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
-                     {:archived? true}))))))
-
-  (testing "metabot search context includes transforms"
-    (is (= search.config/all-models
-           (search.filter/search-context->applicable-models
-            (merge default-search-ctx
-                   {:models  search.config/all-models
-                    :context :metabot}))))))
+                     {:archived? true})))))))
 
 (deftest ^:parallel ->applicable-models-test-2
   (testing "optional filters will return intersection of support models and provided models\n"
@@ -59,7 +52,7 @@
 
     (testing "created at"
       (is (= (cond-> #{"dashboard" "table" "dataset" "collection" "database" "action" "card" "metric"}
-               config/ee-available? (conj "document"))
+               config/ee-available? (conj "document" "transform"))
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:created-at "past3days"}))))
@@ -107,7 +100,8 @@
                       :last-edited-at "past3days"})))))
 
     (testing "search native query"
-      (is (= #{"dataset" "action" "card" "metric"}
+      (is (= (cond-> #{"dataset" "action" "card" "metric"}
+               config/ee-available? (conj "transform"))
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:search-native-query true})))))))

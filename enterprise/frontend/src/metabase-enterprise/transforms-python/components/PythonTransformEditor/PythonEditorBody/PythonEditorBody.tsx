@@ -3,10 +3,10 @@ import { ResizableBox } from "react-resizable";
 import { t } from "ttag";
 
 import Link from "metabase/common/components/Link";
+import * as Urls from "metabase/lib/urls";
 import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
 import { Box, Button, Checkbox, Flex, Icon, Stack, Tooltip } from "metabase/ui";
 import { SHARED_LIB_IMPORT_PATH } from "metabase-enterprise/transforms-python/constants";
-import { getPythonLibraryUrl } from "metabase-enterprise/transforms-python/urls";
 
 import { PythonEditor } from "../../PythonEditor";
 
@@ -60,6 +60,7 @@ export function PythonEditorBody({
             <>
               <Tooltip label={t`Accept proposed changes`} position="left">
                 <Button
+                  data-testid="accept-proposed-changes-button"
                   variant="filled"
                   bg="success"
                   px="0"
@@ -71,6 +72,7 @@ export function PythonEditorBody({
               </Tooltip>
               <Tooltip label={t`Reject proposed changes`} position="left">
                 <Button
+                  data-testid="reject-proposed-changes-button"
                   w="2.5rem"
                   px="0"
                   variant="filled"
@@ -171,7 +173,7 @@ function SharedLibraryEditLink() {
     <Flex
       component={Link}
       target="_blank"
-      to={getPythonLibraryUrl({ path: SHARED_LIB_IMPORT_PATH })}
+      to={Urls.transformPythonLibrary({ path: SHARED_LIB_IMPORT_PATH })}
       gap="sm"
     >
       <Icon name="pencil" />

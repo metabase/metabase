@@ -38,6 +38,7 @@ export const TAG_TYPES = [
   "task",
   "timeline",
   "timeline-event",
+  "transform",
   "user",
   "public-dashboard",
   "embed-dashboard",

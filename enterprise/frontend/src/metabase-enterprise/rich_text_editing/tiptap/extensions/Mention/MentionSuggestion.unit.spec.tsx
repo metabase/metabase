@@ -111,7 +111,12 @@ describe("MentionSuggestion", () => {
   });
 
   it("shows model selector for empty query with searchModels", async () => {
-    setup({ query: "", searchModels: ["card", "dashboard", "table"] });
+    setup({
+      query: "",
+      searchModels: ["card", "dashboard", "table"],
+      canFilterSearchModels: true,
+      canBrowseAll: true,
+    });
     await expectOptionToBePresent(/Question/);
     await expectOptionToBePresent(/Dashboard/);
     await expectOptionToBePresent(/Table/);
@@ -128,6 +133,8 @@ describe("MentionSuggestion", () => {
           id: 10,
         }),
       ],
+      canFilterSearchModels: true,
+      canBrowseAll: true,
     });
 
     await userEvent.click(
@@ -154,6 +161,8 @@ describe("MentionSuggestion", () => {
     setup({
       query: "que",
       searchModels: ["card", "dashboard", "table"],
+      canFilterSearchModels: true,
+      canBrowseAll: true,
     });
 
     await expectOptionToBePresent(/Question/);
