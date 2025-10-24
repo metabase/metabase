@@ -2,9 +2,9 @@ import { type UnknownAction, isRejected } from "@reduxjs/toolkit";
 import { push } from "react-router-redux";
 import { P, match } from "ts-pattern";
 
+import { isEmbedding } from "metabase/embedding-sdk/config";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
-import { getIsEmbedding } from "metabase/selectors/embed";
 import { getUser } from "metabase/selectors/user";
 import { EnterpriseApi } from "metabase-enterprise/api";
 import {
@@ -201,8 +201,6 @@ export const sendAgentRequest = createAsyncThunk<
     req,
     { dispatch, getState, signal, rejectWithValue, fulfillWithValue },
   ) => {
-    const isEmbedding = getIsEmbedding(getState() as any);
-
     // TODO: make enterprise store
     let sessionId = getMetabotConversationId(getState() as any);
 
@@ -236,7 +234,7 @@ export const sendAgentRequest = createAsyncThunk<
               .with({ type: "navigate_to" }, (part) => {
                 dispatch(setNavigateToPath(part.value));
 
-                if (!isEmbedding) {
+                if (!isEmbedding()) {
                   dispatch(push(part.value) as UnknownAction);
                 }
               })

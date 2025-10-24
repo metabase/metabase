@@ -1,13 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
-import { getIsEmbedding } from "metabase/selectors/embed";
-
-import {
-  FIXED_METABOT_IDS,
-  LONG_CONVO_MSG_LENGTH_THRESHOLD,
-  METABOT_REQUEST_IDS,
-} from "../constants";
+import { LONG_CONVO_MSG_LENGTH_THRESHOLD } from "../constants";
 
 import type { MetabotStoreState } from "./types";
 
@@ -106,21 +100,9 @@ export const getIsLongMetabotConversation = createSelector(
   },
 );
 
-export const getMetabotId = createSelector(getIsEmbedding, (isEmbedding) =>
-  isEmbedding ? FIXED_METABOT_IDS.EMBEDDED : FIXED_METABOT_IDS.DEFAULT,
-);
-
 export const getMetabotReqIdOverride = createSelector(
   getMetabot,
   (metabot) => metabot.experimental.metabotReqIdOverride,
-);
-
-export const getMetabotRequestId = createSelector(
-  getMetabotReqIdOverride,
-  getIsEmbedding,
-  (metabotReqIdOverride, isEmbedding) =>
-    metabotReqIdOverride ??
-    (isEmbedding ? METABOT_REQUEST_IDS.EMBEDDED : undefined),
 );
 
 export const getProfileOverride = createSelector(

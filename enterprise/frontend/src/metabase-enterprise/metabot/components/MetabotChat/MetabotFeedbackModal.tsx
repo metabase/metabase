@@ -1,6 +1,7 @@
 import { c, t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
+import { isEmbedding } from "metabase/embedding-sdk/config";
 import { Form, FormProvider } from "metabase/forms";
 import { FormSelect } from "metabase/forms/components/FormSelect";
 import { FormTextarea } from "metabase/forms/components/FormTextarea";
@@ -8,7 +9,8 @@ import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";
-import { getMetabot, getMetabotId } from "metabase-enterprise/metabot/state";
+import { getMetabot } from "metabase-enterprise/metabot/state";
+import { getMetabotId } from "metabase-enterprise/metabot/state/utils";
 import type { MetabotFeedback } from "metabase-types/api";
 
 interface MetabotFeedbackModalProps {
@@ -28,9 +30,7 @@ export const MetabotFeedbackModal = ({
   const isAdmin = useSelector(getUserIsAdmin);
   const version = useSetting("version");
 
-  const metabotId = useSelector(getMetabotId as any) as ReturnType<
-    typeof getMetabotId
-  >;
+  const metabotId = getMetabotId(isEmbedding());
   const metabotState = useSelector(getMetabot as any) as ReturnType<
     typeof getMetabot
   >;

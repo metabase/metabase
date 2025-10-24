@@ -2,6 +2,7 @@ import { withRouter } from "react-router";
 import _ from "underscore";
 
 import { logout } from "metabase/auth/actions";
+import { isEmbeddingIframe } from "metabase/embedding-sdk/config";
 import Collections from "metabase/entities/collections";
 import { connect } from "metabase/lib/redux";
 import { PLUGIN_DOCUMENTS, PLUGIN_METABOT } from "metabase/plugins";
@@ -14,11 +15,9 @@ import {
   getIsNavBarEnabled,
   getIsNavbarOpen,
   getIsNewButtonVisible,
-  getIsProfileLinkVisible,
   getIsQuestionLineageVisible,
   getIsSearchVisible,
 } from "metabase/selectors/app";
-import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getUser } from "metabase/selectors/user";
 import type { State } from "metabase-types/store";
 
@@ -34,9 +33,9 @@ const mapStateToProps = (state: State, props: RouterProps) => ({
   isCommentSidebarOpen: PLUGIN_DOCUMENTS.getCommentSidebarOpen(state),
   isLogoVisible: getIsLogoVisible(state),
   isSearchVisible: getIsSearchVisible(state),
-  isEmbeddingIframe: getIsEmbeddingIframe(state),
+  isEmbeddingIframe: isEmbeddingIframe(),
   isNewButtonVisible: getIsNewButtonVisible(state),
-  isProfileLinkVisible: getIsProfileLinkVisible(state),
+  isProfileLinkVisible: !isEmbeddingIframe(),
   isCollectionPathVisible: getIsCollectionPathVisible(state, props),
   isQuestionLineageVisible: getIsQuestionLineageVisible(state, props),
   detailView: getDetailViewState(state),
