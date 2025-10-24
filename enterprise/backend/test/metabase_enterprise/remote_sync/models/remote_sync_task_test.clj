@@ -367,7 +367,7 @@
       (is (thrown-with-msg? Exception #"Remote sync task has been cancelled"
                             (rst/update-progress! (:id task) 0.5))))))
 
-(deftest last-version
+(deftest last-version-test
   (testing "When there are no tasks, last-version returns nil"
     (is (nil? (rst/last-version))))
   (testing "When there are no successful tasks, last-version returns nil"
