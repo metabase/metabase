@@ -61,9 +61,10 @@
 
 (defmethod ->op-arg :lib/external-op
   [{:keys [operator options args] :or {options {}}}]
-  (->op-arg (lib.options/ensure-uuid (into [(keyword operator) options]
-                                           (map ->op-arg)
-                                           args))))
+  (->op-arg (-> (lib.options/ensure-uuid (into [(keyword operator) options]
+                                               (map ->op-arg)
+                                               args))
+                ((#?(:clj requiring-resolve :cljs resolve) 'metabase.lib.normalize/normalize)))))
 
 (defn defop-create
   "Impl for [[defop]]."

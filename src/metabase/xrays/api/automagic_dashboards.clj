@@ -5,6 +5,8 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
@@ -263,11 +265,12 @@
     :keys                                        [linked-tables]}]
   (if (seq linked-tables)
     (let [child-dashboards (map (fn [{:keys [linked-table-id linked-field-id]}]
-                                  (let [table (t2/select-one :model/Table :id linked-table-id)]
+                                  (let [table (t2/select-one :model/Table :id linked-table-id)
+                                        mp    (lib-be/application-database-metadata-provider (:db_id table))]
                                     (automagic-dashboards.core/automagic-analysis
                                      table
                                      {:show         :all
-                                      :query-filter [:= [:field linked-field-id nil] model_pk]})))
+                                      :query-filter [(lib/= (lib.metadata/field mp linked-field-id) model_pk)]})))
                                 linked-tables)
           seed-dashboard   (-> (first child-dashboards)
                                (merge

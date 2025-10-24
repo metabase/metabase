@@ -116,7 +116,6 @@
                                               :body          long-running-code}
                                      :target (assoc target :database (mt/id))}]
                   (mt/with-temp [:model/Transform transform transform-def]
-                    (t2/query "SET LOCAL idle_in_transaction_session_timeout = 30000") ; mt/with-temp introduces a transaction which postgres might close early!
                     (let [{:keys [run_id]} (try
                                              (transforms-python.execute/execute-python-transform! transform {:run-method :manual})
                                              (catch Exception _

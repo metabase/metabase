@@ -7,7 +7,6 @@
    [metabase.api.common :as api]
    ;; existing usages, do not use legacy MBQL utils in new code
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    ^{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]} [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -20,6 +19,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
+   [metabase.segments.schema :as segments.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -33,14 +33,9 @@
 (methodical/defmethod t2/table-name :model/Segment [_model] :segment)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :segment] [_original-model _k] :model/Segment)
 
-(mr/def ::segment-definition
-  [:map
-   [:filter      {:optional true} [:maybe mbql.s/Filter]]
-   [:aggregation {:optional true} [:maybe [:sequential ::mbql.s/Aggregation]]]])
-
 (defn- validate-segment-definition
   [definition]
-  (if-let [error (mr/explain ::segment-definition definition)]
+  (if-let [error (mr/explain ::segments.schema/segment definition)]
     (let [humanized (me/humanize error)]
       (throw (ex-info (tru "Invalid Metric or Segment: {0}" (pr-str humanized))
                       {:error     error

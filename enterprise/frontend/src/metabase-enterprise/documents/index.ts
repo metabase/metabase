@@ -3,7 +3,7 @@ import {
   PLUGIN_ENTITIES,
   PLUGIN_REDUCERS,
 } from "metabase/plugins";
-import Documents from "metabase-enterprise/entities/document";
+import Documents from "metabase-enterprise/entities/documents";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { DocumentCopyForm } from "./components/DocumentCopyForm/DocumentCopyForm";

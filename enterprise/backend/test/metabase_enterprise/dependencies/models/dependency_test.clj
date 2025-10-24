@@ -18,7 +18,9 @@
   (t2/select-fn-set #(select-keys % [:from_entity_type :from_entity_id :to_entity_type :to_entity_id])
                     :model/Dependency :from_entity_type from-type :from_entity_id from-id))
 
-(defn- basic-orders []
+(defn basic-orders
+  "Construct a basic card for dependency testing."
+  []
   {:name                   "Test card"
    :database_id            (mt/id)
    :table_id               (mt/id :orders)
@@ -28,7 +30,9 @@
    :dataset_query          (mt/mbql-query orders)
    :visualization_settings {}})
 
-(defn- wrap-card [inner-card]
+(defn wrap-card
+  "Construct a card depending on `inner-card` for dependency testing."
+  [inner-card]
   {:name                   "Downstream card"
    :database_id            (mt/id)
    :display                :table

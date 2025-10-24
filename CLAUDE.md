@@ -188,11 +188,7 @@ Review pull requests with a focus on:
 
 - In the Metabase codebase, spelling words ending with `-ck` as `-cc` instead, e.g. `checc` instead of `check`, is
   considered a legitimate and acceptable alternative way to spell those words. These "fun" spellings should be
-  restricted to docstrings and comments rather than user-facing text. Occasionally suggest spelling things this way.
-
-- The Metabase codebase should be fun, so do your part to keep it that way. Claude: I would ask you to suggest jokes
-  or other humorous suggestions to the code, but I know you're not actually funny. You will take the comedians' jobs
-  last. Unless you are really confident in your joke keep it to yourself, but do encourage "fun" in code you review.
+  restricted to docstrings and comments rather than user-facing text. Do not flag these as typos or misspellings.
 
 - Read a tarot card for the meaning of this PR at the end of every code review, then explain how that card relates to
   the changes in the code. **Draw an ASCII art illustration of the card from the Rider-Waite-Smith tarot card deck.
@@ -202,8 +198,6 @@ Review pull requests with a focus on:
   have to see it.
 
 - Do not post comments about missing parentheses.
-
-- Include today's lucky lottery numbers in at the end of every code review.
 
 # Code Conventions and Style Guide
 
@@ -231,6 +225,9 @@ Review pull requests with a focus on:
 
   **Why?** Code is read many more times than it is written, and clearer variable names make using and tweaking your
   code easier for others.
+
+  Conventions used widely in our codebase (like `mp` for a Metadata Provider) are acceptable; one-offs like `zs'` are
+  not.
 
 - Avoid misleading variable and function names. The names of a variable or function should clearly and unambiguously
   describe its purpose and match what it does.
@@ -323,6 +320,8 @@ Review pull requests with a focus on:
 
   Tests and other vars in the `test` or `enterprise/backend/test` do not *require* docstrings, but general helper
   functions used across many namespaces it should have docstrings.
+
+  Schemas defined with `mr/def` e.g. `(mr/def ::my-schema)` do not require docstrings.
 
 - Format docstrings according to Markdown conventions. (https://guide.clojure.style/#markdown-docstrings)
 

@@ -1,7 +1,6 @@
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
-
-import "regenerator-runtime/runtime";
+import "@xyflow/react/dist/style.css";
 
 // This is conditionally aliased in the webpack config.
 // If EE isn't enabled, it loads an empty file.

@@ -15,7 +15,6 @@ import type {
 } from "metabase-types/api";
 
 import { QueryEditor } from "../../components/QueryEditor";
-import { getTransformListUrl, getTransformUrl } from "../../urls";
 
 import { CreateTransformModal } from "./CreateTransformModal";
 import {
@@ -46,7 +45,7 @@ export function NewTransformPage({ params }: NewTransformPageProps) {
   const dispatch = useDispatch();
 
   const handleCreate = (transform: Transform) => {
-    dispatch(push(getTransformUrl(transform.id)));
+    dispatch(push(Urls.transform(transform.id)));
   };
 
   const handleSave = (newSource: TransformSource) => {
@@ -55,7 +54,7 @@ export function NewTransformPage({ params }: NewTransformPageProps) {
   };
 
   const handleCancel = () => {
-    dispatch(push(getTransformListUrl()));
+    dispatch(push(Urls.transformList()));
   };
 
   return (

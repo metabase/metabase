@@ -1,0 +1,19 @@
+.card {
+  min-width: 15rem;
+
+  &:hover,
+  &.selected {
+    border-color: var(--mb-color-brand);
+  }
+}
+
+.pill {
+  color: var(--mb-color-text-primary);
+  background-color: var(--mb-color-bg-medium);
+
+  &:hover,
+  &.selected {
+    color: var(--mb-color-white);
+    background-color: var(--mb-color-brand);
+  }
+}

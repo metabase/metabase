@@ -3,6 +3,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button, Group } from "metabase/ui";
 import {
@@ -10,7 +11,6 @@ import {
   useLazyGetTransformJobQuery,
 } from "metabase-enterprise/api";
 
-import { getJobListUrl, getJobUrl } from "../../../urls";
 import type { TransformJobInfo } from "../types";
 
 import S from "./SaveSection.module.css";
@@ -35,7 +35,7 @@ export function SaveSection({ job: jobInfo }: SaveSectionProps) {
       // prefetch the job to avoid the loader on the job details page
       await fetchJob(job.id);
       sendSuccessToast(t`New job created`);
-      dispatch(push(getJobUrl(job.id)));
+      dispatch(push(Urls.transformJob(job.id)));
     }
   };
 
@@ -48,7 +48,7 @@ export function SaveSection({ job: jobInfo }: SaveSectionProps) {
       >
         {t`Save`}
       </Button>
-      <Button component={Link} to={getJobListUrl()}>{t`Cancel`}</Button>
+      <Button component={Link} to={Urls.transformJobList()}>{t`Cancel`}</Button>
     </Group>
   );
 }

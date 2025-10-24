@@ -4,12 +4,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
-   ;; legacy usages, do not use legacy MBQL stuff in new code.
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
-   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
@@ -49,32 +44,25 @@
   [tablespec tables :- [:maybe [:sequential ::ads/source]]]
   (filter #(-> % :entity_type (isa? tablespec)) tables))
 
-(def ^{:arglists '([metric])} saved-metric?
+(defn saved-metric?
   "Is metric a saved (V2) metric? (Note that X-Rays do not currently know how to handle Saved V2 Metrics.)"
-  ;; legacy usage, do not use legacy MBQL stuff in new code.
-  #_{:clj-kondo/ignore [:deprecated-var]}
-  (partial mbql.u/is-clause? :metric))
-
-(def ^{:arglists '([metric])} custom-expression?
-  "Is this a custom expression?"
-  ;; legacy usage, do not use legacy MBQL stuff in new code.
-  #_{:clj-kondo/ignore [:deprecated-var]}
-  (partial mbql.u/is-clause? :aggregation-options))
+  [metric]
+  (lib/clause-of-type? metric :metric))
 
 (def ^{:arglists '([metric])} adhoc-metric?
   "Is this an adhoc metric?"
-  (complement (some-fn saved-metric? custom-expression?)))
+  (complement saved-metric?))
 
 (def ^{:arglists '([x])} encode-base64-json
   "Encode given object as form-encoded base-64-encoded JSON."
   (comp codec/form-encode codec/base64-encode codecs/str->bytes json/encode))
 
-(mu/defn field-reference->id :- [:maybe [:or ms/NonBlankString ms/PositiveInt]]
+(mu/defn field-reference->id :- [:maybe [:or ms/NonBlankString ::lib.schema.id/field]]
   "Extract field ID from a given field reference form."
-  [clause]
-  (lib.util.match/match-one clause [:field id _] id))
+  [clause :- :mbql.clause/field]
+  (lib.util.match/match-one clause [:field _opts id] id))
 
-(mu/defn collect-field-references :- [:maybe [:sequential mbql.s/field]]
+(mu/defn collect-field-references :- [:maybe [:sequential :mbql.clause/field]]
   "Collect all `:field` references from a given form."
   [form]
   (lib.util.match/match form :field &match))
@@ -87,7 +75,8 @@
    field-id-or-name-or-clause                             :- [:or
                                                               ::lib.schema.id/field
                                                               ms/NonBlankString
-                                                              ::mbql.s/field-or-expression-ref]]
+                                                              :mbql.clause/field
+                                                              :mbql.clause/expression]]
   (let [id-or-name (if (sequential? field-id-or-name-or-clause)
                      (field-reference->id field-id-or-name-or-clause)
                      field-id-or-name-or-clause)]
@@ -114,28 +103,3 @@
   "Generate a parameter ID for the given field. In X-ray dashboards a parameter is mapped to a single field only."
   [field]
   (-> field ((juxt :id :name :unit)) hash str))
-
-(defn do-with-legacy-query
-  "Call
-
-    (apply f query args)
-
-  with `query` converted to a legacy MBQL query if needed."
-  [query f & args]
-  (when (seq query)
-    (case (lib/normalized-mbql-version query)
-      :mbql-version/legacy (apply f query args)
-      :mbql-version/mbql5  (apply f #_{:clj-kondo/ignore [:discouraged-var]} (lib/->legacy-MBQL query) args))))
-
-(defn do-with-mbql5-query
-  "Call
-
-    (apply f query args)
-
-  with `query` converted to an MBQL 5 query if needed."
-  [query f & args]
-  (when (seq query)
-    (case (lib/normalized-mbql-version query)
-      :mbql-version/legacy (binding [lib.schema/*HACK-disable-join-alias-in-field-ref-validation* true]
-                             (apply f (lib-be/normalize-query query) args))
-      :mbql-version/mbql5  (apply f query args))))

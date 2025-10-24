@@ -3,6 +3,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import type * as Urls from "metabase/lib/urls";
 import { Box, Stack, Title } from "metabase/ui";
 import {
   useListTransformRunsQuery,
@@ -11,8 +12,6 @@ import {
 } from "metabase-enterprise/api";
 import { POLLING_INTERVAL } from "metabase-enterprise/transforms/constants";
 import type { TransformRun } from "metabase-types/api";
-
-import type { RunListParams } from "../../types";
 
 import { RunFilterList } from "./RunFilterList";
 import { RunList } from "./RunList";
@@ -36,7 +35,7 @@ export function RunListPage({ location }: RunListPageProps) {
 }
 
 type RunListPageBodyProps = {
-  params: RunListParams;
+  params: Urls.TransformRunListParams;
 };
 
 function RunListPageBody({ params }: RunListPageBodyProps) {

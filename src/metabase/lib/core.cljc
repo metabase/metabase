@@ -127,6 +127,7 @@
   aggregations
   aggregations-metadata
   available-aggregation-operators
+  remove-all-aggregations
   selected-aggregation-operators
   count
   avg

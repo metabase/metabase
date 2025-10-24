@@ -2,9 +2,9 @@ import { replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import type { RelativeIntervalDirection } from "metabase/querying/filters/types";
 import { Group } from "metabase/ui";
-import { getJobListUrl } from "metabase-enterprise/transforms/urls";
 import type {
   TransformRunStatus,
   TransformTag,
@@ -14,10 +14,9 @@ import type {
 import { StatusFilterWidget } from "../../../components/StatusFilterWidget";
 import { TagFilterWidget } from "../../../components/TagFilterWidget";
 import { TimeFilterWidget } from "../../../components/TimeFilterWidget";
-import type { JobListParams } from "../../../types";
 
 type JobFilterListProps = {
-  params: JobListParams;
+  params: Urls.TransformJobListParams;
   tags: TransformTag[];
 };
 
@@ -35,21 +34,21 @@ export function JobFilterList({ params, tags }: JobFilterListProps) {
   const dispatch = useDispatch();
 
   const handleLastRunStartTimeChange = (lastRunStartTime?: string) => {
-    dispatch(replace(getJobListUrl({ ...params, lastRunStartTime })));
+    dispatch(replace(Urls.transformJobList({ ...params, lastRunStartTime })));
   };
 
   const handleLastRunStatusesChange = (
     lastRunStatuses?: TransformRunStatus[],
   ) => {
-    dispatch(replace(getJobListUrl({ ...params, lastRunStatuses })));
+    dispatch(replace(Urls.transformJobList({ ...params, lastRunStatuses })));
   };
 
   const handleNextRunStartTimeChange = (nextRunStartTime?: string) => {
-    dispatch(replace(getJobListUrl({ ...params, nextRunStartTime })));
+    dispatch(replace(Urls.transformJobList({ ...params, nextRunStartTime })));
   };
 
   const handleTagsChange = (tagIds: TransformTagId[]) => {
-    dispatch(replace(getJobListUrl({ ...params, tagIds })));
+    dispatch(replace(Urls.transformJobList({ ...params, tagIds })));
   };
 
   return (

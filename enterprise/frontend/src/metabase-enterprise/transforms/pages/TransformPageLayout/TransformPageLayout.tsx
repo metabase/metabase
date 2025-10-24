@@ -7,10 +7,9 @@ import {
 } from "metabase/admin/components/AdminNav";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { useSelector } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
-
-import { getJobListUrl, getRunListUrl, getTransformListUrl } from "../../urls";
 
 type TransformPageLayoutPropsParams = {
   transformId?: string;
@@ -75,9 +74,9 @@ function TransformPageSidebar({ params }: TransformPageSidebarProps) {
   const { transformId, jobId } = params;
   const location = useSelector(getLocation);
   const pathname = location?.pathname;
-  const transformListUrl = getTransformListUrl();
-  const jobListUrl = getJobListUrl();
-  const runListUrl = getRunListUrl();
+  const transformListUrl = Urls.transformList();
+  const jobListUrl = Urls.transformJobList();
+  const runListUrl = Urls.transformRunList();
 
   return (
     <AdminNavWrapper data-testid="transform-sidebar">

@@ -143,18 +143,26 @@
                  acc))
              stage stage))
 
+(def ^:dynamic *HACK-disable-ref-validation*
+  "Whether to validate join aliases in field refs and expression refs. This is only disable-able as a hack to support
+  X-Rays code which generates fragments of stages that drop joins and expressions and then adds them again after the
+  fact in [[metabase.xrays.automagic-dashboards.core/preserve-entity-element]]. Once we port X-Rays to use Lib we can
+  fix the hackiness and hopefully take this out."
+  false)
+
 (defn- expression-ref-errors-for-stage [stage]
-  (let [stage (dissoc stage :parameters) ; don't validate [:dimension [:expression ...]] refs since they might not be moved to the correct place yet.
-        expression-names (when-let [expressions (:expressions stage)]
-                           (when (and (sequential? expressions)
-                                      (every? sequential? expressions))
-                             (into #{} (map (comp :lib/expression-name second)) expressions)))
-        pred #(bad-ref-clause? :expression expression-names %)
-        form (-> (stage-with-joins-and-namespaced-keys-removed stage)
-                 ;; also ignore expression refs inside `:parameters` since they still use legacy syntax these days.
-                 (dissoc :parameters))]
-    (when (lib.schema.util/pred-matches-form? form pred)
-      (lib.schema.util/matching-locations form pred))))
+  (when-not *HACK-disable-ref-validation*
+    (let [stage            (dissoc stage :parameters) ; don't validate [:dimension [:expression ...]] refs since they might not be moved to the correct place yet.
+          expression-names (when-let [expressions (:expressions stage)]
+                             (when (and (sequential? expressions)
+                                        (every? sequential? expressions))
+                               (into #{} (map (comp :lib/expression-name second)) expressions)))
+          pred             #(bad-ref-clause? :expression expression-names %)
+          form             (-> (stage-with-joins-and-namespaced-keys-removed stage)
+                   ;; also ignore expression refs inside `:parameters` since they still use legacy syntax these days.
+                               (dissoc :parameters))]
+      (when (lib.schema.util/pred-matches-form? form pred)
+        (lib.schema.util/matching-locations form pred)))))
 
 (defn- aggregation-ref-errors-for-stage [stage]
   (let [uuids (into #{} (map (comp :lib/uuid second)) (:aggregation stage))
@@ -348,17 +356,10 @@
               (mapcat join-aliases-in-join (:joins stage)))]
       (set (join-aliases-in-stage stage)))))
 
-(def ^:dynamic *HACK-disable-join-alias-in-field-ref-validation*
-  "Whether to validate join aliases in field refs. This is only disable-able as a hack to support X-Rays code which
-  generates fragments of stages that drop joins and then adds them again after the fact
-  in [[metabase.xrays.automagic-dashboards.core/preserve-entity-element]]. Once we port X-Rays to use Lib we can fix
-  the hackiness and hopefully take this out."
-  false)
-
 (defn- join-ref-error-for-stages
   "Return an error messages if we find a field ref that uses a `:join-alias` for a join that doesn't exist."
   [stages]
-  (when (and (not *HACK-disable-join-alias-in-field-ref-validation*)
+  (when (and (not *HACK-disable-ref-validation*)
              (sequential? stages))
     (loop [visible-join-alias? (constantly false), i 0, [stage & more] stages]
       (let [visible-join-alias? (some-fn visible-join-alias? (visible-join-alias?-fn stage))]

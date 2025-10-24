@@ -3,6 +3,7 @@
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.preprocess :as qp.preprocess]
@@ -18,12 +19,13 @@
    (t2/select-one [:model/Collection :location :id]
                   :id (get-or-create-root-container-collection!))))
 
-(defn get-collection
+(mu/defn get-collection :- [:maybe ::lib.schema.id/collection]
   "Get collection named `collection-name`. If no location is given root collection for automatically
    generated transforms is assumed (see `get-or-create-root-container-collection!`)."
   ([collection-name]
    (get-collection collection-name (root-container-location)))
-  ([collection-name location]
+  ([collection-name :- :string
+    location        :- :string]
    (t2/select-one-pk :model/Collection
                      :name     collection-name
                      :location location)))
