@@ -26,6 +26,13 @@
   :export? false
   :doc false)
 
+(defsetting ee-anthropic-api-key
+  (deferred-tru "The Anthropic API Key used in Metabase Enterprise.")
+  :encryption :no
+  :visibility :settings-manager
+  :export? false
+  :doc false)
+
 (defsetting ee-ai-features-enabled
   (deferred-tru "Enable AI features.")
   :type       :boolean
