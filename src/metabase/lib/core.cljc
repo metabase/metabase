@@ -494,7 +494,7 @@
   find-bad-refs]
  [metabase.lib.walk.util
   all-field-ids
-  all-implicit-join-source-field-ids
+  all-implicitly-joined-field-ids
   all-implicitly-joined-table-ids
   all-source-card-ids
   all-source-table-ids

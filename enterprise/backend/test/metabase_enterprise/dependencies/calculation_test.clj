@@ -50,9 +50,7 @@
         visible-cols (lib/visible-columns base-query)
         venue-name (lib.tu.notebook/find-col-with-spec base-query visible-cols "Venue" "Name")
         user-name (lib.tu.notebook/find-col-with-spec base-query visible-cols "User" "Name")]
-    (mt/with-temp [:model/Card card {:dataset_query (-> base-query
-                                                        (lib/add-field -1 venue-name)
-                                                        (lib/add-field -1 user-name))}]
+    (mt/with-temp [:model/Card card {:dataset_query (lib/with-fields base-query [venue-name user-name])}]
       (is (= {:card #{}
               :table #{checkins-id venues-id users-id}}
              (calculation/upstream-deps:card card))))))
@@ -63,10 +61,9 @@
         venues-id (mt/id :venues)
         checkins (lib.metadata/table mp checkins-id)
         base-query (lib/query mp checkins)
-        visible-cols (lib/visible-columns base-query)
+        visible-cols (lib/filterable-columns base-query)
         venue-name (lib.tu.notebook/find-col-with-spec base-query visible-cols "Venue" "Name")]
-    (mt/with-temp [:model/Card card {:dataset_query (-> base-query
-                                                        (lib/filter (lib/= venue-name "Bird's Nest")))}]
+    (mt/with-temp [:model/Card card {:dataset_query (lib/filter base-query (lib/= venue-name "Bird's Nest"))}]
       (is (= {:card #{}
               :table #{checkins-id venues-id}}
              (calculation/upstream-deps:card card))))))
@@ -77,11 +74,9 @@
         venues-id (mt/id :venues)
         checkins (lib.metadata/table mp checkins-id)
         base-query (lib/query mp checkins)
-        visible-cols (lib/visible-columns base-query)
+        visible-cols (lib/breakoutable-columns base-query)
         venue-name (lib.tu.notebook/find-col-with-spec base-query visible-cols "Venue" "Name")]
-    (mt/with-temp [:model/Card card {:dataset_query (-> base-query
-                                                        (lib/breakout venue-name)
-                                                        (lib/aggregate (lib/count)))}]
+    (mt/with-temp [:model/Card card {:dataset_query (lib/breakout base-query venue-name)}]
       (is (= {:card #{}
               :table #{checkins-id venues-id}}
              (calculation/upstream-deps:card card))))))
@@ -94,8 +89,7 @@
         base-query (lib/query mp checkins)
         visible-cols (lib/visible-columns base-query)
         venue-price (lib.tu.notebook/find-col-with-spec base-query visible-cols "Venue" "Price")]
-    (mt/with-temp [:model/Card card {:dataset_query (-> base-query
-                                                        (lib/aggregate (lib/sum venue-price)))}]
+    (mt/with-temp [:model/Card card {:dataset_query (lib/aggregate base-query (lib/sum venue-price))}]
       (is (= {:card #{}
               :table #{checkins-id venues-id}}
              (calculation/upstream-deps:card card))))))
@@ -106,10 +100,9 @@
         venues-id (mt/id :venues)
         checkins (lib.metadata/table mp checkins-id)
         base-query (lib/query mp checkins)
-        visible-cols (lib/visible-columns base-query)
+        visible-cols (lib/orderable-columns base-query)
         venue-name (lib.tu.notebook/find-col-with-spec base-query visible-cols "Venue" "Name")]
-    (mt/with-temp [:model/Card card {:dataset_query (-> base-query
-                                                        (lib/order-by venue-name))}]
+    (mt/with-temp [:model/Card card {:dataset_query (lib/order-by base-query venue-name)}]
       (is (= {:card #{}
               :table #{checkins-id venues-id}}
              (calculation/upstream-deps:card card))))))
@@ -125,9 +118,7 @@
           visible-cols (lib/visible-columns base-query)
           venue-name (lib.tu.notebook/find-col-with-spec base-query visible-cols "Venue" "Name")
           user-name (lib.tu.notebook/find-col-with-spec base-query visible-cols "User" "Name")
-          query (-> base-query
-                    (lib/add-field -1 venue-name)
-                    (lib/add-field -1 user-name))]
+          query (lib/with-fields base-query [venue-name user-name])]
       (mt/with-temp [:model/Transform transform {:name "Test Transform"
                                                  :source {:type :query
                                                           :query query}
@@ -144,7 +135,7 @@
           venues-id (mt/id :venues)
           checkins (lib.metadata/table mp checkins-id)
           base-query (lib/query mp checkins)
-          visible-cols (lib/visible-columns base-query)
+          visible-cols (lib/breakoutable-columns base-query)
           venue-name (lib.tu.notebook/find-col-with-spec base-query visible-cols "Venue" "Name")
           query (-> base-query
                     (lib/breakout venue-name)

@@ -6,7 +6,6 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
@@ -143,36 +142,29 @@
       (lib.walk/walk-clause query-or-clause walk-clause))
     (persistent! @field-ids)))
 
-(defn- bulk-metadata->ids
-  "Given a set of IDs and a key to extract, bulk fetch metadata and extract IDs."
-  [metadata-providerable metadata-type extract-key ids]
-  (->> (lib.metadata/bulk-metadata metadata-providerable metadata-type ids)
-       (into #{} (keep extract-key))
-       not-empty))
-
-(mu/defn all-implicit-join-source-field-ids :- [:set ::lib.schema.id/field]
-  "Set of all FK Field IDs used in implicit joins (`:field` refs with `:source-field` but no `:join-alias`)."
+(mu/defn all-implicitly-joined-field-ids :- [:set ::lib.schema.id/field]
+  "Set of all Field IDs from implicitly joined tables."
   [query-or-clause :- [:or ::lib.schema/query ::lib.schema.mbql-clause/clause]]
-  (let [fk-field-ids (volatile! (transient #{}))
+  (let [joined-field-ids (volatile! (transient #{}))
         implicit-join-field-opt? #(and (:source-field %) (not (:join-alias %)))
         walk-clause (fn [clause]
                       (lib.util.match/match-lite clause
-                        [:field (opts :guard implicit-join-field-opt?) _id]
-                        (vswap! fk-field-ids conj! (:source-field opts)))
+                        [:field (opts :guard implicit-join-field-opt?) id]
+                        (vswap! joined-field-ids conj! id))
                       nil)]
     (if (map? query-or-clause)
       (lib.walk/walk-clauses query-or-clause (fn [_query _path-type _path clause]
                                                (walk-clause clause)))
       (lib.walk/walk-clause query-or-clause walk-clause))
-    (persistent! @fk-field-ids)))
+    (persistent! @joined-field-ids)))
 
 (mu/defn all-implicitly-joined-table-ids :- [:maybe [:set {:min 1} ::lib.schema.id/table]]
-  "Set of all Table IDs referenced via implicit joins in `query`."
+  "Set of all Table IDs referenced via implicit joins in `query` or nil if no such IDs can be found."
   [query :- ::lib.schema/query]
-  (->> query
-       all-implicit-join-source-field-ids
-       (bulk-metadata->ids query :metadata/column :fk-target-field-id)
-       (bulk-metadata->ids query :metadata/column :table-id)))
+  (->> (all-implicitly-joined-field-ids query)
+       (lib.metadata/bulk-metadata query :metadata/column)
+       (into #{} (keep :table-id))
+       not-empty))
 
 (mu/defn all-template-tags-id->field-ids :- [:maybe
                                              [:map-of
