@@ -10,7 +10,6 @@
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
-   [metabase.collections.models.collection :as collection]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sync :as driver.s]
@@ -597,7 +596,7 @@
                                      {:status-code 422})))]
     (check-can-create-upload database schema-name)
     (check-filetype filename file)
-    (collection/check-write-perms-for-collection collection-id)
+    (api/create-check :model/Card {:collection_id collection-id})
     (try
       (let [timer             (u/start-timer)
             filename-prefix   (or (second (re-matches #"(.*)\.(csv|tsv)$" filename))
