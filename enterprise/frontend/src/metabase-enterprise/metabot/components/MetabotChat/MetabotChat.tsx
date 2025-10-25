@@ -174,10 +174,11 @@ export const MetabotChat = ({
                 onRetryMessage={handleRetryMessage}
                 isDoingScience={metabot.isDoingScience}
                 showFeedbackButtons
+                debugMode={metabot.debugMode}
               />
               {/* loading */}
               {metabot.isDoingScience && (
-                <MetabotThinking toolCalls={metabot.toolCalls} />
+                <MetabotThinking toolCalls={metabot.activeToolCalls} />
               )}
               {/* filler - height gets set via ref mutation */}
               <div ref={fillerRef} data-testid="metabot-message-filler" />

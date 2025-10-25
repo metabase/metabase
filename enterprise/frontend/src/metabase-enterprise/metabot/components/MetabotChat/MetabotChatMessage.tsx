@@ -3,13 +3,17 @@ import cx from "classnames";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
+import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { useToast } from "metabase/common/hooks";
 import {
   ActionIcon,
+  Button,
   Flex,
   type FlexProps,
   Icon,
   type IconName,
+  Modal,
+  Stack,
   Text,
 } from "metabase/ui";
 import { useSubmitMetabotFeedbackMutation } from "metabase-enterprise/api/metabot";
@@ -17,6 +21,7 @@ import type {
   MetabotAgentChatMessage,
   MetabotAgentTextChatMessage,
   MetabotChatMessage,
+  MetabotDebugToolCallMessage,
   MetabotErrorMessage,
   MetabotUserChatMessage,
 } from "metabase-enterprise/metabot/state";
@@ -233,6 +238,93 @@ export const AgentErrorMessage = ({
   </MessageContainer>
 );
 
+const ToolCallDetailsModal = ({
+  message,
+  onClose,
+}: {
+  message: MetabotDebugToolCallMessage;
+  onClose: () => void;
+}) => {
+  return (
+    <Modal
+      opened
+      onClose={onClose}
+      size="lg"
+      title={t`Tool Call: ${message.name}`}
+      data-testid="tool-call-details-modal"
+    >
+      <Stack gap="md">
+        {message.args && (
+          <Stack gap="xs">
+            <Text fw="bold">{t`Request`}</Text>
+            <CodeEditor
+              value={JSON.stringify(message.args, null, 2)}
+              language="json"
+              readOnly
+            />
+          </Stack>
+        )}
+
+        {message.result && (
+          <Stack gap="xs">
+            <Text fw="bold">{t`Response`}</Text>
+            <CodeEditor value={message.result} readOnly />
+          </Stack>
+        )}
+      </Stack>
+    </Modal>
+  );
+};
+
+export const ToolCallMessage = ({
+  message,
+  ...props
+}: FlexProps & {
+  message: MetabotDebugToolCallMessage;
+}) => {
+  const [modalOpen, setModalOpen] = useState(false);
+
+  return (
+    <>
+      <MessageContainer chatRole="tool" {...props}>
+        <Flex
+          p="md"
+          mb="md"
+          align="center"
+          justify="space-between"
+          style={{
+            border: "1px solid var(--mb-color-brand)",
+            backgroundColor: "var(--mb-color-bg-light)",
+            borderRadius: "8px",
+          }}
+        >
+          <Flex align="center" gap="xs">
+            <Text fw="bold" c="brand">
+              🔧
+            </Text>
+            <Text fw="bold" c="brand">
+              {message.name}
+            </Text>
+          </Flex>
+          <Button
+            variant="filled"
+            size="xs"
+            bg="brand"
+            c="white"
+            onClick={() => setModalOpen(true)}
+          >{t`View details`}</Button>
+        </Flex>
+      </MessageContainer>
+      {modalOpen && (
+        <ToolCallDetailsModal
+          message={message}
+          onClose={() => setModalOpen(false)}
+        />
+      )}
+    </>
+  );
+};
+
 export const getFullAgentReply = (
   messages: MetabotChatMessage[],
   messageId: string,
@@ -268,6 +360,7 @@ export const Messages = ({
   isDoingScience,
   showFeedbackButtons,
   onInternalLinkClick,
+  debugMode = false,
 }: {
   messages: MetabotChatMessage[];
   errorMessages: MetabotErrorMessage[];
@@ -275,6 +368,7 @@ export const Messages = ({
   isDoingScience: boolean;
   showFeedbackButtons: boolean;
   onInternalLinkClick?: (navigateToPath: string) => void;
+  debugMode?: boolean;
 }) => {
   const clipboard = useClipboard();
   const [sendToast] = useToast();
@@ -331,9 +425,13 @@ export const Messages = ({
     [showFeedbackButtons],
   );
 
+  const visibleMessages = debugMode
+    ? messages
+    : messages.filter((msg) => msg.role !== "tool");
+
   return (
     <>
-      {messages.map((message, index) =>
+      {visibleMessages.map((message, index) =>
         message.role === "agent" ? (
           <AgentMessage
             key={"msg-" + message.id}
@@ -345,16 +443,22 @@ export const Messages = ({
             setFeedbackMessage={setFeedbackModal}
             submittedFeedback={feedbackState.submitted[message.id]}
             hideActions={
-              isDoingScience || messages[index + 1]?.role === "agent"
+              isDoingScience || visibleMessages[index + 1]?.role === "agent"
             }
             onInternalLinkClick={onInternalLinkClick}
+          />
+        ) : message.role === "tool" ? (
+          <ToolCallMessage
+            key={"tool-" + message.id}
+            data-testid="metabot-tool-call-message"
+            message={message}
           />
         ) : (
           <UserMessage
             key={"msg-" + message.id}
             data-testid="metabot-chat-message"
             message={message}
-            hideActions={isDoingScience && messages.length === index + 1}
+            hideActions={isDoingScience && visibleMessages.length === index + 1}
             onCopy={() => {
               const copyText =
                 message.type === "action"
