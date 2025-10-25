@@ -15,7 +15,9 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.util.concurrent TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
@@ -36,15 +38,23 @@
 (use-fixtures :once (fixtures/initialize :db))
 (use-fixtures :each reset-circuit-breaker-fixture)
 
+(def no-op-grace
+  "Grace period that does nothing"
+  (reify token-check/GracePeriod
+    (save! [_ _token _features] nil)
+    (retrieve [_ _token] nil)))
+
 (defn- token-status-response
-  [token token-check-response]
-  (http-fake/with-fake-routes-in-isolation
-    {{:address      (#'token-check/token-status-url token @#'token-check/token-check-url)
-      :query-params (merge (#'token-check/stats-for-token-request)
-                           {:site-uuid  (premium-features.settings/site-uuid-for-premium-features-token-checks)
-                            :mb-version (:tag config/mb-version-info)})}
-     (constantly token-check-response)}
-    (#'token-check/fetch-token-status* token)))
+  ([token token-check-response]
+   (token-status-response token token-check-response no-op-grace))
+  ([token token-check-response grace-period]
+   (http-fake/with-fake-routes-in-isolation
+     {{:address      (#'token-check/token-status-url token @#'token-check/token-check-url)
+       :query-params (merge (#'token-check/stats-for-token-request)
+                            {:site-uuid  (premium-features.settings/site-uuid-for-premium-features-token-checks)
+                             :mb-version (:tag config/mb-version-info)})}
+      (constantly token-check-response)}
+     (#'token-check/token-information token grace-period))))
 
 (def ^:private token-response-fixture
   (json/encode {:valid    true
@@ -57,7 +67,7 @@
         print-token (apply str (concat (take 4 token) "..." (take-last 4 token)))]
     (testing "Do not log the token (#18249)"
       (mt/with-log-messages-for-level [messages :info]
-        (#'token-check/fetch-token-status* token)
+        (#'token-check/token-information token no-op-grace)
         (let [logs (mapv :message (messages))]
           (is (every? (complement #(re-find (re-pattern token) %)) logs))
           (is (= 1 (count (filter #(re-find (re-pattern print-token) %) logs)))))))))
@@ -76,7 +86,7 @@
       (is (= {:valid         false
               :status        "Unable to validate token"
               :error-details "network issues"}
-             (#'token-check/fetch-token-status (apply str (repeat 64 "b"))))))))
+             (#'token-check/token-information (apply str (repeat 64 "b")) no-op-grace))))))
 
 (deftest fetch-token-caches-successful-responses
   (testing "For successful responses, the result is cached"
@@ -85,7 +95,7 @@
       (binding [http/request (fn [& _]
                                (swap! call-count inc)
                                {:status 200 :body "{\"valid\": true, \"status\": \"fake\"}"})]
-        (dotimes [_ 10] (#'token-check/fetch-token-status token))
+        (dotimes [_ 10] (#'token-check/token-information token no-op-grace))
         (is (= 1 @call-count))))))
 
 (deftest fetch-token-caches-invalid-responses
@@ -95,31 +105,26 @@
       (binding [http/request (fn [& _]
                                (swap! call-count inc)
                                {:status 400 :body "{\"valid\": false, \"status\": \"fake\"}"})]
-        (dotimes [_ 10] (#'token-check/fetch-token-status token))
+        (dotimes [_ 10] (#'token-check/token-information token))
         (is (= 1 @call-count))))))
 
 (deftest fetch-token-does-not-cache-exceptions
-  (testing "For timeouts, 5XX errors, etc. we don't cache the result"
-    (let [call-count (atom 0)
-          token      (tu/random-token)]
-      (binding [http/request (fn [& _]
-                               (swap! call-count inc)
-                               (throw (ex-info "oh, fiddlesticks" {})))]
-        (dotimes [_ 5] (#'token-check/fetch-token-status token))
-        ;; Note that we have a fallback URL that gets hit in this case (see
-        ;; https://github.com/metabase/metabase/issues/27036) and 2x5=10
-        (is (= 10 @call-count))))))
-
-(deftest fetch-token-does-not-cache-5XX-responses
   (let [call-count (atom 0)
-        token      (tu/random-token)]
+        token      (tu/random-token)
+        response   (atom :error)]
     (binding [http/request (fn [& _]
                              (swap! call-count inc)
-                             {:status 500})]
-      (dotimes [_ 10] (#'token-check/fetch-token-status token))
-      ;; Same as above, we have a fallback URL that gets hit in this case (see
-      ;; https://github.com/metabase/metabase/issues/27036) and 2x10=20
-      (is (= 10 @call-count)))))
+                             (if (= @response :error)
+                               (throw (ex-info "oh, fiddlesticks" {}))
+                               {:status 500}))]
+      (testing "For timeouts, 5XX errors, etc. we don't cache the result"
+        (dotimes [_ 5] (#'token-check/token-information token))
+        (is (= 5 @call-count)))
+      (testing "Does not cache 500 responses"
+        (reset! call-count 0)
+        (reset! response :500)
+        (dotimes [_ 5] (#'token-check/token-information token))
+        (is (= 5 @call-count))))))
 
 (deftest fetch-token-is-circuit-broken
   (let [call-count (atom 0)]
@@ -128,7 +133,7 @@
         (is (= {:valid false
                 :status "Unable to validate token"
                 :error-details "Token validation is currently unavailable."}
-               (#'token-check/fetch-token-status (tu/random-token))))
+               (#'token-check/token-information (tu/random-token))))
         (is (= 0 @call-count))))))
 
 (deftest ^:parallel fetch-token-status-test-4
@@ -140,46 +145,110 @@
 
 (deftest not-found-test
   (mt/with-log-level :fatal
-    ;; `partial=` here in case the Cloud API starts including extra keys... this is a "dangerous" test since changes
-    ;; upstream in Cloud could break this. We probably want to catch that stuff anyway tho in tests rather than waiting
-    ;; for bug reports to come in
-    (is (partial= {:valid false, :status "Token does not exist."}
-                  (#'token-check/fetch-token-status* (tu/random-token))))))
+    (is (=? {:valid false, :status "Token does not exist."}
+            (#'token-check/token-information (tu/random-token))))))
 
 (deftest fetch-token-does-not-call-db-when-cached
   (testing "No DB calls are made when checking token status if the status is cached"
     (let [token (tu/random-token)
-          _ (#'token-check/fetch-token-status token)
+          _ (#'token-check/token-information token)
           ;; Sigh. This is really quite horrific. But we need some wiggle room here: any endpoint that gets some setting
           ;; inside it is going to check to see whether it's time for an update check. If it is, it'll hit the DB to see
           ;; when settings were last updated, and the count will be incremented. Therefore, let's do this a few times...
           call-counts (repeatedly 3 (fn []
                                       (t2/with-call-count [call-count]
-                                        (#'token-check/fetch-token-status token)
+                                        (#'token-check/token-information token)
                                         (call-count))))]
       ;; ... and then make sure that *some* of the times, we didn't hit the DB again.
       (is (some zero? call-counts)))))
 
+(deftest grace-period-test
+  (testing "implementation check"
+    (let [token (tu/random-token)
+          grace (token-check/make-grace-period 20 TimeUnit/MILLISECONDS)]
+      (token-check/save! grace token {:saved :features})
+      (is (= {:saved :features} (token-check/retrieve grace token)))
+      (is (nil? (token-check/retrieve grace (tu/random-token))))
+      (Thread/sleep 50)
+      (testing "Expires tokens after grace period elapses"
+        (is (nil? (token-check/retrieve grace token))))))
+  (testing "Falls back last known value"
+    (let [token (tu/random-token)]
+      (binding [http/request (fn [& _] {:status 200
+                                        :body "{\"valid\":true,\"status\":\"fake\",\"features\":[\"fake\",\"features\"]}"})]
+        (mt/with-temporary-setting-values [premium-embedding-token token]
+          (testing "Initially gets good stuff"
+            (is (= #{"fake" "features"} (token-check/*token-features*))))
+          (testing "When service goes down, continue in grace period"
+            (let [called? (atom false)]
+              (binding [http/request (fn [& _]
+                                       (reset! called? true)
+                                       {:status 500})]
+                (is (= #{"fake" "features"} (token-check/*token-features*)))
+                (is (not @called?) "We should memoize token values")
+                ;; simulate cache expiration after 12 hours
+                (token-check/clear-cache!)
+                (is (= #{"fake" "features"} (token-check/*token-features*)))
+                (is @called? "Did not hit the network!")
+                (is (= {:valid true :status "fake" :features ["fake" "features"]}
+                       (token-check/retrieve token-check/grace-period token)))))))))))
+
+(deftest e2e
+  (testing "token check hits the network"
+    (let [storage               (atom {})
+          grace                 (reify token-check/GracePeriod
+                                  (save! [_ token features] (swap! storage assoc token features))
+                                  (retrieve [_ token] (get @storage token)))
+          token                 (tu/random-token)
+          time-passes!          token-check/clear-cache!
+          grace-period-elapses! (fn [] (reset! storage {}))
+          call-count            (atom 0)]
+      (with-redefs [http/request (fn [& _]
+                                   (swap! call-count inc)
+                                   {:status 200
+                                    :body   "{\"valid\":true,\"status\":\"fake\",\"features\":[\"fake\",\"features\"]}"})]
+        (= {:valid true, :status "fake", :features ["fake" "features"]}
+           (#'token-check/token-information token grace))
+        (is (= 1 @call-count)))
+      (with-redefs [http/request (fn [& _]
+                                   (swap! call-count inc)
+                                   (throw (ex-info "network failure!" {})))]
+        (testing "Doesn't hit the network inside of cache duration"
+          (is (= {:valid true, :status "fake", :features ["fake" "features"]}
+                 (#'token-check/token-information token grace)))
+          (is (= 1 @call-count)))
+        (time-passes!)
+        (testing "Hits the network periodically (12 hours)"
+          (let [response (#'token-check/token-information token grace)]
+            ;; called but we got network failure from redefs
+            (is (= 2 @call-count))
+            (testing "Grace period supplements errors"
+              (is (= {:valid true, :status "fake", :features ["fake" "features"]}
+                     response)))))
+        (grace-period-elapses!)
+        (is (= {:valid         false
+                :status        "Unable to validate token"
+                :error-details "network failure!"}
+               (#'token-check/token-information token grace)))
+        (is (= 3 @call-count))))))
+
 (deftest token-status-setting-test
   (testing "If a `premium-embedding-token` has been set, the `token-status` setting should return the response
             from the store.metabase.com endpoint for that token."
-    (mt/with-temporary-raw-setting-values [premium-embedding-token (tu/random-token)]
-      (is (= {:valid false, :status "Token does not exist."}
-             (premium-features/token-status)))))
+    (is (= {:valid false, :status "Token does not exist."}
+           (#'token-check/token-information (tu/random-token)))))
   (testing "If premium-embedding-token is nil, the token-status setting should also be nil."
     (mt/with-temporary-setting-values [premium-embedding-token nil]
       (is (nil? (premium-features/token-status))))))
 
 (deftest active-users-count-setting-test
-  (mt/with-temp
-    [:model/User _ {:is_active false}]
-    (testing "returns the number of active users"
-      (is (= (t2/count :model/User :is_active true :type :personal)
-             (premium-features/active-users-count))))
+  (testing "returns the number of active users"
+    (is (= (t2/count :model/User :is_active true :type :personal)
+           (premium-features/active-users-count))))
 
-    (testing "Default to 0 if db is not setup yet"
-      (binding [mdb.connection/*application-db* {:status (atom nil)}]
-        (is (zero? (premium-features/active-users-count)))))))
+  (testing "Default to 0 if db is not setup yet"
+    (binding [mdb.connection/*application-db* {:status (atom nil)}]
+      (is (zero? (premium-features/active-users-count))))))
 
 (deftest RemoteCheckedToken-regexp
   (testing "valid tokens"
