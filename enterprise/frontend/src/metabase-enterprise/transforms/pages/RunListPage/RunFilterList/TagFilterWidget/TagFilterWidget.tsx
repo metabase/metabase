@@ -16,7 +16,7 @@ import type { TransformTag, TransformTagId } from "metabase-types/api";
 import {
   FILTER_WIDGET_MAX_HEIGHT,
   FILTER_WIDGET_MIN_WIDTH,
-} from "../../constants";
+} from "../../../../constants";
 import { FilterFieldSet } from "../FilterFieldSet";
 
 type TagFilterWidgetProps = {

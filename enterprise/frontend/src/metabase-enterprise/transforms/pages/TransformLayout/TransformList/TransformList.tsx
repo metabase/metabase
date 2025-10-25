@@ -29,7 +29,7 @@ import {
 import type { Transform, TransformTag } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
-import { getTagById, getTagList } from "../../../components/TagList";
+import { getTagById, getTagList } from "../../RunListPage/RunList/TagList";
 
 import { CreateTransformMenu } from "./CreateTransformMenu";
 

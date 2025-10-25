@@ -7,17 +7,17 @@ import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Card, Flex, Group, Stack } from "metabase/ui";
-import { TimezoneIndicator } from "metabase-enterprise/transforms/components/TimezoneIndicator";
 import type { TransformRun, TransformTag } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
 import { RunStatusInfo } from "../../../components/RunStatusInfo";
-import { TagList } from "../../../components/TagList";
 import { formatRunMethod, parseTimestampWithTimezone } from "../../../utils";
 import { PAGE_SIZE } from "../constants";
 import { hasFilterParams } from "../utils";
 
 import S from "./RunList.module.css";
+import { TagList } from "./TagList";
+import { TimezoneIndicator } from "./TimezoneIndicator";
 
 type RunListProps = {
   runs: TransformRun[];

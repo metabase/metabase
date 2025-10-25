@@ -13,8 +13,8 @@ import {
 } from "metabase/ui";
 import type { TransformRunStatus } from "metabase-types/api";
 
-import { FILTER_WIDGET_MIN_WIDTH } from "../../constants";
-import { formatStatus } from "../../utils";
+import { FILTER_WIDGET_MIN_WIDTH } from "../../../../constants";
+import { formatStatus } from "../../../../utils";
 import { FilterFieldSet } from "../FilterFieldSet";
 
 const STATUSES: TransformRunStatus[] = [

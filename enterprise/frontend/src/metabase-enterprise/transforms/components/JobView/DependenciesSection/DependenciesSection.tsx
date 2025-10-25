@@ -1,12 +1,18 @@
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { AdminContentTable } from "metabase/common/components/AdminContentTable";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
+import { Card } from "metabase/ui";
 import { useListTransformJobTransformsQuery } from "metabase-enterprise/api";
-import type { TransformJobId } from "metabase-types/api";
+import type { Transform, TransformJobId } from "metabase-types/api";
 
-import { TitleSection } from "../../../components/TitleSection";
-import { TransformTable } from "../../../components/TransformTable";
 import { ListEmptyState } from "../../ListEmptyState";
+import { TitleSection } from "../../TitleSection";
+
+import S from "./DependenciesSection.module.css";
 
 type DependenciesSectionProps = {
   jobId: TransformJobId;
@@ -32,5 +38,34 @@ export function DependenciesSection({ jobId }: DependenciesSectionProps) {
         <TransformTable transforms={transforms} />
       )}
     </TitleSection>
+  );
+}
+
+type TransformTableProps = {
+  transforms: Transform[];
+};
+
+export function TransformTable({ transforms }: TransformTableProps) {
+  const dispatch = useDispatch();
+
+  const handleRowClick = (transform: Transform) => {
+    dispatch(push(Urls.transform(transform.id)));
+  };
+
+  return (
+    <Card p={0} shadow="none" withBorder>
+      <AdminContentTable columnTitles={[t`Transform`, t`Target`]}>
+        {transforms.map((transform) => (
+          <tr
+            key={transform.id}
+            className={S.row}
+            onClick={() => handleRowClick(transform)}
+          >
+            <td className={S.wrap}>{transform.name}</td>
+            <td className={S.wrap}>{transform.target.name}</td>
+          </tr>
+        ))}
+      </AdminContentTable>
+    </Card>
   );
 }
