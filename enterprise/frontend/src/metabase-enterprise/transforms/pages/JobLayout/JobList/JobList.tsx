@@ -36,7 +36,7 @@ export function JobList({ selectedId, onCollapse }: JobListProps) {
       onCollapse={onCollapse}
       addButton={
         <ItemsListAddButton
-          onClick={() => dispatch(push(Urls.getNewJobUrl()))}
+          onClick={() => dispatch(push(Urls.newTransformJob()))}
         />
       }
       listItems={
@@ -80,7 +80,7 @@ const JobItem = ({
       label={job.name}
       icon="play_outlined"
       subtitle={subtitle}
-      href={Urls.getJobUrl(job.id)}
+      href={Urls.transformJob(job.id)}
       isActive={isActive}
     />
   );

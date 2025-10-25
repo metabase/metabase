@@ -8,6 +8,7 @@ import type { TransformInfo } from "../../types";
 import { TransformHeaderView } from "../TransformHeader";
 
 import { QuerySection } from "./QuerySection";
+import { SaveSection } from "./SaveSection";
 import S from "./TransformEditor.module.css";
 import { VisualizationSection } from "./VisualizationSection";
 import { useQueryMetadata } from "./use-query-metadata";
@@ -18,12 +19,14 @@ type TransformEditorProps = {
   transform: TransformInfo;
   onNameChange: (name: string) => void;
   onSourceChange: (source: TransformSource) => void;
+  onSave: () => void;
 };
 
 export function TransformEditor({
   transform,
   onNameChange,
   onSourceChange,
+  onSave,
 }: TransformEditorProps) {
   const { question, setQuestion } = useQueryState(
     transform.source,
@@ -60,7 +63,11 @@ export function TransformEditor({
 
   return (
     <Flex direction="column" h="100%">
-      <TransformHeaderView transform={transform} onNameChange={onNameChange} />
+      <TransformHeaderView
+        transform={transform}
+        actions={<SaveSection onSave={onSave} />}
+        onNameChange={onNameChange}
+      />
       <Flex className={S.body}>
         <QuerySection
           question={question}
