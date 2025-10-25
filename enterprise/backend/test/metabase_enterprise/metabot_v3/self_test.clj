@@ -131,6 +131,41 @@
             (->> (json-resource "llm/openai-structured-output.json")
                  (into [] (comp self/openai->aisdk-xf self/aisdk-xf)))))))
 
+(deftest claude-conv-test
+  (testing "text is mapped well"
+    (is (= {:start      1
+            :text-start 1
+            :text-delta 6
+            :text-end   1
+            :usage      1}
+           (->> (json-resource "llm/claude-text.json")
+                (into [] self/claude->aisdk-xf)
+                (map :type)
+                frequencies)))
+    (is (=? [{:type :start :id string?}
+             {:type :text :id string? :text string?}
+             {:type :usage :id string? :usage {:promptTokens 13}}]
+            (->> (json-resource "llm/claude-text.json")
+                 (into [] (comp self/claude->aisdk-xf self/aisdk-xf))))))
+  (testing "tool input (also structured output) is mapped well"
+    (is (= {:start                1
+            :tool-input-start     1
+            :tool-input-delta     15
+            :tool-input-available 1
+            :usage                1}
+           (->> (json-resource "llm/claude-tool-input.json")
+                (into [] self/claude->aisdk-xf)
+                (map :type)
+                frequencies)))
+    (is (=? [{:type :start}
+             {:type :tool-input :arguments {:currencies [{:country "CAN" :currency "CAD"}
+                                                         {:country "USA" :currency "USD"}
+                                                         {:country "MEX" :currency "MXN"}]}}
+             ;; TODO: convert usage to common format
+             {:type :usage :usage {:promptTokens 737}}]
+            (->> (json-resource "llm/claude-tool-input.json")
+                 (into [] (comp self/claude->aisdk-xf self/aisdk-xf)))))))
+
 ;;; tool executor
 
 (mu/defn get-time
