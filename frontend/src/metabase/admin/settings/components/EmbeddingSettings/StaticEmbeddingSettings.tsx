@@ -17,27 +17,37 @@ import { SettingTitle } from "../SettingHeader";
 import { EmbeddedResources } from "../widgets/PublicLinksListing/EmbeddedResources";
 
 import { EmbeddingSecretKeyWidget } from "./EmbeddingSecretKeyWidget";
-import { EmbeddingToggle } from "./EmbeddingToggle";
+import { EmbeddingSettingsCard } from "./EmbeddingSettingsCard";
 
 export function StaticEmbeddingSettings() {
   const isStaticEmbeddingEnabled = useSetting("enable-embedding-static");
 
   return (
     <SettingsPageWrapper title={t`Static embedding`}>
-      <SettingsSection>
-        <EmbeddingToggle
-          settingKey="enable-embedding-static"
-          label={t`Enable static embedding`}
-        />
-        <EmbeddingSecretKeyWidget />
+      <EmbeddingSettingsCard
+        title={t`Enable static embedding`}
+        description={t`A secure way to embed charts and dashboards when you don’t want to offer ad-hoc querying or chart drill-through.`}
+        settingKey="enable-embedding-static"
+      />
 
-        {isStaticEmbeddingEnabled && (
+      <SettingsSection>
+        <EmbeddingSecretKeyWidget />
+      </SettingsSection>
+
+      {isStaticEmbeddingEnabled && (
+        <SettingsSection>
           <Box data-testid="embedded-resources">
-            <SettingTitle id="static-embeds">{t`Manage embeds`}</SettingTitle>
+            <SettingTitle
+              id="static-embeds"
+              fz="lg"
+              mb="md"
+            >{t`Published embeds`}</SettingTitle>
+
             <EmbeddedResources />
           </Box>
-        )}
-      </SettingsSection>
+        </SettingsSection>
+      )}
+
       <PLUGIN_CONTENT_TRANSLATION.ContentTranslationConfiguration />
 
       <RelatedSettingsSection items={getStaticEmbeddingRelatedSettingItems()} />

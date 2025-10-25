@@ -54,7 +54,7 @@ describe("scenarios > admin > embedding > static embedding> content translation"
         uploadTranslationDictionaryViaAPI(germanFieldNames);
         cy.visit("/admin/embedding/static");
         cy.findByTestId("content-translation-configuration")
-          .button(/Download translation dictionary/i)
+          .button(/Get translation dictionary template/i)
           .click();
         const downloadsFolder = Cypress.config("downloadsFolder");
         cy.readFile(

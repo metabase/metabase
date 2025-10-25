@@ -8,13 +8,10 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import { EmbeddingToggle } from "metabase/admin/settings/components/EmbeddingSettings/EmbeddingToggle";
-import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
+import { EmbeddingSettingsCard } from "metabase/admin/settings/components/EmbeddingSettings";
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { UpsellDevInstances } from "metabase/admin/upsells";
-import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
-import { Box, Button } from "metabase/ui";
 
 import { EmbeddingAppOriginDescription } from "./EmbeddingAppOriginDescription";
 
@@ -26,7 +23,6 @@ const utmTags = {
 };
 
 export function InteractiveEmbeddingSettings() {
-  // eslint-disable-next-line no-unconditional-metabase-links-render -- This is used in admin settings
   const { url: quickStartUrl } = useDocsUrl(
     "embedding/interactive-embedding-quick-start-guide",
     {
@@ -36,25 +32,18 @@ export function InteractiveEmbeddingSettings() {
 
   return (
     <SettingsPageWrapper title={t`Interactive embedding`}>
+      <EmbeddingSettingsCard
+        title={t`Enable interactive embedding`}
+        description={t`Embed the full power of Metabase into your application to build a custom analytics experience and programmatically manage dashboards and data.`}
+        settingKey="enable-embedding-interactive"
+        links={[{ icon: "bolt", title: t`Quick start`, href: quickStartUrl }]}
+      />
+
       <SettingsSection>
-        <EmbeddingToggle
-          settingKey="enable-embedding-interactive"
-          label={t`Enable interactive embedding`}
-        />
-
-        <Box>
-          <SettingHeader id="get-started" title={t`Get started`} />
-          <Button
-            mt="xs"
-            variant="outline"
-            component={ExternalLink}
-            href={quickStartUrl}
-          >{t`Check out the Quickstart`}</Button>
-        </Box>
-
         <AdminSettingInput
           name="embedding-app-origins-interactive"
           title={t`Authorized origins`}
+          titleProps={{ fz: "lg", mb: "xs" }}
           description={<EmbeddingAppOriginDescription />}
           placeholder="https://*.example.com"
           inputType="text"

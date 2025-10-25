@@ -203,6 +203,7 @@ module.exports = {
         "frontend/src/metabase/admin/**/*",
         "frontend/src/metabase/setup/**/*",
         "enterprise/frontend/src/metabase-enterprise/whitelabel/**/*",
+        "enterprise/frontend/src/metabase-enterprise/embedding/**/*",
         "frontend/lint/**/*",
         "*.stories.*",
         "**/.storybook/*",

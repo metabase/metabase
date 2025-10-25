@@ -22,9 +22,8 @@ import {
 import { Box, Button, Group, HoverCard, Icon, Stack, Text } from "metabase/ui";
 
 import { AdminSettingInput } from "../../widgets/AdminSettingInput";
-
-import S from "./EmbeddingSdkSettings.module.css";
-import { SdkSettingsCard } from "./SdkSettingsCard/SdkSettingsCard";
+import S from "../EmbeddingSettings.module.css";
+import { EmbeddingSettingsCard } from "../EmbeddingSettingsCard";
 
 const utmTags = {
   utm_source: "product",
@@ -130,7 +129,7 @@ export function EmbeddingSdkSettings() {
 
   return (
     <SettingsPageWrapper title={t`Modular embedding`}>
-      <SdkSettingsCard
+      <EmbeddingSettingsCard
         title={t`Embedded Analytics JS`}
         description={t`An easy-to-use library that lets you embed Metabase entities like charts, dashboards, or even the query builder into your own application using customizable components.`}
         settingKey="enable-embedding-simple"
@@ -161,9 +160,10 @@ export function EmbeddingSdkSettings() {
             </Link>
           )
         }
+        testId="sdk-setting-card"
       />
 
-      <SdkSettingsCard
+      <EmbeddingSettingsCard
         title={t`SDK for React`}
         description={t`Embed the full power of Metabase into your application to build a custom analytics experience and programmatically manage dashboards and data.`}
         settingKey="enable-embedding-sdk"
@@ -180,6 +180,7 @@ export function EmbeddingSdkSettings() {
           },
         ]}
         alertInfoText={apiKeyBannerText}
+        testId="sdk-setting-card"
       />
 
       <Box py="lg" px="xl" className={S.SectionCard}>
