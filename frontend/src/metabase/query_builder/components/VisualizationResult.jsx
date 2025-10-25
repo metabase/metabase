@@ -64,6 +64,7 @@ export default class VisualizationResult extends Component {
       className,
       isRunning,
       isShowingSummarySidebar,
+      isTransform,
       onEditSummary,
       renderEmptyMessage,
     } = this.props;
@@ -138,6 +139,7 @@ export default class VisualizationResult extends Component {
             isEditing={true}
             isObjectDetail={false}
             isQueryBuilder={true}
+            isTransform={isTransform}
             isShowingSummarySidebar={isShowingSummarySidebar}
             isRunning={isRunning}
             onEditSummary={onEditSummary}
