@@ -43,6 +43,7 @@
    [metabase.settings.api]
    [metabase.setup.api]
    [metabase.sso.api]
+   [metabase.store-api.api]
    [metabase.sync.api]
    [metabase.task-history.api]
    [metabase.testing-api.api]
@@ -84,6 +85,7 @@
          metabase.segments.api/keep-me
          metabase.settings.api/keep-me
          metabase.setup.api/keep-me
+         metabase.store-api.api/keep-me
          metabase.task-history.api/keep-me
          metabase.testing-api.api/keep-me
          metabase.tiles.api/keep-me
@@ -174,6 +176,7 @@
    "/setting"              (+auth 'metabase.settings.api)
    "/setup"                'metabase.setup.api
    "/slack"                (+auth metabase.channel.api/slack-routes)
+   "/store-api"            'metabase.store-api.api
    "/table"                (+auth metabase.warehouse-schema.api/table-routes)
    "/task"                 (+auth 'metabase.task-history.api)
    "/testing"              (if metabase.testing-api.core/enable-testing-routes? 'metabase.testing-api.api pass-thru-handler)
