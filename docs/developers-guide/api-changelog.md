@@ -98,7 +98,7 @@ title: API changelog
   When setting `archived` to `false`, you may optionally also provide a `collection_id` (for Dashboards or Cards) or a
   `parent_id` (for Collections). In this case, the entity will be re-parented to the specified Collection when it is
   moved from the Trash. If a new `collection_id` or `parent_id` is not provided, the entity will be moved back to its
-  original location if possible. If this is not possible (for example, the original location is also in the Trash) an
+  original location if possible. If this is impossible (for example, the original location is also in the Trash) an
   error will occur.
 
 - `/api/metric`
@@ -130,7 +130,7 @@ NOTE: These endpoint changes were added in 0.49.3, and a bug in `GET /api/embed/
 
   The above endpoints now accept the `format_rows` query parameter. It is an optional boolean parameter that will default to `true` if not included in the request.
   When `format_rows` is `true`, the export will have formatting applied such that the values match what they appear as in the app.
-  When `format_rows` is `false`, formatting is not applied and exports will behave as they did prior to 0.49.0.
+  When `format_rows` is `false`, formatting is not applied and exports will behave as they did before 0.49.0.
 
   The value of `format_rows` has no effect when exporting xlsx files.
 

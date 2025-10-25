@@ -9,7 +9,7 @@ redirect_from:
 
 > Only admins can create public links and iframes.
 
-Admins can create and share public links (URLs) for questions and dashboards. People can view them as standalone destinations (URLs) or as embedded iframes in another page or app. In both cases, the public item will display static (view-only) results of your question or dashboard, so visitors won't be able to drill-down into the underlying data on their own.
+Admins can create and share public links (URLs) for questions and dashboards. People can view them as standalone destinations (URLs) or as embedded iframes in another page or app. In both cases, the public item will display static (view-only) results of your question or dashboard, so visitors won't be able to drill down into the underlying data on their own.
 
 ## Create a public link for a question
 

@@ -102,7 +102,7 @@ From any Metabase page, click on the **gear** icon in the upper right and select
 
 Turn on:
 
-- Embedded analytics SDK (it's in in the **Modular** section)
+- Embedded analytics SDK (it's in the **Modular** section)
 - Static embedding
 
 Otherwise, this whole thing is hopeless.

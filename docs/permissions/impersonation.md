@@ -47,7 +47,7 @@ For impersonation access to work, you'll first need to set up roles in your data
 
 ### Set up Metabase database connection for impersonation
 
-Impersonation uses database roles to run queries on your database, but there still needs to be a default role that that will be used to run operations like [sync, scans, and fingerprinting](../databases/sync-scan.md). So the user account that Metabase uses to [connect to your database](../databases/connecting.md) should have access to everything in that database that any Metabase group may need access to, as that database user account is what Metabase uses to sync table information.
+Impersonation uses database roles to run queries on your database, but there still needs to be a default role that will be used to run operations like [sync, scans, and fingerprinting](../databases/sync-scan.md). So the user account that Metabase uses to [connect to your database](../databases/connecting.md) should have access to everything in that database that any Metabase group may need access to, as that database user account is what Metabase uses to sync table information.
 
 You can then create roles in the database that have more restrictive access to the database (like row-level or table-level security). When the role is passed to the database using impersonation, the engine will return a subset of the data, or restrict the query altogether.
 
@@ -119,7 +119,7 @@ People in one group can have different attribute values, but must have the same 
 
 1. In Metabase, hit Cmd/Ctrl + K to bring up the command palette and search for **Permissions**, or go directly to **Admin settings** > **Permissions** > **Data**.
 
-2. Select the group that you want to to associate with the database role you created.
+2. Select the group that you want to associate with the database role you created.
 
 3. Select the database to configure access to.
 

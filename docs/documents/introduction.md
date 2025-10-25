@@ -139,7 +139,7 @@ Documents work best for:
 
 Dashboards work best for:
 
-- Regular analysis. Numbers you want to keep an eye on every day, week, or month.
+- Regular analysis. Numbers you want to monitor every day, week, or month.
 - Filtering results across multiple charts.
 - More control over presentation.
 
