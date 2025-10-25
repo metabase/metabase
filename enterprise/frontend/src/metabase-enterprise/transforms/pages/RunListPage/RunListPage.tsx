@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { BenchLayout } from "metabase/bench/components/BenchLayout";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type * as Urls from "metabase/lib/urls";
-import { Box, Stack, Title } from "metabase/ui";
+import { Box, Stack } from "metabase/ui";
 import {
   useListTransformRunsQuery,
   useListTransformTagsQuery,
@@ -16,6 +16,7 @@ import type { TransformRun } from "metabase-types/api";
 
 import { RunFilterList } from "./RunFilterList";
 import { RunList } from "./RunList";
+import S from "./RunListPage.module.css";
 import { PAGE_SIZE } from "./constants";
 import { getParsedParams } from "./utils";
 
@@ -28,11 +29,10 @@ export function RunListPage({ location }: RunListPageProps) {
 
   return (
     <BenchLayout name="transform-runs">
-      <Box p="lg">
-        <Title order={1} mb="sm">{t`Runs`}</Title>
-        <Box mb="xl">{t`A list of when each transform ran.`}</Box>
+      <Stack className={S.body} p="lg" h="100%" bg="bg-light">
+        <Box>{t`A list of when each transform ran.`}</Box>
         <RunListPageBody params={params} />
-      </Box>
+      </Stack>
     </BenchLayout>
   );
 }
