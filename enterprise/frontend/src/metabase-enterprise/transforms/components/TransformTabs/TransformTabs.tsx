@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { BenchTabs } from "metabase/bench/components/shared/BenchTabs";
+import * as Urls from "metabase/lib/urls";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import type { Transform } from "metabase-types/api";
 
@@ -14,24 +15,24 @@ export function TransformTabs({ transform }: TransformTabsProps) {
       tabs={[
         {
           label: t`Query`,
-          to: `/bench/transforms/${transform.id}`,
+          to: Urls.transform(transform.id),
           icon: "sql",
         },
         {
           label: t`Run`,
-          to: `/bench/transforms/${transform.id}/run`,
+          to: Urls.transformRun(transform.id),
           icon: "play_outlined",
         },
         {
           label: t`Target`,
-          to: `/bench/transforms/${transform.id}/target`,
+          to: Urls.transformTarget(transform.id),
           icon: "table2",
         },
         ...(PLUGIN_DEPENDENCIES.isEnabled
           ? [
               {
                 label: t`Dependencies`,
-                to: `/bench/transforms/${transform.id}/dependencies`,
+                to: Urls.transformDependencies(transform.id),
                 icon: "network" as const,
               },
             ]

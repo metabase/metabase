@@ -73,8 +73,12 @@ export function transform(transformId: TransformId) {
   return `${ROOT_URL}/${transformId}`;
 }
 
-export function transformQuery(transformId: TransformId) {
-  return `${ROOT_URL}/${transformId}/query`;
+export function transformRun(transformId: TransformId) {
+  return `${ROOT_URL}/${transformId}/run`;
+}
+
+export function transformTarget(transformId: TransformId) {
+  return `${ROOT_URL}/${transformId}/target`;
 }
 
 export function transformDependencies(transformId: TransformId) {
