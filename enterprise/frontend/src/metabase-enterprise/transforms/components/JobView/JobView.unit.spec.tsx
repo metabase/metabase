@@ -5,8 +5,8 @@ import {
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockTransformJob } from "metabase-types/api/mocks";
 
+import type { TransformJobInfo } from "./../../types";
 import { JobView } from "./JobView";
-import type { TransformJobInfo } from "./types";
 
 type SetupOpts = {
   job?: TransformJobInfo;

@@ -11,7 +11,7 @@ import {
   useLazyGetTransformJobQuery,
 } from "metabase-enterprise/api";
 
-import type { TransformJobInfo } from "../types";
+import type { TransformJobInfo } from "../../../types";
 
 type SaveSectionProps = {
   job: TransformJobInfo;

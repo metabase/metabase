@@ -3,7 +3,8 @@ import { t } from "ttag";
 
 import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
 
-import { JobView, type TransformJobInfo } from "../../components/JobView";
+import { JobView } from "../../components/JobView";
+import type { TransformJobInfo } from "../../types";
 
 export function NewJobPage() {
   const [job, setJob] = useState(() => getNewJobInfo());

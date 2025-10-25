@@ -9,7 +9,7 @@ import {
 import { Box, Button, FocusTrap, Group, Modal, Stack, Text } from "metabase/ui";
 import { useDeleteTransformJobMutation } from "metabase-enterprise/api";
 
-import type { TransformJobInfo } from "../../types";
+import type { TransformJobInfo } from "../../../../types";
 
 type DeleteJobModalProps = {
   job: TransformJobInfo;
