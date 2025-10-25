@@ -49,6 +49,7 @@
     "@tiptap/suggestion": "^3.2.0",
     "@types/react-router": "3.0.27",
     "@types/redux-auth-wrapper": "^2.0.16",
+    "@types/yamljs": "^0.2.34",
     "@uiw/react-codemirror": "^4.23.6",
     "@visx/axis": "^3.10.1",
     "@visx/clip-path": "^3.3.0",
@@ -103,7 +104,7 @@
     "mustache": "^2.3.2",
     "normalizr": "^3.0.2",
     "ora": "^8.0.1",
-    "password-generator": "^2.0.1",
+    "password-generator": "^2.3.2",
     "process": "^0.11.10",
     "prop-types": "^15.5.7",
     "re-reselect": "^4.0.1",
@@ -149,6 +150,7 @@
     "ttag": "1.7.21",
     "typescript": "^5.9.2",
     "underscore": "~1.13.3",
+    "yamljs": "^0.3.0",
     "yup": "^0.32.11"
   },
   "devDependencies": {

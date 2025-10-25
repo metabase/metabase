@@ -40,6 +40,12 @@ export const ENTERPRISE_TAG_TYPES = [
   "transform-job",
   "transform-job-via-tag",
   "transform-run",
+  "git-tree",
+  "git-file-content",
+  "collection-dirty-entities",
+  "collection-is-dirty",
+  "remote-sync-branches",
+  "remote-sync-current-task",
   "python-transform-library",
 ] as const;
 
