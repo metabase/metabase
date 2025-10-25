@@ -39,11 +39,12 @@
   "Effective type of a column when taking the `::temporal-unit` into account. If we have a temporal extraction like
   `:month-of-year`, then this actually returns an integer rather than the 'original` effective type of `:type/Date` or
   whatever."
-  [{::keys [temporal-unit], :as column-metadata}]
-  (if (and temporal-unit
-           (contains? lib.schema.temporal-bucketing/datetime-extraction-units temporal-unit))
-    :type/Integer
-    ((some-fn :effective-type :base-type) column-metadata)))
+  [{::keys [temporal-unit], :keys [inherited-temporal-unit], :as column-metadata}]
+  (let [effective-temporal-unit (or temporal-unit inherited-temporal-unit)]
+    (if (and effective-temporal-unit
+             (contains? lib.schema.temporal-bucketing/datetime-extraction-units effective-temporal-unit))
+      :type/Integer
+      ((some-fn :effective-type :base-type) column-metadata))))
 
 (defmethod lib.metadata.calculation/type-of-method :metadata/column
   [_query _stage-number column-metadata]
