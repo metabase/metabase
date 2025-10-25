@@ -9,7 +9,7 @@
    [metabase.driver.clickhouse-version :as clickhouse-version]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
-   [metabase.driver.sql.query-processor :as sql.qp :refer [add-interval-honeysql-form]]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
    [metabase.util :as u]
@@ -275,7 +275,7 @@
   (if (some interval? args)
     (if-let [[field intervals] (u/pick-first (complement interval?) args)]
       (reduce (fn [hsql-form [_ amount unit]]
-                (add-interval-honeysql-form driver hsql-form amount unit))
+                (sql.qp/add-interval-honeysql-form driver hsql-form amount unit))
               (sql.qp/->honeysql driver field)
               intervals)
       (throw (ex-info "Summing intervals is not supported" {:args args})))
