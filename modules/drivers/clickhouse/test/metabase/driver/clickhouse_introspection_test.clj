@@ -1,6 +1,7 @@
 (ns ^:mb/driver-tests metabase.driver.clickhouse-introspection-test
   #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
@@ -545,23 +546,23 @@
 
 (deftest ^:parallel clickhouse-describe-database-enable-multiple-db-schema-test
   (mt/test-driver :clickhouse
-    (let [tables-with-schema {:tables
-                              #{{:name "users", :schema "test_data", :description nil}
-                                {:name "venues", :schema "test_data", :description nil}
-                                {:name "categories", :schema "test_data", :description nil}
-                                {:name "checkins", :schema "test_data", :description nil}
-                                {:name "orders", :schema "test_data", :description nil}
-                                {:name "people", :schema "test_data", :description nil}
-                                {:name "products", :schema "test_data", :description nil}
-                                {:name "reviews", :schema "test_data", :description nil}}}]
+    (let [tables-with-schema #{{:name "users", :schema "test_data", :description nil}
+                               {:name "venues", :schema "test_data", :description nil}
+                               {:name "categories", :schema "test_data", :description nil}
+                               {:name "checkins", :schema "test_data", :description nil}
+                               {:name "orders", :schema "test_data", :description nil}
+                               {:name "people", :schema "test_data", :description nil}
+                               {:name "products", :schema "test_data", :description nil}
+                               {:name "reviews", :schema "test_data", :description nil}}]
       (testing "when the enable-multiple-db is true describe-database returns tables with the db/schema"
-        (is (= tables-with-schema
-               (driver/describe-database driver/*driver* (mt/db)))))
+        (is (=? {:tables #(set/superset? % tables-with-schema)}
+                (driver/describe-database driver/*driver* (mt/db)))))
       (testing "when the enable-multiple-db is false describe-database returns tables without the db/schema"
         (mt/with-temp [:model/Database db {:engine :clickhouse,
                                            :details (assoc (:details (mt/db))
                                                            :enable-multiple-db false
                                                            :db-filters-type nil
                                                            :db-filters-patterns nil)}]
-          (is (= {:tables (set (map #(assoc % :schema nil) (:tables tables-with-schema)))}
-                 (driver/describe-database driver/*driver* db))))))))
+          (is (=? {:tables (fn [actual-tables]
+                             (set/superset? actual-tables (set (map #(assoc % :schema nil) tables-with-schema))))}
+                  (driver/describe-database driver/*driver* db))))))))

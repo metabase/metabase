@@ -15,7 +15,7 @@
   (testing "GET /api/ee/dependencies/graph shows card -> transform-target-table -> transform -> source-table chain"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/with-premium-features #{:dependencies :transforms}
-        (mt/with-temp-copy-of-db
+        (mt/with-model-cleanup [:model/Card :model/Dependency :model/Table]
           (let [metadata-provider (mt/metadata-provider)
                 orders-table-metadata (lib.metadata/table metadata-provider (mt/id :orders))
                 orders-query (-> (lib/query metadata-provider orders-table-metadata)
