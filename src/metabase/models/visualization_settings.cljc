@@ -382,7 +382,7 @@
                                              parse-json-string
                                              ;; legacy usage -- do not use in new code
                                              #_{:clj-kondo/ignore [:deprecated-var]}
-                                             mbql.normalize/normalize-tokens)]
+                                             mbql.normalize/normalize)]
                            [parsed-id (cond-> v
                                         (:source v) (assoc ::param-mapping-source
                                                            (db->norm-param-ref parsed-id (:source v)))

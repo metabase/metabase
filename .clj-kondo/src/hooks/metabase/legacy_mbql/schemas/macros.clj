@@ -1,6 +1,7 @@
 (ns hooks.metabase.legacy-mbql.schemas.macros
   (:require
-   [clj-kondo.hooks-api :as hooks]))
+   [clj-kondo.hooks-api :as hooks]
+   [hooks.metabase.legacy-mbql.schemas.macros :as metabase.legacy-mbql.schemas.macros]))
 
 (defn- unwrap-defclause-clause-name
   "The `clause-name-form` can be either a plain symbol, or a vector like `[var-name mbql-clause-name]`. For the vector
@@ -34,17 +35,35 @@
     =>
     (def ag:var [FieldOrExpressionDef])"
   [{:keys [node]}]
-  (let [[_defclause clause-name-form & arg-specs] (:children node)]
+  (let [[_defclause clause-name & arg-specs] (:children node)]
     {:node (-> (hooks/list-node
                 (list
-                 (hooks/token-node 'def)
-                 (unwrap-defclause-clause-name clause-name-form)
-                 (hooks/string-node "Docstring.")
+                 (hooks/token-node 'do)
+                 (-> (hooks/keyword-node (keyword "metabase.legacy-mbql.schema" (name (hooks/sexpr clause-name))))
+                     (with-meta (meta clause-name))
+                     (hooks/reg-keyword! 'metabase.legacy-mbql.schemas.macros/defclause))
                  (collect-defclause-body-schemas arg-specs)))
                (with-meta (meta node)))}))
 
+(defn defclause*
+  "e.g.
+
+    (defclause [ag:var var] field-or-expression FieldOrExpressionDef)
+    =>
+    (def ag:var [FieldOrExpressionDef])"
+  [{:keys [node]}]
+  (let [[_defclause clause-name schema] (:children node)]
+    {:node (-> (hooks/list-node
+                (list
+                 (hooks/token-node 'do)
+                 (-> (hooks/keyword-node (keyword "metabase.legacy-mbql.schema" (name (hooks/sexpr clause-name))))
+                     (with-meta (meta clause-name))
+                     (hooks/reg-keyword! 'metabase.legacy-mbql.schemas.macros/defclause*))
+                 schema))
+               (with-meta (meta node)))}))
+
 (comment
-  (defn- defclause* [form]
+  (defn- expand-defclause [form]
     (hooks/sexpr
      (:node
       (defclause
@@ -55,15 +74,15 @@
              form)))}))))
 
   (defn- x []
-    (defclause* '(defclause [ag:var var]
-                   field-or-expression FieldOrExpressionDef)))
+    (expand-defclause '(defclause var
+                         field-or-expression FieldOrExpressionDef)))
   ;; =>
-  (def ag:var "Docstring." [FieldOrExpressionDef])
+  (do :metabase.legacy-mbql.schema/var [FieldOrExpressionDef])
 
   (defn- y []
-    (defclause* '(defclause var
-                   x (some-list-schema)
-                   y (optional FieldOrExpressionDef)
-                   z (rest (some-other-schema)))))
+    (expand-defclause '(defclause var
+                         x (some-list-schema)
+                         y (optional FieldOrExpressionDef)
+                         z (rest (some-other-schema)))))
   ;; =>
-  (def var "Docstring." [(some-list-schema) FieldOrExpressionDef (some-other-schema)]))
+  (do :metabase.legacy-mbql.schema/var [(some-list-schema) FieldOrExpressionDef (some-other-schema)]))

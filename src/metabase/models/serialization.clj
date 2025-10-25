@@ -1116,7 +1116,7 @@
   (-> mbql
       ;; legacy usages -- do not use in new code
       #_{:clj-kondo/ignore [:deprecated-var]}
-      mbql.normalize/normalize-tokens
+      mbql.normalize/normalize
       (lib.util.match/replace
         ;; `integer?` guard is here to make the operation idempotent
         [:field (id :guard integer?) opts]
