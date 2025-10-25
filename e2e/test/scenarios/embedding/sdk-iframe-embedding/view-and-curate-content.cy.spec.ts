@@ -42,6 +42,11 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
     it("should show New Exploration button and open data picker when clicked", () => {
       setupEmbed('<metabase-browser initial-collection="root" />');
 
+      // Wait for initial collection items to render to avoid DOM detachment on re-render
+      H.getSimpleEmbedIframeContent()
+        .findAllByTestId("collection-entry-type")
+        .should("have.length.greaterThan", 0);
+
       H.getSimpleEmbedIframeContent()
         .findByText("New exploration")
         .should("be.visible")
@@ -99,6 +104,11 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
       setupEmbed(
         '<metabase-browser initial-collection="root" read-only="false" />',
       );
+
+      // Wait for initial collection items to render to avoid DOM detachment on re-render
+      H.getSimpleEmbedIframeContent()
+        .findAllByTestId("collection-entry-type")
+        .should("have.length.greaterThan", 0);
 
       H.getSimpleEmbedIframeContent()
         .findByText("New dashboard")
@@ -159,6 +169,11 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
         '<metabase-browser initial-collection="root" read-only="false" />',
       );
 
+      // Wait for initial collection items to render to avoid DOM detachment on re-render
+      H.getSimpleEmbedIframeContent()
+        .findAllByTestId("collection-entry-type")
+        .should("have.length.greaterThan", 0);
+
       H.getSimpleEmbedIframeContent()
         .findByText("New exploration")
         .should("be.visible")
@@ -213,6 +228,11 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
       setupEmbed(
         '<metabase-browser initial-collection="root" read-only="false" />',
       );
+
+      // Wait for initial collection items to render to avoid DOM detachment on re-render
+      H.getSimpleEmbedIframeContent()
+        .findAllByTestId("collection-entry-type")
+        .should("have.length.greaterThan", 0);
 
       H.getSimpleEmbedIframeContent()
         .findByText("New dashboard")
