@@ -17,7 +17,7 @@ export function getSearchModelItems(data: SearchResponse): SearchModelItem[] {
     dataset: t`Models`,
     metric: t`Metrics`,
     dashboard: t`Dashboards`,
-    document: t`Transforms`,
+    document: t`Documents`,
   };
 
   const allItems = ENABLED_SEARCH_MODELS.map((model) => ({
