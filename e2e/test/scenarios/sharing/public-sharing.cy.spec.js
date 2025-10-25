@@ -143,6 +143,7 @@ describe("scenarios > admin > settings > public sharing", () => {
     });
     cy.findByTestId("admin-layout-content")
       .findByText("No dashboards have been publicly shared yet.")
+      .scrollIntoView()
       .should("be.visible");
   });
 
@@ -203,6 +204,7 @@ describe("scenarios > admin > settings > public sharing", () => {
     });
     cy.findByTestId("admin-layout-content")
       .findByText("No questions have been publicly shared yet.")
+      .scrollIntoView()
       .should("be.visible");
   });
 
@@ -282,6 +284,7 @@ describe("scenarios > admin > settings > public sharing", () => {
     });
     cy.findByTestId("admin-layout-content")
       .findByText("No actions have been publicly shared yet.")
+      .scrollIntoView()
       .should("be.visible");
   });
 });

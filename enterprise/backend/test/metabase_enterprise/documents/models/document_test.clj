@@ -7,9 +7,24 @@
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.util :as tu]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
+
+(deftest public-sharing-test
+  (testing "Document's :public_uuid visibility based on public sharing setting"
+    (testing "comes back if public sharing is enabled"
+      (tu/with-temporary-setting-values [enable-public-sharing true]
+        (mt/with-temp [:model/Document document {:public_uuid (str (random-uuid))}]
+          (is (=? u/uuid-regex
+                  (:public_uuid document))))))
+    (testing "comes back as nil if public sharing is disabled"
+      (tu/with-temporary-setting-values [enable-public-sharing false]
+        (mt/with-temp [:model/Document document {:public_uuid (str (random-uuid))}]
+          (is (= nil
+                 (:public_uuid document))))))))
 
 (deftest sync-document-cards-collection-matching-cards-test
   (testing "should only update cards with matching document_id"
@@ -367,7 +382,7 @@
     (let [spec (serdes/make-spec "Document" {})]
       (is (= [:archived :archived_directly :content_type :entity_id :name :collection_position]
              (:copy spec)))
-      (is (= [:view_count :last_viewed_at :dependency_analysis_version] (:skip spec)))
+      (is (= [:view_count :last_viewed_at :public_uuid :made_public_by_id :dependency_analysis_version] (:skip spec)))
       (is (contains? (:transform spec) :created_at))
       (is (contains? (:transform spec) :document))
       (is (contains? (:transform spec) :updated_at))

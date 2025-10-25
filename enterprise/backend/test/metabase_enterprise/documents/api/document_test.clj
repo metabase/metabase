@@ -2,9 +2,11 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -2000,6 +2002,298 @@
                                                    {:collection_position nil})]
           (is (nil? (:collection_position updated-result))))))))
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                            PUBLIC SHARING ENDPOINTS                                            |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- shared-document []
+  {:public_uuid       (str (random-uuid))
+   :made_public_by_id (mt/user->id :crowberto)})
+
+(defn- document-with-public-link
+  "Create test Document data including a public UUID and made_public_by_id.
+
+  Accepts an `overrides` map to customize the returned Document attributes. Base attributes include
+  `:name`, `:document` (ProseMirror AST), `:public_uuid`, and `:made_public_by_id`."
+  [overrides]
+  (merge {:name "Test Document"
+          :document (text->prose-mirror-ast "Test content")}
+         (shared-document)
+         overrides))
+
+;;; -------------------------------------- POST /api/ee/document/:id/public_link ---------------------------------------
+
+(deftest share-document-test
+  (mt/with-temporary-setting-values [enable-public-sharing true]
+    (testing "Test that we can share a Document"
+      (mt/with-temp [:model/Document document {:name "Test Document"
+                                               :document (text->prose-mirror-ast "Test content")}]
+        (let [{uuid :uuid} (mt/user-http-request :crowberto :post 200
+                                                 (format "ee/document/%d/public_link" (:id document)))]
+          (is (t2/exists? :model/Document :id (:id document), :public_uuid uuid))
+          (testing "Test that if a Document has already been shared we reuse the existing UUID"
+            (is (= uuid
+                   (:uuid (mt/user-http-request :crowberto :post 200
+                                                (format "ee/document/%d/public_link" (:id document))))))))))
+
+    (mt/with-temp [:model/Document document {:name "Test Document"
+                                             :document (text->prose-mirror-ast "Test content")}]
+      (testing "Test that we *cannot* share a Document if we aren't admins"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :post 403 (format "ee/document/%d/public_link" (:id document))))))
+
+      (testing "Test that we *cannot* share a Document if the setting is disabled"
+        (mt/with-temporary-setting-values [enable-public-sharing false]
+          (is (= "Public sharing is not enabled."
+                 (mt/user-http-request :crowberto :post 400 (format "ee/document/%d/public_link" (:id document))))))))
+
+    (testing "Test that we get a 404 if the Document doesn't exist"
+      (is (= "Not found."
+             (mt/user-http-request :crowberto :post 404 (format "ee/document/%d/public_link" Integer/MAX_VALUE)))))))
+
+(deftest delete-public-link-test
+  (testing "DELETE /api/ee/document/:id/public_link"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (testing "Test that we can unshare a Document"
+        (mt/with-temp [:model/Document document (document-with-public-link {})]
+          (mt/user-http-request :crowberto :delete 204 (format "ee/document/%d/public_link" (:id document)))
+          (is (not (t2/exists? :model/Document :id (:id document), :public_uuid (:public_uuid document))))))
+
+      (testing "Test that we *cannot* unshare a Document if we are not admins"
+        (mt/with-temp [:model/Document document (document-with-public-link {})]
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :delete 403 (format "ee/document/%d/public_link" (:id document)))))))
+
+      (testing "Test that we get a 404 if Document isn't shared"
+        (mt/with-temp [:model/Document document {:name "Test Document"
+                                                 :document (text->prose-mirror-ast "Test content")}]
+          (is (= "Not found."
+                 (mt/user-http-request :crowberto :delete 404 (format "ee/document/%d/public_link" (:id document)))))))
+
+      (testing "Test that we get a 404 if Document doesn't exist"
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :delete 404 (format "ee/document/%d/public_link" Integer/MAX_VALUE))))))))
+
+(deftest fetch-public-documents-test
+  (testing "GET /api/ee/document/public"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Document _document (document-with-public-link {:name "Public Document"
+                                                                           :document (text->prose-mirror-ast "Public content")})]
+        (testing "Test that it requires superuser"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 "ee/document/public"))))
+        (testing "Test that superusers can fetch a list of publicly-accessible documents"
+          (is (= [{:name true, :id true, :public_uuid true}]
+                 (for [doc (mt/user-http-request :crowberto :get 200 "ee/document/public")]
+                   (m/map-vals boolean doc)))))))))
+
+;;; ---------------------------------------- GET /api/public/document/:uuid ----------------------------------------------
+
+(deftest fetch-public-document-test
+  (testing "GET /api/public/document/:uuid"
+    (testing "Test that we can fetch a public Document"
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (mt/with-temp [:model/Document document (document-with-public-link {:name "Public Test Document"
+                                                                            :document (text->prose-mirror-ast "Public test content")})]
+          (is (partial= {:name "Public Test Document"
+                         :document (text->prose-mirror-ast "Public test content")
+                         :id (:id document)}
+                        (mt/client :get 200 (str "public/document/" (:public_uuid document))))))))))
+
+(deftest public-document-returns-only-safe-fields-test
+  (testing "GET /api/public/document/:uuid should only return safe fields"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Document document (document-with-public-link {:name "Public Test Document"
+                                                                          :document (text->prose-mirror-ast "Public test content")})]
+        (let [result (mt/client :get 200 (str "public/document/" (:public_uuid document)))]
+          (testing "Should include safe fields"
+            (is (contains? result :id))
+            (is (contains? result :name))
+            (is (contains? result :document))
+            (is (contains? result :created_at))
+            (is (contains? result :updated_at)))
+          (testing "Should not include sensitive fields"
+            (is (not (contains? result :public_uuid)))
+            (is (not (contains? result :made_public_by_id)))
+            (is (not (contains? result :collection_id)))
+            (is (not (contains? result :description)))))))))
+
+(deftest get-public-document-errors-test
+  (testing "GET /api/public/document/:uuid"
+    (testing "Shouldn't be able to fetch a public Document if public sharing is disabled"
+      (mt/with-temporary-setting-values [enable-public-sharing false]
+        (mt/with-temp [:model/Document document (document-with-public-link {})]
+          (is (= "API endpoint does not exist."
+                 (mt/client :get 404 (str "public/document/" (:public_uuid document))))))))
+
+    (testing "Should get a 404 if the Document doesn't exist"
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (is (= "Not found."
+               (mt/client :get 404 (str "public/document/" (random-uuid)))))))))
+
+(deftest share-archived-document-test
+  (testing "POST /api/ee/document/:id/public_link should not work for archived documents"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Document document {:name "Archived Document"
+                                               :document (text->prose-mirror-ast "Archived content")
+                                               :archived true}]
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :post 404 (format "ee/document/%d/public_link" (:id document)))))))))
+
+(deftest unshare-archived-document-test
+  (testing "DELETE /api/ee/document/:id/public_link should not work for archived documents"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Document document (document-with-public-link {:name "Archived Shared Document"
+                                                                          :document (text->prose-mirror-ast "Archived shared content")
+                                                                          :archived true})]
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :delete 404 (format "ee/document/%d/public_link" (:id document)))))))))
+
+(deftest public-document-not-accessible-when-archived-test
+  (testing "GET /api/public/document/:uuid should not work for archived documents"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Document document (document-with-public-link {})]
+        (let [uuid (:public_uuid document)]
+          (testing "Document is accessible when not archived"
+            (is (= 200
+                   (:status (mt/client-full-response :get (str "public/document/" uuid))))))
+          (testing "Document is not accessible after archiving"
+            (t2/update! :model/Document (:id document) {:archived true})
+            (is (= "Not found."
+                   (mt/client :get 404 (str "public/document/" uuid))))))))))
+
+(deftest public-document-listing-excludes-archived-test
+  (testing "GET /api/ee/document/public should not include archived documents"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Document active-doc (document-with-public-link {:name "Active Public Document"
+                                                                            :document (text->prose-mirror-ast "Active content")})
+                     :model/Document _archived-doc (document-with-public-link {:name "Archived Public Document"
+                                                                               :document (text->prose-mirror-ast "Archived content")
+                                                                               :archived true})]
+        (let [public-docs (mt/user-http-request :crowberto :get 200 "ee/document/public")
+              public-doc-ids (set (map :id public-docs))]
+          (testing "Active document should be in the list"
+            (is (contains? public-doc-ids (:id active-doc))))
+          (testing "Archived document should not be in the list"
+            (is (= 1 (count public-docs)))))))))
+
+(deftest download-document-card-test
+  (testing "POST /api/ee/document/:document-id/card/:card-id/query/:export-format"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Card {card-id :id} {:name "Test Card"
+                                                :dataset_query (mt/mbql-query venues {:limit 10})
+                                                :display :table
+                                                :collection_id coll-id}
+                     :model/Document {doc-id :id} {:name "Test Document"
+                                                   :collection_id coll-id
+                                                   :document {:type "doc"
+                                                              :content [{:type "cardEmbed"
+                                                                         :attrs {:id card-id}}]}}]
+        (t2/update! :model/Card card-id {:document_id doc-id})
+
+        (mt/with-group-for-user [group :rasta {:name "Rasta Group"}]
+          (testing "Read-only users can download"
+            (perms/grant-collection-read-permissions! group coll-id)
+            (let [response (mt/user-http-request :rasta
+                                                 :post 200
+                                                 (format "ee/document/%s/card/%s/query/csv" doc-id card-id)
+                                                 {:parameters []
+                                                  :format_rows false
+                                                  :pivot_results false})]
+              (is (some? response))
+              (is (string? response))))
+
+          (testing "No access returns 403"
+            (perms/revoke-collection-permissions! group coll-id)
+            (mt/user-http-request :rasta
+                                  :post 403
+                                  (format "ee/document/%s/card/%s/query/csv" doc-id card-id)
+                                  {:parameters []
+                                   :format_rows false
+                                   :pivot_results false}))
+
+          (testing "Card not in document returns 404"
+            (perms/grant-collection-read-permissions! group coll-id)
+            (mt/with-temp [:model/Card {other-card-id :id} {:name "Other Card"
+                                                            :dataset_query (mt/mbql-query venues {:limit 5})
+                                                            :display :table
+                                                            :collection_id coll-id}]
+              (mt/user-http-request :rasta
+                                    :post 404
+                                    (format "ee/document/%s/card/%s/query/csv" doc-id other-card-id)
+                                    {:parameters []
+                                     :format_rows false
+                                     :pivot_results false})))
+
+          (testing "Archived document returns 404"
+            (t2/update! :model/Document doc-id {:archived true})
+            (mt/user-http-request :rasta
+                                  :post 404
+                                  (format "ee/document/%s/card/%s/query/csv" doc-id card-id)
+                                  {:parameters []
+                                   :format_rows false
+                                   :pivot_results false})))))))
+
+(deftest download-document-card-respects-download-permissions-test
+  (testing "POST /api/ee/document/:document-id/card/:card-id/query/:export-format respects database download permissions"
+    (mt/with-premium-features #{:documents :advanced-permissions}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection {coll-id :id} {}
+                       :model/Card {card-id :id} {:name "Test Card"
+                                                  :dataset_query (mt/mbql-query venues {:limit 10})
+                                                  :display :table
+                                                  :collection_id coll-id}
+                       :model/Document {doc-id :id} {:name "Test Document"
+                                                     :collection_id coll-id
+                                                     :document {:type "doc"
+                                                                :content [{:type "cardEmbed"
+                                                                           :attrs {:id card-id}}]}}]
+          (t2/update! :model/Card card-id {:document_id doc-id})
+
+          (let [all-users-group (perms/all-users-group)]
+            ;; Grant collection read permissions so user can access the document
+            (perms/grant-collection-read-permissions! all-users-group coll-id)
+
+            (testing "User without download permissions yields permissions error in body (streaming uses 200)"
+              ;; Set download permissions to :no (no downloads allowed) for All Users group
+              (data-perms/set-database-permission! all-users-group (mt/id) :perms/download-results :no)
+
+              (is (malli= [:map
+                           [:status [:= "failed"]]
+                           [:error_type [:= "missing-required-permissions"]]
+                           [:ex-data [:map
+                                      [:permissions-error? [:= true]]]]]
+                          (mt/user-http-request :rasta
+                                                :post 200
+                                                (format "ee/document/%s/card/%s/query/csv" doc-id card-id)
+                                                {:parameters []
+                                                 :format_rows false
+                                                 :pivot_results false}))))
+
+            (testing "User with limited download permissions (10k rows) can download"
+              (data-perms/set-database-permission! all-users-group (mt/id) :perms/download-results :ten-thousand-rows)
+
+              (let [response (mt/user-http-request :rasta
+                                                   :post 200
+                                                   (format "ee/document/%s/card/%s/query/csv" doc-id card-id)
+                                                   {:parameters []
+                                                    :format_rows false
+                                                    :pivot_results false})]
+                (is (some? response))
+                (is (string? response))))
+
+            (testing "User with full download permissions can download"
+              (data-perms/set-database-permission! all-users-group (mt/id) :perms/download-results :one-million-rows)
+
+              (let [response (mt/user-http-request :rasta
+                                                   :post 200
+                                                   (format "ee/document/%s/card/%s/query/csv" doc-id card-id)
+                                                   {:parameters []
+                                                    :format_rows false
+                                                    :pivot_results false})]
+                (is (some? response))
+                (is (string? response))))))))))
 (defn- prose-mirror-with-smartlink
   "Create a ProseMirror AST with a smartlink to a card."
   [text card-id]

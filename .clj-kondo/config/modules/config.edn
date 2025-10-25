@@ -873,7 +873,8 @@
            request
            settings
            tiles
-           util}}
+           util
+           enterprise/documents}}
 
   pulse
   {:team "Workflows"
@@ -1757,8 +1758,10 @@
            events
            models
            premium-features
+           public-sharing
            queries
            query-permissions
+           query-processor
            revisions
            search
            util

@@ -299,6 +299,10 @@ export function createPublicDashboardLink(dashboardId) {
   return cy.request("POST", `/api/dashboard/${dashboardId}/public_link`, {});
 }
 
+export function createPublicDocumentLink(documentId) {
+  return cy.request("POST", `/api/ee/document/${documentId}/public_link`, {});
+}
+
 /**
  * @param {Object} options
  * @param {string} options.url

@@ -34,6 +34,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "metabot-prompt-suggestions",
   "gsheets-status",
   "document",
+  "public-document",
   "comment",
   "sandbox",
   "transform-tag",

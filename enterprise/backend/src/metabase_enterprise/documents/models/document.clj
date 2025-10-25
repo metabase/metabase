@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.public-sharing.core :as public-sharing]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -74,6 +75,10 @@
                                    :archived archived
                                    :archived-directly archived_directly)
   instance)
+
+(t2/define-after-select :model/Document
+  [document]
+  (public-sharing/remove-public-uuid-if-public-sharing-is-disabled document))
 
 ;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
 
@@ -155,7 +160,7 @@
 (defmethod serdes/make-spec "Document"
   [_model-name _opts]
   {:copy [:archived :archived_directly :content_type :entity_id :name :collection_position]
-   :skip [:view_count :last_viewed_at :dependency_analysis_version]
+   :skip [:view_count :last_viewed_at :public_uuid :made_public_by_id :dependency_analysis_version]
    :transform {:created_at (serdes/date)
                :updated_at (serdes/date)
                :document {:export-with-context export-document-content
