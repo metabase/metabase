@@ -385,6 +385,21 @@
      clauses
      (range (count clauses)))))
 
+(mu/defn walk-clauses-in-stage :- [:maybe ::lib.schema/stage.mbql]
+  "Walk all the clauses in a stage. Calls
+
+    (f clause)
+
+  for every clause in the stage."
+  [stage :- ::lib.schema/stage
+   f     :- [:=> [:cat :any] :any]]
+  (when (lib.util/mbql-stage? stage)
+    (reduce
+     (fn [stage k]
+       (m/update-existing stage k walk-clauses* f))
+     stage
+     [:aggregation :breakout :expressions :fields :filters :order-by])))
+
 (mu/defn walk-clauses :- ::lib.schema/query
   "Walk all the MBQL clauses in a query in a depth-first manner.
 
@@ -420,9 +435,4 @@
                                             (walk-clauses* f)))))
 
          :lib.walk/stage
-         (when (lib.util/mbql-stage? stage-or-join)
-           (reduce
-            (fn [stage k]
-              (m/update-existing stage k walk-clauses* f))
-            stage-or-join
-            [:aggregation :breakout :expressions :fields :filters :order-by])))))))
+         (walk-clauses-in-stage stage-or-join f))))))

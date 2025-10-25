@@ -8,14 +8,14 @@ import styles from "./ListView.module.css";
 
 // Light background colors for category values
 const CATEGORY_COLORS = [
-  "color-mix(in srgb, var(--mb-color-brand) 8%, white)",
-  "color-mix(in srgb, var(--mb-color-success) 8%, white)",
-  "color-mix(in srgb, var(--mb-color-warning) 8%, white)",
-  "color-mix(in srgb, var(--mb-color-error) 8%, white)",
-  "color-mix(in srgb, var(--mb-color-filter) 8%, white)",
-  "color-mix(in srgb, var(--mb-color-summarize) 8%, white)",
-  "color-mix(in srgb, var(--mb-color-focus) 8%, white)",
-  "color-mix(in srgb, var(--mb-color-text-medium) 8%, white)",
+  "color-mix(in srgb, var(--mb-color-brand) 8%, var(--mb-color-background))",
+  "color-mix(in srgb, var(--mb-color-success) 8%, var(--mb-color-background))",
+  "color-mix(in srgb, var(--mb-color-warning) 8%, var(--mb-color-background))",
+  "color-mix(in srgb, var(--mb-color-error) 8%, var(--mb-color-background))",
+  "color-mix(in srgb, var(--mb-color-filter) 8%, var(--mb-color-background))",
+  "color-mix(in srgb, var(--mb-color-summarize) 8%, var(--mb-color-background))",
+  "color-mix(in srgb, var(--mb-color-focus) 8%, var(--mb-color-background))",
+  "color-mix(in srgb, var(--mb-color-text-medium) 8%, var(--mb-color-background))",
 ];
 
 // Get a consistent color for a category value based on its hash

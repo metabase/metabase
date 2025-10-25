@@ -11,9 +11,12 @@ import {
 import type {
   CardDependencyNode,
   Comment,
+  DashboardDependencyNode,
   DependencyGraph,
   DependencyNode,
+  DocumentDependencyNode,
   PythonLibrary,
+  SandboxDependencyNode,
   SnippetDependencyNode,
   TableDependencyNode,
   Transform,
@@ -33,10 +36,17 @@ export const ENTERPRISE_TAG_TYPES = [
   "document",
   "public-document",
   "comment",
+  "sandbox",
   "transform-tag",
   "transform-job",
   "transform-job-via-tag",
   "transform-run",
+  "git-tree",
+  "git-file-content",
+  "collection-dirty-entities",
+  "collection-is-dirty",
+  "remote-sync-branches",
+  "remote-sync-current-task",
   "python-transform-library",
 ] as const;
 
@@ -191,6 +201,42 @@ function provideSnippetDependencyNodeTags(
   return [idTag("snippet", node.id)];
 }
 
+function provideDashboardDependencyNodeTags(
+  node: DashboardDependencyNode,
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    idTag("dashboard", node.id),
+    ...(node.data.creator != null ? provideUserTags(node.data.creator) : []),
+    ...(node.data["last-edit-info"] != null
+      ? provideUserTags(node.data["last-edit-info"])
+      : []),
+    ...(node.data.collection != null
+      ? provideCollectionTags(node.data.collection)
+      : []),
+  ];
+}
+
+function provideDocumentDependencyNodeTags(
+  node: DocumentDependencyNode,
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    idTag("document", node.id),
+    ...(node.data.creator != null ? provideUserTags(node.data.creator) : []),
+    ...(node.data.collection != null
+      ? provideCollectionTags(node.data.collection)
+      : []),
+  ];
+}
+
+function provideSandboxDependencyNodeTags(
+  node: SandboxDependencyNode,
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    idTag("sandbox", node.id),
+    ...(node.data.table ? provideTableTags(node.data.table) : []),
+  ];
+}
+
 export function provideDependencyNodeTags(
   node: DependencyNode,
 ): TagDescription<EnterpriseTagType>[] {
@@ -203,6 +249,12 @@ export function provideDependencyNodeTags(
       return provideTransformDependencyNodeTags(node);
     case "snippet":
       return provideSnippetDependencyNodeTags(node);
+    case "dashboard":
+      return provideDashboardDependencyNodeTags(node);
+    case "document":
+      return provideDocumentDependencyNodeTags(node);
+    case "sandbox":
+      return provideSandboxDependencyNodeTags(node);
   }
 }
 

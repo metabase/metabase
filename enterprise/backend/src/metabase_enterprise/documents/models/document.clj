@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [metabase-enterprise.documents.prose-mirror :as prose-mirror]
    [metabase.api.common :as api]
-   [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.public-sharing.core :as public-sharing]
@@ -44,11 +43,10 @@
    Throws 403 exception if permissions are insufficient."
   [old-collection-id new-collection-id]
   (when old-collection-id
-    (collection/check-write-perms-for-collection old-collection-id))
+    (api/write-check :model/Collection old-collection-id))
   (when new-collection-id
-    (collection/check-write-perms-for-collection new-collection-id))
-  (when new-collection-id
-    (api/check-400 (t2/exists? :model/Collection :id new-collection-id :archived false))))
+    (api/check-400 (t2/exists? :model/Collection :id new-collection-id :archived false))
+    (api/write-check :model/Collection new-collection-id)))
 
 (methodical/defmethod t2/batched-hydrate [:model/Document :creator]
   "Hydrate the creator (user) of a document based on the creator_id."
@@ -162,7 +160,7 @@
 (defmethod serdes/make-spec "Document"
   [_model-name _opts]
   {:copy [:archived :archived_directly :content_type :entity_id :name :collection_position]
-   :skip [:view_count :last_viewed_at :public_uuid :made_public_by_id]
+   :skip [:view_count :last_viewed_at :public_uuid :made_public_by_id :dependency_analysis_version]
    :transform {:created_at (serdes/date)
                :updated_at (serdes/date)
                :document {:export-with-context export-document-content
@@ -192,7 +190,7 @@
         (when collection_id #{[{:model "Collection" :id collection_id}]}))))
 
 (defmethod serdes/descendants "Document"
-  [_model-name id]
+  [_model-name id _opts]
   (when-let [document (t2/select-one :model/Document :id id)]
     (when (= prose-mirror/prose-mirror-content-type (:content_type document))
       (merge
@@ -200,8 +198,8 @@
              (for [embedded-card-id (prose-mirror/card-ids document)]
                {["Card" embedded-card-id] {"Document" id}}))
        (into {}
-             (for [{model :model link-id :id} (prose-mirror/collect-ast document
-                                                                        #(when (= prose-mirror/smart-link-type (:type %))
-                                                                           (:attrs %)))
+             (for [{model :model link-id :entityId} (prose-mirror/collect-ast document
+                                                                              #(when (= prose-mirror/smart-link-type (:type %))
+                                                                                 (:attrs %)))
                    :when (contains? model->serdes-model model)]
                {[(model->serdes-model model) link-id] {"Document" id}}))))))

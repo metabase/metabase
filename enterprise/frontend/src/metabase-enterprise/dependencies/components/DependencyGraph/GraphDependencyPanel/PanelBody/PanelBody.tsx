@@ -45,7 +45,7 @@ function ListItem({ node }: ListItemProps) {
 
   return (
     <Stack className={S.item} p="lg" gap="sm" aria-label={label}>
-      <Group justify="space-between">
+      <Group justify="space-between" wrap="nowrap">
         <GraphLink
           label={label}
           icon={getNodeIcon(node)}
@@ -60,7 +60,10 @@ function ListItem({ node }: ListItemProps) {
         ) : null}
       </Group>
       {(location != null || (link != null && viewCount != null)) && (
-        <Group justify={location != null ? "space-between" : "flex-end"}>
+        <Group
+          justify={location != null ? "space-between" : "flex-end"}
+          wrap="nowrap"
+        >
           {location != null && (
             <GraphBreadcrumbs location={location} ml="1rem" pl="sm" />
           )}
