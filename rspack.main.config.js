@@ -6,7 +6,6 @@ const fs = require("fs");
 const rspack = require("@rspack/core");
 const ReactRefreshPlugin = require("@rspack/plugin-react-refresh");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
-const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
 const WebpackNotifierPlugin = require("webpack-notifier");
 
 const {
@@ -248,6 +247,9 @@ const config = {
       "sdk-ee-plugins": resolveEnterprisePathOrNoop("/sdk-plugins"),
       "sdk-specific-imports": SRC_PATH + "/lib/noop",
     },
+    fallback: {
+      buffer: require.resolve("buffer/"),
+    },
   },
   optimization: {
     runtimeChunk: "single",
@@ -315,14 +317,16 @@ const config = {
       template: __dirname + "/resources/frontend_client/index_template.html",
     }),
     new rspack.BannerPlugin(getBannerOptions(LICENSE_TEXT)),
-    new NodePolyfillPlugin(), // for crypto, among others
+    // https://github.com/orgs/remarkjs/discussions/903
+    new rspack.ProvidePlugin({
+      process: "process/browser.js",
+      Buffer: ["buffer", "Buffer"],
+    }),
     new rspack.EnvironmentPlugin({
       WEBPACK_BUNDLE: "development",
       MB_LOG_ANALYTICS: "false",
       ENABLE_CLJS_HOT_RELOAD: process.env.ENABLE_CLJS_HOT_RELOAD ?? "false",
     }),
-    // https://github.com/remarkjs/remark/discussions/903
-    new rspack.ProvidePlugin({ process: "process/browser.js" }),
   ],
 };
 
