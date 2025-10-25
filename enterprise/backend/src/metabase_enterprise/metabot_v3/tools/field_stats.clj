@@ -1,9 +1,11 @@
 (ns metabase-enterprise.metabot-v3.tools.field-stats
   (:require
    [clojure.set :as set]
+   [medley.core :as m]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
    [metabase.lib.core :as lib]
+   [metabase.query-processor :as qp]
    [metabase.sync.core :as sync]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
@@ -39,7 +41,14 @@
           query (metabot-v3.tools.u/table-query table-id)]
       (if query
         (if-let [col (nth (lib/visible-columns query) index nil)]
-          {:structured-output (field-statistics col limit)}
+          {:structured-output (let [stats (field-statistics col limit)]
+                                (if (seq (:values stats))
+                                  stats
+                                  (let [sample (some->> (-> query
+                                                            (lib/breakout col)
+                                                            (lib/limit 10))
+                                                        qp/process-query :data :rows (mapv first) not-empty)]
+                                    (m/assoc-some stats :values sample))))}
           {:output (str "No field found with ID " agent-field-id)})
         {:output (str "No table found with ID " table-id)}))
     (catch Exception ex
@@ -53,7 +62,15 @@
           query (metabot-v3.tools.u/card-query card-id)]
       (if query
         (if-let [col (nth (lib/visible-columns query) index nil)]
-          {:structured-output (field-statistics col limit)}
+          {:structured-output (let [stats (field-statistics col limit)]
+                                (if (seq (:values stats))
+                                  stats
+                                  (let [sampled (some->> (-> (lib/update-query-stage query -1 dissoc
+                                                                                     :aggregation :breakout :limit)
+                                                             (lib/breakout col)
+                                                             (lib/limit 10))
+                                                         qp/process-query :data :rows (mapv first) not-empty)]
+                                    (m/assoc-some stats :values sampled))))}
           {:output (str "No field found with ID " agent-field-id)})
         {:output (str "No " card-type " found with ID " card-id)}))
     (catch Exception ex
@@ -67,7 +84,15 @@
           query (metabot-v3.tools.u/metric-query metric-id)]
       (if query
         (if-let [col (nth (lib/filterable-columns query) index nil)]
-          {:structured-output (field-statistics col limit)}
+          {:structured-output (let [stats (field-statistics col limit)]
+                                (if (seq (:values stats))
+                                  stats
+                                  (let [sample (some->> (-> (lib/update-query-stage query -1 dissoc
+                                                                                    :aggregation :breakout :limit)
+                                                            (lib/breakout col)
+                                                            (lib/limit 10))
+                                                        qp/process-query :data :rows (mapv first) not-empty)]
+                                    (m/assoc-some stats :values sample))))}
           {:output (str "No field found with ID " agent-field-id)})
         {:output (str "No metric found with ID " metric-id)}))
     (catch Exception ex
