@@ -1,6 +1,7 @@
 import querystring from "querystring";
 import _ from "underscore";
 
+import { getSdkGlobalPlugins } from "embedding-sdk-shared/lib/sdk-global-plugins";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isCypressActive, isStorybookActive } from "metabase/env";
 import MetabaseSettings from "metabase/lib/settings";
@@ -319,6 +320,16 @@ export function open(
   } = {},
 ) {
   url = ignoreSiteUrl ? url : getWithSiteUrl(url);
+
+  // In the react sdk, we allow the host app to override how to open links
+  if (isEmbeddingSdk()) {
+    const globalPlugins = getSdkGlobalPlugins();
+    if (globalPlugins?.handleLink) {
+      if (globalPlugins.handleLink(url)) {
+        return; // the plugin should return true to prevent the default behavior
+      }
+    }
+  }
 
   if (shouldOpenInBlankWindow(url, options)) {
     openInBlankWindow(url);

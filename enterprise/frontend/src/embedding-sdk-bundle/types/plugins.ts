@@ -52,3 +52,7 @@ export type MetabasePluginsConfig = {
    */
   getNoObjectIllustration?: () => string | null | undefined;
 };
+
+export type MetabaseGlobalPluginsConfig = {
+  handleLink?: (url: string) => boolean;
+} & MetabasePluginsConfig;

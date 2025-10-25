@@ -2,6 +2,7 @@ import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
 import {
   getSelectionPosition,
   getUrlTarget,
+  open,
   parseDataUri,
   setSelectionPosition,
   shouldOpenInBlankWindow,
@@ -93,5 +94,87 @@ describe("getUrlTarget", () => {
     const url = `${window.location.origin}/dashboard/1`;
     const result = getUrlTarget(url);
     expect(result).toBe("_blank");
+  });
+});
+
+describe("open()", () => {
+  let getSdkGlobalPluginsMock;
+
+  beforeEach(async () => {
+    await mockIsEmbeddingSdk();
+    const sdkPluginsModule = await import(
+      "embedding-sdk-shared/lib/sdk-global-plugins"
+    );
+    getSdkGlobalPluginsMock = jest.spyOn(
+      sdkPluginsModule,
+      "getSdkGlobalPlugins",
+    );
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("should call handleLink plugin in the SDK", () => {
+    const handleLink = jest.fn().mockReturnValue(true);
+    getSdkGlobalPluginsMock.mockReturnValue({ handleLink });
+
+    const url = "https://example.com/dashboard/1";
+    open(url, {
+      openInSameWindow: jest.fn(),
+      openInBlankWindow: jest.fn(),
+    });
+
+    expect(handleLink).toHaveBeenCalledWith(url);
+  });
+
+  it("should prevent default behavior when handleLink returns true", () => {
+    const handleLink = jest.fn().mockReturnValue(true);
+    getSdkGlobalPluginsMock.mockReturnValue({ handleLink });
+
+    const openInSameWindow = jest.fn();
+    const openInBlankWindow = jest.fn();
+
+    const url = "https://example.com/dashboard/1";
+    open(url, {
+      openInSameWindow,
+      openInBlankWindow,
+    });
+
+    expect(handleLink).toHaveBeenCalledWith(url);
+    expect(openInSameWindow).not.toHaveBeenCalled();
+    expect(openInBlankWindow).not.toHaveBeenCalled();
+  });
+
+  it("should allow default behavior when handleLink returns false", () => {
+    const handleLink = jest.fn().mockReturnValue(false);
+    getSdkGlobalPluginsMock.mockReturnValue({ handleLink });
+
+    const openInBlankWindow = jest.fn();
+
+    const url = "https://example.com/dashboard/1";
+    open(url, {
+      openInSameWindow: jest.fn(),
+      openInBlankWindow,
+    });
+
+    expect(handleLink).toHaveBeenCalledWith(url);
+    expect(openInBlankWindow).toHaveBeenCalledWith(url);
+  });
+
+  it("should not call handleLink when not in embedding SDK", async () => {
+    await mockIsEmbeddingSdk(false);
+    const handleLink = jest.fn();
+    getSdkGlobalPluginsMock.mockReturnValue({ handleLink });
+
+    const openInBlankWindow = jest.fn();
+
+    const url = "https://example.com/dashboard/1";
+    open(url, {
+      openInSameWindow: jest.fn(),
+      openInBlankWindow,
+    });
+
+    expect(handleLink).not.toHaveBeenCalled();
   });
 });
