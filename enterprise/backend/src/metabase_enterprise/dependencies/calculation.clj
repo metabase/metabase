@@ -13,8 +13,10 @@
 
 (mu/defn- upstream-deps:mbql-query :- ::deps.schema/upstream-deps
   [query :- ::lib.schema/query]
-  {:card  (or (lib/all-source-card-ids query)  #{})
-   :table (or (lib/all-source-table-ids query) #{})})
+  {:card (or (lib/all-source-card-ids query) #{})
+   :table (-> #{}
+              (into (lib/all-source-table-ids query))
+              (into (lib/all-implicitly-joined-table-ids query)))})
 
 (mu/defn- upstream-deps:native-query :- ::deps.schema/upstream-deps
   [query :- ::lib.schema/native-only-query]

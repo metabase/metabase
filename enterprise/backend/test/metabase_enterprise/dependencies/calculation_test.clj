@@ -4,6 +4,7 @@
    [metabase-enterprise.dependencies.calculation :as calculation]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -38,6 +39,135 @@
       (is (= {:card #{products-card-id}
               :table #{orders-id}}
              (calculation/upstream-deps:card joined-card))))))
+
+(deftest ^:parallel upstream-deps-card-implicit-join-fields-test
+  (let [mp (mt/metadata-provider)
+        checkins-id (mt/id :checkins)
+        venues-id (mt/id :venues)
+        users-id (mt/id :users)
+        checkins (lib.metadata/table mp checkins-id)
+        base-query (lib/query mp checkins)
+        visible-cols (lib/visible-columns base-query)
+        venue-name (lib.tu.notebook/find-col-with-spec base-query visible-cols "Venue" "Name")
+        user-name (lib.tu.notebook/find-col-with-spec base-query visible-cols "User" "Name")]
+    (mt/with-temp [:model/Card card {:dataset_query (lib/with-fields base-query [venue-name user-name])}]
+      (is (= {:card #{}
+              :table #{checkins-id venues-id users-id}}
+             (calculation/upstream-deps:card card))))))
+
+(deftest ^:parallel upstream-deps-card-implicit-join-filter-test
+  (let [mp (mt/metadata-provider)
+        checkins-id (mt/id :checkins)
+        venues-id (mt/id :venues)
+        checkins (lib.metadata/table mp checkins-id)
+        base-query (lib/query mp checkins)
+        filterable-cols (lib/filterable-columns base-query)
+        venue-name (lib.tu.notebook/find-col-with-spec base-query filterable-cols "Venue" "Name")]
+    (mt/with-temp [:model/Card card {:dataset_query (lib/filter base-query (lib/= venue-name "Bird's Nest"))}]
+      (is (= {:card #{}
+              :table #{checkins-id venues-id}}
+             (calculation/upstream-deps:card card))))))
+
+(deftest ^:parallel upstream-deps-card-implicit-join-breakout-test
+  (let [mp (mt/metadata-provider)
+        checkins-id (mt/id :checkins)
+        venues-id (mt/id :venues)
+        checkins (lib.metadata/table mp checkins-id)
+        base-query (lib/query mp checkins)
+        breakoutable-cols (lib/breakoutable-columns base-query)
+        venue-name (lib.tu.notebook/find-col-with-spec base-query breakoutable-cols "Venue" "Name")]
+    (mt/with-temp [:model/Card card {:dataset_query (lib/breakout base-query venue-name)}]
+      (is (= {:card #{}
+              :table #{checkins-id venues-id}}
+             (calculation/upstream-deps:card card))))))
+
+(deftest ^:parallel upstream-deps-card-implicit-join-aggregation-test
+  (let [mp (mt/metadata-provider)
+        checkins-id (mt/id :checkins)
+        venues-id (mt/id :venues)
+        checkins (lib.metadata/table mp checkins-id)
+        base-query (lib/query mp checkins)
+        visible-cols (lib/visible-columns base-query)
+        venue-price (lib.tu.notebook/find-col-with-spec base-query visible-cols "Venue" "Price")]
+    (mt/with-temp [:model/Card card {:dataset_query (lib/aggregate base-query (lib/sum venue-price))}]
+      (is (= {:card #{}
+              :table #{checkins-id venues-id}}
+             (calculation/upstream-deps:card card))))))
+
+(deftest ^:parallel upstream-deps-card-implicit-join-order-by-test
+  (let [mp (mt/metadata-provider)
+        checkins-id (mt/id :checkins)
+        venues-id (mt/id :venues)
+        checkins (lib.metadata/table mp checkins-id)
+        base-query (lib/query mp checkins)
+        orderable-cols (lib/orderable-columns base-query)
+        venue-name (lib.tu.notebook/find-col-with-spec base-query orderable-cols "Venue" "Name")]
+    (mt/with-temp [:model/Card card {:dataset_query (lib/order-by base-query venue-name)}]
+      (is (= {:card #{}
+              :table #{checkins-id venues-id}}
+             (calculation/upstream-deps:card card))))))
+
+(deftest ^:parallel upstream-deps-transform-implicit-join-fields-test
+  (mt/with-premium-features #{:transforms}
+    (let [mp (mt/metadata-provider)
+          checkins-id (mt/id :checkins)
+          venues-id (mt/id :venues)
+          users-id (mt/id :users)
+          checkins (lib.metadata/table mp checkins-id)
+          base-query (lib/query mp checkins)
+          visible-cols (lib/visible-columns base-query)
+          venue-name (lib.tu.notebook/find-col-with-spec base-query visible-cols "Venue" "Name")
+          user-name (lib.tu.notebook/find-col-with-spec base-query visible-cols "User" "Name")
+          query (lib/with-fields base-query [venue-name user-name])]
+      (mt/with-temp [:model/Transform transform {:name "Test Transform"
+                                                 :source {:type :query
+                                                          :query query}
+                                                 :target {:schema "PUBLIC"
+                                                          :name "test_output"}}]
+        (is (= {:card #{}
+                :table #{checkins-id venues-id users-id}}
+               (calculation/upstream-deps:transform transform)))))))
+
+(deftest ^:parallel upstream-deps-transform-implicit-join-breakout-test
+  (mt/with-premium-features #{:transforms}
+    (let [mp (mt/metadata-provider)
+          checkins-id (mt/id :checkins)
+          venues-id (mt/id :venues)
+          checkins (lib.metadata/table mp checkins-id)
+          base-query (lib/query mp checkins)
+          breakoutable-cols (lib/breakoutable-columns base-query)
+          venue-name (lib.tu.notebook/find-col-with-spec base-query breakoutable-cols "Venue" "Name")
+          query (-> base-query
+                    (lib/breakout venue-name)
+                    (lib/aggregate (lib/count)))]
+      (mt/with-temp [:model/Transform transform {:name "Test Transform"
+                                                 :source {:type :query
+                                                          :query query}
+                                                 :target {:schema "PUBLIC"
+                                                          :name "test_output"}}]
+        (is (= {:card #{}
+                :table #{checkins-id venues-id}}
+               (calculation/upstream-deps:transform transform)))))))
+
+(deftest ^:parallel upstream-deps-transform-implicit-join-aggregation-test
+  (mt/with-premium-features #{:transforms}
+    (let [mp (mt/metadata-provider)
+          checkins-id (mt/id :checkins)
+          venues-id (mt/id :venues)
+          checkins (lib.metadata/table mp checkins-id)
+          base-query (lib/query mp checkins)
+          visible-cols (lib/visible-columns base-query)
+          venue-price (lib.tu.notebook/find-col-with-spec base-query visible-cols "Venue" "Price")
+          query (-> base-query
+                    (lib/aggregate (lib/sum venue-price)))]
+      (mt/with-temp [:model/Transform transform {:name "Test Transform"
+                                                 :source {:type :query
+                                                          :query query}
+                                                 :target {:schema "PUBLIC"
+                                                          :name "test_output"}}]
+        (is (= {:card #{}
+                :table #{checkins-id venues-id}}
+               (calculation/upstream-deps:transform transform)))))))
 
 (deftest ^:parallel upstream-deps-card-native-with-parameter-source-test
   (let [mp (mt/metadata-provider)

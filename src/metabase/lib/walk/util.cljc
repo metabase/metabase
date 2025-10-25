@@ -2,6 +2,7 @@
   "Utility functions built on top of [[metabase.lib.walk]]."
   (:require
    [clojure.set :as set]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
@@ -129,7 +130,7 @@
   [query-or-clause :- [:or
                        ::lib.schema/query
                        ::lib.schema.mbql-clause/clause]]
-  (let [field-ids   (volatile! (transient #{}))
+  (let [field-ids (volatile! (transient #{}))
         walk-clause (fn [clause]
                       (lib.util.match/match-lite clause
                         [:field _opts (id :guard pos-int?)]
@@ -140,6 +141,30 @@
                                                (walk-clause clause)))
       (lib.walk/walk-clause query-or-clause walk-clause))
     (persistent! @field-ids)))
+
+(mu/defn all-implicitly-joined-field-ids :- [:set ::lib.schema.id/field]
+  "Set of all Field IDs from implicitly joined tables."
+  [query-or-clause :- [:or ::lib.schema/query ::lib.schema.mbql-clause/clause]]
+  (let [joined-field-ids (volatile! (transient #{}))
+        implicit-join-field-opt? #(and (:source-field %) (not (:join-alias %)))
+        walk-clause (fn [clause]
+                      (lib.util.match/match-lite clause
+                        [:field (opts :guard implicit-join-field-opt?) id]
+                        (vswap! joined-field-ids conj! id))
+                      nil)]
+    (if (map? query-or-clause)
+      (lib.walk/walk-clauses query-or-clause (fn [_query _path-type _path clause]
+                                               (walk-clause clause)))
+      (lib.walk/walk-clause query-or-clause walk-clause))
+    (persistent! @joined-field-ids)))
+
+(mu/defn all-implicitly-joined-table-ids :- [:maybe [:set {:min 1} ::lib.schema.id/table]]
+  "Set of all Table IDs referenced via implicit joins in `query` or nil if no such IDs can be found."
+  [query :- ::lib.schema/query]
+  (->> (all-implicitly-joined-field-ids query)
+       (lib.metadata/bulk-metadata query :metadata/column)
+       (into #{} (keep :table-id))
+       not-empty))
 
 (mu/defn all-template-tags-id->field-ids :- [:maybe
                                              [:map-of
