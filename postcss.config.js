@@ -22,14 +22,12 @@ module.exports = {
         "custom-properties": true,
         "focus-visible-pseudo-class": false,
         "has-pseudo-class": false,
+        "is-pseudo-class": false,
       },
     }),
 
     // Strip comments
     require("postcss-discard-comments")(),
-
-    // Nesting support
-    require("postcss-nesting")(),
 
     // Mantine preset
     require("postcss-preset-mantine")(),
