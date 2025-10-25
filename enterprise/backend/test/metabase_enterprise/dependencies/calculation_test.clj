@@ -61,8 +61,8 @@
         venues-id (mt/id :venues)
         checkins (lib.metadata/table mp checkins-id)
         base-query (lib/query mp checkins)
-        visible-cols (lib/filterable-columns base-query)
-        venue-name (lib.tu.notebook/find-col-with-spec base-query visible-cols "Venue" "Name")]
+        filterable-cols (lib/filterable-columns base-query)
+        venue-name (lib.tu.notebook/find-col-with-spec base-query filterable-cols "Venue" "Name")]
     (mt/with-temp [:model/Card card {:dataset_query (lib/filter base-query (lib/= venue-name "Bird's Nest"))}]
       (is (= {:card #{}
               :table #{checkins-id venues-id}}
@@ -74,8 +74,8 @@
         venues-id (mt/id :venues)
         checkins (lib.metadata/table mp checkins-id)
         base-query (lib/query mp checkins)
-        visible-cols (lib/breakoutable-columns base-query)
-        venue-name (lib.tu.notebook/find-col-with-spec base-query visible-cols "Venue" "Name")]
+        breakoutable-cols (lib/breakoutable-columns base-query)
+        venue-name (lib.tu.notebook/find-col-with-spec base-query breakoutable-cols "Venue" "Name")]
     (mt/with-temp [:model/Card card {:dataset_query (lib/breakout base-query venue-name)}]
       (is (= {:card #{}
               :table #{checkins-id venues-id}}
@@ -100,8 +100,8 @@
         venues-id (mt/id :venues)
         checkins (lib.metadata/table mp checkins-id)
         base-query (lib/query mp checkins)
-        visible-cols (lib/orderable-columns base-query)
-        venue-name (lib.tu.notebook/find-col-with-spec base-query visible-cols "Venue" "Name")]
+        orderable-cols (lib/orderable-columns base-query)
+        venue-name (lib.tu.notebook/find-col-with-spec base-query orderable-cols "Venue" "Name")]
     (mt/with-temp [:model/Card card {:dataset_query (lib/order-by base-query venue-name)}]
       (is (= {:card #{}
               :table #{checkins-id venues-id}}
@@ -135,8 +135,8 @@
           venues-id (mt/id :venues)
           checkins (lib.metadata/table mp checkins-id)
           base-query (lib/query mp checkins)
-          visible-cols (lib/breakoutable-columns base-query)
-          venue-name (lib.tu.notebook/find-col-with-spec base-query visible-cols "Venue" "Name")
+          breakoutable-cols (lib/breakoutable-columns base-query)
+          venue-name (lib.tu.notebook/find-col-with-spec base-query breakoutable-cols "Venue" "Name")
           query (-> base-query
                     (lib/breakout venue-name)
                     (lib/aggregate (lib/count)))]
