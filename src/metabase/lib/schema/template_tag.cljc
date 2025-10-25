@@ -134,7 +134,7 @@
 
 ;; Valid values of `:type` for raw value template tags.
 (mr/def ::raw-value.type
-  (into [:enum] raw-value-template-tag-types))
+  (into [:enum {:decode/normalize keyword}] raw-value-template-tag-types))
 
 ;; Example:
 ;;

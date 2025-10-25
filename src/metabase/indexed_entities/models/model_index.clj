@@ -52,13 +52,13 @@
   "Filter function for valid tuples for indexing: an id and a value."
   [[id v]] (and id v))
 
-(mu/defn- fix-expression-refs :- mbql.s/FieldOrExpressionRef
+(mu/defn- fix-expression-refs :- ::mbql.s/FieldOrExpressionRef
   "Convert expression ref into a field ref.
 
   Expression refs (`[:expression \"full-name\"]`) are how the _query_ refers to a custom column. But nested queries
   don't, (and shouldn't) care that those are expressions. They are just another field. The field type is always
   `:type/Text` enforced by the endpoint to create model indexes."
-  [field-ref :- mbql.s/FieldOrExpressionRef
+  [field-ref :- ::mbql.s/FieldOrExpressionRef
    base-type :- ::lib.schema.common/base-type]
   (case (first field-ref)
     :field field-ref

@@ -614,7 +614,7 @@
   "Resolve a ref like `CATEGORY_2` to `CATEGORY` if the query only has the latter."
   [query stage-number id-or-name]
   (when (string? id-or-name)
-    (when-let [[_match original-name suffix] (re-matches #"^(\w+)_([1-9][0-9]*)$" id-or-name)]
+    (when-let [[_match original-name suffix] (re-matches #"^(\w+)_([1-9]\d*)$" id-or-name)]
       (let [suffix     (parse-long suffix)
             new-suffix (dec suffix)
             ;; e.g. `CATEGORY_3` becomes `CATEGORY_2`; `CATEGORY_2` becomes `CATEGORY`

@@ -6,6 +6,7 @@
    ;; legacy usages, do not use legacy MBQL stuff in new code.
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
@@ -66,7 +67,7 @@
 (def ^:private JoinStrategy
   [:schema
    {:decode/transform-spec keyword}
-   mbql.s/JoinStrategy])
+   [:ref ::lib.schema.join/strategy]])
 
 (def ^:private Joins
   [:sequential
