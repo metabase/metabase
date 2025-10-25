@@ -4,7 +4,7 @@ import {
   SortableContext,
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { flexRender } from "@tanstack/react-table";
+import { type SortingState, flexRender } from "@tanstack/react-table";
 import cx from "classnames";
 import type React from "react";
 import { useCallback, useEffect, useMemo } from "react";
@@ -57,11 +57,13 @@ export interface DataGridProps<TData>
   theme?: DataGridTheme;
   zoomedRowIndex?: number;
   tableFooterExtraButtons?: React.ReactNode;
+  sorting?: SortingState;
 }
 
 export const DataGrid = function DataGrid<TData>({
   table,
   gridRef,
+  sorting,
   virtualGrid,
   measureRoot,
   columnsReordering,
@@ -103,7 +105,8 @@ export const DataGrid = function DataGrid<TData>({
     (element: HTMLElement | null) => {
       rowVirtualizer.measureElement(element);
     },
-    [rowVirtualizer],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [rowVirtualizer, sorting],
   );
 
   const forceUpdate = useForceUpdate();
