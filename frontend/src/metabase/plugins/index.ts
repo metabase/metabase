@@ -884,14 +884,14 @@ export type TransformPickerProps = {
 };
 
 export type TransformsPlugin = {
-  getTransformRoutes(): ReactNode;
-  getTransformNavItems(isAdmin: boolean): BenchNavItem[];
+  getBenchRoutes(): ReactNode;
+  getBenchNavItems(isAdmin: boolean): BenchNavItem[];
   TransformPicker: ComponentType<TransformPickerProps>;
 };
 
 export const PLUGIN_TRANSFORMS: TransformsPlugin = {
-  getTransformRoutes: () => null,
-  getTransformNavItems: () => [],
+  getBenchRoutes: () => null,
+  getBenchNavItems: () => [],
   TransformPicker: PluginPlaceholder,
 };
 
@@ -921,8 +921,8 @@ export type PythonTransformsPlugin = {
     onRejectProposed?: () => void;
     onAcceptProposed?: (query: PythonTransformSource) => void;
   }>;
-  getAdminRoutes: () => ReactNode;
-  getTransformNavItems: (isAdmin: boolean) => BenchNavItem[];
+  getBenchRoutes: () => ReactNode;
+  getBenchNavItems: (isAdmin: boolean) => BenchNavItem[];
   getCreateTransformsMenuItems: () => ReactNode;
 };
 
@@ -930,13 +930,14 @@ export const PLUGIN_TRANSFORMS_PYTHON: PythonTransformsPlugin = {
   PythonRunnerSettingsPage: NotFoundPlaceholder,
   TransformEditor: NotFoundPlaceholder,
   SourceSection: PluginPlaceholder,
-  getAdminRoutes: () => null,
-  getTransformNavItems: () => [],
+  getBenchRoutes: () => null,
+  getBenchNavItems: () => [],
   getCreateTransformsMenuItems: () => null,
 };
 
 type DependenciesPlugin = {
   isEnabled: boolean;
+  getBenchRoutes: () => ReactNode;
   DependencyGraphPage: ComponentType;
   DependencyGraphPageContext: Context<DependencyGraphPageContextType>;
   CheckDependenciesForm: ComponentType<CheckDependenciesFormProps>;
@@ -998,6 +999,7 @@ function useCheckDependencies<TChange>({
 
 export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
   isEnabled: false,
+  getBenchRoutes: () => null,
   DependencyGraphPage: PluginPlaceholder,
   DependencyGraphPageContext: createContext({}),
   CheckDependenciesForm: PluginPlaceholder,

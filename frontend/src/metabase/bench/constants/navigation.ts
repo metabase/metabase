@@ -50,7 +50,7 @@ export const getBenchNavSections = (
               } as BenchNavItem,
             ]
           : []),
-        ...PLUGIN_TRANSFORMS.getTransformNavItems(isAdmin),
+        ...PLUGIN_TRANSFORMS.getBenchNavItems(isAdmin),
       ],
     },
     {
@@ -117,7 +117,7 @@ export const getBenchNavSections = (
               },
             ]
           : []),
-        ...PLUGIN_TRANSFORMS_PYTHON.getTransformNavItems(isAdmin),
+        ...PLUGIN_TRANSFORMS_PYTHON.getBenchNavItems(isAdmin),
       ],
     },
   ];

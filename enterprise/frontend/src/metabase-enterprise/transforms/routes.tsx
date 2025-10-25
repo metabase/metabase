@@ -22,40 +22,7 @@ import { TransformQueryPage } from "./pages/TransformQueryPage";
 import { TransformRunPage } from "./pages/TransformRunPage";
 import { TransformTargetPage } from "./pages/TransformTargetPage";
 
-export const getTransformNavItems = (isAdmin: boolean): BenchNavItem[] => {
-  if (!isAdmin) {
-    return [];
-  }
-
-  return [
-    {
-      id: "transforms",
-      url: "/bench/transforms",
-      icon: "transform",
-      getLabel: () => t`Transforms`,
-      getDescription: () =>
-        t`Use SQL or python to join data and add columns. Run them on a schedule with jobs.`,
-    },
-    {
-      id: "jobs",
-      url: "/bench/jobs",
-      icon: "play_outlined",
-      getLabel: () => t`Jobs`,
-      parentId: "transforms",
-      nested: true,
-    },
-    {
-      id: "runs",
-      url: "/bench/runs",
-      icon: "list",
-      getLabel: () => t`Runs`,
-      parentId: "transforms",
-      nested: true,
-    },
-  ];
-};
-
-export const getTransformRoutes = () => (
+export const getBenchRoutes = () => (
   <>
     <Route
       title={t`Transforms`}
@@ -91,6 +58,39 @@ export const getTransformRoutes = () => (
       path="runs"
       component={createBenchAdminRouteGuard("transforms", RunListPage)}
     />
-    {PLUGIN_TRANSFORMS_PYTHON.getAdminRoutes()}
+    {PLUGIN_TRANSFORMS_PYTHON.getBenchRoutes()}
   </>
 );
+
+export const getBenchNavItems = (isAdmin: boolean): BenchNavItem[] => {
+  if (!isAdmin) {
+    return [];
+  }
+
+  return [
+    {
+      id: "transforms",
+      url: "/bench/transforms",
+      icon: "transform",
+      getLabel: () => t`Transforms`,
+      getDescription: () =>
+        t`Use SQL or python to join data and add columns. Run them on a schedule with jobs.`,
+    },
+    {
+      id: "jobs",
+      url: "/bench/jobs",
+      icon: "play_outlined",
+      getLabel: () => t`Jobs`,
+      parentId: "transforms",
+      nested: true,
+    },
+    {
+      id: "runs",
+      url: "/bench/runs",
+      icon: "list",
+      getLabel: () => t`Runs`,
+      parentId: "transforms",
+      nested: true,
+    },
+  ];
+};
