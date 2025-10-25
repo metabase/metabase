@@ -75,6 +75,10 @@ export const RemoteSyncAdminSettings = () => {
         values[BRANCH_KEY] !== settingValues?.[BRANCH_KEY];
       const saveSettings = async (values: RemoteSyncConfigurationSettings) => {
         try {
+          if (!values[BRANCH_KEY]) {
+            values[BRANCH_KEY] = "main";
+          }
+
           await updateRemoteSyncSettings(values).unwrap();
           sendToast({ message: t`Settings saved successfully`, icon: "check" });
         } catch (error) {
