@@ -136,6 +136,7 @@
               (m :guard (every-pred map? :query-permissions/sandboxed-table))
               (merge-with merge-source-ids
                           {:table-ids #{(:query-permissions/sandboxed-table m)}}
+                          {:sandboxed-table-ids #{(:query-permissions/sandboxed-table m)}}
                           (when-not (or parent-source-card-id in-sandbox?)
                             {:table-query-ids #{(:query-permissions/sandboxed-table m)}})
                           (query->source-ids (dissoc m :query-permissions/sandboxed-table :native) parent-source-card-id true))
@@ -206,8 +207,9 @@
 (defn- native-query-perms
   [query]
   (merge
-   {:perms/create-queries :query-builder-and-native
-    :perms/view-data      :unrestricted}
+   {:perms/create-queries :query-builder-and-native}
+   (when-not (:impersonation/role query)
+     {:perms/view-data :unrestricted})
    (when-let [card-ids (referenced-card-ids query)]
      {:paths (into #{}
                    (mapcat (fn [card-id]
@@ -235,12 +237,13 @@
          ;; otherwise if there's no source card then calculate perms based on the Tables referenced in the query
          (let [query                                                (cond-> query
                                                                       (not already-preprocessed?) preprocess-query)
-               {:keys [table-ids table-query-ids card-ids native?]} (query->source-ids query)]
+               {:keys [table-ids table-query-ids card-ids native? sandboxed-table-ids]} (query->source-ids query)
+               non-sandboxed-table-ids (apply disj table-ids sandboxed-table-ids)]
            (merge
             (when (seq card-ids)
               {:card-ids card-ids})
-            (when (seq table-ids)
-              {:perms/view-data (zipmap table-ids (repeat :unrestricted))})
+            (when (seq non-sandboxed-table-ids)
+              {:perms/view-data (zipmap non-sandboxed-table-ids (repeat :unrestricted))})
             (when (seq table-query-ids)
               {:perms/create-queries (zipmap table-query-ids (repeat :query-builder))})
             (when native?
