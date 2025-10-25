@@ -658,6 +658,7 @@ export const fetchDashboard = createAsyncThunk(
             ]),
           ),
         };
+
         result = denormalize(dashId, dashboardSchema, entities);
       } else if (dashboardType === "public") {
         result = await PublicApi.dashboard(
