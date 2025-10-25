@@ -17,7 +17,7 @@ import type {
   TransformTagId,
 } from "metabase-types/api";
 
-import { JobView } from "../../components/JobView";
+import { JobEditor } from "../../components/JobEditor";
 import { POLLING_INTERVAL } from "../../constants";
 
 type JobPageParams = {
@@ -129,7 +129,7 @@ function JobPageBody({ job }: JobPageBodyProps) {
   };
 
   return (
-    <JobView
+    <JobEditor
       job={job}
       onNameChange={handleNameChange}
       onScheduleChange={handleScheduleChange}

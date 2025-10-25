@@ -12,7 +12,7 @@ import { SaveSection } from "./SaveSection";
 import { ScheduleSection } from "./ScheduleSection";
 import { TagSection } from "./TagSection";
 
-type JobPageProps = {
+type JobEditorProps = {
   job: TransformJobInfo;
   onNameChange: (name: string) => void;
   onScheduleChange: (
@@ -22,12 +22,12 @@ type JobPageProps = {
   onTagListChange: (tagIds: TransformTagId[]) => void;
 };
 
-export function JobView({
+export function JobEditor({
   job,
   onNameChange,
   onScheduleChange,
   onTagListChange,
-}: JobPageProps) {
+}: JobEditorProps) {
   return (
     <ColumnLayout>
       <BenchPaneHeader

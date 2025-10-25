@@ -105,10 +105,7 @@ type OwnProps = {
   openDataReferenceAtQuestion?: (id: CardId) => void;
   openSnippetModalWithSelectedText?: () => void;
   insertSnippet?: (snippet: NativeQuerySnippet) => void;
-  setIsNativeEditorOpen?: (
-    isOpen: boolean,
-    isShowingDataReference?: boolean,
-  ) => void;
+  setIsNativeEditorOpen?: (isOpen: boolean) => void;
   setParameterValue?: (parameterId: ParameterId, value: string) => void;
   onOpenModal?: (modalType: QueryModalType) => void;
   toggleDataReference: () => void;
@@ -162,7 +159,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
     const { question, setIsNativeEditorOpen, isInitiallyOpen } = this.props;
 
     if (typeof isInitiallyOpen !== "undefined") {
-      setIsNativeEditorOpen?.(isInitiallyOpen, !question.isSaved());
+      setIsNativeEditorOpen?.(isInitiallyOpen);
       return;
     }
 
@@ -230,66 +227,10 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
     this.focus();
   };
 
-  MaybeResizableBox = ({ children }: { children: React.ReactNode }) => {
-    const {
-      isNativeEditorOpen,
-      setIsNativeEditorOpen,
-      resizable,
-      resizableBoxProps,
-      handleResize,
-    } = this.props;
-
-    if (!resizable) {
-      return (
-        <div
-          ref={this.resizeBox}
-          // style={{ flex: 1 }}
-        >
-          {children}
-        </div>
-      );
-    }
-    const dragHandle = resizable ? (
-      <div className={S.dragHandleContainer} data-testid="drag-handle">
-        <div className={S.dragHandle} />
-      </div>
-    ) : null;
-    return (
-      <ResizableBox
-        ref={this.resizeBox}
-        height={this.state.initialHeight}
-        className={cx(
-          S.resizableBox,
-          isNativeEditorOpen && S.open,
-          this.state.isCollapsing && S.collapsing,
-        )}
-        minConstraints={[Infinity, MIN_EDITOR_HEIGHT_AFTER_DRAGGING]}
-        axis="y"
-        handle={dragHandle}
-        resizeHandles={["s"]}
-        {...resizableBoxProps}
-        onResizeStop={(e, data) => {
-          handleResize?.();
-          if (typeof resizableBoxProps?.onResizeStop === "function") {
-            resizableBoxProps.onResizeStop(e, data);
-          }
-          const size = data.size;
-
-          if (size.height < THRESHOLD_FOR_AUTO_CLOSE) {
-            // Start animation to collapse
-            this.setState({ isCollapsing: true });
-            setIsNativeEditorOpen?.(false);
-          }
-        }}
-      >
-        {children}
-      </ResizableBox>
-    );
-  };
-
   render() {
     const {
       canChangeDatabase = true,
+      resizable = true,
       sidebarFeatures = {
         dataReference: true,
         variables: true,
@@ -301,6 +242,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
       hasTopBar = true,
       hasEditingSidebar = true,
       hasRunButton = hasEditingSidebar,
+      resizableBoxProps = {},
       snippetCollections = [],
       question,
       proposedQuestion,
@@ -308,6 +250,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
       onAcceptProposed,
       query,
       readOnly,
+      isNativeEditorOpen,
       openSnippetModalWithSelectedText,
       openDataReferenceAtQuestion,
       setDatasetQuery,
@@ -317,6 +260,12 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
       highlightedLineNumbers,
       placeholder,
     } = this.props;
+
+    const dragHandle = resizable ? (
+      <div className={S.dragHandleContainer} data-testid="drag-handle">
+        <div className={S.dragHandle} />
+      </div>
+    ) : null;
 
     const canSaveSnippets = snippetCollections.some(
       (collection) => collection.can_write,
@@ -365,7 +314,33 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
           className={S.editorWrapper}
           onTransitionEnd={this.handleTransitionEnd}
         >
-          <this.MaybeResizableBox>
+          <ResizableBox
+            ref={this.resizeBox}
+            height={this.state.initialHeight}
+            className={cx(
+              S.resizableBox,
+              isNativeEditorOpen && S.open,
+              this.state.isCollapsing && S.collapsing,
+            )}
+            minConstraints={[Infinity, MIN_EDITOR_HEIGHT_AFTER_DRAGGING]}
+            axis="y"
+            handle={dragHandle}
+            resizeHandles={["s"]}
+            {...resizableBoxProps}
+            onResizeStop={(e, data) => {
+              this.props.handleResize?.();
+              if (typeof resizableBoxProps?.onResizeStop === "function") {
+                resizableBoxProps.onResizeStop(e, data);
+              }
+              const size = data.size;
+
+              if (size.height < THRESHOLD_FOR_AUTO_CLOSE) {
+                // Start animation to collapse
+                this.setState({ isCollapsing: true });
+                this.props.setIsNativeEditorOpen?.(false);
+              }
+            }}
+          >
             <Flex w="100%" flex="1" className={S.resizableBoxContent}>
               <CodeMirrorEditor
                 ref={this.editor}
@@ -434,7 +409,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
                 )}
               </Stack>
             </Flex>
-          </this.MaybeResizableBox>
+          </ResizableBox>
         </div>
 
         <RightClickPopover

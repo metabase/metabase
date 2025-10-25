@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
 
-import { JobView } from "../../components/JobView";
+import { JobEditor } from "../../components/JobEditor";
 import type { TransformJobInfo } from "../../types";
 
 export function NewJobPage() {
@@ -25,7 +25,7 @@ export function NewJobPage() {
   };
 
   return (
-    <JobView
+    <JobEditor
       job={job}
       onNameChange={handleNameChange}
       onScheduleChange={handleScheduleChange}

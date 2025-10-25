@@ -6,7 +6,7 @@ import { renderWithProviders, screen } from "__support__/ui";
 import { createMockTransformJob } from "metabase-types/api/mocks";
 
 import type { TransformJobInfo } from "./../../types";
-import { JobView } from "./JobView";
+import { JobEditor } from "./JobEditor";
 
 type SetupOpts = {
   job?: TransformJobInfo;
@@ -24,7 +24,7 @@ function setup({ job = createMockTransformJob() }: SetupOpts) {
   }
 
   renderWithProviders(
-    <JobView
+    <JobEditor
       job={job}
       onNameChange={onNameChange}
       onDescriptionChange={onDescriptionChange}
