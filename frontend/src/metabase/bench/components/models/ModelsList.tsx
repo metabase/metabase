@@ -12,10 +12,9 @@ import {
   useSearchQuery,
 } from "metabase/api";
 import { TAG_TYPE_MAPPING, listTag } from "metabase/api/tags";
-import { getTreeItems } from "metabase/bench/components/models/utils";
+import { getIcon, getTreeItems } from "metabase/bench/components/models/utils";
 import { BenchFlatListItem } from "metabase/bench/components/shared/BenchFlatListItem";
 import { useItemsListFilter } from "metabase/bench/hooks/useItemsListFilter";
-import { getIcon } from "metabase/browse/models/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
 import { SidesheetCard } from "metabase/common/components/Sidesheet/SidesheetCard";
 import { VirtualizedFlatList } from "metabase/common/components/VirtualizedFlatList";

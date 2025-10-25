@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
 import { LEAF_ITEM_ICON_COLOR } from "metabase/bench/constants/list";
-import { getIcon } from "metabase/browse/models/utils";
 import {
   currentUserPersonalCollections,
   nonPersonalOrArchivedCollection,
@@ -12,6 +11,8 @@ import {
   PERSONAL_COLLECTIONS,
   buildCollectionTree,
 } from "metabase/entities/collections";
+import { entityForObject } from "metabase/lib/schema";
+import type { IconName } from "metabase/ui";
 import type {
   Collection,
   CollectionContentModel,
@@ -111,6 +112,11 @@ export function getTreeItems(
       ),
   ];
 }
+
+export const getIcon = (item: unknown): { name: IconName; color?: string } => {
+  const entity = entityForObject(item);
+  return entity?.objectSelectors?.getIcon?.(item) || { name: "folder" };
+};
 
 function getModelIconProps(model: SearchResult) {
   return {

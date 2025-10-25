@@ -33,9 +33,7 @@ export const BrowseNavSection = ({
   onAddDataModalOpen: () => void;
   hasDataAccess: boolean;
 }) => {
-  const BROWSE_MODELS_URL = "/browse/models";
   const BROWSE_DATA_URL = "/browse/databases";
-  const BROWSE_METRICS_URL = "/browse/metrics";
 
   const [expandBrowse = true, setExpandBrowse] = useUserSetting(
     "expand-browse-in-nav",
@@ -103,30 +101,6 @@ export const BrowseNavSection = ({
               {t`Databases`}
             </PaddedSidebarLink>
           )}
-
-        {(!isEmbeddingIframe || entityTypes.includes("model")) && (
-          <PaddedSidebarLink
-            icon="model"
-            url={BROWSE_MODELS_URL}
-            isSelected={nonEntityItem?.url?.startsWith(BROWSE_MODELS_URL)}
-            onClick={onItemSelect}
-            aria-label={t`Browse models`}
-          >
-            {t`Models`}
-          </PaddedSidebarLink>
-        )}
-
-        {!isEmbeddingIframe && (
-          <PaddedSidebarLink
-            icon="metric"
-            url={BROWSE_METRICS_URL}
-            isSelected={nonEntityItem?.url?.startsWith(BROWSE_METRICS_URL)}
-            onClick={onItemSelect}
-            aria-label={t`Browse metrics`}
-          >
-            {t`Metrics`}
-          </PaddedSidebarLink>
-        )}
       </Collapse>
     </div>
   );

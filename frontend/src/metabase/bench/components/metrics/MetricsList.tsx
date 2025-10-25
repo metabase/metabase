@@ -19,9 +19,9 @@ import {
   useListCollectionsTreeQuery,
 } from "metabase/api";
 import { listTag } from "metabase/api/tags";
+import { getIcon, getTreeItems } from "metabase/bench/components/models/utils";
 import { BenchFlatListItem } from "metabase/bench/components/shared/BenchFlatListItem";
 import { useItemsListFilter } from "metabase/bench/hooks/useItemsListFilter";
-import { getIcon } from "metabase/browse/models/utils";
 import ActionButton from "metabase/common/components/ActionButton/ActionButton";
 import Button from "metabase/common/components/Button";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
@@ -70,7 +70,6 @@ import {
 import { ItemsListSettings } from "../ItemsListSection/ItemsListSettings";
 import { ItemsListTreeNode } from "../ItemsListSection/ItemsListTreeNode";
 import { ModelMoreMenu } from "../models/ModelMoreMenu";
-import { getTreeItems } from "../models/utils";
 import { BenchTabs } from "../shared/BenchTabs";
 import {
   type SearchResultModal,
