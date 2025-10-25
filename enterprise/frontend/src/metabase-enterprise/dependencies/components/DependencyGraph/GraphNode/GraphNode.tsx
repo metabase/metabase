@@ -46,11 +46,10 @@ export const GraphNode = memo(function ItemNode({
   const groups = getDependentGroups(node);
   const sources = useNodeConnections({ handleType: "source" });
   const targets = useNodeConnections({ handleType: "target" });
-  const isSelected =
-    selection != null && isSameNode(node, selection.id, selection.type);
+  const isSelected = selection != null && isSameNode(node, selection);
 
   const handleClick = () => {
-    setSelection({ id: node.id, type: node.type, withInfo: true });
+    setSelection({ id: node.id, type: node.type });
   };
 
   return (
@@ -115,7 +114,7 @@ function DependencyGroupButton({
 }: DependencyGroupButtonProps) {
   const isSelected =
     selection != null &&
-    isSameNode(node, selection.id, selection.type) &&
+    isSameNode(node, selection) &&
     selection.groupType === group.type;
 
   const handleClick = (event: MouseEvent) => {
@@ -124,7 +123,6 @@ function DependencyGroupButton({
       id: node.id,
       type: node.type,
       groupType: group.type,
-      withInfo: true,
     });
   };
 

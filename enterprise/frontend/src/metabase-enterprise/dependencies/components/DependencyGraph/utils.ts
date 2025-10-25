@@ -7,6 +7,7 @@ import visualizations from "metabase/visualizations";
 import type {
   CardType,
   DependencyEdge,
+  DependencyEntry,
   DependencyGraph,
   DependencyGroupType,
   DependencyId,
@@ -71,19 +72,17 @@ export function getInitialGraph({ nodes, edges }: DependencyGraph): GraphData {
 }
 
 export function isSameNode(
-  node: DependencyNode,
-  id: DependencyId,
-  type: DependencyType,
+  entry1: DependencyEntry,
+  entry2: DependencyEntry,
 ): boolean {
-  return node.id === id && node.type === type;
+  return entry1.id === entry2.id && entry1.type === entry2.type;
 }
 
 export function findNode(
   nodes: NodeType[],
-  id: DependencyId,
-  type: DependencyType,
-): NodeType | null {
-  return nodes.find((node) => isSameNode(node.data, id, type)) ?? null;
+  entry: DependencyEntry,
+): NodeType | undefined {
+  return nodes.find((node) => isSameNode(node.data, entry));
 }
 
 export function getNodeLabel(node: DependencyNode): string {

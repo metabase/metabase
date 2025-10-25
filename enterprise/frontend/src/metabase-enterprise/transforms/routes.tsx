@@ -4,8 +4,10 @@ import { t } from "ttag";
 import { createBenchAdminRouteGuard } from "metabase/bench/components/utils";
 import type { BenchNavItem } from "metabase/bench/constants/navigation";
 import { Route } from "metabase/hoc/Title";
-import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
-import { TransformDependenciesPage } from "metabase-enterprise/transforms/pages/TransformDependenciesPage";
+import {
+  PLUGIN_DEPENDENCIES,
+  PLUGIN_TRANSFORMS_PYTHON,
+} from "metabase/plugins";
 
 import { JobEmptyPage } from "./pages/JobEmptyPage";
 import { JobLayout } from "./pages/JobLayout/JobLayout";
@@ -13,6 +15,7 @@ import { JobPage } from "./pages/JobPage";
 import { NewJobPage } from "./pages/NewJobPage";
 import { NewTransformPage } from "./pages/NewTransformPage";
 import { RunListPage } from "./pages/RunListPage";
+import { TransformDependenciesPage } from "./pages/TransformDependenciesPage";
 import { TransformEmptyPage } from "./pages/TransformEmptyPage";
 import { TransformLayout } from "./pages/TransformLayout";
 import { TransformQueryPage } from "./pages/TransformQueryPage";
@@ -65,14 +68,14 @@ export const getTransformRoutes = () => (
       <Route path=":transformId" component={TransformQueryPage} />
       <Route path=":transformId/run" component={TransformRunPage} />
       <Route path=":transformId/target" component={TransformTargetPage} />
-      <Route
-        path=":transformId/dependencies"
-        component={TransformDependenciesPage}
-      />
-      <Route
-        path=":transformId/dependencies/:entryType/:entryId"
-        component={TransformDependenciesPage}
-      />
+      {PLUGIN_DEPENDENCIES.isEnabled && (
+        <Route
+          path=":transformId/dependencies"
+          component={TransformDependenciesPage}
+        >
+          <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
+        </Route>
+      )}
     </Route>
     <Route
       title={t`Jobs`}

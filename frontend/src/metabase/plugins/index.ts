@@ -1,10 +1,12 @@
 import type { Middleware } from "@reduxjs/toolkit";
 import React, {
   type ComponentType,
+  type Context,
   type Dispatch,
   type HTMLAttributes,
   type ReactNode,
   type SetStateAction,
+  createContext,
   useCallback,
 } from "react";
 import { t } from "ttag";
@@ -935,12 +937,8 @@ export const PLUGIN_TRANSFORMS_PYTHON: PythonTransformsPlugin = {
 
 type DependenciesPlugin = {
   isEnabled: boolean;
-  getDependencyRoutes: () => ReactNode;
-  parseDependencyEntry: (
-    rawId?: string,
-    rawType?: string,
-  ) => DependencyEntry | undefined;
-  DependencyGraph: ComponentType<DependencyGraphProps>;
+  DependencyGraphPage: ComponentType;
+  DependencyGraphPageContext: Context<DependencyGraphPageContextType>;
   CheckDependenciesForm: ComponentType<CheckDependenciesFormProps>;
   CheckDependenciesModal: ComponentType<CheckDependenciesModalProps>;
   CheckDependenciesTitle: ComponentType;
@@ -955,10 +953,9 @@ type DependenciesPlugin = {
   ) => UseCheckDependenciesResult<UpdateTransformRequest>;
 };
 
-export type DependencyGraphProps = {
-  entry?: DependencyEntry;
-  getGraphUrl: (entry: DependencyEntry | undefined) => string;
-  withEntryPicker?: boolean;
+export type DependencyGraphPageContextType = {
+  baseUrl?: string;
+  defaultEntry?: DependencyEntry;
 };
 
 export type CheckDependenciesFormProps = {
@@ -1001,9 +998,8 @@ function useCheckDependencies<TChange>({
 
 export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
   isEnabled: false,
-  getDependencyRoutes: () => [],
-  parseDependencyEntry: () => undefined,
-  DependencyGraph: PluginPlaceholder,
+  DependencyGraphPage: PluginPlaceholder,
+  DependencyGraphPageContext: createContext({}),
   CheckDependenciesForm: PluginPlaceholder,
   CheckDependenciesModal: PluginPlaceholder,
   CheckDependenciesTitle: PluginPlaceholder,

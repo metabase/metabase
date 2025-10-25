@@ -40,7 +40,6 @@ export const getBenchRoutes = () => (
     <Route title={t`Bench`} component={BenchApp}>
       <Route path="overview" component={() => <OverviewPage />} />
       {PLUGIN_TRANSFORMS.getTransformRoutes()}
-      {PLUGIN_DEPENDENCIES.getDependencyRoutes()}
       <Route path="segment" component={SegmentApp}>
         <Route path="new" component={CreateSegmentForm} />
         <Route path=":id" component={UpdateSegmentForm} />
@@ -64,6 +63,12 @@ export const getBenchRoutes = () => (
         <Route path=":id" component={SnippetEditor} />
       </Route>
       <Route path="glossary" component={GlossaryContainer} />
+      {PLUGIN_DEPENDENCIES.isEnabled && (
+        <Route
+          path="dependencies"
+          component={PLUGIN_DEPENDENCIES.DependencyGraphPage}
+        />
+      )}
       <Route
         path="metadata"
         component={createBenchAdminRouteGuard("metadata", MetadataLayout)}

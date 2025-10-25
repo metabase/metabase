@@ -12,9 +12,9 @@ import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import type { DependencyGraphProps } from "metabase/plugins";
 import { Group } from "metabase/ui";
 import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
+import type { DependencyEntry } from "metabase-types/api";
 
 import S from "./DependencyGraph.module.css";
 import { GraphContext } from "./GraphContext";
@@ -30,6 +30,12 @@ import { findNode, getInitialGraph } from "./utils";
 
 const NODE_TYPES = {
   node: GraphNode,
+};
+
+type DependencyGraphProps = {
+  entry?: DependencyEntry;
+  getGraphUrl: (entry?: DependencyEntry) => string;
+  withEntryPicker?: boolean;
 };
 
 export function DependencyGraph({
@@ -48,13 +54,11 @@ export function DependencyGraph({
   const { sendErrorToast } = useMetadataToasts();
 
   const entryNode = useMemo(() => {
-    return entry != null ? findNode(nodes, entry.id, entry.type) : null;
+    return entry != null ? findNode(nodes, entry) : null;
   }, [nodes, entry]);
 
   const selectedNode = useMemo(() => {
-    return selection != null
-      ? findNode(nodes, selection.id, selection.type)
-      : null;
+    return selection != null ? findNode(nodes, selection) : null;
   }, [nodes, selection]);
 
   useEffect(() => {
@@ -109,7 +113,7 @@ export function DependencyGraph({
             {nodes.length > 1 && <GraphSelectInput nodes={nodes} />}
           </Group>
         </Panel>
-        {selection != null && selection.withInfo && selectedNode != null && (
+        {selection != null && selectedNode != null && (
           <Panel className={S.panel} position="top-right">
             {selection.groupType != null ? (
               <GraphDependencyPanel

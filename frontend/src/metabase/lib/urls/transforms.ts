@@ -1,7 +1,6 @@
 import type {
   CardId,
   DatabaseId,
-  DependencyEntry,
   TableId,
   TransformId,
   TransformJobId,
@@ -76,6 +75,10 @@ export function transform(transformId: TransformId) {
 
 export function transformQuery(transformId: TransformId) {
   return `${ROOT_URL}/${transformId}/query`;
+}
+
+export function transformDependencies(transformId: TransformId) {
+  return `${ROOT_URL}/${transformId}/dependencies`;
 }
 
 export function transformJobList({
@@ -163,14 +166,6 @@ export function transformRunList({
 
 export function transformPythonLibrary({ path }: TransformPythonLibraryParams) {
   return `/admin/transforms/library/${path}`;
-}
-
-export function transformDependencyGraph(
-  id: TransformId,
-  entry?: DependencyEntry,
-) {
-  const baseUrl = `${ROOT_URL}/${id}/dependencies`;
-  return entry != null ? `${baseUrl}/${entry.type}/${entry.id}` : baseUrl;
 }
 
 export function queryBuilderTable(tableId: TableId, databaseId: DatabaseId) {
