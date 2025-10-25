@@ -255,6 +255,30 @@
    (prometheus/counter :metabase-query-processor/query
                        {:description "Did a query run by a specific driver succeed or fail"
                         :labels [:driver :status]})
+
+   (prometheus/histogram :metabase-remote-sync/export-duration-ms
+                         {:description "Duration in milliseconds that remote-sync exports took."
+      ;; 1ms -> 10minutes
+                          :buckets [1 500 1000 5000 10000 30000 60000 120000 300000 600000]})
+   (prometheus/counter :metabase-remote-sync/exports
+                       {:description "Number of remote-sync export calls"})
+   (prometheus/counter :metabase-remote-sync/exports-failed
+                       {:description "Number of failed remote-sync export calls"})
+   (prometheus/histogram :metabase-remote-sync/import-duration-ms
+                         {:description "Duration in milliseconds that remote-sync imports took."
+      ;; 1ms -> 10minutes
+                          :buckets [1 500 1000 5000 10000 30000 60000 120000 300000 600000]})
+   (prometheus/counter :metabase-remote-sync/imports
+                       {:description "Number of remote-sync import calls"})
+   (prometheus/counter :metabase-remote-sync/imports-failed
+                       {:description "Number of failed remote-sync import calls"})
+   (prometheus/counter :metabase-remote-sync/git-operations
+                       {:description "Number of git operations"
+                        :labels [:operation :remote]})
+   (prometheus/counter :metabase-remote-sync/git-operations-failed
+                       {:description "Number of failed git operations"
+                        :labels [:operation :remote]})
+
    (prometheus/counter :metabase-search/index-reindexes
                        {:description "Number of reindexed search entries"
                         :labels      [:model]})
