@@ -1,10 +1,12 @@
-import { NoDataError } from "metabase/common/components/errors/NoDataError";
-import { Center } from "metabase/ui";
+import { t } from "ttag";
+
+import { BenchEmptyState } from "metabase/bench/components/shared/BenchEmptyState";
 
 export function JobEmptyPage() {
   return (
-    <Center w="100%" h="100%">
-      <NoDataError />
-    </Center>
+    <BenchEmptyState
+      title={t`Pick a job or create a new one`}
+      icon="play_outlined"
+    />
   );
 }
