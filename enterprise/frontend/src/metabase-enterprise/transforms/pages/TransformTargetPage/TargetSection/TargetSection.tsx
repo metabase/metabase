@@ -12,7 +12,6 @@ import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   Button,
-  Card,
   Divider,
   Group,
   Icon,
@@ -37,16 +36,14 @@ export function TargetSection({ transform }: TargetSectionProps) {
       label={t`Transform target`}
       description={t`Change what this transform generates and where.`}
     >
-      <Card p={0} shadow="none" withBorder>
-        <Group p="lg">
-          <TargetInfo transform={transform} />
-        </Group>
-        <Divider />
-        <Group p="lg">
-          <EditTargetButton transform={transform} />
-          <EditMetadataButton transform={transform} />
-        </Group>
-      </Card>
+      <Group p="lg">
+        <TargetInfo transform={transform} />
+      </Group>
+      <Divider />
+      <Group p="lg">
+        <EditTargetButton transform={transform} />
+        <EditMetadataButton transform={transform} />
+      </Group>
     </TitleSection>
   );
 }

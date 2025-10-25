@@ -5,7 +5,6 @@ import { AdminContentTable } from "metabase/common/components/AdminContentTable"
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { Card } from "metabase/ui";
 import { useListTransformJobTransformsQuery } from "metabase-enterprise/api";
 import type { Transform, TransformJobId } from "metabase-types/api";
 
@@ -53,19 +52,17 @@ export function TransformTable({ transforms }: TransformTableProps) {
   };
 
   return (
-    <Card p={0} shadow="none" withBorder>
-      <AdminContentTable columnTitles={[t`Transform`, t`Target`]}>
-        {transforms.map((transform) => (
-          <tr
-            key={transform.id}
-            className={S.row}
-            onClick={() => handleRowClick(transform)}
-          >
-            <td className={S.wrap}>{transform.name}</td>
-            <td className={S.wrap}>{transform.target.name}</td>
-          </tr>
-        ))}
-      </AdminContentTable>
-    </Card>
+    <AdminContentTable columnTitles={[t`Transform`, t`Target`]}>
+      {transforms.map((transform) => (
+        <tr
+          key={transform.id}
+          className={S.row}
+          onClick={() => handleRowClick(transform)}
+        >
+          <td className={S.wrap}>{transform.name}</td>
+          <td className={S.wrap}>{transform.target.name}</td>
+        </tr>
+      ))}
+    </AdminContentTable>
   );
 }

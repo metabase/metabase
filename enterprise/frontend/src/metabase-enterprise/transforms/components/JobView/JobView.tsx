@@ -1,9 +1,12 @@
-import { Stack } from "metabase/ui";
+import { BenchPaneHeader } from "metabase/bench/components/BenchPaneHeader";
+import { BenchNameInput } from "metabase/bench/components/shared/BenchNameInput";
 import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
+
+import { NAME_MAX_LENGTH } from "../../constants";
+import { ColumnLayout, ColumnLayoutBody } from "../ColumnLayout";
 
 import { DependenciesSection } from "./DependenciesSection";
 import { ManageSection } from "./ManageSection";
-import { NameSection } from "./NameSection";
 import { SaveSection } from "./SaveSection";
 import { ScheduleSection } from "./ScheduleSection";
 import { TagSection } from "./TagSection";
@@ -12,7 +15,6 @@ import type { TransformJobInfo } from "./types";
 type JobPageProps = {
   job: TransformJobInfo;
   onNameChange: (name: string) => void;
-  onDescriptionChange: (description: string | null) => void;
   onScheduleChange: (
     schedule: string,
     uiDisplayType: ScheduleDisplayType,
@@ -23,24 +25,28 @@ type JobPageProps = {
 export function JobView({
   job,
   onNameChange,
-  onDescriptionChange,
   onScheduleChange,
   onTagListChange,
 }: JobPageProps) {
   return (
-    <Stack gap="3.5rem" data-testid="job-view" p="md">
-      <Stack gap="lg">
-        <NameSection
-          job={job}
-          onNameChange={onNameChange}
-          onDescriptionChange={onDescriptionChange}
-        />
-      </Stack>
-      <ScheduleSection job={job} onScheduleChange={onScheduleChange} />
-      <TagSection job={job} onTagsChange={onTagListChange} />
-      {job.id != null && <ManageSection job={job} />}
-      {job.id == null && <SaveSection job={job} />}
-      {job.id != null && <DependenciesSection jobId={job.id} />}
-    </Stack>
+    <ColumnLayout>
+      <BenchPaneHeader
+        title={
+          <BenchNameInput
+            initialValue={job.name}
+            maxLength={NAME_MAX_LENGTH}
+            onChange={onNameChange}
+          />
+        }
+        actions={job.id == null && <SaveSection job={job} />}
+        withBorder
+      />
+      <ColumnLayoutBody>
+        <ScheduleSection job={job} onScheduleChange={onScheduleChange} />
+        <TagSection job={job} onTagsChange={onTagListChange} />
+        {job.id != null && <ManageSection job={job} />}
+        {job.id != null && <DependenciesSection jobId={job.id} />}
+      </ColumnLayoutBody>
+    </ColumnLayout>
   );
 }

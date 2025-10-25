@@ -2,8 +2,8 @@ import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { BenchPaneHeader } from "metabase/bench/components/BenchPaneHeader";
+import { BenchNameInput } from "metabase/bench/components/shared/BenchNameInput";
 import { BenchTabs } from "metabase/bench/components/shared/BenchTabs";
-import EditableText from "metabase/common/components/EditableText/EditableText";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
@@ -41,7 +41,8 @@ type TransformNameInputProps = {
 
 function TransformNameInput({ transform }: TransformNameInputProps) {
   const [updateTransform] = useUpdateTransformMutation();
-  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
+  const { sendSuccessToast, sendErrorToast, sendUndoToast } =
+    useMetadataToasts();
 
   const onNameChange = async (newName: string) => {
     const { error } = await updateTransform({
@@ -52,19 +53,20 @@ function TransformNameInput({ transform }: TransformNameInputProps) {
     if (error) {
       sendErrorToast(t`Failed to update transform name`);
     } else {
-      sendSuccessToast(t`Transform name updated`);
+      sendSuccessToast(t`Transform name updated`, async () => {
+        const { error } = await updateTransform({
+          id: transform.id,
+          name: transform.name,
+        });
+        sendUndoToast(error);
+      });
     }
   };
 
   return (
-    <EditableText
+    <BenchNameInput
       initialValue={transform.name}
       maxLength={NAME_MAX_LENGTH}
-      placeholder={t`Name`}
-      p={0}
-      fw="bold"
-      fz="h3"
-      lh="h3"
       onChange={onNameChange}
     />
   );

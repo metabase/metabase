@@ -13,8 +13,6 @@ import {
 
 import type { TransformJobInfo } from "../types";
 
-import S from "./SaveSection.module.css";
-
 type SaveSectionProps = {
   job: TransformJobInfo;
 };
@@ -40,7 +38,10 @@ export function SaveSection({ job: jobInfo }: SaveSectionProps) {
   };
 
   return (
-    <Group className={S.section} pt="md">
+    <Group>
+      <Button component={Link} to={Urls.transformJobList()}>
+        {t`Cancel`}
+      </Button>
       <Button
         variant="filled"
         disabled={isCreating || isFetching}
@@ -48,7 +49,6 @@ export function SaveSection({ job: jobInfo }: SaveSectionProps) {
       >
         {t`Save`}
       </Button>
-      <Button component={Link} to={Urls.transformJobList()}>{t`Cancel`}</Button>
     </Group>
   );
 }

@@ -3,10 +3,11 @@ import { useState } from "react";
 import { skipToken } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
-import { Flex } from "metabase/ui";
+import { Center } from "metabase/ui";
 import { useGetTransformQuery } from "metabase-enterprise/api";
 import type { Transform } from "metabase-types/api";
 
+import { ColumnLayout, ColumnLayoutBody } from "../../components/ColumnLayout";
 import { TransformHeader } from "../../components/TransformHeader";
 import { POLLING_INTERVAL } from "../../constants";
 import {
@@ -41,18 +42,20 @@ export function TransformTargetPage({ params }: TransformTargetPageProps) {
   }
 
   if (isLoading || error || transform == null) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+    return (
+      <Center h="100%">
+        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+      </Center>
+    );
   }
 
   return (
-    <Flex direction="column" h="100%">
+    <ColumnLayout>
       <TransformHeader transform={transform} />
-      <Flex flex={1} justify="center" p="xl" bg="bg-light">
-        <Flex flex={1} direction="column" maw="50rem">
-          <TargetSection transform={transform} />
-        </Flex>
-      </Flex>
-    </Flex>
+      <ColumnLayoutBody>
+        <TargetSection transform={transform} />
+      </ColumnLayoutBody>
+    </ColumnLayout>
   );
 }
 

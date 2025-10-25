@@ -12,10 +12,6 @@ export function NewJobPage() {
     setJob({ ...job, name });
   };
 
-  const handleDescriptionChange = (description: string | null) => {
-    setJob({ ...job, description });
-  };
-
   const handleScheduleChange = (
     schedule: string,
     uiDisplayType: ScheduleDisplayType,
@@ -31,7 +27,6 @@ export function NewJobPage() {
     <JobView
       job={job}
       onNameChange={handleNameChange}
-      onDescriptionChange={handleDescriptionChange}
       onScheduleChange={handleScheduleChange}
       onTagListChange={handleTagListChange}
     />

@@ -6,16 +6,16 @@ import { getScheduleExplanation } from "metabase/lib/cron";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Divider, Group, Tooltip } from "metabase/ui";
 import { useRunTransformJobMutation } from "metabase-enterprise/api";
-import { trackTransformJobTriggerManualRun } from "metabase-enterprise/transforms/analytics";
 import type {
   ScheduleDisplayType,
   ScheduleSettings,
   ScheduleType,
 } from "metabase-types/api";
 
-import { RunButton } from "../../../components/RunButton";
-import { RunStatus } from "../../../components/RunStatus";
-import { SplitSection } from "../../../components/SplitSection";
+import { trackTransformJobTriggerManualRun } from "../../../analytics";
+import { RunButton } from "../../RunButton";
+import { RunStatus } from "../../RunStatus";
+import { TitleSection } from "../../TitleSection";
 import type { TransformJobInfo } from "../types";
 
 type ScheduleSectionProps = {
@@ -31,7 +31,7 @@ export function ScheduleSection({
   onScheduleChange,
 }: ScheduleSectionProps) {
   return (
-    <SplitSection
+    <TitleSection
       label={t`Schedule`}
       description={t`Configure when this job should run.`}
     >
@@ -46,7 +46,7 @@ export function ScheduleSection({
         />
         <RunButtonSection job={job} />
       </Group>
-    </SplitSection>
+    </TitleSection>
   );
 }
 

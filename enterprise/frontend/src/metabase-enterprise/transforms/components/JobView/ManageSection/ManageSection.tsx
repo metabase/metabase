@@ -7,7 +7,7 @@ import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Button, Icon } from "metabase/ui";
 
-import { SplitSection } from "../../../components/SplitSection";
+import { TitleSection } from "../../TitleSection";
 import type { TransformJobInfo } from "../types";
 
 import { DeleteJobModal } from "./DeleteJobModal";
@@ -18,14 +18,14 @@ export type ManageSectionProps = {
 
 export function ManageSection({ job }: ManageSectionProps) {
   return (
-    <SplitSection
+    <TitleSection
       label={t`Manage this job`}
       description={t`Deleting this job won’t delete any transforms.`}
     >
       <Box p="xl">
         <DeleteJobButton job={job} />
       </Box>
-    </SplitSection>
+    </TitleSection>
   );
 }
 

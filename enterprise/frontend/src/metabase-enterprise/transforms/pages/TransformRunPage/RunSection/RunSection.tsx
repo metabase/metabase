@@ -7,7 +7,7 @@ import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { isResourceNotFoundError } from "metabase/lib/errors";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Anchor, Box, Card, Divider, Group, Stack } from "metabase/ui";
+import { Anchor, Box, Divider, Group, Stack } from "metabase/ui";
 import {
   useCancelCurrentTransformRunMutation,
   useRunTransformMutation,
@@ -33,23 +33,21 @@ export function RunSection({ transform }: RunSectionProps) {
       label={t`Run this transform`}
       description={t`This transform will be run whenever the jobs it belongs are scheduled.`}
     >
-      <Card p={0} shadow="none" withBorder>
-        <Stack>
-          <Group p="lg" justify="space-between">
-            <RunStatusSection transform={transform} />
-            <RunButtonSection transform={transform} />
-          </Group>
-          <RunOutputSection transform={transform} />
-        </Stack>
-        <Divider />
-        <Group p="lg" gap="lg">
-          <Stack gap="sm">
-            <Box fw="bold">{t`Run it on a schedule with tags`}</Box>
-            <Box>{t`Jobs will run all transforms with their tags.`}</Box>
-          </Stack>
-          <TagSection transform={transform} />
+      <Stack>
+        <Group p="lg" justify="space-between">
+          <RunStatusSection transform={transform} />
+          <RunButtonSection transform={transform} />
         </Group>
-      </Card>
+        <RunOutputSection transform={transform} />
+      </Stack>
+      <Divider />
+      <Group p="lg" gap="lg">
+        <Stack gap="sm">
+          <Box fw="bold">{t`Run it on a schedule with tags`}</Box>
+          <Box>{t`Jobs will run all transforms with their tags.`}</Box>
+        </Stack>
+        <TagSection transform={transform} />
+      </Group>
     </TitleSection>
   );
 }

@@ -5,6 +5,7 @@ import { skipToken } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { Center } from "metabase/ui";
 import {
   useGetTransformJobQuery,
   useUpdateTransformJobMutation,
@@ -46,12 +47,12 @@ export function JobPage({ params }: JobPageProps) {
     setIsPolling(isPollingNeeded(job));
   }
 
-  if (isLoading || error != null) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
-  }
-
-  if (job == null) {
-    return <LoadingAndErrorWrapper error={t`Not found.`} />;
+  if (isLoading || error != null || job == null) {
+    return (
+      <Center h="100%">
+        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+      </Center>
+    );
   }
 
   return <JobPageBody job={job} />;
@@ -79,25 +80,6 @@ function JobPageBody({ job }: JobPageBodyProps) {
         const { error } = await updateJob({
           id: job.id,
           name: job.name,
-        });
-        sendUndoToast(error);
-      });
-    }
-  };
-
-  const handleDescriptionChange = async (description: string | null) => {
-    const { error } = await updateJob({
-      id: job.id,
-      description,
-    });
-
-    if (error) {
-      sendErrorToast(t`Failed to update job description`);
-    } else {
-      sendSuccessToast(t`Job description updated`, async () => {
-        const { error } = await updateJob({
-          id: job.id,
-          description: job.description,
         });
         sendUndoToast(error);
       });
@@ -150,7 +132,6 @@ function JobPageBody({ job }: JobPageBodyProps) {
     <JobView
       job={job}
       onNameChange={handleNameChange}
-      onDescriptionChange={handleDescriptionChange}
       onScheduleChange={handleScheduleChange}
       onTagListChange={handleTagListChange}
     />

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { Group, Stack, Text, Title } from "metabase/ui";
+import { Card, Group, Stack, Text, Title } from "metabase/ui";
 
 type TitleSectionProps = {
   label: string;
@@ -21,7 +21,9 @@ export function TitleSection({
           <Text c="text-secondary">{description}</Text>
         </Stack>
       </Group>
-      {children}
+      <Card p={0} shadow="none" withBorder>
+        {children}
+      </Card>
     </Stack>
   );
 }
