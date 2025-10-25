@@ -1,6 +1,6 @@
 import type { DependencyEntry } from "metabase-types/api";
 
-const BASE_URL = `/dependencies`;
+const BASE_URL = `/bench/dependencies`;
 
 export type DependencyGraphParams = {
   entry?: DependencyEntry;

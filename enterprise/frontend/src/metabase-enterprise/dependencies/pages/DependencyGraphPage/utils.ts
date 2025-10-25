@@ -1,16 +1,23 @@
 import * as Urls from "metabase/lib/urls";
-import type { DependencyType } from "metabase-types/api";
+import type { DependencyEntry, DependencyType } from "metabase-types/api";
 
 import type { DependencyGraphRawParams } from "../../types";
 
 export function parseParams(
   params: DependencyGraphRawParams = {},
 ): Urls.DependencyGraphParams {
-  const id = Urls.extractEntityId(params.id);
-  const type = parseDependencyType(params.type);
   return {
-    entry: id != null && type != null ? { id, type } : undefined,
+    entry: parseEntry(params.entryId, params.entryType),
   };
+}
+
+function parseEntry(
+  rawId?: string,
+  rawType?: string,
+): DependencyEntry | undefined {
+  const id = Urls.extractEntityId(rawId);
+  const type = parseDependencyType(rawType);
+  return id != null && type != null ? { id, type } : undefined;
 }
 
 function parseDependencyType(type: unknown): DependencyType | null {

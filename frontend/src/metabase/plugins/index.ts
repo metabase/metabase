@@ -934,7 +934,7 @@ export const PLUGIN_TRANSFORMS_PYTHON: PythonTransformsPlugin = {
 
 type DependenciesPlugin = {
   isEnabled: boolean;
-  DependencyGraphPage: ComponentType;
+  getDependencyRoutes: () => ReactNode;
   CheckDependenciesForm: ComponentType<CheckDependenciesFormProps>;
   CheckDependenciesModal: ComponentType<CheckDependenciesModalProps>;
   CheckDependenciesTitle: ComponentType;

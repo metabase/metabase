@@ -1,4 +1,4 @@
 export type DependencyGraphRawParams = {
-  id?: string;
-  type?: string;
+  entryId?: string;
+  entryType?: string;
 };
