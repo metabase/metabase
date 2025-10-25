@@ -32,7 +32,7 @@ export function TransformTabs({ transform }: TransformTabsProps) {
               {
                 label: t`Dependencies`,
                 to: `/bench/transforms/${transform.id}/dependencies`,
-                icon: "schema" as const,
+                icon: "network" as const,
               },
             ]
           : []),

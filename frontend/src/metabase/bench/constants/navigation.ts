@@ -1,6 +1,10 @@
 import { t } from "ttag";
 
-import { PLUGIN_TRANSFORMS, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import {
+  PLUGIN_DEPENDENCIES,
+  PLUGIN_TRANSFORMS,
+  PLUGIN_TRANSFORMS_PYTHON,
+} from "metabase/plugins";
 import type { IconName } from "metabase/ui";
 
 export interface BenchNavItem {
@@ -97,14 +101,7 @@ export const getBenchNavSections = (
       getTitle: () => t`Tools`,
       getLongTitle: () => t`Keep things running smoothly`,
       items: [
-        {
-          id: "dependency-graph",
-          url: "/bench/dependencies",
-          icon: "network",
-          getLabel: () => t`Dependency graph`,
-          getDescription: () =>
-            t`Use the Dependency Graph to see what's upstream and downstream of anything.`,
-        },
+        ...PLUGIN_DEPENDENCIES.getBenchNavItems(),
         ...(hasNativeWrite
           ? [
               {

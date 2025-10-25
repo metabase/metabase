@@ -938,6 +938,7 @@ export const PLUGIN_TRANSFORMS_PYTHON: PythonTransformsPlugin = {
 type DependenciesPlugin = {
   isEnabled: boolean;
   getBenchRoutes: () => ReactNode;
+  getBenchNavItems: () => BenchNavItem[];
   DependencyGraphPage: ComponentType;
   DependencyGraphPageContext: Context<DependencyGraphPageContextType>;
   CheckDependenciesForm: ComponentType<CheckDependenciesFormProps>;
@@ -1000,6 +1001,7 @@ function useCheckDependencies<TChange>({
 export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
   isEnabled: false,
   getBenchRoutes: () => null,
+  getBenchNavItems: () => [],
   DependencyGraphPage: PluginPlaceholder,
   DependencyGraphPageContext: createContext({}),
   CheckDependenciesForm: PluginPlaceholder,
