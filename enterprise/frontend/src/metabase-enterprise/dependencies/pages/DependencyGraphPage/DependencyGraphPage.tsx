@@ -1,13 +1,24 @@
-import { DependencyGraph } from "../../components/DependencyGraph";
-import type { DependencyGraphRawParams } from "../../types";
+import * as Urls from "metabase/lib/urls";
 
-import { parseParams } from "./utils";
+import { DependencyGraph } from "../../components/DependencyGraph";
+import { parseDependencyEntry } from "../../utils";
+
+export type DependencyGraphPageParams = {
+  entryId?: string;
+  entryType?: string;
+};
 
 type DependencyGraphPageProps = {
-  params?: DependencyGraphRawParams;
+  params?: DependencyGraphPageParams;
 };
 
 export function DependencyGraphPage({ params }: DependencyGraphPageProps) {
-  const { entry } = parseParams(params);
-  return <DependencyGraph entry={entry} />;
+  const entry = parseDependencyEntry(params?.entryId, params?.entryType);
+  return (
+    <DependencyGraph
+      entry={entry}
+      getGraphUrl={Urls.dependencyGraph}
+      withEntryPicker
+    />
+  );
 }

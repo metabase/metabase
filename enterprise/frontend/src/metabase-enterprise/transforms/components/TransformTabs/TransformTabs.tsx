@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { BenchTabs } from "metabase/bench/components/shared/BenchTabs";
+import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import type { Transform } from "metabase-types/api";
 
 type TransformTabsProps = {
@@ -26,6 +27,15 @@ export function TransformTabs({ transform }: TransformTabsProps) {
           to: `/bench/transforms/${transform.id}/target`,
           icon: "table2",
         },
+        ...(PLUGIN_DEPENDENCIES.isEnabled
+          ? [
+              {
+                label: t`Dependencies`,
+                to: `/bench/transforms/${transform.id}/dependencies`,
+                icon: "schema" as const,
+              },
+            ]
+          : []),
       ]}
     />
   );

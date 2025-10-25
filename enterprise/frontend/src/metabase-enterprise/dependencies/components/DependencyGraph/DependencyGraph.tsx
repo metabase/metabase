@@ -12,9 +12,9 @@ import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import type { DependencyGraphProps } from "metabase/plugins";
 import { Group } from "metabase/ui";
 import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
-import type { DependencyEntry } from "metabase-types/api";
 
 import S from "./DependencyGraph.module.css";
 import { GraphContext } from "./GraphContext";
@@ -32,11 +32,11 @@ const NODE_TYPES = {
   node: GraphNode,
 };
 
-type DependencyGraphProps = {
-  entry?: DependencyEntry;
-};
-
-export function DependencyGraph({ entry }: DependencyGraphProps) {
+export function DependencyGraph({
+  entry,
+  getGraphUrl,
+  withEntryPicker,
+}: DependencyGraphProps) {
   const {
     data: graph,
     isFetching,
@@ -99,10 +99,13 @@ export function DependencyGraph({ entry }: DependencyGraphProps) {
         <GraphNodeLayout />
         <Panel position="top-left">
           <Group>
-            <GraphEntryInput
-              node={entryNode?.data ?? null}
-              isGraphFetching={isFetching}
-            />
+            {withEntryPicker && (
+              <GraphEntryInput
+                node={entryNode?.data ?? null}
+                isGraphFetching={isFetching}
+                getGraphUrl={getGraphUrl}
+              />
+            )}
             {nodes.length > 1 && <GraphSelectInput nodes={nodes} />}
           </Group>
         </Panel>
@@ -112,11 +115,13 @@ export function DependencyGraph({ entry }: DependencyGraphProps) {
               <GraphDependencyPanel
                 node={selectedNode.data}
                 groupType={selection.groupType}
+                getGraphUrl={getGraphUrl}
                 onClose={handlePanelClose}
               />
             ) : (
               <GraphInfoPanel
                 node={selectedNode.data}
+                getGraphUrl={getGraphUrl}
                 onClose={handlePanelClose}
               />
             )}

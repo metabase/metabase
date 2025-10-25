@@ -71,6 +71,7 @@ import type {
   DatabaseLocalSettingAvailability,
   Database as DatabaseType,
   Dataset,
+  DependencyEntry,
   Document,
   Group,
   GroupPermissions,
@@ -935,6 +936,11 @@ export const PLUGIN_TRANSFORMS_PYTHON: PythonTransformsPlugin = {
 type DependenciesPlugin = {
   isEnabled: boolean;
   getDependencyRoutes: () => ReactNode;
+  parseDependencyEntry: (
+    rawId?: string,
+    rawType?: string,
+  ) => DependencyEntry | undefined;
+  DependencyGraph: ComponentType<DependencyGraphProps>;
   CheckDependenciesForm: ComponentType<CheckDependenciesFormProps>;
   CheckDependenciesModal: ComponentType<CheckDependenciesModalProps>;
   CheckDependenciesTitle: ComponentType;
@@ -947,6 +953,12 @@ type DependenciesPlugin = {
   useCheckTransformDependencies: (
     props: UseCheckDependenciesProps<UpdateTransformRequest>,
   ) => UseCheckDependenciesResult<UpdateTransformRequest>;
+};
+
+export type DependencyGraphProps = {
+  entry?: DependencyEntry;
+  getGraphUrl: (entry: DependencyEntry | undefined) => string;
+  withEntryPicker?: boolean;
 };
 
 export type CheckDependenciesFormProps = {
@@ -989,7 +1001,9 @@ function useCheckDependencies<TChange>({
 
 export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
   isEnabled: false,
-  DependencyGraphPage: PluginPlaceholder,
+  getDependencyRoutes: () => [],
+  parseDependencyEntry: () => undefined,
+  DependencyGraph: PluginPlaceholder,
   CheckDependenciesForm: PluginPlaceholder,
   CheckDependenciesModal: PluginPlaceholder,
   CheckDependenciesTitle: PluginPlaceholder,

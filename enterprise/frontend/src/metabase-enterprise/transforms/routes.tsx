@@ -5,6 +5,7 @@ import { createBenchAdminRouteGuard } from "metabase/bench/components/utils";
 import type { BenchNavItem } from "metabase/bench/constants/navigation";
 import { Route } from "metabase/hoc/Title";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import { TransformDependenciesPage } from "metabase-enterprise/transforms/pages/TransformDependenciesPage";
 
 import { JobEmptyPage } from "./pages/JobEmptyPage";
 import { JobLayout } from "./pages/JobLayout/JobLayout";
@@ -64,6 +65,14 @@ export const getTransformRoutes = () => (
       <Route path=":transformId" component={TransformQueryPage} />
       <Route path=":transformId/run" component={TransformRunPage} />
       <Route path=":transformId/target" component={TransformTargetPage} />
+      <Route
+        path=":transformId/dependencies"
+        component={TransformDependenciesPage}
+      />
+      <Route
+        path=":transformId/dependencies/:entryType/:entryId"
+        component={TransformDependenciesPage}
+      />
     </Route>
     <Route
       title={t`Jobs`}

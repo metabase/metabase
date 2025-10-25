@@ -1,17 +1,7 @@
 import * as Urls from "metabase/lib/urls";
 import type { DependencyEntry, DependencyType } from "metabase-types/api";
 
-import type { DependencyGraphRawParams } from "../../types";
-
-export function parseParams(
-  params: DependencyGraphRawParams = {},
-): Urls.DependencyGraphParams {
-  return {
-    entry: parseEntry(params.entryId, params.entryType),
-  };
-}
-
-function parseEntry(
+export function parseDependencyEntry(
   rawId?: string,
   rawType?: string,
 ): DependencyEntry | undefined {
@@ -20,7 +10,7 @@ function parseEntry(
   return id != null && type != null ? { id, type } : undefined;
 }
 
-function parseDependencyType(type: unknown): DependencyType | null {
+function parseDependencyType(type: unknown): DependencyType | undefined {
   switch (type) {
     case "card":
     case "table":
@@ -31,6 +21,6 @@ function parseDependencyType(type: unknown): DependencyType | null {
     case "sandbox":
       return type;
     default:
-      return null;
+      return undefined;
   }
 }
