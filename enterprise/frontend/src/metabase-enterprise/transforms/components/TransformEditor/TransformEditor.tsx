@@ -7,9 +7,9 @@ import type { TransformSource } from "metabase-types/api";
 import type { TransformInfo } from "../../types";
 import { TransformHeaderView } from "../TransformHeader";
 
-import { EditorBody } from "./EditorBody";
-import { EditorVisualization } from "./EditorVisualization";
+import { QuerySection } from "./QuerySection";
 import S from "./TransformEditor.module.css";
+import { VisualizationSection } from "./VisualizationSection";
 import { useQueryMetadata } from "./use-query-metadata";
 import { useQueryResults } from "./use-query-results";
 import { useQueryState } from "./use-query-state";
@@ -62,7 +62,7 @@ export function TransformEditor({
     <Flex direction="column" h="100%">
       <TransformHeaderView transform={transform} onNameChange={onNameChange} />
       <Flex className={S.body}>
-        <EditorBody
+        <QuerySection
           question={question}
           databases={databases?.data ?? []}
           modalSnippet={undefined}
@@ -82,7 +82,7 @@ export function TransformEditor({
           onChangeModalSnippet={() => undefined}
           onChangeNativeEditorSelection={() => undefined}
         />
-        <EditorVisualization
+        <VisualizationSection
           question={question}
           result={result}
           rawSeries={rawSeries}

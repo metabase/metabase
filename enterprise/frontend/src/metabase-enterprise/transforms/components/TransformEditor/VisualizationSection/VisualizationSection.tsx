@@ -3,9 +3,9 @@ import QueryVisualization from "metabase/query_builder/components/QueryVisualiza
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset, RawSeries } from "metabase-types/api";
 
-import S from "./EditorVisualization.module.css";
+import S from "./VisualizationSection.module.css";
 
-type EditorVisualizationProps = {
+type VisualizationSectionProps = {
   question: Question;
   result: Dataset | null;
   rawSeries: RawSeries | null;
@@ -17,7 +17,7 @@ type EditorVisualizationProps = {
   onCancelQuery: () => void;
 };
 
-export function EditorVisualization({
+export function VisualizationSection({
   question,
   result,
   rawSeries,
@@ -27,7 +27,7 @@ export function EditorVisualization({
   isResultDirty,
   onRunQuery,
   onCancelQuery,
-}: EditorVisualizationProps) {
+}: VisualizationSectionProps) {
   return (
     <DebouncedFrame className={S.root}>
       <QueryVisualization

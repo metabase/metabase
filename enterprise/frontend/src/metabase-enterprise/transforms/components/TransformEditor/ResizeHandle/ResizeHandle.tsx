@@ -2,16 +2,16 @@ import { type HTMLAttributes, type Ref, forwardRef } from "react";
 
 import { Box, Flex, rem } from "metabase/ui";
 
-import S from "./EditorResizeHandle.module.css";
+import S from "./ResizeHandle.module.css";
 
-type EditorResizeHandleProps = HTMLAttributes<HTMLDivElement> & {
+type ResizeHandleProps = HTMLAttributes<HTMLDivElement> & {
   handleAxis?: "n" | "e" | "s" | "w";
 };
 
 const THICKNESS = "6.25rem";
 
-export const EditorResizeHandle = forwardRef(function ResizableBoxHandle(
-  props: EditorResizeHandleProps,
+export const ResizeHandle = forwardRef(function ResizableBoxHandle(
+  props: ResizeHandleProps,
   ref: Ref<HTMLDivElement>,
 ) {
   const { handleAxis, ...rest } = props;

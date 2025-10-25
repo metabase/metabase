@@ -21,9 +21,9 @@ import type {
   RecentItem,
 } from "metabase-types/api";
 
-import { EditorResizeHandle } from "../EditorResizeHandle";
+import { ResizeHandle } from "../ResizeHandle";
 
-import S from "./EditorBody.module.css";
+import S from "./QuerySection.module.css";
 
 const EDITOR_HEIGHT = 550;
 const NATIVE_HEADER_HEIGHT = 55;
@@ -38,7 +38,7 @@ const NATIVE_EDITOR_SIDEBAR_FEATURES = {
   aiGeneration: false,
 };
 
-type EditorBodyProps = {
+type QuerySectionProps = {
   question: Question;
   databases: Database[];
   modalSnippet?: NativeQuerySnippet | null;
@@ -60,7 +60,7 @@ type EditorBodyProps = {
   onOpenModal: (type: QueryModalType) => void;
 };
 
-export function EditorBody({
+export function QuerySection({
   question,
   isNative,
   isRunnable,
@@ -80,7 +80,7 @@ export function EditorBody({
   onChangeNativeEditorSelection,
   nativeEditorSelectedText,
   onOpenModal,
-}: EditorBodyProps) {
+}: QuerySectionProps) {
   const [isResizing, setIsResizing] = useState(false);
   const reportTimezone = useSetting("report-timezone-long");
   const editorHeight = useInitialEditorHeight(isNative);
@@ -156,7 +156,7 @@ export function EditorBody({
       axis="y"
       className={S.root}
       height={editorHeight}
-      handle={<EditorResizeHandle />}
+      handle={<ResizeHandle />}
       resizeHandles={["s"]}
       onResizeStart={() => setIsResizing(true)}
       onResizeStop={() => setIsResizing(false)}
