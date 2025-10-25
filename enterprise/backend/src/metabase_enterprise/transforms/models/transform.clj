@@ -41,7 +41,8 @@
       mi/json-in))
 
 (t2/deftransforms :model/Transform
-  {:source      {:out transform-source-out, :in transform-source-in}
+  {:type        mi/transform-keyword
+   :source      {:out transform-source-out, :in transform-source-in}
    :target      mi/transform-json
    :run_trigger mi/transform-keyword})
 
@@ -209,7 +210,8 @@
   [_model-name opts]
   {:copy [:name :description :entity_id]
    :skip [:dependency_analysis_version]
-   :transform {:created_at (serdes/date)
+   :transform {:type (serdes/kw)
+               :created_at (serdes/date)
                :updated_at (serdes/date)
                :source {:export #(update % :query serdes/export-mbql)
                         :import #(update % :query serdes/import-mbql)}
