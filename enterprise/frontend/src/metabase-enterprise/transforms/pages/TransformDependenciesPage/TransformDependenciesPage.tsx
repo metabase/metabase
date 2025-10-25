@@ -1,14 +1,13 @@
 import type { ReactNode } from "react";
 
 import { skipToken } from "metabase/api";
-import { BenchPaneHeader } from "metabase/bench/components/BenchPaneHeader";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Flex } from "metabase/ui";
 import { useGetTransformQuery } from "metabase-enterprise/api";
 
-import { TransformTabs } from "../../components/TransformTabs";
+import { TransformHeader } from "../../components/TransformHeader";
 
 export type TransformDependenciesPageParams = {
   transformId: string;
@@ -36,10 +35,7 @@ export function TransformDependenciesPage({
 
   return (
     <Flex direction="column" h="100%">
-      <BenchPaneHeader
-        title={<TransformTabs transform={transform} />}
-        withBorder
-      />
+      <TransformHeader transform={transform} />
       <PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider
         value={{
           baseUrl: Urls.transformDependencies(transform.id),

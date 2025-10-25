@@ -1,10 +1,9 @@
 import { t } from "ttag";
 
-import { BenchPaneHeader } from "metabase/bench/components/BenchPaneHeader";
 import { Button, Group, Tooltip } from "metabase/ui";
 import type { Transform } from "metabase-types/api";
 
-import { TransformTabs } from "../../TransformTabs";
+import { TransformHeader } from "../../TransformHeader";
 import type { QueryValidationResult } from "../types";
 
 type EditorHeaderProps = {
@@ -32,8 +31,8 @@ export function EditorHeader({
   const canSave = validationResult.isValid && !isSaving;
 
   return (
-    <BenchPaneHeader
-      title={transform && <TransformTabs transform={transform} />}
+    <TransformHeader
+      transform={transform}
       actions={
         <Group>
           {hasButtons && <Button onClick={onCancel}>{t`Cancel`}</Button>}

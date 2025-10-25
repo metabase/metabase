@@ -1,14 +1,13 @@
 import { useState } from "react";
 
 import { skipToken } from "metabase/api";
-import { BenchPaneHeader } from "metabase/bench/components/BenchPaneHeader";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
 import { Flex } from "metabase/ui";
 import { useGetTransformQuery } from "metabase-enterprise/api";
 import type { Transform } from "metabase-types/api";
 
-import { TransformTabs } from "../../components/TransformTabs";
+import { TransformHeader } from "../../components/TransformHeader";
 import { POLLING_INTERVAL } from "../../constants";
 import { isTransformCanceling, isTransformRunning } from "../../utils";
 
@@ -43,10 +42,7 @@ export function TransformRunPage({ params }: TransformRunPageProps) {
 
   return (
     <Flex direction="column" h="100%">
-      <BenchPaneHeader
-        title={<TransformTabs transform={transform} />}
-        withBorder
-      />
+      <TransformHeader transform={transform} />
       <Flex flex={1} justify="center" p="xl" bg="bg-light">
         <Flex flex={1} direction="column" maw="50rem">
           <RunSection transform={transform} />
