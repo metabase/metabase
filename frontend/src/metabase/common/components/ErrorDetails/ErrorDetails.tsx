@@ -13,7 +13,7 @@ export default function ErrorDetails({
   centered,
   className,
 }: ErrorDetailsProps) {
-  const [showError, setShowError] = useState(false);
+  const [showError, setShowError] = useState(true);
 
   if (!details) {
     return null;
