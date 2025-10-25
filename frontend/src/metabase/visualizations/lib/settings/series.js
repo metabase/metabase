@@ -14,6 +14,7 @@ import {
   getSeriesDefaultLineStyle,
   getSeriesDefaultLinearInterpolate,
   getSeriesDefaultShowSeriesValues,
+  hasInterpolatedLineMissingOption,
 } from "metabase/visualizations/shared/settings/series";
 
 import { getNameForCard } from "../series";
@@ -154,19 +155,35 @@ export function seriesSetting({ readDependencies = [], def } = {}) {
     "line.missing": {
       title: t`Replace missing values with`,
       widget: "select",
-      props: {
-        options: [
-          { name: t`Zero`, value: "zero" },
-          { name: t`Nothing`, value: "none" },
-          { name: t`Linear Interpolated`, value: "interpolate" },
-        ],
+      getProps: (_series, settings, _onChange, { settings: vizSettings }) => {
+        return {
+          options: [
+            { name: t`Zero`, value: "zero" },
+            { name: t`Nothing`, value: "none" },
+            ...(hasInterpolatedLineMissingOption(
+              settings["display"],
+              vizSettings["stackable.stack_type"] === undefined
+                ? vizSettings["stackable._default_stack_type"]
+                : vizSettings["stackable.stack_type"],
+            )
+              ? [{ name: t`Linear Interpolated`, value: "interpolate" }]
+              : []),
+          ],
+        };
       },
       getHidden: (single, settings) =>
         !LINE_DISPLAY_TYPES.has(settings["display"]),
-      getDefault: (single, settings, { settings: vizSettings }) =>
+      getDefault: (single, settings, { settings: vizSettings }) => {
         // use legacy global line.missing setting if present
-        getSeriesDefaultLineMissing(vizSettings),
-      readDependencies: ["display"],
+        return getSeriesDefaultLineMissing(
+          vizSettings,
+          settings["display"],
+          vizSettings["stackable.stack_type"] === undefined
+            ? vizSettings["stackable._default_stack_type"]
+            : vizSettings["stackable.stack_type"],
+        );
+      },
+      readDependencies: ["display", "stackable._default_stack_type"],
     },
     axis: {
       title: t`Y-axis position`,

@@ -274,12 +274,16 @@ export const LINE_SETTINGS = {
   // DEPRECATED: moved to series settings
   "line.marker_enabled": {},
   // DEPRECATED: moved to series settings
-  "line.missing": {
-    default: "interpolate",
-  },
+  "line.missing": {},
 };
 
 export const STACKABLE_SETTINGS = {
+  "stackable._default_stack_type": {
+    readDependencies: ["graph.metrics", "graph.dimensions"],
+    getDefault: ([{ card }], settings) => {
+      return getDefaultStackingValue(settings, card);
+    },
+  },
   "stackable.stack_type": {
     get section() {
       return t`Display`;
