@@ -25,7 +25,7 @@
 }
 
 .dragHandle {
-  background-color: var(--mb-color-text-secondary-inverse);
+  background-color: var(--mb-color-text-secondary);
   height: 0.25rem;
   width: 4rem;
   cursor: row-resize;

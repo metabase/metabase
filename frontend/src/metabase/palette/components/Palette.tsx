@@ -108,7 +108,14 @@ export const PaletteCard = forwardRef<
   return (
     <Overlay zIndex={500} backgroundOpacity={0.5} {...props}>
       <Center>
-        <Card ref={ref} w="640px" mt="10vh" p="0" data-testid="command-palette">
+        <Card
+          ref={ref}
+          w="640px"
+          mt="10vh"
+          p="0"
+          data-testid="command-palette"
+          bd="1px solid var(--mb-color-border)"
+        >
           {children}
         </Card>
       </Center>
