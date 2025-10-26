@@ -30,7 +30,7 @@ export function newNativeTransform() {
 }
 
 export function newPythonTransform() {
-  return `${TRANSFORMS_ROOT_URL}/new/native`;
+  return `${TRANSFORMS_ROOT_URL}/new/python`;
 }
 
 export function newTransformFromCard(cardId: CardId) {
