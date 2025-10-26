@@ -76,13 +76,7 @@ function JobPageBody({ job }: JobPageBodyProps) {
     if (error) {
       sendErrorToast(t`Failed to update job name`);
     } else {
-      sendSuccessToast(t`Job name updated`, async () => {
-        const { error } = await updateJob({
-          id: job.id,
-          name: job.name,
-        });
-        sendUndoToast(error);
-      });
+      sendSuccessToast(t`Job name updated`);
     }
   };
 

@@ -19,8 +19,7 @@ type TransformHeaderProps = {
 
 export function TransformHeader({ transform }: TransformHeaderProps) {
   const [updateTransform] = useUpdateTransformMutation();
-  const { sendSuccessToast, sendErrorToast, sendUndoToast } =
-    useMetadataToasts();
+  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   const handleNameChange = async (newName: string) => {
     const { error } = await updateTransform({
@@ -31,13 +30,7 @@ export function TransformHeader({ transform }: TransformHeaderProps) {
     if (error) {
       sendErrorToast(t`Failed to update transform name`);
     } else {
-      sendSuccessToast(t`Transform name updated`, async () => {
-        const { error } = await updateTransform({
-          id: transform.id,
-          name: transform.name,
-        });
-        sendUndoToast(error);
-      });
+      sendSuccessToast(t`Transform name updated`);
     }
   };
 

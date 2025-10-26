@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useLayoutEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
@@ -10,7 +10,12 @@ import {
   useGetTransformQuery,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
-import type { Transform } from "metabase-types/api";
+import * as Lib from "metabase-lib";
+import type {
+  QueryTransformSource,
+  Transform,
+  TransformSource,
+} from "metabase-types/api";
 
 import { TransformEditor } from "../../components/TransformEditor";
 
@@ -43,10 +48,14 @@ type TransformQueryPageBodyProps = {
 
 function TransformQueryPageBody({ transform }: TransformQueryPageBodyProps) {
   const [source, setSource] = useState(transform.source);
-  const [updateTransform, { isLoading: isSaving }] =
-    useUpdateTransformMutation();
-  const { sendSuccessToast, sendErrorToast, sendUndoToast } =
-    useMetadataToasts();
+  const [updateName] = useUpdateTransformMutation();
+  const [updateSource, { isLoading: isSaving }] = useUpdateTransformMutation();
+  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
+
+  const isSourceDirty = useMemo(
+    () => !isSameSource(source, transform.source),
+    [source, transform.source],
+  );
 
   const {
     checkData,
@@ -57,7 +66,7 @@ function TransformQueryPageBody({ transform }: TransformQueryPageBodyProps) {
     handleCloseConfirmation,
   } = PLUGIN_DEPENDENCIES.useCheckTransformDependencies({
     onSave: async (request) => {
-      const { error } = await updateTransform(request);
+      const { error } = await updateSource(request);
       if (error) {
         sendErrorToast(t`Failed to update transform query`);
       } else {
@@ -66,22 +75,16 @@ function TransformQueryPageBody({ transform }: TransformQueryPageBodyProps) {
     },
   });
 
-  const handleNameChange = async (name: string) => {
-    const { error } = await updateTransform({
+  const handleNameChange = async (newName: string) => {
+    const { error } = await updateName({
       id: transform.id,
-      name,
+      name: newName,
     });
 
     if (error) {
       sendErrorToast(t`Failed to update transform name`);
     } else {
-      sendSuccessToast(t`Transform name updated`, async () => {
-        const { error } = await updateTransform({
-          id: transform.id,
-          name: transform.name,
-        });
-        sendUndoToast(error);
-      });
+      sendSuccessToast(t`Transform name updated`);
     }
   };
 
@@ -92,14 +95,19 @@ function TransformQueryPageBody({ transform }: TransformQueryPageBodyProps) {
     });
   };
 
+  useLayoutEffect(() => {
+    setSource(transform.source);
+  }, [transform.source]);
+
   return (
     <>
-      {source.type === "query" && (
+      {isQuerySource(source) && (
         <TransformEditor
           id={transform.id}
           name={transform.name}
           source={source}
-          iSaving={isSaving || isCheckingDependencies}
+          isSaving={isSaving || isCheckingDependencies}
+          isSourceDirty={isSourceDirty}
           onNameChange={handleNameChange}
           onSourceChange={setSource}
           onSave={handleSave}
@@ -115,4 +123,17 @@ function TransformQueryPageBody({ transform }: TransformQueryPageBodyProps) {
       )}
     </>
   );
+}
+
+function isQuerySource(
+  source: TransformSource,
+): source is QueryTransformSource {
+  return source.type === "query";
+}
+
+function isSameSource(source1: TransformSource, source2: TransformSource) {
+  if (isQuerySource(source1) && isQuerySource(source2)) {
+    return Lib.areLegacyQueriesEqual(source1.query, source2.query);
+  }
+  return false;
 }

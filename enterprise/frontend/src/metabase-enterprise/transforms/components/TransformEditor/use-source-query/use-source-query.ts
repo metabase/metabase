@@ -14,7 +14,7 @@ const DEFAULT_VIZ_SETTINGS: VisualizationSettings = {
 
 export function useSourceQuery(
   source: QueryTransformSource,
-  onSourceChange: (source: QueryTransformSource) => void,
+  onSourceChange: (newSource: QueryTransformSource) => void,
 ) {
   const metadata = useSelector(getMetadata);
 

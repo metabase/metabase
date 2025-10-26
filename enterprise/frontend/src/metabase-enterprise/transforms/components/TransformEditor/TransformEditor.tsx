@@ -18,9 +18,10 @@ type TransformEditorProps = {
   id?: TransformId;
   name: string;
   source: QueryTransformSource;
-  iSaving: boolean;
-  onNameChange: (name: string) => void;
-  onSourceChange: (source: QueryTransformSource) => void;
+  isSaving: boolean;
+  isSourceDirty: boolean;
+  onNameChange: (newName: string) => void;
+  onSourceChange: (newSource: QueryTransformSource) => void;
   onSave: () => void;
 };
 
@@ -28,7 +29,8 @@ export function TransformEditor({
   id,
   name,
   source,
-  iSaving,
+  isSaving,
+  isSourceDirty,
   onNameChange,
   onSourceChange,
   onSave,
@@ -36,11 +38,11 @@ export function TransformEditor({
   const { question, setQuestion } = useSourceQuery(source, onSourceChange);
   const { isMetadataLoading, metadataError } = useQueryMetadata(question);
   const {
+    result,
+    rawSeries,
     isRunnable,
     isRunning,
     isResultDirty,
-    result,
-    rawSeries,
     runQuery,
     cancelQuery,
   } = useQueryResults(question);
@@ -68,7 +70,11 @@ export function TransformEditor({
       <TransformHeaderView
         id={id}
         name={name}
-        actions={<SaveSection isSaving={iSaving} onSave={onSave} />}
+        actions={
+          (isSaving || isSourceDirty) && (
+            <SaveSection isSaving={isSaving} onSave={onSave} />
+          )
+        }
         onNameChange={onNameChange}
       />
       <Flex className={S.body} direction="column">
