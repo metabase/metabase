@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import _ from "underscore";
 
 import { useLazyGetAdhocQueryMetadataQuery } from "metabase/api";
@@ -6,12 +6,19 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 export function useQueryMetadata(question: Question) {
-  const [loadMetadata, { error, isLoading }] =
+  const [loadMetadata, { isLoading, error }] =
     useLazyGetAdhocQueryMetadataQuery();
   const dependenciesRef = useRef<Lib.DependentItem[]>([]);
-  const [isInitiallyLoaded, setIsInitiallyLoaded] = useState(() =>
-    isSourceLoaded(question.query()),
-  );
+
+  const isSourceTableLoaded = useMemo(() => {
+    const query = question.query();
+    const sourceTableId = Lib.sourceTableOrCardId(query);
+    const sourceTable =
+      sourceTableId != null
+        ? Lib.tableOrCardMetadata(query, sourceTableId)
+        : null;
+    return sourceTableId == null || sourceTable != null;
+  }, [question]);
 
   useEffect(() => {
     const dependencies = Lib.dependentMetadata(
@@ -25,18 +32,8 @@ export function useQueryMetadata(question: Question) {
     }
   }, [question, loadMetadata]);
 
-  if (!isInitiallyLoaded && !isLoading && isSourceLoaded(question.query())) {
-    setIsInitiallyLoaded(true);
-  }
-
-  return { isMetadataLoading: !isInitiallyLoaded, metadataError: error };
-}
-
-function isSourceLoaded(query: Lib.Query) {
-  const sourceTableId = Lib.sourceTableOrCardId(query);
-  const sourceTable =
-    sourceTableId != null
-      ? Lib.tableOrCardMetadata(query, sourceTableId)
-      : null;
-  return sourceTableId == null || sourceTable != null;
+  return {
+    metadataError: error,
+    isMetadataLoading: isLoading || !isSourceTableLoaded,
+  };
 }
