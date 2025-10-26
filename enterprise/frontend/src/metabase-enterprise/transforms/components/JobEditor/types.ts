@@ -1,17 +1,9 @@
 import type {
   ScheduleDisplayType,
-  TransformId,
   TransformJobId,
   TransformRun,
-  TransformSource,
   TransformTagId,
 } from "metabase-types/api";
-
-export type TransformInfo = {
-  id?: TransformId;
-  name: string;
-  source: TransformSource;
-};
 
 export type TransformJobInfo = {
   id?: TransformJobId;

@@ -92,12 +92,16 @@ function TransformQueryPageBody({ transform }: TransformQueryPageBodyProps) {
 
   return (
     <>
-      <TransformEditor
-        transform={transform}
-        onNameChange={handleNameChange}
-        onSourceChange={setSource}
-        onSave={handleSave}
-      />
+      {source.type === "query" && (
+        <TransformEditor
+          id={transform.id}
+          name={transform.name}
+          source={source}
+          onNameChange={handleNameChange}
+          onSourceChange={setSource}
+          onSave={handleSave}
+        />
+      )}
       {isConfirmationShown && checkData != null && (
         <PLUGIN_DEPENDENCIES.CheckDependenciesModal
           checkData={checkData}

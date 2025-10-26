@@ -7,8 +7,8 @@ import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Button, Icon } from "metabase/ui";
 
-import type { TransformJobInfo } from "../../../types";
 import { TitleSection } from "../../TitleSection";
+import type { TransformJobInfo } from "../types";
 
 import { DeleteJobModal } from "./DeleteJobModal";
 

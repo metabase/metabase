@@ -3,9 +3,9 @@ import { t } from "ttag";
 import { Box } from "metabase/ui";
 import type { TransformTagId } from "metabase-types/api";
 
-import type { TransformJobInfo } from "../../../types";
 import { TagMultiSelect } from "../../TagMultiSelect";
 import { TitleSection } from "../../TitleSection";
+import type { TransformJobInfo } from "../types";
 
 type TagSectionProps = {
   job: TransformJobInfo;

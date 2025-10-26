@@ -5,7 +5,7 @@ import Link from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
 import { Box, Group, Icon, type IconName, Loader, Stack } from "metabase/ui";
-import { SplitSection } from "metabase-enterprise/transforms/components/SplitSection";
+import { TitleSection } from "metabase-enterprise/transforms/components/TitleSection";
 import type { Transform } from "metabase-types/api";
 
 import S from "./SourceSection.module.css";
@@ -24,7 +24,7 @@ export function SourceSection({ transform }: SourceSectionProps) {
     source;
 
   return (
-    <SplitSection
+    <TitleSection
       label={t`Transform source`}
       description={t`The data sources for this Python transform, by alias.`}
     >
@@ -38,7 +38,7 @@ export function SourceSection({ transform }: SourceSectionProps) {
           />
         ))}
       </Stack>
-    </SplitSection>
+    </TitleSection>
   );
 }
 

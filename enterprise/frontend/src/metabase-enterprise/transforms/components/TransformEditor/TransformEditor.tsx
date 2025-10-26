@@ -2,9 +2,8 @@ import { useListDatabasesQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Center, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { TransformSource } from "metabase-types/api";
+import type { QueryTransformSource, TransformId } from "metabase-types/api";
 
-import type { TransformInfo } from "../../types";
 import { TransformHeaderView } from "../TransformHeader";
 
 import { QuerySection } from "./QuerySection";
@@ -13,25 +12,26 @@ import S from "./TransformEditor.module.css";
 import { VisualizationSection } from "./VisualizationSection";
 import { useQueryMetadata } from "./use-query-metadata";
 import { useQueryResults } from "./use-query-results";
-import { useQueryState } from "./use-query-state";
+import { useSourceQuery } from "./use-source-query";
 
 type TransformEditorProps = {
-  transform: TransformInfo;
+  id?: TransformId;
+  name: string;
+  source: QueryTransformSource;
   onNameChange: (name: string) => void;
-  onSourceChange: (source: TransformSource) => void;
+  onSourceChange: (source: QueryTransformSource) => void;
   onSave: () => void;
 };
 
 export function TransformEditor({
-  transform,
+  id,
+  name,
+  source,
   onNameChange,
   onSourceChange,
   onSave,
 }: TransformEditorProps) {
-  const { question, setQuestion } = useQueryState(
-    transform.source,
-    onSourceChange,
-  );
+  const { question, setQuestion } = useSourceQuery(source, onSourceChange);
   const { isMetadataLoading, metadataError } = useQueryMetadata(question);
   const {
     isRunnable,
@@ -64,11 +64,12 @@ export function TransformEditor({
   return (
     <Flex direction="column" h="100%">
       <TransformHeaderView
-        transform={transform}
+        id={id}
+        name={name}
         actions={<SaveSection onSave={onSave} />}
         onNameChange={onNameChange}
       />
-      <Flex className={S.body}>
+      <Flex className={S.body} direction="column">
         <QuerySection
           question={question}
           databases={databases?.data ?? []}

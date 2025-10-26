@@ -5,12 +5,12 @@ import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
 import { NAME_MAX_LENGTH } from "../../constants";
 import { ColumnLayout, ColumnLayoutBody } from "../ColumnLayout";
 
-import type { TransformJobInfo } from "./../../types";
 import { DependenciesSection } from "./DependenciesSection";
 import { ManageSection } from "./ManageSection";
 import { SaveSection } from "./SaveSection";
 import { ScheduleSection } from "./ScheduleSection";
 import { TagSection } from "./TagSection";
+import type { TransformJobInfo } from "./types";
 
 type JobEditorProps = {
   job: TransformJobInfo;

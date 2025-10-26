@@ -12,7 +12,6 @@ import { useUpdateTransformMutation } from "metabase-enterprise/api";
 import type { Transform, TransformId } from "metabase-types/api";
 
 import { NAME_MAX_LENGTH } from "../../constants";
-import type { TransformInfo } from "../../types";
 
 type TransformHeaderProps = {
   transform: Transform;
@@ -44,20 +43,23 @@ export function TransformHeader({ transform }: TransformHeaderProps) {
 
   return (
     <TransformHeaderView
-      transform={transform}
+      id={transform.id}
+      name={transform.name}
       onNameChange={handleNameChange}
     />
   );
 }
 
 type TransformHeaderViewProps = {
-  transform: TransformInfo;
+  id?: TransformId;
+  name: string;
   actions?: ReactNode;
   onNameChange: (name: string) => void;
 };
 
 export function TransformHeaderView({
-  transform,
+  id,
+  name,
   actions,
   onNameChange,
 }: TransformHeaderViewProps) {
@@ -66,11 +68,11 @@ export function TransformHeaderView({
       title={
         <Stack>
           <BenchNameInput
-            initialValue={transform.name}
+            initialValue={name}
             maxLength={NAME_MAX_LENGTH}
             onChange={onNameChange}
           />
-          {transform.id != null && <TransformTabs transformId={transform.id} />}
+          {id != null && <TransformTabs id={id} />}
         </Stack>
       }
       actions={actions}
@@ -80,33 +82,33 @@ export function TransformHeaderView({
 }
 
 type TransformTabsProps = {
-  transformId: TransformId;
+  id: TransformId;
 };
 
-function TransformTabs({ transformId }: TransformTabsProps) {
+function TransformTabs({ id }: TransformTabsProps) {
   return (
     <BenchTabs
       tabs={[
         {
           label: t`Query`,
-          to: Urls.transform(transformId),
+          to: Urls.transform(id),
           icon: "sql",
         },
         {
           label: t`Run`,
-          to: Urls.transformRun(transformId),
+          to: Urls.transformRun(id),
           icon: "play_outlined",
         },
         {
           label: t`Target`,
-          to: Urls.transformTarget(transformId),
+          to: Urls.transformTarget(id),
           icon: "table2",
         },
         ...(PLUGIN_DEPENDENCIES.isEnabled
           ? [
               {
                 label: t`Dependencies`,
-                to: Urls.transformDependencies(transformId),
+                to: Urls.transformDependencies(id),
                 icon: "network" as const,
               },
             ]

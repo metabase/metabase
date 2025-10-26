@@ -13,10 +13,10 @@ import type {
 } from "metabase-types/api";
 
 import { trackTransformJobTriggerManualRun } from "../../../analytics";
-import type { TransformJobInfo } from "../../../types";
 import { RunButton } from "../../RunButton";
 import { RunStatus } from "../../RunStatus";
 import { TitleSection } from "../../TitleSection";
+import type { TransformJobInfo } from "../types";
 
 type ScheduleSectionProps = {
   job: TransformJobInfo;
