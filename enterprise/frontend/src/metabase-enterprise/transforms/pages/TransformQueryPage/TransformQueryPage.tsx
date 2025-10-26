@@ -91,6 +91,10 @@ function TransformQueryPageBody({ transform }: TransformQueryPageBodyProps) {
     });
   };
 
+  const handleCancel = () => {
+    setSource(transform.source);
+  };
+
   useLayoutEffect(() => {
     setSource(transform.source);
   }, [transform.source]);
@@ -107,6 +111,7 @@ function TransformQueryPageBody({ transform }: TransformQueryPageBodyProps) {
           onNameChange={handleNameChange}
           onSourceChange={setSource}
           onSave={handleSave}
+          onCancel={handleCancel}
         />
       )}
       {isConfirmationShown && checkData != null && (

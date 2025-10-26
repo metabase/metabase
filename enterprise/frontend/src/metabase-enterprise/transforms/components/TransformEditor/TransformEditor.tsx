@@ -23,6 +23,7 @@ type TransformEditorProps = {
   onNameChange: (newName: string) => void;
   onSourceChange: (newSource: QueryTransformSource) => void;
   onSave: () => void;
+  onCancel: () => void;
 };
 
 export function TransformEditor({
@@ -34,6 +35,7 @@ export function TransformEditor({
   onNameChange,
   onSourceChange,
   onSave,
+  onCancel,
 }: TransformEditorProps) {
   const { question, setQuestion } = useSourceQuery(source, onSourceChange);
   const { isMetadataLoading, metadataError } = useQueryMetadata(question);
@@ -72,7 +74,11 @@ export function TransformEditor({
         name={name}
         actions={
           (isSaving || isSourceDirty) && (
-            <SaveSection isSaving={isSaving} onSave={onSave} />
+            <SaveSection
+              isSaving={isSaving}
+              onSave={onSave}
+              onCancel={onCancel}
+            />
           )
         }
         onNameChange={onNameChange}

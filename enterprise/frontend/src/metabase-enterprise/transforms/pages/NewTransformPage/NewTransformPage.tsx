@@ -29,6 +29,10 @@ function NewTransformPage({ initialSource }: NewTransformPageProps) {
     dispatch(push(Urls.transform(transform.id)));
   };
 
+  const handleCancel = () => {
+    dispatch(push(Urls.transformList()));
+  };
+
   return (
     <>
       {source.type === "query" && (
@@ -40,6 +44,7 @@ function NewTransformPage({ initialSource }: NewTransformPageProps) {
           onNameChange={setName}
           onSourceChange={setSource}
           onSave={open}
+          onCancel={handleCancel}
         />
       )}
       {isOpened && (
