@@ -120,6 +120,7 @@ export const useSdkIframeEmbedSettings = ({
         } as SdkIframeEmbedSetupSettings;
 
         const adjustedSettings = getAdjustedSdkIframeEmbedSetting({
+          defaultSettings: defaultSettings,
           prevSettings: prevSettings ?? defaultSettings,
           settings: mergedSettings,
         });
@@ -156,6 +157,7 @@ export const useSdkIframeEmbedSettings = ({
         };
 
         const adjustedSettings = getAdjustedSdkIframeEmbedSetting({
+          defaultSettings,
           prevSettings: prevSettings ?? defaultSettings,
           settings: mergedSettings,
         });

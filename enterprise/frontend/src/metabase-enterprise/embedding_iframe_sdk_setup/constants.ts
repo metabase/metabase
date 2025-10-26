@@ -1,7 +1,5 @@
 import { t } from "ttag";
 
-import { PLUGIN_ANONYMOUS_EMBEDDING } from "metabase/plugins";
-
 import { GetCodeStep } from "./components/GetCodeStep";
 import { SelectEmbedExperienceStep } from "./components/SelectEmbedExperienceStep";
 import { SelectEmbedOptionsStep } from "./components/SelectEmbedOptionsStep";
@@ -116,7 +114,8 @@ export const USER_SETTINGS_DEBOUNCE_MS = 800;
 
 export const GET_ENABLE_STATIC_EMBEDDING_SETTINGS: () => SdkIframeEmbedSetupStaticEmbeddingSettings &
   Pick<SdkIframeEmbedSetupSettings, "useExistingUserSession"> = () => ({
-  isStatic: PLUGIN_ANONYMOUS_EMBEDDING.isFeatureEnabled(),
+  isStatic: true,
+  drills: false,
   useExistingUserSession: false,
 });
 

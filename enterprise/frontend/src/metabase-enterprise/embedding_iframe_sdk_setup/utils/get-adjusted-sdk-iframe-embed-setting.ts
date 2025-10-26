@@ -8,9 +8,11 @@ import {
 import type { SdkIframeEmbedSetupSettings } from "../types";
 
 export const getAdjustedSdkIframeEmbedSetting = ({
+  defaultSettings,
   prevSettings,
   settings,
 }: {
+  defaultSettings: SdkIframeEmbedSetupSettings;
   prevSettings: SdkIframeEmbedSetupSettings;
   settings: SdkIframeEmbedSetupSettings;
 }): SdkIframeEmbedSetupSettings => {
@@ -32,6 +34,9 @@ export const getAdjustedSdkIframeEmbedSetting = ({
       },
       ({ settings }) => ({
         ...settings,
+        drills: "drills" in defaultSettings && defaultSettings.drills,
+        isSaveEnabled:
+          "isSaveEnabled" in defaultSettings && defaultSettings.isSaveEnabled,
         ...GET_DISABLE_STATIC_EMBEDDING_SETTINGS(),
         useExistingUserSession: settings.useExistingUserSession,
       }),

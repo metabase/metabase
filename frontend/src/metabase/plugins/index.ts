@@ -606,10 +606,6 @@ export const PLUGIN_EMBEDDING_IFRAME_SDK_SETUP = {
   ): ReactNode => null,
 };
 
-export const PLUGIN_ANONYMOUS_EMBEDDING = {
-  isFeatureEnabled: () => false,
-};
-
 export const PLUGIN_CONTENT_VERIFICATION = {
   contentVerificationEnabled: false,
   VerifiedFilter: {} as SearchFilterComponent<"verified">,

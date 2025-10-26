@@ -4,7 +4,6 @@ import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
 import type { MetabaseColors } from "metabase/embedding-sdk/theme";
-import { PLUGIN_ANONYMOUS_EMBEDDING } from "metabase/plugins";
 import {
   Card,
   Checkbox,
@@ -80,6 +79,32 @@ const AuthenticationSection = () => {
 
         <Radio.Group value={authType} onChange={handleAuthTypeChange}>
           <Stack gap="sm">
+            {isQuestionOrDashboardEmbed && (
+              <Radio
+                value="no-user"
+                label={
+                  <Flex align="center" gap="xs">
+                    <Text>{t`Unauthenticated`}</Text>
+                    <HoverCard position="bottom">
+                      <HoverCard.Target>
+                        <Icon
+                          name="info"
+                          size={14}
+                          c="text-medium"
+                          cursor="pointer"
+                        />
+                      </HoverCard.Target>
+                      <HoverCard.Dropdown>
+                        <Text size="sm" p="md" style={{ width: 300 }}>
+                          {t`This option lets you run Embedded Analytics JS without a user authorization.`}
+                        </Text>
+                      </HoverCard.Dropdown>
+                    </HoverCard>
+                  </Flex>
+                }
+              />
+            )}
+
             <Radio
               value="user-session"
               label={
@@ -111,33 +136,6 @@ const AuthenticationSection = () => {
               label={t`Single sign-on (SSO)`}
               disabled={!isSsoEnabledAndConfigured}
             />
-
-            {PLUGIN_ANONYMOUS_EMBEDDING.isFeatureEnabled() &&
-              isQuestionOrDashboardEmbed && (
-                <Radio
-                  value="no-user"
-                  label={
-                    <Flex align="center" gap="xs">
-                      <Text>{t`Without user`}</Text>
-                      <HoverCard position="bottom">
-                        <HoverCard.Target>
-                          <Icon
-                            name="info"
-                            size={14}
-                            c="text-medium"
-                            cursor="pointer"
-                          />
-                        </HoverCard.Target>
-                        <HoverCard.Dropdown>
-                          <Text size="sm" p="md" style={{ width: 300 }}>
-                            {t`This option lets you run Embedded Analytics JS without a user authorization.`}
-                          </Text>
-                        </HoverCard.Dropdown>
-                      </HoverCard>
-                    </Flex>
-                  }
-                />
-              )}
           </Stack>
         </Radio.Group>
 
@@ -186,15 +184,14 @@ const BehaviorSection = () => {
               }
             />
 
-            {!settings.isStatic && (
-              <Checkbox
-                label={t`Allow people to save new questions`}
-                checked={settings.isSaveEnabled}
-                onChange={(e) =>
-                  updateSettings({ isSaveEnabled: e.target.checked })
-                }
-              />
-            )}
+            <Checkbox
+              label={t`Allow people to save new questions`}
+              disabled={settings.isStatic}
+              checked={settings.isSaveEnabled}
+              onChange={(e) =>
+                updateSettings({ isSaveEnabled: e.target.checked })
+              }
+            />
           </Stack>
         ),
       )
@@ -204,6 +201,7 @@ const BehaviorSection = () => {
           <Stack gap="md">
             <Checkbox
               label={t`Allow people to drill through on data points`}
+              disabled={settings.isStatic}
               checked={settings.drills}
               onChange={(e) => updateSettings({ drills: e.target.checked })}
             />
