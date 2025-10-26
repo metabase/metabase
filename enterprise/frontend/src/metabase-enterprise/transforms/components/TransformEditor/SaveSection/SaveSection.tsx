@@ -5,16 +5,17 @@ import * as Urls from "metabase/lib/urls";
 import { Button, Group } from "metabase/ui";
 
 type SaveSectionProps = {
+  isSaving: boolean;
   onSave: () => void;
 };
 
-export function SaveSection({ onSave }: SaveSectionProps) {
+export function SaveSection({ isSaving, onSave }: SaveSectionProps) {
   return (
     <Group>
       <Button component={Link} to={Urls.transformList()}>
         {t`Cancel`}
       </Button>
-      <Button variant="filled" onClick={onSave}>
+      <Button variant="filled" disabled={isSaving} onClick={onSave}>
         {t`Save`}
       </Button>
     </Group>

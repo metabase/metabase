@@ -18,6 +18,7 @@ type TransformEditorProps = {
   id?: TransformId;
   name: string;
   source: QueryTransformSource;
+  iSaving: boolean;
   onNameChange: (name: string) => void;
   onSourceChange: (source: QueryTransformSource) => void;
   onSave: () => void;
@@ -27,6 +28,7 @@ export function TransformEditor({
   id,
   name,
   source,
+  iSaving,
   onNameChange,
   onSourceChange,
   onSave,
@@ -66,7 +68,7 @@ export function TransformEditor({
       <TransformHeaderView
         id={id}
         name={name}
-        actions={<SaveSection onSave={onSave} />}
+        actions={<SaveSection isSaving={iSaving} onSave={onSave} />}
         onNameChange={onNameChange}
       />
       <Flex className={S.body} direction="column">

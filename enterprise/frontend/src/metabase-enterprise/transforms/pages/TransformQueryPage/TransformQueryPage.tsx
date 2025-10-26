@@ -43,12 +43,14 @@ type TransformQueryPageBodyProps = {
 
 function TransformQueryPageBody({ transform }: TransformQueryPageBodyProps) {
   const [source, setSource] = useState(transform.source);
-  const [updateTransform] = useUpdateTransformMutation();
+  const [updateTransform, { isLoading: isSaving }] =
+    useUpdateTransformMutation();
   const { sendSuccessToast, sendErrorToast, sendUndoToast } =
     useMetadataToasts();
 
   const {
     checkData,
+    isCheckingDependencies,
     isConfirmationShown,
     handleInitialSave,
     handleSaveAfterConfirmation,
@@ -97,6 +99,7 @@ function TransformQueryPageBody({ transform }: TransformQueryPageBodyProps) {
           id={transform.id}
           name={transform.name}
           source={source}
+          iSaving={isSaving || isCheckingDependencies}
           onNameChange={handleNameChange}
           onSourceChange={setSource}
           onSave={handleSave}
