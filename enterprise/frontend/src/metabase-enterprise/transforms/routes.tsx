@@ -13,7 +13,11 @@ import { JobEmptyPage } from "./pages/JobEmptyPage";
 import { JobLayout } from "./pages/JobLayout/JobLayout";
 import { JobPage } from "./pages/JobPage";
 import { NewJobPage } from "./pages/NewJobPage";
-import { NewTransformPage } from "./pages/NewTransformPage";
+import {
+  NewCardTransformPage,
+  NewNativeTransformPage,
+  NewQueryTransformPage,
+} from "./pages/NewTransformPage";
 import { RunListPage } from "./pages/RunListPage";
 import { TransformDependenciesPage } from "./pages/TransformDependenciesPage";
 import { TransformEmptyPage } from "./pages/TransformEmptyPage";
@@ -30,8 +34,9 @@ export const getBenchRoutes = () => (
       component={createBenchAdminRouteGuard("transforms", TransformLayout)}
     >
       <IndexRoute component={TransformEmptyPage} />
-      <Route path="new/:type" component={NewTransformPage} />
-      <Route path="new/card/:cardId" component={NewTransformPage} />
+      <Route path="new/query" component={NewQueryTransformPage} />
+      <Route path="new/native" component={NewNativeTransformPage} />
+      <Route path="new/card/:cardId" component={NewCardTransformPage} />
       <Route path=":transformId" component={TransformQueryPage} />
       <Route path=":transformId/run" component={TransformRunPage} />
       <Route path=":transformId/target" component={TransformTargetPage} />

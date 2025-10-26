@@ -22,7 +22,7 @@ if (hasPremiumFeature("transforms-python")) {
   PLUGIN_TRANSFORMS_PYTHON.getCreateTransformsMenuItems = () => (
     <Menu.Item
       component={ForwardRefLink}
-      to={Urls.newTransformFromType("python")}
+      to={Urls.newPythonTransform()}
       leftSection={<Icon name="code_block" />}
       onClick={() => {
         trackTransformCreate({

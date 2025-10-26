@@ -30,6 +30,7 @@ export function CreateTransformMenu() {
   };
 
   const handlePickerChange = (item: QuestionPickerValueItem) => {
+    closePicker();
     dispatch(push(Urls.newTransformFromCard(item.id)));
   };
 
@@ -57,7 +58,7 @@ export function CreateTransformMenu() {
               <Menu.Label>{t`Create your transform with…`}</Menu.Label>
               <Menu.Item
                 component={ForwardRefLink}
-                to={Urls.newTransformFromType("query")}
+                to={Urls.newQueryTransform()}
                 leftSection={<Icon name="notebook" />}
                 onClick={() => {
                   trackTransformCreate({
@@ -70,7 +71,7 @@ export function CreateTransformMenu() {
               </Menu.Item>
               <Menu.Item
                 component={ForwardRefLink}
-                to={Urls.newTransformFromType("native")}
+                to={Urls.newNativeTransform()}
                 leftSection={<Icon name="sql" />}
                 onClick={() => {
                   trackTransformCreate({

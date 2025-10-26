@@ -21,8 +21,16 @@ export function transformList() {
   return TRANSFORMS_ROOT_URL;
 }
 
-export function newTransformFromType(type: "query" | "native" | "python") {
-  return `${TRANSFORMS_ROOT_URL}/new/${type}`;
+export function newQueryTransform() {
+  return `${TRANSFORMS_ROOT_URL}/new/query`;
+}
+
+export function newNativeTransform() {
+  return `${TRANSFORMS_ROOT_URL}/new/native`;
+}
+
+export function newPythonTransform() {
+  return `${TRANSFORMS_ROOT_URL}/new/native`;
 }
 
 export function newTransformFromCard(cardId: CardId) {

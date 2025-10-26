@@ -1,10 +1,14 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { skipToken, useGetCardQuery } from "metabase/api";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { Center } from "metabase/ui";
+import Question from "metabase-lib/v1/Question";
 import type { Transform, TransformSource } from "metabase-types/api";
 
 import { TransformEditor } from "../../components/TransformEditor";
@@ -15,7 +19,7 @@ type NewTransformPageProps = {
   initialSource: TransformSource;
 };
 
-function _NewTransformPage({ initialSource }: NewTransformPageProps) {
+function NewTransformPage({ initialSource }: NewTransformPageProps) {
   const [name, setName] = useState(t`New transform`);
   const [source, setSource] = useState(initialSource);
   const [isOpened, { open, close }] = useDisclosure();
@@ -48,4 +52,64 @@ function _NewTransformPage({ initialSource }: NewTransformPageProps) {
       )}
     </>
   );
+}
+
+export function NewQueryTransformPage() {
+  const initialSource = useMemo((): TransformSource => {
+    const question = Question.create({ DEPRECATED_RAW_MBQL_type: "query" });
+    return {
+      type: "query",
+      query: question.datasetQuery(),
+    };
+  }, []);
+
+  return <NewTransformPage initialSource={initialSource} />;
+}
+
+export function NewNativeTransformPage() {
+  const initialSource = useMemo((): TransformSource => {
+    const question = Question.create({ DEPRECATED_RAW_MBQL_type: "native" });
+    return {
+      type: "query",
+      query: question.datasetQuery(),
+    };
+  }, []);
+
+  return <NewTransformPage initialSource={initialSource} />;
+}
+
+type NewCardTransformPageParams = {
+  cardId: string;
+};
+
+type NewCardTransformPageProps = {
+  params: NewCardTransformPageParams;
+};
+
+export function NewCardTransformPage({ params }: NewCardTransformPageProps) {
+  const cardId = Urls.extractEntityId(params.cardId);
+  const {
+    data: card,
+    isLoading,
+    error,
+  } = useGetCardQuery(cardId != null ? { id: cardId } : skipToken);
+
+  const initialSource = useMemo((): TransformSource | undefined => {
+    if (card != null) {
+      return {
+        type: "query",
+        query: card.dataset_query,
+      };
+    }
+  }, [card]);
+
+  if (isLoading || error != null || initialSource == null) {
+    return (
+      <Center h="100%">
+        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+      </Center>
+    );
+  }
+
+  return <NewTransformPage initialSource={initialSource} />;
 }
