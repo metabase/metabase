@@ -62,7 +62,7 @@ export function newTransformJob() {
 }
 
 export function transformJob(id: TransformJobId) {
-  return `/${JOBS_ROOT_URL}/${id}`;
+  return `${JOBS_ROOT_URL}/${id}`;
 }
 
 export type TransformRunListParams = {
