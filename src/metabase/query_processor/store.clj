@@ -216,7 +216,7 @@
 ;;;; DEPRECATED STUFF
 ;;;;
 
-(defn ->legacy-metadata
+(mu/defn ->legacy-metadata
   "For compatibility: convert MLv2-style metadata as returned by [[metabase.lib.metadata.protocols]]
   or [[metabase.lib.metadata]] functions
   (with `kebab-case` keys and `:lib/type`) to legacy QP/application database style metadata (with `snake_case` keys
@@ -227,11 +227,8 @@
   (Note: it is preferable to use [[metabase.lib.core/lib-metadata-column->legacy-metadata-column]] instead of this
   function if you REALLY need to do this sort of conversion.)"
   {:deprecated "0.48.0"}
-  [lib-metadata-col]
-  (let [model (case (:lib/type lib-metadata-col)
-                :metadata/database :model/Database
-                :metadata/table    :model/Table
-                :metadata/column   :model/Field)]
-    (-> lib-metadata-col
-        lib/lib-metadata-column->legacy-metadata-column
-        (vary-meta assoc :type model))))
+  [lib-metadata-col :- [:map
+                        [:lib/type [:= :metadata/column]]]]
+  (-> lib-metadata-col
+      lib/lib-metadata-column->legacy-metadata-column
+      (vary-meta assoc :type :metadata/column)))

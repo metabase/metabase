@@ -3,10 +3,10 @@ import { ResizableBox } from "react-resizable";
 import { t } from "ttag";
 
 import Link from "metabase/common/components/Link";
+import * as Urls from "metabase/lib/urls";
 import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
 import { Box, Checkbox, Flex, Icon, Stack } from "metabase/ui";
 import { SHARED_LIB_IMPORT_PATH } from "metabase-enterprise/transforms-python/constants";
-import { getPythonLibraryUrl } from "metabase-enterprise/transforms-python/urls";
 
 // Pyodide status is now handled in the Web Worker
 import { PythonEditor } from "../../PythonEditor";
@@ -139,7 +139,7 @@ function SharedLibraryEditLink() {
     <Flex
       component={Link}
       target="_blank"
-      to={getPythonLibraryUrl({ path: SHARED_LIB_IMPORT_PATH })}
+      to={Urls.transformPythonLibrary({ path: SHARED_LIB_IMPORT_PATH })}
       gap="sm"
     >
       <Icon name="pencil" />
