@@ -48,7 +48,6 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.query-processor.util.nest-query :as nest-query]
    [metabase.query-processor.util.relative-datetime :as qp.relative-datetime]
    [metabase.query-processor.util.transformations.nest-breakouts :as qp.util.transformations.nest-breakouts]
    [metabase.query-processor.writeback :as qp.writeback]
@@ -140,8 +139,8 @@
  mdb/spec
  metabase.driver-api.impl/cached
  metabase.driver-api.impl/dispatch-by-clause-name-or-class
+ metabase.driver-api.impl/nest-expressions
  mi/instance-of?
- nest-query/nest-expressions
  premium-features/is-hosted?
  qp.compile/compile
  qp.debug/debug>

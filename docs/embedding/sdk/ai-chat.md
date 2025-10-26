@@ -25,6 +25,10 @@ You can check out a [demo of the AI chat component](https://embedded-analytics-s
 {% include_file "{{ dirname }}/snippets/questions/ai-question.tsx" %}
 ```
 
+## Props
+
+{% include_file "{{ dirname }}/api/snippets/MetabotQuestionProps.md" snippet="properties" %}
+
 ## API reference
 
 - [Component](./api/MetabotQuestion.html)

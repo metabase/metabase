@@ -2,12 +2,11 @@ import { t } from "ttag";
 
 import type {
   PythonTransformSource,
+  PythonTransformSourceDraft,
   PythonTransformTableAliases,
   Table,
   TableId,
 } from "metabase-types/api";
-
-import type { PythonTransformSourceDraft } from "./PythonTransformEditor";
 
 export function updateTransformSignature(
   script: string,
