@@ -73,7 +73,6 @@ export const trackEmbedWizardOptionsCompleted = (
 ) => {
   // Get defaults for this experience type (with a dummy resource ID)
   const defaultSettings = getDefaultSdkIframeEmbedSettings({
-    isStatic: settings.isStatic ?? false,
     experience,
     resourceId: 0,
   });

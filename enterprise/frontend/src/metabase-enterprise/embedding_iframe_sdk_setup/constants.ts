@@ -19,10 +19,8 @@ import type {
 export const EMBED_RESOURCE_LIST_MAX_RECENTS = 6;
 
 export const getEmbedExperiences = ({
-  isStaticEmbedding,
   isMetabotAvailable,
 }: {
-  isStaticEmbedding: boolean;
   isMetabotAvailable: boolean;
 }) =>
   [
@@ -36,27 +34,23 @@ export const getEmbedExperiences = ({
       title: t`Chart`,
       description: t`Embed a single chart`,
     },
-    ...(!isStaticEmbedding
+    {
+      value: "exploration",
+      title: t`Exploration`,
+      description: t`Embed an interactive data exploration experience`,
+    },
+    {
+      value: "browser",
+      title: t`Browser`,
+      description: t`Embed a browser to manage dashboards and charts`,
+    },
+    ...(isMetabotAvailable
       ? [
           {
-            value: "exploration" as const,
-            title: t`Exploration`,
-            description: t`Embed an interactive data exploration experience`,
+            value: "metabot" as const,
+            title: t`Metabot`,
+            description: t`Embed a Metabot chat interface`,
           },
-          {
-            value: "browser" as const,
-            title: t`Browser`,
-            description: t`Embed a browser to manage dashboards and charts`,
-          },
-          ...(isMetabotAvailable
-            ? [
-                {
-                  value: "metabot" as const,
-                  title: t`Metabot`,
-                  description: t`Embed a Metabot chat interface`,
-                },
-              ]
-            : []),
         ]
       : []),
   ] satisfies {

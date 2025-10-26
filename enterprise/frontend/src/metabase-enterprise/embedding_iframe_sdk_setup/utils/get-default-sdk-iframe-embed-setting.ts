@@ -15,11 +15,9 @@ import type {
 } from "../types";
 
 export const getDefaultSdkIframeEmbedSettings = ({
-  isStatic,
   experience,
   resourceId,
 }: {
-  isStatic: boolean;
   experience: SdkIframeEmbedSetupExperience;
   resourceId: SdkDashboardId | SdkQuestionId;
 }): SdkIframeEmbedSetupSettings => {
@@ -72,7 +70,7 @@ export const getDefaultSdkIframeEmbedSettings = ({
   return {
     ...templateDefaults,
     useExistingUserSession: true,
-    isStatic,
+    isStatic: false,
   };
 };
 
