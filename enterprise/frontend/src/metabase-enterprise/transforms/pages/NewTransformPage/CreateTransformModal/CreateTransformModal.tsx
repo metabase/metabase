@@ -24,29 +24,33 @@ import { trackTransformCreated } from "metabase-enterprise/transforms/analytics"
 import { SchemaFormSelect } from "metabase-enterprise/transforms/components/SchemaFormSelect";
 import type {
   CreateTransformRequest,
+  DatabaseId,
   Transform,
   TransformSource,
 } from "metabase-types/api";
 
 const NEW_TRANSFORM_SCHEMA = Yup.object({
   name: Yup.string().required(Errors.required),
-  description: Yup.string().nullable(),
   targetName: Yup.string().required(Errors.required),
   targetSchema: Yup.string().nullable(),
 });
 
-export type NewTransformValues = Yup.InferType<typeof NEW_TRANSFORM_SCHEMA>;
+type NewTransformValues = {
+  name: string;
+  targetName: string;
+  targetSchema: string | null;
+};
 
 type CreateTransformModalProps = {
+  name: string;
   source: TransformSource;
-  initValues?: Partial<NewTransformValues>;
   onCreate: (transform: Transform) => void;
   onClose: () => void;
 };
 
 export function CreateTransformModal({
+  name,
   source,
-  initValues,
   onCreate,
   onClose,
 }: CreateTransformModalProps) {
@@ -54,8 +58,8 @@ export function CreateTransformModal({
     <Modal title={t`Save your transform`} opened padding="xl" onClose={onClose}>
       <FocusTrap.InitialFocus />
       <CreateTransformForm
+        name={name}
         source={source}
-        initValues={initValues}
         onCreate={onCreate}
         onClose={onClose}
       />
@@ -64,15 +68,15 @@ export function CreateTransformModal({
 }
 
 type CreateTransformFormProps = {
+  name: string;
   source: TransformSource;
-  initValues?: Partial<NewTransformValues>;
   onCreate: (transform: Transform) => void;
   onClose: () => void;
 };
 
 function CreateTransformForm({
+  name,
   source,
-  initValues,
   onCreate,
   onClose,
 }: CreateTransformFormProps) {
@@ -98,10 +102,9 @@ function CreateTransformForm({
 
   const [createTransform] = useCreateTransformMutation();
   const supportsSchemas = database && hasFeature(database, "schemas");
-
-  const initialValues: NewTransformValues = useMemo(
-    () => getInitialValues(schemas, initValues),
-    [schemas, initValues],
+  const initialValues = useMemo(
+    () => getInitialValues(name, schemas),
+    [name, schemas],
   );
 
   if (isLoading || error != null) {
@@ -109,7 +112,7 @@ function CreateTransformForm({
   }
 
   const handleSubmit = async (values: NewTransformValues) => {
-    if (!databaseId) {
+    if (databaseId == null) {
       throw new Error("Database ID is required");
     }
     const request = getCreateRequest(source, values, databaseId);
@@ -165,27 +168,21 @@ function CreateTransformForm({
   );
 }
 
-function getInitialValues(
-  schemas: string[],
-  initValues?: Partial<NewTransformValues>,
-): NewTransformValues {
+function getInitialValues(name: string, schemas: string[]): NewTransformValues {
   return {
-    name: "",
-    description: null,
+    name,
     targetName: "",
     targetSchema: schemas?.[0] || null,
-    ...initValues,
   };
 }
 
 function getCreateRequest(
   source: TransformSource,
-  { name, description, targetName, targetSchema }: NewTransformValues,
-  databaseId: number,
+  { name, targetName, targetSchema }: NewTransformValues,
+  databaseId: DatabaseId,
 ): CreateTransformRequest {
   return {
     name: name,
-    description,
     source,
     target: {
       type: "table",
