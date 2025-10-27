@@ -2045,8 +2045,8 @@
   [_driver inner-query]
   (-> inner-query
       maybe-nest-breakouts-in-queries-with-window-fn-aggregations
-      driver-api/add-alias-info
-      driver-api/nest-expressions))
+      driver-api/nest-expressions
+      driver-api/add-alias-info))
 
 (mu/defn mbql->honeysql :- [:or :map [:tuple [:= :inline] :map]]
   "Build the HoneySQL form we will compile to SQL and execute."

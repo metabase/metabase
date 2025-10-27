@@ -1527,6 +1527,53 @@ databaseChangeLog:
                   defaultValueComputed: current_timestamp
 
   - changeSet:
+      id: v57.2025-09-11T16:00:00
+      author: johnswanson
+      comment: Create remote_sync_object table to track remote sync objects
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: remote_sync_object
+      changes:
+        - createTable:
+            tableName: remote_sync_object
+            remarks: Track remote sync objects
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key identifier for remote-sync objects
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: model_type
+                  type: varchar(32)
+                  remarks: Type of model
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model_id
+                  type: int
+                  remarks: ID of the model
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(32)
+                  remarks: Status of the object
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status_changed_at
+                  type: ${timestamp_type}
+                  remarks: When the status changed
+                  constraints:
+                    nullable: false
+
+  - changeSet:
       id: v57.2025-09-12T16:08:00
       author: piranha
       comment: Create glossary table
@@ -1661,6 +1708,84 @@ databaseChangeLog:
         - createIndex:
             tableName: native_query_snippet
             indexName: idx_native_query_snippet_dependency_analysis_version
+            columns:
+              - column:
+                  name: dependency_analysis_version
+  - changeSet:
+      id: v57.2025-09-18T10:06:00
+      author: rileythomp
+      comment: Add dependency_analysis_version to report_dashboard
+      changes:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: dependency_analysis_version
+                  type: smallint
+                  defaultValue: 0
+                  remarks: Version of the dependency analysis for this entity.
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: v57.2025-09-18T10:07:00
+      author: rileythomp
+      comment: Add index for dependency_analysis_version to report_dashboard
+      changes:
+        - createIndex:
+            tableName: report_dashboard
+            indexName: idx_report_dashboard_dependency_analysis_version
+            columns:
+              - column:
+                  name: dependency_analysis_version
+  - changeSet:
+      id: v57.2025-09-18T10:08:00
+      author: rileythomp
+      comment: Add dependency_analysis_version to document
+      changes:
+        - addColumn:
+            tableName: document
+            columns:
+              - column:
+                  name: dependency_analysis_version
+                  type: smallint
+                  defaultValue: 0
+                  remarks: Version of the dependency analysis for this entity.
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: v57.2025-09-18T10:09:00
+      author: rileythomp
+      comment: Add index for dependency_analysis_version to document
+      changes:
+        - createIndex:
+            tableName: document
+            indexName: idx_document_dependency_analysis_version
+            columns:
+              - column:
+                  name: dependency_analysis_version
+  - changeSet:
+      id: v57.2025-09-18T10:10:00
+      author: rileythomp
+      comment: Add dependency_analysis_version to sandboxes
+      changes:
+        - addColumn:
+            tableName: sandboxes
+            columns:
+              - column:
+                  name: dependency_analysis_version
+                  type: smallint
+                  defaultValue: 0
+                  remarks: Version of the dependency analysis for this entity.
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: v57.2025-09-18T10:11:00
+      author: rileythomp
+      comment: Add index for dependency_analysis_version to sandboxes
+      changes:
+        - createIndex:
+            tableName: sandboxes
+            indexName: idx_sandboxes_dependency_analysis_version
             columns:
               - column:
                   name: dependency_analysis_version
@@ -1841,6 +1966,145 @@ databaseChangeLog:
         - sqlFile:
             path: instance_analytics_views/view_log/v2/mysql-view_log.sql
             relativeToChangelogFile: true
+
+  - changeSet:
+      id: v57.2025-09-24T14:40:00
+      author: edpaget
+      comment: Create remote_sync_task table
+      changes:
+        - createTable:
+            tableName: remote_sync_task
+            remarks: Table to track remote sync tasks and their progress
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: sync_task_type
+                  type: varchar(24)
+                  remarks: Type of the sync task
+                  constraints:
+                    nullable: false
+              - column:
+                  name: progress
+                  type: float
+                  remarks: Progress percentage of the sync task (0.0 to 1.0)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: cancelled
+                  type: ${boolean.type}
+                  remarks: Whether the sync task was cancelled
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: started_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when the sync task started
+                  constraints:
+                    nullable: false
+                  defaultValueComputed: current_timestamp
+              - column:
+                  name: ended_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when the sync task ended
+                  constraints:
+                    nullable: true
+              - column:
+                  name: last_progress_report_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp of the last progress update
+                  constraints:
+                    nullable: false
+                  defaultValueComputed: current_timestamp
+              - column:
+                  name: initiated_by
+                  type: int
+                  remarks: ID of the user who initiated the sync task
+                  constraints:
+                    nullable: true
+              - column:
+                  name: error_message
+                  type: ${text.type}
+                  remarks: error message if this task failed
+                  constraints:
+                    nullable: true
+              - column:
+                  name: version
+                  type: varchar(50)
+                  remarks: Version that was imported or exported (ex the Git SHA)
+
+  - changeSet:
+      id: v57.2025-09-24T14:41:00
+      author: edpaget
+      comment: Add index for remote_sync_task.initiated_by
+      changes:
+        - createIndex:
+            tableName: remote_sync_task
+            indexName: idx_remote_sync_task_initiated_by
+            columns:
+              - column:
+                  name: initiated_by
+
+  - changeSet:
+      id: v57.2025-09-24T14:42:00
+      author: edpaget
+      comment: Add foreign key constraint for remote_sync_task.initiated_by
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: remote_sync_task
+            baseColumnNames: initiated_by
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_remote_sync_task_initiated_by
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v57.2025-09-30T10:00:00
+      author: edpaget
+      comment: Add composite index on remote_sync_object for dirty detection queries
+      changes:
+        - createIndex:
+            tableName: remote_sync_object
+            indexName: idx_remote_sync_object_model_lookup
+            columns:
+              - column:
+                  name: model_type
+              - column:
+                  name: model_id
+
+  - changeSet:
+      id: v57.2025-09-30T10:03:00
+      author: edpaget
+      comment: Add composite index on remote_sync_task for current task queries
+      changes:
+        - createIndex:
+            tableName: remote_sync_task
+            indexName: idx_remote_sync_task_current
+            columns:
+              - column:
+                  name: started_at
+                  descending: true
+              - column:
+                  name: id
+                  descending: true
+
+  - changeSet:
+      id: v57.2025-09-30T10:04:00
+      author: edpaget
+      comment: Add index on remote_sync_task for timeout detection
+      changes:
+        - createIndex:
+            tableName: remote_sync_task
+            indexName: idx_remote_sync_task_progress_report
+            columns:
+              - column:
+                  name: last_progress_report_at
 
   - changeSet:
       id: v57.2025-10-06T18:26:00

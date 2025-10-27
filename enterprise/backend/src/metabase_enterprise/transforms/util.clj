@@ -47,6 +47,13 @@
   [transform]
   (= :query (-> transform :source :type keyword)))
 
+(defn native-query-transform?
+  "Check if this is a native query transform"
+  [transform]
+  (when (query-transform? transform)
+    (let [query (-> transform :source :query)]
+      (lib.query/native? query))))
+
 (defn python-transform?
   "Check if this is a Python transform."
   [transform]

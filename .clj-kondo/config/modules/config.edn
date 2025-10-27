@@ -329,6 +329,7 @@
   collections
   {:team "UX West"
    :api  #{metabase.collections.api
+           metabase.collections.core
            metabase.collections.models.collection
            metabase.collections.models.collection.root}
    :uses #{api
@@ -344,6 +345,7 @@
            permissions
            premium-features
            queries
+           remote-sync
            request
            revisions
            search
@@ -805,6 +807,7 @@
            lib
            models
            premium-features
+           remote-sync
            request
            settings
            util
@@ -1018,6 +1021,14 @@
            users
            util}}
 
+  remote-sync
+  {:team "UX West"
+   :api  #{metabase.remote-sync.core
+           metabase.remote-sync.init}
+   :uses #{api
+           models
+           premium-features}}
+
   request
   {:team "UX West"
    :api  #{metabase.request.core
@@ -1074,6 +1085,7 @@
            audit-app
            collections
            config
+           driver
            events
            lib
            lib-be
@@ -1302,6 +1314,8 @@
    :uses #{analytics
            api
            collections
+           config
+           events
            models
            util}}
 
@@ -1319,7 +1333,6 @@
    :uses #{analytics
            api
            appearance
-           collections
            driver
            events
            lib
@@ -1709,7 +1722,7 @@
   enterprise/dependencies
   {:team "Querying"
    :api  #{metabase-enterprise.dependencies.api
-           #_metabase-enterprise.dependencies.core
+           metabase-enterprise.dependencies.core
            metabase-enterprise.dependencies.init}
    :uses #{analyze
            api
@@ -1728,13 +1741,15 @@
            revisions
            settings
            task
-           util}}
+           util
+           enterprise/documents}}
 
   enterprise/documents
   {:team "UX West"
    :api  #{metabase-enterprise.documents.api
            metabase-enterprise.documents.core
-           metabase-enterprise.documents.init}
+           metabase-enterprise.documents.init
+           metabase-enterprise.documents.prose-mirror}
    :uses #{activity-feed
            api
            app-db
@@ -1838,6 +1853,7 @@
            lib
            lib-be
            models
+           native-query-snippets
            permissions
            premium-features
            pulse
@@ -1854,7 +1870,10 @@
            util
            warehouse-schema
            warehouses
-           enterprise/documents}}
+           enterprise/dependencies
+           enterprise/documents
+           enterprise/transforms
+           enterprise/transforms-python}}
 
   enterprise/permission-debug
   {:team "UX West"
@@ -1872,6 +1891,24 @@
    :uses #{premium-features
            util}}
 
+  enterprise/remote-sync
+  {:team "UX West"
+   :api  #{metabase-enterprise.remote-sync.api
+           metabase-enterprise.remote-sync.core
+           metabase-enterprise.remote-sync.init}
+   :uses #{analytics
+           api
+           app-db
+           collections
+           events
+           models
+           premium-features
+           settings
+           startup
+           task
+           util
+           enterprise/serialization}}
+
   enterprise/sandbox
   {:team "UX West"
    :api  #{metabase-enterprise.sandbox.api.routes
@@ -1880,6 +1917,7 @@
            app-db
            audit-app
            driver
+           events
            legacy-mbql
            lib
            models
@@ -1941,6 +1979,7 @@
   {:team "Workflows"
    :api  #{metabase-enterprise.serialization.api
            metabase-enterprise.serialization.cmd
+           metabase-enterprise.serialization.core
            metabase-enterprise.serialization.v2.backfill-ids}
    :uses #{analytics
            api
@@ -2015,6 +2054,7 @@
            lib-be
            models
            premium-features
+           queries
            query-processor
            request
            search

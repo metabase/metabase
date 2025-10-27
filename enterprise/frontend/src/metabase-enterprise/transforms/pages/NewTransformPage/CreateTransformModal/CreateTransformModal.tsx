@@ -47,52 +47,6 @@ import type {
   TransformSource,
 } from "metabase-types/api";
 
-type CreateTransformModalProps = {
-  source: TransformSource;
-  onCreate: (transform: Transform) => void;
-  onClose: () => void;
-  initialIncremental?: boolean;
-};
-
-export function CreateTransformModal({
-  source,
-  onCreate,
-  onClose,
-  initialIncremental = false,
-}: CreateTransformModalProps) {
-  return (
-    <Modal title={t`Save your transform`} opened padding="xl" onClose={onClose}>
-      <FocusTrap.InitialFocus />
-      <CreateTransformForm
-        source={source}
-        onCreate={onCreate}
-        onClose={onClose}
-        initialIncremental={initialIncremental}
-      />
-    </Modal>
-  );
-}
-
-type CreateTransformFormProps = {
-  source: TransformSource;
-  onCreate: (transform: Transform) => void;
-  onClose: () => void;
-  initialIncremental: boolean;
-};
-
-type NewTransformValues = {
-  name: string;
-  description: string | null;
-  targetName: string;
-  targetSchema: string | null;
-  incremental: boolean;
-  keysetColumn: string | null;
-  keysetFilterUniqueKey: string | null;
-  queryLimit: number | null;
-  sourceStrategy: "keyset";
-  targetStrategy: "append";
-};
-
 function getValidationSchema(source: TransformSource) {
   const isPythonTransform =
     source.type === "python" &&
@@ -103,7 +57,7 @@ function getValidationSchema(source: TransformSource) {
     name: Yup.string().required(Errors.required),
     description: Yup.string().nullable(),
     targetName: Yup.string().required(Errors.required),
-    targetSchema: Yup.string().nullable(),
+    targetSchema: Yup.string().nullable().defined(),
     incremental: Yup.boolean().required(),
     keysetColumn: Yup.string()
       .nullable()
@@ -125,10 +79,51 @@ function getValidationSchema(source: TransformSource) {
             : schema.nullable(),
         otherwise: (schema) => schema.nullable(),
       }),
-    sourceStrategy: Yup.string().oneOf(["keyset"]).required(),
-    targetStrategy: Yup.string().oneOf(["append"]).required(),
+    sourceStrategy: Yup.mixed<"keyset">().oneOf(["keyset"]).required(),
+    targetStrategy: Yup.mixed<"append">().oneOf(["append"]).required(),
   });
 }
+
+export type NewTransformValues = Yup.InferType<
+  ReturnType<typeof getValidationSchema>
+>;
+
+type CreateTransformModalProps = {
+  source: TransformSource;
+  initValues?: Partial<NewTransformValues>;
+  onCreate: (transform: Transform) => void;
+  onClose: () => void;
+  initialIncremental?: boolean;
+};
+
+export function CreateTransformModal({
+  source,
+  initValues,
+  onCreate,
+  onClose,
+  initialIncremental = false,
+}: CreateTransformModalProps) {
+  return (
+    <Modal title={t`Save your transform`} opened padding="xl" onClose={onClose}>
+      <FocusTrap.InitialFocus />
+      <CreateTransformForm
+        source={source}
+        initValues={initValues}
+        onCreate={onCreate}
+        onClose={onClose}
+        initialIncremental={initialIncremental}
+      />
+    </Modal>
+  );
+}
+
+type CreateTransformFormProps = {
+  source: TransformSource;
+  initValues?: Partial<NewTransformValues>;
+  onCreate: (transform: Transform) => void;
+  onClose: () => void;
+  initialIncremental: boolean;
+};
 
 type SourceStrategyFieldsProps = {
   source: TransformSource;
@@ -216,7 +211,7 @@ function SourceStrategyFields({ source }: SourceStrategyFieldsProps) {
               sourceTables={source["source-tables"]}
             />
           )}
-          {(
+          {
             <FormTextInput
               name="queryLimit"
               label={t`Query Limit`}
@@ -224,7 +219,7 @@ function SourceStrategyFields({ source }: SourceStrategyFieldsProps) {
               description={t`Maximum number of rows to fetch from the source table per run`}
               type="number"
             />
-          )}
+          }
         </>
       )}
     </>
@@ -260,8 +255,8 @@ function IncrementalNotice({ source }: IncrementalNoticeProps) {
 
   return (
     <Alert variant="info" icon="info">
-          {t`Ensure your query contains WHERE filter on the keyset column (and potentially a LIMIT). You may want to use:`}{" "}
-          <strong>{`[[AND id > {{watermark}}]] [[LIMIT {{limit}}]]`}</strong>
+      {t`Ensure your query contains WHERE filter on the keyset column (and potentially a LIMIT). You may want to use:`}{" "}
+      <strong>{`[[AND id > {{watermark}}]] [[LIMIT {{limit}}]]`}</strong>
     </Alert>
   );
 }
@@ -289,6 +284,7 @@ function TargetStrategyFields() {
 
 function CreateTransformForm({
   source,
+  initValues,
   onCreate,
   onClose,
   initialIncremental,
@@ -317,8 +313,8 @@ function CreateTransformForm({
   const supportsSchemas = database && hasFeature(database, "schemas");
 
   const initialValues: NewTransformValues = useMemo(
-    () => getInitialValues(schemas, initialIncremental),
-    [schemas, initialIncremental],
+    () => getInitialValues(schemas, initialIncremental, initValues),
+    [schemas, initialIncremental, initValues],
   );
 
   const validationSchema = useMemo(() => getValidationSchema(source), [source]);
@@ -391,6 +387,7 @@ function CreateTransformForm({
 function getInitialValues(
   schemas: string[],
   initialIncremental: boolean,
+  initValues?: Partial<NewTransformValues>,
 ): NewTransformValues {
   return {
     name: "",
@@ -403,6 +400,7 @@ function getInitialValues(
     queryLimit: null,
     sourceStrategy: "keyset",
     targetStrategy: "append",
+    ...initValues,
   };
 }
 

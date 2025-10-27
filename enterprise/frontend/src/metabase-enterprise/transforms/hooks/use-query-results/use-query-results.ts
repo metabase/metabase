@@ -7,16 +7,21 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { runQuestionQuery } from "metabase/services";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import type { DatasetQuery, ParameterValuesMap } from "metabase-types/api";
+import type { DatasetQuery } from "metabase-types/api";
 
-type TransformParameters = {
-    transformId?: number;
-    queryLimit?: number;
-};
+// @bronsa: DO WE NEED THESE?
+// type TransformParameters = {
+//     transformId?: number;
+//     queryLimit?: number;
+// };
 
+// export function useQueryResults(
+//   question: Question,
+//   transformParameters?: TransformParameters,
+// =======
 export function useQueryResults(
   question: Question,
-  transformParameters?: TransformParameters,
+  proposedQuestion?: Question,
 ) {
   const metadata = useSelector(getMetadata);
   const [lastRunQuery, setLastRunQuery] = useState<DatasetQuery | null>(null);
@@ -31,48 +36,56 @@ export function useQueryResults(
   }
 
   // Inject transform parameters if they exist
-  const questionWithParams = useMemo(() => {
-    if (!transformParameters?.transformId) {
-      return question;
-    }
+  // const questionWithParams = useMemo(() => {
+  //   if (!transformParameters?.transformId) {
+  //     return question;
+  //   }
 
-    // Get the dataset query to find parameter IDs
-    const datasetQuery = question.datasetQuery() as any;
-    const parameters = question.parameters();
+  //   // Get the dataset query to find parameter IDs
+  //   const datasetQuery = question.datasetQuery() as any;
+  //   const parameters = question.parameters();
 
-    if (!parameters || !Array.isArray(parameters)) {
-      return question;
-    }
+  //   if (!parameters || !Array.isArray(parameters)) {
+  //     return question;
+  //   }
 
-    // Build parameter values map by finding the IDs that correspond to transform params
-    const parameterValues: ParameterValuesMap = {};
+  //   // Build parameter values map by finding the IDs that correspond to transform params
+  //   const parameterValues: ParameterValuesMap = {};
 
-    for (const param of parameters) {
-      if (
-        param.target &&
-        Array.isArray(param.target) &&
-        param.target[0] === "variable" &&
-        Array.isArray(param.target[1]) &&
-        param.target[1][0] === "template-tag"
-      ) {
-        const tagName = param.target[1][1];
-        if (tagName === "watermark") {
-          parameterValues[param.id] = transformParameters.transformId;
-        } else if (tagName === "limit") {
-            parameterValues[param.id] = transformParameters.queryLimit;
-        }
-      }
-    }
+  //   for (const param of parameters) {
+  //     if (
+  //       param.target &&
+  //       Array.isArray(param.target) &&
+  //       param.target[0] === "variable" &&
+  //       Array.isArray(param.target[1]) &&
+  //       param.target[1][0] === "template-tag"
+  //     ) {
+  //       const tagName = param.target[1][1];
+  //       if (tagName === "watermark") {
+  //         parameterValues[param.id] = transformParameters.transformId;
+  //       } else if (tagName === "limit") {
+  //           parameterValues[param.id] = transformParameters.queryLimit;
+  //       }
+  //     }
+  //   }
 
-    return question.setParameterValues(parameterValues);
-  }, [question, transformParameters]);
+  //   return question.setParameterValues(parameterValues);
+  // }, [question, transformParameters]);
+
+  // const [{ value: results = null, loading: isRunning }, runQuery] = useAsyncFn(
+  //   () =>
+  //     runQuestionQuery(questionWithParams, {
+  //       cancelDeferred: deferred(),
+  //     }),
+  //   [questionWithParams],
+  const currentQuestion = proposedQuestion ?? question;
 
   const [{ value: results = null, loading: isRunning }, runQuery] = useAsyncFn(
     () =>
-      runQuestionQuery(questionWithParams, {
+      runQuestionQuery(currentQuestion, {
         cancelDeferred: deferred(),
       }),
-    [questionWithParams],
+    [currentQuestion],
   );
 
   const { result, rawSeries, isRunnable, isResultDirty } = useMemo(() => {
@@ -80,7 +93,7 @@ export function useQueryResults(
       ? Question.create({
           dataset_query: lastRunQuery,
           metadata,
-          visualization_settings: question.settings(),
+          visualization_settings: currentQuestion.settings(),
         })
       : null;
     const result = results ? results[0] : null;
@@ -88,9 +101,13 @@ export function useQueryResults(
       lastRunQuestion && result
         ? [{ card: lastRunQuestion.card(), data: result.data }]
         : null;
-    const isRunnable = Lib.canRun(question.query(), question.type());
+    const isRunnable = Lib.canRun(
+      currentQuestion.query(),
+      currentQuestion.type(),
+    );
     const isResultDirty =
-      lastRunQuestion == null || question.isDirtyComparedTo(lastRunQuestion);
+      lastRunQuestion == null ||
+      currentQuestion.isDirtyComparedTo(lastRunQuestion);
 
     return {
       result,
@@ -98,12 +115,12 @@ export function useQueryResults(
       isRunnable,
       isResultDirty,
     };
-  }, [question, results, metadata, lastRunQuery]);
+  }, [currentQuestion, results, metadata, lastRunQuery]);
 
   const handleRunQuery = useCallback(async () => {
     await runQuery();
-    setLastRunQuery(questionWithParams.datasetQuery());
-  }, [questionWithParams, runQuery]);
+    setLastRunQuery(currentQuestion.datasetQuery());
+  }, [currentQuestion, runQuery]);
 
   const handleCancelQuery = useCallback(() => {
     return deferredRef.current?.resolve();

@@ -200,7 +200,8 @@
                     :can_delete
                     :can_manage_db
                     [:collection :is_personal]
-                    [:moderation_reviews :moderator_details])
+                    [:moderation_reviews :moderator_details]
+                    :is_remote_synced)
         (update :dashboard #(some-> % (select-keys [:name :id :moderation_status])))
         (cond->
          (card/model? card) (t2/hydrate :persisted
@@ -515,8 +516,7 @@
     (query-perms/check-run-permissions-for-query query)
     ;; check that we have permissions for the collection we're trying to save this card to, if applicable.
     ;; if a `dashboard-id` is specified, check permissions on the *dashboard's* collection ID.
-    (collection/check-write-perms-for-collection
-     (actual-collection-id card))
+    (api/create-check :model/Card {:collection_id (actual-collection-id card)})
     (try
       (lib/check-card-overwrite ::no-id query)
       (catch clojure.lang.ExceptionInfo e
@@ -775,7 +775,10 @@
                                                  (u/the-id card)))]
           (t2/update! (t2/table-name :model/Card)
                       {:id [:in (set cards-without-position)]}
-                      {:collection_id new-collection-id-or-nil})))))
+                      {:collection_id new-collection-id-or-nil}))
+        (doseq [card cards]
+          (collection/check-non-remote-synced-dependencies card)))))
+
   (when new-collection-id-or-nil
     (events/publish-event! :event/collection-touch {:collection-id new-collection-id-or-nil :user-id api/*current-user-id*})))
 
