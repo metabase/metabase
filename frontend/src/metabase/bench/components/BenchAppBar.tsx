@@ -36,6 +36,7 @@ export function BenchAppBar() {
       className={S.appBar}
       align="center"
       justify="space-between"
+      aria-label={t`Navigation bar`}
       pl="1.325rem"
       pr="md"
     >

@@ -29,7 +29,7 @@ export const useTransformMetabot = (
 
   const acceptProposed = () => {
     if (proposedSource != null) {
-      onSourceChange(source);
+      onSourceChange(proposedSource);
       dispatch(deactivateSuggestedTransform(suggestedTransform?.id));
     }
   };
