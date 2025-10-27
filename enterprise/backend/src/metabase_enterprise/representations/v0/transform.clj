@@ -107,11 +107,9 @@
     [:query {:optional true} ::query]
     [:mbql_query {:optional true} ::mbql-query]
     [:tags {:optional true} ::tags]]
-   [:fn {:error/message "Source must have exactly one of :query or :mbql_query"}
-    (fn [{:keys [source] :as transform}]
-      (or (when source
-            (= 1 (count (filter some? [(:query source) (:mbql_query source)]))))
-          (= 1 (count (filter some? [(:query transform) (:mbql_query transform)])))))]])
+   [:fn {:error/message "Source must have exactly one of :query or :mbql_query or :lib_query"}
+    (fn [{:keys [query mbql_query lib_query] :as transform}]
+      (= 1 (count (filter some? [query mbql_query lib_query #_#_#_(:query transform) (:mbql_query transform) (:lib_query source)]))))]])
 
 ;;; ------------------------------------ Ingestion Functions ------------------------------------
 
