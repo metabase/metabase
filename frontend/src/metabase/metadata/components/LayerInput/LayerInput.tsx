@@ -40,21 +40,21 @@ export const LayerInput = ({
         { value: "silver", label: t`Silver` },
         { value: "gold", label: t`Gold` },
       ]}
-      label={t`Layer`}
+      label={t`Data quality layer`}
       renderOption={(item) => {
         const selected = item.option.value === value;
 
         return (
           <SelectItem selected={selected}>
             <Group align="center" gap="sm" justify="center">
-              <Icon c={getColor(item.option.value)} name="recents" />
+              <Icon c={getColor(item.option.value)} name="medallion" />
               <span>{item.option.label}</span>
             </Group>
           </SelectItem>
         );
       }}
       leftSection={
-        value ? <Icon c={getColor(value)} name="recents" /> : undefined
+        value ? <Icon c={getColor(value)} name="medallion" /> : undefined
       }
       placeholder={t`Select layer`}
       value={value}

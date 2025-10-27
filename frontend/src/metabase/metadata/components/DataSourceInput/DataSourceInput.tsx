@@ -86,7 +86,7 @@ function getData(
   showMetabaseTransform?: boolean,
 ) {
   return [
-    { value: "unknown" as const, label: t`Unknown` },
+    { value: "unknown" as const, label: t`No one` },
     { value: "ingested" as const, label: t`Ingested` },
     showMetabaseTransform
       ? { value: "metabase-transform" as const, label: t`Metabase transform` }

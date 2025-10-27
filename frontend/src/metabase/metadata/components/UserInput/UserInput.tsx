@@ -100,7 +100,7 @@ type Option = {
 function getData(email: string | null, users: User[]): Option[] {
   return [
     {
-      label: t`Unknown`,
+      label: t`No one`,
       value: "unknown",
       type: "unknown" as const,
     },
