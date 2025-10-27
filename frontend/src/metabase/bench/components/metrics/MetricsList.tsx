@@ -13,12 +13,7 @@ import { useLocalStorage, useMount, usePrevious } from "react-use";
 import { t } from "ttag";
 import { noop } from "underscore";
 
-import {
-  searchApi,
-  useGetCardQuery,
-  useListCollectionsTreeQuery,
-} from "metabase/api";
-import { listTag } from "metabase/api/tags";
+import { useGetCardQuery, useListCollectionsTreeQuery } from "metabase/api";
 import { BenchFlatListItem } from "metabase/bench/components/shared/BenchFlatListItem";
 import { useItemsListFilter } from "metabase/bench/hooks/useItemsListFilter";
 import { getIcon } from "metabase/browse/models/utils";
@@ -378,12 +373,6 @@ export const MetricEditor = ({
       onCreate={async (q) => {
         const result = await handleCreate(q);
         dispatch(push(`/bench/metric/${result.id()}`));
-
-        // TODO: Find a way to remove the setTimeout. Search reindexing appears to be async so refetching immediately doesn't return a list containing the newly added item.
-        setTimeout(() => {
-          dispatch(searchApi.util.invalidateTags([listTag("card")]));
-        }, 100);
-
         return result;
       }}
       onSave={handleSave}

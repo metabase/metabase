@@ -6,13 +6,11 @@ import { useLocalStorage } from "react-use";
 import { t } from "ttag";
 
 import {
-  searchApi,
   useGetCardQuery,
   useListCollectionsTreeQuery,
   useSearchQuery,
   useUpdateCardMutation,
 } from "metabase/api";
-import { TAG_TYPE_MAPPING, listTag } from "metabase/api/tags";
 import { getTreeItems } from "metabase/bench/components/models/utils";
 import { BenchFlatListItem } from "metabase/bench/components/shared/BenchFlatListItem";
 import { useItemsListFilter } from "metabase/bench/hooks/useItemsListFilter";
@@ -400,9 +398,6 @@ export const ModelEditor = (props: {
       preventCancel
       onCreateSuccess={(q: Question) => {
         dispatch(replace(`/bench/model/${q.id()}`));
-        dispatch(
-          searchApi.util.invalidateTags([listTag(TAG_TYPE_MAPPING["dataset"])]),
-        );
       }}
       sidebarFeatures={sidebarFeatures}
     />
