@@ -20,12 +20,15 @@ export function PythonTransformEditor({
   id,
   name,
   source,
+  proposedSource,
   isSaving,
   isSourceDirty,
   onNameChange,
   onSourceChange,
   onSave,
   onCancel,
+  onAcceptProposed,
+  onRejectProposed,
 }: PythonTransformEditorProps) {
   const { isRunning, isDirty, cancel, run, executionResult } =
     useTestPythonTransform(source);
@@ -109,11 +112,11 @@ export function PythonTransformEditor({
           onRun={run}
           onCancel={cancel}
           source={source.body}
-          proposedSource={undefined}
+          proposedSource={proposedSource}
           onChange={handleScriptChange}
           withDebugger={showDebugger}
-          onAcceptProposed={undefined}
-          onRejectProposed={undefined}
+          onAcceptProposed={onAcceptProposed}
+          onRejectProposed={onRejectProposed}
         />
       </Flex>
       {showDebugger && (
