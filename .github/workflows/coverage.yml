@@ -1,4 +1,4 @@
-name: Test coverage
+name: Frontend Test Coverage
 
 on:
   workflow_dispatch:
