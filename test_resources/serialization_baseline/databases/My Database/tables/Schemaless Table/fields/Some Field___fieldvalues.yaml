@@ -1,0 +1,35 @@
+created_at: '2024-08-28T14:38:42.774331Z'
+has_more_values: false
+hash_key: null
+human_readable_values: []
+last_used_at: '2024-08-28T14:38:42.774331Z'
+type: full
+values:
+- Artisan
+- Asian
+- BBQ
+- Bakery
+- Bar
+- Brewery
+- Burger
+- Coffee Shop
+- Diner
+- Indian
+- Italian
+- Japanese
+- Mexican
+- Middle Eastern
+- Pizza
+- Seafood
+- Steakhouse
+- Tea Room
+- Winery
+serdes/meta:
+- id: My Database
+  model: Database
+- id: Schemaless Table
+  model: Table
+- id: Some Field
+  model: Field
+- id: '0'
+  model: FieldValues

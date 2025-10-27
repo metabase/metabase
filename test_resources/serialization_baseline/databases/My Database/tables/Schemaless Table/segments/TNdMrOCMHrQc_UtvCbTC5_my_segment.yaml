@@ -1,0 +1,33 @@
+archived: false
+caveats: null
+created_at: '2024-08-28T14:28:03.451106Z'
+creator_id: ann@heart.band
+definition:
+  aggregation:
+  - - count
+  filter:
+  - <
+  - - field
+    - - My Database
+      - null
+      - Schemaless Table
+      - Some Field
+    - null
+  - 18
+  source-table:
+  - My Database
+  - null
+  - Schemaless Table
+description: Lookin' for a blueberry
+entity_id: TNdMrOCMHrQc_UtvCbTC5
+name: My Segment
+points_of_interest: null
+show_in_getting_started: false
+table_id:
+- My Database
+- null
+- Schemaless Table
+serdes/meta:
+- id: TNdMrOCMHrQc_UtvCbTC5
+  label: my_segment
+  model: Segment

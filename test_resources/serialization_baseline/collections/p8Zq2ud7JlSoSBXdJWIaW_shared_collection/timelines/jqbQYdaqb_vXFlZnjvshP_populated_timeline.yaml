@@ -1,0 +1,27 @@
+archived: false
+collection_id: p8Zq2ud7JlSoSBXdJWIaW
+created_at: '2024-08-28T14:31:56.940526Z'
+creator_id: ann@heart.band
+default: false
+description: null
+entity_id: jqbQYdaqb_vXFlZnjvshP
+events:
+- archived: false
+  created_at: '2024-08-28T14:31:56.942571Z'
+  creator_id: ann@heart.band
+  description: null
+  icon: star
+  name: First Event
+  time_matters: true
+  timestamp: '2020-04-11T00:00:00Z'
+  timezone: US/Pacific
+  serdes/meta:
+  - id: null
+    label: first_event
+    model: TimelineEvent
+icon: star
+name: Populated Timeline
+serdes/meta:
+- id: jqbQYdaqb_vXFlZnjvshP
+  label: populated_timeline
+  model: Timeline
