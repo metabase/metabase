@@ -1,5 +1,6 @@
 import { useLayoutEffect, useMemo, useState } from "react";
 import type { Route } from "react-router";
+import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
@@ -54,6 +55,7 @@ function TransformQueryPageBody({
   route,
 }: TransformQueryPageBodyProps) {
   const [source, setSource] = useState(transform.source);
+  const sourceRef = useLatest(transform.source);
   const [updateName] = useUpdateTransformMutation();
   const [updateSource, { isLoading: isSaving }] = useUpdateTransformMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
@@ -106,8 +108,8 @@ function TransformQueryPageBody({
   };
 
   useLayoutEffect(() => {
-    setSource(transform.source);
-  }, [transform.source]);
+    setSource(sourceRef.current);
+  }, [transform.id, sourceRef]);
 
   return (
     <>
