@@ -135,10 +135,6 @@
       (v0-common/hydrate-env-vars)
       (u/remove-nils)))
 
-(defmethod import/with-toucan-defaults [:v0 :database]
-  [toucan-entity]
-  toucan-entity)
-
 (defmethod import/persist! [:v0 :database]
   [representation ref-index]
   (let [representation (import/yaml->toucan representation ref-index)]

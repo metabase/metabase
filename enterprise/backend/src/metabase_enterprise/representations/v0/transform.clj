@@ -4,9 +4,9 @@
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.lookup :as lookup]
+   [metabase-enterprise.representations.toucan.core :as rep-t2]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.v0.mbql :as v0-mbql]
-   [metabase-enterprise.representations.yaml :as rep-yaml]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -140,12 +140,6 @@
                   :name (-> representation :target_table :table)}}
         u/remove-nils)))
 
-(defmethod import/with-toucan-defaults [:v0 :transform]
-  [toucan-entity]
-  (merge-with #(or %1 %2)
-              toucan-entity
-              {:description ""}))
-
 (defn- set-up-tags [transform-id tags]
   (when (seq tags)
     (let [existing-tags (t2/select :model/TransformTag :name [:in tags])
@@ -159,7 +153,8 @@
 
 (defmethod import/persist! [:v0 :transform]
   [representation ref-index]
-  (let [transform-data (import/yaml->toucan representation ref-index)
+  (let [transform-data (->> (import/yaml->toucan representation ref-index)
+                            (rep-t2/with-toucan-defaults :model/Transform))
         entity-id (:entity_id transform-data)
         existing (when entity-id
                    (t2/select-one :model/Transform :entity_id entity-id))]

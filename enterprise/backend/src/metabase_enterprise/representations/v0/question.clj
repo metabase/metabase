@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
+   [metabase-enterprise.representations.toucan.core :as rep-t2]
    [metabase-enterprise.representations.v0.card]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.v0.mbql :as v0-mbql]
@@ -100,34 +101,24 @@
 
 (defmethod import/yaml->toucan [:v0 :question]
   [representation ref-index]
-  (let [database-id (-> ref-index
-                        (v0-common/lookup-entity (:database representation))
-                        (v0-common/ensure-not-nil)
-                        (v0-common/ensure-correct-type :database)
-                        :id)
-        query (-> (assoc representation :database database-id)
+  (let [database-id (v0-common/resolve-database-id (:database representation) ref-index)
+        query (-> representation #_(assoc representation :database database-id)
                   (v0-mbql/import-dataset-query ref-index))]
     (-> {:name (:name representation)
          :description (:description representation)
          :display (:display representation)
          :dataset_query query
          :database_id database-id
-         :query_type (if (= (name (:type query)) "native") :native :query)
+         :query_type (if (lib/native-only-query? query)
+                       :native
+                       :query #_#_#_(= (name (:type query)) "native") :native :query)
          :type :question}
         u/remove-nils)))
 
-(defmethod import/with-toucan-defaults [:v0 :question]
-  [toucan-entity]
-  (merge-with #(or %1 %2)
-              toucan-entity
-              {:description ""
-               :visualization_settings {}
-               :display :table
-               :creator_id (or api/*current-user-id* config/internal-mb-user-id)}))
-
 (defmethod import/persist! [:v0 :question]
   [representation ref-index]
-  (let [question-data (import/yaml->toucan representation ref-index)
+  (let [question-data (->> (import/yaml->toucan representation ref-index)
+                           (rep-t2/with-toucan-defaults :model/Card))
         entity-id (:entity_id question-data)
         existing (when entity-id
                    (t2/select-one :model/Card :entity_id entity-id))]

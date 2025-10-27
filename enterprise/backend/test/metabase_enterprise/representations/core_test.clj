@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.representations.core :as rep]
+   [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.v0.model]
    [metabase-enterprise.representations.v0.question]
    [metabase-enterprise.representations.yaml :as rep-yaml]
@@ -43,7 +44,7 @@
               (is (rep/normalize-representation question-rep)
                   "Question representation should validate")
               (let [persisted-db (rep/persist! db-rep nil)
-                    ref-index {db-ref persisted-db}
+                    ref-index (v0-common/map-entity-index {db-ref persisted-db})
                     persisted-question (rep/persist! question-rep ref-index)]
                 (is persisted-db "Database should persist successfully")
                 (is persisted-question "Question should persist successfully")
@@ -52,7 +53,7 @@
                 (let [re-exported (rep/export persisted-question)
                       re-exported-yaml (rep-yaml/generate-string re-exported)
                       re-exported-rep (rep-yaml/parse-string re-exported-yaml)]
-                  (is (=? (dissoc question-rep :ref) re-exported-rep)
+                  (is (=? (dissoc question-rep :ref :entity-id) re-exported-rep)
                       "Re-exported representation should match original"))))))))))
 
 ;; TODO: Reproduce test coverage but incorporating shipping changes

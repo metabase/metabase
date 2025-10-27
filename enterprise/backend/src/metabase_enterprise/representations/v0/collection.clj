@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
+   [metabase-enterprise.representations.toucan.core :as rep-t2]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase.collections.api :as coll.api]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -93,10 +94,6 @@
       :description description
       :location location})))
 
-(defmethod import/with-toucan-defaults [:v0 :collection]
-  [toucan-entity]
-  toucan-entity)
-
 (defn- persist!
   [new-collection]
   (log/debug "Creating new collection" (:name new-collection))
@@ -112,7 +109,8 @@
 
 (defmethod import/persist! [:v0 :collection]
   [representation ref-index]
-  (let [new-collection (import/yaml->toucan representation ref-index)
+  (let [new-collection (->> (import/yaml->toucan representation ref-index)
+                            (rep-t2/with-toucan-defaults :model/Collection))
         collection-name (:name new-collection)
         existing (t2/select-one :model/Collection :name collection-name :location "/")]
     (if existing

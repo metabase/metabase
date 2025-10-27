@@ -179,11 +179,7 @@
   "Returns Metabase's dataset_query format, given a representation.
    Converts representation format to Metabase's internal dataset_query structure."
   [{:keys [query mbql_query lib_query database] :as representation} ref-index]
-  (let [database-id (-> ref-index
-                        (v0-common/lookup-entity database)
-                        (v0-common/ensure-not-nil)
-                        (v0-common/ensure-correct-type :database)
-                        :id)]
+  (let [database-id (v0-common/resolve-database-id database ref-index)]
     (cond
       ;; Native SQL query - simple case
       query

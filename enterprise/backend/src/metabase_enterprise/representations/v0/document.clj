@@ -5,11 +5,10 @@
    [clojure.walk :as walk]
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
+   [metabase-enterprise.representations.toucan.core :as rep-t2]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.v0.mbql :as v0-mbql]
    [metabase-enterprise.representations.yaml :as yaml]
-   [metabase.api.common :as api]
-   [metabase.config.core :as config]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -88,15 +87,10 @@
      :document (json/encode yaml-content)
      :content_type "application/json+vnd.prose-mirror"}))
 
-(defmethod import/with-toucan-defaults [:v0 :document]
-  [toucan-entity]
-  (merge-with #(or %1 %2)
-              toucan-entity
-              {:creator_id (or api/*current-user-id* config/internal-mb-user-id)}))
-
 (defmethod import/persist! [:v0 :document]
   [representation ref-index]
-  (let [document-data (import/yaml->toucan representation ref-index)
+  (let [document-data (->> (import/yaml->toucan representation ref-index)
+                           (rep-t2/with-toucan-defaults :model/Document))
         entity-id (:entity_id document-data)
         existing (when entity-id
                    (t2/select-one :model/Document :entity_id entity-id))]

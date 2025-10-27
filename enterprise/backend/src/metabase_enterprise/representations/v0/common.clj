@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [metabase-enterprise.representations.lookup :as lookup]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -213,6 +214,17 @@
                      :expected-type expected-type
                      :actual-type (t2/model entity)})))
   entity)
+
+(defn resolve-database-id
+  [database ref-index]
+  (if (integer? database)
+    database
+    (let [database (or (lookup-entity ref-index database)
+                       (lookup/lookup-by-name :database database)
+                       (lookup/lookup-by-entity-id :database database))]
+      (-> (ensure-correct-type database :database)
+          :id
+          (ensure-not-nil)))))
 
 (defn replace-refs-everywhere
   "Replace all refs with whatever is in the ref-index."

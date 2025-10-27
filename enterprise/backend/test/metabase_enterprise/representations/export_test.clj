@@ -1,10 +1,7 @@
 (ns metabase-enterprise.representations.export-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.representations.core :as rep]
    [metabase-enterprise.representations.export :as export]
-   [metabase-enterprise.representations.yaml :as yaml]
-   [metabase.api.common :as api]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))

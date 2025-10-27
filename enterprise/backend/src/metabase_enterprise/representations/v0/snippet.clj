@@ -3,10 +3,9 @@
    [metabase-enterprise.representations.core :as core]
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
+   [metabase-enterprise.representations.toucan.core :as rep-t2]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.yaml :as rep-yaml]
-   [metabase.api.common :as api]
-   [metabase.config.core :as config]
    [metabase.lib.native :as lib.native]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util :as u]
@@ -89,16 +88,10 @@
        :template_tags (lib.native/recognize-template-tags sql)}
       u/remove-nils))
 
-(defmethod import/with-toucan-defaults [:v0 :snippet]
-  [toucan-entity]
-  (merge-with #(or %1 %2)
-              toucan-entity
-              {:description ""
-               :creator_id (or api/*current-user-id* config/internal-mb-user-id)}))
-
 (defmethod import/persist! [:v0 :snippet]
   [representation ref-index]
-  (let [snippet-data (import/yaml->toucan representation ref-index)
+  (let [snippet-data (->> (import/yaml->toucan representation ref-index)
+                          (rep-t2/with-toucan-defaults :model/NativeQuerySnippet))
         entity-id (:entity_id snippet-data)
         existing (when entity-id (t2/select-one :model/NativeQuerySnippet :entity_id entity-id))]
     (if existing

@@ -26,11 +26,6 @@
   {:arglists '([representation ref-index])}
   (fn [entity _ref-index] ((juxt :version :type) entity)))
 
-(defmulti with-toucan-defaults
-  "Adds default, required values to a toucan representation."
-  {:arglists '([toucan-entity])}
-  (fn [entity _ref-index] ((juxt :version :type) entity)))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Representation Normalization ;;
 

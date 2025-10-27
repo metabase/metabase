@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
+   [metabase-enterprise.representations.toucan.core :as rep-t2]
    [metabase-enterprise.representations.v0.card]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.v0.mbql :as v0-mbql]
@@ -245,18 +246,10 @@
          :collection_id (v0-common/find-collection-id collection)}
         u/remove-nils)))
 
-(defmethod import/with-toucan-defaults [:v0 :metric]
-  [toucan-entity]
-  (merge-with #(or %1 %2)
-              toucan-entity
-              {:description ""
-               :visualization_settings {}
-               :display :table
-               :creator_id (or api/*current-user-id* config/internal-mb-user-id)}))
-
 (defmethod import/persist! [:v0 :metric]
   [representation ref-index]
-  (let [metric-data (import/yaml->toucan representation ref-index)
+  (let [metric-data (->> (import/yaml->toucan representation ref-index)
+                         (rep-t2/with-toucan-defaults :model/Card))
         ;; Generate stable entity_id from ref and collection
         entity-id (v0-common/generate-entity-id representation)
         existing (when entity-id

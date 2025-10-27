@@ -3,13 +3,12 @@
    [clojure.string :as str]
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
-   [metabase-enterprise.representations.lookup :as lookup]
+   [metabase-enterprise.representations.toucan.core :as rep-t2]
    [metabase-enterprise.representations.v0.card]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.v0.mbql :as v0-mbql]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
-   [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.queries.models.card.metadata :as card.metadata]
    [metabase.util :as u]
@@ -260,13 +259,7 @@
   [{model-name :name
     :keys [_type _ref description database collection columns] :as representation}
    ref-index]
-  (let [database-id (-> ref-index
-                        (v0-common/lookup-entity database)
-                        (v0-common/ensure-correct-type :database)
-                        (or (lookup/lookup-by-name :database database))
-                        (or (lookup/lookup-by-id   :database database))
-                        :id
-                        (v0-common/ensure-not-nil))
+  (let [database-id (v0-common/resolve-database-id database ref-index)
         dataset-query (-> (assoc representation :database database-id)
                           (v0-mbql/import-dataset-query ref-index))
         ;; An alternative:
@@ -287,18 +280,10 @@
          :collection_id   (v0-common/find-collection-id collection)}
         u/remove-nils)))
 
-(defmethod import/with-toucan-defaults [:v0 :model]
-  [toucan-entity]
-  (merge-with #(or %1 %2)
-              toucan-entity
-              {:description ""
-               :visualization_settings {}
-               :display :table
-               :creator_id (or api/*current-user-id* config/internal-mb-user-id)}))
-
 (defmethod import/persist! [:v0 :model]
   [representation ref-index]
-  (let [model-data (import/yaml->toucan representation ref-index)
+  (let [model-data (->> (import/yaml->toucan representation ref-index)
+                        (rep-t2/with-toucan-defaults :model/Card))
         entity-id (:entity_id model-data)
         existing (when entity-id
                    (t2/select-one :model/Card :entity_id entity-id))]
