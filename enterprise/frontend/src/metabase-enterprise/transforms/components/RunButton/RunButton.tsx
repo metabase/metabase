@@ -19,9 +19,9 @@ export const RunButton = forwardRef(function RunButton(
   {
     run,
     isDisabled: isExternallyDisabled = false,
+    allowCancellation = false,
     onRun,
     onCancel,
-    allowCancellation = false,
   }: RunButtonProps,
   ref: Ref<HTMLButtonElement>,
 ) {
