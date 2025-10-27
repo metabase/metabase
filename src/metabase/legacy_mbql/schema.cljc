@@ -168,7 +168,13 @@
 
 ;; TODO - `unit` is not allowed if `n` is `current`
 (defclause relative-datetime
-  n    [:or [:= {:decode/normalize #(cond-> % (string? %) helpers/normalize-keyword)} :current] :int]
+  n    [:or
+        {:decode/normalize (fn [x]
+                             (if (number? x)
+                               x
+                               :current))}
+        [:= :current]
+        :int]
   unit (optional [:ref ::RelativeDatetimeUnit]))
 
 (defclause interval
@@ -1468,9 +1474,9 @@
   [:merge
    ::TemplateTag.Value.Common
    [:map
-    [:type        [:= {:decode/normalize helpers/normalize-keyword} :dimension]]
-    [:dimension   [:ref ::field]]
-    [:alias       {:optional true} ::lib.schema.join/alias]
+    [:type      [:= {:decode/normalize helpers/normalize-keyword} :dimension]]
+    [:dimension [:ref ::field]]
+    [:alias     {:optional true} :string]
 
     [:widget-type
      {:default :category}
@@ -1904,7 +1910,7 @@
    [:ref ::FieldOrExpressionRef]])
 
 (defn- remove-empty-keys-from-mbql-inner-query [query]
-  (remove-empty-keys query {:non-empty-keys #{:aggregation :breakout :fields :filter :order-by :joins}
+  (remove-empty-keys query {:non-empty-keys #{:aggregation :breakout :expressions :fields :filter :order-by :joins}
                             :non-nil-keys   #{:limit}}))
 
 (mr/def ::Expressions

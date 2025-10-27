@@ -956,7 +956,8 @@
 (deftest ^:parallel canonicalize-filter-test-8
   (normalize-tests
    "make sure empty filter clauses don't explode in canonicalize"
-   {{:database 1, :type :query, :query {:filter []}} {:database 1, :type :query, :query {:filter []}}}))
+   {{:database 1, :type :query, :query {:source-table 1, :filter []}}
+    {:database 1, :type :query, :query {:source-table 1}}}))
 
 (deftest ^:parallel canonicalize-filter-test-9
   (normalize-tests
@@ -1645,3 +1646,10 @@
                                                :fields       [["field" 3 nil]]
                                                :order-by     [[:asc ["field" 3]]
                                                               [:asc ["field" 3]]]}}))))
+
+(deftest ^:parallel normalize-relative-datetime-test
+  (testing "Fix incorrect :relative-datetime clauses that use the wrong key (e.g. :now) instead of :current"
+    (is (= [:relative-datetime :current]
+           (mbql.normalize/normalize [:relative-datetime :now])
+           (mbql.normalize/normalize [:relative-datetime "now"])
+           (mbql.normalize/normalize [:relative-datetime "current"])))))
