@@ -24,6 +24,7 @@ import {
   getSchemaId,
   getSchemaTableIds,
   isItemSelected,
+  noManuallySelectedDatabaseChildrenTables,
   noManuallySelectedSchemas,
   noManuallySelectedTables,
 } from "../utils";
@@ -109,7 +110,7 @@ export function Tree({ path, onChange }: Props) {
       (x) =>
         x.type === "schema" &&
         selectedSchemas.has(getSchemaId(x) ?? "") &&
-        isExpanded(x.key),
+        x.children.length > 0,
     );
 
     expandedSelectedSchemaItems.forEach((x) => {
@@ -142,26 +143,44 @@ export function Tree({ path, onChange }: Props) {
       (x) =>
         x.type === "database" &&
         selectedDatabases.has(x.value?.databaseId ?? -1) &&
-        isExpanded(x.key),
-    );
+        x.children.length > 0,
+    ) as unknown as DatabaseNode[];
 
     expandedSelectedDatabaseItems.forEach((x) => {
-      if (noManuallySelectedSchemas(x, items, selectedSchemas)) {
-        // when expanding a db, let's select all the schemas in that db
-        const schemaIds = (x as unknown as DatabaseNode).children.map((y) =>
-          getSchemaId(y as unknown as FlatItem),
-        );
-        if (schemaIds.length === 0) {
-          return;
-        }
-
-        setSelectedSchemas((prev) => {
-          const newSet = new Set(prev);
-          schemaIds.forEach((z) => {
-            newSet.add(z ?? "");
+      if (
+        noManuallySelectedSchemas(x, items, selectedSchemas) &&
+        noManuallySelectedDatabaseChildrenTables(
+          x as unknown as DatabaseNode,
+          selectedItems,
+        )
+      ) {
+        // single schema that's not rendered and it's not part of flattened list
+        if (x.children.length === 1) {
+          setSelectedItems((prev) => {
+            const newSet = new Set(prev);
+            x.children[0].children.forEach((y) => {
+              newSet.add(y.value?.tableId ?? -1);
+            });
+            return newSet;
           });
-          return newSet;
-        });
+        } else {
+          // when expanding a db, let's select all the schemas in that db
+          const schemaIds = (x as unknown as DatabaseNode).children.map((y) =>
+            getSchemaId(y as unknown as FlatItem),
+          );
+
+          if (schemaIds.length === 0) {
+            return;
+          }
+
+          setSelectedSchemas((prev) => {
+            const newSet = new Set(prev);
+            schemaIds.forEach((z) => {
+              newSet.add(z ?? "");
+            });
+            return newSet;
+          });
+        }
 
         setSelectedDatabases((prev) => {
           const newSet = new Set(prev);
@@ -170,7 +189,7 @@ export function Tree({ path, onChange }: Props) {
         });
       }
     });
-  }, [isExpanded, selectedDatabases, items, selectedSchemas]);
+  }, [isExpanded, selectedDatabases, items, selectedSchemas, selectedItems]);
 
   function onEditSelectedItems() {
     setIsModalOpen(true);

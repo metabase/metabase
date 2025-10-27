@@ -397,6 +397,27 @@ export function noManuallySelectedSchemas(
   );
 }
 
+export function noManuallySelectedDatabaseChildrenTables(
+  database: DatabaseNode,
+  selectedTables: Set<TableId> | undefined,
+) {
+  if (!database) {
+    return false;
+  }
+
+  const answer = !database.children.some(
+    (schema) =>
+      schema.type === "schema" &&
+      schema.children.some(
+        (child) =>
+          child.type === "table" &&
+          selectedTables?.has(child.value?.tableId ?? -1),
+      ),
+  );
+
+  return answer;
+}
+
 export function getParentSchema(tableItem: FlatItem, allItems: FlatItem[]) {
   return allItems.find(
     (x) => x.type === "schema" && getSchemaId(x) === getSchemaId(tableItem),
