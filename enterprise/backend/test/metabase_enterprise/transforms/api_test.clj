@@ -130,7 +130,6 @@
                                                    (format "ee/transform/%s" (:id created))
                                                    {:source {:type  "query"
                                                              :query mbql-query}})]
-                (def response response)
                 (is (string? response))
                 (is (str/includes? response "Cannot change the type of a transform"))))))))))
 

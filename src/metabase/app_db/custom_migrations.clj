@@ -1795,7 +1795,7 @@
                                              :where  [:= :engine "clickhouse"]}))))
 
 ;; This migration is purely to avoid breaking stats/dev instances that have existing transforms without a `type` field.
-;; It can be removed prior to the 57 release. (TODO: noahmoss)
+;; TODO (noahmoss 10/27/25): this should be removed prior to the 57 release.
 (define-migration BackfillTransformType
   ;; Copied logic from metabase-enterprise.transforms.models.transform, aside
   (let [parse-transform-source (fn [source-json]
