@@ -9,6 +9,7 @@ import { TransformHeaderView } from "../TransformHeader";
 import { EditorSidebar } from "./EditorSidebar";
 import { QuerySection } from "./QuerySection";
 import { SaveSection } from "./SaveSection";
+import S from "./TransformEditor.module.css";
 import { VisualizationSection } from "./VisualizationSection";
 import { useEditorSidebar } from "./use-editor-sidebar";
 import { useQueryMetadata } from "./use-query-metadata";
@@ -98,8 +99,8 @@ export function TransformEditor({
         }
         onNameChange={onNameChange}
       />
-      <Flex flex={1}>
-        <Flex flex="2 1 100%">
+      <Flex className={S.body} flex={1}>
+        <Flex flex="2 1 100%" direction="column">
           <QuerySection
             question={question}
             databases={databases?.data ?? []}
