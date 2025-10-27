@@ -129,6 +129,14 @@
   [comment _event-type]
   (select-keys comment [:target_type :target_id :child_target_id :parent_comment_id]))
 
+(defmethod model-details :model/Transform
+  [{:keys [source] :as transform} _event-type]
+  (merge (select-keys transform [:name :description :target :run_trigger])
+         {:source
+          (-> source
+              (dissoc :body)
+              (update :query #(select-keys % [:database])))}))
+
 (def ^:private model-name->audit-logged-name
   {"RootCollection" "Collection"})
 

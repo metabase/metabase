@@ -292,3 +292,12 @@
 (methodical/defmethod events/publish-event! ::comment-event
   [topic event]
   (audit-log/record-event! topic event))
+
+(derive ::transform-event ::event)
+(derive :event/transform-create ::transform-event)
+(derive :event/update-transform ::transform-event)
+(derive :event/transform-delete ::transform-event)
+
+(methodical/defmethod events/publish-event! ::transform-event
+  [topic event]
+  (audit-log/record-event! topic event))
