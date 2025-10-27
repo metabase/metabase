@@ -57,7 +57,6 @@ export const ComponentProviderInternal = ({
   useEffect(() => {
     reduxStore.dispatch(setIsStaticEmbedding(!!isStatic));
   }, [reduxStore, isStatic]);
-  useInitDataInternal({ reduxStore, authConfig, isLocalHost });
 
   useEffect(() => {
     if (fontFamily) {
