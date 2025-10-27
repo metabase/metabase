@@ -18,6 +18,7 @@ import type {
 } from "metabase-types/api";
 
 import { TransformEditor } from "../../components/TransformEditor";
+import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";
 import { isNotDraftSource, isSameSource } from "../../utils";
 
 import { CreateTransformModal } from "./CreateTransformModal";
@@ -44,6 +45,7 @@ function NewTransformPage({
   const [source, setSource] = useState(initialSource);
   const [isOpened, { open, close }] = useDisclosure();
   const dispatch = useDispatch();
+  useRegisterMetabotTransformContext(undefined, source);
 
   const isDirty = useMemo(
     () =>

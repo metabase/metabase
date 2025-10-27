@@ -19,6 +19,7 @@ import {
 import type { DraftTransformSource, Transform } from "metabase-types/api";
 
 import { TransformEditor } from "../../components/TransformEditor";
+import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";
 import { isNotDraftSource, isSameSource } from "../../utils";
 
 type TransformQueryPageParams = {
@@ -59,6 +60,7 @@ function TransformQueryPageBody({
   const [updateName] = useUpdateTransformMutation();
   const [updateSource, { isLoading: isSaving }] = useUpdateTransformMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
+  useRegisterMetabotTransformContext(transform, source);
 
   const isSourceDirty = useMemo(
     () => !isSameSource(source, transform.source),
