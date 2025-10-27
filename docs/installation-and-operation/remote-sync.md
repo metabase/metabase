@@ -32,26 +32,13 @@ You'll need to be an admin to set up Remote Sync.
 7. [Set up your production Metabase](#set-up-your-production-metabase)
 8. [Connect your production Metabase to your Git repository](#connect-your-production-metabase-to-your-git-repository)
 
-## Set up a repository to store your content
+## 1. Set up a repository to store your content
 
-Before you connect Metabase to your Git repository, make sure you have:
+Create a new GitHub repository to store your Metabase yaml files. Initialize that repository with at least one commit (like adding a README.md).
 
-- A Pro or Enterprise plan with the Remote Sync feature enabled
-- A GitHub repository where you want to store your Metabase content (currently only GitHub is supported)
-- An initialized repository with at least one commit (Metabase cannot connect to completely empty repositories)
-- A personal access token with appropriate permissions:
-  - **Production mode (read-only):** Read access to repository contents
-  - **Development mode (read/write):** Read and write access to repository contents
+## 2. Create a personal access token for development
 
-If you need to initialize a new repository:
-
-1. Create a README.md or .gitignore file in your repository.
-2. Commit and push it to your main branch.
-3. Then connect Metabase to the repository.
-
-## Create a personal access token for development
-
-GitHub offers two types of personal access tokens. We recommend the new token (not the classic) because you can limit their permissions to specific repositories.
+GitHub offers two types of personal access tokens. We recommend the fine-grained token (not the classic) because you can limit their permissions to specific repositories.
 
 1. Go to Settings > Developer settings > Personal access tokens > Fine-grained tokens.
 2. Click "Generate new token".
@@ -66,20 +53,13 @@ Metabase encrypts your token before storing it.
 
 For more, see GitHub's docs on [personal access tokens](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens).
 
-## Set up your development Metabase
+## 2. Set up your development Metabase
 
 Development Metabases are where you create and edit content. You can have multiple development instances for different teams, projects, or workflows. Each connects to the same repository but can work on different branches.
 
-**Development mode features:**
+Check out [Development instances](./development-instance.md).
 
-- **Bidirectional sync:** Push changes to Git and pull changes from others.
-- **Full editing:** Create and modify dashboards, questions, and documents in the UI.
-- **Branch management:** Create, switch between, and work on different branches.
-- **Commit control:** Write descriptive commit messages for your changes.
-
-## Connect your development Metabase to your Git repository
-
-1. Open the Remote sync settings:
+1. In your develepment Metabase, go to the Remote sync settings:
 
    - Click the gear icon in the top right (or navigate to "Admin settings").
    - In the Settings navigation, click "Remote sync" in the left sidebar.
