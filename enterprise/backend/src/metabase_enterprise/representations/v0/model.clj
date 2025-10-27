@@ -261,6 +261,8 @@
     :keys [_type _ref description database collection columns] :as representation}
    ref-index]
   (let [database-id (lookup/lookup-database-id ref-index database)
+        ;; TODO: once we've cleaned up mbql stuff, this explicit lookup should be superfluous.
+        ;; Just pull it off of the dataset-query
         dataset-query (-> (assoc representation :database database-id)
                           (v0-mbql/import-dataset-query ref-index))
         ;; An alternative:

@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
+   [metabase-enterprise.representations.lookup :as lookup]
    [metabase-enterprise.representations.toucan.core :as rep-t2]
    [metabase-enterprise.representations.v0.card]
    [metabase-enterprise.representations.v0.common :as v0-common]
@@ -229,12 +230,11 @@
   [{metric-name :name
     :keys [description database collection columns] :as representation}
    ref-index]
-  (let [database-id (-> ref-index
-                        (v0-common/lookup-entity database)
-                        (v0-common/ensure-not-nil)
-                        (v0-common/ensure-correct-type :database)
-                        :id)
-        dataset-query (v0-mbql/import-dataset-query representation ref-index)]
+  (let [database-id (lookup/lookup-database-id ref-index database)
+        ;; TODO: once we've cleaned up mbql stuff, this explicit lookup should be superfluous.
+        ;; Just pull it off of the dataset-query
+        dataset-query (-> (assoc representation :database database-id)
+                          (v0-mbql/import-dataset-query ref-index))]
     (-> {;; Core fields
          :name metric-name
          :description description
