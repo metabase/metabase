@@ -21,6 +21,7 @@ import {
   getSchemas,
   type NodeSelection,
   getSchemaTables,
+  getSchemaChildrenTableIds,
 } from "../utils";
 
 import { EditTableMetadataModal } from "./EditTableMetadataModal";
@@ -181,9 +182,7 @@ export function Tree({ path, onChange }: Props) {
       schemas: selectedSchemas,
       databases: selectedDatabases,
     });
-    console.log({
-      isSelected,
-    });
+
     if (item.type === "table") {
       const tableId = item.value?.tableId ?? -1;
       if (tableId === -1) {
@@ -196,23 +195,15 @@ export function Tree({ path, onChange }: Props) {
       });
     }
     if (item.type === "database") {
-      if (isExpanded(item.key)) {
+      if (item.children.length > 0) {
         const targetChecked = isSelected === "yes" ? "no" : "yes";
-        console.log({
-          targetChecked,
-        });
+
         const { schemasSelection, tablesSelection, databasesSelection } =
-          markAllSchemas(
-            item,
-            items,
-            targetChecked,
-            {
-              tables: selectedItems,
-              schemas: selectedSchemas,
-              databases: selectedDatabases,
-            },
-            isExpanded,
-          );
+          markAllSchemas(item, items, targetChecked, {
+            tables: selectedItems,
+            schemas: selectedSchemas,
+            databases: selectedDatabases,
+          });
         setSelectedSchemas(schemasSelection);
         setSelectedItems(tablesSelection);
         setSelectedDatabases(databasesSelection);
@@ -224,10 +215,10 @@ export function Tree({ path, onChange }: Props) {
       }
     }
     if (item.type === "schema") {
-      if (isExpanded(item.key)) {
+      if (item.children.length > 0) {
         if (isSelected === "yes") {
           setSelectedItems((prev) => {
-            const tableIds = getSchemaTableIds(item, items);
+            const tableIds = getSchemaChildrenTableIds(item);
             const newSet = new Set(prev);
             tableIds.forEach((x) => {
               newSet.delete(x);
@@ -236,7 +227,7 @@ export function Tree({ path, onChange }: Props) {
           });
         } else {
           setSelectedItems((prev) => {
-            const tableIds = getSchemaTableIds(item, items);
+            const tableIds = getSchemaChildrenTableIds(item);
             const newSet = new Set(prev);
             tableIds.forEach((x) => {
               newSet.add(x);
@@ -319,7 +310,6 @@ function markAllSchemas(
   allItems: FlatItem[],
   targetChecked: "yes" | "no",
   selection: NodeSelection,
-  isExpanded: (key: string) => boolean,
 ) {
   const schemasSelection = new Set(selection.schemas);
   const tablesSelection = new Set(selection.tables);
@@ -330,7 +320,7 @@ function markAllSchemas(
     if (!schemaId) {
       return;
     }
-    if (!isExpanded(schema.key)) {
+    if (schema.children.length > 0) {
       targetChecked === "yes"
         ? schemasSelection.add(schemaId)
         : schemasSelection.delete(schemaId);

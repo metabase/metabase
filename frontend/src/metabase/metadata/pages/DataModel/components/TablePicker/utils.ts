@@ -418,6 +418,13 @@ export function getSchemaTableIds(schema: FlatItem, allItems: FlatItem[]) {
   return getSchemaTables(schema, allItems).map((x) => x.value?.tableId ?? "");
 }
 
+
+export function getSchemaChildrenTableIds(schema: TreeNode) {
+  return schema.children
+    .filter((x) => x.type === "table")
+    .map((x) => x.value?.tableId ?? -1);
+}
+
 export function getParentSchemaTables(item: FlatItem, allItems: FlatItem[]) {
   const parentSchema = getParentSchema(item, allItems);
 

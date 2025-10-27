@@ -353,16 +353,7 @@ export function Results({
                 </Flex>
               </Flex>
 
-              {item.isSelected}
-
-              <ElementCheckbox
-                item={item}
-                selectedItems={selectedItems}
-                selectedSchemas={selectedSchemas}
-                selectedDatabases={selectedDatabases}
-                onItemToggle={onItemToggle}
-              />
-              <ElementCheckbox2 item={item} onItemToggle={onItemToggle} />
+              <ElementCheckbox item={item} onItemToggle={onItemToggle} />
             </Flex>
           );
         })}
@@ -378,76 +369,6 @@ const CheckboxDashIcon: CheckboxProps["icon"] = ({ ...others }) => (
 );
 
 function ElementCheckbox({
-  item,
-  selectedItems,
-  selectedSchemas,
-  selectedDatabases,
-  onItemToggle,
-}: {
-  item: FlatItem;
-  selectedItems: Set<TableId> | undefined;
-  selectedDatabases: Set<DatabaseId> | undefined;
-  selectedSchemas: Set<SchemaName> | undefined;
-  onItemToggle: ((item: FlatItem) => void) | undefined;
-}) {
-  const isItemSelected =
-    item.type === "table" && selectedItems?.has(item.value?.tableId ?? "");
-
-  const isSchemaItemSelected =
-    item.type === "schema" && selectedSchemas?.has(getSchemaId(item) ?? "");
-  const schemaTablesSelected =
-    item.type === "schema" &&
-    areTablesSelected(
-      item,
-      ((item as unknown as SchemaNode).children as unknown as FlatItem[]) ?? [],
-      selectedItems,
-    );
-
-  const isDatabaseItemSelected =
-    item.type === "database" &&
-    selectedDatabases?.has(item.value?.databaseId ?? -1);
-
-  const areSchemasSelectedResult =
-    item.type === "database" &&
-    areSchemasSelected(
-      item,
-      ((item as unknown as DatabaseNode).children as unknown as FlatItem[]) ??
-        [],
-      selectedSchemas,
-      selectedItems,
-    );
-
-  const areTablesIndeterminate =
-    schemaTablesSelected === "some" ? true : undefined;
-  const areSchemasIndeterminate =
-    areSchemasSelectedResult === "some" ? true : undefined;
-  const indeterminate = areTablesIndeterminate || areSchemasIndeterminate;
-  const isChecked =
-    (isItemSelected ||
-      isSchemaItemSelected ||
-      schemaTablesSelected === "all" ||
-      indeterminate ||
-      isDatabaseItemSelected ||
-      areSchemasSelectedResult === "all") ??
-    false;
-
-  return (
-    <Checkbox
-      size="sm"
-      checked={isChecked}
-      onClick={(event) => {
-        event.stopPropagation();
-      }}
-      icon={indeterminate ? CheckboxDashIcon : undefined}
-      onChange={() => {
-        onItemToggle?.(item);
-      }}
-      // indeterminate={indeterminate}
-    />
-  );
-}
-
-function ElementCheckbox2({
   item,
   onItemToggle,
 }: {
