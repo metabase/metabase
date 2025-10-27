@@ -117,7 +117,7 @@ export function transformRunList({
 }
 
 export function transformPythonLibrary({ path }: TransformPythonLibraryParams) {
-  return `/${LIBRARY_ROOT_URL}/${path}`;
+  return `${LIBRARY_ROOT_URL}/${path}`;
 }
 
 export function queryBuilderTable(tableId: TableId, databaseId: DatabaseId) {
