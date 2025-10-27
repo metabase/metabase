@@ -211,9 +211,9 @@
     [:mbql_query {:optional true} ::mbql-query]
     [:columns {:optional true} ::columns]
     [:collection {:optional true} ::collection]]
-   [:fn {:error/message "Must have exactly one of :query or :mbql_query"}
-    (fn [{:keys [query mbql_query]}]
-      (= 1 (count (filter some? [query mbql_query]))))]])
+   [:fn {:error/message "Must have exactly one of :query or :mbql_query or :lib_query"}
+    (fn [{:keys [query mbql_query lib_query]}]
+      (= 1 (count (filter some? [query mbql_query lib_query]))))]])
 
 (defmethod v0-common/type->model :metric
   [_]

@@ -14,8 +14,7 @@
 (set! *warn-on-reflection* true)
 
 (comment
-  (def export-entity nil)
-  (def representation-type nil))
+  (def export-entity nil))
 
 (defmulti export-entity
   "Export a Metabase entity to its human-readable representation format.
@@ -25,7 +24,9 @@
 
 (defn- read-from-ref [ref]
   (let [[type id] (str/split ref #"-" 2)]
-    (export-entity (t2/select-one (v0-common/type->model (keyword type)) :id (Long/parseLong id)))))
+    (-> (v0-common/type->model (keyword type))
+        (t2/select-one :id (Long/parseLong id))
+        (export-entity))))
 
 (defn export-set
   "Returns a transitive set of ref-dependencies"

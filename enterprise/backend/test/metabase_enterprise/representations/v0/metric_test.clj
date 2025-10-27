@@ -35,8 +35,9 @@
   (doseq [filename valid-examples]
     (testing (str "Importing: " filename)
       (let [rep (rep-yaml/from-file filename)
-            ref-index {(v0-common/unref (:database rep))
-                       (t2/select-one :model/Database (mt/id))}]
+            ref-index (-> {(v0-common/unref (:database rep))
+                           (t2/select-one :model/Database (mt/id))}
+                          (v0-common/map-entity-index))]
         (is (rep/persist! rep ref-index))))))
 
 (deftest metric->card
