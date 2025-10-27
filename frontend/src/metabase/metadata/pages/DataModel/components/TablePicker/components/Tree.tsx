@@ -266,9 +266,6 @@ export function Tree({ path, onChange }: Props) {
         withMassToggle
         onItemClick={onChange}
         onItemToggle={onItemToggle}
-        selectedItems={selectedItems}
-        selectedSchemas={selectedSchemas}
-        selectedDatabases={selectedDatabases}
       />
       <Flex justify="center" gap="sm" direction="column">
         <BulkActionBar

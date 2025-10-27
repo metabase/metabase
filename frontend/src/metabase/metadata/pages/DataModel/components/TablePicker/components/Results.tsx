@@ -52,9 +52,6 @@ interface Props {
   onItemClick?: (path: TreePath) => void;
   onSelectedIndexChange?: (index: number) => void;
   onItemToggle?: (item: FlatItem) => void;
-  selectedItems?: Set<TableId>;
-  selectedSchemas?: Set<SchemaName>;
-  selectedDatabases?: Set<DatabaseId>;
 }
 
 export function Results({
@@ -65,9 +62,6 @@ export function Results({
   onItemClick,
   onSelectedIndexChange,
   onItemToggle,
-  selectedItems,
-  selectedSchemas,
-  selectedDatabases,
 }: Props) {
   const [activeItem, setActiveItem] = useState<
     { type: ItemType; id: number | string } | undefined
