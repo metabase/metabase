@@ -45,12 +45,9 @@
         response   (atom :error)
         ;; i've removed the circuit breaker from the stack. that sometimes shuts down the tests in a way we don't want
         ;; to exercise here
-        checker (-> (token-check/store-and-airgap-token-checker)
-                    (token-check/cached-token-checker
-                     {:ttl-ms 500})
-                    (token-check/grace-period-token-checker
-                     {:grace-period (token-check/guava-cache-grace-period 36 TimeUnit/HOURS)})
-                    (token-check/error-catching-token-checker))]
+        checker (binding [token-check/*customize-checker* true]
+                  (token-check/make-checker {:ttl-ms 500
+                                             :grace-period (token-check/guava-cache-grace-period 36 TimeUnit/HOURS)}))]
     (with-redefs [token-check/http-fetch (fn [& _]
                                            (swap! call-count inc)
                                            (case @response
@@ -98,20 +95,17 @@
                            :success good-response
                            :timeout (Thread/sleep 200)
                            :error   (throw (ex-info "network issues!" {:ka :boom}))))
-        checker        (-> (reify token-check/TokenChecker
-                             (-check-token [_ token]
-                               (token-response token))
-                             (-clear-cache! [_]))
-                           (token-check/circuit-breaker-token-checker
-                            {:circuit-breaker {:failure-threshold-ratio-in-period [4 4 1000]
-                                               :delay-ms                          50
-                                               :success-threshold                 1}
-                             :timeout-ms      100})
-                           (token-check/cached-token-checker
-                            {:ttl-ms 200})
-                           (token-check/grace-period-token-checker
-                            {:grace-period (token-check/guava-cache-grace-period 1000 TimeUnit/MILLISECONDS)})
-                           (token-check/error-catching-token-checker))]
+        checker        (token-check/make-checker
+                        {:base            (reify token-check/TokenChecker
+                                            (-check-token [_ token]
+                                              (token-response token))
+                                            (-clear-cache! [_]))
+                         :circuit-breaker {:failure-threshold-ratio-in-period [4 4 1000]
+                                           :delay-ms                          50
+                                           :success-threshold                 1}
+                         :timeout-ms      100
+                         :ttl-ms          200
+                         :grace-period    (token-check/guava-cache-grace-period 1000 TimeUnit/MILLISECONDS)})]
     (testing "when no information is present, hits the underlying"
       (is (= good-response (token-check/-check-token checker token)))
       (is (= 1 @call-count)))
@@ -148,10 +142,10 @@
                                  :error            (throw (ex-info "network troubles!" {:ka :boom}))
                                  :network-restored restored-token)))
                            (-clear-cache! [_]))
-          grace          (token-check/error-catching-token-checker
-                          (token-check/grace-period-token-checker
-                           underlying
-                           {:grace-period (token-check/guava-cache-grace-period 20 TimeUnit/MILLISECONDS)}))]
+          grace          (binding [token-check/*customize-checker* true]
+                           (token-check/make-checker
+                            {:base         underlying
+                             :grace-period (token-check/guava-cache-grace-period 20 TimeUnit/MILLISECONDS)}))]
       (is (= success-token (token-check/check-token grace token)))
       (is (= invalid (token-check/check-token grace (tu/random-token))))
       (testing "During errors"

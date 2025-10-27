@@ -151,11 +151,7 @@
                                                           [:email :string]]]]]
    [:quotas        {:optional true} [:sequential [:map]]]])
 
-(def ^:private ^:const token-status-cache-ttl
-  "Amount of time in ms to cache the status of a valid enterprise token before forcing a re-check."
-  (u/hours->ms 12))
-
-(defn http-fetch
+(defn- http-fetch
   [base-url token site-uuid]
   (some-> (token-status-url token base-url)
           (http/get {:query-params     (merge (stats-for-token-request)
@@ -272,10 +268,9 @@
     "Clear any caches in this checker and any wrapped checkers.
      Returns nil. Implementations should delegate to wrapped checkers."))
 
-(defn store-and-airgap-token-checker
+(def store-and-airgap-token-checker
   "Creates a basic token checker that handles HTTP requests and airgap tokens.
     No caching, no retries, no grace period - just the core logic."
-  []
   (reify TokenChecker
     (-check-token [_ token]
       (decode-token* token))
@@ -348,7 +343,7 @@
         ;; AND delegate to wrapped checker
         (-clear-cache! token-checker)))))
 
-(defn error-catching-token-checker
+(defn- error-catching-token-checker
   [token-checker]
   (reify TokenChecker
     (-check-token [_ token]
@@ -360,24 +355,48 @@
               :error-details (.getMessage e)})))
     (-clear-cache! [_] (-clear-cache! token-checker))))
 
+(def ^:dynamic *customize-checker*
+  "Dynamic variable allowing for customized token checkers. In the app, we want all of these in place. Only in tests
+  should we construct ones without circuit breakers "
+  false)
+
+(defn make-checker
+  "Make a token checker. Takes a base [[TokenChecker]] token checker and then arguments for the middleware-style
+  wrapping [[TokenChecker]] arguments. "
+  [{:keys [base circuit-breaker timeout-ms ttl-ms grace-period]
+    :or   {base store-and-airgap-token-checker}}]
+  (when-not *customize-checker*
+    (assert (and base circuit-breaker timeout-ms ttl-ms grace-period)
+            "Must provide all arguments for token checker"))
+  (cond-> base
+    ;; don't do it too much
+    circuit-breaker
+    (circuit-breaker-token-checker {:circuit-breaker circuit-breaker
+                                    :timeout-ms      timeout-ms})
+    ;; hold onto results for a while
+    ttl-ms
+    (cached-token-checker {:ttl-ms ttl-ms})
+    ;; in case of errors, if we have a recent response use it
+    grace-period
+    (grace-period-token-checker {:grace-period grace-period})
+    :always
+    (error-catching-token-checker)))
+
 (def token-checker
-  (-> (store-and-airgap-token-checker) ;; actual check token
-      (circuit-breaker-token-checker   ;; don't do it too much
-       {:circuit-breaker {:failure-threshold-ratio-in-period [10 10 (u/seconds->ms 10)]
-                          :delay-ms (u/seconds->ms 30)
-                          :success-threshold 1}
-        :timeout-ms (u/seconds->ms 10)})
-      (cached-token-checker            ;; hold onto results for a while
-       {:ttl-ms (u/hours->ms 12)})
-      (grace-period-token-checker      ;; in case of errors, if we have a recent response use it
-       {:grace-period (guava-cache-grace-period 36 TimeUnit/HOURS)})
-      (error-catching-token-checker))) ;; otherwise not valid
+  "The token checker. Combines http/airgapping vaildation, circuit breaking, grace periods, caching, and error
+  handling."
+  (make-checker {:base            store-and-airgap-token-checker
+                 :circuit-breaker {:failure-threshold-ratio-in-period [10 10 (u/seconds->ms 10)]
+                                   :delay-ms                          (u/seconds->ms 30)
+                                   :success-threshold                 1}
+                 :timeout-ms      (u/seconds->ms 10)
+                 :ttl-ms          (u/hours->ms 12)
+                 :grace-period    (guava-cache-grace-period 36 TimeUnit/HOURS)}))
 
 (defn clear-cache!
   "Clear the token cache so that [[fetch-token-and-parse-body]] will return the latest data."
   []
   (-clear-cache! token-checker))
-
 
 (defn check-token
   "Public entrypoint to the token checking."
