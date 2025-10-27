@@ -239,7 +239,7 @@ export function closeStaticEmbeddingModal() {
 }
 
 /**
- * Open Static Embedding setup modal
+ * Publish a static dashboard or question
  * @param {"card" | "dashboard"} apiPath
  * @param callback
  */
