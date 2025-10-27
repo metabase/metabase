@@ -33,6 +33,9 @@ export function useEditorControls(
     { toggle: toggleSnippetSidebar, close: closeSnippetSidebar },
   ] = useDisclosure();
 
+  const [isPreviewQueryModalOpen, { toggle: togglePreviewQueryModal }] =
+    useDisclosure();
+
   const selectedText = useMemo(() => {
     const query = question.query();
     const text = Lib.rawNativeQuery(query) ?? "";
@@ -68,11 +71,13 @@ export function useEditorControls(
     modalSnippet,
     isDataReferenceOpen,
     isSnippetSidebarOpen,
+    isPreviewQueryModalOpen,
     handleSelectionRangeChange: setSelectionRange,
     handleModalSnippetChange: setModalSnippet,
     handleInsertSnippet,
     handleToggleDataReference,
     handleToggleSnippetSidebar,
+    handleTogglePreviewQueryModal: togglePreviewQueryModal,
   };
 }
 

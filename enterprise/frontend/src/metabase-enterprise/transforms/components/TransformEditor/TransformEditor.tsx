@@ -1,6 +1,9 @@
+import { t } from "ttag";
+
 import { useListDatabasesQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Center, Flex } from "metabase/ui";
+import { NativeQueryPreview } from "metabase/querying/notebook/components/NativeQueryPreview";
+import { Center, Flex, Modal } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { QueryTransformSource, TransformId } from "metabase-types/api";
 
@@ -58,11 +61,13 @@ export function TransformEditor({
     modalSnippet,
     isDataReferenceOpen,
     isSnippetSidebarOpen,
+    isPreviewQueryModalOpen,
     handleSelectionRangeChange,
     handleModalSnippetChange,
     handleInsertSnippet,
     handleToggleDataReference,
     handleToggleSnippetSidebar,
+    handleTogglePreviewQueryModal,
   } = useEditorControls(question, handleQuestionChange);
   const {
     data: databases,
@@ -84,66 +89,77 @@ export function TransformEditor({
   }
 
   return (
-    <Flex direction="column" h="100%">
-      <TransformHeaderView
-        id={id}
-        name={name}
-        actions={
-          (isSaving || isSourceDirty) && (
-            <SaveSection
-              isSaving={isSaving}
-              onSave={onSave}
-              onCancel={onCancel}
+    <>
+      <Flex direction="column" h="100%">
+        <TransformHeaderView
+          id={id}
+          name={name}
+          actions={
+            (isSaving || isSourceDirty) && (
+              <SaveSection
+                isSaving={isSaving}
+                onSave={onSave}
+                onCancel={onCancel}
+              />
+            )
+          }
+          onNameChange={onNameChange}
+        />
+        <Flex className={S.body} flex={1}>
+          <Flex flex="2 1 100%" direction="column">
+            <QuerySection
+              question={question}
+              databases={databases?.data ?? []}
+              modalSnippet={modalSnippet}
+              nativeEditorSelectedText={selectedText}
+              isNative={isNative}
+              isRunnable={isRunnable}
+              isRunning={isRunning}
+              isResultDirty={isResultDirty}
+              isShowingDataReference={isDataReferenceOpen}
+              isShowingSnippetSidebar={isSnippetSidebarOpen}
+              onChange={handleQuestionChange}
+              onRunQuery={handleRunQuery}
+              onCancelQuery={handleCancelQuery}
+              onToggleDataReference={handleToggleDataReference}
+              onToggleSnippetSidebar={handleToggleSnippetSidebar}
+              onOpenModal={() => undefined}
+              onChangeModalSnippet={handleModalSnippetChange}
+              onChangeNativeEditorSelection={handleSelectionRangeChange}
             />
-          )
-        }
-        onNameChange={onNameChange}
-      />
-      <Flex className={S.body} flex={1}>
-        <Flex flex="2 1 100%" direction="column">
-          <QuerySection
+            <VisualizationSection
+              question={question}
+              result={result}
+              rawSeries={rawSeries}
+              isNative={isNative}
+              isRunnable={isRunnable}
+              isRunning={isRunning}
+              isResultDirty={isResultDirty}
+              onRunQuery={handleRunQuery}
+              onCancelQuery={handleCancelQuery}
+            />
+          </Flex>
+          <EditorSidebar
             question={question}
-            databases={databases?.data ?? []}
-            modalSnippet={modalSnippet}
-            nativeEditorSelectedText={selectedText}
             isNative={isNative}
-            isRunnable={isRunnable}
-            isRunning={isRunning}
-            isResultDirty={isResultDirty}
-            isShowingDataReference={isDataReferenceOpen}
-            isShowingSnippetSidebar={isSnippetSidebarOpen}
-            onChange={handleQuestionChange}
-            onRunQuery={handleRunQuery}
-            onCancelQuery={handleCancelQuery}
+            isDataReferenceOpen={isDataReferenceOpen}
+            isSnippetSidebarOpen={isSnippetSidebarOpen}
+            onInsertSnippet={handleInsertSnippet}
             onToggleDataReference={handleToggleDataReference}
             onToggleSnippetSidebar={handleToggleSnippetSidebar}
-            onOpenModal={() => undefined}
             onChangeModalSnippet={handleModalSnippetChange}
-            onChangeNativeEditorSelection={handleSelectionRangeChange}
-          />
-          <VisualizationSection
-            question={question}
-            result={result}
-            rawSeries={rawSeries}
-            isNative={isNative}
-            isRunnable={isRunnable}
-            isRunning={isRunning}
-            isResultDirty={isResultDirty}
-            onRunQuery={handleRunQuery}
-            onCancelQuery={handleCancelQuery}
           />
         </Flex>
-        <EditorSidebar
-          question={question}
-          isNative={isNative}
-          isDataReferenceOpen={isDataReferenceOpen}
-          isSnippetSidebarOpen={isSnippetSidebarOpen}
-          onInsertSnippet={handleInsertSnippet}
-          onToggleDataReference={handleToggleDataReference}
-          onToggleSnippetSidebar={handleToggleSnippetSidebar}
-          onChangeModalSnippet={handleModalSnippetChange}
-        />
       </Flex>
-    </Flex>
+      {isNative && (
+        <Modal
+          title={t`Query preview`}
+          opened={isPreviewQueryModalOpen}
+          onClose={handleTogglePreviewQueryModal}
+        >
+          <NativeQueryPreview query={question.query()} />
+        </Modal>
+      )}
+    </>
   );
 }
