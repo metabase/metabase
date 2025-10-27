@@ -1,18 +1,21 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useSelector } from "metabase/lib/redux";
 import {
   QueryEditor,
   type QueryEditorUiControls,
 } from "metabase/querying/editor/components/QueryEditor";
+import { getMetadata } from "metabase/selectors/metadata";
 import { Center, Flex } from "metabase/ui";
+import * as Lib from "metabase-lib";
 import type { QueryTransformSource, TransformId } from "metabase-types/api";
 
 import { TransformHeaderView } from "../TransformHeader";
 
 import { EditorActions } from "./EditorActions";
-import { useSourceQuery } from "./use-source-query";
 import { shouldDisableDatabase, shouldDisableItem } from "./utils";
 
 type TransformEditorProps = {
@@ -42,11 +45,23 @@ export function TransformEditor({
   onSave,
   onCancel,
 }: TransformEditorProps) {
-  const { query, setQuery } = useSourceQuery(source, onSourceChange);
+  const metadata = useSelector(getMetadata);
+  const query = useMemo(() => {
+    const metadataProvider = Lib.metadataProvider(
+      source.query.database,
+      metadata,
+    );
+    return Lib.fromJsQuery(metadataProvider, source.query);
+  }, [source, metadata]);
+
   const { data, isLoading, error } = useListDatabasesQuery({
     include_analytics: true,
   });
   const databases = data?.data ?? [];
+
+  const handleQueryChange = (newQuery: Lib.Query) => {
+    onSourceChange({ type: "query", query: Lib.toJsQuery(newQuery) });
+  };
 
   if (isLoading || error != null) {
     return (
@@ -81,7 +96,7 @@ export function TransformEditor({
         convertToNativeButtonLabel={t`Convert this transform to SQL`}
         shouldDisableItem={(item) => shouldDisableItem(item, databases)}
         shouldDisableDatabase={({ id }) => shouldDisableDatabase(id, databases)}
-        onQueryChange={setQuery}
+        onQueryChange={handleQueryChange}
         onUiControlsChange={onUiControlsChange}
       />
     </Flex>
