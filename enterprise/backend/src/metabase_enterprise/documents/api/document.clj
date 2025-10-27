@@ -314,14 +314,13 @@
 
 ;;; ------------------------------------------------ Card Downloads --------------------------------------------------
 
-(defn- validate-card-in-document!
+(defn- validate-card-in-document
   "Validates that a card exists in a document and both are accessible.
   Throws appropriate API errors if validation fails."
   [document-id card-id]
   (let [document (api/check-404 (t2/select-one :model/Document :id document-id :archived false))]
     (api/read-check document)
-    (api/check-404 (t2/select-one-pk :model/Card :id card-id :archived false))
-    (api/check-404 (contains? (set (prose-mirror/card-ids document)) card-id))))
+    (api/check-404 (t2/select-one-pk :model/Card :id card-id :document_id document-id :archived false))))
 
 (api.macros/defendpoint :post "/:document-id/card/:card-id/query/:export-format"
   "Download query results for a Card embedded in a Document.
@@ -346,17 +345,16 @@
     format-rows?   :format_rows
     :as            _body}
    :- [:map
-       [:parameters    {:optional true} [:maybe
-                                         {:decode/api (fn [x]
-                                                        (cond-> x
-                                                          (string? x) json/decode+kw))}
-                                         [:sequential [:map-of :keyword :any]]]]
+       [:parameters    {:optional true} [:maybe [:or
+                                                 [:sequential ms/Map]
+                                                 ms/JSONString]]]
        [:format_rows   {:default false} ms/BooleanValue]
        [:pivot_results {:default false} ms/BooleanValue]]]
-  (validate-card-in-document! document-id card-id)
+  (validate-card-in-document document-id card-id)
   (qp.card/process-query-for-card
    card-id export-format
-   :parameters  parameters
+   :parameters  (cond-> parameters
+                  (string? parameters) json/decode+kw)
    :constraints nil
    :context     (api.dataset/export-format->context export-format)
    :middleware  {:process-viz-settings?  true

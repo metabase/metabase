@@ -198,23 +198,6 @@
 
 ;;; ----------------------------------------------- Public Documents -------------------------------------------------
 
-;; Cache expensive requiring-resolve calls for document-related functions
-(def ^:private prose-mirror-content-type
-  "Cached reference to the ProseMirror content type constant from the enterprise documents module.
-
-  Uses requiring-resolve with delay to avoid direct dependency on enterprise code, allowing this
-  OSS module to work regardless of whether the documents feature is available. The delay ensures
-  the constant is only resolved once and cached for performance."
-  (delay @(requiring-resolve 'metabase-enterprise.documents.prose-mirror/prose-mirror-content-type)))
-
-(def ^:private card-ids-fn
-  "Cached reference to the card-ids function from the enterprise documents module.
-
-  Uses requiring-resolve to avoid direct dependency on enterprise code, allowing this OSS module
-  to work regardless of whether the documents feature is available. The delay ensures the function
-  is only resolved once and cached for performance."
-  (delay (requiring-resolve 'metabase-enterprise.documents.prose-mirror/card-ids)))
-
 (defn- remove-document-non-public-columns
   "Strip out internal fields that shouldn't be exposed publicly.
 
@@ -229,37 +212,22 @@
   [& conditions]
   (let [document (api/check-404 (apply t2/select-one [:model/Document :id :name :document :content_type :created_at :updated_at]
                                        :archived false, conditions))
-        ;; Extract card IDs from the document's ProseMirror content so we can hydrate them
-        embedded-card-ids (when (= @prose-mirror-content-type (:content_type document))
-                            (@card-ids-fn document))
-        ;; Hydrate the cards so the frontend has all the metadata it needs upfront
-        hydrated-cards (when (seq embedded-card-ids)
-                         (let [cards (t2/select :model/Card :id [:in embedded-card-ids] :archived false)]
-                           (zipmap (map :id cards)
-                                   (map remove-card-non-public-columns cards))))]
+        ;; Hydrate the cards associated with this document via the document_id FK
+        ;; so the frontend has all the metadata it needs upfront
+        hydrated-cards (let [cards (t2/select :model/Card :document_id (:id document) :archived false)]
+                         (zipmap (map :id cards)
+                                 (map remove-card-non-public-columns cards)))]
     (-> document
         (assoc :cards hydrated-cards)
         (dissoc :content_type)
         remove-document-non-public-columns)))
 
-(defn- document-card-ids
-  "Get the set of Card IDs embedded in a public Document with the given UUID.
-
-  Returns a set of Card IDs that are embedded in the Document's ProseMirror content. Throws a 404
-  if the Document doesn't exist, is archived, or doesn't have a public UUID."
-  [uuid]
-  (let [document (api/check-404 (t2/select-one :model/Document :public_uuid uuid :archived false))]
-    (when (= @prose-mirror-content-type (:content_type document))
-      (set (@card-ids-fn document)))))
-
-(defn- validate-card-in-public-document!
+(defn- validate-card-in-public-document
   "Validates that a card exists and is embedded in the public document.
   Throws a 404 if the card doesn't exist, is archived, or isn't in the document."
   [uuid card-id]
-  (api/check-404 (t2/select-one-pk :model/Card :id card-id :archived false))
-  (let [embedded-card-ids (document-card-ids uuid)]
-    ;; Make sure this card is actually in the document — we don't want people using this endpoint to query arbitrary cards
-    (api/check-404 (contains? embedded-card-ids card-id))))
+  (let [document-id (api/check-404 (t2/select-one-pk :model/Document :public_uuid uuid :archived false))]
+    (api/check-404 (t2/select-one-pk :model/Card :id card-id :document_id document-id :archived false))))
 
 (api.macros/defendpoint :get "/document/:uuid"
   "Fetch a publicly-accessible Document. Does not require auth credentials. Public sharing must be enabled.
@@ -283,7 +251,7 @@
    {:keys [parameters]} :- [:map
                             [:parameters {:optional true} [:maybe ms/JSONString]]]]
   (public-sharing.validation/check-public-sharing-enabled)
-  (validate-card-in-public-document! uuid card-id)
+  (validate-card-in-public-document uuid card-id)
   ;; Run the query as admin since public documents are available to everyone anyway
   (u/prog1 (process-query-for-card-with-id
             card-id
@@ -310,7 +278,7 @@
                                                       [:format_rows   {:default false} ms/BooleanValue]
                                                       [:pivot_results {:default false} ms/BooleanValue]]]
   (public-sharing.validation/check-public-sharing-enabled)
-  (validate-card-in-public-document! uuid card-id)
+  (validate-card-in-public-document uuid card-id)
   (process-query-for-card-with-id
    card-id
    export-format
