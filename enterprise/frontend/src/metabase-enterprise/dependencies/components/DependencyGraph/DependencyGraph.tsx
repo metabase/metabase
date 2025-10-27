@@ -19,6 +19,7 @@ import type { DependencyEntry } from "metabase-types/api";
 import S from "./DependencyGraph.module.css";
 import { GraphContext } from "./GraphContext";
 import { GraphDependencyPanel } from "./GraphDependencyPanel";
+import { GraphEdge } from "./GraphEdge";
 import { GraphEntryInput } from "./GraphEntryInput";
 import { GraphInfoPanel } from "./GraphInfoPanel";
 import { GraphNode } from "./GraphNode";
@@ -30,6 +31,10 @@ import { findNode, getInitialGraph } from "./utils";
 
 const NODE_TYPES = {
   node: GraphNode,
+};
+
+const EDGE_TYPES = {
+  edge: GraphEdge,
 };
 
 type DependencyGraphProps = {
@@ -91,6 +96,7 @@ export function DependencyGraph({
         nodes={nodes}
         edges={edges}
         nodeTypes={NODE_TYPES}
+        edgeTypes={EDGE_TYPES}
         fitView
         minZoom={MIN_ZOOM}
         maxZoom={MAX_ZOOM}

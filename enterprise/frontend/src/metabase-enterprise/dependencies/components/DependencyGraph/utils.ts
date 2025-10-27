@@ -55,6 +55,7 @@ function getEdges(edges: DependencyEdge[]): Edge[] {
 
     return {
       id: getEdgeId(sourceId, targetId),
+      type: "edge",
       data: edge,
       source: sourceId,
       target: targetId,
