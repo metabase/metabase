@@ -69,6 +69,8 @@ const setupInList = ({ item }: { item: Partial<PaletteActionImpl> }) => {
         component={() => (
           <PaletteResultList
             items={items.map((item) => mockPaletteActionImpl(item))}
+            maxHeight={580}
+            minHeight={220}
             renderItem={({
               item,
               active,

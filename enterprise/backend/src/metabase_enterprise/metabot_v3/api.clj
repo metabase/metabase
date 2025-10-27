@@ -75,7 +75,6 @@
   "Send a chat message to the LLM via the AI Proxy."
   [_route-params
    _query-params
-
    body :- [:map
             [:profile_id {:optional true} :string]
             [:metabot_id {:optional true} :string]

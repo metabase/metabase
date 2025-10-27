@@ -28,7 +28,7 @@
   Removing empty clauses like `{:aggregation nil}` or `{:breakout []}`.
 
   Token normalization occurs first, followed by canonicalization, followed by removing empty clauses."
-  (:refer-clojure :exclude [mapv every? some select-keys])
+  (:refer-clojure :exclude [mapv every? some select-keys #?(:clj doseq) #?(:clj for)])
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -38,13 +38,12 @@
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema.expression.temporal :as lib.schema.expression.temporal]
-   [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf :refer [mapv every? some select-keys]]
+   [metabase.util.performance :as perf :refer [mapv every? some select-keys #?(:clj doseq) #?(:clj for)]]
    [metabase.util.time :as u.time]))
 
 (defn- mbql-clause?
@@ -392,41 +391,19 @@
 
 (defn normalize-field-ref
   "Normalize the field ref. Ensure it's well-formed mbql, not just json."
+  {:deprecated "0.57.0"}
   [clause]
   (-> clause normalize-tokens canonicalize-mbql-clauses))
 
-(mu/defn- normalize-fingerprint :- [:maybe ::lib.schema.metadata.fingerprint/fingerprint]
-  [fingerprint :- [:maybe :map]]
-  (when fingerprint
-    (lib.normalize/normalize ::lib.schema.metadata.fingerprint/fingerprint fingerprint)))
+(mu/defn- normalize-source-metadata
+  "Normalize source/results metadata for a single column.
 
-(mu/defn normalize-source-metadata
-  "Normalize source/results metadata for a single column."
+  DEPRECATED: Use [[metabase.lib-be.core/instance->metadata]]
+  or [[metabase.lib.core/->normalized-stage-metadata]] (for Lib-style metadata) or [[metabase.lib.core/normalize]]
+  with `:metabase.query-processor.schema/result-metadata.column` (for QP-style metadata) going forward."
   [metadata :- :map]
   {:pre [(map? metadata)]}
-  (into (empty metadata)
-        (comp (remove (fn [[k _v]]
-                        (= k :ident))) ; ignore legacy `:ident` key
-              (map (fn [[k v]]
-                     (let [k (keyword k)
-                           k ((if (simple-keyword? k)
-                                u/->snake_case_en
-                                u/->kebab-case-en) k)
-                           v (case k
-                               (:semantic_type
-                                :visibility_type
-                                :source
-                                :unit
-                                :lib/source) (keyword v)
-                               (:effective_type
-                                :base_type)  (or (keyword v) :type/*)
-                               :field_ref    (normalize-field-ref v)
-                               :fingerprint  (normalize-fingerprint v)
-                               :binning_info (m/update-existing v :binning_strategy keyword)
-                               #_else
-                               v)]
-                       [k v]))))
-        metadata))
+  (lib.normalize/normalize ::mbql.s/legacy-column-metadata metadata))
 
 (mu/defn- normalize-native-query :- [:maybe :map]
   "For native queries, normalize the top-level keys, and template tags, but nothing else."
@@ -484,7 +461,10 @@
 
   In some cases, dealing with the path isn't desirable, but we don't want to accidentally trigger normalization
   functions (such as accidentally normalizing the `:type` key in something other than the top-level of the query), so
-  by convention please pass `nil` to avoid accidentally triggering special path functions."
+  by convention please pass `nil` to avoid accidentally triggering special path functions.
+
+  DEPRECATED: Use [[metabase.lib.core/normalize]] to normalize things going forward."
+  {:deprecated "0.57.0"}
   ([x] (normalize-tokens x path->special-token-normalization-fn))
   ([x special-fns]
    (let [special-fn (when (and special-fns (fn? special-fns))

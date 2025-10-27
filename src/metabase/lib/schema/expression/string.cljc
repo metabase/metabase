@@ -1,5 +1,7 @@
 (ns metabase.lib.schema.expression.string
+  #?(:clj (:refer-clojure :exclude [doseq]))
   (:require
+   #?(:clj [metabase.util.performance :refer [doseq]])
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.mbql-clause :as mbql-clause]))
 

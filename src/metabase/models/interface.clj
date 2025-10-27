@@ -14,8 +14,9 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [medley.core :as m]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.binning :as lib.binning]
+   [metabase.lib.core :as lib]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
@@ -213,13 +214,16 @@
 (def ^{:deprecated "0.57.0"} transform-legacy-field-ref
   "Transform field refs"
   {:in  json-in
-   :out (comp (catch-normalization-exceptions mbql.normalize/normalize-field-ref) json-out-with-keywordization)})
+   :out (comp (catch-normalization-exceptions #_{:clj-kondo/ignore [:deprecated-var]} mbql.normalize/normalize-field-ref)
+              json-out-with-keywordization)})
 
 (defn- normalize-result-metadata-column [col]
   (if (:lib/type col)
     (lib.normalize/normalize ::lib.schema.metadata/column col)
+    ;; legacy usages -- do not use these going forward
+    #_{:clj-kondo/ignore [:deprecated-var]}
     (-> col
-        mbql.normalize/normalize-source-metadata
+        (->> (lib/normalize :metabase.query-processor.schema/result-metadata.column))
         ;; This is necessary, because in the wild, there may be cards created prior to this change.
         lib.temporal-bucket/ensure-temporal-unit-in-display-name
         lib.binning/ensure-binning-in-display-name)))
@@ -524,7 +528,6 @@
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/updated-at-timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/created-at-timestamped? :hook/entity-id)
-
 ;; --- helper fns
 (defn changes-with-pk
   "The row merged with the changes in pre-update hooks.
