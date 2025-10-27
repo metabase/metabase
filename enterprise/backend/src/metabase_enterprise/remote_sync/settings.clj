@@ -92,10 +92,8 @@
                                                                      :remote-sync-token (setting/get :remote-sync-token)})))
 
   ([{:keys [remote-sync-url remote-sync-token]}]
-   (let [source
-         (try (git/git-source remote-sync-url "HEAD" remote-sync-token)
-              (catch Exception e
-                (throw (ex-info "Unable to connect to git repository with the provided settings" {:cause (.getMessage e)} e))))]
+   (let [source (git/git-source remote-sync-url "HEAD" remote-sync-token)]
+     (git/fetch! source)
      (when-not (git/has-data? source)
        (throw (ex-info "Cannot connect to an uninitialized repository" {:url remote-sync-url}))))))
 
