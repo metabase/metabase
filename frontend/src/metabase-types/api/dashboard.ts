@@ -1,4 +1,7 @@
-import type { EmbeddingParameters } from "metabase/public/lib/types";
+import type {
+  EmbeddingParameters,
+  EmbeddingType,
+} from "metabase/public/lib/types";
 import type {
   BaseEntityId,
   CardCreatorInfo,
@@ -86,6 +89,7 @@ export interface Dashboard {
 
   /* Indicates whether static embedding for this dashboard has been published */
   enable_embedding: boolean;
+  embedding_type?: EmbeddingType | null;
 
   /* For x-ray dashboards */
   transient_name?: string;
@@ -307,6 +311,7 @@ export type UpdateDashboardRequest = {
     | "tabs"
     | "show_in_getting_started"
     | "enable_embedding"
+    | "embedding_type"
     | "collection_id"
     | "name"
     | "width"

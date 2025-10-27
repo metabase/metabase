@@ -552,10 +552,11 @@
     (query-perms/check-run-permissions-for-query (:dataset_query card-updates))))
 
 (defn- check-allowed-to-change-embedding
-  "You must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be
+  "You must be a superuser to change the value of `enable_embedding`, `embedding_type` or `embedding_params`. Embedding must be
   enabled."
   [card-before-updates card-updates]
   (when (or (api/column-will-change? :enable_embedding card-before-updates card-updates)
+            (api/column-will-change? :embedding_type card-before-updates card-updates)
             (api/column-will-change? :embedding_params card-before-updates card-updates))
     (embedding.validation/check-embedding-enabled)
     (api/check-superuser)))
@@ -588,6 +589,7 @@
    [:visualization_settings {:optional true} [:maybe ms/Map]]
    [:archived               {:optional true} [:maybe :boolean]]
    [:enable_embedding       {:optional true} [:maybe :boolean]]
+   [:embedding_type         {:optional true} [:maybe :string]]
    [:embedding_params       {:optional true} [:maybe ms/EmbeddingParams]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
    [:collection_position    {:optional true} [:maybe ms/PositiveInt]]

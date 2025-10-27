@@ -72,6 +72,7 @@
    :description            nil
    :display                "scalar"
    :enable_embedding       false
+   :embedding_type         nil
    :initially_published_at nil
    :entity_id              nil
    :embedding_params       nil
@@ -898,6 +899,21 @@
                                                                        :dataset_query          (mt/mbql-query venues)
                                                                        :visualization_settings {}
                                                                        :enable_embedding       true})))))))))
+
+(deftest create-card-disallow-setting-embedding-type-test
+  (testing "POST /api/card"
+    (testing "Ignore values of `embedding_type` while creating a Card (this must be done via `PUT /api/card/:id` instead)"
+                    ;; should be ignored regardless of the value of the `embedding-type` Setting.
+      (doseq [embedding-type [true false]]
+        (mt/with-temporary-setting-values [enable-embedding-static embedding-type]
+          (mt/with-model-cleanup [:model/Card]
+            (is (=? {:embedding_type nil}
+                    (mt/user-http-request :crowberto :post 200 "card" {:name                   "My Card"
+                                                                       :display                :table
+                                                                       :dataset_query          (mt/mbql-query venues)
+                                                                       :visualization_settings {}
+                                                                       :enable_embedding       true
+                                                                       :embedding_type       "static-legacy"})))))))))
 
 (deftest save-empty-card-test
   (testing "POST /api/card"
