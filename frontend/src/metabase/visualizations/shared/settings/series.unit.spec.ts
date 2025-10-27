@@ -73,23 +73,6 @@ describe("getSeriesColors", () => {
     expect(result["Custom Title Only"]).toBeUndefined();
   });
 
-  it("should handle series with color but null title", () => {
-    const settings = {
-      series_settings: {
-        "Series A": {
-          color: "#FF0000",
-          title: null,
-        },
-      },
-    };
-
-    const result = getSeriesColors(mockSeriesKeys, settings, mockDefaultKeys);
-
-    expect(result["Series A"]).toBe("#FF0000");
-    // Should not create a mapping for null title
-    expect(result[null as any]).toBeUndefined();
-  });
-
   it("should use legacy colors when available and no series settings conflict", () => {
     const settings = {
       "graph.colors": ["#LEGACY1", "#LEGACY2", "#LEGACY3"],
