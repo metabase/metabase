@@ -8,6 +8,7 @@ import * as Lib from "metabase-lib";
 import type {
   Database,
   DatabaseId,
+  DraftTransformSource,
   Transform,
   TransformRunMethod,
   TransformRunStatus,
@@ -155,8 +156,8 @@ export function isTransformSyncing(transform: Transform) {
 }
 
 export function isSameSource(
-  source1: TransformSource,
-  source2: TransformSource,
+  source1: DraftTransformSource,
+  source2: DraftTransformSource,
 ) {
   if (source1.type === "query" && source2.type === "query") {
     return Lib.areLegacyQueriesEqual(source1.query, source2.query);
@@ -165,4 +166,10 @@ export function isSameSource(
     return _.isEqual(source1, source2);
   }
   return false;
+}
+
+export function isNotDraftSource(
+  source: DraftTransformSource,
+): source is TransformSource {
+  return source.type !== "python" || source["source-database"] != null;
 }

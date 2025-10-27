@@ -11,10 +11,14 @@ import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { Center } from "metabase/ui";
-import type { Transform, TransformSource } from "metabase-types/api";
+import type {
+  DraftTransformSource,
+  Transform,
+  TransformSource,
+} from "metabase-types/api";
 
 import { TransformEditor } from "../../components/TransformEditor";
-import { isSameSource } from "../../utils";
+import { isNotDraftSource, isSameSource } from "../../utils";
 
 import { CreateTransformModal } from "./CreateTransformModal";
 import { getNativeInitialSource, getQueryInitialSource } from "./utils";
@@ -22,7 +26,7 @@ import { getNativeInitialSource, getQueryInitialSource } from "./utils";
 type NewTransformPageProps = {
   route: Route;
   initialName?: string;
-  initialSource: TransformSource;
+  initialSource: DraftTransformSource;
   isInitiallyDirty?: boolean;
 };
 
@@ -78,7 +82,7 @@ function NewTransformPage({
           onCancel={handleCancel}
         />
       )}
-      {isOpened && (
+      {isOpened && isNotDraftSource(source) && (
         <CreateTransformModal
           name={name}
           source={source}

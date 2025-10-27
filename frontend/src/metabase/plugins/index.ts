@@ -81,7 +81,7 @@ import type {
   ModelCacheRefreshStatus,
   ParameterId,
   Pulse,
-  PythonTransformSource,
+  PythonTransformSourceDraft,
   Revision,
   SearchModel,
   Series,
@@ -896,11 +896,11 @@ export const PLUGIN_TRANSFORMS: TransformsPlugin = {
 export type PythonTransformEditorProps = {
   id?: TransformId;
   name: string;
-  source: PythonTransformSource;
+  source: PythonTransformSourceDraft;
   isSaving: boolean;
   isSourceDirty: boolean;
   onNameChange: (newName: string) => void;
-  onSourceChange: (newSource: PythonTransformSource) => void;
+  onSourceChange: (newSource: PythonTransformSourceDraft) => void;
   onSave: () => void;
   onCancel: () => void;
 };

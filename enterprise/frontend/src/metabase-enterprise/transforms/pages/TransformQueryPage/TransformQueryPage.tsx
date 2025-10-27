@@ -16,10 +16,10 @@ import {
   useGetTransformQuery,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
-import type { Transform } from "metabase-types/api";
+import type { DraftTransformSource, Transform } from "metabase-types/api";
 
 import { TransformEditor } from "../../components/TransformEditor";
-import { isSameSource } from "../../utils";
+import { isNotDraftSource, isSameSource } from "../../utils";
 
 type TransformQueryPageParams = {
   transformId: string;
@@ -54,7 +54,7 @@ function TransformQueryPageBody({
   transform,
   route,
 }: TransformQueryPageBodyProps) {
-  const [source, setSource] = useState(transform.source);
+  const [source, setSource] = useState<DraftTransformSource>(transform.source);
   const sourceRef = useLatest(transform.source);
   const [updateName] = useUpdateTransformMutation();
   const [updateSource, { isLoading: isSaving }] = useUpdateTransformMutation();
@@ -97,10 +97,12 @@ function TransformQueryPageBody({
   };
 
   const handleSave = async () => {
-    await handleInitialSave({
-      id: transform.id,
-      source,
-    });
+    if (isNotDraftSource(source)) {
+      await handleInitialSave({
+        id: transform.id,
+        source,
+      });
+    }
   };
 
   const handleCancel = () => {

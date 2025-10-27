@@ -87,6 +87,7 @@ export function PythonTransformEditor({
         actions={
           (isSaving || isSourceDirty) && (
             <PythonEditorActions
+              source={source}
               isSaving={isSaving}
               onSave={onSave}
               onCancel={onCancel}
