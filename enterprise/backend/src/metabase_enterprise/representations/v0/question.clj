@@ -2,12 +2,11 @@
   (:require
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
+   [metabase-enterprise.representations.lookup :as lookup]
    [metabase-enterprise.representations.toucan.core :as rep-t2]
    [metabase-enterprise.representations.v0.card]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.v0.mbql :as v0-mbql]
-   [metabase.api.common :as api]
-   [metabase.config.core :as config]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util :as u]
@@ -101,7 +100,7 @@
 
 (defmethod import/yaml->toucan [:v0 :question]
   [representation ref-index]
-  (let [database-id (v0-common/resolve-database-id (:database representation) ref-index)
+  (let [database-id (lookup/lookup-database-id ref-index (:database representation))
         query (-> representation #_(assoc representation :database database-id)
                   (v0-mbql/import-dataset-query ref-index))]
     (-> {:name (:name representation)

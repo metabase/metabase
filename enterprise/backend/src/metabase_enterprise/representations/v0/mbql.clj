@@ -4,8 +4,8 @@
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
-   [medley.core :as m]
    [metabase-enterprise.representations.export :as export]
+   [metabase-enterprise.representations.lookup :as lookup]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -179,7 +179,7 @@
   "Returns Metabase's dataset_query format, given a representation.
    Converts representation format to Metabase's internal dataset_query structure."
   [{:keys [query mbql_query lib_query database] :as representation} ref-index]
-  (let [database-id (v0-common/resolve-database-id database ref-index)]
+  (let [database-id (lookup/lookup-database-id ref-index database)]
     (cond
       ;; Native SQL query - simple case
       query

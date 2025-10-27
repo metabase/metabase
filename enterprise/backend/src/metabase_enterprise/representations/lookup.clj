@@ -28,3 +28,15 @@
                         {:rep-type rep-type
                          :name name
                          :entities entities}))))))
+
+(defn lookup-database-id
+  "Looks up a database-id from some reference to a database (ref, id, or entity-id)."
+  [ref-index database]
+  (if (integer? database)
+    database
+    (let [database (or (v0-common/lookup-entity ref-index database)
+                       (lookup-by-name :database database)
+                       (lookup-by-entity-id :database database))]
+      (-> (v0-common/ensure-correct-type database :database)
+          :id
+          (v0-common/ensure-not-nil)))))
