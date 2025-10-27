@@ -35,7 +35,7 @@ runs:
         path: node_modules
         key: ${{ steps.get-cache-keys.outputs.node-cache-key }}
 
-    # posinstall lifecycle hook can be dangerous in CI so we only run it locally (see package.json)
+    # postinstall lifecycle hook can be dangerous in CI so we only run it locally (see package.json)
     # If a job wants to patch packages, it does so explicitly in the CI. This setting is opt-out.
     # For example, we never want to cache node_modules with patches already applied so cache-generator.yml skips that step.
     - name: Clean install
