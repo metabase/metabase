@@ -20,7 +20,6 @@ export const SyncedParametersList = ({
   hideParameters,
 
   isFullscreen,
-  isNightMode,
   isEditing,
   isSortable,
   commitImmediately,
@@ -49,7 +48,6 @@ export const SyncedParametersList = ({
       dashboardId={dashboardId}
       editingParameter={editingParameter}
       isFullscreen={isFullscreen}
-      isNightMode={isNightMode}
       isSortable={isSortable}
       hideParameters={hideParameters}
       isEditing={isEditing}

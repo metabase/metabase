@@ -87,7 +87,7 @@ export const GetCodeStep = () => {
                         />
                       </HoverCard.Target>
                       <HoverCard.Dropdown>
-                        <Text size="sm" p="md" style={{ width: 300 }}>
+                        <Text lh="md" p="md" style={{ width: 300 }}>
                           {/* eslint-disable-next-line no-literal-metabase-strings -- this string is only shown for admins. */}
                           {t`This option lets you test Embedded Analytics JS locally using your existing Metabase session cookie. This only works for testing locally, using your admin account and on this browser. This may not work on Safari and Firefox. We recommend testing this in Chrome.`}
                         </Text>
@@ -115,7 +115,7 @@ export const GetCodeStep = () => {
 
       <Card p="md">
         <Text size="lg" fw="bold" mb="md">
-          {t`Embed Code`}
+          {t`Embed code`}
         </Text>
 
         <Stack gap="sm">
@@ -137,7 +137,7 @@ export const GetCodeStep = () => {
                   handleCodeSnippetCopied();
                 }}
               >
-                {copied ? t`Copied!` : t`Copy Code`}
+                {copied ? t`Copied!` : t`Copy code`}
               </Button>
             )}
           </CopyButton>

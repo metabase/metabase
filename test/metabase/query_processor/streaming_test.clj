@@ -11,7 +11,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
    [metabase.query-processor.streaming.xlsx-test :as xlsx-test]

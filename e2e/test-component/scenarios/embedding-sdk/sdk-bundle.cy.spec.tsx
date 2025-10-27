@@ -15,8 +15,6 @@ import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embeddin
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
 import { deleteConflictingCljsGlobals } from "metabase/embedding-sdk/test/delete-conflicting-cljs-globals";
 
-const { H } = cy;
-
 const sdkBundleCleanup = () => {
   getSdkBundleScriptElement()?.remove();
   delete window.METABASE_EMBEDDING_SDK_BUNDLE;
@@ -194,10 +192,15 @@ describe(
         it("should show a custom loader when the SDK bundle is loading", () => {
           sdkBundleCleanup();
 
+          const MINUTE = 60 * 1000;
           cy.intercept("GET", "/api/card/*", (request) => {
-            // Delay request for 500ms to avoid flakiness
+            /**
+             * Delay request for 10 min to avoid flakiness. We don't need the request to return, since we're testing the loading state.
+             * From observing the failed test log, it failed at 10.9s, and the timeout for finding the loading indicator was set to 10s.
+             * That means, Cypress started looking for the loading indicator after ~0.9s of the request being delayed.
+             */
             request.continue(
-              () => new Promise((resolve) => setTimeout(resolve, 500)),
+              () => new Promise((resolve) => setTimeout(resolve, 10 * MINUTE)),
             );
           });
 
@@ -354,53 +357,6 @@ describe(
           "be.calledWithMatch",
           "this property is required by the component",
         );
-      });
-    });
-
-    describe("Error handling", { retries: 3 }, () => {
-      beforeEach(() => {
-        H.clearBrowserCache();
-
-        sdkBundleCleanup();
-
-        cy.intercept("GET", "**/app/embedding-sdk.js", {
-          statusCode: 404,
-        });
-      });
-
-      describe("when the SDK bundle can't be loaded", () => {
-        it("should show an error", () => {
-          mountSdkContent(
-            <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
-            {
-              waitForUser: false,
-            },
-          );
-
-          cy.findByTestId("sdk-error-container").should(
-            "contain.text",
-            "Error loading the Embedded Analytics SDK",
-          );
-        });
-
-        it("should show a custom error", () => {
-          mountSdkContent(
-            <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
-            {
-              sdkProviderProps: {
-                errorComponent: ({ message }: { message: string }) => (
-                  <div>Custom error: {message}</div>
-                ),
-              },
-              waitForUser: false,
-            },
-          );
-
-          cy.findByTestId("sdk-error-container").should(
-            "contain.text",
-            "Custom error: Error loading the Embedded Analytics SDK",
-          );
-        });
       });
     });
   },

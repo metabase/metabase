@@ -4,7 +4,7 @@
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.util]
    [metabase.collections.models.collection :as collection]
    [metabase.content-verification.core :as moderation]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.models.permissions :as perms]
@@ -82,7 +82,7 @@
     (mt/dataset test-data
       (mt/with-current-user (mt/user->id :crowberto)
         (let [test-db-id (mt/id)
-              mp (lib.metadata.jvm/application-database-metadata-provider test-db-id)
+              mp (lib-be/application-database-metadata-provider test-db-id)
               orders-query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
               columns (lib/visible-columns orders-query)]
 

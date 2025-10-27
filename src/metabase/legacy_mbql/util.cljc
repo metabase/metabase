@@ -1,23 +1,26 @@
 (ns metabase.legacy-mbql.util
-  "Utilitiy functions for working with MBQL queries."
-  (:refer-clojure :exclude [replace some mapv every?])
+  "Utilitiy functions for working with MBQL queries.
+
+  DEPRECATED: Use [[metabase.lib.core]] for MBQL manipulation in all new code."
+  {:deprecated "0.57.0"}
+  (:refer-clojure :exclude [replace some mapv every? #?(:clj for)])
   (:require
    #?@(:clj
-       [[metabase.legacy-mbql.jvm-util :as mbql.jvm-u]
-        [metabase.models.dispatch :as models.dispatch]])
+       [[metabase.legacy-mbql.jvm-util :as mbql.jvm-u]])
    [clojure.string :as str]
    [metabase.legacy-mbql.predicates :as mbql.preds]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.schema.helpers :as schema.helpers]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.namespaces :as shared.ns]
-   [metabase.util.performance :refer [some mapv every?]]
+   [metabase.util.performance :refer [some mapv every? #?(:clj for)]]
    [metabase.util.time :as u.time]))
 
 (shared.ns/import-fns
@@ -28,7 +31,10 @@
 
 (mu/defn normalize-token :- [:or :keyword :string]
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased
-  keyword."
+  keyword.
+
+  DEPRECATED: use [[metabase.lib.normalize]] going forward to normalize things."
+  {:deprecated "0.57.0"}
   [token :- [:or :keyword :string]]
   (let [s (u/qualified-name token)]
     (if (str/starts-with? s "type/")
@@ -121,17 +127,6 @@
   [filter-clause & more-filter-clauses]
   #_{:clj-kondo/ignore [:deprecated-var]}
   (simplify-compound-filter (cons :and (cons filter-clause more-filter-clauses))))
-
-;;; TODO (Cam 7/16/25) -- why does the LEGACY MBQL UTILS have STAGE STUFF IN IT!
-(defn legacy-last-stage-number
-  "Returns the canonical stage number of the last stage of the legacy `inner-query`."
-  {:deprecated "0.57.0"}
-  [inner-query]
-  (loop [{:keys [source-query qp/stage-had-source-card]} inner-query, n 0]
-    (if (or (nil? source-query)
-            stage-had-source-card)
-      n
-      (recur source-query (inc n)))))
 
 (defn desugar-inside
   "Rewrite `:inside` filter clauses as a pair of `:between` clauses."
@@ -489,7 +484,7 @@
       maybe-desugar-expression))
 
 (defmulti ^:private negate*
-  {:arglists '([mbql-clause])}
+  {:arglists '([mbql-clause]), :deprecated "0.57.0"}
   first)
 
 (defmethod negate* :not [[_ subclause]]    subclause)
@@ -513,7 +508,10 @@
 (mu/defn negate-filter-clause :- mbql.s/Filter
   "Return the logical compliment of an MBQL filter clause, generally without using `:not` (except for the string
   filter clause types). Useful for generating highly optimized filter clauses and for drivers that do not support
-  top-level `:not` filter clauses."
+  top-level `:not` filter clauses.
+
+  Deprecated: use [[metabase.lib.core/negate-boolean-expression]] going forward."
+  {:deprecated "0.57.0"}
   [filter-clause :- mbql.s/Filter]
   #_{:clj-kondo/ignore [:deprecated-var]}
   (-> filter-clause desugar-filter-clause negate* simplify-compound-filter))
@@ -553,29 +551,9 @@
     :else
     source-table-id))
 
-(defn dispatch-by-clause-name-or-class
-  "Dispatch function perfect for use with multimethods that dispatch off elements of an MBQL query. If `x` is an MBQL
-  clause, dispatches off the clause name; otherwise dispatches off `x`'s class."
-  ([x]
-   (letfn [(clause-type [x]
-             (when (mbql-clause? x)
-               (first x)))
-           (mlv2-lib-type [x]
-             (when (map? x)
-               (:lib/type x)))
-           (model-type [#?(:clj x :cljs _x)]
-             #?(:clj (models.dispatch/model x)
-                :cljs nil))]
-     (or
-      (clause-type x)
-      (mlv2-lib-type x)
-      (model-type x)
-      (type x))))
-  ([x _]
-   (dispatch-by-clause-name-or-class x)))
-
 (mu/defn expression-with-name :- ::mbql.s/FieldOrExpressionDef
   "Return the expression referenced by a given `expression-name`."
+  {:deprecated "0.57.0"}
   [inner-query expression-name :- ::lib.schema.common/non-blank-string]
   (loop [{:keys [expressions source-query]} inner-query, found #{}]
     (when (seq expressions)
@@ -601,6 +579,7 @@
    This also handles nested queries, which could be potentially ambiguous if multiple levels had aggregations. To
    support nested queries, you'll need to keep tract of how many `:source-query`s deep you've traveled; pass in this
    number to as optional arg `nesting-level` to make sure you reference aggregations at the right level of nesting."
+  {:deprecated "0.57.0"}
   ([query index]
    (aggregation-at-index query index 0))
 
@@ -612,116 +591,6 @@
          (throw (ex-info (i18n/tru "No aggregation at index: {0}" index) {:index index})))
      ;; keep recursing deeper into the query until we get to the same level the aggregation reference was defined at
      (recur {:query (get-in query [:query :source-query])} index (dec nesting-level)))))
-
-(defn unique-name-generator
-  "Return a function that can be used to uniquify string names. Function maintains an internal counter that will suffix
-  any names passed to it as needed so all results will be unique.
-
-    (let [unique-name (unique-name-generator)]
-      [(unique-name \"A\")
-       (unique-name \"B\")
-       (unique-name \"A\")])
-    ;; -> [\"A\" \"B\" \"A_2\"]
-
-  By default, unique aliases are generated for each unique `[id original-name]` key pair. By default, a unique `id` is
-  generated for every call, meaning repeated calls to [[unique-name-generator]] with the same `original-name` will
-  return different unique aliases. If idempotence is desired, the function returned by the generator also has a 2
-  airity version with the signature
-
-    (unique-name-fn id original-name)
-
-  for example:
-
-    (let [unique-name (unique-name-generator)]
-      [(unique-name :x \"A\")
-       (unique-name :x \"B\")
-       (unique-name :x \"A\")
-       (unique-name :y \"A\")])
-    ;; -> [\"A\" \"B\" \"A\" \"A_2\"]
-
-  Finally, [[unique-name-generator]] accepts the following options to further customize behavior:
-
-  ### `:name-key-fn`
-
-  Generated aliases are unique by the value of `[id (name-key-fn original-name)]`; the default is `identity`, so by
-  default aliases are unique by `[id name-key-fn]`. Specify something custom here if you want to make the unique
-  aliases unique by some other value, for example to make them unique without regards to case:
-
-    (let [f (unique-name-generator :name-key-fn str/lower-case)]
-      [(f \"x\")
-       (f \"X\")
-       (f \"X\")])
-    ;; -> [\"x\" \"X_2\" \"X_3\"]
-
-  This is useful for databases that treat column aliases as case-insensitive (see #19618 for some examples of this).
-
-  ### `:unique-alias-fn`
-
-  The function used to generate a potentially-unique alias given an original alias and unique suffix with the signature
-
-    (unique-alias-fn original suffix)
-
-  By default, combines them like `original_suffix`, but you can supply a custom function if you need to change this
-  behavior:
-
-    (let [f (unique-name-generator :unique-alias-fn (fn [x y] (format \"%s~~%s\" y x)))]
-      [(f \"x\")
-       (f \"x\")])
-  ;; -> [\"x\" \"2~~x\"]
-
-  This is useful if you need to constrain the generated suffix in some way, for example by limiting its length or
-  escaping characters disallowed in a column alias.
-
-  Values generated by this function are recursively checked for uniqueness, and will keep trying values a unique value
-  is generated; for this reason the function *must* return a unique value for every unique input. Use caution when
-  limiting the length of the identifier generated (consider appending a hash in cases like these)."
-  [& {:keys [name-key-fn unique-alias-fn]
-      :or   {name-key-fn     identity
-             unique-alias-fn (fn [original suffix]
-                               (str original \_ suffix))}}]
-  (let [id+original->unique (atom {})   ; map of [id original-alias] -> unique-alias
-        original->count     (atom {})]  ; map of original-alias -> count
-    (fn generate-name
-      ([an-alias]
-       (generate-name (gensym) an-alias))
-
-      ([id original]
-       (let [name-key (name-key-fn original)]
-         (or
-          ;; if we already have generated an alias for this key (e.g. `[id original]`), return it as-is.
-          (@id+original->unique [id name-key])
-          ;; otherwise generate a new unique alias.
-          ;; see if we're the first to try to use this candidate alias. Update the usage count in `original->count`
-          (let [total-count (get (swap! original->count update name-key (fnil inc 0)) name-key)]
-            (if (= total-count 1)
-              ;; if we are the first to do it, record it in `id+original->unique` and return it.
-              (do
-                (swap! id+original->unique assoc [id name-key] original)
-                original)
-              ;; otherwise prefix the alias by the current total count (e.g. `id` becomes `id_2`) and recur. If `id_2`
-              ;; is unused, it will get returned. Otherwise we'll recursively try `id_2_2`, and so forth.
-              (let [candidate (unique-alias-fn original (str total-count))]
-                ;; double-check that `unique-alias-fn` isn't doing something silly like truncating the generated alias
-                ;; to aggressively or forgetting to include the `suffix` -- otherwise we could end up with an infinite
-                ;; loop
-                (assert (not= candidate original)
-                        (str "unique-alias-fn must return a different string than its input. Input: "
-                             (pr-str candidate)))
-                (swap! id+original->unique assoc [id name-key] candidate)
-                (recur id candidate))))))))))
-
-(mu/defn uniquify-names :- [:and
-                            [:sequential :string]
-                            [:fn
-                             {:error/message "sequence of unique strings"}
-                             distinct?]]
-  "Make the names in a sequence of string names unique by adding suffixes such as `_2`.
-
-     (uniquify-names [\"count\" \"sum\" \"count\" \"count_2\"])
-     ;; -> [\"count\" \"sum\" \"count_2\" \"count_2_2\"]"
-  {:deprecated "0.57.0"}
-  [names :- [:sequential :string]]
-  (map (unique-name-generator) names))
 
 (defn query->max-rows-limit
   "Calculate the absolute maximum number of results that should be returned by this query (MBQL or native), useful for
@@ -769,13 +638,18 @@
     x))
 
 (defn field-options
-  "Returns options in a `:field`, `:expression`, or `:aggregation` clause."
+  "Returns options in a `:field`, `:expression`, or `:aggregation` clause.
+
+  DEPRECATED: Use MBQL 5 + [[metabase.lib.core/options]] going forward."
+  {:deprecated "0.57.0"}
   [[_ _ opts]]
   opts)
 
 (mu/defn update-field-options :- mbql.s/Reference
-  "Like [[clojure.core/update]], but for the options in a `:field`, `:expression`, or `:aggregation` clause."
-  {:arglists '([field-or-ag-ref-or-expression-ref f & args])}
+  "Like [[clojure.core/update]], but for the options in a `:field`, `:expression`, or `:aggregation` clause.
+
+  DEPRECATED: Use MBQL 5 + [[metabase.lib.core/update-options]] going forward."
+  {:arglists '([field-or-ag-ref-or-expression-ref f & args]), :deprecated "0.57.0"}
   [[clause-type id-or-name opts] :- mbql.s/Reference f & args]
   (let [opts (not-empty (remove-empty (apply f opts args)))]
     ;; `:field` clauses should have a `nil` options map if there are no options. `:aggregation` and `:expression`
@@ -787,7 +661,10 @@
       :else                  [clause-type id-or-name])))
 
 (defn assoc-field-options
-  "Like [[clojure.core/assoc]], but for the options in a `:field`, `:expression`, or `:aggregation` clause."
+  "Like [[clojure.core/assoc]], but for the options in a `:field`, `:expression`, or `:aggregation` clause.
+
+  DEPRECATED: Use MBQL 5 + [[metabase.lib.core/update-options]] going forward."
+  {:deprecated "0.57.0"}
   [clause & kvs]
   (apply update-field-options clause assoc kvs))
 
@@ -800,7 +677,7 @@
   ;; it doesn't make sense to call this on an `:expression` or `:aggregation`.
   (assert (is-clause? :field clause))
   (if (or (not base-type)
-          (mbql.s/valid-temporal-unit-for-base-type? base-type unit))
+          (lib.schema.ref/valid-temporal-unit-for-base-type? base-type unit))
     (assoc-field-options clause :temporal-unit unit)
     (do
       (log/warnf "%s is not a valid temporal unit for %s; not adding to clause %s" unit base-type (pr-str clause))
@@ -821,34 +698,11 @@
            [:field (id :guard integer?) opts]
            [id (:source-field opts)]))))
 
-(defn pred-matches-form?
-  "Check if `form` or any of its children forms match `pred`. This function is used for validation; during normal
-  operation it will never match, so calling this function before `matching-locations` is more efficient."
-  [form pred]
-  (cond
-    (pred form)        true
-    (map? form)        (reduce-kv (fn [b _ v] (or b (pred-matches-form? v pred))) false form)
-    (sequential? form) (reduce (fn [b x] (or b (pred-matches-form? x pred))) false form)
-    :else              false))
-
-(defn matching-locations
-  "Find the forms matching pred, returns a list of tuples of location (as used in get-in) and the match."
-  [form pred]
-  ;; Surprisingly enough, a list works better as a stack here than a vector.
-  (loop [stack (list [[] form]), matches []]
-    (if-let [[loc form :as top] (peek stack)]
-      (let [stack (pop stack)
-            map-onto-stack #(transduce (map (fn [[k v]] [(conj loc k) v])) conj stack %)
-            seq-onto-stack #(transduce (map-indexed (fn [i v] [(conj loc i) v])) conj stack %)]
-        (cond
-          (pred form)        (recur stack                 (conj matches top))
-          (map? form)        (recur (map-onto-stack form) matches)
-          (sequential? form) (recur (seq-onto-stack form) matches)
-          :else              (recur stack                 matches)))
-      matches)))
-
 (defn wrap-field-id-if-needed
-  "Wrap a raw Field ID in a `:field` clause if needed."
+  "Wrap a raw Field ID in a `:field` clause if needed.
+
+  DEPRECATED: this operates on legacy MBQL. Use Lib for MBQL manipulation going forward."
+  {:deprecated "0.57.0"}
   [field-id-or-form]
   (cond
     (mbql-clause? field-id-or-form)
@@ -859,20 +713,3 @@
 
     :else
     field-id-or-form))
-
-(mu/defn unwrap-field-clause :- [:maybe mbql.s/field]
-  "Unwrap something that contains a `:field` clause, such as a template tag.
-  Also handles unwrapped integers for legacy compatibility.
-
-    (unwrap-field-clause [:field 100 nil]) ; -> [:field 100 nil]"
-  [field-form]
-  (if (integer? field-form)
-    [:field field-form nil]
-    (lib.util.match/match-lite-recursive field-form :field field-form)))
-
-(mu/defn unwrap-field-or-expression-clause :- mbql.s/Field
-  "Unwrap a `:field` clause or expression clause, such as a template tag. Also handles unwrapped integers for
-  legacy compatibility."
-  [field-or-ref-form]
-  (or (unwrap-field-clause field-or-ref-form)
-      (lib.util.match/match-lite-recursive field-or-ref-form :expression field-or-ref-form)))

@@ -9,6 +9,7 @@ import {
 import cx from "classnames";
 import { useEffect, useMemo, useState } from "react";
 
+import { isWithinIframe } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import { useListCommentsQuery } from "metabase-enterprise/api";
 import { getTargetChildCommentThreads } from "metabase-enterprise/comments/utils";
@@ -85,16 +86,19 @@ export const BulletListNodeView = ({ node, editor, getPos }: NodeViewProps) => {
         <NodeViewContent<"ul"> as="ul" />
       </NodeViewWrapper>
 
-      {document && rendered && isTopLevel({ editor, getPos }) && (
-        <CommentsMenu
-          active={isOpen}
-          href={`/document/${document.id}/comments/${_id}`}
-          ref={refs.setFloating}
-          show={isOpen || hovered}
-          threads={threads}
-          style={floatingStyles}
-        />
-      )}
+      {document &&
+        rendered &&
+        isTopLevel({ editor, getPos }) &&
+        !isWithinIframe() && (
+          <CommentsMenu
+            active={isOpen}
+            href={`/document/${document.id}/comments/${_id}`}
+            ref={refs.setFloating}
+            show={isOpen || hovered}
+            threads={threads}
+            style={floatingStyles}
+          />
+        )}
     </>
   );
 };

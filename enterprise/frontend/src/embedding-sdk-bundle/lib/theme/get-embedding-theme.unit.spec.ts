@@ -17,6 +17,8 @@ describe("Transform Embedding Theme Override", () => {
           "text-primary": "yellow",
           "text-tertiary": "green",
           "background-disabled": "pink",
+          "text-white": "white",
+          focus: "blue",
         },
 
         // we should strip any explicit "undefined" values and apply default component values
@@ -39,6 +41,9 @@ describe("Transform Embedding Theme Override", () => {
         "text-light": expect.arrayContaining(["green"]),
         "text-tertiary": expect.arrayContaining(["green"]),
         "background-disabled": expect.arrayContaining(["pink"]),
+        "text-white": expect.arrayContaining(["white"]),
+        white: expect.arrayContaining(["white"]),
+        focus: expect.arrayContaining(["blue"]),
       },
       other: {
         fontSize: "2rem",

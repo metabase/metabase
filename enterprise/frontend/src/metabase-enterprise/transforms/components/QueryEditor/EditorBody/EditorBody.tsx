@@ -17,6 +17,7 @@ import type Database from "metabase-lib/v1/metadata/Database";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   Database as ApiDatabase,
+  DatasetQuery,
   NativeQuerySnippet,
   RecentItem,
 } from "metabase-types/api";
@@ -52,7 +53,7 @@ type EditorBodyProps = {
   onToggleDataReference: () => void;
   onToggleSnippetSidebar: () => void;
   onCancelQuery: () => void;
-
+  onInsertSnippet: (snippet: NativeQuerySnippet) => void;
   modalSnippet?: NativeQuerySnippet | null;
   onChangeModalSnippet: (snippet: NativeQuerySnippet | null) => void;
   onChangeNativeEditorSelection: (range: SelectionRange[]) => void;
@@ -60,6 +61,9 @@ type EditorBodyProps = {
   nativeEditorSelectedText?: string | null;
 
   databases: ApiDatabase[];
+  proposedQuestion?: Question;
+  onRejectProposed?: () => void;
+  onAcceptProposed?: (query: DatasetQuery) => void;
 };
 
 export function EditorBody({
@@ -77,10 +81,14 @@ export function EditorBody({
   onToggleSnippetSidebar,
   databases,
   modalSnippet,
+  onInsertSnippet,
   onChangeModalSnippet,
   onChangeNativeEditorSelection,
   nativeEditorSelectedText,
   onOpenModal,
+  proposedQuestion,
+  onRejectProposed,
+  onAcceptProposed,
 }: EditorBodyProps) {
   const [isResizing, setIsResizing] = useState(false);
   const reportTimezone = useSetting("report-timezone-long");
@@ -139,6 +147,7 @@ export function EditorBody({
       toggleDataReference={onToggleDataReference}
       toggleSnippetSidebar={onToggleSnippetSidebar}
       modalSnippet={modalSnippet}
+      insertSnippet={onInsertSnippet}
       closeSnippetModal={() => onChangeModalSnippet(null)}
       databaseIsDisabled={(db: Database) => {
         const database = databases.find((database) => database.id === db.id);
@@ -147,6 +156,9 @@ export function EditorBody({
       setNativeEditorSelectedRange={onChangeNativeEditorSelection}
       nativeEditorSelectedText={nativeEditorSelectedText}
       onOpenModal={onOpenModal}
+      proposedQuestion={proposedQuestion}
+      onRejectProposed={onRejectProposed}
+      onAcceptProposed={onAcceptProposed}
     />
   ) : (
     <ResizableBox

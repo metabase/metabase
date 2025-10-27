@@ -81,9 +81,9 @@ describe("FormattingWidget", () => {
     const dateAbbreviateToggle = await screen.findByRole("switch");
     expect(dateAbbreviateToggle).not.toBeChecked();
 
-    const symbolRadio = within(currencyStyleWidget).getByLabelText(/symbol/i);
-    const codeRadio = within(currencyStyleWidget).getByLabelText(/code/i);
-    const nameRadio = within(currencyStyleWidget).getByLabelText(/name/i);
+    const symbolRadio = within(currencyStyleWidget).getByLabelText(/Symbol/);
+    const codeRadio = within(currencyStyleWidget).getByLabelText(/Code/);
+    const nameRadio = within(currencyStyleWidget).getByLabelText(/Name/);
 
     // eslint-disable-next-line jest-dom/prefer-to-have-value
     expect(symbolRadio).toHaveAttribute("value", "symbol");
@@ -96,6 +96,10 @@ describe("FormattingWidget", () => {
     // eslint-disable-next-line jest-dom/prefer-to-have-value
     expect(nameRadio).toHaveAttribute("value", "name");
     expect(nameRadio).not.toBeChecked();
+
+    expect(
+      within(currencyStyleWidget).queryByLabelText(/Local symbol/),
+    ).not.toBeInTheDocument();
   });
 
   it("should update multiple settings", async () => {

@@ -4,8 +4,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.driver.common.parameters :as params]
-   [metabase.driver.common.parameters.values :as params.values]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.values :as params.values]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.lib.metadata :as lib.metadata]
@@ -17,7 +17,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -781,7 +781,7 @@
     (mt/dataset test-data
       (qp.store/with-metadata-provider meta/metadata-provider
         (let [template-tags {"createdAt" {:type         :dimension
-                                          :dimension    [:field (meta/id :orders :created-at) {}]
+                                          :dimension    [:field (meta/id :orders :created-at) nil]
                                           :name         "createdAt"
                                           :id           "4636d745-1467-4a70-ba20-2a08069d77ff"
                                           :display-name "CreatedAt"

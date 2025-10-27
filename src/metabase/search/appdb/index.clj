@@ -200,7 +200,12 @@
             (log/infof "Creating pending index %s for lang %s" table-name (i18n/site-locale-string))
             ;; We may fail to insert a new metadata row if we lose a race with another instance.
             (when (search-index-metadata/create-pending! :appdb *index-version-id* table-name)
-              (create-table! table-name))
+              (try
+                (create-table! table-name)
+                (catch Exception e
+                  (log/error e "Error creating pending index table, cleaning up metadata")
+                  (t2/delete! :model/SearchIndexMetadata :index_name (name table-name))
+                  (sync-tracking-atoms!))))
             (let [pending (:pending (sync-tracking-atoms!))]
               (log/infof "New pending index %s" pending)
               pending))))))

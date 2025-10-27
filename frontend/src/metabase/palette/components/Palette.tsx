@@ -1,29 +1,32 @@
-import { KBarPortal, VisualState, useKBar } from "kbar";
+import { KBarPortal, KBarSearch, VisualState, useKBar } from "kbar";
 import { type HTMLAttributes, forwardRef, useEffect, useRef } from "react";
-import { type PlainRoute, withRouter } from "react-router";
+import {
+  type PlainRoute,
+  type WithRouterProps,
+  withRouter,
+} from "react-router";
 import { t } from "ttag";
 
 import { useOnClickOutside } from "metabase/common/hooks/use-on-click-outside";
 import { isWithinIframe } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
-import { Box, Card, Center, Overlay, type OverlayProps } from "metabase/ui";
+import {
+  Box,
+  Card,
+  Center,
+  Icon,
+  Overlay,
+  type OverlayProps,
+  Stack,
+  rem,
+} from "metabase/ui";
 
 import { useCommandPalette } from "../hooks/useCommandPalette";
 import { useCommandPaletteBasicActions } from "../hooks/useCommandPaletteBasicActions";
 
-import { PaletteInput } from "./Palette.styled";
-import { PaletteFooter } from "./PaletteFooter";
+import S from "./Palette.module.css";
 import { PaletteResults } from "./PaletteResults";
-
-/**
- * Thin wrapper for useCommandPalette.
- * Limits re-render scope and provides an easy way to enable/disable entire hook.
- */
-const AdvancedPaletteActions = withRouter((props) => {
-  useCommandPalette({ locationQuery: props.location.query });
-  return null;
-});
 
 /** Command palette */
 export const Palette = withRouter((props) => {
@@ -44,35 +47,59 @@ export const Palette = withRouter((props) => {
   }, [disabled, query]);
 
   return (
-    <>
-      <KBarPortal>
-        <PaletteContainer />
-      </KBarPortal>
-      {!disabled && <AdvancedPaletteActions />}
-    </>
+    <KBarPortal>
+      <PaletteContainer disabled={disabled} />
+    </KBarPortal>
   );
 });
 
-const PaletteContainer = () => {
-  const { query } = useKBar((state) => ({ actions: state.actions }));
-  const ref = useRef(null);
+const PaletteContainer = withRouter(
+  ({ disabled, ...props }: WithRouterProps & { disabled: boolean }) => {
+    const { query } = useKBar((state) => ({ actions: state.actions }));
+    const ref = useRef(null);
 
-  useOnClickOutside(ref, () => {
-    query.setVisualState(VisualState.hidden);
-  });
+    const locationQuery = props.location.query;
+    const { searchRequestId, searchResults, searchTerm } = useCommandPalette({
+      locationQuery,
+      disabled,
+    });
 
-  return (
-    <PaletteCard ref={ref}>
-      <Box w="100%" p="1.5rem" pb="0">
-        <PaletteInput
-          defaultPlaceholder={t`Search for anything or jump somewhere…`}
-        />
-      </Box>
-      <PaletteResults />
-      <PaletteFooter />
-    </PaletteCard>
-  );
-};
+    useOnClickOutside(ref, () => {
+      query.setVisualState(VisualState.hidden);
+    });
+
+    return (
+      <PaletteCard ref={ref}>
+        <Stack gap={rem(4)} pb="lg">
+          <Box pos="relative">
+            <KBarSearch
+              className={S.input}
+              defaultPlaceholder={t`Search for anything…`}
+            />
+
+            <Stack
+              className={S.iconContainer}
+              align="center"
+              left={36} // align this icon with results icons
+              pos="absolute"
+              top={26}
+            >
+              <Icon c="text-dark" name="search" />
+            </Stack>
+          </Box>
+
+          <PaletteResults
+            align="stretch"
+            locationQuery={locationQuery}
+            searchRequestId={searchRequestId}
+            searchResults={searchResults}
+            searchTerm={searchTerm}
+          />
+        </Stack>
+      </PaletteCard>
+    );
+  },
+);
 
 export const PaletteCard = forwardRef<
   HTMLDivElement,

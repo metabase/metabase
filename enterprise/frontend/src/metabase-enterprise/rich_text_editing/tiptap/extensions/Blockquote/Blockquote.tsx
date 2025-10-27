@@ -9,6 +9,7 @@ import {
 import cx from "classnames";
 import { useEffect, useMemo, useState } from "react";
 
+import { isWithinIframe } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import { useListCommentsQuery } from "metabase-enterprise/api";
 import { getTargetChildCommentThreads } from "metabase-enterprise/comments/utils";
@@ -87,7 +88,7 @@ export const BlockquoteNodeView = ({ node }: NodeViewProps) => {
         <NodeViewContent<"blockquote"> as="blockquote" />
       </NodeViewWrapper>
 
-      {document && rendered && (
+      {document && rendered && !isWithinIframe() && (
         <CommentsMenu
           active={isOpen}
           href={`/document/${document.id}/comments/${_id}`}

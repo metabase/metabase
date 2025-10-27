@@ -1634,9 +1634,11 @@ describe("issue 47170", () => {
 
     H.dashboardHeader().findByLabelText("Move, trash, and more…").click();
     H.popover().findByText("Enter fullscreen").click();
-    H.dashboardHeader().findByLabelText("Nighttime mode").click();
+    H.dashboardHeader()
+      .findByLabelText(/dark mode/)
+      .click();
 
-    const primaryTextColor = "color(srgb 1 1 1 / 0.9)";
+    const primaryTextColor = "rgba(255, 255, 255, 0.95)";
 
     cy.findByTestId("dashboard-name-heading").should(
       "have.css",

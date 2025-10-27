@@ -166,6 +166,17 @@
         (and (mi/current-user-has-full-permissions? :read notification)
              (current-user-is-creator? notification)))))
 
+(defmethod mi/can-create? :model/Pulse
+  [_m {cards :cards dashboard-id :dashboard_id collection-id :collection_id}]
+  (and
+   ;; make sure we are allowed to *read* all the Cards we want to put in this Pulse
+   (every? #(mi/can-read? :model/Card (u/the-id %)) cards)
+   ;; if we're trying to create this Pulse inside a Collection, and it is not a dashboard subscription,
+   ;; make sure we have write permissions for that collection
+   (or (nil? collection-id) (mi/can-write? :model/Collection collection-id))
+   ;; prohibit creating dashboard subs if the the user doesn't have at least read access for the dashboard
+   (or (nil? dashboard-id) (mi/can-read? :model/Dashboard dashboard-id))))
+
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
 
 (def AlertConditions

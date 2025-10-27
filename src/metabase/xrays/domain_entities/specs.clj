@@ -3,8 +3,12 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.util :as mbql.u]
+   ;; legacy usages, do not use legacy MBQL stuff in new code.
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.yaml :as yaml]))
 
 (def MBQL
@@ -13,9 +17,12 @@
    {:decode/domain-entity-spec mbql.normalize/normalize
     :decode/transform-spec     mbql.normalize/normalize
     :error/message             "valid MBQL clause"}
-   mbql.u/mbql-clause?])
+   ;;; TODO (Cam 10/10/25) -- update this to use [[metabase.lib.core/clause?]] once we convert X-Rays to MBQL 5
+   #(and (vector? %) (keyword? (first %)))])
 
-(def FieldType
+;;; TODO (Cam 9/29/25) -- these decoding rules are BUSTED because it ends up creating totally nonsensical types like
+;;; `:type/AvgPrice` which is not a real type at all. We should probably just leave the field names as strings.
+(def ^:private BrokenFieldNameTypeKeyword
   "Field type designator -- a keyword derived from `type/*`"
   [:keyword
    (letfn [(decoder [k]
@@ -36,13 +43,16 @@
 
 (def ^:private Description :string)
 
-(def ^:private Attributes
-  [:sequential
-   [:map
-    [:field         {:optional true} FieldType]
-    [:domain_entity {:optional true} DomainEntityReference]
-    [:has_many      {:optional true} [:map
-                                      [:domain_entity DomainEntityReference]]]]])
+(mr/def ::attribute
+  [:map
+   [:field         {:optional true} BrokenFieldNameTypeKeyword]
+   [:domain_entity {:optional true} DomainEntityReference]
+   [:has_many      {:optional true} [:map
+                                     [:domain_entity DomainEntityReference]]]])
+
+(mr/def ::attributes
+  "Schema for `required_attributes` and `optional_attributes` in a [[DomainEntitySpec]]."
+  [:sequential ::attribute])
 
 (def ^:private BreakoutDimensions
   [:sequential
@@ -50,7 +60,7 @@
                                  (for [dimension breakout-dimensions]
                                    (if (string? dimension)
                                      (do
-                                       (mc/assert FieldType (keyword "type" dimension))
+                                       (mc/assert BrokenFieldNameTypeKeyword (keyword "type" dimension))
                                        [:dimension dimension])
                                      dimension)))}
    MBQL])
@@ -84,9 +94,9 @@
   [:map
    [:name                DomainEntityReference]
    [:type                DomainEntityType]
-   [:required_attributes Attributes]
+   [:required_attributes ::attributes]
    [:description         {:optional true} Description]
-   [:optional_attributes {:optional true} Attributes]
+   [:optional_attributes {:optional true} ::attributes]
    [:metrics             {:optional true} Metrics]
    [:segments            {:optional true} Segments]
    [:breakout_dimensions {:optional true} BreakoutDimensions]])
@@ -110,8 +120,47 @@
 
 (def ^:private domain-entities-dir "domain_entity_specs/")
 
-(def domain-entity-specs
-  "List of registered domain entities."
+(def ^:dynamic *domain-entity-specs*
+  "Delay with registered domain entities specs, loaded from YAML and coerced to match the [[DomainEntitySpec]] schema."
   (delay (into {} (for [spec (yaml/load-dir domain-entities-dir (comp coerce-to-domain-entity-spec
                                                                       add-to-hiearchy!))]
                     [(:name spec) spec]))))
+
+(mr/def ::field-name :string)
+
+(mr/def ::instantiated-metric
+  [:map
+   {:closed true}
+   [:name        :string]
+   [:aggregation ::mbql.s/Aggregation]
+   [:filter      {:optional true} ::mbql.s/Filter]])
+
+(mr/def ::instantiated-metrics
+  [:map-of ::field-name ::instantiated-metric])
+
+(mr/def ::instantiated-segment
+  [:map
+   {:closed true}
+   [:name   :string]
+   [:filter ::mbql.s/Filter]])
+
+(mr/def ::instantiated-segments
+  [:map-of ::field-name ::instantiated-segment])
+
+(mr/def ::instantiated-breakouts
+  [:sequential ::mbql.s/field])
+
+(mr/def ::instantiated-domain-entity
+  "Schema for a [[DomainEntitySpec]] that has been instantiated
+  by [[metabase.xrays.domain-entities.core/instantiate-domain-entity]], i.e. the `[:dimension <field-name>]`
+  placeholder clauses have been replaced with real Field refs."
+  [:map
+   {:closed true}
+   [:breakout_dimensions [:maybe ::instantiated-breakouts]]
+   [:description         [:maybe Description]]
+   [:dimensions          [:map-of ::field-name (ms/InstanceOf :model/Field)]]
+   [:metrics             [:maybe ::instantiated-metrics]]
+   [:name                DomainEntityReference]
+   [:segments            [:maybe ::instantiated-segments]]
+   [:source_table        ::lib.schema.id/table]
+   [:type                DomainEntityType]])

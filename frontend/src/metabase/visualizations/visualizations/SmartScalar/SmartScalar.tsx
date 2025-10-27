@@ -1,15 +1,13 @@
-import cx from "classnames";
 import { useEffect, useMemo, useRef } from "react";
 import { t } from "ttag";
 
 import DashboardS from "metabase/css/dashboard.module.css";
-import { color } from "metabase/lib/colors";
-import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { Box } from "metabase/ui";
 import {
   ScalarValue,
   ScalarWrapper,
 } from "metabase/visualizations/components/ScalarValue/ScalarValue";
+import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
@@ -62,14 +60,12 @@ export function SmartScalar({
   onRenderError,
 }: VisualizationProps & VisualizationPassThroughProps) {
   const scalarRef = useRef(null);
+  const { getColor } = useBrowserRenderingContext({ fontFamily });
 
   const insights = rawSeries?.[0].data?.insights;
   const { trend, error } = useMemo(
-    () =>
-      computeTrend(series, insights, settings, {
-        getColor: color,
-      }),
-    [series, insights, settings],
+    () => computeTrend(series, insights, settings, { getColor }),
+    [series, insights, settings, getColor],
   );
 
   useEffect(() => {
@@ -89,12 +85,18 @@ export function SmartScalar({
   const isClickable = onVisualizationClick != null;
 
   const handleClick = () => {
+    if (scalarRef.current == null) {
+      return;
+    }
+
+    const clickData = { ...clicked, element: scalarRef.current };
+
     if (
       scalarRef.current &&
       onVisualizationClick &&
-      visualizationIsClickable(clicked)
+      visualizationIsClickable(clickData)
     ) {
-      onVisualizationClick({ ...clicked, element: scalarRef.current });
+      onVisualizationClick(clickData);
     }
   };
 
@@ -104,14 +106,15 @@ export function SmartScalar({
     formatOptions,
   );
 
+  const { valueHeight, comparisonsCount } = getValueHeight(
+    innerHeight,
+    comparisons.length,
+  );
+
   return (
     <ScalarWrapper>
       <ScalarContainer
-        className={cx(
-          DashboardS.fullscreenNormalText,
-          DashboardS.fullscreenNightText,
-          EmbedFrameS.fullscreenNightText,
-        )}
+        className={DashboardS.fullscreenNormalText}
         data-testid="scalar-container"
         tooltip={fullScalarValue}
         alwaysShowTooltip={fullScalarValue !== displayValue}
@@ -121,7 +124,7 @@ export function SmartScalar({
           <ScalarValue
             fontFamily={fontFamily}
             gridSize={gridSize}
-            height={getValueHeight(innerHeight)}
+            height={valueHeight}
             totalNumGridCols={totalNumGridCols}
             value={displayValue as string}
             width={getValueWidth(width)}
@@ -129,16 +132,31 @@ export function SmartScalar({
         </span>
       </ScalarContainer>
       {isPeriodVisible(innerHeight) && <ScalarPeriod period={display.date} />}
-      {comparisons.map((comparison, index) => (
-        <Box maw="100%" key={index} data-testid="scalar-previous-value">
+
+      {comparisonsCount === 1 && (
+        <Box maw="100%" data-testid="scalar-previous-value">
           <PreviousValueComparison
-            comparison={comparison}
+            comparison={comparisons[0]}
             fontFamily={fontFamily}
             formatOptions={formatOptions}
+            tooltipComparisons={comparisons}
             width={width}
           />
         </Box>
-      ))}
+      )}
+
+      {comparisonsCount !== 1 &&
+        comparisons.map((comparison, index) => (
+          <Box maw="100%" key={index} data-testid="scalar-previous-value">
+            <PreviousValueComparison
+              comparison={comparison}
+              fontFamily={fontFamily}
+              formatOptions={formatOptions}
+              tooltipComparisons={[comparison]}
+              width={width}
+            />
+          </Box>
+        ))}
     </ScalarWrapper>
   );
 }

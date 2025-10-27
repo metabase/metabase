@@ -2,10 +2,16 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
+   [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase.events.core :as events]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.search.core :as search.core]
+   [metabase.search.ingestion :as search]
+   [metabase.search.spec :as search.spec]
    [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -17,50 +23,64 @@
 (doseq [trait [:metabase/model :hook/entity-id :hook/timestamped?]]
   (derive :model/Transform trait))
 
+;; Only superusers can access transforms
+(doto :model/Transform
+  (derive ::mi/read-policy.superuser)
+  (derive ::mi/write-policy.superuser))
+
+(defn- transform-source-out [m]
+  (-> m
+      mi/json-out-without-keywordization
+      (update-keys keyword)
+      (m/update-existing :query lib-be/normalize-query)
+      (m/update-existing :type keyword)))
+
+(defn- transform-source-in [m]
+  (-> m
+      (m/update-existing :query (comp lib/prepare-for-serialization lib-be/normalize-query))
+      mi/json-in))
+
 (t2/deftransforms :model/Transform
-  {:source      mi/transform-transform-source
+  {:source      {:out transform-source-out, :in transform-source-in}
    :target      mi/transform-json
    :run_trigger mi/transform-keyword})
 
-(mi/define-batched-hydration-method with-transform
-  :transform
+(methodical/defmethod t2/batched-hydrate [:model/TransformRun :transform]
   "Add transform to a TransformRun"
-  [runs]
+  [_model _k runs]
   (if-not (seq runs)
     runs
     (let [transform-ids (into #{} (map :transform_id) runs)
           id->transform (t2/select-pk->fn identity [:model/Transform :id :name] :id [:in transform-ids])]
-      (for [run runs]
-        (assoc run :transform (get id->transform (:transform_id run)))))))
+      (for [run runs] (assoc run :transform (get id->transform (:transform_id run)))))))
 
-(mi/define-batched-hydration-method with-last-run
-  :last_run
+(methodical/defmethod t2/batched-hydrate [:model/Transform :last_run]
   "Add last_run to a transform"
-  [transforms]
+  [_model _k transforms]
   (if-not (seq transforms)
     transforms
     (let [transform-ids (into #{} (map :id) transforms)
-          last-runs     (m/index-by :transform_id (transform-run/latest-runs transform-ids))]
-      (for [transform transforms]
-        (assoc transform :last_run (get last-runs (:id transform)))))))
+          last-runs (m/index-by :transform_id (transform-run/latest-runs transform-ids))]
+      (for [transform transforms] (assoc transform :last_run (get last-runs (:id transform)))))))
 
-(mi/define-batched-hydration-method transform-tag-ids
-  :transform_tag_ids
+(methodical/defmethod t2/batched-hydrate [:model/Transform :transform_tag_ids]
   "Add tag_ids to a transform, preserving the order defined by position"
-  [transforms]
+  [_model _k transforms]
   (if-not (seq transforms)
     transforms
-    (let [transform-ids         (into #{} (map :id) transforms)
-          tag-associations      (when (seq transform-ids)
-                                  (t2/select [:model/TransformTransformTag :transform_id :tag_id :position]
-                                             :transform_id [:in transform-ids]
-                                             {:order-by [[:position :asc]]}))
-          transform-id->tag-ids (reduce (fn [acc {:keys [transform_id tag_id]}]
-                                          (update acc transform_id (fnil conj []) tag_id))
-                                        {}
-                                        tag-associations)]
-      (for [transform transforms]
-        (assoc transform :tag_ids (vec (get transform-id->tag-ids (:id transform) [])))))))
+    (let [transform-ids (into #{} (map :id) transforms)
+          tag-associations (when (seq transform-ids)
+                             (t2/select
+                              [:model/TransformTransformTag :transform_id :tag_id :position]
+                              :transform_id
+                              [:in transform-ids]
+                              {:order-by [[:position :asc]]}))
+          transform-id->tag-ids (reduce
+                                 (fn [acc {:keys [transform_id tag_id]}]
+                                   (update acc transform_id (fnil conj []) tag_id))
+                                 {}
+                                 tag-associations)]
+      (for [transform transforms] (assoc transform :tag_ids (vec (get transform-id->tag-ids (:id transform) [])))))))
 
 (mi/define-batched-hydration-method transform-tag-names
   :transform_tag_names
@@ -89,12 +109,12 @@
 
 (t2/define-before-delete :model/Transform [transform]
   (events/publish-event! :event/delete-transform {:id (:id transform)})
+  (search.core/delete! :model/Transform [(str (:id transform))])
   transform)
 
 (defn update-transform-tags!
-  "Update the tags associated with a transform using smart diff logic.
-   Only modifies what has changed: deletes removed tags, updates positions for moved tags,
-   and inserts new tags. Duplicate tag IDs are automatically deduplicated."
+  "Update the tags associated with a transform using smart diff logic. Only modifies what has changed: deletes removed
+  tags, updates positions for moved tags, and inserts new tags. Duplicate tag IDs are automatically deduplicated."
   [transform-id tag-ids]
   (when transform-id
     (t2/with-transaction [_conn]
@@ -142,6 +162,21 @@
                          :tag_id       tag-id
                          :position     (get new-positions tag-id)})))))))
 
+;;; ----------------------------------------------- Search ----------------------------------------------------------
+
+(search.spec/define-spec "transform"
+  {:model :model/Transform
+   :attrs {:archived      false
+           :collection-id false
+           :creator-id    false
+           :database-id   false
+           :view-count    false
+           :created-at    true
+           :updated-at    true}
+   :search-terms [:name]
+   :render-terms {:transform-name :name
+                  :transform-id :id}})
+
 ;;; ------------------------------------------------- Serialization ------------------------------------------------
 
 (mi/define-batched-hydration-method tags
@@ -157,6 +192,32 @@
       (for [transform transforms]
         (assoc transform :tags (get tag-mappings (u/the-id transform) []))))))
 
+(mi/define-batched-hydration-method table-with-db-and-fields
+  :table-with-db-and-fields
+  "Fetch tables with their fields. The tables show up under the `:table` property."
+  [transforms]
+  (let [table-key-fn (fn [{:keys [target] :as transform}]
+                       [(transforms.i/target-db-id transform) (:schema target) (:name target)])
+        table-keys (into #{} (map table-key-fn) transforms)
+        table-keys-with-schema (filter second table-keys)
+        table-keys-without-schema (keep (fn [[db-id schema table-name]]
+                                          (when-not schema
+                                            [db-id table-name]))
+                                        table-keys)
+        tables (when (or (seq table-keys-with-schema) (seq table-keys-without-schema))
+                 (-> (t2/select :model/Table
+                                {:where [:or
+                                         (when (seq table-keys-with-schema)
+                                           [:in [:composite :db_id :schema :name] table-keys-with-schema])
+                                         (when (seq table-keys-without-schema)
+                                           [:and
+                                            [:= :schema nil]
+                                            [:in [:composite :db_id :name] table-keys-without-schema]])]})
+                     (t2/hydrate :db :fields)))
+        table-keys->table (m/index-by (juxt :db_id :schema :name) tables)]
+    (for [transform transforms]
+      (assoc transform :table (get table-keys->table (table-key-fn transform))))))
+
 (defmethod serdes/hash-fields :model/Transform
   [_transform]
   [:name :created_at])
@@ -167,7 +228,8 @@
    :skip [:dependency_analysis_version]
    :transform {:created_at (serdes/date)
                :updated_at (serdes/date)
-               :source {:export serdes/export-mbql :import serdes/import-mbql}
+               :source {:export #(update % :query serdes/export-mbql)
+                        :import #(update % :query serdes/import-mbql)}
                :target {:export serdes/export-mbql :import serdes/import-mbql}
                :tags (serdes/nested :model/TransformTransformTag :transform_id opts)}})
 
@@ -182,3 +244,39 @@
 (defmethod serdes/storage-path "Transform" [transform _ctx]
   (let [{:keys [id label]} (-> transform serdes/path last)]
     ["transforms" (serdes/storage-leaf-file-name id label)]))
+
+(defn- maybe-extract-transform-query-text
+  "Return the query text (truncated to `max-searchable-value-length`) from transform source; else nil.
+  Extracts SQL from query-type transforms and Python code from python-type transforms."
+  [{:keys [source]}]
+  (let [source-data (transform-source-out source)
+        query-text (case (:type source-data)
+                     :query (lib/raw-native-query (:query source-data))
+                     :python (:body source-data)
+                     nil)]
+    (when query-text
+      (subs query-text 0 (min (count query-text) search/max-searchable-value-length)))))
+
+(defn- extract-transform-db-id
+  "Return the database ID from transform source; else nil."
+  [{:keys [source]}]
+  (let [parsed-source ((:out mi/transform-json) source)]
+    (case (:type parsed-source)
+      "query" (get-in parsed-source [:query :database])
+      "python" (parsed-source :source-database)
+      nil)))
+
+;;; ------------------------------------------------- Search ---------------------------------------------------
+
+(search.spec/define-spec "transform"
+  {:model        :model/Transform
+   :attrs        {:archived      false
+                  :collection-id false
+                  :created-at    true
+                  :updated-at    true
+                  :native-query  {:fn maybe-extract-transform-query-text
+                                  :fields [:source]}
+                  :database-id   {:fn extract-transform-db-id
+                                  :fields [:source]}}
+   :search-terms [:name :description]
+   :render-terms {:description true}})

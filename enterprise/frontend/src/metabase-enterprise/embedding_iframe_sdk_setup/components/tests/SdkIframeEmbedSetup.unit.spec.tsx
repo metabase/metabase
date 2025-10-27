@@ -1,6 +1,15 @@
 import userEvent from "@testing-library/user-event";
 
+import {
+  setupCardEndpoints,
+  setupCardQueryMetadataEndpoint,
+} from "__support__/server-mocks";
 import { screen } from "__support__/ui";
+import {
+  createMockCard,
+  createMockCardQueryMetadata,
+  createMockDatabase,
+} from "metabase-types/api/mocks";
 
 import { setup } from "./test-setup";
 
@@ -37,10 +46,10 @@ describe("Embed flow > forward and backward navigation", () => {
     expect(screen.getByText("Behavior")).toBeInTheDocument();
     expect(screen.getByText("Appearance")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Get Code" }),
+      screen.getByRole("button", { name: "Get code" }),
     ).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Get Code" }));
+    await userEvent.click(screen.getByRole("button", { name: "Get code" }));
     expect(
       screen.getByText("Choose the authentication method for embedding:"),
     ).toBeInTheDocument();
@@ -48,7 +57,7 @@ describe("Embed flow > forward and backward navigation", () => {
       screen.queryByRole("button", { name: "Next" }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Get Code" }),
+      screen.queryByRole("button", { name: "Get code" }),
     ).not.toBeInTheDocument();
   });
 
@@ -98,6 +107,17 @@ describe("Embed flow > forward and backward navigation", () => {
 
 describe("Embed flow > pre-selection via url parameter", () => {
   it("pre-selects question when resource_type=question is in URL", async () => {
+    const mockDatabase = createMockDatabase();
+    const mockCard = createMockCard({ id: 456 });
+
+    setupCardEndpoints(mockCard);
+    setupCardQueryMetadataEndpoint(
+      mockCard,
+      createMockCardQueryMetadata({
+        databases: [mockDatabase],
+      }),
+    );
+
     setup({
       simpleEmbeddingEnabled: true,
       urlSearchParams: "?resource_type=question&resource_id=456",

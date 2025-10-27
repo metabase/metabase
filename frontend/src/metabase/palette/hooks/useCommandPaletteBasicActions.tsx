@@ -2,6 +2,7 @@ import { useRegisterActions } from "kbar";
 import { useCallback, useMemo } from "react";
 import type { WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
+import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import {
@@ -24,6 +25,7 @@ import {
   getUserIsAdmin,
   getUserPersonalCollectionId,
 } from "metabase/selectors/user";
+import { useColorScheme } from "metabase/ui";
 
 import {
   type RegisterShortcutProps,
@@ -101,7 +103,7 @@ export const useCommandPaletteBasicActions = ({
           dispatch(
             push(
               Urls.newQuestion({
-                type: "native",
+                DEPRECATED_RAW_MBQL_type: "native",
                 creationType: "native_question",
                 cardType: "question",
               }),
@@ -288,5 +290,17 @@ export const useCommandPaletteBasicActions = ({
     hasDatabaseWithActionsEnabled,
     hasNativeWrite,
     hasModels,
+  ]);
+
+  const colorSchemeRef = useLatest(useColorScheme());
+  useRegisterShortcut([
+    {
+      id: "toggle-dark-mode",
+      perform: () => colorSchemeRef.current.toggleColorScheme(),
+    },
+    {
+      id: "toggle-dark-mode-2",
+      perform: () => colorSchemeRef.current.toggleColorScheme(),
+    },
   ]);
 };

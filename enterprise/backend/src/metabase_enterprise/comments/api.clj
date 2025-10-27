@@ -4,6 +4,7 @@
    [honey.sql.helpers :as sql.helpers]
    [metabase-enterprise.comments.models.comment :as comment]
    [metabase-enterprise.comments.models.comment-reaction :as comment-reaction]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -91,15 +92,20 @@
   [_route-params
    {:keys [target_type target_id]} :- [:map
                                        [:target_type [:enum "document"]]
-                                       [:target_id ms/PositiveInt]]]
-  (let [_entity  (api/read-check (TYPE->MODEL target_type) target_id)
-        comments (-> (t2/select :model/Comment
-                                {:where    [:and
-                                            [:= :target_type target_type]
-                                            [:= :target_id target_id]]
-                                 :order-by [[:created_at :asc]]})
-                     (t2/hydrate :creator :reactions))]
-    {:comments (render-comments comments)}))
+                                       [:target_id ms/PositiveInt]]
+   _body
+   req]
+  (if (analytics/embedding-context? (get-in req [:headers "x-metabase-client"]))
+    {:disabled true
+     :comments []}
+    (let [_entity  (api/read-check (TYPE->MODEL target_type) target_id)
+          comments (-> (t2/select :model/Comment
+                                  {:where    [:and
+                                              [:= :target_type target_type]
+                                              [:= :target_id target_id]]
+                                   :order-by [[:created_at :asc]]})
+                       (t2/hydrate :creator :reactions))]
+      {:comments (render-comments comments)})))
 
 (defn notify-comment!
   "Send a notification about comment"
@@ -241,7 +247,10 @@
 
 (api.macros/defendpoint :get "/mentions"
   "Get a list of entities suitable for mentions. NOTE: only users for now."
-  [_route-params _query-params]
+  [_route _query _body req]
+  ;; no access in embedding context
+  (api/check-404 (not (analytics/embedding-context? (get-in req [:headers "x-metabase-client"]))))
+
   (let [clauses (user/filter-clauses nil nil nil nil {:limit  (request/limit)
                                                       :offset (request/offset)})]
     ;; returns nothing while we're trying to figure out how do we deal with sandboxes and tenants etc
