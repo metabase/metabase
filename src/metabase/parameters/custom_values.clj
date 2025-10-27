@@ -68,9 +68,7 @@
           full-query (lib/card->underlying-query mp card)]
       (loop [stage-number (lib/canonical-stage-index full-query -1)
              query full-query]
-        (let [query (-> query
-                        (lib/drop-limit-clause stage-number)
-                        (lib/append-stage))]
+        (let [query (lib/append-stage query)]
           (or
            ;; Exaine returned columns first
            (when-some [value-column (lib/find-matching-column
