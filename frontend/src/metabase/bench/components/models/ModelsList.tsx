@@ -35,19 +35,10 @@ import { QuestionInfoSidebar } from "metabase/query_builder/components/view/side
 import { shouldShowQuestionSettingsSidebar } from "metabase/query_builder/components/view/sidebars/QuestionSettingsSidebar";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import { useSaveQuestion } from "metabase/query_builder/containers/use-save-question";
-import { getQuestion } from "metabase/query_builder/selectors";
+import { getIsDirty, getQuestion } from "metabase/query_builder/selectors";
 import { QUESTION_NAME_MAX_LENGTH } from "metabase/questions/constants";
 import { getUser } from "metabase/selectors/user";
-import {
-  Box,
-  Center,
-  FixedSizeIcon,
-  Flex,
-  Icon,
-  Input,
-  Loader,
-  Stack,
-} from "metabase/ui";
+import { Box, Center, Flex, Icon, Input, Loader, Stack } from "metabase/ui";
 import Question from "metabase-lib/v1/Question";
 import type { SearchResult } from "metabase-types/api";
 
@@ -288,6 +279,7 @@ const ModelHeader = withRouter(
     const [updateCard] = useUpdateCardMutation();
 
     const enableSettingsSidebar = shouldShowQuestionSettingsSidebar(question);
+    const isDirty = useSelector(getIsDirty);
     const [modal, setModal] = useState<"info" | null>(null);
 
     const { data } = useSearchQuery({
@@ -350,16 +342,15 @@ const ModelHeader = withRouter(
             </Stack>
           }
           actions={
-            <Flex align="center">
+            <Flex align="center" gap="md">
               {actions}
-              {question.isSaved() && (
+              {question.isSaved() && !isDirty && (
                 <ToolbarButton
-                  aria-label={t`More info`}
-                  ml="md"
+                  icon="info"
                   onClick={() => setModal("info")}
-                >
-                  <FixedSizeIcon name="info" />
-                </ToolbarButton>
+                  tooltipLabel={t`More info`}
+                  aria-label={t`More info`}
+                />
               )}
             </Flex>
           }
