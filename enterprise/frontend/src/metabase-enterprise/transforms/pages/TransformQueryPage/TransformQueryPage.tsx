@@ -1,7 +1,9 @@
 import { useLayoutEffect, useMemo, useState } from "react";
+import type { Route } from "react-router";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
+import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
@@ -20,10 +22,11 @@ type TransformQueryPageParams = {
 };
 
 type TransformQueryPageProps = {
+  route: Route;
   params: TransformQueryPageParams;
 };
 
-export function TransformQueryPage({ params }: TransformQueryPageProps) {
+export function TransformQueryPage({ route, params }: TransformQueryPageProps) {
   const transformId = Urls.extractEntityId(params.transformId);
   const {
     data: transform,
@@ -35,14 +38,18 @@ export function TransformQueryPage({ params }: TransformQueryPageProps) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  return <TransformQueryPageBody transform={transform} />;
+  return <TransformQueryPageBody transform={transform} route={route} />;
 }
 
 type TransformQueryPageBodyProps = {
   transform: Transform;
+  route: Route;
 };
 
-function TransformQueryPageBody({ transform }: TransformQueryPageBodyProps) {
+function TransformQueryPageBody({
+  transform,
+  route,
+}: TransformQueryPageBodyProps) {
   const [source, setSource] = useState(transform.source);
   const [updateName] = useUpdateTransformMutation();
   const [updateSource, { isLoading: isSaving }] = useUpdateTransformMutation();
@@ -122,6 +129,7 @@ function TransformQueryPageBody({ transform }: TransformQueryPageBodyProps) {
           onClose={handleCloseConfirmation}
         />
       )}
+      <LeaveRouteConfirmModal route={route} isEnabled={isSourceDirty} />
     </>
   );
 }
