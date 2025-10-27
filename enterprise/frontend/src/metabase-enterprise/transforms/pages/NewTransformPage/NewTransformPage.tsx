@@ -1,9 +1,11 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useMemo, useState } from "react";
+import type { Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { skipToken, useGetCardQuery } from "metabase/api";
+import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -11,19 +13,36 @@ import { Center } from "metabase/ui";
 import type { Transform, TransformSource } from "metabase-types/api";
 
 import { TransformEditor } from "../../components/TransformEditor";
+import { isSameSource } from "../../utils";
 
 import { CreateTransformModal } from "./CreateTransformModal";
 import { getNativeInitialSource, getQueryInitialSource } from "./utils";
 
 type NewTransformPageProps = {
+  route: Route;
+  initialName?: string;
   initialSource: TransformSource;
+  isInitiallyDirty?: boolean;
 };
 
-function NewTransformPage({ initialSource }: NewTransformPageProps) {
-  const [name, setName] = useState(t`New transform`);
+function NewTransformPage({
+  route,
+  initialName = t`New transform`,
+  initialSource,
+  isInitiallyDirty = false,
+}: NewTransformPageProps) {
+  const [name, setName] = useState(initialName);
   const [source, setSource] = useState(initialSource);
   const [isOpened, { open, close }] = useDisclosure();
   const dispatch = useDispatch();
+
+  const isDirty = useMemo(
+    () =>
+      isInitiallyDirty ||
+      name !== initialName ||
+      !isSameSource(source, initialSource),
+    [name, source, initialName, initialSource, isInitiallyDirty],
+  );
 
   const handleCreate = (transform: Transform) => {
     dispatch(push(Urls.transform(transform.id)));
@@ -55,18 +74,27 @@ function NewTransformPage({ initialSource }: NewTransformPageProps) {
           onClose={close}
         />
       )}
+      <LeaveRouteConfirmModal route={route} isEnabled={isDirty} />
     </>
   );
 }
 
-export function NewQueryTransformPage() {
+type NewQueryTransformPageProps = {
+  route: Route;
+};
+
+export function NewQueryTransformPage({ route }: NewQueryTransformPageProps) {
   const initialSource = useMemo(getQueryInitialSource, []);
-  return <NewTransformPage initialSource={initialSource} />;
+  return <NewTransformPage route={route} initialSource={initialSource} />;
 }
 
-export function NewNativeTransformPage() {
+type NewNativeTransformPageProps = {
+  route: Route;
+};
+
+export function NewNativeTransformPage({ route }: NewNativeTransformPageProps) {
   const initialSource = useMemo(getNativeInitialSource, []);
-  return <NewTransformPage initialSource={initialSource} />;
+  return <NewTransformPage route={route} initialSource={initialSource} />;
 }
 
 type NewCardTransformPageParams = {
@@ -74,10 +102,14 @@ type NewCardTransformPageParams = {
 };
 
 type NewCardTransformPageProps = {
+  route: Route;
   params: NewCardTransformPageParams;
 };
 
-export function NewCardTransformPage({ params }: NewCardTransformPageProps) {
+export function NewCardTransformPage({
+  route,
+  params,
+}: NewCardTransformPageProps) {
   const cardId = Urls.extractEntityId(params.cardId);
   const {
     data: card,
@@ -102,5 +134,11 @@ export function NewCardTransformPage({ params }: NewCardTransformPageProps) {
     );
   }
 
-  return <NewTransformPage initialSource={initialSource} />;
+  return (
+    <NewTransformPage
+      route={route}
+      initialSource={initialSource}
+      isInitiallyDirty
+    />
+  );
 }

@@ -10,10 +10,10 @@ import {
   useGetTransformQuery,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
-import * as Lib from "metabase-lib";
-import type { Transform, TransformSource } from "metabase-types/api";
+import type { Transform } from "metabase-types/api";
 
 import { TransformEditor } from "../../components/TransformEditor";
+import { isSameSource } from "../../utils";
 
 type TransformQueryPageParams = {
   transformId: string;
@@ -124,11 +124,4 @@ function TransformQueryPageBody({ transform }: TransformQueryPageBodyProps) {
       )}
     </>
   );
-}
-
-function isSameSource(source1: TransformSource, source2: TransformSource) {
-  if (source1.type === "query" && source2.type === "query") {
-    return Lib.areLegacyQueriesEqual(source1.query, source2.query);
-  }
-  return false;
 }

@@ -1,8 +1,10 @@
 import { t } from "ttag";
+import _ from "underscore";
 
 import { hasFeature } from "metabase/admin/databases/utils";
 import { parseTimestamp } from "metabase/lib/time-dayjs";
 import { isNotNull } from "metabase/lib/types";
+import * as Lib from "metabase-lib";
 import type {
   Database,
   DatabaseId,
@@ -149,5 +151,18 @@ export function isTransformSyncing(transform: Transform) {
     return endedAt.isAfter(updatedAt);
   }
 
+  return false;
+}
+
+export function isSameSource(
+  source1: TransformSource,
+  source2: TransformSource,
+) {
+  if (source1.type === "query" && source2.type === "query") {
+    return Lib.areLegacyQueriesEqual(source1.query, source2.query);
+  }
+  if (source1.type === "python" && source2.type === "python") {
+    return _.isEqual(source1, source2);
+  }
   return false;
 }

@@ -6,8 +6,7 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 export function useQueryMetadata(question: Question) {
-  const [loadMetadata, { isLoading, error }] =
-    useLazyGetAdhocQueryMetadataQuery();
+  const [loadMetadata, { error }] = useLazyGetAdhocQueryMetadataQuery();
   const dependenciesRef = useRef<Lib.DependentItem[]>([]);
 
   const isSourceTableLoaded = useMemo(() => {
@@ -34,6 +33,6 @@ export function useQueryMetadata(question: Question) {
 
   return {
     metadataError: error,
-    isMetadataLoading: isLoading || !isSourceTableLoaded,
+    isMetadataLoading: !isSourceTableLoaded,
   };
 }
