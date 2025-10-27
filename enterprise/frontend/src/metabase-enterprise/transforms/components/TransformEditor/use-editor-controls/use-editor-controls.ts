@@ -1,4 +1,3 @@
-import { useDisclosure } from "@mantine/hooks";
 import { useMemo, useState } from "react";
 
 import type {
@@ -15,40 +14,48 @@ const EMPTY_SELECTION_RANGE: SelectionRange = {
   end: { row: 0, column: 0 },
 };
 
+type EditorUiState = {
+  selectionRange: SelectionRange[];
+  modalSnippet: NativeQuerySnippet | null;
+  isDataReferenceOpen: boolean;
+  isSnippetSidebarOpen: boolean;
+  isPreviewQueryModalOpen: boolean;
+  isNativeQueryPreviewSidebarOpen: boolean;
+};
+
 export function useEditorControls(
   question: Question,
   onQuestionChange: (newQuestion: Question) => void,
 ) {
-  const [selectionRange, setSelectionRange] = useState<SelectionRange[]>([]);
-  const [modalSnippet, setModalSnippet] = useState<NativeQuerySnippet | null>(
-    null,
-  );
-
-  const [
-    isDataReferenceOpen,
-    { toggle: toggleDataReference, close: closeDataReference },
-  ] = useDisclosure();
-  const [
-    isSnippetSidebarOpen,
-    { toggle: toggleSnippetSidebar, close: closeSnippetSidebar },
-  ] = useDisclosure();
-  const [isPreviewQueryModalOpen, { toggle: togglePreviewQueryModal }] =
-    useDisclosure();
-  const [
-    isNativeQueryPreviewSidebarOpen,
-    { toggle: toggleNativeQueryPreviewSidebar },
-  ] = useDisclosure();
+  const [state, setState] = useState<EditorUiState>({
+    selectionRange: [],
+    modalSnippet: null,
+    isDataReferenceOpen: false,
+    isSnippetSidebarOpen: false,
+    isPreviewQueryModalOpen: false,
+    isNativeQueryPreviewSidebarOpen: false,
+  });
 
   const selectedText = useMemo(() => {
     const query = question.query();
     const text = Lib.rawNativeQuery(query) ?? "";
-    const { start, end } = getSelectionPositions(text, selectionRange);
+    const { start, end } = getSelectionPositions(text, state.selectionRange);
     return text.slice(start, end);
-  }, [question, selectionRange]);
+  }, [question, state.selectionRange]);
+
+  const handleChangeSelectionRange = (selectionRange: SelectionRange[]) => {
+    setState((state) => ({ ...state, selectionRange }));
+  };
+
+  const handleChangeModallSnippet = (
+    modalSnippet: NativeQuerySnippet | null,
+  ) => {
+    setState((state) => ({ ...state, modalSnippet }));
+  };
 
   const handleOpenModal = (type: QueryModalType) => {
     if (type === "preview-query") {
-      togglePreviewQueryModal();
+      setState((state) => ({ ...state, isPreviewQueryModalOpen: true }));
     }
   };
 
@@ -56,7 +63,7 @@ export function useEditorControls(
     const query = question.query();
     const text = Lib.rawNativeQuery(query) ?? "";
 
-    const { start, end } = getSelectionPositions(text, selectionRange);
+    const { start, end } = getSelectionPositions(text, state.selectionRange);
     const pre = text.slice(0, start);
     const post = text.slice(end);
     const newText = `${pre}{{snippet: ${snippet.name}}}${post}`;
@@ -66,35 +73,54 @@ export function useEditorControls(
   };
 
   const handleToggleDataReference = () => {
-    closeSnippetSidebar();
-    toggleDataReference();
+    setState((state) => ({
+      ...state,
+      isDataReferenceOpen: state.isDataReferenceOpen,
+      isSnippetSidebarOpen: false,
+    }));
   };
 
   const handleToggleSnippetSidebar = () => {
-    closeDataReference();
-    toggleSnippetSidebar();
+    setState((state) => ({
+      ...state,
+      isDataReferenceOpen: false,
+      isSnippetSidebarOpen: state.isSnippetSidebarOpen,
+    }));
+  };
+
+  const handleTogglePreviewQueryModal = () => {
+    setState((state) => ({
+      ...state,
+      isPreviewQueryModalOpen: !state.isPreviewQueryModalOpen,
+    }));
+  };
+
+  const handleToggleNativeQueryPreviewSidebar = () => {
+    setState((state) => ({
+      ...state,
+      isNativeQueryPreviewSidebarOpen: !state.isNativeQueryPreviewSidebarOpen,
+    }));
   };
 
   const handleConvertToNative = (newQuestion: Question) => {
-    toggleNativeQueryPreviewSidebar();
+    setState((state) => ({
+      ...state,
+      isNativeQueryPreviewSidebarOpen: false,
+    }));
     onQuestionChange(newQuestion);
   };
 
   return {
+    ...state,
     selectedText,
-    modalSnippet,
-    isDataReferenceOpen,
-    isSnippetSidebarOpen,
-    isPreviewQueryModalOpen,
-    isNativeQueryPreviewSidebarOpen,
     handleOpenModal,
-    handleSelectionRangeChange: setSelectionRange,
-    handleModalSnippetChange: setModalSnippet,
+    handleChangeSelectionRange,
+    handleChangeModallSnippet,
     handleInsertSnippet,
     handleToggleDataReference,
     handleToggleSnippetSidebar,
-    handleTogglePreviewQueryModal: togglePreviewQueryModal,
-    handleToggleNativeQueryPreviewSidebar: toggleNativeQueryPreviewSidebar,
+    handleTogglePreviewQueryModal,
+    handleToggleNativeQueryPreviewSidebar,
     handleConvertToNative,
   };
 }
