@@ -23,19 +23,30 @@
 ;;; ----------------------------------------------- Public Documents -------------------------------------------------
 
 (defn- remove-card-non-public-columns
-  "Remove everything from public `card` that shouldn't be visible to the general public.
-  Delegates to the OSS implementation."
+  "Remove sensitive fields from a card before exposing it publicly.
+
+  We delegate to the OSS implementation to ensure consistent field filtering across both public cards (OSS) and
+  cards embedded in public documents (EE). This prevents leaking collection IDs, creator information, and other
+  data that could reveal internal structure or permissions to unauthenticated users."
   [card]
   (#'public-sharing.api/remove-card-non-public-columns card))
 
 (defn- remove-document-non-public-columns
-  "Remove sensitive fields from a public document, keeping only fields safe for public consumption: id, name, document content, timestamps, and hydrated cards."
+  "Remove sensitive fields from a document before exposing it publicly.
+
+  We filter out collection_id, creator_id, public_uuid, and other sensitive fields to prevent unauthenticated users
+  from discovering internal organizational structure, permissions boundaries, or who created the document. Only the
+  document content itself, basic metadata, and embedded cards are safe to expose publicly."
   [document]
   (select-keys document [:id :name :document :created_at :updated_at :cards]))
 
 (defn- public-document
-  "Fetch a public Document and strip out sensitive fields. We also hydrate the Cards embedded in the document so the
-  frontend doesn't need to make separate requests for each card — just like public Dashboards do."
+  "Fetch a public document with all embedded cards hydrated upfront.
+
+  We hydrate cards eagerly (rather than requiring separate requests per card) to avoid N+1 queries and provide a
+  consistent experience with public dashboards. This also allows us to filter sensitive fields from all cards at
+  once before exposing them to unauthenticated users. The document and all cards must not be archived to be
+  accessible publicly."
   [& conditions]
   (let [document (api/check-404 (apply t2/select-one [:model/Document :id :name :document :content_type :created_at :updated_at]
                                        :archived false, conditions))
@@ -50,8 +61,11 @@
         remove-document-non-public-columns)))
 
 (defn- validate-card-in-public-document
-  "Validates that a card exists and is embedded in the public document.
-  Throws a 404 if the card doesn't exist, is archived, or isn't in the document."
+  "Ensure a card is actually embedded in the specified public document before running queries.
+
+  We validate the document-card association to prevent users from querying arbitrary cards by guessing IDs. Only
+  cards explicitly embedded in the public document (via document_id FK) are accessible through public document
+  endpoints. This prevents bypassing collection permissions by accessing cards through public document routes."
   [uuid card-id]
   (let [document-id (api/check-404 (t2/select-one-pk :model/Document :public_uuid uuid :archived false))]
     (api/check-404 (t2/select-one-pk :model/Card :id card-id :document_id document-id :archived false))))
