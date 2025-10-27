@@ -4,6 +4,7 @@
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase-enterprise.representations.toucan.core :as rep-t2]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.yaml :as rep-yaml]
    [metabase.util.log :as log]
@@ -78,8 +79,8 @@
   [representation id]
   (let [representation (normalize-representation representation)]
     (if-some [model (v0-common/type->model (name (:type representation)))]
-      (let [toucan (-> (yaml->toucan representation)
-                       (with-toucan-defaults))]
+      (let [toucan (->> (yaml->toucan representation)
+                        (rep-t2/with-toucan-defaults model))]
         (t2/update! model id toucan))
       (throw (ex-info (str "Unknown representation type: " (:type representation))
                       {:representation representation
