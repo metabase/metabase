@@ -6,6 +6,7 @@
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.computed :as lib.computed]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -234,7 +235,8 @@
                (middleware f))
              f
              setup-middleware)]
-      (binding [*has-setup* true]
+      (binding [*has-setup*                   true
+                lib.computed/*computed-cache* (atom {})]
         (f query)))))
 
 (defmacro with-qp-setup
