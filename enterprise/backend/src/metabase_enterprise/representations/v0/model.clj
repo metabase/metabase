@@ -236,8 +236,8 @@
     [:columns {:optional true} ::columns]
     [:collection {:optional true} ::collection]]
    [:fn {:error/message "Must have exactly one of :query or :mbql_query"}
-    (fn [{:keys [query mbql_query]}]
-      (= 1 (count (filter some? [query mbql_query]))))]])
+    (fn [{:keys [query mbql_query lib_query]}]
+      (= 1 (count (filter some? [query mbql_query lib_query]))))]])
 
 (def ^:private user-editable-settings
   [:column_title :text_align :text_wrapping :view_as :link_text :link_url

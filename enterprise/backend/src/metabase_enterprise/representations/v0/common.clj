@@ -172,9 +172,7 @@
     (:id (lookup-entity this ref))))
 
 (defn map-entity-index
-  "Create a new index from a map of ref -> toucan entity.
-
-  This index only looks up by ref and throws if it's not found. It will check the expected type."
+  "Create a new index from a map of ref -> toucan entity."
   [mp]
   (->MapEntityIndex mp))
 

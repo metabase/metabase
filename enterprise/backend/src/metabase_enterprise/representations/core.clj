@@ -3,7 +3,8 @@
    formats for Metabase entities for version control and programmatic management."
   (:require
    [metabase-enterprise.representations.export :as export]
-   [metabase-enterprise.representations.import :as import]))
+   [metabase-enterprise.representations.import :as import]
+   [metabase-enterprise.representations.v0.common :as v0-common]))
 
 (set! *warn-on-reflection* true)
 
@@ -44,7 +45,7 @@
 (defn persist!
   "Persist the representation with t2"
   ([representation]
-   (persist! representation nil))
+   (persist! representation (v0-common/map-entity-index {})))
   ([representation ref-index]
    (when-let [validated (normalize-representation representation)]
      (import/persist! validated ref-index))))
