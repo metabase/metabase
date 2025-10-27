@@ -70,6 +70,13 @@
    [:content ::content]
    [:collection {:optional true} ::collection]])
 
+(defmethod v0-common/type->model :document
+  [_]
+  :model/Document)
+
+(defmethod v0-common/representation-type :model/Document [_entity]
+  :document)
+
 (defn- markdown->yaml [md]
   ;; bb hackathon/markdown-parser/cli-test.clj hackathon/markdown-parser/test-files/document-example.md
   (let [result (sh/sh "node" "hackathon/markdown-parser/parse-markdown.mjs" :in md)]
@@ -120,7 +127,7 @@
                     (sh/sh "node" "hackathon/markdown-parser/serialize-prosemirror.mjs" :in))]
     (:out result)))
 
-(defmethod export/export-entity :model/Document [document]
+(defmethod export/export-entity :document [document]
   (let [document-ref (v0-common/unref (v0-common/->ref (:id document) :document))]
     (cond-> {:name (:name document)
              :type :document
@@ -128,6 +135,6 @@
              :ref document-ref
              :entity-id (:entity_id document)
              :content (edn->markdown (:document document))
-             :content_type "text/markdown+vnd.prose-mirror" #_(:content_type document)}
+             :content_type "text/markdown+vnd.prose-mirror"}
       :always
       u/remove-nils)))

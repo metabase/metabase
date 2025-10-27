@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -6,6 +6,7 @@ import DateTime, {
   getFormattedTime,
 } from "metabase/common/components/DateTime";
 import { isWithinIframe } from "metabase/lib/dom";
+import { RepresentationsModal } from "metabase/representations/RepresentationsModal";
 import {
   ActionIcon,
   Box,
@@ -61,6 +62,9 @@ export const DocumentHeader = ({
   onArchive,
   hasComments = false,
 }: DocumentHeaderProps) => {
+  const [isRepresentationsModalOpen, setIsRepresentationsModalOpen] =
+    useState(false);
+
   const handlePrint = useCallback(() => {
     window.print();
     trackDocumentPrint(document);
@@ -132,6 +136,14 @@ export const DocumentHeader = ({
             </Box>
           )}
         </Transition>
+        {!isNewDocument && document && (
+          <Button
+            onClick={() => setIsRepresentationsModalOpen(true)}
+            data-hide-on-print
+          >
+            {t`Representations`}
+          </Button>
+        )}
         {!isNewDocument && hasComments && !isWithinIframe() && (
           <Tooltip label={t`Show all comments`}>
             <Box>
@@ -202,6 +214,14 @@ export const DocumentHeader = ({
           </Menu>
         )}
       </Flex>
+      {document && (
+        <RepresentationsModal
+          opened={isRepresentationsModalOpen}
+          onClose={() => setIsRepresentationsModalOpen(false)}
+          entityId={document.id}
+          entityType="document"
+        />
+      )}
     </Flex>
   );
 };

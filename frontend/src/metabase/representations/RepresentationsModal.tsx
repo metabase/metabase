@@ -14,7 +14,7 @@ import {
 } from "metabase/ui";
 import type { CardType } from "metabase-types/api";
 
-type EntityType = CardType | "transform";
+type EntityType = CardType | "transform" | "document" | "collection";
 
 interface RepresentationsModalProps {
   opened: boolean;
