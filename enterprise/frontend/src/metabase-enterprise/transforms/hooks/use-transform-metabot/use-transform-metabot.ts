@@ -8,7 +8,7 @@ import {
 } from "metabase-enterprise/metabot/state";
 import type { DraftTransformSource, Transform } from "metabase-types/api";
 
-import { isSameSource } from "../utils";
+import { isSameSource } from "../../utils";
 
 export const useTransformMetabot = (
   transform: Transform | undefined,
