@@ -2087,10 +2087,10 @@
                  (for [doc (mt/user-http-request :crowberto :get 200 "ee/document/public")]
                    (m/map-vals boolean doc)))))))))
 
-;;; ---------------------------------------- GET /api/public/document/:uuid ----------------------------------------------
+;;; ---------------------------------------- GET /api/ee/public/document/:uuid ----------------------------------------------
 
 (deftest fetch-public-document-test
-  (testing "GET /api/public/document/:uuid"
+  (testing "GET /api/ee/public/document/:uuid"
     (testing "Test that we can fetch a public Document"
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (mt/with-temp [:model/Document document (document-with-public-link {:name "Public Test Document"
@@ -2098,14 +2098,14 @@
           (is (partial= {:name "Public Test Document"
                          :document (text->prose-mirror-ast "Public test content")
                          :id (:id document)}
-                        (mt/client :get 200 (str "public/document/" (:public_uuid document))))))))))
+                        (mt/client :get 200 (str "ee/public/document/" (:public_uuid document))))))))))
 
 (deftest public-document-returns-only-safe-fields-test
-  (testing "GET /api/public/document/:uuid should only return safe fields"
+  (testing "GET /api/ee/public/document/:uuid should only return safe fields"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp [:model/Document document (document-with-public-link {:name "Public Test Document"
                                                                           :document (text->prose-mirror-ast "Public test content")})]
-        (let [result (mt/client :get 200 (str "public/document/" (:public_uuid document)))]
+        (let [result (mt/client :get 200 (str "ee/public/document/" (:public_uuid document)))]
           (testing "Should include safe fields"
             (is (contains? result :id))
             (is (contains? result :name))
@@ -2119,17 +2119,17 @@
             (is (not (contains? result :description)))))))))
 
 (deftest get-public-document-errors-test
-  (testing "GET /api/public/document/:uuid"
+  (testing "GET /api/ee/public/document/:uuid"
     (testing "Shouldn't be able to fetch a public Document if public sharing is disabled"
       (mt/with-temporary-setting-values [enable-public-sharing false]
         (mt/with-temp [:model/Document document (document-with-public-link {})]
           (is (= "API endpoint does not exist."
-                 (mt/client :get 404 (str "public/document/" (:public_uuid document))))))))
+                 (mt/client :get 404 (str "ee/public/document/" (:public_uuid document))))))))
 
     (testing "Should get a 404 if the Document doesn't exist"
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (is (= "Not found."
-               (mt/client :get 404 (str "public/document/" (random-uuid)))))))))
+               (mt/client :get 404 (str "ee/public/document/" (random-uuid)))))))))
 
 (deftest share-archived-document-test
   (testing "POST /api/ee/document/:id/public_link should not work for archived documents"
@@ -2150,17 +2150,17 @@
                (mt/user-http-request :crowberto :delete 404 (format "ee/document/%d/public_link" (:id document)))))))))
 
 (deftest public-document-not-accessible-when-archived-test
-  (testing "GET /api/public/document/:uuid should not work for archived documents"
+  (testing "GET /api/ee/public/document/:uuid should not work for archived documents"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp [:model/Document document (document-with-public-link {})]
         (let [uuid (:public_uuid document)]
           (testing "Document is accessible when not archived"
             (is (= 200
-                   (:status (mt/client-full-response :get (str "public/document/" uuid))))))
+                   (:status (mt/client-full-response :get (str "ee/public/document/" uuid))))))
           (testing "Document is not accessible after archiving"
             (t2/update! :model/Document (:id document) {:archived true})
             (is (= "Not found."
-                   (mt/client :get 404 (str "public/document/" uuid))))))))))
+                   (mt/client :get 404 (str "ee/public/document/" uuid))))))))))
 
 (deftest public-document-listing-excludes-archived-test
   (testing "GET /api/ee/document/public should not include archived documents"

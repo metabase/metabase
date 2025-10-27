@@ -252,7 +252,7 @@
 
   Creates a public link that allows viewing the Document without authentication. If the Document already has
   a public UUID, returns the existing one rather than generating a new one. This enables sharing the Document
-  via `GET /api/public/document/:uuid`.
+  via `GET /api/ee/public/document/:uuid`.
 
   Returns a map containing `:uuid` (the public UUID string).
 
