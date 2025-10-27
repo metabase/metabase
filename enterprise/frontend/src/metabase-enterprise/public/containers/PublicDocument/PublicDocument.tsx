@@ -8,7 +8,8 @@ import { useAsync, useMount } from "react-use";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { initializeIframeResizer } from "metabase/lib/dom";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { setErrorPage } from "metabase/redux/app";
 import { getSetting } from "metabase/selectors/settings";
 import { PublicApi } from "metabase/services";
 import { Box } from "metabase/ui";
@@ -33,6 +34,7 @@ interface PublicDocumentProps {
 
 export const PublicDocument = ({ params }: PublicDocumentProps) => {
   const { uuid } = params;
+  const dispatch = useDispatch();
   const siteUrl = useSelector((state) => getSetting(state, "site-url"));
 
   const {
@@ -43,6 +45,12 @@ export const PublicDocument = ({ params }: PublicDocumentProps) => {
     const doc = await PublicApi.document({ uuid });
     return doc as Document;
   }, [uuid]);
+
+  useEffect(() => {
+    if (error) {
+      dispatch(setErrorPage(error));
+    }
+  }, [dispatch, error]);
 
   const extensions = useMemo(
     () => [
@@ -104,7 +112,6 @@ export const PublicDocument = ({ params }: PublicDocumentProps) => {
   return (
     <LoadingAndErrorWrapper
       loading={loading}
-      error={error}
       noBackground
       style={{
         display: "flex",
