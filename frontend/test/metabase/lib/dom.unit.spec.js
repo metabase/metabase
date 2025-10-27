@@ -119,10 +119,13 @@ describe("open()", () => {
     const handleLink = jest.fn().mockReturnValue(true);
     getSdkGlobalPluginsMock.mockReturnValue({ handleLink });
 
+    const openInSameWindow = jest.fn();
+    const openInBlankWindow = jest.fn();
     const url = "https://example.com/dashboard/1";
+
     open(url, {
-      openInSameWindow: jest.fn(),
-      openInBlankWindow: jest.fn(),
+      openInSameWindow,
+      openInBlankWindow,
     });
 
     expect(handleLink).toHaveBeenCalledWith(url);
@@ -134,8 +137,8 @@ describe("open()", () => {
 
     const openInSameWindow = jest.fn();
     const openInBlankWindow = jest.fn();
-
     const url = "https://example.com/dashboard/1";
+
     open(url, {
       openInSameWindow,
       openInBlankWindow,
@@ -150,11 +153,12 @@ describe("open()", () => {
     const handleLink = jest.fn().mockReturnValue(false);
     getSdkGlobalPluginsMock.mockReturnValue({ handleLink });
 
+    const openInSameWindow = jest.fn();
     const openInBlankWindow = jest.fn();
-
     const url = "https://example.com/dashboard/1";
+
     open(url, {
-      openInSameWindow: jest.fn(),
+      openInSameWindow,
       openInBlankWindow,
     });
 
@@ -167,11 +171,12 @@ describe("open()", () => {
     const handleLink = jest.fn();
     getSdkGlobalPluginsMock.mockReturnValue({ handleLink });
 
+    const openInSameWindow = jest.fn();
     const openInBlankWindow = jest.fn();
-
     const url = "https://example.com/dashboard/1";
+
     open(url, {
-      openInSameWindow: jest.fn(),
+      openInSameWindow,
       openInBlankWindow,
     });
 
