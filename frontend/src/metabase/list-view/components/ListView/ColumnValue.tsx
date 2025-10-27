@@ -223,18 +223,6 @@ export function ColumnValue({
       );
     }
     case "type/ImageURL":
-      return (
-        <Image
-          src={rawValue}
-          w="2rem"
-          h="2rem"
-          style={{
-            objectFit: "cover",
-            borderRadius: "0.5rem",
-            border: "1px solid var(--mb-color-border-secondary)",
-          }}
-        />
-      );
     case "type/AvatarURL":
       return (
         <Image
@@ -243,7 +231,7 @@ export function ColumnValue({
           h="2rem"
           style={{
             objectFit: "cover",
-            borderRadius: "50%",
+            borderRadius: "0.5rem",
             border: "1px solid var(--mb-color-border-secondary)",
           }}
         />
