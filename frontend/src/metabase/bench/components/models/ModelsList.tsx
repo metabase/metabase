@@ -27,7 +27,10 @@ import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
 import { INJECT_RTK_QUERY_QUESTION_VALUE } from "metabase/entities/questions";
 import { useDispatch, useSelector } from "metabase/lib/redux/hooks";
 import { EmptyState } from "metabase/metadata/pages/DataModel/components/TablePicker/components/EmptyState";
-import { API_UPDATE_QUESTION } from "metabase/query_builder/actions";
+import {
+  API_UPDATE_QUESTION,
+  updateQuestion,
+} from "metabase/query_builder/actions";
 import type { SidebarFeatures } from "metabase/query_builder/components/NativeQueryEditor/types";
 import { ModelCacheManagementSection } from "metabase/query_builder/components/view/sidebars/ModelCacheManagementSection";
 import { QuestionInfoSidebar } from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/QuestionInfoSidebar";
@@ -306,6 +309,10 @@ const ModelHeader = withRouter(
                 initialValue={question.card().name || ""}
                 maxLength={QUESTION_NAME_MAX_LENGTH}
                 onChange={async (name) => {
+                  if (!question.isSaved()) {
+                    dispatch(updateQuestion(question.setDisplayName(name)));
+                    return;
+                  }
                   const res = await updateCard({ id: question.id(), name });
                   const updatedCard = res.data;
                   if (updatedCard) {
