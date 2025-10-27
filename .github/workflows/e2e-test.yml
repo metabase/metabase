@@ -42,7 +42,7 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       HASH: ${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
       JOB_NAME: ${{ inputs.name }}
-      MB_RUN_MODE: "dev"
+      MB_RUN_MODE: "e2e"
       METASTORE_DEV_SERVER_URL: ${{ secrets.METASTORE_DEV_SERVER_URL }}
       # Any env starting with `CYPRESS_` will be available to all Cypress tests via `Cypress.env()`
       # Example: you can get `CYPRESS_FOO` with `Cypress.env("FOO")`
