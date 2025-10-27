@@ -77,7 +77,7 @@
         full-query (lib/card->underlying-query mp card)
         drop-clauses #(lib/update-query-stage % -1 dissoc :aggregation :breakout)]
     (loop [query full-query]
-      (if-some [value-column (lib/find-column-for-legacy-ref
+      (if-some [value-column (lib/find-matching-column
                               query -1 value-field-ref
                               (lib/returned-columns query))]
         {:query query
@@ -94,37 +94,34 @@
    [:query-string {:optional true} :any]])
 
 (mu/defn- values-from-card-query :- [:maybe ::lib.schema/query]
-  [{query :dataset_query, :keys [id], :as _card} :- [:and
-                                                     :metabase.queries.schema/card
-                                                     [:map
-                                                      [:id ::lib.schema.id/card]]]
+  [{query :dataset_query, :as card} :- [:and
+                                        :metabase.queries.schema/card
+                                        [:map
+                                         [:id ::lib.schema.id/card]]]
    field-ref                        :- [:or :mbql.clause/field :mbql.clause/expression]
    {:keys [query-string] :as _opts} :- [:maybe ::values-from-card-query.options]]
   (when (seq query)
     ;; start a new query using this Card as a starting point
-    (let [query (lib/query query (lib.metadata/card query id))]
-      (when-let [visible-columns (or (not-empty (lib/visible-columns query))
-                                     (log/warnf "Cannot get values from Card %d: Card query has no visible columns"
-                                                id))]
-        (when-let [value-column (or (lib/find-matching-column query -1 field-ref visible-columns)
-                                    (log/warnf "Cannot get values from Card %d: failed to find column for ref %s\nFound: %s"
-                                               id
-                                               (pr-str field-ref)
-                                               (pr-str (map (some-fn :lib/source-column-alias :name) visible-columns))))]
-          (let [textual?     (lib.types.isa/string? value-column)
-                nonempty     ((if textual? lib/not-empty lib/not-null) value-column)
-                query-filter (when query-string
-                               (if textual?
-                                 (lib/contains (lib/lower value-column) (u/lower-case-en query-string))
-                                 (lib/= value-column query-string)))]
-            (-> query
-                (lib/limit *max-rows*)
-                (lib/filter nonempty)
-                (cond-> #_query query-filter (lib/filter query-filter))
-                (lib/breakout value-column)
+    (let [{:keys [query value-column]} (query-and-value-column card field-ref)
+          query (lib/append-stage query)
+          value-column (cond-> value-column
+                         (:lib/source-uuid value-column)
+                         (lib/matching-column-by-source-uuid (lib/breakoutable-columns query)))]
+      (when value-column
+        (let [textual?     (lib.types.isa/string? value-column)
+              nonempty     ((if textual? lib/not-empty lib/not-null) value-column)
+              query-filter (when query-string
+                             (if textual?
+                               (lib/contains (lib/lower value-column) (u/lower-case-en query-string))
+                               (lib/= value-column query-string)))]
+          (-> query
+              (lib/limit *max-rows*)
+              (lib/filter nonempty)
+              (cond-> #_query query-filter (lib/filter query-filter))
+              (lib/breakout value-column)
                 ;; TODO(Braden, 07/04/2025): This should probably become a lib helper? I suspect this isn't the only
                 ;; "internal" query in the BE.
-                (assoc-in [:middleware :disable-remaps?] true))))))))
+              (assoc-in [:middleware :disable-remaps?] true)))))))
 
 (mu/defn values-from-card
   "Get distinct values of a field from a card.
