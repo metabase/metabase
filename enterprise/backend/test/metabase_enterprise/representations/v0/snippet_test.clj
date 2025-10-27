@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
+   [metabase-enterprise.representations.toucan.core :as rep-t2]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -22,7 +23,8 @@
                                                                          :content content}]
     (try
       (let [representation (export/export-entity snippet)
-            toucan-model (import/yaml->toucan representation nil)
+            toucan-model (->> (import/yaml->toucan representation nil)
+                              (rep-t2/with-toucan-defaults :model/NativeQuerySnippet))
             _ (t2/delete! :model/NativeQuerySnippet :id snippet-id)
             persisted-snippet (import/persist! representation nil)]
         (is (= {:ref (str "snippet-" snippet-id),
@@ -37,14 +39,12 @@
                  :description description,
                  :content content,
                  :creator_id 13371338,
-                 :collection_id nil,
                  :template_tags exp-tags}
                 toucan-model))
         (is (=? {:description description,
                  :archived false,
                  :dependency_analysis_version 0,
                  :content content,
-                 :collection_id nil,
                  :name name,
                  :creator_id 13371338,
                  :id (inc snippet-id),
@@ -69,7 +69,8 @@
                                                                              :content (str "select * from {{ #" card-id "-card-one }} where id = 1")}]
         (try
           (let [representation (export/export-entity snippet)
-                toucan-model (import/yaml->toucan representation nil)
+                toucan-model (->> (import/yaml->toucan representation nil)
+                                  (rep-t2/with-toucan-defaults :model/NativeQuerySnippet))
                 _ (t2/delete! :model/NativeQuerySnippet :id snippet-id)
                 persisted-snippet (import/persist! representation nil)]
             (is (= {:ref (str "snippet-" snippet-id),
@@ -84,7 +85,6 @@
                      :description "a test snippet",
                      :content (str "select * from {{ #" card-id "-card-one }} where id = 1"),
                      :creator_id 13371338,
-                     :collection_id nil,
                      :template_tags {(str "#" card-id "-card-one")
                                      {:type :card,
                                       :name (str "#" card-id "-card-one"),
@@ -95,7 +95,6 @@
                      :archived false,
                      :dependency_analysis_version 0,
                      :content (str "select * from {{ #" card-id "-card-one }} where id = 1"),
-                     :collection_id nil,
                      :name "foo snippet",
                      :creator_id 13371338,
                      :id (inc snippet-id),
@@ -114,7 +113,8 @@
                                                                            :description "a test snippet"
                                                                            :content "foo = 1 and {{ snippet: bar snippet}}"}]
       (try (let [representation (export/export-entity snippet)
-                 toucan-model (import/yaml->toucan representation nil)
+                 toucan-model (->> (import/yaml->toucan representation nil)
+                                   (rep-t2/with-toucan-defaults :model/NativeQuerySnippet))
                  _ (t2/delete! :model/NativeQuerySnippet :id snippet-id)
                  persisted-snippet (import/persist! representation nil)]
              (is (= {:ref (str "snippet-" snippet-id),
@@ -129,7 +129,6 @@
                       :description "a test snippet",
                       :content "foo = 1 and {{ snippet: bar snippet}}",
                       :creator_id 13371338,
-                      :collection_id nil,
                       :template_tags {"snippet: bar snippet"
                                       {:type :snippet,
                                        :name "snippet: bar snippet",
@@ -140,7 +139,6 @@
                       :archived false,
                       :dependency_analysis_version 0,
                       :content "foo = 1 and {{ snippet: bar snippet}}",
-                      :collection_id nil,
                       :name "foo snippet",
                       :creator_id 13371338,
                       :id (inc snippet-id),
@@ -165,7 +163,8 @@
                                                                              :description "a test snippet"
                                                                              :content (str "foo = {{ val }} and {{ snippet: bar snippet}} and (select id from {{ #" card-id "-card-one }} where id = 1)")}]
         (try (let [representation (export/export-entity snippet)
-                   toucan-model (import/yaml->toucan representation nil)
+                   toucan-model (->> (import/yaml->toucan representation nil)
+                                     (rep-t2/with-toucan-defaults :model/NativeQuerySnippet))
                    _ (t2/delete! :model/NativeQuerySnippet :id snippet-id)
                    persisted-snippet (import/persist! representation nil)]
                (is (= {:ref (str "snippet-" snippet-id),
@@ -181,7 +180,6 @@
                         :description "a test snippet",
                         :content (str "foo = {{ val }} and {{ snippet: bar snippet}} and (select id from {{ #" card-id "-card-one }} where id = 1)"),
                         :creator_id 13371338,
-                        :collection_id nil,
                         :template_tags {"snippet: bar snippet"
                                         {:type :snippet,
                                          :name "snippet: bar snippet",
@@ -219,5 +217,5 @@
                (t2/delete! :model/NativeQuerySnippet :id (inc snippet-id))))))))
 
 (deftest representation-type-test
-  (doseq [entity (t2/select :model/Snippet)]
+  (doseq [entity (t2/select :model/NativeQuerySnippet)]
     (is (= :snippet (v0-common/representation-type entity)))))
