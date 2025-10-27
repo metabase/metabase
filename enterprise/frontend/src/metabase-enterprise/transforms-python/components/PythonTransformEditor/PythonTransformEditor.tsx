@@ -112,7 +112,7 @@ export function PythonTransformEditor({
           onRun={run}
           onCancel={cancel}
           source={source.body}
-          proposedSource={proposedSource}
+          proposedSource={proposedSource?.body}
           onChange={handleScriptChange}
           withDebugger={showDebugger}
           onAcceptProposed={onAcceptProposed}
