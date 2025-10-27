@@ -7,7 +7,9 @@
   system."
   (:require
    [medley.core :as m]
+   [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
+   [metabase.events.core :as events]
    ;; legacy usage -- do not use in new code
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -190,8 +192,16 @@
            (t2/update! :model/Sandbox
                        id
                        (u/select-keys-when sandbox :present #{:card_id :attribute_remappings})))
-         (t2/select-one :model/Sandbox :id id))
-       (first (t2/insert-returning-instances! :model/Sandbox sandbox))))))
+         (let [updated-sandbox (t2/select-one :model/Sandbox :id id)]
+           (events/publish-event! :event/sandbox-update
+                                  {:object updated-sandbox
+                                   :user-id api/*current-user-id*})
+           updated-sandbox))
+       (let [inserted-sandbox (first (t2/insert-returning-instances! :model/Sandbox sandbox))]
+         (events/publish-event! :event/sandbox-create
+                                {:object inserted-sandbox
+                                 :user-id api/*current-user-id*})
+         inserted-sandbox)))))
 
 (t2/define-before-insert :model/Sandbox
   [{:keys [table_id group_id], :as gtap}]

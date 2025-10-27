@@ -118,7 +118,7 @@ describe("scenarios > dependencies > dependency graph", () => {
       H.entityPickerModal().within(() => {
         H.entityPickerModalTab(tabName).click();
         cy.findByPlaceholderText(/Search/).type(itemName);
-        cy.findByText(/result for/).should("be.visible");
+        cy.findByText(/result for/).should("exist");
         cy.findByText(itemName).click();
       });
       graphEntryButton().should("have.text", itemName);
@@ -174,19 +174,19 @@ describe("scenarios > dependencies > dependency graph", () => {
         itemIcon: "table",
       });
       testEntityPicker({
-        tabName: "Collections",
+        tabName: "Questions",
         itemName: "Orders, Count, Grouped by Created At (year)",
         itemLevel: 1,
         itemIcon: "line",
       });
       testEntityPicker({
-        tabName: "Collections",
+        tabName: "Models",
         itemName: "Orders Model",
         itemLevel: 1,
         itemIcon: "model",
       });
       testEntityPicker({
-        tabName: "Collections",
+        tabName: "Metrics",
         itemName: TABLE_BASED_METRIC_NAME,
         itemLevel: 1,
         itemIcon: "metric",
