@@ -125,6 +125,10 @@
   [document _event-type]
   (select-keys document [:name :collection_id]))
 
+(defmethod model-details :model/Comment
+  [comment _event-type]
+  (select-keys comment [:target_type :target_id :child_target_id :parent_comment_id]))
+
 (def ^:private model-name->audit-logged-name
   {"RootCollection" "Collection"})
 

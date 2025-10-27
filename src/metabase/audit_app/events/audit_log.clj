@@ -283,3 +283,12 @@
 (methodical/defmethod events/publish-event! ::document-event
   [topic event]
   (audit-log/record-event! topic event))
+
+(derive ::comment-event ::event)
+(derive :event/comment-create ::comment-event)
+(derive :event/comment-update ::comment-event)
+(derive :event/comment-delete ::comment-event)
+
+(methodical/defmethod events/publish-event! ::comment-event
+  [topic event]
+  (audit-log/record-event! topic event))

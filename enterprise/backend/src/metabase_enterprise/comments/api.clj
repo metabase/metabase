@@ -181,6 +181,9 @@
                        ;; New comments always have empty reactions map
                        (assoc :reactions []))]
     (notify-comment! comment {:entity entity :parent parent})
+    (events/publish-event! :event/comment-create
+                           {:object comment
+                            :user-id api/*current-user-id*})
     comment))
 
 (api.macros/defendpoint :put "/:comment-id"
@@ -210,8 +213,12 @@
                            not-empty)]
       (t2/update! :model/Comment comment-id updates))
 
-    (-> (t2/select-one :model/Comment :id comment-id)
-        (t2/hydrate :creator :reactions))))
+    (let [updated-comment (-> (t2/select-one :model/Comment :id comment-id)
+                              (t2/hydrate :creator :reactions))]
+      (events/publish-event! :event/comment-update
+                             {:object updated-comment
+                              :user-id api/*current-user-id*})
+      updated-comment)))
 
 (api.macros/defendpoint :delete "/:comment-id"
   "Soft delete a comment"
@@ -230,6 +237,10 @@
 
     ;; Soft delete the comment
     (t2/update! :model/Comment comment-id {:deleted_at [:now]})
+
+    (events/publish-event! :event/comment-delete
+                           {:object comment
+                            :user-id api/*current-user-id*})
 
     ;; Return 204 No Content
     api/generic-204-no-content))
