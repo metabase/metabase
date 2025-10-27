@@ -176,9 +176,8 @@
   (api/check-superuser)
   (let [transform (t2/with-transaction [_]
                     ;; Cycle detection should occur within the transaction to avoid race
-                    (let [old (t2/select-one :model/Transform id)
-                          new (merge old body)
-                          new (m/update-existing-in new [:source :query] lib-be/normalize-query)
+                    (let [old           (t2/select-one :model/Transform id)
+                          new           (merge old body)
                           target-fields #(-> % :target (select-keys [:schema :name]))]
                       ;; we must validate on a full transform object
                       (check-feature-enabled! new)
