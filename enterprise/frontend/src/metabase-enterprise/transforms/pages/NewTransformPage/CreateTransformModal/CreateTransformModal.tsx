@@ -15,7 +15,6 @@ import {
   FormProvider,
   FormSubmitButton,
   FormTextInput,
-  FormTextarea,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import { Box, Button, FocusTrap, Group, Modal, Stack } from "metabase/ui";
@@ -135,13 +134,6 @@ function CreateTransformForm({
             name="name"
             label={t`Name`}
             placeholder={t`My Great Transform`}
-          />
-          <FormTextarea
-            name="description"
-            label={t`Description`}
-            placeholder={t`This is optional, but helpful`}
-            minRows={4}
-            maxRows={10}
           />
           {supportsSchemas && (
             <SchemaFormSelect

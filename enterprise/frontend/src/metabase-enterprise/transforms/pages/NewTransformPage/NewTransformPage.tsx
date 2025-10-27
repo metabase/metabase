@@ -8,12 +8,12 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Center } from "metabase/ui";
-import Question from "metabase-lib/v1/Question";
 import type { Transform, TransformSource } from "metabase-types/api";
 
 import { TransformEditor } from "../../components/TransformEditor";
 
 import { CreateTransformModal } from "./CreateTransformModal";
+import { getNativeInitialSource, getQueryInitialSource } from "./utils";
 
 type NewTransformPageProps = {
   initialSource: TransformSource;
@@ -60,26 +60,12 @@ function NewTransformPage({ initialSource }: NewTransformPageProps) {
 }
 
 export function NewQueryTransformPage() {
-  const initialSource = useMemo((): TransformSource => {
-    const question = Question.create({ DEPRECATED_RAW_MBQL_type: "query" });
-    return {
-      type: "query",
-      query: question.datasetQuery(),
-    };
-  }, []);
-
+  const initialSource = useMemo(getQueryInitialSource, []);
   return <NewTransformPage initialSource={initialSource} />;
 }
 
 export function NewNativeTransformPage() {
-  const initialSource = useMemo((): TransformSource => {
-    const question = Question.create({ DEPRECATED_RAW_MBQL_type: "native" });
-    return {
-      type: "query",
-      query: question.datasetQuery(),
-    };
-  }, []);
-
+  const initialSource = useMemo(getNativeInitialSource, []);
   return <NewTransformPage initialSource={initialSource} />;
 }
 
