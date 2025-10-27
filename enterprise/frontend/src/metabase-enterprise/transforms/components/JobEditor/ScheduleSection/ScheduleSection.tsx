@@ -137,6 +137,7 @@ function RunButtonSection({ job }: RunButtonSectionProps) {
   return (
     <Tooltip label={t`This job doesn't have tags to run.`} disabled={hasTags}>
       <RunButton
+        id={job.id}
         run={job.last_run}
         isDisabled={!isSaved || !hasTags}
         onRun={handleRun}

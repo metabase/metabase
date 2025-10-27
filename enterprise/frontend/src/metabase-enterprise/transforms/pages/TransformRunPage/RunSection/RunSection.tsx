@@ -123,8 +123,9 @@ function RunButtonSection({ transform }: RunButtonSectionProps) {
   return (
     <>
       <RunButton
-        allowCancellation
+        id={transform.id}
         run={transform.last_run}
+        allowCancellation
         onRun={handleRun}
         onCancel={openConfirmModal}
       />
