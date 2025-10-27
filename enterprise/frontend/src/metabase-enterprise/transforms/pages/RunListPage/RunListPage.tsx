@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { BenchLayout } from "metabase/bench/components/BenchLayout";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type * as Urls from "metabase/lib/urls";
-import { Box, Stack } from "metabase/ui";
+import { Box, Center, Stack } from "metabase/ui";
 import {
   useListTransformRunsQuery,
   useListTransformTagsQuery,
@@ -91,7 +91,11 @@ function RunListPageBody({ params }: RunListPageBodyProps) {
   }
 
   if (!data || isLoading || error != null) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+    return (
+      <Center h="100%">
+        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+      </Center>
+    );
   }
 
   return (

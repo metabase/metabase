@@ -13,6 +13,7 @@ import {
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 import { getInitialUiControls } from "metabase/querying/editor/components/QueryEditor";
+import { Center } from "metabase/ui";
 import {
   useGetTransformQuery,
   useUpdateTransformMutation,
@@ -41,7 +42,11 @@ export function TransformQueryPage({ params, route }: TransformQueryPageProps) {
   } = useGetTransformQuery(transformId ?? skipToken);
 
   if (isLoading || error || transform == null) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+    return (
+      <Center h="100%">
+        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+      </Center>
+    );
   }
 
   return <TransformQueryPageBody transform={transform} route={route} />;
