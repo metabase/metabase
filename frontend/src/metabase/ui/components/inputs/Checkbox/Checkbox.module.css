@@ -19,7 +19,7 @@
       z-index: 0;
     }
 
-    &:has(.input[data-indeterminate="true"]) {
+    &:has(.input[data-indeterminate]) {
       .icon {
         color: var(--mb-color-text-secondary);
       }
@@ -60,7 +60,7 @@
   border: 1px solid var(--mb-color-border);
   background-color: var(--mb-color-background);
 
-  &[data-indeterminate="true"] {
+  &[data-indeterminate] {
     border-color: var(--mb-color-border);
     background-color: var(--mb-color-background);
   }
