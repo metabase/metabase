@@ -8,9 +8,9 @@ import { Box } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { NativeQuerySnippet } from "metabase-types/api";
 
-import S from "./EditorSidebar.module.css";
+import S from "./NativeQuerySidebar.module.css";
 
-type EditorSidebarProps = {
+type NativeEditorSidebarProps = {
   question: Question;
   isNative: boolean;
   isSnippetSidebarOpen?: boolean;
@@ -21,19 +21,11 @@ type EditorSidebarProps = {
   onChangeModalSnippet: (snippet: NativeQuerySnippet) => void;
 };
 
-export function EditorSidebar(props: EditorSidebarProps) {
-  const { isNative } = props;
-  if (!isNative) {
-    return null;
-  }
-  return <NativeQueryEditorSidebar {...props} />;
-}
-
-function NativeQueryEditorSidebar({
+export function NativeQuerySidebar({
   isSnippetSidebarOpen,
   isDataReferenceOpen,
   ...props
-}: EditorSidebarProps) {
+}: NativeEditorSidebarProps) {
   if (!isSnippetSidebarOpen && !isDataReferenceOpen) {
     return null;
   }
@@ -42,17 +34,17 @@ function NativeQueryEditorSidebar({
     <Box className={S.sidebar} h="100%" w="40%" data-testid="editor-sidebar">
       {match({ isSnippetSidebarOpen, isDataReferenceOpen })
         .with({ isSnippetSidebarOpen: true }, () => (
-          <EditorSnippetSidebar {...props} />
+          <QuerySnippetSidebar {...props} />
         ))
         .with({ isDataReferenceOpen: true }, () => (
-          <EditorDataReferenceSidebar {...props} />
+          <QueryDataReferenceSidebar {...props} />
         ))
         .otherwise(() => null)}
     </Box>
   );
 }
 
-function EditorDataReferenceSidebar({
+function QueryDataReferenceSidebar({
   question,
   onToggleDataReference,
 }: EditorSidebarProps) {
@@ -87,7 +79,7 @@ function EditorDataReferenceSidebar({
   );
 }
 
-function EditorSnippetSidebar({
+function QuerySnippetSidebar({
   onInsertSnippet,
   onToggleSnippetSidebar,
   onChangeModalSnippet,

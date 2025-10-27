@@ -9,7 +9,7 @@ import type { QueryTransformSource, TransformId } from "metabase-types/api";
 
 import { TransformHeaderView } from "../TransformHeader";
 
-import { EditorSidebar } from "./EditorSidebar";
+import { NativeQuerySidebar } from "./NativeQuerySidebar";
 import { QuerySection } from "./QuerySection";
 import { SaveSection } from "./SaveSection";
 import S from "./TransformEditor.module.css";
@@ -139,7 +139,7 @@ export function TransformEditor({
               onCancelQuery={handleCancelQuery}
             />
           </Flex>
-          <EditorSidebar
+          <NativeQuerySidebar
             question={question}
             isNative={isNative}
             isDataReferenceOpen={isDataReferenceOpen}
