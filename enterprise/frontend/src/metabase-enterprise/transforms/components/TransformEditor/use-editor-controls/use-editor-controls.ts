@@ -5,6 +5,7 @@ import type {
   Location,
   SelectionRange,
 } from "metabase/query_builder/components/NativeQueryEditor/types";
+import type { QueryModalType } from "metabase/query_builder/constants";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { NativeQuerySnippet } from "metabase-types/api";
@@ -43,6 +44,12 @@ export function useEditorControls(
     return text.slice(start, end);
   }, [question, selectionRange]);
 
+  const handleOpenModal = (type: QueryModalType) => {
+    if (type === "preview-query") {
+      togglePreviewQueryModal();
+    }
+  };
+
   const handleInsertSnippet = (snippet: NativeQuerySnippet) => {
     const query = question.query();
     const text = Lib.rawNativeQuery(query) ?? "";
@@ -72,6 +79,7 @@ export function useEditorControls(
     isDataReferenceOpen,
     isSnippetSidebarOpen,
     isPreviewQueryModalOpen,
+    handleOpenModal,
     handleSelectionRangeChange: setSelectionRange,
     handleModalSnippetChange: setModalSnippet,
     handleInsertSnippet,

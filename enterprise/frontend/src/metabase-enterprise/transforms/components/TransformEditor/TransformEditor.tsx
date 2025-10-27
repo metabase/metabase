@@ -62,6 +62,7 @@ export function TransformEditor({
     isDataReferenceOpen,
     isSnippetSidebarOpen,
     isPreviewQueryModalOpen,
+    handleOpenModal,
     handleSelectionRangeChange,
     handleModalSnippetChange,
     handleInsertSnippet,
@@ -123,7 +124,7 @@ export function TransformEditor({
               onCancelQuery={handleCancelQuery}
               onToggleDataReference={handleToggleDataReference}
               onToggleSnippetSidebar={handleToggleSnippetSidebar}
-              onOpenModal={() => undefined}
+              onOpenModal={handleOpenModal}
               onChangeModalSnippet={handleModalSnippetChange}
               onChangeNativeEditorSelection={handleSelectionRangeChange}
             />
