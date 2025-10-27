@@ -1633,7 +1633,7 @@
     (is (= [:time-interval [:field 1 nil] -10 :minute]
            (mbql.normalize/normalize ::mbql.s/time-interval [:time-interval [:field 1 {:temporal-unit :hour}] -10 :minute])))))
 
-(deftest ^:parallel normalize-order-by-test
+(deftest ^:parallel normalize-incomplete-field-refs-test
   (is (= {:database 1
           :type     :query
           :query    {:source-table 2

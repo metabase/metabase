@@ -122,8 +122,6 @@
  mbql.u/desugar-filter-clause
  mbql.u/expression-with-name
  mbql.u/field-options
- mbql.u/is-clause?
- mbql.u/mbql-clause?
  mbql.u/negate-filter-clause
  mbql.u/normalize-token
  mbql.u/query->max-rows-limit
@@ -137,6 +135,8 @@
  mdb/spec
  metabase.driver-api.impl/cached
  metabase.driver-api.impl/dispatch-by-clause-name-or-class
+ metabase.driver-api.impl/is-clause?
+ metabase.driver-api.impl/mbql-clause?
  metabase.driver-api.impl/nest-expressions
  mi/instance-of?
  premium-features/is-hosted?
