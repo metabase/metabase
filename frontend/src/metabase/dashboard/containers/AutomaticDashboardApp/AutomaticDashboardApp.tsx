@@ -94,7 +94,7 @@ const AutomaticDashboardAppInner = () => {
 
   return (
     <div
-      className={cx(CS.relative, "AutomaticDashboard", {
+      className={cx(CS.relative, S.Root, "AutomaticDashboard", {
         "AutomaticDashboard--withSidebar": hasSidebar,
       })}
     >

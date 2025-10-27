@@ -13,3 +13,7 @@
   background-color: var(--mb-color-bg-light);
   border-left: 2px solid var(--mb-color-border);
 }
+
+.Root {
+  background: var(--mb-color-background-light);
+}
