@@ -30,6 +30,10 @@
 
 (set! *warn-on-reflection* true)
 
+(mr/def ::transform-source ::transforms.schema/transform-source)
+
+(mr/def ::transform-target ::transforms.schema/transform-target)
+
 (mr/def ::run-trigger
   [:enum "none" "global-schedule"])
 
