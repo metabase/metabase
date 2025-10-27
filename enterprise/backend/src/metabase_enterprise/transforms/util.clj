@@ -195,13 +195,6 @@
   [query source-incremental-strategy]
   (some->> source-incremental-strategy :keyset-filter-unique-key (lib/column-with-unique-key query)))
 
-(defn- native-query?
-  "Returns true if query is a native query. Work withs both mbql query and legacy query"
-  [query]
-  (if (contains? query :type)
-    (= :native (:type query))
-    (lib.query/native? query)))
-
 (defn preprocess-incremental-query
   "Preprocess a query for incremental transform execution by adding watermark filtering.
 
@@ -216,7 +209,7 @@
   [query source-incremental-strategy transform-id]
   (let [watermark-value (next-watermark-value transform-id)
         limit           (-> source-incremental-strategy :query-limit)]
-    (if (native-query? query)
+    (if (lib.query/native? query)
       (cond-> query
         watermark-value
         (update :parameters conj
