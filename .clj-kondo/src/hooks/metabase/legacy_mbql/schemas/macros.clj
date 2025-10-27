@@ -1,7 +1,6 @@
 (ns hooks.metabase.legacy-mbql.schemas.macros
   (:require
-   [clj-kondo.hooks-api :as hooks]
-   [hooks.metabase.legacy-mbql.schemas.macros :as metabase.legacy-mbql.schemas.macros]))
+   [clj-kondo.hooks-api :as hooks]))
 
 (defn- unwrap-defclause-clause-name
   "The `clause-name-form` can be either a plain symbol, or a vector like `[var-name mbql-clause-name]`. For the vector
@@ -34,16 +33,16 @@
     (defclause [ag:var var] field-or-expression FieldOrExpressionDef)
     =>
     (def ag:var [FieldOrExpressionDef])"
-  [{:keys [node]}]
+  [{:keys [node], :as x}]
   (let [[_defclause clause-name & arg-specs] (:children node)]
-    {:node (-> (hooks/list-node
-                (list
-                 (hooks/token-node 'do)
-                 (-> (hooks/keyword-node (keyword "metabase.legacy-mbql.schema" (name (hooks/sexpr clause-name))))
-                     (with-meta (meta clause-name))
-                     (hooks/reg-keyword! 'metabase.legacy-mbql.schemas.macros/defclause))
-                 (collect-defclause-body-schemas arg-specs)))
-               (with-meta (meta node)))}))
+    (assoc x :node (-> (hooks/list-node
+                        (list
+                         (hooks/token-node 'do)
+                         (-> (hooks/keyword-node (keyword "metabase.legacy-mbql.schema" (name (hooks/sexpr clause-name))))
+                             (with-meta (meta clause-name))
+                             (hooks/reg-keyword! 'metabase.legacy-mbql.schemas.macros/defclause))
+                         (collect-defclause-body-schemas arg-specs)))
+                       (with-meta (meta node))))))
 
 (defn defclause*
   "e.g.
@@ -51,16 +50,16 @@
     (defclause [ag:var var] field-or-expression FieldOrExpressionDef)
     =>
     (def ag:var [FieldOrExpressionDef])"
-  [{:keys [node]}]
+  [{:keys [node], :as x}]
   (let [[_defclause clause-name schema] (:children node)]
-    {:node (-> (hooks/list-node
-                (list
-                 (hooks/token-node 'do)
-                 (-> (hooks/keyword-node (keyword "metabase.legacy-mbql.schema" (name (hooks/sexpr clause-name))))
-                     (with-meta (meta clause-name))
-                     (hooks/reg-keyword! 'metabase.legacy-mbql.schemas.macros/defclause*))
-                 schema))
-               (with-meta (meta node)))}))
+    (assoc x :node (-> (hooks/list-node
+                        (list
+                         (hooks/token-node 'do)
+                         (-> (hooks/keyword-node (keyword "metabase.legacy-mbql.schema" (name (hooks/sexpr clause-name))))
+                             (with-meta (meta clause-name))
+                             (hooks/reg-keyword! 'metabase.legacy-mbql.schemas.macros/defclause*))
+                         schema))
+                       (with-meta (meta node))))))
 
 (comment
   (defn- expand-defclause [form]
@@ -86,3 +85,23 @@
                          z (rest (some-other-schema)))))
   ;; =>
   (do :metabase.legacy-mbql.schema/var [(some-list-schema) FieldOrExpressionDef (some-other-schema)]))
+
+(defn one-of [{:keys [node], :as x}]
+  (let [[_one-of & schema-nodes] (:children node)
+        node' (-> (hooks/vector-node
+                   (mapv (fn [schema-node]
+                           (if (and (hooks/token-node? schema-node)
+                                    (simple-symbol? (hooks/sexpr schema-node)))
+                             (-> (hooks/keyword-node (keyword "mteabase.legacy-mbql.schema" (name (hooks/sexpr schema-node))))
+                                 (with-meta (meta schema-node)))
+                             schema-node))
+                         schema-nodes))
+                  (with-meta (meta node)))]
+    (assoc x :node node')))
+
+(comment
+  (defn- expand-one-of [form]
+    (hooks/sexpr (:node (one-of {:node (hooks/parse-string (with-out-str (clojure.pprint/pprint form)))}))))
+
+  (defn- z []
+    (expand-one-of '(one-of absolute-datetime relative-datetime time))))

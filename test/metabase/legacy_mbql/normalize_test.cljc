@@ -936,6 +936,9 @@
   (normalize-tests
    "not inside of a not should get elimated entirely"
    {{:query {:filter [:not [:not [:= [:field-id 100] 1]]]}}
+    {:query {:filter [:= [:field 100 nil] 1]}}
+
+    {:query {:filter [:not [:not [:not [:not [:= [:field-id 100] 1]]]]]}}
     {:query {:filter [:= [:field 100 nil] 1]}}}))
 
 (deftest ^:parallel canonicalize-filter-test-6

@@ -8,9 +8,7 @@
    [metabase.driver :as driver]
    ;; legacy usage -- don't use Legacy MBQL utils in QP code going forward, prefer Lib. This will be updated to use
    ;; Lib only soon
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.schema :as mbql.s]
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib-be.core]
    [metabase.lib.core :as lib]
    [metabase.query-processor.schema :as qp.schema]

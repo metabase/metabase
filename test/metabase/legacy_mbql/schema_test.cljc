@@ -173,7 +173,7 @@
     false))
 
 (deftest ^:parallel expression-unwrapped-literals-test
-  (are [value] (= {:expressions {"expr" ["valid instance of one of these MBQL clauses: :expression, :field"]}}
+  (are [value] (= {:expressions {"expr" ["valid instance of one of these MBQL clauses: expression, field"]}}
                   (me/humanize (mr/explain ::mbql.s/MBQLQuery
                                            {:source-table 1, :expressions {"expr" value}})))
     ""

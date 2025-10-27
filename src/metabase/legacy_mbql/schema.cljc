@@ -10,7 +10,7 @@
   the move to MBQL 5 in the app DB and over the wire -- any new MBQL clauses should only get added to the MBQL 5
   schema in [[metabase.lib.schema]] going forward. We don't want to have to add things to two places for the rest of
   our lives; it's ok if MBQL 4 doesn't support some new features."
-  (:refer-clojure :exclude [every? select-keys doseq some mapv update-keys])
+  (:refer-clojure :exclude [every? select-keys #?(:clj doseq) some mapv update-keys])
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -818,13 +818,13 @@
           "other-clauses" [:rest [:ref ::Filter]])
          ;; flatten nested compound filters of the same type, e.g. `[:and x [:and y z]]` => `[:and x y z]`
          [:schema
-          {:decode/normalize (fn [[tag & subclause]]
+          {:decode/normalize (fn [[tag & subclauses]]
                                (into [tag]
                                      (mapcat (fn [subclause]
                                                (if (= (helpers/actual-clause-tag subclause) tag)
                                                  (rest subclause)
                                                  [subclause])))
-                                     subclause))}
+                                     subclauses))}
           :any]]]
    [::mc/default [:ref ::Filter]]])
 
@@ -834,14 +834,21 @@
 (defclause* or
   (compound-filter-schema :or))
 
+(defn- normalize-not
+  "`not` inside of a `not` should get elimated entirely."
+  [[_tag subclause-1 :as clause]]
+  (or (when (= (helpers/actual-clause-tag subclause-1) :not)
+        (let [[_tag subclause-2] subclause-1]
+          subclause-2))
+      clause))
+
 (defclause* not
   [:and
    (helpers/clause
     :not
     "clause" [:ref :metabase.legacy-mbql.schema/Filter])
    [:schema
-    ;; not inside of a not should get elimated entirely
-
+    {:decode/normalize #'normalize-not}
     :any]])
 
 (mr/def ::FieldOrExpressionRefOrRelativeDatetime
@@ -1569,6 +1576,22 @@
     [:ref ::TemplateTag]]
    [:ref ::lib.schema.template-tag/template-tag-map.validate-names]])
 
+(defn- normalize-native-inner-query [m]
+  (when (map? m)
+    (let [m (lib.schema.common/normalize-map m)]
+      (reduce-kv
+       (fn [m k v]
+         (case k
+           :collection    (cond-> m
+                            (nil? v)
+                            (dissoc :collection))
+           :template-tags (cond-> m
+                            (empty? v)
+                            (dissoc :template-tags))
+           m))
+       m
+       m))))
+
 (mr/def ::NativeQuery.Common
   [:and
    [:map
@@ -1584,14 +1607,14 @@
 (mr/def ::NativeQuery
   "Schema for a valid, normalized native [inner] query."
   [:merge
-   {:decode/normalize lib.schema.common/normalize-map}
+   {:decode/normalize #'normalize-native-inner-query}
    ::NativeQuery.Common
    [:map
     [:query :some]]])
 
 (mr/def ::NativeSourceQuery
   [:merge
-   {:decode/normalize lib.schema.common/normalize-map}
+   {:decode/normalize #'normalize-native-inner-query}
    ::NativeQuery.Common
    [:map
     [:native :some]]])
