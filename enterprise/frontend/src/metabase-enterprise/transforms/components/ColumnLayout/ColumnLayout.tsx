@@ -17,13 +17,25 @@ export function ColumnLayout({ children }: ColumnLayoutProps) {
 }
 
 type ColumnLayoutBodyProps = {
+  isCentered?: boolean;
   children?: ReactNode;
 };
 
-export function ColumnLayoutBody({ children }: ColumnLayoutBodyProps) {
+export function ColumnLayoutBody({
+  isCentered,
+  children,
+}: ColumnLayoutBodyProps) {
   return (
-    <Flex className={S.body} flex={1} justify="center" p="xl" bg="bg-light">
-      <Stack flex={1} gap="xl" maw="50rem">
+    <Flex
+      className={S.body}
+      flex={1}
+      justify="center"
+      pt={isCentered ? "3.5rem" : "xl"}
+      pb="xl"
+      px="xl"
+      bg="bg-light"
+    >
+      <Stack flex={1} gap="3.5rem" maw="50rem">
         {children}
       </Stack>
     </Flex>
