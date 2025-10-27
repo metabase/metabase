@@ -211,15 +211,15 @@
             ;; We may fail to insert a new metadata row if we lose a race with another instance.
               (when (search-index-metadata/create-pending! :appdb *index-version-id* table-name)
                 (try
-                (create-table! table-name)
-                (catch Exception e
-                  (log/error e "Error creating pending index table, cleaning up metadata")
-                  (try
-                    (t2/with-connection [safe-conn (mdb/app-db)]
-                      (t2/delete! :conn safe-conn :model/SearchIndexMetadata :index_name (name table-name)))
-                    (catch Exception del-e
-                      (log/warn del-e "Error clearing out search metadata after failure")))
-                  (sync-tracking-atoms!))))
+                  (create-table! table-name)
+                  (catch Exception e
+                    (log/error e "Error creating pending index table, cleaning up metadata")
+                    (try
+                      (t2/with-connection [safe-conn (mdb/app-db)]
+                        (t2/delete! :conn safe-conn :model/SearchIndexMetadata :index_name (name table-name)))
+                      (catch Exception del-e
+                        (log/warn del-e "Error clearing out search metadata after failure")))
+                    (sync-tracking-atoms!))))
               (let [pending (:pending (sync-tracking-atoms!))]
                 (log/infof "New pending index %s" pending)
                 pending)))))))
