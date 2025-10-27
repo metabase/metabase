@@ -669,7 +669,9 @@
                ;; regex literals aren't allowed in EDN. We parse them in `./test/cloverage.clj`
                :ns-exclude-regex
                ["metabase\\.driver\\.mysql.*"
-                "metabase\\.driver\\.postgres.*"]}
+                "metabase\\.driver\\.postgres.*"
+                "^mage\\..*"
+                "^test\\.mage\\..*"]}
    ;; different port from `:test` so you can run it at the same time as `:test`.
    :jvm-opts ["-Dmb.jetty.port=3002"]}
 
