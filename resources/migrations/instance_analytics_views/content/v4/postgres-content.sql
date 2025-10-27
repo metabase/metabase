@@ -1,21 +1,19 @@
 drop view if exists v_content;
 
-create or replace 
-SQL SECURITY INVOKER 
-view v_content as
+create or replace view v_content as
 select
     action.id as entity_id,
-    concat('action_', action.id) as entity_qualified_id,
+    'action_' || action.id as entity_qualified_id,
     'action' as entity_type,
     created_at,
     updated_at,
     creator_id,
     name,
     description,
-    null as collection_id,
+    cast(null as int) as collection_id,
     made_public_by_id as made_public_by_user,
-    null as is_embedding_enabled,
-    null as is_verified,
+    cast(null as boolean) as is_embedding_enabled,
+    null::bool as is_verified,
     archived,
     type as action_type,
     model_id as action_model_id,
@@ -23,13 +21,13 @@ select
     null as collection_is_personal,
     null as question_viz_type,
     null as question_database_id,
-    null as question_is_native,
-    null as event_timestamp
+    cast(null as boolean) as question_is_native,
+    cast(null as timestamp) as event_timestamp
     from action
 union
 select
     collection.id as entity_id,
-    concat('collection_', collection.id) as entity_qualified_id,
+    'collection_' || collection.id as entity_qualified_id,
     'collection' as entity_type,
     created_at,
     null as updated_at,
@@ -39,7 +37,7 @@ select
     null as collection_id,
     null as made_public_by_user,
     null as is_embedding_enabled,
-    null as is_verified,
+    null::bool as is_verified,
     archived,
     null as action_type,
     null as action_model_id,
@@ -53,7 +51,7 @@ select
 union
 select
     report_card.id as entity_id,
-    concat('card_', report_card.id) as entity_qualified_id,
+    'card_' || report_card.id as entity_qualified_id,
     type as entity_type,
     created_at,
     updated_at,
@@ -70,21 +68,21 @@ select
     null as collection_is_official,
     null as collection_is_personal,
     display as question_viz_type,
-    concat('database_', database_id) as question_database_id,
+   'database_' || database_id as question_database_id,
     case when query_type='native' then true else false end as question_is_native,
     null as event_timestamp
     from report_card
         left join (
             select
-                concat(moderated_item_type, '_', moderated_item_id) as entity_qualified_id,
+                moderated_item_type || '_' || moderated_item_id as entity_qualified_id,
                 case when status = 'verified' then true else false end as is_verified
             from moderation_review
             where most_recent
-        ) as moderation on concat('card_', report_card.id) = moderation.entity_qualified_id
+        ) as moderation on 'card_' || report_card.id = moderation.entity_qualified_id
 union
 select
     report_dashboard.id as entity_id,
-    concat('dashboard_', report_dashboard.id) as entity_qualified_id,
+    'dashboard_' || report_dashboard.id as entity_qualified_id,
     'dashboard' as entity_type,
     created_at,
     updated_at,
@@ -107,39 +105,39 @@ select
     from report_dashboard
         left join (
             select
-                concat(moderated_item_type, '_', moderated_item_id) as entity_qualified_id,
+                moderated_item_type || '_' || moderated_item_id as entity_qualified_id,
                 case when status = 'verified' then true else false end as is_verified
             from moderation_review
             where most_recent
-        ) as moderation on concat('card_', report_dashboard.id) = moderation.entity_qualified_id
+        ) as moderation on 'dashboard_' || report_dashboard.id = moderation.entity_qualified_id
 union
 select
     document.id as entity_id,
-    concat('document_', document.id) as entity_qualified_id,
+    'document_' || document.id as entity_qualified_id,
     'document' as entity_type,
     created_at,
     updated_at,
     creator_id,
     name,
-    null as description,
+    cast(null as text) as description,
     collection_id as collection_id,
-    null as made_public_by_user,
-    null as is_embedding_enabled,
-    null as is_verified,
+    cast(null as int) as made_public_by_user,
+    cast(null as boolean) as is_embedding_enabled,
+    null::bool as is_verified,
     archived,
     null as action_type,
-    null as action_model_id,
+    cast(null as int) as action_model_id,
     null as collection_is_official,
     null as collection_is_personal,
     null as question_viz_type,
     null as question_database_id,
-    null as question_is_native,
-    null as event_timestamp
+    cast(null as boolean) as question_is_native,
+    cast(null as timestamp) as event_timestamp
     from document
 union
 select
     event.id as entity_id,
-    concat('event_', event.id) as entity_qualified_id,
+    'event_' || event.id as entity_qualified_id,
     'event' as entity_type,
     event.created_at,
     event.updated_at,
@@ -149,7 +147,7 @@ select
     timeline.collection_id,
     null as made_public_by_user,
     null as is_embedding_enabled,
-    null as is_verified,
+    null::bool as is_verified,
     event.archived,
     null as action_type,
     null as action_model_id,
