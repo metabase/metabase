@@ -9,19 +9,23 @@ import { Flex } from "metabase/ui";
 import type { DatabaseId, TableId } from "metabase-types/api";
 
 import { useExpandedState, useTableLoader } from "../hooks";
-import type { ChangeOptions, DatabaseNode, FlatItem, TreePath } from "../types";
+import type {
+  ChangeOptions,
+  DatabaseNode,
+  FlatItem,
+  SchemaNode,
+  TreePath,
+} from "../types";
 import {
-  areTablesSelected,
+  type NodeSelection,
   flatten,
+  getChildSchemas,
+  getSchemaChildrenTableIds,
   getSchemaId,
   getSchemaTableIds,
+  isItemSelected,
   noManuallySelectedSchemas,
   noManuallySelectedTables,
-  isItemSelected,
-  getSchemas,
-  type NodeSelection,
-  getSchemaTables,
-  getSchemaChildrenTableIds,
 } from "../utils";
 
 import { EditTableMetadataModal } from "./EditTableMetadataModal";
@@ -311,18 +315,18 @@ function markAllSchemas(
   const schemasSelection = new Set(selection.schemas);
   const tablesSelection = new Set(selection.tables);
 
-  const schemas = getSchemas(item, allItems);
+  const schemas = getChildSchemas(item);
   schemas.forEach((schema) => {
     const schemaId = getSchemaId(schema);
     if (!schemaId) {
       return;
     }
-    if (schema.children.length > 0) {
+    if (schema.children.length === 0) {
       targetChecked === "yes"
         ? schemasSelection.add(schemaId)
         : schemasSelection.delete(schemaId);
     } else {
-      markAllTables(schema, allItems, targetChecked, tablesSelection);
+      markAllTables(schema, targetChecked, tablesSelection);
     }
   });
 
@@ -334,14 +338,12 @@ function markAllSchemas(
 }
 
 function markAllTables(
-  schema: FlatItem,
-  allItems: FlatItem[],
+  schema: SchemaNode,
   targetChecked: "yes" | "no",
   tablesSelection: Set<TableId>,
 ) {
-  const tables = getSchemaTables(schema, allItems);
-  tables.forEach((table) => {
-    const tableId = table.value?.tableId ?? -1;
+  const tables = getSchemaChildrenTableIds(schema);
+  tables.forEach((tableId) => {
     if (tableId === -1) {
       return;
     }

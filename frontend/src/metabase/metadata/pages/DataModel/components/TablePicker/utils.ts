@@ -418,7 +418,6 @@ export function getSchemaTableIds(schema: FlatItem, allItems: FlatItem[]) {
   return getSchemaTables(schema, allItems).map((x) => x.value?.tableId ?? "");
 }
 
-
 export function getSchemaChildrenTableIds(schema: TreeNode) {
   return schema.children
     .filter((x) => x.type === "table")
@@ -460,6 +459,10 @@ export function getSchemas(database: FlatItem, allItems: FlatItem[]) {
     (x) =>
       x.type === "schema" && x.value?.databaseId === database.value?.databaseId,
   );
+}
+
+export function getChildSchemas(databaseNode: DatabaseNode) {
+  return databaseNode.children.filter((x) => x.type === "schema");
 }
 
 export function areSchemasSelected(
