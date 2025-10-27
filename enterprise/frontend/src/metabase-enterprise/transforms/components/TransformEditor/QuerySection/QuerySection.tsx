@@ -92,9 +92,9 @@ export function QuerySection({
 
   const resizableBoxProps: Partial<ResizableBoxProps> = useMemo(
     () => ({
+      className: S.nativeResizableBox,
       height: editorHeight,
       resizeHandles: ["s"],
-      className: S.root,
       style: isResizing ? undefined : { transition: "height 0.25s" },
       onResizeStart: () => setIsResizing(true),
       onResizeStop: () => setIsResizing(false),
@@ -132,7 +132,6 @@ export function QuerySection({
       isNativeEditorOpen
       readOnly={false}
       hasParametersList={false}
-      hasEditingSidebar={false}
       handleResize={handleResize}
       runQuery={onRunQuery}
       cancelQuery={onCancelQuery}
@@ -154,7 +153,7 @@ export function QuerySection({
   ) : (
     <ResizableBox
       axis="y"
-      className={S.root}
+      className={S.queryResizableBox}
       height={editorHeight}
       handle={<ResizeHandle />}
       resizeHandles={["s"]}
