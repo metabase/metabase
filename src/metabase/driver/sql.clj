@@ -226,6 +226,11 @@
                          ;; sql.references/field-references organizes source-cols into a list of lists
                          ;; to account for this.
                          (->> (mapcat (fn [current-col]
+                                        ;; :unknown-columns is a placeholder for "we know there are columns being
+                                        ;; returned, but have no way of knowing what those are -- this is primarily
+                                        ;; used for table-functions like `select * from my_func()`.  If we encounter
+                                        ;; something like that, assume that the query is valid and make up a matching
+                                        ;; column to avoid false positives.
                                         (if (= (:type current-col) :unknown-columns)
                                           (let [name (:column col-spec)]
                                             [{:base-type :type/*

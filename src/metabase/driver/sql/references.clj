@@ -113,12 +113,15 @@
                                          inner-sources))
                                  sources))]
       (cond
+        ;; we have a direct column match
         source-column [(cond-> source-column
                          alias (assoc :alias alias))]
+        ;; we have a match to a table
         source-matches (when return-table-matches?
                          [{:type :custom-field
                            :alias (or alias column)
                            :used-fields (set source-matches)}])
+        ;; we don't have a direct match, so show the possible columns this could match to
         :else [(-> {:column column
                     :alias alias
                     :type :single-column}
