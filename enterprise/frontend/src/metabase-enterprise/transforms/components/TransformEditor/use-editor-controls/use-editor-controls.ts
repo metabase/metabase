@@ -47,7 +47,7 @@ export function useEditorControls(
     setState((state) => ({ ...state, selectionRange }));
   };
 
-  const handleChangeModallSnippet = (
+  const handleChangeModalSnippet = (
     modalSnippet: NativeQuerySnippet | null,
   ) => {
     setState((state) => ({ ...state, modalSnippet }));
@@ -115,7 +115,7 @@ export function useEditorControls(
     selectedText,
     handleOpenModal,
     handleChangeSelectionRange,
-    handleChangeModallSnippet,
+    handleChangeModalSnippet,
     handleInsertSnippet,
     handleToggleDataReference,
     handleToggleSnippetSidebar,

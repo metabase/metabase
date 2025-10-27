@@ -68,7 +68,7 @@ export function TransformEditor({
     isNativeQueryPreviewSidebarOpen,
     handleOpenModal,
     handleChangeSelectionRange,
-    handleChangeModallSnippet,
+    handleChangeModalSnippet,
     handleInsertSnippet,
     handleToggleDataReference,
     handleToggleSnippetSidebar,
@@ -131,7 +131,7 @@ export function TransformEditor({
               onToggleDataReference={handleToggleDataReference}
               onToggleSnippetSidebar={handleToggleSnippetSidebar}
               onOpenModal={handleOpenModal}
-              onChangeModalSnippet={handleChangeModallSnippet}
+              onChangeModalSnippet={handleChangeModalSnippet}
               onChangeNativeEditorSelection={handleChangeSelectionRange}
             />
             <VisualizationSection
@@ -165,7 +165,7 @@ export function TransformEditor({
               onInsertSnippet={handleInsertSnippet}
               onToggleDataReference={handleToggleDataReference}
               onToggleSnippetSidebar={handleToggleSnippetSidebar}
-              onChangeModalSnippet={handleChangeModallSnippet}
+              onChangeModalSnippet={handleChangeModalSnippet}
             />
           )}
           {!isNative && isNativeQueryPreviewSidebarOpen && (
