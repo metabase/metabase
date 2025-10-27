@@ -1,10 +1,26 @@
 import type { TagDescription } from "@reduxjs/toolkit/query";
 
-import { TAG_TYPES, provideUserTags } from "metabase/api/tags";
+import {
+  TAG_TYPES,
+  provideCollectionTags,
+  provideDatabaseTags,
+  provideFieldListTags,
+  provideTableTags,
+  provideUserTags,
+} from "metabase/api/tags";
 import type {
+  CardDependencyNode,
   Comment,
+  DashboardDependencyNode,
+  DependencyGraph,
+  DependencyNode,
+  DocumentDependencyNode,
   PythonLibrary,
+  SandboxDependencyNode,
+  SnippetDependencyNode,
+  TableDependencyNode,
   Transform,
+  TransformDependencyNode,
   TransformJob,
   TransformRun,
   TransformTag,
@@ -19,11 +35,17 @@ export const ENTERPRISE_TAG_TYPES = [
   "gsheets-status",
   "document",
   "comment",
-  "transform",
+  "sandbox",
   "transform-tag",
   "transform-job",
   "transform-job-via-tag",
   "transform-run",
+  "git-tree",
+  "git-file-content",
+  "collection-dirty-entities",
+  "collection-is-dirty",
+  "remote-sync-branches",
+  "remote-sync-current-task",
   "python-transform-library",
 ] as const;
 
@@ -133,4 +155,120 @@ export function providePythonLibraryTags(
   library: PythonLibrary,
 ): TagDescription<EnterpriseTagType>[] {
   return [idTag("python-transform-library", library.path)];
+}
+
+function provideCardDependencyNodeTags(
+  node: CardDependencyNode,
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    idTag("card", node.id),
+    ...(node.data.creator != null ? provideUserTags(node.data.creator) : []),
+    ...(node.data["last-edit-info"] != null
+      ? provideUserTags(node.data["last-edit-info"])
+      : []),
+    ...(node.data.collection != null
+      ? provideCollectionTags(node.data.collection)
+      : []),
+    ...(node.data.dashboard != null
+      ? [idTag("dashboard", node.data.dashboard.id)]
+      : []),
+  ];
+}
+
+function provideTableDependencyNodeTags(
+  node: TableDependencyNode,
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    idTag("table", node.id),
+    ...(node.data.db != null ? provideDatabaseTags(node.data.db) : []),
+    ...(node.data.fields != null ? provideFieldListTags(node.data.fields) : []),
+  ];
+}
+
+function provideTransformDependencyNodeTags(
+  node: TransformDependencyNode,
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    idTag("transform", node.id),
+    ...(node.data.table != null ? provideTableTags(node.data.table) : []),
+  ];
+}
+
+function provideSnippetDependencyNodeTags(
+  node: SnippetDependencyNode,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("snippet", node.id)];
+}
+
+function provideDashboardDependencyNodeTags(
+  node: DashboardDependencyNode,
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    idTag("dashboard", node.id),
+    ...(node.data.creator != null ? provideUserTags(node.data.creator) : []),
+    ...(node.data["last-edit-info"] != null
+      ? provideUserTags(node.data["last-edit-info"])
+      : []),
+    ...(node.data.collection != null
+      ? provideCollectionTags(node.data.collection)
+      : []),
+  ];
+}
+
+function provideDocumentDependencyNodeTags(
+  node: DocumentDependencyNode,
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    idTag("document", node.id),
+    ...(node.data.creator != null ? provideUserTags(node.data.creator) : []),
+    ...(node.data.collection != null
+      ? provideCollectionTags(node.data.collection)
+      : []),
+  ];
+}
+
+function provideSandboxDependencyNodeTags(
+  node: SandboxDependencyNode,
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    idTag("sandbox", node.id),
+    ...(node.data.table ? provideTableTags(node.data.table) : []),
+  ];
+}
+
+export function provideDependencyNodeTags(
+  node: DependencyNode,
+): TagDescription<EnterpriseTagType>[] {
+  switch (node.type) {
+    case "card":
+      return provideCardDependencyNodeTags(node);
+    case "table":
+      return provideTableDependencyNodeTags(node);
+    case "transform":
+      return provideTransformDependencyNodeTags(node);
+    case "snippet":
+      return provideSnippetDependencyNodeTags(node);
+    case "dashboard":
+      return provideDashboardDependencyNodeTags(node);
+    case "document":
+      return provideDocumentDependencyNodeTags(node);
+    case "sandbox":
+      return provideSandboxDependencyNodeTags(node);
+  }
+}
+
+export function provideDependencyNodeListTags(nodes: DependencyNode[]) {
+  return [
+    listTag("card"),
+    listTag("table"),
+    listTag("transform"),
+    listTag("snippet"),
+    ...nodes.flatMap(provideDependencyNodeTags),
+  ];
+}
+
+export function provideDependencyGraphTags(
+  graph: DependencyGraph,
+): TagDescription<EnterpriseTagType>[] {
+  return provideDependencyNodeListTags(graph.nodes);
 }

@@ -31,13 +31,22 @@
     "Given one of the `:serdes/meta` abstract paths returned by [[ingest-list]], read in and return the entire
     corresponding entity."))
 
-(defn- read-timestamps [entity]
+(defn read-timestamps
+  "Parses timestamp fields in an entity.
+
+  Args:
+    entity: A map containing entity data with potential timestamp fields.
+
+  Returns:
+    The entity with timestamp fields parsed using u.date/parse.
+    Processes fields ending with '_at' and the special :last_analyzed field."
+  [entity]
   (->> (keys entity)
        (filter #(or (#{:last_analyzed} %)
                     (.endsWith (name %) "_at")))
        (reduce #(update %1 %2 u.date/parse) entity)))
 
-(defn- parse-key
+(defn parse-key
   "Convert suitable string keys to clojure keywords, ignoring keys with whitespace, etc."
   [{k :key}]
   (if (and (string? k)
@@ -45,7 +54,14 @@
     (keyword k)
     k))
 
-(defn- strip-labels
+(defn strip-labels
+  "Removes :label keys from all maps in a hierarchy.
+
+  Args:
+    hierarchy: A collection of maps that may contain :label keys.
+
+  Returns:
+    A vector with :label keys removed from each map in the hierarchy."
   [hierarchy]
   (mapv #(dissoc % :label) hierarchy))
 

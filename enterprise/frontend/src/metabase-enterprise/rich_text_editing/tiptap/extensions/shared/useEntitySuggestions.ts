@@ -1,21 +1,26 @@
-import type { Editor } from "@tiptap/core";
-import { useCallback, useEffect, useState } from "react";
+import type { Editor, Range } from "@tiptap/core";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
+import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import { modelToUrl } from "metabase/lib/urls/modelToUrl";
-import type { SuggestionModel } from "metabase-enterprise/documents/components/Editor/types";
 import type {
   MentionableUser,
   RecentItem,
   SearchResult,
 } from "metabase-types/api";
 
-import { entityToUrlableModel } from "./suggestionUtils";
+import {
+  buildSearchModelMenuItems,
+  entityToUrlableModel,
+} from "./suggestionUtils";
+import type { SuggestionModel } from "./types";
 import { useEntitySearch } from "./useEntitySearch";
 
 interface UseEntitySuggestionsOptions {
   query: string;
   editor: Editor;
+  range?: Range;
   onSelectEntity: (item: {
     id: number | string;
     model: string;
@@ -24,6 +29,8 @@ interface UseEntitySuggestionsOptions {
   }) => void;
   enabled?: boolean;
   searchModels?: SuggestionModel[];
+  canFilterSearchModels: boolean;
+  canBrowseAll: boolean;
 }
 
 interface UseEntitySuggestionsResult {
@@ -33,6 +40,7 @@ interface UseEntitySuggestionsResult {
   selectedIndex: number;
   modal: "question-picker" | null;
   totalItems: number;
+  selectedSearchModelName?: string;
   handlers: {
     selectItem: (index: number) => void;
     upHandler: () => void;
@@ -49,12 +57,17 @@ interface UseEntitySuggestionsResult {
 export function useEntitySuggestions({
   query,
   editor,
+  range,
   onSelectEntity,
   enabled = true,
   searchModels,
+  canFilterSearchModels,
+  canBrowseAll,
 }: UseEntitySuggestionsOptions): UseEntitySuggestionsResult {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [modal, setModal] = useState<"question-picker" | null>(null);
+  const [selectedSearchModel, setSelectedSearchModel] =
+    useState<SuggestionModel | null>(null);
 
   const handleRecentSelect = useCallback(
     (item: RecentItem) => {
@@ -92,16 +105,83 @@ export function useEntitySuggestions({
     [onSelectEntity],
   );
 
-  const { menuItems, isLoading, searchResults } = useEntitySearch({
+  const handleSearchModelSelect = useCallback(
+    (model: SuggestionModel) => {
+      // clear any input the user made to filter search models
+      if (range) {
+        editor.chain().focus().deleteRange(range).insertContent("@").run();
+      }
+      setSelectedSearchModel(model);
+      setSelectedIndex(0);
+    },
+    [editor, range],
+  );
+
+  const filteredSearchModels = useMemo(() => {
+    if (!searchModels || !canFilterSearchModels) {
+      return undefined;
+    }
+    return searchModels.filter((model) => {
+      const modelName = getTranslatedEntityName(model) ?? "";
+      return modelName.toLowerCase().startsWith(query.toLowerCase());
+    });
+  }, [searchModels, query, canFilterSearchModels]);
+
+  // Use selected model if available, otherwise use filtered models
+  // If no models match the filter but searchModels was provided, fall back to all searchModels
+  const effectiveSearchModels = useMemo(() => {
+    if (selectedSearchModel) {
+      return [selectedSearchModel];
+    }
+    if (
+      searchModels &&
+      (!filteredSearchModels || filteredSearchModels?.length === 0)
+    ) {
+      return searchModels;
+    }
+    return filteredSearchModels;
+  }, [selectedSearchModel, filteredSearchModels, searchModels]);
+
+  const searchModelMenuItems = useMemo(() => {
+    return selectedSearchModel || filteredSearchModels === undefined
+      ? []
+      : buildSearchModelMenuItems(
+          filteredSearchModels,
+          handleSearchModelSelect,
+        );
+  }, [filteredSearchModels, selectedSearchModel, handleSearchModelSelect]);
+
+  const hasSearchModels = (searchModels?.length ?? 0) > 0;
+  const hasMatchingFilteredModels = (filteredSearchModels?.length ?? 0) > 0;
+  const isInModelSelectionMode =
+    !selectedSearchModel && hasSearchModels && hasMatchingFilteredModels;
+
+  const {
+    menuItems: entityMenuItems,
+    isLoading,
+    searchResults,
+  } = useEntitySearch({
     query,
     onSelectRecent: handleRecentSelect,
     onSelectSearchResult: handleSearchResultSelect,
     onSelectUser: handleUserSelect,
-    enabled,
-    searchModels,
+    enabled: enabled && !isInModelSelectionMode,
+    shouldFetchRecents:
+      enabled &&
+      query.length === 0 &&
+      !isInModelSelectionMode &&
+      !selectedSearchModel,
+    searchModels: effectiveSearchModels,
   });
 
-  const totalItems = menuItems.length + 1;
+  const menuItems = useMemo(() => {
+    if (isInModelSelectionMode) {
+      return searchModelMenuItems;
+    }
+    return entityMenuItems;
+  }, [isInModelSelectionMode, searchModelMenuItems, entityMenuItems]);
+
+  const totalItems = menuItems.length + Number(canBrowseAll);
 
   const selectItem = useCallback(
     (index: number) => {
@@ -182,13 +262,19 @@ export function useEntitySuggestions({
     setSelectedIndex(0);
   }, [menuItems.length]);
 
+  // Get the translated name for the selected search model
+  const selectedSearchModelName = selectedSearchModel
+    ? getTranslatedEntityName(selectedSearchModel) || selectedSearchModel
+    : undefined;
+
   return {
     menuItems,
-    isLoading,
+    isLoading: isInModelSelectionMode ? false : isLoading,
     searchResults,
     selectedIndex,
     modal,
     totalItems,
+    selectedSearchModelName,
     handlers: {
       selectItem,
       upHandler,
