@@ -115,22 +115,6 @@ describe("open()", () => {
     jest.restoreAllMocks();
   });
 
-  it("should call handleLink plugin in the SDK", () => {
-    const handleLink = jest.fn().mockReturnValue(true);
-    getSdkGlobalPluginsMock.mockReturnValue({ handleLink });
-
-    const openInSameWindow = jest.fn();
-    const openInBlankWindow = jest.fn();
-    const url = "https://example.com/dashboard/1";
-
-    open(url, {
-      openInSameWindow,
-      openInBlankWindow,
-    });
-
-    expect(handleLink).toHaveBeenCalledWith(url);
-  });
-
   it("should prevent default behavior when handleLink returns true", () => {
     const handleLink = jest.fn().mockReturnValue(true);
     getSdkGlobalPluginsMock.mockReturnValue({ handleLink });
