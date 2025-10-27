@@ -85,6 +85,8 @@ jobs:
       # It then (3) runs `yarn install --frozen-lockfile --prefer-offline` which ensures the local cache is fully populated.
       - name: Install front-end dependencies
         uses: ./.github/actions/prepare-frontend
+        with:
+          apply-patches: 'false'
 
       - name: Update node_modules cache
         uses: ./.github/actions/update-cache
