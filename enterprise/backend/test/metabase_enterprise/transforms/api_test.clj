@@ -124,7 +124,7 @@
                                                  :target {:type   "table"
                                                           :schema schema
                                                           :name   table-name}})]
-              (is (= :native (:type created)))
+              (is (= "native" (:type created)))
 
               (let [response (mt/user-http-request :crowberto :put 400
                                                    (format "ee/transform/%s" (:id created))

@@ -233,10 +233,11 @@
 (defn- maybe-extract-transform-query-text
   "Return the query text (truncated to `max-searchable-value-length`) from transform source; else nil.
   Extracts SQL from query-type transforms and Python code from python-type transforms."
-  [{:keys [source]}]
+  [{transform-type :type source :source}]
   (let [source-data (transform-source-out source)
-        query-text (case (:type source-data)
-                     :query (lib/raw-native-query (:query source-data))
+        ;; Use the top-level :type field since it differentiates between MBQL vs native transforms
+        query-text (case (keyword transform-type)
+                     :native (lib/raw-native-query (:query source-data))
                      :python (:body source-data)
                      nil)]
     (when query-text
@@ -245,10 +246,10 @@
 (defn- extract-transform-db-id
   "Return the database ID from transform source; else nil."
   [{:keys [source]}]
-  (let [parsed-source ((:out mi/transform-json) source)]
+  (let [parsed-source (transform-source-out source)]
     (case (:type parsed-source)
-      "query" (get-in parsed-source [:query :database])
-      "python" (parsed-source :source-database)
+      :query (get-in parsed-source [:query :database])
+      :python (parsed-source :source-database)
       nil)))
 
 ;;; ------------------------------------------------- Search ---------------------------------------------------
@@ -260,7 +261,7 @@
                   :created-at    true
                   :updated-at    true
                   :native-query  {:fn maybe-extract-transform-query-text
-                                  :fields [:source]}
+                                  :fields [:source :type]}
                   :database-id   {:fn extract-transform-db-id
                                   :fields [:source]}}
    :search-terms [:name :description]
