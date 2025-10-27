@@ -6,10 +6,11 @@ import type { QueryTransformSource, TransformId } from "metabase-types/api";
 
 import { TransformHeaderView } from "../TransformHeader";
 
+import { EditorSidebar } from "./EditorSidebar";
 import { QuerySection } from "./QuerySection";
 import { SaveSection } from "./SaveSection";
-import S from "./TransformEditor.module.css";
 import { VisualizationSection } from "./VisualizationSection";
+import { useEditorSidebar } from "./use-editor-sidebar";
 import { useQueryMetadata } from "./use-query-metadata";
 import { useQueryResults } from "./use-query-results";
 import { useSourceQuery } from "./use-source-query";
@@ -37,7 +38,10 @@ export function TransformEditor({
   onSave,
   onCancel,
 }: TransformEditorProps) {
-  const { question, setQuestion } = useSourceQuery(source, onSourceChange);
+  const { question, handleQuestionChange } = useSourceQuery(
+    source,
+    onSourceChange,
+  );
   const { isMetadataLoading, metadataError } = useQueryMetadata(question);
   const {
     result,
@@ -45,9 +49,20 @@ export function TransformEditor({
     isRunnable,
     isRunning,
     isResultDirty,
-    runQuery,
-    cancelQuery,
+    handleRunQuery,
+    handleCancelQuery,
   } = useQueryResults(question);
+  const {
+    selectedText,
+    modalSnippet,
+    isDataReferenceOpen,
+    isSnippetSidebarOpen,
+    handleSelectionRangeChange,
+    handleModalSnippetChange,
+    handleInsertSnippet,
+    handleToggleDataReference,
+    handleToggleSnippetSidebar,
+  } = useEditorSidebar(question, handleQuestionChange);
   const {
     data: databases,
     isLoading: isDatabaseListLoading,
@@ -83,37 +98,49 @@ export function TransformEditor({
         }
         onNameChange={onNameChange}
       />
-      <Flex className={S.body} direction="column">
-        <QuerySection
+      <Flex flex={1}>
+        <Flex flex="2 1 100%">
+          <QuerySection
+            question={question}
+            databases={databases?.data ?? []}
+            modalSnippet={modalSnippet}
+            nativeEditorSelectedText={selectedText}
+            isNative={isNative}
+            isRunnable={isRunnable}
+            isRunning={isRunning}
+            isResultDirty={isResultDirty}
+            isShowingDataReference={isDataReferenceOpen}
+            isShowingSnippetSidebar={isSnippetSidebarOpen}
+            onChange={handleQuestionChange}
+            onRunQuery={handleRunQuery}
+            onCancelQuery={handleCancelQuery}
+            onToggleDataReference={handleToggleDataReference}
+            onToggleSnippetSidebar={handleToggleSnippetSidebar}
+            onOpenModal={() => undefined}
+            onChangeModalSnippet={handleModalSnippetChange}
+            onChangeNativeEditorSelection={handleSelectionRangeChange}
+          />
+          <VisualizationSection
+            question={question}
+            result={result}
+            rawSeries={rawSeries}
+            isNative={isNative}
+            isRunnable={isRunnable}
+            isRunning={isRunning}
+            isResultDirty={isResultDirty}
+            onRunQuery={handleRunQuery}
+            onCancelQuery={handleCancelQuery}
+          />
+        </Flex>
+        <EditorSidebar
           question={question}
-          databases={databases?.data ?? []}
-          modalSnippet={undefined}
-          nativeEditorSelectedText={undefined}
           isNative={isNative}
-          isRunnable={isRunnable}
-          isRunning={isRunning}
-          isResultDirty={isResultDirty}
-          isShowingDataReference={false}
-          isShowingSnippetSidebar={false}
-          onChange={setQuestion}
-          onRunQuery={runQuery}
-          onCancelQuery={cancelQuery}
-          onToggleDataReference={() => null}
-          onToggleSnippetSidebar={() => null}
-          onOpenModal={() => undefined}
-          onChangeModalSnippet={() => undefined}
-          onChangeNativeEditorSelection={() => undefined}
-        />
-        <VisualizationSection
-          question={question}
-          result={result}
-          rawSeries={rawSeries}
-          isNative={isNative}
-          isRunnable={isRunnable}
-          isRunning={isRunning}
-          isResultDirty={isResultDirty}
-          onRunQuery={runQuery}
-          onCancelQuery={cancelQuery}
+          isDataReferenceOpen={isDataReferenceOpen}
+          isSnippetSidebarOpen={isSnippetSidebarOpen}
+          onInsertSnippet={handleInsertSnippet}
+          onToggleDataReference={handleToggleDataReference}
+          onToggleSnippetSidebar={handleToggleSnippetSidebar}
+          onChangeModalSnippet={handleModalSnippetChange}
         />
       </Flex>
     </Flex>

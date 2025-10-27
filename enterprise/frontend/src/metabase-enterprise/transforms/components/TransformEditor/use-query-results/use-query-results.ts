@@ -70,7 +70,7 @@ export function useQueryResults(question: Question) {
     isRunnable,
     isRunning,
     isResultDirty,
-    runQuery: handleRunQuery,
-    cancelQuery: handleCancelQuery,
+    handleRunQuery,
+    handleCancelQuery,
   };
 }
