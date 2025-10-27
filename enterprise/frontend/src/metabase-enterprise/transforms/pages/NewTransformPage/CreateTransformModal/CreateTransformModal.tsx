@@ -18,8 +18,15 @@ import {
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import { Box, Button, FocusTrap, Group, Modal, Stack } from "metabase/ui";
+import { useCreateTransformMutation } from "metabase-enterprise/api";
+import { trackTransformCreated } from "metabase-enterprise/transforms/analytics";
 import { SchemaFormSelect } from "metabase-enterprise/transforms/components/SchemaFormSelect";
-import type { TransformSource } from "metabase-types/api";
+import type {
+  CreateTransformRequest,
+  DatabaseId,
+  Transform,
+  TransformSource,
+} from "metabase-types/api";
 
 const NEW_TRANSFORM_SCHEMA = Yup.object({
   name: Yup.string().required(Errors.required),
@@ -27,7 +34,7 @@ const NEW_TRANSFORM_SCHEMA = Yup.object({
   targetSchema: Yup.string().nullable(),
 });
 
-export type NewTransformValues = {
+type NewTransformValues = {
   name: string;
   targetName: string;
   targetSchema: string | null;
@@ -36,7 +43,7 @@ export type NewTransformValues = {
 type CreateTransformModalProps = {
   name: string;
   source: TransformSource;
-  onCreate: (values: NewTransformValues) => Promise<void>;
+  onCreate: (transform: Transform) => void;
   onClose: () => void;
 };
 
@@ -62,7 +69,7 @@ export function CreateTransformModal({
 type CreateTransformFormProps = {
   name: string;
   source: TransformSource;
-  onCreate: (values: NewTransformValues) => Promise<void>;
+  onCreate: (transform: Transform) => void;
   onClose: () => void;
 };
 
@@ -92,6 +99,7 @@ function CreateTransformForm({
   const isLoading = isDatabaseLoading || isSchemasLoading;
   const error = databaseError ?? schemasError;
 
+  const [createTransform] = useCreateTransformMutation();
   const supportsSchemas = database && hasFeature(database, "schemas");
   const initialValues = useMemo(
     () => getInitialValues(name, schemas),
@@ -102,11 +110,23 @@ function CreateTransformForm({
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
+  const handleSubmit = async (values: NewTransformValues) => {
+    if (databaseId == null) {
+      throw new Error("Database ID is required");
+    }
+    const request = getCreateRequest(source, values, databaseId);
+    const transform = await createTransform(request).unwrap();
+
+    trackTransformCreated({ transformId: transform.id });
+
+    onCreate(transform);
+  };
+
   return (
     <FormProvider
       initialValues={initialValues}
       validationSchema={NEW_TRANSFORM_SCHEMA}
-      onSubmit={onCreate}
+      onSubmit={handleSubmit}
     >
       <Form>
         <Stack gap="lg">
@@ -145,5 +165,22 @@ function getInitialValues(name: string, schemas: string[]): NewTransformValues {
     name,
     targetName: "",
     targetSchema: schemas?.[0] || null,
+  };
+}
+
+function getCreateRequest(
+  source: TransformSource,
+  { name, targetName, targetSchema }: NewTransformValues,
+  databaseId: DatabaseId,
+): CreateTransformRequest {
+  return {
+    name: name,
+    source,
+    target: {
+      type: "table",
+      name: targetName,
+      schema: targetSchema ?? null,
+      database: databaseId,
+    },
   };
 }

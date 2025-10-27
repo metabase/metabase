@@ -8,27 +8,21 @@ import { skipToken, useGetCardQuery } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiControls } from "metabase/querying/editor/components/QueryEditor";
 import { Center } from "metabase/ui";
-import { useCreateTransformMutation } from "metabase-enterprise/api";
 import type {
-  CreateTransformRequest,
   DraftTransformSource,
+  Transform,
   TransformSource,
 } from "metabase-types/api";
 
-import { trackTransformCreated } from "../../analytics";
 import { TransformEditor } from "../../components/TransformEditor";
 import { useTransformMetabot } from "../../hooks/use-transform-metabot";
 import { isNotDraftSource, isSameSource } from "../../utils";
 
-import {
-  CreateTransformModal,
-  type NewTransformValues,
-} from "./CreateTransformModal";
+import { CreateTransformModal } from "./CreateTransformModal";
 import {
   getInitialNativeSource,
   getInitialPythonSource,
@@ -55,8 +49,6 @@ function NewTransformPage({
   const dispatch = useDispatch();
   const { proposedSource, acceptProposed, rejectProposed } =
     useTransformMetabot(undefined, source, setSource);
-  const [createTransform, { isLoading: isSaving }] =
-    useCreateTransformMutation();
 
   const isDirty = useMemo(
     () =>
@@ -66,14 +58,8 @@ function NewTransformPage({
     [name, source, initialName, initialSource, isInitiallyDirty],
   );
 
-  const handleCreate = async (values: NewTransformValues) => {
-    if (isNotDraftSource(source)) {
-      const transform = await createTransform(
-        getCreateRequest(source, values),
-      ).unwrap();
-      trackTransformCreated({ transformId: transform.id });
-      dispatch(push(Urls.transform(transform.id)));
-    }
+  const handleCreate = (transform: Transform) => {
+    dispatch(push(Urls.transform(transform.id)));
   };
 
   const handleCancel = () => {
@@ -125,28 +111,9 @@ function NewTransformPage({
           onClose={close}
         />
       )}
-      <LeaveRouteConfirmModal route={route} isEnabled={isDirty && !isSaving} />
+      <LeaveRouteConfirmModal route={route} isEnabled={isDirty} />
     </>
   );
-}
-
-function getCreateRequest(
-  source: TransformSource,
-  { name, targetName, targetSchema }: NewTransformValues,
-): CreateTransformRequest {
-  return {
-    name: name,
-    source,
-    target: {
-      type: "table",
-      name: targetName,
-      schema: targetSchema ?? null,
-      database:
-        source.type === "query"
-          ? checkNotNull(source.query.database)
-          : source["source-database"],
-    },
-  };
 }
 
 type NewQueryTransformPageProps = {
