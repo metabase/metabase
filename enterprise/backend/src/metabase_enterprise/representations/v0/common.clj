@@ -169,7 +169,7 @@
   (lookup-entity [_this ref]
     (get idx (unref ref)))
   (lookup-id [this ref]
-    (:id (lookup-id this ref))))
+    (:id (lookup-entity this ref))))
 
 (defn map-entity-index
   "Create a new index from a map of ref -> toucan entity.
