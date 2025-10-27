@@ -1,6 +1,5 @@
 (ns metabase-enterprise.transforms.api
   (:require
-   [medley.core :as m]
    [metabase-enterprise.transforms.api.transform-job]
    [metabase-enterprise.transforms.api.transform-tag]
    [metabase-enterprise.transforms.canceling :as transforms.canceling]
@@ -17,8 +16,6 @@
    [metabase.api.util.handlers :as handlers]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
-   [metabase.lib-be.core :as lib-be]
-   [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -32,26 +29,6 @@
          metabase-enterprise.transforms.api.transform-tag/keep-me)
 
 (set! *warn-on-reflection* true)
-
-(mr/def ::transform-source
-  [:multi {:dispatch (comp keyword :type)}
-   [:query
-    [:map
-     [:type [:= "query"]]
-     [:query ::queries.schema/query]]]
-   [:python
-    [:map {:closed true}
-     [:source-database {:optional true} :int]
-     [:source-tables   [:map-of :string :int]]
-     [:type [:= "python"]]
-     [:body :string]]]])
-
-(mr/def ::transform-target
-  [:map
-   [:database {:optional true} :int]
-   [:type [:enum "table"]]
-   [:schema {:optional true} [:or ms/NonBlankString :nil]]
-   [:name :string]])
 
 (mr/def ::run-trigger
   [:enum "none" "global-schedule"])
@@ -204,7 +181,6 @@
                     ;; Cycle detection should occur within the transaction to avoid race
                     (let [old (t2/select-one :model/Transform id)
                           new (merge old body)
-                          new (m/update-existing-in new [:source :query] lib-be/normalize-query)
                           target-fields #(-> % :target (select-keys [:schema :name]))]
                       ;; we must validate on a full transform object
                       (check-feature-enabled! new)
