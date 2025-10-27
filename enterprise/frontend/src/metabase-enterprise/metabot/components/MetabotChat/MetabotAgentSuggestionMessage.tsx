@@ -152,7 +152,7 @@ export const AgentSuggestionMessage = ({
         className={cx(opened && S.headerOpened)}
       >
         <Flex align="center" gap="sm">
-          <Icon name="refresh_downstream" size="1rem" c="text-secondary" />
+          <Icon name="transform" size="1rem" c="text-secondary" />
           <Text size="sm">{suggestedTransform.name}</Text>
         </Flex>
         <Flex align="center" gap="sm">

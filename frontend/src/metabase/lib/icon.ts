@@ -43,7 +43,7 @@ export const modelIconMap: Record<IconModel, IconName> = {
   metric: "metric",
   snippet: "unknown",
   document: "document",
-  transform: "refresh_downstream",
+  transform: "transform",
   user: "person",
 };
 
