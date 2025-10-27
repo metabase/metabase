@@ -135,9 +135,7 @@
           obfuscated? (= remote-sync-token (setting/obfuscate-value current-token))
           token-to-check (if obfuscated? current-token remote-sync-token)
           _ (check-git-settings! (assoc settings
-                                        :remote-sync-token token-to-check
-                                        :remote-sync-branch remote-sync-branch
-                                        :remote-sync-type remote-sync-type))]
+                                        :remote-sync-token token-to-check))]
       (t2/with-transaction [_conn]
         (doseq [k [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-auto-import]]
           (when (not (and (= k :remote-sync-token) obfuscated?))
