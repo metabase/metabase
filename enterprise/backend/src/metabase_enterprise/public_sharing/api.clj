@@ -41,7 +41,7 @@
 
 (defn- public-document
   "Fetch a public Document and strip out sensitive fields. We also hydrate the Cards embedded in the document so the
-  frontend doesn't need to make separate authenticated requests for each card — just like public Dashboards do."
+  frontend doesn't need to make separate requests for each card — just like public Dashboards do."
   [& conditions]
   (let [document (api/check-404 (apply t2/select-one [:model/Document :id :name :document :content_type :created_at :updated_at]
                                        :archived false, conditions))
@@ -66,8 +66,8 @@
   "Fetch a publicly-accessible Document. Does not require auth credentials. Public sharing must be enabled.
 
   Returns a Document with sensitive fields removed (excludes collection_id, permissions, creator details, etc.).
-  Includes all embedded Cards with their metadata hydrated so the frontend doesn't need separate authenticated
-  requests for each card."
+  Includes all embedded Cards with their metadata hydrated so the frontend doesn't need to make separate
+  requests for each card — just like public Dashboards do."
   [{:keys [uuid]} :- [:map
                       [:uuid ms/UUIDString]]]
   (premium-features/assert-has-feature :documents (tru "Documents"))

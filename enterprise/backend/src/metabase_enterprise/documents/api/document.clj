@@ -262,17 +262,18 @@
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Document :id document-id, :archived false)
-  ;; Return existing UUID if already public to ensure idempotency. Otherwise generate
-  ;; and save a new one, then select to handle potential concurrent updates.
-  (if-let [existing-uuid (t2/select-one-fn :public_uuid :model/Document :id document-id)]
-    {:uuid existing-uuid}
-    (do
-      (t2/update! :model/Document document-id
-                  {:public_uuid       (str (random-uuid))
-                   :made_public_by_id api/*current-user-id*})
-      ;; Always select after update to ensure we return what's actually stored,
-      ;; even if there was a concurrent update
-      {:uuid (t2/select-one-fn :public_uuid :model/Document :id document-id)})))
+  ;; Wrap the entire check-and-insert logic in a transaction to avoid race conditions.
+  ;; If two requests arrive simultaneously, the transaction ensures only one will successfully
+  ;; create the UUID, and both will return the same value.
+  (t2/with-transaction [_conn]
+    (if-let [existing-uuid (t2/select-one-fn :public_uuid :model/Document :id document-id)]
+      {:uuid existing-uuid}
+      (do
+        (t2/update! :model/Document document-id
+                    {:public_uuid       (str (random-uuid))
+                     :made_public_by_id api/*current-user-id*})
+        ;; Always select after update to ensure we return what's actually stored
+        {:uuid (t2/select-one-fn :public_uuid :model/Document :id document-id)}))))
 
 (api.macros/defendpoint :delete "/:document-id/public_link"
   "Remove the public link for a Document.
@@ -315,8 +316,13 @@
 ;;; ------------------------------------------------ Card Downloads --------------------------------------------------
 
 (defn- validate-card-in-document
-  "Validates that a card exists in a document and both are accessible.
-  Throws appropriate API errors if validation fails."
+  "Validates that a card exists and belongs to the specified document, and that the user has read access.
+
+  Validates that the document exists, is not archived, and the user has read access.
+  Validates that the card exists, is not archived, and belongs to the specified document.
+  Throws 404 via `api/check-404` if any condition fails.
+
+  Returns the card-id if validation succeeds."
   [document-id card-id]
   (let [document (api/check-404 (t2/select-one :model/Document :id document-id :archived false))]
     (api/read-check document)
@@ -328,13 +334,15 @@
   Returns query results in the requested format. The user must have read access to the document
   to download results. If the card's query fails, standard query error responses are returned.
 
-  Parameters:
+  Route parameters:
   - document-id: ID of the document containing the card
   - card-id: ID of the card to download results from
   - export-format: Output format (csv, xlsx, json)
-  - parameters: Optional query parameters
-  - format_rows: Whether to apply formatting (default false)
-  - pivot_results: Whether to pivot results (default false)"
+
+  Body parameters (snake_case):
+  - parameters: Optional query parameters (array of maps or JSON string)
+  - format_rows: Whether to apply formatting to results (boolean, default false)
+  - pivot_results: Whether to pivot results (boolean, default false)"
   [{:keys [document-id card-id export-format]} :- [:map
                                                    [:document-id   ms/PositiveInt]
                                                    [:card-id       ms/PositiveInt]

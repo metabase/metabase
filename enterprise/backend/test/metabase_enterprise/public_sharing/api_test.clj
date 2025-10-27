@@ -4,24 +4,17 @@
   These tests verify that public document endpoints work correctly when routed through the EE module."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.documents.test-util :as documents.test-util]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
 (use-fixtures :each (fn [f] (mt/with-premium-features #{:documents} (f))))
 
-(defn- text->prose-mirror-ast
-  "Convert plain text to a ProseMirror AST structure."
-  [text]
-  {:type "doc"
-   :content [{:type "paragraph"
-              :content [{:type "text"
-                         :text text}]}]})
-
 (defn- document-with-public-link
   "Create test Document data including a public UUID and made_public_by_id."
   [overrides]
   (merge {:name "Test Document"
-          :document (text->prose-mirror-ast "Test content")
+          :document (documents.test-util/text->prose-mirror-ast "Test content")
           :public_uuid (str (random-uuid))
           :made_public_by_id (mt/user->id :crowberto)}
          overrides))
@@ -33,7 +26,7 @@
     (mt/with-premium-features #{:documents}
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (mt/with-temp [:model/Document document (document-with-public-link {:name "Unauthenticated Test Document"
-                                                                            :document (text->prose-mirror-ast "Public content")})]
+                                                                            :document (documents.test-util/text->prose-mirror-ast "Public content")})]
           (testing "Can access public document without authentication at /api/ee/public/document"
             (let [response (mt/client-full-response :get (str "ee/public/document/" (:public_uuid document)))]
               (is (= 200 (:status response))
@@ -48,7 +41,7 @@
     (mt/with-premium-features #{}
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (mt/with-temp [:model/Document document (document-with-public-link {:name "Feature Test Document"
-                                                                            :document (text->prose-mirror-ast "Test content")})]
+                                                                            :document (documents.test-util/text->prose-mirror-ast "Test content")})]
           (testing "Should return error when :documents feature is not enabled"
             (let [response (mt/client-full-response :get (str "ee/public/document/" (:public_uuid document)))]
               (is (contains? #{402 403} (:status response))
@@ -65,8 +58,8 @@
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (mt/with-temp [:model/Document document (document-with-public-link {})
                        :model/Card card {:name "Feature Test Card"
-                                        :dataset_query (mt/mbql-query venues {:limit 5})
-                                        :document_id (:id document)}]
+                                         :dataset_query (mt/mbql-query venues {:limit 5})
+                                         :document_id (:id document)}]
           (testing "Card query endpoint returns error without feature"
             (let [response (mt/client-full-response :get (format "ee/public/document/%s/card/%d"
                                                                  (:public_uuid document)
@@ -86,9 +79,9 @@
     (testing "Can fetch a public Document via EE public sharing routes"
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (mt/with-temp [:model/Document document (document-with-public-link {:name "Public Test Document"
-                                                                            :document (text->prose-mirror-ast "Public test content")})]
+                                                                            :document (documents.test-util/text->prose-mirror-ast "Public test content")})]
           (is (partial= {:name "Public Test Document"
-                         :document (text->prose-mirror-ast "Public test content")
+                         :document (documents.test-util/text->prose-mirror-ast "Public test content")
                          :id (:id document)}
                         (mt/client :get 200 (str "ee/public/document/" (:public_uuid document))))))))))
 
@@ -96,7 +89,7 @@
   (testing "GET /api/ee/public/document/:uuid should only return safe fields"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp [:model/Document document (document-with-public-link {:name "Public Test Document"
-                                                                          :document (text->prose-mirror-ast "Public test content")})]
+                                                                          :document (documents.test-util/text->prose-mirror-ast "Public test content")})]
         (let [result (mt/client :get 200 (str "ee/public/document/" (:public_uuid document)))]
           (testing "Should include safe fields"
             (is (contains? result :id))
@@ -144,8 +137,8 @@
         (mt/with-temporary-setting-values [enable-public-sharing true]
           (mt/with-temp [:model/Document document (document-with-public-link {})
                          :model/Card card {:name "Test Card"
-                                          :dataset_query (mt/mbql-query venues {:limit 5})
-                                          :document_id (:id document)}]
+                                           :dataset_query (mt/mbql-query venues {:limit 5})
+                                           :document_id (:id document)}]
             (let [result (mt/client :get 200 (format "ee/public/document/%s/card/%d" (:public_uuid document) (:id card)))]
               (is (some? result))
               (is (= :completed (:status result))))))))))
@@ -156,7 +149,7 @@
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (mt/with-temp [:model/Document document (document-with-public-link {})
                        :model/Card card {:name "Unassociated Card"
-                                        :dataset_query (mt/mbql-query venues {:limit 5})}]
+                                         :dataset_query (mt/mbql-query venues {:limit 5})}]
           (is (= "Not found."
                  (mt/client :get 404 (format "ee/public/document/%s/card/%d" (:public_uuid document) (:id card))))))))))
 
@@ -168,19 +161,19 @@
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (mt/with-temp [:model/Document document (document-with-public-link {})
                        :model/Card card {:name "Export Test Card"
-                                        :dataset_query (mt/mbql-query venues {:limit 5})
-                                        :document_id (:id document)}]
+                                         :dataset_query (mt/mbql-query venues {:limit 5})
+                                         :document_id (:id document)}]
           (testing "Can export card results as CSV"
             (let [response (mt/client-full-response :post (format "ee/public/document/%s/card/%d/csv"
-                                                                   (:public_uuid document)
-                                                                   (:id card))
+                                                                  (:public_uuid document)
+                                                                  (:id card))
                                                     {})]
               (is (= 200 (:status response)))
               (is (= "text/csv" (get-in response [:headers "Content-Type"])))))
 
           (testing "Can export card results as JSON"
             (let [response (mt/client-full-response :post (format "ee/public/document/%s/card/%d/json"
-                                                                   (:public_uuid document)
-                                                                   (:id card))
+                                                                  (:public_uuid document)
+                                                                  (:id card))
                                                     {})]
               (is (= 200 (:status response))))))))))
