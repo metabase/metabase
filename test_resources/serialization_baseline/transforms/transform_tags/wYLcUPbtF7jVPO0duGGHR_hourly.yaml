@@ -1,8 +1,8 @@
 built_in_type: hourly
-created_at: '2025-09-18T14:56:47.400051Z'
+created_at: '2025-10-27T17:13:44.240383Z'
 entity_id: wYLcUPbtF7jVPO0duGGHR
 name: hourly
-updated_at: '2025-09-18T14:56:47.400051Z'
+updated_at: '2025-10-27T17:13:44.240383Z'
 serdes/meta:
 - id: wYLcUPbtF7jVPO0duGGHR
   label: hourly
