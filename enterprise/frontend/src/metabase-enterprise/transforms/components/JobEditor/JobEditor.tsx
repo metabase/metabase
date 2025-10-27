@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { BenchPaneHeader } from "metabase/bench/components/BenchPaneHeader";
 import { BenchNameInput } from "metabase/bench/components/shared/BenchNameInput";
 import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
@@ -7,13 +9,13 @@ import { ColumnLayout, ColumnLayoutBody } from "../ColumnLayout";
 
 import { DependenciesSection } from "./DependenciesSection";
 import { ManageSection } from "./ManageSection";
-import { SaveSection } from "./SaveSection";
 import { ScheduleSection } from "./ScheduleSection";
 import { TagSection } from "./TagSection";
 import type { TransformJobInfo } from "./types";
 
 type JobEditorProps = {
   job: TransformJobInfo;
+  actions?: ReactNode;
   onNameChange: (name: string) => void;
   onScheduleChange: (
     schedule: string,
@@ -24,6 +26,7 @@ type JobEditorProps = {
 
 export function JobEditor({
   job,
+  actions,
   onNameChange,
   onScheduleChange,
   onTagListChange,
@@ -38,7 +41,7 @@ export function JobEditor({
             onChange={onNameChange}
           />
         }
-        actions={job.id == null && <SaveSection job={job} />}
+        actions={actions}
         withBorder
       />
       <ColumnLayoutBody>
