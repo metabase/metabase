@@ -465,7 +465,7 @@
   ;; Postgres doesn't support quarter in intervals (#20683)
   (cond
     (= unit :quarter)
-    (recur db-type hsql-form (* 3 amount) :month)
+    (recur db-type hsql-form (clojure.core/* 3 amount) :month)
 
     ;; date + interval -> timestamp, so cast the expression back to date
     (is-of-type? hsql-form "date")
