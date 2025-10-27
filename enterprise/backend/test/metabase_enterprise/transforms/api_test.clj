@@ -857,8 +857,11 @@
       (mt/dataset transforms-dataset/transforms-test
         (with-transform-cleanup! [table-name "transform_revisions_test"]
           (let [test-transform-revisions (fn [action url req exp-revisions]
-                                           (let [transform (mt/user-http-request :crowberto action 200 url req)
-                                                 transform-id (:id transform)]
+                                           (let [response (mt/user-http-request :crowberto action 200 url req)
+                                                 transform-id (:id response)
+                                                 ;; Read the updated transform from the DB for accurate comparison
+                                                 transform (-> (t2/select-one :model/Transform transform-id)
+                                                               (t2/hydrate :transform_tag_ids))]
                                              (is (= exp-revisions (t2/count :model/Revision :model "Transform"
                                                                             :model_id transform-id)))
                                              (let [revision (t2/select-one :model/Revision :model "Transform"
@@ -866,8 +869,8 @@
                                                    rev-transform (:object revision)
                                                    removed #{:id :entity_id :created_at :updated_at}]
                                                (is (every? #(not (contains? rev-transform %)) removed))
-                                               ;; CI tries comparing "=" with := which fails
-                                               (is (=? (dissoc rev-transform :source) transform)))
+                                               ;; Compare revision with DB transform (both have in-memory representation)
+                                               (is (=? (dissoc rev-transform :source) (dissoc transform :source))))
                                              transform-id))
                 gadget-req {:name   "Gadget Products"
                             :description "The gadget products"
