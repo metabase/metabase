@@ -2,17 +2,15 @@ created_at: '2025-09-18T19:48:47.929408Z'
 description: A test transform for serialization
 entity_id: txz-QxFUj623m2n-gC1Qz
 name: Test Transform
-type: mbql
 source:
   query:
     database: My Database
-    type: query
     query:
       source-table:
       - My Database
       - null
       - Schemaless Table
-  type: query
+    type: query
 tags:
 - entity_id: qvqHB8VgfxMzZx4LIVYGt
   position: 0
@@ -37,7 +35,7 @@ target:
   name: target_table
   schema: public
   type: table
-updated_at: '2025-10-27T14:08:24.662951Z'
+updated_at: '2025-09-18T19:48:47.929408Z'
 serdes/meta:
 - id: txz-QxFUj623m2n-gC1Qz
   label: test_transform
