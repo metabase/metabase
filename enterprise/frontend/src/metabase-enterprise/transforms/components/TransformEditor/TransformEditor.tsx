@@ -11,7 +11,7 @@ import type { QueryTransformSource, TransformId } from "metabase-types/api";
 
 import { TransformHeaderView } from "../TransformHeader";
 
-import { SaveSection } from "./SaveSection";
+import { EditorActions } from "./EditorActions";
 import { useSourceQuery } from "./use-source-query";
 import { shouldDisableDatabase, shouldDisableItem } from "./utils";
 
@@ -63,7 +63,7 @@ export function TransformEditor({
         name={name}
         actions={
           (isSaving || isSourceDirty) && (
-            <SaveSection
+            <EditorActions
               query={query}
               isSaving={isSaving}
               onSave={onSave}

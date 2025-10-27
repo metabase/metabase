@@ -1,24 +1,24 @@
 import { t } from "ttag";
 
 import { Button, Group, Tooltip } from "metabase/ui";
-import type { PythonTransformSourceDraft } from "metabase-types/api";
+import type * as Lib from "metabase-lib";
 
 import { getValidationResult } from "./utils";
 
-type PythonEditorActionsProps = {
-  source: PythonTransformSourceDraft;
+type EditorActionsProps = {
+  query: Lib.Query;
   isSaving: boolean;
   onSave: () => void;
   onCancel: () => void;
 };
 
-export function PythonEditorActions({
-  source,
+export function EditorActions({
+  query,
   isSaving,
   onSave,
   onCancel,
-}: PythonEditorActionsProps) {
-  const { isValid, errorMessage } = getValidationResult(source);
+}: EditorActionsProps) {
+  const { isValid, errorMessage } = getValidationResult(query);
 
   return (
     <Group>
