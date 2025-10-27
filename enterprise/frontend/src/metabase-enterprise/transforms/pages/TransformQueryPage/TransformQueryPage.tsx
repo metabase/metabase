@@ -7,7 +7,10 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import {
+  PLUGIN_DEPENDENCIES,
+  PLUGIN_TRANSFORMS_PYTHON,
+} from "metabase/plugins";
 import {
   useGetTransformQuery,
   useUpdateTransformMutation,
@@ -108,7 +111,19 @@ function TransformQueryPageBody({
 
   return (
     <>
-      {source.type === "query" && (
+      {source.type === "python" ? (
+        <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
+          id={transform.id}
+          name={transform.name}
+          source={source}
+          isSaving={isSaving || isCheckingDependencies}
+          isSourceDirty={isSourceDirty}
+          onNameChange={handleNameChange}
+          onSourceChange={setSource}
+          onSave={handleSave}
+          onCancel={handleCancel}
+        />
+      ) : (
         <TransformEditor
           id={transform.id}
           name={transform.name}

@@ -2,7 +2,6 @@ import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { PythonTransformEditor } from "./components/PythonTransformEditor";
-import { SourceSection } from "./components/SourceSection";
 import { PythonRunnerSettingsPage } from "./pages/PythonRunnerSettingsPage";
 import { getBenchNavItems, getBenchRoutes } from "./routes";
 
@@ -10,7 +9,6 @@ if (hasPremiumFeature("transforms-python")) {
   PLUGIN_TRANSFORMS_PYTHON.isEnabled = true;
   PLUGIN_TRANSFORMS_PYTHON.getBenchRoutes = getBenchRoutes;
   PLUGIN_TRANSFORMS_PYTHON.getBenchNavItems = getBenchNavItems;
-  PLUGIN_TRANSFORMS_PYTHON.PythonRunnerSettingsPage = PythonRunnerSettingsPage;
   PLUGIN_TRANSFORMS_PYTHON.TransformEditor = PythonTransformEditor;
-  PLUGIN_TRANSFORMS_PYTHON.SourceSection = SourceSection;
+  PLUGIN_TRANSFORMS_PYTHON.PythonRunnerSettingsPage = PythonRunnerSettingsPage;
 }

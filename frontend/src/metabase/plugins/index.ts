@@ -82,14 +82,12 @@ import type {
   ParameterId,
   Pulse,
   PythonTransformSource,
-  PythonTransformTableAliases,
   Revision,
   SearchModel,
   Series,
   TableId,
   Timeline,
   TimelineEvent,
-  Transform,
   TransformId,
   UpdateSnippetRequest,
   UpdateTransformRequest,
@@ -895,44 +893,32 @@ export const PLUGIN_TRANSFORMS: TransformsPlugin = {
   TransformPicker: PluginPlaceholder,
 };
 
+export type PythonTransformEditorProps = {
+  id?: TransformId;
+  name: string;
+  source: PythonTransformSource;
+  isSaving: boolean;
+  isSourceDirty: boolean;
+  onNameChange: (newName: string) => void;
+  onSourceChange: (newSource: PythonTransformSource) => void;
+  onSave: () => void;
+  onCancel: () => void;
+};
+
 export type PythonTransformsPlugin = {
   isEnabled: boolean;
-  PythonRunnerSettingsPage: ComponentType;
-  SourceSection: ComponentType<{ transform: Transform }>;
-  TransformEditor: ComponentType<{
-    transform?: Transform | undefined;
-    initialSource: {
-      type: "python";
-      body: string;
-      "source-database": DatabaseId | undefined;
-      "source-tables": PythonTransformTableAliases;
-    };
-    proposedSource?: PythonTransformSource;
-    isNew?: boolean;
-    isSaving?: boolean;
-    isRunnable?: boolean;
-    onChange?: (newSource: {
-      type: "python";
-      body: string;
-      "source-database": DatabaseId | undefined;
-      "source-tables": PythonTransformTableAliases;
-    }) => void;
-    onSave: (newSource: PythonTransformSource) => void;
-    onCancel: () => void;
-    onRejectProposed?: () => void;
-    onAcceptProposed?: (query: PythonTransformSource) => void;
-  }>;
   getBenchRoutes: () => ReactNode;
   getBenchNavItems: (isAdmin: boolean) => BenchNavItem[];
+  TransformEditor: ComponentType<PythonTransformEditorProps>;
+  PythonRunnerSettingsPage: ComponentType;
 };
 
 export const PLUGIN_TRANSFORMS_PYTHON: PythonTransformsPlugin = {
   isEnabled: false,
-  PythonRunnerSettingsPage: NotFoundPlaceholder,
-  TransformEditor: NotFoundPlaceholder,
-  SourceSection: PluginPlaceholder,
   getBenchRoutes: () => null,
   getBenchNavItems: () => [],
+  TransformEditor: NotFoundPlaceholder,
+  PythonRunnerSettingsPage: NotFoundPlaceholder,
 };
 
 type DependenciesPlugin = {

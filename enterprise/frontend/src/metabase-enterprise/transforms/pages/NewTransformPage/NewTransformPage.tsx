@@ -9,6 +9,7 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { Center } from "metabase/ui";
 import type { Transform, TransformSource } from "metabase-types/api";
 
@@ -54,7 +55,18 @@ function NewTransformPage({
 
   return (
     <>
-      {source.type === "query" && (
+      {source.type === "python" ? (
+        <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
+          name={name}
+          source={source}
+          isSaving={false}
+          isSourceDirty
+          onNameChange={setName}
+          onSourceChange={setSource}
+          onSave={open}
+          onCancel={handleCancel}
+        />
+      ) : (
         <TransformEditor
           name={name}
           source={source}

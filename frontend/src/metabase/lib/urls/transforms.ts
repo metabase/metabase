@@ -12,6 +12,7 @@ import type {
 const TRANSFORMS_ROOT_URL = `/bench/transforms`;
 const JOBS_ROOT_URL = `/bench/jobs`;
 const RUNS_ROOT_URL = `/bench/runs`;
+const LIBRARY_ROOT_URL = `/bench/library`;
 
 export type TransformPythonLibraryParams = {
   path: string;
@@ -116,7 +117,7 @@ export function transformRunList({
 }
 
 export function transformPythonLibrary({ path }: TransformPythonLibraryParams) {
-  return `/admin/transforms/library/${path}`;
+  return `/${LIBRARY_ROOT_URL}/${path}`;
 }
 
 export function queryBuilderTable(tableId: TableId, databaseId: DatabaseId) {
