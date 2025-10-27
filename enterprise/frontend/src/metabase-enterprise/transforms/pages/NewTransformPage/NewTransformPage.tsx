@@ -44,7 +44,7 @@ const useTransformSource = (
     // prevents showing diff UI with the default source
     // for new transforms created from a starting suggestion
     return overrideInitialSourceWithSuggestedSource
-      ? suggestedTransform?.source
+      ? suggestedTransform.source
       : initialSource;
   });
   const { proposedSource, acceptProposed, rejectProposed } =
