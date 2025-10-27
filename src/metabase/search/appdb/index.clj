@@ -199,9 +199,15 @@
                 (create-table! table-name)
                 (catch Exception e
                   (log/error e "Error creating pending index table, cleaning up metadata")
-                  (t2/delete! :model/SearchIndexMetadata :index_name (name table-name))
+                  (try
+                    (t2/with-connection [safe-conn (mdb/app-db)]
+                      (t2/delete! :conn safe-conn :model/SearchIndexMetadata :index_name (name table-name)))
+                    (catch Exception del-e
+                      (log/warn del-e "Error clearing out search metadata after failure")))
                   (sync-tracking-atoms!))))
-            (:pending (sync-tracking-atoms!)))))))
+            (let [pending (:pending (sync-tracking-atoms!))]
+              (log/infof "New pending index %s" pending)
+              pending))))))
 
 (defn activate-table!
   "Make the pending index active if it exists. Returns true if it did so."
