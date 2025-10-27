@@ -92,7 +92,7 @@ export const PeopleListRow = ({
       <td>{user.email}</td>
       {showDeactivated ? (
         <Fragment>
-          <td>{dayjs(user.updated_at).fromNow()}</td>
+          <td>{dayjs(user.deactivated_at).fromNow()}</td>
           <td>
             <Tooltip label={t`Reactivate this account`}>
               <ForwardRefLink
