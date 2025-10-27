@@ -666,7 +666,7 @@
                ;; don't instrument Postgres/MySQL driver namespaces, because we don't current run tests for them
                ;; as part of recording test coverage, which means they can give us false positives.
                ;;
-               ;; TODO: Long term solution for mage tests would be to move them inside mage/test, instead of test/mage.
+               ;; TODO (Nemanja 10/27/25): Long term solution for mage tests would be to move them inside mage/test, instead of test/mage.
                ;; Once that's done, mage-related regex can be removed from exclude patterns.
                ;;
                ;; regex literals aren't allowed in EDN. We parse them in `./test/cloverage.clj`
