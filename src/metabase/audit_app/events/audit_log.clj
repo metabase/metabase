@@ -274,3 +274,12 @@
 (methodical/defmethod events/publish-event! ::cloud-add-on-event
   [topic event]
   (audit-log/record-event! topic event))
+
+(derive ::document-event ::event)
+(derive :event/document-create ::document-event)
+(derive :event/document-update ::document-event)
+(derive :event/document-delete ::document-event)
+
+(methodical/defmethod events/publish-event! ::document-event
+  [topic event]
+  (audit-log/record-event! topic event))

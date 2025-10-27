@@ -121,6 +121,10 @@
      :table_id    table-id
      :database_id db-id)))
 
+(defmethod model-details :model/Document
+  [document _event-type]
+  (select-keys document [:name :collection_id]))
+
 (def ^:private model-name->audit-logged-name
   {"RootCollection" "Collection"})
 
