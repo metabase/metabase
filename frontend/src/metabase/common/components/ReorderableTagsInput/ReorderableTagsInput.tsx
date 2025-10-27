@@ -103,6 +103,9 @@ export function SortablePill({
           display: "flex",
           alignItems: "center",
         },
+        remove: {
+          marginRight: 0,
+        },
       }}
       radius="xl"
       draggable

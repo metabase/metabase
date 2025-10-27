@@ -88,8 +88,8 @@ export function ListViewItem({
             settings={settings}
             rawValue={row[cols.indexOf(titleColumn as DatasetColumn)]}
             style={{
-              color: "var(--mb-color-brand)",
               fontWeight: "bold",
+              color: "var(--mb-color-text-primary)",
             }}
           />
         )}

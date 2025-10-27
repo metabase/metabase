@@ -43,7 +43,7 @@ export function ListView({
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => 80,
+    estimateSize: () => 64,
     overscan: 10,
   });
   const virtualRows = virtualizer.getVirtualItems();
@@ -180,14 +180,14 @@ function ColumnHeader({
         alignItems: "center",
       }}
     >
-      <Text fw="bold" size="sm" c="text-medium" style={{ display: "inline" }}>
+      <Text fz="0.875rem" c="text-medium" style={{ display: "inline" }}>
         {column.display_name}
       </Text>
       {sortedColumnName === column.name && (
         <Icon
           name={sortingDirection === "asc" ? "arrow_up" : "arrow_down"}
           c="text-medium"
-          size={12}
+          size={14}
           style={{ display: "inline", marginLeft: 4 }}
         />
       )}

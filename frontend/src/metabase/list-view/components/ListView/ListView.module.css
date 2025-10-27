@@ -1,12 +1,10 @@
 .listViewContainer {
-  --max-width: 75rem;
+  /* --max-width: 75rem; */
 
-  background: var(--mb-color-background-light);
   width: 100%;
   height: 100%;
-  gap: var(--mantine-spacing-xs);
-  padding-top: var(--mantine-spacing-xl);
-  padding-inline: var(--mantine-spacing-sm);
+  /* gap: var(--mantine-spacing-xs); */
+  /* padding-inline: var(--mantine-spacing-sm); */
 }
 
 .listContainer {
@@ -17,35 +15,28 @@
 
 .listHeader {
   width: 100%;
-  max-width: var(--max-width);
-  margin: 0 auto;
+  padding-block: 0.75rem;
   padding-inline: var(--item-padding);
+  border-bottom: 1px solid var(--mb-color-border-secondary);
 }
 
 .listBody {
   position: relative;
-  max-width: var(--max-width);
+  /* max-width: var(--max-width); */
   width: 100%;
   height: 100%;
   margin: auto;
-  gap: var(--mantine-spacing-lg);
-  padding-inline: calc(50% - var(--max-width) / 2);
+  gap: 0;
+  /* padding-inline: calc(50% - var(--max-width) / 2); */
   overflow: auto;
-}
-
-@media (max-width: 80rem) {
-  .listHeader,
-  .listBody {
-    padding-inline: var(--mantine-spacing-lg);
-  }
 }
 
 .listItem {
   width: 100%;
-  max-width: 75rem;
+  /* max-width: 75rem; */
   height: 4rem;
-  border: 1px solid var(--mb-color-border);
-  border-radius: var(--mantine-radius-md);
+  border-bottom: 1px solid var(--mb-color-border-subtle);
+  /* border-radius: var(--mantine-radius-md); */
   background: var(--mb-color-bg-white);
   padding-inline: var(--item-padding, var(--mantine-spacing-md));
 

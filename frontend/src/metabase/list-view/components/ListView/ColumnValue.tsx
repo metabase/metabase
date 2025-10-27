@@ -1,10 +1,16 @@
+import { useMemo } from "react";
+
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { formatValue } from "metabase/lib/formatting";
-import { Badge, Box, Flex, Icon, Stack, Text } from "metabase/ui";
+import { Badge, Box, Flex, Icon, Image, Stack, Text } from "metabase/ui";
 import { MiniBarCell } from "metabase/visualizations/components/TableInteractive/cells/MiniBarCell";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import type { DatasetColumn, RowValues } from "metabase-types/api";
+import type {
+  ColumnSettings,
+  DatasetColumn,
+  RowValues,
+} from "metabase-types/api";
 
 import styles from "./ListView.module.css";
 import { getCategoryColor } from "./styling";
@@ -18,6 +24,7 @@ interface ColumnValueProps {
   cols: DatasetColumn[];
 }
 
+const DEFAULT_COLUMN_SETTINGS: ColumnSettings = {};
 export function ColumnValue({
   column,
   settings,
@@ -26,12 +33,17 @@ export function ColumnValue({
   rows,
   cols,
 }: ColumnValueProps) {
-  const columnSettings = settings.column?.(column) || {};
-  const value = formatValue(rawValue, {
-    ...columnSettings,
-    jsx: true,
-    rich: true,
-  });
+  const columnSettings = settings.column?.(column);
+  const value = useMemo(
+    () =>
+      formatValue(rawValue, {
+        ...(columnSettings || DEFAULT_COLUMN_SETTINGS),
+        jsx: true,
+        rich: true,
+      }),
+    [rawValue, columnSettings],
+  );
+
   if (rawValue == null) {
     return <div />;
   }
@@ -41,7 +53,7 @@ export function ColumnValue({
       <Badge
         className={styles.badge}
         size="lg"
-        c="text-secondary"
+        c="text-primary"
         variant="outline"
         style={{
           background: "var(--mb-color-bg-white)",
@@ -69,6 +81,7 @@ export function ColumnValue({
             className={styles.badge}
             size="lg"
             variant="outline"
+            fw={400}
             leftSection={<Icon name="label" size={16} />}
           >
             {value}
@@ -84,6 +97,7 @@ export function ColumnValue({
           variant="outline"
           style={{
             background: "var(--mb-color-bg-white)",
+            color: "var(--mb-color-text-primary)",
           }}
           leftSection={
             <Stack mr="0.25rem">
@@ -124,7 +138,7 @@ export function ColumnValue({
           truncate
           fw="bold"
           style={style}
-          c={style?.color || "text-secondary"}
+          c={style?.color || "text-primary"}
         >
           {value}
         </Ellipsified>
@@ -139,10 +153,6 @@ export function ColumnValue({
     case "type/Quantity":
     case "type/Score": {
       const columnExtent = getColumnExtent(cols, rows, cols.indexOf(column));
-      const iconColor =
-        settings["list.entity_icon_color"] === "text-primary"
-          ? "var(--mb-color-brand)"
-          : settings["list.entity_icon_color"];
       return (
         <Flex direction="row" align="center" gap="sm">
           <MiniBarCell
@@ -151,10 +161,14 @@ export function ColumnValue({
             value={Number(value)}
             barWidth="4rem"
             barHeight="0.25rem"
-            barColor={iconColor}
             extent={columnExtent}
-            columnSettings={columnSettings}
-            style={{ paddingInline: 0, marginLeft: 0, width: "auto" }}
+            columnSettings={columnSettings || DEFAULT_COLUMN_SETTINGS}
+            style={{
+              paddingInline: 0,
+              marginLeft: 0,
+              width: "auto",
+              border: "none",
+            }}
           />
           <Text fw="bold">{value}</Text>
         </Flex>
@@ -208,6 +222,46 @@ export function ColumnValue({
         </Text>
       );
     }
+    case "type/ImageURL":
+      return (
+        <Image
+          src={rawValue}
+          w="2rem"
+          h="2rem"
+          style={{
+            objectFit: "cover",
+            borderRadius: "0.5rem",
+            border: "1px solid var(--mb-color-border-secondary)",
+          }}
+        />
+      );
+    case "type/AvatarURL":
+      return (
+        <Image
+          src={rawValue}
+          w="2rem"
+          h="2rem"
+          style={{
+            objectFit: "cover",
+            borderRadius: "50%",
+            border: "1px solid var(--mb-color-border-secondary)",
+          }}
+        />
+      );
+    case "type/Float":
+    case "type/Number":
+      return (
+        <Ellipsified
+          size="sm"
+          truncate
+          style={style}
+          fw="bold"
+          c="text-primary"
+        >
+          {value}
+        </Ellipsified>
+      );
+
     default:
       break;
   }
@@ -217,7 +271,7 @@ export function ColumnValue({
       size="sm"
       truncate
       style={style}
-      c={style?.color || "text-secondary"}
+      c={style?.color || "text-primary"}
     >
       {value}
     </Ellipsified>
