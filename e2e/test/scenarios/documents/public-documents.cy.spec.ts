@@ -85,7 +85,8 @@ function verifyCommentsAreHidden() {
 
 // Helper function to verify error message is displayed
 function verifyErrorMessage(expectedMessage: string) {
-  cy.get("h2").should("be.visible").and("contain", expectedMessage);
+  // PublicError and PublicNotFound render messages in error pages
+  cy.contains(expectedMessage).should("be.visible");
   H.documentContent().should("not.exist");
 }
 
@@ -299,8 +300,7 @@ describe("scenarios > documents > public", () => {
       cy.visit(`/public/document/${uuid}`);
 
       cy.log("Verify document is no longer accessible");
-      // Public routes return a generic error message when sharing is disabled
-      verifyErrorMessage("An error occurred");
+      verifyErrorMessage("Public sharing is not enabled.");
     });
 
     // Cleanup: Re-enable public sharing for subsequent tests
