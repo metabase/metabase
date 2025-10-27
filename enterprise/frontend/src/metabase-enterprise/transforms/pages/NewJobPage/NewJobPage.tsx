@@ -1,12 +1,21 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import type { Route } from "react-router";
 import { t } from "ttag";
+import _ from "underscore";
 
+import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
 
 import { JobEditor, type TransformJobInfo } from "../../components/JobEditor";
 
-export function NewJobPage() {
-  const [job, setJob] = useState(() => getNewJobInfo());
+type NewJobPageProps = {
+  route: Route;
+};
+
+export function NewJobPage({ route }: NewJobPageProps) {
+  const initialJob = useMemo(() => getNewJobInfo(), []);
+  const [job, setJob] = useState(initialJob);
+  const isDirty = useMemo(() => !_.isEqual(job, initialJob), [job, initialJob]);
 
   const handleNameChange = (name: string) => {
     setJob({ ...job, name });
@@ -24,12 +33,15 @@ export function NewJobPage() {
   };
 
   return (
-    <JobEditor
-      job={job}
-      onNameChange={handleNameChange}
-      onScheduleChange={handleScheduleChange}
-      onTagListChange={handleTagListChange}
-    />
+    <>
+      <JobEditor
+        job={job}
+        onNameChange={handleNameChange}
+        onScheduleChange={handleScheduleChange}
+        onTagListChange={handleTagListChange}
+      />
+      <LeaveRouteConfirmModal route={route} isEnabled={isDirty} />
+    </>
   );
 }
 
