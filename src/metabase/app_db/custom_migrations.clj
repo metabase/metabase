@@ -1797,7 +1797,7 @@
 ;; This migration is purely to avoid breaking stats/dev instances that have existing transforms without a `type` field.
 ;; TODO (noahmoss 10/27/25): this should be removed prior to the 57 release.
 (define-migration BackfillTransformType
-  ;; Copied logic from metabase-enterprise.transforms.models.transform, aside
+  ;; Copied logic from metabase-enterprise.transforms.models.transform, aside from query normalization
   (let [parse-transform-source (fn [source-json]
                                  (-> source-json
                                      (json-out true)
