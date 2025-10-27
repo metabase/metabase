@@ -65,7 +65,7 @@ export function VirtualizedFlatList<T>({
   }, [selectedId, items, getItemId, virtualizer]);
 
   return (
-    <Box ref={parentRef} px="md" className={cx(S.scrollContainer, className)}>
+    <Box ref={parentRef} className={cx(S.scrollContainer, className)}>
       <Box
         className={S.listContainer}
         style={{ height: virtualizer.getTotalSize() }}

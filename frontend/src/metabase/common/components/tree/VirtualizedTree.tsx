@@ -168,7 +168,7 @@ export function VirtualizedTree({
   }
 
   return (
-    <Box ref={parentRef} px="md" className={cx(S.scrollContainer, className)}>
+    <Box ref={parentRef} className={cx(S.scrollContainer, className)}>
       <Box
         component="ul"
         role={role}
