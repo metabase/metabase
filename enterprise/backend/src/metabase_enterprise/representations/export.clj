@@ -21,7 +21,7 @@
   "Export a Metabase entity to its human-readable representation format.
    Dispatches on [model type] for Cards, [model nil] for other entities."
   {:arglists '[[entity]]}
-  representation-type)
+  v0-common/representation-type)
 
 (defn- read-from-ref [ref]
   (let [[type id] (str/split ref #"-" 2)]

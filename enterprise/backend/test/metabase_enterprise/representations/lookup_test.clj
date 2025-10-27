@@ -1,13 +1,8 @@
 (ns metabase-enterprise.representations.lookup-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.representations.core :as rep]
-   [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.lookup :as lookup]
    [metabase-enterprise.representations.v0.common :as v0-common]
-   [metabase-enterprise.representations.yaml :as yaml]
-   [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
 (deftest lookup-by-id-test
