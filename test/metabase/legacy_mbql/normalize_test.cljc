@@ -1632,3 +1632,16 @@
                 " in `:time-interval` takes precedence.")
     (is (= [:time-interval [:field 1 nil] -10 :minute]
            (mbql.normalize/normalize ::mbql.s/time-interval [:time-interval [:field 1 {:temporal-unit :hour}] -10 :minute])))))
+
+(deftest ^:parallel normalize-order-by-test
+  (is (= {:database 1
+          :type     :query
+          :query    {:source-table 2
+                     :fields       [[:field 3 nil]]
+                     :order-by     [[:asc [:field 3 nil]]]}}
+         (mbql.normalize/normalize {:database 1
+                                    :type     "query"
+                                    :query    {:source-table 2
+                                               :fields       [["field" 3 nil]]
+                                               :order-by     [[:asc ["field" 3]]
+                                                              [:asc ["field" 3]]]}}))))

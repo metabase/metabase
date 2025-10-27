@@ -48,13 +48,7 @@
    (fn [k]
      ;; sanity check: make sure we're not accidentally using this on a base type
      (assert (not= k :type/Text))
-     ;; don't use [[u/->kebab-case-en]] here because it converts stuff like `:SuM` to `:su-m` which is not really what
-     ;; we want
-     (-> k
-         u/qualified-name
-         (str/replace #"_" "-")
-         u/lower-case-en
-         keyword))))
+     (keyword (u/->kebab-case-en k)))))
 
 (defn map->kebab-case
   "Convert a map to kebab case, for use with `:decode/normalize`."

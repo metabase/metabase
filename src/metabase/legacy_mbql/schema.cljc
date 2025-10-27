@@ -383,7 +383,7 @@
                         (if (sequential? id-or-name)
                           (let [[_tag id-or-name recursive-opts] (normalize-field id-or-name)]
                             [:field id-or-name (not-empty (merge recursive-opts opts))])
-                          x))
+                          [:field id-or-name (not-empty opts)]))
     x))
 
 (defclause* ^{:added "0.39.0"} field
@@ -1576,21 +1576,24 @@
     [:ref ::TemplateTag]]
    [:ref ::lib.schema.template-tag/template-tag-map.validate-names]])
 
-(defn- normalize-native-inner-query [m]
+(defn- remove-empty-keys [m {:keys [non-empty-keys non-nil-keys]}]
+  (when (map? m)
+    (reduce-kv
+     (fn [m k v]
+       (if (or (and (non-empty-keys k)
+                    (empty? v))
+               (and (non-nil-keys k)
+                    (nil? v)))
+         (dissoc m k)
+         m))
+     m
+     m)))
+
+(defn- remove-empty-keys-from-native-inner-query [m]
   (when (map? m)
     (let [m (lib.schema.common/normalize-map m)]
-      (reduce-kv
-       (fn [m k v]
-         (case k
-           :collection    (cond-> m
-                            (nil? v)
-                            (dissoc :collection))
-           :template-tags (cond-> m
-                            (empty? v)
-                            (dissoc :template-tags))
-           m))
-       m
-       m))))
+      (remove-empty-keys m {:non-empty-keys #{:template-tags}
+                            :non-nil-keys   #{:collection}}))))
 
 (mr/def ::NativeQuery.Common
   [:and
@@ -1607,14 +1610,14 @@
 (mr/def ::NativeQuery
   "Schema for a valid, normalized native [inner] query."
   [:merge
-   {:decode/normalize #'normalize-native-inner-query}
+   {:decode/normalize #'remove-empty-keys-from-native-inner-query}
    ::NativeQuery.Common
    [:map
     [:query :some]]])
 
 (mr/def ::NativeSourceQuery
   [:merge
-   {:decode/normalize #'normalize-native-inner-query}
+   {:decode/normalize #'remove-empty-keys-from-native-inner-query}
    ::NativeQuery.Common
    [:map
     [:native :some]]])
@@ -1632,7 +1635,7 @@
    [:native [:ref ::NativeSourceQuery]]
    [:mbql   [:ref ::MBQLQuery]]])
 
-(defn- lib-normalize-legacy-column
+(defn- normalize-legacy-column
   "Normalize legacy column metadata when using [[metabase.lib.normalize/normalize]]."
   [m]
   (when (map? m)
@@ -1711,7 +1714,7 @@
    [:merge
     [:map
      ;; this schema is allowed for Card `result_metadata` in Lib so `:decode/normalize` is used for those Lib use cases.
-     {:decode/normalize lib-normalize-legacy-column}
+     {:decode/normalize #'normalize-legacy-column}
      [:base_type          {:default :type/*} ::lib.schema.common/base-type]
      [:display_name       :string]
      [:name               :string]
@@ -1730,7 +1733,8 @@
      [:visibility_type    {:optional true} [:maybe [:ref ::lib.schema.metadata/column.visibility-type]]]]
     [:ref ::legacy-column-metadata.qualified-keys]]
    (lib.schema.common/disallowed-keys
-    {:lib/type "Legacy results metadata should not have :lib/type, use :metabase.lib.schema.metadata/column for Lib metadata"})
+    {:lib/type          "Legacy results metadata should not have :lib/type, use :metabase.lib.schema.metadata/column for Lib metadata"
+     :model/inner_ident ":model/inner_ident is deprecated"})
    (letfn [(disallowed-key? [k]
              (or (not (keyword? k))
                  (let [disallowed-char (if (qualified-keyword? k)
@@ -1899,17 +1903,9 @@
                           x))}
    [:ref ::FieldOrExpressionRef]])
 
-(defn- remove-empty-query-keys [query]
-  (let [non-empty-keys #{:aggregation :breakout :fields :order-by :joins}]
-    (when (map? query)
-      (reduce-kv
-       (fn [m k v]
-         (if (and (non-empty-keys k)
-                  (empty? v))
-           (dissoc m k)
-           m))
-       query
-       query))))
+(defn- remove-empty-keys-from-mbql-inner-query [query]
+  (remove-empty-keys query {:non-empty-keys #{:aggregation :breakout :fields :filter :order-by :joins}
+                            :non-nil-keys   #{:limit}}))
 
 (mr/def ::Expressions
   [:map-of
@@ -1964,7 +1960,7 @@
    ;;
    ;; but not actually remove that key; so we need this second pass to remove it.
    [:schema
-    {:decode/normalize #'remove-empty-query-keys}
+    {:decode/normalize #'remove-empty-keys-from-mbql-inner-query}
     :map]
    ;;
    ;; CONSTRAINTS

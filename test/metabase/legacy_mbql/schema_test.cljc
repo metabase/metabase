@@ -312,3 +312,8 @@
                                                          :binning_info {"binning_strategy" "default"
                                                                         "strategy"         "num-bins"
                                                                         "num-bins"         100}}))))
+
+(deftest ^:parallel remove-inner-ident-test
+  (testing "Remove deprecated keys like :model/inner_ident automatically (GIT-8399)"
+    (is (= {:base_type :type/*, :name "X", :display_name "X"}
+           (lib/normalize ::mbql.s/legacy-column-metadata {:name "X", :model/inner_ident "wow"})))))
