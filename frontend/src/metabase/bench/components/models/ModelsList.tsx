@@ -334,7 +334,7 @@ const ModelHeader = withRouter(
                     modelCollectionId && {
                       label: t`Metadata`,
                       to: `/bench/metadata/collection/${modelCollectionId}/model/${params.slug}`,
-                      icon: "database" as const,
+                      icon: "share" as const,
                     },
                   ].filter((t) => !!t)}
                 />
