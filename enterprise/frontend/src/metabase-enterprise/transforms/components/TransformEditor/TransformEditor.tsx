@@ -139,16 +139,18 @@ export function TransformEditor({
               onCancelQuery={handleCancelQuery}
             />
           </Flex>
-          <NativeQuerySidebar
-            question={question}
-            isNative={isNative}
-            isDataReferenceOpen={isDataReferenceOpen}
-            isSnippetSidebarOpen={isSnippetSidebarOpen}
-            onInsertSnippet={handleInsertSnippet}
-            onToggleDataReference={handleToggleDataReference}
-            onToggleSnippetSidebar={handleToggleSnippetSidebar}
-            onChangeModalSnippet={handleModalSnippetChange}
-          />
+          {isNative && (
+            <NativeQuerySidebar
+              question={question}
+              isNative={isNative}
+              isDataReferenceOpen={isDataReferenceOpen}
+              isSnippetSidebarOpen={isSnippetSidebarOpen}
+              onInsertSnippet={handleInsertSnippet}
+              onToggleDataReference={handleToggleDataReference}
+              onToggleSnippetSidebar={handleToggleSnippetSidebar}
+              onChangeModalSnippet={handleModalSnippetChange}
+            />
+          )}
         </Flex>
       </Flex>
       {isNative && (

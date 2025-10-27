@@ -10,7 +10,7 @@ import type { NativeQuerySnippet } from "metabase-types/api";
 
 import S from "./NativeQuerySidebar.module.css";
 
-type NativeEditorSidebarProps = {
+type NativeQuerySidebarProps = {
   question: Question;
   isNative: boolean;
   isSnippetSidebarOpen?: boolean;
@@ -25,7 +25,7 @@ export function NativeQuerySidebar({
   isSnippetSidebarOpen,
   isDataReferenceOpen,
   ...props
-}: NativeEditorSidebarProps) {
+}: NativeQuerySidebarProps) {
   if (!isSnippetSidebarOpen && !isDataReferenceOpen) {
     return null;
   }
@@ -47,7 +47,7 @@ export function NativeQuerySidebar({
 function QueryDataReferenceSidebar({
   question,
   onToggleDataReference,
-}: EditorSidebarProps) {
+}: NativeQuerySidebarProps) {
   const [dataReferenceStack, setDataReferenceStack] = useState<any[]>([]);
 
   useMount(() => {
@@ -83,7 +83,7 @@ function QuerySnippetSidebar({
   onInsertSnippet,
   onToggleSnippetSidebar,
   onChangeModalSnippet,
-}: EditorSidebarProps) {
+}: NativeQuerySidebarProps) {
   return (
     <SnippetSidebar
       snippetCollectionId={null}
