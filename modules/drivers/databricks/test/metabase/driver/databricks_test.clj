@@ -404,12 +404,12 @@
                                                             :details (-> details
                                                                          (assoc :multi-level-schema true
                                                                                 :schema-filters-type "inclusion"
-                                                                                :schema-filters-patterns (str/join "\n" schema-filters)))}]
+                                                                                :schema-filters-patterns (str/join ", " schema-filters)))}]
           (mt/with-db
             (t2/select-one :model/Database db-id)
             (sync/sync-database! (mt/db) {:scan :schema})
             (let [table-schemas (t2/select-fn-set :schema :model/Table :db_id (mt/id) :active true)]
-              (is (set/subset? schema-filters table-schemas))
+              (is (= schema-filters table-schemas))
               (is (nil? (some #(str/starts-with? % "__databricks") table-schemas))))))))))
 
 (deftest multi-catalog-joins
