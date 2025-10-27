@@ -628,6 +628,7 @@
    {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
    [:id :int]
    [:name :string]
+   [:type [:enum {:decode/tool-api-response name} "mbql" "native" "python"]]
    [:description {:optional true} [:maybe :string]]
    [:entity_id {:optional true} [:maybe :string]]
    ;; :source keys are not snake_cased to match what the FE expects / provides in user_is_viewing context
