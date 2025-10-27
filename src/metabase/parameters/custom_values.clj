@@ -8,7 +8,6 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
@@ -63,28 +62,34 @@
   1000)
 
 (defn- query-and-value-column
-  "Search through `card*`'s query stages (in -1 to 0 order) for column corresponding to `value-field-ref`. For a stage
-  probe returned columns, removing aggregations if searched column is not found.
-  Return map of form
-  {:query ...
-   :value-column ...}.
-  The `:query` key contains card's query with stages -1..n+1 removed, where n is the stage containing the column.
-  The `:value-column` key contains the column."
-  [card* value-field-ref]
-  (let [mp (lib-be/application-database-metadata-provider (:database_id card*))
-        card (lib.metadata/card mp (:id card*))
-        full-query (lib/card->underlying-query mp card)
-        drop-clauses #(lib/update-query-stage % -1 dissoc :aggregation :breakout)]
-    (loop [query full-query]
-      (if-some [value-column (lib/find-matching-column
-                              query -1 value-field-ref
-                              (lib/returned-columns query))]
-        {:query query
-         :value-column value-column}
-        (recur (if (or (seq (lib/aggregations query))
-                       (seq (lib/breakouts query)))
-                 (drop-clauses query)
-                 (lib/drop-stage query)))))))
+  [card value-field-ref]
+  (when-some [mp (-> card :dataset_query :lib/metadata)]
+    (let [card (lib.metadata/card mp (:id card))
+          full-query (lib/card->underlying-query mp card)]
+      (loop [stage-number (lib/canonical-stage-index full-query -1)
+             query full-query]
+        (let [query (-> query
+                        (lib/drop-limit-clause stage-number)
+                        (lib/append-stage))]
+          (or
+           ;; Exaine returned columns first
+           (when-some [value-column (lib/find-matching-column
+                                     query -1
+                                     value-field-ref (lib/visible-columns query))]
+             {:query query
+              :value-column value-column})
+           ;; Try removing summaries
+           (when (pos-int? stage-number)
+             (let [query (lib/drop-summary-clauses query stage-number)]
+               (when-some [value-column (lib/find-matching-column
+                                         query -1
+                                         value-field-ref (lib/returned-columns query))]
+                 {:query query
+                  :value-column value-column})))
+           ;; Peel off the last stage
+           (when (pos-int? stage-number)
+             (recur (-> query lib/drop-stage)
+                    (dec stage-number)))))))))
 
 (mr/def ::values-from-card-query.options
   [:map
@@ -100,12 +105,7 @@
    field-ref                        :- [:or :mbql.clause/field :mbql.clause/expression]
    {:keys [query-string] :as _opts} :- [:maybe ::values-from-card-query.options]]
   (when (seq query)
-    ;; start a new query using this Card as a starting point
-    (let [{:keys [query value-column]} (query-and-value-column card field-ref)
-          query (lib/append-stage query)
-          value-column (cond-> value-column
-                         (:lib/source-uuid value-column)
-                         (lib/matching-column-by-source-uuid (lib/breakoutable-columns query)))]
+    (let [{:keys [query value-column]} (query-and-value-column card field-ref)]
       (when value-column
         (let [textual?     (lib.types.isa/string? value-column)
               nonempty     ((if textual? lib/not-empty lib/not-null) value-column)

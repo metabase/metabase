@@ -201,7 +201,7 @@
                       source-field-join-alias]} _ref-id] :- ::lib.schema.ref/ref
    column                                                :- ::lib.schema.metadata/column]
   (if source-field
-    (and (clojure.core/= source-field (:fk-field-id column))
+    (and (clojure.core/= source-field ((some-fn :fk-field-id :lib/original-fk-field-id) column))
          ;; `source-field-name` is not available on old refs
          (or (nil? source-field-name) (clojure.core/= source-field-name (:fk-field-name column)))
          (clojure.core/= source-field-join-alias (:fk-join-alias column)))
