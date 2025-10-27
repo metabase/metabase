@@ -14,7 +14,7 @@ const EMPTY_SELECTION_RANGE: SelectionRange = {
   end: { row: 0, column: 0 },
 };
 
-export function useEditorSidebar(
+export function useEditorControls(
   question: Question,
   onQuestionChange: (newQuestion: Question) => void,
 ) {

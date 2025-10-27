@@ -11,7 +11,7 @@ import { QuerySection } from "./QuerySection";
 import { SaveSection } from "./SaveSection";
 import S from "./TransformEditor.module.css";
 import { VisualizationSection } from "./VisualizationSection";
-import { useEditorSidebar } from "./use-editor-sidebar";
+import { useEditorControls } from "./use-editor-controls";
 import { useQueryMetadata } from "./use-query-metadata";
 import { useQueryResults } from "./use-query-results";
 import { useSourceQuery } from "./use-source-query";
@@ -63,7 +63,7 @@ export function TransformEditor({
     handleInsertSnippet,
     handleToggleDataReference,
     handleToggleSnippetSidebar,
-  } = useEditorSidebar(question, handleQuestionChange);
+  } = useEditorControls(question, handleQuestionChange);
   const {
     data: databases,
     isLoading: isDatabaseListLoading,
