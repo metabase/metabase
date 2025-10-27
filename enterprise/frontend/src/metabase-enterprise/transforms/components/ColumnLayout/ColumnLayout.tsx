@@ -17,20 +17,16 @@ export function ColumnLayout({ children }: ColumnLayoutProps) {
 }
 
 type ColumnLayoutBodyProps = {
-  isCentered?: boolean;
   children?: ReactNode;
 };
 
-export function ColumnLayoutBody({
-  isCentered,
-  children,
-}: ColumnLayoutBodyProps) {
+export function ColumnLayoutBody({ children }: ColumnLayoutBodyProps) {
   return (
     <Flex
       className={S.body}
       flex={1}
       justify="center"
-      pt={isCentered ? "3.5rem" : "xl"}
+      pt="3.5rem"
       pb="xl"
       px="xl"
       bg="bg-light"

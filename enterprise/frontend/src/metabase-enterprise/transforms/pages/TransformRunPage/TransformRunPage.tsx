@@ -48,7 +48,7 @@ export function TransformRunPage({ params }: TransformRunPageProps) {
   return (
     <ColumnLayout>
       <TransformHeader transform={transform} />
-      <ColumnLayoutBody isCentered>
+      <ColumnLayoutBody>
         <RunSection transform={transform} />
       </ColumnLayoutBody>
     </ColumnLayout>

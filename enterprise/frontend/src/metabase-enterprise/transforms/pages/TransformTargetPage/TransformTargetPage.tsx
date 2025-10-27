@@ -52,7 +52,7 @@ export function TransformTargetPage({ params }: TransformTargetPageProps) {
   return (
     <ColumnLayout>
       <TransformHeader transform={transform} />
-      <ColumnLayoutBody isCentered>
+      <ColumnLayoutBody>
         <TargetSection transform={transform} />
       </ColumnLayoutBody>
     </ColumnLayout>
