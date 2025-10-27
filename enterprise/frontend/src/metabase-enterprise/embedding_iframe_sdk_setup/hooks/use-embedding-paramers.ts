@@ -22,6 +22,11 @@ export const useEmbeddingParameters = ({
   const { isParameterHidden } = useHideParameter({ settings, updateSettings });
   const { isLockedParameter } = useLockParameter({ settings });
 
+  // Wait until we have `hiddenParameters` or `lockedParameters` initialized
+  const areEmbeddingParametersInitialized =
+    (!!settings.dashboardId || !!settings.questionId) &&
+    (!!settings.hiddenParameters || !!settings.lockedParameters);
+
   const buildEmbeddedParameters = useCallback(
     (parameters: Parameter[]) => {
       return parameters.reduce<EmbeddingParameters>((acc, { slug }) => {
@@ -42,7 +47,9 @@ export const useEmbeddingParameters = ({
       return null;
     }
 
-    return getDefaultEmbeddingParams(resource, initialAvailableParameters);
+    return getDefaultEmbeddingParams(resource, initialAvailableParameters, {
+      getAllParams: true,
+    });
   }, [initialAvailableParameters, resource]);
 
   const embeddingParameters = useMemo(
@@ -60,6 +67,7 @@ export const useEmbeddingParameters = ({
   );
 
   return {
+    areEmbeddingParametersInitialized,
     initialEmbeddingParameters,
     embeddingParameters,
     onEmbeddingParametersChange,

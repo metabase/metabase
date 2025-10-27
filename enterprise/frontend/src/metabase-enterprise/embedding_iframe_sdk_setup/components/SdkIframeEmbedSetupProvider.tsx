@@ -87,6 +87,7 @@ export const SdkIframeEmbedSetupProvider = ({
     resource,
   });
   const {
+    areEmbeddingParametersInitialized,
     embeddingParameters,
     initialEmbeddingParameters,
     onEmbeddingParametersChange,
@@ -147,6 +148,7 @@ export const SdkIframeEmbedSetupProvider = ({
     initialEmbeddingParameters,
     parametersValuesById,
     previewParameterValuesBySlug,
+    areEmbeddingParametersInitialized,
     embeddingParameters,
     onEmbeddingParametersChange,
     staticEmbeddingSignedToken,

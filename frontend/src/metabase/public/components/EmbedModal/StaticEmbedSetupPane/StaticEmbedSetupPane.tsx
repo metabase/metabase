@@ -65,6 +65,7 @@ export const StaticEmbedSetupPane = ({
   const initialEmbeddingParams = getDefaultEmbeddingParams(
     resource,
     resourceParameters,
+    { getAllParams: false },
   );
   const [embeddingParams, setEmbeddingParams] = useState<EmbeddingParameters>(
     initialEmbeddingParams,
@@ -154,6 +155,7 @@ export const StaticEmbedSetupPane = ({
       embeddingParams,
       setEmbeddingParams,
       exampleDashboardId,
+      getAllParamsOnDiscard: false,
     });
 
   const getServerEmbedCodePane = (variant: EmbedCodePaneVariant) => {

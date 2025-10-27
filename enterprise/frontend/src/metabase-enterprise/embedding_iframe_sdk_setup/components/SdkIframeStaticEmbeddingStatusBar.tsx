@@ -82,6 +82,7 @@ const SdkIframeStaticEmbeddingStatusBarInner = ({
       embeddingParams: embeddingParameters,
       setEmbeddingParams: onEmbeddingParametersChange,
       exampleDashboardId,
+      getAllParamsOnDiscard: true,
     });
 
   return (
@@ -105,6 +106,7 @@ export const SdkIframeStaticEmbeddingStatusBar = () => {
     settings,
     resource,
     experience,
+    areEmbeddingParametersInitialized,
     initialEmbeddingParameters,
   } = useSdkIframeEmbedSetupContext();
 
@@ -120,7 +122,12 @@ export const SdkIframeStaticEmbeddingStatusBar = () => {
     return null;
   }
 
-  if (!resource || !resourceType || !initialEmbeddingParameters) {
+  if (
+    !resource ||
+    !resourceType ||
+    !initialEmbeddingParameters ||
+    !areEmbeddingParametersInitialized
+  ) {
     return null;
   }
 

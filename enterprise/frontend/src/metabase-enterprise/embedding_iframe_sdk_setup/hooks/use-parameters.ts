@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useLatest } from "react-use";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -21,9 +21,7 @@ export const useParameters = ({
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
 
-  const [initialAvailableParameters, setInitialAvailableParameters] = useState<
-    Parameter[] | null
-  >(null);
+  const initialAvailableParametersRef = useRef<Parameter[] | null>(null);
 
   // This prevents `availableParameters` from being updated on every metadata change,
   // which would cause unnecessary re-renders in the component using this hook.
@@ -52,15 +50,9 @@ export const useParameters = ({
     return [];
   }, [resource, experience, metadata, metadataRef]);
 
-  useEffect(() => {
-    if (!resource) {
-      return;
-    }
-
-    if (initialAvailableParameters === null) {
-      setInitialAvailableParameters(availableParameters);
-    }
-  }, [resource, availableParameters, initialAvailableParameters]);
+  if (resource && initialAvailableParametersRef.current === null) {
+    initialAvailableParametersRef.current = availableParameters;
+  }
 
   useEffect(() => {
     if (resource && "param_fields" in resource && resource.param_fields) {
@@ -72,6 +64,6 @@ export const useParameters = ({
 
   return {
     availableParameters,
-    initialAvailableParameters,
+    initialAvailableParameters: initialAvailableParametersRef.current,
   };
 };

@@ -54,6 +54,7 @@ export interface SdkIframeEmbedSetupContextType {
   initialEmbeddingParameters: EmbeddingParameters | null;
   parametersValuesById: EmbeddingParametersValues;
   previewParameterValuesBySlug: EmbeddingParametersValues;
+  areEmbeddingParametersInitialized: boolean;
   embeddingParameters: EmbeddingParameters;
   onEmbeddingParametersChange: (
     embeddingParameters: EmbeddingParameters,

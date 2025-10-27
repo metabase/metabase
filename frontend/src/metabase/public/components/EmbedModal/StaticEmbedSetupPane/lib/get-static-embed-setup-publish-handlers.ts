@@ -48,11 +48,15 @@ export const getStaticEmbedSetupPublishHandlers = ({
   setEmbeddingParams,
 
   exampleDashboardId,
+
+  getAllParamsOnDiscard,
 }: StaticEmbedSetupPaneProps & {
   embeddingParams: EmbeddingParameters;
   setEmbeddingParams: (embeddingParams: EmbeddingParameters) => void;
 
   exampleDashboardId: number | null;
+
+  getAllParamsOnDiscard: boolean;
 }) => {
   const handleSave = async () => {
     if (!resource.enable_embedding) {
@@ -79,7 +83,11 @@ export const getStaticEmbedSetupPublishHandlers = ({
   };
 
   const handleDiscard = () => {
-    setEmbeddingParams(getDefaultEmbeddingParams(resource, resourceParameters));
+    setEmbeddingParams(
+      getDefaultEmbeddingParams(resource, resourceParameters, {
+        getAllParams: getAllParamsOnDiscard,
+      }),
+    );
     trackStaticEmbedDiscarded({
       artifact: resourceType,
     });
