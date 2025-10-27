@@ -3,13 +3,19 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.schema :as mbql.s]
+   ;; legacy usages, do not use legacy MBQL stuff in new code.
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [metabase.util.yaml :as yaml]
    [metabase.xrays.domain-entities.specs :refer [MBQL]]))
+
+(mr/def ::query
+  "Schema for MBQL queries as handled by the X-Rays transforms code. (Currently, legacy queries; in the very near future
+  we can change this schema to MBQL 5 queries and then go fix all the functions that reference this schema.)"
+  ::mbql.s/Query)
 
 (def ^:private DecodableString
   [:string
@@ -133,6 +139,6 @@
 
 (def ^:private transforms-dir "transforms/")
 
-(def transform-specs
-  "List of registered dataset transforms."
+(def ^:dynamic *transform-specs*
+  "Delay for all transform specs, loaded from YAML and coerced to the [[TransformSpec]] schema."
   (delay (yaml/load-dir transforms-dir (comp coerce-to-transform-spec add-metadata-to-steps))))

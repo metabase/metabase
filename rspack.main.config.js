@@ -6,7 +6,6 @@ const fs = require("fs");
 const rspack = require("@rspack/core");
 const ReactRefreshPlugin = require("@rspack/plugin-react-refresh");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
-const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
 const WebpackNotifierPlugin = require("webpack-notifier");
 
 const {
@@ -19,6 +18,7 @@ const { CSS_CONFIG } = require("./frontend/build/shared/rspack/css-config");
 const {
   getBannerOptions,
 } = require("./frontend/build/shared/rspack/get-banner-options");
+const { SVGO_CONFIG } = require("./frontend/build/shared/rspack/svgo-config");
 
 const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
 const FONTS_PATH = __dirname + "/resources/frontend_client/app/fonts";
@@ -197,6 +197,7 @@ const config = {
             loader: "@svgr/webpack",
             options: {
               ref: true,
+              svgoConfig: SVGO_CONFIG,
             },
           },
         ],
@@ -246,13 +247,16 @@ const config = {
       "sdk-ee-plugins": resolveEnterprisePathOrNoop("/sdk-plugins"),
       "sdk-specific-imports": SRC_PATH + "/lib/noop",
     },
+    fallback: {
+      buffer: require.resolve("buffer/"),
+    },
   },
   optimization: {
     runtimeChunk: "single",
     splitChunks: {
       cacheGroups: {
         vendors: {
-          test: /[\\/]node_modules[\\/](?!(sql-formatter|jspdf|html2canvas-pro)[\\/])/,
+          test: /[\\/]node_modules[\\/](?!(sql-formatter|jspdf|html2canvas|html2canvas-pro)[\\/])/,
           chunks: "all",
           name: "vendor",
         },
@@ -267,7 +271,7 @@ const config = {
           name: "jspdf",
         },
         html2canvas: {
-          test: /[\\/]node_modules[\\/]html2canvas-pro[\\/]/,
+          test: /[\\/]node_modules[\\/](html2canvas|html2canvas-pro)[\\/]/,
           chunks: "all",
           name: "html2canvas",
         },
@@ -313,14 +317,16 @@ const config = {
       template: __dirname + "/resources/frontend_client/index_template.html",
     }),
     new rspack.BannerPlugin(getBannerOptions(LICENSE_TEXT)),
-    new NodePolyfillPlugin(), // for crypto, among others
+    // https://github.com/orgs/remarkjs/discussions/903
+    new rspack.ProvidePlugin({
+      process: "process/browser.js",
+      Buffer: ["buffer", "Buffer"],
+    }),
     new rspack.EnvironmentPlugin({
       WEBPACK_BUNDLE: "development",
       MB_LOG_ANALYTICS: "false",
       ENABLE_CLJS_HOT_RELOAD: process.env.ENABLE_CLJS_HOT_RELOAD ?? "false",
     }),
-    // https://github.com/remarkjs/remark/discussions/903
-    new rspack.ProvidePlugin({ process: "process/browser.js" }),
   ],
 };
 
@@ -384,13 +390,18 @@ if (isDevMode) {
   }
 
   // replace minified files with un-minified versions
-  for (const name in config.resolve.alias) {
-    const minified = config.resolve.alias[name];
+  const aliases = config.resolve.alias || {};
+
+  Object.entries(aliases).forEach(([name, minified]) => {
+    if (typeof minified !== "string") {
+      return;
+    }
+
     const unminified = minified.replace(/[.-\/]min\b/g, "");
     if (minified !== unminified && fs.existsSync(unminified)) {
-      config.resolve.alias[name] = unminified;
+      aliases[name] = unminified;
     }
-  }
+  });
 
   // by default enable "cheap" source maps for fast re-build speed
   // with BETTER_SOURCE_MAPS we switch to sourcemaps that work with breakpoints and makes stacktraces readable

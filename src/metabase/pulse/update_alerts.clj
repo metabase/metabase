@@ -2,7 +2,9 @@
   ;; TODO this should be moved to notification
   (:require
    [metabase.events.core :as events]
+   [metabase.lib.core :as lib]
    [metabase.notification.models :as models.notification]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (defn- card-archived? [old-card new-card]
@@ -43,14 +45,14 @@
    (get-in old-card [:visualization_settings :graph.goal_value])
    (not (get-in new-card [:visualization_settings :graph.goal_value]))))
 
-(defn- multiple-breakouts?
+(mu/defn- multiple-breakouts?
   "If there are multiple breakouts and a goal, we don't know which breakout to compare to the goal, so it invalidates
   the alert"
-  [{:keys [display] :as new-card}]
+  [{:keys [display], query :dataset_query, :as new-card} :- :metabase.queries.schema/card]
   (and (get-in new-card [:visualization_settings :graph.goal_value])
        (or (line-area-bar? display)
            (progress? display))
-       (< 1 (count (get-in new-card [:dataset_query :query :breakout])))))
+       (< 1 (count (lib/breakouts query)))))
 
 (defn delete-alert-and-notify!
   "Removes all of the alerts and notifies all of the email recipients of the alerts change."

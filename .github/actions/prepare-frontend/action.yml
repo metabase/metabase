@@ -12,26 +12,24 @@ runs:
         node-version: ${{ inputs.node-version }} # this overrides, if present
         node-version-file: ".nvmrc"
 
-    - name: Check to see if dependencies should be cached
-      if: ${{ contains(github.event.head_commit.message, '[ci nocache]') }}
-      run: |
-        echo "Commit message includes [ci nocache]; dependencies will NOT be cached"
-        yarn cache clean
-      shell: bash
-    - name: Get M2 cache
-      uses: actions/cache@v4
-      if: ${{ !contains(github.event.head_commit.message, '[ci nocache]') }}
-      with:
-        path: ~/.m2
-        key: ${{ runner.os }}-cljs-${{ hashFiles('**/shadow-cljs.edn') }}
+    - name: Get cache keys
+      uses: ./.github/actions/get-cache-keys
+      id: get-cache-keys
 
-    - name: Get node_modules cache
-      uses: actions/cache@v4
+    - name: Restore M2 cache
+      uses: actions/cache/restore@v4
+      with:
+        path: |
+          ~/.m2
+          ~/.gitlibs
+        key: ${{ steps.get-cache-keys.outputs.m2-cache-key }}
+
+    - name: Restore node_modules cache
+      uses: actions/cache/restore@v4
       id: node-modules-cache
-      if: ${{ !contains(github.event.head_commit.message, '[ci nocache]') }}
       with:
         path: node_modules
-        key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock', '**/patches/*.patch') }}
+        key: ${{ steps.get-cache-keys.outputs.node-cache-key }}
 
     - run: yarn install --frozen-lockfile --prefer-offline
       shell: bash

@@ -36,14 +36,9 @@
       "name": "Workflows",
       "label": ".Team/Workflows",
       "members": [
-        "qnkhuat",
         "piranha",
         "crisptrutski",
-        "spalt08",
-        "stasgavrylov",
-        "uladzimirdev",
-        "kulyk",
-        "kamilmielnik"
+        "spalt08"
       ]
     },
     {
@@ -58,7 +53,10 @@
       "label": ".Team/DevEx",
       "members": [
         "camsaul",
-        "escherize"
+        "dpsutton",
+        "escherize",
+        "fraserdrops",
+        "nemanjaglumac"
       ]
     },
      {
@@ -70,19 +68,8 @@
         "retro",
         "sloansparger",
         "somtom",
-        "wotbrew",
         "tsplude",
-        "lbrdnk",
-        "bronsa"
-      ]
-    },
-    {
-      "name": "Product Growth",
-      "label": ".Team/ProductGrowth",
-      "members": [
-        "nemanjaglumac",
-        "chodorowicz",
-        "andsalves"
+        "lbrdnk"
       ]
     },
     {
@@ -111,7 +98,22 @@
         "edpaget",
         "deniskaber",
         "alxnddr",
-        "bpander"
+        "bpander",
+        "andsalves"
+      ]
+    },
+    {
+      "name": "Gadget",
+      "label": ".Team/Gadget",
+      "members": [
+        "nmezzopera",
+        "bronsa",
+        "wotbrew",
+        "qnkhuat",
+        "chodorowicz",
+        "kamilmielnik",
+        "stasgavrylov",
+        "uladzimirdev"
       ]
     }
   ]

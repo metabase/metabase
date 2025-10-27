@@ -55,7 +55,8 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
       it(`should be supported for ${questionType}`, () => {
         H.visitQuestion(questionId);
 
-        H.openSharingMenu("Create an alert");
+        cy.findByLabelText("Move, trash, and more…").click();
+        H.popover().findByText("Create an alert").click();
         cy.wait("@channel");
 
         H.modal().within(() => {
@@ -90,7 +91,8 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
       H.visitQuestion(timeSeriesQuestionId);
       cy.findByTestId("chart-container").should("contain", "Goal");
 
-      H.openSharingMenu("Create an alert");
+      cy.findByLabelText("Move, trash, and more…").click();
+      H.popover().findByText("Create an alert").click();
       cy.wait("@channel");
 
       H.modal().findByTestId("alert-goal-select").should("be.enabled").click();
@@ -117,7 +119,8 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
     it("should not be possible to create goal based alert for a multi-series question", () => {
       H.createQuestion(multiSeriesQuestionWithGoal, { visitQuestion: true });
 
-      H.openSharingMenu("Create an alert");
+      cy.findByLabelText("Move, trash, and more…").click();
+      H.popover().findByText("Create an alert").click();
       cy.wait("@channel");
 
       H.modal().within(() => {

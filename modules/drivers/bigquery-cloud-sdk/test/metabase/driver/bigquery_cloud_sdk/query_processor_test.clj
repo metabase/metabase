@@ -7,8 +7,7 @@
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
-   [metabase.driver.bigquery-cloud-sdk.query-processor-test.reconciliation-test-util
-    :as bigquery.qp.reconciliation-tu]
+   [metabase.driver.bigquery-cloud-sdk.query-processor-test.reconciliation-test-util :as bigquery.qp.reconciliation-tu]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -16,7 +15,8 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.preprocess :as qp.preprocess]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
@@ -939,26 +939,37 @@
    [:datetime_tz true     true    true  true  true  true   true     true  true            true         true         true          true         true          true           true]])
 
 (defn- can-breakout?! [field unit report-timezone]
-  (try
-    (mt/test-driver :bigquery-cloud-sdk
-      (mt/dataset attempted-murders
-        (mt/with-report-timezone-id! report-timezone
-          (mt/run-mbql-query attempts
-            {:aggregation [[:count]]
-             :breakout    [[:field (mt/id :attempts field) {:temporal-unit unit}]]}))))
-    true
-    (catch Throwable _
-      false)))
+  (mt/test-driver :bigquery-cloud-sdk
+    (mt/dataset attempted-murders
+      (mt/with-report-timezone-id! report-timezone
+        (let [query  (mt/mbql-query attempts
+                       {:aggregation [[:count]]
+                        :breakout    [[:field (mt/id :attempts field) {:temporal-unit unit}]]})
+              bucket (lib/raw-temporal-bucket (first (lib/breakouts (qp.preprocess/preprocess query))))]
+          ;; if the bucket was removed automatically by normalization or swapped with something correct (see for
+          ;; example [[metabase.lib.schema.ref/valid-temporal-unit-for-base-type?]]) or somewhere else in
+          ;; preprocessing then we don't even need to run the query to know that that sort of breakout isn't
+          ;; supported.
+          (if (or (nil? bucket)
+                  (not= bucket unit))
+            false
+            (try
+              (qp/process-query query)
+              true
+              (catch Throwable _
+                false))))))))
 
 (defn- run-breakout-test-table-tests-for-field!
   [field report-timezone]
   (testing "Make sure datetime breakouts like :minute-of-hour work correctly for different temporal types"
-    (doseq [test-case (test-table-seq breakout-test-table)
-            :when     (= (:row test-case) field)
-            :let      [unit (:col test-case)]]
-      (if (:expected test-case)
-        (is (can-breakout?! field unit report-timezone))
-        (is (not (can-breakout?! field unit report-timezone)))))))
+    (mt/test-driver :bigquery-cloud-sdk
+      (doseq [test-case (test-table-seq breakout-test-table)
+              :when     (= (:row test-case) field)
+              :let      [unit (:col test-case)]]
+        (testing (pr-str test-case)
+          (if (:expected test-case)
+            (is (can-breakout?! field unit report-timezone))
+            (is (not (can-breakout?! field unit report-timezone)))))))))
 
 (deftest breakout-by-bucketed-datetimes-e2e-time-test      (run-breakout-test-table-tests-for-field! :time nil))
 (deftest breakout-by-bucketed-datetimes-e2e-datetime-test  (run-breakout-test-table-tests-for-field! :datetime nil))
@@ -979,8 +990,11 @@
                 [int]
                 (mt/run-mbql-query venues
                   {:aggregation [[:count]]
-                   :filter      [:= $name "x\\\\' OR 1 = 1 -- "]})))))
+                   :filter      [:= $name "x\\\\' OR 1 = 1 -- "]}))))))))
 
+(deftest ^:parallel string-escape-test-2
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "Make sure single quotes in parameters are escaped properly to prevent SQL injection\n"
       (testing "native query"
         (is (= [[0]]
                (mt/formatted-rows

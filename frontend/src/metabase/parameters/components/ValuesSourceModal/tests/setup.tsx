@@ -65,10 +65,14 @@ export const setup = async ({
   setupSearchEndpoints([]);
   setupRecentViewsAndSelectionsEndpoints([]);
   setupCollectionByIdEndpoint({
-    collections: [personalCollection],
+    collections: [personalCollection, rootCollection],
   });
   setupCollectionItemsEndpoint({
     collection: personalCollection,
+    collectionItems: [],
+  });
+  setupCollectionItemsEndpoint({
+    collection: rootCollection,
     collectionItems: [],
   });
 

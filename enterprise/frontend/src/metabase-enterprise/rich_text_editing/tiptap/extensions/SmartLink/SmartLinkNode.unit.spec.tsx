@@ -9,7 +9,6 @@ import {
   setupTableEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import type { SuggestionModel } from "metabase-enterprise/documents/components/Editor/types";
 import {
   createMockCard,
   createMockCollection,
@@ -19,25 +18,49 @@ import {
   createMockTable,
 } from "metabase-types/api/mocks";
 
+import type { SuggestionModel } from "../shared/types";
+
 import { SmartLinkComponent, type SmartLinkEntity } from "./SmartLinkNode";
 
-function createProps(model: SuggestionModel, entity: SmartLinkEntity) {
-  const node = { attrs: { entityId: entity.id, model } };
+function createProps(
+  model: SuggestionModel,
+  entity: SmartLinkEntity | { id: number; label?: string },
+  label?: string,
+) {
+  const node = { attrs: { entityId: entity.id, model, label } };
   return { node } as unknown as NodeViewProps;
 }
 
 function setup({
   entity,
   model,
+  label,
 }: {
   model: SuggestionModel;
   entity: SmartLinkEntity;
+  label?: string;
 }) {
-  const props = createProps(model, entity);
+  const props = createProps(model, entity, label);
   renderWithProviders(<SmartLinkComponent {...props} />);
 }
 
 describe("SmartLink", () => {
+  describe("general", () => {
+    it("renders cached label immediately while loading network data", async () => {
+      const card = createMockCard({ name: "Network Card Name" });
+      setupCardEndpoints(card);
+      setup({ model: "card", entity: card, label: "Cached Card Name" });
+
+      expect(screen.getByText("Cached Card Name")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("img", { name: /hourglass/ }),
+      ).not.toBeInTheDocument();
+      // Eventually updates to network data
+      expect(await screen.findByText("Network Card Name")).toBeInTheDocument();
+      expect(screen.queryByText("Cached Card Name")).not.toBeInTheDocument();
+    });
+  });
+
   describe("for Card", () => {
     it("should render the name of a card", async () => {
       const card = createMockCard({
