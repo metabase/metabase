@@ -21,7 +21,7 @@ export const BenchPaneHeader = ({
       className={cx(S.root, { [S.withBorder]: withBorder })}
       p="md"
       justify="space-between"
-      align="center"
+      align="flex-start"
       data-testid="bench-pane-header"
     >
       <Text fw="bold">{title}</Text>

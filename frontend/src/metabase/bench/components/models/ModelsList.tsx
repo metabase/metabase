@@ -29,8 +29,9 @@ import { ModelCacheManagementSection } from "metabase/query_builder/components/v
 import { shouldShowQuestionSettingsSidebar } from "metabase/query_builder/components/view/sidebars/QuestionSettingsSidebar";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import { getQuestion } from "metabase/query_builder/selectors";
+import { QUESTION_NAME_MAX_LENGTH } from "metabase/questions/constants";
 import { getUser } from "metabase/selectors/user";
-import { Box, Center, Icon, Input, Loader } from "metabase/ui";
+import { Box, Center, Icon, Input, Loader, Stack } from "metabase/ui";
 import Question from "metabase-lib/v1/Question";
 import type { SearchResult } from "metabase-types/api";
 
@@ -39,6 +40,7 @@ import { BenchPaneHeader } from "../BenchPaneHeader";
 import { ItemsListSection } from "../ItemsListSection/ItemsListSection";
 import { ItemsListSettings } from "../ItemsListSection/ItemsListSettings";
 import { ItemsListTreeNode } from "../ItemsListSection/ItemsListTreeNode";
+import { BenchNameInput } from "../shared/BenchNameInput";
 import { BenchTabs } from "../shared/BenchTabs";
 import {
   type SearchResultModal,
@@ -278,25 +280,36 @@ const ModelHeader = withRouter(
     return (
       <BenchPaneHeader
         title={
-          <BenchTabs
-            tabs={[
-              {
-                label: t`Query`,
-                to: `/bench/model/${params.slug}`,
-                icon: "sql" as const,
-              },
-              enableSettingsSidebar && {
-                label: t`Settings`,
-                to: `/bench/model/${params.slug}/settings`,
-                icon: "gear" as const,
-              },
-              modelCollectionId && {
-                label: t`Metadata`,
-                to: `/bench/metadata/collection/${modelCollectionId}/model/${params.slug}`,
-                icon: "database" as const,
-              },
-            ].filter((t) => !!t)}
-          />
+          <Stack>
+            <BenchNameInput
+              initialValue={question.card().name || ""}
+              maxLength={QUESTION_NAME_MAX_LENGTH}
+              onChange={() => {
+                // TODO: Update title (figure out if this is going to use `qb` actions or not)
+              }}
+            />
+            {question.isSaved() && (
+              <BenchTabs
+                tabs={[
+                  {
+                    label: t`Query`,
+                    to: `/bench/model/${params.slug}`,
+                    icon: "sql" as const,
+                  },
+                  enableSettingsSidebar && {
+                    label: t`Settings`,
+                    to: `/bench/model/${params.slug}/settings`,
+                    icon: "gear" as const,
+                  },
+                  modelCollectionId && {
+                    label: t`Metadata`,
+                    to: `/bench/metadata/collection/${modelCollectionId}/model/${params.slug}`,
+                    icon: "database" as const,
+                  },
+                ].filter((t) => !!t)}
+              />
+            )}
+          </Stack>
         }
         actions={actions}
       />
