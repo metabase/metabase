@@ -166,6 +166,23 @@ describe("open()", () => {
     expect(openInBlankWindow).toHaveBeenCalledWith(url);
   });
 
+  it("should allow default behavior when handleLink returns undefined", () => {
+    const handleLink = jest.fn().mockReturnValue(undefined);
+    getSdkGlobalPluginsMock.mockReturnValue({ handleLink });
+
+    const openInSameWindow = jest.fn();
+    const openInBlankWindow = jest.fn();
+    const url = "https://example.com/dashboard/1";
+
+    open(url, {
+      openInSameWindow,
+      openInBlankWindow,
+    });
+
+    expect(handleLink).toHaveBeenCalledWith(url);
+    expect(openInBlankWindow).toHaveBeenCalledWith(url);
+  });
+
   it("should not call handleLink when not in embedding SDK", async () => {
     await mockIsEmbeddingSdk(false);
     const handleLink = jest.fn();
