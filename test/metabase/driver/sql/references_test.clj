@@ -711,6 +711,26 @@ WHERE EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id)"))))
           :returned-fields [{:type :all-columns, :table {:table "orders"}}]}
          (->references "select * from orders where created_at between left and right"))))
 
+(deftest basic-select-table-alias-test
+  (is (= {:used-fields #{},
+          :returned-fields
+          [{:type :custom-field,
+            :alias "o",
+            :used-fields #{{:type :all-columns, :table {:table "orders"}}}}]}
+         (->references "select o from (select * from orders) as o"))))
+
+(deftest select-table-alias-with-alias-test
+  (is (= {:used-fields #{},
+          :returned-fields
+          [{:type :custom-field,
+            :alias "o2",
+            :used-fields #{{:type :all-columns, :table {:table "orders"}}}}]}
+         (->references "select o as o2 from (select * from orders) as o"))))
+
+(deftest table-function-test
+  (is (= {:used-fields #{}, :returned-fields [{:type :unknown-columns}]}
+         (->references "select i.* from generate_series(1, 500) as i"))))
+
 (deftest basic-cte-test
   (is (= {:used-fields
           #{{:column "name",
