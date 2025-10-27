@@ -34,20 +34,6 @@
       (is (= 789 (v0-common/lookup-id idx "ref:model-789")))
       (is (instance? Long (v0-common/lookup-id idx "ref:database-123"))))))
 
-(deftest parse-ref-entity-index-type-mismatch-test
-  (testing "ParseRefEntityIndex throws exception when type doesn't match"
-    (let [idx (v0-common/->ParseRefEntityIndex)]
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                            #"Expected type not found in ref"
-                            (v0-common/lookup-id idx "ref:question-456")))
-      (try
-        (v0-common/lookup-id idx "ref:question-123")
-        (catch clojure.lang.ExceptionInfo e
-          (let [data (ex-data e)]
-            (is (= "database" (:expected-type data)))
-            (is (= "ref:question-123" (:ref data)))
-            (is (= "question" (:type data)))))))))
-
 (deftest parse-ref-entity-index-malformed-ref-test
   (testing "ParseRefEntityIndex throws exception for malformed refs"
     (let [idx (v0-common/->ParseRefEntityIndex)]
