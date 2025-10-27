@@ -15,6 +15,7 @@ export type IconModel =
   | SearchModel
   | CollectionItemModel
   | "schema"
+  | "timeline"
   | "transform"
   | "user";
 
@@ -43,6 +44,7 @@ export const modelIconMap: Record<IconModel, IconName> = {
   metric: "metric",
   snippet: "unknown",
   document: "document",
+  timeline: "calendar",
   transform: "transform",
   user: "person",
 };
