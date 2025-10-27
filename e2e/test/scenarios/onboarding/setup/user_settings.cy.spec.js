@@ -120,6 +120,8 @@ describe("user > settings", () => {
 
     cy.visit("/account/profile");
 
+    cy.findByTestId("user-locale-select").findByRole("textbox").click();
+
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     H.popover().within(() => cy.findByText("Indonesian").click());
 
