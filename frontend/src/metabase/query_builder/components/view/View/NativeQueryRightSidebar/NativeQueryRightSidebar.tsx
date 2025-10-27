@@ -32,7 +32,7 @@ interface NativeQueryRightSidebarProps {
   selectTimelineEvents: () => void;
   deselectTimelineEvents: () => void;
   onCloseTimelines: () => void;
-  onSave: (question: Question) => Promise<Question>;
+  onSave: (question: Question) => Promise<void>;
   isShowingTemplateTagsEditor: boolean;
   isShowingDataReference: boolean;
   isShowingSnippetSidebar: boolean;

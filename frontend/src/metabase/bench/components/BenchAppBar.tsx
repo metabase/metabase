@@ -3,9 +3,9 @@ import { t } from "ttag";
 
 import { useBenchLayoutContext } from "metabase/bench/context/BenchLayoutContext";
 import { useBenchCurrentTab } from "metabase/bench/hooks/useBenchCurrentTab";
+import { ProfileLink } from "metabase/nav/components/ProfileLink";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import {
-  ActionIcon,
   Flex,
   Group,
   Icon,
@@ -21,12 +21,10 @@ import S from "./BenchAppBar.module.css";
 import { BenchNavMenu, BenchNavTitleMenu } from "./BenchNavMenu";
 
 export function BenchAppBar() {
-  const metabot = PLUGIN_METABOT.useMetabotAgent();
   const currentTab = useBenchCurrentTab();
   const { getTab, setTab } = useRememberBenchTab();
   const { onTogglePanel, isPanelCollapsed } = useBenchLayoutContext();
   const [isNavMenuOpen, setIsNavMenuOpen] = useState(() => !getTab());
-  const [isTitleMenuOpen, setIsTitleMenuOpen] = useState(false);
   useEffect(() => setTab(currentTab.id), [currentTab.id, setTab]);
 
   const hasPanelControl = onTogglePanel !== undefined;
@@ -38,9 +36,10 @@ export function BenchAppBar() {
       className={S.appBar}
       align="center"
       justify="space-between"
-      px="md"
+      pl="1.325rem"
+      pr="md"
     >
-      <Group gap="sm" wrap="nowrap">
+      <Group gap={0} wrap="nowrap">
         {hasPanelControl && (
           <Tooltip
             label={isPanelCollapsed ? t`Open sidebar` : t`Close sidebar`}
@@ -49,10 +48,6 @@ export function BenchAppBar() {
               w={36}
               h="100%"
               display="flex"
-              style={{
-                alignItems: "center",
-                justifyContent: "center",
-              }}
               onClick={onTogglePanel}
               className={S.toggleButton}
               aria-label={t`Toggle sidebar`}
@@ -62,11 +57,7 @@ export function BenchAppBar() {
           </Tooltip>
         )}
 
-        <BenchNavTitleMenu
-          isOpen={isTitleMenuOpen}
-          onToggle={() => setIsTitleMenuOpen(!isTitleMenuOpen)}
-          onClose={() => setIsTitleMenuOpen(false)}
-        />
+        <BenchNavTitleMenu />
 
         <Menu
           opened={isNavMenuOpen}
@@ -104,15 +95,9 @@ export function BenchAppBar() {
         </Menu>
       </Group>
 
-      <Group gap="xs">
-        {metabot && (
-          <ActionIcon
-            variant={metabot.visible ? "filled" : "subtle"}
-            onClick={() => metabot.setVisible(!metabot.visible)}
-          >
-            <Icon name="metabot" />
-          </ActionIcon>
-        )}
+      <Group gap="sm">
+        <PLUGIN_METABOT.MetabotAppBarButton />
+        <ProfileLink excludeItems={["workbench"]} />
       </Group>
     </Flex>
   );

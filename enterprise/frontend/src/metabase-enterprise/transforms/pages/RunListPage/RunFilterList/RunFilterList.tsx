@@ -2,9 +2,9 @@ import { replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import type { RelativeIntervalDirection } from "metabase/querying/filters/types";
 import { Group } from "metabase/ui";
-import { getRunListUrl } from "metabase-enterprise/transforms/urls";
 import type {
   Transform,
   TransformId,
@@ -14,12 +14,10 @@ import type {
   TransformTagId,
 } from "metabase-types/api";
 
-import { StatusFilterWidget } from "../../../components/StatusFilterWidget";
-import { TagFilterWidget } from "../../../components/TagFilterWidget";
-import { TimeFilterWidget } from "../../../components/TimeFilterWidget";
-import type { RunListParams } from "../../../types";
-
 import { RunMethodFilterWidget } from "./RunMethodFilterWidget";
+import { StatusFilterWidget } from "./StatusFilterWidget";
+import { TagFilterWidget } from "./TagFilterWidget";
+import { TimeFilterWidget } from "./TimeFilterWidget";
 import { TransformFilterWidget } from "./TransformFilterWidget";
 
 const PAST_INTERVAL_DIRECTIONS: RelativeIntervalDirection[] = [
@@ -28,7 +26,7 @@ const PAST_INTERVAL_DIRECTIONS: RelativeIntervalDirection[] = [
 ];
 
 type RunFilterListProps = {
-  params: RunListParams;
+  params: Urls.TransformRunListParams;
   transforms: Transform[];
   tags: TransformTag[];
 };
@@ -41,27 +39,31 @@ export function RunFilterList({
   const dispatch = useDispatch();
 
   const handleTransformsChange = (transformIds: TransformId[]) => {
-    dispatch(replace(getRunListUrl({ ...params, transformIds: transformIds })));
+    dispatch(
+      replace(Urls.transformRunList({ ...params, transformIds: transformIds })),
+    );
   };
 
   const handleStatusesChange = (statuses: TransformRunStatus[]) => {
-    dispatch(replace(getRunListUrl({ ...params, statuses })));
+    dispatch(replace(Urls.transformRunList({ ...params, statuses })));
   };
 
   const handleTagsChange = (tagIds: TransformTagId[]) => {
-    dispatch(replace(getRunListUrl({ ...params, transformTagIds: tagIds })));
+    dispatch(
+      replace(Urls.transformRunList({ ...params, transformTagIds: tagIds })),
+    );
   };
 
   const handleStartTimeChange = (startTime: string | undefined) => {
-    dispatch(replace(getRunListUrl({ ...params, startTime })));
+    dispatch(replace(Urls.transformRunList({ ...params, startTime })));
   };
 
   const handleEndTimeChange = (endTime: string | undefined) => {
-    dispatch(replace(getRunListUrl({ ...params, endTime })));
+    dispatch(replace(Urls.transformRunList({ ...params, endTime })));
   };
 
   const handleRunMethodsChange = (runMethods: TransformRunMethod[]) => {
-    dispatch(replace(getRunListUrl({ ...params, runMethods })));
+    dispatch(replace(Urls.transformRunList({ ...params, runMethods })));
   };
 
   return (

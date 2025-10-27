@@ -8,17 +8,8 @@ import {
 import { Flex } from "metabase/ui";
 import type { DatabaseId, TableId } from "metabase-types/api";
 
-import { useExpandedState, useTableLoader } from "../hooks";
-import type {
-  ChangeOptions,
-  DatabaseNode,
-  FlatItem,
-  SchemaNode,
-  TreePath,
-} from "../types";
 import {
   type NodeSelection,
-  flatten,
   getChildSchemas,
   getSchemaChildrenTableIds,
   getSchemaId,
@@ -27,7 +18,17 @@ import {
   noManuallySelectedDatabaseChildrenTables,
   noManuallySelectedSchemas,
   noManuallySelectedTables,
-} from "../utils";
+} from "../bulk-selection.utils";
+import { useExpandedState, useTableLoader } from "../hooks";
+import type {
+  ChangeOptions,
+  DatabaseNode,
+  FlatItem,
+  SchemaNode,
+  TreeNode,
+  TreePath,
+} from "../types";
+import { flatten } from "../utils";
 
 import { EditTableMetadataModal } from "./EditTableMetadataModal";
 import { EmptyState } from "./EmptyState";
@@ -329,7 +330,7 @@ export function Tree({ path, onChange }: Props) {
 
 function markAllSchemas(
   item: FlatItem,
-  allItems: FlatItem[],
+  allItems: FlatItem,
   targetChecked: "yes" | "no",
   selection: NodeSelection,
 ) {

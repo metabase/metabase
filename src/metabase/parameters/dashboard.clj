@@ -2,8 +2,7 @@
   (:require
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.custom-values :as custom-values]
@@ -56,10 +55,11 @@
   (let [dashboard       (t2/hydrate dashboard :resolved-params)
         param           (get-in dashboard [:resolved-params param-key])
         results         (for [{:keys [target] {:keys [card]} :dashcard} (:mappings param)
-                              :let [[_dimension field-ref opts] (->> (mbql.normalize/normalize-tokens target :ignore-path)
-                                                                     (mbql.u/check-clause :dimension))]
+                              :let [field-ref ((some-fn lib/parameter-target-field-ref
+                                                        lib/parameter-target-expression-ref)
+                                               target)]
                               :when field-ref]
-                          (custom-values/values-from-card card field-ref opts))]
+                          (custom-values/values-from-card card field-ref))]
     (when-some [values (seq (distinct (mapcat :values results)))]
       (let [has_more_values (boolean (some true? (map :has_more_values results)))]
         {:values          (cond->> values

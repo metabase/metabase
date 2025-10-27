@@ -28,6 +28,7 @@ type ValidateEvent<
     Record<Exclude<keyof T, keyof SearchEventSchema>, never>,
 > = T;
 
+// keep in sync with the `search` snowplow schema
 type SearchContentType =
   | "dashboard"
   | "card"

@@ -55,9 +55,10 @@ import {
   getUiControls,
 } from "metabase/query_builder/selectors";
 import { MetricEditor as QBMetricEditor } from "metabase/querying/metrics/components/MetricEditor/MetricEditor";
+import { QUESTION_NAME_MAX_LENGTH } from "metabase/questions/constants";
 import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
-import { Box, Center, Icon, Input, Loader } from "metabase/ui";
+import { Box, Center, Icon, Input, Loader, Stack } from "metabase/ui";
 import Question from "metabase-lib/v1/Question";
 import type { RawSeries, SearchResult } from "metabase-types/api";
 
@@ -71,6 +72,7 @@ import { ItemsListSettings } from "../ItemsListSection/ItemsListSettings";
 import { ItemsListTreeNode } from "../ItemsListSection/ItemsListTreeNode";
 import { ModelMoreMenu } from "../models/ModelMoreMenu";
 import { getTreeItems } from "../models/utils";
+import { BenchNameInput } from "../shared/BenchNameInput";
 import { BenchTabs } from "../shared/BenchTabs";
 import {
   type SearchResultModal,
@@ -293,18 +295,35 @@ const MetricHeader = ({
   question: Question;
 }) => {
   const enableSettingsSidebar = shouldShowQuestionSettingsSidebar(question);
+
   return (
     <BenchPaneHeader
       title={
-        <BenchTabs
-          tabs={[
-            { label: t`Query`, to: `/bench/metric/${params.slug}` },
-            enableSettingsSidebar && {
-              label: t`Settings`,
-              to: `/bench/metric/${params.slug}/settings`,
-            },
-          ].filter((t) => !!t)}
-        />
+        <Stack>
+          <BenchNameInput
+            initialValue={question.displayName() || ""}
+            maxLength={QUESTION_NAME_MAX_LENGTH}
+            onChange={() => {
+              // TODO: Update title (figure out if this is going to use `qb` actions or not)
+            }}
+          />
+          {question.isSaved() && (
+            <BenchTabs
+              tabs={[
+                {
+                  label: t`Query`,
+                  to: `/bench/metric/${params.slug}`,
+                  icon: "sql" as const,
+                },
+                enableSettingsSidebar && {
+                  label: t`Settings`,
+                  to: `/bench/metric/${params.slug}/settings`,
+                  icon: "gear" as const,
+                },
+              ].filter((t) => !!t)}
+            />
+          )}
+        </Stack>
       }
       actions={actions}
     />

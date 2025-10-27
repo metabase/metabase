@@ -192,6 +192,8 @@ import gear_settings_filled_component from "./gear_settings_filled.svg?component
 import gear_settings_filled_source from "./gear_settings_filled.svg?source";
 import gem_component from "./gem.svg?component";
 import gem_source from "./gem.svg?source";
+import git_branch_component from "./git_branch.svg?component";
+import git_branch_source from "./git_branch.svg?source";
 import globe_component from "./globe.svg?component";
 import globe_source from "./globe.svg?source";
 import google_component from "./google.svg?component";
@@ -288,6 +290,8 @@ import move_component from "./move.svg?component";
 import move_source from "./move.svg?source";
 import move_card_component from "./move_card.svg?component";
 import move_card_source from "./move_card.svg?source";
+import network_component from "./network.svg?component";
+import network_source from "./network.svg?source";
 import new_folder_component from "./new_folder.svg?component";
 import new_folder_source from "./new_folder.svg?source";
 import notebook_component from "./notebook.svg?component";
@@ -346,6 +350,8 @@ import refresh_component from "./refresh.svg?component";
 import refresh_source from "./refresh.svg?source";
 import refresh_downstream_component from "./refresh_downstream.svg?component";
 import refresh_downstream_source from "./refresh_downstream.svg?source";
+import repository_component from "./repository.svg?component";
+import repository_source from "./repository.svg?source";
 import return_component from "./return.svg?component";
 import return_source from "./return.svg?source";
 import revert_component from "./revert.svg?component";
@@ -420,6 +426,8 @@ import sun_component from "./sun.svg?component";
 import sun_source from "./sun.svg?source";
 import sync_component from "./sync.svg?component";
 import sync_source from "./sync.svg?source";
+import synced_collection_component from "./synced_collection.svg?component";
+import synced_collection_source from "./synced_collection.svg?source";
 import t_shirt_component from "./t-shirt.svg?component";
 import t_shirt_source from "./t-shirt.svg?source";
 import tab_component from "./tab.svg?component";
@@ -482,6 +490,8 @@ import waterfall_component from "./waterfall.svg?component";
 import waterfall_source from "./waterfall.svg?source";
 import webhook_component from "./webhook.svg?component";
 import webhook_source from "./webhook.svg?source";
+import workbench_component from "./workbench.svg?component";
+import workbench_source from "./workbench.svg?source";
 import zoom_in_component from "./zoom_in.svg?component";
 import zoom_in_source from "./zoom_in.svg?source";
 import zoom_out_component from "./zoom_out.svg?component";
@@ -857,6 +867,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: gem_component,
       source: gem_source,
     },
+    git_branch: {
+      component: git_branch_component,
+      source: git_branch_source,
+    },
     globe: {
       component: globe_component,
       source: globe_source,
@@ -1053,6 +1067,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: new_folder_component,
       source: new_folder_source,
     },
+    network: {
+      component: network_component,
+      source: network_source,
+    },
     notebook: {
       component: notebook_component,
       source: notebook_source,
@@ -1197,6 +1215,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: sync_component,
       source: sync_source,
     },
+    synced_collection: {
+      component: synced_collection_component,
+      source: synced_collection_source,
+    },
     question: {
       component: question_component,
       source: question_source,
@@ -1224,6 +1246,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     refresh_downstream: {
       component: refresh_downstream_component,
       source: refresh_downstream_source,
+    },
+    repository: {
+      component: repository_component,
+      source: repository_source,
     },
     rocket: {
       component: rocket_component,
@@ -1447,6 +1473,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: webhook_component,
       source: webhook_source,
     },
+    workbench: {
+      component: workbench_component,
+      source: workbench_source,
+    },
     "10k": {
       component: ten_thousand_component,
       source: ten_thousand_source,
@@ -1579,6 +1609,7 @@ export type IconName =
   | "gear_settings_filled"
   | "gem"
   | "globe"
+  | "git_branch"
   | "grabber"
   | "grid"
   | "group"
@@ -1627,6 +1658,7 @@ export type IconName =
   | "move"
   | "move_card"
   | "new_folder"
+  | "network"
   | "notebook"
   | "number"
   | "palette"
@@ -1661,6 +1693,7 @@ export type IconName =
   | "sort_arrows"
   | "sum"
   | "sync"
+  | "synced_collection"
   | "question"
   | "quote"
   | "redo"
@@ -1668,6 +1701,7 @@ export type IconName =
   | "reference"
   | "refresh"
   | "refresh_downstream"
+  | "repository"
   | "rocket"
   | "ruler"
   | "schema"
@@ -1722,6 +1756,7 @@ export type IconName =
   | "warning_triangle_filled"
   | "waterfall"
   | "webhook"
+  | "workbench"
   | "10k"
   | "1m"
   | "zoom_in"

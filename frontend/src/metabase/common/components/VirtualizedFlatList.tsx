@@ -10,7 +10,7 @@ import S from "./VirtualizedFlatList.module.css";
 interface VirtualizedFlatListProps<T> {
   items: T[];
   renderItem: (item: T, index: number) => ReactNode;
-  estimateSize?: number;
+  estimateSize?: number | ((item: T) => number);
   selectedId?: number | string;
   getItemId?: (item: T) => number | string;
   className?: string;
@@ -26,10 +26,24 @@ export function VirtualizedFlatList<T>({
   getItemId,
   className,
 }: VirtualizedFlatListProps<T>) {
-  const parentRef = useRef<HTMLDivElement>(null);
+  const parentRef = useRef<HTMLDivElement | null>(null);
 
   const getScrollElement = useCallback(() => parentRef.current, []);
-  const getEstimateSize = useCallback(() => estimateSize, [estimateSize]);
+  const getEstimateSize = useCallback(
+    (index: number) => {
+      if (typeof estimateSize === "number") {
+        return estimateSize;
+      }
+
+      if (typeof estimateSize === "function") {
+        const item = items[index];
+
+        return item ? estimateSize(item) : DEFAULT_ITEM_HEIGHT;
+      }
+      return DEFAULT_ITEM_HEIGHT;
+    },
+    [estimateSize, items],
+  );
 
   const virtualizer = useVirtualizer({
     count: items.length,

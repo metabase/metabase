@@ -38,8 +38,7 @@
       "members": [
         "piranha",
         "crisptrutski",
-        "spalt08",
-        "kulyk"
+        "spalt08"
       ]
     },
     {
@@ -54,7 +53,10 @@
       "label": ".Team/DevEx",
       "members": [
         "camsaul",
-        "escherize"
+        "dpsutton",
+        "escherize",
+        "fraserdrops",
+        "nemanjaglumac"
       ]
     },
      {
@@ -68,14 +70,6 @@
         "somtom",
         "tsplude",
         "lbrdnk"
-      ]
-    },
-    {
-      "name": "Product Growth",
-      "label": ".Team/ProductGrowth",
-      "members": [
-        "nemanjaglumac",
-        "andsalves"
       ]
     },
     {
@@ -104,7 +98,8 @@
         "edpaget",
         "deniskaber",
         "alxnddr",
-        "bpander"
+        "bpander",
+        "andsalves"
       ]
     },
     {

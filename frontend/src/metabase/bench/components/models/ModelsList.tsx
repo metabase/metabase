@@ -18,6 +18,7 @@ import { useItemsListFilter } from "metabase/bench/hooks/useItemsListFilter";
 import { getIcon } from "metabase/browse/models/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
 import { SidesheetCard } from "metabase/common/components/Sidesheet/SidesheetCard";
+import { ToolbarButton } from "metabase/common/components/ToolbarButton/ToolbarButton";
 import { VirtualizedFlatList } from "metabase/common/components/VirtualizedFlatList";
 import { VirtualizedTree } from "metabase/common/components/tree/VirtualizedTree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
@@ -26,11 +27,23 @@ import { useDispatch, useSelector } from "metabase/lib/redux/hooks";
 import { EmptyState } from "metabase/metadata/pages/DataModel/components/TablePicker/components/EmptyState";
 import type { SidebarFeatures } from "metabase/query_builder/components/NativeQueryEditor/types";
 import { ModelCacheManagementSection } from "metabase/query_builder/components/view/sidebars/ModelCacheManagementSection";
+import { QuestionInfoSidebar } from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/QuestionInfoSidebar";
 import { shouldShowQuestionSettingsSidebar } from "metabase/query_builder/components/view/sidebars/QuestionSettingsSidebar";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
+import { useSaveQuestion } from "metabase/query_builder/containers/use-save-question";
 import { getQuestion } from "metabase/query_builder/selectors";
+import { QUESTION_NAME_MAX_LENGTH } from "metabase/questions/constants";
 import { getUser } from "metabase/selectors/user";
-import { Box, Center, Icon, Input, Loader } from "metabase/ui";
+import {
+  Box,
+  Center,
+  FixedSizeIcon,
+  Flex,
+  Icon,
+  Input,
+  Loader,
+  Stack,
+} from "metabase/ui";
 import Question from "metabase-lib/v1/Question";
 import type { SearchResult } from "metabase-types/api";
 
@@ -39,6 +52,7 @@ import { BenchPaneHeader } from "../BenchPaneHeader";
 import { ItemsListSection } from "../ItemsListSection/ItemsListSection";
 import { ItemsListSettings } from "../ItemsListSection/ItemsListSettings";
 import { ItemsListTreeNode } from "../ItemsListSection/ItemsListTreeNode";
+import { BenchNameInput } from "../shared/BenchNameInput";
 import { BenchTabs } from "../shared/BenchTabs";
 import {
   type SearchResultModal,
@@ -265,7 +279,10 @@ const ModelHeader = withRouter(
     actions?: ReactNode;
     params: { slug: string; tab?: string };
   }) => {
+    const handleSave = useSaveQuestion();
+
     const enableSettingsSidebar = shouldShowQuestionSettingsSidebar(question);
+    const [modal, setModal] = useState<"info" | null>(null);
 
     const { data } = useSearchQuery({
       ids: [question.id()],
@@ -276,24 +293,62 @@ const ModelHeader = withRouter(
       data?.data?.[0]?.collection && (data?.data?.[0]?.collection.id || "root");
 
     return (
-      <BenchPaneHeader
-        title={
-          <BenchTabs
-            tabs={[
-              { label: t`Query`, to: `/bench/model/${params.slug}` },
-              enableSettingsSidebar && {
-                label: t`Settings`,
-                to: `/bench/model/${params.slug}/settings`,
-              },
-              modelCollectionId && {
-                label: t`Metadata`,
-                to: `/bench/metadata/collection/${modelCollectionId}/model/${params.slug}`,
-              },
-            ].filter((t) => !!t)}
+      <>
+        <BenchPaneHeader
+          title={
+            <Stack>
+              <BenchNameInput
+                initialValue={question.card().name || ""}
+                maxLength={QUESTION_NAME_MAX_LENGTH}
+                onChange={() => {
+                  // TODO: Update title (figure out if this is going to use `qb` actions or not)
+                }}
+              />
+              {question.isSaved() && (
+                <BenchTabs
+                  tabs={[
+                    {
+                      label: t`Query`,
+                      to: `/bench/model/${params.slug}`,
+                      icon: "sql" as const,
+                    },
+                    enableSettingsSidebar && {
+                      label: t`Settings`,
+                      to: `/bench/model/${params.slug}/settings`,
+                      icon: "gear" as const,
+                    },
+                    modelCollectionId && {
+                      label: t`Metadata`,
+                      to: `/bench/metadata/collection/${modelCollectionId}/model/${params.slug}`,
+                      icon: "database" as const,
+                    },
+                  ].filter((t) => !!t)}
+                />
+              )}
+            </Stack>
+          }
+          actions={
+            <Flex align="center">
+              {actions}
+              {question.isSaved()}
+              <ToolbarButton
+                aria-label={t`More info`}
+                ml="md"
+                onClick={() => setModal("info")}
+              >
+                <FixedSizeIcon name="info" />
+              </ToolbarButton>
+            </Flex>
+          }
+        />
+        {modal === "info" && (
+          <QuestionInfoSidebar
+            question={question}
+            onSave={handleSave}
+            onClose={() => setModal(null)}
           />
-        }
-        actions={actions}
-      />
+        )}
+      </>
     );
   },
 );
@@ -314,6 +369,7 @@ export const ModelEditor = (props: {
 
   return (
     <QueryBuilder
+      key={props.params.slug}
       {...props}
       Header={ModelEditorHeader}
       preventCancel

@@ -14,27 +14,18 @@ import {
   Text,
   rem,
 } from "metabase/ui";
-import type { DatabaseId, SchemaName, TableId } from "metabase-types/api";
 
 import { getUrl } from "../../../utils";
 import { TYPE_ICONS } from "../constants";
 import type {
   CollectionItem,
-  DatabaseNode,
   FlatItem,
   ItemType,
   ModelItem,
-  SchemaNode,
   TableItem,
   TreePath,
 } from "../types";
-import {
-  areSchemasSelected,
-  areTablesSelected,
-  getSchemaId,
-  isItemWithHiddenExpandIcon,
-  isLeafNode,
-} from "../utils";
+import { isItemWithHiddenExpandIcon, isLeafNode } from "../utils";
 
 import S from "./Results.module.css";
 

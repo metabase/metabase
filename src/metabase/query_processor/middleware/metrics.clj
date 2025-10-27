@@ -255,7 +255,7 @@
                          :aggregation
                          (fetch-referenced-metrics query))]
       (let [temp-query (temp-query-at-stage-path query path)
-            unique-name-fn (lib.util/unique-name-generator
+            unique-name-fn (lib/unique-name-generator
                             (map
                              (comp :lib/expression-name second)
                              (lib/expressions temp-query)))

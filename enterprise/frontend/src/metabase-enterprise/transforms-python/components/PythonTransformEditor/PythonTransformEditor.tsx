@@ -1,61 +1,35 @@
 import { useHotkeys } from "@mantine/hooks";
-import { useState } from "react";
 
-import { Stack } from "metabase/ui";
-import { EditorHeader } from "metabase-enterprise/transforms/components/QueryEditor/EditorHeader";
-import { useRegisterMetabotTransformContext } from "metabase-enterprise/transforms/hooks/use-register-transform-metabot-context";
-import type {
-  PythonTransformSource,
-  PythonTransformSourceDraft,
-  PythonTransformTableAliases,
-  Table,
-  Transform,
-} from "metabase-types/api";
+import type { PythonTransformEditorProps } from "metabase/plugins";
+import { Flex, Stack } from "metabase/ui";
+import { TransformHeaderView } from "metabase-enterprise/transforms/components/TransformHeader";
+import type { PythonTransformTableAliases, Table } from "metabase-types/api";
 
 import { PythonDataPicker } from "./PythonDataPicker";
+import { PythonEditorActions } from "./PythonEditorActions";
 import { PythonEditorBody } from "./PythonEditorBody";
 import { PythonEditorResults } from "./PythonEditorResults";
+import S from "./PythonTransformEditor.module.css";
 import {
-  getValidationResult,
-  isPythonTransformSource,
   updateTransformSignature,
   useShouldShowPythonDebugger,
   useTestPythonTransform,
 } from "./utils";
 
-export type PythonTransformEditorProps = {
-  transform?: Transform | undefined;
-  initialSource: PythonTransformSourceDraft;
-  proposedSource?: PythonTransformSource;
-  isNew?: boolean;
-  isSaving?: boolean;
-  isRunnable?: boolean;
-  onChange?: (newSource: PythonTransformSourceDraft) => void;
-  onSave: (newSource: PythonTransformSource) => void;
-  onCancel: () => void;
-  onRejectProposed?: () => void;
-  onAcceptProposed?: (query: PythonTransformSource) => void;
-};
-
 export function PythonTransformEditor({
-  transform,
-  initialSource,
+  id,
+  name,
+  source,
   proposedSource,
-  isNew = true,
-  isSaving = false,
-  isRunnable = true,
-  onChange,
+  isSaving,
+  isSourceDirty,
+  onNameChange,
+  onSourceChange,
   onSave,
   onCancel,
-  onRejectProposed,
   onAcceptProposed,
+  onRejectProposed,
 }: PythonTransformEditorProps) {
-  const [source, setSource] = useState(initialSource);
-  const saveSource = proposedSource ?? source;
-  const [isSourceDirty, setIsSourceDirty] = useState(false);
-
-  useRegisterMetabotTransformContext(transform, proposedSource ?? source);
-
   const { isRunning, isDirty, cancel, run, executionResult } =
     useTestPythonTransform(source);
 
@@ -64,9 +38,7 @@ export function PythonTransformEditor({
       ...source,
       body,
     };
-    setSource(newSource);
-    setIsSourceDirty(true);
-    onChange?.(newSource);
+    onSourceChange(newSource);
   };
 
   const handleDataChange = (
@@ -86,24 +58,8 @@ export function PythonTransformEditor({
       "source-database": database,
       "source-tables": sourceTables,
     };
-    setSource(newSource);
-    setIsSourceDirty(true);
+    onSourceChange(newSource);
   };
-
-  const handleSave = () => {
-    if (isPythonTransformSource(saveSource)) {
-      onSave(saveSource);
-    }
-  };
-
-  const handleAcceptProposed =
-    proposedSource && onAcceptProposed
-      ? () => {
-          setSource(proposedSource);
-          setIsSourceDirty(true);
-          onAcceptProposed(proposedSource);
-        }
-      : undefined;
 
   const showDebugger = useShouldShowPythonDebugger();
 
@@ -113,14 +69,12 @@ export function PythonTransformEditor({
     }
     if (isRunning) {
       cancel();
-    } else if (isRunnable && isPythonTransformSource(saveSource)) {
+    } else {
       run();
     }
   };
 
   useHotkeys([["mod+Enter", handleCmdEnter]], []);
-
-  const validationResult = getValidationResult(saveSource);
 
   return (
     <Stack
@@ -130,33 +84,41 @@ export function PythonTransformEditor({
       data-testid="transform-query-editor"
       gap={0}
     >
-      <EditorHeader
-        isNew={isNew}
-        isSaving={isSaving}
-        hasProposedQuery={!!proposedSource}
-        onSave={handleSave}
-        onCancel={onCancel}
-        validationResult={validationResult}
-        isQueryDirty={isSourceDirty}
+      <TransformHeaderView
+        id={id}
+        name={name}
+        actions={
+          (isSaving || isSourceDirty) && (
+            <PythonEditorActions
+              source={source}
+              isSaving={isSaving}
+              onSave={onSave}
+              onCancel={onCancel}
+            />
+          )
+        }
+        onNameChange={onNameChange}
       />
-      <PythonDataPicker
-        database={saveSource["source-database"]}
-        tables={saveSource["source-tables"]}
-        onChange={handleDataChange}
-      />
-      <PythonEditorBody
-        isRunnable={isRunnable && isPythonTransformSource(source)}
-        isRunning={isRunning}
-        isDirty={isDirty}
-        onRun={run}
-        onCancel={cancel}
-        source={source.body}
-        proposedSource={proposedSource?.body}
-        onChange={handleScriptChange}
-        withDebugger={showDebugger}
-        onAcceptProposed={handleAcceptProposed}
-        onRejectProposed={onRejectProposed}
-      />
+      <Flex className={S.main}>
+        <PythonDataPicker
+          database={source["source-database"]}
+          tables={source["source-tables"]}
+          onChange={handleDataChange}
+        />
+        <PythonEditorBody
+          isRunnable
+          isRunning={isRunning}
+          isDirty={isDirty}
+          onRun={run}
+          onCancel={cancel}
+          source={source.body}
+          proposedSource={proposedSource?.body}
+          onChange={handleScriptChange}
+          withDebugger={showDebugger}
+          onAcceptProposed={onAcceptProposed}
+          onRejectProposed={onRejectProposed}
+        />
+      </Flex>
       {showDebugger && (
         <PythonEditorResults
           isRunning={isRunning}

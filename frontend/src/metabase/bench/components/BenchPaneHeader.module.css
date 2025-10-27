@@ -1,0 +1,5 @@
+.root {
+  &.withBorder {
+    border-bottom: 1px solid var(--mb-color-border);
+  }
+}

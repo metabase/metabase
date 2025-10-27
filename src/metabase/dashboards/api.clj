@@ -12,6 +12,7 @@
    [metabase.app-db.core :as app-db]
    [metabase.channel.email.messages :as messages]
    [metabase.collections.api :as api.collection]
+   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.dashboards.models.dashboard :as dashboard]
@@ -109,6 +110,7 @@
                  :collection_authority_level
                  :can_write
                  :param_fields
+                 :is_remote_synced
                  [:moderation_reviews :moderator_details]
                  [:collection :is_personal :effective_location]]
         (dashboards.settings/dashboards-save-last-used-parameters) (cons :last_used_param_values)
@@ -127,7 +129,7 @@
        [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
        [:collection_position {:optional true} [:maybe ms/PositiveInt]]]]
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
-  (collection/check-write-perms-for-collection collection_id)
+  (api/create-check :model/Dashboard {:collection_id collection_id})
   (lib-be/with-metadata-provider-cache
     (let [dashboard-data {:name                name
                           :description         description
@@ -495,7 +497,7 @@
                                               [:collection_position {:optional true} [:maybe ms/PositiveInt]]
                                               [:is_deep_copy        {:default false} [:maybe :boolean]]]]
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
-  (collection/check-write-perms-for-collection collection_id)
+  (api/create-check :model/Dashboard {:collection_id collection_id})
   (api/check-400 (not (and (= is_deep_copy false)
                            (t2/exists? :model/Card
                                        :dashboard_id from-dashboard-id
@@ -529,9 +531,12 @@
                                                                             id->referenced-card
                                                                             id->new-tab-id))]
                              (api/check-500 (dashboard/add-dashcards! dash dashcards)))
-                           (cond-> dash
-                             (seq uncopied)
-                             (assoc :uncopied uncopied))))]
+                           (u/prog1 (cond-> dash
+                                      (seq uncopied)
+                                      (assoc :uncopied uncopied))
+                             (when (collections/moving-into-remote-synced? (:collection_id existing-dashboard)
+                                                                           collection_id)
+                               (collections/check-non-remote-synced-dependencies <>)))))]
     (analytics/track-event! :snowplow/dashboard
                             {:event        :dashboard-created
                              :dashboard-id (u/the-id dashboard)})
@@ -976,7 +981,9 @@
                (reset! changes-stats
                        (merge
                         (select-keys tabs-changes-stats [:created-tab-ids :deleted-tab-ids :total-num-tabs])
-                        (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards]))))))
+                        (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards])))))
+
+           (collections/check-for-remote-sync-update current-dash))
          true))
       (let [dashboard (t2/select-one :model/Dashboard id)]
         ;; skip publishing the event if it's just a change in its collection position
@@ -1098,7 +1105,7 @@
                                       [:parent-collection-id ms/PositiveInt]]
    _query-params
    dashboard]
-  (collection/check-write-perms-for-collection parent-collection-id)
+  (api/create-check :model/Dashboard {:collection_id parent-collection-id})
   (let [dashboard (dashboard/save-transient-dashboard! dashboard parent-collection-id)]
     (events/publish-event! :event/dashboard-create {:object dashboard :user-id api/*current-user-id*})
     dashboard))

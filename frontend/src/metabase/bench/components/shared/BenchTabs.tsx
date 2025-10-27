@@ -1,10 +1,11 @@
 import { Link } from "react-router";
 
-import { Button, Flex } from "metabase/ui";
+import { Button, FixedSizeIcon, Flex, type IconName } from "metabase/ui";
 
 interface TabDef {
   label: string;
   to: string;
+  icon: IconName;
 }
 
 interface BenchTabsProps {
@@ -14,7 +15,7 @@ interface BenchTabsProps {
 export const BenchTabs = ({ tabs }: BenchTabsProps) => {
   return (
     <Flex gap="sm">
-      {tabs.map(({ label, to }) => (
+      {tabs.map(({ label, to, icon }) => (
         <Button
           key={label}
           component={Link}
@@ -26,6 +27,12 @@ export const BenchTabs = ({ tabs }: BenchTabsProps) => {
             c: "brand",
             bg: "brand-light",
           })}
+          leftSection={
+            <FixedSizeIcon
+              name={icon}
+              opacity={to === location.pathname ? 1 : 0.6}
+            />
+          }
         >
           {label}
         </Button>

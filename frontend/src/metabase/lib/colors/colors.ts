@@ -241,7 +241,7 @@ const baseColors = {
 export const colorConfig = {
   "accent-gray-dark": {
     light: baseColors.orion[20],
-    dark: baseColors.black,
+    dark: baseColors.orion[110],
   },
   "accent-gray-light": {
     light: baseColors.orion[5],
@@ -268,6 +268,10 @@ export const colorConfig = {
     light: baseColors.orionAlpha[10],
     dark: baseColors.orionAlphaInverse[10],
   },
+  "background-disabled-inverse": {
+    light: baseColors.orionAlphaInverse[10],
+    dark: baseColors.orionAlpha[10],
+  },
   "background-error-secondary": {
     light: baseColors.lobster[5],
     dark: baseColors.lobster[90],
@@ -276,7 +280,10 @@ export const colorConfig = {
     light: `color-mix(in srgb, var(--mb-color-brand) 15%, transparent)`, //baseColors.oceanAlpha[10],
     dark: `color-mix(in srgb, var(--mb-color-brand) 15%, transparent)`, //baseColors.oceanAlpha[20],
   },
-
+  "background-hover-light": {
+    light: `color-mix(in srgb, var(--mb-color-brand) 5%, transparent)`, //baseColors.oceanAlpha[5],
+    dark: `color-mix(in srgb, var(--mb-color-brand) 5%, transparent)`, //baseColors.oceanAlpha[10],
+  },
   "background-inverse": {
     light: baseColors.orion[80],
     dark: baseColors.orion[20],
@@ -385,7 +392,7 @@ export const colorConfig = {
   },
   focus: {
     light: baseColors.blue[20],
-    dark: baseColors.blue[50],
+    dark: baseColors.blue[70],
   },
   "icon-primary-disabled": {
     light: baseColors.orion[30],
@@ -442,7 +449,7 @@ export const colorConfig = {
   },
   shadow: {
     light: baseColors.orionAlpha[20],
-    dark: `color-mix(in srgb, ${baseColors.black} 20%, transparent)`,
+    dark: `color-mix(in srgb, ${baseColors.orion[110]} 20%, transparent)`,
   },
   "success-darker": {
     //should be success-primary?
@@ -481,6 +488,10 @@ export const colorConfig = {
   "text-disabled": {
     light: baseColors.orionAlpha[40],
     dark: baseColors.orionAlphaInverse[40],
+  },
+  "text-disabled-inverse": {
+    light: baseColors.orionAlphaInverse[40],
+    dark: baseColors.orionAlpha[40],
   },
   "text-hover": {
     light: baseColors.brand[60],
@@ -546,7 +557,7 @@ export const colorConfig = {
   },
   "tooltip-text": {
     light: baseColors.white,
-    dark: baseColors.white,
+    dark: baseColors.orionAlphaInverse[80],
   },
   warning: {
     light: baseColors.dubloon[30],
@@ -571,7 +582,7 @@ export const colorConfig = {
   white: {
     //should be changed to be semantic
     light: baseColors.white,
-    dark: baseColors.black,
+    dark: baseColors.orion[110],
   },
   // Legacy colors (keeping existing ones for backward compatibility)
   accent0: {
@@ -608,11 +619,11 @@ export const colorConfig = {
   },
   "bg-primary": {
     light: baseColors.white,
-    dark: baseColors.black,
+    dark: baseColors.orion[110],
   },
   "bg-secondary": {
     light: baseColors.orion[5],
-    dark: baseColors.black,
+    dark: baseColors.orion[100],
   },
   "bg-tertiary": {
     //I don't think this is used?

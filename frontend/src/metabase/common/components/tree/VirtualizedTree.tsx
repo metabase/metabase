@@ -8,7 +8,7 @@ import { Box } from "metabase/ui";
 
 import { TreeNode as DefaultTreeNode } from "./TreeNode";
 import S from "./VirtualizedTree.module.css";
-import type { ITreeNodeItem, TreeNodeComponent } from "./types";
+import type { ITreeNodeItem, TreeNodeProps } from "./types";
 import { getAllExpandableIds, getInitialExpandedIds } from "./utils";
 
 interface VirtualizedTreeProps {
@@ -19,7 +19,8 @@ interface VirtualizedTreeProps {
   initiallyExpanded?: boolean;
   onSelect?: (item: ITreeNodeItem) => void;
   rightSection?: (item: ITreeNodeItem) => React.ReactNode;
-  TreeNode?: TreeNodeComponent;
+  TreeNode?: React.ComponentType<React.PropsWithChildren<TreeNodeProps>>;
+  estimateSize?: number | ((item: ITreeNodeItem) => number);
   className?: string;
 }
 
@@ -66,6 +67,7 @@ export function VirtualizedTree({
   initiallyExpanded = false,
   onSelect,
   TreeNode = DefaultTreeNode,
+  estimateSize = ITEM_HEIGHT,
   className,
   rightSection,
 }: VirtualizedTreeProps) {
@@ -124,12 +126,26 @@ export function VirtualizedTree({
   const parentRef = useRef<HTMLDivElement>(null);
 
   const getScrollElement = useCallback(() => parentRef.current, []);
-  const estimateSize = useCallback(() => ITEM_HEIGHT, []);
+  const getEstimateSize = useCallback(
+    (index: number) => {
+      if (typeof estimateSize === "number") {
+        return estimateSize;
+      }
+
+      if (typeof estimateSize === "function") {
+        const item = flatItems[index];
+
+        return item ? estimateSize(item.item) : ITEM_HEIGHT;
+      }
+      return ITEM_HEIGHT;
+    },
+    [estimateSize, flatItems],
+  );
 
   const virtualizer = useVirtualizer({
     count: flatItems.length,
     getScrollElement,
-    estimateSize,
+    estimateSize: getEstimateSize,
     overscan: 5,
   });
 

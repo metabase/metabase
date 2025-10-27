@@ -1,16 +1,17 @@
 import cx from "classnames";
 import type React from "react";
-import { type Ref, forwardRef, useEffect } from "react";
+import { type Ref, forwardRef, useEffect, useMemo } from "react";
 import type { ResizeHandle as HandleAxis } from "react-resizable";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { replace } from "react-router-redux";
 
 import { BenchLayoutProvider } from "metabase/bench/context/BenchLayoutContext";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_METABOT } from "metabase/plugins";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Flex, Stack } from "metabase/ui";
 
-import { BENCH_NAV_ITEMS, OVERVIEW_ITEM } from "../constants/navigation";
+import { OVERVIEW_ITEM, getBenchNavItems } from "../constants/navigation";
 import { useRememberBenchTab } from "../hooks/useBenchRememberTab";
 
 import S from "./BenchApp.module.css";
@@ -95,13 +96,16 @@ export const BenchApp = ({ children }: { children: React.ReactNode }) => {
 export const BenchIndex = () => {
   const { getTab } = useRememberBenchTab();
   const dispatch = useDispatch();
+  const isAdmin = useSelector(getUserIsAdmin);
+  const navItems = useMemo(() => getBenchNavItems(isAdmin, true), [isAdmin]);
+
   useEffect(() => {
     const tabId = getTab();
     const navItem =
-      (tabId && BENCH_NAV_ITEMS.find((navItem) => navItem.id === tabId)) ||
+      (tabId && navItems.find((navItem) => navItem.id === tabId)) ||
       OVERVIEW_ITEM;
     dispatch(replace(navItem.url));
-  }, [dispatch, getTab]);
+  }, [dispatch, getTab, navItems]);
   return null;
 };
 

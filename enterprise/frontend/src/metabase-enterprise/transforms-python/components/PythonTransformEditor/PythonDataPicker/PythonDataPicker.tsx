@@ -10,7 +10,7 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { DatabaseDataSelector } from "metabase/query_builder/components/DataSelector";
-import { ActionIcon, Box, Button, Flex, Icon, Stack, Text } from "metabase/ui";
+import { ActionIcon, Box, Button, Icon, Stack, Text } from "metabase/ui";
 import type {
   Database,
   DatabaseId,
@@ -144,7 +144,7 @@ export function PythonDataPicker({
   };
 
   return (
-    <Flex gap="sm">
+    <Stack p="md" gap="sm">
       <ActionIcon onClick={toggleCollapse} py="md">
         <Icon
           name={isCollapsed ? "chevronright" : "chevronleft"}
@@ -152,7 +152,7 @@ export function PythonDataPicker({
         />
       </ActionIcon>
       {!isCollapsed && (
-        <Flex p="md" pt={0} gap="md" w="100%" data-testid="python-data-picker">
+        <Stack gap="md" w="100%" data-testid="python-data-picker">
           <Box>
             <Text fw="bold">{t`Source database`}</Text>
             <Text size="sm" c="text-light" mb="sm">
@@ -198,9 +198,9 @@ export function PythonDataPicker({
               </Stack>
             </Box>
           )}
-        </Flex>
+        </Stack>
       )}
-    </Flex>
+    </Stack>
   );
 }
 

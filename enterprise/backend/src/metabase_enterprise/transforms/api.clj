@@ -22,7 +22,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.jvm :as u.jvm]
-   [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [ring.util.response :as response]
@@ -153,14 +152,12 @@
   "Get a specific transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (log/info "get transform" id)
   (get-transform id))
 
 (api.macros/defendpoint :get "/:id/dependencies"
   "Get the dependencies of a specific transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (log/info "get dependencies for transform" id)
   (let [id->transform (t2/select-pk->fn identity :model/Transform)
         _ (api/check-404 (api/read-check (get id->transform id)))
         global-ordering (transforms.ordering/transform-ordering (vals id->transform))
@@ -180,7 +177,6 @@
     [:start_time {:optional true} [:maybe ms/NonBlankString]]
     [:end_time {:optional true} [:maybe ms/NonBlankString]]
     [:run_methods {:optional true} [:maybe (ms/QueryVectorOf [:enum "manual" "cron"])]]]]
-  (log/info "get runs")
   (api/check-superuser)
   (-> (transform-run/paged-runs (assoc query-params
                                        :offset (request/offset)
@@ -199,7 +195,6 @@
             [:target {:optional true} ::transform-target]
             [:run_trigger {:optional true} ::run-trigger]
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
-  (log/info "put transform" id)
   (let [transform (t2/with-transaction [_]
                     ;; Cycle detection should occur within the transaction to avoid race
                     (let [old (api/write-check (t2/select-one :model/Transform id))
@@ -228,7 +223,6 @@
   "Delete a transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (log/info "delete transform" id)
   (api/write-check :model/Transform id)
   (t2/delete! :model/Transform id)
   nil)
@@ -237,7 +231,6 @@
   "Delete a transform's output table."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (log/info "delete transform target table" id)
   (api/write-check :model/Transform id)
   (transforms.util/delete-target-table-by-id! id)
   nil)
@@ -246,7 +239,6 @@
   "Cancel the current run for a given transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (log/info "canceling transform " id)
   (api/write-check :model/Transform id)
   (let [transform (api/check-404 (t2/select-one :model/Transform id))
         run (api/check-404 (transform-run/running-run-for-transform-id id))]
@@ -259,7 +251,6 @@
   "Run a transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (log/info "run transform" id)
   (api/write-check :model/Transform id)
   (let [transform (api/check-404 (t2/select-one :model/Transform id))
         _         (check-feature-enabled! transform)

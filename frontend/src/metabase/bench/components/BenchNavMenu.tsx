@@ -1,15 +1,19 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useMemo } from "react";
 import { Link } from "react-router";
-import { t } from "ttag";
 
+import { useListDatabasesQuery } from "metabase/api/database";
 import { BenchNavItem } from "metabase/bench/components/nav/BenchNavItem";
 import {
-  BENCH_NAV_SECTIONS,
   OVERVIEW_ITEM,
+  getBenchNavSections,
 } from "metabase/bench/constants/navigation";
-import ExternalLink from "metabase/common/components/ExternalLink";
 import LogoIcon from "metabase/common/components/LogoIcon";
-import { Box, Icon, Menu, Stack, Text, UnstyledButton } from "metabase/ui";
+import { useSelector } from "metabase/lib/redux";
+import { getHasNativeWrite } from "metabase/selectors/data";
+import { getUserIsAdmin } from "metabase/selectors/user";
+import { Box, Stack, Text, UnstyledButton } from "metabase/ui";
+
+import S from "./BenchNavMenu.module.css";
 
 interface BenchNavSectionProps {
   title: string;
@@ -32,6 +36,14 @@ interface BenchNavMenuProps {
 }
 
 export function BenchNavMenu({ onClose }: BenchNavMenuProps) {
+  const isAdmin = useSelector(getUserIsAdmin);
+  const { data } = useListDatabasesQuery();
+  const hasNativeWrite = getHasNativeWrite(data?.data ?? []);
+  const navSections = useMemo(
+    () => getBenchNavSections(isAdmin, hasNativeWrite),
+    [isAdmin, hasNativeWrite],
+  );
+
   return (
     <Box w={320} data-testid="bench-nav-menu">
       <Stack gap={0} p="lg">
@@ -42,7 +54,7 @@ export function BenchNavMenu({ onClose }: BenchNavMenuProps) {
           onClick={onClose}
         />
 
-        {BENCH_NAV_SECTIONS.map((section) => (
+        {navSections.map((section) => (
           <BenchNavSection key={section.id} title={section.getTitle()}>
             {section.items.map((item) => {
               const navItem = (
@@ -70,91 +82,19 @@ export function BenchNavMenu({ onClose }: BenchNavMenuProps) {
   );
 }
 
-interface BenchNavTitleMenuProps {
-  isOpen: boolean;
-  onToggle: () => void;
-  onClose: () => void;
-}
-
-export function BenchNavTitleMenu({
-  isOpen,
-  onToggle,
-  onClose,
-}: BenchNavTitleMenuProps) {
+export function BenchNavTitleMenu() {
   return (
-    <Menu
-      data-testid="bench-nav-title-menu"
-      opened={isOpen}
-      onClose={onClose}
-      position="bottom-start"
-      shadow="md"
-      width={200}
+    <UnstyledButton
+      component={Link}
+      to="/"
+      display="flex"
+      className={S.logoButton}
+      h="3.25rem"
+      miw="2.25rem"
+      maw="14rem"
+      mr="sm"
     >
-      <Menu.Target>
-        <UnstyledButton
-          mx="sm"
-          ml={0}
-          h="2.25rem"
-          w="1.5rem"
-          onClick={onToggle}
-        >
-          <LogoIcon size={32} />
-        </UnstyledButton>
-      </Menu.Target>
-      <Menu.Dropdown>
-        <Menu.Item
-          leftSection={<Icon name="rocket" size={16} />}
-          rightSection={
-            <Text size="xs" c="text-light">
-              {t`⌘1`}
-            </Text>
-          }
-          component={Link}
-          to="/"
-        >
-          {t`Explore`}
-        </Menu.Item>
-        <Menu.Item
-          leftSection={<Icon name="notebook" size={16} />}
-          rightSection={
-            <Text size="xs" c="text-light">
-              {t`⌘2`}
-            </Text>
-          }
-          component={Link}
-          to="/bench"
-        >
-          {t`Workbench`}
-        </Menu.Item>
-        <Menu.Item
-          leftSection={<Icon name="gear" size={16} />}
-          rightSection={
-            <Text size="xs" c="text-light">
-              {t`⌘3`}
-            </Text>
-          }
-          component={Link}
-          to="/admin"
-        >
-          {t`Admin`}
-        </Menu.Item>
-        <Menu.Divider />
-        <Menu.Item
-          component={ExternalLink}
-          // eslint-disable-next-line no-unconditional-metabase-links-render -- FIXME: hide the link
-          href="https://www.metabase.com/docs"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Text size="sm">{t`Docs`}</Text>
-        </Menu.Item>
-        <Menu.Item component={Link} to="/admin/people">
-          <Text size="sm">
-            {/* eslint-disable-next-line no-literal-metabase-strings -- FIXME: use application name */}
-            {t`Metabase Account`}
-          </Text>
-        </Menu.Item>
-      </Menu.Dropdown>
-    </Menu>
+      <LogoIcon height={32} />
+    </UnstyledButton>
   );
 }

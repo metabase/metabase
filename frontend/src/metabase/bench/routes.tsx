@@ -8,10 +8,16 @@ import {
   UpdateSegmentForm,
 } from "metabase/admin/datamodel/containers/SegmentApp";
 import { MetadataLayout } from "metabase/bench/components/metadata/MetadataLayout";
+import { createBenchAdminRouteGuard } from "metabase/bench/components/utils";
+import { Unauthorized } from "metabase/common/components/ErrorPages";
 import NotFoundFallbackPage from "metabase/common/components/NotFoundFallbackPage";
 import { Route } from "metabase/hoc/Title";
 import { DataModel } from "metabase/metadata/pages/DataModel";
-import { PLUGIN_TRANSFORMS } from "metabase/plugins";
+import {
+  PLUGIN_DEPENDENCIES,
+  PLUGIN_TRANSFORMS,
+  PLUGIN_TRANSFORMS_PYTHON,
+} from "metabase/plugins";
 import { GlossaryContainer } from "metabase/reference/glossary/GlossaryContainer";
 
 import { BenchApp, BenchIndex } from "./components/BenchApp";
@@ -37,7 +43,9 @@ export const getBenchRoutes = () => (
     <IndexRoute component={BenchIndex} />
     <Route title={t`Bench`} component={BenchApp}>
       <Route path="overview" component={() => <OverviewPage />} />
-      {PLUGIN_TRANSFORMS.getTransformRoutes()}
+      {PLUGIN_TRANSFORMS.getBenchRoutes()}
+      {PLUGIN_TRANSFORMS_PYTHON.getBenchRoutes()}
+      {PLUGIN_DEPENDENCIES.getBenchRoutes()}
       <Route path="segment" component={SegmentApp}>
         <Route path="new" component={CreateSegmentForm} />
         <Route path=":id" component={UpdateSegmentForm} />
@@ -61,8 +69,10 @@ export const getBenchRoutes = () => (
         <Route path=":id" component={SnippetEditor} />
       </Route>
       <Route path="glossary" component={GlossaryContainer} />
-      <Route path="dependencies" component={EmptySailboat} />
-      <Route path="metadata" component={MetadataLayout}>
+      <Route
+        path="metadata"
+        component={createBenchAdminRouteGuard("metadata", MetadataLayout)}
+      >
         <Route title={t`Table Metadata`}>
           <IndexRedirect to="database" />
           <Route path="database" component={DataModel} />
@@ -97,6 +107,7 @@ export const getBenchRoutes = () => (
           />
         </Route>
       </Route>
+      <Route path="unauthorized" component={Unauthorized} />
       <Route path="*" component={NotFoundFallbackPage} />
     </Route>
   </Route>

@@ -1,8 +1,14 @@
-import type { DatabaseId, TableId } from "metabase-types/api";
+import { isSyncCompleted } from "metabase/lib/syncing";
+import type { CardId, SearchResult, TableId } from "metabase-types/api";
 
 import { getUrl as getUrl_ } from "../../utils";
 
-import { CHILD_TYPES, UNNAMED_SCHEMA_NAME } from "./constants";
+import { type NodeSelection, isItemSelected } from "./bulk-selection.utils";
+import {
+  CHILD_TYPES,
+  LEAF_ITEM_ICON_COLOR,
+  UNNAMED_SCHEMA_NAME,
+} from "./constants";
 import type {
   CollectionNode,
   DatabaseNode,
@@ -12,6 +18,8 @@ import type {
   ModelNode,
   NodeKey,
   RootNode,
+  SchemaNode,
+  TableNode,
   TreeNode,
   TreePath,
 } from "./types";
@@ -118,6 +126,8 @@ export function flatten(
     return node.children.flatMap((child) => flatten(child, opts));
   }
 
+  const isSelected = selection ? isItemSelected(node, selection) : "no";
+
   if (
     node.type === "schema" &&
     (node.label === UNNAMED_SCHEMA_NAME ||
@@ -135,10 +145,8 @@ export function flatten(
     ];
   }
 
-  const isSelected = selection ? isItemSelected(node, selection) : "no";
-
   if (typeof isExpanded === "function" && !isExpanded(node.key)) {
-    return [{ ...node, level, parent, isSelected: isSelected } as FlatItem];
+    return [{ ...node, level, parent, isSelected } as FlatItem];
   }
 
   if (addLoadingNodes && node.children.length === 0) {
@@ -153,13 +161,7 @@ export function flatten(
   }
 
   return [
-    {
-      ...node,
-      isExpanded: true,
-      level,
-      parent,
-      isSelected,
-    },
+    { ...node, isExpanded: true, level, parent, isSelected },
     ...node.children.flatMap((child) =>
       flatten(child, {
         ...opts,
@@ -169,77 +171,6 @@ export function flatten(
       }),
     ),
   ];
-}
-
-export interface NodeSelection {
-  tables: Set<TableId>;
-  schemas: Set<string>;
-  databases: Set<DatabaseId>;
-}
-
-export function isItemSelected(
-  node: TreeNode,
-  selection: NodeSelection,
-): "yes" | "no" | "some" {
-  if (!selection) {
-    return "no";
-  }
-  if (node.type === "table") {
-    return selection.tables.has(node.value?.tableId ?? -1) ? "yes" : "no";
-  }
-  if (node.type === "schema") {
-    if (selection.schemas.has(getSchemaId(node) ?? "")) {
-      return "yes";
-    }
-
-    return areChildTablesSelected(node, selection.tables);
-  }
-  if (node.type === "database") {
-    if (selection.databases.has(node.value?.databaseId ?? -1)) {
-      return "yes";
-    }
-    return areChildSchemasSelected(node, selection);
-  }
-
-  return "no";
-}
-
-function areChildTablesSelected(
-  node: TreeNode,
-  selectedTables: Set<TableId> | undefined,
-): "yes" | "no" | "some" {
-  if (node.children.length === 0) {
-    return "no";
-  }
-
-  const selectedTablesCount = node.children.filter(
-    (x) => x.type === "table" && selectedTables?.has(x.value?.tableId ?? ""),
-  ).length;
-
-  return selectedTablesCount === node.children.length
-    ? "yes"
-    : selectedTablesCount > 0
-      ? "some"
-      : "no";
-}
-
-function areChildSchemasSelected(
-  node: TreeNode,
-  selection: NodeSelection,
-): "yes" | "no" | "some" {
-  if (node.children.length === 0) {
-    return "no";
-  }
-
-  const selectedSchemasResult = node.children.map((x) =>
-    isItemSelected(x, selection),
-  );
-
-  return selectedSchemasResult.every((x) => x === "yes")
-    ? "yes"
-    : selectedSchemasResult.every((x) => x === "no")
-      ? "no"
-      : "some";
 }
 
 export function sort<T extends { label: string } = TreeNode>(nodes: T[]): T[] {
@@ -339,185 +270,118 @@ export function loadingItem(
   };
 }
 
-export function getSchemaId(item: FlatItem) {
-  if (item.type !== "table" && item.type !== "schema") {
-    return undefined;
-  }
-  return `${item.value?.databaseId}:${item.value?.schemaName}`;
-}
+export function buildTreeFromSearchResults(
+  searchResults:
+    | (SearchResult<TableId, "table"> | SearchResult<CardId, "dataset">)[]
+    | undefined,
+): TreeNode {
+  const tree: TreeNode = rootNode();
 
-export function isParentSchemaSelected(
-  item: FlatItem,
-  selectedSchemas: Set<string> | undefined,
-) {
-  if (item.type !== "table") {
-    return false;
-  }
+  searchResults?.forEach((result) => {
+    const { model, id, name } = result;
 
-  const parentSchemaId = getSchemaId(item);
+    if (model === "table") {
+      const { database_name, database_id, table_schema } = result;
+      const tableSchema = table_schema ?? "";
 
-  if (!parentSchemaId) {
-    return false;
-  }
+      let databaseNode = tree.children.find(
+        (node) =>
+          node.type === "database" && node.value.databaseId === database_id,
+      ) as DatabaseNode | undefined;
+      if (!databaseNode) {
+        databaseNode = node<DatabaseNode>({
+          type: "database",
+          label: database_name || "",
+          value: {
+            databaseId: database_id,
+          },
+        });
+        tree.children.push(databaseNode);
+      }
 
-  return selectedSchemas?.has(parentSchemaId);
-}
+      let schemaNode = databaseNode.children.find((node) => {
+        return node.type === "schema" && node.value.schemaName === tableSchema;
+      }) as SchemaNode | undefined;
+      if (!schemaNode) {
+        schemaNode = node<SchemaNode>({
+          type: "schema",
+          label: tableSchema,
+          value: {
+            databaseId: database_id,
+            schemaName: tableSchema,
+          },
+        });
+        databaseNode.children.push(schemaNode);
+      }
 
-export function noManuallySelectedTables(
-  schema: FlatItem | undefined,
-  items: FlatItem[],
-  selectedItems: Set<TableId> | undefined,
-) {
-  if (!schema) {
-    return false;
-  }
-  // return true;
-  const children = items.filter((x) => x.parent === schema.key);
+      let tableNode = schemaNode.children.find(
+        (node) => node.type === "table" && node.value.tableId === id,
+      );
+      if (!tableNode) {
+        tableNode = node<TableNode>({
+          type: "table",
+          label: name,
+          value: {
+            databaseId: database_id,
+            schemaName: tableSchema,
+            tableId: id,
+          },
+          icon: { name: "table2", color: LEAF_ITEM_ICON_COLOR },
+          disabled: !isSyncCompleted(result),
+        });
+        schemaNode.children.push(tableNode);
+      }
+    } else if (model === "dataset") {
+      const { collection } = result;
+      const collectionId = collection.id;
 
-  return !children.some(
-    (child) =>
-      child.type === "table" && selectedItems?.has(child.value?.tableId ?? ""),
-  );
-}
+      if (!collectionId) {
+        const rootModelNode = node<ModelNode>({
+          type: "model",
+          label: name,
+          value: {
+            collectionId: "root",
+            modelId: id,
+          },
+          icon: { name: "model", color: LEAF_ITEM_ICON_COLOR },
+        });
+        tree.children.push(rootModelNode);
+      } else {
+        let collectionNode = tree.children.find(
+          (node) =>
+            node.type === "collection" &&
+            node.value.collectionId === collectionId,
+        ) as CollectionNode | undefined;
+        if (!collectionNode) {
+          collectionNode = node<CollectionNode>({
+            type: "collection",
+            label: collection.name,
+            value: {
+              collectionId,
+            },
+            icon: { name: "collection" },
+          });
+          tree.children.push(collectionNode);
+        }
 
-export function noManuallySelectedSchemas(
-  database: FlatItem | undefined,
-  items: FlatItem[],
-  selectedSchemas: Set<string> | undefined,
-) {
-  if (!database) {
-    return false;
-  }
-  // return true;
-  const children = items.filter((x) => x.parent === database.key);
+        let modelNode = collectionNode.children.find(
+          (node) => node.type === "model" && node.value.modelId === id,
+        );
+        if (!modelNode) {
+          modelNode = node<ModelNode>({
+            type: "model",
+            label: name,
+            value: {
+              collectionId,
+              modelId: id,
+            },
+            icon: { name: "model", color: LEAF_ITEM_ICON_COLOR },
+          });
+          collectionNode.children.push(modelNode);
+        }
+      }
+    }
+  });
 
-  return !children.some(
-    (child) =>
-      child.type === "schema" && selectedSchemas?.has(getSchemaId(child) ?? ""),
-  );
-}
-
-export function noManuallySelectedDatabaseChildrenTables(
-  database: DatabaseNode,
-  selectedTables: Set<TableId> | undefined,
-) {
-  if (!database) {
-    return false;
-  }
-
-  const answer = !database.children.some(
-    (schema) =>
-      schema.type === "schema" &&
-      schema.children.some(
-        (child) =>
-          child.type === "table" &&
-          selectedTables?.has(child.value?.tableId ?? -1),
-      ),
-  );
-
-  return answer;
-}
-
-export function getParentSchema(tableItem: FlatItem, allItems: FlatItem[]) {
-  return allItems.find(
-    (x) => x.type === "schema" && getSchemaId(x) === getSchemaId(tableItem),
-  );
-}
-
-export function getSchemaTables(schema: FlatItem, allItems: FlatItem[]) {
-  const result = allItems.filter(
-    (x) =>
-      x.type === "table" &&
-      getSchemaId(schema) === getSchemaId(x) &&
-      x.value?.tableId,
-  );
-
-  return result;
-}
-
-export function getSchemaTableIds(schema: FlatItem, allItems: FlatItem[]) {
-  return getSchemaTables(schema, allItems).map((x) => x.value?.tableId ?? "");
-}
-
-export function getSchemaChildrenTableIds(schema: TreeNode) {
-  return schema.children
-    .filter((x) => x.type === "table")
-    .map((x) => x.value?.tableId ?? -1);
-}
-
-export function getParentSchemaTables(item: FlatItem, allItems: FlatItem[]) {
-  const parentSchema = getParentSchema(item, allItems);
-
-  if (!parentSchema) {
-    return [];
-  }
-
-  return allItems.filter(
-    (x) => x.type === "table" && getSchemaId(parentSchema) === getSchemaId(x),
-  );
-}
-
-export function areTablesSelected(
-  schema: FlatItem,
-  allItems: FlatItem[],
-  selectedItems: Set<TableId> | undefined,
-): "all" | "some" | "none" {
-  const tables = getSchemaTables(schema, allItems);
-  if (tables.length === 0) {
-    return "none";
-  }
-  if (tables.every((x) => selectedItems?.has(x.value?.tableId ?? ""))) {
-    return "all";
-  }
-  if (tables.some((x) => selectedItems?.has(x.value?.tableId ?? ""))) {
-    return "some";
-  }
-  return "none";
-}
-
-export function getSchemas(database: FlatItem, allItems: FlatItem[]) {
-  return allItems.filter(
-    (x) =>
-      x.type === "schema" && x.value?.databaseId === database.value?.databaseId,
-  );
-}
-
-export function getChildSchemas(databaseNode: DatabaseNode) {
-  return databaseNode.children.filter((x) => x.type === "schema");
-}
-
-export function areSchemasSelected(
-  database: FlatItem,
-  allItems: FlatItem[],
-  selectedSchemas: Set<string> | undefined,
-  selectedItems: Set<TableId> | undefined,
-): "all" | "some" | "none" {
-  if (database.type !== "database") {
-    return "none";
-  }
-
-  const schemas = getSchemas(database, allItems);
-  if (schemas.length === 0) {
-    return "none";
-  }
-
-  if (
-    schemas.every(
-      (x) =>
-        selectedSchemas?.has(getSchemaId(x) ?? "") ||
-        areTablesSelected(x, x.children, selectedItems) === "all",
-    )
-  ) {
-    return "all";
-  }
-  if (
-    schemas.some(
-      (x) =>
-        selectedSchemas?.has(getSchemaId(x) ?? "") ||
-        areTablesSelected(x, x.children, selectedItems) !== "none",
-    )
-  ) {
-    return "some";
-  }
-  return "none";
+  return tree;
 }

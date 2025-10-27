@@ -194,7 +194,8 @@
                  :data        {:rows [[8]]}}
                 (mt/user-http-request
                  :rasta :post 202 (format "card/%d/query" card-id)
-                 {:parameters [{:type   :number
+                 {:parameters [{:id     "_CATEGORY_"
+                                :type   :number
                                 :target [:variable [:template-tag :category]]
                                 :value  2}]})))))))
 
@@ -2045,8 +2046,9 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;;; Test GET /api/card/:id/query/csv & GET /api/card/:id/json & GET /api/card/:id/query/xlsx **WITH PARAMETERS**
-(def ^:private ^String test-params
-  [{:type   :number
+(def ^:private test-params
+  [{:id     "_CATEGORY_"
+    :type   :number
     :target [:variable [:template-tag :category]]
     :value  2}])
 
@@ -2529,9 +2531,9 @@
         (mt/with-non-admin-groups-no-root-collection-perms
           (mt/with-temp [:model/Collection collection]
             (mt/with-model-cleanup [:model/Card]
-              (is (=? {:message "You do not have curate permissions for this Collection."}
-                      (mt/user-http-request :rasta :post 403 "card"
-                                            (assoc (card-with-name-and-query) :collection_id (u/the-id collection))))))))))))
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :post 403 "card"
+                                           (assoc (card-with-name-and-query) :collection_id (u/the-id collection))))))))))))
 
 (deftest set-card-collection-id-test
   (testing "Should be able to set the Collection ID of a Card in the Root Collection (i.e., `collection_id` is nil)"
@@ -3006,7 +3008,7 @@
                            (mt/user-http-request :crowberto :put 200
                                                  (str "card/" (u/the-id card)) card))]
       (doseq [[query-type query modified-query] [["mbql"   query modified-query]
-                                                 #_["native" (to-native query) (to-native modified-query)]]]
+                                                 ["native" (to-native query) (to-native modified-query)]]]
         (testing (str "For: " query-type)
           (mt/with-model-cleanup [:model/Card]
             (let [{metadata :result_metadata
