@@ -28,9 +28,9 @@ export function useSourceQuery(
     [source, metadata],
   );
 
-  const handleQuestionChange = (newQuestion: Question) => {
+  const handleChangeQuestion = (newQuestion: Question) => {
     onSourceChange({ type: "query", query: newQuestion.datasetQuery() });
   };
 
-  return { question, handleQuestionChange };
+  return { question, handleChangeQuestion };
 }

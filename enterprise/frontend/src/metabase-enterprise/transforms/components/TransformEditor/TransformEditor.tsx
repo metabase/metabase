@@ -45,7 +45,7 @@ export function TransformEditor({
   onSave,
   onCancel,
 }: TransformEditorProps) {
-  const { question, handleQuestionChange } = useSourceQuery(
+  const { question, handleChangeQuestion } = useSourceQuery(
     source,
     onSourceChange,
   );
@@ -75,7 +75,7 @@ export function TransformEditor({
     handleTogglePreviewQueryModal,
     handleToggleNativeQueryPreviewSidebar,
     handleConvertToNative,
-  } = useEditorControls(question, handleQuestionChange);
+  } = useEditorControls(question, handleChangeQuestion);
   const {
     data: databases,
     isLoading: isDatabaseListLoading,
@@ -125,7 +125,7 @@ export function TransformEditor({
               isResultDirty={isResultDirty}
               isShowingDataReference={isDataReferenceOpen}
               isShowingSnippetSidebar={isSnippetSidebarOpen}
-              onChange={handleQuestionChange}
+              onChange={handleChangeQuestion}
               onRunQuery={handleRunQuery}
               onCancelQuery={handleCancelQuery}
               onToggleDataReference={handleToggleDataReference}
