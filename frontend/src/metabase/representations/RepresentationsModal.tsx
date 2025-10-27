@@ -14,11 +14,13 @@ import {
 } from "metabase/ui";
 import type { CardType } from "metabase-types/api";
 
+type EntityType = CardType | "transform";
+
 interface RepresentationsModalProps {
   opened: boolean;
   onClose: () => void;
   entityId: number | null;
-  entityType: CardType;
+  entityType: EntityType;
 }
 
 function DependencyItem({ yaml, index }: { yaml: string; index: number }) {
