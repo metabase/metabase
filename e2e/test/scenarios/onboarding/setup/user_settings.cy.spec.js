@@ -121,8 +121,6 @@ describe("user > settings", () => {
     cy.visit("/account/profile");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByDisplayValue("Use site default").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     H.popover().within(() => cy.findByText("Indonesian").click());
 
     cy.button("Update").click();
