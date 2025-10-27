@@ -3,6 +3,7 @@ import { useDeferredValue, useState } from "react";
 import { t } from "ttag";
 
 import {
+  Badge,
   Box,
   Button,
   Group,
@@ -10,6 +11,7 @@ import {
   Input,
   Popover,
   Stack,
+  Tooltip,
   rem,
 } from "metabase/ui";
 
@@ -56,16 +58,47 @@ export function TablePicker({
         <Input
           flex="1"
           leftSection={<Icon name="search" />}
-          placeholder={t`Search (use * as a wildcard)`}
+          placeholder={t`Search tables and models`}
+          rightSection={
+            <Tooltip
+              label={
+                <Box ta="center">
+                  <div>{t`Search matches from the start of words.`}</div>
+                  <div>{t`Use * as a wildcard.`}</div>
+                </Box>
+              }
+            >
+              <Icon name="info" />
+            </Tooltip>
+          }
+          rightSectionPointerEvents="auto"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
 
         <Popover width={rem(300)} position="bottom-start" opened={isOpen}>
           <Popover.Target>
-            <Button leftSection={<Icon name="filter" />} onClick={toggle}>
-              {filtersCount === 0 ? t`Filter` : t`Filter (${filtersCount})`}
-            </Button>
+            <Tooltip label={t`Filter`}>
+              <Button
+                leftSection={
+                  <Box pos="relative">
+                    <Icon name="filter" />
+
+                    {filtersCount > 0 && (
+                      <Badge
+                        bg="brand"
+                        circle
+                        size="8"
+                        pos="absolute"
+                        top={-6}
+                        right={-8}
+                      />
+                    )}
+                  </Box>
+                }
+                onClick={toggle}
+              />
+            </Tooltip>
           </Popover.Target>
 
           <Popover.Dropdown>
