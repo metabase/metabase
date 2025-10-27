@@ -164,13 +164,13 @@ export function ViewTitleHeaderRightSide({
       className={ViewTitleHeaderS.ViewHeaderActionPanel}
       data-testid="qb-header-action-panel"
     >
-      {isSaved && !isShowingNotebook && (
+      {isSaved && (
         <Button
           className={cx(CS.hide, CS.smShow)}
           onClick={() => setIsRepresentationsModalOpen(true)}
           data-testid="representations-button"
         >
-          Representations
+          {t`Representations`}
         </Button>
       )}
       {FilterHeaderButton.shouldRender({
@@ -280,7 +280,8 @@ export function ViewTitleHeaderRightSide({
       <RepresentationsModal
         opened={isRepresentationsModalOpen}
         onClose={() => setIsRepresentationsModalOpen(false)}
-        questionId={question.id()}
+        entityId={question.id()}
+        entityType={question.type()}
       />
     </Flex>
   );
