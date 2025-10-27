@@ -353,6 +353,8 @@ export function Results({
                 </Flex>
               </Flex>
 
+              {item.isSelected}
+
               <ElementCheckbox
                 item={item}
                 selectedItems={selectedItems}
@@ -360,6 +362,7 @@ export function Results({
                 selectedDatabases={selectedDatabases}
                 onItemToggle={onItemToggle}
               />
+              <ElementCheckbox2 item={item} onItemToggle={onItemToggle} />
             </Flex>
           );
         })}
@@ -436,6 +439,34 @@ function ElementCheckbox({
         event.stopPropagation();
       }}
       icon={indeterminate ? CheckboxDashIcon : undefined}
+      onChange={() => {
+        onItemToggle?.(item);
+      }}
+      // indeterminate={indeterminate}
+    />
+  );
+}
+
+function ElementCheckbox2({
+  item,
+  onItemToggle,
+}: {
+  item: FlatItem;
+  onItemToggle: ((item: FlatItem) => void) | undefined;
+}) {
+  if (item.isLoading) {
+    return null;
+  }
+
+  const { isSelected } = item;
+  return (
+    <Checkbox
+      size="sm"
+      checked={isSelected !== "no"}
+      onClick={(event) => {
+        event.stopPropagation();
+      }}
+      icon={isSelected === "some" ? CheckboxDashIcon : undefined}
       onChange={() => {
         onItemToggle?.(item);
       }}

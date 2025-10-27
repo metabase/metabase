@@ -17,6 +17,10 @@ import {
   getSchemaTableIds,
   noManuallySelectedSchemas,
   noManuallySelectedTables,
+  isItemSelected,
+  getSchemas,
+  type NodeSelection,
+  getSchemaTables,
 } from "../utils";
 
 import { EditTableMetadataModal } from "./EditTableMetadataModal";
@@ -45,6 +49,11 @@ export function Tree({ path, onChange }: Props) {
     isExpanded,
     addLoadingNodes: true,
     canFlattenSingleSchema: true,
+    selection: {
+      tables: selectedItems,
+      schemas: selectedSchemas,
+      databases: selectedDatabases,
+    },
   });
   const isEmpty = items.length === 0;
 
@@ -167,24 +176,46 @@ export function Tree({ path, onChange }: Props) {
   }
 
   function onItemToggle(item: FlatItem) {
+    const isSelected = isItemSelected(item as unknown as TreeNode, {
+      tables: selectedItems,
+      schemas: selectedSchemas,
+      databases: selectedDatabases,
+    });
+    console.log({
+      isSelected,
+    });
     if (item.type === "table") {
+      const tableId = item.value?.tableId ?? -1;
+      if (tableId === -1) {
+        return;
+      }
       setSelectedItems((prev) => {
         const newSet = new Set(prev);
-        if (newSet.has(item.value?.tableId ?? "")) {
-          newSet.delete(item.value?.tableId ?? "");
-        } else {
-          newSet.add(item.value?.tableId ?? "");
-        }
+        isSelected === "yes" ? newSet.delete(tableId) : newSet.add(tableId);
         return newSet;
       });
     }
     if (item.type === "database") {
       if (isExpanded(item.key)) {
-        item.children.forEach((child) => {
-          if (child.type === "schema") {
-            onItemToggle(child as unknown as FlatItem);
-          }
+        const targetChecked = isSelected === "yes" ? "no" : "yes";
+        console.log({
+          targetChecked,
         });
+        const { schemasSelection, tablesSelection, databasesSelection } =
+          markAllSchemas(
+            item,
+            items,
+            targetChecked,
+            {
+              tables: selectedItems,
+              schemas: selectedSchemas,
+              databases: selectedDatabases,
+            },
+            isExpanded,
+          );
+        setSelectedSchemas(schemasSelection);
+        setSelectedItems(tablesSelection);
+        setSelectedDatabases(databasesSelection);
       } else {
         const databaseId = item.value?.databaseId;
         if (databaseId) {
@@ -194,7 +225,7 @@ export function Tree({ path, onChange }: Props) {
     }
     if (item.type === "schema") {
       if (isExpanded(item.key)) {
-        if (areTablesSelected(item, items, selectedItems) === "all") {
+        if (isSelected === "yes") {
           setSelectedItems((prev) => {
             const tableIds = getSchemaTableIds(item, items);
             const newSet = new Set(prev);
@@ -281,6 +312,58 @@ export function Tree({ path, onChange }: Props) {
       />
     </>
   );
+}
+
+function markAllSchemas(
+  item: FlatItem,
+  allItems: FlatItem[],
+  targetChecked: "yes" | "no",
+  selection: NodeSelection,
+  isExpanded: (key: string) => boolean,
+) {
+  const schemasSelection = new Set(selection.schemas);
+  const tablesSelection = new Set(selection.tables);
+
+  const schemas = getSchemas(item, allItems);
+  schemas.forEach((schema) => {
+    const schemaId = getSchemaId(schema);
+    if (!schemaId) {
+      return;
+    }
+    if (!isExpanded(schema.key)) {
+      targetChecked === "yes"
+        ? schemasSelection.add(schemaId)
+        : schemasSelection.delete(schemaId);
+    } else {
+      markAllTables(schema, allItems, targetChecked, tablesSelection);
+    }
+  });
+
+  return {
+    schemasSelection,
+    tablesSelection,
+    databasesSelection: selection.databases,
+  };
+}
+
+function markAllTables(
+  schema: FlatItem,
+  allItems: FlatItem[],
+  targetChecked: "yes" | "no",
+  tablesSelection: Set<TableId>,
+) {
+  const tables = getSchemaTables(schema, allItems);
+  tables.forEach((table) => {
+    const tableId = table.value?.tableId ?? -1;
+    if (tableId === -1) {
+      return;
+    }
+    targetChecked === "yes"
+      ? tablesSelection.add(tableId)
+      : tablesSelection.delete(tableId);
+  });
+
+  return tablesSelection;
 }
 
 function toggleInSet<T>(set: Set<T>, item: T) {

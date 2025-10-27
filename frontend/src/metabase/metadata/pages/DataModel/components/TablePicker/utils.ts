@@ -1,4 +1,4 @@
-import type { TableId } from "metabase-types/api";
+import type { DatabaseId, TableId } from "metabase-types/api";
 
 import { getUrl as getUrl_ } from "../../utils";
 
@@ -93,6 +93,7 @@ export function flatten(
     level?: number;
     parent?: NodeKey;
     canFlattenSingleSchema?: boolean;
+    selection?: NodeSelection;
   } = {},
 ): FlatItem[] {
   const {
@@ -102,6 +103,7 @@ export function flatten(
     canFlattenSingleSchema,
     level = 0,
     parent,
+    selection,
   } = opts;
   if (node.type === "root") {
     // root node doesn't render a title and is always expanded
@@ -133,23 +135,31 @@ export function flatten(
     ];
   }
 
+  const isSelected = selection ? isItemSelected(node, selection) : "no";
+
   if (typeof isExpanded === "function" && !isExpanded(node.key)) {
-    return [{ ...node, level, parent } as FlatItem];
+    return [{ ...node, level, parent, isSelected: isSelected } as FlatItem];
   }
 
   if (addLoadingNodes && node.children.length === 0) {
     const childType = CHILD_TYPES[node.type];
     if (!childType) {
-      return [{ ...node, level, parent }];
+      return [{ ...node, level, parent, isSelected }];
     }
     return [
-      { ...node, isExpanded: true, level, parent },
+      { ...node, isExpanded: true, level, parent, isSelected },
       loadingItem(childType, level + 1, node),
     ];
   }
 
   return [
-    { ...node, isExpanded: true, level, parent },
+    {
+      ...node,
+      isExpanded: true,
+      level,
+      parent,
+      isSelected,
+    },
     ...node.children.flatMap((child) =>
       flatten(child, {
         ...opts,
@@ -159,6 +169,77 @@ export function flatten(
       }),
     ),
   ];
+}
+
+export interface NodeSelection {
+  tables: Set<TableId>;
+  schemas: Set<string>;
+  databases: Set<DatabaseId>;
+}
+
+export function isItemSelected(
+  node: TreeNode,
+  selection: NodeSelection,
+): "yes" | "no" | "some" {
+  if (!selection) {
+    return "no";
+  }
+  if (node.type === "table") {
+    return selection.tables.has(node.value?.tableId ?? -1) ? "yes" : "no";
+  }
+  if (node.type === "schema") {
+    if (selection.schemas.has(getSchemaId(node) ?? "")) {
+      return "yes";
+    }
+
+    return areChildTablesSelected(node, selection.tables);
+  }
+  if (node.type === "database") {
+    if (selection.databases.has(node.value?.databaseId ?? -1)) {
+      return "yes";
+    }
+    return areChildSchemasSelected(node, selection);
+  }
+
+  return "no";
+}
+
+function areChildTablesSelected(
+  node: TreeNode,
+  selectedTables: Set<TableId> | undefined,
+): "yes" | "no" | "some" {
+  if (node.children.length === 0) {
+    return "no";
+  }
+
+  const selectedTablesCount = node.children.filter(
+    (x) => x.type === "table" && selectedTables?.has(x.value?.tableId ?? ""),
+  ).length;
+
+  return selectedTablesCount === node.children.length
+    ? "yes"
+    : selectedTablesCount > 0
+      ? "some"
+      : "no";
+}
+
+function areChildSchemasSelected(
+  node: TreeNode,
+  selection: NodeSelection,
+): "yes" | "no" | "some" {
+  if (node.children.length === 0) {
+    return "no";
+  }
+
+  const selectedSchemasResult = node.children.map((x) =>
+    isItemSelected(x, selection),
+  );
+
+  return selectedSchemasResult.every((x) => x === "yes")
+    ? "yes"
+    : selectedSchemasResult.every((x) => x === "no")
+      ? "no"
+      : "some";
 }
 
 export function sort<T extends { label: string } = TreeNode>(nodes: T[]): T[] {
@@ -367,7 +448,7 @@ export function areTablesSelected(
   return "none";
 }
 
-function getSchemas(database: FlatItem, allItems: FlatItem[]) {
+export function getSchemas(database: FlatItem, allItems: FlatItem[]) {
   return allItems.filter(
     (x) =>
       x.type === "schema" && x.value?.databaseId === database.value?.databaseId,
