@@ -19,6 +19,7 @@ import {
 import { useSdkIframeEmbedSetupContext } from "../context";
 
 import { ColorCustomizationSection } from "./ColorCustomizationSection";
+import { LegacyStaticEmbeddingAlert } from "./LegacyStaticEmbeddingAlert";
 import { MetabotLayoutSetting } from "./MetabotLayoutSetting";
 import { ParameterSettings } from "./ParameterSettings";
 
@@ -29,6 +30,7 @@ export const SelectEmbedOptionsStep = () => {
       <BehaviorSection />
       <ParametersSection />
       <AppearanceSection />
+      <LegacyStaticEmbeddingAlert />
     </Stack>
   );
 };
@@ -80,29 +82,7 @@ const AuthenticationSection = () => {
         <Radio.Group value={authType} onChange={handleAuthTypeChange}>
           <Stack gap="sm">
             {isQuestionOrDashboardEmbed && (
-              <Radio
-                value="no-user"
-                label={
-                  <Flex align="center" gap="xs">
-                    <Text>{t`Unauthenticated`}</Text>
-                    <HoverCard position="bottom">
-                      <HoverCard.Target>
-                        <Icon
-                          name="info"
-                          size={14}
-                          c="text-medium"
-                          cursor="pointer"
-                        />
-                      </HoverCard.Target>
-                      <HoverCard.Dropdown>
-                        <Text lh="md" p="md" style={{ width: 300 }}>
-                          {t`This option lets you run Embedded Analytics JS without a user authorization.`}
-                        </Text>
-                      </HoverCard.Dropdown>
-                    </HoverCard>
-                  </Flex>
-                }
-              />
+              <Radio value="no-user" label={t`Unauthenticated`} />
             )}
 
             <Radio

@@ -2387,7 +2387,43 @@ databaseChangeLog:
             columnName: source_type
             columnDataType: varchar(32)
 
+  - changeSet:
+      id: v57.2025-10-27T09:03:00
+      author: sanex3339
+      comment: Add embedding_type column to report_dashboard table
+      changes:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: embedding_type
+                  type: varchar(50)
+                  remarks: The type of embedding for this dashboard
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: report_dashboard
+            columnName: embedding_type
 
+  - changeSet:
+      id: v57.2025-10-27T09:03:01
+      author: sanex3339
+      comment: Add embedding_type column to report_card table
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: embedding_type
+                  type: varchar(50)
+                  remarks: The type of embedding for this card
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: report_card
+            columnName: embedding_type
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

@@ -84,10 +84,6 @@ export const SdkIframeEmbedSetupContent = () => {
       <SidebarResizer>
         <Box className={S.Sidebar} component="aside">
           <Stack className={S.SidebarContent} gap="md">
-            <Box style={{ flexShrink: 0 }}>
-              <SdkIframeStaticEmbeddingStatusBar />
-            </Box>
-
             <StepContent />
           </Stack>
 
@@ -108,6 +104,8 @@ export const SdkIframeEmbedSetupContent = () => {
       <Box className={S.PreviewPanel}>
         <Stack h="100%">
           <Modal.CloseButton />
+
+          <SdkIframeStaticEmbeddingStatusBar />
 
           {isSimpleEmbeddingEnabled || isStaticEmbedding ? (
             <SdkIframeEmbedPreview />

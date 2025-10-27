@@ -6,7 +6,6 @@ import type { EmbedResourceType } from "metabase/public/lib/types";
 import { Button, Flex, Group, Text } from "metabase/ui";
 
 interface EmbedModalContentStatusBarProps {
-  display: "row" | "column";
   isPublished: boolean;
   resourceType: EmbedResourceType;
   hasSettingsChanges: boolean;
@@ -17,7 +16,6 @@ interface EmbedModalContentStatusBarProps {
 }
 
 export const EmbedModalContentStatusBar = ({
-  display,
   isPublished,
   resourceType,
   hasSettingsChanges,
@@ -33,8 +31,8 @@ export const EmbedModalContentStatusBar = ({
     <Flex
       w="100%"
       justify="space-between"
-      direction={display}
-      align={display === "row" ? "center" : "flex-start"}
+      direction="row"
+      align="center"
       gap="0.5rem"
     >
       <Text>

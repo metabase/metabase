@@ -411,6 +411,7 @@ export interface UpdateCardRequest {
   visualization_settings?: VisualizationSettings;
   archived?: boolean;
   enable_embedding?: boolean;
+  embedding_type?: EmbeddingType | null;
   embedding_params?: EmbeddingParameters;
   collection_id?: CollectionId | null;
   dashboard_id?: DashboardId | null;

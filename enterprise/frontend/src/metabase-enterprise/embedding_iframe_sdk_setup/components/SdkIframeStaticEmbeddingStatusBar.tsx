@@ -48,6 +48,7 @@ const SdkIframeStaticEmbeddingStatusBarInner = ({
     await handlersMap[resourceType]?.({
       id: resource.id as number,
       enable_embedding: enableEmbedding,
+      embedding_type: enableEmbedding ? "static-embed-js" : null,
     });
   };
 
@@ -62,6 +63,7 @@ const SdkIframeStaticEmbeddingStatusBarInner = ({
     await handlersMap[resourceType]?.({
       id: resource.id as number,
       embedding_params: embeddingParams,
+      embedding_type: "static-embed-js",
     });
   };
 
@@ -85,7 +87,6 @@ const SdkIframeStaticEmbeddingStatusBarInner = ({
   return (
     <Card>
       <EmbedModalContentStatusBar
-        display="column"
         resourceType={resourceType}
         isPublished={resource.enable_embedding}
         isFetching={isFetching}

@@ -57,12 +57,14 @@ export const DashboardSharingEmbeddingModal = ({
             updateDashboardEnableEmbedding({
               id: dashboard.id,
               enable_embedding,
+              embedding_type: enable_embedding ? "static-legacy" : null,
             })
           }
           onUpdateEmbeddingParams={(embedding_params) =>
             updateDashboardEmbeddingParams({
               id: dashboard.id,
               embedding_params,
+              embedding_type: "static-legacy",
             })
           }
           getPublicUrl={getPublicUrl}
