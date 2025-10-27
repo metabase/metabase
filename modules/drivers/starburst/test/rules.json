@@ -1,0 +1,45 @@
+{
+  "catalogs": [
+    {
+      "user": "metabase",
+      "allow": "all"
+    },
+    {
+      "user": "metabase",
+      "catalog": "test-data",
+      "allow": "all"
+    },
+    {
+      "user": "metabase_impersonation_test_user",
+      "catalog": "test-data",
+      "allow": "read-only"
+    },
+    {
+      "user": "employee",
+      "catalog": "memory",
+      "allow": "read-only"
+    }
+  ],
+  "tables": [
+    {
+      "user": "metabase_impersonation_test_user",
+      "catalog": "test-data",
+      "schema": "default",
+      "table": "products",
+      "privileges": [
+        "SELECT"
+      ],
+      "filter": "category = 'Widget'"
+    },
+    {
+      "user": "employee",
+      "catalog": "memory",
+      "schema": "test",
+      "table": "employees",
+      "privileges": [
+        "SELECT"
+      ],
+      "filter": "department = 'Engineering'"
+    }
+  ]
+}
