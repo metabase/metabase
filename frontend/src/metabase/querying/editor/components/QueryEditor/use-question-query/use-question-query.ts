@@ -12,25 +12,36 @@ const DEFAULT_VIZ_SETTINGS: VisualizationSettings = {
 
 export function useQuestionQuery(
   query: Lib.Query,
+  proposedQuery: Lib.Query | undefined,
   type: CardType,
   onQueryChange: (newQuery: Lib.Query) => void,
 ) {
   const metadata = useSelector(getMetadata);
 
-  const question = useMemo(
-    () =>
-      Question.create({
+  const { question, proposedQuestion } = useMemo(
+    () => ({
+      question: Question.create({
         dataset_query: Lib.toJsQuery(query),
         cardType: type,
         metadata,
         visualization_settings: DEFAULT_VIZ_SETTINGS,
       }),
-    [query, type, metadata],
+      proposedQuestion:
+        proposedQuery != null
+          ? Question.create({
+              dataset_query: Lib.toJsQuery(proposedQuery),
+              cardType: type,
+              metadata,
+              visualization_settings: DEFAULT_VIZ_SETTINGS,
+            })
+          : undefined,
+    }),
+    [query, proposedQuery, type, metadata],
   );
 
   const setQuestion = (newQuestion: Question) => {
     onQueryChange(newQuestion.query());
   };
 
-  return { question, setQuestion };
+  return { question, proposedQuestion, setQuestion };
 }

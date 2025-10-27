@@ -24,6 +24,7 @@ import { useQuestionQuery } from "./use-question-query";
 
 type QueryEditorProps = {
   query: Lib.Query;
+  proposedQuery?: Lib.Query;
   type: CardType;
   uiControls: QueryEditorUiControls;
   convertToNativeTitle?: string;
@@ -34,10 +35,13 @@ type QueryEditorProps = {
   ) => boolean;
   onQueryChange: (newQuery: Lib.Query) => void;
   onUiControlsChange: (newUiControls: QueryEditorUiControls) => void;
+  onAcceptProposed?: () => void;
+  onRejectProposed?: () => void;
 };
 
 export function QueryEditor({
   query,
+  proposedQuery,
   type,
   uiControls,
   convertToNativeTitle,
@@ -46,9 +50,12 @@ export function QueryEditor({
   shouldDisableItem,
   onQueryChange,
   onUiControlsChange,
+  onAcceptProposed,
+  onRejectProposed,
 }: QueryEditorProps) {
-  const { question, setQuestion } = useQuestionQuery(
+  const { question, proposedQuestion, setQuestion } = useQuestionQuery(
     query,
+    proposedQuery,
     type,
     onQueryChange,
   );
@@ -95,6 +102,7 @@ export function QueryEditor({
         <Flex flex="2 1 0" direction="column" pos="relative">
           <QuerySection
             question={question}
+            proposedQuestion={proposedQuestion}
             modalSnippet={uiControls.modalSnippet}
             nativeEditorSelectedText={selectedText}
             isNative={isNative}
@@ -113,6 +121,8 @@ export function QueryEditor({
             onOpenModal={openModal}
             onChangeModalSnippet={setModalSnippet}
             onChangeNativeEditorSelection={setSelectionRange}
+            onAcceptProposed={onAcceptProposed}
+            onRejectProposed={onRejectProposed}
           />
           <VisualizationSection
             question={question}

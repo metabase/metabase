@@ -19,7 +19,7 @@ import type {
 } from "metabase-types/api";
 
 import { TransformEditor } from "../../components/TransformEditor";
-import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";
+import { useTransformMetabot } from "../../hooks/use-transform-metabot";
 import { isNotDraftSource, isSameSource } from "../../utils";
 
 import { CreateTransformModal } from "./CreateTransformModal";
@@ -47,7 +47,8 @@ function NewTransformPage({
   const [uiControls, setUiControls] = useState(getInitialUiControls);
   const [isOpened, { open, close }] = useDisclosure();
   const dispatch = useDispatch();
-  useRegisterMetabotTransformContext(undefined, source);
+  const { proposedSource, acceptProposed, rejectProposed } =
+    useTransformMetabot(undefined, source, setSource);
 
   const isDirty = useMemo(
     () =>
@@ -71,17 +72,25 @@ function NewTransformPage({
         <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
           name={name}
           source={source}
+          proposedSource={
+            proposedSource?.type === "python" ? proposedSource : undefined
+          }
           isSaving={false}
           isSourceDirty
           onNameChange={setName}
           onSourceChange={setSource}
           onSave={open}
           onCancel={handleCancel}
+          onAcceptProposed={acceptProposed}
+          onRejectProposed={rejectProposed}
         />
       ) : (
         <TransformEditor
           name={name}
           source={source}
+          proposedSource={
+            proposedSource?.type === "query" ? proposedSource : undefined
+          }
           uiControls={uiControls}
           isSaving={false}
           isSourceDirty
@@ -90,6 +99,8 @@ function NewTransformPage({
           onUiControlsChange={setUiControls}
           onSave={open}
           onCancel={handleCancel}
+          onAcceptProposed={acceptProposed}
+          onRejectProposed={rejectProposed}
         />
       )}
       {isOpened && isNotDraftSource(source) && (

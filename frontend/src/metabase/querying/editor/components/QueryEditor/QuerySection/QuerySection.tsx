@@ -38,6 +38,7 @@ const NATIVE_EDITOR_SIDEBAR_FEATURES = {
 
 type QuerySectionProps = {
   question: Question;
+  proposedQuestion: Question | undefined;
   shouldDisableDatabase?: (database: Database) => boolean;
   shouldDisableItem?: (
     item: DataPickerItem | CollectionPickerItem | RecentCollectionItem,
@@ -59,10 +60,13 @@ type QuerySectionProps = {
   onChangeModalSnippet: (snippet: NativeQuerySnippet | null) => void;
   onChangeNativeEditorSelection: (range: SelectionRange[]) => void;
   onOpenModal: (type: QueryModalType) => void;
+  onAcceptProposed?: () => void;
+  onRejectProposed?: () => void;
 };
 
 export function QuerySection({
   question,
+  proposedQuestion,
   isNative,
   isRunnable,
   isRunning,
@@ -82,6 +86,8 @@ export function QuerySection({
   onChangeNativeEditorSelection,
   nativeEditorSelectedText,
   onOpenModal,
+  onAcceptProposed,
+  onRejectProposed,
 }: QuerySectionProps) {
   const [isResizing, setIsResizing] = useState(false);
   const reportTimezone = useSetting("report-timezone-long");
@@ -120,6 +126,7 @@ export function QuerySection({
   return isNative ? (
     <NativeQueryEditor
       question={question}
+      proposedQuestion={proposedQuestion}
       query={question.legacyNativeQuery()}
       resizableBoxProps={resizableBoxProps}
       placeholder="SELECT * FROM TABLE_NAME"
@@ -148,6 +155,8 @@ export function QuerySection({
       setNativeEditorSelectedRange={onChangeNativeEditorSelection}
       nativeEditorSelectedText={nativeEditorSelectedText}
       onOpenModal={onOpenModal}
+      onAcceptProposed={onAcceptProposed}
+      onRejectProposed={onRejectProposed}
     />
   ) : (
     <ResizableBox

@@ -22,6 +22,7 @@ type TransformEditorProps = {
   id?: TransformId;
   name: string;
   source: QueryTransformSource;
+  proposedSource?: QueryTransformSource;
   uiControls: QueryEditorUiControls;
   isSaving: boolean;
   isSourceDirty: boolean;
@@ -30,12 +31,15 @@ type TransformEditorProps = {
   onUiControlsChange: (newUiControls: QueryEditorUiControls) => void;
   onSave: () => void;
   onCancel: () => void;
+  onAcceptProposed: () => void;
+  onRejectProposed: () => void;
 };
 
 export function TransformEditor({
   id,
   name,
   source,
+  proposedSource,
   uiControls,
   isSaving,
   isSourceDirty,
@@ -44,15 +48,22 @@ export function TransformEditor({
   onUiControlsChange,
   onSave,
   onCancel,
+  onAcceptProposed,
+  onRejectProposed,
 }: TransformEditorProps) {
   const metadata = useSelector(getMetadata);
-  const query = useMemo(() => {
+  const { query } = useMemo(() => {
     const metadataProvider = Lib.metadataProvider(
       source.query.database,
       metadata,
     );
-    return Lib.fromJsQuery(metadataProvider, source.query);
-  }, [source, metadata]);
+    return {
+      query: Lib.fromJsQuery(metadataProvider, source.query),
+      proposedQuery: proposedSource
+        ? Lib.fromJsQuery(metadataProvider, proposedSource.query)
+        : undefined,
+    };
+  }, [source, proposedSource, metadata]);
 
   const { data, isLoading, error } = useListDatabasesQuery({
     include_analytics: true,
@@ -98,6 +109,8 @@ export function TransformEditor({
         shouldDisableDatabase={({ id }) => shouldDisableDatabase(id, databases)}
         onQueryChange={handleQueryChange}
         onUiControlsChange={onUiControlsChange}
+        onAcceptProposed={onAcceptProposed}
+        onRejectProposed={onRejectProposed}
       />
     </Flex>
   );

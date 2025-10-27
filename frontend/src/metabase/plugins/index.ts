@@ -897,12 +897,15 @@ export type PythonTransformEditorProps = {
   id?: TransformId;
   name: string;
   source: PythonTransformSourceDraft;
+  proposedSource?: PythonTransformSourceDraft;
   isSaving: boolean;
   isSourceDirty: boolean;
   onNameChange: (newName: string) => void;
   onSourceChange: (newSource: PythonTransformSourceDraft) => void;
   onSave: () => void;
   onCancel: () => void;
+  onAcceptProposed: () => void;
+  onRejectProposed: () => void;
 };
 
 export type PythonTransformsPlugin = {

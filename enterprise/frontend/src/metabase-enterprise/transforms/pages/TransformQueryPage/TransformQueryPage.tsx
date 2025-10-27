@@ -20,7 +20,7 @@ import {
 import type { DraftTransformSource, Transform } from "metabase-types/api";
 
 import { TransformEditor } from "../../components/TransformEditor";
-import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";
+import { useTransformMetabot } from "../../hooks/use-transform-metabot";
 import { isNotDraftSource, isSameSource } from "../../utils";
 
 type TransformQueryPageParams = {
@@ -62,7 +62,8 @@ function TransformQueryPageBody({
   const [updateName] = useUpdateTransformMutation();
   const [updateSource, { isLoading: isSaving }] = useUpdateTransformMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
-  useRegisterMetabotTransformContext(transform, source);
+  const { proposedSource, acceptProposed, rejectProposed } =
+    useTransformMetabot(transform, source, setSource);
 
   const isSourceDirty = useMemo(
     () => !isSameSource(source, transform.source),
@@ -125,18 +126,26 @@ function TransformQueryPageBody({
           id={transform.id}
           name={transform.name}
           source={source}
+          proposedSource={
+            proposedSource?.type === "python" ? proposedSource : undefined
+          }
           isSaving={isSaving || isCheckingDependencies}
           isSourceDirty={isSourceDirty}
           onNameChange={handleNameChange}
           onSourceChange={setSource}
           onSave={handleSave}
           onCancel={handleCancel}
+          onAcceptProposed={acceptProposed}
+          onRejectProposed={rejectProposed}
         />
       ) : (
         <TransformEditor
           id={transform.id}
           name={transform.name}
           source={source}
+          proposedSource={
+            proposedSource?.type === "query" ? proposedSource : undefined
+          }
           uiControls={uiControls}
           isSaving={isSaving || isCheckingDependencies}
           isSourceDirty={isSourceDirty}
@@ -145,6 +154,8 @@ function TransformQueryPageBody({
           onUiControlsChange={setUiControls}
           onSave={handleSave}
           onCancel={handleCancel}
+          onAcceptProposed={acceptProposed}
+          onRejectProposed={rejectProposed}
         />
       )}
       {isConfirmationShown && checkData != null && (
