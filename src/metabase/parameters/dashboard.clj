@@ -91,7 +91,7 @@
   Dashboard is expected to have hydrated `:resolved-params`."
   [dashboard param-key]
   (for [mapping (get-in dashboard [:resolved-params param-key :mappings])
-        :let [database-id (get-in mapping [:dashcard :card :database_id])
+        :let [database-id (get-in mapping [:dashcard :card :dataset_query :database])
               card-id (get-in mapping [:dashcard :card :id])
               mp (lib-be/application-database-metadata-provider database-id)
               card (lib.metadata/card mp card-id)
