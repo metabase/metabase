@@ -728,10 +728,10 @@
                                            :parameter_mappings [{:parameter_id "_TEXT_"
                                                                  :card_id      card-id
                                                                  :target       [:dimension [:template-tag "not-existed-filter"]]}]}]
-      (mt/with-log-messages-for-level [messages [metabase.parameters.params :error]]
+      (mt/with-log-messages-for-level [messages [metabase.parameters.params :warn]]
         (is (some? (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id))))
-        (is (=? [{:level   :error
-                  :message "Could not find matching field clause for target: [:dimension [:template-tag \"not-existed-filter\"]]"}]
+        (is (=? [{:level   :warn
+                  :message "Could not find matching Field ID for target: \"not-existed-filter\""}]
                 (messages)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -885,7 +885,7 @@
             ;; grant Permissions for only the *old* collection
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
             ;; now make an API call to move collections. Should fail
-            (is (=? {:message "You do not have curate permissions for this Collection."}
+            (is (=? "You don't have permissions to do that."
                     (mt/user-http-request :rasta :put 403 (str "dashboard/" (u/the-id dash))
                                           {:collection_id (u/the-id new-collection)})))))))))
 

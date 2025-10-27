@@ -200,7 +200,8 @@
                     :can_delete
                     :can_manage_db
                     [:collection :is_personal]
-                    [:moderation_reviews :moderator_details])
+                    [:moderation_reviews :moderator_details]
+                    :is_remote_synced)
         (update :dashboard #(some-> % (select-keys [:name :id :moderation_status])))
         (cond->
          (card/model? card) (t2/hydrate :persisted
@@ -227,26 +228,16 @@
   instead, you can specify `?legacy-mbql=true`."
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
-   {ignore-view? :ignore_view
-    legacy-mbql? :legacy-mbql
-    :keys        [context]} :- [:map
-                                [:ignore_view         {:optional true} [:maybe :boolean]]
-                                [:context             {:optional true} [:maybe [:enum :collection]]]
-                                [:legacy-mbql {:optional true, :default false} [:maybe :boolean]]]]
+   {legacy-mbql? :legacy-mbql
+    :keys        []} :- [:map [:legacy-mbql {:optional true, :default false} [:maybe :boolean]]]]
   (let [resolved-id (eid-translation/->id-or-404 :card id)
-        card        (get-card resolved-id)
-        response    (cond-> card
-                      legacy-mbql?
-                      (update :dataset_query (fn [query]
-                                               #_{:clj-kondo/ignore [:discouraged-var]}
-                                               (cond-> query
-                                                 (seq query) lib/->legacy-MBQL))))]
-    (u/prog1 response
-      (when-not ignore-view?
-        (events/publish-event! :event/card-read
-                               {:object-id (:id <>)
-                                :user-id   api/*current-user-id*
-                                :context   (or context :question)})))))
+        card (get-card resolved-id)]
+    (cond-> card
+      legacy-mbql?
+      (update :dataset_query (fn [query]
+                               #_{:clj-kondo/ignore [:discouraged-var]}
+                               (cond-> query
+                                 (seq query) lib/->legacy-MBQL))))))
 
 (defn- check-allowed-to-remove-from-existing-dashboards [card]
   (let [dashboards (or (:in_dashboards card)
@@ -525,8 +516,7 @@
     (query-perms/check-run-permissions-for-query query)
     ;; check that we have permissions for the collection we're trying to save this card to, if applicable.
     ;; if a `dashboard-id` is specified, check permissions on the *dashboard's* collection ID.
-    (collection/check-write-perms-for-collection
-     (actual-collection-id card))
+    (api/create-check :model/Card {:collection_id (actual-collection-id card)})
     (try
       (lib/check-card-overwrite ::no-id query)
       (catch clojure.lang.ExceptionInfo e
@@ -702,8 +692,9 @@
   "Get all of the required query metadata for a card."
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]]
-  (let [resolved-id (eid-translation/->id-or-404 :card id)]
-    (queries.metadata/batch-fetch-card-metadata [(get-card resolved-id)])))
+  (lib-be/with-metadata-provider-cache
+    (let [resolved-id (eid-translation/->id-or-404 :card id)]
+      (queries.metadata/batch-fetch-card-metadata [(get-card resolved-id)]))))
 
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
 
@@ -784,7 +775,10 @@
                                                  (u/the-id card)))]
           (t2/update! (t2/table-name :model/Card)
                       {:id [:in (set cards-without-position)]}
-                      {:collection_id new-collection-id-or-nil})))))
+                      {:collection_id new-collection-id-or-nil}))
+        (doseq [card cards]
+          (collection/check-non-remote-synced-dependencies card)))))
+
   (when new-collection-id-or-nil
     (events/publish-event! :event/collection-touch {:collection-id new-collection-id-or-nil :user-id api/*current-user-id*})))
 
@@ -819,10 +813,10 @@
   (let [resolved-card-id (eid-translation/->id-or-404 :card card-id)]
     (qp.card/process-query-for-card
      resolved-card-id :api
-     :parameters   parameters
+     :parameters parameters
      :ignore-cache ignore_cache
      :dashboard-id dashboard_id
-     :context      (if collection_preview :collection :question)
+     :context (if collection_preview :collection :question)
      :middleware   {:process-viz-settings? false})))
 
 (api.macros/defendpoint :post "/:card-id/query/:export-format"
