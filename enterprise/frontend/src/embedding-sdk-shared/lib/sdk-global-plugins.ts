@@ -7,7 +7,7 @@ type SdkGlobalPlugins = {
 };
 
 // `MetabaseProvider` and most of the sdk code are in two different bundles,
-// this mean we can't use an exported object as singleton to share the global
+// this means we can't use an exported object as singleton to share the global
 // plugins between them. This function uses `ensureMetabaseProviderPropsStore`
 // to access the provider props across bundles
 export const getSdkGlobalPlugins = (): SdkGlobalPlugins => {
