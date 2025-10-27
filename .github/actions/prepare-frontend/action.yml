@@ -4,7 +4,7 @@ inputs:
     description: "The version of Node.js to use, overriding .nvmrc"
     required: false
   apply-patches:
-    description: "Whether to patch frontend dependencies."
+    description: "Whether to patch frontend dependencies with patch-package."
     required: true
     default: 'true'
 runs:
