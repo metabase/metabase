@@ -13,7 +13,11 @@ import { Unauthorized } from "metabase/common/components/ErrorPages";
 import NotFoundFallbackPage from "metabase/common/components/NotFoundFallbackPage";
 import { Route } from "metabase/hoc/Title";
 import { DataModel } from "metabase/metadata/pages/DataModel";
-import { PLUGIN_DEPENDENCIES, PLUGIN_TRANSFORMS } from "metabase/plugins";
+import {
+  PLUGIN_DEPENDENCIES,
+  PLUGIN_TRANSFORMS,
+  PLUGIN_TRANSFORMS_PYTHON,
+} from "metabase/plugins";
 import { GlossaryContainer } from "metabase/reference/glossary/GlossaryContainer";
 
 import { BenchApp, BenchIndex } from "./components/BenchApp";
@@ -40,6 +44,7 @@ export const getBenchRoutes = () => (
     <Route title={t`Bench`} component={BenchApp}>
       <Route path="overview" component={() => <OverviewPage />} />
       {PLUGIN_TRANSFORMS.getBenchRoutes()}
+      {PLUGIN_TRANSFORMS_PYTHON.getBenchRoutes()}
       {PLUGIN_DEPENDENCIES.getBenchRoutes()}
       <Route path="segment" component={SegmentApp}>
         <Route path="new" component={CreateSegmentForm} />

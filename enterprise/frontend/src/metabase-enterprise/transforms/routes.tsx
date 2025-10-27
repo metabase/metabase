@@ -16,6 +16,7 @@ import { NewJobPage } from "./pages/NewJobPage";
 import {
   NewCardTransformPage,
   NewNativeTransformPage,
+  NewPythonTransformPage,
   NewQueryTransformPage,
 } from "./pages/NewTransformPage";
 import { RunListPage } from "./pages/RunListPage";
@@ -37,6 +38,9 @@ export const getBenchRoutes = () => (
       <Route path="new/query" component={NewQueryTransformPage} />
       <Route path="new/native" component={NewNativeTransformPage} />
       <Route path="new/card/:cardId" component={NewCardTransformPage} />
+      {PLUGIN_TRANSFORMS_PYTHON.isEnabled && (
+        <Route path="new/python" component={NewPythonTransformPage} />
+      )}
       <Route path=":transformId" component={TransformQueryPage} />
       <Route path=":transformId/run" component={TransformRunPage} />
       <Route path=":transformId/target" component={TransformTargetPage} />
@@ -63,7 +67,6 @@ export const getBenchRoutes = () => (
       path="runs"
       component={createBenchAdminRouteGuard("transforms", RunListPage)}
     />
-    {PLUGIN_TRANSFORMS_PYTHON.getBenchRoutes()}
   </>
 );
 

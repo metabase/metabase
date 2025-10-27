@@ -21,7 +21,11 @@ import { TransformEditor } from "../../components/TransformEditor";
 import { isNotDraftSource, isSameSource } from "../../utils";
 
 import { CreateTransformModal } from "./CreateTransformModal";
-import { getNativeInitialSource, getQueryInitialSource } from "./utils";
+import {
+  getInitialNativeSource,
+  getInitialPythonSource,
+  getInitialQuerySource,
+} from "./utils";
 
 type NewTransformPageProps = {
   initialName?: string;
@@ -100,7 +104,7 @@ type NewQueryTransformPageProps = {
 };
 
 export function NewQueryTransformPage({ route }: NewQueryTransformPageProps) {
-  const initialSource = useMemo(getQueryInitialSource, []);
+  const initialSource = useMemo(getInitialQuerySource, []);
   return <NewTransformPage initialSource={initialSource} route={route} />;
 }
 
@@ -109,7 +113,7 @@ type NewNativeTransformPageProps = {
 };
 
 export function NewNativeTransformPage({ route }: NewNativeTransformPageProps) {
-  const initialSource = useMemo(getNativeInitialSource, []);
+  const initialSource = useMemo(getInitialNativeSource, []);
   return <NewTransformPage route={route} initialSource={initialSource} />;
 }
 
@@ -157,4 +161,13 @@ export function NewCardTransformPage({
       isInitiallyDirty
     />
   );
+}
+
+type NewPythonTransformPageProps = {
+  route: Route;
+};
+
+export function NewPythonTransformPage({ route }: NewPythonTransformPageProps) {
+  const initialSource = useMemo(getInitialPythonSource, []);
+  return <NewTransformPage route={route} initialSource={initialSource} />;
 }
