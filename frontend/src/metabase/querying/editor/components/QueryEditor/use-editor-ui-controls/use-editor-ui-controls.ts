@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import type {
   Location,
@@ -9,51 +9,43 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { NativeQuerySnippet } from "metabase-types/api";
 
+import type { QueryEditorUiControls } from "../types";
+
 const EMPTY_SELECTION_RANGE: SelectionRange = {
   start: { row: 0, column: 0 },
   end: { row: 0, column: 0 },
 };
 
-type EditorUiState = {
-  selectionRange: SelectionRange[];
-  modalSnippet: NativeQuerySnippet | null;
-  isDataReferenceOpen: boolean;
-  isSnippetSidebarOpen: boolean;
-  isPreviewQueryModalOpen: boolean;
-  isNativeQueryPreviewSidebarOpen: boolean;
-};
-
-export function useEditorControls(
+export function useEditorUiControls(
   question: Question,
+  uiControls: QueryEditorUiControls,
   onQuestionChange: (newQuestion: Question) => void,
+  onUiControlsChange: (newUiControls: QueryEditorUiControls) => void,
 ) {
-  const [state, setState] = useState<EditorUiState>({
-    selectionRange: [],
-    modalSnippet: null,
-    isDataReferenceOpen: false,
-    isSnippetSidebarOpen: false,
-    isPreviewQueryModalOpen: false,
-    isNativeQueryPreviewSidebarOpen: false,
-  });
-
   const selectedText = useMemo(() => {
     const query = question.query();
     const text = Lib.rawNativeQuery(query) ?? "";
-    const { start, end } = getSelectionPositions(text, state.selectionRange);
+    const { start, end } = getSelectionPositions(
+      text,
+      uiControls.selectionRange,
+    );
     return text.slice(start, end);
-  }, [question, state.selectionRange]);
+  }, [question, uiControls.selectionRange]);
 
   const setSelectionRange = (selectionRange: SelectionRange[]) => {
-    setState((state) => ({ ...state, selectionRange }));
+    onUiControlsChange({ ...uiControls, selectionRange });
   };
 
   const setModalSnippet = (modalSnippet: NativeQuerySnippet | null) => {
-    setState((state) => ({ ...state, modalSnippet }));
+    onUiControlsChange({ ...uiControls, modalSnippet });
   };
 
   const openModal = (type: QueryModalType) => {
     if (type === "preview-query") {
-      setState((state) => ({ ...state, isPreviewQueryModalOpen: true }));
+      onUiControlsChange({
+        ...uiControls,
+        isPreviewQueryModalOpen: true,
+      });
     }
   };
 
@@ -61,7 +53,10 @@ export function useEditorControls(
     const query = question.query();
     const text = Lib.rawNativeQuery(query) ?? "";
 
-    const { start, end } = getSelectionPositions(text, state.selectionRange);
+    const { start, end } = getSelectionPositions(
+      text,
+      uiControls.selectionRange,
+    );
     const pre = text.slice(0, start);
     const post = text.slice(end);
     const newText = `${pre}{{snippet: ${snippet.name}}}${post}`;
@@ -71,45 +66,45 @@ export function useEditorControls(
   };
 
   const toggleDataReference = () => {
-    setState((state) => ({
-      ...state,
-      isDataReferenceOpen: state.isDataReferenceOpen,
+    onUiControlsChange({
+      ...uiControls,
+      isDataReferenceOpen: !uiControls.isDataReferenceOpen,
       isSnippetSidebarOpen: false,
-    }));
+    });
   };
 
   const toggleSnippetSidebar = () => {
-    setState((state) => ({
-      ...state,
+    onUiControlsChange({
+      ...uiControls,
+      isSnippetSidebarOpen: !uiControls.isSnippetSidebarOpen,
       isDataReferenceOpen: false,
-      isSnippetSidebarOpen: state.isSnippetSidebarOpen,
-    }));
+    });
   };
 
   const togglePreviewQueryModal = () => {
-    setState((state) => ({
-      ...state,
-      isPreviewQueryModalOpen: !state.isPreviewQueryModalOpen,
-    }));
+    onUiControlsChange({
+      ...uiControls,
+      isPreviewQueryModalOpen: !uiControls.isPreviewQueryModalOpen,
+    });
   };
 
   const toggleNativeQueryPreviewSidebar = () => {
-    setState((state) => ({
-      ...state,
-      isNativeQueryPreviewSidebarOpen: !state.isNativeQueryPreviewSidebarOpen,
-    }));
+    onUiControlsChange({
+      ...uiControls,
+      isNativeQueryPreviewSidebarOpen:
+        !uiControls.isNativeQueryPreviewSidebarOpen,
+    });
   };
 
   const convertToNative = (newQuestion: Question) => {
-    setState((state) => ({
-      ...state,
+    onUiControlsChange({
+      ...uiControls,
       isNativeQueryPreviewSidebarOpen: false,
-    }));
+    });
     onQuestionChange(newQuestion);
   };
 
   return {
-    ...state,
     selectedText,
     openModal,
     setSelectionRange,

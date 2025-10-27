@@ -10,15 +10,13 @@ import NativeQueryEditor, {
 } from "metabase/query_builder/components/NativeQueryEditor";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
-import type { NotebookDataPickerOptions } from "metabase/querying/notebook/types";
 import { Box } from "metabase/ui";
-import { doesDatabaseSupportTransforms } from "metabase-enterprise/transforms/utils";
 import type Question from "metabase-lib/v1/Question";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
-  Database,
   NativeQuerySnippet,
-  RecentItem,
+  RecentCollectionItem,
 } from "metabase-types/api";
 
 import { ResizeHandle } from "../ResizeHandle";
@@ -40,7 +38,10 @@ const NATIVE_EDITOR_SIDEBAR_FEATURES = {
 
 type QuerySectionProps = {
   question: Question;
-  databases: Database[];
+  shouldDisableDatabase?: (database: Database) => boolean;
+  shouldDisableItem?: (
+    item: DataPickerItem | CollectionPickerItem | RecentCollectionItem,
+  ) => boolean;
   modalSnippet?: NativeQuerySnippet | null;
   nativeEditorSelectedText?: string | null;
   isNative: boolean;
@@ -73,7 +74,8 @@ export function QuerySection({
   onCancelQuery,
   onToggleDataReference,
   onToggleSnippetSidebar,
-  databases,
+  shouldDisableItem,
+  shouldDisableDatabase,
   modalSnippet,
   onInsertSnippet,
   onChangeModalSnippet,
@@ -86,8 +88,8 @@ export function QuerySection({
   const editorHeight = useInitialEditorHeight(isNative);
 
   const dataPickerOptions = useMemo(
-    () => getDataPickerOptions(databases),
-    [databases],
+    () => ({ shouldDisableItem }),
+    [shouldDisableItem],
   );
 
   const resizableBoxProps: Partial<ResizableBoxProps> = useMemo(
@@ -128,6 +130,7 @@ export function QuerySection({
       isShowingDataReference={isShowingDataReference}
       isShowingSnippetSidebar={isShowingSnippetSidebar}
       hasTopBar
+      databaseIsDisabled={shouldDisableDatabase}
       hasRunButton
       isNativeEditorOpen
       readOnly={false}
@@ -142,10 +145,6 @@ export function QuerySection({
       modalSnippet={modalSnippet}
       insertSnippet={onInsertSnippet}
       closeSnippetModal={() => onChangeModalSnippet(null)}
-      databaseIsDisabled={(db: Database) => {
-        const database = databases.find((database) => database.id === db.id);
-        return !doesDatabaseSupportTransforms(database);
-      }}
       setNativeEditorSelectedRange={onChangeNativeEditorSelection}
       nativeEditorSelectedText={nativeEditorSelectedText}
       onOpenModal={onOpenModal}
@@ -175,46 +174,6 @@ export function QuerySection({
       </Box>
     </ResizableBox>
   );
-}
-
-function shouldDisableItem(
-  item: DataPickerItem | CollectionPickerItem | RecentItem,
-  databases: Database[],
-) {
-  // Disable unsupported databases
-  if (item.model === "database") {
-    const database = databases.find((db) => db.id === item.id);
-    return !doesDatabaseSupportTransforms(database);
-  }
-
-  if (
-    // Disable questions based on unsupported databases
-    item.model === "card" ||
-    item.model === "dataset" ||
-    item.model === "metric" ||
-    // Disable tables based on unsupported databases
-    item.model === "table"
-  ) {
-    if ("database_id" in item) {
-      const database = databases.find((db) => db.id === item.database_id);
-      return !doesDatabaseSupportTransforms(database);
-    }
-    if ("database" in item) {
-      const database = databases.find((db) => db.id === item.database.id);
-      return !doesDatabaseSupportTransforms(database);
-    }
-  }
-
-  // Disable dashboards altogether
-  return item.model === "dashboard";
-}
-
-function getDataPickerOptions(
-  databases: Database[],
-): NotebookDataPickerOptions {
-  return {
-    shouldDisableItem: (item) => shouldDisableItem(item, databases),
-  };
 }
 
 function getHeaderHeight(isNative: boolean) {

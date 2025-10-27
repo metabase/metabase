@@ -12,11 +12,15 @@ import S from "./NativeQueryPreviewSidebar.module.css";
 
 type NativeQueryPreviewSidebarProps = {
   question: Question;
+  convertToNativeTitle?: string;
+  convertToNativeButtonLabel?: string;
   onConvertToNativeClick: (newQuestion: Question) => void;
 };
 
 export function NativeQueryPreviewSidebar({
   question,
+  convertToNativeTitle,
+  convertToNativeButtonLabel,
   onConvertToNativeClick,
 }: NativeQueryPreviewSidebarProps) {
   const { width: windowWidth } = useWindowSize();
@@ -36,8 +40,8 @@ export function NativeQueryPreviewSidebar({
     >
       <NotebookNativePreview
         question={question}
-        title={t`SQL for this transform`}
-        buttonTitle={t`Convert this transform to SQL`}
+        title={convertToNativeTitle}
+        buttonTitle={convertToNativeButtonLabel}
         onConvertClick={onConvertToNativeClick}
       />
     </ResizableBox>

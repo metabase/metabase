@@ -2,34 +2,29 @@ import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { NativeQueryPreview } from "metabase/querying/notebook/components/NativeQueryPreview";
-import { Center, Flex, Modal } from "metabase/ui";
-import * as Lib from "metabase-lib";
+import {
+  QueryEditor,
+  type QueryEditorUiControls,
+} from "metabase/querying/editor/components/QueryEditor";
+import { Center, Flex } from "metabase/ui";
 import type { QueryTransformSource, TransformId } from "metabase-types/api";
 
 import { TransformHeaderView } from "../TransformHeader";
 
-import {
-  NativeQueryPreviewSidebar,
-  NativeQueryPreviewSidebarToggle,
-} from "./NativeQueryPreviewSidebar";
-import { NativeQuerySidebar } from "./NativeQuerySidebar";
-import { QuerySection } from "./QuerySection";
 import { SaveSection } from "./SaveSection";
-import { VisualizationSection } from "./VisualizationSection";
-import { useEditorControls } from "./use-editor-controls";
-import { useQueryMetadata } from "./use-query-metadata";
-import { useQueryResults } from "./use-query-results";
 import { useSourceQuery } from "./use-source-query";
+import { shouldDisableDatabase, shouldDisableItem } from "./utils";
 
 type TransformEditorProps = {
   id?: TransformId;
   name: string;
   source: QueryTransformSource;
+  uiControls: QueryEditorUiControls;
   isSaving: boolean;
   isSourceDirty: boolean;
   onNameChange: (newName: string) => void;
   onSourceChange: (newSource: QueryTransformSource) => void;
+  onUiControlsChange: (newUiControls: QueryEditorUiControls) => void;
   onSave: () => void;
   onCancel: () => void;
 };
@@ -38,51 +33,20 @@ export function TransformEditor({
   id,
   name,
   source,
+  uiControls,
   isSaving,
   isSourceDirty,
   onNameChange,
   onSourceChange,
+  onUiControlsChange,
   onSave,
   onCancel,
 }: TransformEditorProps) {
-  const { question, setQuestion } = useSourceQuery(source, onSourceChange);
-  const { isMetadataLoading, metadataError } = useQueryMetadata(question);
-  const {
-    result,
-    rawSeries,
-    isRunnable,
-    isRunning,
-    isResultDirty,
-    handleRunQuery,
-    handleCancelQuery,
-  } = useQueryResults(question);
-  const {
-    selectedText,
-    modalSnippet,
-    isDataReferenceOpen,
-    isSnippetSidebarOpen,
-    isPreviewQueryModalOpen,
-    isNativeQueryPreviewSidebarOpen,
-    openModal,
-    setSelectionRange,
-    setModalSnippet,
-    insertSnippet,
-    toggleDataReference,
-    toggleSnippetSidebar,
-    togglePreviewQueryModal,
-    toggleNativeQueryPreviewSidebar,
-    convertToNative,
-  } = useEditorControls(question, setQuestion);
-  const {
-    data: databases,
-    isLoading: isDatabaseListLoading,
-    error: databasesError,
-  } = useListDatabasesQuery({
+  const { query, setQuery } = useSourceQuery(source, onSourceChange);
+  const { data, isLoading, error } = useListDatabasesQuery({
     include_analytics: true,
   });
-  const { isNative } = Lib.queryDisplayInfo(question.query());
-  const isLoading = isMetadataLoading || isDatabaseListLoading;
-  const error = metadataError ?? databasesError;
+  const databases = data?.data ?? [];
 
   if (isLoading || error != null) {
     return (
@@ -93,96 +57,33 @@ export function TransformEditor({
   }
 
   return (
-    <>
-      <Flex direction="column" h="100%">
-        <TransformHeaderView
-          id={id}
-          name={name}
-          actions={
-            (isSaving || isSourceDirty) && (
-              <SaveSection
-                question={question}
-                isSaving={isSaving}
-                onSave={onSave}
-                onCancel={onCancel}
-              />
-            )
-          }
-          onNameChange={onNameChange}
-        />
-        <Flex flex={1}>
-          <Flex flex="2 1 0" direction="column" pos="relative">
-            <QuerySection
-              question={question}
-              databases={databases?.data ?? []}
-              modalSnippet={modalSnippet}
-              nativeEditorSelectedText={selectedText}
-              isNative={isNative}
-              isRunnable={isRunnable}
-              isRunning={isRunning}
-              isResultDirty={isResultDirty}
-              isShowingDataReference={isDataReferenceOpen}
-              isShowingSnippetSidebar={isSnippetSidebarOpen}
-              onChange={setQuestion}
-              onRunQuery={handleRunQuery}
-              onCancelQuery={handleCancelQuery}
-              onToggleDataReference={toggleDataReference}
-              onToggleSnippetSidebar={toggleSnippetSidebar}
-              onOpenModal={openModal}
-              onChangeModalSnippet={setModalSnippet}
-              onChangeNativeEditorSelection={setSelectionRange}
+    <Flex direction="column" h="100%">
+      <TransformHeaderView
+        id={id}
+        name={name}
+        actions={
+          (isSaving || isSourceDirty) && (
+            <SaveSection
+              query={query}
+              isSaving={isSaving}
+              onSave={onSave}
+              onCancel={onCancel}
             />
-            <VisualizationSection
-              question={question}
-              result={result}
-              rawSeries={rawSeries}
-              isNative={isNative}
-              isRunnable={isRunnable}
-              isRunning={isRunning}
-              isResultDirty={isResultDirty}
-              onRunQuery={handleRunQuery}
-              onCancelQuery={handleCancelQuery}
-            />
-            {!isNative && (
-              <NativeQueryPreviewSidebarToggle
-                isNativeQueryPreviewSidebarOpen={
-                  isNativeQueryPreviewSidebarOpen
-                }
-                onToggleNativeQueryPreviewSidebar={
-                  toggleNativeQueryPreviewSidebar
-                }
-              />
-            )}
-          </Flex>
-          {isNative && (
-            <NativeQuerySidebar
-              question={question}
-              isNative={isNative}
-              isDataReferenceOpen={isDataReferenceOpen}
-              isSnippetSidebarOpen={isSnippetSidebarOpen}
-              onInsertSnippet={insertSnippet}
-              onToggleDataReference={toggleDataReference}
-              onToggleSnippetSidebar={toggleSnippetSidebar}
-              onChangeModalSnippet={setModalSnippet}
-            />
-          )}
-          {!isNative && isNativeQueryPreviewSidebarOpen && (
-            <NativeQueryPreviewSidebar
-              question={question}
-              onConvertToNativeClick={convertToNative}
-            />
-          )}
-        </Flex>
-      </Flex>
-      {isNative && (
-        <Modal
-          title={t`Query preview`}
-          opened={isPreviewQueryModalOpen}
-          onClose={togglePreviewQueryModal}
-        >
-          <NativeQueryPreview query={question.query()} />
-        </Modal>
-      )}
-    </>
+          )
+        }
+        onNameChange={onNameChange}
+      />
+      <QueryEditor
+        query={query}
+        type="question"
+        uiControls={uiControls}
+        convertToNativeTitle={t`SQL for this transform`}
+        convertToNativeButtonLabel={t`Convert this transform to SQL`}
+        shouldDisableItem={(item) => shouldDisableItem(item, databases)}
+        shouldDisableDatabase={({ id }) => shouldDisableDatabase(id, databases)}
+        onQueryChange={setQuery}
+        onUiControlsChange={onUiControlsChange}
+      />
+    </Flex>
   );
 }

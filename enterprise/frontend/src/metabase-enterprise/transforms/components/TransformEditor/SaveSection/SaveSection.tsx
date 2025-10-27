@@ -2,22 +2,21 @@ import { t } from "ttag";
 
 import { Button, Group, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
 
 type SaveSectionProps = {
-  question: Question;
+  query: Lib.Query;
   isSaving: boolean;
   onSave: () => void;
   onCancel: () => void;
 };
 
 export function SaveSection({
-  question,
+  query,
   isSaving,
   onSave,
   onCancel,
 }: SaveSectionProps) {
-  const { isValid, errorMessage } = getValidationResult(question);
+  const { isValid, errorMessage } = getValidationResult(query);
 
   return (
     <Group>
@@ -40,8 +39,7 @@ type ValidationResult = {
   errorMessage?: string;
 };
 
-function getValidationResult(question: Question): ValidationResult {
-  const query = question.query();
+function getValidationResult(query: Lib.Query): ValidationResult {
   const { isNative } = Lib.queryDisplayInfo(query);
 
   if (isNative) {

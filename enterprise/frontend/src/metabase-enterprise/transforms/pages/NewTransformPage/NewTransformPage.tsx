@@ -10,6 +10,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import { getInitialUiControls } from "metabase/querying/editor/components/QueryEditor";
 import { Center } from "metabase/ui";
 import type {
   DraftTransformSource,
@@ -43,6 +44,7 @@ function NewTransformPage({
 }: NewTransformPageProps) {
   const [name, setName] = useState(initialName);
   const [source, setSource] = useState(initialSource);
+  const [uiControls, setUiControls] = useState(getInitialUiControls);
   const [isOpened, { open, close }] = useDisclosure();
   const dispatch = useDispatch();
   useRegisterMetabotTransformContext(undefined, source);
@@ -80,10 +82,12 @@ function NewTransformPage({
         <TransformEditor
           name={name}
           source={source}
+          uiControls={uiControls}
           isSaving={false}
           isSourceDirty
           onNameChange={setName}
           onSourceChange={setSource}
+          onUiControlsChange={setUiControls}
           onSave={open}
           onCancel={handleCancel}
         />

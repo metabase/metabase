@@ -32,7 +32,7 @@ export function useQueryMetadata(question: Question) {
   }, [question, loadMetadata]);
 
   return {
-    metadataError: error,
-    isMetadataLoading: !isSourceTableLoaded,
+    isLoading: !isSourceTableLoaded,
+    error,
   };
 }

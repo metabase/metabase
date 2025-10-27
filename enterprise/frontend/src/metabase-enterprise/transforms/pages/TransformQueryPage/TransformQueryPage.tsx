@@ -12,6 +12,7 @@ import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
+import { getInitialUiControls } from "metabase/querying/editor/components/QueryEditor";
 import {
   useGetTransformQuery,
   useUpdateTransformMutation,
@@ -56,6 +57,7 @@ function TransformQueryPageBody({
   route,
 }: TransformQueryPageBodyProps) {
   const [source, setSource] = useState<DraftTransformSource>(transform.source);
+  const [uiControls, setUiControls] = useState(getInitialUiControls);
   const sourceRef = useLatest(transform.source);
   const [updateName] = useUpdateTransformMutation();
   const [updateSource, { isLoading: isSaving }] = useUpdateTransformMutation();
@@ -113,6 +115,7 @@ function TransformQueryPageBody({
 
   useLayoutEffect(() => {
     setSource(sourceRef.current);
+    setUiControls(getInitialUiControls());
   }, [transform.id, sourceRef]);
 
   return (
@@ -134,10 +137,12 @@ function TransformQueryPageBody({
           id={transform.id}
           name={transform.name}
           source={source}
+          uiControls={uiControls}
           isSaving={isSaving || isCheckingDependencies}
           isSourceDirty={isSourceDirty}
           onNameChange={handleNameChange}
           onSourceChange={setSource}
+          onUiControlsChange={setUiControls}
           onSave={handleSave}
           onCancel={handleCancel}
         />
