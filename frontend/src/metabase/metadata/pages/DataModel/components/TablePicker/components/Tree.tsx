@@ -319,6 +319,8 @@ export function Tree({ path, onChange }: Props) {
         onUpdate={() => {
           reload(path);
           setSelectedItems(new Set());
+          setSelectedSchemas(new Set());
+          setSelectedDatabases(new Set());
         }}
       />
     </>
