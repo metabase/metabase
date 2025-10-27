@@ -85,13 +85,15 @@
 (defn check-git-settings!
   "Validates git repository settings by attempting to connect and retrieve the default branch.
 
-  Takes a map with :remote-sync-url (required) and :remote-sync-token (optional) keys.
+  If no args are passed, it validates the current settings.
 
   Throws ExceptionInfo if unable to connect to the repository with the provided settings."
   ([] (when (setting/get :remote-sync-enabled) (check-git-settings! {:remote-sync-url   (setting/get :remote-sync-url)
-                                                                     :remote-sync-token (setting/get :remote-sync-token)})))
+                                                                     :remote-sync-token (setting/get :remote-sync-token)
+                                                                     :remote-sync-branch (setting/get :remote-sync-branch)
+                                                                     :remote-sync-type (setting/get :remote-sync-type)})))
 
-  ([{:keys [remote-sync-url remote-sync-token]}]
+  ([{:keys [remote-sync-url remote-sync-token remote-sync-branch remote-sync-type]}]
    (cond
      (or (str/starts-with? remote-sync-url "http://")
          (str/starts-with? remote-sync-url "https://"))
@@ -102,9 +104,11 @@
      true
 
      :else
-     (throw (ex-info "Invalid Repository URL format" {:uurl remote-sync-url})))
+     (throw (ex-info "Invalid Repository URL format" {:url remote-sync-url})))
 
    (let [source (git/git-source remote-sync-url "HEAD" remote-sync-token)]
+     (when (and (= :production remote-sync-type) (not (some #{remote-sync-branch} (git/branches source))))
+       (throw (ex-info "Invalid branch name" {:url remote-sync-url :branch remote-sync-branch})))
      (git/fetch! source)
      (when-not (git/has-data? source)
        (throw (ex-info "Cannot connect to an uninitialized repository" {:url remote-sync-url}))))))
@@ -120,7 +124,7 @@
   overwriting it. If no branch is specified, uses the repository's default branch.
 
   Throws ExceptionInfo if the git settings are invalid or if unable to connect to the repository."
-  [{:keys [remote-sync-url remote-sync-token] :as settings}]
+  [{:keys [remote-sync-url remote-sync-token remote-sync-branch remote-sync-type] :as settings}]
 
   (if (str/blank? remote-sync-url)
     (t2/with-transaction [_conn]
@@ -130,7 +134,10 @@
     (let [current-token (setting/get :remote-sync-token)
           obfuscated? (= remote-sync-token (setting/obfuscate-value current-token))
           token-to-check (if obfuscated? current-token remote-sync-token)
-          _ (check-git-settings! (assoc settings :remote-sync-token token-to-check))]
+          _ (check-git-settings! (assoc settings
+                                        :remote-sync-token token-to-check
+                                        :remote-sync-branch remote-sync-branch
+                                        :remote-sync-type remote-sync-type))]
       (t2/with-transaction [_conn]
         (doseq [k [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-auto-import]]
           (when (not (and (= k :remote-sync-token) obfuscated?))

@@ -55,7 +55,7 @@
           (.call))
       (catch Exception e
         (analytics/inc! :metabase-remote-sync/git-operations-failed analytics-labels)
-        (throw (clean-git-exception e command false))))))
+        (throw (clean-git-exception e command true))))))
 
 (defn- qualify-branch [branch]
   (if (str/starts-with? branch "refs/heads/")
