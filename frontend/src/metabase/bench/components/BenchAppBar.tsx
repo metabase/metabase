@@ -22,9 +22,9 @@ import { BenchNavMenu, BenchNavTitleMenu } from "./BenchNavMenu";
 
 export function BenchAppBar() {
   const currentTab = useBenchCurrentTab();
-  const { getTab, setTab } = useRememberBenchTab();
+  const { setTab } = useRememberBenchTab();
   const { onTogglePanel, isPanelCollapsed } = useBenchLayoutContext();
-  const [isNavMenuOpen, setIsNavMenuOpen] = useState(() => !getTab());
+  const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
   useEffect(() => setTab(currentTab.id), [currentTab.id, setTab]);
 
   const hasPanelControl = onTogglePanel !== undefined;

@@ -43,7 +43,7 @@ export const ItemsListSection = ({
   return (
     <Box data-testid={testId} className={S.container}>
       {hasHeader && (
-        <Flex justify="space-between" align="center" px="md" py="sm">
+        <Flex justify="space-between" align="center" px="lg" py="md">
           <Flex align="center" gap="sm">
             {onCollapse && (
               <ActionIcon
@@ -60,7 +60,7 @@ export const ItemsListSection = ({
         </Flex>
       )}
       {searchInput && (
-        <Box px="md" pt={hasHeader ? undefined : "md"} pb="xs">
+        <Box px="lg" pt={hasHeader ? undefined : "md"} pb="md">
           {searchInput}
         </Box>
       )}

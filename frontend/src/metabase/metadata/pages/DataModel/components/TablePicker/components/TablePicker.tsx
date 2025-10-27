@@ -21,7 +21,7 @@ export function TablePicker({ path, className, onChange }: TablePickerProps) {
 
   return (
     <Stack data-testid="table-picker" gap={0} h="100%" className={className}>
-      <Box px="md" pt="md" pb="xs">
+      <Box px="lg" py="md">
         <Input
           leftSection={<Icon name="search" />}
           placeholder={t`Search tables`}
