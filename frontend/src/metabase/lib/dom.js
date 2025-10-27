@@ -324,10 +324,9 @@ export function open(
   // In the react sdk, we allow the host app to override how to open links
   if (isEmbeddingSdk()) {
     const globalPlugins = getSdkGlobalPlugins();
-    if (globalPlugins?.handleLink) {
-      if (globalPlugins.handleLink(url)) {
-        return; // the plugin should return true to prevent the default behavior
-      }
+    if (globalPlugins?.handleLink && globalPlugins.handleLink(url)) {
+      // If the plugin returns true, it means they handled the link and we should not continue with the default behavior
+      return;
     }
   }
 
