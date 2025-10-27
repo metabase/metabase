@@ -4,10 +4,27 @@
    #?(:clj [metabase.util.performance :refer [for]])
    [clojure.string :as str]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.util :as lib.util]
    [metabase.types.core]
    [metabase.util.malli.registry :as mr]))
 
 (comment metabase.types.core/keep-me)
+
+(defn clause-registry-name
+  "The schema name in the Malli registry for an MBQL 4 clause."
+  [clause-name]
+  (keyword "metabase.legacy-mbql.schema" (name clause-name)))
+
+(defn defclause
+  "Impl for [[defclause*]]."
+  [clause-name schema]
+  (assert (not (vector? clause-name)))
+  (let [clause-name   (keyword clause-name)
+        registry-name (clause-registry-name clause-name)]
+    (mr/def
+      registry-name
+      (lib.util/format "Schema for a valid MBQL 4 %s clause." clause-name)
+      schema)))
 
 (defn mbql-clause?
   "True if `x` is an MBQL clause (a sequence with a keyword as its first arg).

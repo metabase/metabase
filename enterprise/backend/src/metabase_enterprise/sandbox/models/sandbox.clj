@@ -10,10 +10,10 @@
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
-   ;; legacy usage -- do not use in new code
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -39,7 +39,7 @@
 
 (defn- normalize-attribute-remapping-targets [attribute-remappings]
   (m/map-vals
-   mbql.normalize/normalize
+   #(lib/normalize ::lib.schema.parameter/target %)
    attribute-remappings))
 
 (t2/deftransforms :model/Sandbox

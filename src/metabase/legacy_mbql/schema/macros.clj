@@ -2,7 +2,6 @@
   (:refer-clojure :exclude [run!])
   (:require
    [metabase.legacy-mbql.schema.helpers :as helpers]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [run!]]))
 
 (defn- stringify-names [arg-names-and-schemas]
@@ -15,24 +14,10 @@
                                            schema)])))
         arg-names-and-schemas))
 
-(defn- clause-registry-name [clause-name]
-  (keyword "metabase.legacy-mbql.schema" (name clause-name)))
-
-(defn defclause**
-  "Impl for [[defclause*]]."
-  [clause-name schema]
-  (assert (not (vector? clause-name)))
-  (let [clause-name   (keyword clause-name)
-        registry-name (clause-registry-name clause-name)]
-    (mr/def
-      registry-name
-      (format "Schema for a valid MBQL 4 %s clause." clause-name)
-      schema)))
-
 (defmacro defclause*
   "Like [[defclause]] but takes the schema to register directly instead of building it from arguments."
   [clause-name schema]
-  `(defclause** ~(keyword clause-name) ~schema))
+  `(helpers/defclause ~(keyword clause-name) ~schema))
 
 (defmacro defclause
   "Define a new MBQL clause. This builds and registers a schema like `:metabase.legacy-mbql.schema/clause-name`.
@@ -58,5 +43,5 @@
   (run! #(assert (symbol? %)) clauses)
   `(helpers/one-of*
     ~@(for [clause clauses
-            :let [k (clause-registry-name clause)]]
+            :let [k (helpers/clause-registry-name clause)]]
         k)))

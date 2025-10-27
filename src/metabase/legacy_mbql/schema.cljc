@@ -16,7 +16,7 @@
    [clojure.string :as str]
    [malli.core :as mc]
    [metabase.legacy-mbql.schema.helpers :as helpers :refer [is-clause?]]
-   [metabase.legacy-mbql.schema.macros :refer [defclause defclause* defclause** one-of]]
+   [metabase.legacy-mbql.schema.macros :refer [defclause defclause* one-of]]
    [metabase.lib.schema.actions :as lib.schema.actions]
    [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -382,7 +382,9 @@
     :joined-field     (let [[_tag join-alias nested-ref] x
                             [_tag id-or-name opts]       (normalize-field nested-ref)]
                         [:field id-or-name (assoc opts :join-alias (u/qualified-name join-alias))])
-    :fk->             (let [[_tag source-field-id dest-field-id] x]
+    :fk->             (let [[_tag source-field dest-field] x
+                            [_tag source-field-id _opts]   (normalize-field source-field)
+                            [_tag dest-field-id _opts]     (normalize-field dest-field)]
                         [:field dest-field-id {:source-field source-field-id}])
     :field            (let [[_tag id-or-name opts] x]
                         ;; if someone accidentally nests `:field` clauses fix it for them
@@ -1056,7 +1058,7 @@
 
 (doseq [clause-keyword [::starts-with ::ends-with ::contains ::does-not-contain]]
   (defmethod options-style-method (keyword (name clause-keyword)) [_tag] ::options-style.𝕨𝕚𝕝𝕕)
-  (defclause** clause-keyword
+  (helpers/defclause clause-keyword
     [:or
      ;; Binary form
      (helpers/clause (keyword (name clause-keyword))

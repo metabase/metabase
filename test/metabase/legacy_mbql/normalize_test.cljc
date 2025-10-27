@@ -985,8 +985,12 @@
 
 (deftest ^:parallel canonicalize-filter-test-12
   (normalize-tests
-   "fk-> clauses should get the field-id treatment"
-   {{:query {:filter [:= [:fk-> 10 20] "ABC"]}} {:query {:filter [:= [:field 20 {:source-field 10}] "ABC"]}}}))
+   "MBQL ≤ 3 fk-> clauses should get normalized to MBQL 4"
+   {{:query {:filter [:= [:fk-> 10 20] "ABC"]}}
+    {:query {:filter [:= [:field 20 {:source-field 10}] "ABC"]}}
+
+    {:query {:fields [["fk->" ["field" 101 nil] ["field" 294 nil]]]}}
+    {:query {:fields [[:field 294 {:source-field 101}]]}}}))
 
 (deftest ^:parallel canonicalize-filter-test-13
   (normalize-tests

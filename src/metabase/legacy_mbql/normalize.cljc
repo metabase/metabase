@@ -22,10 +22,11 @@
   "Normalize the tokens in a Metabase query (i.e., make them all `lisp-case` keywords), rewrite deprecated clauses as
   MBQL 4, and remove empty clauses."
   ([x]
+   (normalize (infer-schema x) x))
+
+  ([schema x]
    (when (:lib/type x)
      (throw (ex-info "Legacy MBQL normalization code cannot normalize MBQL >= 5" {:query x})))
-   (lib.normalize/normalize (infer-schema x) x))
-  ([schema x]
    (lib.normalize/normalize schema x)))
 
 (mu/defn normalize-or-throw :- ::mbql.s/Query
@@ -35,7 +36,9 @@
   (normalize query))
 
 (defn normalize-field-ref
-  "Normalize the field ref. Ensure it's well-formed mbql, not just json."
+  "Normalize the field ref. Ensure it's well-formed mbql, not just json.
+
+  DEPRECATED: use Lib + MBQL 5 in new code going forward."
   {:deprecated "0.57.0"}
   [clause]
   (normalize ::mbql.s/field clause))
