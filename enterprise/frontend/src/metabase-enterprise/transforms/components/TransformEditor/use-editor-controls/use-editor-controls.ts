@@ -43,23 +43,21 @@ export function useEditorControls(
     return text.slice(start, end);
   }, [question, state.selectionRange]);
 
-  const handleChangeSelectionRange = (selectionRange: SelectionRange[]) => {
+  const setSelectionRange = (selectionRange: SelectionRange[]) => {
     setState((state) => ({ ...state, selectionRange }));
   };
 
-  const handleChangeModalSnippet = (
-    modalSnippet: NativeQuerySnippet | null,
-  ) => {
+  const setModalSnippet = (modalSnippet: NativeQuerySnippet | null) => {
     setState((state) => ({ ...state, modalSnippet }));
   };
 
-  const handleOpenModal = (type: QueryModalType) => {
+  const openModal = (type: QueryModalType) => {
     if (type === "preview-query") {
       setState((state) => ({ ...state, isPreviewQueryModalOpen: true }));
     }
   };
 
-  const handleInsertSnippet = (snippet: NativeQuerySnippet) => {
+  const insertSnippet = (snippet: NativeQuerySnippet) => {
     const query = question.query();
     const text = Lib.rawNativeQuery(query) ?? "";
 
@@ -72,7 +70,7 @@ export function useEditorControls(
     onQuestionChange(question.setQuery(newQuery));
   };
 
-  const handleToggleDataReference = () => {
+  const toggleDataReference = () => {
     setState((state) => ({
       ...state,
       isDataReferenceOpen: state.isDataReferenceOpen,
@@ -80,7 +78,7 @@ export function useEditorControls(
     }));
   };
 
-  const handleToggleSnippetSidebar = () => {
+  const toggleSnippetSidebar = () => {
     setState((state) => ({
       ...state,
       isDataReferenceOpen: false,
@@ -88,21 +86,21 @@ export function useEditorControls(
     }));
   };
 
-  const handleTogglePreviewQueryModal = () => {
+  const togglePreviewQueryModal = () => {
     setState((state) => ({
       ...state,
       isPreviewQueryModalOpen: !state.isPreviewQueryModalOpen,
     }));
   };
 
-  const handleToggleNativeQueryPreviewSidebar = () => {
+  const toggleNativeQueryPreviewSidebar = () => {
     setState((state) => ({
       ...state,
       isNativeQueryPreviewSidebarOpen: !state.isNativeQueryPreviewSidebarOpen,
     }));
   };
 
-  const handleConvertToNative = (newQuestion: Question) => {
+  const convertToNative = (newQuestion: Question) => {
     setState((state) => ({
       ...state,
       isNativeQueryPreviewSidebarOpen: false,
@@ -113,15 +111,15 @@ export function useEditorControls(
   return {
     ...state,
     selectedText,
-    handleOpenModal,
-    handleChangeSelectionRange,
-    handleChangeModalSnippet,
-    handleInsertSnippet,
-    handleToggleDataReference,
-    handleToggleSnippetSidebar,
-    handleTogglePreviewQueryModal,
-    handleToggleNativeQueryPreviewSidebar,
-    handleConvertToNative,
+    openModal,
+    setSelectionRange,
+    setModalSnippet,
+    insertSnippet,
+    toggleDataReference,
+    toggleSnippetSidebar,
+    togglePreviewQueryModal,
+    toggleNativeQueryPreviewSidebar,
+    convertToNative,
   };
 }
 

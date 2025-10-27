@@ -45,10 +45,7 @@ export function TransformEditor({
   onSave,
   onCancel,
 }: TransformEditorProps) {
-  const { question, handleChangeQuestion } = useSourceQuery(
-    source,
-    onSourceChange,
-  );
+  const { question, setQuestion } = useSourceQuery(source, onSourceChange);
   const { isMetadataLoading, metadataError } = useQueryMetadata(question);
   const {
     result,
@@ -66,16 +63,16 @@ export function TransformEditor({
     isSnippetSidebarOpen,
     isPreviewQueryModalOpen,
     isNativeQueryPreviewSidebarOpen,
-    handleOpenModal,
-    handleChangeSelectionRange,
-    handleChangeModalSnippet,
-    handleInsertSnippet,
-    handleToggleDataReference,
-    handleToggleSnippetSidebar,
-    handleTogglePreviewQueryModal,
-    handleToggleNativeQueryPreviewSidebar,
-    handleConvertToNative,
-  } = useEditorControls(question, handleChangeQuestion);
+    openModal,
+    setSelectionRange,
+    setModalSnippet,
+    insertSnippet,
+    toggleDataReference,
+    toggleSnippetSidebar,
+    togglePreviewQueryModal,
+    toggleNativeQueryPreviewSidebar,
+    convertToNative,
+  } = useEditorControls(question, setQuestion);
   const {
     data: databases,
     isLoading: isDatabaseListLoading,
@@ -104,6 +101,7 @@ export function TransformEditor({
           actions={
             (isSaving || isSourceDirty) && (
               <SaveSection
+                question={question}
                 isSaving={isSaving}
                 onSave={onSave}
                 onCancel={onCancel}
@@ -125,14 +123,14 @@ export function TransformEditor({
               isResultDirty={isResultDirty}
               isShowingDataReference={isDataReferenceOpen}
               isShowingSnippetSidebar={isSnippetSidebarOpen}
-              onChange={handleChangeQuestion}
+              onChange={setQuestion}
               onRunQuery={handleRunQuery}
               onCancelQuery={handleCancelQuery}
-              onToggleDataReference={handleToggleDataReference}
-              onToggleSnippetSidebar={handleToggleSnippetSidebar}
-              onOpenModal={handleOpenModal}
-              onChangeModalSnippet={handleChangeModalSnippet}
-              onChangeNativeEditorSelection={handleChangeSelectionRange}
+              onToggleDataReference={toggleDataReference}
+              onToggleSnippetSidebar={toggleSnippetSidebar}
+              onOpenModal={openModal}
+              onChangeModalSnippet={setModalSnippet}
+              onChangeNativeEditorSelection={setSelectionRange}
             />
             <VisualizationSection
               question={question}
@@ -151,7 +149,7 @@ export function TransformEditor({
                   isNativeQueryPreviewSidebarOpen
                 }
                 onToggleNativeQueryPreviewSidebar={
-                  handleToggleNativeQueryPreviewSidebar
+                  toggleNativeQueryPreviewSidebar
                 }
               />
             )}
@@ -162,16 +160,16 @@ export function TransformEditor({
               isNative={isNative}
               isDataReferenceOpen={isDataReferenceOpen}
               isSnippetSidebarOpen={isSnippetSidebarOpen}
-              onInsertSnippet={handleInsertSnippet}
-              onToggleDataReference={handleToggleDataReference}
-              onToggleSnippetSidebar={handleToggleSnippetSidebar}
-              onChangeModalSnippet={handleChangeModalSnippet}
+              onInsertSnippet={insertSnippet}
+              onToggleDataReference={toggleDataReference}
+              onToggleSnippetSidebar={toggleSnippetSidebar}
+              onChangeModalSnippet={setModalSnippet}
             />
           )}
           {!isNative && isNativeQueryPreviewSidebarOpen && (
             <NativeQueryPreviewSidebar
               question={question}
-              onConvertToNativeClick={handleConvertToNative}
+              onConvertToNativeClick={convertToNative}
             />
           )}
         </Flex>
@@ -180,7 +178,7 @@ export function TransformEditor({
         <Modal
           title={t`Query preview`}
           opened={isPreviewQueryModalOpen}
-          onClose={handleTogglePreviewQueryModal}
+          onClose={togglePreviewQueryModal}
         >
           <NativeQueryPreview query={question.query()} />
         </Modal>

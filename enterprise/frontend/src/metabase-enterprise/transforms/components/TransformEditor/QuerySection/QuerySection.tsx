@@ -106,7 +106,7 @@ export function QuerySection({
     return null;
   };
 
-  const handleChangeQuestion = (newQuestion: Question) => {
+  const setQuestion = (newQuestion: Question) => {
     onChange(newQuestion);
     return Promise.resolve();
   };
@@ -168,7 +168,7 @@ export function QuerySection({
           isResultDirty={false}
           reportTimezone={reportTimezone}
           hasVisualizeButton={false}
-          updateQuestion={handleChangeQuestion}
+          updateQuestion={setQuestion}
           runQuestionQuery={onRunQuery}
           dataPickerOptions={dataPickerOptions}
         />
