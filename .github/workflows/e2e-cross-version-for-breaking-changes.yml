@@ -80,8 +80,6 @@ jobs:
 
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: cross-version-uberjar
 
       - name: Build jar with different frontend and backend version
         env:
@@ -121,8 +119,6 @@ jobs:
 
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: cross-version-uberjar
 
       - name: Download Uberjar
         uses: actions/download-artifact@v4
