@@ -10,6 +10,7 @@ import {
   useGetCardQuery,
   useListCollectionsTreeQuery,
   useSearchQuery,
+  useUpdateCardMutation,
 } from "metabase/api";
 import { TAG_TYPE_MAPPING, listTag } from "metabase/api/tags";
 import { getTreeItems } from "metabase/bench/components/models/utils";
@@ -23,8 +24,10 @@ import { VirtualizedFlatList } from "metabase/common/components/VirtualizedFlatL
 import { VirtualizedTree } from "metabase/common/components/tree/VirtualizedTree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
+import { INJECT_RTK_QUERY_QUESTION_VALUE } from "metabase/entities/questions";
 import { useDispatch, useSelector } from "metabase/lib/redux/hooks";
 import { EmptyState } from "metabase/metadata/pages/DataModel/components/TablePicker/components/EmptyState";
+import { API_UPDATE_QUESTION } from "metabase/query_builder/actions";
 import type { SidebarFeatures } from "metabase/query_builder/components/NativeQueryEditor/types";
 import { ModelCacheManagementSection } from "metabase/query_builder/components/view/sidebars/ModelCacheManagementSection";
 import { QuestionInfoSidebar } from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/QuestionInfoSidebar";
@@ -279,7 +282,9 @@ const ModelHeader = withRouter(
     actions?: ReactNode;
     params: { slug: string; tab?: string };
   }) => {
+    const dispatch = useDispatch();
     const handleSave = useSaveQuestion();
+    const [updateCard] = useUpdateCardMutation();
 
     const enableSettingsSidebar = shouldShowQuestionSettingsSidebar(question);
     const [modal, setModal] = useState<"info" | null>(null);
@@ -300,8 +305,20 @@ const ModelHeader = withRouter(
               <BenchNameInput
                 initialValue={question.card().name || ""}
                 maxLength={QUESTION_NAME_MAX_LENGTH}
-                onChange={() => {
-                  // TODO: Update title (figure out if this is going to use `qb` actions or not)
+                onChange={async (name) => {
+                  const res = await updateCard({ id: question.id(), name });
+                  const updatedCard = res.data;
+                  if (updatedCard) {
+                    // HACK: Keeps entity framework data in sync
+                    dispatch({
+                      type: API_UPDATE_QUESTION,
+                      payload: updatedCard,
+                    });
+                    dispatch({
+                      type: INJECT_RTK_QUERY_QUESTION_VALUE,
+                      payload: updatedCard,
+                    });
+                  }
                 }}
               />
               {question.isSaved() && (
@@ -330,14 +347,15 @@ const ModelHeader = withRouter(
           actions={
             <Flex align="center">
               {actions}
-              {question.isSaved()}
-              <ToolbarButton
-                aria-label={t`More info`}
-                ml="md"
-                onClick={() => setModal("info")}
-              >
-                <FixedSizeIcon name="info" />
-              </ToolbarButton>
+              {question.isSaved() && (
+                <ToolbarButton
+                  aria-label={t`More info`}
+                  ml="md"
+                  onClick={() => setModal("info")}
+                >
+                  <FixedSizeIcon name="info" />
+                </ToolbarButton>
+              )}
             </Flex>
           }
         />

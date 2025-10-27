@@ -45,7 +45,7 @@ export const useCommandPaletteBasicActions = ({
     enabled: isLoggedIn,
   });
   const { data: models = [] } = useSearchListQuery({
-    query: { models: ["dataset"], limit: 1 },
+    query: { models: ["dataset"], limit: 1, wait_for_reindex: true },
     enabled: isLoggedIn,
   });
 
