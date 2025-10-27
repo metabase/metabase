@@ -139,7 +139,7 @@
                          :model/Card card {:name "Test Card"
                                            :dataset_query (mt/mbql-query venues {:limit 5})
                                            :document_id (:id document)}]
-            (let [result (mt/client :get 200 (format "ee/public/document/%s/card/%d" (:public_uuid document) (:id card)))]
+            (let [result (mt/client :get 202 (format "ee/public/document/%s/card/%d" (:public_uuid document) (:id card)))]
               (is (some? result))
               (is (= :completed (:status result))))))))))
 

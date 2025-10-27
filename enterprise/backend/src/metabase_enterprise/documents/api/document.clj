@@ -262,9 +262,8 @@
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Document :id document-id, :archived false)
-  ;; Wrap the entire check-and-insert logic in a transaction to avoid race conditions.
-  ;; If two requests arrive simultaneously, the transaction ensures only one will successfully
-  ;; create the UUID, and both will return the same value.
+  ;; Use a transaction to prevent race conditions when two requests arrive simultaneously.
+  ;; Only one request will successfully create the UUID; both will return the same value.
   (t2/with-transaction [_conn]
     (if-let [existing-uuid (t2/select-one-fn :public_uuid :model/Document :id document-id)]
       {:uuid existing-uuid}
@@ -317,11 +316,9 @@
 
 (defn- validate-card-in-document
   "Validates that a card exists and belongs to the specified document, and that the user has read access.
-
   Validates that the document exists, is not archived, and the user has read access.
   Validates that the card exists, is not archived, and belongs to the specified document.
   Throws 404 via `api/check-404` if any condition fails.
-
   Returns the card-id if validation succeeds."
   [document-id card-id]
   (let [document (api/check-404 (t2/select-one :model/Document :id document-id :archived false))]

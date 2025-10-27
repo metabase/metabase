@@ -10,6 +10,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.public-sharing.api :as public-sharing.api]
    [metabase.public-sharing.validation :as public-sharing.validation]
+   [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -21,10 +22,6 @@
 
 ;;; ----------------------------------------------- Public Documents -------------------------------------------------
 
-;; Import qp.constraints dynamically to avoid module dependency issues
-(def ^:private default-query-constraints
-  (delay @(requiring-resolve 'metabase.query-processor.middleware.constraints/default-query-constraints)))
-
 (defn- remove-card-non-public-columns
   "Remove everything from public `card` that shouldn't be visible to the general public.
   Delegates to the OSS implementation."
@@ -32,10 +29,7 @@
   (#'public-sharing.api/remove-card-non-public-columns card))
 
 (defn- remove-document-non-public-columns
-  "Strip out internal fields that shouldn't be exposed publicly.
-
-  Removes sensitive fields like collection_id, creator_id, permissions info, public_uuid, and made_public_by_id.
-  Only keeps fields safe for public consumption: id, name, document content, timestamps, and hydrated cards."
+  "Remove sensitive fields from a public document, keeping only fields safe for public consumption: id, name, document content, timestamps, and hydrated cards."
   [document]
   (select-keys document [:id :name :document :created_at :updated_at :cards]))
 
@@ -92,7 +86,7 @@
             card-id
             :api
             (json/decode+kw parameters)
-            :constraints (@default-query-constraints))
+            :constraints (qp.constraints/default-query-constraints))
     (events/publish-event! :event/card-read {:object-id card-id :user-id api/*current-user-id* :context :question})))
 
 (api.macros/defendpoint :post "/document/:uuid/card/:card-id/:export-format"
