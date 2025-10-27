@@ -3,11 +3,11 @@
    [medley.core :as m]
    [metabase-enterprise.transforms.models.transform-run-cancelation :as cancel]
    [metabase.app-db.core :as mdb]
-   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models.interface :as mi]
    [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -124,7 +124,7 @@
   [age unit]
   (u/prog1 (t2/update! :model/TransformRun
                        :is_active true
-                       :start_time [:< (sql.qp/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)]
+                       :start_time [:< (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)]
                        {:status    :timeout
                         :end_time  :%now
                         :is_active nil
@@ -140,7 +140,7 @@
                                  :from   :transform_run_cancelation
                                  :where  [:<
                                           :transform_run_cancelation.time
-                                          (sql.qp/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)]}]
+                                          (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)]}]
                        {:status    :canceled
                         :end_time  :%now
                         :is_active nil
