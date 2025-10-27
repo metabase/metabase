@@ -896,6 +896,7 @@ export const PLUGIN_TRANSFORMS: TransformsPlugin = {
 };
 
 export type PythonTransformsPlugin = {
+  isEnabled: boolean;
   PythonRunnerSettingsPage: ComponentType;
   SourceSection: ComponentType<{ transform: Transform }>;
   TransformEditor: ComponentType<{
@@ -923,16 +924,15 @@ export type PythonTransformsPlugin = {
   }>;
   getBenchRoutes: () => ReactNode;
   getBenchNavItems: (isAdmin: boolean) => BenchNavItem[];
-  getCreateTransformsMenuItems: () => ReactNode;
 };
 
 export const PLUGIN_TRANSFORMS_PYTHON: PythonTransformsPlugin = {
+  isEnabled: false,
   PythonRunnerSettingsPage: NotFoundPlaceholder,
   TransformEditor: NotFoundPlaceholder,
   SourceSection: PluginPlaceholder,
   getBenchRoutes: () => null,
   getBenchNavItems: () => [],
-  getCreateTransformsMenuItems: () => null,
 };
 
 type DependenciesPlugin = {

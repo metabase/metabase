@@ -13,8 +13,10 @@ import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { Button, Center, Icon, Loader, Menu } from "metabase/ui";
-import { trackTransformCreate } from "metabase-enterprise/transforms/analytics";
-import { doesDatabaseSupportTransforms } from "metabase-enterprise/transforms/utils";
+import type { Database } from "metabase-types/api";
+
+import { trackTransformCreate } from "../../../../analytics";
+import { doesDatabaseSupportTransforms } from "../../../../utils";
 
 export function CreateTransformMenu() {
   const dispatch = useDispatch();
@@ -82,7 +84,21 @@ export function CreateTransformMenu() {
               >
                 {t`SQL query`}
               </Menu.Item>
-              {PLUGIN_TRANSFORMS_PYTHON.getCreateTransformsMenuItems()}
+              {PLUGIN_TRANSFORMS_PYTHON.isEnabled && (
+                <Menu.Item
+                  component={ForwardRefLink}
+                  to={Urls.newPythonTransform()}
+                  leftSection={<Icon name="code_block" />}
+                  onClick={() => {
+                    trackTransformCreate({
+                      triggeredFrom: "transform-page-create-menu",
+                      creationType: "python",
+                    });
+                  }}
+                >
+                  {t`Python script`}
+                </Menu.Item>
+              )}
               <Menu.Item
                 leftSection={<Icon name="folder" />}
                 onClick={handleSavedQuestionClick}
@@ -99,27 +115,29 @@ export function CreateTransformMenu() {
           models={["card", "dataset"]}
           onChange={handlePickerChange}
           onClose={closePicker}
-          shouldDisableItem={(item: QuestionPickerItem) => {
-            if (
-              // Disable questions based on unsuppported databases
-              item.model === "card" ||
-              item.model === "dataset" ||
-              item.model === "metric"
-            ) {
-              const database = databases?.data.find(
-                (database) => database.id === item.database_id,
-              );
-              return !doesDatabaseSupportTransforms(database);
-            }
-
-            if (item.model === "dashboard") {
-              return true;
-            }
-
-            return false;
-          }}
+          shouldDisableItem={(item) => shouldDisableItem(item, databases?.data)}
         />
       )}
     </>
   );
+}
+
+function shouldDisableItem(item: QuestionPickerItem, databases?: Database[]) {
+  if (
+    // Disable questions based on unsuppported databases
+    item.model === "card" ||
+    item.model === "dataset" ||
+    item.model === "metric"
+  ) {
+    const database = databases?.find(
+      (database) => database.id === item.database_id,
+    );
+    return !doesDatabaseSupportTransforms(database);
+  }
+
+  if (item.model === "dashboard") {
+    return true;
+  }
+
+  return false;
 }
