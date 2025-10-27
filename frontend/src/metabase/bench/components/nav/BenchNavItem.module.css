@@ -3,8 +3,8 @@
   border-radius: 0.5rem;
 }
 
-.menuItem:hover {
-  background-color: var(--mb-color-bg-secondary);
+.menuItem:hover:not([data-active="true"]) {
+  background-color: var(--mb-color-brand-lighter);
 }
 
 .menuItemIcon {
