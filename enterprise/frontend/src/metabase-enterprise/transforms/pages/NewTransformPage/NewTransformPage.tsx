@@ -7,11 +7,12 @@ import { t } from "ttag";
 import { skipToken, useGetCardQuery } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiControls } from "metabase/querying/editor/components/QueryEditor";
 import { Center } from "metabase/ui";
+import { getMetabotSuggestedTransform } from "metabase-enterprise/metabot/state";
 import type {
   DraftTransformSource,
   Transform,
@@ -29,6 +30,35 @@ import {
   getInitialQuerySource,
 } from "./utils";
 
+const useTransformSource = (
+  initialSource: DraftTransformSource,
+  isInitiallyDirty: boolean,
+) => {
+  const suggestedTransform = useSelector((state) =>
+    getMetabotSuggestedTransform(state, undefined),
+  );
+
+  const [source, setSource] = useState(() => {
+    const overrideInitialSourceWithSuggestedSource =
+      !isInitiallyDirty && suggestedTransform;
+    // prevents showing diff UI with the default source
+    // for new transforms created from a starting suggestion
+    return overrideInitialSourceWithSuggestedSource
+      ? suggestedTransform?.source
+      : initialSource;
+  });
+  const { proposedSource, acceptProposed, rejectProposed } =
+    useTransformMetabot(undefined, source, setSource);
+
+  return {
+    source,
+    setSource,
+    proposedSource,
+    acceptProposed,
+    rejectProposed,
+  };
+};
+
 type NewTransformPageProps = {
   initialName?: string;
   initialSource: DraftTransformSource;
@@ -43,13 +73,12 @@ function NewTransformPage({
   isInitiallyDirty = false,
 }: NewTransformPageProps) {
   const [name, setName] = useState(initialName);
-  const [source, setSource] = useState(initialSource);
+  const { source, setSource, proposedSource, acceptProposed, rejectProposed } =
+    useTransformSource(initialSource, isInitiallyDirty);
   const [uiControls, setUiControls] = useState(getInitialUiControls);
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
   const dispatch = useDispatch();
-  const { proposedSource, acceptProposed, rejectProposed } =
-    useTransformMetabot(undefined, source, setSource);
 
   const isDirty = useMemo(
     () =>

@@ -52,7 +52,7 @@ export function TransformEditor({
   onRejectProposed,
 }: TransformEditorProps) {
   const metadata = useSelector(getMetadata);
-  const { query } = useMemo(() => {
+  const { query, proposedQuery } = useMemo(() => {
     const metadataProvider = Lib.metadataProvider(
       source.query.database,
       metadata,
@@ -101,6 +101,7 @@ export function TransformEditor({
       />
       <QueryEditor
         query={query}
+        proposedQuery={proposedQuery}
         type="question"
         uiControls={uiControls}
         convertToNativeTitle={t`SQL for this transform`}
