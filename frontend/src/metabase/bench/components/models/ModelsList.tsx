@@ -38,7 +38,7 @@ import { useSaveQuestion } from "metabase/query_builder/containers/use-save-ques
 import { getIsDirty, getQuestion } from "metabase/query_builder/selectors";
 import { QUESTION_NAME_MAX_LENGTH } from "metabase/questions/constants";
 import { getUser } from "metabase/selectors/user";
-import { Box, Center, Flex, Icon, Input, Loader, Stack } from "metabase/ui";
+import { Box, Center, Icon, Input, Loader, Stack } from "metabase/ui";
 import Question from "metabase-lib/v1/Question";
 import type { SearchResult } from "metabase-types/api";
 
@@ -342,8 +342,8 @@ const ModelHeader = withRouter(
             </Stack>
           }
           actions={
-            <Flex align="center" gap="md">
-              {actions}
+            <>
+              {isDirty && actions}
               {question.isSaved() && !isDirty && (
                 <ToolbarButton
                   icon="info"
@@ -352,7 +352,7 @@ const ModelHeader = withRouter(
                   aria-label={t`More info`}
                 />
               )}
-            </Flex>
+            </>
           }
         />
         {modal === "info" && (
