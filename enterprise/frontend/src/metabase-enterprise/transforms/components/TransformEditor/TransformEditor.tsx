@@ -9,10 +9,13 @@ import type { QueryTransformSource, TransformId } from "metabase-types/api";
 
 import { TransformHeaderView } from "../TransformHeader";
 
+import {
+  NativeQueryPreviewSidebar,
+  NativeQueryPreviewSidebarToggle,
+} from "./NativeQueryPreviewSidebar";
 import { NativeQuerySidebar } from "./NativeQuerySidebar";
 import { QuerySection } from "./QuerySection";
 import { SaveSection } from "./SaveSection";
-import S from "./TransformEditor.module.css";
 import { VisualizationSection } from "./VisualizationSection";
 import { useEditorControls } from "./use-editor-controls";
 import { useQueryMetadata } from "./use-query-metadata";
@@ -62,6 +65,7 @@ export function TransformEditor({
     isDataReferenceOpen,
     isSnippetSidebarOpen,
     isPreviewQueryModalOpen,
+    isNativeQueryPreviewSidebarOpen,
     handleOpenModal,
     handleSelectionRangeChange,
     handleModalSnippetChange,
@@ -69,6 +73,8 @@ export function TransformEditor({
     handleToggleDataReference,
     handleToggleSnippetSidebar,
     handleTogglePreviewQueryModal,
+    handleToggleNativeQueryPreviewSidebar,
+    handleConvertToNative,
   } = useEditorControls(question, handleQuestionChange);
   const {
     data: databases,
@@ -106,8 +112,8 @@ export function TransformEditor({
           }
           onNameChange={onNameChange}
         />
-        <Flex className={S.body} flex={1}>
-          <Flex flex="2 1 100%" direction="column">
+        <Flex flex={1}>
+          <Flex flex="2 1 0" direction="column" pos="relative">
             <QuerySection
               question={question}
               databases={databases?.data ?? []}
@@ -139,6 +145,16 @@ export function TransformEditor({
               onRunQuery={handleRunQuery}
               onCancelQuery={handleCancelQuery}
             />
+            {!isNative && (
+              <NativeQueryPreviewSidebarToggle
+                isNativeQueryPreviewSidebarOpen={
+                  isNativeQueryPreviewSidebarOpen
+                }
+                onToggleNativeQueryPreviewSidebar={
+                  handleToggleNativeQueryPreviewSidebar
+                }
+              />
+            )}
           </Flex>
           {isNative && (
             <NativeQuerySidebar
@@ -150,6 +166,12 @@ export function TransformEditor({
               onToggleDataReference={handleToggleDataReference}
               onToggleSnippetSidebar={handleToggleSnippetSidebar}
               onChangeModalSnippet={handleModalSnippetChange}
+            />
+          )}
+          {!isNative && isNativeQueryPreviewSidebarOpen && (
+            <NativeQueryPreviewSidebar
+              question={question}
+              onConvertToNativeClick={handleConvertToNative}
             />
           )}
         </Flex>

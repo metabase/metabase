@@ -28,14 +28,16 @@ export function useEditorControls(
     isDataReferenceOpen,
     { toggle: toggleDataReference, close: closeDataReference },
   ] = useDisclosure();
-
   const [
     isSnippetSidebarOpen,
     { toggle: toggleSnippetSidebar, close: closeSnippetSidebar },
   ] = useDisclosure();
-
   const [isPreviewQueryModalOpen, { toggle: togglePreviewQueryModal }] =
     useDisclosure();
+  const [
+    isNativeQueryPreviewSidebarOpen,
+    { toggle: toggleNativeQueryPreviewSidebar },
+  ] = useDisclosure();
 
   const selectedText = useMemo(() => {
     const query = question.query();
@@ -73,12 +75,18 @@ export function useEditorControls(
     toggleSnippetSidebar();
   };
 
+  const handleConvertToNative = (newQuestion: Question) => {
+    toggleNativeQueryPreviewSidebar();
+    onQuestionChange(newQuestion);
+  };
+
   return {
     selectedText,
     modalSnippet,
     isDataReferenceOpen,
     isSnippetSidebarOpen,
     isPreviewQueryModalOpen,
+    isNativeQueryPreviewSidebarOpen,
     handleOpenModal,
     handleSelectionRangeChange: setSelectionRange,
     handleModalSnippetChange: setModalSnippet,
@@ -86,6 +94,8 @@ export function useEditorControls(
     handleToggleDataReference,
     handleToggleSnippetSidebar,
     handleTogglePreviewQueryModal: togglePreviewQueryModal,
+    handleToggleNativeQueryPreviewSidebar: toggleNativeQueryPreviewSidebar,
+    handleConvertToNative,
   };
 }
 
