@@ -1,6 +1,6 @@
 import cx from "classnames";
 import type React from "react";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
@@ -13,6 +13,7 @@ import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWit
 import { canExploreResults } from "metabase/query_builder/components/view/ViewHeader/utils";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
+import { RepresentationsModal } from "metabase/representations/RepresentationsModal";
 import { Box, Button, Flex, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -96,6 +97,9 @@ export function ViewTitleHeaderRightSide({
   isShowingQuestionInfoSidebar,
   isObjectDetail,
 }: ViewTitleHeaderRightSideProps): React.JSX.Element {
+  const [isRepresentationsModalOpen, setIsRepresentationsModalOpen] =
+    useState(false);
+
   const isShowingNotebook = queryBuilderMode === "notebook";
   const { isEditable } = Lib.queryDisplayInfo(question.query());
 
@@ -160,6 +164,15 @@ export function ViewTitleHeaderRightSide({
       className={ViewTitleHeaderS.ViewHeaderActionPanel}
       data-testid="qb-header-action-panel"
     >
+      {isSaved && !isShowingNotebook && (
+        <Button
+          className={cx(CS.hide, CS.smShow)}
+          onClick={() => setIsRepresentationsModalOpen(true)}
+          data-testid="representations-button"
+        >
+          Representations
+        </Button>
+      )}
       {FilterHeaderButton.shouldRender({
         question,
         queryBuilderMode,
@@ -264,6 +277,11 @@ export function ViewTitleHeaderRightSide({
           </Button>
         </Tooltip>
       )}
+      <RepresentationsModal
+        opened={isRepresentationsModalOpen}
+        onClose={() => setIsRepresentationsModalOpen(false)}
+        questionId={question.id()}
+      />
     </Flex>
   );
 }

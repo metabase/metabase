@@ -25,7 +25,7 @@
 
 (defn- read-from-ref [ref]
   (let [[type id] (str/split ref #"-" 2)]
-    (export-entity (t2/select-one (v0-common/type->model type) :id (Long/parseLong id)))))
+    (export-entity (t2/select-one (v0-common/type->model (keyword type)) :id (Long/parseLong id)))))
 
 (defn export-set
   "Returns a transitive set of ref-dependencies"

@@ -5,13 +5,16 @@
    [metabase-enterprise.representations.dependencies :as deps]
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
+   [metabase-enterprise.representations.v0.common :as v0-common]
+   [metabase-enterprise.representations.v0.init]
    [metabase-enterprise.representations.yaml :as rep-yaml]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [cheshire.core :as json]))
 
 (set! *warn-on-reflection* true)
 
@@ -132,6 +135,25 @@
         result (import/import-collection-yaml yaml-string)]
     {:collection-id (:id result)
      :status "ok"}))
+
+(api.macros/defendpoint :get "/export-set/:type/:id"
+  "Export an entity and its transitive dependencies as a JSON of YAMLs.
+   Type can be: question, model, metric, transform, collection, database, snippet."
+  [{:keys [type id]}
+   _query-params
+   _body-params
+   _request]
+  (let [id (Long/parseLong id)
+        type-keyword (keyword type)
+        model (v0-common/type->model type-keyword)
+        entity (api/check-404 (t2/select-one model :id id))
+        representation (export/export-entity entity)
+        export-set (-> [representation]
+                       (export/export-set)
+                       (import/order-representations)
+                       (reverse))
+        export-yamls (mapv rep-yaml/generate-string export-set)]
+    (json/generate-string {:yamls export-yamls})))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/representations` routes."

@@ -83,7 +83,8 @@
   [representation id]
   (let [representation (normalize-representation representation)]
     (if-some [model (v0-common/type->model (name (:type representation)))]
-      (let [toucan (yaml->toucan representation)]
+      (let [toucan (-> (yaml->toucan representation)
+                       (with-toucan-defaults))]
         (t2/update! model id toucan))
       (throw (ex-info (str "Unknown representation type: " (:type representation))
                       {:representation representation
