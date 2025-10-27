@@ -26,11 +26,11 @@ type TransformQueryPageParams = {
 };
 
 type TransformQueryPageProps = {
-  route: Route;
   params: TransformQueryPageParams;
+  route: Route;
 };
 
-export function TransformQueryPage({ route, params }: TransformQueryPageProps) {
+export function TransformQueryPage({ params, route }: TransformQueryPageProps) {
   const transformId = Urls.extractEntityId(params.transformId);
   const {
     data: transform,

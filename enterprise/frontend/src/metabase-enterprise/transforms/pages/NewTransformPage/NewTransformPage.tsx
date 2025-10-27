@@ -24,16 +24,16 @@ import { CreateTransformModal } from "./CreateTransformModal";
 import { getNativeInitialSource, getQueryInitialSource } from "./utils";
 
 type NewTransformPageProps = {
-  route: Route;
   initialName?: string;
   initialSource: DraftTransformSource;
+  route: Route;
   isInitiallyDirty?: boolean;
 };
 
 function NewTransformPage({
-  route,
   initialName = t`New transform`,
   initialSource,
+  route,
   isInitiallyDirty = false,
 }: NewTransformPageProps) {
   const [name, setName] = useState(initialName);
@@ -101,7 +101,7 @@ type NewQueryTransformPageProps = {
 
 export function NewQueryTransformPage({ route }: NewQueryTransformPageProps) {
   const initialSource = useMemo(getQueryInitialSource, []);
-  return <NewTransformPage route={route} initialSource={initialSource} />;
+  return <NewTransformPage initialSource={initialSource} route={route} />;
 }
 
 type NewNativeTransformPageProps = {
@@ -118,13 +118,13 @@ type NewCardTransformPageParams = {
 };
 
 type NewCardTransformPageProps = {
-  route: Route;
   params: NewCardTransformPageParams;
+  route: Route;
 };
 
 export function NewCardTransformPage({
-  route,
   params,
+  route,
 }: NewCardTransformPageProps) {
   const cardId = Urls.extractEntityId(params.cardId);
   const {
@@ -152,8 +152,8 @@ export function NewCardTransformPage({
 
   return (
     <NewTransformPage
-      route={route}
       initialSource={initialSource}
+      route={route}
       isInitiallyDirty
     />
   );
