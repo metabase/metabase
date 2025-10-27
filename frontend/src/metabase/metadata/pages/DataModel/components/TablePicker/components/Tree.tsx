@@ -42,7 +42,7 @@ export function Tree({ path, onChange }: Props) {
   const { databaseId, schemaName } = path;
   const { isExpanded, toggle } = useExpandedState(path);
   const { tree, reload } = useTableLoader(path);
-  const [selectedItems, setSelectedItems] = useState<Set<TableId>>(new Set());
+  const [selectedTables, setSelectedItems] = useState<Set<TableId>>(new Set());
   const [selectedSchemas, setSelectedSchemas] = useState<Set<string>>(
     new Set(),
   );
@@ -56,7 +56,7 @@ export function Tree({ path, onChange }: Props) {
     addLoadingNodes: true,
     canFlattenSingleSchema: true,
     selection: {
-      tables: selectedItems,
+      tables: selectedTables,
       schemas: selectedSchemas,
       databases: selectedDatabases,
     },
@@ -114,7 +114,7 @@ export function Tree({ path, onChange }: Props) {
     );
 
     expandedSelectedSchemaItems.forEach((x) => {
-      if (noManuallySelectedTables(x, items, selectedItems)) {
+      if (noManuallySelectedTables(x, items, selectedTables)) {
         // when expanding a schema, let's select all the tables in that schema
         const tableIds = getSchemaTableIds(x, items);
         if (tableIds.length === 0) {
@@ -136,7 +136,7 @@ export function Tree({ path, onChange }: Props) {
         });
       }
     });
-  }, [isExpanded, selectedSchemas, items, selectedItems]);
+  }, [isExpanded, selectedSchemas, items, selectedTables]);
 
   useEffect(() => {
     const expandedSelectedDatabaseItems = items.filter(
@@ -151,7 +151,7 @@ export function Tree({ path, onChange }: Props) {
         noManuallySelectedSchemas(x, items, selectedSchemas) &&
         noManuallySelectedDatabaseChildrenTables(
           x as unknown as DatabaseNode,
-          selectedItems,
+          selectedTables,
         )
       ) {
         // single schema that's not rendered and it's not part of flattened list
@@ -189,7 +189,7 @@ export function Tree({ path, onChange }: Props) {
         });
       }
     });
-  }, [isExpanded, selectedDatabases, items, selectedSchemas, selectedItems]);
+  }, [isExpanded, selectedDatabases, items, selectedSchemas, selectedTables]);
 
   function onEditSelectedItems() {
     setIsModalOpen(true);
@@ -201,7 +201,7 @@ export function Tree({ path, onChange }: Props) {
 
   function onItemToggle(item: FlatItem) {
     const isSelected = isItemSelected(item as unknown as TreeNode, {
-      tables: selectedItems,
+      tables: selectedTables,
       schemas: selectedSchemas,
       databases: selectedDatabases,
     });
@@ -223,7 +223,7 @@ export function Tree({ path, onChange }: Props) {
 
         const { schemasSelection, tablesSelection, databasesSelection } =
           markAllSchemas(item, items, targetChecked, {
-            tables: selectedItems,
+            tables: selectedTables,
             schemas: selectedSchemas,
             databases: selectedDatabases,
           });
@@ -277,7 +277,7 @@ export function Tree({ path, onChange }: Props) {
   }
 
   const selectedItemsCount =
-    selectedItems.size + selectedSchemas.size + selectedDatabases.size;
+    selectedTables.size + selectedSchemas.size + selectedDatabases.size;
 
   return (
     <>
@@ -311,7 +311,7 @@ export function Tree({ path, onChange }: Props) {
         </BulkActionBar>
       </Flex>
       <EditTableMetadataModal
-        tables={selectedItems}
+        tables={selectedTables}
         schemas={selectedSchemas}
         databases={selectedDatabases}
         isOpen={isModalOpen}
