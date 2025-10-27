@@ -45,7 +45,8 @@ function NewTransformPage({
   const [name, setName] = useState(initialName);
   const [source, setSource] = useState(initialSource);
   const [uiControls, setUiControls] = useState(getInitialUiControls);
-  const [isOpened, { open, close }] = useDisclosure();
+  const [isModalOpened, { open: openModal, close: closeModal }] =
+    useDisclosure();
   const dispatch = useDispatch();
   const { proposedSource, acceptProposed, rejectProposed } =
     useTransformMetabot(undefined, source, setSource);
@@ -79,7 +80,7 @@ function NewTransformPage({
           isSourceDirty
           onNameChange={setName}
           onSourceChange={setSource}
-          onSave={open}
+          onSave={openModal}
           onCancel={handleCancel}
           onAcceptProposed={acceptProposed}
           onRejectProposed={rejectProposed}
@@ -97,21 +98,24 @@ function NewTransformPage({
           onNameChange={setName}
           onSourceChange={setSource}
           onUiControlsChange={setUiControls}
-          onSave={open}
+          onSave={openModal}
           onCancel={handleCancel}
           onAcceptProposed={acceptProposed}
           onRejectProposed={rejectProposed}
         />
       )}
-      {isOpened && isNotDraftSource(source) && (
+      {isModalOpened && isNotDraftSource(source) && (
         <CreateTransformModal
           name={name}
           source={source}
           onCreate={handleCreate}
-          onClose={close}
+          onClose={closeModal}
         />
       )}
-      <LeaveRouteConfirmModal route={route} isEnabled={isDirty} />
+      <LeaveRouteConfirmModal
+        route={route}
+        isEnabled={isDirty && !isModalOpened}
+      />
     </>
   );
 }
