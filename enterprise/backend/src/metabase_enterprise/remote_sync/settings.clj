@@ -92,6 +92,18 @@
                                                                      :remote-sync-token (setting/get :remote-sync-token)})))
 
   ([{:keys [remote-sync-url remote-sync-token]}]
+   (cond
+     (or (str/starts-with? remote-sync-url "http://")
+         (str/starts-with? remote-sync-url "https://"))
+     (when-not (str/index-of remote-sync-url "github.com")
+       (throw (ex-info "Only github.com URLs are supported" {:url remote-sync-url})))
+
+     (str/starts-with? remote-sync-url "file://")
+     true
+
+     :else
+     (throw (ex-info "Invalid Repository URL format" {:uurl remote-sync-url})))
+
    (let [source (git/git-source remote-sync-url "HEAD" remote-sync-token)]
      (git/fetch! source)
      (when-not (git/has-data? source)
