@@ -315,11 +315,10 @@
 ;;; ------------------------------------------------ Card Downloads --------------------------------------------------
 
 (defn- validate-card-in-document
-  "Validates that a card exists and belongs to the specified document, and that the user has read access.
-  Validates that the document exists, is not archived, and the user has read access.
-  Validates that the card exists, is not archived, and belongs to the specified document.
-  Throws 404 via `api/check-404` if any condition fails.
-  Returns the card-id if validation succeeds."
+  "Validates that the document and card exist, are not archived, and that the card belongs to the document.
+   Also checks that the current user has read access to the document.
+   
+   Throws a 404 exception via `api/check-404` if any validation fails. Returns card-id on success."
   [document-id card-id]
   (let [document (api/check-404 (t2/select-one :model/Document :id document-id :archived false))]
     (api/read-check document)
