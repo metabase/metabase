@@ -23,19 +23,20 @@
 (deftest export-dataset-query-test
   (let [query-keys [:query :mbql_query :lib_query]]
     ;; make some queries to check each type
-    (let [mp (mt/metadata-provider)
-          mpc (lib.tu/metadata-provider-with-mock-cards)]
-      (doseq [[key query] [[:query      (mt/native-query {:query "select 1"})]
-                           [:mbql_query (mt/mbql-query users)]
-                           [:lib_query  (lib/query mp (lib.metadata/table mp (mt/id :users)))]
-                           [:lib_query  (lib/query mpc (:orders (lib.tu/mock-cards)))]]]
-        (let [exported-query (v0-mbql/export-dataset-query query)]
-          (is (get exported-query key))
-          (is (:database exported-query))
-          (is (has-one-key? exported-query query-keys))
-          (is (v0-mbql/import-dataset-query exported-query (v0-common/map-entity-index
-                                                            {(v0-common/unref (:database exported-query))
-                                                             (t2/instance :model/Database :id (:database query))}))))))
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp [:model/Card card {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :users)))}]
+        (doseq [[key query] [[:query      (mt/native-query {:query "select 1"})]
+                             [:mbql_query (mt/mbql-query users)]
+                             [:lib_query  (lib/query mp (lib.metadata/table mp (mt/id :users)))]
+                             [:lib_query  (lib/query mp (lib.metadata/card mp (:id card)))]
+                             [:query      (lib/native-query mp "select 1")]]]
+          (let [exported-query (v0-mbql/export-dataset-query query)]
+            (is (get exported-query key))
+            (is (:database exported-query))
+            (is (has-one-key? exported-query query-keys))
+            (is (v0-mbql/import-dataset-query exported-query (v0-common/map-entity-index
+                                                              {(v0-common/unref (:database exported-query))
+                                                               (t2/instance :model/Database :id (:database query))})))))))
     ;; make sure we can get the query of any existing cards
     (doseq [card (t2/select :model/Card)]
       (let [query (v0-mbql/export-dataset-query (:dataset_query card))]
