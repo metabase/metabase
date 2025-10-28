@@ -50,6 +50,7 @@ export class PyodideWorkerManager {
     options?: ExecutePythonOptions,
   ): Promise<PythonExecutionResult<T>> {
     options?.signal?.addEventListener("abort", () => {
+      // Terminate the worker, which will cause waitFor to reject with "Worker terminated"
       this.terminate();
     });
 
