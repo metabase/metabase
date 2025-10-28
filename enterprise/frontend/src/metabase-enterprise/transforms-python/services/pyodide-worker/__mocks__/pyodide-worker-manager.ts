@@ -3,8 +3,10 @@ export class PyodideWorkerManager {
     return {
       output: [],
       error: undefined,
-      stdout: "",
-      stderr: "",
+      logs: {
+        stdout: "",
+        stderr: "",
+      },
     };
   }
 }
