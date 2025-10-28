@@ -127,7 +127,6 @@ const DashboardContextProviderInner = forwardRef(
       dashboardActions: initDashboardActions,
       isDashcardVisible,
       onNewQuestion,
-      onAddQuestion,
 
       children,
 
@@ -371,7 +370,6 @@ const DashboardContextProviderInner = forwardRef(
           dashcardMenu,
           dashboardActions,
           onNewQuestion,
-          onAddQuestion,
           hasEditAction,
 
           navigateToNewCardFromDashboard,
