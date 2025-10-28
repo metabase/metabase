@@ -531,15 +531,8 @@
     nil))
 
 (defn drop-summary-clauses
-  "TBD"
+  "Remove :aggregation and :breakout from stage stage-number of a query."
   ([query]
    (drop-summary-clauses query -1))
   ([query stage-number]
    (update-query-stage query stage-number dissoc :aggregation :breakout)))
-
-(defn drop-limit-clause
-  "TBD"
-  ([query]
-   (drop-limit-clause query -1))
-  ([query stage-number]
-   (update-query-stage query stage-number dissoc :limit)))
