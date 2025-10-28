@@ -56,6 +56,7 @@ export const ItemsListTreeNode = forwardRef<
 
   return (
     <TreeNode.Root
+      data-testid="bench-sidebar-tree-item"
       role="menuitem"
       aria-label={name}
       tabIndex={0}

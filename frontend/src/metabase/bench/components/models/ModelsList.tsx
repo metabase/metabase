@@ -208,7 +208,7 @@ function ModelListItem({
 }) {
   const icon = getIcon({ type: "dataset", ...model });
   return (
-    <Box mb="sm" pos="relative">
+    <Box data-testid="bench-sidebar-list-item" mb="sm" pos="relative">
       <BenchFlatListItem
         label={model.name}
         icon={icon.name}

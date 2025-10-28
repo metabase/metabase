@@ -54,6 +54,7 @@ export const ItemsListSettings = <T extends Record<string, string>>({
         >
           <Menu.Target>
             <Button
+              data-testid="bench-list-settings-button"
               size="compact-md"
               radius="xl"
               c="filter"

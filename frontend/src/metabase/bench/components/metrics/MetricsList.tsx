@@ -165,6 +165,7 @@ function MetricsList({
       onCollapse={onCollapse}
       addButton={
         <ItemsListAddButton
+          aria-label={t`New metric`}
           onClick={() => {
             const url = newQuestion({
               mode: "bench",
@@ -237,7 +238,7 @@ function MetricListItem({
 }) {
   const icon = getIcon({ type: "dataset", ...metric });
   return (
-    <Box mb="sm" pos="relative">
+    <Box data-testid="bench-sidebar-list-item" mb="sm" pos="relative">
       <BenchFlatListItem
         label={metric.name}
         icon={icon.name}

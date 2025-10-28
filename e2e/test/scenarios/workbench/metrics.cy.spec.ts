@@ -86,7 +86,7 @@ const ALL_METRICS = [
 
 const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-describe("scenarios > browse > metrics", () => {
+describe("scenarios > workbench > metrics", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
@@ -94,52 +94,43 @@ describe("scenarios > browse > metrics", () => {
   });
 
   describe("no metrics", () => {
-    it("should not hide the browse metrics link in the sidebar", () => {
-      cy.visit("/");
-      H.navigationSidebar().findByText("Metrics").should("be.visible");
+    it("should not hide the metrics links in the overview and bench nav", () => {
+      cy.visit("/bench/overview");
+      H.benchNavMenuButton().click();
+      H.benchNavItem("Metrics").should("be.visible");
+      H.benchNavMenuButton().click();
+
+      H.main().findByText("Metrics").should("be.visible").click();
+
+      cy.location("pathname").should("eq", "/bench/metric");
+      H.benchSidebar().findByText("No metrics found").should("be.visible");
+      H.newMetricButton().should("be.visible").click();
+
+      H.modal().findByText("Pick your starting data").should("be.visible");
     });
 
-    it("should show the empty metrics page", () => {
-      cy.visit("/browse/metrics");
-      H.main().within(() => {
-        cy.findByText(
-          "Create Metrics to define the official way to calculate important numbers for your team",
-        ).should("be.visible");
-        cy.findByText("Create metric").should("be.visible").click();
-      });
-      cy.location("pathname").should("eq", "/metric/query");
-    });
-
-    it("should not show the create metric button if the user does not have data access", () => {
+    // FIXME: unskip this test once UXW-2155 is implemented
+    it.skip("should not show the create metric button if the user does not have data access", () => {
       cy.signInAsSandboxedUser();
-      cy.visit("/browse/metrics");
-      H.main().within(() => {
-        cy.findByText(
-          "Create Metrics to define the official way to calculate important numbers for your team",
-        ).should("be.visible");
-        cy.findByText("Create metric").should("not.exist");
-      });
-
-      cy.log("New metric header button should not show either");
-      cy.findByTestId("browse-metrics-header")
-        .findByLabelText("Create a new metric")
-        .should("not.exist");
+      cy.visit("/bench/metric");
+      H.newMetricButton().should("not.be.visible");
     });
 
     it("user without a collection access should still be able to create and save a metric in his own personal collection", () => {
       cy.intercept("POST", "/api/card").as("createMetric");
 
       cy.signIn("nocollection");
-      cy.visit("/browse/metrics");
+      cy.visit("/bench/metric");
 
-      cy.findByTestId("browse-metrics-header")
-        .findByLabelText("Create a new metric")
-        .click();
+      H.newMetricButton().should("be.visible").click();
       cy.findByTestId("entity-picker-modal").findByText("People").click();
-      cy.findByTestId("edit-bar")
-        .should("contain", "New metric")
-        .button("Save")
-        .click();
+
+      H.benchMainPaneHeader()
+        // .should("contain", "New metric") // FIXME: uncomment once we add the metric name to the header
+        .button("Save");
+      cy.wait(300); // FIXME: remove this hack by refactoring the save
+      H.benchMainPaneHeader().button("Save").click();
+
       H.modal()
         .should("contain", "Save metric")
         .and("contain", H.getPersonalCollectionName(USERS["nocollection"]))
@@ -147,90 +138,65 @@ describe("scenarios > browse > metrics", () => {
         .click();
 
       cy.wait("@createMetric");
-      cy.location("pathname").should("match", /^\/metric\/\d+-.*$/);
+      cy.location("pathname").should("match", /^\/bench\/metric\/\d+$/);
     });
   });
 
   describe("multiple metrics", () => {
     it("can browse metrics", () => {
       createMetrics(ALL_METRICS);
-      cy.visit("/browse/metrics");
-      H.navigationSidebar().findByText("Metrics").should("be.visible");
+      cy.visit("/bench/metric");
+      H.benchNavMenuButton()
+        .should("have.text", "Metrics")
+        .should("be.visible");
+
+      // Expand all collections to see all metrics
+      H.benchSidebar().findByText("First collection").click();
 
       ALL_METRICS.forEach((metric) => {
-        findMetric(metric.name).should("be.visible");
+        H.benchSidebar().findByText(metric.name).should("be.visible");
       });
     });
 
     it("should navigate to the metric when clicking a metric title", () => {
       createMetrics([ORDERS_SCALAR_METRIC]);
-      cy.visit("/browse/metrics");
-      findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible").click();
-      cy.location("pathname").should("match", /^\/metric\/\d+-.*$/);
+      cy.visit("/bench/metric");
+      H.benchSidebar()
+        .findByText(ORDERS_SCALAR_METRIC.name)
+        .should("be.visible")
+        .click();
+      cy.location("pathname").should("match", /^\/bench\/metric\/\d+$/);
+      H.main().findByText("18,760");
     });
 
-    it("should navigate to that collection when clicking a collection title", () => {
+    it("should open the metric in a new tab when alt-clicking a metric", () => {
       createMetrics([ORDERS_SCALAR_METRIC]);
-      cy.visit("/browse/metrics");
-      findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible");
-
-      metricsTable().findByText("Our analytics").should("be.visible").click();
-
-      cy.location("pathname").should("eq", "/collection/root");
-    });
-
-    it("should open the collections in a new tab when alt-clicking a metric", () => {
-      cy.on("window:before:load", (win) => {
-        // prevent Cypress opening in a new window/tab and spy on this method
-        cy.stub(win, "open").as("open");
-      });
-
-      createMetrics([ORDERS_SCALAR_METRIC]);
-      cy.visit("/browse/metrics");
+      cy.visit("/bench/metric");
 
       const macOSX = Cypress.platform === "darwin";
-      findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible").click({
+      H.setBenchListSorting("Alphabetical");
+
+      // Verify the link has the correct href and target
+      H.benchSidebar()
+        .findByText(ORDERS_SCALAR_METRIC.name)
+        .should("be.visible")
+        .closest("a")
+        .and("have.attr", "href")
+        .and("match", /^\/bench\/metric\/\d+$/);
+
+      // Click with modifier key
+      H.benchSidebar().findByText(ORDERS_SCALAR_METRIC.name).click({
         metaKey: macOSX,
         ctrlKey: !macOSX,
       });
 
-      cy.get("@open").should("have.been.calledOnce");
-      cy.get("@open").should(
-        "have.been.calledWithMatch",
-        /^\/metric\/\d+-.*$/,
-        "_blank",
-      );
-
       // the page did not navigate on this page
-      cy.location("pathname").should("eq", "/browse/metrics");
+      cy.location("pathname").should("eq", "/bench/metric");
+
+      // TODO: implement this and verify for tree view UXW-2154
     });
 
-    it("should render truncated markdown in the table", () => {
-      const description =
-        "This is a _very_ **long description** that should be truncated by the metrics table because it is really very long.";
-
-      createMetrics([
-        {
-          ...ORDERS_SCALAR_METRIC,
-          description,
-        },
-      ]);
-
-      cy.visit("/browse/metrics");
-
-      metricsTable()
-        .findByText(/This is a/)
-        .should("be.visible")
-        .then((el) => H.assertIsEllipsified(el[0]));
-
-      metricsTable()
-        .findByText(/This is a/)
-        .realHover();
-
-      cy.findAllByText(/should be truncated/).should("have.length", 2);
-    });
-
-    it("should be possible to sort the metrics", () => {
+    it("should be possible to view metrics in alphabetical order or by collection", () => {
       createMetrics(
         ALL_METRICS.slice(0, 4).map((metric, index) => ({
           ...metric,
@@ -239,31 +205,30 @@ describe("scenarios > browse > metrics", () => {
         })),
       );
 
-      cy.visit("/browse/metrics");
+      cy.visit("/bench/metric");
 
-      getMetricsTableItem(0).should("contain", "Metric A");
-      getMetricsTableItem(1).should("contain", "Metric B");
-      getMetricsTableItem(2).should("contain", "Metric C");
-      getMetricsTableItem(3).should("contain", "Metric D");
+      H.setBenchListSorting("Alphabetical");
+      H.benchSidebarListItem(0).should("contain", "Metric A");
+      H.benchSidebarListItem(1).should("contain", "Metric B");
+      H.benchSidebarListItem(2).should("contain", "Metric C");
+      H.benchSidebarListItem(3).should("contain", "Metric D");
 
-      metricsTable().findByText("Description").click();
+      H.setBenchListSorting("By collection");
 
-      getMetricsTableItem(0).should("contain", "Metric D");
-      getMetricsTableItem(1).should("contain", "Metric C");
-      getMetricsTableItem(2).should("contain", "Metric B");
-      getMetricsTableItem(3).should("contain", "Metric A");
+      // Expand the only collection
+      H.benchSidebarTreeItems().findByText("First collection").click();
 
-      metricsTable().findByText("Collection").click();
-
-      getMetricsTableItem(0).should("contain", "Metric B");
-      getMetricsTableItem(1).should("contain", "Metric A");
-      getMetricsTableItem(2).should("contain", "Metric C");
-      getMetricsTableItem(3).should("contain", "Metric D");
+      H.benchSidebarTreeItem(0).should("contain", "First collection");
+      H.benchSidebarTreeItem(1).should("contain", "Metric B");
+      H.benchSidebarTreeItem(2).should("contain", "Metric A");
+      H.benchSidebarTreeItem(3).should("contain", "Metric C");
+      H.benchSidebarTreeItem(4).should("contain", "Metric D");
     });
   });
 
   describe("dot menu", () => {
-    it("should be possible to bookmark a metrics from the dot menu", () => {
+    // FIXME: No bookmarking anymore, probably remove this test
+    it.skip("should be possible to bookmark a metrics from the dot menu", () => {
       createMetrics([ORDERS_SCALAR_METRIC]);
 
       cy.visit("/browse/metrics");
@@ -287,7 +252,8 @@ describe("scenarios > browse > metrics", () => {
       H.popover().findByText("Bookmark").should("be.visible");
     });
 
-    it("should be possible to navigate to the collection from the dot menu", () => {
+    // FIXME: No such item — add or remove this test
+    it.skip("should be possible to navigate to the collection from the dot menu", () => {
       createMetrics([ORDERS_SCALAR_MODEL_METRIC]);
 
       cy.visit("/browse/metrics");
@@ -304,27 +270,12 @@ describe("scenarios > browse > metrics", () => {
     it("should be possible to trash a metric from the dot menu when the user has write access", () => {
       createMetrics([ORDERS_SCALAR_METRIC]);
 
-      cy.visit("/browse/metrics");
-
-      metricsTable().findByLabelText("Metric options").click();
+      cy.visit("/bench/metric");
+      H.benchSidebarTreeItem(0).icon("ellipsis").click();
       H.popover().findByText("Move to trash").should("be.visible").click();
+      H.modal().button("Move to trash").click();
 
-      H.main()
-        .findByText(
-          "Create Metrics to define the official way to calculate important numbers for your team",
-        )
-        .should("be.visible");
-
-      H.navigationSidebar().findByText("Trash").should("be.visible").click();
-      cy.intercept("/api/bookmark").as("bookmark"); // anti-flake guard
-      cy.button("Actions").click();
-      H.popover().findByText("Restore").should("be.visible").click();
-
-      H.main().findByText("Nothing here").should("be.visible");
-      cy.wait("@bookmark");
-
-      H.navigationSidebar().findByText("Metrics").should("be.visible").click();
-      metricsTable().findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
+      H.benchSidebar().findByText("No metrics found").should("be.visible");
     });
 
     describe("when the user does not have write access", () => {
@@ -332,33 +283,38 @@ describe("scenarios > browse > metrics", () => {
         createMetrics([ORDERS_SCALAR_METRIC]);
         cy.signIn("readonly");
 
-        cy.visit("/browse/metrics");
+        cy.visit("/bench/metric");
 
-        metricsTable().findByLabelText("Metric options").click();
-        H.popover().findByText("Move to trash").should("not.exist");
+        H.benchSidebarTreeItem(0).icon("ellipsis").click();
+        H.popover()
+          .findByText("Move to trash")
+          .closest("button")
+          .should("be.disabled");
       });
 
-      it("should be possible to navigate to the collection from the dot menu", () => {
+      // FIXME: No such item — add or remove this test
+      it.skip("should be possible to navigate to the collection from the dot menu", () => {
         createMetrics([ORDERS_SCALAR_METRIC]);
         cy.signIn("readonly");
 
-        cy.visit("/browse/metrics");
+        cy.visit("/bench/metric");
 
-        metricsTable().findByLabelText("Metric options").click();
+        H.benchSidebarTreeItem(0).icon("ellipsis").click();
         H.popover().findByText("Open collection").should("be.visible").click();
 
         cy.location("pathname").should("eq", "/collection/root");
       });
 
-      it("should be possible to bookmark a metrics from the dot menu", () => {
+      // FIXME: No such item — add or remove this test
+      it.skip("should be possible to bookmark a metrics from the dot menu", () => {
         createMetrics([ORDERS_SCALAR_METRIC]);
         cy.signIn("readonly");
 
-        cy.visit("/browse/metrics");
+        cy.visit("/bench/metric");
 
         shouldNotHaveBookmark(ORDERS_SCALAR_METRIC.name);
 
-        metricsTable().findByLabelText("Metric options").click();
+        H.benchSidebarTreeItem(0).icon("ellipsis").click();
         H.popover().findByText("Bookmark").should("be.visible").click();
 
         shouldHaveBookmark(ORDERS_SCALAR_METRIC.name);
@@ -371,18 +327,20 @@ describe("scenarios > browse > metrics", () => {
 
         shouldNotHaveBookmark(ORDERS_SCALAR_METRIC.name);
 
-        metricsTable().findByLabelText("Metric options").click();
+        H.benchSidebarTreeItem(0).icon("ellipsis").click();
         H.popover().findByText("Bookmark").should("be.visible");
       });
     });
   });
 
-  describe("verified metrics", () => {
+  // FIXME: New UX is different, probably remove this section
+  describe.skip("verified metrics", () => {
     beforeEach(() => {
       cy.signInAsAdmin();
       H.activateToken("pro-self-hosted");
     });
 
+    // FIXME: New UX is different, probably remove this test
     it("should not show the verified metrics filter when there are no verified metrics", () => {
       createMetrics();
       cy.visit("/browse/metrics");
@@ -479,11 +437,6 @@ function metricsTable() {
 
 function findMetric(name: string) {
   return metricsTable().findByText(name);
-}
-
-function getMetricsTableItem(index: number) {
-  // eslint-disable-next-line no-unsafe-element-filtering
-  return metricsTable().findAllByTestId("metric-name").eq(index);
 }
 
 function shouldHaveBookmark(name: string) {

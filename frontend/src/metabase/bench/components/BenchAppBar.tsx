@@ -22,9 +22,9 @@ import { BenchNavMenu, BenchNavTitleMenu } from "./BenchNavMenu";
 
 export function BenchAppBar() {
   const currentTab = useBenchCurrentTab();
-  const { getTab, setTab } = useRememberBenchTab();
+  const { setTab } = useRememberBenchTab();
   const { onTogglePanel, isPanelCollapsed } = useBenchLayoutContext();
-  const [isNavMenuOpen, setIsNavMenuOpen] = useState(() => !getTab());
+  const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
   useEffect(() => setTab(currentTab.id), [currentTab.id, setTab]);
 
   const hasPanelControl = onTogglePanel !== undefined;
@@ -80,7 +80,12 @@ export function BenchAppBar() {
           }}
         >
           <Menu.Target>
-            <UnstyledButton h={32} px="sm" className={S.selectButton}>
+            <UnstyledButton
+              data-testid="bench-nav-menu-button"
+              h={32}
+              px="sm"
+              className={S.selectButton}
+            >
               <Flex align="center" justify="space-between" h="100%" gap="xs">
                 <Text size="md" fw={700}>
                   {currentTab.getLabel()}

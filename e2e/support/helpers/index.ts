@@ -41,6 +41,7 @@ export * from "./e2e-qa-databases-helpers";
 export * from "./e2e-relative-date-picker-helpers";
 export * from "./e2e-request-helpers";
 export * from "./e2e-search-helpers";
+export * from "./e2e-workbench-helpers";
 export * from "./e2e-setup-helpers";
 export * from "./e2e-sharing-helpers";
 export * from "./e2e-slack-helpers";

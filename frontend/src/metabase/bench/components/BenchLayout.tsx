@@ -39,7 +39,9 @@ export const BenchLayout = ({
     <Flex id={`${name}-app-layout`} h="100%">
       {nav && !isCollapsed && (
         <BenchSideNav>
-          <Box className={S.navPanel}>{nav}</Box>
+          <Box data-testid="bench-sidebar" className={S.navPanel}>
+            {nav}
+          </Box>
         </BenchSideNav>
       )}
       <Flex direction="column" h="100%" style={{ overflow: "auto" }} flex={1}>
