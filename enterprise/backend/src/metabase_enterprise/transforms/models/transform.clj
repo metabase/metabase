@@ -46,6 +46,25 @@
    :target      mi/transform-json
    :run_trigger mi/transform-keyword})
 
+(defn- compute-transform-type
+  "Compute the top-level type field for a transform based on its source."
+  [source]
+  (case (keyword (:type source))
+    :python :python
+    :query  (if (lib/native-only-query? (:query source))
+              :native
+              :mbql)))
+
+(t2/define-before-insert :model/Transform
+  [{:keys [source] :as transform}]
+  (assoc transform :type (compute-transform-type source)))
+
+(t2/define-before-update :model/Transform
+  [{:keys [source] :as transform}]
+  (if source
+    (assoc transform :type (compute-transform-type source))
+    transform))
+
 (methodical/defmethod t2/batched-hydrate [:model/TransformRun :transform]
   "Add transform to a TransformRun"
   [_model _k runs]

@@ -1,7 +1,6 @@
 (ns ^:mb/driver-tests metabase-enterprise.transforms.api-test
   "Tests for /api/transform endpoints."
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase-enterprise.transforms.query-test-util :as query-test-util]
@@ -108,12 +107,12 @@
                                                              :database (mt/id)}})]
                 (is (= "python" (:type response)))))))))))
 
-(deftest transform-type-immutable-test
-  (testing "Transform type cannot be changed after creation"
+(deftest transform-type-updates-test
+  (testing "Transform type is automatically updated when source changes"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/with-premium-features #{:transforms}
         (mt/dataset transforms-dataset/transforms-test
-          (with-transform-cleanup! [table-name "immutable_type_transform"]
+          (with-transform-cleanup! [table-name "type_update_transform"]
             (let [native-query (lib/native-query (mt/metadata-provider) "SELECT 1")
                   mbql-query (mt/mbql-query transforms_products)
                   schema (get-test-schema)
@@ -126,12 +125,12 @@
                                                           :name   table-name}})]
               (is (= "native" (:type created)))
 
-              (let [response (mt/user-http-request :crowberto :put 400
-                                                   (format "ee/transform/%s" (:id created))
-                                                   {:source {:type  "query"
-                                                             :query mbql-query}})]
-                (is (string? response))
-                (is (str/includes? response "Cannot change the type of a transform"))))))))))
+              (testing "Type automatically changes to mbql when updating to an MBQL query"
+                (let [updated (mt/user-http-request :crowberto :put 200
+                                                    (format "ee/transform/%s" (:id created))
+                                                    {:source {:type  "query"
+                                                              :query mbql-query}})]
+                  (is (= "mbql" (:type updated))))))))))))
 
 (deftest create-transform-feature-flag-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
