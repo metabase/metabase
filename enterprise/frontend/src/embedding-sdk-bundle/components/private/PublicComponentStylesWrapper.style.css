@@ -1,0 +1,13 @@
+.publicComponentWrapper {
+  all: initial;
+  text-decoration: none;
+  font-style: normal;
+  width: 100%;
+  height: 100%;
+  font-weight: 400;
+  color: var(--mb-color-text-dark);
+  font-family: var(--mb-default-font-family);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: var(--transition-theme-change);
+}
