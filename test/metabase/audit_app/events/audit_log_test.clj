@@ -508,3 +508,22 @@
                 :topic    :channel-update
                 :model    "Channel"}
                (mt/latest-audit-log-entry :channel-update (:id channel))))))))
+
+(deftest transform-run-start-event-test
+  (testing :event/transform-run-start
+    (mt/with-current-user (mt/user->id :rasta)
+      (mt/with-temp [:model/Transform transform {:name "Test Transform"}
+                     :model/TransformRun transform-run {:transform_id (:id transform)
+                                                        :status :started
+                                                        :run_method :manual
+                                                        :is_active true}]
+        (is (= {:object transform-run}
+               (events/publish-event! :event/transform-run-start {:object transform-run})))
+        (is (= {:model_id (:id transform-run)
+                :user_id (mt/user->id :rasta)
+                :details {:transform_id (:id transform)
+                          :status :started
+                          :run_method :manual}
+                :topic :transform-run-start
+                :model "TransformRun"}
+               (mt/latest-audit-log-entry :transform-run-start (:id transform-run))))))))
