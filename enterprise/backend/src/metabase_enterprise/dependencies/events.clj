@@ -26,7 +26,7 @@
   [& body]
   `(try
      ~@body
-     (catch clojure.lang.ExceptionInfo e#
+     (catch Throwable e#
        (log/error e# "Dependency calculation failed")
        nil)))
 
