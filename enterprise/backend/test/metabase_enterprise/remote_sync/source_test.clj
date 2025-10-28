@@ -13,17 +13,8 @@
 
 (use-fixtures :each th/clean-remote-sync-state)
 
-(defrecord MockSource [written-files]
-  source.p/Source
-  (create-branch [_ _branch _base]
-    nil)
-
-  (branches [_]
-    ["main"])
-
-  (default-branch [_]
-    "main")
-
+(defrecord MockSourceSnapshot [written-files]
+  source.p/SourceSnapshot
   (list-files [_]
     [])
 
@@ -37,6 +28,20 @@
   (version [_]
     "mock-version"))
 
+(defrecord MockSource [written-files]
+  source.p/Source
+  (create-branch [_ _branch _base]
+    nil)
+
+  (branches [_]
+    ["main"])
+
+  (default-branch [_]
+    "main")
+
+  (snapshot [_]
+    (->MockSourceSnapshot written-files)))
+
 (defn- create-test-entity
   "Creates a test entity with serdes/meta for testing"
   [id label model-name]
@@ -48,7 +53,7 @@
   (testing "store! writes files to source with correct structure"
     (mt/with-temp [:model/User user {:first_name "Test"
                                      :last_name "User"
-                                     :email "test@example.com"
+                                     :email "test2@example.com"
                                      :password "password123"}
                    :model/RemoteSyncTask {task-id :id} {:sync_task_type "export"
                                                         :initiated_by (:id user)}]
@@ -57,7 +62,7 @@
             test-entities [(create-test-entity "test-id-1" "entity-one" "Collection")
                            (create-test-entity "test-id-2" "entity-two" "Card")]]
 
-        (source/store! test-entities mock-source task-id "Test commit message")
+        (source/store! test-entities (source.p/snapshot mock-source) task-id "Test commit message")
 
         (testing "write-files! was called with correct message"
           (is (= "Test commit message" (:message @written-files))))
@@ -89,7 +94,7 @@
   (testing "store! updates task progress as files are written"
     (mt/with-temp [:model/User user {:first_name "Test"
                                      :last_name "User"
-                                     :email "test@example.com"
+                                     :email "test2@example.com"
                                      :password "password123"}
                    :model/RemoteSyncTask {task-id :id} {:sync_task_type "export"
                                                         :initiated_by (:id user)}]
@@ -102,7 +107,7 @@
         (let [initial-task (t2/select-one :model/RemoteSyncTask :id task-id)]
           (is (nil? (:progress initial-task)) "Progress should be nil initially"))
 
-        (source/store! test-entities mock-source task-id "Test commit")
+        (source/store! test-entities (source.p/snapshot mock-source) task-id "Test commit")
 
         (let [final-task (t2/select-one :model/RemoteSyncTask :id task-id)]
           (is (some? (:progress final-task)) "Progress should be updated after store!")
@@ -115,14 +120,14 @@
   (testing "store! handles empty stream correctly"
     (mt/with-temp [:model/User user {:first_name "Test"
                                      :last_name "User"
-                                     :email "test@example.com"
+                                     :email "test2@example.com"
                                      :password "password123"}
                    :model/RemoteSyncTask {task-id :id} {:sync_task_type "export"
                                                         :initiated_by (:id user)}]
       (let [written-files (atom nil)
             mock-source (->MockSource written-files)]
 
-        (source/store! [] mock-source task-id "Empty commit")
+        (source/store! [] (source.p/snapshot mock-source) task-id "Empty commit")
 
         (testing "write-files! was called even with empty stream"
           (is (some? @written-files)))
