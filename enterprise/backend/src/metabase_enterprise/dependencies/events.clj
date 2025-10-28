@@ -13,8 +13,8 @@
 ;; dependency graph up to date. Transform *runs* are also a trigger, since the transform's output table may be created
 ;; or changed at that point.
 
-(defmacro ignore-permanent-errors
-  "Ignore errors that should not be retried.
+(defmacro ignore-errors
+  "Ignore errors.
 
   In practice, we cannot reliably distinguish permanent and temporary errors, so in principle
   every error should be retried a few times. Unfortunately that doesn't work, because updating the
@@ -40,7 +40,7 @@
   (when (premium-features/has-feature? :dependencies)
     (t2/with-transaction [_conn]
       (models.dependency/replace-dependencies! :card (:id object)
-                                               (ignore-permanent-errors
+                                               (ignore-errors
                                                 (deps.calculation/upstream-deps:card object)))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
         (t2/update! :model/Card (:id object)
@@ -64,7 +64,7 @@
   (when (premium-features/has-feature? :dependencies)
     (t2/with-transaction [_conn]
       (models.dependency/replace-dependencies! :snippet (:id object)
-                                               (ignore-permanent-errors
+                                               (ignore-errors
                                                 (deps.calculation/upstream-deps:snippet object)))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
         (t2/update! :model/NativeQuerySnippet (:id object)
@@ -113,7 +113,7 @@
   (when (premium-features/has-feature? :dependencies)
     (t2/with-transaction [_conn]
       (models.dependency/replace-dependencies! :transform (:id object)
-                                               (ignore-permanent-errors
+                                               (ignore-errors
                                                 (deps.calculation/upstream-deps:transform object)))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
         (t2/update! :model/Transform (:id object) {:dependency_analysis_version models.dependency/current-dependency-analysis-version}))
@@ -161,7 +161,7 @@
                                                 :dashboardcard_id [:in (map :id dashcards)]))
             dashboard (assoc object :dashcards dashcards :series-card-ids series-card-ids)]
         (models.dependency/replace-dependencies! :dashboard dashboard-id
-                                                 (ignore-permanent-errors
+                                                 (ignore-errors
                                                   (deps.calculation/upstream-deps:dashboard dashboard))))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
         (t2/update! :model/Dashboard (:id object)
@@ -185,7 +185,7 @@
   (when (premium-features/has-feature? :dependencies)
     (t2/with-transaction [_conn]
       (models.dependency/replace-dependencies! :document (:id object)
-                                               (ignore-permanent-errors
+                                               (ignore-errors
                                                 (deps.calculation/upstream-deps:document object)))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
         (t2/update! :model/Document (:id object)
@@ -208,7 +208,7 @@
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
     (t2/with-transaction [_conn]
-      (models.dependency/replace-dependencies! :sandbox (:id object) (ignore-permanent-errors
+      (models.dependency/replace-dependencies! :sandbox (:id object) (ignore-errors
                                                                       (deps.calculation/upstream-deps:sandbox object)))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
         (t2/update! :model/Sandbox (:id object)
