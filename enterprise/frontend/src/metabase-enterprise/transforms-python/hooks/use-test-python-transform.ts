@@ -1,8 +1,6 @@
 import { useCallback } from "react";
 
-import type { RowValue } from "metabase-types/api";
-
-import type { PythonTransformSourceDraft } from "../components/PythonTransformEditor";
+import type { PythonTransformSourceDraft, RowValue } from "metabase-types/api";
 
 import { type SampleData, useSampleData } from "./use-data-sample";
 import { usePythonLibraries } from "./use-python-shared-libraries";
