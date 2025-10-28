@@ -1,0 +1,4 @@
+[submodule "representations"]
+	path = representations
+	url = git@github.com:metabase/representations.git
+	branch = initial

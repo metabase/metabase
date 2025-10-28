@@ -112,7 +112,7 @@
          :database_id database-id
          :query_type (if (lib/native-only-query? query)
                        :native
-                       :query #_#_#_(= (name (:type query)) "native") :native :query)
+                       :query)
          :type :question}
         u/remove-nils)))
 
