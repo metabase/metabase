@@ -336,12 +336,23 @@ describe("scenarios > admin > people", () => {
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText(`Reset ${normalUserName}'s password?`);
         clickButton("Reset password");
+
+        H.undoToast().within(() => {
+          cy.findByText(
+            `Password reset email sent to ${normalUserName}`,
+          ).should("be.visible");
+        });
+
+        cy.log("Should not show temporary password modal");
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText(`${normalUserName}'s password has been reset`).should(
           "not.exist",
         );
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText(/^temporary password$/i).should("not.exist");
+
+        cy.log("Should close the modal");
+        H.modal().should("not.exist");
       },
     );
 
