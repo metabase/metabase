@@ -9,7 +9,7 @@ description: Version control your dashboards, questions, and models with Git. Sy
 
 ## Overview
 
-Remote Sync lets you to develop analytics content in a development Metabase and automatically deploy it to a read-only production instance through Git.
+Remote Sync lets you develop analytics content in a development Metabase and automatically deploy it to a read-only production instance through Git.
 
 You work with Remote Sync through special collections called "synced collections". Content in these collections is automatically versioned and can be pushed to or pulled from your Git repository directly from the Metabase UI.
 
@@ -51,7 +51,7 @@ We'll cover [setting up Remote Sync](#setting-up-remote-sync), an [example dev-t
 
 Remote Sync uses the same underlying serialization format as the [Metabase CLI serialization feature](./serialization.md), but serves a different purpose:
 
-- **Remote Sync**: Designed for adding new content to a read-only production environment through a Git-based workflow. Best when you want a centralized team creating content in development and deploying it to production automatically. 
+- **Remote Sync**: Designed for adding new content to a read-only production environment through a Git-based workflow. Best when you want a centralized team creating content in development and deploying it to production automatically.
 - **Serialization**: Command-line tool for exporting and importing Metabase content. Best for migrating existing content, complex multi-environment setups, and scenarios requiring full control over what gets exported and imported.
 
 ## Setting up Remote Sync
