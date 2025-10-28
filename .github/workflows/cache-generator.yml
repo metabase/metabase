@@ -83,8 +83,14 @@ jobs:
       - uses: actions/checkout@v4
       # `prepare-frontend` action (1) prepares Node.js and (2) fetches the node_modules cache if it exists.
       # It then (3) runs `yarn install --frozen-lockfile --prefer-offline` which ensures the local cache is fully populated.
+      # IMPORTANT: Caching node_modules after patches are already applied will break any PR that attempts to either:
+      #   - upgrade a patched library
+      #   - change a patch
+      # Hence why we explicitly exclude patches from the cache (controlled by the `apply-patches` action input).
       - name: Install front-end dependencies
         uses: ./.github/actions/prepare-frontend
+        with:
+          apply-patches: 'false'
 
       - name: Update node_modules cache
         uses: ./.github/actions/update-cache

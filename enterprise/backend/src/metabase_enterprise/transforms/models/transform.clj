@@ -187,13 +187,16 @@
                                           (when-not schema
                                             [db-id table-name]))
                                         table-keys)
-        tables (-> (t2/select :model/Table
-                              {:where [:or
-                                       [:in [:composite :db_id :schema :name] table-keys-with-schema]
-                                       [:and
-                                        [:= :schema nil]
-                                        [:in [:composite :db_id :name] table-keys-without-schema]]]})
-                   (t2/hydrate :db :fields))
+        tables (when (or (seq table-keys-with-schema) (seq table-keys-without-schema))
+                 (-> (t2/select :model/Table
+                                {:where [:or
+                                         (when (seq table-keys-with-schema)
+                                           [:in [:composite :db_id :schema :name] table-keys-with-schema])
+                                         (when (seq table-keys-without-schema)
+                                           [:and
+                                            [:= :schema nil]
+                                            [:in [:composite :db_id :name] table-keys-without-schema]])]})
+                     (t2/hydrate :db :fields)))
         table-keys->table (m/index-by (juxt :db_id :schema :name) tables)]
     (for [transform transforms]
       (assoc transform :table (get table-keys->table (table-key-fn transform))))))
