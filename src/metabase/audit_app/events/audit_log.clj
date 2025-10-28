@@ -310,3 +310,14 @@
 (methodical/defmethod events/publish-event! ::glossary-event
   [topic event]
   (audit-log/record-event! topic event))
+
+(derive ::remote-sync-event ::event)
+(derive :event/remote-sync-import ::remote-sync-event)
+(derive :event/remote-sync-export ::remote-sync-event)
+(derive :event/remote-sync-settings-update ::remote-sync-event)
+(derive :event/remote-sync-create-branch ::remote-sync-event)
+(derive :event/remote-sync-stash ::remote-sync-event)
+
+(methodical/defmethod events/publish-event! ::remote-sync-event
+  [topic event]
+  (audit-log/record-event! topic event))

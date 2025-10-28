@@ -221,13 +221,13 @@
 (defn create-task-with-lock!
   "Takes a cluster-wide lock and either returns an existing in-progress RemoteSyncTask ID or creates a new one.
 
-  Takes a task-type string (either 'import' or 'export'). Returns a map with :id and optionally :existing? keys.
-  If a task is already running, returns {:existing? true :id <existing-task-id>}. Otherwise creates a new task and
-  returns {:id <new-task-id>}."
+  Takes a task-type string (either 'import' or 'export'). Returns a RemoteSyncTask optionally :existing? key.
+  If a task is already running, returns (assoc existing-task :existing? true). Otherwise creates a new task and
+  returns it."
   [task-type]
   (cluster-lock/with-cluster-lock ::remote-sync-task
-    (if-let [{id :id} (remote-sync.task/current-task)]
-      {:existing? true :id id}
+    (if-let [task (remote-sync.task/current-task)]
+      (assoc task :existing? true)
       (remote-sync.task/create-sync-task! task-type api/*current-user-id*))))
 
 (defn handle-task-result!
@@ -253,15 +253,15 @@
   sync-fn function that takes a task-id and performs the sync operation. Creates a new task (or errors if one is
   already running), then executes the sync function in a virtual thread with a timeout.
 
-  Returns the task ID. Throws ExceptionInfo with status 400 if a sync task is already in progress."
+  Returns a RemoteSyncTask. Throws ExceptionInfo with status 400 if a sync task is already in progress."
   [task-type branch sync-fn]
-  (let [{task-id :id existing? :existing?} (create-task-with-lock! task-type)]
+  (let [{task-id :id existing? :existing? :as task} (create-task-with-lock! task-type)]
     (api/check-400 (not existing?) "Remote sync in progress")
     (u.jvm/in-virtual-thread*
      (dh/with-timeout {:interrupt? true
                        :timeout-ms (* (settings/remote-sync-task-time-limit-ms) 10)}
        (handle-task-result! (sync-fn task-id) task-id branch)))
-    task-id))
+    task))
 
 (defn async-import!
   "Imports remote-synced collections from a remote source repository asynchronously.
@@ -270,7 +270,7 @@
   import-args map of additional arguments to pass to the import function. Checks for dirty changes and throws an
   exception if force? is false and changes exist.
 
-  Returns the task ID of the created import task. Throws ExceptionInfo with status 400 and :conflicts true if there
+  Returns a RemoteSyncTask. Throws ExceptionInfo with status 400 and :conflicts true if there
   are unsaved changes and force? is false."
   [branch force? import-args]
   (let [source (source/source-from-settings branch)
@@ -289,7 +289,7 @@
   branch), and a commit message string. Checks if the remote branch has changed since the last sync and throws an
   exception if force? is false and changes exist.
 
-  Returns the task ID of the created export task. Throws ExceptionInfo with status 400 and :conflicts true if there
+  Returns a RemoteSyncTask. Throws ExceptionInfo with status 400 and :conflicts true if there
   are new remote changes and force? is false."
   [branch force? message]
   (let [source (source/source-from-settings branch)
@@ -312,6 +312,6 @@
       (when (str/blank? (setting/get :remote-sync-branch))
         (setting/set! :remote-sync-branch (source.p/default-branch (source/source-from-settings))))
       (when (or (nil? (collection/remote-synced-collection)) (= :production (settings/remote-sync-type)))
-        (async-import! (settings/remote-sync-branch) true {})))
+        (:id (async-import! (settings/remote-sync-branch) true {}))))
     (u/prog1 nil
       (collection/clear-remote-synced-collection!))))
