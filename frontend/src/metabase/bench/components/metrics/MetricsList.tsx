@@ -61,7 +61,7 @@ import { MetricEditor as QBMetricEditor } from "metabase/querying/metrics/compon
 import { QUESTION_NAME_MAX_LENGTH } from "metabase/questions/constants";
 import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
-import { Box, Center, Icon, Input, Loader, Stack } from "metabase/ui";
+import { Box, Center, Icon, Input, Loader } from "metabase/ui";
 import Question from "metabase-lib/v1/Question";
 import type { RawSeries, SearchResult } from "metabase-types/api";
 
@@ -309,48 +309,31 @@ const MetricHeader = ({
   return (
     <>
       <BenchPaneHeader
+        withBorder
         title={
-          <Stack>
-            <BenchNameInput
-              initialValue={question.displayName() || ""}
-              maxLength={QUESTION_NAME_MAX_LENGTH}
-              onChange={async (name) => {
-                if (!question.isSaved()) {
-                  dispatch(updateQuestion(question.setDisplayName(name)));
-                  return;
-                }
-                const res = await updateCard({ id: question.id(), name });
-                const updatedCard = res.data;
-                if (updatedCard) {
-                  // HACK: Keeps entity framework data in sync
-                  dispatch({
-                    type: API_UPDATE_QUESTION,
-                    payload: updatedCard,
-                  });
-                  dispatch({
-                    type: INJECT_RTK_QUERY_QUESTION_VALUE,
-                    payload: updatedCard,
-                  });
-                }
-              }}
-            />
-            {question.isSaved() && (
-              <BenchTabs
-                tabs={[
-                  {
-                    label: t`Query`,
-                    to: `/bench/metric/${params.slug}`,
-                    icon: "sql" as const,
-                  },
-                  enableSettingsSidebar && {
-                    label: t`Settings`,
-                    to: `/bench/metric/${params.slug}/settings`,
-                    icon: "gear" as const,
-                  },
-                ].filter((t) => !!t)}
-              />
-            )}
-          </Stack>
+          <BenchNameInput
+            initialValue={question.displayName() || ""}
+            maxLength={QUESTION_NAME_MAX_LENGTH}
+            onChange={async (name) => {
+              if (!question.isSaved()) {
+                dispatch(updateQuestion(question.setDisplayName(name)));
+                return;
+              }
+              const res = await updateCard({ id: question.id(), name });
+              const updatedCard = res.data;
+              if (updatedCard) {
+                // HACK: Keeps entity framework data in sync
+                dispatch({
+                  type: API_UPDATE_QUESTION,
+                  payload: updatedCard,
+                });
+                dispatch({
+                  type: INJECT_RTK_QUERY_QUESTION_VALUE,
+                  payload: updatedCard,
+                });
+              }
+            }}
+          />
         }
         actions={
           <>
@@ -364,6 +347,24 @@ const MetricHeader = ({
               />
             )}
           </>
+        }
+        tabs={
+          question.isSaved() && (
+            <BenchTabs
+              tabs={[
+                {
+                  label: t`Query`,
+                  to: `/bench/metric/${params.slug}`,
+                  icon: "sql" as const,
+                },
+                enableSettingsSidebar && {
+                  label: t`Settings`,
+                  to: `/bench/metric/${params.slug}/settings`,
+                  icon: "gear" as const,
+                },
+              ].filter((t) => !!t)}
+            />
+          )
         }
       />
       {modal === "info" && (

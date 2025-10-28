@@ -1,31 +1,34 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
 
-import { Flex, Text } from "metabase/ui";
+import { Flex, Stack, Text } from "metabase/ui";
 
 import S from "./BenchPaneHeader.module.css";
 
 interface BenchPaneHeaderProps {
   title: ReactNode;
   actions?: ReactNode;
+  tabs?: ReactNode;
   withBorder?: boolean;
 }
 
 export const BenchPaneHeader = ({
   title,
   actions,
+  tabs,
   withBorder,
 }: BenchPaneHeaderProps) => {
   return (
-    <Flex
+    <Stack
       className={cx(S.root, { [S.withBorder]: withBorder })}
       p="md"
-      justify="space-between"
-      align="center"
       data-testid="bench-pane-header"
     >
-      <Text fw="bold">{title}</Text>
-      <Flex>{actions}</Flex>
-    </Flex>
+      <Flex h="2rem" justify="space-between" align="center">
+        <Text fw="bold">{title}</Text>
+        <Flex>{actions}</Flex>
+      </Flex>
+      {tabs}
+    </Stack>
   );
 };

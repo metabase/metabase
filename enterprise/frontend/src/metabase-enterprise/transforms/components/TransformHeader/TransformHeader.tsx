@@ -7,7 +7,6 @@ import { BenchTabs } from "metabase/bench/components/shared/BenchTabs";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { Stack } from "metabase/ui";
 import { useUpdateTransformMutation } from "metabase-enterprise/api";
 import type { Transform, TransformId } from "metabase-types/api";
 
@@ -30,16 +29,14 @@ export function TransformHeader({
   return (
     <BenchPaneHeader
       title={
-        <Stack>
-          <BenchNameInput
-            initialValue={name}
-            maxLength={NAME_MAX_LENGTH}
-            onChange={onNameChange}
-          />
-          {id != null && <TransformTabs id={id} />}
-        </Stack>
+        <BenchNameInput
+          initialValue={name}
+          maxLength={NAME_MAX_LENGTH}
+          onChange={onNameChange}
+        />
       }
       actions={actions}
+      tabs={id != null && <TransformTabs id={id} />}
       withBorder
     />
   );

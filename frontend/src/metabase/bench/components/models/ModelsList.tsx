@@ -38,7 +38,7 @@ import { useSaveQuestion } from "metabase/query_builder/containers/use-save-ques
 import { getIsDirty, getQuestion } from "metabase/query_builder/selectors";
 import { QUESTION_NAME_MAX_LENGTH } from "metabase/questions/constants";
 import { getUser } from "metabase/selectors/user";
-import { Box, Center, Icon, Input, Loader, Stack } from "metabase/ui";
+import { Box, Center, Icon, Input, Loader } from "metabase/ui";
 import Question from "metabase-lib/v1/Question";
 import type { SearchResult } from "metabase-types/api";
 
@@ -293,53 +293,31 @@ const ModelHeader = withRouter(
     return (
       <>
         <BenchPaneHeader
+          withBorder
           title={
-            <Stack>
-              <BenchNameInput
-                initialValue={question.card().name || ""}
-                maxLength={QUESTION_NAME_MAX_LENGTH}
-                onChange={async (name) => {
-                  if (!question.isSaved()) {
-                    dispatch(updateQuestion(question.setDisplayName(name)));
-                    return;
-                  }
-                  const res = await updateCard({ id: question.id(), name });
-                  const updatedCard = res.data;
-                  if (updatedCard) {
-                    // HACK: Keeps entity framework data in sync
-                    dispatch({
-                      type: API_UPDATE_QUESTION,
-                      payload: updatedCard,
-                    });
-                    dispatch({
-                      type: INJECT_RTK_QUERY_QUESTION_VALUE,
-                      payload: updatedCard,
-                    });
-                  }
-                }}
-              />
-              {question.isSaved() && (
-                <BenchTabs
-                  tabs={[
-                    {
-                      label: t`Query`,
-                      to: `/bench/model/${params.slug}`,
-                      icon: "sql" as const,
-                    },
-                    enableSettingsSidebar && {
-                      label: t`Settings`,
-                      to: `/bench/model/${params.slug}/settings`,
-                      icon: "gear" as const,
-                    },
-                    modelCollectionId && {
-                      label: t`Metadata`,
-                      to: `/bench/metadata/collection/${modelCollectionId}/model/${params.slug}`,
-                      icon: "share" as const,
-                    },
-                  ].filter((t) => !!t)}
-                />
-              )}
-            </Stack>
+            <BenchNameInput
+              initialValue={question.card().name || ""}
+              maxLength={QUESTION_NAME_MAX_LENGTH}
+              onChange={async (name) => {
+                if (!question.isSaved()) {
+                  dispatch(updateQuestion(question.setDisplayName(name)));
+                  return;
+                }
+                const res = await updateCard({ id: question.id(), name });
+                const updatedCard = res.data;
+                if (updatedCard) {
+                  // HACK: Keeps entity framework data in sync
+                  dispatch({
+                    type: API_UPDATE_QUESTION,
+                    payload: updatedCard,
+                  });
+                  dispatch({
+                    type: INJECT_RTK_QUERY_QUESTION_VALUE,
+                    payload: updatedCard,
+                  });
+                }
+              }}
+            />
           }
           actions={
             <>
@@ -353,6 +331,29 @@ const ModelHeader = withRouter(
                 />
               )}
             </>
+          }
+          tabs={
+            question.isSaved() && (
+              <BenchTabs
+                tabs={[
+                  {
+                    label: t`Query`,
+                    to: `/bench/model/${params.slug}`,
+                    icon: "sql" as const,
+                  },
+                  enableSettingsSidebar && {
+                    label: t`Settings`,
+                    to: `/bench/model/${params.slug}/settings`,
+                    icon: "gear" as const,
+                  },
+                  modelCollectionId && {
+                    label: t`Metadata`,
+                    to: `/bench/metadata/collection/${modelCollectionId}/model/${params.slug}`,
+                    icon: "share" as const,
+                  },
+                ].filter((t) => !!t)}
+              />
+            )
           }
         />
         {modal === "info" && (
