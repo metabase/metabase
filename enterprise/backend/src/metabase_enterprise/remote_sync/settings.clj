@@ -94,7 +94,8 @@
                                                                      :remote-sync-type   (setting/get :remote-sync-type)})))
 
   ([{:keys [remote-sync-url remote-sync-token remote-sync-branch remote-sync-type]}]
-   (when-not (or (str/starts-with? remote-sync-url "file://")
+   (when-not (or (not (str/index-of remote-sync-url ":"))
+                 (str/starts-with? remote-sync-url "file://")
                  (and (or (str/starts-with? remote-sync-url "http://")
                           (str/starts-with? remote-sync-url "https://"))
                       (str/index-of remote-sync-url "github.com")))
