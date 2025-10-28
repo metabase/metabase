@@ -105,7 +105,7 @@ export const DataGrid = function DataGrid<TData>({
     (element: HTMLElement | null) => {
       rowVirtualizer.measureElement(element);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sorting is added to the deps so that the row virtualizer is re-measured when the table sorting changes (#61164)
     [rowVirtualizer, sorting],
   );
 

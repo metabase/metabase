@@ -2,6 +2,8 @@ import type React from "react";
 import { useCallback, useMemo, useRef } from "react";
 import { renderToString } from "react-dom/server";
 
+import ExternalLink from "metabase/common/components/ExternalLink";
+import Link from "metabase/common/components/Link";
 import { BodyCell } from "metabase/data-grid/components/BodyCell/BodyCell";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { ThemeProvider } from "metabase/ui";
@@ -119,10 +121,13 @@ function getContentCellHtmlString(content: React.ReactNode): string {
   // `renderToString` from react-dom/server will crash Embedding SDK (metabase#58393)
   // Therefore, `process.env` is needed to tree-shake react-dom/server out of the SDK.
   // `reactNodeToHtmlString` will throw "cannot flush when React is already rendering" error (metabase#61164),
-  if (process.env.IS_EMBEDDING_SDK === "true") {
+  if (process.env.IS_EMBEDDING_SDK !== "true") {
     if (isLink(content)) {
-      const { href, className, children } = content.props;
-      return `<a class="${className}" href="${href}">${children}</a>`;
+      const { className, children } = content.props;
+      const anchor = document.createElement("a");
+      anchor.className = className;
+      anchor.textContent = children;
+      return anchor.outerHTML;
     }
 
     return "";
@@ -134,15 +139,12 @@ function getContentCellHtmlString(content: React.ReactNode): string {
 const isLink = (
   content: React.ReactNode,
 ): content is React.ReactElement<{
-  href?: string;
   className: string;
   children: string;
 }> =>
   Boolean(
     content &&
       typeof content === "object" &&
-      "props" in content &&
-      content.props &&
-      "href" in content.props &&
-      content.props.href,
+      "type" in content &&
+      (content.type === Link || content.type === ExternalLink),
   );
