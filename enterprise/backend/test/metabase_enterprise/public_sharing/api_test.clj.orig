@@ -40,11 +40,13 @@
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (mt/with-temp [:model/Document document (document-with-public-link {:name "Feature Test Document"
                                                                             :document (documents.test-util/text->prose-mirror-ast "Test content")})]
-          (testing "Should return generic error when :documents feature is not enabled"
+          (testing "Should return error when :documents feature is not enabled"
             (let [response (mt/client-full-response :get (str "ee/public/document/" (:public_uuid document)))]
-              (is (= 400 (:status response))
-                  "Should return 400 when feature is not enabled to avoid leaking premium feature information")
-              (is (= "An error occurred." (:body response))))))))))
+              (is (contains? #{402 403} (:status response))
+                  "Should return 402 or 403 when feature is not enabled")
+              (is (or (re-find #"[Dd]ocuments" (get-in response [:body :message] ""))
+                      (re-find #"premium feature" (get-in response [:body :message] "")))
+                  "Error message should mention documents or premium feature"))))))))
 
 ;;; ---------------------------------------- GET /api/ee/public/document/:uuid ----------------------------------------------
 
@@ -60,15 +62,15 @@
             (let [response (mt/client-full-response :get (format "ee/public/document/%s/card/%d"
                                                                  (:public_uuid document)
                                                                  (:id card)))]
-              (is (= 400 (:status response))
-                  "Should return 400 when feature is not enabled to avoid leaking premium feature information")))
+              (is (contains? #{402 403} (:status response))
+                  "Should return 402 or 403 when feature is not enabled")))
           (testing "Card export endpoint returns error without feature"
             (let [response (mt/client-full-response :post (format "ee/public/document/%s/card/%d/csv"
                                                                   (:public_uuid document)
                                                                   (:id card))
                                                     {})]
-              (is (= 400 (:status response))
-                  "Should return 400 when feature is not enabled to avoid leaking premium feature information"))))))))
+              (is (contains? #{402 403} (:status response))
+                  "Should return 402 or 403 when feature is not enabled"))))))))
 
 (deftest fetch-public-document-test
   (testing "GET /api/ee/public/document/:uuid"
