@@ -92,6 +92,8 @@ describe("scenarios > visualizations > maps", () => {
             SELECT 'Kleavor' as name, 68 as lat, -159 as lng
             UNION ALL
             SELECT 'Spectrier' as name, 68 as lat, 159 as lng
+            UNION ALL
+            SELECT 'Blastoise' as name, 68 as lat, 22 as lng
           `,
           "template-tags": {},
         },
@@ -103,20 +105,33 @@ describe("scenarios > visualizations > maps", () => {
           "map.longitude_column": "LNG",
           "map.center_latitude": 67,
           "map.center_longitude": -175,
-          "map.zoom": 4,
+          "map.zoom": 1,
         },
       },
       { visitQuestion: true },
     );
 
-    cy.get(".leaflet-marker-icon").then((markers) => {
-      // should draw 4 markers
-      expect(markers).to.have.length(4);
-      cy.get(markers[0]).should("be.visible");
-      cy.get(markers[1]).should("not.be.visible"); // outside the viewport
-      cy.get(markers[2]).should("not.be.visible"); // outside the viewport
-      cy.get(markers[3]).should("be.visible");
-    });
+    cy.log("zooming should preserve tooltips (metabase#64939)");
+
+    cy.get(".leaflet-marker-icon")
+      .then((markers) => {
+        // should draw 6 markers
+        expect(markers).to.have.length(6);
+
+        return cy.wrap(markers[2]); // Blastoise in Sweden
+      })
+      .then((marker) => {
+        cy.get(marker)
+          .realHover()
+          .realMouseWheel({ deltaY: -100, scrollBehavior: "nearest" });
+      });
+
+    // this waits until we redraw from 6 to 3
+    cy.get(".leaflet-marker-icon").should("have.length", 3);
+
+    cy.get(".leaflet-marker-icon").eq(2).as("blastoiseMarker");
+    cy.get("@blastoiseMarker").trigger("mousemove");
+    H.popover().findByText("Blastoise").should("be.visible");
   });
 
   it("should not assign the full name of the state as the filter value on a drill-through (metabase#14650)", () => {
