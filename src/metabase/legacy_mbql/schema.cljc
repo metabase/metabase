@@ -800,7 +800,7 @@
    [:mode {:optional true} [:ref ::DatetimeOptionsMode]]])
 
 (defclause datetime
-  value  :any ;; normally a string, number, or bytes
+  value   [:ref ::FieldOrExpressionDef]
   options (optional [:ref ::DatetimeOptions]))
 
 (defmethod options-style-method :datetime [_tag] ::options-style.last-unless-empty)

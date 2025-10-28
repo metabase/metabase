@@ -1657,3 +1657,12 @@
            (mbql.normalize/normalize '(:relative-datetime :now))
            (mbql.normalize/normalize '(:relative-datetime "now"))
            (mbql.normalize/normalize '(:relative-datetime "current"))))))
+
+(deftest ^:parallel normalize-datetime-test
+  (is (= [:datetime
+          [:field "DATE_TIME" {:effective-type :type/*, :base-type :type/*}]
+          {:mode :simple-bytes}]
+         (mbql.normalize/normalize
+          ["datetime"
+           ["field" "DATE_TIME" {:effective-type "type/*", :base-type "type/*"}]
+           {"mode" "simplebytes"}]))))
