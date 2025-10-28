@@ -16,6 +16,7 @@ import { noop } from "underscore";
 import {
   useGetCardQuery,
   useListCollectionsTreeQuery,
+  useListDatabasesQuery,
   useUpdateCardMutation,
 } from "metabase/api";
 import { BenchFlatListItem } from "metabase/bench/components/shared/BenchFlatListItem";
@@ -59,6 +60,7 @@ import {
 } from "metabase/query_builder/selectors";
 import { MetricEditor as QBMetricEditor } from "metabase/querying/metrics/components/MetricEditor/MetricEditor";
 import { QUESTION_NAME_MAX_LENGTH } from "metabase/questions/constants";
+import { getHasDataAccess } from "metabase/selectors/data";
 import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
 import { Box, Button, Center, Group, Icon, Input, Loader } from "metabase/ui";
@@ -127,6 +129,9 @@ function MetricsList({
     ),
   );
 
+  const { data: dbData } = useListDatabasesQuery();
+  const hasDataAccess = getHasDataAccess(dbData?.data ?? []);
+
   const treeData = useMemo(() => {
     return filteredMetrics && collections && currentUser && display === "tree"
       ? getTreeItems(collections, filteredMetrics, "metric", currentUser.id)
@@ -170,15 +175,17 @@ function MetricsList({
       }
       onCollapse={onCollapse}
       addButton={
-        <ItemsListAddButton
-          onClick={() => {
-            const url = newQuestion({
-              mode: "bench",
-              cardType: "metric",
-            });
-            dispatch(push(url));
-          }}
-        />
+        hasDataAccess && (
+          <ItemsListAddButton
+            onClick={() => {
+              const url = newQuestion({
+                mode: "bench",
+                cardType: "metric",
+              });
+              dispatch(push(url));
+            }}
+          />
+        )
       }
       searchInput={
         <Input

@@ -3,12 +3,17 @@ import { t } from "ttag";
 import { useListDatabasesQuery } from "metabase/api/database";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { newQuestion } from "metabase/lib/urls/questions";
-import { getHasNativeWrite } from "metabase/selectors/data";
+import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import { Button, Icon, Menu } from "metabase/ui";
 
 export const CreateModelMenu = () => {
-  const { data } = useListDatabasesQuery();
-  const hasNativeWrite = getHasNativeWrite(data?.data ?? []);
+  const { data: dbData } = useListDatabasesQuery();
+  const databases = dbData?.data ?? [];
+  const hasNativeWrite = getHasNativeWrite(databases);
+  const hasDataAccess = getHasDataAccess(databases);
+  if (!hasDataAccess) {
+    return null;
+  }
 
   return (
     <Menu>
