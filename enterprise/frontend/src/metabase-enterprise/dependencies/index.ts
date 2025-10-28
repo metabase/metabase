@@ -10,7 +10,8 @@ import { useCheckTransformDependencies } from "./hooks/use-check-transform-depen
 import { DependencyGraphPage } from "./pages/DependencyGraphPage";
 
 if (hasPremiumFeature("dependencies")) {
-  PLUGIN_DEPENDENCIES.isEnabled = true;
+  // TODO Alex P re-enable after v57
+  PLUGIN_DEPENDENCIES.isEnabled = false;
   PLUGIN_DEPENDENCIES.DependencyGraphPage = DependencyGraphPage;
   PLUGIN_DEPENDENCIES.CheckDependenciesForm = CheckDependenciesForm;
   PLUGIN_DEPENDENCIES.CheckDependenciesModal = CheckDependenciesModal;

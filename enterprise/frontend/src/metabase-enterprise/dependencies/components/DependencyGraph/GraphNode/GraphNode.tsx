@@ -3,6 +3,7 @@ import {
   type NodeProps,
   Position,
   useNodeConnections,
+  useNodesInitialized,
 } from "@xyflow/react";
 import cx from "classnames";
 import { type MouseEvent, memo, useContext } from "react";
@@ -46,17 +47,20 @@ export const GraphNode = memo(function ItemNode({
   const groups = getDependentGroups(node);
   const sources = useNodeConnections({ handleType: "source" });
   const targets = useNodeConnections({ handleType: "target" });
-  const isSelected =
-    selection != null && isSameNode(node, selection.id, selection.type);
+  const isSelected = selection != null && isSameNode(node, selection);
+  const isInitialized = useNodesInitialized();
 
   const handleClick = () => {
-    setSelection({ id: node.id, type: node.type, withInfo: true });
+    setSelection({ id: node.id, type: node.type });
   };
 
   return (
     <>
       <Card
-        className={cx(S.card, { [S.selected]: isSelected })}
+        className={cx(S.card, {
+          [S.initialized]: isInitialized,
+          [S.selected]: isSelected,
+        })}
         p="lg"
         withBorder
         aria-label={label}
@@ -91,10 +95,20 @@ export const GraphNode = memo(function ItemNode({
         </Stack>
       </Card>
       {sources.length > 0 && (
-        <Handle type="source" position={Position.Left} isConnectable={false} />
+        <Handle
+          className={cx(S.handle, { [S.initialized]: isInitialized })}
+          type="source"
+          position={Position.Left}
+          isConnectable={false}
+        />
       )}
       {targets.length > 0 && (
-        <Handle type="target" position={Position.Right} isConnectable={false} />
+        <Handle
+          className={cx(S.handle, { [S.initialized]: isInitialized })}
+          type="target"
+          position={Position.Right}
+          isConnectable={false}
+        />
       )}
     </>
   );
@@ -115,7 +129,7 @@ function DependencyGroupButton({
 }: DependencyGroupButtonProps) {
   const isSelected =
     selection != null &&
-    isSameNode(node, selection.id, selection.type) &&
+    isSameNode(node, selection) &&
     selection.groupType === group.type;
 
   const handleClick = (event: MouseEvent) => {
@@ -124,7 +138,6 @@ function DependencyGroupButton({
       id: node.id,
       type: node.type,
       groupType: group.type,
-      withInfo: true,
     });
   };
 
