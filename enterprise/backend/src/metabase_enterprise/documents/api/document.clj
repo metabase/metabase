@@ -323,7 +323,7 @@
   [document-id card-id]
   (let [document (api/check-404 (t2/select-one :model/Document :id document-id :archived false))]
     (api/read-check document)
-    (api/check-404 (t2/select-one-pk :model/Card :id card-id :document_id document-id :archived false))))
+    (api/check-404 (t2/exists? :model/Card :id card-id :document_id document-id :archived false))))
 
 (api.macros/defendpoint :post "/:document-id/card/:card-id/query/:export-format"
   "Download query results for a Card embedded in a Document.
