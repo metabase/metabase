@@ -98,7 +98,7 @@
                  (and (or (str/starts-with? remote-sync-url "http://")
                           (str/starts-with? remote-sync-url "https://"))
                       (str/index-of remote-sync-url "github.com")))
-     (throw (ex-info "Invalid Repository URL format. Only github.com or file:// URLs are supported"
+     (throw (ex-info "Invalid Repository URL format"
                      {:url remote-sync-url})))
 
    (let [source (git/git-source remote-sync-url "HEAD" remote-sync-token)]
