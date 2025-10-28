@@ -1,5 +1,5 @@
 import { useDisclosure, useHotkeys, useToggle } from "@mantine/hooks";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
@@ -7,11 +7,13 @@ import type { SelectionRange } from "metabase/query_builder/components/NativeQue
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { NativeQueryPreview } from "metabase/querying/notebook/components/NativeQueryPreview";
 import { Center, Flex, Loader, Modal, Stack } from "metabase/ui";
+import { useRegisterMetabotTransformContext } from "metabase-enterprise/transforms/hooks/use-register-transform-metabot-context";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type {
   NativeQuerySnippet,
   QueryTransformSource,
+  Transform,
 } from "metabase-types/api";
 
 import { useQueryMetadata } from "../../hooks/use-query-metadata";
@@ -35,23 +37,32 @@ import {
 } from "./utils";
 
 type QueryEditorProps = {
+  transform?: Transform | undefined;
   initialSource: QueryTransformSource;
+  proposedSource?: QueryTransformSource;
   isNew?: boolean;
   isSaving?: boolean;
   onSave: (source: QueryTransformSource) => void;
+  onChange?: (source: QueryTransformSource) => void;
   onCancel: () => void;
+  onRejectProposed?: () => void;
+  onAcceptProposed?: (query: QueryTransformSource) => void;
 };
 
 export function QueryEditor({
+  transform,
   initialSource,
+  proposedSource,
   isNew = true,
   isSaving = false,
   onSave,
+  onChange,
   onCancel,
+  onRejectProposed,
+  onAcceptProposed,
 }: QueryEditorProps) {
-  const { question, isQueryDirty, setQuestion } = useQueryState(
-    initialSource.query,
-  );
+  const { question, proposedQuestion, isQueryDirty, setQuestion } =
+    useQueryState(initialSource.query, proposedSource?.query);
   const { isInitiallyLoaded } = useQueryMetadata(question);
   const {
     result,
@@ -61,18 +72,28 @@ export function QueryEditor({
     isResultDirty,
     runQuery,
     cancelQuery,
-  } = useQueryResults(question);
+  } = useQueryResults(question, proposedQuestion);
   const { isNative } = Lib.queryDisplayInfo(question.query());
   const [isShowingNativeQueryPreview, toggleNativeQueryPreview] = useToggle();
   const [isPreviewQueryModalOpen, togglePreviewQueryModal] = useToggle();
   const validationResult = getValidationResult(question.query());
 
+  const source = useMemo(() => {
+    const query = proposedSource?.query ?? question.datasetQuery();
+    return { type: "query" as const, query };
+  }, [proposedSource, question]);
+  useRegisterMetabotTransformContext(transform, source);
+
   const handleChange = async (newQuestion: Question) => {
     setQuestion(newQuestion);
+    onChange?.({ type: "query", query: newQuestion.datasetQuery() });
   };
 
   const handleSave = () => {
-    onSave({ type: "query", query: question.datasetQuery() });
+    onSave({
+      type: "query",
+      query: proposedQuestion?.datasetQuery() ?? question.datasetQuery(),
+    });
   };
 
   const handleCmdEnter = () => {
@@ -147,8 +168,10 @@ export function QueryEditor({
       >
         <EditorHeader
           validationResult={validationResult}
+          name={transform?.name}
           isNew={isNew}
           isSaving={isSaving}
+          hasProposedQuery={!!proposedSource}
           isQueryDirty={isQueryDirty}
           onSave={handleSave}
           onCancel={onCancel}
@@ -157,6 +180,7 @@ export function QueryEditor({
           <Stack flex="2 1 100%" pos="relative">
             <EditorBody
               question={question}
+              proposedQuestion={proposedQuestion}
               isNative={isNative}
               isRunnable={isRunnable}
               isRunning={isRunning}
@@ -166,6 +190,12 @@ export function QueryEditor({
               onChange={handleChange}
               onRunQuery={runQuery}
               onCancelQuery={cancelQuery}
+              onRejectProposed={onRejectProposed}
+              onAcceptProposed={
+                proposedSource
+                  ? () => onAcceptProposed?.(proposedSource)
+                  : undefined
+              }
               databases={databases?.data ?? []}
               onToggleDataReference={handleToggleDataReference}
               onToggleSnippetSidebar={handleToggleSnippetSidebar}
@@ -187,7 +217,6 @@ export function QueryEditor({
               onRunQuery={runQuery}
               onCancelQuery={() => undefined}
             />
-
             {!isNative && (
               <NativeQuerySidebarToggle
                 isShowingNativeQueryPreview={isShowingNativeQueryPreview}

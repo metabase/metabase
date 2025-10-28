@@ -12,7 +12,7 @@ redirect_from:
 
 ## When to use a progress bar
 
-Progress bars are useful when you want to show the movement of a metric toward a goal, like assessing performance of a KPI, or tracking the percentage of of completion on a project.
+Progress bars are useful when you want to show the movement of a metric toward a goal, like assessing performance of a KPI, or tracking the percentage of completion on a project.
 
 Progress bars give you an option to set up an alert whenever the result of a question reaches the goal set in the progress bar settings. See [Progress bar alerts](../alerts.md#progress-bar-alerts).
 

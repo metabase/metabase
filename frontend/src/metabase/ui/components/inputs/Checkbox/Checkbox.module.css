@@ -19,6 +19,8 @@
       z-index: 0;
     }
 
+    /* Mantine compatibility: supports old and new data-indeterminate. See: https://github.com/mantinedev/mantine/pull/8385 */
+    &:has(.input[data-indeterminate]),
     &:has(.input[data-indeterminate="true"]) {
       .icon {
         color: var(--mb-color-text-secondary);
@@ -60,6 +62,8 @@
   border: 1px solid var(--mb-color-border);
   background-color: var(--mb-color-background);
 
+  /* Mantine compatibility: supports old and new data-indeterminate. See: https://github.com/mantinedev/mantine/pull/8385 */
+  &[data-indeterminate],
   &[data-indeterminate="true"] {
     border-color: var(--mb-color-border);
     background-color: var(--mb-color-background);
