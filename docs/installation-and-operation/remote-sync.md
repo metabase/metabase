@@ -17,7 +17,7 @@ Here's a basic remote-sync workflow:
 4. Merge the PR to production.
 5. Your **production Metabase** automatically pulls in the changes.
 
-We'll cover [setting up remote sync](#setting-up-remote-sync), an [example dev-to-production workflow](#an-example-dev-to-production-workflow), and [branch management](#branch-management) and some other odds and ends.
+We'll cover [setting up Remote Sync](#setting-up-remote-sync), an [example dev-to-production workflow](#an-example-dev-to-production-workflow), and [branch management](#branch-management) and some other odds and ends.
 
 Prefer the command line? Check out [serialization](./serialization.md) for command-line export and import workflows.
 
@@ -25,20 +25,20 @@ Prefer the command line? Check out [serialization](./serialization.md) for comma
 
 You'll need to be an admin to set up Remote Sync.
 
-1. [Set up a repository to store your content](#set-up-a-repository-to-store-your-content)
-2. [Create a personal access token for development](#create-a-personal-access-token-for-development)
-3. [Set up your development Metabase](#set-up-your-development-metabase)
-4. [Connect your development Metabase to your repository](#connect-your-development-metabase-to-your-repository)
-5. [Add an item to the Library collection](#add-an-item-to-the-library-collection)
-6. [Push your changes to your repository](#push-your-changes-to-your-repository)
-7. [Create a personal access token for production](#create-a-personal-access-token-for-production)
-8. [Connect your production Metabase to your repository](#connect-your-production-metabase-to-your-repository)
+1. [Set up a repository to store your content](#1-set-up-a-repository-to-store-your-content)
+2. [Create a personal access token for development](#2-create-a-personal-access-token-for-development)
+3. [Set up your development Metabase](#3-set-up-your-development-metabase)
+4. [Connect your development Metabase to your repository](#4-connect-your-development-metabase-to-your-repository)
+5. [Add an item to the Library collection](#5-add-an-item-to-the-library-collection)
+6. [Push your changes to your repository](#6-push-your-changes-to-your-repository)
+7. [Create a personal access token for production](#7-create-a-personal-access-token-for-production)
+8. [Connect your production Metabase to your repository](#8-connect-your-production-metabase-to-your-repository)
 
 ## 1. Set up a repository to store your content
 
 Before you connect Metabase to your Git repository, create a [new GitHub repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-new-repository). Initialize the repo with a README.md
 
-## Create a personal access token for development
+## 2. Create a personal access token for development
 
 GitHub offers two types of personal access tokens. We recommend the fine-grained token (not the classic) because you can limit their permissions to specific repositories.
 
@@ -53,7 +53,7 @@ GitHub offers two types of personal access tokens. We recommend the fine-grained
 
 For more, see GitHub's docs on [personal access tokens](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens).
 
-## 2. Set up your development Metabase
+## 3. Set up your development Metabase
 
 Remote Sync has two modes: Development and Production. 
 
@@ -65,7 +65,7 @@ Development Metabases are where you create and edit content. You can have multip
 
 You can use any Metabase as a development Metabase. Metabase also offers [Development instances](./development-instance.md) for testing and development, which allow you to test with a bunch of users without having to pay per user account. You can use these Development instances in Remote Sync's Development mode (though not in Production mode, obviously).
 
-## Connect your development Metabase to your repository
+## 4. Connect your development Metabase to your repository
 
 1. Open the Remote sync settings:
 
@@ -80,13 +80,13 @@ You can use any Metabase as a development Metabase. Metabase also offers [Develo
 
 4. Add your access token:
 
-   - Paste the personal access token you created earlier. Make sure the token has [read and write permissions](#create-a-personal-access-token-for-development). Metabase encrypts your token before storing it.
+   - Paste the personal access token you created earlier. Make sure the token has [read and write permissions](#2-create-a-personal-access-token-for-development). Metabase encrypts your token before storing it.
 
 5. Save and test the connection:
 
    - Click "Save changes". Metabase will check whether it can reach your repository. If the connection fails, make sure your token has the appropriate permissions and hasn't expired. You may also have incorrectly copied and pasted the PAT, in which case you'll need to generate a new token.
 
-## Add an item to the Library collection
+## 5. Add an item to the Library collection
 
 Once your development Metabase is connected to your Git repository, you can start adding content to your synced collection. When you first connect in Development mode, Metabase will automatically create a default synced collection called "Library" (you can rename the collection if you want).
 
@@ -98,7 +98,7 @@ Once your development Metabase is connected to your Git repository, you can star
 
 [Items in synced collections can't depend on items outside of synced collections](#items-in-synced-collections-cant-depend-on-items-outside-of-the-synced-collection). For example, if you try to add a question that references a model, make sure the model is also in a synced collection. 
 
-## Push your changes to your repository
+## 6. Push your changes to your repository
 
 Once you've added content, you'll see a yellow dot on your Library collection indicating uncommitted changes.
 
@@ -110,13 +110,13 @@ Once you've added content, you'll see a yellow dot on your Library collection in
 
 Check your repo, you should see the collection with your content in it.
 
-## Create a personal access token for production
+## 7. Create a personal access token for production
 
 Now that you have content in your repository, you can set up your production Metabase to pull that content.
 
-[Create a personal access token](#create-a-personal-access-token-for-development) following the same steps as before, but add Contents permissions to the token that are **Read-only** (NOT write), as you only want your production Metabase reading from the repo. (Contents permissions requires Metadata permissions, which GitHub will add automatically).
+[Create a personal access token](#2-create-a-personal-access-token-for-development) following the same steps as before, but add Contents permissions to the token that are **Read-only** (NOT write), as you only want your production Metabase reading from the repo. (Contents permissions require Metadata permissions, which GitHub will add automatically).
 
-## Connect your production Metabase to your repository
+## 8. Connect your production Metabase to your repository
 
 1. Open the Remote sync settings:
 
@@ -190,7 +190,7 @@ On your production Metabase instance:
 
 When you first connect a Metabase to an initialized repository in Development mode, Metabase will automatically create a default synced collection called "Library". You can add items to that synced collection, including existing collections.
 
-In your development Metabase, your synced collection will show its current state:
+In your Development mode, your synced collection will show its current state:
 
 - **Yellow dot:** You have unsynced local changes that need to be committed.
 - **Up/down arrows:** Sync controls for pulling and pushing changes.
@@ -201,7 +201,7 @@ In Production mode, you won't see a dedicated "Synced Collections" section in th
 
 When you move content out of a synced collection, the UI may not immediately show the unpushed state. Refresh your browser to see the push indicator.
 
-Content in other instances that depended on this item may break since the dependency will no longer be in a synced collection.
+Content in other Metabases that depended on this item may break since the dependency will no longer be in a synced collection.
 
 ### Items in synced collections can't depend on items outside of the synced collection
 
@@ -211,8 +211,9 @@ For example:
 
 - If a question references a model, both the question and the model must be in synced collections.
 - If a dashboard includes questions, those questions must be saved to either the dashboard itself or to the synced collection.
-- If a question uses a snippet (any snipppet), that question can't be added to the synced collection, as snippets are not stored in collections.
 - If a document contains @ mentions of other items (questions, dashboards, models, etc.), those mentioned items must be in synced collections.
+
+Questions that depend on snippets (any snippet) can't be added to the synced collection, as Metabase doesn't store snippets in collections.
 
 Items can reference other items in sub-collections that are also synced.
 
@@ -231,7 +232,6 @@ Alternatively, you can modify your content to use a different source data that's
 - Dashboards and their cards
 - Questions (saved queries and models)
 - Documents
-- Native query snippets
 - Timelines and events
 - Collection structure and metadata
 
@@ -239,6 +239,7 @@ Alternatively, you can modify your content to use a different source data that's
 
 - Users, groups, and permissions
 - Alerts and subscriptions
+- Snippets
 - Database connections
 - Personal collections
 
