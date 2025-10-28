@@ -58,6 +58,24 @@
         (into {}))
    :creator_id {:default {}}))
 
+(methodical/defmethod t2/batched-hydrate [:model/Document :cards]
+  "Hydrate cards associated with documents via document_id FK, returning as a map keyed by card ID.
+  Fetches all cards for all documents in a single batched query to avoid N+1 queries."
+  [_model k documents]
+  (let [document-ids (keep :id documents)
+        ;; Fetch all cards for all documents in one batched query
+        all-cards (when (seq document-ids)
+                    (t2/select :model/Card
+                               :document_id [:in document-ids]
+                               :archived false))
+        ;; Group cards by document_id, then convert each group to a map keyed by card ID
+        cards-by-doc-id (group-by :document_id all-cards)
+        cards-maps-by-doc-id (update-vals cards-by-doc-id
+                                          (fn [cards]
+                                            (zipmap (map :id cards) cards)))]
+    (for [doc documents]
+      (assoc doc k (get cards-maps-by-doc-id (:id doc) {})))))
+
 (defn sync-document-cards-collection!
   "Updates all cards associated with a document to match the document's collection.
   If the document is archived, also archives all associated cards. "

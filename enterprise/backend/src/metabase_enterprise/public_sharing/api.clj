@@ -48,15 +48,13 @@
   once before exposing them to unauthenticated users. The document and all cards must not be archived to be
   accessible publicly."
   [& conditions]
-  (let [document (api/check-404 (apply t2/select-one [:model/Document :id :name :document :content_type :created_at :updated_at]
-                                       :archived false, conditions))
-        ;; Hydrate the cards associated with this document via the document_id FK
-        ;; so the frontend has all the metadata it needs upfront
-        hydrated-cards (let [cards (t2/select :model/Card :document_id (:id document) :archived false)]
-                         (zipmap (map :id cards)
-                                 (map remove-card-non-public-columns cards)))]
+  (let [document (-> (api/check-404 (apply t2/select-one [:model/Document :id :name :document :content_type :created_at :updated_at]
+                                           :archived false, conditions))
+                     ;; Hydrate cards via Toucan batched hydration to avoid N+1 queries
+                     (t2/hydrate :cards))]
     (-> document
-        (assoc :cards hydrated-cards)
+        ;; Filter sensitive fields from all cards before exposing publicly
+        (update :cards #(update-vals % remove-card-non-public-columns))
         (dissoc :content_type)
         remove-document-non-public-columns)))
 
