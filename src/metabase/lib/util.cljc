@@ -531,7 +531,7 @@
     nil))
 
 (defn drop-summary-clauses
-  "Remove :aggregation and :breakout from stage stage-number of a query."
+  "Remove :aggregation and :breakout from the stage at `stage-number` of a `query`."
   ([query]
    (drop-summary-clauses query -1))
   ([query stage-number]
