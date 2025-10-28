@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -10,11 +10,11 @@ const DEFAULT_VIZ_SETTINGS: VisualizationSettings = {
   "table.pivot": false,
 };
 
-export function useQuestionQuery(
+export function useQueryQuestion(
   query: Lib.Query,
-  proposedQuery: Lib.Query | undefined,
   type: CardType,
-  onQueryChange: (newQuery: Lib.Query) => void,
+  proposedQuery: Lib.Query | undefined,
+  setQuery: (newQuery: Lib.Query) => void,
 ) {
   const metadata = useSelector(getMetadata);
 
@@ -39,9 +39,12 @@ export function useQuestionQuery(
     [query, proposedQuery, type, metadata],
   );
 
-  const setQuestion = (newQuestion: Question) => {
-    onQueryChange(newQuestion.query());
-  };
+  const setQuestion = useCallback(
+    (newQuestion: Question) => {
+      setQuery(newQuestion.query());
+    },
+    [setQuery],
+  );
 
   return { question, proposedQuestion, setQuestion };
 }

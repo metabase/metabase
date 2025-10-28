@@ -1,7 +1,8 @@
-import type { QueryEditorUiControls } from "./types";
+import type { QueryEditorState } from "./types";
 
-export function getInitialUiControls(): QueryEditorUiControls {
+export function getInitialState(): QueryEditorState {
   return {
+    lastRunQuery: null,
     selectionRange: [],
     modalSnippet: null,
     isDataReferenceOpen: false,

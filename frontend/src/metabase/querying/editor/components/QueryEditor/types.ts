@@ -1,7 +1,17 @@
-import type { SelectionRange } from "metabase/query_builder/components/NativeQueryEditor";
-import type { NativeQuerySnippet } from "metabase-types/api";
+import type { DatasetQuery, NativeQuerySnippet } from "metabase-types/api";
 
-export type QueryEditorUiControls = {
+export type Location = {
+  row: number;
+  column: number;
+};
+
+export type SelectionRange = {
+  start: Location;
+  end: Location;
+};
+
+export type QueryEditorState = {
+  lastRunQuery: DatasetQuery | null;
   selectionRange: SelectionRange[];
   modalSnippet: NativeQuerySnippet | null;
   isDataReferenceOpen: boolean;

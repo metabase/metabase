@@ -1,13 +1,10 @@
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker";
-import type { DataPickerItem } from "metabase/common/components/Pickers/DataPicker";
 import { NativeQueryPreview } from "metabase/querying/notebook/components/NativeQueryPreview";
 import { Center, Flex, Modal } from "metabase/ui";
-import * as Lib from "metabase-lib";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type { CardType, RecentCollectionItem } from "metabase-types/api";
+import type * as Lib from "metabase-lib";
+import type { CardType } from "metabase-types/api";
 
 import {
   NativeQueryPreviewSidebar,
@@ -16,61 +13,45 @@ import {
 import { NativeQuerySidebar } from "./NativeQuerySidebar";
 import { QuerySection } from "./QuerySection";
 import { VisualizationSection } from "./VisualizationSection";
-import type { QueryEditorUiControls } from "./types";
-import { useEditorUiControls } from "./use-editor-ui-controls";
-import { useQueryMetadata } from "./use-query-metadata";
-import { useQueryResults } from "./use-query-results";
-import { useQuestionQuery } from "./use-question-query";
+import type { QueryEditorState } from "./types";
+import { useQueryEditor } from "./use-query-editor";
 
 type QueryEditorProps = {
   query: Lib.Query;
+  state: QueryEditorState;
+  type?: CardType;
   proposedQuery?: Lib.Query;
-  type: CardType;
-  uiControls: QueryEditorUiControls;
-  convertToNativeTitle?: string;
-  convertToNativeButtonLabel?: string;
-  shouldDisableDatabase?: (database: Database) => boolean;
-  shouldDisableItem?: (
-    item: DataPickerItem | CollectionPickerItem | RecentCollectionItem,
-  ) => boolean;
-  onQueryChange: (newQuery: Lib.Query) => void;
-  onUiControlsChange: (newUiControls: QueryEditorUiControls) => void;
+  onChangeQuery: (newQuery: Lib.Query) => void;
+  onChangeState: (newUiControls: QueryEditorState) => void;
   onAcceptProposed?: () => void;
   onRejectProposed?: () => void;
 };
 
 export function QueryEditor({
   query,
-  proposedQuery,
+  state,
   type,
-  uiControls,
-  convertToNativeTitle,
-  convertToNativeButtonLabel,
-  shouldDisableDatabase,
-  shouldDisableItem,
-  onQueryChange,
-  onUiControlsChange,
+  proposedQuery,
+  onChangeQuery,
+  onChangeState,
   onAcceptProposed,
   onRejectProposed,
 }: QueryEditorProps) {
-  const { question, proposedQuestion, setQuestion } = useQuestionQuery(
-    query,
-    proposedQuery,
-    type,
-    onQueryChange,
-  );
-  const { isLoading, error } = useQueryMetadata(question);
   const {
+    question,
+    proposedQuestion,
+    error,
     result,
     rawSeries,
+    selectedText,
+    isLoading,
+    isNative,
     isRunnable,
     isRunning,
     isResultDirty,
+    setQuestion,
     runQuery,
     cancelQuery,
-  } = useQueryResults(question);
-  const {
-    selectedText,
     openModal,
     setSelectionRange,
     setModalSnippet,
@@ -80,13 +61,14 @@ export function QueryEditor({
     togglePreviewQueryModal,
     toggleNativeQueryPreviewSidebar,
     convertToNative,
-  } = useEditorUiControls(
-    question,
-    uiControls,
-    setQuestion,
-    onUiControlsChange,
-  );
-  const { isNative } = Lib.queryDisplayInfo(question.query());
+  } = useQueryEditor({
+    query,
+    state,
+    type,
+    proposedQuery,
+    onChangeQuery,
+    onChangeState,
+  });
 
   if (isLoading || error != null) {
     return (
@@ -103,16 +85,16 @@ export function QueryEditor({
           <QuerySection
             question={question}
             proposedQuestion={proposedQuestion}
-            modalSnippet={uiControls.modalSnippet}
+            modalSnippet={state.modalSnippet}
             nativeEditorSelectedText={selectedText}
             isNative={isNative}
             isRunnable={isRunnable}
             isRunning={isRunning}
             isResultDirty={isResultDirty}
-            isShowingDataReference={uiControls.isDataReferenceOpen}
-            isShowingSnippetSidebar={uiControls.isSnippetSidebarOpen}
-            shouldDisableDatabase={shouldDisableDatabase}
-            shouldDisableItem={shouldDisableItem}
+            isShowingDataReference={state.isDataReferenceOpen}
+            isShowingSnippetSidebar={state.isSnippetSidebarOpen}
+            // shouldDisableDatabase={shouldDisableDatabase}
+            // shouldDisableItem={shouldDisableItem}
             onChange={setQuestion}
             onRunQuery={runQuery}
             onCancelQuery={cancelQuery}
@@ -138,7 +120,7 @@ export function QueryEditor({
           {!isNative && (
             <NativeQueryPreviewSidebarToggle
               isNativeQueryPreviewSidebarOpen={
-                uiControls.isNativeQueryPreviewSidebarOpen
+                state.isNativeQueryPreviewSidebarOpen
               }
               onToggleNativeQueryPreviewSidebar={
                 toggleNativeQueryPreviewSidebar
@@ -150,19 +132,19 @@ export function QueryEditor({
           <NativeQuerySidebar
             question={question}
             isNative={isNative}
-            isDataReferenceOpen={uiControls.isDataReferenceOpen}
-            isSnippetSidebarOpen={uiControls.isSnippetSidebarOpen}
+            isDataReferenceOpen={state.isDataReferenceOpen}
+            isSnippetSidebarOpen={state.isSnippetSidebarOpen}
             onInsertSnippet={insertSnippet}
             onToggleDataReference={toggleDataReference}
             onToggleSnippetSidebar={toggleSnippetSidebar}
             onChangeModalSnippet={setModalSnippet}
           />
         )}
-        {!isNative && uiControls.isNativeQueryPreviewSidebarOpen && (
+        {!isNative && state.isNativeQueryPreviewSidebarOpen && (
           <NativeQueryPreviewSidebar
             question={question}
-            convertToNativeTitle={convertToNativeTitle}
-            convertToNativeButtonLabel={convertToNativeButtonLabel}
+            // convertToNativeTitle={convertToNativeTitle}
+            // convertToNativeButtonLabel={convertToNativeButtonLabel}
             onConvertToNativeClick={convertToNative}
           />
         )}
@@ -170,7 +152,7 @@ export function QueryEditor({
       {isNative && (
         <Modal
           title={t`Query preview`}
-          opened={uiControls.isPreviewQueryModalOpen}
+          opened={state.isPreviewQueryModalOpen}
           onClose={togglePreviewQueryModal}
         >
           <NativeQueryPreview query={question.query()} />
