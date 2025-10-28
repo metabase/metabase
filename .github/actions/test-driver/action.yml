@@ -46,3 +46,4 @@ runs:
         name: test-logs-${{ github.job }}
         path: logs/test-log.json
         retention-days: 1
+      continue-on-error: true
