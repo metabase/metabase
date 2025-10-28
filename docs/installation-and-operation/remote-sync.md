@@ -9,7 +9,7 @@ description: Version control your dashboards, questions, and models with Git. Sy
 
 ## Overview
 
-Remote Sync brings Git-based version control to your Metabase analytics content. It lets you manage dashboards, questions, models, and documents the same way software teams manage code: with branches, pull requests, and peer review.
+Remote Sync lets you to develop analytics content in a development Metabase and automatically deploy it to a read-only production instance through Git.
 
 You work with Remote Sync through special collections called "synced collections". Content in these collections is automatically versioned and can be pushed to or pulled from your Git repository directly from the Metabase UI.
 
@@ -28,9 +28,12 @@ You work with Remote Sync through special collections called "synced collections
 
 ### Why use Remote Sync?
 
-- **Peer review for analytics**: Require approval before dashboards go live. Team members can review changes to questions and dashboards in pull requests before they're merged to production.
-- **Audit trail**: Every change to your dashboards and questions is tracked in Git with commit messages, timestamps, and author information. See exactly when and why content changed.
-- **Safe experimentation**: Work on branches without affecting production. Test new dashboards, try different visualizations, and iterate without risk to your live environment.
+Remote Sync is designed for teams that want to maintain a **read-only production environment** where analytics content is created by a centralized team and deployed through a controlled process.
+
+- **Read-only production**: Users in production can view and use dashboards, but cannot create or edit content. All content creation happens in development.
+- **Version control for new content**: Add new dashboards, questions, and models to production through Git, with full version history.
+- **Peer review**: Use pull requests to review new content before it goes live in production.
+- **Controlled deployment**: Choose when new content appears in production by controlling when you merge to your main branch.
 
 ### How Remote Sync works
 
@@ -44,7 +47,12 @@ Here's a basic remote-sync workflow:
 
 We'll cover [setting up Remote Sync](#setting-up-remote-sync), an [example dev-to-production workflow](#an-example-dev-to-production-workflow), and [branch management](#branch-management) and some other odds and ends.
 
-Prefer the command line? Check out [serialization](./serialization.md) for command-line export and import workflows.
+### Remote Sync vs. Serialization
+
+Remote Sync uses the same underlying serialization format as the [Metabase CLI serialization feature](./serialization.md), but serves a different purpose:
+
+- **Remote Sync**: Designed for adding new content to a read-only production environment through a Git-based workflow. Best when you want a centralized team creating content in development and deploying it to production automatically. 
+- **Serialization**: Command-line tool for exporting and importing Metabase content. Best for migrating existing content, complex multi-environment setups, and scenarios requiring full control over what gets exported and imported.
 
 ## Setting up Remote Sync
 
@@ -220,7 +228,7 @@ On your production Metabase instance:
 Synced collections are special collections that are tracked in Git. Content in synced collections is versioned and can be pushed to or pulled from your repository.
 
 - [Synced collections in the UI](#synced-collections-in-the-ui)
-- [Moving content out of synced collections](#moving-content-out-of-synced-collections)
+- [Moving and deleting content in synced collections](#moving-and-deleting-content-in-synced-collections)
 - [Items in synced collections can't depend on items outside of the synced collection](#items-in-synced-collections-cant-depend-on-items-outside-of-the-synced-collection)
 
 ### Synced collections in the UI
@@ -234,15 +242,19 @@ In Development mode, your synced collection shows its current state with visual 
 
 In Production mode, synced collections appear in the regular collections list (not in a separate "Synced Collections" section) with a special icon to indicate they're versioned and read-only.
 
-### Moving content out of synced collections
+### Moving and deleting content in synced collections
 
 When you move content out of a synced collection, the UI may not immediately show the unpushed state. Refresh your browser to see the push indicator.
+
+**Deletions sync to production:** When you remove content from a synced collection in Development mode and push that change, the content will also be removed from your Production instance when it syncs. This applies to moving content out of the synced collection or deleting it entirely.
 
 Content in other Metabases that depended on this item may break since the dependency will no longer be in a synced collection.
 
 ### Items in synced collections can't depend on items outside of the synced collection
 
-Metabase enforces dependency constraints for synced collections to ensure all content can be properly versioned. In other words: you can't save an item to a synced collection if it depends on items outside of synced collections.
+**Synced collections are self-contained.** Everything a dashboard or question needs must be inside the synced collection for Remote Sync to work properly. Metabase enforces these dependency constraints to ensure all content can be properly versioned and synced between instances.
+
+**If it's not in the collection, it won't sync**—and that includes metadata. The one critical exception: table metadata (column types, descriptions, etc.) doesn't sync at all, even when questions that depend on it do sync. See [table metadata limitations](#important-table-metadata-limitations) for details.
 
 For example:
 
@@ -273,6 +285,7 @@ Remote Sync uses the same serialization format as the [Metabase CLI serializatio
 
 - Dashboards and their cards
 - Questions (saved queries and models)
+- Model metadata (column descriptions, display settings, etc.)
 - Documents
 - Timelines and events
 - Collection structure and metadata
@@ -284,6 +297,15 @@ Remote Sync uses the same serialization format as the [Metabase CLI serializatio
 - Snippets
 - Database connections
 - Personal collections
+- **Table metadata** (column types, descriptions, visibility settings, etc.)
+
+### Important: Table metadata limitations
+
+**Table metadata is not synced by Remote Sync.** This means any customizations you make to table metadata in your development instance—such as changing a column's display type from "Unix timestamp" to "Date", adding column descriptions, or adjusting visibility—will not automatically sync to production.
+
+If your questions or dashboards rely on customized table metadata, you must manually apply the same metadata changes in your production instance. Otherwise, content that works in development may not work correctly in production.
+
+**Why this matters:** If you have a question that displays a unixtime column as a date (because you changed the column type in development's table metadata), that question will sync to production, but the column will still appear as a unixtime in production unless you manually update the table metadata there as well.
 
 For more details on the serialization format and command-line workflows, see the [serialization documentation](./serialization.md).
 
