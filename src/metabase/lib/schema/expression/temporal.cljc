@@ -134,7 +134,7 @@
       ::common/options
       [:map [:mode (into [:enum {:decode/normalize normalize-datetime-mode}]
                          datetime-binary-modes)]]]
-     :any]]])
+     [:schema [:ref ::expression/expression]]]]])
 
 ;; doesn't contain `:millisecond`
 (mr/def ::datetime-diff-unit
