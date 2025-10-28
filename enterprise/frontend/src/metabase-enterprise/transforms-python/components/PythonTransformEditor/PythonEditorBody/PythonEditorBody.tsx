@@ -56,20 +56,6 @@ export function PythonEditorBody({
           data-testid="python-editor"
         />
 
-        {withDebugger && (
-          <Stack p="md" gap="xs">
-            <RunButtonWithTooltip
-              disabled={!isRunnable}
-              isRunning={isRunning}
-              isDirty={isDirty}
-              onRun={onRun}
-              onCancel={onCancel}
-              getTooltip={() => {
-                return t`Run Python script`;
-              }}
-            />
-          </Stack>
-        )}
         <Stack m="1rem" gap="md" mt="auto">
           {proposedSource && onRejectProposed && onAcceptProposed && (
             <>
