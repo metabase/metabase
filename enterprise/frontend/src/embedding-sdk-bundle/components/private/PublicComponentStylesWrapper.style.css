@@ -1,4 +1,5 @@
 .publicComponentWrapper {
+  /* Try to reset as much as possible to avoid css leaking from host app to our components */
   all: initial;
   text-decoration: none;
   font-style: normal;
