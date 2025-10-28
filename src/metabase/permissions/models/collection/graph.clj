@@ -131,25 +131,25 @@
                                   (when (seq group-ids)
                                     [[:in :group_id group-ids]]))}]]
             :union-all
-            [;; Query 1: Root collection permissions
-             {:select [[:pg.id :group_id]
-                       [nil :collection_id]
-                       [[:max [:case [:= :p.object [:inline root-object]]
-                               [:inline 1]
-                               :else [:inline 0]]] :writable]
-                       [[:max [:case [:= :p.object [:inline (str root-object "read/")]]
-                               [:inline 1]
-                               :else [:inline 0]]] :readable]]
-              :from [[:permissions_group :pg]]
-              :join [[:permissions :p] [:and
-                                        [:= :p.group_id :pg.id]
-                                        [:or [:= :p.object [:inline root-object]]
-                                         [:= :p.object [:inline (str root-object "read/")]]]]]
-              :where (into [:and
-                            [[:inline include-root?]]]
-                           (when (seq group-ids)
-                             [[:in :pg.id group-ids]]))
-              :group-by [:pg.id]}
+            [;; Query 1: Root collection permissions, exclude this query if collection-ids are supplied
+             ;; and :root is not present in that collection
+             (when include-root?
+               {:select [[:pg.id :group_id]
+                         [nil :collection_id]
+                         [[:max [:case [:= :p.object [:inline root-object]]
+                                 [:inline 1]
+                                 :else [:inline 0]]] :writable]
+                         [[:max [:case [:= :p.object [:inline (str root-object "read/")]]
+                                 [:inline 1]
+                                 :else [:inline 0]]] :readable]]
+                :from [[:permissions_group :pg]]
+                :join [[:permissions :p] [:and
+                                          [:= :p.group_id :pg.id]
+                                          [:or [:= :p.object [:inline root-object]]
+                                           [:= :p.object [:inline (str root-object "read/")]]]]]
+                :where (into [] (when (seq group-ids)
+                                  [[:in :pg.id group-ids]]))
+                :group-by [:pg.id]})
 
              ;; Query 2: Regular collection permissions
              {:select [[:pg.id :group_id]
@@ -173,7 +173,7 @@
                        [:c.id :collection_id]
                        [[:inline 1] :writable]
                        [[:inline 1] :readable]]
-              :from [[:collection :c]]}]})
+              :from [[:eligible_collections :c]]}]})
           (reduce (fn [accum {group-id :group_id collection-id :collection_id :keys [writable readable]}]
                     (assoc-in accum [group-id (or collection-id :root)]
                               (cond
@@ -259,7 +259,9 @@
   "Remove any collection IDs from the graph that belong to another namespace from the graph being updated."
   [graph collection-ids namespace]
   (let [other-ns-ids (when (seq collection-ids)
-                       ;; This query is selecting collection-ids that are in namespaces *NOT* the one we are operating on
+                       ;; This query selects collection IDs that don't match the target namespace:
+                       ;; - If target namespace is non-nil: collections with different non-nil namespaces OR nil namespaces
+                       ;; - If target namespace is nil: collections with any non-nil namespace
                        (t2/select-pks-set :model/Collection {:where [:and [:in :id (disj collection-ids :root)]
                                                                      (cond-> [:or [:not= :namespace (some-> namespace name)]]
                                                                        (some? namespace) (into [[:= :namespace nil]]))]}))]
@@ -306,6 +308,8 @@
          filtered-new-graph (-> (remove-personal-collections-from-graph new-graph new-collection-ids)
                                 (remove-collections-from-other-namespaces new-collection-ids collection-namespace))
          old-graph (graph collection-namespace new-collection-ids new-group-ids)
+         ;; the new graph requires permissions to be included explicitly -- it's a fragment rather than a sparse graph
+         ;; once we've removed illegal collections like personal collections or collections from other namespaces
          [diff-old changes] (data/diff (:groups old-graph) (->> (:groups filtered-new-graph)
                                                                 (filter (comp seq second))
                                                                 (into {})))]

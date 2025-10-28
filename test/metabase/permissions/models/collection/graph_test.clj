@@ -123,7 +123,7 @@
                (graph :clear-revisions? true, :groups [new-group])))))))
 
 (deftest root-collection-read-perms-test
-  (testing "How abut *read* permissions for the Root Collection?"
+  (testing "How about *read* permissions for the Root Collection?"
     (mt/with-temp [:model/PermissionsGroup new-group]
       (mt/with-non-admin-groups-no-root-collection-perms
         (perms/grant-collection-read-permissions! new-group collection/root-collection)
