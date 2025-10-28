@@ -245,9 +245,9 @@
       (assoc :mbql_query (:query patched-query))
 
       (and (= :mbql/query (:lib/type query))
-           (lib/native? query))
+           (lib/native-only-query? query))
       (assoc :query (lib/raw-native-query query))
 
       (and (= :mbql/query (:lib/type query))
-           (not (lib/native? query)))
+           (not (lib/native-only-query? query)))
       (assoc :lib_query (:stages patched-query)))))

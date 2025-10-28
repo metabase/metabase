@@ -424,7 +424,6 @@
   can-run
   can-save
   check-card-overwrite
-  native?
   preview-query
   query
   query-from-legacy-inner-query
