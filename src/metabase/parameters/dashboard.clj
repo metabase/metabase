@@ -96,7 +96,7 @@
               mp (lib-be/application-database-metadata-provider database-id)
               card (lib.metadata/card mp card-id)
               query (lib/card->underlying-query mp card)]
-        :when (when (not-empty query)
+        :when (and (not-empty query)
                 (m/find-first (partial lib/filters query)
                               (range (lib/stage-count query))))]
     card))
