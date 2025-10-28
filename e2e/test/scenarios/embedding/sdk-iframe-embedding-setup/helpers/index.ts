@@ -16,16 +16,10 @@ export const getEmbedSidebar = () => cy.findByRole("complementary");
 export const getRecentItemCards = () =>
   cy.findAllByTestId("embed-recent-item-card");
 
-export const visitNewEmbedPage = ({ locale }: { locale?: string } = {}) => {
+export const visitNewEmbedPage = () => {
   cy.intercept("GET", "/api/dashboard/*").as("dashboard");
 
-  const params = new URLSearchParams();
-
-  if (locale) {
-    params.append("locale", locale);
-  }
-
-  cy.visit("/embed-js?" + params);
+  cy.visit("/embed-js");
 
   cy.wait("@dashboard");
 
