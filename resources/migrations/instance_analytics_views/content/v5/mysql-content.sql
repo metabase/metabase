@@ -1,7 +1,7 @@
 drop view if exists v_content;
 
-create or replace
-SQL SECURITY INVOKER
+create or replace 
+SQL SECURITY INVOKER 
 view v_content as
 select
     action.id as entity_id,
@@ -112,6 +112,30 @@ select
             from moderation_review
             where most_recent
         ) as moderation on concat('card_', report_dashboard.id) = moderation.entity_qualified_id
+union
+select
+    document.id as entity_id,
+    concat('document_', document.id) as entity_qualified_id,
+    'document' as entity_type,
+    created_at,
+    updated_at,
+    creator_id,
+    name,
+    null as description,
+    collection_id as collection_id,
+    null as made_public_by_user,
+    null as is_embedding_enabled,
+    null as is_verified,
+    archived,
+    null as action_type,
+    null as action_model_id,
+    null as collection_is_official,
+    null as collection_is_personal,
+    null as question_viz_type,
+    null as question_database_id,
+    null as question_is_native,
+    null as event_timestamp
+    from document
 union
 select
     event.id as entity_id,
