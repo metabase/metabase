@@ -247,7 +247,7 @@
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
-(api.macros/defendpoint :post "/:document-id/public_link" :- [:map [:uuid ms/UUIDString]]
+(api.macros/defendpoint :post "/:document-id/public-link" :- [:map [:uuid ms/UUIDString]]
   "Generate a publicly-accessible UUID for a Document.
 
   Creates a public link that allows viewing the Document without authentication. If the Document already has
@@ -274,7 +274,7 @@
         ;; Always select after update to ensure we return what's actually stored
         {:uuid (t2/select-one-fn :public_uuid :model/Document :id document-id)}))))
 
-(api.macros/defendpoint :delete "/:document-id/public_link"
+(api.macros/defendpoint :delete "/:document-id/public-link"
   "Remove the public link for a Document.
 
   Deletes the public UUID from the Document, making it no longer accessible via the public sharing endpoint.

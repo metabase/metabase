@@ -300,7 +300,7 @@ export function createPublicDashboardLink(dashboardId) {
 }
 
 export function createPublicDocumentLink(documentId) {
-  return cy.request("POST", `/api/ee/document/${documentId}/public_link`, {});
+  return cy.request("POST", `/api/ee/document/${documentId}/public-link`, {});
 }
 
 /**

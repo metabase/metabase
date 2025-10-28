@@ -2014,7 +2014,7 @@
          (shared-document)
          overrides))
 
-;;; -------------------------------------- POST /api/ee/document/:id/public_link ---------------------------------------
+;;; -------------------------------------- POST /api/ee/document/:id/public-link ---------------------------------------
 
 (deftest share-document-test
   (mt/with-temporary-setting-values [enable-public-sharing true]
@@ -2022,50 +2022,50 @@
       (mt/with-temp [:model/Document document {:name "Test Document"
                                                :document (documents.test-util/text->prose-mirror-ast "Test content")}]
         (let [{uuid :uuid} (mt/user-http-request :crowberto :post 200
-                                                 (format "ee/document/%d/public_link" (:id document)))]
+                                                 (format "ee/document/%d/public-link" (:id document)))]
           (is (t2/exists? :model/Document :id (:id document), :public_uuid uuid))
           (testing "Test that if a Document has already been shared we reuse the existing UUID"
             (is (= uuid
                    (:uuid (mt/user-http-request :crowberto :post 200
-                                                (format "ee/document/%d/public_link" (:id document))))))))))
+                                                (format "ee/document/%d/public-link" (:id document))))))))))
 
     (mt/with-temp [:model/Document document {:name "Test Document"
                                              :document (documents.test-util/text->prose-mirror-ast "Test content")}]
       (testing "Test that we *cannot* share a Document if we aren't admins"
         (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :post 403 (format "ee/document/%d/public_link" (:id document))))))
+               (mt/user-http-request :rasta :post 403 (format "ee/document/%d/public-link" (:id document))))))
 
       (testing "Test that we *cannot* share a Document if the setting is disabled"
         (mt/with-temporary-setting-values [enable-public-sharing false]
           (is (= "Public sharing is not enabled."
-                 (mt/user-http-request :crowberto :post 400 (format "ee/document/%d/public_link" (:id document))))))))
+                 (mt/user-http-request :crowberto :post 400 (format "ee/document/%d/public-link" (:id document))))))))
 
     (testing "Test that we get a 404 if the Document doesn't exist"
       (is (= "Not found."
-             (mt/user-http-request :crowberto :post 404 (format "ee/document/%d/public_link" Integer/MAX_VALUE)))))))
+             (mt/user-http-request :crowberto :post 404 (format "ee/document/%d/public-link" Integer/MAX_VALUE)))))))
 
 (deftest delete-public-link-test
-  (testing "DELETE /api/ee/document/:id/public_link"
+  (testing "DELETE /api/ee/document/:id/public-link"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (testing "Test that we can unshare a Document"
         (mt/with-temp [:model/Document document (document-with-public-link {})]
-          (mt/user-http-request :crowberto :delete 204 (format "ee/document/%d/public_link" (:id document)))
+          (mt/user-http-request :crowberto :delete 204 (format "ee/document/%d/public-link" (:id document)))
           (is (not (t2/exists? :model/Document :id (:id document), :public_uuid (:public_uuid document))))))
 
       (testing "Test that we *cannot* unshare a Document if we are not admins"
         (mt/with-temp [:model/Document document (document-with-public-link {})]
           (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :delete 403 (format "ee/document/%d/public_link" (:id document)))))))
+                 (mt/user-http-request :rasta :delete 403 (format "ee/document/%d/public-link" (:id document)))))))
 
       (testing "Test that we get a 404 if Document isn't shared"
         (mt/with-temp [:model/Document document {:name "Test Document"
                                                  :document (documents.test-util/text->prose-mirror-ast "Test content")}]
           (is (= "Not found."
-                 (mt/user-http-request :crowberto :delete 404 (format "ee/document/%d/public_link" (:id document)))))))
+                 (mt/user-http-request :crowberto :delete 404 (format "ee/document/%d/public-link" (:id document)))))))
 
       (testing "Test that we get a 404 if Document doesn't exist"
         (is (= "Not found."
-               (mt/user-http-request :crowberto :delete 404 (format "ee/document/%d/public_link" Integer/MAX_VALUE))))))))
+               (mt/user-http-request :crowberto :delete 404 (format "ee/document/%d/public-link" Integer/MAX_VALUE))))))))
 
 (deftest fetch-public-documents-test
   (testing "GET /api/ee/document/public"
@@ -2125,22 +2125,22 @@
                (mt/client :get 404 (str "ee/public/document/" (random-uuid)))))))))
 
 (deftest share-archived-document-test
-  (testing "POST /api/ee/document/:id/public_link should not work for archived documents"
+  (testing "POST /api/ee/document/:id/public-link should not work for archived documents"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp [:model/Document document {:name "Archived Document"
                                                :document (documents.test-util/text->prose-mirror-ast "Archived content")
                                                :archived true}]
         (is (= "Not found."
-               (mt/user-http-request :crowberto :post 404 (format "ee/document/%d/public_link" (:id document)))))))))
+               (mt/user-http-request :crowberto :post 404 (format "ee/document/%d/public-link" (:id document)))))))))
 
 (deftest unshare-archived-document-test
-  (testing "DELETE /api/ee/document/:id/public_link should not work for archived documents"
+  (testing "DELETE /api/ee/document/:id/public-link should not work for archived documents"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp [:model/Document document (document-with-public-link {:name "Archived Shared Document"
                                                                           :document (documents.test-util/text->prose-mirror-ast "Archived shared content")
                                                                           :archived true})]
         (is (= "Not found."
-               (mt/user-http-request :crowberto :delete 404 (format "ee/document/%d/public_link" (:id document)))))))))
+               (mt/user-http-request :crowberto :delete 404 (format "ee/document/%d/public-link" (:id document)))))))))
 
 (deftest public-document-not-accessible-when-archived-test
   (testing "GET /api/ee/public/document/:uuid should not work for archived documents"

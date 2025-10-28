@@ -73,7 +73,7 @@ export const documentApi = EnterpriseApi.injectEndpoints({
     >({
       query: ({ id }) => ({
         method: "POST",
-        url: `/api/ee/document/${id}/public_link`,
+        url: `/api/ee/document/${id}/public-link`,
       }),
       invalidatesTags: (_, error, { id }) =>
         !error ? [listTag("public-document"), idTag("document", id)] : [],
@@ -88,7 +88,7 @@ export const documentApi = EnterpriseApi.injectEndpoints({
     >({
       query: ({ id }) => ({
         method: "DELETE",
-        url: `/api/ee/document/${id}/public_link`,
+        url: `/api/ee/document/${id}/public-link`,
       }),
       transformResponse: (_baseQueryReturnValue, _meta, { id }) => ({ id }),
       invalidatesTags: (_, error, { id }) =>
