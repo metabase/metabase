@@ -433,9 +433,9 @@
   `amount` is usually an integer, but can be floating-point for units like seconds.
 
   This multimethod can be extended by drivers in their respective namespaces."
-  {:added "0.34.2" :arglists '([db-type hsql-form amount unit])}
-  (fn [db-type _hsql-form _amount _unit]
-    (keyword db-type)))
+  {:added "0.34.2" :arglists '([driver hsql-form amount unit])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
 
 (mu/defn adjust-start-of-week
   "Truncate to the day the week starts on.
