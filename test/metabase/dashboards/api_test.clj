@@ -5426,7 +5426,6 @@
 
 (deftest param-mapped-SAME-fields-filtered-cards-test
   (testing "Values for param mapped to _same_ field in _different_ cards containing filters are computed correctly (#41684)"
-    ;; I.e. if there is card without a filter precomputed values
     (let [mp (mt/metadata-provider)
           param-key "p"
           base-queries [(-> (lib/query mp (lib.metadata/table mp (mt/id :categories)))
@@ -5442,7 +5441,7 @@
 
                  {:test-case "nested filters"
                   :queries (mapv (fn [query]
-                                     ;; dummy stage
+                                   ;; dummy stage
                                    (-> (lib/append-stage query)
                                        (lib/expression "e" (lib/concat (lib.metadata/field mp (mt/id :categories :name))
                                                                        "XXX"))))

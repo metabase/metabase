@@ -102,7 +102,7 @@
     card))
 
 (defn- cards-with-filters?
-  "Does param-key have any card with filter mapped? Dashboard is expected to have hydrate `:resolved-params`."
+  "Does param-key have any card with filter mapped? Dashboard is expected to have hydrated `:resolved-params`."
   [dashboard param-key]
   (boolean (seq (cards-with-filters dashboard param-key))))
 
