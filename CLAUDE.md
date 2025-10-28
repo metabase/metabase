@@ -335,8 +335,6 @@ Review pull requests with a focus on:
 
 - Make sure to update comments and docstrings when you change the code they describe.
 
-- Docstrings should be indented two spaces.
-
   ```clj
   ;;; BAD
   (defn update-transform-tags!
