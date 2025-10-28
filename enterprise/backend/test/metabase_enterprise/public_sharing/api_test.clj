@@ -100,6 +100,37 @@
               (is (not (contains? result :made_public_by_id)))
               (is (not (contains? result :collection_id))))))))))
 
+(deftest public-document-hydrates-cards-test
+  (testing "GET /api/ee/public/document/:uuid hydrates cards for public access"
+    (mt/with-premium-features #{:documents}
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (mt/with-temp [:model/Document document (document-with-public-link {:name "Document with Cards"})
+                       :model/Card {card1-id :id} {:name "Card 1"
+                                                   :dataset_query (mt/mbql-query venues {:limit 5})
+                                                   :document_id (:id document)}
+                       :model/Card {card2-id :id} {:name "Card 2"
+                                                   :dataset_query (mt/mbql-query venues {:limit 10})
+                                                   :document_id (:id document)}]
+          (let [result (mt/client :get 200 (str "ee/public/document/" (:public_uuid document)))]
+            (testing "response includes cards field"
+              (is (contains? result :cards)))
+
+            (testing "cards are returned as a map keyed by card ID"
+              (is (map? (:cards result)))
+              (is (= 2 (count (:cards result))))
+              (is (contains? (:cards result) card1-id))
+              (is (contains? (:cards result) card2-id)))
+
+            (testing "cards contain expected metadata"
+              (is (= "Card 1" (get-in result [:cards card1-id :name])))
+              (is (= "Card 2" (get-in result [:cards card2-id :name])))
+              (is (= card1-id (get-in result [:cards card1-id :id])))
+              (is (= card2-id (get-in result [:cards card2-id :id]))))
+
+            (testing "cards do not include sensitive fields"
+              (is (not (contains? (get-in result [:cards card1-id]) :collection_id)))
+              (is (not (contains? (get-in result [:cards card1-id]) :creator_id))))))))))
+
 (deftest get-public-document-errors-test
   (testing "GET /api/ee/public/document/:uuid"
     (testing "Cannot fetch a public Document if public sharing is disabled"

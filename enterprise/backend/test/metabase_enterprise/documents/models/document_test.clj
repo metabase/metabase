@@ -355,6 +355,82 @@
             (is (= user1-id (get-in doc3 [:creator :id])))
             (is (= "Alice" (get-in doc3 [:creator :first_name])))))))))
 
+(deftest hydrate-document-cards-test
+  (testing "hydrates document cards correctly"
+    (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"}
+                   :model/Card {card1-id :id} {:name "Card 1"
+                                               :dataset_query (mt/mbql-query venues {:limit 5})
+                                               :document_id document-id}
+                   :model/Card {card2-id :id} {:name "Card 2"
+                                               :dataset_query (mt/mbql-query venues {:limit 10})
+                                               :document_id document-id}]
+      (let [hydrated-doc (t2/hydrate (t2/select-one :model/Document :id document-id) :cards)]
+        (testing "cards are hydrated as a map keyed by card ID"
+          (is (map? (:cards hydrated-doc)))
+          (is (= 2 (count (:cards hydrated-doc))))
+          (is (contains? (:cards hydrated-doc) card1-id))
+          (is (contains? (:cards hydrated-doc) card2-id)))
+
+        (testing "cards contain correct data"
+          (is (= "Card 1" (get-in hydrated-doc [:cards card1-id :name])))
+          (is (= "Card 2" (get-in hydrated-doc [:cards card2-id :name])))
+          (is (= document-id (get-in hydrated-doc [:cards card1-id :document_id])))
+          (is (= document-id (get-in hydrated-doc [:cards card2-id :document_id]))))))))
+
+(deftest hydrate-document-cards-excludes-archived-test
+  (testing "hydrated cards exclude archived cards"
+    (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"}
+                   :model/Card {active-card-id :id} {:name "Active Card"
+                                                     :dataset_query (mt/mbql-query venues {:limit 5})
+                                                     :document_id document-id
+                                                     :archived false}
+                   :model/Card {archived-card-id :id} {:name "Archived Card"
+                                                       :dataset_query (mt/mbql-query venues {:limit 5})
+                                                       :document_id document-id
+                                                       :archived true}]
+      (let [hydrated-doc (t2/hydrate (t2/select-one :model/Document :id document-id) :cards)]
+        (testing "only active cards are included"
+          (is (= 1 (count (:cards hydrated-doc))))
+          (is (contains? (:cards hydrated-doc) active-card-id))
+          (is (not (contains? (:cards hydrated-doc) archived-card-id))))))))
+
+(deftest hydrate-multiple-documents-cards-test
+  (testing "hydrates cards for multiple documents efficiently"
+    (mt/with-temp [:model/Document {doc1-id :id} {:name "Document 1"}
+                   :model/Document {doc2-id :id} {:name "Document 2"}
+                   :model/Document {doc3-id :id} {:name "Document 3"}
+                   :model/Card {card1-id :id} {:name "Card 1"
+                                               :dataset_query (mt/mbql-query venues {:limit 5})
+                                               :document_id doc1-id}
+                   :model/Card {card2-id :id} {:name "Card 2"
+                                               :dataset_query (mt/mbql-query venues {:limit 5})
+                                               :document_id doc1-id}
+                   :model/Card {card3-id :id} {:name "Card 3"
+                                               :dataset_query (mt/mbql-query venues {:limit 5})
+                                               :document_id doc2-id}]
+      (let [documents (t2/select :model/Document :id [:in [doc1-id doc2-id doc3-id]])
+            hydrated-docs (t2/hydrate documents :cards)]
+        (testing "all documents have cards field"
+          (is (= 3 (count hydrated-docs)))
+          (doseq [doc hydrated-docs]
+            (is (map? (:cards doc)))))
+
+        (testing "cards are correctly matched to documents"
+          (let [doc1 (first (filter #(= doc1-id (:id %)) hydrated-docs))
+                doc2 (first (filter #(= doc2-id (:id %)) hydrated-docs))
+                doc3 (first (filter #(= doc3-id (:id %)) hydrated-docs))]
+            (testing "document 1 has two cards"
+              (is (= 2 (count (:cards doc1))))
+              (is (contains? (:cards doc1) card1-id))
+              (is (contains? (:cards doc1) card2-id)))
+
+            (testing "document 2 has one card"
+              (is (= 1 (count (:cards doc2))))
+              (is (contains? (:cards doc2) card3-id)))
+
+            (testing "document 3 has no cards"
+              (is (empty? (:cards doc3))))))))))
+
 (deftest document-collection-position-field-handling-test
   (testing "Document model supports collection_position field"
     (mt/with-temp [:model/Collection {collection-id :id} {:name "Test Collection"}
