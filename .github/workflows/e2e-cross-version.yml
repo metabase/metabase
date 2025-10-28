@@ -67,7 +67,7 @@ jobs:
         -v $PWD/my-metabase:/metabase.db \
         -p 3000:3000 \
         -e MB_RUN_MODE=e2e \
-        -e METASTORE_DEV_SERVER_URL=${{ secrets.METASTORE_DEV_SERVER_URL }}
+        -e METASTORE_DEV_SERVER_URL=${{ secrets.METASTORE_DEV_SERVER_URL }} \
         -e CYPRESS_MB_ALL_FEATURES_TOKEN=${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }} \
         -e CYPRESS_MB_STARTER_CLOUD_TOKEN=${{ secrets.STAGING_MB_STARTER_CLOUD_TOKEN }} \
         -e CYPRESS_MB_PRO_CLOUD_TOKEN=${{ secrets.STAGING_MB_PRO_CLOUD_TOKEN }} \
@@ -102,7 +102,7 @@ jobs:
           -v $PWD/my-metabase:/metabase.db \
           -p 3001:3000 \
           -e MB_RUN_MODE=e2e \
-          -e METASTORE_DEV_SERVER_URL=${{ secrets.METASTORE_DEV_SERVER_URL }}
+          -e METASTORE_DEV_SERVER_URL=${{ secrets.METASTORE_DEV_SERVER_URL }} \
           -e CYPRESS_MB_ALL_FEATURES_TOKEN=${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }} \
           -e CYPRESS_MB_STARTER_CLOUD_TOKEN=${{ secrets.STAGING_MB_STARTER_CLOUD_TOKEN }} \
           -e CYPRESS_MB_PRO_CLOUD_TOKEN=${{ secrets.STAGING_MB_PRO_CLOUD_TOKEN }} \
