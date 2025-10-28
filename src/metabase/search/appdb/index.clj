@@ -195,7 +195,12 @@
           (let [table-name (gen-table-name)]
             ;; We may fail to insert a new metadata row if we lose a race with another instance.
             (when (search-index-metadata/create-pending! :appdb *index-version-id* table-name)
-              (create-table! table-name))
+              (try
+                (create-table! table-name)
+                (catch Exception e
+                  (log/error e "Error creating pending index table, cleaning up metadata")
+                  (t2/delete! :model/SearchIndexMetadata :index_name (name table-name))
+                  (sync-tracking-atoms!))))
             (:pending (sync-tracking-atoms!)))))))
 
 (defn activate-table!
