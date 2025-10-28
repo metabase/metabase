@@ -150,8 +150,7 @@
                            (when (seq group-ids)
                              [[:in :pg.id group-ids]]))
               :group-by [:pg.id]}
-
-                        ;; Query 2: Regular collection permissions
+             ;; Query 2: Regular collection permissions
              {:select [[:pg.id :group_id]
                        [:c.id :collection_id]
                        [[:max [:case [:= :p.perm_value [:inline "read-and-write"]]
@@ -166,9 +165,8 @@
                      [:eligible_collections :c] [:= :p.collection_id :c.id]]
               :where [:not= :c.id nil]
               :group-by [:pg.id :c.id]}
-
-                        ;; Query 3: The Administrators group has write access to all collections
-                        ;; but does not have any explicit permissions.
+             ;; Query 3: The Administrators group has write access to all collections
+             ;; but does not have any explicit permissions.
              {:select [[(u/the-id (perms-group/admin)) :group_id]
                        [:c.id :collection_id]
                        [[:inline 1] :writable]
