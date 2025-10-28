@@ -29,8 +29,8 @@ const modalSlice = createSlice({
       state.props = action.payload.props;
     },
     closeModal: (state) => {
-      state.id = null;
-      state.props = null;
+      state.id = DEFAULT_MODAL_STATE.id;
+      state.props = DEFAULT_MODAL_STATE.props;
     },
   },
 });
