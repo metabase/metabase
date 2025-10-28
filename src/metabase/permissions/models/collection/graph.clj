@@ -99,7 +99,7 @@
   ([collection-namespace :- [:maybe ms/KeywordOrString]
     collection-ids :- [:maybe [:set [:or [:= :root] ms/PositiveInt]]]
     group-ids :- [:maybe [:set ms/PositiveInt]]]
-   (let [include-root? (or (nil? collection-ids) (contains? collection-ids :root))
+   (let [include-root-sql-value (or (nil? collection-ids) (contains? collection-ids :root))
          root-object (str "/collection/"
                           (when collection-namespace
                             (str "namespace/" (name collection-namespace) "/"))
@@ -133,25 +133,25 @@
             :union-all
             [;; Query 1: Root collection permissions, exclude this query if collection-ids are supplied
              ;; and :root is not present in that collection
-             (when include-root?
-               {:select [[:pg.id :group_id]
-                         [nil :collection_id]
-                         [[:max [:case [:= :p.object [:inline root-object]]
-                                 [:inline 1]
-                                 :else [:inline 0]]] :writable]
-                         [[:max [:case [:= :p.object [:inline (str root-object "read/")]]
-                                 [:inline 1]
-                                 :else [:inline 0]]] :readable]]
-                :from [[:permissions_group :pg]]
-                :join [[:permissions :p] [:and
-                                          [:= :p.group_id :pg.id]
-                                          [:or [:= :p.object [:inline root-object]]
-                                           [:= :p.object [:inline (str root-object "read/")]]]]]
-                :where (into [] (when (seq group-ids)
-                                  [[:in :pg.id group-ids]]))
-                :group-by [:pg.id]})
+             {:select [[:pg.id :group_id]
+                       [nil :collection_id]
+                       [[:max [:case [:= :p.object [:inline root-object]]
+                               [:inline 1]
+                               :else [:inline 0]]] :writable]
+                       [[:max [:case [:= :p.object [:inline (str root-object "read/")]]
+                               [:inline 1]
+                               :else [:inline 0]]] :readable]]
+              :from [[:permissions_group :pg]]
+              :join [[:permissions :p] [:and
+                                        [:= :p.group_id :pg.id]
+                                        [:or [:= :p.object [:inline root-object]]
+                                         [:= :p.object [:inline (str root-object "read/")]]]]]
+              :where (into [:and [:inline include-root-sql-value]]
+                           (when (seq group-ids)
+                             [[:in :pg.id group-ids]]))
+              :group-by [:pg.id]}
 
-             ;; Query 2: Regular collection permissions
+                        ;; Query 2: Regular collection permissions
              {:select [[:pg.id :group_id]
                        [:c.id :collection_id]
                        [[:max [:case [:= :p.perm_value [:inline "read-and-write"]]
@@ -167,8 +167,8 @@
               :where [:not= :c.id nil]
               :group-by [:pg.id :c.id]}
 
-             ;; Query 3: The Administrators group has write access to all collections
-             ;; but does not have any explicit permissions.
+                        ;; Query 3: The Administrators group has write access to all collections
+                        ;; but does not have any explicit permissions.
              {:select [[(u/the-id (perms-group/admin)) :group_id]
                        [:c.id :collection_id]
                        [[:inline 1] :writable]
@@ -236,7 +236,7 @@
   "Return a set of IDs from `collection-ids` that are personal Collections or descendants of personal Collections.
   These should never appear in permission graphs or be editable via the graph API."
   [collection-ids]
-  (when (seq collection-ids)
+  (when (seq (disj collection-ids :root))
     (t2/select-pks-set :model/Collection
                        {:where [:and
                                 [:in :id (disj collection-ids :root)]
@@ -258,7 +258,7 @@
 (defn- remove-collections-from-other-namespaces
   "Remove any collection IDs from the graph that belong to another namespace from the graph being updated."
   [graph collection-ids namespace]
-  (let [other-ns-ids (when (seq collection-ids)
+  (let [other-ns-ids (when (seq (disj collection-ids :root))
                        ;; This query selects collection IDs that don't match the target namespace:
                        ;; - If target namespace is non-nil: collections with different non-nil namespaces OR nil namespaces
                        ;; - If target namespace is nil: collections with any non-nil namespace
