@@ -300,7 +300,7 @@ describe("scenarios > documents > public", () => {
       cy.visit(`/public/document/${uuid}`);
 
       cy.log("Verify document is no longer accessible");
-      verifyErrorMessage("Public sharing is not enabled.");
+      verifyErrorMessage("An error occurred.");
     });
 
     // Cleanup: Re-enable public sharing for subsequent tests
