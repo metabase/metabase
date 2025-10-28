@@ -29,6 +29,7 @@ import {
 import type { Transform, TransformTag } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
+import { TransformMoreMenu } from "../../../components/TransformMoreMenu";
 import { getTagById, getTagList } from "../../RunListPage/RunList/TagList";
 
 import { CreateTransformMenu } from "./CreateTransformMenu";
@@ -43,12 +44,17 @@ const TransformsTreeNode = (props: TreeNodeProps) => (
       }
 
       return (
-        <Box p="sm" style={{ overflow: "hidden", fontWeight: "normal" }}>
+        <Box
+          p="sm"
+          flex={1}
+          style={{ overflow: "hidden", fontWeight: "normal" }}
+        >
           <BenchFlatListItemContent
             label={transform.name}
             icon="table2"
             subtitle={transform.target.name}
             isActive={props.isSelected}
+            rightGroup={<TransformMoreMenu transform={transform} />}
           />
         </Box>
       );
@@ -261,6 +267,7 @@ function TransformFlatListItem({
           {tagNames.join(" · ")}
         </Ellipsified>
       }
+      rightGroup={<TransformMoreMenu transform={transform} />}
     />
   );
 }
