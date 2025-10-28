@@ -88,13 +88,16 @@
   [zloc :- ::zloc]
   (when (= (z/tag zloc) :list)
     (let [first-child (z/down zloc)]
-      (and (= (z/tag first-child) :token)
-           (require-symbols (z/sexpr first-child))))))
+      (when (= (z/tag first-child) :token)
+        ;; Check all child symbols on the line since `require` might be called in a threading macro
+        ;; like (-> 'ns require)
+        (some require-symbols (z/child-sexprs zloc))))))
 
 (mu/defn- find-required-namespace :- [:maybe simple-symbol?]
   "Given a `zloc` pointing to one of the children of something like `(require ...)` find a required namespace symbol."
   [zloc :- ::zloc]
   (when-let [symbol-loc (z/find-depth-first zloc #(and (= (z/tag %) :token)
+                                                       (symbol? (z/sexpr %))
                                                        (not= (z/sexpr %) 'quote)))]
     (let [symb (z/sexpr symbol-loc)]
       (if (qualified-symbol? symb)

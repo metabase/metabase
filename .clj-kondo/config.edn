@@ -60,16 +60,17 @@
   :metabase/check-me-humanize                          {:level :warning}
   :metabase/defsetting-must-specify-export             {:level :warning}
   :metabase/defsetting-namespace                       {:level :warning}
+  :metabase/discourage-millis-duration                 {:level :warning}
   :metabase/mbql-query-first-arg                       {:level :warning}
   :metabase/missing-test-expr-requires-in-cljs         {:level :warning}
   :metabase/modules                                    {:level :warning} ; more config in `.clj-kondo/config/modules/config.edn`
   :metabase/namespace-name                             {:level :warning}
   :metabase/require-shape-checker                      {:level :warning}
   :metabase/test-helpers-use-non-thread-safe-functions {:level :warning} ; more config in `.clj-kondo/config/test-helpers/config.edn`
+  :metabase/validate-defendpoint-route-uses-kebab-case {:level :warning}
   :metabase/validate-logging                           {:level :warning}
   :metabase/validate-mb-driver-tests                   {:level :warning}
   :metabase/validate-mb-once                           {:level :warning}
-  :metabase/discourage-millis-duration                 {:level :warning}
 
   :metabase/validate-deftest
   {:level :warning

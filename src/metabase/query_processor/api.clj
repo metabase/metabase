@@ -164,6 +164,8 @@
 
 ;;; ------------------------------------------------ Other Endpoints -------------------------------------------------
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :post "/query_metadata"
   "Get all of the required query metadata for an ad-hoc query."
   [_route-params
