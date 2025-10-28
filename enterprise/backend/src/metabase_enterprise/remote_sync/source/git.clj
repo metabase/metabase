@@ -29,7 +29,7 @@
   [^Exception e ^GitCommand command remote?]
   (let [root-ex (root-cause e)]
     ;; strip off the beginning URL that is often included and ends up being duplicated later
-    (ex-info (format "Git %s failed: %s" (-> command .getClass .getSimpleName) (str/replace-first (ex-message root-ex) #"^\w+://[\w-/\.]+: " ""))
+    (ex-info (format "Git %s failed: %s" (-> command .getClass .getSimpleName) (str/replace-first (ex-message root-ex) #"^[a-z]+://[a-zA-Z0-9\-\.]+: " ""))
              {:remote remote?} root-ex)))
 
 (defn- call-command [^GitCommand command]
