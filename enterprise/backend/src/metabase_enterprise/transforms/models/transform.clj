@@ -65,6 +65,10 @@
     (assoc transform :type (compute-transform-type source))
     transform))
 
+(t2/define-after-select :model/Transform
+  [{:keys [source] :as transform}]
+  (assoc transform :type (compute-transform-type source)))
+
 (methodical/defmethod t2/batched-hydrate [:model/TransformRun :transform]
   "Add transform to a TransformRun"
   [_model _k runs]
@@ -228,7 +232,7 @@
 (defmethod serdes/make-spec "Transform"
   [_model-name opts]
   {:copy [:name :description :entity_id]
-   :skip [:dependency_analysis_version]
+   :skip [:dependency_analysis_version :type]
    :transform {:created_at (serdes/date)
                :source {:export #(update % :query serdes/export-mbql)
                         :import #(update % :query serdes/import-mbql)}
