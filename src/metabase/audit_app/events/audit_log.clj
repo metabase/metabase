@@ -301,3 +301,12 @@
 (methodical/defmethod events/publish-event! ::transform-event
   [topic event]
   (audit-log/record-event! topic event))
+
+(derive ::glossary-event ::event)
+(derive :event/glossary-create ::glossary-event)
+(derive :event/glossary-update ::glossary-event)
+(derive :event/glossary-delete ::glossary-event)
+
+(methodical/defmethod events/publish-event! ::glossary-event
+  [topic event]
+  (audit-log/record-event! topic event))

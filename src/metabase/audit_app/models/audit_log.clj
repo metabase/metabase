@@ -137,6 +137,10 @@
               (dissoc :body)
               (update :query #(select-keys % [:database])))}))
 
+(defmethod model-details :model/Glossary
+  [glossary _event-type]
+  (select-keys glossary [:term]))
+
 (def ^:private model-name->audit-logged-name
   {"RootCollection" "Collection"})
 
