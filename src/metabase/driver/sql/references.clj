@@ -319,7 +319,7 @@
             {:table-alias (sql.normalize/normalize-name driver alias)})})
 
 (defmethod field-references-impl [:sql :macaw.ast/table-function]
-  [driver outside-sources withs expr]
+  [driver _outside-sources _withs expr]
   {:used-fields #{}
    :returned-fields [{:type :unknown-columns}]
    :names (when-let [alias (:table-alias expr)]
