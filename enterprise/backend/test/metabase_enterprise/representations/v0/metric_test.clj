@@ -46,4 +46,3 @@
 (deftest representation-type-test
   (doseq [entity (t2/select :model/Card :type :metric)]
     (is (= :metric (v0-common/representation-type entity)))))
-
