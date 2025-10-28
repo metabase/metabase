@@ -54,6 +54,10 @@ jobs:
               const overrideSha = String(context.payload.inputs.override_sha).trim();
               const isValidOverride = context.eventName === 'workflow_dispatch' && overrideSha.length === 40;
 
+              if (!isValidOverride && overrideSha.length > 0) {
+                throw new Error(`Invalid override SHA provided: ${overrideSha}`);
+              }
+
               const releaseCommit = isValidOverride
                 ? overrideSha
                 : await getLatestGreenCommit({
