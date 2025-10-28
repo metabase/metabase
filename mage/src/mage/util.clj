@@ -14,8 +14,9 @@
 (def ^String project-root-directory
   "Root directory of the Metabase repo."
   (.. (java.io.File. (.toURI (io/resource "mage/util.clj"))) ; this file
-      getParentFile ; /Users/me/metabase/bin/mage
-      getParentFile ; /Users/me/metabase/bin
+      getParentFile ; /Users/me/metabase/mage/src/mage
+      getParentFile ; /Users/me/metabase/mage/src
+      getParentFile ; /Users/me/metabase/mage
       getParentFile ; /Users/me/metabase
       getCanonicalPath))
 
