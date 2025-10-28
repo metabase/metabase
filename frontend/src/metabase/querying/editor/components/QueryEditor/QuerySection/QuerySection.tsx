@@ -39,10 +39,6 @@ const NATIVE_EDITOR_SIDEBAR_FEATURES = {
 type QuerySectionProps = {
   question: Question;
   proposedQuestion: Question | undefined;
-  shouldDisableDatabase?: (database: Database) => boolean;
-  shouldDisableItem?: (
-    item: DataPickerItem | CollectionPickerItem | RecentCollectionItem,
-  ) => boolean;
   modalSnippet?: NativeQuerySnippet | null;
   nativeEditorSelectedText?: string | null;
   isNative: boolean;
@@ -51,6 +47,10 @@ type QuerySectionProps = {
   isResultDirty: boolean;
   isShowingDataReference: boolean;
   isShowingSnippetSidebar: boolean;
+  shouldDisableDatabase?: (database: Database) => boolean;
+  shouldDisableItem?: (
+    item: DataPickerItem | CollectionPickerItem | RecentCollectionItem,
+  ) => boolean;
   onChange: (newQuestion: Question) => void;
   onRunQuery: () => Promise<void>;
   onToggleDataReference: () => void;
@@ -67,24 +67,24 @@ type QuerySectionProps = {
 export function QuerySection({
   question,
   proposedQuestion,
+  modalSnippet,
+  nativeEditorSelectedText,
   isNative,
   isRunnable,
   isRunning,
   isResultDirty,
   isShowingDataReference,
   isShowingSnippetSidebar,
+  shouldDisableDatabase,
+  shouldDisableItem,
   onChange,
   onRunQuery,
-  onCancelQuery,
   onToggleDataReference,
   onToggleSnippetSidebar,
-  shouldDisableItem,
-  shouldDisableDatabase,
-  modalSnippet,
+  onCancelQuery,
   onInsertSnippet,
   onChangeModalSnippet,
   onChangeNativeEditorSelection,
-  nativeEditorSelectedText,
   onOpenModal,
   onAcceptProposed,
   onRejectProposed,
@@ -110,10 +110,6 @@ export function QuerySection({
     [isResizing, editorHeight],
   );
 
-  const handleResize = () => {
-    return null;
-  };
-
   const setQuestion = (newQuestion: Question) => {
     onChange(newQuestion);
     return Promise.resolve();
@@ -130,21 +126,20 @@ export function QuerySection({
       query={question.legacyNativeQuery()}
       resizableBoxProps={resizableBoxProps}
       placeholder="SELECT * FROM TABLE_NAME"
-      isRunnable={isRunnable}
-      isRunning={isRunning}
-      isResultDirty={isResultDirty}
-      isInitiallyOpen
-      isShowingDataReference={isShowingDataReference}
-      isShowingSnippetSidebar={isShowingSnippetSidebar}
       hasTopBar
-      databaseIsDisabled={shouldDisableDatabase}
       hasRunButton
+      isInitiallyOpen
       isNativeEditorOpen
       readOnly={false}
       hasParametersList={false}
-      handleResize={handleResize}
+      isRunnable={isRunnable}
+      isRunning={isRunning}
+      isResultDirty={isResultDirty}
+      isShowingDataReference={isShowingDataReference}
+      isShowingSnippetSidebar={isShowingSnippetSidebar}
       runQuery={onRunQuery}
       cancelQuery={onCancelQuery}
+      databaseIsDisabled={shouldDisableDatabase}
       setDatasetQuery={handleNativeQueryChange}
       sidebarFeatures={NATIVE_EDITOR_SIDEBAR_FEATURES}
       toggleDataReference={onToggleDataReference}
