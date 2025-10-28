@@ -55,13 +55,15 @@ For more, see GitHub's docs on [personal access tokens](https://docs.github.com/
 
 ## 2. Set up your development Metabase
 
+Remote Sync has two modes: Development and Production. 
+
 Development Metabases are where you create and edit content. You can have multiple development instances for different teams, projects, or workflows. Each connects to the same repository but can work on different branches. Development mode has:
 
 - **Bidirectional sync:** Push changes to Git and pull changes from others.
 - **Full editing:** Create and modify dashboards, questions, and documents in the UI in your synced collection.
 - **Branch management:** Create, switch between, and work on different branches.
 
-You can use any Metabase as a development instance. Metabase also offers [Development instances](./development-instance.md) for testing and development, which allows you to test with a bunch of users without having to pay per user account.
+You can use any Metabase as a development Metabase. Metabase also offers [Development instances](./development-instance.md) for testing and development, which allow you to test with a bunch of users without having to pay per user account. You can use these Development instances in Remote Sync's Development mode (though not in Production mode, obviously).
 
 ## Connect your development Metabase to your repository
 
@@ -86,15 +88,15 @@ You can use any Metabase as a development instance. Metabase also offers [Develo
 
 ## Add an item to the Library collection
 
-Once your development Metabase is connected to your Git repository, you can start adding content to your synced collection. When you first connect in Development mode, Metabase will automatically create a default synced collection called "Library".
+Once your development Metabase is connected to your Git repository, you can start adding content to your synced collection. When you first connect in Development mode, Metabase will automatically create a default synced collection called "Library" (you can rename the collection if you want).
 
 1. Navigate to the "Library" collection in your synced collections section (look for it in the left sidebar).
 
 2. Create or move content into the Library collection:
    - **Create new content:** Click "New" and choose a dashboard, question, or document. Save it to the Library collection.
-   - **Move existing content:** Drag and drop items from other collections into the Library collection, or use the move option in the item's menu.
+   - **Move existing content:** Drag and drop items from other collections into the Library collection, or use the move option in the item's menu. 
 
-Items in synced collections can't depend on items outside of synced collections. For example, if you try to add a question that references a model, make sure the model is also in a synced collection. "Library" is just the default name Metabase gives the collection, but you can rename this collection.
+[Items in synced collections can't depend on items outside of synced collections](#items-in-synced-collections-cant-depend-on-items-outside-of-the-synced-collection). For example, if you try to add a question that references a model, make sure the model is also in a synced collection. 
 
 ## Push your changes to your repository
 
@@ -149,7 +151,7 @@ Let's say your team wants to build a new analytics dashboard. Here's a workflow 
 
 ### Step 1: Create a new branch
 
-In your development Metabase, click the branch dropdown in the synced collections section and [create a new branch](#branch-management) for your work, like `feature/megafaune-dashboard`.
+In your development Metabase, click the branch dropdown in the synced collections section and [create a new branch](#branch-management) for your work, like `feature/megafauna-dashboard`.
 
 ### Step 2: Create content in your development Metabase
 
@@ -159,14 +161,14 @@ Create a dashboard and add some questions. The questions should be saved to the 
 
 1. You should see a yellow dot on your synced collection (indicating local changes).
 2. Click the up arrow (push) icon next to your synced collection.
-3. Enter a commit message: "Add Megafaune Analytics dashboard".
+3. Enter a commit message: "Add Megafauna Analytics dashboard".
 4. Metabase commits your changes to the branch you're working on and pushes them to your repo.
 
 ### Step 4: Create a pull request
 
 In your Git repository:
 
-1. Create a pull request from your branch, `feature/megafaune-dashboard`, to the main branch `main`.
+1. Create a pull request from your branch, `feature/megafauna-dashboard`, to the main branch `main`.
 2. Review the changes to the YAML files representing your dashboards and questions.
 3. Someone who knows what they're doing approves and merges the PR.
 
