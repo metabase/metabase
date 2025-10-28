@@ -180,7 +180,7 @@
                                    "ws://*:9630")]
                   :manifest-src ["'self'"]
                   :media-src    ["www.metabase.com"]
-                  :worker-src   ["'self'"]}]
+                  :worker-src   ["'self'"]}] ;; Allow WebWorkers from same origin for Pyodide execution
       (format "%s %s; " (name k) (str/join " " vs))))})
 
 (defn- content-security-policy-header-with-frame-ancestors
