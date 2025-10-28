@@ -353,7 +353,7 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
         bg="accent-gray-light"
         className={S.header}
         pos="sticky"
-        top={headerHeight}
+        top={headerHeight - 8}
         pb={12}
         px="xl"
       >
