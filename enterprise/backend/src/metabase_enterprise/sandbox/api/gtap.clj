@@ -81,7 +81,7 @@
                         {:status-code 400
                          :message     (tru "Sandboxing with a saved question is not enabled for this database.")})))))
   (sandbox/check-columns-match-table {:table_id table_id
-                                   :card_id  card_id}))
+                                      :card_id  card_id}))
 
 (api.macros/defendpoint :delete "/:id"
   "Delete a GTAP entry."
