@@ -156,11 +156,19 @@ export function TablePicker({
             />
           </Popover.Dropdown>
         </Popover>
-        <Tooltip label={t`Edit selected items`}>
+        <Tooltip
+          label={
+            hasSelectedItems ? t`Edit selected items` : t`No items selected`
+          }
+        >
           <Button
             onClick={() => setIsModalOpen(true)}
             p="sm"
             disabled={!hasSelectedItems}
+            variant="filled"
+            style={{
+              width: 40,
+            }}
           >
             <Icon name="pencil" />
           </Button>
