@@ -62,31 +62,40 @@
   1000)
 
 (defn- query-and-value-column
+  "Searches stages of card's dataset query for column matching value-field-ref. Searching from -1 to 0th stage,
+  removing the later stages. Returns map as
+  {:query ...
+   :value-column ...}.
+  Query contains stages where last one is empty, having the matching column avaialble.
+  Value column contains that column.
+  Callers can use column to build something beautiful on the last empty stage (see [[values-from-card-query]]).
+  Return nil if column is not found."
   [card value-field-ref]
   (when-some [mp (-> card :dataset_query :lib/metadata)]
     (let [card (lib.metadata/card mp (:id card))
           full-query (lib/card->underlying-query mp card)]
       (loop [stage-number (lib/canonical-stage-index full-query -1)
              query full-query]
+        ;; Append stage. Searched column can be part of summaries. Further transformation in add filters and breakout.
+        ;; New stage ensures those are not conflated.
         (let [query (lib/append-stage query)]
           (or
-           ;; Exaine returned columns first
+           ;; Examine the query with summaries first.
            (when-some [value-column (lib/find-matching-column
                                      query -1
                                      value-field-ref (lib/visible-columns query))]
              {:query query
               :value-column value-column})
-           ;; Try removing summaries
+           ;; If column was not found, remove the aggregations. value-field-ref can be implicitly joined.
+           (let [query (lib/drop-summary-clauses query stage-number)]
+             (when-some [value-column (lib/find-matching-column
+                                       query -1
+                                       value-field-ref (lib/visible-columns query))]
+               {:query query
+                :value-column value-column}))
+           ;; If not found drop the newly added stage, examined stage and continue searching.
            (when (pos-int? stage-number)
-             (let [query (lib/drop-summary-clauses query stage-number)]
-               (when-some [value-column (lib/find-matching-column
-                                         query -1
-                                         value-field-ref (lib/returned-columns query))]
-                 {:query query
-                  :value-column value-column})))
-           ;; Peel off the last stage
-           (when (pos-int? stage-number)
-             (recur (-> query lib/drop-stage)
+             (recur (-> query lib/drop-stage lib/drop-stage)
                     (dec stage-number)))))))))
 
 (mr/def ::values-from-card-query.options
