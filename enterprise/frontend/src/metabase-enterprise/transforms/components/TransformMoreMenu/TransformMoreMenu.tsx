@@ -6,16 +6,16 @@ import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
-import type { Transform } from "metabase-types/api";
+import type { TransformId } from "metabase-types/api";
 
 import { DeleteTransformModal } from "./DeleteTransformModal";
 import type { TransformModalType } from "./types";
 
 type TransformMoreMenuProps = {
-  transform: Transform;
+  transformId: TransformId;
 };
 
-export function TransformMoreMenu({ transform }: TransformMoreMenuProps) {
+export function TransformMoreMenu({ transformId }: TransformMoreMenuProps) {
   const [modalType, setModalType] = useState<TransformModalType | null>(null);
 
   const handleModalClose = () => {
@@ -27,7 +27,7 @@ export function TransformMoreMenu({ transform }: TransformMoreMenuProps) {
       <TransformMenu onOpenModal={setModalType} />
       {modalType != null && (
         <TransformModal
-          transform={transform}
+          transformId={transformId}
           modalType={modalType}
           onClose={handleModalClose}
         />
@@ -66,13 +66,13 @@ function TransformMenu({ onOpenModal }: TransformMenuProps) {
 }
 
 type TransformModalProps = {
-  transform: Transform;
+  transformId: TransformId;
   modalType: TransformModalType;
   onClose: () => void;
 };
 
 function TransformModal({
-  transform,
+  transformId,
   modalType,
   onClose,
 }: TransformModalProps) {
@@ -88,7 +88,7 @@ function TransformModal({
     case "delete":
       return (
         <DeleteTransformModal
-          transform={transform}
+          transformId={transformId}
           onDelete={handleDelete}
           onClose={onClose}
         />

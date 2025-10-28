@@ -54,7 +54,7 @@ const TransformsTreeNode = (props: TreeNodeProps) => (
             icon="table2"
             subtitle={transform.target.name}
             isActive={props.isSelected}
-            rightGroup={<TransformMoreMenu transform={transform} />}
+            rightGroup={<TransformMoreMenu transformId={transform.id} />}
           />
         </Box>
       );
@@ -267,7 +267,7 @@ function TransformFlatListItem({
           {tagNames.join(" · ")}
         </Ellipsified>
       }
-      rightGroup={<TransformMoreMenu transform={transform} />}
+      rightGroup={<TransformMoreMenu transformId={transform.id} />}
     />
   );
 }

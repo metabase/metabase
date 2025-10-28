@@ -10,6 +10,7 @@ import {
 } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Center, Flex } from "metabase/ui";
+import { TransformMoreMenu } from "metabase-enterprise/transforms/components/TransformMoreMenu";
 import * as Lib from "metabase-lib";
 import type { QueryTransformSource, TransformId } from "metabase-types/api";
 
@@ -88,14 +89,16 @@ export function TransformEditor({
         id={id}
         name={name}
         actions={
-          (isSaving || isSourceDirty) && (
+          isSaving || isSourceDirty ? (
             <EditorActions
               query={query}
               isSaving={isSaving}
               onSave={onSave}
               onCancel={onCancel}
             />
-          )
+          ) : id != null ? (
+            <TransformMoreMenu transformId={id} />
+          ) : null
         }
         onNameChange={onNameChange}
       />

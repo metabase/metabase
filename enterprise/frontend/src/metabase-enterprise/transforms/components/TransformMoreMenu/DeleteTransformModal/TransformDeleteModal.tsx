@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { jt, t } from "ttag";
 
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   Form,
   FormErrorMessage,
@@ -20,20 +21,27 @@ import {
 import {
   useDeleteTransformMutation,
   useDeleteTransformTargetMutation,
+  useGetTransformQuery,
 } from "metabase-enterprise/api";
-import type { Transform } from "metabase-types/api";
+import type { Transform, TransformId } from "metabase-types/api";
 
 type DeleteTransformModalProps = {
-  transform: Transform;
+  transformId: TransformId;
   onDelete: () => void;
   onClose: () => void;
 };
 
 export function DeleteTransformModal({
-  transform,
+  transformId,
   onDelete,
   onClose,
 }: DeleteTransformModalProps) {
+  const {
+    data: transform,
+    isLoading,
+    error,
+  } = useGetTransformQuery(transformId);
+
   return (
     <Modal
       title={getModalTitle(transform)}
@@ -42,11 +50,15 @@ export function DeleteTransformModal({
       onClose={onClose}
     >
       <FocusTrap.InitialFocus />
-      <DeleteTransformForm
-        transform={transform}
-        onDelete={onDelete}
-        onClose={onClose}
-      />
+      {isLoading || error != null || transform == null ? (
+        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+      ) : (
+        <DeleteTransformForm
+          transform={transform}
+          onDelete={onDelete}
+          onClose={onClose}
+        />
+      )}
     </Modal>
   );
 }
@@ -67,6 +79,9 @@ function DeleteTransformForm({
   const [shouldDeleteTarget, setShouldDeleteTarget] = useState(false);
 
   const handleSubmit = async () => {
+    if (transform == null) {
+      return;
+    }
     if (shouldDeleteTarget) {
       await deleteTransformTarget(transform.id).unwrap();
     }
@@ -110,8 +125,8 @@ function DeleteTransformForm({
   );
 }
 
-function getModalTitle({ table }: Transform) {
-  return table != null
+function getModalTitle(transform: Transform | undefined) {
+  return transform?.table != null
     ? t`Delete only the transform, or the table it generates, too?`
     : t`Delete this transform?`;
 }

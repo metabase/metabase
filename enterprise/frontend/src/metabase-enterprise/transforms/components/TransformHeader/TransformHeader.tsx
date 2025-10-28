@@ -9,6 +9,7 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Stack } from "metabase/ui";
 import { useUpdateTransformMutation } from "metabase-enterprise/api";
+import { TransformMoreMenu } from "metabase-enterprise/transforms/components/TransformMoreMenu";
 import type { Transform, TransformId } from "metabase-types/api";
 
 import { NAME_MAX_LENGTH } from "../../constants";
@@ -38,6 +39,7 @@ export function TransformHeader({ transform }: TransformHeaderProps) {
     <TransformHeaderView
       id={transform.id}
       name={transform.name}
+      actions={<TransformMoreMenu transformId={id} />}
       onNameChange={handleNameChange}
     />
   );
