@@ -26,11 +26,11 @@ You'll need to be an admin to set up Remote Sync.
 1. [Set up a repository to store your content](#set-up-a-repository-to-store-your-content)
 2. [Create a personal access token for development](#create-a-personal-access-token-for-development)
 3. [Set up your development Metabase](#set-up-your-development-metabase)
-4. [Connect your development Metabase to your Git repository](#connect-your-development-metabase-to-your-git-repository)
-5. [Push changes from your development Metabase to your repository](#pushing-changes-to-git)
-6. [Create a personal access token for production](#create-a-personal-access-token-for-production)
-7. [Set up your production Metabase](#set-up-your-production-metabase)
-8. [Connect your production Metabase to your Git repository](#connect-your-production-metabase-to-your-git-repository)
+4. [Connect your development Metabase to your repository](#connect-your-development-metabase-to-your-repository)
+5. [Add an item to the Library collection](#add-an-item-to-the-library-collection)
+6. [Push your changes to your repository](#push-your-changes-to-your-repository)
+7. [Create a personal access token for production](#create-a-personal-access-token-for-production)
+8. [Connect your production Metabase to your repository](#connect-your-production-metabase-to-your-repository)
 
 ## Set up a repository to store your content
 
@@ -51,7 +51,7 @@ If you need to initialize a new repository:
 
 ## Create a personal access token for development
 
-GitHub offers two types of personal access tokens. We recommend the new token (not the classic) because you can limit their permissions to specific repositories.
+GitHub offers two types of personal access tokens. We recommend the fine-grained token (not the classic) because you can limit their permissions to specific repositories.
 
 1. Go to Settings > Developer settings > Personal access tokens > Fine-grained tokens.
 2. Click "Generate new token".
@@ -68,16 +68,15 @@ For more, see GitHub's docs on [personal access tokens](https://docs.github.com/
 
 ## Set up your development Metabase
 
-Development Metabases are where you create and edit content. You can have multiple development instances for different teams, projects, or workflows. Each connects to the same repository but can work on different branches.
-
-**Development mode features:**
+Development Metabases are where you create and edit content. You can have multiple development instances for different teams, projects, or workflows. Each connects to the same repository but can work on different branches. Development mode has:
 
 - **Bidirectional sync:** Push changes to Git and pull changes from others.
-- **Full editing:** Create and modify dashboards, questions, and documents in the UI.
+- **Full editing:** Create and modify dashboards, questions, and documents in the UI in your synced collection.
 - **Branch management:** Create, switch between, and work on different branches.
-- **Commit control:** Write descriptive commit messages for your changes.
 
-## Connect your development Metabase to your Git repository
+You can use any Metabase as a development instance. Metabase also offers [Development instances](./development-instance.md) for testing and development, which allows you to test with a bunch of users without having to pay per user account.
+
+## Connect your development Metabase to your repository
 
 1. Open the Remote sync settings:
 
@@ -86,35 +85,51 @@ Development Metabases are where you create and edit content. You can have multip
 
 2. Enter your repository URL:
 
-   - For example, `https://github.com/your-org/your-repo.git`. The repository must already exist and be initialized with at least one commit (Metabase won't create it for you, and empty repositories will fail to connect).
+   - For example, `https://github.com/your-org/your-repo.git`. The repository must already exist and be initialized with at least one commit.
 
 3. Select Development mode.
 
 4. Add your access token:
 
-   - Paste the personal access token you created earlier. Make sure the token has read and write permissions.
+   - Paste the personal access token you created earlier. Make sure the token has [read and write permissions](#create-a-personal-access-token-for-development).
 
 5. Save and test the connection:
-   - Click "Save changes". Metabase will verify it can reach your repository. If the connection fails, verify your token has the appropriate permissions and hasn't expired.
+
+   - Click "Save changes". Metabase will check whether it can reach your repository. If the connection fails, make sure your token has the appropriate permissions and hasn't expired. You may also have incorrectly copied and pasted the PAT, in which case you'll need to generate a new token.
 
 When you first connect in Development mode, Metabase will automatically create a default synced collection called "Library".
+
+## Add an item to the Library collection
+
+Once your development Metabase is connected to your Git repository, you can start adding content to your synced collection.
+
+1. Navigate to the "Library" collection in your synced collections section (look for it in the left sidebar).
+
+2. Create or move content into the Library collection:
+   - **Create new content:** Click "New" and choose a dashboard, question, or document. Save it to the Library collection.
+   - **Move existing content:** Drag and drop items from other collections into the Library collection, or use the move option in the item's menu.
+
+Items in synced collections can't depend on items outside of synced collections. For example, if you try to add a question that references a model, make sure the model is also in a synced collection. "Library" is just the default name Metabase gives the collection, but you can rename this collection.
+
+## Push your changes to your repository
+
+Once you've added content, you'll see a yellow dot on your Library collection indicating uncommitted changes.
+
+1. Click the up arrow (push) icon next to the Library collection in the left sidebar.
+
+2. Enter a commit message describing your changes (e.g., "Added dashboard on mammoth populations").
+
+3. Click "Continue" to commit and push your changes to your repository.
+
+Check your repo, you should see the collection with your content in it.
 
 ## Create a personal access token for production
 
 Now that you have content in your repository, you can set up your production Metabase to pull that content.
 
-[Create a personal access token](#create-a-personal-access-token-for-development) following the same steps as before, but set Repository permissions to **Contents: Read-only** instead of Read and write.
+[Create a personal access token](#create-a-personal-access-token-for-development) following the same steps as before, but add Contents permissions to the token that are **Read-only** (NOT write), as you only want your production Metabase reading from the repo. (Contents permissions requires Metadata permissions, which GitHub will add automatically).
 
-## Set up your production Metabase
-
-Your production Metabase is where end users access trusted, reviewed content. Connect it to your repository's main branch (usually `main` or `master`) and set it to Production mode.
-
-- **Import-only:** Pulls approved changes from Git, but prevents direct edits in the UI.
-- **Read-only content:** Synced collections can be viewed and used, but not modified.
-- **Automatic or manual syncs:** Optionally enable auto-sync to pull changes every five minutes, or sync manually.
-- **Protection:** Prevents accidental edits that would overwrite reviewed changes.
-
-## Connect your production Metabase to your Git repository
+## Connect your production Metabase to your repository
 
 1. Open the Remote sync settings:
 
@@ -129,22 +144,23 @@ Your production Metabase is where end users access trusted, reviewed content. Co
 
 4. Add your access token:
 
-   - Paste the read-only personal access token you created for production.
+   - Paste the read-only personal access token you created for this production Metabase.
 
 5. Save and test the connection:
 
    - Click "Save changes". Metabase will verify it can reach your repository. If the connection fails, verify your token has the appropriate permissions and hasn't expired.
 
-6. Enable auto-sync (optional):
+6. Pull changes and/or enable auto-sync (optional):
+   - Pull changes to sync from your repo.
    - Toggle on "Auto-sync with Git" to automatically pull changes from your main branch every five minutes.
 
 In Production mode, synced collections appear in the regular collections list with a special icon to indicate that they're versioned and read-only.
 
+At this point, you should be all set up. Exit Admin settings, then reload your browser. You should see your synced Library collection in your production Metabase.
+
 ## An example dev-to-production workflow
 
 Let's say your team wants to build a new analytics dashboard. Here's a workflow that ensures that all production content goes through a review process.
-
-**Before you start:** Make sure you've already connected both your development and production Metabase instances to your Git repository. Your development instance should be set to Development mode, and your production instance should be set to Production mode. When you first connect in Development mode, Metabase will create a synced collections section where you can add content.
 
 ### Step 1: Create a new branch
 
@@ -178,6 +194,13 @@ On your production Metabase instance:
 3. The content is read-only for users (they can view and use it, but can't edit it).
 
 ## How your synced collection works in Development mode
+
+- [Synced collections options](#synced-collections-options)
+- [Adding collections to sync](#adding-collections-to-sync)
+- [Moving content out of synced collections](#moving-content-out-of-synced-collections)
+- [Items in synced collections can't depend on items outside of the synced collection](#items-in-synced-collections-cant-depend-on-items-outside-of-the-synced-collection)
+
+### Synced collections options
 
 In your development Metabase, your synced collection will show its current state:
 
