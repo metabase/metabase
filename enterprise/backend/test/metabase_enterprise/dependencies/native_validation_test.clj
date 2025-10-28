@@ -87,6 +87,15 @@
                 driver
                 (fake-query mp "select bad from products"))))))))
 
+(deftest ^:parallel validate-table-function-query-test
+  (testing "can validate queries using table functions"
+    (let [mp (deps.tu/default-metadata-provider)
+          driver (:engine (lib.metadata/database mp))]
+      (is (= []
+             (deps.native-validation/validate-native-query
+              driver
+              (fake-query mp "select i from my_function(1, 100)")))))))
+
 (deftest ^:parallel validate-native-query-with-subquery-columns-test
   (testing "validate-native-query should detect invalid columns in subqueries"
     (let [mp (deps.tu/default-metadata-provider)
@@ -348,6 +357,15 @@
            :base-type :type/Text,
            :effective-type :type/Text,
            :semantic-type :type/Category}]))
+      (testing "Using a table function"
+        (check-result-metadata
+         driver mp
+         "select ids from my_function(1, 100)"
+         [{:name "IDS",
+           :lib/desired-column-alias "IDS",
+           :display-name "Ids",
+           :effective-type :type/*,
+           :semantic-type :Semantic/*}]))
       (testing "Selecting a bad table wildcard"
         (check-result-metadata
          driver mp
