@@ -59,4 +59,24 @@ describe("Transform Embedding Theme Override", () => {
       components: getEmbeddingComponentOverrides(),
     });
   });
+
+  it("sets background-secondary to the value of background when it is unset", () => {
+    const theme = getEmbeddingThemeOverride(
+      { colors: { background: "green" } },
+      "Roboto",
+    );
+
+    expect(theme).toEqual({
+      fontFamily: "Roboto",
+      colors: {
+        background: expect.arrayContaining(["green"]),
+        "bg-primary": expect.arrayContaining(["green"]),
+        "bg-white": expect.arrayContaining(["green"]),
+        "bg-medium": expect.arrayContaining(["green"]),
+        "bg-secondary": expect.arrayContaining(["green"]),
+      },
+      other: { fontSize: "14px", ...DEFAULT_EMBEDDED_COMPONENT_THEME },
+      components: getEmbeddingComponentOverrides(),
+    });
+  });
 });

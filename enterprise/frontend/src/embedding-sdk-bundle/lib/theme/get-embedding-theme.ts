@@ -60,6 +60,12 @@ export function getEmbeddingThemeOverride(
   if (theme.colors) {
     override.colors = {};
 
+    // If `background` is set but `background-secondary` is not,
+    // use the value of `background` as the fallback.
+    if (theme.colors.background && !theme.colors["background-secondary"]) {
+      theme.colors["background-secondary"] = theme.colors.background;
+    }
+
     // Apply color palette overrides
     for (const name in theme.colors) {
       const color = theme.colors[name as MetabaseColor];
