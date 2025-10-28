@@ -171,21 +171,6 @@
                          :tag_id       tag-id
                          :position     (get new-positions tag-id)})))))))
 
-;;; ----------------------------------------------- Search ----------------------------------------------------------
-
-(search.spec/define-spec "transform"
-  {:model :model/Transform
-   :attrs {:archived      false
-           :collection-id false
-           :creator-id    false
-           :database-id   false
-           :view-count    false
-           :created-at    true
-           :updated-at    true}
-   :search-terms [:name]
-   :render-terms {:transform-name :name
-                  :transform-id :id}})
-
 ;;; ------------------------------------------------- Serialization ------------------------------------------------
 
 (mi/define-batched-hydration-method tags
@@ -281,11 +266,14 @@
   {:model        :model/Transform
    :attrs        {:archived      false
                   :collection-id false
+                  :creator-id    false
                   :created-at    true
                   :updated-at    true
+                  :view-count    false
                   :native-query  {:fn maybe-extract-transform-query-text
                                   :fields [:source :type]}
                   :database-id   {:fn extract-transform-db-id
                                   :fields [:source]}}
    :search-terms [:name :description]
-   :render-terms {:description true}})
+   :render-terms {:transform-name :name
+                  :transform-id   :id}})
