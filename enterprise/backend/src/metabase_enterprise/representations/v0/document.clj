@@ -82,8 +82,23 @@
   :document)
 
 (defn- markdown->yaml [md]
-  ;; bb hackathon/markdown-parser/cli-test.clj hackathon/markdown-parser/test-files/document-example.md
-  (let [result (sh/sh "node" "hackathon/markdown-parser/parse-markdown.mjs" :in md)]
+  (let [script (str (io/file (io/resource "representations/markdown-to-prosemirror.mjs")))
+        result (->> md (sh/sh "node" script :in))]
+    ;; Always log errors if present
+    (when (seq (:err result))
+      (log/warn "Error from prosemirror-to-markdown:" (:err result)))
+    ;; Throw if we got an error and no output
+    (when (not (zero? (:exit result)))
+      (throw (ex-info (str "Error converting markdown to prosemirror: " (:err result))
+                      {:md md
+                       :error (:err result)
+                       :exit-code (:exit result)})))
+    ;; Throw if we got no output at all (even without explicit error)
+    (when-not (seq (:out result))
+      (throw (ex-info "Markdown to prosemirror conversion produced no output"
+                      {:md md
+                       :stderr (:err result)
+                       :exit-code (:exit result)})))
     (:out result)))
 
 (defmethod import/yaml->toucan [:v0 :document]
@@ -130,11 +145,21 @@
         result (->> (patch-refs-for-export edn)
                     (cheshire/generate-string)
                     (sh/sh "node" script :in))]
-    (when (and (not (seq (:out result)))
-               (seq (:err result)))
+    ;; Always log errors if present
+    (when (seq (:err result))
+      (log/warn "Error from prosemirror-to-markdown:" (:err result)))
+    ;; Throw if we got an error and no output
+    (when (not (zero? (:exit result)))
       (throw (ex-info (str "Error converting prosemirror to markdown: " (:err result))
                       {:edn edn
-                       :error (:err result)})))
+                       :error (:err result)
+                       :exit-code (:exit result)})))
+    ;; Throw if we got no output at all (even without explicit error)
+    (when-not (seq (:out result))
+      (throw (ex-info "Prosemirror to markdown conversion produced no output"
+                      {:edn edn
+                       :stderr (:err result)
+                       :exit-code (:exit result)})))
     (:out result)))
 
 (comment
@@ -144,13 +169,26 @@
                                         :text "Hello, world!"}]}]}))
 
 (defmethod export/export-entity :document [document]
-  (let [document-ref (v0-common/unref (v0-common/->ref (:id document) :document))]
+  (let [document-ref (v0-common/unref (v0-common/->ref (:id document) :document))
+        ;; Handle the document field - it might be a JSON string or a map
+        doc-content (let [doc (:document document)]
+                      (cond
+                        (nil? doc)
+                        (throw (ex-info "Document content is nil - document field not loaded correctly"
+                                        {:document-id (:id document)
+                                         :document-keys (keys document)}))
+
+                        (string? doc)
+                        (json/decode doc keyword)
+
+                        :else
+                        doc))]
     (cond-> {:name (:name document)
              :type :document
              :version :v0
              :ref document-ref
              :entity-id (:entity_id document)
-             :content (edn->markdown (:document document))
+             :content (edn->markdown doc-content)
              :content_type "text/markdown+vnd.prose-mirror"}
       :always
       u/remove-nils)))
