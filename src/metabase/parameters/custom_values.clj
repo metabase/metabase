@@ -125,8 +125,8 @@
               (lib/filter nonempty)
               (cond-> #_query query-filter (lib/filter query-filter))
               (lib/breakout value-column)
-                ;; TODO(Braden, 07/04/2025): This should probably become a lib helper? I suspect this isn't the only
-                ;; "internal" query in the BE.
+              ;; TODO(Braden, 07/04/2025): This should probably become a lib helper? I suspect this isn't the only
+              ;; "internal" query in the BE.
               (assoc-in [:middleware :disable-remaps?] true)))))))
 
 (mu/defn values-from-card
