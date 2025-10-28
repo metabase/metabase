@@ -1,3 +1,3 @@
 export * from "./QueryEditor";
-export type { QueryEditorUiControls } from "./types";
+export type { QueryEditorState } from "./types";
 export { getInitialState } from "./utils";

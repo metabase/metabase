@@ -25,7 +25,7 @@ import type {
   TransformSource,
 } from "metabase-types/api";
 
-import { QueryEditor } from "../../components/QueryEditor";
+import { TransformEditor } from "../../components/TransformEditor";
 
 type TransformQueryPageParams = {
   transformId: string;
@@ -193,7 +193,7 @@ function TransformEditorBody({
   }
 
   return (
-    <QueryEditor
+    <TransformEditor
       initialSource={initialSource}
       transform={transform}
       isNew={false}

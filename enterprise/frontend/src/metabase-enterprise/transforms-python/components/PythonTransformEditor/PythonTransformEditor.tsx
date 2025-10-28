@@ -2,7 +2,7 @@ import { useHotkeys } from "@mantine/hooks";
 import { useState } from "react";
 
 import { Flex, Stack } from "metabase/ui";
-import { EditorHeader } from "metabase-enterprise/transforms/components/QueryEditor/EditorHeader";
+import { EditorHeader } from "metabase-enterprise/transforms/components/TransformEditor/EditorHeader";
 import { useRegisterMetabotTransformContext } from "metabase-enterprise/transforms/hooks/use-register-transform-metabot-context";
 import type {
   PythonTransformSource,

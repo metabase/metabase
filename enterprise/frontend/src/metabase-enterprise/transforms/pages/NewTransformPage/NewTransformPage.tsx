@@ -22,7 +22,7 @@ import type {
   TransformSource,
 } from "metabase-types/api";
 
-import { QueryEditor } from "../../components/QueryEditor";
+import { TransformEditor } from "../../components/TransformEditor";
 
 import {
   CreateTransformModal,
@@ -207,7 +207,7 @@ function NewTransformEditorBody({
   }
 
   return (
-    <QueryEditor
+    <TransformEditor
       initialSource={initialSource}
       proposedSource={
         proposedSource?.type === "query" ? proposedSource : undefined

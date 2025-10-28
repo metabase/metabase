@@ -93,8 +93,6 @@ export function QueryEditor({
             isResultDirty={isResultDirty}
             isShowingDataReference={state.isDataReferenceOpen}
             isShowingSnippetSidebar={state.isSnippetSidebarOpen}
-            // shouldDisableDatabase={shouldDisableDatabase}
-            // shouldDisableItem={shouldDisableItem}
             onChange={setQuestion}
             onRunQuery={runQuery}
             onCancelQuery={cancelQuery}
@@ -143,8 +141,6 @@ export function QueryEditor({
         {!isNative && state.isNativeQueryPreviewSidebarOpen && (
           <NativeQueryPreviewSidebar
             question={question}
-            // convertToNativeTitle={convertToNativeTitle}
-            // convertToNativeButtonLabel={convertToNativeButtonLabel}
             onConvertToNativeClick={convertToNative}
           />
         )}
