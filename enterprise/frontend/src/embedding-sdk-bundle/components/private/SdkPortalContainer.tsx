@@ -10,7 +10,6 @@ import S from "./SdkPortalContainer.style.css";
  * so that it has our styles applied.
  * Mantine components needs to have the defaultProps set to use `EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID` as target for the portal
  */
-
 export const PortalContainer = () => (
   <PublicComponentStylesWrapper className={S.portalWrapper}>
     <Box
