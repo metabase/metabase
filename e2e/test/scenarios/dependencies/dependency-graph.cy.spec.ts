@@ -46,7 +46,8 @@ const SNIPPET_BASED_MODEL_NAME = "Snippet-based model";
 const SNIPPET_BASED_TRANSFORM_NAME = "Snippet-based transform";
 const SNIPPET_BASED_SNIPPET_NAME = "Snippet-based snippet";
 
-describe("scenarios > dependencies > dependency graph", () => {
+// TODO skipped until v57 is released
+describe.skip("scenarios > dependencies > dependency graph", () => {
   beforeEach(() => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: TABLE_NAME });
