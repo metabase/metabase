@@ -43,8 +43,8 @@ export function getMetabaseSdkCssVariables(theme: MantineTheme, font: string) {
       --mb-default-font-family: ${font};
       ${createColorVars("light")}
       ${getSdkDesignSystemCssVariables(theme)}
-      ${getThemeSpecificCssVariables(theme)}
       ${getDynamicCssVariables(theme)}
+      ${getThemeSpecificCssVariables(theme)}
     }
   `;
 }
