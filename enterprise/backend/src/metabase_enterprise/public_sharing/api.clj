@@ -22,15 +22,6 @@
 
 ;;; ----------------------------------------------- Public Documents -------------------------------------------------
 
-(defn- remove-card-non-public-columns
-  "Remove sensitive fields from a card before exposing it publicly.
-
-  We delegate to the OSS implementation to ensure consistent field filtering across both public cards (OSS) and
-  cards embedded in public documents (EE). This prevents leaking collection IDs, creator information, and other
-  data that could reveal internal structure or permissions to unauthenticated users."
-  [card]
-  (#'public-sharing.api/remove-card-non-public-columns card))
-
 (defn- remove-document-non-public-columns
   "Remove sensitive fields from a document before exposing it publicly.
 
@@ -54,7 +45,7 @@
                      (t2/hydrate :cards))]
     (-> document
         ;; Filter sensitive fields from all cards before exposing publicly
-        (update :cards #(update-vals % remove-card-non-public-columns))
+        (update :cards #(update-vals % public-sharing.api/remove-card-non-public-columns))
         (dissoc :content_type)
         remove-document-non-public-columns)))
 
