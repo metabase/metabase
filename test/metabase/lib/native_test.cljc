@@ -489,7 +489,6 @@
                                        :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
                                        :name "mytag"
                                        :type :number}})
-
              lib/add-parameters-for-template-tags
              :parameters))))
 
