@@ -7,7 +7,6 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.options :as lib.options]
    [metabase.lib.parameters.parse :as lib.params.parse]
    [metabase.lib.parameters.parse.types :as lib.params.parse.types]
    [metabase.lib.parse :as lib.parse]
@@ -388,7 +387,7 @@
   (:engine (lib.metadata/database query)))
 
 (defn- get-parameter-value
-  [query tag-name {:keys [id dimension], param-type :type :as tag}]
+  [query tag-name {:keys [id dimension], param-type :type}]
   ;; note that the actual values chosen are completely arbitrary.  We just need to provide some
   ;; value so that the query will compile.
   (case param-type
