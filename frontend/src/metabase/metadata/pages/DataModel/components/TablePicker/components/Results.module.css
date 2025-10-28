@@ -1,17 +1,20 @@
 .results {
+  flex: 1;
   position: relative;
   overflow: auto;
-  height: 100%;
+  padding: 0 var(--mantine-spacing-lg) var(--mantine-spacing-md);
+}
+
+.listContainer {
+  position: relative;
 }
 
 .item {
   position: absolute;
   border-radius: 8px;
   cursor: pointer;
-  padding-left: var(--mantine-spacing-sm);
-  padding-right: var(--mantine-spacing-sm);
-  left: var(--mantine-spacing-xl);
-  right: var(--mantine-spacing-xl);
+  left: 0;
+  right: 0;
 
   &:focus-visible,
   &.selected {
@@ -30,15 +33,15 @@
       opacity: 1;
     }
   }
-
-  &.table {
-    padding-left: var(--mantine-spacing-md);
-  }
 }
 
 .icon {
   opacity: 0.5;
   flex-shrink: 0;
+}
+
+.leafIcon {
+  opacity: 1;
 }
 
 .chevron {

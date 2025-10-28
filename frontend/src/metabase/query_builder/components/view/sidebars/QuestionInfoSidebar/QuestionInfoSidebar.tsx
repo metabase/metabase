@@ -30,12 +30,14 @@ import { SidesheetCardWithFields } from "./components/SidesheetCardWithFields";
 
 interface QuestionInfoSidebarProps {
   question: Question;
-  onSave: (question: Question) => Promise<Question>;
+  onSave: (question: Question) => Promise<void>;
+  onClose?: () => void;
 }
 
 export const QuestionInfoSidebar = ({
   question,
   onSave,
+  onClose,
 }: QuestionInfoSidebarProps) => {
   const description = question.description();
   const canWrite = question.canWrite() && !question.isArchived();
@@ -52,7 +54,8 @@ export const QuestionInfoSidebar = ({
   );
 
   const dispatch = useDispatch();
-  const handleClose = () => dispatch(onCloseQuestionInfo());
+  const handleClose = () =>
+    onClose ? onClose() : dispatch(onCloseQuestionInfo());
 
   useHotkeys([["]", handleClose]]);
 

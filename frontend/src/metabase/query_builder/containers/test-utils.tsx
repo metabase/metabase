@@ -408,15 +408,15 @@ export const revertNotebookQueryChange = async () => {
   await userEvent.tab();
 };
 
-export const waitForSaveChangesToBeEnabled = async () => {
+export const waitForSaveButtonToBeEnabled = async () => {
   await waitFor(() => {
-    expect(screen.getByRole("button", { name: "Save changes" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
   });
 };
 
-export const waitForSaveChangesToBeDisabled = async () => {
+export const waitForSaveButtonToBeDisabled = async () => {
   await waitFor(() => {
-    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
   });
 };
 

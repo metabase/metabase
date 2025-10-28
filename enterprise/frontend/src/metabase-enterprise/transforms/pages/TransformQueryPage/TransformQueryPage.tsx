@@ -1,31 +1,28 @@
-import type { Location } from "history";
+import { useLayoutEffect, useMemo, useState } from "react";
 import type { Route } from "react-router";
-import { push } from "react-router-redux";
+import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
-import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
+import { getInitialUiControls } from "metabase/querying/editor/components/QueryEditor";
+import { Center } from "metabase/ui";
 import {
   useGetTransformQuery,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
-import { useSourceState } from "metabase-enterprise/transforms/hooks/use-source-state";
-import type {
-  DraftTransformSource,
-  Transform,
-  TransformSource,
-} from "metabase-types/api";
+import type { DraftTransformSource, Transform } from "metabase-types/api";
 
-import { QueryEditor } from "../../components/QueryEditor";
+import { TransformEditor } from "../../components/TransformEditor";
+import { useTransformMetabot } from "../../hooks/use-transform-metabot";
+import { isNotDraftSource, isSameSource } from "../../utils";
 
 type TransformQueryPageParams = {
   transformId: string;
@@ -33,15 +30,10 @@ type TransformQueryPageParams = {
 
 type TransformQueryPageProps = {
   params: TransformQueryPageParams;
-  location: Location;
   route: Route;
 };
 
-export function TransformQueryPage({
-  params,
-  location,
-  route,
-}: TransformQueryPageProps) {
+export function TransformQueryPage({ params, route }: TransformQueryPageProps) {
   const transformId = Urls.extractEntityId(params.transformId);
   const {
     data: transform,
@@ -49,41 +41,39 @@ export function TransformQueryPage({
     error,
   } = useGetTransformQuery(transformId ?? skipToken);
 
-  if (isLoading || error != null) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  if (isLoading || error || transform == null) {
+    return (
+      <Center h="100%">
+        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+      </Center>
+    );
   }
 
-  if (transform == null) {
-    return <LoadingAndErrorWrapper error={t`Transform not found.`} />;
-  }
-
-  return (
-    <TransformQueryPageBody
-      transform={transform}
-      location={location}
-      route={route}
-    />
-  );
+  return <TransformQueryPageBody transform={transform} route={route} />;
 }
 
 type TransformQueryPageBodyProps = {
   transform: Transform;
-  location: Location;
   route: Route;
 };
 
-export function TransformQueryPageBody({
+function TransformQueryPageBody({
   transform,
-  location,
   route,
 }: TransformQueryPageBodyProps) {
-  const [updateTransform, { isLoading: isSaving }] =
-    useUpdateTransformMutation();
-  const dispatch = useDispatch();
+  const [source, setSource] = useState<DraftTransformSource>(transform.source);
+  const [uiControls, setUiControls] = useState(getInitialUiControls);
+  const sourceRef = useLatest(transform.source);
+  const [updateName] = useUpdateTransformMutation();
+  const [updateSource, { isLoading: isSaving }] = useUpdateTransformMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
+  const { proposedSource, acceptProposed, rejectProposed } =
+    useTransformMetabot(transform, source, setSource);
 
-  const { setSource, proposedSource, acceptProposed, clearProposed, isDirty } =
-    useSourceState<DraftTransformSource>(transform.id, transform.source);
+  const isSourceDirty = useMemo(
+    () => !isSameSource(source, transform.source),
+    [source, transform.source],
+  );
 
   const {
     checkData,
@@ -94,44 +84,85 @@ export function TransformQueryPageBody({
     handleCloseConfirmation,
   } = PLUGIN_DEPENDENCIES.useCheckTransformDependencies({
     onSave: async (request) => {
-      const { error } = await updateTransform(request);
+      const { error } = await updateSource(request);
       if (error) {
         sendErrorToast(t`Failed to update transform query`);
       } else {
         sendSuccessToast(t`Transform query updated`);
-        clearProposed();
-        dispatch(push(Urls.transform(transform.id)));
       }
     },
   });
 
-  const handleSaveSource = async (source: TransformSource) => {
-    await handleInitialSave({
+  const handleNameChange = async (newName: string) => {
+    const { error } = await updateName({
       id: transform.id,
-      source,
+      name: newName,
     });
+
+    if (error) {
+      sendErrorToast(t`Failed to update transform name`);
+    } else {
+      sendSuccessToast(t`Transform name updated`);
+    }
+  };
+
+  const handleSave = async () => {
+    if (isNotDraftSource(source)) {
+      await handleInitialSave({
+        id: transform.id,
+        source,
+      });
+    }
   };
 
   const handleCancel = () => {
-    // set to initial source to fix isDirty calc on route leave
     setSource(transform.source);
-    clearProposed();
-    dispatch(push(Urls.transform(transform.id)));
   };
 
+  useLayoutEffect(() => {
+    setSource(sourceRef.current);
+    setUiControls(getInitialUiControls());
+  }, [transform.id, sourceRef]);
+
   return (
-    <AdminSettingsLayout fullWidth key={transform.id}>
-      <TransformEditorBody
-        transform={transform}
-        initialSource={transform.source}
-        proposedSource={proposedSource}
-        isSaving={isSaving || isCheckingDependencies}
-        onChange={setSource}
-        onSave={handleSaveSource}
-        onCancel={handleCancel}
-        onRejectProposed={clearProposed}
-        onAcceptProposed={acceptProposed}
-      />
+    <>
+      {source.type === "python" ? (
+        <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
+          id={transform.id}
+          name={transform.name}
+          source={source}
+          proposedSource={
+            proposedSource?.type === "python" ? proposedSource : undefined
+          }
+          isSaving={isSaving || isCheckingDependencies}
+          isSourceDirty={isSourceDirty}
+          onNameChange={handleNameChange}
+          onSourceChange={setSource}
+          onSave={handleSave}
+          onCancel={handleCancel}
+          onAcceptProposed={acceptProposed}
+          onRejectProposed={rejectProposed}
+        />
+      ) : (
+        <TransformEditor
+          id={transform.id}
+          name={transform.name}
+          source={source}
+          proposedSource={
+            proposedSource?.type === "query" ? proposedSource : undefined
+          }
+          uiControls={uiControls}
+          isSaving={isSaving || isCheckingDependencies}
+          isSourceDirty={isSourceDirty}
+          onNameChange={handleNameChange}
+          onSourceChange={setSource}
+          onUiControlsChange={setUiControls}
+          onSave={handleSave}
+          onCancel={handleCancel}
+          onAcceptProposed={acceptProposed}
+          onRejectProposed={rejectProposed}
+        />
+      )}
       {isConfirmationShown && checkData != null && (
         <PLUGIN_DEPENDENCIES.CheckDependenciesModal
           checkData={checkData}
@@ -140,72 +171,7 @@ export function TransformQueryPageBody({
           onClose={handleCloseConfirmation}
         />
       )}
-      <LeaveRouteConfirmModal
-        key={location.key}
-        isEnabled={isDirty && !isConfirmationShown && !isSaving}
-        route={route}
-        onConfirm={clearProposed}
-      />
-    </AdminSettingsLayout>
-  );
-}
-
-interface TransformEditorBodyProps {
-  transform: Transform;
-  initialSource: TransformSource;
-  proposedSource?: TransformSource;
-  isSaving?: boolean;
-  onChange?: (source: DraftTransformSource) => void;
-  onSave: (source: TransformSource) => void;
-  onCancel: () => void;
-  onRejectProposed?: () => void;
-  onAcceptProposed?: (source: TransformSource) => void;
-}
-
-function TransformEditorBody({
-  transform,
-  initialSource,
-  proposedSource,
-  isSaving,
-  onChange,
-  onSave,
-  onCancel,
-  onRejectProposed,
-  onAcceptProposed,
-}: TransformEditorBodyProps) {
-  if (initialSource.type === "python") {
-    return (
-      <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
-        transform={transform}
-        initialSource={initialSource}
-        proposedSource={
-          proposedSource?.type === "python" ? proposedSource : undefined
-        }
-        isNew={false}
-        isSaving={isSaving}
-        onChange={onChange}
-        onSave={onSave}
-        onCancel={onCancel}
-        onRejectProposed={onRejectProposed}
-        onAcceptProposed={onAcceptProposed}
-      />
-    );
-  }
-
-  return (
-    <QueryEditor
-      initialSource={initialSource}
-      transform={transform}
-      isNew={false}
-      isSaving={isSaving}
-      onSave={onSave}
-      onChange={onChange}
-      onCancel={onCancel}
-      proposedSource={
-        proposedSource?.type === "query" ? proposedSource : undefined
-      }
-      onRejectProposed={onRejectProposed}
-      onAcceptProposed={onAcceptProposed}
-    />
+      <LeaveRouteConfirmModal route={route} isEnabled={isSourceDirty} />
+    </>
   );
 }

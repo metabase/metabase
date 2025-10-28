@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { t } from "ttag";
 
 import { useExpandedState, useTableLoader } from "../hooks";
-import type { ChangeOptions, TreePath } from "../types";
+import type { ChangeOptions, DatabaseNode, TreePath } from "../types";
 import { flatten } from "../utils";
 
 import { EmptyState } from "./EmptyState";
@@ -27,7 +27,9 @@ export function Tree({ path, onChange }: Props) {
 
   useEffect(() => {
     // When we detect only one database, we automatically select and expand it.
-    const databases = tree.children.filter((node) => node.type === "database");
+    const databases = tree.children.filter(
+      (node) => (node as DatabaseNode).type === "database",
+    ) as DatabaseNode[];
 
     if (databases.length !== 1) {
       return;

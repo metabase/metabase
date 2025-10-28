@@ -6,7 +6,6 @@ import { getErrorMessage } from "metabase/api/utils";
 import { useExecutePythonMutation } from "metabase-enterprise/api/transform-python";
 import type {
   ExecutePythonTransformResponse,
-  PythonTransformSource,
   PythonTransformSourceDraft,
   PythonTransformTableAliases,
   Table,
@@ -213,36 +212,8 @@ export function useTestPythonTransform(
   };
 }
 
-export function isPythonTransformSource(
-  source: PythonTransformSourceDraft,
-): source is PythonTransformSource {
-  return source.type === "python" && source["source-database"] !== undefined;
-}
-
 export function useShouldShowPythonDebugger() {
   const location = useLocation();
   const params = new URLSearchParams(location.search);
   return params.get("debugger") === "1";
-}
-
-export function getValidationResult(source: PythonTransformSourceDraft) {
-  if (!source["source-database"]) {
-    return { isValid: false, errorMessage: t`Select a source a database` };
-  }
-
-  if (source.body.trim() === "") {
-    return {
-      isValid: false,
-      errorMessage: t`The Python script cannot be empty`,
-    };
-  }
-
-  if (Object.keys(source["source-tables"]).length === 0) {
-    return {
-      isValid: false,
-      errorMessage: t`Select at least one table to alias`,
-    };
-  }
-
-  return { isValid: true };
 }

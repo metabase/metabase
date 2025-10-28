@@ -1,3 +1,4 @@
+import cx from "classnames";
 import React from "react";
 
 import { useAreAnyTruncated } from "metabase/common/hooks/use-is-truncated";
@@ -5,7 +6,12 @@ import { Tooltip } from "metabase/ui";
 
 import S from "./EllipsifiedPath.module.css";
 
-type EllipsifiedPathProps = { items: string[]; tooltip: string };
+type EllipsifiedPathProps = {
+  items: string[];
+  tooltip: string;
+  className?: string;
+  ignoreHeightTruncation?: boolean;
+};
 
 /**
  * Displays a path such as "Collection / Subcollection / Subsubcollection /
@@ -16,12 +22,19 @@ type EllipsifiedPathProps = { items: string[]; tooltip: string };
  *
  * A tooltip is shown if any items are truncated.
  */
-export const EllipsifiedPath = ({ items, tooltip }: EllipsifiedPathProps) => {
-  const { areAnyTruncated, ref } = useAreAnyTruncated<HTMLDivElement>();
+export const EllipsifiedPath = ({
+  items,
+  tooltip,
+  className,
+  ignoreHeightTruncation,
+}: EllipsifiedPathProps) => {
+  const { areAnyTruncated, ref } = useAreAnyTruncated<HTMLDivElement>({
+    ignoreHeightTruncation,
+  });
 
   return (
     <Tooltip label={tooltip} disabled={!areAnyTruncated} multiline maw="20rem">
-      <div className={S.path}>
+      <div className={cx(className, S.path)}>
         {items.length > 1 && (
           <div className={S.dots}>
             … <div className={S.slash}>/</div>

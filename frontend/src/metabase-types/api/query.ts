@@ -38,7 +38,6 @@ export type LegacyDatasetQuery = StructuredDatasetQuery | NativeDatasetQuery;
 
 declare const OpaqueDatasetQuerySymbol: unique symbol;
 export type OpaqueDatasetQuery = unknown & {
-  // TODO (AlexP 10/09/25) -- replace usages of this field with Lib.databaseID and drop it from here
   database: DatabaseId | null;
   _opaque: typeof OpaqueDatasetQuerySymbol;
 };

@@ -6,7 +6,7 @@ import type { CheckDependenciesResponse } from "metabase-types/api";
 type UseCheckDependenciesQueryData = {
   data?: CheckDependenciesResponse;
   error?: unknown;
-  isLoading: boolean;
+  isFetching?: boolean;
 };
 
 type UseCheckDependenciesArgsData<TRequest> = {
@@ -35,7 +35,7 @@ export function useCheckDependencies<TChange, TRequest>({
 >): UseCheckDependenciesResult<TChange> {
   const [change, setChange] = useState<TChange | null>(null);
   const [isConfirmationShown, setIsConfirmationShown] = useState(false);
-  const [checkDependencies, { data, isLoading }] =
+  const [checkDependencies, { data, isFetching = false }] =
     useLazyCheckDependenciesQuery();
 
   const handleInitialSave = useCallback(
@@ -70,7 +70,7 @@ export function useCheckDependencies<TChange, TRequest>({
 
   return {
     checkData: data,
-    isCheckingDependencies: isLoading,
+    isCheckingDependencies: isFetching,
     isConfirmationShown,
     handleInitialSave,
     handleSaveAfterConfirmation,

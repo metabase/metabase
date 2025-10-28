@@ -11,7 +11,7 @@ const mapDispatchToProps = (dispatch) => ({
   archive: (question) => dispatch(setArchivedQuestion(question, true)),
 });
 
-const getLabels = (question) => {
+export const getLabels = (question) => {
   const type = question.type();
 
   if (type === "question") {

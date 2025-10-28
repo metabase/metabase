@@ -1,5 +1,8 @@
 import type {
+  CardId,
+  CollectionId,
   DatabaseId,
+  Field,
   FieldId,
   SchemaId,
   SchemaName,
@@ -11,6 +14,10 @@ export type RouteParams = {
   fieldId?: string;
   schemaId?: SchemaId;
   tableId?: string;
+
+  modelId?: string;
+  fieldName?: string;
+  collectionId?: string;
 };
 
 export type ParsedRouteParams = {
@@ -18,6 +25,10 @@ export type ParsedRouteParams = {
   fieldId: FieldId | undefined;
   schemaName: SchemaName | undefined;
   tableId: TableId | undefined;
+
+  collectionId: CollectionId | undefined;
+  modelId: CardId | undefined;
+  fieldName: string | undefined;
 };
 
 export type Column = "nav" | "table" | "field" | "preview";
@@ -36,3 +47,7 @@ export type MetadataEditAnalyticsDetail =
   | "display_values"
   | "json_unfolding"
   | "formatting";
+
+export type MetadataEditMode = "table" | "model";
+
+export type FieldChangeParams = Partial<Field>;

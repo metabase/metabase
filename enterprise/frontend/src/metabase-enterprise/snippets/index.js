@@ -74,6 +74,7 @@ if (hasPremiumFeature("snippet_collections")) {
     const collection = snippetSidebar.props.snippetCollection;
     return (
       <CollectionOptionsButton
+        key="options"
         {...snippetSidebar.props}
         {...props}
         setSidebarState={snippetSidebar.setState.bind(snippetSidebar)}

@@ -7,6 +7,15 @@
   }
 }
 
+.card,
+.handle {
+  visibility: hidden;
+
+  &.initialized {
+    visibility: visible;
+  }
+}
+
 .pill {
   color: var(--mb-color-text-primary);
   background-color: var(--mb-color-bg-medium);

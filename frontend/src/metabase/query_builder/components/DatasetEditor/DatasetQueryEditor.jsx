@@ -84,6 +84,7 @@ function DatasetQueryEditor({
           hasParametersList={false}
           resizableBoxProps={resizableBoxProps}
           onSetDatabaseId={onSetDatabaseId}
+          toggleEditor={undefined}
         />
       ) : (
         <DatasetNotebook

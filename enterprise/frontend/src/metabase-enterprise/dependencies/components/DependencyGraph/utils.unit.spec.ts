@@ -53,7 +53,7 @@ describe("getNodeIcon", () => {
     },
     {
       node: createMockTransformDependencyNode(),
-      expectedIcon: "refresh_downstream",
+      expectedIcon: "transform",
     },
     {
       node: createMockSnippetDependencyNode(),

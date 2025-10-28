@@ -1,57 +1,28 @@
-import { match } from "ts-pattern";
-
 import Question from "metabase-lib/v1/Question";
 import type {
-  Card,
-  LegacyDatasetQuery,
   PythonTransformSourceDraft,
   QueryTransformSource,
-  SuggestedTransform,
 } from "metabase-types/api";
 
-export type InitialTransformSource =
-  | QueryTransformSource
-  | PythonTransformSourceDraft;
-
-export function getInitialTransformSource(
-  card: Card | undefined,
-  type: LegacyDatasetQuery["type"] | "python",
-  suggestedTransform: SuggestedTransform | undefined,
-): InitialTransformSource {
-  const canUseSuggestedTransform = match({
-    type,
-    suggestionSourceType: suggestedTransform?.source.type,
-  })
-    .with({ type: "native", suggestionSourceType: "query" }, () => true)
-    .with({ type: "python", suggestionSourceType: "python" }, () => true)
-    .otherwise(() => false);
-
-  if (!card?.id && suggestedTransform && canUseSuggestedTransform) {
-    return suggestedTransform.source;
-  }
-
-  if (type === "python") {
-    return getInitialPythonTransformSource();
-  }
-
-  return getInitialQueryTransformSource(card, type);
-}
-
-export function getInitialQueryTransformSource(
-  card: Card | undefined,
-  type: LegacyDatasetQuery["type"] | undefined,
-): QueryTransformSource {
-  const query =
-    card != null
-      ? card.dataset_query
-      : Question.create({ DEPRECATED_RAW_MBQL_type: type }).datasetQuery();
-
-  return { type: "query" as const, query };
-}
-
-export function getInitialPythonTransformSource(): PythonTransformSourceDraft {
+export function getInitialQuerySource(): QueryTransformSource {
+  const question = Question.create({ DEPRECATED_RAW_MBQL_type: "query" });
   return {
-    type: "python" as const,
+    type: "query",
+    query: question.datasetQuery(),
+  };
+}
+
+export function getInitialNativeSource(): QueryTransformSource {
+  const question = Question.create({ DEPRECATED_RAW_MBQL_type: "native" });
+  return {
+    type: "query",
+    query: question.datasetQuery(),
+  };
+}
+
+export function getInitialPythonSource(): PythonTransformSourceDraft {
+  return {
+    type: "python",
     "source-database": undefined,
     "source-tables": {},
     body: `# Write your Python transformation script here

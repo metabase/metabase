@@ -130,6 +130,14 @@ export function appBar() {
   return cy.findByLabelText("Navigation bar");
 }
 
+export function benchNav() {
+  return cy.findByTestId("bench-nav");
+}
+
+export function benchNavTitleMenu() {
+  return cy.findByTestId("bench-nav-title-menu");
+}
+
 export function openNavigationSidebar() {
   appBar().findByTestId("sidebar-toggle").click();
   navigationSidebar().should("be.visible");

@@ -134,7 +134,7 @@ function getItemIcon(item: DependencyItem): IconName {
   }
 
   if (item.type === "transform") {
-    return "refresh_downstream";
+    return "transform";
   }
 
   return "unknown";

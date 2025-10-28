@@ -156,7 +156,7 @@ describe.skip("scenarios > dependencies > dependency graph", () => {
       });
       testEntitySearch({
         itemName: TABLE_BASED_TRANSFORM_NAME,
-        itemIcon: "refresh_downstream",
+        itemIcon: "transform",
         isRecentItem: false,
       });
     });
@@ -196,7 +196,7 @@ describe.skip("scenarios > dependencies > dependency graph", () => {
         tabName: "Transforms",
         itemName: TABLE_BASED_TRANSFORM_NAME,
         itemLevel: 0,
-        itemIcon: "refresh_downstream",
+        itemIcon: "transform",
       });
     });
   });

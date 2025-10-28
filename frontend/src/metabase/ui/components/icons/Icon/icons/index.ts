@@ -74,6 +74,8 @@ import check_component from "./check.svg?component";
 import check_source from "./check.svg?source";
 import check_filled_component from "./check_filled.svg?component";
 import check_filled_source from "./check_filled.svg?source";
+import chevron_dual_component from "./chevron_dual.svg?component";
+import chevron_dual_source from "./chevron_dual.svg?source";
 import chevrondown_component from "./chevrondown.svg?component";
 import chevrondown_source from "./chevrondown.svg?source";
 import chevronleft_component from "./chevronleft.svg?component";
@@ -286,6 +288,8 @@ import move_component from "./move.svg?component";
 import move_source from "./move.svg?source";
 import move_card_component from "./move_card.svg?component";
 import move_card_source from "./move_card.svg?source";
+import network_component from "./network.svg?component";
+import network_source from "./network.svg?source";
 import new_folder_component from "./new_folder.svg?component";
 import new_folder_source from "./new_folder.svg?source";
 import notebook_component from "./notebook.svg?component";
@@ -444,6 +448,8 @@ import thumbs_up_component from "./thumbs_up.svg?component";
 import thumbs_up_source from "./thumbs_up.svg?source";
 import time_history_component from "./time_history.svg?component";
 import time_history_source from "./time_history.svg?source";
+import transform_component from "./transform.svg?component";
+import transform_source from "./transform.svg?source";
 import trash_component from "./trash.svg?component";
 import trash_source from "./trash.svg?source";
 import trash_filled_component from "./trash_filled.svg?component";
@@ -482,6 +488,8 @@ import waterfall_component from "./waterfall.svg?component";
 import waterfall_source from "./waterfall.svg?source";
 import webhook_component from "./webhook.svg?component";
 import webhook_source from "./webhook.svg?source";
+import workbench_component from "./workbench.svg?component";
+import workbench_source from "./workbench.svg?source";
 import zoom_in_component from "./zoom_in.svg?component";
 import zoom_in_source from "./zoom_in.svg?source";
 import zoom_out_component from "./zoom_out.svg?component";
@@ -632,6 +640,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     code_block: {
       component: code_block_component,
       source: code_block_source,
+    },
+    chevron_dual: {
+      component: chevron_dual_component,
+      source: chevron_dual_source,
     },
     chevrondown: {
       component: chevrondown_component,
@@ -1049,6 +1061,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: new_folder_component,
       source: new_folder_source,
     },
+    network: {
+      component: network_component,
+      source: network_source,
+    },
     notebook: {
       component: notebook_component,
       source: notebook_source,
@@ -1363,6 +1379,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: time_history_component,
       source: time_history_source,
     },
+    transform: {
+      component: transform_component,
+      source: transform_source,
+    },
     trash: {
       component: trash_component,
       source: trash_source,
@@ -1447,6 +1467,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: webhook_component,
       source: webhook_source,
     },
+    workbench: {
+      component: workbench_component,
+      source: workbench_source,
+    },
     "10k": {
       component: ten_thousand_component,
       source: ten_thousand_source,
@@ -1523,6 +1547,7 @@ export type IconName =
   | "chevronleft"
   | "chevronright"
   | "chevronup"
+  | "chevron_dual"
   | "click"
   | "clipboard"
   | "clock"
@@ -1626,6 +1651,7 @@ export type IconName =
   | "move"
   | "move_card"
   | "new_folder"
+  | "network"
   | "notebook"
   | "number"
   | "palette"
@@ -1701,6 +1727,7 @@ export type IconName =
   | "thumbs_down"
   | "thumbs_up"
   | "time_history"
+  | "transform"
   | "trash"
   | "trash_filled"
   | "triangle_left"
@@ -1722,6 +1749,7 @@ export type IconName =
   | "warning_triangle_filled"
   | "waterfall"
   | "webhook"
+  | "workbench"
   | "10k"
   | "1m"
   | "zoom_in"

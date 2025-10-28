@@ -1,49 +1,35 @@
-import { Link } from "react-router";
-
+import { BenchFlatListItem } from "metabase/bench/components/shared/BenchFlatListItem";
 import { TableBreadcrumbs } from "metabase/metadata/components";
-import { Box, Flex, Group, Icon } from "metabase/ui";
-import type { Segment } from "metabase-types/api";
+import type Segment from "metabase-lib/v1/metadata/Segment";
 
-import SegmentActionSelect from "./SegmentActionSelect";
-import S from "./SegmentItem.module.css";
+import { SegmentActionSelect } from "./SegmentActionSelect";
 
 interface Props {
   segment: Segment;
   onRetire: () => void;
+  isActive?: boolean;
 }
 
-export const SegmentItem = ({ segment, onRetire }: Props) => {
+export const SegmentItem = ({ segment, onRetire, isActive }: Props) => {
   return (
-    <tr>
-      <Box component="td" className={S.cell} p="sm">
-        <Link to={`/admin/datamodel/segment/${segment.id}`}>
-          <Group display="inline-flex" gap="sm" wrap="nowrap">
-            <Box
-              color="text-medium"
-              component={Icon}
-              flex="0 0 auto"
-              name="segment"
-            />
-            <Box c="text-dark" fw="bold">
-              {segment.name}
-            </Box>
-          </Group>
-        </Link>
-      </Box>
-
-      <Box component="td" className={S.cell} maw={500} p="sm">
-        <TableBreadcrumbs tableId={segment.table_id} />
-      </Box>
-
-      <Box component="td" className={S.cell} p="sm">
-        {segment.definition_description}
-      </Box>
-
-      <Box component="td" className={S.cell} p="sm">
-        <Flex justify="center">
-          <SegmentActionSelect object={segment} onRetire={onRetire} />
-        </Flex>
-      </Box>
-    </tr>
+    <BenchFlatListItem
+      label={segment.name}
+      icon="segment"
+      subtitle={
+        <TableBreadcrumbs tableId={segment.table_id} displayIcons={false} />
+      }
+      href={`/bench/segment/${segment.id}`}
+      isActive={isActive}
+      rightGroup={
+        <div
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+        >
+          <SegmentActionSelect segment={segment} onRetire={onRetire} />
+        </div>
+      }
+    />
   );
 };

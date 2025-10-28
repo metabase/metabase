@@ -3,6 +3,7 @@ import { msgid, ngettext, t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import type {
   CardCreatorInfo,
+  DependencyEntry,
   DependencyNode,
   Field,
   LastEditInfo,
@@ -66,7 +67,10 @@ export function getNodeLastEditedBy(node: DependencyNode): LastEditInfo | null {
   }
 }
 
-export function getNodeTableInfo(node: DependencyNode): NodeTableInfo | null {
+export function getNodeTableInfo(
+  node: DependencyNode,
+  getGraphUrl: (entry: DependencyEntry) => string,
+): NodeTableInfo | null {
   if (node.type !== "transform" && node.type !== "sandbox") {
     return null;
   }
@@ -80,7 +84,7 @@ export function getNodeTableInfo(node: DependencyNode): NodeTableInfo | null {
     label: node.type === "transform" ? t`Generated table` : t`Restricted table`,
     title: {
       label: table.display_name,
-      url: Urls.dependencyGraph({ entry: { id: table.id, type: "table" } }),
+      url: getGraphUrl({ id: table.id, type: "table" }),
     },
     metadata: {
       label: t`View metadata`,

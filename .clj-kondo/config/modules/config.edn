@@ -2049,6 +2049,7 @@
            lib
            lib-be
            models
+           permissions
            premium-features
            queries
            query-processor

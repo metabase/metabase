@@ -36,6 +36,9 @@ export default createEntity({
 
   api: {
     list: async (query = {}, dispatch) => {
+      if (query.wait_for_reindex) {
+        await new Promise((r) => setTimeout(r, 500));
+      }
       if (query.collection) {
         const {
           collection,

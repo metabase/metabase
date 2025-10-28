@@ -1,8 +1,8 @@
 import { Box, Group } from "metabase/ui";
+import { RunCancelButton } from "metabase-enterprise/transforms/components/RunStatusInfo/RunCancelButton/RunCancelButton";
 import type { Transform, TransformRunStatus } from "metabase-types/api";
 
 import { formatStatus } from "../../utils";
-import { RunCancelButton } from "../RunCancelButton/RunCancelButton";
 import { RunInfo } from "../RunInfo";
 
 import S from "./RunStatusInfo.module.css";

@@ -2,10 +2,12 @@ import type { Middleware } from "@reduxjs/toolkit";
 import type { TagDescription } from "@reduxjs/toolkit/query";
 import React, {
   type ComponentType,
+  type Context,
   type Dispatch,
   type HTMLAttributes,
   type ReactNode,
   type SetStateAction,
+  createContext,
   useCallback,
 } from "react";
 import { t } from "ttag";
@@ -24,6 +26,7 @@ import {
   type EntityId,
   type PermissionSubject,
 } from "metabase/admin/permissions/types";
+import type { BenchNavItem } from "metabase/bench/constants/navigation";
 import type {
   MetricFilterControlsProps,
   MetricFilterSettings,
@@ -71,6 +74,7 @@ import type {
   DatabaseLocalSettingAvailability,
   Database as DatabaseType,
   Dataset,
+  DependencyEntry,
   Document,
   Group,
   GroupPermissions,
@@ -78,15 +82,13 @@ import type {
   ModelCacheRefreshStatus,
   ParameterId,
   Pulse,
-  PythonTransformSource,
-  PythonTransformTableAliases,
+  PythonTransformSourceDraft,
   Revision,
   SearchModel,
   Series,
   TableId,
   Timeline,
   TimelineEvent,
-  Transform,
   TransformId,
   UpdateSnippetRequest,
   UpdateTransformRequest,
@@ -713,13 +715,14 @@ type PluginMetabotConfig = {
   hideSuggestedPrompts?: boolean;
   preventClose?: boolean;
   preventRetryMessage?: boolean;
-  suggestionModels: (SearchModel | "transform" | "user")[];
+  suggestionModels?: (SearchModel | "transform" | "user")[];
 };
 
 type PluginMetabotType = {
   isEnabled: () => boolean;
   Metabot: (props: {
     hide?: boolean;
+    w?: string;
     config?: PluginMetabotConfig;
   }) => React.ReactElement | null;
   defaultMetabotContextValue: MetabotContext;
@@ -732,7 +735,10 @@ type PluginMetabotType = {
   getMetabotVisible: (state: State) => boolean;
   MetabotToggleButton: ComponentType<{ className?: string }>;
   MetabotAppBarButton: ComponentType;
-  MetabotAdminAppBarButton: ComponentType;
+  useMetabotAgent: () => null | {
+    visible: boolean;
+    setVisible: (visible: boolean) => void;
+  };
 };
 
 export const PLUGIN_METABOT: PluginMetabotType = {
@@ -756,7 +762,7 @@ export const PLUGIN_METABOT: PluginMetabotType = {
   getMetabotVisible: () => false,
   MetabotToggleButton: PluginPlaceholder,
   MetabotAppBarButton: PluginPlaceholder,
-  MetabotAdminAppBarButton: PluginPlaceholder,
+  useMetabotAgent: () => null,
 };
 
 type DashCardMenuItemGetter = (
@@ -878,15 +884,30 @@ export type TransformPickerProps = {
 };
 
 export type TransformsPlugin = {
+  getBenchRoutes(): ReactNode;
+  getBenchNavItems(isAdmin: boolean): BenchNavItem[];
   TransformPicker: ComponentType<TransformPickerProps>;
-  getAdminPaths(): AdminPath[];
-  getAdminRoutes(): ReactNode;
 };
 
 export const PLUGIN_TRANSFORMS: TransformsPlugin = {
+  getBenchRoutes: () => null,
+  getBenchNavItems: () => [],
   TransformPicker: PluginPlaceholder,
-  getAdminPaths: () => [],
-  getAdminRoutes: () => null,
+};
+
+export type PythonTransformEditorProps = {
+  id?: TransformId;
+  name: string;
+  source: PythonTransformSourceDraft;
+  proposedSource?: PythonTransformSourceDraft;
+  isSaving: boolean;
+  isSourceDirty: boolean;
+  onNameChange: (newName: string) => void;
+  onSourceChange: (newSource: PythonTransformSourceDraft) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  onAcceptProposed: () => void;
+  onRejectProposed: () => void;
 };
 
 export const PLUGIN_REMOTE_SYNC: {
@@ -920,48 +941,27 @@ export const PLUGIN_REMOTE_SYNC: {
 };
 
 export type PythonTransformsPlugin = {
+  isEnabled: boolean;
+  getBenchRoutes: () => ReactNode;
+  getBenchNavItems: (isAdmin: boolean) => BenchNavItem[];
+  TransformEditor: ComponentType<PythonTransformEditorProps>;
   PythonRunnerSettingsPage: ComponentType;
-  SourceSection: ComponentType<{ transform: Transform }>;
-  TransformEditor: ComponentType<{
-    transform?: Transform | undefined;
-    initialSource: {
-      type: "python";
-      body: string;
-      "source-database": DatabaseId | undefined;
-      "source-tables": PythonTransformTableAliases;
-    };
-    proposedSource?: PythonTransformSource;
-    isNew?: boolean;
-    isSaving?: boolean;
-    isRunnable?: boolean;
-    onChange?: (newSource: {
-      type: "python";
-      body: string;
-      "source-database": DatabaseId | undefined;
-      "source-tables": PythonTransformTableAliases;
-    }) => void;
-    onSave: (newSource: PythonTransformSource) => void;
-    onCancel: () => void;
-    onRejectProposed?: () => void;
-    onAcceptProposed?: (query: PythonTransformSource) => void;
-  }>;
-  getAdminRoutes: () => ReactNode;
-  getTransformsNavLinks: () => ReactNode;
-  getCreateTransformsMenuItems: () => ReactNode;
 };
 
 export const PLUGIN_TRANSFORMS_PYTHON: PythonTransformsPlugin = {
-  PythonRunnerSettingsPage: NotFoundPlaceholder,
+  isEnabled: false,
+  getBenchRoutes: () => null,
+  getBenchNavItems: () => [],
   TransformEditor: NotFoundPlaceholder,
-  SourceSection: PluginPlaceholder,
-  getAdminRoutes: () => null,
-  getTransformsNavLinks: () => null,
-  getCreateTransformsMenuItems: () => null,
+  PythonRunnerSettingsPage: NotFoundPlaceholder,
 };
 
 type DependenciesPlugin = {
   isEnabled: boolean;
+  getBenchRoutes: () => ReactNode;
+  getBenchNavItems: () => BenchNavItem[];
   DependencyGraphPage: ComponentType;
+  DependencyGraphPageContext: Context<DependencyGraphPageContextType>;
   CheckDependenciesForm: ComponentType<CheckDependenciesFormProps>;
   CheckDependenciesModal: ComponentType<CheckDependenciesModalProps>;
   CheckDependenciesTitle: ComponentType;
@@ -974,6 +974,11 @@ type DependenciesPlugin = {
   useCheckTransformDependencies: (
     props: UseCheckDependenciesProps<UpdateTransformRequest>,
   ) => UseCheckDependenciesResult<UpdateTransformRequest>;
+};
+
+export type DependencyGraphPageContextType = {
+  baseUrl?: string;
+  defaultEntry?: DependencyEntry;
 };
 
 export type CheckDependenciesFormProps = {
@@ -1016,7 +1021,10 @@ function useCheckDependencies<TChange>({
 
 export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
   isEnabled: false,
+  getBenchRoutes: () => null,
+  getBenchNavItems: () => [],
   DependencyGraphPage: PluginPlaceholder,
+  DependencyGraphPageContext: createContext({}),
   CheckDependenciesForm: PluginPlaceholder,
   CheckDependenciesModal: PluginPlaceholder,
   CheckDependenciesTitle: PluginPlaceholder,

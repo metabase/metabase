@@ -36,14 +36,14 @@ export function getDependencyGroupTitle(
   node: DependencyNode,
   groups: DependentGroup[],
 ) {
-  if (node.type === "transform") {
-    return t`Generates`;
-  }
   if (node.type === "sandbox") {
     return t`Restricts table data`;
   }
   if (groups.length === 0) {
     return t`Nothing uses this`;
+  }
+  if (node.type === "transform") {
+    return t`Generates`;
   }
   return t`Used by`;
 }
