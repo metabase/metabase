@@ -1,0 +1,14 @@
+{:min-bb-version "1.12.208"
+ :paths ["src"]
+ :deps {metosin/malli {:mvn/version "0.17.0"}}
+
+ #_#_:tasks
+ {test
+  {:doc "Run tests"
+   :task (clojure "-M:test")}
+
+  test-bb
+  {:doc "Run tests with babashka"
+   :requires [[clojure.test :as t]]
+   :task (do (require '[your.lib.core-test])
+             (t/run-tests 'your.lib.core-test))}}}

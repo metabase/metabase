@@ -1,0 +1,6 @@
+local/*
+.clj-kondo/*
+.lsp/*
+.nrepl-port
+.cpcache/*
+.calva/*
