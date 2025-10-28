@@ -1,3 +1,4 @@
+import { useElementSize } from "@mantine/hooks";
 import { memo, useState } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
@@ -21,6 +22,7 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
   ActionIcon,
+  Box,
   Group,
   Icon,
   Loader,
@@ -60,6 +62,7 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
   const [updateTableFieldsOrder] = useUpdateTableFieldsOrderMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
+  const { height: headerHeight, ref: headerRef } = useElementSize();
   const [isSorting, setIsSorting] = useState(false);
   const hasFields = Boolean(table.fields && table.fields.length > 0);
   const {
@@ -279,14 +282,12 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
 
   return (
     <Stack data-testid="table-section" gap={0} pb="xl">
-      <Stack
-        bg="accent-gray-light"
+      <Box
         className={S.header}
-        gap="lg"
-        pb={12}
+        bg="accent-gray-light"
+        p="xl"
         pos="sticky"
-        pt="xl"
-        px="xl"
+        ref={headerRef}
         top={0}
       >
         <NameDescriptionInput
@@ -314,7 +315,9 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
           onNameChange={handleNameChange}
           onDescriptionChange={handleDescriptionChange}
         />
+      </Box>
 
+      <Box pb="xl" px="xl">
         <TitledSection title={t`Metadata`}>
           <VisibilityInput
             value={table.visibility_type == null ? "visible" : "hidden"}
@@ -344,12 +347,22 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
             onChange={handleDataSourceChange}
           />
         </TitledSection>
+      </Box>
 
+      <Box
+        bg="accent-gray-light"
+        className={S.header}
+        pos="sticky"
+        top={headerHeight}
+        pb={12}
+        px="xl"
+      >
         <Group
           align="center"
           gap="md"
           justify="space-between"
           miw={0}
+          top={0}
           wrap="nowrap"
         >
           <Text flex="0 0 auto" fw="bold">{t`Fields`}</Text>
@@ -404,7 +417,7 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
             )}
           </Group>
         </Group>
-      </Stack>
+      </Box>
 
       <Stack gap="lg" px="xl">
         <Stack gap={12}>
