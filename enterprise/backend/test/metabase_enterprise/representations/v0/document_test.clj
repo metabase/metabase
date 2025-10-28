@@ -8,6 +8,7 @@
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.v0.document :as v0-document]
    [metabase-enterprise.representations.yaml :as rep-yaml]
+   [metabase.lib.core :as lib]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -95,3 +96,17 @@
 (deftest type->model-test
   (testing "type->model multimethod converts :document to :model/Document"
     (is (= :model/Document (v0-common/type->model :document)))))
+
+(deftest document-card-embed-refs
+  (mt/with-temp [:model/Card card {:type :question
+                                   :dataset_query (lib/native-query (mt/metadata-provider) "select 1")}
+                 :model/Document document
+                 {:name "My Document"
+                  :document {:type "resizeNode"
+                             :attrs {:height 442
+                                     :minHeight 280}
+                             :content [{:type "cardEmbed"
+                                        :attrs {:id (:id card)}}]}}]
+    (let [rep (export/export-entity document)
+          refs (v0-common/refs rep)]
+      (is (contains? refs (str "question-" (:id card)))))))

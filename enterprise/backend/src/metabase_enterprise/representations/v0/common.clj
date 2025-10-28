@@ -221,3 +221,13 @@
        (lookup-id ref-index node)
        node))
    data))
+
+(defn cleanup-delete-before-output
+  "Delete a special key used to keep structured data around until export."
+  [data]
+  (walk/postwalk
+   (fn [node]
+     (if (map? node)
+       (dissoc node ::delete-before-output)
+       node))
+   data))

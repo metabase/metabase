@@ -142,8 +142,8 @@
 (defn- edn->markdown
   [edn]
   (let [script (str (io/file (io/resource "representations/prosemirror-to-markdown.mjs")))
-        result (->> (patch-refs-for-export edn)
-                    (cheshire/generate-string)
+        result (->> edn
+                    (json/encode)
                     (sh/sh "node" script :in))]
     ;; Always log errors if present
     (when (seq (:err result))
@@ -170,7 +170,7 @@
 
 (defmethod export/export-entity :document [document]
   (let [document-ref (v0-common/unref (v0-common/->ref (:id document) :document))
-        ;; Handle the document field - it might be a JSON string or a map
+        document (patch-refs-for-export document)
         doc-content (let [doc (:document document)]
                       (cond
                         (nil? doc)
@@ -189,6 +189,7 @@
              :ref document-ref
              :entity-id (:entity_id document)
              :content (edn->markdown doc-content)
+             ::v0-common/delete-before-output doc-content
              :content_type "text/markdown+vnd.prose-mirror"}
       :always
       u/remove-nils)))

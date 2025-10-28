@@ -1,5 +1,6 @@
 (ns metabase-enterprise.representations.api
   (:require
+   [cheshire.core :as json]
    [clojure.pprint :refer [pprint]]
    [metabase-enterprise.representations.core :as rep]
    [metabase-enterprise.representations.dependencies :as deps]
@@ -13,8 +14,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]
-   [cheshire.core :as json]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -152,7 +152,8 @@
                        (export/export-set)
                        (import/order-representations)
                        (reverse))
-        export-yamls (mapv rep-yaml/generate-string export-set)]
+        clean-yamls (mapv v0-common/cleanup-delete-before-output export-set)
+        export-yamls (mapv rep-yaml/generate-string clean-yamls)]
     (json/generate-string {:yamls export-yamls})))
 
 (def ^{:arglists '([request respond raise])} routes
