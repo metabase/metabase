@@ -121,7 +121,6 @@
     (when (= (mdb/db-type) :postgres)
       (mt/with-temp [:model/Transform _ {:target {:database (mt/id)
                                                   :table "test_table"}
-                                         :type :native
                                          :name "Test SQL transform"
                                          :source {:type "query"
                                                   :query (lib/native-query (mt/metadata-provider) "SELECT 1")}}]
@@ -132,7 +131,6 @@
           (is (re-find #"sql" vector-value))))
 
       (mt/with-temp [:model/Transform _ {:target {:database (mt/id)}
-                                         :type :python
                                          :source {:type "python"
                                                   :source-database (mt/id)
                                                   :body "import pandas as pd\n"}
@@ -146,7 +144,6 @@
       (testing "MBQL queries are not indexed in with_native_query_vector"
         (mt/with-temp [:model/Transform _ {:target {:database (mt/id)
                                                     :table "test_mbql_table"}
-                                           :type :mbql
                                            :name "Test MBQL transform"
                                            :source {:type "query"
                                                     :query (mt/mbql-query venues {:limit 10})}}]
