@@ -420,7 +420,7 @@
                               {:type   :number/=,
                                :value  ["0"]})
                             (when (isa? effective-type :type/HasDate)
-                              {:type :date/single
+                              {:type  :date/single
                                :value "2025-01-01"})))
     :temporal-unit {:id     id,
                     :type   :temporal-unit,
