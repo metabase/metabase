@@ -1,7 +1,7 @@
 import querystring from "querystring";
 import _ from "underscore";
 
-import { getSdkGlobalPlugins } from "embedding-sdk-shared/lib/sdk-global-plugins";
+import { handleLinkSdkPlugin } from "embedding-sdk-shared/lib/sdk-global-plugins";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isCypressActive, isStorybookActive } from "metabase/env";
 import MetabaseSettings from "metabase/lib/settings";
@@ -322,21 +322,9 @@ export function open(
   url = ignoreSiteUrl ? url : getWithSiteUrl(url);
 
   // In the react sdk, allow the host app to override how to open links
-  if (isEmbeddingSdk()) {
-    const globalPlugins = getSdkGlobalPlugins();
-    if (globalPlugins?.handleLink) {
-      const result = globalPlugins.handleLink(url);
-
-      if (!result || typeof result !== "object" || !("handled" in result)) {
-        throw new Error(
-          "handleLink plugin must return an object with a 'handled' property (e.g., { handled: true } or { handled: false })",
-        );
-      }
-
-      if (result.handled) {
-        return;
-      }
-    }
+  if (isEmbeddingSdk() && handleLinkSdkPlugin(url).handled) {
+    // Plugin handled the link, don't continue with default behavior
+    return;
   }
 
   if (shouldOpenInBlankWindow(url, options)) {

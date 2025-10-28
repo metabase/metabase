@@ -1,3 +1,4 @@
+import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
 import {
   getSelectionPosition,
@@ -98,26 +99,22 @@ describe("getUrlTarget", () => {
 });
 
 describe("open()", () => {
-  let getSdkGlobalPluginsMock;
-
   beforeEach(async () => {
     await mockIsEmbeddingSdk();
-    const sdkPluginsModule = await import(
-      "embedding-sdk-shared/lib/sdk-global-plugins"
-    );
-    getSdkGlobalPluginsMock = jest.spyOn(
-      sdkPluginsModule,
-      "getSdkGlobalPlugins",
-    );
+    // Ensure a clean store before each test
+    ensureMetabaseProviderPropsStore().cleanup();
   });
 
   afterEach(() => {
     jest.restoreAllMocks();
+    ensureMetabaseProviderPropsStore().cleanup();
   });
 
   it("should prevent default behavior when handleLink returns { handled: true }", () => {
     const handleLink = jest.fn().mockReturnValue({ handled: true });
-    getSdkGlobalPluginsMock.mockReturnValue({ handleLink });
+    ensureMetabaseProviderPropsStore().setProps({
+      pluginsConfig: { handleLink },
+    });
 
     const openInSameWindow = jest.fn();
     const openInBlankWindow = jest.fn();
@@ -135,7 +132,9 @@ describe("open()", () => {
 
   it("should allow default behavior when handleLink returns { handled: false }", () => {
     const handleLink = jest.fn().mockReturnValue({ handled: false });
-    getSdkGlobalPluginsMock.mockReturnValue({ handleLink });
+    ensureMetabaseProviderPropsStore().setProps({
+      pluginsConfig: { handleLink },
+    });
 
     const openInSameWindow = jest.fn();
     const openInBlankWindow = jest.fn();
@@ -152,7 +151,9 @@ describe("open()", () => {
 
   it("should throw error when handleLink returns invalid value", () => {
     const handleLink = jest.fn().mockReturnValue(true);
-    getSdkGlobalPluginsMock.mockReturnValue({ handleLink });
+    ensureMetabaseProviderPropsStore().setProps({
+      pluginsConfig: { handleLink },
+    });
 
     const openInSameWindow = jest.fn();
     const openInBlankWindow = jest.fn();
@@ -173,7 +174,9 @@ describe("open()", () => {
   it("should not call handleLink when not in embedding SDK", async () => {
     await mockIsEmbeddingSdk(false);
     const handleLink = jest.fn();
-    getSdkGlobalPluginsMock.mockReturnValue({ handleLink });
+    ensureMetabaseProviderPropsStore().setProps({
+      pluginsConfig: { handleLink },
+    });
 
     const openInSameWindow = jest.fn();
     const openInBlankWindow = jest.fn();
