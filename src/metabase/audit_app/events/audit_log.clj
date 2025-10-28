@@ -297,6 +297,7 @@
 (derive :event/transform-create ::transform-event)
 (derive :event/update-transform ::transform-event)
 (derive :event/transform-delete ::transform-event)
+(derive :event/transform-run-start ::transform-event)
 
 (methodical/defmethod events/publish-event! ::transform-event
   [topic event]

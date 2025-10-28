@@ -137,6 +137,10 @@
               (dissoc :body)
               (update :query #(select-keys % [:database])))}))
 
+(defmethod model-details :model/TransformRun
+  [transform-run _event-type]
+  (select-keys transform-run [:transform_id :status :run_method]))
+
 (defmethod model-details :model/Glossary
   [glossary _event-type]
   (select-keys glossary [:term]))
