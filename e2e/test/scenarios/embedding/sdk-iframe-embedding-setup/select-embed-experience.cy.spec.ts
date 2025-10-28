@@ -1,4 +1,7 @@
-import { ORDERS_COUNT_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_COUNT_QUESTION_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 import {
   assertDashboard,
@@ -187,7 +190,9 @@ H.describeWithSnowplow(suiteTitle, () => {
   });
 
   it("should show a fake loading indicator in embed preview", () => {
-    cy.visit("/embed-js");
+    cy.visit(`/question/${ORDERS_QUESTION_ID}`);
+
+    H.openEmbedJsModal();
 
     cy.get("#iframe-embed-container")
       .findByTestId("preview-loading-indicator", { timeout: 20_000 })

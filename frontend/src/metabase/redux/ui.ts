@@ -1,15 +1,40 @@
-import { createAction, handleActions } from "metabase/lib/redux";
+import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
 
-export const SET_OPEN_MODAL = "metabase/ui/SET_OPEN_MODAL";
-export const CLOSE_MODAL = "metabase/ui/CLOSE_MODAL";
+import type { ModalState } from "metabase-types/store/modal";
 
-export const setOpenModal = createAction(SET_OPEN_MODAL);
-export const closeModal = createAction(CLOSE_MODAL);
+type SetOpenModalPayload = ModalState["id"];
+type SetOpenModalWithPropsPayload = {
+  id: ModalState["id"];
+  props: NonNullable<ModalState["props"]>;
+};
 
-export const modal = handleActions(
-  {
-    [SET_OPEN_MODAL]: (state, { payload }) => payload,
-    [CLOSE_MODAL]: () => null,
+const DEFAULT_MODAL_STATE: ModalState = {
+  id: null,
+  props: null,
+};
+
+const modalSlice = createSlice({
+  name: "modal",
+  initialState: DEFAULT_MODAL_STATE,
+  reducers: {
+    setOpenModal: (state, action: PayloadAction<SetOpenModalPayload>) => {
+      state.id = action.payload;
+    },
+    setOpenModalWithProps: (
+      state,
+      action: PayloadAction<SetOpenModalWithPropsPayload>,
+    ) => {
+      state.id = action.payload.id;
+      state.props = action.payload.props;
+    },
+    closeModal: (state) => {
+      state.id = null;
+      state.props = null;
+    },
   },
-  null,
-);
+});
+
+export const modal = modalSlice.reducer;
+
+export const { setOpenModal, setOpenModalWithProps, closeModal } =
+  modalSlice.actions;

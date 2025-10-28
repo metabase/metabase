@@ -18,7 +18,7 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import { SdkIframeEmbedSetup } from "../SdkIframeEmbedSetup";
+import { SdkIframeEmbedSetupModal } from "../SdkIframeEmbedSetupModal";
 
 const mockUseLocation = jest.fn();
 
@@ -50,15 +50,24 @@ export const setup = (options?: {
     search: options?.urlSearchParams || "",
   });
 
-  renderWithProviders(<SdkIframeEmbedSetup />, {
-    storeInitialState: createMockState({
-      settings: createMockSettingsState({
-        "enable-embedding-simple": options?.simpleEmbeddingEnabled ?? false,
-        "jwt-enabled": options?.jwtReady ?? false,
-        "jwt-configured": options?.jwtReady ?? false,
+  renderWithProviders(
+    <SdkIframeEmbedSetupModal
+      opened
+      initialState={{
+        useExistingUserSession: true,
+      }}
+      onClose={jest.fn()}
+    />,
+    {
+      storeInitialState: createMockState({
+        settings: createMockSettingsState({
+          "enable-embedding-simple": options?.simpleEmbeddingEnabled ?? false,
+          "jwt-enabled": options?.jwtReady ?? false,
+          "jwt-configured": options?.jwtReady ?? false,
+        }),
       }),
-    }),
-  });
+    },
+  );
 };
 
 export async function waitForPutRequests() {

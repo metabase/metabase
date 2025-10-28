@@ -1,5 +1,4 @@
 import cx from "classnames";
-import { Link } from "react-router";
 import { match } from "ts-pattern";
 import { c, jt, t } from "ttag";
 
@@ -14,11 +13,14 @@ import { UpsellSdkLink } from "metabase/admin/upsells/UpsellSdkLink";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useSetting, useUrlWithUtm } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
+import { useDispatch } from "metabase/lib/redux";
 import { isEEBuild } from "metabase/lib/utils";
 import {
   PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
   PLUGIN_EMBEDDING_SDK,
+  type SdkIframeEmbedSetupModalProps,
 } from "metabase/plugins";
+import { setOpenModalWithProps } from "metabase/redux/ui";
 import { Box, Button, Group, HoverCard, Icon, Stack, Text } from "metabase/ui";
 
 import { AdminSettingInput } from "../../widgets/AdminSettingInput";
@@ -33,6 +35,7 @@ const utmTags = {
 };
 
 export function EmbeddingSdkSettings() {
+  const dispatch = useDispatch();
   const isEE = isEEBuild();
 
   const isReactSdkEnabled = useSetting("enable-embedding-sdk");
@@ -153,11 +156,24 @@ export function EmbeddingSdkSettings() {
         }
         actionButton={
           isSimpleEmbedFeatureAvailable && (
-            <Link to="/embed-js" className={CS.cursorPointer}>
-              <Button variant="brand" size="sm">
-                {t`New embed`}
-              </Button>
-            </Link>
+            <Button
+              variant="brand"
+              size="sm"
+              onClick={() => {
+                const modalProps: Pick<
+                  SdkIframeEmbedSetupModalProps,
+                  "initialState"
+                > = {
+                  initialState: { useExistingUserSession: true },
+                };
+
+                dispatch(
+                  setOpenModalWithProps({ id: "embed", props: modalProps }),
+                );
+              }}
+            >
+              {t`New embed`}
+            </Button>
           )
         }
         testId="sdk-setting-card"

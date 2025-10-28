@@ -19,7 +19,13 @@ export const getRecentItemCards = () =>
 export const visitNewEmbedPage = () => {
   cy.intercept("GET", "/api/dashboard/*").as("dashboard");
 
-  cy.visit("/embed-js");
+  cy.visit("/admin/embedding");
+
+  cy.findAllByTestId("sdk-setting-card")
+    .first()
+    .within(() => {
+      cy.findByText("New embed").click();
+    });
 
   cy.wait("@dashboard");
 
