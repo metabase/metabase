@@ -620,9 +620,3 @@
          (and (not (contains? matching nil))
               (clojure.core/= (count matching) (count columns))
               (every? #(clojure.core/= (count %) 1) (vals matching))))))
-
-(defn matching-column-by-source-uuid
-  "Find column in `cols`, that corresponds to `col` based on `:lib/source-uuid` equality."
-  [col cols]
-  (let [searched-uuid (:lib/source-uuid col)]
-    (m/find-first (comp #{searched-uuid} :lib/source-uuid) cols)))

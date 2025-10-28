@@ -5425,7 +5425,7 @@
                    :creator_id (mt/user->id :crowberto)} response))))
 
 (deftest param-mapped-SAME-fields-filtered-cards-test
-  (testing "Values for param mapped to _same_ field in _different_ cards containing filters are compued correctly (#41684)"
+  (testing "Values for param mapped to _same_ field in _different_ cards containing filters are computed correctly (#41684)"
     ;; I.e. if there is card without a filter precomputed values
     (let [mp (mt/metadata-provider)
           param-key "p"
@@ -5488,7 +5488,7 @@
                                                                       (:id d) param-key))))))))))
 
 (deftest param-mapped-DIFFERENT-fields-filtered-cards-test
-  (testing "Values for param mapped to different fields in cards containing filters are compued correctly (#41684)"
+  (testing "Values for param mapped to different fields in cards containing filters are computed correctly (#41684)"
     (let [mp (mt/metadata-provider)
           param-key "p"]
       (mt/with-temp

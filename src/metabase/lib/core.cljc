@@ -185,8 +185,7 @@
   pivot-types]
  [lib.equality
   find-column-for-legacy-ref
-  find-matching-column
-  matching-column-by-source-uuid]
+  find-matching-column]
  [lib.expression
   expression
   expressions
@@ -476,7 +475,6 @@
   canonical-stage-index
   clause?
   clause-of-type?
-  drop-limit-clause
   drop-summary-clauses
   fresh-uuids
   mbql-stage?
