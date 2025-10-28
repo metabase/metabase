@@ -1,7 +1,22 @@
 (ns hooks.metabase.api.macros
   (:require
    [clj-kondo.hooks-api :as api]
+   [clojure.string :as str]
    [hooks.common]))
+
+(defn- validate-route! [route]
+  (letfn [(validate-route-string! [route-string]
+            (when (and (api/string-node? route-string)
+                       (str/includes? (api/sexpr route-string) "_"))
+              (api/reg-finding! (assoc (meta route-string)
+                                       :message "REST API routes and query params should use kebab-case, not snake_case"
+                                       :type    :metabase/validate-defendpoint-route-uses-kebab-case))))]
+    (cond
+      (api/string-node? route)
+      (validate-route-string! route)
+      ;; otherwise route is a vector like ["/abc/:d/ :d <regex>]
+      (api/vector-node? route)
+      (validate-route-string! (first (:children route))))))
 
 (defn defendpoint
   [arg]
@@ -28,6 +43,7 @@
 
                                            :else
                                            (recur (conj bindings x) schemas (cons y more)))))]
+              (validate-route! route)
               (-> (api/list-node
                    (list
                     (api/token-node 'do)
@@ -54,3 +70,24 @@
                       body))))
                   (with-meta (meta node)))))]
     (update arg :node update-defendpoint)))
+
+(comment
+  (defn -defendpoint [form]
+    (-> {:node (-> form pr-str api/parse-string)}
+        defendpoint
+        :node
+        api/sexpr))
+
+  (defn x []
+    (-defendpoint '(api.macros/defendpoint :get "/:id/syncable_schemas"
+                     "Returns a list of all syncable schemas found for the database `id`."
+                     [{:keys [id]} :- [:map
+                                       [:id ms/PositiveInt]]]
+                     (let [db (get-database id)]
+                       (api/check-403 (or (:is_attached_dwh db)
+                                          (and (mi/can-write? db)
+                                               (mi/can-read? db))))
+                       (->> db
+                            (driver/syncable-schemas (:engine db))
+                            (vec)
+                            (sort)))))))
