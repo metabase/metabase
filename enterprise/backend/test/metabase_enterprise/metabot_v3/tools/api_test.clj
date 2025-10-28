@@ -1221,7 +1221,7 @@
                                          ;; note: t2 not included because it's a (non-native) MBQL query
                                        (mt/obj->json->obj (select-keys t3 [:id :entity_id :name :description :source]))]
                    :conversation_id conversation-id}
-                  (-> (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-transforms"
+                  (-> (mt/user-http-request :crowberto :post 200 "ee/metabot-tools/get-transforms"
                                             {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
                                             {:conversation_id conversation-id})
                       (update :structured_output (fn [output]
@@ -1255,7 +1255,7 @@
                                         :conversation_id conversation-id}))))
         (testing "With non-existent transform"
           (is (= "Not found."
-                 (mt/user-http-request :rasta :post 404 "ee/metabot-tools/get-transform-details"
+                 (mt/user-http-request :crowberto :post 404 "ee/metabot-tools/get-transform-details"
                                        {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
                                        {:arguments {:transform_id (+ 10000 (:id t2))}
                                         :conversation_id conversation-id}))))
@@ -1264,7 +1264,7 @@
             (testing (:name transform)
               (is (=? {:structured_output (mt/obj->json->obj (select-keys transform [:id :entity_id :name :description :source :target]))
                        :conversation_id conversation-id}
-                      (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-transform-details"
+                      (mt/user-http-request :crowberto :post 200 "ee/metabot-tools/get-transform-details"
                                             {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
                                             {:arguments {:transform_id (:id transform)}
                                              :conversation_id conversation-id}))))))))))
