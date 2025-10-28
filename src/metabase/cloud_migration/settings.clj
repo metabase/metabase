@@ -20,7 +20,7 @@
   []
   (if-some [env-var-value (config/config-bool :mb-store-use-staging)]
     env-var-value
-    config/is-dev?))
+    (or config/is-dev? config/is-e2e?)))
 
 ;;; TODO -- DEFAULT VALUES SHOULD NOT THE VALUE OF ANOTHER SETTING! BECAUSE GETTING SETTING VALUES REQUIRES THE APP DB
 ;;; TO BE SET UP!! AND IT IS NOT SET UP IMMEDIATELY ON LAUNCH!!
