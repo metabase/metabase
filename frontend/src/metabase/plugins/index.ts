@@ -595,6 +595,7 @@ export type SdkIframeEmbedSetupModalProps = {
 export type SdkIframeEmbedSetupModalInitialState = {
   resourceType?: string | null;
   resourceId?: string | number | null;
+  isStatic?: boolean;
   useExistingUserSession?: boolean;
 };
 

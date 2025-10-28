@@ -24,7 +24,7 @@ import {
 const getSettingsToPersist = (
   settings: Partial<SdkIframeEmbedSetupSettings>,
 ) => {
-  return _.pick(settings, ["theme", "useExistingUserSession", "isStatic"]);
+  return _.pick(settings, ["theme"]);
 };
 
 const usePersistedSettings = () => {
@@ -68,6 +68,7 @@ export const useSdkIframeEmbedSettings = ({
         { resourceType: "dashboard", resourceId: P.nonNullable },
         (initialState) =>
           getDefaultSdkIframeEmbedSettings({
+            initialState,
             experience: "dashboard",
             resourceId: initialState.resourceId,
           }),
@@ -76,12 +77,14 @@ export const useSdkIframeEmbedSettings = ({
         { resourceType: "question", resourceId: P.nonNullable },
         (initialState) =>
           getDefaultSdkIframeEmbedSettings({
+            initialState,
             experience: "chart",
             resourceId: initialState.resourceId,
           }),
       )
-      .otherwise(() =>
+      .otherwise((initialState) =>
         getDefaultSdkIframeEmbedSettings({
+          initialState,
           experience: "dashboard",
           resourceId: recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID,
         }),

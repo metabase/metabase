@@ -5,12 +5,8 @@ import { SelectEmbedExperienceStep } from "./components/SelectEmbedExperienceSte
 import { SelectEmbedOptionsStep } from "./components/SelectEmbedOptionsStep";
 import { SelectEmbedResourceStep } from "./components/SelectEmbedResourceStep";
 import type {
-  SdkIframeDashboardEmbedSettings,
   SdkIframeEmbedSetupExperience,
-  SdkIframeEmbedSetupSettings,
-  SdkIframeEmbedSetupStaticEmbeddingSettings,
   SdkIframeEmbedSetupStep,
-  SdkIframeQuestionEmbedSettings,
 } from "./types";
 
 /** The maximum number of recent items to show in the resource selection step. */
@@ -111,21 +107,3 @@ export const SET_INITIAL_PARAMETER_DEBOUNCE_MS = 500;
  * causing unnecessary API calls and potential race condition.
  */
 export const USER_SETTINGS_DEBOUNCE_MS = 800;
-
-export const GET_ENABLE_STATIC_EMBEDDING_SETTINGS: () => SdkIframeEmbedSetupStaticEmbeddingSettings &
-  Pick<SdkIframeEmbedSetupSettings, "useExistingUserSession"> = () => ({
-  isStatic: true,
-  drills: false,
-  useExistingUserSession: false,
-});
-
-export const GET_DISABLE_STATIC_EMBEDDING_SETTINGS: () => SdkIframeEmbedSetupStaticEmbeddingSettings &
-  Pick<SdkIframeEmbedSetupSettings, "useExistingUserSession"> &
-  Pick<
-    SdkIframeDashboardEmbedSettings | SdkIframeQuestionEmbedSettings,
-    "lockedParameters"
-  > = () => ({
-  isStatic: false,
-  useExistingUserSession: false,
-  lockedParameters: [],
-});

@@ -1,11 +1,10 @@
 import { match } from "ts-pattern";
 
-import {
-  GET_DISABLE_STATIC_EMBEDDING_SETTINGS,
-  GET_ENABLE_STATIC_EMBEDDING_SETTINGS,
-} from "metabase-enterprise/embedding_iframe_sdk_setup/constants";
+import { getCommonEmbedSettings } from "metabase-enterprise/embedding_iframe_sdk_setup/utils/get-common-embed-settings";
 
 import type { SdkIframeEmbedSetupSettings } from "../types";
+
+import { getExperienceFromSettings } from "./get-default-sdk-iframe-embed-setting";
 
 export const getAdjustedSdkIframeEmbedSetting = ({
   defaultSettings,
@@ -16,6 +15,8 @@ export const getAdjustedSdkIframeEmbedSetting = ({
   prevSettings: SdkIframeEmbedSetupSettings;
   settings: SdkIframeEmbedSetupSettings;
 }): SdkIframeEmbedSetupSettings => {
+  const experience = getExperienceFromSettings(settings);
+
   return match({ prevSettings, settings })
     .with(
       {
@@ -24,7 +25,13 @@ export const getAdjustedSdkIframeEmbedSetting = ({
       },
       ({ settings }) => ({
         ...settings,
-        ...GET_ENABLE_STATIC_EMBEDDING_SETTINGS(),
+        ...getCommonEmbedSettings({
+          state: {
+            isStatic: settings.isStatic,
+            useExistingUserSession: settings.useExistingUserSession,
+          },
+          experience,
+        }),
       }),
     )
     .with(
@@ -37,7 +44,13 @@ export const getAdjustedSdkIframeEmbedSetting = ({
         drills: "drills" in defaultSettings && defaultSettings.drills,
         isSaveEnabled:
           "isSaveEnabled" in defaultSettings && defaultSettings.isSaveEnabled,
-        ...GET_DISABLE_STATIC_EMBEDDING_SETTINGS(),
+        ...getCommonEmbedSettings({
+          state: {
+            isStatic: settings.isStatic,
+            useExistingUserSession: settings.useExistingUserSession,
+          },
+          experience,
+        }),
         useExistingUserSession: settings.useExistingUserSession,
       }),
     )

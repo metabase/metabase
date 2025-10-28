@@ -22,6 +22,7 @@ import { EnableEmbeddedAnalyticsCard } from "./EnableEmbeddedAnalyticsCard";
 
 export const SelectEmbedExperienceStep = () => {
   const {
+    initialState,
     experience,
     settings,
     replaceSettings,
@@ -57,6 +58,7 @@ export const SelectEmbedExperienceStep = () => {
 
       // these settings are overridden when the embed type changes
       ...getDefaultSdkIframeEmbedSettings({
+        initialState,
         experience,
         resourceId: defaultResourceId,
       }),

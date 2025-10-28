@@ -38,7 +38,13 @@ export const SdkIframeEmbedSetupContent = () => {
   const { currentStep, settings } = useSdkIframeEmbedSetupContext();
 
   const isSimpleEmbeddingEnabled = useSetting("enable-embedding-simple");
+  const isStaticEmbeddingEnabled = useSetting("enable-embedding-static");
+
   const isStaticEmbedding = !!settings.isStatic;
+
+  const isEmbeddingEnabled = isStaticEmbedding
+    ? isSimpleEmbeddingEnabled && isStaticEmbeddingEnabled
+    : isSimpleEmbeddingEnabled;
 
   const { handleNext, handleBack, canGoBack, StepContent } =
     useSdkIframeEmbedNavigation();
@@ -73,7 +79,7 @@ export const SdkIframeEmbedSetupContent = () => {
       <Button
         variant="filled"
         onClick={handleNext}
-        disabled={!isSimpleEmbeddingEnabled}
+        disabled={!isEmbeddingEnabled}
       >
         {t`Next`}
       </Button>
@@ -91,7 +97,7 @@ export const SdkIframeEmbedSetupContent = () => {
             <Button
               variant="default"
               onClick={handleBack}
-              disabled={!canGoBack || !isSimpleEmbeddingEnabled}
+              disabled={!canGoBack || !isEmbeddingEnabled}
             >
               {t`Back`}
             </Button>
@@ -107,7 +113,7 @@ export const SdkIframeEmbedSetupContent = () => {
 
           <SdkIframeStaticEmbeddingStatusBar />
 
-          {isSimpleEmbeddingEnabled || isStaticEmbedding ? (
+          {isEmbeddingEnabled ? (
             <SdkIframeEmbedPreview />
           ) : (
             <Card h="100%">

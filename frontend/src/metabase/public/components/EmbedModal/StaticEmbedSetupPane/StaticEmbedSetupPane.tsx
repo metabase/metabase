@@ -221,7 +221,6 @@ export const StaticEmbedSetupPane = ({
         data-testid="embed-modal-content-status-bar"
       >
         <EmbedModalContentStatusBar
-          display="row"
           resourceType={resourceType}
           isPublished={resource.enable_embedding}
           hasSettingsChanges={hasSettingsChanges}
