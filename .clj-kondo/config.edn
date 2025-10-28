@@ -570,7 +570,6 @@
    metabase.public-sharing.api-test/with-required-param-card!                                                                hooks.common/with-one-binding
    metabase.public-sharing.api-test/with-temp-public-card                                                                    hooks.common/let-one-with-optional-value
    metabase.public-sharing.api-test/with-temp-public-dashboard                                                               hooks.common/let-one-with-optional-value
-   metabase.public-sharing.api-test/with-temp-public-document                                                                hooks.common/let-one-with-optional-value
    metabase.public-sharing.api-test/with-temp-public-dashboard-and-card                                                      hooks.common/with-three-bindings
    metabase.pulse.api.alert-test/with-alert-in-collection!                                                                   hooks.common/with-four-bindings
    metabase.pulse.dashboard-subscription-test/with-link-card-fixture-for-dashboard                                           hooks.common/let-second
