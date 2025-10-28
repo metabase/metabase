@@ -53,7 +53,9 @@
     :python :python
     :query  (if (lib/native-only-query? (:query source))
               :native
-              :mbql)))
+              :mbql)
+    (throw (ex-info (str "Unknown transform source type: " (:type source))
+                    {:source source}))))
 
 (t2/define-before-insert :model/Transform
   [{:keys [source] :as transform}]
