@@ -7,6 +7,7 @@
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.lookup :as lookup]
    [metabase-enterprise.representations.v0.common :as v0-common]
+   [metabase.lib.core :as lib]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -131,6 +132,24 @@
                                                     :source-table node}))))
    query))
 
+(defn ->ref-source-card
+  "Convert source_card from IDs to representation refs for export."
+  [query]
+  (walk/postwalk
+   (fn [node]
+     (cond
+       (not (and (map? node)
+                 (:source-card node)))
+       node
+
+       (number? (:source-card node))
+       (update node :source-card id->card-ref)
+
+       :else
+       (throw (ex-info "Unknown source table type" {:query query
+                                                    :source-table node}))))
+   query))
+
 (defn ->ref-database
   "Convert database from ID to representation ref for export."
   [query]
@@ -173,6 +192,7 @@
   (-> query
       ->ref-database
       ->ref-source-table
+      ->ref-source-card
       ->ref-fields))
 
 (defn import-dataset-query
@@ -199,6 +219,7 @@
       lib_query
       (let [resolved-lib (-> lib_query
                              (replace-source-tables ref-index)
+                             #_(replace-source-cards  ref-index)
                              (replace-fields ref-index))]
         {:lib/type :mbql/query
          :database database-id
@@ -206,19 +227,26 @@
 
       ;; sanity check
       :else
-      (throw (ex-info "Question must have either 'query' or 'mbql_query'"
+      (throw (ex-info "Card must have either 'query' or 'mbql_query' or 'lib_query'"
                       {:representation representation})))))
 
 (defn export-dataset-query
+  "Export a dataset query to representation compatible format. 
+  Will have database (as a ref), query (for native queries) mbql_query for legacy mbql, and lib_query for new mbql."
   [query]
-  (let [query (patch-refs-for-export query)]
-    (cond-> {:database (:database query)}
+  (let [patched-query (patch-refs-for-export query)]
+    (cond-> {:database (:database patched-query)}
 
-      (= :native (:type query))
-      (assoc :query (-> query :native :query))
+      (= :native (:type patched-query))
+      (assoc :query (-> patched-query :native :query))
 
-      (= :query (:type query))
-      (assoc :mbql_query (:query query))
+      (= :query (:type patched-query))
+      (assoc :mbql_query (:query patched-query))
 
-      (= :mbql/query (:lib/type query))
-      (assoc :lib_query (:stages query)))))
+      (and (= :mbql/query (:lib/type query))
+           (lib/native? query))
+      (assoc :query (lib/raw-native-query query))
+
+      (and (= :mbql/query (:lib/type query))
+           (not (lib/native? query)))
+      (assoc :lib_query (:stages patched-query)))))
