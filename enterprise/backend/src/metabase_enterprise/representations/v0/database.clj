@@ -197,9 +197,11 @@
   (when details
     (reduce (fn [m k]
               (if (contains? m k)
-                (assoc m k (-> (format "env:%s_%s" ref (name k))
+                (assoc m k (-> (format "%s_%s" ref (name k))
                                (str/replace #"-" "_")
-                               (u/upper-case-en)))
+                               (u/upper-case-en)
+                               (->> #_env-name
+                                (str "env:"))))
                 m))
             details
             driver.u/default-sensitive-fields)))
