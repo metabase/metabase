@@ -2265,13 +2265,11 @@
             (is (pos? (:id result)))
             (is (= "Personal Document" (:name result)))
             (is (= personal-coll-id (:collection_id result)))
-
             (testing "Document is successfully saved in the database"
               (let [doc (t2/select-one :model/Document :id (:id result))]
                 (is (some? doc))
                 (is (= personal-coll-id (:collection_id doc)))
                 (is (= "Personal Document" (:name doc)))))))
-
         (testing "Admin can also create a document in someone else's personal collection"
           (let [result (mt/user-http-request :crowberto
                                              :post 200 "ee/document/"
@@ -2280,11 +2278,9 @@
                                               :collection_id personal-coll-id})]
             (is (pos? (:id result)))
             (is (= personal-coll-id (:collection_id result)))))
-
         (testing "Other users cannot create documents in someone else's personal collection"
           (mt/user-http-request :lucky
                                 :post 403 "ee/document/"
                                 {:name "Should Fail"
                                  :document (text->prose-mirror-ast "Should not be created")
                                  :collection_id personal-coll-id}))))))
-
