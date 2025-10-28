@@ -16,9 +16,7 @@
                (mut/schemas)
                #?(:clj (malli.time/schemas)))))
 
-(defonce ^:private registry (malli.registry/mutable-registry registry*))
-
-(malli.registry/set-default-registry! registry)
+(defonce registry (malli.registry/mutable-registry registry*))
 
 (defn register!
   "Register a spec with our Malli spec registry."
@@ -100,7 +98,7 @@
   [schema]
   (letfn [(make-validator* []
             (try
-              (mc/validator schema)
+              (mc/validator schema {:registry registry})
               (catch #?(:clj Throwable :cljs :default) e
                 (throw (ex-info (str "Error making validator for " (pr-str schema) ":" (ex-message e))
                                 {:schema schema}
@@ -121,7 +119,7 @@
   (letfn [(make-explainer []
             (try
               (let [validator* (validator schema)
-                    explainer* (mc/explainer schema)]
+                    explainer* (mc/explainer schema {:registry registry})]
                 ;; for valid values, it's significantly faster to just call the validator. Let's optimize for the 99.9%
                 ;; of calls whose values are valid.
                 (fn schema-explainer [value]

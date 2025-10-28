@@ -19,7 +19,7 @@
 (defn coerce
   [schema value]
   (try
-    (m/coerce schema value mt/string-transformer)
+    (m/coerce schema value mt/string-transformer {:registry mr/registry})
     (catch #?(:clj Exception :cljs :default) e
       (let [data (ex-data e)]
         (if (= (:type data) :malli.core/coercion)

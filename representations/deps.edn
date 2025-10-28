@@ -1,7 +1,7 @@
 {;; PLEASE KEEP THESE ORGANIZED ALPHABETICALLY
  ;; AND ADD A COMMENT EXPLAINING THEIR PURPOSE
  :deps
- {metosin/malli        {:mvn/version "0.19.1"} ; Data-driven Schemas for Clojure/Script and babashka
+ {metosin/malli        {:mvn/version "0.19.2"} ; Data-driven Schemas for Clojure/Script and babashka
   net.cgrand/macrovich {:mvn/version "0.2.2"}} ; utils for writing macros for both Clojure & ClojureScript
 
  :paths ["src"]
