@@ -229,9 +229,7 @@
   [_model-name opts]
   {:copy [:name :description :entity_id]
    :skip [:dependency_analysis_version]
-   :transform {:type (serdes/kw)
-               :created_at (serdes/date)
-               :updated_at (serdes/date)
+   :transform {:created_at (serdes/date)
                :source {:export #(update % :query serdes/export-mbql)
                         :import #(update % :query serdes/import-mbql)}
                :target {:export serdes/export-mbql :import serdes/import-mbql}
