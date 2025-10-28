@@ -317,7 +317,7 @@
 (defn- validate-card-in-document
   "Validates that the document and card exist, are not archived, and that the card belongs to the document.
    Also checks that the current user has read access to the document.
-   
+
    Throws a 404 exception via `api/check-404` if any validation fails. Returns card-id on success."
   [document-id card-id]
   (let [document (api/check-404 (t2/select-one :model/Document :id document-id :archived false))]
