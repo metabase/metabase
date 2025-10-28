@@ -59,12 +59,31 @@
       (assoc-in graph [:groups admin-group-id audit-collection-id] :read))))
 
 (mu/defn graph :- PermissionsGraph
-  "Fetch a graph representing the current permissions status for every group and all permissioned collections. This
-  works just like the function of the same name in `metabase.permissions.models.permissions`; see also the documentation
-  for that function.
+  "Fetch a sparse graph representing the current permissions status for groups and collections with permissions.
 
-  The graph is restricted to a given namespace by the optional `collection-namespace` param; by default, `nil`, which
-  restricts it to the 'default' namespace containing normal Card/Dashboard/Pulse Collections.
+  The returned graph is **sparse**: it only includes entries for groups and collections that have explicit
+  permissions (`:read` or `:write`). Groups without any permissions and collections without permissions for a
+  given group are omitted from the graph.
+
+  **Exclusions:**
+  - Personal collections and their descendants are never included
+  - Archived collections are excluded
+  - Trash collections are excluded
+  - Collections from other namespaces are excluded when `collection-namespace` is specified
+
+  **Parameters:**
+  - `collection-namespace` (optional): Restricts the graph to a specific namespace. Default `nil` returns
+    collections in the 'default' namespace (normal Card/Dashboard/Pulse Collections).
+  - `collection-ids` (optional): When provided, restricts the graph to only the specified collection IDs
+  - `group-ids` (optional): When provided, restricts the graph to only the specified permission group IDs
+
+  **Structure:**
+  The graph has the structure:
+  ```clojure
+  {:revision <int>
+   :groups   {<group-id> {<collection-id> <:read|:write>
+                          :root           <:read|:write>}}}
+  ```
 
   Note: All Collections are returned at the same level of the 'graph', regardless of how the Collection hierarchy is
   structured. Collections do not inherit permissions from ancestor Collections in the same way data permissions are
@@ -132,7 +151,7 @@
                              [[:in :pg.id group-ids]]))
               :group-by [:pg.id]}
 
-                ;; Query 2: Regular collection permissions
+             ;; Query 2: Regular collection permissions
              {:select [[:pg.id :group_id]
                        [:c.id :collection_id]
                        [[:max [:case [:= :p.perm_value [:inline "read-and-write"]]
@@ -148,7 +167,8 @@
               :where [:not= :c.id nil]
               :group-by [:pg.id :c.id]}
 
-             ;; Query 3: That wacky Administrators group
+             ;; Query 3: The Administrators group has write access to all collections
+             ;; but does not have any explicit permissions.
              {:select [[(u/the-id (perms-group/admin)) :group_id]
                        [:c.id :collection_id]
                        [[:inline 1] :writable]
@@ -239,6 +259,7 @@
   "Remove any collection IDs from the graph that belong to another namespace from the graph being updated."
   [graph collection-ids namespace]
   (let [other-ns-ids (when (seq collection-ids)
+                       ;; This query is selecting collection-ids that are in namespaces *NOT* the one we are operating on
                        (t2/select-pks-set :model/Collection {:where [:and [:in :id (disj collection-ids :root)]
                                                                      (cond-> [:or [:not= :namespace (some-> namespace name)]]
                                                                        (some? namespace) (into [[:= :namespace nil]]))]}))]
@@ -250,12 +271,30 @@
   namespace). This works just like [[metabase.models.permission/update-data-perms-graph!]], but for Collections;
   refer to that function's extensive documentation to get a sense for how this works.
 
-  Personal collections and their descendants are automatically filtered out from the graph before processing,
-  as they cannot be edited via the graph API.
+  **Automatic Filtering:**
+  The following collection IDs are automatically filtered from `new-graph` before processing:
+  - Personal collections and their descendants (cannot be edited via the graph API)
+  - Collections belonging to namespaces other than `collection-namespace` (prevents cross-namespace edits)
 
-  If there are no changes, returns nil.
-  If there are changes, returns the future that is used to call `fill-revision-details!`.
-  To run this synchronously deref the non-nil return value."
+  This filtering ensures that:
+  1. Attempts to modify personal collection permissions are silently ignored
+  2. Namespace isolation is maintained
+  3. Only valid, permissioned collections are processed
+
+  **Permissions Values:**
+  Each group/collection pair in the graph can have one of three values:
+  - `:write` - Full read and write access
+  - `:read` - Read-only access
+  - `:none` - No access (revokes existing permissions)
+
+  **Return Value:**
+  - Returns `nil` if there are no changes to apply
+  - Returns a `Future` if changes were made (used to populate revision details asynchronously)
+  - To run synchronously, deref the non-nil return value: `@(update-graph! ...)`
+
+  **Revision Tracking:**
+  All changes are tracked in `CollectionPermissionGraphRevision` for auditing purposes. The revision number
+  is checked to prevent concurrent modification conflicts (unless `force?` is true)."
   ([new-graph]
    (update-graph! nil new-graph false))
 
