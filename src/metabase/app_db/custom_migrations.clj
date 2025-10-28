@@ -1796,7 +1796,7 @@
 
 ;; This migration is purely to avoid breaking stats/dev instances that have existing transforms without a `type` field.
 ;; TODO (noahmoss 10/27/25): this should be removed prior to the 57 release.
-(define-migration BackfillTransformType
+(define-migration BackfillTransformSourceType
   ;; Copied logic from metabase-enterprise.transforms.models.transform, aside from query normalization
   (let [parse-transform-source (fn [source-json]
                                  (-> source-json
@@ -1818,4 +1818,4 @@
                              :query  (if (native-only-query? query) "native" "mbql")
                              (throw (ex-info (str "Unable to categorize transform with unknown source type: " source-type)
                                              {:transform-id id :source-type source-type})))]
-        (t2/update! :transform id {:type transform-type})))))
+        (t2/update! :transform id {:source_type transform-type})))))

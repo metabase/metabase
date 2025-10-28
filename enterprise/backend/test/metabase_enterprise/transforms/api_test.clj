@@ -79,7 +79,7 @@
                                                     :target {:type   "table"
                                                              :schema schema
                                                              :name   table-name}})]
-                (is (= "mbql" (:type response))))))
+                (is (= "mbql" (:source_type response))))))
 
           (testing "Native query transforms are detected as :native"
             (with-transform-cleanup! [table-name "native_transform"]
@@ -91,7 +91,7 @@
                                                     :target {:type   "table"
                                                              :schema schema
                                                              :name   table-name}})]
-                (is (= "native" (:type response))))))
+                (is (= "native" (:source_type response))))))
 
           (testing "Python transforms are detected as :python"
             (with-transform-cleanup! [table-name "python_transform"]
@@ -105,7 +105,7 @@
                                                              :schema   schema
                                                              :name     table-name
                                                              :database (mt/id)}})]
-                (is (= "python" (:type response)))))))))))
+                (is (= "python" (:source_type response)))))))))))
 
 (deftest transform-type-updates-test
   (testing "Transform type is automatically updated when source changes"
@@ -123,14 +123,14 @@
                                                  :target {:type   "table"
                                                           :schema schema
                                                           :name   table-name}})]
-              (is (= "native" (:type created)))
+              (is (= "native" (:source_type created)))
 
               (testing "Type automatically changes to mbql when updating to an MBQL query"
                 (let [updated (mt/user-http-request :crowberto :put 200
                                                     (format "ee/transform/%s" (:id created))
                                                     {:source {:type  "query"
                                                               :query mbql-query}})]
-                  (is (= "mbql" (:type updated))))))))))))
+                  (is (= "mbql" (:source_type updated))))))))))))
 
 (deftest create-transform-feature-flag-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)

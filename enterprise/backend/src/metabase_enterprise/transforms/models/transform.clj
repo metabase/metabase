@@ -41,13 +41,13 @@
       mi/json-in))
 
 (t2/deftransforms :model/Transform
-  {:type        mi/transform-keyword
+  {:source_type mi/transform-keyword
    :source      {:out transform-source-out, :in transform-source-in}
    :target      mi/transform-json
    :run_trigger mi/transform-keyword})
 
-(defn- compute-transform-type
-  "Compute the top-level type field for a transform based on its source."
+(defn- compute-transform-source-type
+  "Compute the top-level source_type field for a transform based on its source."
   [source]
   (case (keyword (:type source))
     :python :python
@@ -57,18 +57,18 @@
 
 (t2/define-before-insert :model/Transform
   [{:keys [source] :as transform}]
-  (assoc transform :type (compute-transform-type source)))
+  (assoc transform :source_type (compute-transform-source-type source)))
 
 (t2/define-before-update :model/Transform
   [{:keys [source] :as transform}]
   (if source
-    (assoc transform :type (compute-transform-type source))
+    (assoc transform :source_type (compute-transform-source-type source))
     transform))
 
 (t2/define-after-select :model/Transform
   [{:keys [source] :as transform}]
   (if source
-    (assoc transform :type (compute-transform-type source))
+    (assoc transform :source_type (compute-transform-source-type source))
     transform))
 
 (methodical/defmethod t2/batched-hydrate [:model/TransformRun :transform]
@@ -219,7 +219,7 @@
 (defmethod serdes/make-spec "Transform"
   [_model-name opts]
   {:copy [:name :description :entity_id]
-   :skip [:dependency_analysis_version :type]
+   :skip [:dependency_analysis_version :source_type]
    :transform {:created_at (serdes/date)
                :source {:export #(update % :query serdes/export-mbql)
                         :import #(update % :query serdes/import-mbql)}
@@ -241,10 +241,10 @@
 (defn- maybe-extract-transform-query-text
   "Return the query text (truncated to `max-searchable-value-length`) from transform source; else nil.
   Extracts SQL from query-type transforms and Python code from python-type transforms."
-  [{transform-type :type source :source}]
+  [{transform-source-type :source_type source :source}]
   (let [source-data (transform-source-out source)
-        ;; Use the top-level :type field since it differentiates between MBQL vs native transforms
-        query-text (case (keyword transform-type)
+        ;; Use the top-level :source_type field since it differentiates between MBQL vs native transforms
+        query-text (case (keyword transform-source-type)
                      :native (lib/raw-native-query (:query source-data))
                      :python (:body source-data)
                      nil)]
@@ -271,7 +271,7 @@
                   :updated-at    true
                   :view-count    false
                   :native-query  {:fn maybe-extract-transform-query-text
-                                  :fields [:source :type]}
+                                  :fields [:source :source_type]}
                   :database-id   {:fn extract-transform-db-id
                                   :fields [:source]}}
    :search-terms [:name :description]

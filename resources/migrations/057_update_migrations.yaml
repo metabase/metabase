@@ -2249,13 +2249,13 @@ databaseChangeLog:
   - changeSet:
       id: v57.2025-10-23T19:55:50
       author: noahmoss
-      comment: Add type column to transform table
+      comment: Add source_type column to transform table
       changes:
         - addColumn:
             tableName: transform
             columns:
               - column:
-                  name: type
+                  name: source_type
                   type: varchar(32)
                   remarks: The type of transform ("python", "native", or "mbql")
                   constraints:
@@ -2263,29 +2263,29 @@ databaseChangeLog:
       rollback:
         - dropColumn:
             tableName: transform
-            columnName: type
+            columnName: source_type
 
   - changeSet:
       id: v57.2025-10-23T19:56:00
       author: noahmoss
-      comment: Backfill type column for existing transforms
+      comment: Backfill source_type column for existing transforms
       changes:
         - customChange:
-            class: "metabase.app_db.custom_migrations.BackfillTransformType"
+            class: "metabase.app_db.custom_migrations.BackfillTransformSourceType"
 
   - changeSet:
       id: v57.2025-10-23T19:57:00
       author: noahmoss
-      comment: Make transform.type column NOT NULL
+      comment: Make transform.source_type column NOT NULL
       changes:
         - addNotNullConstraint:
             tableName: transform
-            columnName: type
+            columnName: source_type
             columnDataType: varchar(32)
       rollback:
         - dropNotNullConstraint:
             tableName: transform
-            columnName: type
+            columnName: source_type
             columnDataType: varchar(32)
 
 
