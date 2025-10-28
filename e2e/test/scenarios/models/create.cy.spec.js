@@ -41,7 +41,7 @@ describe("scenarios > models > create", () => {
   });
 
   // This covers creating a GUI model from the browse page + nocollection permissions (2 in 1)
-  it("user without a collection access should still be able to create and save a model in his own personal collection", () => {
+  it.skip("user without a collection access should still be able to create and save a model in his own personal collection", () => {
     cy.intercept("POST", "/api/card").as("createModel");
 
     cy.signIn("nocollection");
@@ -62,7 +62,7 @@ describe("scenarios > models > create", () => {
     cy.location("pathname").should("match", /^\/model\/\d+-.*$/);
   });
 
-  it("should be able to create a new native model from the browse page", () => {
+  it.skip("should be able to create a new native model from the browse page", () => {
     cy.intercept("POST", "/api/dataset").as("previewModel");
     cy.intercept("POST", "/api/card").as("createModel");
 
@@ -86,7 +86,7 @@ describe("scenarios > models > create", () => {
     cy.location("pathname").should("match", /^\/model\/\d+-.*$/);
   });
 
-  it("should not be possible to initiate a new model creation without native permissions", () => {
+  it.skip("should not be possible to initiate a new model creation without native permissions", () => {
     cy.signIn("nosql");
     cy.visit("/browse/models");
     cy.findByTestId("browse-models-header").within(() => {

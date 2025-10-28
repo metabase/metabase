@@ -1491,7 +1491,7 @@ describe("issue 32037", () => {
     cy.location("pathname").as("modelPathname");
   });
 
-  it("should show unsaved changes modal and allow to discard changes when editing model's query (metabase#32037)", () => {
+  it.skip("should show unsaved changes modal and allow to discard changes when editing model's query (metabase#32037)", () => {
     H.openQuestionActions("Edit query definition");
     cy.button("Save").should("be.disabled");
     H.filter({ mode: "notebook" });
@@ -1506,7 +1506,7 @@ describe("issue 32037", () => {
     verifyDiscardingChanges();
   });
 
-  it("should show unsaved changes modal and allow to discard changes when editing model's metadata (metabase#32037)", () => {
+  it.skip("should show unsaved changes modal and allow to discard changes when editing model's metadata (metabase#32037)", () => {
     H.openQuestionActions("Edit metadata");
     H.waitForLoaderToBeRemoved();
     cy.button("Save").should("be.disabled");

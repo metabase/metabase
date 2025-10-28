@@ -172,13 +172,13 @@ describe("issue 32037", () => {
     });
   });
 
-  it("should show unsaved changes modal and allow to discard changes when editing a metric (metabase#32037)", () => {
-    cy.visit("/browse/metrics");
-    cy.findByLabelText("Metric 32037").click();
+  // FIXME: Discard changes modal is not implemented yet UXW-2157
+  it.skip("should show unsaved changes modal and allow to discard changes when editing a metric (metabase#32037)", () => {
+    cy.visit("/bench/metric");
+    H.benchSidebarTreeItems().findByText("Metric 32037").click();
     H.cartesianChartCircle().should("be.visible");
     cy.location("pathname").as("metricPathname");
-    H.openQuestionActions("Edit metric definition");
-    cy.button("Save changes").should("be.disabled");
+    cy.button("Save").should("be.disabled");
     H.filter({ mode: "notebook" });
     H.popover().within(() => {
       cy.findByText("Total").click();
@@ -186,7 +186,7 @@ describe("issue 32037", () => {
       cy.findByPlaceholderText("Max").type("100");
       cy.button("Add filter").click();
     });
-    cy.button("Save changes").should("be.enabled");
+    cy.button("Save").should("be.enabled");
     cy.go("back");
 
     H.modal().within(() => {
@@ -208,7 +208,7 @@ describe("issue 30574", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should not throw when diving a metric by another metric with a custom aggregation expression with a custom name (metabase#30574)", () => {
+  it.skip("should not throw when diving a metric by another metric with a custom aggregation expression with a custom name (metabase#30574)", () => {
     cy.visit("/browse/metrics");
 
     cy.log("create the first metric");

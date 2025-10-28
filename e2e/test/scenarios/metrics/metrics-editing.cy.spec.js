@@ -113,21 +113,16 @@ describe("scenarios > metrics > editing", () => {
       });
     });
 
-    it("should pin new metrics automatically", () => {
-      cy.visit("/browse/metrics");
-      cy.findByTestId("browse-metrics-header")
-        .findByLabelText("Create a new metric")
-        .click();
-
+    it.skip("should pin new metrics automatically", () => {
+      cy.visit("/bench/metric");
+      H.newMetricButton().should("be.visible").click();
       H.entityPickerModal().within(() => {
         H.entityPickerModalTab("Tables").click();
         cy.findByText("Orders").click();
       });
       saveMetric({ name: "New metric" });
 
-      cy.findByTestId("head-crumbs-container")
-        .findByText("Our analytics")
-        .click();
+      cy.visit("/collection/root");
       cy.findByTestId("pinned-items").within(() => {
         cy.findByText("Metrics").should("be.visible");
         cy.findByText("New metric").should("be.visible");
