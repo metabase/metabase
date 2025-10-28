@@ -1,6 +1,6 @@
 import { match } from "ts-pattern";
 
-import { entityPickerModal } from "e2e/support/helpers";
+import { entityPickerModal, modal } from "e2e/support/helpers";
 import type { Dashboard, RecentItem } from "metabase-types/api";
 
 type RecentActivityIntercept = {
@@ -11,7 +11,10 @@ type DashboardIntercept = {
   response: Cypress.Response<Dashboard>;
 };
 
-export const getEmbedSidebar = () => cy.findByRole("complementary");
+export const getEmbedSidebar = () =>
+  modal()
+    .first()
+    .within(() => cy.findByRole("complementary"));
 
 export const getRecentItemCards = () =>
   cy.findAllByTestId("embed-recent-item-card");
