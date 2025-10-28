@@ -98,10 +98,10 @@ export function PythonTransformEditor({
   const handleAcceptProposed =
     proposedSource && onAcceptProposed
       ? () => {
-        setSource(proposedSource);
-        setIsSourceDirty(true);
-        onAcceptProposed(proposedSource);
-      }
+          setSource(proposedSource);
+          setIsSourceDirty(true);
+          onAcceptProposed(proposedSource);
+        }
       : undefined;
 
   const handleCmdEnter = () => {
