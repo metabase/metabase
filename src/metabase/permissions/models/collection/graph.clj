@@ -219,7 +219,7 @@
   (when (seq collection-ids)
     (t2/select-pks-set :model/Collection
                        {:where [:and
-                                [:in :id collection-ids]
+                                [:in :id (disj collection-ids :root)]
                                 [:or [:not= :personal_owner_id nil]
                                  [:exists {:select [1]
                                            :from [[:collection :pc]]
@@ -239,7 +239,7 @@
   "Remove any collection IDs from the graph that belong to another namespace from the graph being updated."
   [graph collection-ids namespace]
   (let [other-ns-ids (when (seq collection-ids)
-                       (t2/select-pks-set :model/Collection {:where [:and [:in :id collection-ids]
+                       (t2/select-pks-set :model/Collection {:where [:and [:in :id (disj collection-ids :root)]
                                                                      (cond-> [:or [:not= :namespace (some-> namespace name)]]
                                                                        (some? namespace) (into [[:= :namespace nil]]))]}))]
     (cond-> graph
