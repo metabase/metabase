@@ -1,17 +1,17 @@
 (ns metabase.xrays.transforms.specs
   (:require
    [malli.core :as mc]
+   [malli.error :as me]
    [malli.transform :as mtx]
    [medley.core :as m]
    ;; legacy usages, do not use legacy MBQL stuff in new code.
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [metabase.util.yaml :as yaml]
-   [metabase.xrays.domain-entities.specs :refer [MBQL]]))
+   [metabase.xrays.domain-entities.specs :as domain-entities.specs :refer [MBQL]]))
 
 (mr/def ::query
   "Schema for MBQL queries as handled by the X-Rays transforms code. (Currently, legacy queries; in the very near future
@@ -40,7 +40,7 @@
 
 (defn- extract-dimensions
   [mbql]
-  (lib.util.match/match (mbql.normalize/normalize mbql) [:dimension dimension & _] dimension))
+  (lib.util.match/match (domain-entities.specs/normalize-mbql-clause mbql) [:dimension dimension & _] dimension))
 
 (def ^:private ^{:arglists '([m])} stringify-keys
   (partial m/map-keys name))
@@ -136,7 +136,14 @@
              (mtx/transformer
               mtx/string-transformer
               mtx/json-transformer
-              (mtx/transformer {:name :transform-spec}))))
+              {:name :transform-spec})
+             #_respond identity
+             (fn raise [{:keys [value explain], :as _error}]
+               (let [humanized (me/humanize explain)]
+                 (throw (ex-info (format "Failed to coerce Transform spec: %s" (pr-str humanized))
+                                 {:original spec
+                                  :coerced  value
+                                  :error    humanized}))))))
 
 (def ^:private transforms-dir "transforms/")
 
