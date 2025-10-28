@@ -873,8 +873,7 @@
            request
            settings
            tiles
-           util
-           enterprise/documents}}
+           util}}
 
   pulse
   {:team "Workflows"
@@ -1898,10 +1897,8 @@
    :api  #{metabase-enterprise.public-sharing.api}
    :uses #{api
            events
-           models
            premium-features
            public-sharing
-           queries
            query-processor
            util}}
 
