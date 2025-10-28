@@ -115,7 +115,7 @@
     [:cat
      [:merge
       ::common/options
-      [:map [:mode {:optional true} ;; no mode should be iso string
+      [:map [:mode {:optional true} ; no mode should be iso string
              (into [:enum {:decode/normalize normalize-datetime-mode}]
                    datetime-string-modes)]]]
      [:schema [:ref ::expression/string]]]

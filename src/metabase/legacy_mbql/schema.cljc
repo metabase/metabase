@@ -791,13 +791,13 @@
 
 (defclause today)
 
-(mr/def ::LiteralDatetimeModeString
+(mr/def ::DatetimeOptionsMode
   (into [:enum {:error/message "datetime mode string", :decode/normalize lib.schema.expression.temporal/normalize-datetime-mode}]
         lib.schema.expression.temporal/datetime-modes))
 
 (mr/def ::DatetimeOptions
   [:map {:decode/normalize lib.schema.common/normalize-map}
-   [:mode {:optional true} [:ref ::LiteralDatetimeModeString]]])
+   [:mode {:optional true} [:ref ::DatetimeOptionsMode]]])
 
 (defclause datetime
   value  :any ;; normally a string, number, or bytes
