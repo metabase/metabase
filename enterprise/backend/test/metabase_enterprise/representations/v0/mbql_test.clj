@@ -1,8 +1,11 @@
 (ns metabase-enterprise.representations.v0.mbql-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.representations.core :as rep]
+   [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.v0.mbql :as v0-mbql]
+   [metabase-enterprise.representations.yaml :as yaml]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
