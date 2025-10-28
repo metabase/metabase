@@ -13,6 +13,7 @@ import type {
   CollectionNode,
   DatabaseNode,
   ExpandedState,
+  FilterState,
   FlatItem,
   ItemType,
   ModelNode,
@@ -384,4 +385,26 @@ export function buildTreeFromSearchResults(
   });
 
   return tree;
+}
+
+export function getFiltersCount(filters: FilterState): number {
+  let count = 0;
+
+  if (filters.visibilityType != null) {
+    ++count;
+  }
+
+  if (filters.dataSource != null) {
+    ++count;
+  }
+
+  if (filters.visibilityType2 != null) {
+    ++count;
+  }
+
+  if (filters.ownerEmail != null || filters.ownerUserId != null) {
+    ++count;
+  }
+
+  return count;
 }

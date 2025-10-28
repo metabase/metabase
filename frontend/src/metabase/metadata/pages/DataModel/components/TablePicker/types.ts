@@ -5,7 +5,10 @@ import type {
   DatabaseId,
   SchemaName,
   Table,
+  TableDataSource,
   TableId,
+  TableVisibilityType2,
+  UserId,
 } from "metabase-types/api";
 
 export type NodeKey = string;
@@ -132,4 +135,14 @@ export type ExpandedState = {
 
 export interface ChangeOptions {
   isAutomatic?: boolean;
+}
+
+export type LimitedVisibilityType = "visible" | "hidden";
+
+export interface FilterState {
+  visibilityType: LimitedVisibilityType | null;
+  visibilityType2: TableVisibilityType2 | null;
+  dataSource: TableDataSource | "unknown" | null;
+  ownerEmail: string | null;
+  ownerUserId: UserId | "unknown" | null;
 }

@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { Select, type SelectProps } from "metabase/ui";
 
-export type LimitedVisibilityType = "visible" | "hidden";
+type LimitedVisibilityType = "visible" | "hidden";
 
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   value: LimitedVisibilityType | null;

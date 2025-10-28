@@ -5,7 +5,6 @@ import { useEditTablesMutation } from "metabase/api";
 import {
   DataSourceInput,
   LayerInput,
-  type LimitedVisibilityType,
   UserInput,
   VisibilityInput,
 } from "metabase/metadata/components";
@@ -19,6 +18,8 @@ import type {
   TableVisibilityType2,
   UserId,
 } from "metabase-types/api";
+
+import type { LimitedVisibilityType } from "../types";
 
 interface Props {
   tables?: Set<TableId>;

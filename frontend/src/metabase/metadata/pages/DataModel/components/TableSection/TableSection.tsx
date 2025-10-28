@@ -12,7 +12,6 @@ import {
   DataSourceInput,
   FieldOrderPicker,
   LayerInput,
-  type LimitedVisibilityType,
   NameDescriptionInput,
   SortableFieldList,
   UserInput,
@@ -42,6 +41,7 @@ import type {
 import type { RouteParams } from "../../types";
 import { getUrl, parseRouteParams } from "../../utils";
 import { ResponsiveButton } from "../ResponsiveButton";
+import type { LimitedVisibilityType } from "../TablePicker/types";
 import { TitledSection } from "../TitledSection";
 
 import { FieldList } from "./FieldList";

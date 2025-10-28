@@ -4,16 +4,18 @@ import { t } from "ttag";
 import {
   DataSourceInput,
   LayerInput,
-  type LimitedVisibilityType,
   UserInput,
   VisibilityInput,
 } from "metabase/metadata/components";
-import { Button, Flex, Stack } from "metabase/ui";
+import { ActionIcon, Button, Group, Icon, Stack, Tooltip } from "metabase/ui";
 import type {
   TableDataSource,
   TableVisibilityType2,
   UserId,
 } from "metabase-types/api";
+
+import type { LimitedVisibilityType } from "../types";
+import { getFiltersCount } from "../utils";
 
 export interface FilterState {
   visibilityType: LimitedVisibilityType | null;
@@ -31,6 +33,17 @@ interface Props {
 
 export function FilterPopover({ filters, onClose, onSubmit }: Props) {
   const [form, setForm] = useState(filters);
+  const filtersCount = getFiltersCount(form);
+
+  const handleReset = () => {
+    onSubmit({
+      dataSource: null,
+      ownerEmail: null,
+      ownerUserId: null,
+      visibilityType: null,
+      visibilityType2: null,
+    });
+  };
 
   return (
     <form
@@ -78,15 +91,23 @@ export function FilterPopover({ filters, onClose, onSubmit }: Props) {
           }}
         />
 
-        <Flex justify="flex-end" gap="sm">
-          <Button variant="subtle" onClick={onClose}>
-            {t`Cancel`}
-          </Button>
+        <Group justify="space-between" wrap="nowrap">
+          <Tooltip label={t`Reset filters`}>
+            <ActionIcon disabled={filtersCount === 0} onClick={handleReset}>
+              <Icon name="revert" />
+            </ActionIcon>
+          </Tooltip>
 
-          <Button variant="primary" type="submit">
-            {t`Apply`}
-          </Button>
-        </Flex>
+          <Group gap="sm" wrap="nowrap">
+            <Button variant="subtle" onClick={onClose}>
+              {t`Cancel`}
+            </Button>
+
+            <Button variant="primary" type="submit">
+              {t`Apply`}
+            </Button>
+          </Group>
+        </Group>
       </Stack>
     </form>
   );
