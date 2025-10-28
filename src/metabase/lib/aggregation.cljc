@@ -1,5 +1,5 @@
 (ns metabase.lib.aggregation
-  (:refer-clojure :exclude [count distinct max min var select-keys mapv])
+  (:refer-clojure :exclude [count distinct max min var select-keys mapv #?(:clj doseq) #?(:clj for)])
   (:require
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
@@ -10,6 +10,7 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
+   [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -21,7 +22,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [select-keys mapv]]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [select-keys mapv #?(:clj doseq) #?(:clj for)]]))
 
 (mu/defn column-metadata->aggregation-ref :- :mbql.clause/aggregation
   "Given `:metadata/column` column metadata for an aggregation, construct an `:aggregation` reference."
@@ -283,12 +285,12 @@
   [aggregation-clause]
   aggregation-clause)
 
-(def ^:private Aggregable
+(mr/def ::aggregable
   "Schema for something you can pass to [[aggregate]] to add to a query as an aggregation."
   [:or
-   ::lib.schema.aggregation/aggregation
-   ::lib.schema.common/external-op
-   ::lib.schema.metadata/metric])
+   [:ref ::lib.schema.aggregation/aggregation]
+   [:ref ::lib.schema.common/external-op]
+   [:ref ::lib.schema.metadata/metric]])
 
 (mu/defn aggregate :- ::lib.schema/query
   "Adds an aggregation to query."
@@ -297,7 +299,7 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    aggregable :- Aggregable]
+    aggregable :- ::aggregable]
    ;; if this is a Metric metadata, convert it to `:metric` MBQL clause before adding.
    (if (= (lib.dispatch/dispatch-value aggregable) :metadata/metric)
      (recur query stage-number (lib.ref/ref aggregable))
@@ -481,3 +483,16 @@
   [query stage-number ag-ref]
   (let [expression (resolve-aggregation query stage-number ag-ref)]
     (lib.metadata.calculation/type-of query stage-number expression)))
+
+(mu/defn remove-all-aggregations :- ::lib.schema/query
+  "Remove all aggregations from a query stage."
+  ([query]
+   (remove-all-aggregations query -1))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int]
+   (reduce
+    (fn [query ag]
+      (lib.remove-replace/remove-clause query stage-number ag))
+    query
+    (aggregations query stage-number))))

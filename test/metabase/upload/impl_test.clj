@@ -1313,7 +1313,7 @@
         (mt/with-non-admin-groups-no-root-collection-perms
           (is (thrown-with-msg?
                java.lang.Exception
-               #"^You do not have curate permissions for this Collection\.$"
+               #"^You don't have permissions to do that\.$"
                (do-with-uploaded-example-csv!
                 {:user-id (mt/user->id :lucky) :schema-name "public", :table-prefix "uploaded_magic_"}
                 identity)))))
@@ -2583,9 +2583,9 @@
 (defmethod driver/column-name-length-limit ::short-column-test-driver [_] 10)
 
 (deftest unique-long-column-names-test
-  (let [original ["αbcdεf_αbcdεf"     "αbcdεfg_αbcdεf"   "αbc_2_etc_αbcdεf" "αbc_3_xyz_αbcdεf"]
-        expected [:%ce%b1bcd  :%_a2ba0330 :%ce%b1bc_2 :%ce%b1bc_3]
-        displays ["αbcdεf" "αbcdεfg" "αbc 2 etc" "αbc 3 xyz"]]
+  (let [original ["αbcdεf_αbcdεf" "αbcdεfg_αbcdεf" "αbc_2_etc_αbcdεf" "αbc_3_xyz_αbcdεf"]
+        expected [:%ce%b1bcd      :%_a2ba0330      :%ce%b1bc_2        :%ce%b1bc_3]
+        displays ["αbcdεf"        "αbcdεfg"        "αbc 2 etc"        "αbc 3 xyz"]]
     (is (= expected (#'upload/derive-column-names ::short-column-test-driver original)))
     (mt/with-dynamic-fn-redefs [upload/max-bytes (constantly 10)]
       (is (= displays

@@ -1,11 +1,11 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
 import { createMockMetadata } from "__support__/metadata";
 import {
   setupCardQueryMetadataEndpoint,
   setupCardsEndpoints,
+  setupCardsUsingModelEndpoint,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
@@ -152,13 +152,7 @@ async function setup({
   );
 
   setupDatabasesEndpoints(databases);
-
-  fetchMock.get({
-    url: "path:/api/card",
-    query: { f: "using_model", model_id: card.id },
-    response: usedBy,
-  });
-
+  setupCardsUsingModelEndpoint(card, usedBy);
   setupCardsEndpoints([card]);
   setupCardQueryMetadataEndpoint(
     card,

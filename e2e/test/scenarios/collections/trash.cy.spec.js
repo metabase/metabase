@@ -4,6 +4,7 @@ const { H } = cy;
 import {
   FIRST_COLLECTION_ID,
   ORDERS_COUNT_QUESTION_ID,
+  ORDERS_MODEL_ID,
   ORDERS_QUESTION_ID,
   READ_ONLY_PERSONAL_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
@@ -47,14 +48,12 @@ describe("scenarios > collections > trash", () => {
       cy.findByText("Deleted at");
     });
 
-    cy.log(
-      "trashed items in collection should not have option to move to trash",
-    );
+    cy.log("trashed items in collection should have option to move to trash");
     toggleEllipsisMenuFor("Collection A");
     H.popover().within(() => {
       cy.findByText("Move to trash").should("not.exist");
       cy.findByText("Restore").should("exist");
-      cy.findByText("Delete permanently").should("not.exist");
+      cy.findByText("Delete permanently").should("exist");
     });
     toggleEllipsisMenuFor("Collection A");
 
@@ -431,15 +430,15 @@ describe("scenarios > collections > trash", () => {
 
     cy.log("can delete from trash list");
     toggleEllipsisMenuFor("Collection A");
-    // FUTURE: replace following two lines with commented out code when collections can be deleted
-    H.popover().findByText("Delete permanently").should("not.exist");
-    toggleEllipsisMenuFor("Collection A");
-    // popover().findByText("Delete permanently").click();
-    // modal().findByText("Delete Collection A permanently?").should("exist");
-    // modal().findByText("Delete permanently").click();
-    // collectionTable().within(() => {
-    //   cy.findByText("Collection A").should("not.exist");
-    // });
+    H.popover()
+      .should("contain", "Delete permanently")
+      .findByText("Delete permanently")
+      .click();
+    H.modal().findByText("Delete Collection A permanently?").should("exist");
+    H.modal().findByText("Delete permanently").click();
+    collectionTable().within(() => {
+      cy.findByText("Collection A").should("not.exist");
+    });
 
     toggleEllipsisMenuFor("Dashboard A");
     H.popover()
@@ -468,14 +467,12 @@ describe("scenarios > collections > trash", () => {
       cy.findByText("Collection B").click();
     });
     // FUTURE: replace following two lines with commented out code when collections can be deleted
-    archiveBanner().findByText("Delete permanently").should("not.exist");
-    cy.visit("/trash");
-    // archiveBanner().findByText("Delete permanently").click();
-    // modal().findByText("Delete Collection B permanently?").should("exist");
-    // modal().findByText("Delete permanently").click();
-    // collectionTable().within(() => {
-    //   cy.findByText("Collection B").should("not.exist");
-    // });
+    archiveBanner().findByText("Delete permanently").click();
+    H.modal().findByText("Delete Collection B permanently?").should("exist");
+    H.modal().findByText("Delete permanently").click();
+    collectionTable().within(() => {
+      cy.findByText("Collection B").should("not.exist");
+    });
 
     collectionTable().within(() => {
       cy.findByText("Dashboard B").click();
@@ -864,6 +861,47 @@ describe("scenarios > collections > trash", () => {
       .and("contain", "Restore")
       .and("contain", "Delete permanently");
   });
+
+  it("should not deselect items when aborting operations (metabase#44911)", () => {
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { archived: true });
+    cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
+      archived: true,
+    });
+    cy.request("PUT", `/api/card/${ORDERS_MODEL_ID}`, { archived: true });
+    cy.visit("/trash");
+
+    selectItem("Orders");
+    selectItem("Orders Model");
+
+    cy.findByTestId("toast-card")
+      .should("be.visible")
+      .findByText("Delete permanently")
+      .click();
+
+    H.modal().findByText("Cancel").click();
+
+    assertChecked("Orders");
+    assertChecked("Orders Model");
+
+    cy.findByTestId("toast-card")
+      .should("be.visible")
+      .findByText("Move")
+      .click();
+
+    H.entityPickerModal().findByText("Cancel").click();
+
+    assertChecked("Orders");
+    assertChecked("Orders Model");
+
+    cy.log("Going through with action should reset selection");
+    cy.findByTestId("toast-card")
+      .should("be.visible")
+      .findByText("Delete permanently")
+      .click();
+
+    H.modal().findByText("Delete permanently").click();
+    assertChecked("Orders, Count", false);
+  });
 });
 
 function toggleEllipsisMenuFor(item) {
@@ -937,9 +975,14 @@ function ensureCanRestoreFromPage(name) {
 }
 
 function selectItem(name) {
+  cy.findByText(name).closest("tr").findByRole("checkbox").check();
+}
+
+function assertChecked(name, checked = true) {
   cy.findByText(name)
     .closest("tr")
-    .within(() => cy.findByRole("checkbox").click());
+    .findByRole("checkbox")
+    .should(checked ? "have.attr" : "not.have.attr", "checked");
 }
 
 function assertTrashSelectedInNavigationSidebar() {

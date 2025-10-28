@@ -13,7 +13,9 @@
   - `[:month-full-name]` gives `\"April\"`
   - `[:month-name]` gives `\"Apr\"`
   - `[:month-dd]` gives `\"04\"`"
+  #?(:clj (:refer-clojure :exclude [for]))
   (:require
+   #?(:clj [metabase.util.performance :refer [for]])
    [clojure.string :as str])
   #?(:clj (:import
            java.time.format.DateTimeFormatter)))

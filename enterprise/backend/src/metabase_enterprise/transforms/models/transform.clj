@@ -2,12 +2,16 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
+   [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.search.core :as search.core]
+   [metabase.search.ingestion :as search]
+   [metabase.search.spec :as search.spec]
    [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -18,6 +22,11 @@
 
 (doseq [trait [:metabase/model :hook/entity-id :hook/timestamped?]]
   (derive :model/Transform trait))
+
+;; Only superusers can access transforms
+(doto :model/Transform
+  (derive ::mi/read-policy.superuser)
+  (derive ::mi/write-policy.superuser))
 
 (defn- transform-source-out [m]
   (-> m
@@ -83,6 +92,7 @@
 
 (t2/define-before-delete :model/Transform [transform]
   (events/publish-event! :event/delete-transform {:id (:id transform)})
+  (search.core/delete! :model/Transform [(str (:id transform))])
   transform)
 
 (defn update-transform-tags!
@@ -135,6 +145,21 @@
                          :tag_id       tag-id
                          :position     (get new-positions tag-id)})))))))
 
+;;; ----------------------------------------------- Search ----------------------------------------------------------
+
+(search.spec/define-spec "transform"
+  {:model :model/Transform
+   :attrs {:archived      false
+           :collection-id false
+           :creator-id    false
+           :database-id   false
+           :view-count    false
+           :created-at    true
+           :updated-at    true}
+   :search-terms [:name]
+   :render-terms {:transform-name :name
+                  :transform-id :id}})
+
 ;;; ------------------------------------------------- Serialization ------------------------------------------------
 
 (mi/define-batched-hydration-method tags
@@ -149,6 +174,32 @@
                                              {:order-by [[:position :asc]]}))]
       (for [transform transforms]
         (assoc transform :tags (get tag-mappings (u/the-id transform) []))))))
+
+(mi/define-batched-hydration-method table-with-db-and-fields
+  :table-with-db-and-fields
+  "Fetch tables with their fields. The tables show up under the `:table` property."
+  [transforms]
+  (let [table-key-fn (fn [{:keys [target] :as transform}]
+                       [(transforms.i/target-db-id transform) (:schema target) (:name target)])
+        table-keys (into #{} (map table-key-fn) transforms)
+        table-keys-with-schema (filter second table-keys)
+        table-keys-without-schema (keep (fn [[db-id schema table-name]]
+                                          (when-not schema
+                                            [db-id table-name]))
+                                        table-keys)
+        tables (when (or (seq table-keys-with-schema) (seq table-keys-without-schema))
+                 (-> (t2/select :model/Table
+                                {:where [:or
+                                         (when (seq table-keys-with-schema)
+                                           [:in [:composite :db_id :schema :name] table-keys-with-schema])
+                                         (when (seq table-keys-without-schema)
+                                           [:and
+                                            [:= :schema nil]
+                                            [:in [:composite :db_id :name] table-keys-without-schema]])]})
+                     (t2/hydrate :db :fields)))
+        table-keys->table (m/index-by (juxt :db_id :schema :name) tables)]
+    (for [transform transforms]
+      (assoc transform :table (get table-keys->table (table-key-fn transform))))))
 
 (defmethod serdes/hash-fields :model/Transform
   [_transform]
@@ -176,3 +227,39 @@
 (defmethod serdes/storage-path "Transform" [transform _ctx]
   (let [{:keys [id label]} (-> transform serdes/path last)]
     ["transforms" (serdes/storage-leaf-file-name id label)]))
+
+(defn- maybe-extract-transform-query-text
+  "Return the query text (truncated to `max-searchable-value-length`) from transform source; else nil.
+  Extracts SQL from query-type transforms and Python code from python-type transforms."
+  [{:keys [source]}]
+  (let [source-data (transform-source-out source)
+        query-text (case (:type source-data)
+                     :query (lib/raw-native-query (:query source-data))
+                     :python (:body source-data)
+                     nil)]
+    (when query-text
+      (subs query-text 0 (min (count query-text) search/max-searchable-value-length)))))
+
+(defn- extract-transform-db-id
+  "Return the database ID from transform source; else nil."
+  [{:keys [source]}]
+  (let [parsed-source ((:out mi/transform-json) source)]
+    (case (:type parsed-source)
+      "query" (get-in parsed-source [:query :database])
+      "python" (parsed-source :source-database)
+      nil)))
+
+;;; ------------------------------------------------- Search ---------------------------------------------------
+
+(search.spec/define-spec "transform"
+  {:model        :model/Transform
+   :attrs        {:archived      false
+                  :collection-id false
+                  :created-at    true
+                  :updated-at    true
+                  :native-query  {:fn maybe-extract-transform-query-text
+                                  :fields [:source]}
+                  :database-id   {:fn extract-transform-db-id
+                                  :fields [:source]}}
+   :search-terms [:name :description]
+   :render-terms {:description true}})
