@@ -33,7 +33,7 @@
 (def ^:private PermissionsGraph
   [:map {:closed true}
    [:revision {:optional true} [:maybe :int]]
-   [:groups [:map-of ms/PositiveInt GroupPermissionsGraph]]])
+   [:groups   [:map-of ms/PositiveInt GroupPermissionsGraph]]])
 
 ;;; -------------------------------------------------- Fetch Graph ---------------------------------------------------
 ;;;
@@ -79,7 +79,7 @@
 
   **Structure:**
   The graph has the structure:
-  ```clojure
+  ```
   {:revision <int>
    :groups   {<group-id> {<collection-id> <:read|:write>
                           :root           <:read|:write>}}}
@@ -99,7 +99,7 @@
   ([collection-namespace :- [:maybe ms/KeywordOrString]
     collection-ids :- [:maybe [:set [:or [:= :root] ms/PositiveInt]]]
     group-ids :- [:maybe [:set ms/PositiveInt]]]
-   (let [include-root-sql-value (or (nil? collection-ids) (contains? collection-ids :root))
+   (let [include-root? (or (nil? collection-ids) (contains? collection-ids :root))
          root-object (str "/collection/"
                           (when collection-namespace
                             (str "namespace/" (name collection-namespace) "/"))
@@ -121,7 +121,7 @@
                                              :where [:and
                                                      [:not= :pc.personal_owner_id nil]
                                                      [:like :collection.location
-                                                      [:raw "CONCAT('/', pc.id, '/%')"]]]}]]]}]
+                                                      [:concat "/" :pc.id "/%"]]]}]]]}]
                    [:relevant_permissions
                     {:select [:group_id :collection_id :perm_value]
                      :from [:permissions]
@@ -146,7 +146,7 @@
                                         [:= :p.group_id :pg.id]
                                         [:or [:= :p.object [:inline root-object]]
                                          [:= :p.object [:inline (str root-object "read/")]]]]]
-              :where (into [:and [:inline include-root-sql-value]]
+              :where (into [:and [:inline include-root?]]
                            (when (seq group-ids)
                              [[:in :pg.id group-ids]]))
               :group-by [:pg.id]}
@@ -244,7 +244,7 @@
                                            :where [:and
                                                    [:not= :pc.personal_owner_id nil]
                                                    [:like :collection.location
-                                                    [:raw "CONCAT('/', pc.id, '/%')"]]]}]]]})))
+                                                    [:concat "/" :pc.id "/%"]]]}]]]})))
 
 (defn- remove-personal-collections-from-graph
   "Remove any personal collection IDs from the graph. Personal collections cannot be edited via the graph API."
