@@ -21,7 +21,7 @@
         md2 (#'v0-document/edn->markdown edn)
         pm2 (#'v0-document/markdown->yaml md2)
         edn2 (rep-yaml/parse-string pm2)]
-    (is (= md (str/trim md2)))
+    (is (= md md2))
     (is (= edn edn2))))
 
 (deftest export-document-test

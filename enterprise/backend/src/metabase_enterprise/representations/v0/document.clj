@@ -1,8 +1,8 @@
 (ns metabase-enterprise.representations.v0.document
   (:require
-   [cheshire.core :as cheshire]
    [clojure.java.io :as io]
    [clojure.java.shell :as sh]
+   [clojure.string :as str]
    [clojure.walk :as walk]
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
@@ -99,7 +99,7 @@
                       {:md md
                        :stderr (:err result)
                        :exit-code (:exit result)})))
-    (:out result)))
+    (str/trim (:out result))))
 
 (defmethod import/yaml->toucan [:v0 :document]
   [{document-name :name
@@ -160,7 +160,7 @@
                       {:edn edn
                        :stderr (:err result)
                        :exit-code (:exit result)})))
-    (:out result)))
+    (str/trim (:out result))))
 
 (comment
   (edn->markdown {:type "doc"
