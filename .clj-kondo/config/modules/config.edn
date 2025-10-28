@@ -1904,6 +1904,7 @@
            settings
            startup
            task
+           task-history
            util
            enterprise/serialization}}
 
