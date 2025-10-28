@@ -1,7 +1,10 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 
 import { BenchLayout } from "metabase/bench/components/BenchLayout";
 import * as Urls from "metabase/lib/urls";
+
+import { TransformMoreMenuModal } from "../../components/TransformMoreMenu";
+import type { TransformMoreMenuModalState } from "../../types";
 
 import { TransformList } from "./TransformList";
 
@@ -16,13 +19,22 @@ type TransformLayoutProps = {
 
 export function TransformLayout({ params, children }: TransformLayoutProps) {
   const selectedId = Urls.extractEntityId(params.transformId);
+  const [modal, setModal] = useState<TransformMoreMenuModalState>();
 
   return (
-    <BenchLayout
-      nav={<TransformList selectedId={selectedId} />}
-      name="transform"
-    >
-      {children}
-    </BenchLayout>
+    <>
+      <BenchLayout
+        nav={<TransformList selectedId={selectedId} onOpenModal={setModal} />}
+        name="transform"
+      >
+        {children}
+      </BenchLayout>
+      {modal != null && (
+        <TransformMoreMenuModal
+          modal={modal}
+          onClose={() => setModal(undefined)}
+        />
+      )}
+    </>
   );
 }

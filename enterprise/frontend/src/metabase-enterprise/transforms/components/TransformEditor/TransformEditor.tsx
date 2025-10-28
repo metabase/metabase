@@ -10,11 +10,11 @@ import {
 } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Center, Flex } from "metabase/ui";
-import { TransformMoreMenu } from "metabase-enterprise/transforms/components/TransformMoreMenu";
 import * as Lib from "metabase-lib";
 import type { QueryTransformSource, TransformId } from "metabase-types/api";
 
-import { TransformHeaderView } from "../TransformHeader";
+import { TransformHeader } from "../TransformHeader";
+import { TransformMoreMenuWithModal } from "../TransformMoreMenu";
 
 import { EditorActions } from "./EditorActions";
 import { shouldDisableDatabase, shouldDisableItem } from "./utils";
@@ -85,7 +85,7 @@ export function TransformEditor({
 
   return (
     <Flex direction="column" h="100%">
-      <TransformHeaderView
+      <TransformHeader
         id={id}
         name={name}
         actions={
@@ -97,7 +97,7 @@ export function TransformEditor({
               onCancel={onCancel}
             />
           ) : id != null ? (
-            <TransformMoreMenu transformId={id} />
+            <TransformMoreMenuWithModal transformId={id} />
           ) : null
         }
         onNameChange={onNameChange}

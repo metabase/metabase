@@ -1,7 +1,10 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 
 import { BenchLayout } from "metabase/bench/components/BenchLayout";
 import * as Urls from "metabase/lib/urls";
+
+import { JobMoreMenuModal } from "../../components/JobMoreMenu";
+import type { JobMoreMenuModalState } from "../../types";
 
 import { JobList } from "./JobList";
 
@@ -15,11 +18,20 @@ type JobLayoutProps = {
 };
 
 export function JobLayout({ params, children }: JobLayoutProps) {
-  const selectedId = Urls.extractEntityId(params.jobId);
+  const selectedJobId = Urls.extractEntityId(params.jobId);
+  const [modal, setModal] = useState<JobMoreMenuModalState>();
 
   return (
-    <BenchLayout nav={<JobList selectedId={selectedId} />} name="job">
-      {children}
-    </BenchLayout>
+    <>
+      <BenchLayout
+        nav={<JobList selectedId={selectedJobId} onOpenModal={setModal} />}
+        name="job"
+      >
+        {children}
+      </BenchLayout>
+      {modal != null && (
+        <JobMoreMenuModal modal={modal} onClose={() => setModal(undefined)} />
+      )}
+    </>
   );
 }

@@ -2,8 +2,8 @@ import { useHotkeys } from "@mantine/hooks";
 
 import type { PythonTransformEditorProps } from "metabase/plugins";
 import { Flex, Stack } from "metabase/ui";
-import { TransformHeaderView } from "metabase-enterprise/transforms/components/TransformHeader";
-import { TransformMoreMenu } from "metabase-enterprise/transforms/components/TransformMoreMenu";
+import { TransformHeader } from "metabase-enterprise/transforms/components/TransformHeader";
+import { TransformMoreMenuWithModal } from "metabase-enterprise/transforms/components/TransformMoreMenu";
 import type { PythonTransformTableAliases, Table } from "metabase-types/api";
 
 import { PythonDataPicker } from "./PythonDataPicker";
@@ -85,7 +85,7 @@ export function PythonTransformEditor({
       data-testid="transform-query-editor"
       gap={0}
     >
-      <TransformHeaderView
+      <TransformHeader
         id={id}
         name={name}
         actions={
@@ -97,7 +97,7 @@ export function PythonTransformEditor({
               onCancel={onCancel}
             />
           ) : id != null ? (
-            <TransformMoreMenu transformId={id} />
+            <TransformMoreMenuWithModal transformId={id} />
           ) : null
         }
         onNameChange={onNameChange}

@@ -9,55 +9,24 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Stack } from "metabase/ui";
 import { useUpdateTransformMutation } from "metabase-enterprise/api";
-import { TransformMoreMenu } from "metabase-enterprise/transforms/components/TransformMoreMenu";
 import type { Transform, TransformId } from "metabase-types/api";
 
 import { NAME_MAX_LENGTH } from "../../constants";
+import { TransformMoreMenuWithModal } from "../TransformMoreMenu";
 
 type TransformHeaderProps = {
-  transform: Transform;
-};
-
-export function TransformHeader({ transform }: TransformHeaderProps) {
-  const [updateTransform] = useUpdateTransformMutation();
-  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
-
-  const handleNameChange = async (newName: string) => {
-    const { error } = await updateTransform({
-      id: transform.id,
-      name: newName,
-    });
-
-    if (error) {
-      sendErrorToast(t`Failed to update transform name`);
-    } else {
-      sendSuccessToast(t`Transform name updated`);
-    }
-  };
-
-  return (
-    <TransformHeaderView
-      id={transform.id}
-      name={transform.name}
-      actions={<TransformMoreMenu transformId={transform.id} />}
-      onNameChange={handleNameChange}
-    />
-  );
-}
-
-type TransformHeaderViewProps = {
   id?: TransformId;
   name: string;
   actions?: ReactNode;
   onNameChange: (name: string) => void;
 };
 
-export function TransformHeaderView({
+export function TransformHeader({
   id,
   name,
   actions,
   onNameChange,
-}: TransformHeaderViewProps) {
+}: TransformHeaderProps) {
   return (
     <BenchPaneHeader
       title={
@@ -109,6 +78,39 @@ function TransformTabs({ id }: TransformTabsProps) {
             ]
           : []),
       ]}
+    />
+  );
+}
+
+type TransformHeaderWithActionsProps = {
+  transform: Transform;
+};
+
+export function TransformHeaderWithActions({
+  transform,
+}: TransformHeaderWithActionsProps) {
+  const [updateTransform] = useUpdateTransformMutation();
+  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
+
+  const handleNameChange = async (newName: string) => {
+    const { error } = await updateTransform({
+      id: transform.id,
+      name: newName,
+    });
+
+    if (error) {
+      sendErrorToast(t`Failed to update transform name`);
+    } else {
+      sendSuccessToast(t`Transform name updated`);
+    }
+  };
+
+  return (
+    <TransformHeader
+      id={transform.id}
+      name={transform.name}
+      actions={<TransformMoreMenuWithModal transformId={transform.id} />}
+      onNameChange={handleNameChange}
     />
   );
 }

@@ -14,15 +14,17 @@ import { Box, Text } from "metabase/ui";
 import { useListTransformJobsQuery } from "metabase-enterprise/api";
 import type { TransformJob, TransformJobId } from "metabase-types/api";
 
+import { JobMoreMenu } from "../../../components/JobMoreMenu";
 import { ListEmptyState } from "../../../components/ListEmptyState";
+import type { JobMoreMenuModalState } from "../../../types";
 import { parseTimestampWithTimezone } from "../../../utils";
 
 type JobListProps = {
-  selectedId?: TransformJobId;
-  onCollapse?: () => void;
+  selectedId: TransformJobId | undefined;
+  onOpenModal: (modal: JobMoreMenuModalState) => void;
 };
 
-export function JobList({ selectedId, onCollapse }: JobListProps) {
+export function JobList({ selectedId, onOpenModal }: JobListProps) {
   const systemTimezone = useSetting("system-timezone");
   const { data: jobs = [], isLoading, error } = useListTransformJobsQuery({});
   const dispatch = useDispatch();
@@ -39,7 +41,6 @@ export function JobList({ selectedId, onCollapse }: JobListProps) {
           onClick={() => dispatch(push(Urls.newTransformJob()))}
         />
       }
-      onCollapse={onCollapse}
       listItems={
         jobs.length === 0 ? (
           <ListEmptyState label={t`No jobs yet`} />
@@ -51,6 +52,7 @@ export function JobList({ selectedId, onCollapse }: JobListProps) {
                 job={job}
                 systemTimezone={systemTimezone ?? ""}
                 isActive={selectedId === job.id}
+                onOpenModal={onOpenModal}
               />
             ))}
           </Box>
@@ -60,15 +62,19 @@ export function JobList({ selectedId, onCollapse }: JobListProps) {
   );
 }
 
+type JobItemProps = {
+  job: TransformJob;
+  systemTimezone: string;
+  isActive?: boolean;
+  onOpenModal: (modal: JobMoreMenuModalState) => void;
+};
+
 const JobItem = ({
   job,
   systemTimezone,
   isActive,
-}: {
-  job: TransformJob;
-  systemTimezone: string;
-  isActive?: boolean;
-}) => {
+  onOpenModal,
+}: JobItemProps) => {
   const subtitle =
     job.last_run?.start_time &&
     `${job.last_run?.status === "failed" ? t`Failed` : t`Last run`}: ${parseTimestampWithTimezone(
@@ -83,6 +89,7 @@ const JobItem = ({
       subtitle={subtitle}
       href={Urls.transformJob(job.id)}
       isActive={isActive}
+      rightGroup={<JobMoreMenu jobId={job.id} onOpenModal={onOpenModal} />}
     />
   );
 };

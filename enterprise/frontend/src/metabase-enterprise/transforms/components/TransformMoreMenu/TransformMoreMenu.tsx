@@ -8,39 +8,19 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import type { TransformId } from "metabase-types/api";
 
+import type { TransformMoreMenuModalState } from "../../types";
+
 import { DeleteTransformModal } from "./DeleteTransformModal";
-import type { TransformModalType } from "./types";
 
 type TransformMoreMenuProps = {
   transformId: TransformId;
+  onOpenModal: (modal: TransformMoreMenuModalState) => void;
 };
 
-export function TransformMoreMenu({ transformId }: TransformMoreMenuProps) {
-  const [modalType, setModalType] = useState<TransformModalType | null>(null);
-
-  const handleModalClose = () => {
-    setModalType(null);
-  };
-
-  return (
-    <>
-      <TransformMenu onOpenModal={setModalType} />
-      {modalType != null && (
-        <TransformModal
-          transformId={transformId}
-          modalType={modalType}
-          onClose={handleModalClose}
-        />
-      )}
-    </>
-  );
-}
-
-type TransformMenuProps = {
-  onOpenModal: (modalType: TransformModalType) => void;
-};
-
-function TransformMenu({ onOpenModal }: TransformMenuProps) {
+export function TransformMoreMenu({
+  transformId,
+  onOpenModal,
+}: TransformMoreMenuProps) {
   const handleIconClick = (event: MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
@@ -56,7 +36,7 @@ function TransformMenu({ onOpenModal }: TransformMenuProps) {
       <Menu.Dropdown>
         <Menu.Item
           leftSection={<Icon name="trash" />}
-          onClick={() => onOpenModal("delete")}
+          onClick={() => onOpenModal({ transformId, modalType: "delete" })}
         >
           {t`Delete`}
         </Menu.Item>
@@ -65,33 +45,56 @@ function TransformMenu({ onOpenModal }: TransformMenuProps) {
   );
 }
 
-type TransformModalProps = {
-  transformId: TransformId;
-  modalType: TransformModalType;
+type TransformMoreMenuModalProps = {
+  modal: TransformMoreMenuModalState;
   onClose: () => void;
 };
 
-function TransformModal({
-  transformId,
-  modalType,
+export function TransformMoreMenuModal({
+  modal,
   onClose,
-}: TransformModalProps) {
+}: TransformMoreMenuModalProps) {
   const { sendSuccessToast } = useMetadataToasts();
   const dispatch = useDispatch();
 
   const handleDelete = () => {
     sendSuccessToast(t`Transform deleted`);
     dispatch(push(Urls.transformList()));
+    onClose();
   };
 
-  switch (modalType) {
+  switch (modal.modalType) {
     case "delete":
       return (
         <DeleteTransformModal
-          transformId={transformId}
+          transformId={modal.transformId}
           onDelete={handleDelete}
           onClose={onClose}
         />
       );
+    default:
+      return null;
   }
+}
+
+type TransformMoreMenuWithModalProps = {
+  transformId: TransformId;
+};
+
+export function TransformMoreMenuWithModal({
+  transformId,
+}: TransformMoreMenuWithModalProps) {
+  const [modal, setModal] = useState<TransformMoreMenuModalState>();
+
+  return (
+    <>
+      <TransformMoreMenu transformId={transformId} onOpenModal={setModal} />
+      {modal != null && (
+        <TransformMoreMenuModal
+          modal={modal}
+          onClose={() => setModal(undefined)}
+        />
+      )}
+    </>
+  );
 }
