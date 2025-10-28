@@ -67,7 +67,9 @@
 
 (t2/define-after-select :model/Transform
   [{:keys [source] :as transform}]
-  (assoc transform :type (compute-transform-type source)))
+  (if source
+    (assoc transform :type (compute-transform-type source))
+    transform))
 
 (methodical/defmethod t2/batched-hydrate [:model/TransformRun :transform]
   "Add transform to a TransformRun"
