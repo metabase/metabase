@@ -588,7 +588,7 @@ export const PLUGIN_EMBEDDING_IFRAME_SDK = {
 export type SdkIframeEmbedSetupModalProps = {
   opened: boolean;
   onClose: () => void;
-  initialState: SdkIframeEmbedSetupModalInitialState;
+  initialState?: SdkIframeEmbedSetupModalInitialState;
 };
 
 export type SdkIframeEmbedSetupModalInitialState = {

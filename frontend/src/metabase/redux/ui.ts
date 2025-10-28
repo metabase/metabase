@@ -5,7 +5,7 @@ import type { ModalState } from "metabase-types/store/modal";
 type SetOpenModalPayload = ModalState["id"];
 type SetOpenModalWithPropsPayload = {
   id: ModalState["id"];
-  props: ModalState["props"];
+  props?: ModalState["props"];
 };
 
 const DEFAULT_MODAL_STATE: ModalState = {
@@ -26,7 +26,7 @@ const modalSlice = createSlice({
       action: PayloadAction<SetOpenModalWithPropsPayload>,
     ) => {
       state.id = action.payload.id;
-      state.props = action.payload.props;
+      state.props = action.payload.props ?? null;
     },
     closeModal: (state) => {
       state.id = DEFAULT_MODAL_STATE.id;

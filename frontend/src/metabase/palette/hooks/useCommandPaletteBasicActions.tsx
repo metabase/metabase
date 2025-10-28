@@ -77,7 +77,7 @@ export const useCommandPaletteBasicActions = ({
   const openNewModalWithProps = useCallback(
     <TProps extends Record<string, unknown>>(
       modalId: ModalName,
-      props: TProps,
+      props?: TProps,
     ) => {
       dispatch(closeModal());
       dispatch(setOpenModalWithProps({ id: modalId, props }));
@@ -254,11 +254,7 @@ export const useCommandPaletteBasicActions = ({
         perform: () =>
           openNewModalWithProps<
             Pick<SdkIframeEmbedSetupModalProps, "initialState">
-          >("embed", {
-            initialState: {
-              useExistingUserSession: true,
-            },
-          }),
+          >("embed"),
       });
     }
 

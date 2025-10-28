@@ -83,16 +83,18 @@ export const NewModals = withRouter((props: WithRouterProps) => {
           />
         </Modal>
       );
-    case "embed":
+    case "embed": {
+      const modalProps =
+        currentNewModalProps as SdkIframeEmbedSetupModalProps | null;
+
       return (
         <PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.SdkIframeEmbedSetupModal
           opened
-          initialState={
-            (currentNewModalProps as SdkIframeEmbedSetupModalProps).initialState
-          }
+          initialState={modalProps?.initialState}
           onClose={handleModalClose}
         />
       );
+    }
     default:
       return (
         <PaletteShortcutsModal
