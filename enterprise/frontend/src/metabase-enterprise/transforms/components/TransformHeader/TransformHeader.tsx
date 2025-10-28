@@ -39,7 +39,7 @@ export function TransformHeader({ transform }: TransformHeaderProps) {
     <TransformHeaderView
       id={transform.id}
       name={transform.name}
-      actions={<TransformMoreMenu transformId={id} />}
+      actions={<TransformMoreMenu transformId={transform.id} />}
       onNameChange={handleNameChange}
     />
   );
