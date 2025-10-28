@@ -67,45 +67,10 @@ export const AdminMobileNavBarItems = styled.ul`
   overflow-y: auto;
 `;
 
-export const AdminButtons = styled.div`
-  margin-inline-start: auto;
-  display: flex;
-  gap: 0.5rem;
-`;
-
-export const AdminActionButton = styled.button`
-  border: 1px solid ${() => alpha("bg-white", 0.2)};
-  height: 2.625rem;
-  width: 2.625rem;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  border-radius: 5px;
-  font-weight: 700;
-  font-size: 13px;
-  transition: all 200ms;
-  color: var(--mb-color-text-white);
-  white-space: nowrap;
-  text-align: center;
-
-  &:disabled {
-    color: ${() => alpha("bg-white", 0.2)};
-  }
-
-  &:hover {
-    color: var(--mb-color-text-white);
-    background-color: ${() => darken("admin-navbar")};
-    border-color: ${() => darken("admin-navbar")};
-
-    &:disabled {
-      color: ${() => alpha("bg-white", 0.2)};
-    }
-  }
-`;
-
 export const AdminExitLink = styled(Link)`
   border: 1px solid ${() => alpha("bg-white", 0.2)};
   padding: 12px 18px;
+  margin-inline-start: auto;
   border-radius: 5px;
   font-weight: 700;
   font-size: 13px;

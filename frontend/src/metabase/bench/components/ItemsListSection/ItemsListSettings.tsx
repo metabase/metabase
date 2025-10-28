@@ -33,7 +33,7 @@ export const ItemsListSettings = <T extends Record<string, string>>({
   >({});
 
   return (
-    <Group px="md" gap="sm">
+    <Group gap="sm">
       {settings.map((setting) => (
         <Menu
           key={setting.name as string}

@@ -14,11 +14,10 @@ import { t } from "ttag";
 import { noop } from "underscore";
 
 import {
-  searchApi,
   useGetCardQuery,
   useListCollectionsTreeQuery,
+  useUpdateCardMutation,
 } from "metabase/api";
-import { listTag } from "metabase/api/tags";
 import { BenchFlatListItem } from "metabase/bench/components/shared/BenchFlatListItem";
 import { useItemsListFilter } from "metabase/bench/hooks/useItemsListFilter";
 import { getIcon } from "metabase/browse/models/utils";
@@ -26,16 +25,19 @@ import ActionButton from "metabase/common/components/ActionButton/ActionButton";
 import Button from "metabase/common/components/Button";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
 import { SidesheetCard } from "metabase/common/components/Sidesheet/SidesheetCard";
+import { ToolbarButton } from "metabase/common/components/ToolbarButton/ToolbarButton";
 import { VirtualizedFlatList } from "metabase/common/components/VirtualizedFlatList";
 import { VirtualizedTree } from "metabase/common/components/tree/VirtualizedTree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { useFetchMetrics } from "metabase/common/hooks/use-fetch-metrics";
 import ButtonsS from "metabase/css/components/buttons.module.css";
+import { INJECT_RTK_QUERY_QUESTION_VALUE } from "metabase/entities/questions";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { newQuestion } from "metabase/lib/urls/questions";
 import { EmptyState } from "metabase/metadata/pages/DataModel/components/TablePicker/components/EmptyState";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import {
+  API_UPDATE_QUESTION,
   type QueryParams,
   cancelQuery,
   initializeQB,
@@ -43,6 +45,7 @@ import {
   runQuestionQuery,
   updateQuestion,
 } from "metabase/query_builder/actions";
+import { QuestionInfoSidebar } from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/QuestionInfoSidebar";
 import { shouldShowQuestionSettingsSidebar } from "metabase/query_builder/components/view/sidebars/QuestionSettingsSidebar";
 import { useCreateQuestion } from "metabase/query_builder/containers/use-create-question";
 import { useSaveQuestion } from "metabase/query_builder/containers/use-save-question";
@@ -294,39 +297,83 @@ const MetricHeader = ({
   params: QueryParams;
   question: Question;
 }) => {
+  const dispatch = useDispatch();
+  const handleSave = useSaveQuestion();
+  const [updateCard] = useUpdateCardMutation();
+
+  const isDirty = useSelector(getIsDirty);
+  const [modal, setModal] = useState<"info" | null>(null);
+
   const enableSettingsSidebar = shouldShowQuestionSettingsSidebar(question);
 
   return (
-    <BenchPaneHeader
-      title={
-        <Stack>
-          <BenchNameInput
-            initialValue={question.displayName() || ""}
-            maxLength={QUESTION_NAME_MAX_LENGTH}
-            onChange={() => {
-              // TODO: Update title (figure out if this is going to use `qb` actions or not)
-            }}
-          />
-          {question.isSaved() && (
-            <BenchTabs
-              tabs={[
-                {
-                  label: t`Query`,
-                  to: `/bench/metric/${params.slug}`,
-                  icon: "sql" as const,
-                },
-                enableSettingsSidebar && {
-                  label: t`Settings`,
-                  to: `/bench/metric/${params.slug}/settings`,
-                  icon: "gear" as const,
-                },
-              ].filter((t) => !!t)}
+    <>
+      <BenchPaneHeader
+        title={
+          <Stack>
+            <BenchNameInput
+              initialValue={question.displayName() || ""}
+              maxLength={QUESTION_NAME_MAX_LENGTH}
+              onChange={async (name) => {
+                if (!question.isSaved()) {
+                  dispatch(updateQuestion(question.setDisplayName(name)));
+                  return;
+                }
+                const res = await updateCard({ id: question.id(), name });
+                const updatedCard = res.data;
+                if (updatedCard) {
+                  // HACK: Keeps entity framework data in sync
+                  dispatch({
+                    type: API_UPDATE_QUESTION,
+                    payload: updatedCard,
+                  });
+                  dispatch({
+                    type: INJECT_RTK_QUERY_QUESTION_VALUE,
+                    payload: updatedCard,
+                  });
+                }
+              }}
             />
-          )}
-        </Stack>
-      }
-      actions={actions}
-    />
+            {question.isSaved() && (
+              <BenchTabs
+                tabs={[
+                  {
+                    label: t`Query`,
+                    to: `/bench/metric/${params.slug}`,
+                    icon: "sql" as const,
+                  },
+                  enableSettingsSidebar && {
+                    label: t`Settings`,
+                    to: `/bench/metric/${params.slug}/settings`,
+                    icon: "gear" as const,
+                  },
+                ].filter((t) => !!t)}
+              />
+            )}
+          </Stack>
+        }
+        actions={
+          <>
+            {isDirty && actions}
+            {question.isSaved() && !isDirty && (
+              <ToolbarButton
+                icon="info"
+                onClick={() => setModal("info")}
+                tooltipLabel={t`More info`}
+                aria-label={t`More info`}
+              />
+            )}
+          </>
+        }
+      />
+      {modal === "info" && (
+        <QuestionInfoSidebar
+          question={question}
+          onSave={handleSave}
+          onClose={() => setModal(null)}
+        />
+      )}
+    </>
   );
 };
 
@@ -378,12 +425,6 @@ export const MetricEditor = ({
       onCreate={async (q) => {
         const result = await handleCreate(q);
         dispatch(push(`/bench/metric/${result.id()}`));
-
-        // TODO: Find a way to remove the setTimeout. Search reindexing appears to be async so refetching immediately doesn't return a list containing the newly added item.
-        setTimeout(() => {
-          dispatch(searchApi.util.invalidateTags([listTag("card")]));
-        }, 100);
-
         return result;
       }}
       onSave={handleSave}

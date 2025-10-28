@@ -6,29 +6,36 @@ import { useLocalStorage } from "react-use";
 import { t } from "ttag";
 
 import {
-  searchApi,
   useGetCardQuery,
   useListCollectionsTreeQuery,
   useSearchQuery,
+  useUpdateCardMutation,
 } from "metabase/api";
-import { TAG_TYPE_MAPPING, listTag } from "metabase/api/tags";
 import { getTreeItems } from "metabase/bench/components/models/utils";
 import { BenchFlatListItem } from "metabase/bench/components/shared/BenchFlatListItem";
 import { useItemsListFilter } from "metabase/bench/hooks/useItemsListFilter";
 import { getIcon } from "metabase/browse/models/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
 import { SidesheetCard } from "metabase/common/components/Sidesheet/SidesheetCard";
+import { ToolbarButton } from "metabase/common/components/ToolbarButton/ToolbarButton";
 import { VirtualizedFlatList } from "metabase/common/components/VirtualizedFlatList";
 import { VirtualizedTree } from "metabase/common/components/tree/VirtualizedTree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
+import { INJECT_RTK_QUERY_QUESTION_VALUE } from "metabase/entities/questions";
 import { useDispatch, useSelector } from "metabase/lib/redux/hooks";
 import { EmptyState } from "metabase/metadata/pages/DataModel/components/TablePicker/components/EmptyState";
+import {
+  API_UPDATE_QUESTION,
+  updateQuestion,
+} from "metabase/query_builder/actions";
 import type { SidebarFeatures } from "metabase/query_builder/components/NativeQueryEditor/types";
 import { ModelCacheManagementSection } from "metabase/query_builder/components/view/sidebars/ModelCacheManagementSection";
+import { QuestionInfoSidebar } from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/QuestionInfoSidebar";
 import { shouldShowQuestionSettingsSidebar } from "metabase/query_builder/components/view/sidebars/QuestionSettingsSidebar";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
-import { getQuestion } from "metabase/query_builder/selectors";
+import { useSaveQuestion } from "metabase/query_builder/containers/use-save-question";
+import { getIsDirty, getQuestion } from "metabase/query_builder/selectors";
 import { QUESTION_NAME_MAX_LENGTH } from "metabase/questions/constants";
 import { getUser } from "metabase/selectors/user";
 import { Box, Center, Icon, Input, Loader, Stack } from "metabase/ui";
@@ -267,7 +274,13 @@ const ModelHeader = withRouter(
     actions?: ReactNode;
     params: { slug: string; tab?: string };
   }) => {
+    const dispatch = useDispatch();
+    const handleSave = useSaveQuestion();
+    const [updateCard] = useUpdateCardMutation();
+
     const enableSettingsSidebar = shouldShowQuestionSettingsSidebar(question);
+    const isDirty = useSelector(getIsDirty);
+    const [modal, setModal] = useState<"info" | null>(null);
 
     const { data } = useSearchQuery({
       ids: [question.id()],
@@ -278,41 +291,78 @@ const ModelHeader = withRouter(
       data?.data?.[0]?.collection && (data?.data?.[0]?.collection.id || "root");
 
     return (
-      <BenchPaneHeader
-        title={
-          <Stack>
-            <BenchNameInput
-              initialValue={question.card().name || ""}
-              maxLength={QUESTION_NAME_MAX_LENGTH}
-              onChange={() => {
-                // TODO: Update title (figure out if this is going to use `qb` actions or not)
-              }}
-            />
-            {question.isSaved() && (
-              <BenchTabs
-                tabs={[
-                  {
-                    label: t`Query`,
-                    to: `/bench/model/${params.slug}`,
-                    icon: "sql" as const,
-                  },
-                  enableSettingsSidebar && {
-                    label: t`Settings`,
-                    to: `/bench/model/${params.slug}/settings`,
-                    icon: "gear" as const,
-                  },
-                  modelCollectionId && {
-                    label: t`Metadata`,
-                    to: `/bench/metadata/collection/${modelCollectionId}/model/${params.slug}`,
-                    icon: "database" as const,
-                  },
-                ].filter((t) => !!t)}
+      <>
+        <BenchPaneHeader
+          title={
+            <Stack>
+              <BenchNameInput
+                initialValue={question.card().name || ""}
+                maxLength={QUESTION_NAME_MAX_LENGTH}
+                onChange={async (name) => {
+                  if (!question.isSaved()) {
+                    dispatch(updateQuestion(question.setDisplayName(name)));
+                    return;
+                  }
+                  const res = await updateCard({ id: question.id(), name });
+                  const updatedCard = res.data;
+                  if (updatedCard) {
+                    // HACK: Keeps entity framework data in sync
+                    dispatch({
+                      type: API_UPDATE_QUESTION,
+                      payload: updatedCard,
+                    });
+                    dispatch({
+                      type: INJECT_RTK_QUERY_QUESTION_VALUE,
+                      payload: updatedCard,
+                    });
+                  }
+                }}
               />
-            )}
-          </Stack>
-        }
-        actions={actions}
-      />
+              {question.isSaved() && (
+                <BenchTabs
+                  tabs={[
+                    {
+                      label: t`Query`,
+                      to: `/bench/model/${params.slug}`,
+                      icon: "sql" as const,
+                    },
+                    enableSettingsSidebar && {
+                      label: t`Settings`,
+                      to: `/bench/model/${params.slug}/settings`,
+                      icon: "gear" as const,
+                    },
+                    modelCollectionId && {
+                      label: t`Metadata`,
+                      to: `/bench/metadata/collection/${modelCollectionId}/model/${params.slug}`,
+                      icon: "share" as const,
+                    },
+                  ].filter((t) => !!t)}
+                />
+              )}
+            </Stack>
+          }
+          actions={
+            <>
+              {isDirty && actions}
+              {question.isSaved() && !isDirty && (
+                <ToolbarButton
+                  icon="info"
+                  onClick={() => setModal("info")}
+                  tooltipLabel={t`More info`}
+                  aria-label={t`More info`}
+                />
+              )}
+            </>
+          }
+        />
+        {modal === "info" && (
+          <QuestionInfoSidebar
+            question={question}
+            onSave={handleSave}
+            onClose={() => setModal(null)}
+          />
+        )}
+      </>
     );
   },
 );
@@ -333,14 +383,12 @@ export const ModelEditor = (props: {
 
   return (
     <QueryBuilder
+      key={props.params.slug}
       {...props}
       Header={ModelEditorHeader}
       preventCancel
       onCreateSuccess={(q: Question) => {
         dispatch(replace(`/bench/model/${q.id()}`));
-        dispatch(
-          searchApi.util.invalidateTags([listTag(TAG_TYPE_MAPPING["dataset"])]),
-        );
       }}
       sidebarFeatures={sidebarFeatures}
     />

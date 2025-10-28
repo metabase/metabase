@@ -10,7 +10,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { Box } from "metabase/ui";
+import { Box, Text } from "metabase/ui";
 import { useListTransformJobsQuery } from "metabase-enterprise/api";
 import type { TransformJob, TransformJobId } from "metabase-types/api";
 
@@ -33,17 +33,18 @@ export function JobList({ selectedId, onCollapse }: JobListProps) {
 
   return (
     <ItemsListSection
-      onCollapse={onCollapse}
+      settings={<Text size="lg" fw="bold" lh="1.25rem">{t`Jobs`}</Text>}
       addButton={
         <ItemsListAddButton
           onClick={() => dispatch(push(Urls.newTransformJob()))}
         />
       }
+      onCollapse={onCollapse}
       listItems={
         jobs.length === 0 ? (
           <ListEmptyState label={t`No jobs yet`} />
         ) : (
-          <Box px="md">
+          <Box px="lg" pb="md">
             {jobs.map((job) => (
               <JobItem
                 key={job.id}
