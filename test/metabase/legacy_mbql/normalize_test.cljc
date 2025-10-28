@@ -1632,6 +1632,15 @@
          (mbql.normalize/normalize [:datetime "" {:mode "iso"}])
          (mbql.normalize/normalize ["datetime" "" {"mode" "iso"}]))))
 
+(deftest ^:parallel normalize-datetime-test-2
+  (is (= [:datetime
+          [:field "DATE_TIME" {:effective-type :type/*, :base-type :type/*}]
+          {:mode :simple-bytes}]
+         (mbql.normalize/normalize
+          ["datetime"
+           ["field" "DATE_TIME" {:effective-type "type/*", :base-type "type/*"}]
+           {"mode" "simplebytes"}]))))
+
 (deftest ^:parallel normalize-time-interval-test
   (testing (str "If you specify a `:temporal-unit` for the Field inside a `:time-interval`, remove it. The unit"
                 " in `:time-interval` takes precedence.")
@@ -1657,15 +1666,6 @@
            (mbql.normalize/normalize '(:relative-datetime :now))
            (mbql.normalize/normalize '(:relative-datetime "now"))
            (mbql.normalize/normalize '(:relative-datetime "current"))))))
-
-(deftest ^:parallel normalize-datetime-test
-  (is (= [:datetime
-          [:field "DATE_TIME" {:effective-type :type/*, :base-type :type/*}]
-          {:mode :simple-bytes}]
-         (mbql.normalize/normalize
-          ["datetime"
-           ["field" "DATE_TIME" {:effective-type "type/*", :base-type "type/*"}]
-           {"mode" "simplebytes"}]))))
 
 (deftest ^:parallel normalize-case-test
   (is (= [:case
