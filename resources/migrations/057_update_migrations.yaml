@@ -2247,7 +2247,7 @@ databaseChangeLog:
             columnName: database_default
 
   - changeSet:
-      id: v57.2025-10-27T19:00:00
+      id: v57.2025-10-27T19:01:00
       author: qnkhuat
       comment: Usage analytics; Add documents to content view
       changes:
