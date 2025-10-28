@@ -4,6 +4,7 @@
    [metabase.util.malli.registry :as mr]))
 
 (mr/def ::Plan
+  "Specification for the Plan entity used in the Store API."
   [:map
    [:id pos-int?]
    [:name :string]
@@ -22,6 +23,7 @@
    [:base_price {:optional true} :string]])
 
 (mr/def ::Addon
+  "Specification for the Addon entity used in the Store API."
   [:map
    [:id pos-int?]
    [:name :string]
