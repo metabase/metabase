@@ -77,27 +77,132 @@ def __format_exception():
     `,
   );
 
-  // Disallow importing certain modules
+  // Disallow importing certain modules to prevent security issues
   await pyodide.runPythonAsync(`
 import sys
 import builtins
 
 def __override():
-  banned_modules = ["js", "builtins", "http", "pyodide"]
+  # Banned modules for security - comprehensive list to prevent sandbox escapes
+
+  # JavaScript bridge and Pyodide internals:
+  # - "js": Prevent access to JavaScript bridge to avoid DOM manipulation and XSS
+  # - "pyodide": Prevent Pyodide API manipulation to avoid sandbox escape
+  # - "_pyodide_core": Prevent low-level Pyodide internals access
+  # - "micropip": CRITICAL - prevents dynamic package installation that bypasses restrictions
+
+  # Network access modules (prevent data exfiltration and SSRF):
+  # - "http": HTTP client modules
+  # - "urllib": Standard library HTTP/URL handling (works in Pyodide via Fetch API)
+  # - "urllib3": Third-party HTTP library (supported in Pyodide 2.2.0+)
+  # - "requests": Popular HTTP library (can work with pyodide-http)
+  # - "socket": Low-level network interface
+  # - "ssl": SSL/TLS wrapper for socket objects
+  # - "pyodide.http": Pyodide-specific HTTP module using browser APIs
+  # - "aiohttp": Async HTTP client/server library
+  # - "fsspec": Filesystem abstraction that can access remote storage
+
+  # File system and process access:
+  # - "pathlib": File system path operations
+  # - "os": Environment and process manipulation
+  # - "subprocess": Process execution
+  # - "io": File I/O operations (open files for reading/writing)
+  # - "tempfile": Create temporary files
+  # - "shutil": High-level file operations
+
+  # Import system manipulation (prevent bypassing restrictions):
+  # - "importlib": Dynamic import system that can bypass string-based checks
+  # - "imp": Deprecated import internals (removed in Python 3.12 but may exist in older Pyodide)
+
+  # Code execution and introspection (prevent dynamic code evaluation):
+  # - "code": Interactive interpreter and code execution
+  # - "codeop": Utilities to compile code
+  # - "inspect": Runtime introspection to access internals
+  # - "types": Dynamic type and function creation
+  # - "gc": Garbage collector access to find hidden objects
+  # - "ctypes": Foreign function interface to call C code
+  # - "ast": Abstract syntax tree manipulation
+
+  banned_modules = [
+    # JavaScript and Pyodide internals
+    "js",
+    "pyodide",
+    "_pyodide_core",
+    "micropip",
+    # Network access
+    "http",
+    "urllib",
+    "urllib.request",
+    "urllib.error",
+    "urllib.parse",
+    "urllib.robotparser",
+    "urllib3",
+    "requests",
+    "socket",
+    "ssl",
+    "pyodide.http",
+    "aiohttp",
+    "fsspec",
+    # File system and processes
+    "pathlib",
+    "os",
+    "subprocess",
+    "io",
+    "tempfile",
+    "shutil",
+    # Import system
+    "importlib",
+    "imp",
+    # Code execution and introspection
+    "code",
+    "codeop",
+    "inspect",
+    "types",
+    "gc",
+    "ctypes",
+    "ast",
+  ]
+
+  # Banned built-in functions that allow code execution or system access
+  dangerous_builtins = [
+    "eval",
+    "exec",
+    "compile",
+    "open",
+    "__import__",
+  ]
+
   real_import = builtins.__import__
 
   def restricted_import(name, globals=None, locals=None, fromlist=(), level=0):
-    if name in banned_modules:
-      raise ImportError(f"Access to the {name} module is disabled.")
+    # Check both the module name and any parent modules
+    module_parts = name.split(".")
+    for i in range(len(module_parts)):
+      partial_name = ".".join(module_parts[:i+1])
+      if partial_name in banned_modules:
+        raise ImportError(f"Access to the {partial_name} module is disabled for security reasons.")
     return real_import(name, globals, locals, fromlist, level)
 
   # Override the default import builtin to block importing of banned modules
   builtins.__import__ = restricted_import
 
-  # Remove the imported modules from the global namespace if they were
-  # imported already
-  for name in banned_modules:
-    sys.modules.pop(name, None)
+  # Remove dangerous built-in functions
+  for func_name in dangerous_builtins:
+    if func_name in dir(builtins):
+      # Replace with a function that raises an error
+      def make_restricted_func(name):
+        def restricted_func(*args, **kwargs):
+          raise RuntimeError(f"The {name} function is disabled for security reasons.")
+        return restricted_func
+      setattr(builtins, func_name, make_restricted_func(func_name))
+
+  # Remove the imported modules from sys.modules if they were imported during
+  # initialization to ensure they cannot be accessed even if previously loaded
+  for name in list(sys.modules.keys()):
+    for banned in banned_modules:
+      if name == banned or name.startswith(banned + "."):
+        sys.modules.pop(name, None)
+        break
 
 __override()
   `);
