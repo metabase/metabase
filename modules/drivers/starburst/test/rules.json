@@ -2,39 +2,27 @@
   "catalogs": [
     {
       "user": "metabase",
-      "allow": "all"
-    },
-    {
-      "user": "metabase",
-      "catalog": "test-data",
-      "allow": "all"
-    },
-    {
-      "user": "metabase_impersonation_test_user",
-      "catalog": "test-data",
-      "allow": "read-only"
+      "allow": "owner"
     },
     {
       "user": "employee",
-      "catalog": "memory",
       "allow": "read-only"
     }
   ],
   "tables": [
     {
-      "user": "metabase_impersonation_test_user",
-      "catalog": "test-data",
-      "schema": "default",
-      "table": "products",
+      "user": "metabase",
       "privileges": [
-        "SELECT"
-      ],
-      "filter": "category = 'Widget'"
+        "SELECT",
+        "INSERT",
+        "DELETE",
+        "UPDATE",
+        "OWNERSHIP",
+        "GRANT_SELECT"
+      ]
     },
     {
       "user": "employee",
-      "catalog": "memory",
-      "schema": "test",
       "table": "employees",
       "privileges": [
         "SELECT"
