@@ -97,8 +97,8 @@
               card (lib.metadata/card mp card-id)
               query (lib/card->underlying-query mp card)]
         :when (and (not-empty query)
-                (m/find-first (partial lib/filters query)
-                              (range (lib/stage-count query))))]
+                   (m/find-first (partial lib/filters query)
+                                 (range (lib/stage-count query))))]
     card))
 
 (defn- cards-with-filters?
