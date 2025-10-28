@@ -1,6 +1,7 @@
 (ns metabase-enterprise.representations.v0.document
   (:require
    [cheshire.core :as cheshire]
+   [clojure.java.io :as io]
    [clojure.java.shell :as sh]
    [clojure.walk :as walk]
    [metabase-enterprise.representations.export :as export]
@@ -15,6 +16,9 @@
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
+
+(defmethod import/type->schema [:v0 :document] [_]
+  ::document)
 
 ;;; ------------------------------------ Schema Definitions ------------------------------------
 
@@ -40,9 +44,9 @@
    ::lib.schema.common/non-blank-string])
 
 (mr/def ::content-type
-  [:enum {:decode/json keyword
-          :description "Format of the document content"}
-   :markdown :html :text])
+  [:and
+   {:description "Mime type of the document content"}
+   :string])
 
 (mr/def ::content
   [:and
@@ -122,10 +126,22 @@
 
 (defn- edn->markdown
   [edn]
-  (let [result (->> (patch-refs-for-export edn)
+  (let [script (str (io/file (io/resource "representations/prosemirror-to-markdown.mjs")))
+        result (->> (patch-refs-for-export edn)
                     (cheshire/generate-string)
-                    (sh/sh "node" "hackathon/markdown-parser/serialize-prosemirror.mjs" :in))]
+                    (sh/sh "node" script :in))]
+    (when (and (not (seq (:out result)))
+               (seq (:err result)))
+      (throw (ex-info (str "Error converting prosemirror to markdown: " (:err result))
+                      {:edn edn
+                       :error (:err result)})))
     (:out result)))
+
+(comment
+  (edn->markdown {:type "doc"
+                  :content [{:type "paragraph"
+                             :content [{:type "text"
+                                        :text "Hello, world!"}]}]}))
 
 (defmethod export/export-entity :document [document]
   (let [document-ref (v0-common/unref (v0-common/->ref (:id document) :document))]
