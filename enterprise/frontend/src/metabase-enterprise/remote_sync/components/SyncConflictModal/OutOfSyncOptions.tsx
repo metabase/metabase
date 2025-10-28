@@ -45,7 +45,7 @@ export const OutOfSyncOptions = (props: BranchSwitchOptionsProps) => {
       newBranchOption,
       {
         value: "discard",
-        label: t`Discard changes, and delete content that was added but not pushed (can’t be undone)`,
+        label: t`Delete unsynced changes (can’t be undone)`,
       },
     ];
   }, [currentBranch, variant]);
