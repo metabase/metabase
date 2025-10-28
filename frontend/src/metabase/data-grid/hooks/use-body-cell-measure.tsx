@@ -121,7 +121,7 @@ function getContentCellHtmlString(content: React.ReactNode): string {
   // `renderToString` from react-dom/server will crash Embedding SDK (metabase#58393)
   // Therefore, `process.env` is needed to tree-shake react-dom/server out of the SDK.
   // `reactNodeToHtmlString` will throw "cannot flush when React is already rendering" error (metabase#61164),
-  if (process.env.IS_EMBEDDING_SDK !== "true") {
+  if (process.env.IS_EMBEDDING_SDK === "true") {
     if (isLink(content)) {
       const { className, children } = content.props;
       const anchor = document.createElement("a");
