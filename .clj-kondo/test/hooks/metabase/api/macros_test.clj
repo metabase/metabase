@@ -1,9 +1,9 @@
 (ns hooks.metabase.api.macros-test
   (:require
    [clj-kondo.hooks-api :as api]
+   [clj-kondo.impl.utils]
    [clojure.test :refer :all]
-   [hooks.metabase.api.macros]
-   [clj-kondo.impl.utils]))
+   [hooks.metabase.api.macros]))
 
 (defn- is-valid-node [x]
   (is (api/node? x))
