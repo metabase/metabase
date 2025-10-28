@@ -88,10 +88,10 @@
   If no args are passed, it validates the current settings.
 
   Throws ExceptionInfo if unable to connect to the repository with the provided settings."
-  ([] (when (setting/get :remote-sync-enabled) (check-git-settings! {:remote-sync-url   (setting/get :remote-sync-url)
-                                                                     :remote-sync-token (setting/get :remote-sync-token)
+  ([] (when (setting/get :remote-sync-enabled) (check-git-settings! {:remote-sync-url    (setting/get :remote-sync-url)
+                                                                     :remote-sync-token  (setting/get :remote-sync-token)
                                                                      :remote-sync-branch (setting/get :remote-sync-branch)
-                                                                     :remote-sync-type (setting/get :remote-sync-type)})))
+                                                                     :remote-sync-type   (setting/get :remote-sync-type)})))
 
   ([{:keys [remote-sync-url remote-sync-token remote-sync-branch remote-sync-type]}]
    (cond
@@ -124,7 +124,7 @@
   overwriting it. If no branch is specified, uses the repository's default branch.
 
   Throws ExceptionInfo if the git settings are invalid or if unable to connect to the repository."
-  [{:keys [remote-sync-url remote-sync-token remote-sync-branch remote-sync-type] :as settings}]
+  [{:keys [remote-sync-url remote-sync-token] :as settings}]
 
   (if (str/blank? remote-sync-url)
     (t2/with-transaction [_conn]
@@ -134,10 +134,7 @@
     (let [current-token (setting/get :remote-sync-token)
           obfuscated? (= remote-sync-token (setting/obfuscate-value current-token))
           token-to-check (if obfuscated? current-token remote-sync-token)
-          _ (check-git-settings! (assoc settings
-                                        :remote-sync-token token-to-check
-                                        :remote-sync-branch remote-sync-branch
-                                        :remote-sync-type remote-sync-type))]
+          _ (check-git-settings! (assoc settings :remote-sync-token token-to-check))]
       (t2/with-transaction [_conn]
         (doseq [k [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-auto-import]]
           (when (not (and (= k :remote-sync-token) obfuscated?))
