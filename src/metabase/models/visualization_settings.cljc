@@ -493,9 +493,9 @@
   [settings]
   (reduce-kv (fn [m k v]
                (try
-                 (let [k1 (parse-db-column-ref k)
-                       v1 (db->norm-column-settings-entries v)]
-                   (assoc m k1 v1))
+                 (let [k' (parse-db-column-ref k)
+                       v' (db->norm-column-settings-entries v)]
+                   (assoc m k' v'))
                  (catch #?(:clj Throwable :cljs js/Error) _e
                    m)))
              {}

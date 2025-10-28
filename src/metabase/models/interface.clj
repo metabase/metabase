@@ -15,7 +15,7 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.schema :as mbql.s]
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.core :as lib]
    [metabase.lib.normalize :as lib.normalize]
@@ -322,6 +322,7 @@
 
     [:ref [:field 1 nil]]"
   [:tuple
+   {:decode/normalize vec}
    [:= {:decode/normalize keyword} :ref]
    [:ref ::mbql.s/Reference]])
 
@@ -330,6 +331,7 @@
 
     [:ref [:field 1 nil]]"
   [:tuple
+   {:decode/normalize vec}
    [:= {:decode/normalize keyword} :name]
    :string])
 
@@ -344,8 +346,8 @@
                     ((fn [x]
                        (cond
                          (not (sequential? x)) x
-                         (= (first x) "ref")   (mbql.normalize/normalize ::viz-settings-ref x)
-                         (= (first x) "name")  (mbql.normalize/normalize ::viz-settings-name x)
+                         (= (first x) "ref")   (lib/normalize ::viz-settings-ref x)
+                         (= (first x) "name")  (lib/normalize ::viz-settings-name x)
                          :else                 (mbql.normalize/normalize x))))
                     json/encode))
           (normalize-column-settings [column-settings]

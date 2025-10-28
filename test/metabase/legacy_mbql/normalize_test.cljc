@@ -1654,6 +1654,6 @@
 (deftest ^:parallel normalize-relative-datetime-test
   (testing "Fix incorrect :relative-datetime clauses that use the wrong key (e.g. :now) instead of :current"
     (is (= [:relative-datetime :current]
-           (mbql.normalize/normalize [:relative-datetime :now])
-           (mbql.normalize/normalize [:relative-datetime "now"])
-           (mbql.normalize/normalize [:relative-datetime "current"])))))
+           (mbql.normalize/normalize '(:relative-datetime :now))
+           (mbql.normalize/normalize '(:relative-datetime "now"))
+           (mbql.normalize/normalize '(:relative-datetime "current"))))))
