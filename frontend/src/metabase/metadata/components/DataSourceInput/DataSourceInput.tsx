@@ -1,17 +1,15 @@
+import { useMemo } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
+import DateTime from "metabase/common/components/DateTime";
+import { getScheduleExplanation } from "metabase/lib/cron";
+import { Button, Select, type SelectProps, Table, Text } from "metabase/ui";
 import {
-  Button,
-  Group,
-  Icon,
-  Select,
-  type SelectProps,
-  Stack,
-  Text,
-} from "metabase/ui";
-import { useGetTransformQuery } from "metabase-enterprise/api";
+  useGetTransformQuery,
+  useListTransformJobsQuery,
+} from "metabase-enterprise/api";
 import type { TableDataSource, TransformId } from "metabase-types/api";
 
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
@@ -30,33 +28,8 @@ export const DataSourceInput = ({
   onFocus,
   ...props
 }: Props) => {
-  const { data: transform } = useGetTransformQuery(transformId ?? skipToken);
-
-  if (value === "metabase-transform" && !showMetabaseTransform) {
-    return (
-      <Stack gap="sm">
-        <Text
-          component="label"
-          flex="0 0 auto"
-          fw="bold"
-          size="md"
-        >{t`Data source`}</Text>
-
-        <Group>
-          <Button
-            component={Link}
-            h="auto"
-            leftSection={<Icon name="sql" />}
-            p={0}
-            to={`/bench/transforms/${transformId}`}
-            size="xs"
-            variant="subtle"
-          >
-            {transform?.name ?? t`Transform`}
-          </Button>
-        </Group>
-      </Stack>
-    );
+  if (value === "metabase-transform" && !showMetabaseTransform && transformId) {
+    return <TransformTable transformId={transformId} />;
   }
 
   return (
@@ -95,4 +68,73 @@ function getData(
     { value: "source-data" as const, label: t`Source data` },
     { value: "uploaded-data" as const, label: t`Uploaded data` },
   ].filter((option) => option != null);
+}
+
+function TransformTable({ transformId }: { transformId: TransformId }) {
+  const { data: transform } = useGetTransformQuery(transformId ?? skipToken);
+
+  const { data: jobs = [] } = useListTransformJobsQuery(
+    transform?.tag_ids && transform.tag_ids.length > 0
+      ? { tag_ids: transform.tag_ids }
+      : skipToken,
+  );
+
+  const scheduleText = useMemo(() => {
+    if (!jobs.length) {
+      return null;
+    }
+    const job = jobs[0];
+    return job.schedule ? getScheduleExplanation(job.schedule) : null;
+  }, [jobs]);
+
+  return (
+    <Table>
+      <Table.Thead>
+        <Table.Tr>
+          <Table.Th>{t`Data source`}</Table.Th>
+          <Table.Th>{t`Transform`}</Table.Th>
+          <Table.Th>{t`Schedule`}</Table.Th>
+          <Table.Th>{t`Last run`}</Table.Th>
+        </Table.Tr>
+      </Table.Thead>
+      <Table.Tbody>
+        <Table.Tr>
+          <Table.Td>{t`transform (${transform?.source.type ?? "unknown"})`}</Table.Td>
+          <Table.Td>
+            {" "}
+            <Button
+              component={Link}
+              h="auto"
+              p={0}
+              to={`/bench/transforms/${transformId}`}
+              size="xs"
+              variant="subtle"
+            >
+              {transform?.name ?? t`Transform`}
+            </Button>
+          </Table.Td>
+          <Table.Td>
+            {scheduleText ? (
+              <Text size="sm" c="text-medium">
+                {scheduleText}
+              </Text>
+            ) : (
+              <Text size="sm" c="text-light">
+                {t`Manual only`}
+              </Text>
+            )}
+          </Table.Td>
+          <Table.Td>
+            {transform?.last_run?.end_time ? (
+              <DateTime value={transform.last_run.end_time} unit="minute" />
+            ) : transform?.last_run?.start_time ? (
+              t`Running`
+            ) : (
+              t`Never`
+            )}
+          </Table.Td>
+        </Table.Tr>
+      </Table.Tbody>
+    </Table>
+  );
 }
