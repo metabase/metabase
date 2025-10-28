@@ -120,15 +120,13 @@
           (is (= "Add-on 1" (-> response first :name)))
           (is (= "Add-on 2" (-> response second :name)))))
       (testing "accessible without authentication"
-        (with-store-api-mocks
-          (let [response (mt/client :get 200 "store-api/addons")]
-            (is (sequential? response))
-            (is (pos? (count response)))))))))
+        (let [response (mt/client :get 200 "store-api/addons")]
+          (is (sequential? response))
+          (is (pos? (count response))))))))
 (deftest ^:parallel error-if-store-api-url-is-not-configured
   (testing "GET /api/store-api/ without store-api-url configured will throw an error with nice message"
     (mt/with-dynamic-fn-redefs [store-api/store-api-url (constantly nil)]
       (is (= "Please configure store-api-url"
              (mt/user-http-request :rasta :get 400 "store-api/plans")))
-
       (is (= "Please configure store-api-url"
              (mt/user-http-request :rasta :get 400 "store-api/addons"))))))
