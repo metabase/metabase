@@ -1,6 +1,6 @@
 import { ensureMetabaseProviderPropsStore } from "./ensure-metabase-provider-props-store";
 
-type HandleLinkFn = (url: string) => boolean;
+type HandleLinkFn = (url: string) => { handled: boolean };
 
 type SdkGlobalPlugins = {
   handleLink?: HandleLinkFn;

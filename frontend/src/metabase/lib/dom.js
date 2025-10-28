@@ -321,12 +321,21 @@ export function open(
 ) {
   url = ignoreSiteUrl ? url : getWithSiteUrl(url);
 
-  // In the react sdk, we allow the host app to override how to open links
+  // In the react sdk, allow the host app to override how to open links
   if (isEmbeddingSdk()) {
     const globalPlugins = getSdkGlobalPlugins();
-    if (globalPlugins?.handleLink && globalPlugins.handleLink(url)) {
-      // If the plugin returns true, it means they handled the link and we should not continue with the default behavior
-      return;
+    if (globalPlugins?.handleLink) {
+      const result = globalPlugins.handleLink(url);
+
+      if (!result || typeof result !== "object" || !("handled" in result)) {
+        throw new Error(
+          "handleLink plugin must return an object with a 'handled' property (e.g., { handled: true } or { handled: false })",
+        );
+      }
+
+      if (result.handled) {
+        return;
+      }
     }
   }
 

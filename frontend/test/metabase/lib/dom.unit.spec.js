@@ -115,8 +115,8 @@ describe("open()", () => {
     jest.restoreAllMocks();
   });
 
-  it("should prevent default behavior when handleLink returns true", () => {
-    const handleLink = jest.fn().mockReturnValue(true);
+  it("should prevent default behavior when handleLink returns { handled: true }", () => {
+    const handleLink = jest.fn().mockReturnValue({ handled: true });
     getSdkGlobalPluginsMock.mockReturnValue({ handleLink });
 
     const openInSameWindow = jest.fn();
@@ -133,8 +133,8 @@ describe("open()", () => {
     expect(openInBlankWindow).not.toHaveBeenCalled();
   });
 
-  it("should allow default behavior when handleLink returns false", () => {
-    const handleLink = jest.fn().mockReturnValue(false);
+  it("should allow default behavior when handleLink returns { handled: false }", () => {
+    const handleLink = jest.fn().mockReturnValue({ handled: false });
     getSdkGlobalPluginsMock.mockReturnValue({ handleLink });
 
     const openInSameWindow = jest.fn();
@@ -150,21 +150,24 @@ describe("open()", () => {
     expect(openInBlankWindow).toHaveBeenCalledWith(url);
   });
 
-  it("should allow default behavior when handleLink returns undefined", () => {
-    const handleLink = jest.fn().mockReturnValue(undefined);
+  it("should throw error when handleLink returns invalid value", () => {
+    const handleLink = jest.fn().mockReturnValue(true);
     getSdkGlobalPluginsMock.mockReturnValue({ handleLink });
 
     const openInSameWindow = jest.fn();
     const openInBlankWindow = jest.fn();
     const url = "https://example.com/dashboard/1";
 
-    open(url, {
-      openInSameWindow,
-      openInBlankWindow,
-    });
+    expect(() =>
+      open(url, {
+        openInSameWindow,
+        openInBlankWindow,
+      }),
+    ).toThrow(
+      "handleLink plugin must return an object with a 'handled' property",
+    );
 
     expect(handleLink).toHaveBeenCalledWith(url);
-    expect(openInBlankWindow).toHaveBeenCalledWith(url);
   });
 
   it("should not call handleLink when not in embedding SDK", async () => {

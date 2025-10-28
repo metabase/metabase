@@ -40,6 +40,6 @@ export type MetabasePluginsConfig = {
   dashboard?: MetabaseDashboardPluginsConfig;
 };
 
-export type MetabaseGlobalPluginsConfig = {
-  handleLink?: (url: string) => boolean;
-} & MetabasePluginsConfig;
+export type MetabaseGlobalPluginsConfig = MetabasePluginsConfig & {
+  handleLink?: (url: string) => { handled: boolean };
+};
