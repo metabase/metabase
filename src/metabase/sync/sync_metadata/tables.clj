@@ -312,7 +312,7 @@
         ;; we're just using this as a cheap namespace
         suffix (str "__mbarchiv__" (.toEpochSecond (t/offset-date-time)))
         threshold-expr (apply
-                        (requiring-resolve 'metabase.driver.sql.query-processor/add-interval-honeysql-form)
+                        (requiring-resolve 'metabase.util.honey-sql-2/add-interval-honeysql-form)
                         (mdb/db-type) :%now archive-tables-threshold)
         tables-to-archive (t2/select :model/Table
                                      :db_id (u/the-id database)
