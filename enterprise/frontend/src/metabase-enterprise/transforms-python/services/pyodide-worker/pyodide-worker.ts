@@ -145,7 +145,9 @@ async function executePython(code: string, libraries: PythonLibraries) {
       result: serialize(result),
       logs: logs.join("\n"),
     };
-  } catch (_err) {
+  } catch (pythonExecutionError) {
+    console.error("Python execution error:", pythonExecutionError);
+
     const formatException = pyodide.globals.get(
       "__format_exception",
     ) as () => string;
