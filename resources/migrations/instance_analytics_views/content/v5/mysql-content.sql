@@ -161,3 +161,27 @@ select
     timestamp as event_timestamp
     from timeline_event event
         left join timeline on event.timeline_id = timeline.id
+union
+select
+    transform.id as entity_id,
+    concat('transform_', transform.id) as entity_qualified_id,
+    'transform' as entity_type,
+    created_at,
+    updated_at,
+    null as creator_id,
+    name,
+    description,
+    null as collection_id,
+    null as made_public_by_user,
+    null as is_embedding_enabled,
+    null as is_verified,
+    false as archived,
+    null as action_type,
+    null as action_model_id,
+    null as collection_is_official,
+    null as collection_is_personal,
+    null as question_viz_type,
+    null as question_database_id,
+    null as question_is_native,
+    null as event_timestamp
+    from transform
