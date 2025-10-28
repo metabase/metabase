@@ -12,6 +12,7 @@
    [metabase.lib.parameters.parse.types :as lib.params.parse.types]
    [metabase.lib.parse :as lib.parse]
    [metabase.lib.query :as lib.query]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -387,7 +388,7 @@
   (:engine (lib.metadata/database query)))
 
 (defn- get-parameter-value
-  [tag-name {:keys [id dimension], param-type :type}]
+  [query tag-name {:keys [id dimension], param-type :type :as tag}]
   ;; note that the actual values chosen are completely arbitrary.  We just need to provide some
   ;; value so that the query will compile.
   (case param-type
@@ -407,13 +408,20 @@
                     :type   :boolean/=,
                     :value  [false],
                     :target ["variable" ["template-tag" tag-name]]}
-    :dimension     (merge {:id     id,
-                           :type   :string/=,
-                           :value  ["foo"],
-                           :target ["dimension" ["template-tag" tag-name]]}
-                          (when (isa? (-> dimension lib.options/options :effective-type) :type/Number)
-                            {:type   :number/=,
-                             :value  ["0"]}))
+    :dimension     (let [effective-type (->> dimension
+                                             lib.ref/field-ref-id
+                                             (lib.metadata/field query)
+                                             :effective-type)]
+                     (merge {:id     id,
+                             :type   :string/=,
+                             :value  ["foo"],
+                             :target ["dimension" ["template-tag" tag-name]]}
+                            (when (isa? effective-type :type/Number)
+                              {:type   :number/=,
+                               :value  ["0"]})
+                            (when (isa? effective-type :type/HasDate)
+                              {:type :date/single
+                               :value "2025-01-01"})))
     :temporal-unit {:id     id,
                     :type   :temporal-unit,
                     :value  "week",
@@ -431,7 +439,7 @@
         new-parameters (into []
                              (keep (fn [[tag-name {:keys [id] :as tag}]]
                                      (or (params-by-id id)
-                                         (get-parameter-value tag-name tag))))
+                                         (get-parameter-value query tag-name tag))))
 
                              ttags)]
     (cond-> query
