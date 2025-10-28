@@ -7,13 +7,12 @@
   system."
   (:require
    [medley.core :as m]
+   [metabase-enterprise.sandbox.schema :as sandbox.schema]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
-   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -37,14 +36,8 @@
   (derive ::mi/read-policy.superuser)
   (derive ::mi/write-policy.superuser))
 
-(defn- normalize-attribute-remapping-targets [attribute-remappings]
-  (m/map-vals
-   #(lib/normalize ::lib.schema.parameter/target %)
-   attribute-remappings))
-
 (t2/deftransforms :model/Sandbox
-  {:attribute_remappings {:in  (comp mi/json-in normalize-attribute-remapping-targets)
-                          :out (comp normalize-attribute-remapping-targets mi/json-out-without-keywordization)}})
+  {:attribute_remappings sandbox.schema/attribute-remappings-transform})
 
 (defn table-field-names->cols
   "Return a mapping of field names to corresponding cols for given table."
