@@ -22,7 +22,6 @@ import { BenchFlatListItem } from "metabase/bench/components/shared/BenchFlatLis
 import { useItemsListFilter } from "metabase/bench/hooks/useItemsListFilter";
 import { getIcon } from "metabase/browse/models/utils";
 import ActionButton from "metabase/common/components/ActionButton/ActionButton";
-import Button from "metabase/common/components/Button";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
 import { SidesheetCard } from "metabase/common/components/Sidesheet/SidesheetCard";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton/ToolbarButton";
@@ -53,6 +52,7 @@ import {
   getFirstQueryResult,
   getIsDirty,
   getIsResultDirty,
+  getOriginalQuestion,
   getQuestion,
   getRawSeries,
   getUiControls,
@@ -61,7 +61,7 @@ import { MetricEditor as QBMetricEditor } from "metabase/querying/metrics/compon
 import { QUESTION_NAME_MAX_LENGTH } from "metabase/questions/constants";
 import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
-import { Box, Center, Icon, Input, Loader } from "metabase/ui";
+import { Box, Button, Center, Group, Icon, Input, Loader } from "metabase/ui";
 import Question from "metabase-lib/v1/Question";
 import type { RawSeries, SearchResult } from "metabase-types/api";
 
@@ -400,6 +400,7 @@ export const MetricEditor = ({
   const handleSave = useSaveQuestion();
 
   const question = useSelector(getQuestion);
+  const originalQuestion = useSelector(getOriginalQuestion);
   const reportTimezone = useSelector((state) =>
     getSetting(state, "report-timezone-long"),
   );
@@ -437,31 +438,41 @@ export const MetricEditor = ({
           params={params}
           question={question}
           actions={
-            !question.isSaved() ? (
+            <Group>
               <Button
-                key="create"
-                primary
-                small
-                onClick={() => headerProps.onCreate(question)}
-              >
-                {t`Save`}
-              </Button>
-            ) : (
-              <ActionButton
-                key="save"
-                actionFn={() => headerProps.onSave(question)}
-                disabled={!headerProps.isRunnable || !isDirty}
-                normalText={t`Save`}
-                activeText={t`Saving…`}
-                failedText={t`Save failed`}
-                successText={t`Saved`}
-                className={cx(
-                  ButtonsS.Button,
-                  ButtonsS.ButtonPrimary,
-                  ButtonsS.ButtonSmall,
-                )}
-              />
-            )
+                size="sm"
+                onClick={() => {
+                  if (!question.isSaved()) {
+                    dispatch(push("/bench/metric"));
+                  } else {
+                    dispatch(updateQuestion(originalQuestion));
+                  }
+                }}
+              >{t`Cancel`}</Button>
+              {!question.isSaved() ? (
+                <Button
+                  size="sm"
+                  variant="filled"
+                  onClick={() => headerProps.onCreate(question)}
+                >
+                  {t`Save`}
+                </Button>
+              ) : (
+                <ActionButton
+                  actionFn={() => headerProps.onSave(question)}
+                  disabled={!headerProps.isRunnable || !isDirty}
+                  normalText={t`Save`}
+                  activeText={t`Saving…`}
+                  failedText={t`Save failed`}
+                  successText={t`Saved`}
+                  className={cx(
+                    ButtonsS.Button,
+                    ButtonsS.ButtonPrimary,
+                    ButtonsS.ButtonSmall,
+                  )}
+                />
+              )}
+            </Group>
           }
         />
       )}

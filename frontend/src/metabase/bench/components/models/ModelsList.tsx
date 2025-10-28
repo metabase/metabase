@@ -27,6 +27,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux/hooks";
 import { EmptyState } from "metabase/metadata/pages/DataModel/components/TablePicker/components/EmptyState";
 import {
   API_UPDATE_QUESTION,
+  initializeQB,
   updateQuestion,
 } from "metabase/query_builder/actions";
 import type { SidebarFeatures } from "metabase/query_builder/components/NativeQueryEditor/types";
@@ -38,7 +39,7 @@ import { useSaveQuestion } from "metabase/query_builder/containers/use-save-ques
 import { getIsDirty, getQuestion } from "metabase/query_builder/selectors";
 import { QUESTION_NAME_MAX_LENGTH } from "metabase/questions/constants";
 import { getUser } from "metabase/selectors/user";
-import { Box, Center, Icon, Input, Loader } from "metabase/ui";
+import { Box, Button, Center, Group, Icon, Input, Loader } from "metabase/ui";
 import Question from "metabase-lib/v1/Question";
 import type { SearchResult } from "metabase-types/api";
 
@@ -268,10 +269,12 @@ const ModelHeader = withRouter(
   ({
     question,
     actions,
+    location,
     params,
   }: {
     question: Question;
     actions?: ReactNode;
+    location: Location;
     params: { slug: string; tab?: string };
   }) => {
     const dispatch = useDispatch();
@@ -321,7 +324,21 @@ const ModelHeader = withRouter(
           }
           actions={
             <>
-              {isDirty && actions}
+              {isDirty && (
+                <Group>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      if (!question.isSaved()) {
+                        dispatch(push("/bench/model"));
+                      } else {
+                        dispatch(initializeQB(location, params));
+                      }
+                    }}
+                  >{t`Cancel`}</Button>
+                  {actions}
+                </Group>
+              )}
               {question.isSaved() && !isDirty && (
                 <ToolbarButton
                   icon="info"
