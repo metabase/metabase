@@ -329,6 +329,7 @@
   collections
   {:team "UX West"
    :api  #{metabase.collections.api
+           metabase.collections.core
            metabase.collections.models.collection
            metabase.collections.models.collection.root}
    :uses #{api
@@ -344,6 +345,7 @@
            permissions
            premium-features
            queries
+           remote-sync
            request
            revisions
            search
@@ -804,6 +806,7 @@
            lib
            models
            premium-features
+           remote-sync
            request
            settings
            util
@@ -845,7 +848,6 @@
            app-db
            channel
            config
-           driver
            premium-features
            settings
            task
@@ -1017,6 +1019,14 @@
            users
            util}}
 
+  remote-sync
+  {:team "UX West"
+   :api  #{metabase.remote-sync.core
+           metabase.remote-sync.init}
+   :uses #{api
+           models
+           premium-features}}
+
   request
   {:team "UX West"
    :api  #{metabase.request.core
@@ -1073,7 +1083,6 @@
            audit-app
            collections
            config
-           driver
            events
            lib
            lib-be
@@ -1146,7 +1155,6 @@
            app-db
            channel
            config
-           driver
            events
            login-history
            request
@@ -1302,6 +1310,8 @@
    :uses #{analytics
            api
            collections
+           config
+           events
            models
            util}}
 
@@ -1319,7 +1329,6 @@
    :uses #{analytics
            api
            appearance
-           collections
            driver
            events
            lib
@@ -1878,6 +1887,24 @@
    :uses #{premium-features
            util}}
 
+  enterprise/remote-sync
+  {:team "UX West"
+   :api  #{metabase-enterprise.remote-sync.api
+           metabase-enterprise.remote-sync.core
+           metabase-enterprise.remote-sync.init}
+   :uses #{analytics
+           api
+           app-db
+           collections
+           events
+           models
+           premium-features
+           settings
+           startup
+           task
+           util
+           enterprise/serialization}}
+
   enterprise/sandbox
   {:team "UX West"
    :api  #{metabase-enterprise.sandbox.api.routes
@@ -1948,6 +1975,7 @@
   {:team "Workflows"
    :api  #{metabase-enterprise.serialization.api
            metabase-enterprise.serialization.cmd
+           metabase-enterprise.serialization.core
            metabase-enterprise.serialization.v2.backfill-ids}
    :uses #{analytics
            api

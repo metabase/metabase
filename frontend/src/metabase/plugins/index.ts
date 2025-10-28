@@ -1,10 +1,13 @@
 import type { Middleware } from "@reduxjs/toolkit";
+import type { TagDescription } from "@reduxjs/toolkit/query";
 import React, {
   type ComponentType,
+  type Context,
   type Dispatch,
   type HTMLAttributes,
   type ReactNode,
   type SetStateAction,
+  createContext,
   useCallback,
 } from "react";
 import { t } from "ttag";
@@ -70,6 +73,7 @@ import type {
   DatabaseLocalSettingAvailability,
   Database as DatabaseType,
   Dataset,
+  DependencyEntry,
   Document,
   Group,
   GroupPermissions,
@@ -335,6 +339,7 @@ export const PLUGIN_COLLECTIONS = {
   },
   REGULAR_COLLECTION: AUTHORITY_LEVEL_REGULAR,
   isRegularCollection: (_data: Partial<Collection> | Bookmark) => true,
+  isSyncedCollection: (_data: Partial<Collection>) => false,
   getCollectionType: (
     _collection: Partial<Collection>,
   ): CollectionAuthorityLevelConfig | CollectionInstanceAnaltyicsConfig =>
@@ -468,12 +473,14 @@ export const PLUGIN_REDUCERS: {
   shared: any;
   metabotPlugin: any;
   documents: any;
+  remoteSyncPlugin: any;
 } = {
   applicationPermissionsPlugin: () => null,
   sandboxingPlugin: () => null,
   shared: () => null,
   metabotPlugin: () => null,
   documents: () => null,
+  remoteSyncPlugin: () => null,
 };
 
 export const PLUGIN_ADVANCED_PERMISSIONS = {
@@ -885,6 +892,36 @@ export const PLUGIN_TRANSFORMS: TransformsPlugin = {
   getAdminRoutes: () => null,
 };
 
+export const PLUGIN_REMOTE_SYNC: {
+  LibraryNav: ComponentType;
+  RemoteSyncSettings: ComponentType;
+  SyncedCollectionsSidebarSection: ComponentType<{
+    syncedCollections: any[];
+    collectionItem: any;
+    onItemSelect: () => void;
+  }>;
+  REMOTE_SYNC_INVALIDATION_TAGS: TagDescription<any>[] | null;
+  useSyncStatus: () => {
+    isIdle: boolean;
+    taskType: any;
+    progress: number;
+    message: string;
+    progressModal: ReactNode;
+  };
+} = {
+  LibraryNav: PluginPlaceholder,
+  RemoteSyncSettings: NotFoundPlaceholder,
+  SyncedCollectionsSidebarSection: PluginPlaceholder,
+  REMOTE_SYNC_INVALIDATION_TAGS: null,
+  useSyncStatus: () => ({
+    isIdle: true,
+    taskType: null,
+    progress: 0,
+    message: "",
+    progressModal: null,
+  }),
+};
+
 export type PythonTransformsPlugin = {
   PythonRunnerSettingsPage: ComponentType;
   SourceSection: ComponentType<{ transform: Transform }>;
@@ -928,6 +965,7 @@ export const PLUGIN_TRANSFORMS_PYTHON: PythonTransformsPlugin = {
 type DependenciesPlugin = {
   isEnabled: boolean;
   DependencyGraphPage: ComponentType;
+  DependencyGraphPageContext: Context<DependencyGraphPageContextType>;
   CheckDependenciesForm: ComponentType<CheckDependenciesFormProps>;
   CheckDependenciesModal: ComponentType<CheckDependenciesModalProps>;
   CheckDependenciesTitle: ComponentType;
@@ -940,6 +978,11 @@ type DependenciesPlugin = {
   useCheckTransformDependencies: (
     props: UseCheckDependenciesProps<UpdateTransformRequest>,
   ) => UseCheckDependenciesResult<UpdateTransformRequest>;
+};
+
+export type DependencyGraphPageContextType = {
+  baseUrl?: string;
+  defaultEntry?: DependencyEntry;
 };
 
 export type CheckDependenciesFormProps = {
@@ -983,6 +1026,7 @@ function useCheckDependencies<TChange>({
 export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
   isEnabled: false,
   DependencyGraphPage: PluginPlaceholder,
+  DependencyGraphPageContext: createContext({}),
   CheckDependenciesForm: PluginPlaceholder,
   CheckDependenciesModal: PluginPlaceholder,
   CheckDependenciesTitle: PluginPlaceholder,
