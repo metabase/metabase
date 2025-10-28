@@ -55,7 +55,6 @@ const TransformsTreeNode = (props: TreeNodeProps) => (
             icon="table2"
             subtitle={transform.target.name}
             isActive={props.isSelected}
-            rightGroup={props.rightSection?.(item)}
           />
         </Box>
       );
@@ -213,12 +212,14 @@ export function TransformList({ selectedId, onOpenModal }: TransformListProps) {
             }}
             estimateSize={getTreeItemEstimateSize}
             TreeNode={TransformsTreeNode}
-            rightSection={(node) => (
-              <TransformMoreMenu
-                transformId={Number(node.id)}
-                onOpenModal={onOpenModal}
-              />
-            )}
+            rightSection={(node) =>
+              node.data != null ? (
+                <TransformMoreMenu
+                  transformId={Number(node.id)}
+                  onOpenModal={onOpenModal}
+                />
+              ) : null
+            }
           />
         ) : (
           <VirtualizedFlatList
