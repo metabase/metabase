@@ -80,6 +80,9 @@ export type DashboardContextOwnProps = {
 export type DashboardContextOwnResult = {
   dashboardId: DashboardId | null;
   dashboardActions?: DashboardActionButtonList;
+
+  /** Does the dashboard has an `edit` dashboard action? */
+  hasEditAction: boolean;
 };
 
 export type DashboardControls = UseAutoScrollToDashcardResult &
@@ -124,6 +127,7 @@ const DashboardContextProviderInner = forwardRef(
       dashboardActions: initDashboardActions,
       isDashcardVisible,
       onNewQuestion,
+      onAddQuestion,
 
       children,
 
@@ -348,6 +352,14 @@ const DashboardContextProviderInner = forwardRef(
         ? initDashboardActions({ isEditing, downloadsEnabled })
         : (initDashboardActions ?? null);
 
+    // Determine if the dashboard is editable based on the dashboard actions.
+    // This lets us distinguish read-only dashboards (e.g. public embeds, InteractiveDashboard)
+    // from editable dashboards (e.g. main app, EditableDashboard).
+    const hasEditAction = useMemo(
+      () => dashboardActions?.includes("EDIT_DASHBOARD") ?? false,
+      [dashboardActions],
+    );
+
     return (
       <DashboardContext.Provider
         value={{
@@ -359,6 +371,8 @@ const DashboardContextProviderInner = forwardRef(
           dashcardMenu,
           dashboardActions,
           onNewQuestion,
+          onAddQuestion,
+          hasEditAction,
 
           navigateToNewCardFromDashboard,
           isLoading,
