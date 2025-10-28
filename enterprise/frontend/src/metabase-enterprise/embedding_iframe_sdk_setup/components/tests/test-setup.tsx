@@ -8,6 +8,7 @@ import {
   setupUpdateSettingsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, waitFor } from "__support__/ui";
+import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
 import {
   createMockDashboard,
   createMockDashboardQueryMetadata,
@@ -20,17 +21,10 @@ import {
 
 import { SdkIframeEmbedSetupModal } from "../SdkIframeEmbedSetupModal";
 
-const mockUseLocation = jest.fn();
-
-jest.mock("react-use", () => ({
-  ...jest.requireActual("react-use"),
-  useLocation: () => mockUseLocation(),
-}));
-
 export const setup = (options?: {
   simpleEmbeddingEnabled?: boolean;
   jwtReady?: boolean;
-  urlSearchParams?: string;
+  initialState?: SdkIframeEmbedSetupModalInitialState;
 }) => {
   const mockDatabase = createMockDatabase();
   const mockDashboard = createMockDashboard();
@@ -46,15 +40,12 @@ export const setup = (options?: {
   setupUpdateSettingsEndpoint();
   setupUpdateSettingEndpoint();
 
-  mockUseLocation.mockReturnValue({
-    search: options?.urlSearchParams || "",
-  });
-
   renderWithProviders(
     <SdkIframeEmbedSetupModal
       opened
       initialState={{
         useExistingUserSession: true,
+        ...options?.initialState,
       }}
       onClose={jest.fn()}
     />,
