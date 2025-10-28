@@ -800,7 +800,7 @@
    [:mode {:optional true} [:ref ::DatetimeOptionsMode]]])
 
 (defclause datetime
-  value   [:ref ::FieldOrExpressionDef]
+  value   [:ref ::ExpressionArg]
   options (optional [:ref ::DatetimeOptions]))
 
 (defmethod options-style-method :datetime [_tag] ::options-style.last-unless-empty)
@@ -1164,26 +1164,32 @@
    [:segment  [:ref ::segment]]
    [:else     [:ref ::FieldOrExpressionRef]]])
 
-(mr/def ::case.subclause
-  [:tuple {:error/message ":case subclause"}
+(mr/def ::CaseSubclause
+  [:tuple {:error/message ":case subclause"
+           :decode/normalize (fn [x]
+                               (when (sequential? x)
+                                 ;; in some of the weird FE e2e tests `:case` has an empty third arg (unsure why), if
+                                 ;; we see extra args just drop them.
+                                 (into [] (take 2) x)))}
    [:ref ::Filter]
    [:ref ::ExpressionArg]])
 
-(mr/def ::case.subclauses
-  [:maybe [:sequential ::case.subclause]])
+(mr/def ::CaseSubclauses
+  [:sequential {:min 1} ::CaseSubclause])
 
-(mr/def ::case.options
+(mr/def ::CaseOptions
   [:map
-   {:error/message ":case options"}
+   {:decode/normalize lib.schema.common/normalize-map
+    :error/message    ":case options"}
    [:default {:optional true} [:ref ::ExpressionArg]]])
 
 (defclause case
-  clauses [:ref ::case.subclauses], options (optional [:ref ::case.options]))
+  clauses [:ref ::CaseSubclauses], options (optional [:ref ::CaseOptions]))
 
 (defmethod options-style-method :case [_tag] ::options-style.last-unless-empty)
 
 (defclause if
-  clauses [:ref ::case.subclauses], options (optional [:ref ::case.options]))
+  clauses [:ref ::CaseSubclauses], options (optional [:ref ::CaseOptions]))
 
 (defmethod options-style-method :if [_tag] ::options-style.last-unless-empty)
 

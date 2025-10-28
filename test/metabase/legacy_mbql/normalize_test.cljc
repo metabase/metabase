@@ -1666,3 +1666,15 @@
           ["datetime"
            ["field" "DATE_TIME" {:effective-type "type/*", :base-type "type/*"}]
            {"mode" "simplebytes"}]))))
+
+(deftest ^:parallel normalize-case-test
+  (is (= [:case
+          [[[:> [:field 3 nil] 0]
+            [:field 3 nil]]] ; drop the extra 3rd arg in the subclause
+          {:default [:field 5 nil]}]
+         (mbql.normalize/normalize
+          ["case"
+           [[[">" ["field" 3 nil] 0]
+             ["field" 3]
+             nil]]
+           {"default" ["field" 5 {}]}]))))
