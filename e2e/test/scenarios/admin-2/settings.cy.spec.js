@@ -817,7 +817,13 @@ describe("scenarios > admin > license and billing", () => {
         .should("have.prop", "tagName", "A");
     });
 
-    it("should show the user store info for an self-hosted instance managed by the store", () => {
+    // This test needs to be re-examined and unskipped!
+    // It's mocking features that already exist in the self-hosted token
+    // It is using Promise.resolve that is going against the Cypress best-practices
+    // It has a very convoluted setup when we could probably just edit the current admin user
+    // It hard codes the store managed user which makes it breaking as soon as we udpate the token info
+    // I'm tracking the issue here: https://linear.app/metabase/issue/DEV-1017/fix-and-unskip-e2e-should-show-the-user-store-info-for-an-self-hosted
+    it.skip("should show the user store info for an self-hosted instance managed by the store", () => {
       H.activateToken("pro-self-hosted");
       mockBillingTokenFeatures([
         STORE_MANAGED_FEATURE_KEY,

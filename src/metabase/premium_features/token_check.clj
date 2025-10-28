@@ -48,8 +48,9 @@
   "Base URL to use for token checks. Hardcoded by default but for development purposes you can use a local server.
   Specify the env var `METASTORE_DEV_SERVER_URL`."
   (or
-   ;; only enable the changing the token check url during dev because we don't want people switching it out in production!
-   (when config/is-dev?
+   ;; only enable changing the token check url during dev because we don't want people switching it out in production!
+   ;; additionally, we want to be able to run e2e tests against a staging server.
+   (when (or config/is-dev? config/is-e2e?)
      (some-> (env :metastore-dev-server-url)
              ;; remove trailing slashes
              (str/replace  #"/$" "")))
