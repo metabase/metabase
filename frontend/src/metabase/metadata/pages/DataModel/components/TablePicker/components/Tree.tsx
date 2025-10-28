@@ -1,11 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { t } from "ttag";
 
-import {
-  BulkActionBar,
-  BulkActionButton,
-} from "metabase/common/components/BulkActionBar";
-import { Flex } from "metabase/ui";
 import type { DatabaseId, TableId } from "metabase-types/api";
 
 import {
@@ -30,27 +25,40 @@ import type {
 } from "../types";
 import { flatten } from "../utils";
 
-import { EditTableMetadataModal } from "./EditTableMetadataModal";
 import { EmptyState } from "./EmptyState";
 import { Results } from "./Results";
 
 interface Props {
   path: TreePath;
   onChange: (path: TreePath, options?: ChangeOptions) => void;
+  selectedTables: Set<TableId>;
+  setSelectedTables: (tables: Set<TableId>) => void;
+  selectedSchemas: Set<string>;
+  setSelectedSchemas: (schemas: Set<string>) => void;
+  selectedDatabases: Set<DatabaseId>;
+  setSelectedDatabases: (databases: Set<DatabaseId>) => void;
+  setOnUpdateCallback: (callback: (() => void) | null) => void;
 }
 
-export function Tree({ path, onChange }: Props) {
+export function Tree({
+  path,
+  onChange,
+  selectedTables,
+  setSelectedTables,
+  selectedSchemas,
+  setSelectedSchemas,
+  selectedDatabases,
+  setSelectedDatabases,
+  setOnUpdateCallback,
+}: Props) {
   const { databaseId, schemaName } = path;
   const { isExpanded, toggle } = useExpandedState(path);
   const { tree, reload } = useTableLoader(path);
-  const [selectedTables, setSelectedItems] = useState<Set<TableId>>(new Set());
-  const [selectedSchemas, setSelectedSchemas] = useState<Set<string>>(
-    new Set(),
-  );
-  const [selectedDatabases, setSelectedDatabases] = useState<Set<DatabaseId>>(
-    new Set(),
-  );
-  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  useEffect(() => {
+    setOnUpdateCallback(() => () => reload(path));
+    return () => setOnUpdateCallback(null);
+  }, [path, reload, setOnUpdateCallback]);
 
   const items = flatten(tree, {
     isExpanded,
@@ -122,7 +130,7 @@ export function Tree({ path, onChange }: Props) {
           return;
         }
 
-        setSelectedItems((prev) => {
+        setSelectedTables((prev) => {
           const newSet = new Set(prev);
           tableIds.forEach((x) => {
             newSet.add(x);
@@ -157,7 +165,7 @@ export function Tree({ path, onChange }: Props) {
       ) {
         // single schema that's not rendered and it's not part of flattened list
         if (x.children.length === 1) {
-          setSelectedItems((prev) => {
+          setSelectedTables((prev) => {
             const newSet = new Set(prev);
             x.children[0].children.forEach((y) => {
               newSet.add(y.value?.tableId ?? -1);
@@ -192,10 +200,6 @@ export function Tree({ path, onChange }: Props) {
     });
   }, [isExpanded, selectedDatabases, items, selectedSchemas, selectedTables]);
 
-  function onEditSelectedItems() {
-    setIsModalOpen(true);
-  }
-
   if (isEmpty) {
     return <EmptyState title={t`No data to show`} />;
   }
@@ -212,7 +216,7 @@ export function Tree({ path, onChange }: Props) {
       if (tableId === -1) {
         return;
       }
-      setSelectedItems((prev) => {
+      setSelectedTables((prev) => {
         const newSet = new Set(prev);
         isSelected === "yes" ? newSet.delete(tableId) : newSet.add(tableId);
         return newSet;
@@ -229,7 +233,7 @@ export function Tree({ path, onChange }: Props) {
             databases: selectedDatabases,
           });
         setSelectedSchemas(schemasSelection);
-        setSelectedItems(tablesSelection);
+        setSelectedTables(tablesSelection);
         setSelectedDatabases(databasesSelection);
       } else {
         const databaseId = item.value?.databaseId;
@@ -241,7 +245,7 @@ export function Tree({ path, onChange }: Props) {
     if (item.type === "schema") {
       if (item.children.length > 0) {
         if (isSelected === "yes") {
-          setSelectedItems((prev) => {
+          setSelectedTables((prev) => {
             const tableIds = getSchemaChildrenTableIds(item);
             const newSet = new Set(prev);
             tableIds.forEach((x) => {
@@ -250,7 +254,7 @@ export function Tree({ path, onChange }: Props) {
             return newSet;
           });
         } else {
-          setSelectedItems((prev) => {
+          setSelectedTables((prev) => {
             const tableIds = getSchemaChildrenTableIds(item);
             const newSet = new Set(prev);
             tableIds.forEach((x) => {
@@ -277,54 +281,16 @@ export function Tree({ path, onChange }: Props) {
     }
   }
 
-  const selectedItemsCount =
-    selectedTables.size + selectedSchemas.size + selectedDatabases.size;
-
   return (
-    <>
-      <Results
-        items={items}
-        path={path}
-        reload={reload}
-        toggle={toggle}
-        withMassToggle
-        onItemClick={onChange}
-        onItemToggle={onItemToggle}
-      />
-      <Flex justify="center" gap="sm" direction="column">
-        <BulkActionBar
-          opened={selectedItemsCount > 0 && !isModalOpen}
-          message={"" /* TODO: message */}
-        >
-          <BulkActionButton onClick={onEditSelectedItems}>
-            {t`Edit`}
-          </BulkActionButton>
-
-          <BulkActionButton
-            onClick={() => {
-              setSelectedItems(new Set());
-              setSelectedSchemas(new Set());
-              setSelectedDatabases(new Set());
-            }}
-          >
-            {t`Unselect all `}
-          </BulkActionButton>
-        </BulkActionBar>
-      </Flex>
-      <EditTableMetadataModal
-        tables={selectedTables}
-        schemas={selectedSchemas}
-        databases={selectedDatabases}
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onUpdate={() => {
-          reload(path);
-          setSelectedItems(new Set());
-          setSelectedSchemas(new Set());
-          setSelectedDatabases(new Set());
-        }}
-      />
-    </>
+    <Results
+      items={items}
+      path={path}
+      reload={reload}
+      toggle={toggle}
+      withMassToggle
+      onItemClick={onChange}
+      onItemToggle={onItemToggle}
+    />
   );
 }
 

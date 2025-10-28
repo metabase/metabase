@@ -1,29 +1,15 @@
 import cx from "classnames";
-import { useState } from "react";
+import { useEffect } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useListTablesQuery } from "metabase/api/table";
-import {
-  BulkActionBar,
-  BulkActionButton,
-} from "metabase/common/components/BulkActionBar";
-import {
-  Box,
-  Button,
-  Checkbox,
-  Flex,
-  Icon,
-  Loader,
-  Stack,
-  Text,
-} from "metabase/ui";
+import { Box, Checkbox, Flex, Icon, Loader, Stack, Text } from "metabase/ui";
 import type { TableId } from "metabase-types/api";
 
 import type { RouteParams } from "../../../types";
 import { getUrl, parseRouteParams } from "../../../utils";
 
-import { EditTableMetadataModal } from "./EditTableMetadataModal";
 import type { FilterState } from "./FilterPopover";
 import S from "./Results.module.css";
 
@@ -31,12 +17,20 @@ interface SearchNewProps {
   query: string;
   params: RouteParams;
   filters: FilterState;
+  selectedTables: Set<TableId>;
+  setSelectedTables: (tables: Set<TableId>) => void;
+  setOnUpdateCallback: (callback: (() => void) | null) => void;
 }
 
-export function SearchNew({ query, params, filters }: SearchNewProps) {
+export function SearchNew({
+  query,
+  params,
+  filters,
+  selectedTables,
+  setSelectedTables,
+  setOnUpdateCallback,
+}: SearchNewProps) {
   const routeParams = parseRouteParams(params);
-  const [selectedItems, setSelectedItems] = useState<Set<TableId>>(new Set());
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const {
     data: tables,
     isLoading,
@@ -62,6 +56,11 @@ export function SearchNew({ query, params, filters }: SearchNewProps) {
     include_hidden: filters.visibilityType != null,
   });
 
+  useEffect(() => {
+    setOnUpdateCallback(() => refetch);
+    return () => setOnUpdateCallback(null);
+  }, [refetch, setOnUpdateCallback]);
+
   if (isLoading) {
     return (
       <Flex justify="center" align="center" p="xl">
@@ -79,14 +78,14 @@ export function SearchNew({ query, params, filters }: SearchNewProps) {
   }
 
   function onTableSelect(tableId: TableId) {
-    if (selectedItems.has(tableId)) {
-      setSelectedItems((prev) => {
+    if (selectedTables.has(tableId)) {
+      setSelectedTables((prev) => {
         const newSet = new Set(prev);
         newSet.delete(tableId);
         return newSet;
       });
     } else {
-      setSelectedItems((prev) => {
+      setSelectedTables((prev) => {
         const newSet = new Set(prev);
         newSet.add(tableId);
         return newSet;
@@ -137,7 +136,7 @@ export function SearchNew({ query, params, filters }: SearchNewProps) {
                 }}
                 size="sm"
                 onChange={() => onTableSelect(table.id)}
-                checked={selectedItems.has(table.id)}
+                checked={selectedTables.has(table.id)}
                 onClick={(event) => event.stopPropagation()}
               />
               <Icon
@@ -164,43 +163,6 @@ export function SearchNew({ query, params, filters }: SearchNewProps) {
           );
         })}
       </Stack>
-
-      <Box>
-        <Flex justify="center" direction="row" gap="sm">
-          {selectedItems.size === 0 && (
-            <Button
-              onClick={() =>
-                setSelectedItems(new Set(tables.map((table) => table.id)))
-              }
-              variant="transparent"
-            >
-              {t`Select all`}
-            </Button>
-          )}
-
-          <BulkActionBar
-            opened={selectedItems.size > 0 && !isModalOpen}
-            message={"" /* TODO: message */}
-          >
-            <BulkActionButton onClick={() => setIsModalOpen(true)}>
-              {t`Edit`}
-            </BulkActionButton>
-
-            <BulkActionButton onClick={() => setSelectedItems(new Set())}>
-              {t`Unselect all `}
-            </BulkActionButton>
-          </BulkActionBar>
-        </Flex>
-      </Box>
-      <EditTableMetadataModal
-        tables={selectedItems}
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onUpdate={() => {
-          refetch();
-          setSelectedItems(new Set());
-        }}
-      />
     </Stack>
   );
 }

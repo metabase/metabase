@@ -1,5 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useDeferredValue, useState } from "react";
+import { useDeferredValue, useEffect, useState } from "react";
+import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import {
@@ -14,10 +15,12 @@ import {
   Tooltip,
   rem,
 } from "metabase/ui";
+import type { DatabaseId, TableId } from "metabase-types/api";
 
 import type { RouteParams } from "../../../types";
 import type { ChangeOptions, TreePath } from "../types";
 
+import { EditTableMetadataModal } from "./EditTableMetadataModal";
 import { FilterPopover, type FilterState } from "./FilterPopover";
 import { SearchNew } from "./SearchNew";
 import { Tree } from "./Tree";
@@ -37,6 +40,7 @@ export function TablePicker({
 }: TablePickerProps) {
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
+  const previousDeferredQuery = usePrevious(deferredQuery);
   const [filters, setFilters] = useState<FilterState>({
     visibilityType: null,
     visibilityType2: null,
@@ -47,6 +51,46 @@ export function TablePicker({
   const [isOpen, { toggle, close }] = useDisclosure();
   const filtersCount = getFiltersCount(filters);
 
+  const [selectedTables, setSelectedTables] = useState<Set<TableId>>(new Set());
+  const [selectedSchemas, setSelectedSchemas] = useState<Set<string>>(
+    new Set(),
+  );
+  const [selectedDatabases, setSelectedDatabases] = useState<Set<DatabaseId>>(
+    new Set(),
+  );
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [onUpdateCallback, setOnUpdateCallback] = useState<(() => void) | null>(
+    null,
+  );
+
+  const hasSelectedItems =
+    selectedTables.size > 0 ||
+    selectedSchemas.size > 0 ||
+    selectedDatabases.size > 0;
+
+  function resetSelection() {
+    setSelectedTables(new Set());
+    setSelectedSchemas(new Set());
+    setSelectedDatabases(new Set());
+  }
+
+  function handleModalUpdate() {
+    if (onUpdateCallback) {
+      onUpdateCallback();
+    }
+    resetSelection();
+  }
+
+  useEffect(() => {
+    if (previousDeferredQuery === "" && deferredQuery !== "") {
+      resetSelection();
+    }
+
+    if (previousDeferredQuery !== "" && deferredQuery === "") {
+      resetSelection();
+    }
+  }, [deferredQuery, previousDeferredQuery]);
+
   return (
     <Stack
       data-testid="table-picker"
@@ -54,7 +98,7 @@ export function TablePicker({
       className={className}
       style={{ overflow: "hidden" }}
     >
-      <Group gap="md" p="lg" pb={0}>
+      <Group gap="sm" p="lg" pb={0}>
         <Input
           flex="1"
           leftSection={<Icon name="search" />}
@@ -112,15 +156,50 @@ export function TablePicker({
             />
           </Popover.Dropdown>
         </Popover>
+        <Tooltip label={t`Edit selected items`}>
+          <Button
+            onClick={() => setIsModalOpen(true)}
+            p="sm"
+            disabled={!hasSelectedItems}
+          >
+            <Icon name="pencil" />
+          </Button>
+        </Tooltip>
       </Group>
 
       <Box style={{ overflow: "auto" }}>
         {deferredQuery === "" && filtersCount === 0 ? (
-          <Tree path={path} onChange={onChange} />
+          <Tree
+            path={path}
+            onChange={onChange}
+            selectedTables={selectedTables}
+            setSelectedTables={setSelectedTables}
+            selectedSchemas={selectedSchemas}
+            setSelectedSchemas={setSelectedSchemas}
+            selectedDatabases={selectedDatabases}
+            setSelectedDatabases={setSelectedDatabases}
+            setOnUpdateCallback={setOnUpdateCallback}
+          />
         ) : (
-          <SearchNew query={deferredQuery} params={params} filters={filters} />
+          <SearchNew
+            query={deferredQuery}
+            params={params}
+            filters={filters}
+            selectedTables={selectedTables}
+            setSelectedTables={setSelectedTables}
+            setOnUpdateCallback={setOnUpdateCallback}
+          />
         )}
       </Box>
+
+      <EditTableMetadataModal
+        tables={selectedTables}
+        schemas={selectedSchemas}
+        databases={selectedDatabases}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onUpdate={handleModalUpdate}
+      />
     </Stack>
   );
 }
