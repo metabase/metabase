@@ -221,7 +221,7 @@
 (defn create-task-with-lock!
   "Takes a cluster-wide lock and either returns an existing in-progress RemoteSyncTask ID or creates a new one.
 
-  Takes a task-type string (either 'import' or 'export'). Returns a RemoteSyncTask optionally :existing? key.
+  Takes a task-type string (either 'import' or 'export'). Returns a RemoteSyncTask with an optional :existing? key.
   If a task is already running, returns (assoc existing-task :existing? true). Otherwise creates a new task and
   returns it."
   [task-type]
