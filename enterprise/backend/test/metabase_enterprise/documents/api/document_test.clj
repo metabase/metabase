@@ -86,7 +86,7 @@
 (deftest put-document-archived-test
   (testing "PUT /api/ee/document/:id - cannot update archived document"
     (mt/with-temp [:model/Document {doc-id :id} {:name "Test Document"
-                                                 :document (text->prose-mirror-ast "Initial")
+                                                 :document (documents.test-util/text->prose-mirror-ast "Initial")
                                                  :archived true}]
       (testing "editing archived document returns 404"
         (is (= "The object has been archived."
