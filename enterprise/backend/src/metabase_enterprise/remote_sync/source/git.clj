@@ -324,15 +324,15 @@
   Returns the name of the newly created branch.
 
   Throws ExceptionInfo if the base branch is not found or if the new branch already exists."
-  [{:keys [^Git git] :as source} branch-name base-branch]
+  [{:keys [^Git git] :as source} branch-name base-commit-ish]
   (fetch! source)
   (delete-branches-without-remote! source)
   (let [repo (.getRepository git)
         new-branch-ref (qualify-branch branch-name)
-        base-commit-id (.resolve repo base-branch)]
+        base-commit-id (.resolve repo base-commit-ish)]
     (when-not base-commit-id
-      (throw (ex-info (format "Base branch '%s' not found" base-branch)
-                      {:base-branch base-branch})))
+      (throw (ex-info (format "Branch base '%s' not found" base-commit-ish)
+                      {:base-commit-ish base-commit-ish})))
     (when (.resolve repo new-branch-ref)
       (throw (ex-info (format "Branch '%s' already exists" branch-name)
                       {:branch branch-name})))
@@ -369,8 +369,8 @@
   source.p/Source
   (branches [source] (branches source))
 
-  (create-branch [source branch-name base-branch]
-    (create-branch source branch-name base-branch))
+  (create-branch [source branch-name base-commit-ish]
+    (create-branch source branch-name base-commit-ish))
 
   (default-branch [this]
     (default-branch this))

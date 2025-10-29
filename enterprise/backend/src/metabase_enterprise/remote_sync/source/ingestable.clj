@@ -103,8 +103,7 @@
     (keys (or @cache (reset! cache (ingest-all snapshot)))))
 
   (ingest-one [_ serdes-path]
-    snapshot
-    (when-not cache
+    (when-not @cache
       (reset! cache (ingest-all snapshot)))
     (when-let [target (get @cache (serialization/strip-labels serdes-path))]
       (try
