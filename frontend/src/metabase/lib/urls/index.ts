@@ -9,6 +9,7 @@ export * from "./dependencies";
 export * from "./documents";
 export * from "./indexed-entities";
 export * from "./modelToUrl";
+export * from "./permissions";
 export * from "./misc";
 export * from "./models";
 export * from "./pulses";

@@ -608,6 +608,29 @@
         (-> (lib.expression/expression-metadata query stage-number expr)
             (assoc :lib/source-column-alias id-or-name))))))
 
+(declare resolve-from-previous-stage-or-source)
+
+(defn- resolve-nonexistent-deduplicated-column-name
+  "Resolve a ref like `CATEGORY_2` to `CATEGORY` if the query only has the latter."
+  [query stage-number id-or-name]
+  (when (string? id-or-name)
+    (when-let [[_match original-name suffix] (re-matches #"^(\w+)_([1-9][0-9]*)$" id-or-name)]
+      (let [suffix     (parse-long suffix)
+            new-suffix (dec suffix)
+            ;; e.g. `CATEGORY_3` becomes `CATEGORY_2`; `CATEGORY_2` becomes `CATEGORY`
+            new-name   (if (<= new-suffix 1)
+                         original-name
+                         (str original-name \_ new-suffix))]
+        (log/debugf "Failed to resolve %s, trying to resolve Field %s instead..." (pr-str id-or-name) (pr-str new-name))
+        (let [resolved (resolve-from-previous-stage-or-source query stage-number new-name)]
+          (if (::fallback-metadata? resolved)
+            (do
+              (log/debugf "Failed to resolve %s as %s" (pr-str id-or-name) (pr-str new-name))
+              nil)
+            (do
+              (log/debugf "Successfully resolved %s as %s" (pr-str id-or-name) (pr-str new-name))
+              resolved)))))))
+
 (mu/defn- resolve-from-previous-stage-or-source :- ::lib.metadata.calculation/visible-column
   [query        :- ::lib.schema/query
    stage-number :- :int
@@ -624,6 +647,9 @@
                 ;; try looking in the expressions in this stage to see if someone incorrectly used a field ref for an
                 ;; expression.
                 (maybe-resolve-expression-in-current-stage query stage-number id-or-name)
+                ;; if that fails and this is a deduplicated name like `CATEGORY_2` then try looking for `CATEGORY` and
+                ;; so forth
+                (resolve-nonexistent-deduplicated-column-name query stage-number id-or-name)
                 ;; if we STILL can't find a match, return made-up fallback metadata.
                 (fallback-metadata id-or-name))]
     (when col

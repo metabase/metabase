@@ -33,15 +33,6 @@
       ]
     },
     {
-      "name": "Workflows",
-      "label": ".Team/Workflows",
-      "members": [
-        "piranha",
-        "crisptrutski",
-        "spalt08"
-      ]
-    },
-    {
       "name": "Admin Webapp",
       "label": ".Team/AdminWebapp",
       "members": [
@@ -69,7 +60,9 @@
         "sloansparger",
         "somtom",
         "tsplude",
-        "lbrdnk"
+        "lbrdnk",
+        "piranha",
+        "crisptrutski"
       ]
     },
     {

@@ -6,9 +6,9 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
-   [metabase.models.interface :as mi]
    [metabase.queries.core :as card]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util :as u]
@@ -130,7 +130,7 @@
   [id]
   (u/prog1 (api/check-404
             (api/read-check
-             (t2/hydrate (t2/select-one :model/Document :id id) :creator :can_write :can_delete :can_restore)))
+             (t2/hydrate (t2/select-one :model/Document :id id) :creator :can_write :can_delete :can_restore :is_remote_synced)))
     (events/publish-event! :event/document-read
                            {:object-id id
                             :user-id api/*current-user-id*})))
@@ -142,38 +142,39 @@
   {:items (t2/hydrate (t2/select :model/Document {:where [:and
                                                           (collection/visible-collection-filter-clause)
                                                           [:= :archived false]]})
-                      :creator :can_write)})
+                      :creator :can_write :is_remote_synced)})
 
 (api.macros/defendpoint :post "/"
   "Create a new `Document`."
   [_route-params
    _query-params
    {:keys [name document collection_id collection_position cards]} :- DocumentCreateOptions]
-  (collection/check-write-perms-for-collection collection_id)
-  (let [document-id (t2/with-transaction [_conn]
-                      (when collection_position
-                        (api/maybe-reconcile-collection-position! {:collection_id collection_id
-                                                                   :collection_position collection_position}))
-                      (let [document-id (t2/insert-returning-pk! :model/Document {:name name
-                                                                                  :collection_id collection_id
-                                                                                  :collection_position collection_position
-                                                                                  :document document
-                                                                                  :content_type prose-mirror/prose-mirror-content-type
-                                                                                  :creator_id api/*current-user-id*})
-                            cards-to-update-in-ast (merge (clone-cards-in-document! {:id document-id
-                                                                                     :collection_id collection_id
-                                                                                     :document document
-                                                                                     :content_type prose-mirror/prose-mirror-content-type})
-                                                          (when-not (empty? cards)
-                                                            (create-cards-for-document! cards document-id collection_id @api/*current-user*)))]
-                        (when (seq cards-to-update-in-ast)
-                          (t2/update! :model/Document :id document-id
-                                      (update-cards-in-ast
-                                       {:document document
-                                        :content_type prose-mirror/prose-mirror-content-type}
-                                       cards-to-update-in-ast)))
-                        document-id))
-        created-document (get-document document-id)]
+  (api/create-check :model/Document {:collection_id collection_id})
+  (let [created-document (t2/with-transaction [_conn]
+                           (when collection_position
+                             (api/maybe-reconcile-collection-position! {:collection_id collection_id
+                                                                        :collection_position collection_position}))
+                           (let [document-id (t2/insert-returning-pk! :model/Document {:name name
+                                                                                       :collection_id collection_id
+                                                                                       :collection_position collection_position
+                                                                                       :document document
+                                                                                       :content_type prose-mirror/prose-mirror-content-type
+                                                                                       :creator_id api/*current-user-id*})
+                                 cards-to-update-in-ast (merge (clone-cards-in-document! {:id document-id
+                                                                                          :collection_id collection_id
+                                                                                          :document document
+                                                                                          :content_type prose-mirror/prose-mirror-content-type})
+                                                               (when-not (empty? cards)
+                                                                 (create-cards-for-document! cards document-id collection_id @api/*current-user*)))]
+                             (when (seq cards-to-update-in-ast)
+                               (t2/update! :model/Document :id document-id
+                                           (update-cards-in-ast
+                                            {:document document
+                                             :content_type prose-mirror/prose-mirror-content-type}
+                                            cards-to-update-in-ast)))
+                             (u/prog1 (get-document document-id)
+                               (when (collections/remote-synced-collection? (:collection_id <>))
+                                 (collections/check-non-remote-synced-dependencies <>)))))]
     ;; Publish event after successful creation
     (events/publish-event! :event/document-create
                            {:object created-document
@@ -192,7 +193,7 @@
    _query-params
    {:keys [name document collection_id collection_position cards] :as body} :- DocumentUpdateOptions]
   (let [existing-document (api/check-404 (get-document document-id))]
-    (api/check-403 (mi/can-write? existing-document))
+    (api/write-check existing-document)
     (when (api/column-will-change? :collection_id existing-document body)
       (m.document/validate-collection-move-permissions (:collection_id existing-document) collection_id))
 
@@ -213,7 +214,8 @@
                                         (clone-cards-in-document! (assoc existing-document :document document))
                                         (when-not (empty? cards) (create-cards-for-document! cards document-id collection_id @api/*current-user*)))))
                       name (assoc :name name)
-                      (contains? body :collection_id) (assoc :collection_id collection_id))))
+                      (contains? body :collection_id) (assoc :collection_id collection_id)))
+        (collections/check-for-remote-sync-update existing-document))
       (let [updated-document (get-document document-id)]
         ;; Publish appropriate events
         (if (:archived document-updates)
@@ -229,7 +231,7 @@
   "Permanently deletes an archived Document."
   [{:keys [document-id]} :- [:map [:document-id ms/PositiveInt]]]
   (let [document (api/check-404 (t2/select-one :model/Document :id document-id))]
-    (api/check-403 (mi/can-write? document))
+    (api/write-check document)
     (when-not (:archived document)
       (let [msg (tru "Document must be archived before it can be deleted.")]
         (throw (ex-info msg {:status-code 400, :errors {:archived msg}}))))

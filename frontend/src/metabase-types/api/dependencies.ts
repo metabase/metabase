@@ -1,10 +1,19 @@
 import type { Card, CardType } from "./card";
+import type { Dashboard } from "./dashboard";
+import type { Document } from "./document";
 import type { NativeQuerySnippet } from "./snippets";
-import type { Table } from "./table";
+import type { Table, TableId } from "./table";
 import type { Transform } from "./transform";
 
 export type DependencyId = number;
-export type DependencyType = "card" | "table" | "transform" | "snippet";
+export type DependencyType =
+  | "card"
+  | "table"
+  | "transform"
+  | "snippet"
+  | "dashboard"
+  | "document"
+  | "sandbox";
 export type DependencyGroupType = CardType | Exclude<DependencyType, "card">;
 
 export type DependencyEntry = {
@@ -56,6 +65,32 @@ export type SnippetDependencyNodeData = Pick<
   "name" | "description"
 >;
 
+export type DashboardDependencyNodeData = Pick<
+  Dashboard,
+  | "name"
+  | "description"
+  | "created_at"
+  | "creator"
+  | "last-edit-info"
+  | "collection_id"
+  | "collection"
+  | "moderation_reviews"
+> & {
+  view_count?: number | null;
+};
+
+export type DocumentDependencyNodeData = Pick<
+  Document,
+  "name" | "created_at" | "creator" | "collection_id" | "collection"
+> & {
+  view_count?: number | null;
+};
+
+export type SandboxDependencyNodeData = {
+  table_id: TableId;
+  table?: Table | null;
+};
+
 export type TableDependencyNode = BaseDependencyNode<
   "table",
   TableDependencyNodeData
@@ -76,11 +111,29 @@ export type SnippetDependencyNode = BaseDependencyNode<
   SnippetDependencyNodeData
 >;
 
+export type DashboardDependencyNode = BaseDependencyNode<
+  "dashboard",
+  DashboardDependencyNodeData
+>;
+
+export type DocumentDependencyNode = BaseDependencyNode<
+  "document",
+  DocumentDependencyNodeData
+>;
+
+export type SandboxDependencyNode = BaseDependencyNode<
+  "sandbox",
+  SandboxDependencyNodeData
+>;
+
 export type DependencyNode =
   | TableDependencyNode
   | TransformDependencyNode
   | CardDependencyNode
-  | SnippetDependencyNode;
+  | SnippetDependencyNode
+  | DashboardDependencyNode
+  | DocumentDependencyNode
+  | SandboxDependencyNode;
 
 export type DependencyEdge = {
   from_entity_id: DependencyId;

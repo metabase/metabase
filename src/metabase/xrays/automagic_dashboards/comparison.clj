@@ -250,6 +250,10 @@
   "Create a comparison dashboard based on dashboard `dashboard` comparing subsets of
    the dataset defined by segments `left` and `right`."
   [dashboard left right opts]
+  ;; disable ref validation because X-Rays does stuff in a wacko manner, it adds a bunch of filters and whatever that
+  ;; use columns from joins before adding the joins themselves (same with expressions), which is technically invalid
+  ;; at the time it happens but ends up resulting in a valid query at the end of the day. Maybe one day we can rework
+  ;; this code to be saner
   (binding [lib.schema/*HACK-disable-ref-validation* true]
     (let [opts               (-> opts
                                  (m/update-existing-in [:left  :cell-query] (partial lib/normalize ::ads/root.cell-query))

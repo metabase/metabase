@@ -205,7 +205,9 @@
          :collection_type
          :archived_directly
          :display_name
-         :effective_parent))))
+         :effective_parent)
+        (cond-> (= model "transform")
+          (dissoc :source :target)))))
 
 (defn- bit->boolean
   "Coerce a bit returned by some MySQL/MariaDB versions in some situations to Boolean."
@@ -275,7 +277,7 @@
    [:offset                              {:optional true} [:maybe ms/Int]]
    [:table-db-id                         {:optional true} [:maybe ms/PositiveInt]]
    [:search-engine                       {:optional true} [:maybe string?]]
-   [:search-native-query                 {:optional true} [:maybe true?]]
+   [:search-native-query                 {:optional true} [:maybe boolean?]]
    [:model-ancestors?                    {:optional true} [:maybe boolean?]]
    [:verified                            {:optional true} [:maybe true?]]
    [:ids                                 {:optional true} [:maybe [:set ms/PositiveInt]]]
@@ -371,8 +373,6 @@
 
 (defn- map-collection [collection]
   (cond-> collection
-    (:archived_directly collection)
-    (assoc :location (collection/trash-path))
     :always
     (assoc :type (:collection_type collection))
     :always

@@ -242,10 +242,7 @@
 
 (defmethod sql.qp/add-interval-honeysql-form :mysql
   [driver hsql-form amount unit]
-  ;; MySQL doesn't support `:millisecond` as an option, but does support fractional seconds
-  (if (= unit :millisecond)
-    (recur driver hsql-form (/ amount 1000.0) :second)
-    [:date_add hsql-form [:raw (format "INTERVAL %s %s" amount (name unit))]]))
+  (h2x/add-interval-honeysql-form driver hsql-form amount unit))
 
 ;; now() returns current timestamp in seconds resolution; now(6) returns it in nanosecond resolution
 (defmethod sql.qp/current-datetime-honeysql-form :mysql

@@ -1,5 +1,6 @@
 import cx from "classnames";
 
+import { handleLinkSdkPlugin } from "embedding-sdk-shared/lib/sdk-global-plugins";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import Link from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
@@ -51,8 +52,19 @@ export function formatUrl(value: string, options: OptionsType = {}) {
         </Link>
       );
     }
+
+    const onClickCaptureInSdk = isEmbeddingSdk()
+      ? {
+          onClickCapture: (e: React.MouseEvent<HTMLAnchorElement>) => {
+            if (handleLinkSdkPlugin(url).handled) {
+              e.preventDefault();
+            }
+          },
+        }
+      : {};
+
     return (
-      <ExternalLink className={className} href={url}>
+      <ExternalLink className={className} href={url} {...onClickCaptureInSdk}>
         {text}
       </ExternalLink>
     );

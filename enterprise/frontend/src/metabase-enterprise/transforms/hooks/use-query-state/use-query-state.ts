@@ -10,7 +10,10 @@ const DEFAULT_VIZ_SETTINGS: VisualizationSettings = {
   "table.pivot": false,
 };
 
-export function useQueryState(initialQuery: DatasetQuery) {
+export function useQueryState(
+  initialQuery: DatasetQuery,
+  proposedQuery?: DatasetQuery,
+) {
   const [query, setQuery] = useState(initialQuery);
   const metadata = useSelector(getMetadata);
 
@@ -24,6 +27,30 @@ export function useQueryState(initialQuery: DatasetQuery) {
     [query, metadata],
   );
 
+  const proposedQuestion = useMemo(() => {
+    if (!proposedQuery) {
+      return undefined;
+    }
+
+    const question = Question.create({
+      dataset_query: proposedQuery,
+      metadata,
+    });
+    const { isNative } = Lib.queryDisplayInfo(question.query());
+
+    if (isNative) {
+      const nativeQuery = question.legacyNativeQuery();
+      if (nativeQuery) {
+        const queryText = nativeQuery.queryText();
+        // For native queries, ensure template tags are processed
+        const updatedQuery = nativeQuery.setQueryText(queryText);
+        return updatedQuery.question();
+      }
+    }
+
+    return question;
+  }, [proposedQuery, metadata]);
+
   const isQueryDirty = useMemo(
     () => !Lib.areLegacyQueriesEqual(query, initialQuery),
     [query, initialQuery],
@@ -33,5 +60,5 @@ export function useQueryState(initialQuery: DatasetQuery) {
     setQuery(newQuestion.datasetQuery());
   };
 
-  return { question, isQueryDirty, setQuestion };
+  return { question, proposedQuestion, isQueryDirty, setQuestion };
 }
