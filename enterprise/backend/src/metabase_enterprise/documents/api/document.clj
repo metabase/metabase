@@ -199,6 +199,7 @@
   (let [existing-document (api/check-404 (get-document document-id))]
     (when-not (contains? body :archived)
       (api/check-not-archived existing-document))
+    (api/write-check existing-document)
     (when (api/column-will-change? :collection_id existing-document body)
       (m.document/validate-collection-move-permissions (:collection_id existing-document) collection_id))
 
