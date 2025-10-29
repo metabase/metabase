@@ -322,6 +322,7 @@
 (methodical/defmethod events/publish-event! ::remote-sync-event
   [topic event]
   (audit-log/record-event! topic event))
+
 (derive ::action-v2-event ::event)
 (derive :event/action-v2-execute ::action-v2-event)
 

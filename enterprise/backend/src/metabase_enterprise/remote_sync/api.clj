@@ -38,7 +38,8 @@
   (let [branch-name (or branch (settings/remote-sync-branch))
         {task-id :id :as task} (impl/async-import! branch-name force {})]
     (events/publish-event! :event/remote-sync-import
-                           {:object (assoc task :branch branch-name)
+                           {:object task
+                            :details {:branch branch-name}
                             :user-id api/*current-user-id*})
     {:status :success
      :task_id task-id
@@ -86,7 +87,8 @@
                                                    (or force false)
                                                    (or message "Exported from Metabase"))]
     (events/publish-event! :event/remote-sync-export
-                           {:object (assoc task :branch branch-name)
+                           {:object task
+                            :details {:branch branch-name}
                             :user-id api/*current-user-id*})
     {:message "Export task started"
      :task_id task-id}))
@@ -192,7 +194,8 @@
       (source.p/create-branch source new-branch (settings/remote-sync-branch))
       (let [{task-id :id :as task} (impl/async-export! new-branch false message)]
         (events/publish-event! :event/remote-sync-stash
-                               {:object (assoc task :branch new-branch)
+                               {:object task
+                                :details {:branch new-branch}
                                 :user-id api/*current-user-id*})
         {:status "success"
          :message (str "Stashing to " new-branch)

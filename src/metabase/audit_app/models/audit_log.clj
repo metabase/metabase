@@ -147,7 +147,7 @@
 
 (defmethod model-details :model/RemoteSyncTask
   [task _event-type]
-  (select-keys task [:sync_task_type :version :branch]))
+  (select-keys task [:sync_task_type :version]))
 
 (def ^:private model-name->audit-logged-name
   {"RootCollection" "Collection"})
