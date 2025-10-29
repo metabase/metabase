@@ -1,7 +1,7 @@
-name: Sales Data
+display_name: Sales Data
 type: question
 version: v0
-ref: sales-data
+name: sales-data
 description: Sales analysis with product categories and monthly averages
 database: ref:database-1
 query: |-

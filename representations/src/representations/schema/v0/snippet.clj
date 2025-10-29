@@ -5,7 +5,7 @@
    [representations.util.malli.common :as mc]
    [representations.util.malli.registry :as mr]))
 
-(mr/def ::name
+(mr/def ::display-name
   [:and
    {:description "Globally unique name for the snippet, used in {{snippet:name}} references"}
    ::mc/non-blank-string])
@@ -31,7 +31,7 @@
    [:map
     {:closed true
      :description "v0 schema for human-writable SQL snippet representation"}
-    [:name ::name]
+    [:display_name ::display-name]
     [:description [:maybe ::description]]
     [:sql ::sql]
     [:collection {:optional true} ::collection]

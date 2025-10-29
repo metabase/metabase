@@ -3,7 +3,7 @@
    [representations.util.malli.common :as mc]
    [representations.util.malli.registry :as mr]))
 
-(mr/def ::name
+(mr/def ::display-name
   [:and
    {:description "Human-readable name"}
    ::mc/non-blank-string])

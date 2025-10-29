@@ -6,8 +6,8 @@
   (testing "document representation with markdown content is valid"
     (let [document {:type :document
                     :version :v0
-                    :ref "my-doc"
-                    :name "My Document"
+                    :name "my-doc"
+                    :display_name "My Document"
                     :content_type :markdown
                     :content "# Hello World\n\nThis is a test document."}]
       (is (= document
@@ -15,8 +15,8 @@
   (testing "document representation with collection is valid"
     (let [document {:type :document
                     :version :v0
-                    :ref "my-doc"
-                    :name "My Document"
+                    :name "my-doc"
+                    :display_name "My Document"
                     :content_type :html
                     :content "<h1>Hello</h1>"
                     :collection "docs/guides"}]

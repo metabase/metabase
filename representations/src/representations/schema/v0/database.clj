@@ -5,7 +5,7 @@
    [representations.util.malli.common :as mc]
    [representations.util.malli.registry :as mr]))
 
-(mr/def ::name
+(mr/def ::display-name
   [:and
    {:description "Human-readable name for the database"}
    ::mc/non-blank-string])
@@ -77,7 +77,7 @@
    [:map
     {:closed true
      :description "v0 schema for human-writable database representation"}
-    [:name ::name]
+    [:display_name ::display-name]
     [:engine ::engine]
     [:description {:optional true} ::description]
     [:connection_details :any]

@@ -42,7 +42,7 @@
     [:map
      {:closed true
       :description "v0 schema for human-writable transform representation"}
-     [:name {:optional true} ::common/name]
+     [:display_name {:optional true} ::common/display-name]
      [:description {:optional true} ::common/description]
      [:database ::common/database]
      [:source {:optional true} ::source]

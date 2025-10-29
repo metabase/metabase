@@ -85,7 +85,7 @@
   you used namespaced keys if you are using it elsewhere."
   [k schema value-thunk]
   (let [schema-key (schema-cache-key schema)]
-    (or (get (get @cache k) schema-key)     ; get-in is terribly inefficient
+    (or (get (get @cache k) schema-key) ; get-in is terribly inefficient
         (let [v (value-thunk)]
           (when *cache-miss-hook*
             (*cache-miss-hook* k schema v))
@@ -105,10 +105,7 @@
                                 e)))))
           (make-validator []
             (let [validator (make-validator*)]
-              ;; Only memoize in tests/dev for now, in prod validation is mostly disabled and this stuff is fairly
-              ;; experimental, and we don't want to blow up instances because of the increased memory usage. Once it
-              ;; bakes a bit we can see whether it's useful to enable it in prod
-              #?(:clj  validator
+              #?(:clj validator
                  :cljs validator)))]
     (cached :validator schema make-validator)))
 
@@ -120,8 +117,6 @@
             (try
               (let [validator* (validator schema)
                     explainer* (mc/explainer schema {:registry registry})]
-                ;; for valid values, it's significantly faster to just call the validator. Let's optimize for the 99.9%
-                ;; of calls whose values are valid.
                 (fn schema-explainer [value]
                   (when-not (validator* value)
                     (explainer* value))))

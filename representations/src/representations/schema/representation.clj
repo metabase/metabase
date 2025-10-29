@@ -20,7 +20,7 @@
    :snippet
    :transform])
 
-(mr/def ::ref
+(mr/def ::name
   [:and
    {:description "Unique reference identifier for the collection, used for cross-references"}
    ::mc/non-blank-string
@@ -31,4 +31,4 @@
    {:description "The required elements of every representation"}
    [:type ::type]
    [:version ::version]
-   [:ref ::ref]])
+   [:name ::name]])

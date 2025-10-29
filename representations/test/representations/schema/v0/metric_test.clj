@@ -6,8 +6,8 @@
   (testing "metric representation with native query is valid"
     (let [metric {:type :metric
                   :version :v0
-                  :ref "metric-123"
-                  :name "Total Revenue"
+                  :name "metric-123"
+                  :display_name "Total Revenue"
                   :description "Total revenue for all orders"
                   :database "database-1"
                   :query "SELECT SUM(total) FROM orders"}]
@@ -16,8 +16,8 @@
   (testing "metric representation with mbql query is valid"
     (let [metric {:type :metric
                   :version :v0
-                  :ref "metric-123"
-                  :name "Total Revenue"
+                  :name "metric-123"
+                  :display_name "Total Revenue"
                   :database "database-1"
                   :mbql_query {:aggregation [[:sum [:field 1 nil]]]}}]
       (is (= metric
@@ -25,8 +25,8 @@
   (testing "metric representation with both query types is invalid"
     (let [metric {:type :metric
                   :version :v0
-                  :ref "metric-123"
-                  :name "Total Revenue"
+                  :name "metric-123"
+                  :display_name "Total Revenue"
                   :database "database-1"
                   :query "SELECT 1"
                   :mbql_query {:query :some-query}}]

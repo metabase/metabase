@@ -6,8 +6,8 @@
   (testing "collection representation with all fields is valid"
     (let [collection {:type :collection
                       :version :v0
-                      :ref "my-collection"
-                      :name "My Collection"
+                      :name "my-collection"
+                      :display_name "My Collection"
                       :description "A test collection"
                       :children ["child1" "child2"]}]
       (is (= collection
@@ -15,6 +15,6 @@
   (testing "collection representation with minimal fields is valid"
     (let [collection {:type :collection
                       :version :v0
-                      :ref "minimal-collection"}]
+                      :name "minimal-collection"}]
       (is (= collection
              (read/parse collection))))))

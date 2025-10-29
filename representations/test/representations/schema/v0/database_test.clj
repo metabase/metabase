@@ -6,8 +6,8 @@
   (testing "database representation with basic fields is valid"
     (let [database {:type :database
                     :version :v0
-                    :ref "my-db"
-                    :name "My Database"
+                    :name "my-db"
+                    :display_name "My Database"
                     :engine "postgres"
                     :connection_details {:host "localhost"
                                          :port 5432
@@ -17,8 +17,8 @@
   (testing "database representation with schemas is valid"
     (let [database {:type :database
                     :version :v0
-                    :ref "my-db"
-                    :name "My Database"
+                    :name "my-db"
+                    :display_name "My Database"
                     :engine "postgres"
                     :description "Test database"
                     :connection_details {:host "localhost"}

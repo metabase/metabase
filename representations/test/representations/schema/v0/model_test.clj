@@ -8,8 +8,8 @@
   (testing "model representation with native query is valid"
     (let [model {:type :model
                  :version :v0
-                 :ref "model-123"
-                 :name "User Orders"
+                 :name "model-123"
+                 :display_name "User Orders"
                  :description "All orders for active users"
                  :database "database-1"
                  :query "SELECT * FROM orders WHERE user_active = true"}]
@@ -18,8 +18,8 @@
   (testing "model representation with mbql query is valid"
     (let [model {:type :model
                  :version :v0
-                 :ref "model-123"
-                 :name "User Orders"
+                 :name "model-123"
+                 :display_name "User Orders"
                  :database "database-1"
                  :mbql_query {:source-table 1}}]
       (is (= model
@@ -27,8 +27,8 @@
   (testing "model representation with columns is valid"
     (let [model {:type :model
                  :version :v0
-                 :ref "sales-data-model"
-                 :name "Sales Data Model"
+                 :name "sales-data-model"
+                 :display_name "Sales Data Model"
                  :description "Contains sales data of particular note"
                  :database "database-1"
                  :mbql_query {:source-table 1}
@@ -49,8 +49,8 @@
   (testing "model representation with both query types is invalid"
     (let [model {:type :model
                  :version :v0
-                 :ref "model-123"
-                 :name "User Orders"
+                 :name "model-123"
+                 :display_name "User Orders"
                  :database "database-1"
                  :query "SELECT 1"
                  :mbql_query {:source-table 1}}]

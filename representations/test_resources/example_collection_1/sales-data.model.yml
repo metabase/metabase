@@ -1,8 +1,8 @@
-name: Sales Data Model
+display_name: Sales Data Model
 type: model
 version: v0
 description: 'Contains sales data of particular note'
-ref: sales-data-model
+name: sales-data-model
 database: ref:sample-database
 ########################################
 ## Auto-generated MBQL!               ##

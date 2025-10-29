@@ -6,8 +6,8 @@
   (testing "transform representation with native query is valid"
     (let [transform {:type :transform
                      :version :v0
-                     :ref "transform-123"
-                     :name "User Aggregation"
+                     :name "transform-123"
+                     :display_name "User Aggregation"
                      :description "Aggregate user activity data"
                      :database "database-1"
                      :query "SELECT user_id, COUNT(*) FROM events GROUP BY user_id"}]
@@ -16,8 +16,8 @@
   (testing "transform representation with mbql query is valid"
     (let [transform {:type :transform
                      :version :v0
-                     :ref "transform-123"
-                     :name "User Aggregation"
+                     :name "transform-123"
+                     :display_name "User Aggregation"
                      :database "database-1"
                      :mbql_query {:source-table 1
                                   :aggregation [[:count]]}}]
@@ -26,8 +26,8 @@
   (testing "transform representation with both query types is invalid"
     (let [transform {:type :transform
                      :version :v0
-                     :ref "transform-123"
-                     :name "User Aggregation"
+                     :name "transform-123"
+                     :display_name "User Aggregation"
                      :database "database-1"
                      :query "SELECT 1"
                      :mbql_query {:source-table 1}}]

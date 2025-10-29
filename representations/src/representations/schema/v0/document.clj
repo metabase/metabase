@@ -5,7 +5,7 @@
    [representations.util.malli.common :as mc]
    [representations.util.malli.registry :as mr]))
 
-(mr/def ::name
+(mr/def ::display-name
   [:and
    {:description "Human-readable name for the document"}
    ::mc/non-blank-string])
@@ -34,7 +34,7 @@
    [:map
     {:closed true
      :description "v0 schema for human-writable document representation"}
-    [:name ::name]
+    [:display_name ::display-name]
     [:content_type ::content-type]
     [:content ::content]
     [:collection {:optional true} ::collection]]])

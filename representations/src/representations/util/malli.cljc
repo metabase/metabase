@@ -23,9 +23,7 @@
     (catch #?(:clj Exception :cljs :default) e
       (let [data (ex-data e)]
         (if (= (:type data) :malli.core/coercion)
-          ;; Re-throw with nicer message using humanized error
           (let [{coerced-value :value coercion-schema :schema} (:data data)]
             (throw (ex-info "Value does not match schema"
                             {:error (explain coercion-schema coerced-value)})))
-          ;; Re-throw other exceptions as-is
           (throw e))))))
