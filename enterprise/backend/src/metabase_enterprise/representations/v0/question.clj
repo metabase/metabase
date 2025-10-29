@@ -1,5 +1,6 @@
 (ns metabase-enterprise.representations.v0.question
   (:require
+   [flatland.ordered.map :refer [ordered-map]]
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.lookup :as lookup]
@@ -121,12 +122,12 @@
 
 (defmethod export/export-entity :question [card]
   (let [card-ref (v0-common/unref (v0-common/->ref (:id card) :question))]
-    (-> {:display_name (:name card)
+    (-> (ordered-map
+         :name         card-ref
          :type         (:type card)
          :version      :v0
-         :name         card-ref
-         :entity-id    (:entity_id card)
-         :description  (:description card)}
-
+         :entity_id    (:entity_id card)
+         :display_name (:name card)
+         :description  (:description card))
         (merge (v0-mbql/export-dataset-query (:dataset_query card)))
         u/remove-nils)))
