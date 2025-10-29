@@ -13,7 +13,12 @@ import type {
 
 import { isSameSource } from "../utils";
 
-interface UseSourceStateResult {
+type UseSourceStateProps = {
+  transformId: TransformId | undefined;
+  initialSource: DraftTransformSource;
+};
+
+type UseSourceStateResult = {
   source: DraftTransformSource;
   proposedSource: DraftTransformSource | undefined;
   suggestedTransform: SuggestedTransform | undefined;
@@ -22,12 +27,12 @@ interface UseSourceStateResult {
   setSourceAndAccept: (source: DraftTransformSource) => void;
   acceptProposed: () => void;
   rejectProposed: () => void;
-}
+};
 
-export function useSourceState(
-  transformId: TransformId | undefined,
-  initialSource: DraftTransformSource,
-): UseSourceStateResult {
+export function useSourceState({
+  transformId,
+  initialSource,
+}: UseSourceStateProps): UseSourceStateResult {
   const dispatch = useDispatch();
 
   const suggestedTransform = useSelector((state) =>

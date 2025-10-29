@@ -87,7 +87,10 @@ export function TransformQueryPageBody({
     setSourceAndAccept,
     acceptProposed,
     rejectProposed,
-  } = useSourceState(transform.id, transform.source);
+  } = useSourceState({
+    transformId: transform.id,
+    initialSource: transform.source,
+  });
   const [uiState, setUiState] = useState(getInitialUiState);
   const [updateTransform, { isLoading: isSaving }] =
     useUpdateTransformMutation();

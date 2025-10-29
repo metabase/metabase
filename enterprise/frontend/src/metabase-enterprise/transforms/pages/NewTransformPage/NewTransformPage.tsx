@@ -83,7 +83,7 @@ function NewTransformPageBody({
     setSourceAndAccept,
     acceptProposed,
     rejectProposed,
-  } = useSourceState(undefined, initialSource);
+  } = useSourceState({ initialSource });
   const [uiState, setUiState] = useState(getInitialUiState);
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
