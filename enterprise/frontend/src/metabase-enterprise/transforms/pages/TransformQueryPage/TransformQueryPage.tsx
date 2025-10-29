@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import type { Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -16,10 +16,11 @@ import {
   useGetTransformQuery,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
-import { isSameSource } from "metabase-enterprise/transforms/utils";
 import type { Transform } from "metabase-types/api";
 
 import { TransformEditor } from "../../components/TransformEditor";
+import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";
+import { useSourceState } from "../../hooks/use-source-state";
 
 type TransformQueryPageParams = {
   transformId: string;
@@ -58,17 +59,20 @@ export function TransformQueryPageBody({
   transform,
   route,
 }: TransformQueryPageBodyProps) {
-  const [source, setSource] = useState(transform.source);
+  const {
+    source,
+    proposedSource,
+    isDirty,
+    setSource,
+    acceptProposed,
+    rejectProposed,
+  } = useSourceState(transform.id, transform.source);
   const [uiState, setUiState] = useState(getInitialUiState);
   const [updateTransform, { isLoading: isSaving }] =
     useUpdateTransformMutation();
   const dispatch = useDispatch();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
-
-  const isDirty = useMemo(
-    () => !isSameSource(source, transform.source),
-    [source, transform.source],
-  );
+  useRegisterMetabotTransformContext(transform, source);
 
   const {
     checkData,
@@ -106,7 +110,9 @@ export function TransformQueryPageBody({
         <TransformEditor
           name={transform.name}
           source={source}
-          proposedSource={undefined}
+          proposedSource={
+            proposedSource?.type === "query" ? proposedSource : undefined
+          }
           uiState={uiState}
           isNew={false}
           isDirty={isDirty}
@@ -115,8 +121,8 @@ export function TransformQueryPageBody({
           onChangeUiState={setUiState}
           onSave={handleSave}
           onCancel={handleCancel}
-          onAcceptProposed={() => 0}
-          onRejectProposed={() => 0}
+          onAcceptProposed={acceptProposed}
+          onRejectProposed={rejectProposed}
         />
       )}
       {isConfirmationShown && checkData != null && (

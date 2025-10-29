@@ -1,75 +1,74 @@
 import { useCallback, useMemo, useState } from "react";
-import _ from "underscore";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
-  type MetabotSuggestedTransform,
   deactivateSuggestedTransform,
   getMetabotSuggestedTransform,
 } from "metabase-enterprise/metabot/state";
-import type { Transform, TransformSource } from "metabase-types/api";
+import type { TransformId, TransformSource } from "metabase-types/api";
 
-interface UseSourceStateResult<SourceType> {
-  source: SourceType | TransformSource;
-  setSource: (source: SourceType) => void;
-  suggestedTransform: MetabotSuggestedTransform | undefined;
+import { isSameSource } from "../utils";
+
+interface UseSourceStateResult {
+  source: TransformSource;
   proposedSource: TransformSource | undefined;
-  clearProposed: () => void;
-  acceptProposed: (source: TransformSource) => void;
   isDirty: boolean;
+  setSource: (source: TransformSource) => void;
+  acceptProposed: () => void;
+  rejectProposed: () => void;
 }
 
-export const useSourceState = <SourceType>(
-  transformId: Transform["id"] | undefined,
-  initialSource: SourceType,
-): UseSourceStateResult<SourceType> => {
+export function useSourceState(
+  transformId: TransformId | undefined,
+  initialSource: TransformSource,
+): UseSourceStateResult {
+  const [source, setSource] = useState(initialSource);
   const dispatch = useDispatch();
 
-  const [source, setSource] = useState<SourceType | TransformSource>(
-    initialSource,
+  const suggestedTransform = useSelector((state) =>
+    getMetabotSuggestedTransform(state, transformId),
   );
 
-  const suggestedTransform = useSelector(
-    (state) => getMetabotSuggestedTransform(state, transformId) as any,
-  ) as ReturnType<typeof getMetabotSuggestedTransform>;
-
-  const isPropsedSame = useMemo(
-    () => _.isEqual(suggestedTransform?.source, source),
-    [suggestedTransform?.source, source],
-  );
-  const proposedSource = isPropsedSame ? undefined : suggestedTransform?.source;
+  const proposedSource = useMemo(() => {
+    return suggestedTransform != null &&
+      !isSameSource(suggestedTransform.source, source)
+      ? suggestedTransform.source
+      : undefined;
+  }, [source, suggestedTransform]);
 
   const isDirty = useMemo(() => {
-    return !_.isEqual(initialSource, source) || !!proposedSource;
-  }, [initialSource, source, proposedSource]);
+    return !isSameSource(source, initialSource) || proposedSource != null;
+  }, [source, initialSource, proposedSource]);
 
-  const handleSetSource = useCallback(
-    (source: SourceType) => {
-      dispatch(deactivateSuggestedTransform(suggestedTransform?.id));
+  const setSourceAndDeactivate = useCallback(
+    (source: TransformSource) => {
+      if (suggestedTransform != null) {
+        dispatch(deactivateSuggestedTransform(suggestedTransform.id));
+      }
       setSource(source);
     },
     [dispatch, suggestedTransform],
   );
 
-  const clearProposed = useCallback(() => {
-    dispatch(deactivateSuggestedTransform(suggestedTransform?.id));
+  const acceptProposed = useCallback(async () => {
+    if (suggestedTransform != null) {
+      setSource(suggestedTransform.source);
+      dispatch(deactivateSuggestedTransform(suggestedTransform.id));
+    }
   }, [dispatch, suggestedTransform]);
 
-  const acceptProposed = useCallback(
-    async (source: TransformSource) => {
-      setSource(source);
-      dispatch(deactivateSuggestedTransform(suggestedTransform?.id));
-    },
-    [dispatch, suggestedTransform],
-  );
+  const rejectProposed = useCallback(() => {
+    if (suggestedTransform != null) {
+      dispatch(deactivateSuggestedTransform(suggestedTransform.id));
+    }
+  }, [dispatch, suggestedTransform]);
 
   return {
     source,
-    setSource: handleSetSource,
+    setSource: setSourceAndDeactivate,
     isDirty,
-    suggestedTransform,
     proposedSource,
-    clearProposed,
     acceptProposed,
+    rejectProposed,
   };
-};
+}
