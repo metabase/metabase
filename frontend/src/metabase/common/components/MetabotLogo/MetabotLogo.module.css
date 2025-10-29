@@ -1,11 +1,31 @@
 .MetabotLogo {
-  --illustration-primary: var(--mb-color-brand);
-  --illustration-secondary: var(--mb-color-brand-lighter);
-  --illustration-background: var(--mb-color-bg-light);
+  --mb-face: var(--mb-color-brand);
+  --mb-face-bg: var(--mb-color-brand-light);
+  --mb-buttons-bg: var(--mb-color-brand-light);
+  --mb-outline: var(--mb-color-brand);
+  --mb-body: var(--mb-color-focus);
+  --mb-frames: var(--mb-face);
+
+  [data-mantine-color-scheme="dark"] & {
+    --mb-face: var(--mb-color-bg-light);
+    --mb-face-bg: var(--mb-color-brand);
+    --mb-buttons-bg: var(--mb-color-focus);
+    --mb-frames: var(--mb-color-bg-white);
+  }
 }
 
 .MetabotLogoGray {
-  --illustration-primary: var(--mb-color-bg-night);
-  --illustration-secondary: var(--mb-color-bg-medium);
-  --illustration-background: var(--mb-color-bg-light);
+  --mb-face: var(--mb-color-bg-night);
+  --mb-face-bg: var(--mb-color-bg-white);
+  --mb-buttons-bg: var(--mb-color-bg-light);
+  --mb-outline: var(--mb-color-bg-night);
+  --mb-body: var(--mb-color-bg-medium);
+  --mb-frames: var(--mb-face);
+
+  [data-mantine-color-scheme="dark"] & {
+    --mb-face: var(--mb-color-bg-light);
+    --mb-face-bg: var(--mb-color-bg-night);
+    --mb-buttons-bg: var(--mb-color-bg-medium);
+    --mb-frames: var(--mb-color-bg-white);
+  }
 }
