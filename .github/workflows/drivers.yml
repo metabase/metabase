@@ -1245,6 +1245,18 @@ jobs:
     name: Starburst
     steps:
     - uses: actions/checkout@v4
+    - name: Start Starburst container with mounted configuration files
+      run: |
+        docker run -d \
+          --name starburst \
+          -p 8080:8080 \
+          -e CATALOG_MANAGEMENT=dynamic \
+          trinodb/trino:latest
+        sleep 30
+    - uses: ./.github/actions/await-port
+      with:
+        port: 8080
+      timeout-minutes: 5
     - name: Make plugins directory
       run: mkdir plugins
     - name: Test Starburst driver
