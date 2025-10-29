@@ -33,6 +33,8 @@ export const ENTITY_ICON_COLORS = [
   color("accent6"),
 ];
 
+// For icons with default color, use white background,
+// otherwise derive transparent background from custom color.
 export function getIconBackground(iconColor?: string) {
   if (!iconColor) {
     return "var(--mb-color-white)";

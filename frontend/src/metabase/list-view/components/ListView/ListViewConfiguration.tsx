@@ -99,9 +99,10 @@ export const ListViewConfiguration = ({
 
   // Local state duplication for selected settings to immediately reflect
   // list item preview changes.
+
   const [selectedEntityIcon, setSelectedEntityIcon] = useState<string | null>(
     () =>
-      !settings?.["list.entity_icon"] && settings?.["list.use_image_column"]
+      settings?.["list.use_image_column"]
         ? null
         : settings?.["list.entity_icon"] || getEntityIcon(entityType),
   );
@@ -161,16 +162,16 @@ export const ListViewConfiguration = ({
     entityIconEnabled?: boolean;
     useImageColumn?: boolean;
   }) => {
-    if (left) {
+    if (left !== undefined) {
       setLeftValues(left);
     }
-    if (right) {
+    if (right !== undefined) {
       setRightValues(right);
     }
     if (entityIcon !== undefined) {
       setSelectedEntityIcon(entityIcon);
     }
-    if (entityIconColor) {
+    if (entityIconColor !== undefined) {
       setSelectedIconColor(entityIconColor);
     }
     if (entityIconEnabled !== undefined) {

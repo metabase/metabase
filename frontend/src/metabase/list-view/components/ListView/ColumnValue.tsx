@@ -43,7 +43,17 @@ export function ColumnValue({
       }),
     [rawValue, columnSettings],
   );
+  const columnExtent = useMemo(() => {
+    if (
+      column.semantic_type === "type/Quantity" ||
+      column.semantic_type === "type/Score"
+    ) {
+      return getColumnExtent(cols, rows, cols.indexOf(column));
+    }
+    return null;
+  }, [cols, rows, column]);
 
+  // Need to return empty element here to preserve grid column layout in ListViewItem.
   if (rawValue == null) {
     return <div />;
   }
@@ -152,7 +162,6 @@ export function ColumnValue({
       );
     case "type/Quantity":
     case "type/Score": {
-      const columnExtent = getColumnExtent(cols, rows, cols.indexOf(column));
       return (
         <Flex direction="row" align="center" gap="sm">
           <MiniBarCell
@@ -185,7 +194,7 @@ export function ColumnValue({
           }}
         >
           <Text fw="bold">
-            {value?.toString().slice(0, -1)}
+            {String(value).slice(0, -1)}
             <span
               style={{
                 color: "var(--mb-color-text-tertiary)",
@@ -199,12 +208,14 @@ export function ColumnValue({
       );
     }
     case "type/Currency": {
-      const [currencySymbol, currencyValue] = (
-        (formatNumber(Number(rawValue), {
-          ...(settings.column?.(column) || {}),
-          split_currency: "|",
-        }) as string) || ""
-      ).split("|");
+      const formatted = formatNumber(Number(rawValue), {
+        ...(settings.column?.(column) || {}),
+        split_currency: "|",
+      }) as string;
+      const [currencySymbol = "", currencyValue = ""] = (formatted || "").split(
+        "|",
+      );
+
       return (
         <Text fw="bold">
           <span
