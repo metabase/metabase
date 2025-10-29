@@ -7,8 +7,17 @@ import {
   type CollectionPickerValueItem,
 } from "metabase/common/components/Pickers/CollectionPicker";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Button, Flex, Modal, Stack, Text, rem } from "metabase/ui";
-import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
+import {
+  Anchor,
+  Button,
+  Flex,
+  List,
+  Modal,
+  Stack,
+  Text,
+  rem,
+} from "metabase/ui";
+import type { Card, DatabaseId, SchemaId, TableId } from "metabase-types/api";
 
 interface Props {
   tables?: Set<TableId>;
@@ -28,14 +37,16 @@ export function PublishModelsModal({
   onSuccess,
 }: Props) {
   const [publishModels, { isLoading }] = usePublishModelsMutation();
-  const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
+  const { sendErrorToast } = useMetadataToasts();
   const [isCollectionPickerOpen, setIsCollectionPickerOpen] = useState(false);
   const [selectedCollection, setSelectedCollection] =
     useState<CollectionPickerValueItem | null>(null);
+  const [publishedModels, setPublishedModels] = useState<Card[] | null>(null);
 
   const reset = () => {
     setSelectedCollection(null);
     setIsCollectionPickerOpen(false);
+    setPublishedModels(null);
   };
 
   const handleSubmit = async () => {
@@ -54,15 +65,9 @@ export function PublishModelsModal({
     if (error) {
       sendErrorToast(t`Failed to publish models`);
     } else {
-      const count = data?.created_count ?? 0;
-      sendSuccessToast(
-        t`Successfully published ${count} model${count !== 1 ? "s" : ""}`,
-      );
+      setPublishedModels(data?.models ?? []);
       onSuccess?.();
     }
-
-    // onClose();
-    // reset();
   };
 
   const handleClose = () => {
@@ -94,41 +99,67 @@ export function PublishModelsModal({
         opened={isOpen}
         padding="xl"
         size={rem(512)}
-        title={t`Publish models`}
+        title={publishedModels ? t`Published models` : t`Publish models`}
         onClose={handleClose}
       >
-        <Stack gap="md" pt="sm">
-          <Text>
-            {t`This will create a model for each selected table in the chosen collection.`}
-          </Text>
+        {publishedModels ? (
+          <Stack gap="md" pt="sm">
+            <Text>
+              {t`Successfully published ${publishedModels.length} model${publishedModels.length !== 1 ? "s" : ""}:`}
+            </Text>
 
-          <Text size="sm" c="text-medium">
-            {t`Selected items: ${itemsDescription}`}
-          </Text>
+            <List spacing="sm">
+              {publishedModels.map((model) => (
+                <List.Item key={model.id}>
+                  <Anchor
+                    href={`/model/${model.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {model.name}
+                  </Anchor>
+                </List.Item>
+              ))}
+            </List>
 
-          <Button
-            variant="subtle"
-            onClick={() => setIsCollectionPickerOpen(true)}
-            style={{ justifyContent: "flex-start" }}
-          >
-            {selectedCollection
-              ? selectedCollection.name
-              : t`Choose a collection...`}
-          </Button>
+            <Flex justify="flex-end" gap="sm">
+              <Button onClick={handleClose}>{t`Close`}</Button>
+            </Flex>
+          </Stack>
+        ) : (
+          <Stack gap="md" pt="sm">
+            <Text>
+              {t`This will create a model for each selected table in the chosen collection.`}
+            </Text>
 
-          <Flex justify="flex-end" gap="sm">
-            <Button onClick={handleClose}>{t`Cancel`}</Button>
+            <Text size="sm" c="text-medium">
+              {t`Selected items: ${itemsDescription}`}
+            </Text>
 
             <Button
-              loading={isLoading}
-              disabled={!selectedCollection}
-              variant="filled"
-              onClick={handleSubmit}
+              variant="subtle"
+              onClick={() => setIsCollectionPickerOpen(true)}
+              style={{ justifyContent: "flex-start" }}
             >
-              {t`Publish`}
+              {selectedCollection
+                ? selectedCollection.name
+                : t`Choose a collection...`}
             </Button>
-          </Flex>
-        </Stack>
+
+            <Flex justify="flex-end" gap="sm">
+              <Button onClick={handleClose}>{t`Cancel`}</Button>
+
+              <Button
+                loading={isLoading}
+                disabled={!selectedCollection}
+                variant="filled"
+                onClick={handleSubmit}
+              >
+                {t`Publish`}
+              </Button>
+            </Flex>
+          </Stack>
+        )}
       </Modal>
       {isCollectionPickerOpen && (
         <CollectionPickerModal
