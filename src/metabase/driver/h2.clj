@@ -303,30 +303,9 @@
   ;; FIXME: need to check the equivalent of check-native-query-not-using-default-user and check-action-commands-allowed
   ((get-method driver/execute-raw-queries! :sql-jdbc) driver conn-spec queries))
 
-(defn- dateadd [unit amount expr]
-  (let [expr (h2x/cast-unless-type-in "datetime" #{"datetime" "timestamp" "timestamp with time zone" "date"} expr)]
-    (-> [:dateadd
-         (h2x/literal unit)
-         (if (number? amount)
-           (sql.qp/inline-num (long amount))
-           (h2x/cast-unless-type-in "integer" #{"long" "integer"} amount))
-         expr]
-        (h2x/with-database-type-info (h2x/database-type expr)))))
-
 (defmethod sql.qp/add-interval-honeysql-form :h2
   [driver hsql-form amount unit]
-  (cond
-    (= unit :quarter)
-    (recur driver hsql-form (h2x/* amount 3) :month)
-
-    ;; H2 only supports long ints in the `dateadd` amount field; since we want to support fractional seconds (at least
-    ;; for application DB purposes) convert to `:millisecond`
-    (and (= unit :second)
-         (not (zero? (rem amount 1))))
-    (recur driver hsql-form (* amount 1000.0) :millisecond)
-
-    :else
-    (dateadd unit amount hsql-form)))
+  (h2x/add-interval-honeysql-form driver hsql-form amount unit))
 
 (defmethod driver/humanize-connection-error-message :h2
   [_ messages]

@@ -1109,6 +1109,8 @@
   (metabot-v3.context/log (assoc body :api :search) :llm.log/llm->be)
   (search arguments conversation_id request))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :post "/search_v2" :- [:merge ::search-result ::tool-request]
   "Enhanced search with term and semantic queries using Reciprocal Rank Fusion. This is identical to /search, but
   duplicated in order to add a new capability to AI service that indicates that Metabot can search transforms. The
