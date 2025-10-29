@@ -182,11 +182,3 @@
 
 (defmethod sql.tx/generated-column-sql :starburst [_ _] nil)
 (defmethod sql.tx/default-column-sql :starburst [_ _] nil)
-
-(defmethod tx/create-and-grant-roles! :starburst
-  [_driver _details _roles _user-name _default-role]
-  nil)
-
-(defmethod tx/drop-roles! :starburst
-  [_driver _details _roles _user-name]
-  nil)
