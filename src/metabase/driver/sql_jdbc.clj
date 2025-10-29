@@ -257,6 +257,7 @@
 
 (defmethod driver/set-role! :sql-jdbc
   [driver conn role]
+  (println (format "SQL JDBC SET ROLE: %s" role))
   (let [sql (driver.sql/set-role-statement driver role)]
     (with-open [stmt (.createStatement ^Connection conn)]
       (.execute stmt sql))))

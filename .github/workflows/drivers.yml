@@ -1234,7 +1234,6 @@ jobs:
     env:
       CI: 'true'
       DRIVERS: starburst
-      MB_STARBURST_TEST_USER: metabase
     name: Starburst
     steps:
     - uses: actions/checkout@v4

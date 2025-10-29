@@ -1000,7 +1000,7 @@
 
 (defmethod driver/set-role! :starburst
   [_driver ^Connection conn role]
-  (println {:set-session-user role})
+  (println (format "SET SESSION USER: %s" role))
   (.setSessionUser ^TrinoConnection (.unwrap conn TrinoConnection) role))
 
 (defmethod sql.qp/->honeysql [:starburst ::sql.qp/cast-to-text]
