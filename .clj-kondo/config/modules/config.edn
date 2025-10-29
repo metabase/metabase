@@ -46,7 +46,7 @@
 ;; you need to make
 {:metabase/modules
  {actions
-  {:team "Workflows"
+  {:team "Gadget"
    :api  #{metabase.actions.api
            metabase.actions.args
            metabase.actions.core
@@ -249,7 +249,7 @@
 
   ;; TODO -- way too many API namespaces.
   channel
-  {:team "Workflows"
+  {:team "Gadget"
    :api  #{metabase.channel.api
            metabase.channel.core
            metabase.channel.email
@@ -557,7 +557,7 @@
            util}}
 
   glossary
-  {:team "Workflows"
+  {:team "Gadget"
    :api  #{metabase.glossary.api}
    :uses #{api
            models
@@ -740,7 +740,7 @@
            util}}
 
   notification
-  {:team "Workflows"
+  {:team "Gadget"
    :api  #{metabase.notification.api
            metabase.notification.core
            metabase.notification.init
@@ -875,7 +875,7 @@
            util}}
 
   pulse
-  {:team "Workflows"
+  {:team "Gadget"
    :api  #{metabase.pulse.api
            metabase.pulse.core
            metabase.pulse.init}
@@ -1503,7 +1503,7 @@
            warehouse-schema}}
 
   enterprise/action-v2
-  {:team "Workflows"
+  {:team "Gadget"
    :api  #{metabase-enterprise.action-v2.api
            metabase-enterprise.action-v2.init}
    :uses #{actions
@@ -1649,7 +1649,7 @@
            enterprise/harbormaster}}
 
   enterprise/comments
-  {:team "Workflows"
+  {:team "UX West"
    :api  #{metabase-enterprise.comments.api
            metabase-enterprise.comments.init}
    :uses #{analytics
@@ -1685,7 +1685,7 @@
    :uses :any}
 
   enterprise/dashboard-subscription-filters
-  {:team "Workflows"
+  {:team "Querying"
    :api  #{}
    :uses #{premium-features}}
 
@@ -1986,7 +1986,7 @@
            enterprise/metabot-v3}}
 
   enterprise/serialization
-  {:team "Workflows"
+  {:team "Querying"
    :api  #{metabase-enterprise.serialization.api
            metabase-enterprise.serialization.cmd
            metabase-enterprise.serialization.core
