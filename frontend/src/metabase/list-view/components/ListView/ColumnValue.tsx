@@ -1,7 +1,11 @@
 import { useMemo } from "react";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { formatNumber, formatValue } from "metabase/lib/formatting";
+import {
+  formatNumber,
+  formatValue,
+  getCurrencySymbol,
+} from "metabase/lib/formatting";
 import { Badge, Box, Flex, Icon, Image, Stack, Text } from "metabase/ui";
 import { MiniBarCell } from "metabase/visualizations/components/TableInteractive/cells/MiniBarCell";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
@@ -208,28 +212,33 @@ export function ColumnValue({
       );
     }
     case "type/Currency": {
-      const formatted = formatNumber(Number(rawValue), {
-        ...(settings.column?.(column) || {}),
-        split_currency: "|",
-      }) as string;
-      const [currencySymbol = "", currencyValue = ""] = (formatted || "").split(
-        "|",
-      );
+      const options = settings.column?.(column) || {};
+      let currencyValue = formatNumber(Number(rawValue), options);
 
-      return (
-        <Text fw="bold">
-          <span
-            style={{
-              color: "var(--mb-color-text-tertiary)",
-              fontWeight: "normal",
-              paddingRight: "0.25rem",
-            }}
-          >
-            {currencySymbol}
-          </span>
-          {currencyValue}
-        </Text>
-      );
+      if (
+        options.currency_style === "symbol" &&
+        typeof options.currency === "string"
+      ) {
+        const currencySymbol = getCurrencySymbol(options?.currency);
+        currencyValue = currencyValue.replace(currencySymbol, "");
+
+        return (
+          <Text fw="bold">
+            <span
+              style={{
+                color: "var(--mb-color-text-tertiary)",
+                fontWeight: "normal",
+                paddingRight: "0.25rem",
+              }}
+            >
+              {currencySymbol}
+            </span>
+            {currencyValue}
+          </Text>
+        );
+      }
+
+      return <Text fw="bold">{currencyValue}</Text>;
     }
     case "type/ImageURL":
     case "type/AvatarURL":
