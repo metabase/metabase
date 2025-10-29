@@ -7,7 +7,8 @@
    [metabase-enterprise.representations.v0.question]
    [metabase-enterprise.representations.yaml :as rep-yaml]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [representations.read :as rep-read]))
 
 (set! *warn-on-reflection* true)
 
@@ -23,7 +24,7 @@
                                              :details {}}]
       (let [db-id     (:id database)
             db-export (rep/export database)
-            db-ref    (:ref db-export)]
+            db-ref    (:name db-export)]
         (mt/with-temp [:model/Card question {:name          "Test Question with Ref"
                                              :type          :question
                                              :database_id   db-id
@@ -39,9 +40,9 @@
                   question-yaml (rep-yaml/generate-string question-export)
                   db-rep (rep-yaml/parse-string db-yaml)
                   question-rep (rep-yaml/parse-string question-yaml)]
-              (is (rep/normalize-representation db-rep)
+              (is (rep-read/parse db-rep)
                   "Database representation should validate")
-              (is (rep/normalize-representation question-rep)
+              (is (rep-read/parse question-rep)
                   "Question representation should validate")
               (let [persisted-db (rep/persist! db-rep nil)
                     ref-index (v0-common/map-entity-index {db-ref persisted-db})
@@ -53,7 +54,7 @@
                 (let [re-exported (rep/export persisted-question)
                       re-exported-yaml (rep-yaml/generate-string re-exported)
                       re-exported-rep (rep-yaml/parse-string re-exported-yaml)]
-                  (is (=? (dissoc question-rep :ref :entity-id) re-exported-rep)
+                  (is (=? (dissoc question-rep :name :entity-id) re-exported-rep)
                       "Re-exported representation should match original"))))))))))
 
 ;; TODO: Reproduce test coverage but incorporating shipping changes
@@ -68,7 +69,7 @@
               card-yaml (yaml/generate-string card-export)
               card-rep (yaml/parse-string card-yaml)]
 
-          (is (rep/normalize-representation card-rep)
+          (is (rep-read/parse card-rep)
               "MBQL question export should validate")
 
           (is (string? (:mbql_query card-rep))
@@ -114,7 +115,7 @@
               card-yaml (yaml/generate-string card-export)
               card-rep (yaml/parse-string card-yaml)]
 
-          (is (rep/normalize-representation card-rep)
+          (is (rep-read/parse card-rep)
               "MBQL model export should validate")
 
           (is (string? (:mbql_query card-rep))
