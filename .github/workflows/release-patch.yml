@@ -42,7 +42,7 @@ jobs:
             const lastRelease = currentRelease - 1;
             const AUTO_RELEASE_VERSIONS = [lastRelease, currentRelease];
 
-            async function releasePatchFor(majorVersion) {
+            async function releasePatchFor(majorVersion, overrideSha) {
               const nextPatch = await getNextPatchVersion({
                 github,
                 owner: context.repo.owner,
@@ -50,22 +50,12 @@ jobs:
                 majorVersion,
               });
 
-              // only allow overriding the commit SHA for workflow_dispatch events with a provided sha
-              const overrideSha = String(context.payload.inputs.override_sha ?? '').trim();
-              const isValidOverride = context.eventName === 'workflow_dispatch' && overrideSha.length === 40;
-
-              if (!isValidOverride && overrideSha.length > 0) {
-                throw new Error(`Invalid override SHA provided: ${overrideSha}`);
-              }
-
-              const releaseCommit = isValidOverride
-                ? overrideSha
-                : await getLatestGreenCommit({
-                    github,
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    branch: `release-x.${majorVersion}.x`,
-                  });
+              const releaseCommit = overrideSha ?? await getLatestGreenCommit({
+                github,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                branch: `release-x.${majorVersion}.x`,
+              });
 
               const hasBeenReleased = await hasCommitBeenReleased({
                 github,
@@ -103,7 +93,15 @@ jobs:
                 throw new Error(`Invalid version number: ${inputVersion}`);
               }
 
-              await releasePatchFor(inputVersion);
+              // only allow overriding the commit SHA for workflow_dispatch events with a provided sha
+              const overrideSha = String(context.payload?.inputs?.override_sha ?? '').trim();
+              const isValidOverride = overrideSha.length === 40;
+
+              if (!isValidOverride && overrideSha.length > 0) {
+                throw new Error(`Invalid override SHA provided: ${overrideSha}`);
+              }
+
+              await releasePatchFor(inputVersion, isValidOverride ? overrideSha : undefined);
             } else { // scheduled release of AUTO_RELEASE_VERSIONS
               await Promise.all(AUTO_RELEASE_VERSIONS.map(releasePatchFor));
             }
