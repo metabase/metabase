@@ -1579,7 +1579,9 @@
   {:team "Admin Webapp"
    :api  #{metabase-enterprise.billing.api.routes}
    :uses #{api
-           premium-features util}}
+           premium-features
+           store-api
+           util}}
 
   enterprise/cache
   {:team "Admin Webapp"
