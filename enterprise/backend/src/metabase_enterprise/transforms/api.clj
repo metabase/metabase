@@ -97,6 +97,9 @@
                 (map #(update % :last_run transforms.util/localize-run-timestamps)))
           (t2/hydrate transforms :last_run :transform_tag_ids))))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/"
   "Get a list of transforms."
   [_route-params
@@ -164,6 +167,9 @@
         dep-ids (get global-ordering id)]
     (map id->transform dep-ids)))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/run"
   "Get transform runs based on a set of filter params."
   [_route-params

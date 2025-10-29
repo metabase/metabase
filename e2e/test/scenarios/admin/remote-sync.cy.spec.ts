@@ -242,7 +242,7 @@ describe("Remote Sync", () => {
     });
   });
 
-  describe.skip("remote sync admin settings page", () => {
+  describe("remote sync admin settings page", () => {
     beforeEach(() => {
       H.restore();
       H.activateToken("bleeding-edge");
@@ -262,8 +262,8 @@ describe("Remote Sync", () => {
         .findByText("Success")
         .should("exist");
 
-      //TODO: We should be able to remove this, but for now we need to do a page refresh to see changes
-      cy.visit("/");
+      H.modal().should("not.exist", { timeout: 10000 });
+      cy.findByTestId("exit-admin").click();
 
       H.navigationSidebar().within(() => {
         cy.findByRole("heading", { name: /synced collections/i }).should(
@@ -293,8 +293,8 @@ describe("Remote Sync", () => {
         .findByText("Success")
         .should("exist");
 
-      //TODO: We should be able to remove this, but for now we need to do a page refresh to see changes
-      cy.visit("/");
+      H.modal().should("not.exist", { timeout: 10000 });
+      cy.findByTestId("exit-admin").click();
 
       H.navigationSidebar().within(() => {
         cy.findByRole("heading", { name: /synced collections/i }).should(
@@ -319,7 +319,9 @@ describe("Remote Sync", () => {
         .findByText("Failed")
         .should("exist");
       cy.findByTestId("admin-layout-content")
-        .findByText("Invalid git settings")
+        .findByText(
+          "Unable to connect to git repository with the provided settings",
+        )
         .should("exist");
     });
   });
