@@ -294,16 +294,17 @@
                          [:id {:optional true} ms/PositiveInt]
                          [:type {:optional true} (ms/enum-decode-keyword (vec (keys entity-model)))]]]
   (api/read-check (entity-model type) id)
-  (let [starting-nodes [[type id]]
-        upstream-graph (readable-graph-dependencies)
-        ;; cache the downstream graph specifically, because between calculating transitive children and calculating
-        ;; edges, we'll call this multiple times on the same nodes.
-        downstream-graph (graph/cached-graph (readable-graph-dependents))
-        nodes (into (set starting-nodes)
-                    (graph/transitive upstream-graph starting-nodes))
-        edges (graph/calc-edges-between downstream-graph nodes)]
-    {:nodes (expanded-nodes downstream-graph nodes)
-     :edges edges}))
+  (lib-be/with-metadata-provider-cache
+    (let [starting-nodes [[type id]]
+          upstream-graph (readable-graph-dependencies)
+          ;; cache the downstream graph specifically, because between calculating transitive children and calculating
+          ;; edges, we'll call this multiple times on the same nodes.
+          downstream-graph (graph/cached-graph (readable-graph-dependents))
+          nodes (into (set starting-nodes)
+                      (graph/transitive upstream-graph starting-nodes))
+          edges (graph/calc-edges-between downstream-graph nodes)]
+      {:nodes (expanded-nodes downstream-graph nodes)
+       :edges edges})))
 
 (def ^:private dependents-args
   [:map
@@ -320,13 +321,14 @@
   [_route-params
    {:keys [id type dependent_type dependent_card_type]} :- dependents-args]
   (api/read-check (entity-model type) id)
-  (let [downstream-graph (graph/cached-graph (readable-graph-dependents))
-        nodes (-> (graph/children-of downstream-graph [[type id]])
-                  (get [type id]))]
-    (->> (expanded-nodes downstream-graph nodes)
-         (filter #(and (= (:type %) dependent_type)
-                       (or (not= dependent_type :card)
-                           (= (-> % :data :type) dependent_card_type)))))))
+  (lib-be/with-metadata-provider-cache
+    (let [downstream-graph (graph/cached-graph (readable-graph-dependents))
+          nodes (-> (graph/children-of downstream-graph [[type id]])
+                    (get [type id]))]
+      (->> (expanded-nodes downstream-graph nodes)
+           (filter #(and (= (:type %) dependent_type)
+                         (or (not= dependent_type :card)
+                             (= (-> % :data :type) dependent_card_type))))))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/dependencies` routes."
