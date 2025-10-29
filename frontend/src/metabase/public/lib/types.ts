@@ -13,7 +13,7 @@ export type EmbedResource = (Card | Dashboard) & {
   embedding_params?: EmbeddingParameters | null;
 };
 
-export type EmbedResourceType = "dashboard" | "question";
+export type EmbedResourceType = "dashboard" | "question" | "document";
 
 export type EmbedResourceParameter = {
   id: string;

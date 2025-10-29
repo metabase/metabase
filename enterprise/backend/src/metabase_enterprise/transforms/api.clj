@@ -130,7 +130,8 @@
   (let [transform (t2/with-transaction [_]
                     (let [tag-ids (:tag_ids body)
                           transform (t2/insert-returning-instance!
-                                     :model/Transform (select-keys body [:name :description :source :target :run_trigger]))]
+                                     :model/Transform
+                                     (select-keys body [:name :description :source :target :run_trigger]))]
                       ;; Add tag associations if provided
                       (when (seq tag-ids)
                         (transform.model/update-transform-tags! (:id transform) tag-ids))
