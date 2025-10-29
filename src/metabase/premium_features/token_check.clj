@@ -168,14 +168,19 @@
                                                                                       {:site-uuid  site-uuid
                                                                                        :mb-version (:tag config/mb-version-info)})
                                                              :throw-exceptions false}))]
-       (cond
-         (http/success? resp) (some-> body json/decode+kw)
-
-         (<= 400 status 499) (some-> body json/decode+kw)
+       (if (or (http/success? resp)
+               (http/client-error? resp))
+         (try
+           (json/decode+kw body)
+           (catch Exception e
+             (log/errorf "Token check responded with invalid JSON: %s" {:body body :error (ex-message e)})
+             {:valid false
+              :status (str status)
+              :error-details body}))
 
          ;; exceptions are not cached.
-         :else (throw (ex-info "An unknown error occurred when validating token." {:status status
-                                                                                   :body body})))))
+         (throw (ex-info "An unknown error occurred when validating token." {:status status
+                                                                             :body body})))))
 
    :ttl/threshold token-status-cache-ttl))
 
