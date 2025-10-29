@@ -881,9 +881,11 @@ export function getXAxisModel(
   };
 }
 
-const getXAxisDateRangeFromSortedXAxisValues = (
+export const getXAxisDateRangeFromSortedXAxisValues = (
   xValues: RowValue[],
 ): DateRange | undefined => {
+  xValues = xValues.filter(isNotNull);
+
   if (xValues.length === 0) {
     return undefined;
   }
