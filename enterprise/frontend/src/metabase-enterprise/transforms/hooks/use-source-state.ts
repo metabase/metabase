@@ -24,7 +24,7 @@ type UseSourceStateResult = {
   suggestedTransform: SuggestedTransform | undefined;
   isDirty: boolean;
   setSource: (source: DraftTransformSource) => void;
-  setSourceAndAccept: (source: DraftTransformSource) => void;
+  setSourceAndRejectProposed: (source: DraftTransformSource) => void;
   acceptProposed: () => void;
   rejectProposed: () => void;
 };
@@ -60,7 +60,7 @@ export function useSourceState({
     );
   }, [source, initialSource, proposedSource, transformId]);
 
-  const setSourceAndAccept = useCallback(
+  const setSourceAndRejectProposed = useCallback(
     (source: DraftTransformSource) => {
       if (suggestedTransform != null) {
         dispatch(deactivateSuggestedTransform(suggestedTransform.id));
@@ -89,7 +89,7 @@ export function useSourceState({
     suggestedTransform,
     isDirty,
     setSource,
-    setSourceAndAccept,
+    setSourceAndRejectProposed,
     acceptProposed,
     rejectProposed,
   };

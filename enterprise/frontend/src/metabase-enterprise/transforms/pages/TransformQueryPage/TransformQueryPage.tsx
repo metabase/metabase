@@ -84,7 +84,7 @@ export function TransformQueryPageBody({
     proposedSource,
     isDirty,
     setSource,
-    setSourceAndAccept,
+    setSourceAndRejectProposed,
     acceptProposed,
     rejectProposed,
   } = useSourceState({
@@ -151,7 +151,7 @@ export function TransformQueryPageBody({
           isNew={false}
           isDirty={isDirty}
           isSaving={isSaving || isCheckingDependencies}
-          onChangeSource={setSourceAndAccept}
+          onChangeSource={setSourceAndRejectProposed}
           onSave={handleSave}
           onCancel={handleCancel}
           onAcceptProposed={acceptProposed}
@@ -169,7 +169,7 @@ export function TransformQueryPageBody({
           isNew={false}
           isDirty={isDirty}
           isSaving={isSaving || isCheckingDependencies}
-          onChangeSource={setSourceAndAccept}
+          onChangeSource={setSourceAndRejectProposed}
           onChangeUiState={setUiState}
           onSave={handleSave}
           onCancel={handleCancel}
