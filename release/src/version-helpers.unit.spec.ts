@@ -9,6 +9,7 @@ import {
   getGenericVersion,
   getLastReleaseFromTags,
   getMajorVersion,
+  getMajorVersionFromRef,
   getMajorVersionNumberFromReleaseBranch,
   getMilestoneName,
   getMinorVersion,
@@ -676,6 +677,43 @@ describe("version-helpers", () => {
       expect(() =>
         getMajorVersionNumberFromReleaseBranch("my-local-dev-branch"),
       ).toThrow();
+    });
+  });
+
+  describe("getMajorVersionFromRef", () => {
+    it("should get major version from a tag", () => {
+      expect(getMajorVersionFromRef("refs/tags/v0.56.x")).toEqual(
+        "56",
+      );
+
+      expect(getMajorVersionFromRef("refs/tags/v0.56.x")).toEqual(
+        "56",
+      );
+
+      expect(getMajorVersionFromRef("refs/tags/v0.51.2.x")).toEqual(
+        "51",
+      );
+
+      expect(getMajorVersionFromRef("refs/tags/v0.51.0-beta")).toEqual(
+        "51",
+      );
+
+      expect(getMajorVersionFromRef("refs/tags/v0.51.2.3")).toEqual(
+        "51",
+      );
+
+      expect(getMajorVersionFromRef("refs/tags/v0.51.10")).toEqual(
+        "51",
+      );
+    });
+
+    it("should get major version from a release branch", () => {
+      expect(
+        getMajorVersionFromRef("refs/heads/release-x.51.x"),
+      ).toEqual("51");
+      expect(
+        getMajorVersionFromRef("release-x.52.x"),
+      ).toEqual("52");
     });
   });
 

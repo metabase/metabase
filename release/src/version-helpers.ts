@@ -106,6 +106,16 @@ export const getVersionFromReleaseBranch = (branch: string) => {
   return `v0.${majorVersion}.0`;
 };
 
+export const getMajorVersionFromRef = (ref: string) => {
+  if (ref.startsWith("refs/tags/")) {
+    const tagName = ref.replace("refs/tags/", "");
+    const versionParts = getVersionParts(tagName);
+    return versionParts.major;
+  }
+
+  return getMajorVersionNumberFromReleaseBranch(ref.replace("refs/heads/", ""));
+}
+
 const SDK_TAG_REGEXP = /embedding-sdk-(0\.\d+\.\d+(-\w+)?)$/;
 
 export const getSdkVersionFromReleaseTagName = (tagName: string) => {
