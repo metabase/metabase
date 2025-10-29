@@ -1,5 +1,6 @@
 (ns metabase.legacy-mbql.predicates
   "Predicate functions for checking whether something is a valid instance of a given MBQL clause."
+  {:deprecated "0.57.0"}
   (:require
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.util.malli.registry :as mr]))

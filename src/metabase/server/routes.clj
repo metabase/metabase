@@ -66,8 +66,9 @@
 (def ^:private frontend-dev-port
   (or (env/env :mb-frontend-dev-port) "8080"))
 
-(defn ^:private proxy-dev-server [request]
+(defn ^:private proxy-dev-server
   "Proxy the rspack dev server, so all assets are served from the same origin."
+  [request]
   (let [proxied-url (str "http://localhost:"
                          frontend-dev-port
                          (:uri request)

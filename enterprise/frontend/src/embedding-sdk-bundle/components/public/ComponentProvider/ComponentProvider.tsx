@@ -28,6 +28,7 @@ import { SdkUsageProblemDisplay } from "../../private/SdkUsageProblem";
 
 type ComponentProviderInternalProps = ComponentProviderProps & {
   reduxStore: SdkStore;
+  isLocalHost?: boolean;
 };
 
 export const ComponentProviderInternal = ({
@@ -41,6 +42,7 @@ export const ComponentProviderInternal = ({
   errorComponent,
   loaderComponent,
   allowConsoleLog,
+  isLocalHost,
 }: ComponentProviderInternalProps): JSX.Element => {
   const { fontFamily } = theme ?? {};
 
@@ -48,7 +50,7 @@ export const ComponentProviderInternal = ({
   // This call in the ComponentProvider is still needed for:
   // - Storybook stories, where we don't have the MetabaseProvider
   // - Unit tests
-  useInitDataInternal({ reduxStore, authConfig });
+  useInitDataInternal({ reduxStore, authConfig, isLocalHost });
 
   useEffect(() => {
     if (fontFamily) {
@@ -102,6 +104,7 @@ export const ComponentProviderInternal = ({
                   <SdkUsageProblemDisplay
                     authConfig={authConfig}
                     allowConsoleLog={allowConsoleLog}
+                    isLocalHost={isLocalHost}
                   />
 
                   <PortalContainer />
@@ -117,6 +120,7 @@ export const ComponentProviderInternal = ({
 
 export type ComponentProviderProps = MetabaseProviderProps & {
   reduxStore?: SdkStore;
+  isLocalHost?: boolean;
 };
 
 export const ComponentProvider = memo(function ComponentProvider({

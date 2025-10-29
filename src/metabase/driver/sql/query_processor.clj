@@ -422,16 +422,20 @@
   (binding [driver.common/*start-of-week* :monday]
     (date driver :day-of-week honeysql-expr)))
 
+;; add-interval-honeysql-form is also defined in metabase.util.honey-sql-2 for Postgres, MySQL/MariaDB, and H2. Prefer
+;; that for app db queries to avoid unnecessary dependencies on the driver module.
 (defmulti add-interval-honeysql-form
-  "Return a HoneySQL form that performs represents addition of some temporal interval to the original `hsql-form`.
+  "Return a HoneySQL form that represents addition of some temporal interval to the original `hsql-form`.
   `unit` is one of the units listed in [[metabase.util.date-2/add-units]].
 
     (add-interval-honeysql-form :my-driver hsql-form 1 :day) -> [:date_add hsql-form 1 (h2x/literal 'day')]
 
-  `amount` is usually an integer, but can be floating-point for units like seconds."
-  {:added "0.34.2" :arglists '([driver hsql-form amount unit])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
+  `amount` is usually an integer, but can be floating-point for units like seconds.
+
+  This multimethod can be extended by drivers in their respective namespaces."
+  {:added "0.34.2" :arglists '([db-type hsql-form amount unit])}
+  (fn [db-type _hsql-form _amount _unit]
+    (keyword db-type)))
 
 (mu/defn adjust-start-of-week
   "Truncate to the day the week starts on.
@@ -2045,8 +2049,8 @@
   [_driver inner-query]
   (-> inner-query
       maybe-nest-breakouts-in-queries-with-window-fn-aggregations
-      driver-api/add-alias-info
-      driver-api/nest-expressions))
+      driver-api/nest-expressions
+      driver-api/add-alias-info))
 
 (mu/defn mbql->honeysql :- [:or :map [:tuple [:= :inline] :map]]
   "Build the HoneySQL form we will compile to SQL and execute."

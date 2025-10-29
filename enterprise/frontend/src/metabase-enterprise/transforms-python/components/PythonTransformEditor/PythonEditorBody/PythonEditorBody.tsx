@@ -3,10 +3,10 @@ import { ResizableBox } from "react-resizable";
 import { t } from "ttag";
 
 import Link from "metabase/common/components/Link";
+import * as Urls from "metabase/lib/urls";
 import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
-import { Box, Checkbox, Flex, Icon, Stack } from "metabase/ui";
+import { Box, Button, Checkbox, Flex, Icon, Stack, Tooltip } from "metabase/ui";
 import { SHARED_LIB_IMPORT_PATH } from "metabase-enterprise/transforms-python/constants";
-import { getPythonLibraryUrl } from "metabase-enterprise/transforms-python/urls";
 
 // Pyodide status is now handled in the Web Worker
 import { PythonEditor } from "../../PythonEditor";
@@ -17,6 +17,7 @@ import { hasImport, insertImport, removeImport } from "./utils";
 
 type PythonEditorBodyProps = {
   source: string;
+  proposedSource?: string;
   isRunnable: boolean;
   onChange: (source: string) => void;
   onRun?: () => void;
@@ -25,12 +26,15 @@ type PythonEditorBodyProps = {
   isDirty?: boolean;
   tables?: Record<string, number>;
   withDebugger?: boolean;
+  onAcceptProposed?: () => void;
+  onRejectProposed?: () => void;
 };
 
 const EDITOR_HEIGHT = 400;
 
 export function PythonEditorBody({
   source,
+  proposedSource,
   onChange,
   isRunnable,
   onRun,
@@ -38,31 +42,62 @@ export function PythonEditorBody({
   isRunning,
   isDirty,
   withDebugger,
+  onAcceptProposed,
+  onRejectProposed,
 }: PythonEditorBodyProps) {
   return (
     <MaybeResizableBox resizable={withDebugger}>
       <Flex h="100%" align="end" bg="bg-light" pos="relative">
         <PythonEditor
           value={source}
+          proposedValue={proposedSource}
           onChange={onChange}
           withPandasCompletions
           data-testid="python-editor"
         />
 
-        {withDebugger && (
-          <Stack p="md" gap="xs">
-            <RunButtonWithTooltip
-              disabled={!isRunnable}
-              isRunning={isRunning}
-              isDirty={isDirty}
-              onRun={onRun}
-              onCancel={onCancel}
-              getTooltip={() => {
-                return t`Run Python script`;
-              }}
-            />
-          </Stack>
-        )}
+        <Stack m="1rem" gap="md" mt="auto">
+          {proposedSource && onRejectProposed && onAcceptProposed && (
+            <>
+              <Tooltip label={t`Accept proposed changes`} position="left">
+                <Button
+                  data-testid="accept-proposed-changes-button"
+                  variant="filled"
+                  bg="success"
+                  px="0"
+                  w="2.5rem"
+                  onClick={onAcceptProposed}
+                >
+                  <Icon name="check" />
+                </Button>
+              </Tooltip>
+              <Tooltip label={t`Reject proposed changes`} position="left">
+                <Button
+                  data-testid="reject-proposed-changes-button"
+                  w="2.5rem"
+                  px="0"
+                  variant="filled"
+                  bg="danger"
+                  onClick={onRejectProposed}
+                >
+                  <Icon name="close" />
+                </Button>
+              </Tooltip>
+            </>
+          )}
+          {withDebugger && (
+            <Box p="md">
+              <RunButtonWithTooltip
+                disabled={!isRunnable}
+                isRunning={isRunning}
+                isDirty={isDirty}
+                onRun={onRun}
+                onCancel={onCancel}
+                getTooltip={() => t`Run Python script`}
+              />
+            </Box>
+          )}
+        </Stack>
         <SharedLibraryActions source={source} onChange={onChange} />
       </Flex>
     </MaybeResizableBox>
@@ -139,7 +174,7 @@ function SharedLibraryEditLink() {
     <Flex
       component={Link}
       target="_blank"
-      to={getPythonLibraryUrl({ path: SHARED_LIB_IMPORT_PATH })}
+      to={Urls.transformPythonLibrary({ path: SHARED_LIB_IMPORT_PATH })}
       gap="sm"
     >
       <Icon name="pencil" />

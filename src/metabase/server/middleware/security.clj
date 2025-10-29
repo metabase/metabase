@@ -64,7 +64,7 @@
   [url]
   (if (= url "*")
     {:protocol nil :domain "*" :port "*"}
-    (let [pattern #"^(?:(https?)://)?([^:/]+)(?::(\d+|\*))?$"
+    (let [pattern #"^(?:(https?|app|capacitor)://)?([^:/]+)(?::(\d+|\*))?$"
           matches (re-matches pattern url)]
       (if-not matches
         (do (log/errorf "Invalid URL: %s" url) nil)
@@ -180,7 +180,7 @@
                                    "ws://*:9630")]
                   :manifest-src ["'self'"]
                   :media-src    ["www.metabase.com"]
-                  :worker-src   ["'self'"]}]
+                  :worker-src   ["'self'"]}] ;; Allow WebWorkers from same origin for Pyodide execution
       (format "%s %s; " (name k) (str/join " " vs))))})
 
 (defn- content-security-policy-header-with-frame-ancestors
@@ -204,8 +204,12 @@
 (defn approved-protocol?
   "Checks if the protocol is compatible with the reference one"
   [protocol reference-protocol]
-  (or (nil? reference-protocol)
-      (= protocol reference-protocol)))
+  (if (nil? reference-protocol)
+    ;; When the approved origin has no protocol (e.g., "localhost"),
+    ;; treat it as allowing only HTTP or HTTPS. Custom schemes like
+    ;; app:// must be explicitly specified in the approved origins.
+    (contains? #{"http" "https"} protocol)
+    (= protocol reference-protocol)))
 
 (defn approved-port?
   "Checks if the port is compatible with the reference one"

@@ -1,8 +1,6 @@
 import { useCallback } from "react";
 
-import type { RowValue } from "metabase-types/api";
-
-import type { PythonTransformSourceDraft } from "../components/PythonTransformEditor";
+import type { PythonTransformSourceDraft, RowValue } from "metabase-types/api";
 
 import { type SampleData, useSampleData } from "./use-data-sample";
 import { usePythonLibraries } from "./use-python-shared-libraries";
@@ -92,9 +90,6 @@ def __run_transform_${random}():
 
   if not isinstance(result, pd.DataFrame):
     raise Exception('Transform function did not return a DataFrame')
-
-  def as_column(name):
-    return { 'name': name }
 
   cols = [{'name': name} for name in result.columns.tolist()]
   rows = result.to_dict('records')

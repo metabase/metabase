@@ -2,9 +2,7 @@
   (:refer-clojure :exclude [mapv select-keys])
   (:require
    [medley.core :as m]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.binning :as lib.binning]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -17,6 +15,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :as i18n]
@@ -234,7 +233,7 @@
                ;; do not truncate the desired column aliases coming back in card metadata, if the query returns a
                ;; 'crazy long' column name then we need to use that in the next stage.
                ;; See [[metabase.lib.card-test/propagate-crazy-long-identifiers-from-card-metadata-test]]
-               (lib.field.util/add-source-and-desired-aliases-xform metadata-providerable (lib.util/non-truncating-unique-name-generator))
+               (lib.field.util/add-source-and-desired-aliases-xform metadata-providerable (lib.util.unique-name-generator/non-truncating-unique-name-generator))
                (cond-> result-cols
                  (seq model-cols) (merge-model-metadata model-cols))))))))
 
@@ -255,7 +254,8 @@
   (mapv (fn [col]
           (assoc col :lib/source :source/card, :lib/card-id (:id card)))
         (if (= (:type card) :metric)
-          (let [metric-query (-> card :dataset-query mbql.normalize/normalize lib.convert/->pMBQL
+          (let [metric-query (-> card
+                                 :dataset-query
                                  (lib.util/update-query-stage -1 dissoc :aggregation :breakout))]
             (lib.metadata.calculation/returned-columns
              (assoc metric-query :lib/metadata (:lib/metadata query))
@@ -291,6 +291,4 @@
   (let [mp                                                            (lib.metadata/->metadata-provider metadata-providerable)
         {card-query :dataset-query, result-metadata :result-metadata} card]
     (cond-> (lib.query/query mp card-query)
-      result-metadata (lib.util/update-query-stage -1 (fn [stage]
-                                                        (->> (assoc stage :lib/stage-metadata (lib.util/->stage-metadata result-metadata))
-                                                             (lib.normalize/normalize ::lib.schema/stage)))))))
+      result-metadata (lib.util/update-query-stage -1 assoc :lib/stage-metadata (lib.normalize/->normalized-stage-metadata result-metadata)))))

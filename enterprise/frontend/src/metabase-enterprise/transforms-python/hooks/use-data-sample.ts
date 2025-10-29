@@ -11,11 +11,10 @@ import type {
   DatabaseId,
   DatasetData,
   DatasetQuery,
+  PythonTransformSourceDraft,
   RowValue,
   TableId,
 } from "metabase-types/api";
-
-import type { PythonTransformSourceDraft } from "../components/PythonTransformEditor";
 
 export type JSONRow = Record<string, RowValue>;
 

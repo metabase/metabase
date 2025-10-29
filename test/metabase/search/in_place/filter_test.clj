@@ -52,7 +52,7 @@
 
     (testing "created at"
       (is (= (cond-> #{"dashboard" "table" "dataset" "collection" "database" "action" "card" "metric"}
-               config/ee-available? (conj "document"))
+               config/ee-available? (conj "document" "transform"))
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:created-at "past3days"}))))
@@ -100,7 +100,8 @@
                       :last-edited-at "past3days"})))))
 
     (testing "search native query"
-      (is (= #{"dataset" "action" "card" "metric"}
+      (is (= (cond-> #{"dataset" "action" "card" "metric"}
+               config/ee-available? (conj "transform"))
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:search-native-query true})))))))
