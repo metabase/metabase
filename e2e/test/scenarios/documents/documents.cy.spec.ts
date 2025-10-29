@@ -147,7 +147,7 @@ H.describeWithSnowplowEE("documents", () => {
     H.navigationSidebar().findByText("Trash").click({ force: true });
     H.getUnpinnedSection().findByText("Test Document").should("exist").click();
 
-    cy.log("test that trashed documents cannot be edited (metabase#64608)");
+    cy.log("test that deleted documents cannot be edited (metabase#64608)");
     cy.findByRole("textbox", { name: "Document Title" })
       .should("be.visible")
       .and("have.attr", "readonly");
