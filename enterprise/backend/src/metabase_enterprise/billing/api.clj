@@ -19,7 +19,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- metabase-billing-info-url []
+(defn- metabase-billing-info-url ^String []
   (str (store-api/store-api-url) "/api/v2/metabase/billing_info"))
 
 (def ^:private ^{:arglists '([token email language])} fetch-billing-status*
