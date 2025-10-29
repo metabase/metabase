@@ -1,330 +1,238 @@
 #!/usr/bin/env node
 /**
- * ProseMirror to Markdown serializer
- *
- * Usage:
- *   node serialize-prosemirror.mjs <prosemirror-json-file>
- *   node serialize-prosemirror.mjs < input.json
- *   echo '{"type":"doc","content":[...]}' | node serialize-prosemirror.mjs
- *   node serialize-prosemirror.mjs --verbose < input.json
- *
- * Output: Markdown to stdout
- *
- * Options:
- *   --verbose    Show diagnostic messages on stderr
+ * ProseMirror to Markdown serializer - Standalone version
+ * This script converts ProseMirror JSON to Markdown without external dependencies
  */
 
 import { readFileSync } from "fs";
-import {
-  MarkdownSerializer,
-  defaultMarkdownSerializer,
-} from "@tiptap/pm/markdown";
-import { Schema, Node as PMNode } from "@tiptap/pm/model";
 
-// Same schema as parse-markdown.mjs
-const schema = new Schema({
-  nodes: {
-    doc: { content: "block+" },
-    paragraph: {
-      content: "inline*",
-      group: "block",
-      parseDOM: [{ tag: "p" }],
-      toDOM() {
-        return ["p", 0];
-      },
-    },
-    heading: {
-      attrs: { level: { default: 1 } },
-      content: "inline*",
-      group: "block",
-      defining: true,
-      parseDOM: [1, 2, 3, 4, 5, 6].map((level) => ({
-        tag: `h${level}`,
-        attrs: { level },
-      })),
-      toDOM(node) {
-        return [`h${node.attrs.level}`, 0];
-      },
-    },
-    blockquote: {
-      content: "block+",
-      group: "block",
-      defining: true,
-      parseDOM: [{ tag: "blockquote" }],
-      toDOM() {
-        return ["blockquote", 0];
-      },
-    },
-    horizontalRule: {
-      group: "block",
-      parseDOM: [{ tag: "hr" }],
-      toDOM() {
-        return ["hr"];
-      },
-    },
-    codeBlock: {
-      content: "text*",
-      marks: "",
-      group: "block",
-      code: true,
-      defining: true,
-      parseDOM: [{ tag: "pre", preserveWhitespace: "full" }],
-      toDOM() {
-        return ["pre", ["code", 0]];
-      },
-    },
-    text: {
-      group: "inline",
-    },
-    hardBreak: {
-      inline: true,
-      group: "inline",
-      selectable: false,
-      parseDOM: [{ tag: "br" }],
-      toDOM() {
-        return ["br"];
-      },
-    },
-    orderedList: {
-      content: "listItem+",
-      group: "block",
-      attrs: { order: { default: 1 } },
-      parseDOM: [
-        {
-          tag: "ol",
-          getAttrs(dom) {
-            return {
-              order: dom.hasAttribute("start") ? +dom.getAttribute("start") : 1,
-            };
-          },
-        },
-      ],
-      toDOM(node) {
-        return node.attrs.order === 1
-          ? ["ol", 0]
-          : ["ol", { start: node.attrs.order }, 0];
-      },
-    },
-    bulletList: {
-      content: "listItem+",
-      group: "block",
-      parseDOM: [{ tag: "ul" }],
-      toDOM() {
-        return ["ul", 0];
-      },
-    },
-    listItem: {
-      content: "paragraph block*",
-      parseDOM: [{ tag: "li" }],
-      toDOM() {
-        return ["li", 0];
-      },
-      defining: true,
-    },
-    cardEmbed: {
-      attrs: {
-        id: { default: null },
-        name: { default: null },
-      },
-      group: "block",
-      parseDOM: [
-        {
-          tag: "div[data-card-embed]",
-          getAttrs: (dom) => ({
-            id: parseInt(dom.getAttribute("data-id")),
-            name: dom.getAttribute("data-name"),
-          }),
-        },
-      ],
-      toDOM: (node) => [
-        "div",
-        {
-          "data-card-embed": "",
-          "data-id": node.attrs.id,
-          "data-name": node.attrs.name,
-        },
-      ],
-    },
-    flexContainer: {
-      attrs: {
-        columnWidths: { default: [50, 50] },
-      },
-      content: "cardEmbed{2}",
-      parseDOM: [
-        {
-          tag: "div[data-flex-container]",
-          getAttrs: (dom) => {
-            const widths = dom.getAttribute("data-column-widths");
-            return {
-              columnWidths: widths ? JSON.parse(widths) : [50, 50],
-            };
-          },
-        },
-      ],
-      toDOM: (node) => [
-        "div",
-        {
-          "data-flex-container": "",
-          "data-column-widths": JSON.stringify(node.attrs.columnWidths),
-        },
-      ],
-    },
-    resizeNode: {
-      attrs: {
-        height: { default: 442 },
-        minHeight: { default: 280 },
-      },
-      content: "(cardEmbed | flexContainer)",
-      group: "block",
-      parseDOM: [
-        {
-          tag: "div[data-resize-node]",
-          getAttrs: (dom) => ({
-            height: parseInt(dom.getAttribute("data-height")) || 442,
-            minHeight: parseInt(dom.getAttribute("data-min-height")) || 280,
-          }),
-        },
-      ],
-      toDOM: (node) => [
-        "div",
-        {
-          "data-resize-node": "",
-          "data-height": node.attrs.height,
-          "data-min-height": node.attrs.minHeight,
-        },
-      ],
-    },
-  },
-  marks: {
-    link: {
-      attrs: {
-        href: {},
-        title: { default: null },
-      },
-      inclusive: false,
-      parseDOM: [
-        {
-          tag: "a[href]",
-          getAttrs(dom) {
-            return {
-              href: dom.getAttribute("href"),
-              title: dom.getAttribute("title"),
-            };
-          },
-        },
-      ],
-      toDOM(node) {
-        return ["a", { href: node.attrs.href, title: node.attrs.title }, 0];
-      },
-    },
-    italic: {
-      parseDOM: [{ tag: "i" }, { tag: "em" }, { style: "font-style=italic" }],
-      toDOM() {
-        return ["em", 0];
-      },
-    },
-    bold: {
-      parseDOM: [
-        { tag: "strong" },
-        {
-          tag: "b",
-          getAttrs: (node) => node.style.fontWeight !== "normal" && null,
-        },
-        {
-          style: "font-weight",
-          getAttrs: (value) => /^(bold(er)?|[5-9]\d{2,})$/.test(value) && null,
-        },
-      ],
-      toDOM() {
-        return ["strong", 0];
-      },
-    },
-    code: {
-      parseDOM: [{ tag: "code" }],
-      toDOM() {
-        return ["code", 0];
-      },
-    },
-  },
-});
+// Simple markdown serializer that handles ProseMirror JSON structure
+function serializeProseMirrorToMarkdown(doc) {
+  if (!doc || doc.type !== "doc") {
+    throw new Error("Invalid ProseMirror document structure");
+  }
 
-// Custom serializers for Metabase nodes
-const customSerializer = new MarkdownSerializer(
-  {
-    // Standard nodes (use default serializers but map to our camelCase names)
-    doc: defaultMarkdownSerializer.nodes.doc,
-    paragraph: defaultMarkdownSerializer.nodes.paragraph,
-    heading: defaultMarkdownSerializer.nodes.heading,
-    blockquote: defaultMarkdownSerializer.nodes.blockquote,
-    horizontalRule: defaultMarkdownSerializer.nodes.horizontal_rule,
-    codeBlock: defaultMarkdownSerializer.nodes.code_block,
-    text: defaultMarkdownSerializer.nodes.text,
-    hardBreak: defaultMarkdownSerializer.nodes.hard_break,
-    orderedList: defaultMarkdownSerializer.nodes.ordered_list,
-    bulletList: defaultMarkdownSerializer.nodes.bullet_list,
-    listItem: defaultMarkdownSerializer.nodes.list_item,
-    // Custom Metabase nodes
-    cardEmbed(state, node) {
-      const { id, name } = node.attrs;
-      // id can be number or string (ref:foo)
-      if (name) {
-        state.write(`{% card id=${id} name="${name}" %}`);
-      } else {
-        state.write(`{% card id=${id} %}`);
-      }
-      state.closeBlock(node);
-    },
-    resizeNode(state, node) {
-      // Check if it contains a flexContainer
-      const child = node.firstChild;
-      if (child && child.type.name === "flexContainer") {
-        // Serialize as row
-        const { columnWidths } = child.attrs;
-        const hasCustomWidths =
-          columnWidths && (columnWidths[0] !== 50 || columnWidths[1] !== 50);
+  const lines = [];
 
-        if (hasCustomWidths) {
-          const [w1, w2] = columnWidths;
-          state.write(`{% row widths="${w1.toFixed(2)}:${w2.toFixed(2)}" %}`);
-        } else {
-          state.write(`{% row %}`);
+  function serializeNode(node) {
+    const type = node.type;
+
+    switch (type) {
+      case "paragraph":
+        lines.push(serializeInlineContent(node.content || []));
+        lines.push("");
+        break;
+
+      case "heading":
+        const level = node.attrs?.level || 1;
+        const prefix = "#".repeat(level);
+        lines.push(`${prefix} ${serializeInlineContent(node.content || [])}`);
+        lines.push("");
+        break;
+
+      case "codeBlock":
+        lines.push("```");
+        if (node.content) {
+          node.content.forEach((child) => {
+            if (child.type === "text") {
+              lines.push(child.text || "");
+            }
+          });
         }
-        state.ensureNewLine();
+        lines.push("```");
+        lines.push("");
+        break;
 
-        // Serialize the two cards inside
-        child.forEach((card) => {
-          const { id, name } = card.attrs;
-          if (name) {
-            state.write(`{% card id=${id} name="${name}" %}`);
-          } else {
-            state.write(`{% card id=${id} %}`);
-          }
-          state.ensureNewLine();
-        });
+      case "blockquote":
+        if (node.content) {
+          const quotedLines = [];
+          node.content.forEach((child) => {
+            const saved = lines.length;
+            serializeNode(child);
+            // Take the lines that were just added
+            while (lines.length > saved) {
+              quotedLines.push(lines.pop());
+            }
+          });
+          quotedLines.reverse().forEach((line) => {
+            lines.push(line ? `> ${line}` : ">");
+          });
+        }
+        lines.push("");
+        break;
 
-        state.write(`{% endrow %}`);
-        state.closeBlock(node);
-      } else {
-        // Serialize as standalone card
-        state.render(child, node, 0);
-      }
-    },
-    flexContainer(state, node) {
-      // This shouldn't be called directly since resizeNode handles it
-      // But just in case, render cards
-      node.forEach((card) => {
-        state.render(card, node, node.childCount);
+      case "bulletList":
+        if (node.content) {
+          node.content.forEach((item) => serializeListItem(item, "-"));
+        }
+        lines.push("");
+        break;
+
+      case "orderedList":
+        const start = node.attrs?.order || 1;
+        if (node.content) {
+          node.content.forEach((item, index) => {
+            serializeListItem(item, `${start + index}.`);
+          });
+        }
+        lines.push("");
+        break;
+
+      case "horizontalRule":
+        lines.push("---");
+        lines.push("");
+        break;
+
+      case "hardBreak":
+        lines.push("  ");
+        break;
+
+      case "cardEmbed":
+        const { id, name } = node.attrs || {};
+        if (name) {
+          lines.push(`{% card id=${id} name="${name}" %}`);
+        } else {
+          lines.push(`{% card id=${id} %}`);
+        }
+        lines.push("");
+        break;
+
+      case "resizeNode":
+        // Check if it contains a flexContainer
+        const child = node.content?.[0];
+        if (child && child.type === "flexContainer") {
+          serializeFlexContainer(child);
+        } else if (child) {
+          serializeNode(child);
+        }
+        break;
+
+      case "flexContainer":
+        serializeFlexContainer(node);
+        break;
+
+      default:
+        // For unknown nodes, try to serialize their content
+        if (node.content) {
+          node.content.forEach((child) => serializeNode(child));
+        }
+    }
+  }
+
+  function serializeFlexContainer(node) {
+    const { columnWidths } = node.attrs || { columnWidths: [50, 50] };
+    const hasCustomWidths =
+      columnWidths && (columnWidths[0] !== 50 || columnWidths[1] !== 50);
+
+    if (hasCustomWidths) {
+      const [w1, w2] = columnWidths;
+      lines.push(`{% row widths="${w1.toFixed(2)}:${w2.toFixed(2)}" %}`);
+    } else {
+      lines.push(`{% row %}`);
+    }
+
+    // Serialize the cards inside
+    if (node.content) {
+      node.content.forEach((card) => {
+        const { id, name } = card.attrs || {};
+        if (name) {
+          lines.push(`{% card id=${id} name="${name}" %}`);
+        } else {
+          lines.push(`{% card id=${id} %}`);
+        }
       });
-    },
-  },
-  {
-    // Map Tiptap mark names to default serializers
-    link: defaultMarkdownSerializer.marks.link,
-    italic: defaultMarkdownSerializer.marks.em,
-    bold: defaultMarkdownSerializer.marks.strong,
-    code: defaultMarkdownSerializer.marks.code,
-  },
-);
+    }
+
+    lines.push(`{% endrow %}`);
+    lines.push("");
+  }
+
+  function serializeListItem(item, bullet) {
+    if (!item.content) return;
+
+    // Get the first paragraph's content
+    const firstPara = item.content[0];
+    if (firstPara && firstPara.type === "paragraph") {
+      lines.push(`${bullet} ${serializeInlineContent(firstPara.content || [])}`);
+    }
+
+    // Handle nested blocks
+    for (let i = 1; i < item.content.length; i++) {
+      const child = item.content[i];
+      const saved = lines.length;
+      serializeNode(child);
+      // Indent nested content
+      while (lines.length > saved) {
+        const line = lines.pop();
+        lines.push(line ? `  ${line}` : "");
+      }
+      lines.reverse();
+      for (let j = saved; j < lines.length; j++) {
+        const temp = lines[j];
+        lines[j] = lines[lines.length - 1 - (j - saved)];
+        lines[lines.length - 1 - (j - saved)] = temp;
+      }
+    }
+  }
+
+  function serializeInlineContent(content) {
+    return content
+      .map((node) => {
+        if (node.type === "text") {
+          return applyMarks(node.text || "", node.marks || []);
+        } else if (node.type === "hardBreak") {
+          return "  \n";
+        }
+        return "";
+      })
+      .join("");
+  }
+
+  function applyMarks(text, marks) {
+    let result = text;
+
+    // Apply marks in reverse order for proper nesting
+    for (let i = marks.length - 1; i >= 0; i--) {
+      const mark = marks[i];
+      switch (mark.type) {
+        case "bold":
+        case "strong":
+          result = `**${result}**`;
+          break;
+        case "italic":
+        case "em":
+          result = `*${result}*`;
+          break;
+        case "code":
+          result = `\`${result}\``;
+          break;
+        case "link":
+          const href = mark.attrs?.href || "";
+          const title = mark.attrs?.title;
+          if (title) {
+            result = `[${result}](${href} "${title}")`;
+          } else {
+            result = `[${result}](${href})`;
+          }
+          break;
+      }
+    }
+
+    return result;
+  }
+
+  // Serialize all top-level nodes
+  if (doc.content) {
+    doc.content.forEach((node) => serializeNode(node));
+  }
+
+  // Remove trailing empty lines and join
+  while (lines.length > 0 && lines[lines.length - 1] === "") {
+    lines.pop();
+  }
+
+  return lines.join("\n");
+}
 
 async function readStdin() {
   const chunks = [];
@@ -336,8 +244,7 @@ async function readStdin() {
 
 export function serializeProseMirror(jsonText) {
   const pmJson = JSON.parse(jsonText);
-  const doc = PMNode.fromJSON(schema, pmJson);
-  return customSerializer.serialize(doc);
+  return serializeProseMirrorToMarkdown(pmJson);
 }
 
 async function main() {
