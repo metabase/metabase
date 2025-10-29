@@ -6,6 +6,8 @@ import type {
   GetTableDataRequest,
   GetTableQueryMetadataRequest,
   GetTableRequest,
+  PublishModelsRequest,
+  PublishModelsResponse,
   Table,
   TableData,
   TableId,
@@ -158,6 +160,18 @@ export const tableApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
     }),
+    publishModels: builder.mutation<
+      PublishModelsResponse,
+      PublishModelsRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/table/publish-model",
+        body,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [tag("card"), tag("collection")]),
+    }),
   }),
 });
 
@@ -175,4 +189,5 @@ export const {
   useRescanTableFieldValuesMutation,
   useSyncTableSchemaMutation,
   useDiscardTableFieldValuesMutation,
+  usePublishModelsMutation,
 } = tableApi;

@@ -182,6 +182,18 @@ export interface GetTableDataRequest {
   tableId: TableId;
 }
 
+export interface PublishModelsRequest {
+  database_ids?: DatabaseId[];
+  schema_ids?: SchemaId[];
+  table_ids?: TableId[];
+  target_collection_id: number;
+}
+
+export interface PublishModelsResponse {
+  created_count: number;
+  models: Card[];
+}
+
 export type TableData = {
   data: DatasetData;
   database_id: DatabaseId;

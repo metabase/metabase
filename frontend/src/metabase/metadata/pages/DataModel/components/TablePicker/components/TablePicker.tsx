@@ -22,6 +22,7 @@ import type { ChangeOptions, TreePath } from "../types";
 
 import { EditTableMetadataModal } from "./EditTableMetadataModal";
 import { FilterPopover, type FilterState } from "./FilterPopover";
+import { PublishModelsModal } from "./PublishModelsModal";
 import { SearchNew } from "./SearchNew";
 import { Tree } from "./Tree";
 
@@ -59,6 +60,7 @@ export function TablePicker({
     new Set(),
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [onUpdateCallback, setOnUpdateCallback] = useState<(() => void) | null>(
     null,
   );
@@ -75,6 +77,13 @@ export function TablePicker({
   }
 
   function handleModalUpdate() {
+    if (onUpdateCallback) {
+      onUpdateCallback();
+    }
+    resetSelection();
+  }
+
+  function handlePublishSuccess() {
     if (onUpdateCallback) {
       onUpdateCallback();
     }
@@ -173,6 +182,25 @@ export function TablePicker({
             <Icon name="pencil" />
           </Button>
         </Tooltip>
+        <Tooltip
+          label={
+            hasSelectedItems
+              ? t`Publish selected items as models`
+              : t`No items selected`
+          }
+        >
+          <Button
+            onClick={() => setIsPublishModalOpen(true)}
+            p="sm"
+            disabled={!hasSelectedItems}
+            variant="filled"
+            style={{
+              width: 40,
+            }}
+          >
+            <Icon name="model" />
+          </Button>
+        </Tooltip>
       </Group>
 
       <Box style={{ overflow: "auto" }}>
@@ -207,6 +235,15 @@ export function TablePicker({
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onUpdate={handleModalUpdate}
+      />
+
+      <PublishModelsModal
+        tables={selectedTables}
+        schemas={selectedSchemas}
+        databases={selectedDatabases}
+        isOpen={isPublishModalOpen}
+        onClose={() => setIsPublishModalOpen(false)}
+        onSuccess={handlePublishSuccess}
       />
     </Stack>
   );
