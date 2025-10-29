@@ -63,12 +63,8 @@ export const MetabotGreeting = () => {
 
   useEffect(() => {
     if (isCoolEnough(buffer)) {
-      setIsCooling(true);
-      setIsCool(false);
-      setTimeout(() => {
-        setIsCool(true);
-        setIsCooling(false);
-      }, 1000);
+      setTimeout(() => setIsCooling(true), 1);
+      setTimeout(() => setIsCool(true), 300);
     }
   }, [buffer]);
 
