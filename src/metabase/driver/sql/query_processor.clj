@@ -422,13 +422,17 @@
   (binding [driver.common/*start-of-week* :monday]
     (date driver :day-of-week honeysql-expr)))
 
+;; add-interval-honeysql-form is also defined in metabase.util.honey-sql-2 for Postgres, MySQL/MariaDB, and H2. Prefer
+;; that for app db queries to avoid unnecessary dependencies on the driver module.
 (defmulti add-interval-honeysql-form
-  "Return a HoneySQL form that performs represents addition of some temporal interval to the original `hsql-form`.
+  "Return a HoneySQL form that represents addition of some temporal interval to the original `hsql-form`.
   `unit` is one of the units listed in [[metabase.util.date-2/add-units]].
 
     (add-interval-honeysql-form :my-driver hsql-form 1 :day) -> [:date_add hsql-form 1 (h2x/literal 'day')]
 
-  `amount` is usually an integer, but can be floating-point for units like seconds."
+  `amount` is usually an integer, but can be floating-point for units like seconds.
+
+  This multimethod can be extended by drivers in their respective namespaces."
   {:added "0.34.2" :arglists '([driver hsql-form amount unit])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)

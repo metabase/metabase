@@ -90,6 +90,9 @@
             [:show_in_getting_started {:optional true} [:maybe :boolean]]]]
   (write-check-and-update-segment! id body))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :delete "/:id"
   "Archive a Segment. (DEPRECATED -- Just pass updated value of `:archived` to the `PUT` endpoint instead.)"
   [{:keys [id]} :- [:map

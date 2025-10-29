@@ -2043,8 +2043,7 @@
                                       :id hourly-tag-eid}]
                        :name "hourly"
                        :built_in_type "hourly"
-                       :created_at string?
-                       :updated_at string?}
+                       :created_at string?}
                       ser))
               (is (not (contains? ser :id)))
               (is (empty? (serdes/dependencies ser)))))
@@ -2055,8 +2054,7 @@
                                       :id custom-tag-eid}]
                        :name "custom-etl"
                        :built_in_type nil
-                       :created_at string?
-                       :updated_at string?}
+                       :created_at string?}
                       ser))
               (is (not (contains? ser :id)))
               (is (empty? (serdes/dependencies ser)))))
@@ -2108,7 +2106,8 @@
                             :entity_id "2HzIFwJ6720JAx07UMavl"
                             :source {:query {:database db-id
                                              :type     "query"
-                                             :query    {:source-table table-id}}}
+                                             :query    {:source-table table-id}}
+                                     :type "query"}
                             :target {:database db-id
                                      :type "table"
                                      :schema "public"
@@ -2139,8 +2138,7 @@
                                       :id transform-eid}]
                        :name "Test Transform"
                        :description "A test transform for serialization"
-                       :created_at string?
-                       :updated_at string?}
+                       :created_at string?}
                       ser))
               (is (not (contains? ser :id))))
 
@@ -2235,8 +2233,7 @@
                        :description "Executes transforms tagged with 'hourly' every hour"
                        :schedule "0 0 * * * ? *"
                        :built_in_type "hourly"
-                       :created_at string?
-                       :updated_at string?}
+                       :created_at string?}
                       ser))
               (is (not (contains? ser :id)))
               (testing "job has associated tags"
@@ -2255,8 +2252,7 @@
                        :description "Custom data processing job"
                        :schedule "0 0 2 * * ? *"
                        :built_in_type nil
-                       :created_at string?
-                       :updated_at string?}
+                       :created_at string?}
                       ser))
               (is (not (contains? ser :id)))
               (testing "job has multiple associated tags in correct order"
