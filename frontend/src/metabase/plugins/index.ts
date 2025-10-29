@@ -860,6 +860,11 @@ export const PLUGIN_DOCUMENTS = {
   DocumentCopyForm: (_props: any) => null as React.ReactElement | null,
 };
 
+export const PLUGIN_PUBLIC_SHARING = {
+  PublicDocumentRoute: (_props: any) => null as React.ReactElement | null,
+  PublicLinksDocumentListing: () => null as React.ReactElement | null,
+};
+
 export const PLUGIN_ENTITIES = {
   entities: {} as Record<string, any>,
 };

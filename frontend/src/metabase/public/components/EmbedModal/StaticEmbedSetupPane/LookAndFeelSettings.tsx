@@ -219,6 +219,7 @@ function getBorderLabel(resourceType: EmbedResourceType) {
     .returnType<string>()
     .with("dashboard", () => t`Dashboard border`)
     .with("question", () => t`Question border`)
+    .with("document", () => t`Document border`)
     .exhaustive();
 }
 

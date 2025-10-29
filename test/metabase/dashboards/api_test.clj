@@ -2666,31 +2666,31 @@
 (deftest ^:parallel dashcard->query-hashes-test
   (doseq [[dashcard expected]
           [[{:card {:dataset_query (fake-query 1)}}
-            ["RNcJA21084AYlVPIqlxDxMILKsyU6iE9hiUDMYBIrUw="
-             "GsfPch7sQZ60fotaEuN6fghF82iX3dUHLlvWtkJXOU0="]]
+            ["S7xKRDQIVA4k/rzNGAc6PyMCvMiYs2MTkAJK5gwBGHU="
+             "F2yzgei1xfnQhNcakBq9c/q3lg0K9QDtWUHYOKGpBsM="]]
 
            [{:card   {:dataset_query (fake-query 2)}
              :series [{:dataset_query (fake-query 3)}
                       {:dataset_query (fake-query 4)}]}
-            ["LyJKZ0rm2YyPWGXIfP/V6SFcHlRvdalSDD55qn/Avng="
-             "zYehm4Huu7AD/0GP6XpMhav7+/ystaIeKjax4fqSHUg="
-             "nDuISCLB6o8sToOR4GHQ/Po6X3A3nE7oPj+e1g2kfCE="
-             "/yzJQIPSdxWHnREe9F2orYWDbPS5ns8WOaIf6fGix1k="
-             "oqG69TgkGdzPFaxDFymLAVnb9iuyGnvlX0aiiL1Eojc="
-             "GKQrcQTNICx7QOYDQVHW7BIi7gB3/oBUWVel+AvOq0Q="]]]]
+            ["Kwc08fDZ5ei23pNS0lwowiWGfBi10DWnTDWYy77Ytp8="
+             "Vr+1nZAZnqppFuXuxTZSo4tD4QbKzHXF/zeXsYMw8sg="
+             "LTCeTqzWT5nW1vzfopiEmat+O0dxfB493ufMf/XGRiU="
+             "uYWx5Pm/jhmibG/8+DM44fiPeWTSs5YXYN159yOr1Vs="
+             "SIMWVAbMGgvozr1bSIWol6uCKKUDEqCL469OsN4dlsI="
+             "thIvyA4Q/suKFAQiq0xJJLtSML2i5UHgw9WoTOdRGs4="]]]]
     (testing (pr-str dashcard)
       (is (= expected
              (base-64-encode-byte-arrays (#'api.dashboard/dashcard->query-hashes dashcard)))))))
 
 (deftest ^:parallel dashcards->query-hashes-test
-  (is (= ["RNcJA21084AYlVPIqlxDxMILKsyU6iE9hiUDMYBIrUw="
-          "GsfPch7sQZ60fotaEuN6fghF82iX3dUHLlvWtkJXOU0="
-          "LyJKZ0rm2YyPWGXIfP/V6SFcHlRvdalSDD55qn/Avng="
-          "zYehm4Huu7AD/0GP6XpMhav7+/ystaIeKjax4fqSHUg="
-          "nDuISCLB6o8sToOR4GHQ/Po6X3A3nE7oPj+e1g2kfCE="
-          "/yzJQIPSdxWHnREe9F2orYWDbPS5ns8WOaIf6fGix1k="
-          "oqG69TgkGdzPFaxDFymLAVnb9iuyGnvlX0aiiL1Eojc="
-          "GKQrcQTNICx7QOYDQVHW7BIi7gB3/oBUWVel+AvOq0Q="]
+  (is (= ["S7xKRDQIVA4k/rzNGAc6PyMCvMiYs2MTkAJK5gwBGHU="
+          "F2yzgei1xfnQhNcakBq9c/q3lg0K9QDtWUHYOKGpBsM="
+          "Kwc08fDZ5ei23pNS0lwowiWGfBi10DWnTDWYy77Ytp8="
+          "Vr+1nZAZnqppFuXuxTZSo4tD4QbKzHXF/zeXsYMw8sg="
+          "LTCeTqzWT5nW1vzfopiEmat+O0dxfB493ufMf/XGRiU="
+          "uYWx5Pm/jhmibG/8+DM44fiPeWTSs5YXYN159yOr1Vs="
+          "SIMWVAbMGgvozr1bSIWol6uCKKUDEqCL469OsN4dlsI="
+          "thIvyA4Q/suKFAQiq0xJJLtSML2i5UHgw9WoTOdRGs4="]
          (base-64-encode-byte-arrays
           (#'api.dashboard/dashcards->query-hashes
            [{:card {:dataset_query (fake-query 1)}}
@@ -2709,14 +2709,14 @@
            {:card   {:dataset_query (fake-query 2)}
             :series [{:dataset_query (fake-query 3)}
                      {:dataset_query (fake-query 4)}]}]
-          (into {} (for [[k v] {"RNcJA21084AYlVPIqlxDxMILKsyU6iE9hiUDMYBIrUw=" 111
-                                "GsfPch7sQZ60fotaEuN6fghF82iX3dUHLlvWtkJXOU0=" 222
-                                "LyJKZ0rm2YyPWGXIfP/V6SFcHlRvdalSDD55qn/Avng=" 333
-                                "zYehm4Huu7AD/0GP6XpMhav7+/ystaIeKjax4fqSHUg=" 444
-                                "nDuISCLB6o8sToOR4GHQ/Po6X3A3nE7oPj+e1g2kfCE=" 555
-                                "/yzJQIPSdxWHnREe9F2orYWDbPS5ns8WOaIf6fGix1k=" 666
-                                "oqG69TgkGdzPFaxDFymLAVnb9iuyGnvlX0aiiL1Eojc=" 777
-                                "GKQrcQTNICx7QOYDQVHW7BIi7gB3/oBUWVel+AvOq0Q=" 888}]
+          (into {} (for [[k v] {"S7xKRDQIVA4k/rzNGAc6PyMCvMiYs2MTkAJK5gwBGHU=" 111
+                                "F2yzgei1xfnQhNcakBq9c/q3lg0K9QDtWUHYOKGpBsM=" 222
+                                "Kwc08fDZ5ei23pNS0lwowiWGfBi10DWnTDWYy77Ytp8=" 333
+                                "Vr+1nZAZnqppFuXuxTZSo4tD4QbKzHXF/zeXsYMw8sg=" 444
+                                "LTCeTqzWT5nW1vzfopiEmat+O0dxfB493ufMf/XGRiU=" 555
+                                "uYWx5Pm/jhmibG/8+DM44fiPeWTSs5YXYN159yOr1Vs=" 666
+                                "SIMWVAbMGgvozr1bSIWol6uCKKUDEqCL469OsN4dlsI=" 777
+                                "thIvyA4Q/suKFAQiq0xJJLtSML2i5UHgw9WoTOdRGs4=" 888}]
                      [(mapv int (codec/base64-decode k)) v]))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

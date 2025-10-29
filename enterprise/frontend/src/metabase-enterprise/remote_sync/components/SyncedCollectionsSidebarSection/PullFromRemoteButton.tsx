@@ -48,7 +48,7 @@ export const PullFromRemoteButton = (props: PushChangesButtonProps) => {
   return (
     <ActionIcon
       aria-label={t`Pull from Git`}
-      color="icon-secondary"
+      c="icon-secondary"
       disabled={isLoading}
       h={24}
       onClick={handleClick}

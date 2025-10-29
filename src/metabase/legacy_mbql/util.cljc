@@ -10,7 +10,6 @@
    [clojure.string :as str]
    [metabase.legacy-mbql.predicates :as mbql.preds]
    [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.schema.helpers :as schema.helpers]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.ref :as lib.schema.ref]
@@ -19,15 +18,46 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.namespaces :as shared.ns]
    [metabase.util.performance :refer [some mapv every? #?(:clj for)]]
    [metabase.util.time :as u.time]))
 
-(shared.ns/import-fns
- [schema.helpers
-  mbql-clause?
-  is-clause?
-  check-clause])
+(defn mbql-clause?
+  "True if `x` is an MBQL clause (a sequence with a keyword as its first arg).
+
+  Deprecated: Use [[metabase.lib.core/clause?]] going forward."
+  {:deprecated "0.57.0"}
+  [x]
+  (and (sequential? x)
+       (not (map-entry? x))
+       (keyword? (first x))))
+
+(defn is-clause?
+  "If `x` is an MBQL clause, and an instance of clauses defined by keyword(s) `k-or-ks`?
+
+    (is-clause? :count [:count 10])        ; -> true
+    (is-clause? #{:+ :- :* :/} [:+ 10 20]) ; -> true
+
+  Deprecated: use [[metabase.lib.core/clause-of-type?]] going forward."
+  {:deprecated "0.57.0"}
+  [k-or-ks x]
+  (and
+   (mbql-clause? x)
+   (if (coll? k-or-ks)
+     ((set k-or-ks) (first x))
+     (= k-or-ks (first x)))))
+
+(defn check-clause
+  "Returns `x` if it's an instance of a clause defined by keyword(s) `k-or-ks`
+
+    (check-clause :count [:count 10]) ; => [:count 10]
+    (check-clause? #{:+ :- :* :/} [:+ 10 20]) ; -> [:+ 10 20]
+    (check-clause :sum [:count 10]) ; => nil
+
+  DEPRECATED: use [[metabase.lib.core/clause-of-type?]] going forward"
+  {:deprecated "0.57.0"}
+  [k-or-ks x]
+  (when (is-clause? k-or-ks x)
+    x))
 
 (mu/defn normalize-token :- [:or :keyword :string]
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased
@@ -118,7 +148,7 @@
               ;; simplify the elements of the vector
               (mapv simplify-compound-filter x)))))
 
-(mu/defn combine-filter-clauses :- mbql.s/Filter
+(mu/defn combine-filter-clauses :- ::mbql.s/Filter
   "Combine two filter clauses into a single clause in a way that minimizes slapping a bunch of `:and`s together if
   possible.
 
@@ -456,7 +486,7 @@
   (cond-> clause
     (mbql.preds/FieldOrExpressionDef? clause) desugar-expression))
 
-(mu/defn desugar-filter-clause :- mbql.s/Filter
+(mu/defn desugar-filter-clause :- ::mbql.s/Filter
   "Rewrite various 'syntatic sugar' filter clauses like `:time-interval` and `:inside` as simpler, logically
   equivalent clauses. This can be used to simplify the number of filter clauses that need to be supported by anything
   that needs to enumerate all the possible filter types (such as driver query processor implementations, or the
@@ -465,7 +495,7 @@
   DEPRECATED: This will be removed in a future release. Use [[metabase.lib.core/desugar-filter-clause]] instead going
   forward."
   {:deprecated "0.57.0"}
-  [filter-clause :- mbql.s/Filter]
+  [filter-clause :- ::mbql.s/Filter]
   #_{:clj-kondo/ignore [:deprecated-var]}
   (-> filter-clause
       desugar-current-relative-datetime
@@ -505,14 +535,14 @@
 (defmethod negate* :starts-with [clause] [:not clause])
 (defmethod negate* :ends-with   [clause] [:not clause])
 
-(mu/defn negate-filter-clause :- mbql.s/Filter
+(mu/defn negate-filter-clause :- ::mbql.s/Filter
   "Return the logical compliment of an MBQL filter clause, generally without using `:not` (except for the string
   filter clause types). Useful for generating highly optimized filter clauses and for drivers that do not support
   top-level `:not` filter clauses.
 
   Deprecated: use [[metabase.lib.core/negate-boolean-expression]] going forward."
   {:deprecated "0.57.0"}
-  [filter-clause :- mbql.s/Filter]
+  [filter-clause :- ::mbql.s/Filter]
   #_{:clj-kondo/ignore [:deprecated-var]}
   (-> filter-clause desugar-filter-clause negate* simplify-compound-filter))
 
@@ -583,7 +613,7 @@
   ([query index]
    (aggregation-at-index query index 0))
 
-  ([query         :- mbql.s/Query
+  ([query         :- ::mbql.s/Query
     index         :- ::lib.schema.common/int-greater-than-or-equal-to-zero
     nesting-level :- ::lib.schema.common/int-greater-than-or-equal-to-zero]
    (if (zero? nesting-level)
@@ -645,12 +675,12 @@
   [[_ _ opts]]
   opts)
 
-(mu/defn update-field-options :- mbql.s/Reference
+(mu/defn update-field-options :- ::mbql.s/Reference
   "Like [[clojure.core/update]], but for the options in a `:field`, `:expression`, or `:aggregation` clause.
 
   DEPRECATED: Use MBQL 5 + [[metabase.lib.core/update-options]] going forward."
   {:arglists '([field-or-ag-ref-or-expression-ref f & args]), :deprecated "0.57.0"}
-  [[clause-type id-or-name opts] :- mbql.s/Reference f & args]
+  [[clause-type id-or-name opts] :- ::mbql.s/Reference f & args]
   (let [opts (not-empty (remove-empty (apply f opts args)))]
     ;; `:field` clauses should have a `nil` options map if there are no options. `:aggregation` and `:expression`
     ;; should get the arg removed if it's `nil` or empty. (For now. In the future we may change this if we make the

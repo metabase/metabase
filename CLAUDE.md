@@ -529,17 +529,6 @@ Review pull requests with a focus on:
     ...)
   ```
 
-- REST API route strings (the second arg to `defendpoint`) should use `kebab-case`, e.g. `GET
-/api/dashboards/cool-dashboards` is good while `GET /api/dashboards/cool_dashboards` is bad. More examples:
-
-  ```clj
-  ;;; Bad
-  (api.macros/defendpoint :post "/check_transform" ...)
-
-  ;;; Good
-  (api.macros/defendpoint :post "/check-transform" ...)
-  ```
-
 - Query parameters should also use kebab-case e.g. `GET /api/dashboards?include-archived=true` is good while `GET
 /api/dashboards?include_archived=true` or `GET /api/dashboards?includeArchived=true` is bad.
 
