@@ -11,7 +11,7 @@ import { Tooltip } from "metabase/ui";
 
 import { getHasMetabotLogo } from "../../selectors";
 
-import styles from "./HomeGreeting.module.css";
+import S from "./HomeGreeting.module.css";
 
 export const HomeGreeting = (): JSX.Element => {
   const user = useSelector(getUser);
@@ -20,14 +20,11 @@ export const HomeGreeting = (): JSX.Element => {
   const message = useMemo(() => getMessage(name), [name]);
 
   return (
-    <div className={styles.greetingRoot}>
+    <div className={S.greetingRoot}>
       {showLogo && <MetabotGreeting />}
       <span
         data-testid="greeting-message"
-        className={cx(
-          styles.greetingMessage,
-          showLogo ? styles.withLogo : styles.withoutLogo,
-        )}
+        className={cx(S.greetingMessage, showLogo ? S.withLogo : S.withoutLogo)}
       >
         {message}
       </span>
@@ -73,19 +70,19 @@ export const MetabotGreeting = () => {
       label={t`Don't tell anyone, but you're my favorite.`}
       position="bottom"
     >
-      <div className={styles.greetingLogoContainer}>
+      <div className={S.greetingLogoContainer}>
         <MetabotLogo
-          className={cx(styles.greetingLogo, animationStyles.SpinOut, {
-            [styles.isCool]: isCool,
-            [styles.isNotCool]: !isCool,
+          className={cx(S.greetingLogo, animationStyles.SpinOut, {
+            [S.isCool]: isCool,
+            [S.isNotCool]: !isCool,
             [animationStyles.SpinOutActive]: isCooling,
           })}
           variant="cool"
         />
         <MetabotLogo
-          className={cx(styles.greetingLogo, animationStyles.SpinOut, {
-            [styles.isCool]: !isCool,
-            [styles.isNotCool]: isCool,
+          className={cx(S.greetingLogo, animationStyles.SpinOut, {
+            [S.isCool]: !isCool,
+            [S.isNotCool]: isCool,
             [animationStyles.SpinOutActive]: isCooling,
           })}
           variant="happy"
