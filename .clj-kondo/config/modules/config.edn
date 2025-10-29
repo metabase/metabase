@@ -1754,8 +1754,10 @@
            events
            models
            premium-features
+           public-sharing
            queries
            query-permissions
+           query-processor
            revisions
            search
            util
@@ -1887,7 +1889,17 @@
    :uses #{premium-features
            util}}
 
-  enterprise/remote-sync
+  enterprise/public-sharing
+  {:team "UX West"
+   :api  #{metabase-enterprise.public-sharing.api}
+   :uses #{api
+           events
+           premium-features
+           public-sharing
+           query-processor
+           util}}
+
+ enterprise/remote-sync
   {:team "UX West"
    :api  #{metabase-enterprise.remote-sync.api
            metabase-enterprise.remote-sync.core
