@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Flex, Stack } from "metabase/ui";
 import { EditorHeader } from "metabase-enterprise/transforms/components/QueryEditor/EditorHeader";
 import { useRegisterMetabotTransformContext } from "metabase-enterprise/transforms/hooks/use-register-transform-metabot-context";
-import { useTestPythonTransform } from "metabase-enterprise/transforms-python/hooks/use-test-python-transform";
 import type {
   PythonTransformSource,
   PythonTransformSourceDraft,
@@ -16,6 +15,7 @@ import type {
 import { PythonDataPicker } from "./PythonDataPicker";
 import { PythonEditorBody } from "./PythonEditorBody";
 import { PythonEditorResults } from "./PythonEditorResults";
+import { useTestPythonTransform } from "./hooks";
 import {
   getValidationResult,
   isPythonTransformSource,
@@ -53,10 +53,13 @@ export function PythonTransformEditor({
   const saveSource = proposedSource ?? source;
   const [isSourceDirty, setIsSourceDirty] = useState(false);
 
-  useRegisterMetabotTransformContext(transform, proposedSource ?? source);
+  const [testRunner, setTestRunner] = useState<"pyodide" | "api">("pyodide");
 
-  const { isRunning, cancel, run, executionResult } =
-    useTestPythonTransform(source);
+  const { isRunning, cancel, run, executionResult } = useTestPythonTransform(
+    source,
+    testRunner,
+  );
+  useRegisterMetabotTransformContext(transform, proposedSource ?? source);
 
   const handleScriptChange = (body: string) => {
     const newSource = {
@@ -156,6 +159,8 @@ export function PythonTransformEditor({
           <PythonEditorResults
             isRunning={isRunning}
             executionResult={executionResult}
+            testRunner={testRunner}
+            onTestRunnerChange={setTestRunner}
           />
         </Stack>
       </Flex>

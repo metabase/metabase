@@ -21,7 +21,9 @@ export type PythonTransformResultData = {
   rows: Record<string, RowValue>[];
 };
 
-export function useTestPythonTransform(source: PythonTransformSourceDraft) {
+export function useTestPythonTransformOnPyodide(
+  source: PythonTransformSourceDraft,
+) {
   const { fetchLibraries, isRunning: isFetchingLibraries } =
     usePythonLibraries();
   const { fetchSampleData, isRunning: isFetchingData } = useSampleData(source);
