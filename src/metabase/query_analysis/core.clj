@@ -83,8 +83,8 @@
   []
   (case config/run-mode
     :prod        ::queued
-    :dev         *analyze-execution-in-dev?*
-    (:e2e :test) *analyze-execution-in-test?*))
+    (:e2e :dev)  *analyze-execution-in-dev?*
+    :test        *analyze-execution-in-test?*))
 
 (defn enabled-type?
   "Is analysis of the given query type enabled?"
