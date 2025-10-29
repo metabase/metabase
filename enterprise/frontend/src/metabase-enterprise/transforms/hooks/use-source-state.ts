@@ -14,7 +14,7 @@ import type {
 import { isSameSource } from "../utils";
 
 type UseSourceStateProps = {
-  transformId: TransformId | undefined;
+  transformId?: TransformId;
   initialSource: DraftTransformSource;
 };
 
