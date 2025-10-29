@@ -77,14 +77,6 @@ export function newCardTransform(cardId: CardId) {
   return `${ROOT_URL}/new/card/${cardId}`;
 }
 
-export function newTransformFromType(type: "query" | "native" | "python") {
-  return `${ROOT_URL}/new/${type}`;
-}
-
-export function newTransformFromCard(cardId: CardId) {
-  return `${ROOT_URL}/new/card/${cardId}`;
-}
-
 export function transform(transformId: TransformId) {
   return `${ROOT_URL}/${transformId}`;
 }
