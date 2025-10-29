@@ -69,9 +69,13 @@
      {:decode/normalize   #(->> %
                                 normalize-stage-common
                                 ;; filter out null :collection keys -- see #59675
+                                ;;
+                                ;; also filter out empty `:template-tags` maps.
                                 (m/filter-kv (fn [k v]
-                                               (not (and (= k :collection)
-                                                         (nil? v))))))
+                                               (case k
+                                                 :collection    (some? v)
+                                                 :template-tags (seq v)
+                                                 true))))
       :encode/for-hashing #'common/encode-map-for-hashing}
      [:lib/type [:= {:decode/normalize common/normalize-keyword} :mbql.stage/native]]
      ;; the actual native query, depends on the underlying database. Could be a raw SQL string or something like that.

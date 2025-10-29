@@ -20,19 +20,30 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- root-cause [^Throwable e]
+  (if-let [cause (ex-cause e)]
+    (recur cause)
+    e))
+
+(defn- clean-git-exception
+  [^Exception e ^GitCommand command remote?]
+  (let [root-ex (root-cause e)]
+    ;; strip off the beginning URL that is often included and ends up being duplicated later
+    (ex-info (format "Git %s failed: %s" (-> command .getClass .getSimpleName) (str/replace-first (ex-message root-ex) #"^[a-z]+://[a-zA-Z0-9\-\.]+: " ""))
+             {:remote remote?} root-ex)))
+
 (defn- call-command [^GitCommand command]
-  (let [analytics-labels {:operation (-> command .getClass .getName) :remote false}]
+  (let [analytics-labels {:operation (-> command .getClass .getSimpleName) :remote false}]
     (analytics/inc! :metabase-remote-sync/git-operations analytics-labels)
 
     (try
       (.call command)
       (catch Exception e
         (analytics/inc! :metabase-remote-sync/git-operations-failed analytics-labels)
-        (throw (ex-info (format "Git %s failed: %s" (:operation analytics-labels) (ex-message e))
-                        analytics-labels e))))))
+        (throw (clean-git-exception e command false))))))
 
 (defn- call-remote-command [^TransportCommand command {:keys [^String token]}]
-  (let [analytics-labels {:operation (-> command .getClass .getName) :remote true}
+  (let [analytics-labels {:operation (-> command .getClass .getSimpleName) :remote true}
         ;; GitHub convention: use "x-access-token" as username when authenticating with a personal access token
         ;; For Gitlab any values can be used as the user name so x-access-token works just as well
         credentials-provider (when token (UsernamePasswordCredentialsProvider. "x-access-token" token))]
@@ -44,8 +55,7 @@
           (.call))
       (catch Exception e
         (analytics/inc! :metabase-remote-sync/git-operations-failed analytics-labels)
-        (throw (ex-info (format "Git %s failed: %s" (-> command .getClass .getName) (ex-message e))
-                        analytics-labels e))))))
+        (throw (clean-git-exception e command true))))))
 
 (defn- qualify-branch [branch]
   (if (str/starts-with? branch "refs/heads/")

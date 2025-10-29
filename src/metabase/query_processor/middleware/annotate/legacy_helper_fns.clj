@@ -6,15 +6,14 @@
   which point they can use MLv2 directly)."
   (:require
    ;; existing legacy usage -- don't use legacy MBQL namespaces in QP going forward
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.query-processor.error-type :as qp.error-type]
-   ^{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as-alias add]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
@@ -34,7 +33,7 @@
       (lib/query-from-legacy-inner-query
        (qp.store/metadata-provider)
        (:id (lib.metadata/database (qp.store/metadata-provider)))
-       (mbql.normalize/normalize-fragment [:query] inner-query))
+       (mbql.normalize/normalize ::mbql.s/MBQLQuery inner-query))
       (catch Throwable e
         (throw (ex-info (tru "Error converting query to pMBQL: {0}" (ex-message e))
                         {:inner-query inner-query, :type qp.error-type/qp}

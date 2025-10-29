@@ -14,6 +14,7 @@ import {
 } from "metabase/embedding-sdk/theme";
 import type { MappableSdkColor } from "metabase/embedding-sdk/theme/embedding-color-palette";
 import {
+  SDK_MISSING_COLORS_FALLBACK,
   SDK_TO_MAIN_APP_COLORS_MAPPING,
   SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING,
 } from "metabase/embedding-sdk/theme/embedding-color-palette";
@@ -60,9 +61,27 @@ export function getEmbeddingThemeOverride(
   if (theme.colors) {
     override.colors = {};
 
+    const userColors = { ...theme.colors };
+
+    // Apply fallback colors for missing colors that the user forgot to define.
+    // For example, if they forgot to define `background-secondary` but have
+    // defined `background`, we use it as a fallback.
+    for (const key in SDK_MISSING_COLORS_FALLBACK) {
+      const targetColor = key as MappableSdkColor;
+      const fallbackColor = SDK_MISSING_COLORS_FALLBACK[targetColor];
+
+      if (
+        fallbackColor &&
+        userColors[fallbackColor] &&
+        !userColors[targetColor]
+      ) {
+        userColors[targetColor] = userColors[fallbackColor];
+      }
+    }
+
     // Apply color palette overrides
-    for (const name in theme.colors) {
-      const color = theme.colors[name as MetabaseColor];
+    for (const name in userColors) {
+      const color = userColors[name as MetabaseColor];
 
       if (color && typeof color === "string") {
         const themeColorNames =

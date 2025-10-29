@@ -1,12 +1,13 @@
+import type { MatcherOptions } from "@testing-library/cypress";
 import yamljs from "yamljs";
 
 import type { Collection } from "metabase-types/api";
 
 import { openCollectionItemMenu } from "./e2e-collection-helpers";
 import {
+  collectionTable,
   entityPickerModal,
   entityPickerModalItem,
-  entityPickerModalTab,
   navigationSidebar,
   popover,
 } from "./e2e-ui-elements-helpers";
@@ -134,12 +135,51 @@ export const updateRemoteQuestion = (
 };
 
 export const moveCollectionItemToLibrary = (name: string) => {
+  navigationSidebar()
+    .findByRole("treeitem", { name: /Our analytics/ })
+    .click();
+
   openCollectionItemMenu(name);
   popover().findByText("Move").click();
 
   entityPickerModal().within(() => {
-    entityPickerModalTab("Browse").click();
+    cy.findAllByRole("tab", { name: /Browse|Collections/ }).click();
     entityPickerModalItem(1, "Library").click();
     cy.button("Move").click();
+  });
+
+  getSyncStatusIndicators().should("have.length", 1);
+
+  navigationSidebar()
+    .findByRole("treeitem", { name: /Library/ })
+    .click();
+  collectionTable().findByText(name).should("exist");
+};
+
+export const goToLibrary = (opts?: Partial<Cypress.ClickOptions>) =>
+  navigationSidebar()
+    .findByRole("treeitem", { name: /Library/ })
+    .click(opts);
+
+export const branchPicker = (opts?: Partial<MatcherOptions>) =>
+  navigationSidebar().findByTestId("branch-picker-button", opts);
+
+export const interceptTask = () =>
+  cy.intercept("/api/ee/remote-sync/current-task").as("currentTask");
+
+export const waitForTask = (
+  { taskName }: { taskName: "import" | "export" },
+  retries = 0,
+) => {
+  if (retries > 3) {
+    throw Error(`Too many retries waiting for ${taskName}`);
+  }
+  cy.wait("@currentTask").then(({ response }) => {
+    const { body } = response;
+    if (body.sync_task_type !== taskName) {
+      waitForTask({ taskName });
+    } else if (body.status !== "successful") {
+      waitForTask({ taskName }, retries + 1);
+    }
   });
 };

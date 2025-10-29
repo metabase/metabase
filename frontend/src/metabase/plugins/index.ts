@@ -2,10 +2,12 @@ import type { Middleware } from "@reduxjs/toolkit";
 import type { TagDescription } from "@reduxjs/toolkit/query";
 import React, {
   type ComponentType,
+  type Context,
   type Dispatch,
   type HTMLAttributes,
   type ReactNode,
   type SetStateAction,
+  createContext,
   useCallback,
 } from "react";
 import { t } from "ttag";
@@ -71,6 +73,7 @@ import type {
   DatabaseLocalSettingAvailability,
   Database as DatabaseType,
   Dataset,
+  DependencyEntry,
   Document,
   Group,
   GroupPermissions,
@@ -582,10 +585,24 @@ export const PLUGIN_EMBEDDING_IFRAME_SDK = {
   SdkIframeEmbedRoute: (): ReactNode => null,
 };
 
+export type SdkIframeEmbedSetupModalProps = {
+  opened: boolean;
+  onClose: () => void;
+  initialState?: SdkIframeEmbedSetupModalInitialState;
+};
+
+export type SdkIframeEmbedSetupModalInitialState = {
+  resourceType?: string | null;
+  resourceId?: string | number | null;
+  useExistingUserSession?: boolean;
+};
+
 export const PLUGIN_EMBEDDING_IFRAME_SDK_SETUP = {
   isFeatureEnabled: () => false,
   shouldShowEmbedInNewItemMenu: () => false,
-  SdkIframeEmbedSetup: (): ReactNode => null,
+  SdkIframeEmbedSetupModal: (
+    _props: SdkIframeEmbedSetupModalProps,
+  ): ReactNode => null,
 };
 
 export const PLUGIN_CONTENT_VERIFICATION = {
@@ -858,6 +875,11 @@ export const PLUGIN_DOCUMENTS = {
   DocumentCopyForm: (_props: any) => null as React.ReactElement | null,
 };
 
+export const PLUGIN_PUBLIC_SHARING = {
+  PublicDocumentRoute: (_props: any) => null as React.ReactElement | null,
+  PublicLinksDocumentListing: () => null as React.ReactElement | null,
+};
+
 export const PLUGIN_ENTITIES = {
   entities: {} as Record<string, any>,
 };
@@ -962,6 +984,7 @@ export const PLUGIN_TRANSFORMS_PYTHON: PythonTransformsPlugin = {
 type DependenciesPlugin = {
   isEnabled: boolean;
   DependencyGraphPage: ComponentType;
+  DependencyGraphPageContext: Context<DependencyGraphPageContextType>;
   CheckDependenciesForm: ComponentType<CheckDependenciesFormProps>;
   CheckDependenciesModal: ComponentType<CheckDependenciesModalProps>;
   CheckDependenciesTitle: ComponentType;
@@ -974,6 +997,11 @@ type DependenciesPlugin = {
   useCheckTransformDependencies: (
     props: UseCheckDependenciesProps<UpdateTransformRequest>,
   ) => UseCheckDependenciesResult<UpdateTransformRequest>;
+};
+
+export type DependencyGraphPageContextType = {
+  baseUrl?: string;
+  defaultEntry?: DependencyEntry;
 };
 
 export type CheckDependenciesFormProps = {
@@ -1017,6 +1045,7 @@ function useCheckDependencies<TChange>({
 export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
   isEnabled: false,
   DependencyGraphPage: PluginPlaceholder,
+  DependencyGraphPageContext: createContext({}),
   CheckDependenciesForm: PluginPlaceholder,
   CheckDependenciesModal: PluginPlaceholder,
   CheckDependenciesTitle: PluginPlaceholder,
