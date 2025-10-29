@@ -136,6 +136,11 @@
     {:collection-id (:id result)
      :status "ok"}))
 
+(defn- reduce-tables [export-set]
+  (cond-> export-set
+    (> (count export-set) 1)
+    (export/reduce-tables)))
+
 (api.macros/defendpoint :get "/export-set/:type/:id"
   "Export an entity and its transitive dependencies as a JSON of YAMLs.
    Type can be: question, model, metric, transform, collection, database, snippet."
@@ -150,11 +155,10 @@
         representation (export/export-entity entity)
         export-set (-> [representation]
                        (export/export-set)
+                       (reduce-tables)
                        (import/order-representations)
                        (reverse))
-        export-set (cond-> export-set
-                     (> (count export-set) 1)
-                     (export/reduce-tables))
+        export-set (mapv #(dissoc % :entity_id :entity-id) export-set)
         clean-yamls (mapv v0-common/cleanup-delete-before-output export-set)
         export-yamls (mapv rep-yaml/generate-string clean-yamls)]
     (json/generate-string {:yamls export-yamls})))
