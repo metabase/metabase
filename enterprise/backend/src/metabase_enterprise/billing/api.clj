@@ -19,14 +19,14 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private ^String metabase-billing-info-url
+(defn- metabase-billing-info-url []
   (str (store-api/store-api-url) "/api/v2/metabase/billing_info"))
 
 (def ^:private ^{:arglists '([token email language])} fetch-billing-status*
   (memoize/ttl
    ^{::memoize/args-fn (fn [[token email language]] [token email language])}
    (fn [token email language]
-     (try (some-> metabase-billing-info-url
+     (try (some-> (metabase-billing-info-url)
                   (http/get {:basic-auth   [email token]
                              :language     language
                              :content-type :json})
