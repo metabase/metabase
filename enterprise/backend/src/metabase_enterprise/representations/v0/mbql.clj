@@ -218,7 +218,7 @@
 
 (defn export-dataset-query
   "Export a dataset query to representation compatible format.
-  Will have database (as a ref), query (for native queries) mbql_query for legacy mbql, and lib_query for new mbql."
+  Will have database (as a ref) and query."
   [query]
   (let [patched-query (patch-refs-for-export query)]
     {:database (:database patched-query)
