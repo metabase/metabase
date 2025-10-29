@@ -9,15 +9,15 @@ import type { QueryEditorUiState } from "../../components/QueryEditor/types";
 
 export function useQueryResults(
   question: Question,
-  state: QueryEditorUiState,
-  setState: (newState: QueryEditorUiState) => void,
+  uiState: QueryEditorUiState,
+  setUiState: (newUiState: QueryEditorUiState) => void,
 ) {
-  const { lastRunQuery } = state;
+  const { lastRunQuery } = uiState;
   const [runAdhocQuery, { data = null, isFetching: isRunning = false }] =
     useLazyGetAdhocQueryQuery();
   const abortRef = useRef<() => void>();
-  const stateRef = useRef(state);
-  stateRef.current = state;
+  const stateRef = useRef(uiState);
+  stateRef.current = uiState;
 
   const { result, rawSeries, isRunnable, isResultDirty } = useMemo(() => {
     const lastRunQuestion = lastRunQuery
@@ -54,8 +54,8 @@ export function useQueryResults(
     });
     abortRef.current = result.abort;
     await result;
-    setState({ ...stateRef.current, lastRunQuery: question.datasetQuery() });
-  }, [question, setState, runAdhocQuery]);
+    setUiState({ ...stateRef.current, lastRunQuery: question.datasetQuery() });
+  }, [question, setUiState, runAdhocQuery]);
 
   const cancelQuery = useCallback(() => {
     abortRef.current?.();
