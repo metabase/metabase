@@ -1234,6 +1234,7 @@ jobs:
     env:
       CI: 'true'
       DRIVERS: starburst
+      MB_STARBURST_TEST_USER: metabase
     name: Starburst
     steps:
     - uses: actions/checkout@v4
@@ -1246,6 +1247,7 @@ jobs:
           -v ${{ github.workspace }}/modules/drivers/starburst/test/access-control.properties:/etc/trino/access-control.properties:ro \
           -v ${{ github.workspace }}/modules/drivers/starburst/test/rules.json:/etc/trino/rules.json:ro \
           trinodb/trino:latest
+        sleep 30
     - uses: ./.github/actions/await-port
       with:
         port: 8080
