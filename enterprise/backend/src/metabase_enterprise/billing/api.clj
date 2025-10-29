@@ -8,6 +8,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.premium-features.core :as premium-features]
+   [metabase.store-api.core :as store-api]
    [metabase.util :as u]
    [metabase.util.date-2.parse :as u.date.parse]
    [metabase.util.i18n :as i18n]
@@ -18,7 +19,8 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private ^String metabase-billing-info-url "https://store-api.metabase.com/api/v2/metabase/billing_info")
+(def ^:private ^String metabase-billing-info-url
+  (str (store-api/store-api-url) "/api/v2/metabase/billing_info"))
 
 (def ^:private ^{:arglists '([token email language])} fetch-billing-status*
   (memoize/ttl

@@ -1621,7 +1621,8 @@
   {:team "UX West"
    :api  #{metabase-enterprise.billing.api.routes}
    :uses #{api
-           premium-features util}}
+           premium-features util
+           store-api}}
 
   enterprise/bookmarks
   {:team "UX West"
