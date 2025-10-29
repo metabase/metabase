@@ -28,7 +28,6 @@
           (is (every? (complement #(re-find (re-pattern token) %)) logs))
           (is (= 1 (count (filter #(re-find (re-pattern print-token) %) logs)))))))))
 
-
 (deftest fetch-token-caches-invalid-responses
   (testing "For 4XX responses, the result is cached"
     (let [call-count (atom 0)
