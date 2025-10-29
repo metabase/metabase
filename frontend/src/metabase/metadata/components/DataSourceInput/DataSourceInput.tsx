@@ -106,6 +106,7 @@ function TransformTable({ transformId }: { transformId: TransformId }) {
                 to={`/bench/transforms/${transformId}`}
                 size="xs"
                 variant="subtle"
+                fz="sm"
               >
                 {transform?.name ?? t`Transform`}
               </Button>
@@ -114,17 +115,7 @@ function TransformTable({ transformId }: { transformId: TransformId }) {
         </Table.Tr>
         <Table.Tr>
           <Table.Th>{t`Schedule`}</Table.Th>
-          <Table.Td>
-            {scheduleText ? (
-              <Text size="sm" c="text-medium">
-                {scheduleText}
-              </Text>
-            ) : (
-              <Text size="sm" c="text-light">
-                {t`Manual only`}
-              </Text>
-            )}
-          </Table.Td>
+          <Table.Td>{scheduleText ? scheduleText : t`Manual only`}</Table.Td>
         </Table.Tr>
         <Table.Tr>
           <Table.Th>{t`Last run`}</Table.Th>
