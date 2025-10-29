@@ -2337,6 +2337,19 @@ databaseChangeLog:
                   constraints:
                     nullable: true
 
+  - changeSet:
+      id: v57.2025-10-2910:00:00
+      author: qnkhuat
+      comment: Backfill visibility_type2 from visibility_type
+      changes:
+        - sql: >-
+            UPDATE metabase_table
+            SET visibility_type2 = CASE
+              WHEN visibility_type IN ('hidden', 'retired', 'sensitive', 'technical', 'cruft') THEN 'copper'
+              ELSE 'gold'
+            END
+      rollback: # will be deleted with the column
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
