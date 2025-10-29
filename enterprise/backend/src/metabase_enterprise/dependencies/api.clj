@@ -8,12 +8,14 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
+   [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.graph.core :as graph]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.native-query-snippets.core :as native-query-snippets]
+   [metabase.permissions.core :as perms]
    [metabase.queries.schema :as queries.schema]
    [metabase.revisions.core :as revisions]
    [metabase.util.i18n :refer [tru]]
@@ -166,37 +168,80 @@
    :dependents_count (usages [entity-type id])})
 
 (def ^:private entity-model
-  {:table :model/Table
-   :card :model/Card
-   :snippet :model/NativeQuerySnippet
+  {:table     :model/Table
+   :card      :model/Card
+   :snippet   :model/NativeQuerySnippet
    :transform :model/Transform
    :dashboard :model/Dashboard
-   :document :model/Document
-   :sandbox :model/Sandbox})
+   :document  :model/Document
+   :sandbox   :model/Sandbox})
 
-(defn- readable-node?
-  "Check if the user can read the entity represented by `[entity-type entity-id]`."
-  [[entity-type entity-id]]
-  (if-let [model (entity-model entity-type)]
-    (try
-      (mi/can-read? model entity-id)
-      (catch Exception e
-        (log/debugf e "Couldn't determine if %s with id %s is readble"
-                    (some-> entity-type name) entity-id)
-        false))
-    (do
-      (log/warn "Cannot determine the model of" (some-> entity-type name))
-      false)))
+(defn- visible-entities-filter-clause
+  "Returns a HoneySQL WHERE clause for filtering dependency graph entities by user visibility.
+
+  Accepts two arguments:
+  - `entity-type-field`: Database column name for entity type (e.g., :to_entity_type)
+  - `entity-id-field`: Database column name for entity ID (e.g., :to_entity_id)
+
+  Returns a compound [:or ...] clause checking whether entities at those columns are readable.
+
+  Handles different entity types:
+  - Superuser-only (:model/Transform, :model/Sandbox): Only if api/*is-superuser?* is true
+  - Collection-based (:model/Card, :model/Dashboard, :model/Document, :model/NativeQuerySnippet):
+    Uses collection/visible-collection-filter-clause. Native query snippets have additional
+    restrictions for sandboxed users.
+  - Table: Uses mi/visible-filter-clause with appropriate permissions"
+  [entity-type-field entity-id-field]
+  (into [:or]
+        (keep (fn [[entity-type model]]
+                (let [table-name (t2/table-name model)
+                      id-column (keyword (name table-name) "id")]
+                  (case model
+                    ;; Superuser-only entities
+                    (:model/Transform :model/Sandbox)
+                    (when api/*is-superuser?*
+                      [:and
+                       [:= entity-type-field (name entity-type)]
+                       [:in entity-id-field {:select [:id] :from [table-name]}]])
+
+                    ;; Collection-based entities
+                    (:model/Card :model/Dashboard :model/Document :model/NativeQuerySnippet)
+                    (when-not (and (= model :model/NativeQuerySnippet)
+                                   (or (perms/sandboxed-user?)
+                                       (not (perms/user-has-any-perms-of-type?
+                                             api/*current-user-id* :perms/create-queries))))
+                      [:and
+                       [:= entity-type-field (name entity-type)]
+                       [:in entity-id-field {:select [:id]
+                                             :from [table-name]
+                                             :where (collection/visible-collection-filter-clause
+                                                     (keyword (name table-name) "collection_id")
+                                                     {}
+                                                     {:current-user-id api/*current-user-id*
+                                                      :is-superuser? api/*is-superuser?*})}]])
+
+                    ;; Table with visible-filter-clause
+                    :model/Table
+                    [:and
+                     [:= entity-type-field (name entity-type)]
+                     [:in entity-id-field {:select [:id]
+                                           :from [table-name]
+                                           :where (mi/visible-filter-clause
+                                                   model
+                                                   id-column
+                                                   {:user-id api/*current-user-id*
+                                                    :is-superuser? api/*is-superuser?*}
+                                                   {:perms/view-data :unrestricted
+                                                    :perms/create-queries :query-builder})}]]))))
+        entity-model))
 
 (defn- readable-graph-dependencies
-  "Return a permission-aware dependency graph that only includes readable entities."
   []
-  (dependency/filtered-graph-dependencies readable-node?))
+  (dependency/filtered-graph-dependencies visible-entities-filter-clause))
 
 (defn- readable-graph-dependents
-  "Return a permission-aware dependent graph that only includes readable entities."
   []
-  (dependency/filtered-graph-dependents readable-node?))
+  (dependency/filtered-graph-dependents visible-entities-filter-clause))
 
 (defn- calc-usages
   "Calculates the count of direct dependents for all nodes in `nodes`, based on `graph`. "
