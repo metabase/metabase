@@ -13,15 +13,12 @@
 (mr/def ::content-type
   [:enum {:decode/json keyword
           :description "Format of the document content"}
-   :markdown :html :text])
+   :prosemirror])
 
 (mr/def ::content
   [:and
-   {:description "The document content with optional embedded cards and links
-                  Markdown format supports:
-                  - {{card:card-ref}} for embedding cards
-                  - [link text](card:card-ref) for linking to cards"}
-   :string])
+   {:description "The document content in ProseMirror JSON format"}
+   any?])
 
 (mr/def ::collection
   [:and

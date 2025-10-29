@@ -17,6 +17,7 @@
   [:or
    {:description "Query - either a native SQL query string or MBQL/lib query map"}
    ::mc/non-blank-string
+   ;; TODO: vector? map? the following represents mbql:
    :any])
 
 (mr/def ::database

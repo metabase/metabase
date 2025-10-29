@@ -1,6 +1,7 @@
 (ns representations.schema.v0.column
   (:require
    [clojure.string :as str]
+   [malli.core :as m]
    [representations.util.malli.common :as mc]
    [representations.util.malli.registry :as mr]))
 
@@ -124,3 +125,9 @@
   [:sequential
    {:description "Array of column metadata definitions"}
    ::column])
+
+(def column-keys
+  (->> (m/schema ::column {:registry mr/registry})
+       m/deref
+       m/entries
+       (into #{} (map first))))
