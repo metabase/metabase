@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { formatValue } from "metabase/lib/formatting";
+import { formatValue, formatNumber } from "metabase/lib/formatting";
 import { Badge, Box, Flex, Icon, Image, Stack, Text } from "metabase/ui";
 import { MiniBarCell } from "metabase/visualizations/components/TableInteractive/cells/MiniBarCell";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
@@ -200,10 +200,8 @@ export function ColumnValue({
     }
     case "type/Currency": {
       const [currencySymbol, currencyValue] = (
-        (formatValue(rawValue, {
+        (formatNumber(Number(rawValue), {
           ...(settings.column?.(column) || {}),
-          jsx: true,
-          rich: true,
           split_currency: "|",
         }) as string) || ""
       ).split("|");
@@ -218,7 +216,7 @@ export function ColumnValue({
           >
             {currencySymbol}
           </span>
-          {currencyValue?.slice(0, -1)}
+          {currencyValue}
         </Text>
       );
     }
