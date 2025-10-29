@@ -382,7 +382,7 @@ export const ListViewConfiguration = ({
                   ))}
                 </SimpleGrid>
                 <Menu.Divider m={0} />
-                <SimpleGrid cols={6} p="md">
+                <SimpleGrid cols={6} p="md" data-testid="list-view-icon-colors">
                   {ENTITY_ICON_COLORS.map((color: string) => (
                     <Flex justify="center" align="center" key={color}>
                       <Button
