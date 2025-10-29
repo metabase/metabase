@@ -9,7 +9,11 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { NativeQuerySnippet } from "metabase-types/api";
 
-import type { QueryEditorState } from "../types";
+import type {
+  QueryEditorModalType,
+  QueryEditorSidebarType,
+  QueryEditorUiState,
+} from "../types";
 
 const EMPTY_SELECTION_RANGE: SelectionRange = {
   start: { row: 0, column: 0 },
@@ -18,30 +22,37 @@ const EMPTY_SELECTION_RANGE: SelectionRange = {
 
 export function useQueryControls(
   question: Question,
-  state: QueryEditorState,
+  uiState: QueryEditorUiState,
   setQuestion: (newQuestion: Question) => void,
-  setState: (newState: QueryEditorState) => void,
+  setUiState: (newUiState: QueryEditorUiState) => void,
 ) {
-  const stateRef = useRef(state);
-  stateRef.current = state;
+  const stateRef = useRef(uiState);
+  stateRef.current = uiState;
+
+  const setState = useCallback(
+    (callback: (state: QueryEditorUiState) => QueryEditorUiState) => {
+      setUiState(callback(stateRef.current));
+    },
+    [setUiState],
+  );
 
   const selectedText = useMemo(() => {
     const query = question.query();
     const text = Lib.rawNativeQuery(query) ?? "";
-    const { start, end } = getSelectionPositions(text, state.selectionRange);
+    const { start, end } = getSelectionPositions(text, uiState.selectionRange);
     return text.slice(start, end);
-  }, [question, state.selectionRange]);
+  }, [question, uiState.selectionRange]);
 
   const setSelectionRange = useCallback(
     (selectionRange: SelectionRange[]) => {
-      setState({ ...stateRef.current, selectionRange });
+      setState((state) => ({ ...state, selectionRange }));
     },
     [setState],
   );
 
   const setModalSnippet = useCallback(
     (modalSnippet: NativeQuerySnippet | null) => {
-      setState({ ...stateRef.current, modalSnippet });
+      setState((state) => ({ ...state, modalSnippet }));
     },
     [setState],
   );
@@ -49,10 +60,10 @@ export function useQueryControls(
   const openModal = useCallback(
     (type: QueryModalType) => {
       if (type === "preview-query") {
-        setState({
-          ...stateRef.current,
-          isPreviewQueryModalOpen: true,
-        });
+        setState((state) => ({
+          ...state,
+          modalType: "preview-query",
+        }));
       }
     },
     [setState],
@@ -65,7 +76,7 @@ export function useQueryControls(
 
       const { start, end } = getSelectionPositions(
         text,
-        stateRef.current.selectionRange,
+        uiState.selectionRange,
       );
       const pre = text.slice(0, start);
       const post = text.slice(end);
@@ -74,50 +85,52 @@ export function useQueryControls(
 
       setQuestion(question.setQuery(newQuery));
     },
-    [question, setQuestion],
+    [question, setQuestion, uiState.selectionRange],
   );
-
-  const toggleDataReference = useCallback(() => {
-    setState({
-      ...stateRef.current,
-      isDataReferenceOpen: !stateRef.current.isDataReferenceOpen,
-      isSnippetSidebarOpen: false,
-    });
-  }, [setState]);
-
-  const toggleSnippetSidebar = useCallback(() => {
-    setState({
-      ...stateRef.current,
-      isSnippetSidebarOpen: !stateRef.current.isSnippetSidebarOpen,
-      isDataReferenceOpen: false,
-    });
-  }, [setState]);
-
-  const togglePreviewQueryModal = useCallback(() => {
-    setState({
-      ...stateRef.current,
-      isPreviewQueryModalOpen: !stateRef.current.isPreviewQueryModalOpen,
-    });
-  }, [setState]);
-
-  const toggleNativeQueryPreviewSidebar = useCallback(() => {
-    setState({
-      ...stateRef.current,
-      isNativeQueryPreviewSidebarOpen:
-        !stateRef.current.isNativeQueryPreviewSidebarOpen,
-    });
-  }, [setState]);
 
   const convertToNative = useCallback(
     (newQuestion: Question) => {
-      setState({
-        ...stateRef.current,
-        isNativeQueryPreviewSidebarOpen: false,
-      });
+      setState((state) => ({ ...state, sidebarType: null }));
       setQuestion(newQuestion);
     },
     [setQuestion, setState],
   );
+
+  const toggleSidebar = useCallback(
+    (sidebarType: QueryEditorSidebarType) => {
+      setState((state) => ({
+        ...state,
+        sidebarType: state.sidebarType === sidebarType ? null : sidebarType,
+      }));
+    },
+    [setState],
+  );
+
+  const toggleDataReferenceSidebar = useCallback(() => {
+    toggleSidebar("data-reference");
+  }, [toggleSidebar]);
+
+  const toggleSnippetSidebar = useCallback(() => {
+    toggleSidebar("snippet");
+  }, [toggleSidebar]);
+
+  const toggleNativeQuerySidebar = useCallback(() => {
+    toggleSidebar("native-query");
+  }, [toggleSidebar]);
+
+  const toggleModal = useCallback(
+    (modalType: QueryEditorModalType) => {
+      setState((state) => ({
+        ...state,
+        modalType: state.modalType === modalType ? null : modalType,
+      }));
+    },
+    [setState],
+  );
+
+  const togglePreviewQueryModal = useCallback(() => {
+    toggleModal("preview-query");
+  }, [toggleModal]);
 
   return {
     selectedText,
@@ -125,11 +138,11 @@ export function useQueryControls(
     setSelectionRange,
     setModalSnippet,
     insertSnippet,
-    toggleDataReference,
-    toggleSnippetSidebar,
-    togglePreviewQueryModal,
-    toggleNativeQueryPreviewSidebar,
     convertToNative,
+    toggleDataReferenceSidebar,
+    toggleSnippetSidebar,
+    toggleNativeQuerySidebar,
+    togglePreviewQueryModal,
   };
 }
 

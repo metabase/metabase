@@ -5,12 +5,12 @@ import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 
-import type { QueryEditorState } from "../types";
+import type { QueryEditorUiState } from "../types";
 
 export function useQueryResults(
   question: Question,
-  state: QueryEditorState,
-  setState: (newState: QueryEditorState) => void,
+  state: QueryEditorUiState,
+  setState: (newState: QueryEditorUiState) => void,
 ) {
   const { lastRunQuery } = state;
   const [runAdhocQuery, { data = null, isFetching: isRunning = false }] =

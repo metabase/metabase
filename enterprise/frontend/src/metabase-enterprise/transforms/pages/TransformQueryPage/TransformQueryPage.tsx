@@ -11,7 +11,7 @@ import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { getInitialState } from "metabase/querying/editor/components/QueryEditor";
+import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import {
   useGetTransformQuery,
   useUpdateTransformMutation,
@@ -58,7 +58,7 @@ export function TransformQueryPageBody({
   route,
 }: TransformQueryPageBodyProps) {
   const [source, setSource] = useState(transform.source);
-  const [state, setState] = useState(getInitialState);
+  const [uiState, setUiState] = useState(getInitialUiState);
   const [updateTransform, { isLoading: isSaving }] =
     useUpdateTransformMutation();
   const dispatch = useDispatch();
@@ -101,12 +101,12 @@ export function TransformQueryPageBody({
           name={transform.name}
           source={source}
           proposedSource={undefined}
-          state={state}
+          uiState={uiState}
           isNew={false}
           isDirty={false}
           isSaving={isSaving || isCheckingDependencies}
           onChangeSource={setSource}
-          onChangeState={setState}
+          onChangeUiState={setUiState}
           onSave={handleSave}
           onCancel={handleCancel}
           onAcceptProposed={() => 0}

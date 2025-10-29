@@ -1,32 +1,32 @@
 import * as Lib from "metabase-lib";
 import type { CardType } from "metabase-types/api";
 
-import type { QueryEditorState } from "../types";
+import type { QueryEditorUiState } from "../types";
 import { useQueryControls } from "../use-query-controls";
 import { useQueryMetadata } from "../use-query-metadata";
 import { useQueryQuestion } from "../use-query-question";
 import { useQueryResults } from "../use-query-results";
 
 type UseQueryEditorProps = {
-  query: Lib.Query;
-  state: QueryEditorState;
   type?: CardType;
+  query: Lib.Query;
+  uiState: QueryEditorUiState;
   proposedQuery?: Lib.Query;
-  onChangeQuery: (query: Lib.Query) => void;
-  onChangeState: (state: QueryEditorState) => void;
+  onChangeQuery: (newQuery: Lib.Query) => void;
+  onChangeUiState: (newUiState: QueryEditorUiState) => void;
 };
 
 export function useQueryEditor({
-  query,
-  state,
   type = "question",
+  query,
+  uiState,
   proposedQuery,
   onChangeQuery,
-  onChangeState,
+  onChangeUiState,
 }: UseQueryEditorProps) {
   const { question, proposedQuestion, setQuestion } = useQueryQuestion(
-    query,
     type,
+    query,
     proposedQuery,
     onChangeQuery,
   );
@@ -39,19 +39,19 @@ export function useQueryEditor({
     isResultDirty,
     runQuery,
     cancelQuery,
-  } = useQueryResults(question, state, onChangeState);
+  } = useQueryResults(question, uiState, onChangeUiState);
   const {
     selectedText,
     openModal,
     setSelectionRange,
     setModalSnippet,
     insertSnippet,
-    toggleDataReference,
-    toggleSnippetSidebar,
-    togglePreviewQueryModal,
-    toggleNativeQueryPreviewSidebar,
     convertToNative,
-  } = useQueryControls(question, state, setQuestion, onChangeState);
+    toggleDataReferenceSidebar,
+    toggleSnippetSidebar,
+    toggleNativeQuerySidebar,
+    togglePreviewQueryModal,
+  } = useQueryControls(question, uiState, setQuestion, onChangeUiState);
   const { isNative } = Lib.queryDisplayInfo(question.query());
 
   return {
@@ -73,10 +73,10 @@ export function useQueryEditor({
     setSelectionRange,
     setModalSnippet,
     insertSnippet,
-    toggleDataReference,
+    convertToNative,
+    toggleDataReferenceSidebar,
     toggleSnippetSidebar,
     togglePreviewQueryModal,
-    toggleNativeQueryPreviewSidebar,
-    convertToNative,
+    toggleNativeQuerySidebar,
   };
 }

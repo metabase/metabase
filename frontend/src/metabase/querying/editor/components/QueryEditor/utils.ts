@@ -1,13 +1,11 @@
-import type { QueryEditorState } from "./types";
+import type { QueryEditorUiState } from "./types";
 
-export function getInitialState(): QueryEditorState {
+export function getInitialUiState(): QueryEditorUiState {
   return {
     lastRunQuery: null,
     selectionRange: [],
     modalSnippet: null,
-    isDataReferenceOpen: false,
-    isSnippetSidebarOpen: false,
-    isPreviewQueryModalOpen: false,
-    isNativeQueryPreviewSidebarOpen: false,
+    sidebarType: null,
+    modalType: null,
   };
 }

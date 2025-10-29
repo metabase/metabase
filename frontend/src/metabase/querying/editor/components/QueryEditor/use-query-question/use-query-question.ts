@@ -11,8 +11,8 @@ const DEFAULT_VIZ_SETTINGS: VisualizationSettings = {
 };
 
 export function useQueryQuestion(
-  query: Lib.Query,
   type: CardType,
+  query: Lib.Query,
   proposedQuery: Lib.Query | undefined,
   setQuery: (newQuery: Lib.Query) => void,
 ) {

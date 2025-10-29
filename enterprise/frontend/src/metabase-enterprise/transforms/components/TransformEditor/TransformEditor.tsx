@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { useSelector } from "metabase/lib/redux";
 import {
   QueryEditor,
-  type QueryEditorState,
+  type QueryEditorUiState,
 } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Stack } from "metabase/ui";
@@ -16,13 +16,13 @@ import { EditorHeader } from "./EditorHeader";
 type TransformEditorProps = {
   name?: string;
   source: QueryTransformSource;
+  uiState: QueryEditorUiState;
   proposedSource: QueryTransformSource | undefined;
-  state: QueryEditorState;
   isNew: boolean;
   isDirty: boolean;
   isSaving: boolean;
   onChangeSource: (source: QueryTransformSource) => void;
-  onChangeState: (state: QueryEditorState) => void;
+  onChangeUiState: (state: QueryEditorUiState) => void;
   onSave: () => void;
   onCancel: () => void;
   onAcceptProposed: () => void;
@@ -33,13 +33,13 @@ export function TransformEditor({
   name,
   source,
   proposedSource,
-  state,
+  uiState,
   isNew,
   isDirty,
-  isSaving = false,
+  isSaving,
   onSave,
   onChangeSource,
-  onChangeState,
+  onChangeUiState,
   onCancel,
   onAcceptProposed,
   onRejectProposed,
@@ -86,10 +86,10 @@ export function TransformEditor({
         />
         <QueryEditor
           query={query}
-          state={state}
+          uiState={uiState}
           proposedQuery={proposedQuery}
           onChangeQuery={handleQueryChange}
-          onChangeState={onChangeState}
+          onChangeUiState={onChangeUiState}
           onAcceptProposed={onAcceptProposed}
           onRejectProposed={onRejectProposed}
         />
