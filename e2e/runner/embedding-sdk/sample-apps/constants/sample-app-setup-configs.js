@@ -36,7 +36,6 @@ export const SAMPLE_APP_SETUP_CONFIGS = {
   "metabase-nodejs-react-sdk-embedding-sample-e2e": {
     ...BASE_SETUP_CONFIG,
     appName: "metabase-nodejs-react-sdk-embedding-sample",
-    defaultBranch: "56-adjust-for-the-new-token-check",
   },
   "metabase-nextjs-sdk-embedding-sample-e2e": {
     ...BASE_SETUP_CONFIG,
@@ -51,7 +50,6 @@ export const SAMPLE_APP_SETUP_CONFIGS = {
       BASE_ENV.CLIENT_PORT,
       BASE_ENV.CLIENT_PORT + 1,
     ],
-    defaultBranch: "56-adjust-for-the-new-token-check",
   },
   "shoppy-e2e": {
     ...BASE_SETUP_CONFIG,
