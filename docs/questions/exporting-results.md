@@ -77,7 +77,7 @@ You can download results from charts embedded in [documents](../documents/introd
 To export results from a chart in a document:
 
 1. Hover over the chart in the document.
-2. Click the **three-dot menu** (...).
+2. Click on the three dot menu (**...**).
 3. Select **Download results**.
 4. Choose your format: .csv, .xlsx, or .json.
 
