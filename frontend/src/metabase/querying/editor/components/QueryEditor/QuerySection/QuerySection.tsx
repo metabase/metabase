@@ -190,5 +190,5 @@ function getHeaderHeight(isNative: boolean) {
 function useInitialEditorHeight(isNative: boolean) {
   const { height: windowHeight } = useWindowSize();
   const headerHeight = getHeaderHeight(isNative);
-  return Math.min(0.6 * (windowHeight - headerHeight), EDITOR_HEIGHT);
+  return Math.min(0.8 * (windowHeight - headerHeight), EDITOR_HEIGHT);
 }
