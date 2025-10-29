@@ -457,42 +457,9 @@
   [_ json-field-identifier]
   [:length [:cast json-field-identifier :text]])
 
-(defn- ->timestamp [honeysql-form]
-  (h2x/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "timestamp with time zone" "date"} honeysql-form))
-
-(defn- format-interval
-  "Generate a Postgres 'INTERVAL' literal.
-
-    (sql/format-expr [::interval 2 :day])
-    =>
-    [\"INTERVAL '2 day'\"]"
-  ;; I tried to write this with Malli but couldn't figure out how to make it work. See
-  ;; https://metaboat.slack.com/archives/CKZEMT1MJ/p1676076592468909
-  [_fn [amount unit]]
-  {:pre [(number? amount)
-         (#{:millisecond :second :minute :hour :day :week :month :year} unit)]}
-  [(format "INTERVAL '%s %s'" (num amount) (name unit))])
-
-(sql/register-fn! ::interval #'format-interval)
-
-(defn- interval [amount unit]
-  (h2x/with-database-type-info [::interval amount unit] "interval"))
-
 (defmethod sql.qp/add-interval-honeysql-form :postgres
   [driver hsql-form amount unit]
-  ;; Postgres doesn't support quarter in intervals (#20683)
-  (cond
-    (= unit :quarter)
-    (recur driver hsql-form (* 3 amount) :month)
-
-    ;; date + interval -> timestamp, so cast the expression back to date
-    (h2x/is-of-type? hsql-form "date")
-    (h2x/cast "date" (h2x/+ hsql-form (interval amount unit)))
-
-    :else
-    (let [hsql-form (->timestamp hsql-form)]
-      (-> (h2x/+ hsql-form (interval amount unit))
-          (h2x/with-type-info (h2x/type-info hsql-form))))))
+  (h2x/add-interval-honeysql-form driver hsql-form amount unit))
 
 (defmethod sql.qp/current-datetime-honeysql-form :postgres
   [driver]
@@ -550,12 +517,12 @@
     (h2x/cast "date" [:date_trunc (h2x/literal unit) expr])
 
     #_else
-    (let [expr' (->timestamp expr)]
+    (let [expr' (h2x/->pg-timestamp expr)]
       (-> [:date_trunc (h2x/literal unit) expr']
           (h2x/with-database-type-info (h2x/database-type expr'))))))
 
 (defn- extract-from-timestamp [unit expr]
-  (extract unit (->timestamp expr)))
+  (extract unit (h2x/->pg-timestamp expr)))
 
 (defn- extract-integer [unit expr]
   (h2x/->integer (extract-from-timestamp unit expr)))
