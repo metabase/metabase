@@ -194,6 +194,7 @@
    {:keys [name document collection_id collection_position cards] :as body} :- DocumentUpdateOptions]
   (let [existing-document (api/check-404 (get-document document-id))]
     (api/write-check existing-document)
+    (api/check-not-archived existing-document)
     (when (api/column-will-change? :collection_id existing-document body)
       (m.document/validate-collection-move-permissions (:collection_id existing-document) collection_id))
 
