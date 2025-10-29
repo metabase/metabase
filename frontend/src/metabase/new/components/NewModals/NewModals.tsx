@@ -17,12 +17,12 @@ import {
   type SdkIframeEmbedSetupModalProps,
 } from "metabase/plugins";
 import { closeModal, setOpenModal } from "metabase/redux/ui";
-import { currentOpenModalState } from "metabase/selectors/ui";
+import { getCurrentOpenModalState } from "metabase/selectors/ui";
 import type { WritebackAction } from "metabase-types/api";
 
 export const NewModals = withRouter((props: WithRouterProps) => {
   const { id: currentNewModalId, props: currentNewModalProps } = useSelector(
-    currentOpenModalState<SdkIframeEmbedSetupModalProps>,
+    getCurrentOpenModalState<SdkIframeEmbedSetupModalProps>,
   );
   const dispatch = useDispatch();
   const collectionId = useSelector((state) =>

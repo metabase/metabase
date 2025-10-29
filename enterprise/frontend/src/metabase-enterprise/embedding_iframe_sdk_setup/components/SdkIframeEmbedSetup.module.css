@@ -20,10 +20,6 @@
   transition: background-color 0.4s ease;
 }
 
-.ResizeHandle:hover {
-  background-color: var(--mb-color-border);
-}
-
 .Sidebar {
   height: 100%;
   border-right: 1px solid var(--mb-color-border);
