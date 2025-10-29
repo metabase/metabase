@@ -153,9 +153,10 @@
                                     ;; a lot of broken code in Actions was setting param types to invalid things like
                                     ;; `:type/Text`... fix it
                                     (when-let [param-type (lib.schema.common/normalize-keyword param-type)]
-                                      (if (= (namespace param-type) "type")
-                                        (keyword (u/lower-case-en (name param-type)))
-                                        param-type)))}]
+                                      (cond
+                                        (= (namespace param-type) "type") (keyword (u/lower-case-en (name param-type)))
+                                        (= param-type :category/=)        :category
+                                        :else param-type)))}]
         (keys types)))
 
 (mr/def ::widget-type
