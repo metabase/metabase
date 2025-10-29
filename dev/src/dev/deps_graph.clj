@@ -338,7 +338,7 @@
    (get (circular-dependencies deps) module)))
 
 (defn non-circular-module-dependencies
-  "A graph of [[module-dependencies deps]], but with modules that have any circular dependencies filtered out. This is mostly
+  "A graph of [[module-dependencies]], but with modules that have any circular dependencies filtered out. This is mostly
   meant to make it easier to fill out the `:metabase/modules` `:uses` section of the Kondo config, or to figure out
   which ones can easily get a consolidated API namespace without drama."
   [deps]
