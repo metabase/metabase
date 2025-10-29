@@ -125,8 +125,8 @@
       (= (z/tag zloc) :uneval)))
 
 (mu/defn- find-requires :- [:maybe [:sequential ::zloc]]
-  [zloc :- ::zloc]
   "Find all the zipper locations for `(require ...)` nodes."
+  [zloc :- ::zloc]
   (concat
    (when-not (comment-loc? zloc)
      (if (require-loc? zloc)
