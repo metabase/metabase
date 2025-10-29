@@ -1243,7 +1243,7 @@ jobs:
         ports:
           - "8080:8080"
         volumes:
-          - ${{ github.workspace }}/modules/drivers/starburst/test/access-control.properties:/etc/trino/access-control.properties:ro
+          - ${{ github.workspace }}/modules/drivers/starburst/test/access-control.properties:/data/trino/etc/access-control.properties:ro
           - ${{ github.workspace }}/modules/drivers/starburst/test/rules.json:/etc/trino/rules.json:ro
     name: Starburst
     steps:
