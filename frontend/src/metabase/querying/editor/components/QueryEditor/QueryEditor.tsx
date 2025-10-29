@@ -24,7 +24,7 @@ type QueryEditorProps = {
   uiOptions?: QueryEditorUiOptions;
   proposedQuery?: Lib.Query;
   onChangeQuery: (newQuery: Lib.Query) => void;
-  onChangeUiState: (newUiControls: QueryEditorUiState) => void;
+  onChangeUiState: (newUiState: QueryEditorUiState) => void;
   onAcceptProposed?: () => void;
   onRejectProposed?: () => void;
 };
