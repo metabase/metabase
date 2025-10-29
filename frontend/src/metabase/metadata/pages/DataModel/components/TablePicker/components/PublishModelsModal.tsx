@@ -2,21 +2,13 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { usePublishModelsMutation } from "metabase/api";
+import Link from "metabase/common/components/Link/Link";
 import {
   CollectionPickerModal,
   type CollectionPickerValueItem,
 } from "metabase/common/components/Pickers/CollectionPicker";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import {
-  Anchor,
-  Button,
-  Flex,
-  List,
-  Modal,
-  Stack,
-  Text,
-  rem,
-} from "metabase/ui";
+import { Button, Flex, Icon, List, Modal, Stack, Text, rem } from "metabase/ui";
 import type { Card, DatabaseId, SchemaId, TableId } from "metabase-types/api";
 
 interface Props {
@@ -103,29 +95,10 @@ export function PublishModelsModal({
         onClose={handleClose}
       >
         {publishedModels ? (
-          <Stack gap="md" pt="sm">
-            <Text>
-              {t`Successfully published ${publishedModels.length} model${publishedModels.length !== 1 ? "s" : ""}:`}
-            </Text>
-
-            <List spacing="sm">
-              {publishedModels.map((model) => (
-                <List.Item key={model.id}>
-                  <Anchor
-                    href={`/model/${model.id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    {model.name}
-                  </Anchor>
-                </List.Item>
-              ))}
-            </List>
-
-            <Flex justify="flex-end" gap="sm">
-              <Button onClick={handleClose}>{t`Close`}</Button>
-            </Flex>
-          </Stack>
+          <PublishedModelsList
+            publishedModels={publishedModels}
+            handleClose={handleClose}
+          />
         ) : (
           <Stack gap="md" pt="sm">
             <Text>
@@ -136,15 +109,22 @@ export function PublishModelsModal({
               {t`Selected items: ${itemsDescription}`}
             </Text>
 
-            <Button
-              variant="subtle"
-              onClick={() => setIsCollectionPickerOpen(true)}
-              style={{ justifyContent: "flex-start" }}
-            >
-              {selectedCollection
-                ? selectedCollection.name
-                : t`Choose a collection...`}
-            </Button>
+            <Flex align="center" gap="sm">
+              <Text>{t`Collection to publish to: `}</Text>
+              <Button
+                size="xs"
+                leftSection={
+                  selectedCollection ? <Icon name="collection" /> : undefined
+                }
+                variant="default"
+                onClick={() => setIsCollectionPickerOpen(true)}
+                style={{ justifyContent: "flex-start" }}
+              >
+                {selectedCollection
+                  ? selectedCollection.name
+                  : t`Choose a collection...`}
+              </Button>
+            </Flex>
 
             <Flex justify="flex-end" gap="sm">
               <Button onClick={handleClose}>{t`Cancel`}</Button>
@@ -183,5 +163,42 @@ export function PublishModelsModal({
         />
       )}
     </>
+  );
+}
+
+function PublishedModelsList({
+  publishedModels,
+  handleClose,
+}: {
+  publishedModels: Card[];
+  handleClose: () => void;
+}) {
+  return (
+    <Stack gap="md" pt="sm">
+      <Text>
+        {t`Successfully published ${publishedModels.length} model${publishedModels.length !== 1 ? "s" : ""}:`}
+      </Text>
+
+      <List spacing="sm">
+        {publishedModels.map((model) => (
+          <List.Item key={model.id}>
+            <Button
+              component={Link}
+              h="auto"
+              p={0}
+              to={`/model/${model.id}`}
+              size="xs"
+              variant="subtle"
+            >
+              {model.name}
+            </Button>
+          </List.Item>
+        ))}
+      </List>
+
+      <Flex justify="flex-end" gap="sm">
+        <Button onClick={handleClose}>{t`Close`}</Button>
+      </Flex>
+    </Stack>
   );
 }
