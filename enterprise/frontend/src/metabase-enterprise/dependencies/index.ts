@@ -9,14 +9,20 @@ import { useCheckSnippetDependencies } from "./hooks/use-check-snippet-dependenc
 import { useCheckTransformDependencies } from "./hooks/use-check-transform-dependencies";
 import { DependencyGraphPage } from "./pages/DependencyGraphPage";
 
-if (hasPremiumFeature("dependencies")) {
-  PLUGIN_DEPENDENCIES.isEnabled = true;
-  PLUGIN_DEPENDENCIES.DependencyGraphPage = DependencyGraphPage;
-  PLUGIN_DEPENDENCIES.CheckDependenciesForm = CheckDependenciesForm;
-  PLUGIN_DEPENDENCIES.CheckDependenciesModal = CheckDependenciesModal;
-  PLUGIN_DEPENDENCIES.CheckDependenciesTitle = CheckDependenciesTitle;
-  PLUGIN_DEPENDENCIES.useCheckCardDependencies = useCheckCardDependencies;
-  PLUGIN_DEPENDENCIES.useCheckSnippetDependencies = useCheckSnippetDependencies;
-  PLUGIN_DEPENDENCIES.useCheckTransformDependencies =
-    useCheckTransformDependencies;
+/**
+ * Initialize dependencies plugin features that depend on hasPremiumFeature.
+ */
+export function initializePlugin() {
+  if (hasPremiumFeature("dependencies")) {
+    PLUGIN_DEPENDENCIES.isEnabled = true;
+    PLUGIN_DEPENDENCIES.DependencyGraphPage = DependencyGraphPage;
+    PLUGIN_DEPENDENCIES.CheckDependenciesForm = CheckDependenciesForm;
+    PLUGIN_DEPENDENCIES.CheckDependenciesModal = CheckDependenciesModal;
+    PLUGIN_DEPENDENCIES.CheckDependenciesTitle = CheckDependenciesTitle;
+    PLUGIN_DEPENDENCIES.useCheckCardDependencies = useCheckCardDependencies;
+    PLUGIN_DEPENDENCIES.useCheckSnippetDependencies =
+      useCheckSnippetDependencies;
+    PLUGIN_DEPENDENCIES.useCheckTransformDependencies =
+      useCheckTransformDependencies;
+  }
 }

@@ -19,19 +19,24 @@ import {
   getStatusIcon,
 } from "./service";
 
-if (hasPremiumFeature("content_verification")) {
-  Object.assign(PLUGIN_MODERATION, {
-    isEnabled: () => true,
-    EntityModerationIcon,
-    QuestionModerationSection,
-    ModerationReviewBanner,
-    ModerationReviewTextForQuestion,
-    ModerationReviewTextForDashboard,
-    ModerationStatusIcon,
-    getStatusIcon,
-    getQuestionIcon,
-    getModerationTimelineEvents,
-    useQuestionMenuItems,
-    useDashboardMenuItems,
-  });
+/**
+ * Initialize moderation plugin features that depend on hasPremiumFeature.
+ */
+export function initializePlugin() {
+  if (hasPremiumFeature("content_verification")) {
+    Object.assign(PLUGIN_MODERATION, {
+      isEnabled: () => true,
+      EntityModerationIcon,
+      QuestionModerationSection,
+      ModerationReviewBanner,
+      ModerationReviewTextForQuestion,
+      ModerationReviewTextForDashboard,
+      ModerationStatusIcon,
+      getStatusIcon,
+      getQuestionIcon,
+      getModerationTimelineEvents,
+      useQuestionMenuItems,
+      useDashboardMenuItems,
+    });
+  }
 }

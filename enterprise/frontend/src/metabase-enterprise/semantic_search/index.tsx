@@ -3,6 +3,11 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { SearchSettingsWidget } from "./SearchSettingsWidget";
 
-if (hasPremiumFeature("semantic_search")) {
-  PLUGIN_SEMANTIC_SEARCH.SearchSettingsWidget = SearchSettingsWidget;
+/**
+ * Initialize semantic_search plugin features that depend on hasPremiumFeature.
+ */
+export function initializePlugin() {
+  if (hasPremiumFeature("semantic_search")) {
+    PLUGIN_SEMANTIC_SEARCH.SearchSettingsWidget = SearchSettingsWidget;
+  }
 }
