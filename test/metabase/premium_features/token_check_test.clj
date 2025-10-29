@@ -81,7 +81,7 @@
       ;; ... and then make sure that *some* of the times, we didn't hit the DB again.
       (is (some zero? call-counts)))))
 
-(deftest tower-test
+(deftest token-checker-test
   (let [token          (tu/random-token)
         behavior       (atom :success)
         call-count     (atom 0)
