@@ -256,9 +256,15 @@ const config = {
     splitChunks: {
       cacheGroups: {
         vendors: {
-          test: /[\\/]node_modules[\\/](?!(sql-formatter|jspdf|html2canvas|html2canvas-pro)[\\/])/,
+          test: /[\\/]node_modules[\\/](?!(sql-formatter|jspdf|html2canvas|html2canvas-pro|prettier)[\\/])/,
           chunks: "all",
           name: "vendor",
+        },
+        prettier: {
+          test: /[\\/]node_modules[\\/]prettier[\\/]/,
+          chunks: "async",
+          name: "prettier",
+          priority: 20,
         },
         sqlFormatter: {
           test: /[\\/]node_modules[\\/]sql-formatter[\\/]/,
