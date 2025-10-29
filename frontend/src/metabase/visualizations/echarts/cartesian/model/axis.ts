@@ -884,7 +884,7 @@ export function getXAxisModel(
 export const getXAxisDateRangeFromSortedXAxisValues = (
   xValues: RowValue[],
 ): DateRange | undefined => {
-  xValues = xValues.filter(isNotNull);
+  xValues = xValues.filter((x) => x !== undefined);
 
   if (xValues.length === 0) {
     return undefined;
