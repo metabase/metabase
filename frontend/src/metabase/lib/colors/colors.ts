@@ -643,6 +643,10 @@ export const colorConfig = {
     light: baseColors.orionAlpha[10],
     dark: baseColors.orionAlphaInverse[10],
   },
+  "select-background-hover": {
+    light: baseColors.orionAlpha[10],
+    dark: baseColors.orionAlphaInverse[20],
+  },
 };
 
 export const colors: Record<keyof typeof colorConfig, string> = {
