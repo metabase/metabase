@@ -201,13 +201,8 @@
 
 (mr/def ::query
   [:and
-   {:description "Native SQL query that defines the model's data"}
-   ::lib.schema.common/non-blank-string])
-
-(mr/def ::mbql-query
-  [:and
-   {:description "MBQL query that defines the model's data"}
-   any?])
+   {:description "Native SQL query or lib query that defines the model's data"}
+   :any])
 
 (mr/def ::database
   [:and
@@ -232,12 +227,8 @@
     [:description {:optional true} ::description]
     [:database ::database]
     [:query {:optional true} ::query]
-    [:mbql_query {:optional true} ::mbql-query]
     [:columns {:optional true} ::columns]
-    [:collection {:optional true} ::collection]]
-   [:fn {:error/message "Must have exactly one of :query or :mbql_query"}
-    (fn [{:keys [query mbql_query lib_query]}]
-      (= 1 (count (filter some? [query mbql_query lib_query]))))]])
+    [:collection {:optional true} ::collection]]])
 
 (def ^:private user-editable-settings
   [:column_title :text_align :text_wrapping :view_as :link_text :link_url

@@ -199,55 +199,29 @@
 (defn import-dataset-query
   "Returns Metabase's dataset_query format, given a representation.
    Converts representation format to Metabase's internal dataset_query structure."
-  [{:keys [query mbql_query lib_query database] :as representation} ref-index]
+  [{:keys [query database]} ref-index]
   (let [database-id (lookup/lookup-database-id ref-index database)]
-    (cond
-      ;; Native SQL query - simple case
-      query
-      {:type :native
-       :native {:query query}
-       :database database-id}
+    (if (string? query)
+      {:lib/type :mbql/query
+       :database database-id
+       :stages [{:lib/type :mbql.stage/native
+                 :template-tags {}
+                 :native query}]}
 
-      ;; MBQL query - check if it's a ref or embedded map
-      mbql_query
-      (let [resolved-mbql (-> mbql_query
-                              (replace-source-tables ref-index)
-                              (replace-fields ref-index))]
-        {:type :query
-         :database database-id
-         :query resolved-mbql})
-
-      lib_query
-      (let [resolved-lib (-> lib_query
+      (let [resolved-lib (-> query
                              (replace-source-tables ref-index)
                              #_(replace-source-cards  ref-index)
                              (replace-fields ref-index))]
         {:lib/type :mbql/query
          :database database-id
-         :stages resolved-lib})
-
-      ;; sanity check
-      :else
-      (throw (ex-info "Card must have either 'query' or 'mbql_query' or 'lib_query'"
-                      {:representation representation})))))
+         :stages resolved-lib}))))
 
 (defn export-dataset-query
-  "Export a dataset query to representation compatible format. 
+  "Export a dataset query to representation compatible format.
   Will have database (as a ref), query (for native queries) mbql_query for legacy mbql, and lib_query for new mbql."
   [query]
   (let [patched-query (patch-refs-for-export query)]
-    (cond-> {:database (:database patched-query)}
-
-      (= :native (:type patched-query))
-      (assoc :query (-> patched-query :native :query))
-
-      (= :query (:type patched-query))
-      (assoc :mbql_query (:query patched-query))
-
-      (and (= :mbql/query (:lib/type query))
-           (lib/native-only-query? query))
-      (assoc :query (lib/raw-native-query query))
-
-      (and (= :mbql/query (:lib/type query))
-           (not (lib/native-only-query? query)))
-      (assoc :lib_query (:stages patched-query)))))
+    {:database (:database patched-query)
+     :query (if (lib/native-only-query? query)
+              (lib/raw-native-query query)
+              (:stages patched-query))}))

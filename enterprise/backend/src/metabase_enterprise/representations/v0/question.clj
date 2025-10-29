@@ -49,18 +49,8 @@
 
 (mr/def ::query
   [:and
-   {:description "Native SQL query to execute"}
-   ::lib.schema.common/non-blank-string])
-
-(mr/def ::mbql-query
-  [:and
-   {:description "MBQL query to execute"}
-   any?])
-
-(mr/def ::lib-query
-  [:and
-   {:description "MBQL5 query to execute"}
-   any?])
+   {:description "Native SQL query or lib query"}
+   :any])
 
 (mr/def ::database
   [:and
@@ -85,12 +75,7 @@
     [:description {:optional true} ::description]
     [:database ::database]
     [:query {:optional true} ::query]
-    [:mbql_query {:optional true} ::mbql-query]
-    [:lib_query {:optional true} ::lib-query]
-    [:collection {:optional true} ::collection]]
-   [:fn {:error/message "Must have exactly one of :query or :mbql_query"}
-    (fn [{:keys [query mbql_query lib_query]}]
-      (= 1 (count (filter some? [query mbql_query lib_query]))))]])
+    [:collection {:optional true} ::collection]]])
 
 (defmethod v0-common/type->model :question
   [_]
