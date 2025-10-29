@@ -1,6 +1,7 @@
 (ns metabase-enterprise.representations.v0.metric
   (:require
    [clojure.string :as str]
+   [flatland.ordered.map :refer [ordered-map]]
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.lookup :as lookup]
@@ -261,12 +262,14 @@
 ;;; -- Export --
 
 (defmethod export/export-entity :metric [card]
-  (-> {:display_name (:name card)
-       :type (:type card)
-       :version :v0
-       :name (v0-common/unref (v0-common/->ref (:id card) :metric))
-       :description (:description card)
-       :columns (:result_metadata card)}
+  (-> (ordered-map
+       :name         (v0-common/unref (v0-common/->ref (:id card) :metric))
+       :type         (:type card)
+       :version      :v0
+       :entity_id    (:entity_id card)
+       :display_name (:name card)
+       :description  (:description card)
+       :columns      (:result_metadata card))
 
       (merge (v0-mbql/export-dataset-query (:dataset_query card)))
       u/remove-nils))
