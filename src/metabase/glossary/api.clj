@@ -38,13 +38,14 @@
    {:keys [term definition]} :- [:map
                                  [:term ms/NonBlankString]
                                  [:definition ms/NonBlankString]]]
-  (api/check-404 (t2/select-one :model/Glossary :id id))
-  (t2/update! :model/Glossary id {:term term :definition definition})
-  (let [glossary (t2/select-one :model/Glossary :id id)]
-    (events/publish-event! :event/glossary-update
-                           {:object glossary
-                            :user-id api/*current-user-id*})
-    glossary))
+  (let [previous-glossary (api/check-404 (t2/select-one :model/Glossary :id id))]
+    (t2/update! :model/Glossary id {:term term :definition definition})
+    (let [glossary (t2/select-one :model/Glossary :id id)]
+      (events/publish-event! :event/glossary-update
+                             {:object glossary
+                              :previous-object previous-glossary
+                              :user-id api/*current-user-id*})
+      glossary)))
 
 (api.macros/defendpoint :delete "/:id"
   "Delete a glossary entry."
