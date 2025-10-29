@@ -151,9 +151,7 @@ describe("Remote Sync", () => {
 
       // push local changes to a different branch, because the remote is ahead of us
       cy.findByRole("dialog", { name: /branch is behind/ }).within(() => {
-        cy.findByRole("radio", { name: /Create a new branch/ }).click({
-          force: true,
-        });
+        cy.findByRole("radio", { name: /Create a new branch/ }).click();
         cy.findByPlaceholderText("your-branch-name").type(NEW_BRANCH);
         cy.button("Push changes").click();
       });
@@ -334,9 +332,7 @@ describe("Remote Sync", () => {
 
       it("push changes", () => {
         cy.findByRole("dialog", { name: /unsynced changes/ }).within(() => {
-          cy.findByRole("radio", { name: /Push changes/ })
-            .click({ force: true })
-            .click();
+          cy.findByRole("radio", { name: /Push changes/ }).click();
           cy.button("Push changes").click();
         });
 
@@ -352,9 +348,7 @@ describe("Remote Sync", () => {
       it("new branch", () => {
         const NEW_BRANCH = `new-branch-${Date.now()}`;
         cy.findByRole("dialog", { name: /unsynced changes/ }).within(() => {
-          cy.findByRole("radio", { name: /new branch/ })
-            .click({ force: true })
-            .click();
+          cy.findByRole("radio", { name: /new branch/ }).click();
           cy.findByPlaceholderText("your-branch-name").type(NEW_BRANCH);
           cy.button("Push changes").click();
         });
@@ -379,9 +373,7 @@ describe("Remote Sync", () => {
 
       it("delete changes", () => {
         cy.findByRole("dialog", { name: /unsynced changes/ }).within(() => {
-          cy.findByRole("radio", { name: /Discard/ })
-            .click({ force: true })
-            .click();
+          cy.findByRole("radio", { name: /Discard/ }).click();
           cy.button("Discard changes").click();
         });
 
@@ -402,9 +394,7 @@ describe("Remote Sync", () => {
         });
 
         cy.findByRole("dialog", { name: /unsynced changes/ }).within(() => {
-          cy.findByRole("radio", { name: /Push/ })
-            .click({ force: true })
-            .click();
+          cy.findByRole("radio", { name: /Push/ }).click();
           cy.button("Push changes").click();
         });
 
