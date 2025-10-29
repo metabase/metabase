@@ -110,6 +110,8 @@
 (def ^:private views-limit 8)
 (def ^:private card-runs-limit 8)
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :get "/recent_views"
   "Get a list of 100 models (cards, models, tables, dashboards, and collections) that the current user has been viewing most
   recently. Return a maximum of 20 model of each, if they've looked at at least 20."
@@ -117,6 +119,9 @@
   []
   {:recent_views (:recents (recent-views/get-recents *current-user-id* [:views]))})
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/recents"
   "Get a list of recent items the current user has been viewing most recently under the `:recents` key.
   Allows for filtering by context: views or selections"
@@ -142,6 +147,8 @@
     (api/read-check (t2/select-one model-type :id model-id))
     (recent-views/update-users-recent-views! *current-user-id* model-type model-id context)))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :get "/most_recently_viewed_dashboard"
   "Get the most recently viewed dashboard for the current user. Returns a 204 if the user has not viewed any dashboards
    in the last 24 hours."
@@ -238,6 +245,8 @@
                    (assoc :timestamp (:max_ts % ""))
                    recent-views/fill-recent-view-info)))))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :get "/popular_items"
   "Get the list of 5 popular things on the instance. Query takes 8 and limits to 5 so that if it finds anything
   archived, deleted, etc it can usually still get 5. "
