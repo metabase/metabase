@@ -82,9 +82,9 @@
   By default, it is async in production for the backfill."
   []
   (case config/run-mode
-    :prod ::queued
-    :dev  *analyze-execution-in-dev?*
-    :test *analyze-execution-in-test?*))
+    (:prod :e2e) ::queued
+    :dev         *analyze-execution-in-dev?*
+    :test        *analyze-execution-in-test?*))
 
 (defn enabled-type?
   "Is analysis of the given query type enabled?"
