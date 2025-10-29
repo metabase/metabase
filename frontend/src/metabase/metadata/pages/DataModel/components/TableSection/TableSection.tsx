@@ -167,7 +167,7 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
             <Tooltip label={t`Go to this table`} position="top">
               <ActionIcon
                 component={Link}
-                to={Urls.queryBuilderTable(table.db_id, table.id)}
+                to={Urls.queryBuilderTable(table.id, table.db_id)}
                 variant="subtle"
                 color="text-light"
                 size="sm"
