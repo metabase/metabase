@@ -54,7 +54,7 @@
                   Markdown format supports:
                   - {{card:card-ref}} for embedding cards
                   - [link text](card:card-ref) for linking to cards"}
-   :string])
+   :any])
 
 (mr/def ::collection
   [:and
@@ -103,11 +103,9 @@
 
 (defmethod import/yaml->toucan [:v0 :document]
   [{document-name :name
-    :keys [content content_type]}
+    :keys [content _content_type]}
    ref-index]
-  (let [yaml-content (if (= "text/markdown+vnd.prose-mirror" content_type)
-                       (yaml/parse-string (markdown->yaml content))
-                       content)
+  (let [yaml-content content
         yaml-content (v0-common/replace-refs-everywhere yaml-content ref-index)]
     {:name document-name
      :document (json/encode yaml-content)
@@ -162,12 +160,6 @@
                        :exit-code (:exit result)})))
     (str/trim (:out result))))
 
-(comment
-  (edn->markdown {:type "doc"
-                  :content [{:type "paragraph"
-                             :content [{:type "text"
-                                        :text "Hello, world!"}]}]}))
-
 (defmethod export/export-entity :document [document]
   (let [document-ref (v0-common/unref (v0-common/->ref (:id document) :document))
         document (patch-refs-for-export document)
@@ -188,8 +180,8 @@
              :version :v0
              :ref document-ref
              :entity-id (:entity_id document)
-             :content (edn->markdown doc-content)
+             :content doc-content
              ::v0-common/delete-before-output doc-content
-             :content_type "text/markdown+vnd.prose-mirror"}
+             :content_type "application/json+vnd.prose-mirror"}
       :always
       u/remove-nils)))
