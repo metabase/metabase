@@ -3,9 +3,9 @@ import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
 import type { ModalState } from "metabase-types/store/modal";
 
 type SetOpenModalPayload = ModalState["id"];
-type SetOpenModalWithPropsPayload = {
+type SetOpenModalWithPropsPayload<T = ModalState["props"]> = {
   id: ModalState["id"];
-  props?: ModalState["props"];
+  props?: T;
 };
 
 const DEFAULT_MODAL_STATE: ModalState = {
@@ -37,5 +37,12 @@ const modalSlice = createSlice({
 
 export const modal = modalSlice.reducer;
 
-export const { setOpenModal, setOpenModalWithProps, closeModal } =
-  modalSlice.actions;
+export const { setOpenModal, closeModal } = modalSlice.actions;
+
+export const setOpenModalWithProps = <T = ModalState["props"]>(
+  payload: SetOpenModalWithPropsPayload<T>,
+): ReturnType<typeof modalSlice.actions.setOpenModalWithProps> => {
+  return modalSlice.actions.setOpenModalWithProps(
+    payload as SetOpenModalWithPropsPayload,
+  );
+};

@@ -22,7 +22,7 @@ import type { WritebackAction } from "metabase-types/api";
 
 export const NewModals = withRouter((props: WithRouterProps) => {
   const { id: currentNewModalId, props: currentNewModalProps } = useSelector(
-    currentOpenModalState,
+    currentOpenModalState<SdkIframeEmbedSetupModalProps>,
   );
   const dispatch = useDispatch();
   const collectionId = useSelector((state) =>
@@ -84,13 +84,10 @@ export const NewModals = withRouter((props: WithRouterProps) => {
         </Modal>
       );
     case "embed": {
-      const modalProps =
-        currentNewModalProps as SdkIframeEmbedSetupModalProps | null;
-
       return (
         <PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.SdkIframeEmbedSetupModal
           opened
-          initialState={modalProps?.initialState}
+          initialState={currentNewModalProps?.initialState}
           onClose={handleModalClose}
         />
       );

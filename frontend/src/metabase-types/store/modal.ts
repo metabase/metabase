@@ -6,7 +6,7 @@ export type ModalName =
   | "help"
   | "embed";
 
-export type ModalState = {
+export type ModalState<TProps = Record<string, unknown>> = {
   id: ModalName | null;
-  props: Record<string, unknown> | null;
+  props: TProps | null;
 };
