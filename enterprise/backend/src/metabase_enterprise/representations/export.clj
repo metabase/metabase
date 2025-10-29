@@ -66,9 +66,14 @@
   "Include only schemas and tables in databases referenced by queries in the export set."
   [export-set]
   (let [tables (into #{} (mapcat v0-common/table-refs) export-set)
-        referred-to-databases (into #{} (comp (map :database)
+        referred-to-databases (-> #{}
+                                  (into (comp (map :database)
                                               (map v0-common/unref))
-                                    tables)
+                                        tables)
+                                  (into (comp (map :database)
+                                              (filter some?)
+                                              (map v0-common/unref))
+                                        export-set))
         db-split (group-by #(= :database (:type %)) export-set)
         databases (get db-split true)
         ;; turn them into a convenient form
