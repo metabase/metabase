@@ -446,7 +446,7 @@ export const ListViewConfiguration = ({
             />
           </Box>
         </Stack>
-        <Divider w="100%" maw="var(--max-width)" />
+        <Divider w="100%" />
         <Stack
           w="100%"
           maw="var(--max-width)"

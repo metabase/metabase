@@ -82,7 +82,6 @@
   align-items: start;
   border: 1px solid var(--mb-color-border);
   border-radius: var(--mantine-radius-md);
-  max-width: var(--max-width);
   background: var(--mb-color-bg-white);
   padding: var(--mantine-spacing-md);
 }
