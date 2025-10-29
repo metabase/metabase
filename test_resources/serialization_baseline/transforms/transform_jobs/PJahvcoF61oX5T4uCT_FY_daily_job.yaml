@@ -6,7 +6,6 @@ job_tags: []
 name: Daily job
 schedule: 0 0 0 * * ? *
 ui_display_type: cron/builder
-updated_at: '2025-09-23T12:20:31.215628Z'
 serdes/meta:
 - id: PJahvcoF61oX5T4uCT_FY
   label: daily_job

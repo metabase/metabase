@@ -2247,6 +2247,48 @@ databaseChangeLog:
             columnName: database_default
 
   - changeSet:
+      id: v57.2025-10-23T19:55:50
+      author: noahmoss
+      comment: Add source_type column to transform table
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: source_type
+                  type: varchar(32)
+                  remarks: The type of transform ("python", "native", or "mbql")
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: transform
+            columnName: source_type
+
+  - changeSet:
+      id: v57.2025-10-23T19:56:00
+      author: noahmoss
+      comment: Backfill source_type column for existing transforms
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.BackfillTransformSourceType"
+
+  - changeSet:
+      id: v57.2025-10-23T19:57:00
+      author: noahmoss
+      comment: Make transform.source_type column NOT NULL
+      changes:
+        - addNotNullConstraint:
+            tableName: transform
+            columnName: source_type
+            columnDataType: varchar(32)
+      rollback:
+        - dropNotNullConstraint:
+            tableName: transform
+            columnName: source_type
+            columnDataType: varchar(32)
+
+  - changeSet:
       id: v57.2025-10-27T19:01:00
       author: qnkhuat
       comment: Usage analytics; Add documents to content view
@@ -2276,6 +2318,7 @@ databaseChangeLog:
             dbms: h2
             path: instance_analytics_views/content/v3/h2-content.sql
             relativeToChangelogFile: true
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
