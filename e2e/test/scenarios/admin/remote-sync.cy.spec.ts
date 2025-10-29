@@ -485,7 +485,7 @@ describe("Remote Sync", () => {
         .should("exist");
       cy.findByTestId("admin-layout-content")
         .findByText(
-          "Unable to connect to git repository with the provided settings",
+          "Failed to clone git repository: Git CloneCommand failed: URI not supported: file://invalid-path",
         )
         .should("exist");
     });
