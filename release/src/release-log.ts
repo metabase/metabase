@@ -20,7 +20,7 @@ export async function gitLog(majorVersion: number) {
   const { stdout: baseCommit } = await $`git merge-base origin/release-x.${previousMajorVersion}.x origin/master`;
   const { stdout } = await $`git log ${baseCommit.trim()}..origin/release-x.${majorVersion}.x --pretty='format:%(decorate:prefix=,suffix=)||%s||%H||%ah'`;
   const processedCommits = stdout.split('\n').map(processCommit);
-  return buildTable(processedCommits, majorVersion);
+  return buildTable(processedCommits);
 }
 
 export function processCommit(commitLine: string): CommitInfo {
@@ -142,4 +142,3 @@ export async function generateReleaseLog() {
     .replace(/{{major-version}}/g, version.toString())
     .replace(/{{current-time}}/, new Date().toLocaleString());
 }
-

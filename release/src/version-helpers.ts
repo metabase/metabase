@@ -114,7 +114,7 @@ export const getMajorVersionFromRef = (ref: string) => {
   }
 
   return getMajorVersionNumberFromReleaseBranch(ref.replace("refs/heads/", ""));
-}
+};
 
 const SDK_TAG_REGEXP = /embedding-sdk-(0\.\d+\.\d+(-\w+)?)$/;
 
