@@ -14,7 +14,8 @@ import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { Button, Center, Icon, Loader, Menu } from "metabase/ui";
 import { trackTransformCreate } from "metabase-enterprise/transforms/analytics";
-import { doesDatabaseSupportTransforms } from "metabase-enterprise/transforms/utils";
+
+import { shouldDisableItem } from "./utils";
 
 export function CreateTransformMenu() {
   const dispatch = useDispatch();
@@ -113,25 +114,9 @@ export function CreateTransformMenu() {
           models={["card", "dataset"]}
           onChange={handlePickerChange}
           onClose={closePicker}
-          shouldDisableItem={(item: QuestionPickerItem) => {
-            if (
-              // Disable questions based on unsuppported databases
-              item.model === "card" ||
-              item.model === "dataset" ||
-              item.model === "metric"
-            ) {
-              const database = databases?.data.find(
-                (database) => database.id === item.database_id,
-              );
-              return !doesDatabaseSupportTransforms(database);
-            }
-
-            if (item.model === "dashboard") {
-              return true;
-            }
-
-            return false;
-          }}
+          shouldDisableItem={(item: QuestionPickerItem) =>
+            shouldDisableItem(item, databases?.data ?? [])
+          }
         />
       )}
     </>
