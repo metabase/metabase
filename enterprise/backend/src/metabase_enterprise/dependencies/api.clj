@@ -176,6 +176,26 @@
    :document  :model/Document
    :sandbox   :model/Sandbox})
 
+;; IMPORTANT: This map defines which fields to select when fetching entities for the dependency graph.
+;; These field lists MUST be kept in sync with the frontend type definitions in:
+;; frontend/src/metabase-types/api/dependencies.ts
+;; (See CardDependencyNodeData, DashboardDependencyNodeData, etc.)
+;;
+;; Note: Some fields (like :creator, :collection, :moderation_reviews) are added via t2/hydrate,
+;; and others (like :last-edit-info, :view_count) are computed/added separately.
+;; This map only lists the base database columns to SELECT.
+(def ^:private entity-select-fields
+  {:card      [:id :name :description :type :display :database_id :collection_id :dashboard_id :result_metadata
+               :created_at :creator_id
+               ;; :card_schema always has to be selected
+               :card_schema]
+   :dashboard [:id :name :description :created_at :creator_id :collection_id]
+   :document  [:id :name :created_at :creator_id :collection_id]
+   :table     [:id :name :description :display_name :db_id :schema]
+   :transform [:id :name :description]
+   :snippet   [:id :name :description]
+   :sandbox   [:id :table_id]})
+
 (defn- visible-entities-filter-clause
   "Returns a HoneySQL WHERE clause for filtering dependency graph entities by user visibility.
 
@@ -269,20 +289,21 @@
         nodes-by-type (->> (group-by first nodes)
                            (m/map-vals #(map second %)))]
     (mapcat (fn [[entity-type entity-ids]]
-              (->> (cond-> (t2/select (entity-model entity-type)
-                                      :id [:in entity-ids])
-                     (= entity-type :card)      (-> (t2/hydrate :creator :dashboard [:collection :is_personal] :moderation_reviews)
-                                                    (->> (map collection.root/hydrate-root-collection))
-                                                    (revisions/with-last-edit-info :card))
-                     (= entity-type :table)     (t2/hydrate :fields :db)
-                     (= entity-type :transform) (t2/hydrate :table-with-db-and-fields)
-                     (= entity-type :dashboard) (-> (t2/hydrate :creator [:collection :is_personal] :moderation_reviews)
-                                                    (->> (map collection.root/hydrate-root-collection))
-                                                    (revisions/with-last-edit-info :dashboard))
-                     (= entity-type :document)  (-> (t2/hydrate :creator [:collection :is_personal])
-                                                    (->> (map collection.root/hydrate-root-collection)))
-                     (= entity-type :sandbox)   (t2/hydrate [:table :db :fields]))
-                   (mapv #(entity-value entity-type % usages))))
+              (let [model (entity-model entity-type)
+                    fields (entity-select-fields entity-type)]
+                (->> (cond-> (t2/select (into [model] fields) :id [:in entity-ids])
+                       (= entity-type :card) (-> (t2/hydrate :creator :dashboard [:collection :is_personal] :moderation_reviews)
+                                                 (->> (map collection.root/hydrate-root-collection))
+                                                 (revisions/with-last-edit-info :card))
+                       (= entity-type :table) (t2/hydrate :fields :db)
+                       (= entity-type :transform) (t2/hydrate :table-with-db-and-fields)
+                       (= entity-type :dashboard) (-> (t2/hydrate :creator [:collection :is_personal] :moderation_reviews)
+                                                      (->> (map collection.root/hydrate-root-collection))
+                                                      (revisions/with-last-edit-info :dashboard))
+                       (= entity-type :document) (-> (t2/hydrate :creator [:collection :is_personal])
+                                                     (->> (map collection.root/hydrate-root-collection)))
+                       (= entity-type :sandbox) (t2/hydrate [:table :db :fields]))
+                     (mapv #(entity-value entity-type % usages)))))
             nodes-by-type)))
 
 (api.macros/defendpoint :get "/graph"
