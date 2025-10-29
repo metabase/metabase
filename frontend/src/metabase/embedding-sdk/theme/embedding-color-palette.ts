@@ -35,8 +35,10 @@ export type SemanticColorKey =
   | "brand-lighter";
 
 /**
- * Mapping of SDK colors to main app colors. There could be additional values
- * for new semantic colors we add to colors.module.css
+ * Mapping of SDK colors to main app colors.
+ *
+ * The main app colors are defined in `metabase/lib/colors/colors.ts`.
+ * One SDK theme color can map to multiple main app colors.
  */
 export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   MappableSdkColor,
