@@ -527,8 +527,8 @@
 (deftest settings-handles-invalid-settings-test
   (testing "PUT /api/ee/remote-sync/settings handles invalid settings"
     (let [response (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
-                                         {:remote-sync-url "invalid-url"})]
-      (is (= "Unable to connect to git repository with the provided settings" (:error response))))))
+                                         {:remote-sync-url "asdf://invalid-url"})]
+      (is (= "Invalid Repository URL format" (:error response))))))
 
 (deftest settings-cannot-change-with-dirty-data
   (testing "PUT /api/ee/remote-sync/settings doesn't allow loosing dirty data"

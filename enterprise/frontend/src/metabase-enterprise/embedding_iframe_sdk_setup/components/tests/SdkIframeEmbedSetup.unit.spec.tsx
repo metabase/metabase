@@ -120,7 +120,10 @@ describe("Embed flow > pre-selection via url parameter", () => {
 
     setup({
       simpleEmbeddingEnabled: true,
-      urlSearchParams: "?resource_type=question&resource_id=456",
+      initialState: {
+        resourceType: "question",
+        resourceId: 456,
+      },
     });
 
     // Starts at the "select embed options" step.

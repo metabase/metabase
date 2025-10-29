@@ -16,6 +16,7 @@ describe("Remote Sync", () => {
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
     H.setupGitSync();
+    H.interceptTask();
   });
 
   describe("Development Mode", () => {
@@ -53,9 +54,11 @@ describe("Remote Sync", () => {
         .button(/Push changes/)
         .click();
 
+      H.waitForTask({ taskName: "export" });
+
       H.navigationSidebar()
         .findByRole("link", { name: /Library/ })
-        .findByTestId("remote-sync-status", { timeout: 10000 })
+        .findByTestId("remote-sync-status")
         .should("not.exist");
 
       H.updateRemoteQuestion(
@@ -72,8 +75,10 @@ describe("Remote Sync", () => {
         .findByRole("button", { name: "Pull from Git" })
         .click();
 
+      H.waitForTask({ taskName: "import" });
+
       H.collectionTable()
-        .findByText(UPDATED_REMOTE_QUESTION_NAME, { timeout: 10000 })
+        .findByText(UPDATED_REMOTE_QUESTION_NAME)
         .should("exist");
     });
 
@@ -118,6 +123,7 @@ describe("Remote Sync", () => {
     });
 
     it("should show a warning modal when you try to push but are out of date", () => {
+      const NEW_BRANCH = `new-branch-${Date.now()}`;
       H.copyLibraryFixture();
       H.commitToLibrary();
       H.configureGit("development");
@@ -134,7 +140,46 @@ describe("Remote Sync", () => {
         return doc;
       });
 
-      cy.reload();
+      H.navigationSidebar()
+        .findByRole("button", { name: "Push to Git" })
+        .click();
+
+      // Attempt to push changes
+      cy.findByRole("dialog", { name: "Push to Git" })
+        .button(/Push changes/)
+        .click();
+
+      // push local changes to a different branch, because the remote is ahead of us
+      cy.findByRole("dialog", { name: /branch is behind/ }).within(() => {
+        cy.findByRole("radio", { name: /Create a new branch/ }).click();
+        cy.findByPlaceholderText("your-branch-name").type(NEW_BRANCH);
+        cy.button("Push changes").click();
+      });
+
+      H.waitForTask({ taskName: "export" });
+
+      // Ensure that we are on the newly created branch
+      H.navigationSidebar()
+        .findByTestId("branch-picker-button")
+        .should("contain.text", NEW_BRANCH);
+      H.goToLibrary();
+
+      H.collectionTable().within(() => {
+        // Question we just moved
+        cy.findByText("Orders");
+        // Question we previously had in the library
+        cy.findByText("Remote Sync Test Question");
+      });
+
+      H.navigationSidebar().findByTestId("branch-picker-button").click();
+      H.popover().findByRole("option", { name: "main" }).click();
+
+      H.waitForTask({ taskName: "import" });
+
+      // Upstream change will get pulled when switching branches
+      H.collectionTable()
+        .findByText("Sloan for Frontend Emperor")
+        .should("exist");
     });
 
     describe("Branching", () => {
@@ -152,32 +197,12 @@ describe("Remote Sync", () => {
           .should("contain.text", newBranchName);
       };
 
-      const moveEntityToSyncedLibrary = (
-        originCollection: string | RegExp,
-        entity: string,
-      ) => {
-        H.navigationSidebar()
-          .findByRole("treeitem", { name: originCollection })
-          .click();
-        H.collectionTable().findByText(entity).should("exist");
-
-        H.openCollectionItemMenu(entity);
-
-        H.popover().findByText("Move").click();
-
-        H.entityPickerModal().within(() => {
-          cy.findAllByRole("tab", { name: /Browse|Collections/ }).click();
-
-          H.entityPickerModalItem(1, "Library").click();
-          cy.button("Move").click();
-        });
-
-        H.getSyncStatusIndicators().should("have.length", 1);
-
-        H.navigationSidebar()
-          .findByRole("treeitem", { name: /Library/ })
-          .click();
-        H.collectionTable().findByText(entity).should("exist");
+      const switchToExistingBranch = (branch: string) => {
+        H.navigationSidebar().findByTestId("branch-picker-button").click();
+        H.popover()
+          .findByPlaceholderText("Find or create a branch...")
+          .type(branch);
+        cy.findByRole("option", { name: branch }).click();
       };
 
       const pushUpdates = () => {
@@ -189,9 +214,10 @@ describe("Remote Sync", () => {
           .button(/Push changes/)
           .click();
 
+        H.waitForTask({ taskName: "export" });
         // Push button should be hidden when local changes are synced
         H.navigationSidebar()
-          .findByRole("button", { name: "Push to Git", timeout: 10000 })
+          .findByRole("button", { name: "Push to Git" })
           .should("not.exist");
       };
 
@@ -215,43 +241,181 @@ describe("Remote Sync", () => {
         createNewBranch(NEW_BRANCH_1);
 
         // Move something into Library for the new branch
-        moveEntityToSyncedLibrary(/Our analytics/, "Orders, Count");
+        H.moveCollectionItemToLibrary("Orders, Count");
 
         pushUpdates();
 
         // Go back to the main branch
         createNewBranch(NEW_BRANCH_2);
 
-        moveEntityToSyncedLibrary(/Our analytics/, "Orders Model");
+        H.moveCollectionItemToLibrary("Orders Model");
 
         H.collectionTable().findByText("Orders, Count").should("exist");
         H.collectionTable().findByText("Orders Model").should("exist");
         pushUpdates();
 
         // Go back to the first branch
-        H.navigationSidebar().findByTestId("branch-picker-button").click();
-        H.popover()
-          .findByPlaceholderText("Find or create a branch...")
-          .type(NEW_BRANCH_1);
-        cy.findByRole("option", { name: NEW_BRANCH_1 }).click();
+        switchToExistingBranch(NEW_BRANCH_1);
 
         H.collectionTable().findByText("Orders, Count").should("exist");
         // The second item should not exist in the first branch
         H.collectionTable().findByText("Orders Model").should("not.exist");
       });
+
+      it("should show a popup when trying to switch branches with unsynced changes", () => {
+        H.configureGit("development");
+
+        const NEW_BRANCH = `new-branch-${Date.now()}`;
+
+        cy.visit("/collection/root");
+
+        H.navigationSidebar()
+          .findByRole("treeitem", { name: /Library/ })
+          .click();
+
+        // Synced Library starts empty
+        H.collectionTable().should("not.exist");
+        cy.findByTestId("collection-empty-state").should("exist");
+
+        createNewBranch(NEW_BRANCH);
+
+        // Move something into Library for the new branch
+        H.moveCollectionItemToLibrary("Orders, Count");
+
+        // Attempt to go back to main
+        switchToExistingBranch("main");
+
+        // Check that we haven't switched to main
+        H.navigationSidebar()
+          .findByTestId("branch-picker-button")
+          .should("not.contain.text", "main");
+
+        H.modal().should("exist");
+        H.modal().within(() => {
+          cy.findByRole("heading", {
+            name: "You have unsynced changes. What do you want to do?",
+          });
+          cy.findByLabelText(
+            "Push changes to the current branch, " + NEW_BRANCH,
+          );
+          cy.findByLabelText("Create a new branch and push changes there");
+
+          // Choose discard so that we can switch later
+          cy.findByLabelText(
+            "Delete unsynced changes (can’t be undone)",
+          ).click();
+          cy.button(/Delete unsynced changes/).click();
+        });
+
+        // Now we switched to main
+        H.navigationSidebar()
+          .findByTestId("branch-picker-button")
+          .should("contain.text", "main");
+      });
+    });
+
+    describe("unsynced changes", () => {
+      beforeEach(() => {
+        H.copyLibraryFixture();
+        H.commitToLibrary();
+        H.configureGit("development");
+        H.wrapLibraryCollection();
+
+        cy.visit("/collection/root");
+
+        // Make a change in metabase
+        H.moveCollectionItemToLibrary("Orders");
+
+        H.goToLibrary();
+        H.navigationSidebar()
+          .findByRole("button", { name: "Pull from Git" })
+          .click();
+      });
+
+      it("push changes", () => {
+        cy.findByRole("dialog", { name: /unsynced changes/ }).within(() => {
+          cy.findByRole("radio", { name: /Push changes/ }).click();
+          cy.button("Push changes").click();
+        });
+
+        H.waitForTask({ taskName: "export" });
+
+        H.branchPicker().should("contain.text", "main");
+        H.collectionTable().within(() => {
+          cy.findByText("Orders").should("exist");
+          cy.findByText(REMOTE_QUESTION_NAME).should("exist");
+        });
+      });
+
+      it("new branch", () => {
+        const NEW_BRANCH = `new-branch-${Date.now()}`;
+        cy.findByRole("dialog", { name: /unsynced changes/ }).within(() => {
+          cy.findByRole("radio", { name: /new branch/ }).click();
+          cy.findByPlaceholderText("your-branch-name").type(NEW_BRANCH);
+          cy.button("Push changes").click();
+        });
+
+        H.waitForTask({ taskName: "export" });
+
+        H.branchPicker().should("contain.text", NEW_BRANCH);
+        H.collectionTable().within(() => {
+          cy.findByText("Orders").should("exist");
+          cy.findByText(REMOTE_QUESTION_NAME).should("exist");
+        });
+
+        H.branchPicker().click();
+        H.popover().findByRole("option", { name: "main" }).click();
+
+        H.waitForTask({ taskName: "import" });
+        H.collectionTable().within(() => {
+          cy.findByText("Orders").should("not.exist");
+          cy.findByText(REMOTE_QUESTION_NAME).should("exist");
+        });
+      });
+
+      it("delete changes", () => {
+        cy.findByRole("dialog", { name: /unsynced changes/ }).within(() => {
+          cy.findByRole("radio", { name: /Delete/ }).click();
+          cy.button("Delete unsynced changes").click();
+        });
+
+        H.waitForTask({ taskName: "import" });
+
+        H.branchPicker().should("contain.text", "main");
+        H.collectionTable().within(() => {
+          cy.findByText("Orders").should("not.exist");
+          cy.findByText(REMOTE_QUESTION_NAME).should("exist");
+        });
+      });
+
+      it("upstream changes", () => {
+        // Make a change outside metabase
+        H.updateRemoteQuestion((doc) => {
+          doc.name = "Sloan for Frontend Emperor";
+          return doc;
+        });
+
+        cy.findByRole("dialog", { name: /unsynced changes/ }).within(() => {
+          cy.findByRole("radio", { name: /Push/ }).click();
+          cy.button("Push changes").click();
+        });
+
+        cy.findByRole("list", { name: /undo-list/i }).findByText(
+          /Cannot export changes/,
+        );
+      });
     });
   });
 
-  describe.skip("remote sync admin settings page", () => {
+  describe("remote sync admin settings page", () => {
     beforeEach(() => {
       H.restore();
       H.activateToken("bleeding-edge");
       H.setupGitSync();
+      cy.signInAsAdmin();
     });
 
     it("can set up development mode", () => {
-      H.setupGitSync();
-      cy.signInAsAdmin();
       cy.visit("/admin/settings/remote-sync");
       cy.findByLabelText(/repository url/i)
         .clear()
@@ -262,8 +426,9 @@ describe("Remote Sync", () => {
         .findByText("Success")
         .should("exist");
 
-      //TODO: We should be able to remove this, but for now we need to do a page refresh to see changes
-      cy.visit("/");
+      H.waitForTask({ taskName: "import" });
+      H.modal().should("not.exist");
+      cy.findByTestId("exit-admin").click();
 
       H.navigationSidebar().within(() => {
         cy.findByRole("heading", { name: /synced collections/i }).should(
@@ -293,17 +458,17 @@ describe("Remote Sync", () => {
         .findByText("Success")
         .should("exist");
 
-      //TODO: We should be able to remove this, but for now we need to do a page refresh to see changes
-      cy.visit("/");
+      H.modal().should("not.exist", { timeout: 10000 });
+      cy.findByTestId("exit-admin").click();
 
       H.navigationSidebar().within(() => {
         cy.findByRole("heading", { name: /synced collections/i }).should(
           "not.exist",
         );
         cy.findByTestId("branch-picker-button").should("not.exist");
+
         cy.findByRole("treeitem", { name: /Library/ }).click();
       });
-      H.collectionTable().findByText(REMOTE_QUESTION_NAME);
     });
 
     it("shows an error if git settings are invalid", () => {
@@ -319,7 +484,9 @@ describe("Remote Sync", () => {
         .findByText("Failed")
         .should("exist");
       cy.findByTestId("admin-layout-content")
-        .findByText("Invalid git settings")
+        .findByText(
+          "Failed to clone git repository: Git CloneCommand failed: URI not supported: file://invalid-path",
+        )
         .should("exist");
     });
   });
@@ -365,9 +532,9 @@ describe("Remote Sync", () => {
         .button("Continue")
         .click();
 
-      cy.findByRole("button", { name: "Save changes", timeout: 10000 }).should(
-        "be.disabled",
-      );
+      H.waitForTask({ taskName: "import" });
+
+      cy.findByRole("button", { name: "Save changes" }).should("be.disabled");
 
       cy.visit("/");
 

@@ -9,7 +9,7 @@ redirect_from:
 
 > Only admins can create public links and iframes.
 
-Admins can create and share public links (URLs) for questions and dashboards. People can view them as standalone destinations (URLs) or as embedded iframes in another page or app. In both cases, the public item will display static (view-only) results of your question or dashboard, so visitors won't be able to drill down into the underlying data on their own.
+Admins can create and share public links (URLs) for questions, dashboards, and documents. People can view them as standalone destinations (URLs) or as embedded iframes in another page or app. Public items display view-only results of your question, dashboard, or document, so visitors won't be able to drill down into the underlying data on their own.
 
 ## Create a public link for a question
 
@@ -38,6 +38,12 @@ To share a dashboard via a public link, admins can click on the **Sharing** butt
 ![Sharing a dashboard](./images/dashboard-sharing.png)
 
 To embed a dashboard, see [static embedding](./static-embedding.md).
+
+## Create a public link for a document
+
+To share a document via a public link, admins can click on the **Sharing** button in the top right menu and select **Create a public link**.
+
+Public documents are read-only: viewers cannot edit the content or add comments. For charts embedded in the document, viewers can download the results in CSV, XLSX, or JSON format using the **Download results** option in the chart menu.
 
 ## Exporting raw, unformatted question results
 
@@ -155,7 +161,7 @@ To disable public sharing:
 3. In the **Settings** tab, select **Public sharing**.
 4. Toggle off **Public sharing**.
 
-Once toggled on, the **Public sharing** section will display Metabase questions, dashboards, and actions with active public links.
+Once toggled on, the **Public sharing** section will display Metabase questions, dashboards, documents, and actions with active public links.
 
 If you disable public sharing, then re-enable public sharing, all your previously generated public links will still work (as long as you didn't deactivate them).
 
@@ -180,7 +186,7 @@ Admins can view and deactivate all public links for a Metabase.
 
 ## See all publicly shared content
 
-Admins can see all publicly shared questions, dashboards, and actions in **Admin Settings > Public Sharing**.
+Admins can see all publicly shared questions, dashboards, documents, and actions in **Admin Settings > Public Sharing**.
 
 ![See shared content](./images/see-shared-content.png)
 

@@ -71,3 +71,27 @@ export function uploadsSettings() {
 export function adminLicense() {
   return "/admin/settings/license";
 }
+
+export function adminToolsHelp() {
+  return "/admin/tools/help";
+}
+
+export function adminToolsTasks() {
+  return "/admin/tools/tasks";
+}
+
+export function adminToolsJobs() {
+  return "/admin/tools/jobs";
+}
+
+export function adminToolsLogs() {
+  return "/admin/tools/logs";
+}
+
+export function adminToolsErrors() {
+  return "/admin/tools/errors";
+}
+
+export function adminToolsModelCaching() {
+  return "/admin/tools/model-caching";
+}
