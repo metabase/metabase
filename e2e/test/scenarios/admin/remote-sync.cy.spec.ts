@@ -324,6 +324,35 @@ describe("Remote Sync", () => {
         )
         .should("exist");
     });
+
+    it("can deactivate remote sync", () => {
+      H.copyLibraryFixture();
+      H.commitToLibrary();
+      H.configureGit("development");
+
+      cy.visit("/admin/settings/remote-sync");
+
+      cy.findByTestId("admin-layout-content")
+        .findByText("Enabled")
+        .should("exist");
+
+      cy.button("Disable Remote Sync").click();
+
+      H.modal().within(() => {
+        cy.findByRole("heading", { name: "Disable Remote Sync?" }).should(
+          "exist",
+        );
+        cy.button("Disable").click();
+      });
+
+      cy.findByTestId("admin-layout-content")
+        .findByText("Enabled")
+        .should("not.exist");
+
+      cy.findByTestId("exit-admin").click();
+
+      ensureLibraryCollectionIsVisible();
+    });
   });
 
   describe("production mode", () => {
@@ -380,3 +409,9 @@ describe("Remote Sync", () => {
     });
   });
 });
+
+const ensureLibraryCollectionIsVisible = () => {
+  H.navigationSidebar().within(() => {
+    cy.findByRole("treeitem", { name: /Library/ }).should("exist");
+  });
+};
