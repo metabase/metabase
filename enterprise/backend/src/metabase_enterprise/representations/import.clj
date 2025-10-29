@@ -101,7 +101,7 @@
                       {:representations representations}))
 
       :else
-      (let [done (set (map :ref acc))
+      (let [done (set (map :name acc))
             ready (filter #(set/subset? (v0-common/refs %) done)
                           remaining)
             acc' (into acc ready)
@@ -152,17 +152,17 @@
   "Given a dir containing yaml representations, sorts them topologically, then persists them in order."
   [dir]
   (let [representations (yaml-files dir)]
-    (reduce (fn [index entity]
+    (reduce (fn [index representation]
               (try
-                (let [persisted (persist! entity index)]
-                  (assoc index (:ref entity) persisted))
+                (let [persisted (persist! representation index)]
+                  (assoc index (:name representation) persisted))
                 (catch Exception e
                   (log/warn "Failed to persist an entity!"
-                            (ex-info (format "Entity failed to persist for ref %s. Removing from index." (:ref entity))
-                                     {:entity entity
+                            (ex-info (format "Entity failed to persist for ref %s. Removing from index." (:name representation))
+                                     {:entity representation
                                       :ref-index index}
                                      e))
-                  (dissoc index (:ref entity)))))
+                  (dissoc index (:name representation)))))
             {}
             representations)))
 
@@ -227,10 +227,10 @@
                 (try
                   (let [persisted (persist! (assoc entity :collection collection-id)
                                             (v0-common/map-entity-index index))]
-                    (assoc index (:ref entity) persisted))
+                    (assoc index (:name entity) persisted))
                   (catch Exception e
-                    (log/warn e (format "Failed to persist entity with ref %s" (:ref entity)))
-                    (dissoc index (:ref entity)))))
+                    (log/warn e (format "Failed to persist entity with ref %s" (:name entity)))
+                    (dissoc index (:name entity)))))
               {}
               ordered)
       new-collection)))
@@ -249,7 +249,7 @@
           (let [valid-repr (-> (slurp file)
                                (rep-yaml/parse-string)
                                (normalize-representation))
-                id (-> (:ref valid-repr)
+                id (-> (:name valid-repr)
                        (str/split #"-")
                        (last)
                        (Long/parseLong))
