@@ -154,7 +154,11 @@ describe("scenarios - embedding hub", () => {
         .findByText("Get embed snippet")
         .click();
 
-      cy.url().should("include", "/embed-js?auth_method=user_session");
+      H.modal()
+        .first()
+        .within(() => {
+          cy.findByText("Select your embed experience").should("be.visible");
+        });
     });
 
     it("Embed in production step should be locked until JWT is enabled", () => {

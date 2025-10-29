@@ -19,6 +19,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+;;; TODO (Cam 10/28/25) -- don't capitalize constants https://guide.clojure.style/#naming-constants
 (def ^:private TYPE->MODEL
   {"document" :model/Document})
 
@@ -87,6 +88,9 @@
                    (keep delete-comment))
           comments)))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/"
   "Get comments for an entity"
   [_route-params

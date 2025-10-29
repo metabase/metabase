@@ -7,6 +7,7 @@
    [metabase.api.common :as api]
    ;; existing usages, do not use legacy MBQL utils in new code
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    ^{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]} [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -47,7 +48,7 @@
   [definition]
   (when (seq definition)
     ;; TODO (Cam 10/1/25) -- update segments to persist MBQL 5
-    (u/prog1 #_{:clj-kondo/ignore [:deprecated-var]} (mbql.normalize/normalize-fragment [:query] definition)
+    (u/prog1 #_{:clj-kondo/ignore [:deprecated-var]} (mbql.normalize/normalize ::mbql.s/MBQLQuery definition)
       (validate-segment-definition <>))))
 
 (def ^:private transform-segment-definition

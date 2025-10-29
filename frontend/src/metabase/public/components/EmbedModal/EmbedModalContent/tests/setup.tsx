@@ -50,6 +50,7 @@ export function setup(
       onUpdateEnableEmbedding = jest.fn(),
       onCreatePublicLink = jest.fn(),
       onDeletePublicLink = jest.fn(),
+      onClose = jest.fn(),
     } = {},
     hasEnterprisePlugins,
     tokenFeatures = createMockTokenFeatures(),
@@ -92,6 +93,7 @@ export function setup(
             onUpdateEnableEmbedding={onUpdateEnableEmbedding}
             onCreatePublicLink={onCreatePublicLink}
             onDeletePublicLink={onDeletePublicLink}
+            onClose={onClose}
           />
         );
       }}

@@ -75,6 +75,9 @@
                 (fn [channels]
                   (map #(dissoc % :recipients) channels))))))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/"
   "Fetch all dashboard subscriptions. By default, returns only subscriptions for which the current user has write
   permissions. For admins, this is all subscriptions; for non-admins, it is only subscriptions that they created.
