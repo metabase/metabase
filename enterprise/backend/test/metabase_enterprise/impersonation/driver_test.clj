@@ -617,19 +617,19 @@
           (finally
             (t2/update! :model/Database :id (mt/id) (update (mt/db) :details dissoc :role))))))))
 
-(deftest conn-impersonation-test-starburst
-  (testing "row level security with starburst"
-    (mt/test-driver :starburst
-      (mt/with-premium-features #{:advanced-permissions}
-        (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                       :attributes {"impersonation_attr" "widget_role"}}
-          (is (= [[54]]
-                 (mt/formatted-rows [int]
-                                    (mt/run-mbql-query products
-                                      {:aggregation [[:count]]}))))
-          (is (= []
-                 (mt/rows (mt/run-mbql-query products {:fields [$id $category]
-                                                       :filter [:= $category "Gadget"]})))))))))
+#_(deftest conn-impersonation-test-starburst
+    (testing "row level security with starburst"
+      (mt/test-driver :starburst
+        (mt/with-premium-features #{:advanced-permissions}
+          (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                         :attributes {"impersonation_attr" "widget_role"}}
+            (is (= [[54]]
+                   (mt/formatted-rows [int]
+                                      (mt/run-mbql-query products
+                                        {:aggregation [[:count]]}))))
+            (is (= []
+                   (mt/rows (mt/run-mbql-query products {:fields [$id $category]
+                                                         :filter [:= $category "Gadget"]})))))))))
 
 (deftest persistence-disabled-when-impersonated-test
   ;; Test explicitly with postgres since it supports persistence and impersonation

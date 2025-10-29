@@ -68,7 +68,7 @@
                               :metadata/key-constraints        false
                               :now                             true
                               :database-routing                true
-                              :connection-impersonation        true}]
+                              :connection-impersonation        false}]
   (defmethod driver/database-supports? [:starburst feature] [_ _ _] supported?))
 
 (defn- format-field
@@ -1000,7 +1000,6 @@
 
 (defmethod driver/set-role! :starburst
   [_driver ^Connection conn role]
-  (println (format "SET SESSION USER: %s" role))
   (.setSessionUser ^TrinoConnection (.unwrap conn TrinoConnection) role))
 
 (defmethod sql.qp/->honeysql [:starburst ::sql.qp/cast-to-text]
