@@ -181,7 +181,7 @@
 (defn create-table!
   "Create an index table with the given name. Should fail if it already exists."
   [table-name]
-  (t2/with-transaction [_]
+  (t2/with-transaction [_ (mdb/app-db)]
     (-> (sql.helpers/create-table table-name)
         (sql.helpers/with-columns (specialization/table-schema base-schema))
         t2/query)
