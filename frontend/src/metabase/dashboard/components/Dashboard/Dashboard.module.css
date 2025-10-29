@@ -22,6 +22,10 @@
   z-index: 2;
   transition: var(--transition-theme-change);
 
+  &:not(.noBorder) {
+    border-bottom: 1px solid var(--mb-color-border);
+  }
+
   &:not(.isEmbeddingSdk) {
     background-color: var(--mb-color-background);
   }
@@ -29,10 +33,6 @@
   &.isFullscreen {
     background-color: transparent;
     border-color: transparent;
-  }
-
-  &:not(.noBorder) {
-    border-bottom: 1px solid var(--mb-color-border);
   }
 }
 
