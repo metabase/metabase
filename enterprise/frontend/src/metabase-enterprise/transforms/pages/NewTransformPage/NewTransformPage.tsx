@@ -16,7 +16,11 @@ import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { Center } from "metabase/ui";
-import type { Database, DraftTransformSource } from "metabase-types/api";
+import type {
+  Database,
+  DraftTransformSource,
+  Transform,
+} from "metabase-types/api";
 
 import { TransformEditor } from "../../components/TransformEditor";
 import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";
@@ -86,8 +90,8 @@ function NewTransformPageBody({
   const dispatch = useDispatch();
   useRegisterMetabotTransformContext(undefined, source);
 
-  const handleCreate = () => {
-    dispatch(push(Urls.transformList()));
+  const handleCreate = (transform: Transform) => {
+    dispatch(push(Urls.transform(transform.id)));
   };
 
   const handleCancel = () => {
