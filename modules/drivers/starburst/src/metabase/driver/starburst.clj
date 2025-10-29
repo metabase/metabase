@@ -68,7 +68,7 @@
                               :metadata/key-constraints        false
                               :now                             true
                               :database-routing                true
-                              :connection-impersonation        false}]
+                              :connection-impersonation        true}]
   (defmethod driver/database-supports? [:starburst feature] [_ _ _] supported?))
 
 (defn- format-field
