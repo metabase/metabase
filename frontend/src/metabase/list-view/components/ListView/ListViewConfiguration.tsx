@@ -199,7 +199,6 @@ export const ListViewConfiguration = ({
     leftValues,
     rightValues,
     onConfigurationChange,
-    selectedEntityIcon,
   });
 
   const activeItem = activeId
@@ -500,7 +499,6 @@ function useExternalDragOverlay({
   leftValues,
   rightValues,
   onConfigurationChange,
-  selectedEntityIcon,
 }: {
   leftValues: string[];
   rightValues: string[];
@@ -509,7 +507,6 @@ function useExternalDragOverlay({
     right: string[];
     entityIcon?: string | null;
   }) => void;
-  selectedEntityIcon: string | null;
 }) {
   // Active drag state for overlay
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -583,13 +580,11 @@ function useExternalDragOverlay({
         onConfigurationChange({
           left: next,
           right: rightValues,
-          entityIcon: selectedEntityIcon,
         });
       } else {
         onConfigurationChange({
           left: leftValues,
           right: next,
-          entityIcon: selectedEntityIcon,
         });
       }
       return;
@@ -613,13 +608,11 @@ function useExternalDragOverlay({
       onConfigurationChange({
         left: nextTo,
         right: nextFrom,
-        entityIcon: selectedEntityIcon,
       });
     } else {
       onConfigurationChange({
         left: nextFrom,
         right: nextTo,
-        entityIcon: selectedEntityIcon,
       });
     }
   };

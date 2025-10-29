@@ -1,10 +1,6 @@
 .listViewContainer {
-  /* --max-width: 75rem; */
-
   width: 100%;
   height: 100%;
-  /* gap: var(--mantine-spacing-xs); */
-  /* padding-inline: var(--mantine-spacing-sm); */
 }
 
 .listContainer {
@@ -22,21 +18,17 @@
 
 .listBody {
   position: relative;
-  /* max-width: var(--max-width); */
   width: 100%;
   height: 100%;
   margin: auto;
   gap: 0;
-  /* padding-inline: calc(50% - var(--max-width) / 2); */
   overflow: auto;
 }
 
 .listItem {
   width: 100%;
-  /* max-width: 75rem; */
   height: 4rem;
   border-bottom: 1px solid var(--mb-color-border-subtle);
-  /* border-radius: var(--mantine-radius-md); */
   background: var(--mb-color-bg-white);
   padding-inline: var(--item-padding, var(--mantine-spacing-md));
 
