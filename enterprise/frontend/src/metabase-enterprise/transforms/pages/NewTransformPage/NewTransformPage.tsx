@@ -3,7 +3,11 @@ import { useMemo, useState } from "react";
 import type { Route } from "react-router";
 import { push } from "react-router-redux";
 
-import { skipToken, useGetCardQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetCardQuery,
+  useListDatabasesQuery,
+} from "metabase/api";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -12,7 +16,7 @@ import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { Center } from "metabase/ui";
-import type { DraftTransformSource } from "metabase-types/api";
+import type { Database, DraftTransformSource } from "metabase-types/api";
 
 import { TransformEditor } from "../../components/TransformEditor";
 import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";
@@ -33,6 +37,40 @@ type NewTransformPageProps = {
 };
 
 function NewTransformPage({ initialSource, route }: NewTransformPageProps) {
+  const {
+    data: databases,
+    isLoading,
+    error,
+  } = useListDatabasesQuery({ include_analytics: true });
+
+  if (isLoading || error != null || databases == null) {
+    return (
+      <Center h="100%">
+        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+      </Center>
+    );
+  }
+
+  return (
+    <NewTransformPageBody
+      initialSource={initialSource}
+      databases={databases.data}
+      route={route}
+    />
+  );
+}
+
+type NewTransformPageBodyProps = {
+  initialSource: DraftTransformSource;
+  databases: Database[];
+  route: Route;
+};
+
+function NewTransformPageBody({
+  initialSource,
+  databases,
+  route,
+}: NewTransformPageBodyProps) {
   const {
     source,
     proposedSource,
@@ -81,6 +119,7 @@ function NewTransformPage({ initialSource, route }: NewTransformPageProps) {
               proposedSource?.type === "query" ? proposedSource : undefined
             }
             uiState={uiState}
+            databases={databases}
             isNew={true}
             isSaving={false}
             isDirty={isDirty}

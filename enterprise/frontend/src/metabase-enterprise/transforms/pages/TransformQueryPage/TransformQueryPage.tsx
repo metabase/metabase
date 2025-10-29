@@ -4,7 +4,7 @@ import { push } from "react-router-redux";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import { skipToken } from "metabase/api";
+import { skipToken, useListDatabasesQuery } from "metabase/api";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -20,7 +20,7 @@ import {
   useGetTransformQuery,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
-import type { Transform } from "metabase-types/api";
+import type { Database, Transform } from "metabase-types/api";
 
 import { TransformEditor } from "../../components/TransformEditor";
 import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";
@@ -40,28 +40,43 @@ export function TransformQueryPage({ params, route }: TransformQueryPageProps) {
   const transformId = Urls.extractEntityId(params.transformId);
   const {
     data: transform,
-    isLoading,
-    error,
+    isLoading: isLoadingTransform,
+    error: transformError,
   } = useGetTransformQuery(transformId ?? skipToken);
+  const {
+    data: databases,
+    isLoading: isLoadingDatabases,
+    error: databasesError,
+  } = useListDatabasesQuery({ include_analytics: true });
+  const isLoading = isLoadingTransform || isLoadingDatabases;
+  const error = transformError || databasesError;
 
   if (isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  if (transform == null) {
+  if (transform == null || databases == null) {
     return <LoadingAndErrorWrapper error={t`Transform not found.`} />;
   }
 
-  return <TransformQueryPageBody transform={transform} route={route} />;
+  return (
+    <TransformQueryPageBody
+      transform={transform}
+      databases={databases.data}
+      route={route}
+    />
+  );
 }
 
 type TransformQueryPageBodyProps = {
   transform: Transform;
+  databases: Database[];
   route: Route;
 };
 
 export function TransformQueryPageBody({
   transform,
+  databases,
   route,
 }: TransformQueryPageBodyProps) {
   const {
@@ -146,6 +161,7 @@ export function TransformQueryPageBody({
             proposedSource?.type === "query" ? proposedSource : undefined
           }
           uiState={uiState}
+          databases={databases}
           isNew={false}
           isDirty={isDirty}
           isSaving={isSaving || isCheckingDependencies}

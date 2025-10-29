@@ -1,9 +1,12 @@
 import { t } from "ttag";
 
+import type { QueryEditorUiOptions } from "metabase/querying/editor/components/QueryEditor/types";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { QueryTransformSource } from "metabase-types/api";
+import type { Database, QueryTransformSource } from "metabase-types/api";
+
+import { doesDatabaseSupportTransforms } from "../../utils";
 
 import type { ValidationResult } from "./EditorHeader/types";
 
@@ -24,4 +27,47 @@ export function getValidationResult(query: Lib.Query): ValidationResult {
   }
 
   return { isValid: Lib.canSave(query, "question") };
+}
+
+export function getEditorOptions(databases: Database[]): QueryEditorUiOptions {
+  return {
+    convertToNativeTitle: t`SQL for this transform`,
+    convertToNativeButtonLabel: t`Convert this transform to SQL`,
+    shouldDisableDatabasePickerItem: (item) => {
+      const database = databases.find((database) => database.id === item.id);
+      return !doesDatabaseSupportTransforms(database);
+    },
+    shouldDisableDataPickerItem: (item) => {
+      // Disable unsupported databases
+      if (item.model === "database") {
+        const database = databases.find((db) => db.id === item.id);
+        return !doesDatabaseSupportTransforms(database);
+      }
+
+      if (
+        // Disable questions based on unsupported databases
+        item.model === "card" ||
+        item.model === "dataset" ||
+        item.model === "metric" ||
+        // Disable tables based on unsupported databases
+        item.model === "table"
+      ) {
+        if ("database_id" in item) {
+          const database = databases.find((db) => db.id === item.database_id);
+          return !doesDatabaseSupportTransforms(database);
+        }
+        if ("database" in item) {
+          const database = databases.find((db) => db.id === item.database.id);
+          return !doesDatabaseSupportTransforms(database);
+        }
+      }
+
+      // Disable dashboards altogether
+      if (item.model === "dashboard") {
+        return true;
+      }
+
+      return false;
+    },
+  };
 }
