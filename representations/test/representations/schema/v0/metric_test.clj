@@ -19,17 +19,6 @@
                   :name "metric-123"
                   :display_name "Total Revenue"
                   :database "database-1"
-                  :mbql_query {:aggregation [[:sum [:field 1 nil]]]}}]
+                  :query {:aggregation [[:sum [:field 1 nil]]]}}]
       (is (= metric
-             (read/parse metric)))))
-  (testing "metric representation with both query types is invalid"
-    (let [metric {:type :metric
-                  :version :v0
-                  :name "metric-123"
-                  :display_name "Total Revenue"
-                  :database "database-1"
-                  :query "SELECT 1"
-                  :mbql_query {:query :some-query}}]
-      (is (thrown-with-msg? Exception
-                            #"Value does not match schema"
-                            (read/parse metric))))))
+             (read/parse metric))))))

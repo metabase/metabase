@@ -10,7 +10,7 @@ database: ref:sample-database
 ## WE DO NOT RECOMMEND MODIFYING THE  ##
 ## FOLLOWING LINES!!                  ##
 ########################################
-mbql_query:
+query:
   source-table: ref:sales-data
 Columns:
 - name: CATEGORY

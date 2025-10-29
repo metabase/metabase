@@ -14,19 +14,10 @@
    [:or :nil :string]])
 
 (mr/def ::query
-  [:and
-   {:description "Native SQL query"}
-   ::mc/non-blank-string])
-
-(mr/def ::mbql-query
-  [:and
-   {:description "MBQL (Metabase Query Language) query"}
-   any?])
-
-(mr/def ::lib-query
-  [:and
-   {:description "MBQL5 query to execute"}
-   any?])
+  [:or
+   {:description "Query - either a native SQL query string or MBQL/lib query map"}
+   ::mc/non-blank-string
+   :any])
 
 (mr/def ::database
   [:and

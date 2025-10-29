@@ -21,20 +21,7 @@
                     :display_name "foo question"
                     :description "a test question"
                     :database "database-1"
-                    :mbql_query {:query :some-query}
+                    :query {:query :some-query}
                     :collection nil}]
       (is (= question
-             (read/parse question)))))
-  (testing "question representation schema with native mbql query is invalid"
-    (let [question {:type :question
-                    :version :v0
-                    :name "question-123"
-                    :display_name "foo question"
-                    :description "a test question"
-                    :database "database-1"
-                    :query "select 1"
-                    :mbql_query {:query :some-query}
-                    :collection nil}]
-      (is (thrown-with-msg? Exception
-                            #"Value does not match schema"
-                            (read/parse question))))))
+             (read/parse question))))))

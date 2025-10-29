@@ -25,8 +25,7 @@
   [:map
    {:closed true
     :description "Source for the transform - either a SQL query or MBQL query"}
-   [:query {:optional true} ::common/query]
-   [:mbql_query {:optional true} ::common/mbql-query]])
+   [:query {:optional true} ::common/query]])
 
 (mr/def ::target
   [:map
@@ -48,12 +47,7 @@
      [:source {:optional true} ::source]
      [:target {:optional true} ::target]
      [:target_table {:optional true} ::target]
-     [:query {:optional true} ::common/query]
-     [:mbql_query {:optional true} ::common/mbql-query]
-     [:lib_query {:optional true} ::common/lib-query]
-     [:tags {:optional true} ::tags]]]
-   [:fn {:error/message "Source must have exactly one of :query or :mbql_query"}
-    (fn [{:keys [query mbql_query lib_query] :as _transform}]
-      (= 1 (count (filter some? [query mbql_query lib_query]))))]])
+     [:query ::common/query]
+     [:tags {:optional true} ::tags]]]])
 
 (defmethod read-impl/representation->schema [:v0 :transform] [_] ::transform)

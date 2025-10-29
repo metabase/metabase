@@ -21,7 +21,7 @@
                  :name "model-123"
                  :display_name "User Orders"
                  :database "database-1"
-                 :mbql_query {:source-table 1}}]
+                 :query {:source-table 1}}]
       (is (= model
              (read/parse model)))))
   (testing "model representation with columns is valid"
@@ -31,7 +31,7 @@
                  :display_name "Sales Data Model"
                  :description "Contains sales data of particular note"
                  :database "database-1"
-                 :mbql_query {:source-table 1}
+                 :query {:source-table 1}
                  :columns [{:name "CATEGORY"
                             :display_name "Product"
                             :description "The type of product"
@@ -45,18 +45,7 @@
                             :currency "USD"
                             :settings {:currency "USD"}}]}]
       (is (= model
-             (read/parse model)))))
-  (testing "model representation with both query types is invalid"
-    (let [model {:type :model
-                 :version :v0
-                 :name "model-123"
-                 :display_name "User Orders"
-                 :database "database-1"
-                 :query "SELECT 1"
-                 :mbql_query {:source-table 1}}]
-      (is (thrown-with-msg? Exception
-                            #"Value does not match schema"
-                            (read/parse model))))))
+             (read/parse model))))))
 
 (deftest model-column-test
   (testing "model column with all fields including settings"
