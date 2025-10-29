@@ -33,7 +33,6 @@ const nextPage = async () =>
 
 type SetupOpts = {
   metabotId?: number;
-  metabotCollectionId?: number;
   pageSize?: number;
   mockInitialPage?: boolean;
 };
