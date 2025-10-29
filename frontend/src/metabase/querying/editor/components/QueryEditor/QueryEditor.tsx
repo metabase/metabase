@@ -4,7 +4,6 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { NativeQueryPreview } from "metabase/querying/notebook/components/NativeQueryPreview";
 import { Center, Flex, Modal } from "metabase/ui";
 import type * as Lib from "metabase-lib";
-import type { CardType } from "metabase-types/api";
 
 import { useQueryEditor } from "../../hooks/use-query-editor";
 
@@ -18,7 +17,6 @@ import { VisualizationSection } from "./VisualizationSection";
 import type { QueryEditorUiOptions, QueryEditorUiState } from "./types";
 
 type QueryEditorProps = {
-  type?: CardType;
   query: Lib.Query;
   uiState: QueryEditorUiState;
   uiOptions?: QueryEditorUiOptions;
@@ -30,7 +28,6 @@ type QueryEditorProps = {
 };
 
 export function QueryEditor({
-  type = "question",
   query,
   uiState,
   uiOptions,
@@ -65,7 +62,6 @@ export function QueryEditor({
     toggleNativeQuerySidebar,
     togglePreviewQueryModal,
   } = useQueryEditor({
-    type,
     query,
     uiState,
     proposedQuery,

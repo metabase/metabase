@@ -1,5 +1,4 @@
 import * as Lib from "metabase-lib";
-import type { CardType } from "metabase-types/api";
 
 import type { QueryEditorUiState } from "../../components/QueryEditor/types";
 import { useQueryControls } from "../use-query-controls";
@@ -8,7 +7,6 @@ import { useQueryQuestion } from "../use-query-question";
 import { useQueryResults } from "../use-query-results";
 
 type UseQueryEditorProps = {
-  type?: CardType;
   query: Lib.Query;
   uiState: QueryEditorUiState;
   proposedQuery?: Lib.Query;
@@ -17,7 +15,6 @@ type UseQueryEditorProps = {
 };
 
 export function useQueryEditor({
-  type = "question",
   query,
   uiState,
   proposedQuery,
@@ -25,7 +22,6 @@ export function useQueryEditor({
   onChangeUiState,
 }: UseQueryEditorProps) {
   const { question, proposedQuestion, setQuestion } = useQueryQuestion(
-    type,
     query,
     proposedQuery,
     onChangeQuery,
