@@ -30,7 +30,7 @@ export function CreateTransformMenu() {
   };
 
   const handlePickerChange = (item: QuestionPickerValueItem) => {
-    dispatch(push(Urls.newTransformFromCard(item.id)));
+    dispatch(push(Urls.newCardTransform(item.id)));
   };
 
   const { data: databases, isLoading } = useListDatabasesQuery({
@@ -58,7 +58,7 @@ export function CreateTransformMenu() {
               <Menu.Label>{t`Create your transform with…`}</Menu.Label>
               <Menu.Item
                 component={ForwardRefLink}
-                to={Urls.newTransformFromType("query")}
+                to={Urls.newQueryTransform()}
                 leftSection={<Icon name="notebook" />}
                 onClick={() => {
                   trackTransformCreate({
@@ -71,7 +71,7 @@ export function CreateTransformMenu() {
               </Menu.Item>
               <Menu.Item
                 component={ForwardRefLink}
-                to={Urls.newTransformFromType("native")}
+                to={Urls.newNativeTransform()}
                 leftSection={<Icon name="sql" />}
                 onClick={() => {
                   trackTransformCreate({
@@ -82,7 +82,21 @@ export function CreateTransformMenu() {
               >
                 {t`SQL query`}
               </Menu.Item>
-              {PLUGIN_TRANSFORMS_PYTHON.getCreateTransformsMenuItems()}
+              {PLUGIN_TRANSFORMS_PYTHON.isEnabled && (
+                <Menu.Item
+                  component={ForwardRefLink}
+                  to={Urls.newPythonTransform()}
+                  leftSection={<Icon name="code_block" />}
+                  onClick={() => {
+                    trackTransformCreate({
+                      triggeredFrom: "transform-page-create-menu",
+                      creationType: "python",
+                    });
+                  }}
+                >
+                  {t`Python script`}
+                </Menu.Item>
+              )}
               <Menu.Item
                 leftSection={<Icon name="folder" />}
                 onClick={handleSavedQuestionClick}

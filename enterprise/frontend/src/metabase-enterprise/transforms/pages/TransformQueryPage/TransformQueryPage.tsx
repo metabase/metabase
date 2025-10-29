@@ -12,19 +12,17 @@ import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import {
-  type QueryEditorUiState,
-  getInitialUiState,
-} from "metabase/querying/editor/components/QueryEditor";
+import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import {
   useGetTransformQuery,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
-import type { Transform, TransformSource } from "metabase-types/api";
+import type { Transform } from "metabase-types/api";
 
 import { TransformEditor } from "../../components/TransformEditor";
 import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";
 import { useSourceState } from "../../hooks/use-source-state";
+import { isNotDraftSource } from "../../utils";
 
 type TransformQueryPageParams = {
   transformId: string;
@@ -77,7 +75,15 @@ export function TransformQueryPageBody({
   const dispatch = useDispatch();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   useRegisterMetabotTransformContext(transform, source);
-  useResetStateOnNavigation(transform, setSource, setUiState);
+
+  const resetRef = useLatest(() => {
+    setSource(transform.source);
+    setUiState(getInitialUiState());
+  });
+
+  useLayoutEffect(() => {
+    resetRef.current();
+  }, [transform.id, resetRef]);
 
   const {
     checkData,
@@ -99,10 +105,12 @@ export function TransformQueryPageBody({
   });
 
   const handleSave = async () => {
-    await handleInitialSave({
-      id: transform.id,
-      source,
-    });
+    if (isNotDraftSource(source)) {
+      await handleInitialSave({
+        id: transform.id,
+        source,
+      });
+    }
   };
 
   const handleCancel = () => {
@@ -141,22 +149,8 @@ export function TransformQueryPageBody({
       <LeaveRouteConfirmModal
         route={route}
         isEnabled={isDirty && !isSaving && !isCheckingDependencies}
+        onConfirm={rejectProposed}
       />
     </AdminSettingsLayout>
   );
-}
-
-function useResetStateOnNavigation(
-  transform: Transform,
-  setSource: (source: TransformSource) => void,
-  setUiState: (uiState: QueryEditorUiState) => void,
-) {
-  const transformRef = useLatest(transform);
-  const setSourceRef = useLatest(setSource);
-  const setUiStateRef = useLatest(setUiState);
-
-  useLayoutEffect(() => {
-    setSourceRef.current(transformRef.current.source);
-    setUiStateRef.current(getInitialUiState());
-  }, [transform.id, transformRef, setSourceRef, setUiStateRef]);
 }

@@ -137,3 +137,9 @@ export function isSameSource(
   }
   return false;
 }
+
+export function isNotDraftSource(
+  source: DraftTransformSource,
+): source is TransformSource {
+  return source.type !== "python" || source["source-database"] != null;
+}
