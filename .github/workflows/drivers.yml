@@ -1244,6 +1244,8 @@ jobs:
           --name starburst \
           -p 8080:8080 \
           -e CATALOG_MANAGEMENT=dynamic \
+          -v ${{ github.workspace }}/modules/drivers/starburst/test/access-control.properties:/etc/trino/access-control.properties:ro \
+          -v ${{ github.workspace }}/modules/drivers/starburst/test/rules.json:/etc/trino/rules.json:ro \
           trinodb/trino:latest
         sleep 30
     - uses: ./.github/actions/await-port
