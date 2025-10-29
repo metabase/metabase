@@ -42,16 +42,16 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     outputs:
-      suite: ${{ steps.detect.outputs.name }}
+      suite: ${{ steps.detect.outputs.suite }}
     steps:
       - name: Detect suite from spec path
         id: detect
         run: |
           SPEC='${{ inputs.spec }}'
           if [[ "$SPEC" == e2e/test-component/scenarios/embedding-sdk/* ]]; then
-            echo "name=component" >> $GITHUB_OUTPUT
+            echo "suite=component" >> $GITHUB_OUTPUT
           else
-            echo "name=e2e" >> $GITHUB_OUTPUT
+            echo "suite=e2e" >> $GITHUB_OUTPUT
           fi
 
   workflow-summary:
