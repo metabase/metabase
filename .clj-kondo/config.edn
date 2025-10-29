@@ -553,6 +553,8 @@
    metabase.embedding.api.embed-test/with-temp-card                                                                          hooks.common/let-one-with-optional-value
    metabase.embedding.api.embed-test/with-temp-dashcard                                                                      hooks.common/let-one-with-optional-value
    metabase.legacy-mbql.schema.macros/defclause                                                                              hooks.metabase.legacy-mbql.schemas.macros/defclause
+   metabase.legacy-mbql.schema.macros/defclause*                                                                             hooks.metabase.legacy-mbql.schemas.macros/defclause*
+   metabase.legacy-mbql.schema.macros/one-of                                                                                 hooks.metabase.legacy-mbql.schemas.macros/one-of
    metabase.lib.schema.mbql-clause/define-catn-mbql-clause                                                                   hooks.metabase.lib.schema.mbql-clause/define-mbql-clause
    metabase.lib.schema.mbql-clause/define-mbql-clause                                                                        hooks.metabase.lib.schema.mbql-clause/define-mbql-clause
    metabase.lib.schema.mbql-clause/define-tuple-mbql-clause                                                                  hooks.metabase.lib.schema.mbql-clause/define-mbql-clause
