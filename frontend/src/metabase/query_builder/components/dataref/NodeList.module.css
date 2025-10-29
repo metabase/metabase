@@ -37,11 +37,26 @@
 }
 
 .NodeListItem {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+
   .NodeListItemLink {
     padding-top: 0;
     padding-bottom: 0;
     padding-right: 0;
+    flex: 1;
   }
+}
+
+.fieldCopyButton {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  margin-right: 0.5rem;
+}
+
+.NodeListItem:hover .fieldCopyButton {
+  opacity: 1;
 }
 
 .NodeListItemId {
