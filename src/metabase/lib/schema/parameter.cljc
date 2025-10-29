@@ -156,7 +156,7 @@
                                       (cond
                                         (= (namespace param-type) "type") (keyword (u/lower-case-en (name param-type)))
                                         (= param-type :category/=)        :category
-                                        :else param-type)))}]
+                                        :else                             param-type)))}]
         (keys types)))
 
 (mr/def ::widget-type
