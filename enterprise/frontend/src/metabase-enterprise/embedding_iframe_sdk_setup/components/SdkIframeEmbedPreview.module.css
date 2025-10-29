@@ -1,5 +1,5 @@
 .EmbedPreviewIframe {
-  box-shadow: 0 6px 24px 0 rgba(0, 0, 0, 0.15);
+  box-shadow: 0 6px 24px 0 rgba(0, 0, 0, 0.1);
 }
 
 .EmbedPreviewIframe > * {
