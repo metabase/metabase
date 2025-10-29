@@ -18,8 +18,8 @@ import { readFileSync } from "fs";
 import {
   MarkdownSerializer,
   defaultMarkdownSerializer,
-} from "prosemirror-markdown";
-import { Schema, Node as PMNode } from "prosemirror-model";
+} from "@tiptap/pm/markdown";
+import { Schema, Node as PMNode } from "@tiptap/pm/model";
 
 // Same schema as parse-markdown.mjs
 const schema = new Schema({
