@@ -514,11 +514,10 @@
   "Create a new `Card`. Card `type` can be `question`, `metric`, or `model`."
   [_route-params
    _query-params
-   {card-type :type, :as card} :- CardCreateSchema]
-  (let [[_ collection-id :as has-cid?] (find card :collection_id)
-        card (-> card
+   {card-type :type, collection-id :collection_id, :as card} :- CardCreateSchema]
+  (let [card (-> card
                  (update :dataset_query lib-be/normalize-query)
-                 (cond-> (and has-cid? (some? collection-id))
+                 (cond-> (some? collection-id)
                    (update :collection_id #(eid-translation/->id-or-404 :collection %))))
         query (:dataset_query card)]
     (check-if-card-can-be-saved query card-type)
