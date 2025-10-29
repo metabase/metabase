@@ -1,6 +1,7 @@
 (ns metabase-enterprise.metabot-v3.tools.field-stats
   (:require
    [clojure.set :as set]
+   [diehard.core :as dh]
    [medley.core :as m]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
@@ -8,7 +9,9 @@
    [metabase.query-processor :as qp]
    [metabase.sync.core :as sync]
    [metabase.warehouse-schema.models.field-values :as field-values]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (dev.failsafe TimeoutExceededException)))
 
 (defn- build-field-statistics [fvs fp limit]
   (merge
@@ -33,6 +36,34 @@
       (build-field-statistics fvs fp limit))
     (build-field-statistics nil fingerprint limit)))
 
+(defn- sample-values-rff
+  [_metadata]
+  (fn
+    ([] (transient []))
+    ([res] (persistent! res))
+    ([acc row] (conj! acc (first row)))))
+
+(def ^:private sample-values-timeout-ms
+  500)
+
+(defn- get-sample-values
+  [query col]
+  (let [sample-query (-> (lib/update-query-stage query -1 dissoc
+                                                 :aggregation :breakout :limit)
+                         (lib/breakout col)
+                         (lib/limit 10))]
+    (try
+      ;; TODO: failure callback?
+      (dh/with-timeout {:timeout-ms sample-values-timeout-ms
+                        :interrupt? true}
+        (qp/process-query sample-query sample-values-rff))
+      (catch TimeoutExceededException _
+        ;; tmp
+        (metabase.util.log/error "Sample values timeout exceeded"))
+      (catch Throwable _
+        ;; TODO: what to log for better debugging
+        (metabase.util.log/error "Failed to compute sample values")))))
+
 (defn- table-field-stats
   [table-id agent-field-id limit]
   (try
@@ -44,11 +75,7 @@
           {:structured-output (let [stats (field-statistics col limit)]
                                 (if (seq (:values stats))
                                   stats
-                                  (let [sample (some->> (-> query
-                                                            (lib/breakout col)
-                                                            (lib/limit 10))
-                                                        qp/process-query :data :rows (mapv first) not-empty)]
-                                    (m/assoc-some stats :values sample))))}
+                                  (m/assoc-some stats :values (get-sample-values query col))))}
           {:output (str "No field found with ID " agent-field-id)})
         {:output (str "No table found with ID " table-id)}))
     (catch Exception ex
@@ -65,12 +92,7 @@
           {:structured-output (let [stats (field-statistics col limit)]
                                 (if (seq (:values stats))
                                   stats
-                                  (let [sampled (some->> (-> (lib/update-query-stage query -1 dissoc
-                                                                                     :aggregation :breakout :limit)
-                                                             (lib/breakout col)
-                                                             (lib/limit 10))
-                                                         qp/process-query :data :rows (mapv first) not-empty)]
-                                    (m/assoc-some stats :values sampled))))}
+                                  (m/assoc-some stats :values (get-sample-values query col))))}
           {:output (str "No field found with ID " agent-field-id)})
         {:output (str "No " card-type " found with ID " card-id)}))
     (catch Exception ex
@@ -87,12 +109,7 @@
           {:structured-output (let [stats (field-statistics col limit)]
                                 (if (seq (:values stats))
                                   stats
-                                  (let [sample (some->> (-> (lib/update-query-stage query -1 dissoc
-                                                                                    :aggregation :breakout :limit)
-                                                            (lib/breakout col)
-                                                            (lib/limit 10))
-                                                        qp/process-query :data :rows (mapv first) not-empty)]
-                                    (m/assoc-some stats :values sample))))}
+                                  (m/assoc-some stats :values (get-sample-values query col))))}
           {:output (str "No field found with ID " agent-field-id)})
         {:output (str "No metric found with ID " metric-id)}))
     (catch Exception ex
