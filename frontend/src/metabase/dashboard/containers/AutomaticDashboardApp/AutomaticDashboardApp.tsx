@@ -169,8 +169,9 @@ const AutomaticDashboardAppInner = () => {
       )}
 
       <div
-        className={CS.relative}
-        style={{ paddingRight: hasSidebar ? SIDEBAR_W : undefined }}
+        className={cx(CS.relative, S.DashboardWrapper, {
+          [S.HasSidebar]: hasSidebar,
+        })}
       >
         <div className={cx(CS.wrapper, CS.pb4)}>
           {parameters && parameters.length > 0 && (
