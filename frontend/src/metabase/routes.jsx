@@ -41,7 +41,6 @@ import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_DOCUMENTS,
-  PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
   PLUGIN_LANDING_PAGE,
   PLUGIN_METABOT,
   PLUGIN_TABLE_EDITING,
@@ -164,11 +163,6 @@ export const getRoutes = (store) => {
           />
 
           {PLUGIN_DOCUMENTS.getRoutes()}
-
-          <Route
-            path="embed-js"
-            component={PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.SdkIframeEmbedSetup}
-          />
 
           <Route
             path="collection/entity/:entity_id(**)"
