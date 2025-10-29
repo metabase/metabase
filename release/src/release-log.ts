@@ -80,7 +80,7 @@ function buildTable(commits: CommitInfo[]) {
 }
 
 type PullRequest = {
-  url: string,
+  html_url: string,
   number: number,
   title: string,
   assignee: { login: string },
@@ -91,7 +91,7 @@ function createBackportTable(prs: PullRequest[]) {
   const rows = prs.map(pr => {
     const assignee = pr.assignee ? pr.assignee.login : '?';
     return `<tr>
-      <td><a href="${pr.url}" target="_blank">#${pr.number}</a></td>
+      <td><a href="${pr.html_url}" target="_blank">#${pr.number}</a></td>
       <td>${linkifyIssueNumbers(pr.title)}</td>
       <td>@${assignee}</td>
       <td>${new Date(pr.created_at).toLocaleString()}</td>
