@@ -103,8 +103,8 @@ export const MetabotPromptSuggestionPane = ({
         title={t`Prompt suggestions`}
         description={
           metabot.collection_id
-            ? t`When users open a new Metabot chat, we’ll randomly show them a few suggested prompts based on popular models and metrics in the collection you chose.`
-            : t`When users open a new Metabot chat, we’ll randomly show them a few suggested prompts based on popular models and metrics in your instance.`
+            ? t`When users open a new Metabot chat, we’ll show them a few suggested prompts based on popular models and metrics in the collection you chose.`
+            : t`When users open a new Metabot chat, we’ll show them a few suggested prompts based on popular models and metrics in your instance.`
         }
       />
       <Flex gap="md" align="center">
