@@ -135,7 +135,7 @@ export function TransformQueryPageBody({
       )}
       <LeaveRouteConfirmModal
         route={route}
-        isEnabled={isDirty && !isSaving && !isConfirmationShown}
+        isEnabled={isDirty && !isSaving && !isCheckingDependencies}
       />
     </AdminSettingsLayout>
   );
