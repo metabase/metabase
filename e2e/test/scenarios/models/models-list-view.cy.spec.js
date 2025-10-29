@@ -44,7 +44,7 @@ describe("scenarios > models list view", () => {
       cy.findByTestId("list-view").should("be.visible");
     });
 
-    it.only("should allow to customize list view", () => {
+    it("should allow to customize list view", () => {
       H.openQuestionActions();
 
       H.popover().findByTextEnsureVisible("Edit metadata").click();

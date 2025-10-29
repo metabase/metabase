@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { formatValue, formatNumber } from "metabase/lib/formatting";
+import { formatNumber, formatValue } from "metabase/lib/formatting";
 import { Badge, Box, Flex, Icon, Image, Stack, Text } from "metabase/ui";
 import { MiniBarCell } from "metabase/visualizations/components/TableInteractive/cells/MiniBarCell";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";

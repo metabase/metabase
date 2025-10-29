@@ -68,7 +68,7 @@ export function ListView({
       className={cx(styles.listViewContainer, className)}
       style={{ "--grid-columns": Math.max(rightColumns.length, 1) }}
     >
-      <Stack className={styles.listContainer}>
+      <Stack gap={0} className={styles.listContainer}>
         <div
           className={cx(styles.listHeader, {
             [styles.withIcon]: !!(entityIcon || imageColumn),
