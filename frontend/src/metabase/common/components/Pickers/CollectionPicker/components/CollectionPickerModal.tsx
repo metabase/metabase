@@ -166,9 +166,9 @@ export const CollectionPickerModal = ({
       displayName: models.some((model) => model !== "collection")
         ? t`Browse`
         : t`Collections`,
-      models,
+      models: models as CollectionPickerModel[],
       folderModels: ["collection" as const],
-      icon: "folder",
+      icon: "folder" as const,
       render: ({ onItemSelect }) => (
         <CollectionPicker
           initialValue={value}
