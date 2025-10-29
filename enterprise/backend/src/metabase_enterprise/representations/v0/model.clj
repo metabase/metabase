@@ -1,6 +1,7 @@
 (ns metabase-enterprise.representations.v0.model
   (:require
    [clojure.string :as str]
+   [flatland.ordered.map :refer [ordered-map]]
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.lookup :as lookup]
@@ -321,12 +322,13 @@
   (let [card-ref (v0-common/unref (v0-common/->ref (:id card) :model))
         columns (when-let [result-metadata (:result_metadata card)]
                   (seq (mapv extract-user-editable-column-metadata result-metadata)))]
-    (-> {:display_name (:name card)
-         :type (:type card)
-         :version :v0
-         :name card-ref
-         :entity-id (:entity_id card)
-         :description (:description card)}
+    (-> (ordered-map
+         {:name card-ref
+          :type (:type card)
+          :version :v0
+          :entity_id (:entity_id card)
+          :display_name (:name card)
+          :description (:description card)})
 
         (merge (v0-mbql/export-dataset-query (:dataset_query card)))
         (assoc :columns columns)
