@@ -142,4 +142,13 @@ export const navigateToGetCodeStep = (options: NavigateToStepOptions) => {
   });
 };
 
+export const completeWizard = (options: NavigateToStepOptions) => {
+  navigateToGetCodeStep(options);
+
+  cy.log("complete wizard");
+  getEmbedSidebar().within(() => {
+    cy.findByText("Done").click();
+  });
+};
+
 export const codeBlock = () => cy.get(".cm-content");
