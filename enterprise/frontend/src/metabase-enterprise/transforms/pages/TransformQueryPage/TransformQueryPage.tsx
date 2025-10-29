@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -16,6 +16,7 @@ import {
   useGetTransformQuery,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
+import { isSameSource } from "metabase-enterprise/transforms/utils";
 import type { Transform } from "metabase-types/api";
 
 import { TransformEditor } from "../../components/TransformEditor";
@@ -64,6 +65,11 @@ export function TransformQueryPageBody({
   const dispatch = useDispatch();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
+  const isDirty = useMemo(
+    () => !isSameSource(source, transform.source),
+    [source, transform.source],
+  );
+
   const {
     checkData,
     isCheckingDependencies,
@@ -95,7 +101,7 @@ export function TransformQueryPageBody({
   };
 
   return (
-    <AdminSettingsLayout fullWidth key={transform.id}>
+    <AdminSettingsLayout fullWidth>
       {source.type === "python" ? null : (
         <TransformEditor
           name={transform.name}
@@ -103,7 +109,7 @@ export function TransformQueryPageBody({
           proposedSource={undefined}
           uiState={uiState}
           isNew={false}
-          isDirty={false}
+          isDirty={isDirty}
           isSaving={isSaving || isCheckingDependencies}
           onChangeSource={setSource}
           onChangeUiState={setUiState}
@@ -123,7 +129,7 @@ export function TransformQueryPageBody({
       )}
       <LeaveRouteConfirmModal
         route={route}
-        isEnabled={!isSaving && !isConfirmationShown}
+        isEnabled={isDirty && !isSaving && !isConfirmationShown}
       />
     </AdminSettingsLayout>
   );
