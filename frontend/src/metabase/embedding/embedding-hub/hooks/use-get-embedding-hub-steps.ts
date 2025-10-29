@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
@@ -10,6 +10,18 @@ import type { EmbeddingHubStep } from "../types";
 export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
   const dispatch = useDispatch();
 
+  const openEmbedModal = useCallback(
+    (props: Pick<SdkIframeEmbedSetupModalProps, "initialState">) => {
+      dispatch(
+        setOpenModalWithProps({
+          id: "embed",
+          props,
+        }),
+      );
+    },
+    [dispatch],
+  );
+
   return useMemo(() => {
     const TEST_EMBED: EmbeddingHubStep = {
       id: "create-test-embed",
@@ -20,19 +32,9 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
           title: t`Get embed snippet`,
           description: t`Embed a dashboard, question, the query builder or the collection browser. Configure the experience and customize the appearance.`,
           onClick: () => {
-            const modalProps: Pick<
-              SdkIframeEmbedSetupModalProps,
-              "initialState"
-            > = {
+            openEmbedModal({
               initialState: { useExistingUserSession: true },
-            };
-
-            dispatch(
-              setOpenModalWithProps({
-                id: "embed",
-                props: modalProps,
-              }),
-            );
+            });
           },
           variant: "outline",
         },
@@ -127,19 +129,9 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
           title: t`Embed in production`,
           description: t`Deploy your embedded dashboard to a production environment and share with your users.`,
           onClick: () => {
-            const modalProps: Pick<
-              SdkIframeEmbedSetupModalProps,
-              "initialState"
-            > = {
+            openEmbedModal({
               initialState: { useExistingUserSession: false },
-            };
-
-            dispatch(
-              setOpenModalWithProps({
-                id: "embed",
-                props: modalProps,
-              }),
-            );
+            });
           },
           variant: "outline",
         },
@@ -162,5 +154,5 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
       SECURE_EMBEDS,
       EMBED_PRODUCTION,
     ];
-  }, [dispatch]);
+  }, [openEmbedModal]);
 };
