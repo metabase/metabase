@@ -38,8 +38,8 @@
         (testing "has required fields"
           (is (= :document (:type exported)))
           (is (= :v0 (:version exported)))
-          (is (= "Test Document" (:name exported)))
-          (is (some? (:ref exported)))
+          (is (= "Test Document" (:display_name exported)))
+          (is (some? (:name exported)))
           (is (some? (:entity-id exported)))
           (is (= "application/json+vnd.prose-mirror" (:content_type exported))))))))
 
@@ -76,7 +76,7 @@
             rep2 (rep-yaml/parse-string yaml2)]
 
         (testing "roundtrip preserves document name"
-          (is (= "My Document" (:name rep2))))
+          (is (= "My Document" (:display_name rep2))))
 
         (testing "roundtrip preserves document type"
           (is (= "document" (name (:type rep2)))))))))

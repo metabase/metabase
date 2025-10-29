@@ -1,7 +1,7 @@
 type: model
 version: v0
-ref: product-performance
-name: Product Performance Model
+name: product-performance
+display_name: Product Performance Model
 description: Product analytics model showing sales performance, inventory metrics, and ratings
 database: Sample Database
 query: |

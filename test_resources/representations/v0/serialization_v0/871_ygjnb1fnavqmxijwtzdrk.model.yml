@@ -1,6 +1,6 @@
-name: Sales Data
+display_name: Sales Data
 type: model
-ref: model-871
+name: model-871
 entity-id: YGJnB1FNaVqmXiJwtzDrK
 mbql_query: ref:mbql-model-871
 database: ref:database-1

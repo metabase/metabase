@@ -32,13 +32,13 @@
           :description "Version of this document schema"}
    :v0])
 
-(mr/def ::ref
+(mr/def ::name
   [:and
    {:description "Unique reference identifier for the document, used for cross-references"}
    ::lib.schema.common/non-blank-string
    [:re #"^[a-z0-9][a-z0-9-_]*$"]])
 
-(mr/def ::name
+(mr/def ::display-name
   [:and
    {:description "Human-readable name for the document"}
    ::lib.schema.common/non-blank-string])
@@ -68,8 +68,8 @@
    {:description "v0 schema for human-writable document representation"}
    [:type ::type]
    [:version ::version]
-   [:ref ::ref]
    [:name ::name]
+   [:display_name ::display-name]
    [:content_type ::content-type]
    [:content ::content]
    [:collection {:optional true} ::collection]])
@@ -102,8 +102,8 @@
     (str/trim (:out result))))
 
 (defmethod import/yaml->toucan [:v0 :document]
-  [{document-name :name
-    :keys [content _content_type]}
+  [{document-name :display_name
+    :keys [content content_type]}
    ref-index]
   (let [yaml-content content
         yaml-content (v0-common/replace-refs-everywhere yaml-content ref-index)]
@@ -120,7 +120,7 @@
                    (t2/select-one :model/Document :entity_id entity-id))]
     (if existing
       (do
-        (log/info "Updating existing document" (:name document-data) "with ref" (:ref representation))
+        (log/info "Updating existing document" (:name document-data) "with name" (:name representation))
         (t2/update! :model/Document (:id existing) (dissoc document-data :entity_id))
         (t2/select-one :model/Document :id (:id existing)))
       (do
@@ -175,10 +175,10 @@
 
                         :else
                         doc))]
-    (cond-> {:name (:name document)
+    (cond-> {:display_name (:name document)
              :type :document
              :version :v0
-             :ref document-ref
+             :name document-ref
              :entity-id (:entity_id document)
              :content doc-content
              ::v0-common/delete-before-output doc-content

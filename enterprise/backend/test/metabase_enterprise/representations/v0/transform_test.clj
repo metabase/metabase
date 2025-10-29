@@ -74,7 +74,7 @@
             (let [edn (rep/export persisted)
                   yaml (yaml/generate-string edn)
                   rep2 (yaml/parse-string yaml)]
-              (is (=? (dissoc rep :ref :database) rep2))))))))
+              (is (=? (dissoc rep :name :database) rep2))))))))
 
 ;; TODO: update with latest transform schema in db
 #_(deftest export-import
@@ -100,7 +100,7 @@
                 yaml (yaml/generate-string edn)
                 rep2 (yaml/parse-string yaml)
                 rep2 (rep/normalize-representation rep2)]
-            (is (=? (dissoc rep :ref) rep2)))))))
+            (is (=? (dissoc rep :name) rep2)))))))
 
 (deftest representation-type-test
   (doseq [entity (t2/select :model/Transform)]

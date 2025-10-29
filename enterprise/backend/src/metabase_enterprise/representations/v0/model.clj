@@ -183,13 +183,13 @@
           :description "Version of this model schema"}
    :v0])
 
-(mr/def ::ref
+(mr/def ::name
   [:and
    {:description "Unique reference identifier for the model, used for cross-references"}
    ::lib.schema.common/non-blank-string
    [:re #"^[a-z0-9][a-z0-9-_]*$"]])
 
-(mr/def ::name
+(mr/def ::display-name
   [:and
    {:description "Human-readable name for the model"}
    ::lib.schema.common/non-blank-string])
@@ -222,8 +222,8 @@
     {:description "v0 schema for human-writable model representation"}
     [:type ::type]
     [:version ::version]
-    [:ref ::ref]
-    [:name {:optional true} ::name]
+    [:name ::name]
+    [:display_name {:optional true} ::display-name]
     [:description {:optional true} ::description]
     [:database ::database]
     [:query {:optional true} ::query]
@@ -248,8 +248,8 @@
   :model/Card)
 
 (defmethod import/yaml->toucan [:v0 :model]
-  [{model-name :name
-    :keys [_type _ref description database collection columns] :as representation}
+  [{model-name :display_name
+    :keys [_type _name description database collection columns] :as representation}
    ref-index]
   (let [database-id (lookup/lookup-database-id ref-index database)
         ;; TODO: once we've cleaned up mbql stuff, this explicit lookup should be superfluous.
@@ -263,15 +263,15 @@
         ;; 4. Pass the result of that into `lib/returned-columns`
         ;; No idea which is better.
         inferred-metadata (card.metadata/infer-metadata dataset-query)]
-    (-> {:name                   model-name
-         :description            description
-         :dataset_query          dataset-query
-         :database_id            database-id
-         :query_type             (if (= (name (:type dataset-query)) "native") :native :query)
-         :type                   :model
+    (-> {:name model-name
+         :description description
+         :dataset_query dataset-query
+         :database_id database-id
+         :query_type (if (= (name (:type dataset-query)) "native") :native :query)
+         :type :model
          :result_metadata (when columns
                             (columns->result-metadata columns inferred-metadata))
-         :collection_id   (v0-common/find-collection-id collection)}
+         :collection_id (v0-common/find-collection-id collection)}
         u/remove-nils)))
 
 (defmethod import/persist! [:v0 :model]
@@ -283,7 +283,7 @@
                    (t2/select-one :model/Card :entity_id entity-id))]
     (if existing
       (do
-        (log/info "Updating existing model" (:name model-data) "with ref" (:ref representation))
+        (log/info "Updating existing model" (:name model-data) "with name" (:name representation))
         (t2/update! :model/Card (:id existing) (dissoc model-data :entity_id))
         (t2/select-one :model/Card :id (:id existing)))
       (do
@@ -319,12 +319,12 @@
 
 (defmethod export/export-entity :model [card]
   (let [card-ref (v0-common/unref (v0-common/->ref (:id card) :model))
-        columns  (when-let [result-metadata (:result_metadata card)]
-                   (seq (mapv extract-user-editable-column-metadata result-metadata)))]
-    (-> {:name (:name card)
+        columns (when-let [result-metadata (:result_metadata card)]
+                  (seq (mapv extract-user-editable-column-metadata result-metadata)))]
+    (-> {:display_name (:name card)
          :type (:type card)
          :version :v0
-         :ref card-ref
+         :name card-ref
          :entity-id (:entity_id card)
          :description (:description card)}
 

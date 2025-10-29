@@ -1,7 +1,7 @@
-name: This is my document
+display_name: This is my document
 type: document
 version: v0
-ref: document-1
+name: document-1
 entity-id: -refHqV7RAXzw6ji-POfh
 content:
   type: doc

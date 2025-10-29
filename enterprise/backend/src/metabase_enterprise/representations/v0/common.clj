@@ -41,7 +41,7 @@
   ;; Behold the beauty of this mechanism!
   ;; A bit hacky.
   ;; TODO: raw `:collection` key could be fragile; use name?
-  (entity-id (:ref representation) (:collection representation)))
+  (entity-id (:name representation) (:collection representation)))
 
 (defn add-entity-id-from-ref-hash
   "Add a stable entity-id to a representation based on its ref and collection ref."

@@ -1,7 +1,7 @@
 type: model
 version: v0
-ref: sales-data
-name: Sales Data
+name: sales-data
+display_name: Sales Data
 description: Monthly sales analysis with product categories and financial metrics
 database: Sample Database
 mbql_query:

@@ -32,13 +32,13 @@
           :description "Version of this snippet schema"}
    :v0])
 
-(mr/def ::ref
+(mr/def ::name
   [:and
    {:description "Unique reference identifier for the snippet, used for cross-references"}
    ::lib.schema.common/non-blank-string
    [:re #"^[a-z0-9][a-z0-9-_]*$"]])
 
-(mr/def ::name
+(mr/def ::display-name
   [:and
    {:description "Globally unique name for the snippet, used in {{snippet:name}} references"}
    ::lib.schema.common/non-blank-string])
@@ -65,8 +65,8 @@
    {:description "v0 schema for human-writable SQL snippet representation"}
    [:type ::type]
    [:version ::version]
-   [:ref ::ref]
    [:name ::name]
+   [:display_name ::display-name]
    [:description [:maybe ::description]]
    [:sql ::sql]
    [:collection {:optional true} ::collection]
@@ -79,9 +79,9 @@
   :model/NativeQuerySnippet)
 
 (defmethod import/yaml->toucan [:v0 :snippet]
-  [{:keys [_ref name description sql collection entity-id] :as representation}
+  [{:keys [_name display_name description sql collection entity-id] :as representation}
    _ref-index]
-  (-> {:name name
+  (-> {:name display_name
        :description description
        :content sql
        :collection_id (v0-common/find-collection-id collection)
@@ -96,7 +96,7 @@
         existing (when entity-id (t2/select-one :model/NativeQuerySnippet :entity_id entity-id))]
     (if existing
       (do
-        (log/info "Updating existing snippet" (:name snippet-data) "with ref" (:ref representation))
+        (log/info "Updating existing snippet" (:name snippet-data) "with name" (:name representation))
         (t2/update! :model/NativeQuerySnippet (:id existing) (dissoc snippet-data :entity_id))
         (t2/select-one :model/NativeQuerySnippet :id (:id existing)))
       (do
@@ -118,10 +118,10 @@
                              (filter (fn [[_ v]] (not= (:type v) :text)))
                              (map (fn [[k v]] [k (template-tag-ref v)])))
                             (:template_tags snippet))]
-    {:ref snippet-ref
+    {:name snippet-ref
      :type :snippet
      :version :v0
-     :name (:name snippet)
+     :display_name (:name snippet)
      :description (:description snippet)
      :sql (:content snippet) ;; todo: change this :sql
      :template_tags template-tags}))

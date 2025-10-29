@@ -72,8 +72,8 @@
                 rep2 (yaml/parse-string yaml)
                 rep2 (rep/normalize-representation rep2)]
           ;; For models with MBQL, the mbql_query ref will differ due to new IDs
-          ;; So we compare structure excluding :ref and :mbql_query
-            (is (=? (dissoc card-rep :ref :mbql_query) (dissoc rep2 :ref :mbql_query))))))))
+          ;; So we compare structure excluding :name and :mbql_query
+            (is (=? (dissoc card-rep :name :mbql_query) (dissoc rep2 :name :mbql_query))))))))
 
 (deftest export-mbql-model-includes-columns-test
   (testing "MBQL models export user-editable column metadata"
@@ -109,12 +109,12 @@
                              :semantic_type :type/Currency
                              :settings {:text_align "right" :currency "USD"}}]
               model-rep {:type :v0/model
-                         :ref "test-model"
-                         :name "Test Model"
+                         :name "test-model"
+                         :display_name "Test Model"
                          :database (str "ref:database-" (mt/id))
-                         :mbql_query (str "ref:" (:ref mbql-data))
+                         :mbql_query (str "ref:" (:name mbql-data))
                          :columns user-columns}
-              ref-index {(:ref mbql-data) mbql-data
+              ref-index {(:name mbql-data) mbql-data
                          (str "database-" (mt/id)) (t2/select-one :model/Database (mt/id))}
               imported (import/yaml->toucan model-rep ref-index)
               imported-metadata (:result_metadata imported)
@@ -154,7 +154,7 @@
                                                         :description "Total before tax")
                                                  col))
                                              cols))))
-              ref-index-1 {(:ref mbql-data-1) mbql-data-1
+              ref-index-1 {(:name mbql-data-1) mbql-data-1
                            (v0-common/unref (:database edited-rep)) (t2/select-one :model/Database (mt/id))}
               imported (import/yaml->toucan edited-rep ref-index-1)
               persisted (binding [api/*current-user-id* (mt/user->id :crowberto)]

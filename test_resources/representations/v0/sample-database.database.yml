@@ -1,6 +1,6 @@
 type: database
-ref: sample-db
-name: Sample Database
+name: sample-db
+display_name: Sample Database
 engine: postgres
 description: Main application database with orders and customer data
 connection_details:

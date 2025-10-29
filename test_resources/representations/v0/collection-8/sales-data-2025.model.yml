@@ -1,6 +1,6 @@
 type: v0/model
-ref: sales-data-2025
-name: Sales Data 2025
+name: sales-data-2025
+display_name: Sales Data 2025
 description: Monthly sales analysis for 2025 with product categories and financial metrics
 database: Sample Database
 mbql_query:

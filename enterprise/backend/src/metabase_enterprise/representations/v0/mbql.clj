@@ -103,7 +103,7 @@
   "Take a card ID and turn it into a ref to the card."
   [id]
   (let [rep (export/export-entity (t2/select-one :model/Card :id id))]
-    (str "ref:" (:ref rep))))
+    (str "ref:" (:name rep))))
 
 (defn- card-ref
   "Convert a card reference string (e.g. 'card__123') to a representation ref."

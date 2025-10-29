@@ -33,13 +33,13 @@
           :description "Version of this database schema"}
    :v0])
 
-(mr/def ::ref
+(mr/def ::name
   [:and
    {:description "Unique reference identifier for the database, used for cross-references"}
    ::lib.schema.common/non-blank-string
    [:re #"^[a-z0-9][a-z0-9-_]*$"]])
 
-(mr/def ::name
+(mr/def ::display-name
   [:and
    {:description "Human-readable name for the database"}
    ::lib.schema.common/non-blank-string])
@@ -116,8 +116,8 @@
    {:description "v0 schema for human-writable database representation"}
    [:type ::type]
    [:version ::version]
-   [:ref ::ref]
    [:name ::name]
+   [:display_name ::display-name]
    [:engine ::engine]
    [:description {:optional true} ::description]
    [:connection_details :any]
@@ -130,8 +130,9 @@
 (defmethod import/yaml->toucan [:v0 :database]
   [representation _ref-index]
   (-> representation
-      (set/rename-keys {:connection_details :details})
-      (select-keys [:name :engine :description :details :schemas :ref])
+      (set/rename-keys {:connection_details :details
+                        :display_name :name})
+      (select-keys [:name :engine :description :details :schemas])
       (v0-common/hydrate-env-vars)
       (u/remove-nils)))
 
@@ -142,7 +143,7 @@
                                       :name (:name representation)
                                       :engine (:engine representation))]
       (do
-        (log/info "Found existing database" (:name representation) "with ref" (:ref representation))
+        (log/info "Found existing database" (:name representation) "with name" (:name representation))
         existing)
       (throw (ex-info (str "Could not match database by name: " (:name representation)
                            " and engine: " (:engine representation))
@@ -210,8 +211,8 @@
   (let [ref (v0-common/unref (v0-common/->ref (:id database) :database))]
     (-> {:type :database
          :version :v0
-         :ref ref
-         :name (:name database)
+         :name ref
+         :display_name (:name database)
          :engine (:engine database)
          :description (not-empty (:description database))
          :connection_details (some-> (:details database)

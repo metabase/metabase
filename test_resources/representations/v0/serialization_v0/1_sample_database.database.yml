@@ -1,6 +1,6 @@
 type: v0/database
-ref: database-1
-name: Sample Database
+name: database-1
+display_name: Sample Database
 engine: h2
 description: Some example data for you to play around with.
 connection_details:

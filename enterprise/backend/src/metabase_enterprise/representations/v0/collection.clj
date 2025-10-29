@@ -29,13 +29,13 @@
           :description "Version of this collection schema"}
    :v0])
 
-(mr/def ::ref
+(mr/def ::name
   [:and
    {:description "Unique reference identifier for the collection, used for cross-references"}
    ::lib.schema.common/non-blank-string
    [:re #"^[a-z0-9][a-z0-9-_]*$"]])
 
-(mr/def ::name
+(mr/def ::display-name
   [:and
    {:description "Human-readable name for the collection"}
    ::lib.schema.common/non-blank-string])
@@ -54,8 +54,8 @@
                   Every representations directory MUST have a collection.yml file."}
    [:type ::type]
    [:version ::version]
-   [:ref ::ref]
-   [:name {:optional true} [:maybe ::name]]
+   [:name ::name]
+   [:display_name {:optional true} [:maybe ::display-name]]
    [:description {:optional true} [:maybe ::description]]
    [:chilren {:optional true} [:maybe [:vector :string]]]])
 
@@ -79,7 +79,7 @@
   :model/Collection)
 
 (defmethod import/yaml->toucan [:v0 :collection]
-  [{collection-name :name
+  [{collection-name :display_name
     :keys [description collection] :as _representation}
    _ref-index]
   (let [parent-id (when collection
@@ -120,8 +120,8 @@
 (defmethod export/export-entity :collection [collection]
   (-> {:type :collection
        :version :v0
-       :ref (format "%s-%s" "collection" (:id collection))
-       :name (:name collection)
+       :name (format "%s-%s" "collection" (:id collection))
+       :display_name (:name collection)
        :description (:description collection)
        :children (children collection)}
       u/remove-nils))

@@ -1,6 +1,6 @@
-name: Orders + People
+display_name: Orders + People
 type: model
-ref: model-1
+name: model-1
 entity-id: _GiVL6zYmsnBb1oqLCp4u
 description: Sample orders joined with products
 mbql_query:

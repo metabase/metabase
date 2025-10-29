@@ -1,6 +1,6 @@
-name: DJWCFCOREPMVWZWXSQLS
+display_name: DJWCFCOREPMVWZWXSQLS
 type: model
-ref: model-119
+name: model-119
 entity-id: qMQj_zy85cRhyX33xEfaZ
 query: select 1
 database: ref:database-3

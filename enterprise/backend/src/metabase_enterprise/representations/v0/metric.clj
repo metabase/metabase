@@ -160,13 +160,13 @@
           :description "Version of this metric schema"}
    :v0])
 
-(mr/def ::ref
+(mr/def ::name
   [:and
    {:description "Unique reference identifier for the metric, used for cross-references"}
    ::lib.schema.common/non-blank-string
    [:re #"^[a-z0-9][a-z0-9-_]*$"]])
 
-(mr/def ::name
+(mr/def ::display-name
   [:and
    {:description "Human-readable name for the metric"}
    ::lib.schema.common/non-blank-string])
@@ -199,8 +199,8 @@
     {:description "v0 schema for human-writable metric representation"}
     [:type ::type]
     [:version ::version]
-    [:ref ::ref]
-    [:name {:optional true} ::name]
+    [:name ::name]
+    [:display_name {:optional true} ::display-name]
     [:description {:optional true} ::description]
     [:database ::database]
     [:query {:optional true} ::query]
@@ -218,8 +218,8 @@
 ;;; ------------------------------------ Public API ------------------------------------
 
 (defmethod import/yaml->toucan [:v0 :metric]
-  [{metric-name :name
-    :keys [description database collection columns] :as representation}
+  [{metric-name :display_name
+    :keys [_name description database collection columns] :as representation}
    ref-index]
   (let [database-id (lookup/lookup-database-id ref-index database)
         ;; TODO: once we've cleaned up mbql stuff, this explicit lookup should be superfluous.
@@ -247,7 +247,7 @@
                    (t2/select-one :model/Card :entity_id entity-id))]
     (if existing
       (do
-        (log/info "Updating existing metric" (:name metric-data) "with ref" (:ref representation))
+        (log/info "Updating existing metric" (:name metric-data) "with name" (:name representation))
         (t2/update! :model/Card (:id existing) (dissoc metric-data :entity_id))
         (t2/select-one :model/Card :id (:id existing)))
       (do
@@ -261,10 +261,10 @@
 ;;; -- Export --
 
 (defmethod export/export-entity :metric [card]
-  (-> {:name (:name card)
+  (-> {:display_name (:name card)
        :type (:type card)
        :version :v0
-       :ref (v0-common/unref (v0-common/->ref (:id card) :metric))
+       :name (v0-common/unref (v0-common/->ref (:id card) :metric))
        :description (:description card)
        :columns (:result_metadata card)}
 

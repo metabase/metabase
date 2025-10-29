@@ -1,6 +1,6 @@
 type: v0/model
-ref: trainers-facts
-name: Trainers Facts Model
+name: trainers-facts
+display_name: Trainers Facts Model
 description: Aggregated trainer statistics by subtypes
 database: Postgres
 mbql_query:

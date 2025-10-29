@@ -29,13 +29,13 @@
           :description "Version of this question schema"}
    :v0])
 
-(mr/def ::ref
+(mr/def ::name
   [:and
    {:description "Unique reference identifier for the card, used for cross-references"}
    ::lib.schema.common/non-blank-string
    [:re #"^[a-z0-9][a-z0-9-_]*$"]])
 
-(mr/def ::name
+(mr/def ::display-name
   [:and
    {:description "Human-readable name for the card"}
    ::lib.schema.common/non-blank-string])
@@ -70,8 +70,8 @@
     {:description "v0 schema for human-writable question representation"}
     [:type ::type]
     [:version ::version]
-    [:ref ::ref]
-    [:name {:optional true} ::name]
+    [:name ::name]
+    [:display_name {:optional true} ::display-name]
     [:description {:optional true} ::description]
     [:database ::database]
     [:query {:optional true} ::query]
@@ -90,7 +90,7 @@
         ;; Just pull it off of the dataset-query
         query (-> (assoc representation :database database-id)
                   (v0-mbql/import-dataset-query ref-index))]
-    (-> {:name (:name representation)
+    (-> {:name (:display_name representation)
          :description (:description representation)
          :display (:display representation)
          :dataset_query query
@@ -110,7 +110,7 @@
                    (t2/select-one :model/Card :entity_id entity-id))]
     (if existing
       (do
-        (log/info "Updating existing question" (:name question-data) "with ref" (:ref representation))
+        (log/info "Updating existing question" (:name question-data) "with ref" (:name representation))
         (t2/update! :model/Card (:id existing) (dissoc question-data :entity_id))
         (t2/select-one :model/Card :id (:id existing)))
       (do
@@ -121,12 +121,12 @@
 
 (defmethod export/export-entity :question [card]
   (let [card-ref (v0-common/unref (v0-common/->ref (:id card) :question))]
-    (-> {:name        (:name card)
-         :type        (:type card)
-         :version     :v0
-         :ref         card-ref
-         :entity-id   (:entity_id card)
-         :description (:description card)}
+    (-> {:display_name (:name card)
+         :type         (:type card)
+         :version      :v0
+         :name         card-ref
+         :entity-id    (:entity_id card)
+         :description  (:description card)}
 
         (merge (v0-mbql/export-dataset-query (:dataset_query card)))
         u/remove-nils)))

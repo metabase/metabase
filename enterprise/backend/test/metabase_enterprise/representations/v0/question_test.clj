@@ -113,7 +113,7 @@
                 yaml (rep-yaml/generate-string edn)
                 rep2 (rep-yaml/parse-string yaml)
                 rep2 (rep/normalize-representation rep2)]
-            (is (=? (dissoc card-rep :ref :entity-id) rep2))))))))
+            (is (=? (dissoc card-rep :name :entity-id) rep2))))))))
 
 (deftest question->card
   (is (= :model/Card (v0-common/type->model :question))))

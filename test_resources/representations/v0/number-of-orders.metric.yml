@@ -1,7 +1,7 @@
-name: Number of Orders
+display_name: Number of Orders
 type: metric
 version: v0
-ref: metric-19
+name: metric-19
 description: Canonical metric for number of orders placed
 mbql_query:
   aggregation:

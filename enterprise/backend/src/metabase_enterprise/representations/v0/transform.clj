@@ -31,11 +31,10 @@
           :description "Version of this transform schema"}
    :v0])
 
-(mr/def ::ref
+(mr/def ::display-name
   [:and
-   {:description "Unique reference identifier for the transform, used for cross-references"}
-   ::lib.schema.common/non-blank-string
-   [:re #"^[a-z0-9][a-z0-9-_]*$"]])
+   {:description "Human-readable name for the transform"}
+   ::lib.schema.common/non-blank-string])
 
 (mr/def ::name
   [:and
@@ -97,8 +96,8 @@
     {:description "v0 schema for human-writable transform representation"}
     [:type ::type]
     [:version ::version]
-    [:ref ::ref]
-    [:name {:optional true} ::name]
+    [:name ::name]
+    [:display_name {:optional true} ::display-name]
     [:description {:optional true} ::description]
     [:database ::database]
     [:source {:optional true} ::source]
@@ -124,12 +123,12 @@
                         (v0-common/lookup-entity database)
                         (v0-common/ensure-correct-type :database)
                         (or (lookup/lookup-by-name :database database))
-                        (or (lookup/lookup-by-id   :database database))
+                        (or (lookup/lookup-by-id :database database))
                         :id
                         (v0-common/ensure-not-nil))
         query (v0-mbql/import-dataset-query representation ref-index)]
     (-> {:database database-id
-         :name (:name representation)
+         :name (:display_name representation)
          :description (:description representation)
          :source {:type "query"
                   :query query}
@@ -158,7 +157,7 @@
                    (t2/select-one :model/Transform :entity_id entity-id))]
     (if existing
       (do
-        (log/info "Updating existing transform" (:name transform-data) "with ref" (:ref representation))
+        (log/info "Updating existing transform" (:name transform-data) "with name" (:name representation))
         (t2/update! :model/Transform (:id existing) (dissoc transform-data :entity_id))
         (t2/delete! :model/TransformTransformTag :transform_id (:id existing))
         (set-up-tags (:id existing) (:tags representation))
@@ -173,10 +172,10 @@
 
 (defmethod export/export-entity :transform [transform]
   (let [query (v0-mbql/patch-refs-for-export (-> transform :source :query))]
-    (cond-> {:name (:name transform)
+    (cond-> {:display_name (:name transform)
              :type :transform
              :version :v0
-             :ref (v0-common/unref (v0-common/->ref (:id transform) :transform))
+             :name (v0-common/unref (v0-common/->ref (:id transform) :transform))
              :description (:description transform)
              :entity_id (:entity_id transform)
              :tags (:tags transform)}

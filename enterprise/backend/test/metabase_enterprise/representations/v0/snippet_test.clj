@@ -27,10 +27,10 @@
                               (rep-t2/with-toucan-defaults :model/NativeQuerySnippet))
             _ (t2/delete! :model/NativeQuerySnippet :id snippet-id)
             persisted-snippet (import/persist! representation nil)]
-        (is (= {:ref (str "snippet-" snippet-id),
+        (is (= {:name (str "snippet-" snippet-id),
                 :type :snippet,
                 :version :v0,
-                :name name,
+                :display_name name,
                 :description description,
                 :sql content,
                 :template_tags {}}
@@ -73,10 +73,10 @@
                                   (rep-t2/with-toucan-defaults :model/NativeQuerySnippet))
                 _ (t2/delete! :model/NativeQuerySnippet :id snippet-id)
                 persisted-snippet (import/persist! representation nil)]
-            (is (= {:ref (str "snippet-" snippet-id),
+            (is (= {:name (str "snippet-" snippet-id),
                     :type :snippet,
                     :version :v0,
-                    :name "foo snippet",
+                    :display_name "foo snippet",
                     :description "a test snippet",
                     :sql (str "select * from {{ #" card-id "-card-one }} where id = 1"),
                     :template_tags {(str "#" card-id "-card-one") (str "ref:card-" card-id)}}
@@ -117,10 +117,10 @@
                                    (rep-t2/with-toucan-defaults :model/NativeQuerySnippet))
                  _ (t2/delete! :model/NativeQuerySnippet :id snippet-id)
                  persisted-snippet (import/persist! representation nil)]
-             (is (= {:ref (str "snippet-" snippet-id),
+             (is (= {:name (str "snippet-" snippet-id),
                      :type :snippet,
                      :version :v0,
-                     :name "foo snippet",
+                     :display_name "foo snippet",
                      :description "a test snippet",
                      :sql "foo = 1 and {{ snippet: bar snippet}}",
                      :template_tags {"snippet: bar snippet" (str "ref:snippet-" bar-snippet-id)}}
@@ -167,10 +167,10 @@
                                      (rep-t2/with-toucan-defaults :model/NativeQuerySnippet))
                    _ (t2/delete! :model/NativeQuerySnippet :id snippet-id)
                    persisted-snippet (import/persist! representation nil)]
-               (is (= {:ref (str "snippet-" snippet-id),
+               (is (= {:name (str "snippet-" snippet-id),
                        :type :snippet,
                        :version :v0,
-                       :name "foo snippet",
+                       :display_name "foo snippet",
                        :description "a test snippet",
                        :sql (str "foo = {{ val }} and {{ snippet: bar snippet}} and (select id from {{ #" card-id "-card-one }} where id = 1)"),
                        :template_tags {(str "#" card-id "-card-one") (str "ref:card-" card-id)

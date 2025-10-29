@@ -30,7 +30,7 @@
             rep2 (rep-yaml/parse-string yaml)
 
             rep2 (rep/normalize-representation rep2)]
-        (is (=? (dissoc rep :ref) rep2)))))
+        (is (=? (dissoc rep :name) rep2)))))
 
   (testing "Testing export then import roundtrip, import doesn't change details"
     (mt/with-temp [:model/Database database {:engine :postgres
