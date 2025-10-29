@@ -25,7 +25,7 @@ export function EditorHeader({
   onSave,
   onCancel,
 }: EditorHeaderProps) {
-  const canSave = (isNew || isDirty) && !isSaving;
+  const canSave = (isNew || isDirty) && !isSaving && validationResult.isValid;
 
   return (
     <EditBar

@@ -11,7 +11,10 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import {
+  PLUGIN_DEPENDENCIES,
+  PLUGIN_TRANSFORMS_PYTHON,
+} from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import {
   useGetTransformQuery,
@@ -119,7 +122,23 @@ export function TransformQueryPageBody({
 
   return (
     <AdminSettingsLayout fullWidth>
-      {source.type === "python" ? null : (
+      {source.type === "python" ? (
+        <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
+          name={transform.name}
+          source={source}
+          proposedSource={
+            proposedSource?.type === "python" ? proposedSource : undefined
+          }
+          isNew={false}
+          isDirty={isDirty}
+          isSaving={isSaving || isCheckingDependencies}
+          onChangeSource={setSource}
+          onSave={handleSave}
+          onCancel={handleCancel}
+          onAcceptProposed={acceptProposed}
+          onRejectProposed={rejectProposed}
+        />
+      ) : (
         <TransformEditor
           name={transform.name}
           source={source}

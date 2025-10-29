@@ -81,6 +81,7 @@ import type {
   ModelCacheRefreshStatus,
   ParameterId,
   Pulse,
+  PythonTransformSourceDraft,
   Revision,
   SearchModel,
   Series,
@@ -920,12 +921,27 @@ export const PLUGIN_REMOTE_SYNC: {
   }),
 };
 
+export type PythonTransformEditorProps = {
+  name?: string;
+  source: PythonTransformSourceDraft;
+  proposedSource?: PythonTransformSourceDraft;
+  isNew: boolean;
+  isDirty: boolean;
+  isSaving: boolean;
+  onChangeSource: (source: PythonTransformSourceDraft) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  onAcceptProposed: () => void;
+  onRejectProposed: () => void;
+};
+
 export type PythonTransformSourceSectionProps = {
   transform: Transform;
 };
 
 export type PythonTransformsPlugin = {
   isEnabled: boolean;
+  TransformEditor: ComponentType<PythonTransformEditorProps>;
   SourceSection: ComponentType<PythonTransformSourceSectionProps>;
   PythonRunnerSettingsPage: ComponentType;
   getAdminRoutes: () => ReactNode;
@@ -934,6 +950,7 @@ export type PythonTransformsPlugin = {
 
 export const PLUGIN_TRANSFORMS_PYTHON: PythonTransformsPlugin = {
   isEnabled: false,
+  TransformEditor: PluginPlaceholder,
   SourceSection: PluginPlaceholder,
   PythonRunnerSettingsPage: NotFoundPlaceholder,
   getAdminRoutes: () => null,

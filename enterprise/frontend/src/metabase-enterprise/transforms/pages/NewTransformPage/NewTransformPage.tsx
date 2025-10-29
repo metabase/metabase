@@ -9,6 +9,7 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { Center } from "metabase/ui";
 import type { DraftTransformSource } from "metabase-types/api";
@@ -58,14 +59,29 @@ function NewTransformPage({ initialSource, route }: NewTransformPageProps) {
   return (
     <>
       <AdminSettingsLayout fullWidth>
-        {source.type === "python" ? null : (
+        {source.type === "python" ? (
+          <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
+            source={source}
+            proposedSource={
+              proposedSource?.type === "python" ? proposedSource : undefined
+            }
+            isNew={true}
+            isDirty={isDirty}
+            isSaving={false}
+            onChangeSource={setSource}
+            onSave={openModal}
+            onCancel={handleCancel}
+            onAcceptProposed={acceptProposed}
+            onRejectProposed={rejectProposed}
+          />
+        ) : (
           <TransformEditor
             source={source}
             proposedSource={
               proposedSource?.type === "query" ? proposedSource : undefined
             }
             uiState={uiState}
-            isNew={false}
+            isNew={true}
             isSaving={false}
             isDirty={isDirty}
             onChangeSource={setSource}
