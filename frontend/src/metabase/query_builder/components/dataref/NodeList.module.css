@@ -57,6 +57,7 @@
 
 .NodeListItem:hover .fieldCopyButton {
   opacity: 1;
+  cursor: pointer;
 }
 
 .NodeListItemId {
