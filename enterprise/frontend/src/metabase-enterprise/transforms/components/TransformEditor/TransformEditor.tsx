@@ -8,10 +8,10 @@ import {
 import { getMetadata } from "metabase/selectors/metadata";
 import { Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
 import type { QueryTransformSource } from "metabase-types/api";
 
 import { EditorHeader } from "./EditorHeader";
+import { getQuery, getValidationResult } from "./utils";
 
 type TransformEditorProps = {
   name?: string;
@@ -46,21 +46,14 @@ export function TransformEditor({
 }: TransformEditorProps) {
   const metadata = useSelector(getMetadata);
 
-  const query = useMemo(
-    () => Question.create({ dataset_query: source.query, metadata }).query(),
-    [source, metadata],
-  );
+  const query = useMemo(() => getQuery(source, metadata), [source, metadata]);
 
   const proposedQuery = useMemo(
-    () =>
-      proposedSource
-        ? Question.create({
-            dataset_query: proposedSource.query,
-            metadata,
-          }).query()
-        : undefined,
+    () => (proposedSource ? getQuery(proposedSource, metadata) : undefined),
     [proposedSource, metadata],
   );
+
+  const validationResult = useMemo(() => getValidationResult(query), [query]);
 
   const handleQueryChange = (query: Lib.Query) => {
     onChangeSource({ type: "query", query: Lib.toJsQuery(query) });
@@ -78,6 +71,7 @@ export function TransformEditor({
       >
         <EditorHeader
           name={name}
+          validationResult={validationResult}
           isNew={isNew}
           isDirty={isDirty}
           isSaving={isSaving}
