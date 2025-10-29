@@ -686,7 +686,7 @@ describe("version-helpers", () => {
         "56",
       );
 
-      expect(getMajorVersionFromRef("refs/tags/v0.56.x")).toEqual(
+      expect(getMajorVersionFromRef("refs/tags/v1.56.0")).toEqual(
         "56",
       );
 
