@@ -47,14 +47,11 @@ export function TransformEditor({
   onRejectProposed,
 }: TransformEditorProps) {
   const metadata = useSelector(getMetadata);
-
   const query = useMemo(() => getQuery(source, metadata), [source, metadata]);
-
   const proposedQuery = useMemo(
     () => (proposedSource ? getQuery(proposedSource, metadata) : undefined),
     [proposedSource, metadata],
   );
-
   const uiOptions = useMemo(() => getEditorOptions(databases), [databases]);
   const validationResult = useMemo(() => getValidationResult(query), [query]);
 
@@ -63,35 +60,33 @@ export function TransformEditor({
   };
 
   return (
-    <>
-      <Stack
-        pos="relative"
-        w="100%"
-        h="100%"
-        bg="bg-white"
-        data-testid="transform-query-editor"
-        gap={0}
-      >
-        <EditorHeader
-          name={name}
-          validationResult={validationResult}
-          isNew={isNew}
-          isDirty={isDirty}
-          isSaving={isSaving}
-          onSave={onSave}
-          onCancel={onCancel}
-        />
-        <QueryEditor
-          query={query}
-          uiState={uiState}
-          uiOptions={uiOptions}
-          proposedQuery={proposedQuery}
-          onChangeQuery={handleQueryChange}
-          onChangeUiState={onChangeUiState}
-          onAcceptProposed={onAcceptProposed}
-          onRejectProposed={onRejectProposed}
-        />
-      </Stack>
-    </>
+    <Stack
+      pos="relative"
+      w="100%"
+      h="100%"
+      bg="bg-white"
+      data-testid="transform-query-editor"
+      gap={0}
+    >
+      <EditorHeader
+        name={name}
+        validationResult={validationResult}
+        isNew={isNew}
+        isDirty={isDirty}
+        isSaving={isSaving}
+        onSave={onSave}
+        onCancel={onCancel}
+      />
+      <QueryEditor
+        query={query}
+        uiState={uiState}
+        uiOptions={uiOptions}
+        proposedQuery={proposedQuery}
+        onChangeQuery={handleQueryChange}
+        onChangeUiState={onChangeUiState}
+        onAcceptProposed={onAcceptProposed}
+        onRejectProposed={onRejectProposed}
+      />
+    </Stack>
   );
 }
