@@ -27,7 +27,6 @@ export const copyLibraryFixture = () => {
 
 export const checkoutLibraryBranch = (branch: string) => {
   cy.exec("git -C " + LOCAL_GIT_PATH + ` checkout -b  '${branch}'`);
-  cy.exec("git -C " + LOCAL_GIT_PATH + ` push '${branch}'`);
 };
 
 export const commitToLibrary = (message = "Adding content to library") => {
