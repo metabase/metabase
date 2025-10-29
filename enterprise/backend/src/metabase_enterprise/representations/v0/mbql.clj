@@ -75,7 +75,7 @@
                        (t2/select-one-fn :id :model/Field
                                          :table_id table-id
                                          :name (:field node)))]
-         [:field field-id])
+         [:field {} field-id])
        node))
    mbql-query))
 
@@ -171,7 +171,7 @@
   (walk/postwalk
    (fn [node]
      (if (field? node)
-       (let [[_ id] node]
+       (let [[_ _opts id] node]
          (cond
            ;; if it's a string, it's referring to a custom field, so we leave it
            (string? id)
