@@ -10,6 +10,7 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -34,7 +35,8 @@
    [metabase.warehouses.api :as warehouses]
    [metabase.xrays.core :as xrays]
    [steffan-westcott.clj-otel.api.trace.span :as span]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
 
@@ -218,6 +220,23 @@
                                [:owner_user_id           {:optional true} [:maybe :int]]]]
   (update-tables! ids body))
 
+(mr/def ::table-selectors
+  [:map
+   ;; disjunctive filters (e.g. db_id IN $database_ids OR id IN $table_ids)
+   [:database_ids {:optional true} [:sequential ms/PositiveInt]]
+   [:schema_ids {:optional true} [:sequential :string]] ;todo find schema
+   [:table_ids {:optional true} [:sequential ms/PositiveInt]]])
+
+(mu/defn ^:private table-selectors->filter
+  [{:keys [database_ids table_ids schema_ids]}]
+  (let [schema-expr (fn [s]
+                      (let [[schema-db-id schema-name] (str/split s #"\:")]
+                        [:and [:= :db_id (parse-long schema-db-id)] [:= :schema schema-name]]))]
+    (-> (cond-> [:or false]
+          (seq database_ids) (conj [:in :db_id (sort database_ids)])
+          (seq table_ids)    (conj [:in :id    (sort table_ids)])
+          (seq schema_ids)   (conj (into [:or] (map schema-expr) (sort schema_ids)))))))
+
 (api.macros/defendpoint :post "/edit"
   "DEMOWARE: Edit tables associated with one or more databases/schemas
   - the API will live somewhere else (at least needs to apply to models)
@@ -225,43 +244,69 @@
   - return a kind of token or identifier for status/undo."
   [_route-params
    _query-params
-   {:keys [database_ids
-           schema_ids
-           table_ids]
-    :as body}
-   :- [:map
-       ;; disjunctive filters (e.g. db_id IN $database_ids OR id IN $table_ids)
-       [:database_ids {:optional true} [:sequential ms/PositiveInt]]
-       [:schema_ids {:optional true} [:sequential :string]] ;todo find schema
-       [:table_ids {:optional true} [:sequential ms/PositiveInt]]
-
-       ;; settables
-       [:visibility_type {:optional true} [:maybe :string]]
-       [:data_authority {:optional true} [:maybe :string]]
-       [:data_source {:optional true} [:maybe :string]]
-       [:visibility_type2 {:optional true} [:maybe :string]]
-       [:owner_email {:optional true} [:maybe :string]]
-       [:owner_user_id {:optional true} [:maybe :int]]]]
+   body
+   :- [:merge
+       ::table-selectors
+       [:map
+        ;; settables
+        [:visibility_type {:optional true} [:maybe :string]]
+        [:data_authority {:optional true} [:maybe :string]]
+        [:data_source {:optional true} [:maybe :string]]
+        [:visibility_type2 {:optional true} [:maybe :string]]
+        [:owner_email {:optional true} [:maybe :string]]
+        [:owner_user_id {:optional true} [:maybe :int]]]]]
   ;; todo so much
-  (let [schema-expr (fn [s]
-                      (let [[schema-db-id schema-name] (str/split s #"\:")]
-                        [:and [:= :db_id (parse-long schema-db-id)] [:= :schema schema-name]]))
-        where       (cond-> [:or false]
-                      (seq database_ids) (conj [:in :db_id (sort database_ids)])
-                      (seq table_ids)    (conj [:in :id    (sort table_ids)])
-                      (seq schema_ids)   (conj (into [:or] (map schema-expr) (sort schema_ids))))
-        set-ks      [:visibility_type
-                     :data_authority
-                     :data_source
-                     :visibility_type2
-                     :owner_email
-                     :owner_user_id]
-        set-map     (select-keys body set-ks)
-        stmt        {:update :metabase_table
-                     :set    set-map
-                     :where  where}]
+  (let [where   (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
+        set-ks  [:visibility_type
+                 :data_authority
+                 :data_source
+                 :visibility_type2
+                 :owner_email
+                 :owner_user_id]
+        set-map (select-keys body set-ks)
+        stmt    {:update :metabase_table
+                 :set    set-map
+                 :where  where}]
     (when (seq set-map) (t2/query stmt))
     {}))
+
+(defn- table->model
+  [{:keys [id name db_id] :as _table} creator-id collection-id]
+  {:name                   (format "Model based on %s" name)
+   :description            (format "Base model for table %s " name)
+   :dataset_query          (let [mp (lib-be/application-database-metadata-provider db_id)]
+                             (lib/query mp (lib.metadata/table mp id)))
+   :type                   :model
+   :display                :table
+   :visualization_settings {}
+   :creator_id             creator-id
+   :collection_id          collection-id})
+
+(api.macros/defendpoint :post "/publish-model"
+  "Create a model for each of selected tables"
+  [_route-params
+   _query-params
+   {:keys [target_collection_id]
+    :as body}
+   :- [:merge
+       ::table-selectors
+       [:map
+        [:target_collection_id pos-int?]]]]
+  (let [where          (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
+        created-models (t2/with-transaction [_conn]
+                         (into []
+                               (comp
+                                (map t2.realize/realize)
+                                (partition-all 20)
+                                (mapcat (fn [batch]
+                                          ;; TODO (Ngoc 29/10/25) : we should considering using card/create-card! but with
+                                          ;; an option to skip syncing metadata since it's gonna be really expensive
+                                          (t2/insert-returning-instances! :model/Card (mapv (fn [table]
+                                                                                              (table->model table api/*current-user-id* target_collection_id))
+                                                                                            batch)))))
+                               (t2/reducible-select :model/Table :active true {:where where})))]
+    {:created_count (count created-models)
+     :models        created-models}))
 
 (api.macros/defendpoint :get "/:id/query_metadata"
   "Get metadata about a `Table` useful for running queries.

@@ -1252,3 +1252,22 @@
               gc         "silver"
               jit        "silver"}
              (t2/select-pk->fn :visibility_type2 :model/Table :db_id [:in [clojure jvm]]))))))
+
+(deftest publish-model-test
+  (testing "POST /api/table/publish-model"
+    (testing "creates models for selected tables"
+      (mt/with-model-cleanup [:model/Card]
+        (mt/with-temp [:model/Collection {collection-id :id} {}]
+          (let [response (mt/user-http-request :crowberto :post 200 "table/publish-model"
+                                               {:table_ids             [(mt/id :users) (mt/id :venues)]
+                                                :target_collection_id  collection-id})]
+            (is (= 2 (:created_count response)))
+            (is (= 2 (count (:models response))))
+            (testing "models have correct attributes"
+              (doseq [model (:models response)]
+                (is (= "model" (:type model)))
+                (is (= collection-id (:collection_id model)))))
+            (testing "the query should works"
+              (is (some? (mt/process-query (-> response :models first :dataset_query)))))
+            (testing "models are persisted in database"
+              (is (= 2 (t2/count :model/Card :collection_id collection-id :type :model))))))))))
