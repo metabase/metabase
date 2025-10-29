@@ -88,31 +88,32 @@ function TransformTable({ transformId }: { transformId: TransformId }) {
   }, [jobs]);
 
   return (
-    <Table>
-      <Table.Thead>
-        <Table.Tr>
-          <Table.Th>{t`Data source`}</Table.Th>
-          <Table.Th>{t`Transform`}</Table.Th>
-          <Table.Th>{t`Schedule`}</Table.Th>
-          <Table.Th>{t`Last run`}</Table.Th>
-        </Table.Tr>
-      </Table.Thead>
+    <Table variant="vertical" layout="fixed" withTableBorder>
       <Table.Tbody>
         <Table.Tr>
+          <Table.Th w={100}>{t`Data source`}</Table.Th>
           <Table.Td>{t`transform (${transform?.source.type ?? "unknown"})`}</Table.Td>
+        </Table.Tr>
+
+        <Table.Tr>
+          <Table.Th>{t`Transform`}</Table.Th>
           <Table.Td>
-            {" "}
-            <Button
-              component={Link}
-              h="auto"
-              p={0}
-              to={`/bench/transforms/${transformId}`}
-              size="xs"
-              variant="subtle"
-            >
-              {transform?.name ?? t`Transform`}
-            </Button>
+            <Text truncate="end">
+              <Button
+                component={Link}
+                h="auto"
+                p={0}
+                to={`/bench/transforms/${transformId}`}
+                size="xs"
+                variant="subtle"
+              >
+                {transform?.name ?? t`Transform`}
+              </Button>
+            </Text>
           </Table.Td>
+        </Table.Tr>
+        <Table.Tr>
+          <Table.Th>{t`Schedule`}</Table.Th>
           <Table.Td>
             {scheduleText ? (
               <Text size="sm" c="text-medium">
@@ -124,6 +125,9 @@ function TransformTable({ transformId }: { transformId: TransformId }) {
               </Text>
             )}
           </Table.Td>
+        </Table.Tr>
+        <Table.Tr>
+          <Table.Th>{t`Last run`}</Table.Th>
           <Table.Td>
             {transform?.last_run?.end_time ? (
               <DateTime value={transform.last_run.end_time} unit="minute" />
