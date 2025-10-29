@@ -1,20 +1,17 @@
+import cx from "classnames";
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import styles from "metabase/css/core/animation.module.css";
+import { MetabotLogo } from "metabase/common/components/MetabotLogo";
+import animationStyles from "metabase/css/core/animation.module.css";
 import { useSelector } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
 import { Tooltip } from "metabase/ui";
 
 import { getHasMetabotLogo } from "../../selectors";
 
-import {
-  GreetingLogo,
-  GreetingLogoContainer,
-  GreetingMessage,
-  GreetingRoot,
-} from "./HomeGreeting.styled";
+import styles from "./HomeGreeting.module.css";
 
 export const HomeGreeting = (): JSX.Element => {
   const user = useSelector(getUser);
@@ -23,12 +20,18 @@ export const HomeGreeting = (): JSX.Element => {
   const message = useMemo(() => getMessage(name), [name]);
 
   return (
-    <GreetingRoot>
+    <div className={styles.greetingRoot}>
       {showLogo && <MetabotGreeting />}
-      <GreetingMessage data-testid="greeting-message" showLogo={showLogo}>
+      <span
+        data-testid="greeting-message"
+        className={cx(
+          styles.greetingMessage,
+          showLogo ? styles.withLogo : styles.withoutLogo,
+        )}
+      >
         {message}
-      </GreetingMessage>
-    </GreetingRoot>
+      </span>
+    </div>
   );
 };
 
@@ -52,30 +55,20 @@ export const MetabotGreeting = () => {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      setBuffer((prevBuffer) => {
-        const newBuffer = [...prevBuffer, event.key];
-        if (newBuffer.length > 10) {
-          newBuffer.shift();
-        }
-        return newBuffer;
-      });
+      setBuffer((prevBuffer) => [...prevBuffer, event.key].slice(-10));
     };
-
     window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
   useEffect(() => {
     if (isCoolEnough(buffer)) {
-      setTimeout(() => {
-        setIsCooling(true);
-      }, 1);
+      setIsCooling(true);
+      setIsCool(false);
       setTimeout(() => {
         setIsCool(true);
-      }, 300);
+        setIsCooling(false);
+      }, 1000);
     }
   }, [buffer]);
 
@@ -84,18 +77,24 @@ export const MetabotGreeting = () => {
       label={t`Don't tell anyone, but you're my favorite.`}
       position="bottom"
     >
-      <GreetingLogoContainer>
-        <GreetingLogo
-          isCool={isCool}
-          className={`${styles.SpinOut} ${isCooling ? styles.SpinOutActive : ""}`}
+      <div className={styles.greetingLogoContainer}>
+        <MetabotLogo
+          className={cx(styles.greetingLogo, animationStyles.SpinOut, {
+            [styles.isCool]: isCool,
+            [styles.isNotCool]: !isCool,
+            [animationStyles.SpinOutActive]: isCooling,
+          })}
           variant="cool"
         />
-        <GreetingLogo
-          isCool={!isCool}
-          className={`${styles.SpinOut} ${isCooling ? styles.SpinOutActive : ""}`}
+        <MetabotLogo
+          className={cx(styles.greetingLogo, animationStyles.SpinOut, {
+            [styles.isCool]: !isCool,
+            [styles.isNotCool]: isCool,
+            [animationStyles.SpinOutActive]: isCooling,
+          })}
           variant="happy"
         />
-      </GreetingLogoContainer>
+      </div>
     </Tooltip>
   );
 };
