@@ -1,9 +1,12 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
+import cx from "classnames";
 import type React from "react";
 import { forwardRef } from "react";
 
 import { saveDomImageStyles } from "metabase/visualizations/lib/image-exports";
+
+import S from "./PublicComponentStylesWrapper.style.css";
 
 /**
  * Injects CSS variables and styles to the SDK components underneath them.
@@ -11,26 +14,7 @@ import { saveDomImageStyles } from "metabase/visualizations/lib/image-exports";
  * even when rendered under a React portal.
  */
 const PublicComponentStylesWrapperInner = styled.div`
-  // Try to reset as much as possible to avoid css leaking from host app to our components
-  all: initial;
-  text-decoration: none;
-
-  font-style: normal;
-
-  width: 100%;
-  height: 100%;
-
   font-size: ${({ theme }) => theme.other.fontSize};
-
-  font-weight: 400;
-  color: var(--mb-color-text-dark);
-  font-family: var(--mb-default-font-family);
-
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-
-  transition: var(--transition-theme-change);
-
   ${saveDomImageStyles}
 `;
 
@@ -44,7 +28,7 @@ export const PublicComponentStylesWrapper = forwardRef<
       ref={ref}
       dir="ltr"
       // eslint-disable-next-line react/prop-types -- className is in div props :shrugs:
-      className={`mb-wrapper ${props.className}`}
+      className={cx("mb-wrapper", S.publicComponentWrapper, props.className)}
       // Mantine's cssVariablesSelector expects data-mantine-color-scheme to be set on the target element
       data-mantine-color-scheme="light"
     />
