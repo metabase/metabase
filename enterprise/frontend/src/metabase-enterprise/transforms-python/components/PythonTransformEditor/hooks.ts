@@ -2,9 +2,10 @@ import { useRef } from "react";
 
 import { useExecutePythonMutation } from "metabase-enterprise/api/transform-python";
 import { useTestPythonTransformOnPyodide } from "metabase-enterprise/transforms-python/hooks/use-test-python-transform";
-import type { TestPythonTransformResponse } from "metabase-types/api";
-
-import type { PythonTransformSourceDraft } from "../PythonTransformEditor";
+import type {
+  PythonTransformSourceDraft,
+  TestPythonTransformResponse,
+} from "metabase-types/api";
 
 type TestPythonTransform = {
   isRunning: boolean;
