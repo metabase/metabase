@@ -169,21 +169,32 @@
   [clauses]
   (dissoc clauses :order-by :limit :offset))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/"
   "Fetch a list of `Users` for admins or group managers.
-  By default returns only active users for admins and only active users within groups that the group manager is managing for group managers.
+  By default returns only active users for admins and only active users within groups that the group manager is
+  managing for group managers.
 
    - If `status` is `deactivated`, include deactivated users only.
+
    - If `status` is `all`, include all users (active and inactive).
-   - Also supports `include_deactivated`, which if true, is equivalent to `status=all`; If is false, is equivalent to `status=active`.
-   `status` and `include_deactivated` requires superuser permissions.
-   - `include_deactivated` is a legacy alias for `status` and will be removed in a future release, users are advised to use `status` for better support and flexibility.
+
+   - Also supports `include_deactivated`, which if true, is equivalent to `status=all`; If is false, is equivalent to
+     `status=active`. `status` and `include_deactivated` requires superuser permissions.
+
+   - `include_deactivated` is a legacy alias for `status` and will be removed in a future release, users are advised
+     to use `status` for better support and flexibility.
+
    If both params are passed, `status` takes precedence.
 
   For users with segmented permissions, return only themselves.
 
   Takes `limit`, `offset` for pagination.
+
   Takes `query` for filtering on first name, last name, email.
+
   Also takes `group_id`, which filters on group id."
   [_route-params
    {:keys [status query group_id include_deactivated]}

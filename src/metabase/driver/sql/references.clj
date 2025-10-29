@@ -23,6 +23,10 @@
             [:database {:optional true} :string]
             [:table-alias {:optional true} :string]]]])
 
+(mr/def ::unknown-columns
+  [:map
+   [:type [:= :unknown-columns]]])
+
 (mr/def ::custom-field
   [:map
    [:type [:= :custom-field]]
@@ -47,6 +51,7 @@
   [:multi {:dispatch :type}
    [:single-column [:ref ::single-column]]
    [:all-columns [:ref ::all-columns]]
+   [:unknown-columns [:ref ::unknown-columns]]
    [:custom-field [:ref ::custom-field]]
    [:composite-field [:ref ::composite-field]]
    [:invalid-table-wildcard [:ref ::invalid-table-wildcard]]])
@@ -82,7 +87,7 @@
                 sublist))
         sources))
 
-(defn- get-column [driver sources raw-col]
+(defn- get-column [driver sources raw-col {:keys [return-table-matches?]}]
   (if (and (nil? (:table raw-col))
            (nil? (:schema raw-col))
            (nil? (:database raw-col))
@@ -100,14 +105,27 @@
                                valid-sources)
           source-column (some #(when (= column (or (:alias %) (:column %)))
                                  %)
-                              (first source-columns))]
-      [(if source-column
-         (cond-> source-column
-           alias (assoc :alias alias))
-         (-> {:column column
-              :alias alias
-              :type :single-column}
-             (assoc :source-columns source-columns)))])))
+                              (first source-columns))
+          source-matches (when (nil? table)
+                           (some (fn [inner-sources]
+                                   (some #(when (= column (or (-> % :names :table-alias) (-> % :names :table)))
+                                            (:returned-fields %))
+                                         inner-sources))
+                                 sources))]
+      (cond
+        ;; we have a direct column match
+        source-column [(cond-> source-column
+                         alias (assoc :alias alias))]
+        ;; we have a match to a table
+        source-matches (when return-table-matches?
+                         [{:type :custom-field
+                           :alias (or alias column)
+                           :used-fields (set source-matches)}])
+        ;; we don't have a direct match, so show the possible columns this could match to
+        :else [(-> {:column column
+                    :alias alias
+                    :type :single-column}
+                   (assoc :source-columns source-columns))]))))
 
 (defmulti find-used-fields
   "Finds the fields used in a given sql expression."
@@ -122,7 +140,7 @@
 
 (defmethod find-used-fields [:sql :macaw.ast/column]
   [driver sources _withs expr]
-  (get-column driver sources expr))
+  (get-column driver sources expr {:return-table-matches? false}))
 
 (defmethod find-used-fields [:sql :macaw.ast/unary-expression]
   [driver sources withs expr]
@@ -190,7 +208,7 @@
 
 (defmethod find-returned-fields [:sql :macaw.ast/column]
   [driver sources _withs expr]
-  (get-column driver sources expr))
+  (get-column driver sources expr {:return-table-matches? true}))
 
 (defmethod find-returned-fields [:sql :macaw.ast/wildcard]
   [_driver sources _withs _expr]
@@ -297,6 +315,13 @@
                      (into #{}))
    :returned-fields (->> (find-returned-fields driver outside-sources withs expr)
                          (into []))
+   :names (when-let [alias (:table-alias expr)]
+            {:table-alias (sql.normalize/normalize-name driver alias)})})
+
+(defmethod field-references-impl [:sql :macaw.ast/table-function]
+  [driver _outside-sources _withs expr]
+  {:used-fields #{}
+   :returned-fields [{:type :unknown-columns}]
    :names (when-let [alias (:table-alias expr)]
             {:table-alias (sql.normalize/normalize-name driver alias)})})
 

@@ -1,6 +1,5 @@
 (ns dev.deps-graph
   (:require
-   [clojure.core.memoize :as memoize]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -126,6 +125,7 @@
       (= (z/tag zloc) :uneval)))
 
 (mu/defn- find-requires :- [:maybe [:sequential ::zloc]]
+  "Find all the zipper locations for `(require ...)` nodes."
   [zloc :- ::zloc]
   (concat
    (when-not (comment-loc? zloc)
@@ -261,41 +261,46 @@
 
   (file-dependencies "src/metabase/query_processor/middleware/permissions.clj"))
 
-(def ^{:arglists '([])} dependencies
-  (memoize/ttl
-   (fn []
-     (doall (pmap file-dependencies (find-source-files))))
-   ;; memoize for five seconds
-   :ttl/threshold 5000))
+(defn dependencies []
+  (pmap file-dependencies (find-source-files)))
 
 (defn external-usages
   "All usages of a module named by `module-symb` outside that module."
-  [module-symb]
-  (for [dep    (dependencies)
-        :when  (not= (:module dep) module-symb)
-        ns-dep (:deps dep)
-        :when  (= (:module ns-dep) module-symb)]
-    {:namespace            (:namespace dep)
-     :module               (:module dep)
-     :depends-on-namespace (:namespace ns-dep)
-     :depends-on-module    (:module ns-dep)}))
+  ([module-symb]
+   (external-usages (dependencies) module-symb))
+
+  ([deps module-symb]
+   (for [dep    deps
+         :when  (not= (:module dep) module-symb)
+         ns-dep (:deps dep)
+         :when  (= (:module ns-dep) module-symb)]
+     {:namespace            (:namespace dep)
+      :module               (:module dep)
+      :depends-on-namespace (:namespace ns-dep)
+      :depends-on-module    (:module ns-dep)})))
 
 (defn external-usages-by-namespace
   "Return a map of module namespace => set of external namespaces using it"
-  [module-symb]
-  (into (sorted-map)
-        (map (fn [[k v]]
-               [k (into (sorted-set) (map :namespace) v)]))
-        (group-by :depends-on-namespace (external-usages module-symb))))
+  ([module-symb]
+   (external-usages-by-namespace (dependencies) module-symb))
+
+  ([deps module-symb]
+   (into (sorted-map)
+         (map (fn [[k v]]
+                [k (into (sorted-set) (map :namespace) v)]))
+         (group-by :depends-on-namespace (external-usages deps module-symb)))))
 
 (defn externally-used-namespaces
   "All namespaces from a module that are used outside that module."
-  [module-symb]
-  (into (sorted-set) (map :depends-on-namespace) (external-usages module-symb)))
+  ([module-symb]
+   (externally-used-namespaces (dependencies) module-symb))
+
+  ([deps module-symb]
+   (into (sorted-set) (map :depends-on-namespace) (external-usages deps module-symb))))
 
 (defn module-dependencies
   "Build a graph of module => set of modules it refers to."
-  ([]
+  ([deps]
    (letfn [(reduce-module-deps [module-deps module deps]
              (reduce
               (fn [module-deps {dep-module :module, :as _dep}]
@@ -305,15 +310,15 @@
               deps))
            (reduce-deps [module->deps {:keys [module deps]}]
              (update module->deps module reduce-module-deps module deps))]
-     (reduce reduce-deps (sorted-map) (dependencies))))
+     (reduce reduce-deps (sorted-map) deps)))
 
-  ([module]
-   (get (module-dependencies) module)))
+  ([deps module]
+   (get (module-dependencies deps) module)))
 
 (defn circular-dependencies
   "Build a graph of module => set of modules it refers to that also refer to this module."
-  ([]
-   (let [module->deps (module-dependencies)]
+  ([deps]
+   (let [module->deps (module-dependencies deps)]
      (letfn [(circular-dependency? [module-x module-y]
                (and (contains? (get module->deps module-x) module-y)
                     (contains? (get module->deps module-y) module-x)))
@@ -329,37 +334,40 @@
                        [module circular-deps])))
              (keys module->deps)))))
 
-  ([module]
-   (get (circular-dependencies) module)))
+  ([deps module]
+   (get (circular-dependencies deps) module)))
 
 (defn non-circular-module-dependencies
   "A graph of [[module-dependencies]], but with modules that have any circular dependencies filtered out. This is mostly
   meant to make it easier to fill out the `:metabase/modules` `:uses` section of the Kondo config, or to figure out
   which ones can easily get a consolidated API namespace without drama."
-  []
-  (let [circular-dependencies (circular-dependencies)]
+  [deps]
+  (let [circular-dependencies (circular-dependencies deps)]
     (into (sorted-map)
           (remove (fn [[module _deps]]
                     (contains? circular-dependencies module)))
-          (module-dependencies))))
+          (module-dependencies deps))))
 
 (defn module-usages-of-other-module
   "Information about how `module-x` uses `module-y`."
-  [module-x module-y]
-  (let [module-x-ns->module-y-ns   (->> (external-usages module-y)
-                                        (filter #(= (:module %) module-x))
-                                        (map (juxt :namespace :depends-on-namespace)))]
-    (reduce
-     (fn [m [module-x-ns module-y-ns]]
-       (update m module-x-ns (fn [deps]
-                               (conj (or deps (sorted-set)) module-y-ns))))
-     (sorted-map)
-     module-x-ns->module-y-ns)))
+  ([module-x module-y]
+   (module-usages-of-other-module (dependencies) module-x module-y))
+
+  ([deps module-x module-y]
+   (let [module-x-ns->module-y-ns (->> (external-usages deps module-y)
+                                         (filter #(= (:module %) module-x))
+                                         (map (juxt :namespace :depends-on-namespace)))]
+     (reduce
+      (fn [m [module-x-ns module-y-ns]]
+        (update m module-x-ns (fn [deps]
+                                (conj (or deps (sorted-set)) module-y-ns))))
+      (sorted-map)
+      module-x-ns->module-y-ns))))
 
 (defn full-dependencies
   "Like [[dependencies]] but also includes transient dependencies."
-  []
-  (let [deps-graph  (module-dependencies)
+  [deps]
+  (let [deps-graph  (module-dependencies deps)
         expand-deps (fn expand-deps [deps]
                       (let [deps' (into (sorted-set)
                                         (mapcat deps-graph)
@@ -372,33 +380,23 @@
                  [k (expand-deps v)]))
           deps-graph)))
 
-(defn module-deps-count []
+(defn module-deps-count [deps]
   (into (sorted-map)
         (map (fn [[k v]]
                [k (count v)]))
-        (full-dependencies)))
-
-(defn module-dependencies-mermaid []
-  (println "flowchart TD")
-  (doseq [[module deps] (module-dependencies)
-          dep deps]
-    (printf "%s-->%s\n" module dep)))
-
-(defn module-dependencies-graphviz []
-  (println "digraph {")
-  (doseq [[module deps] (module-dependencies)
-          dep deps]
-    (printf "  \"%s\" -> \"%s\"\n" module dep))
-  (println "}"))
+        (full-dependencies deps)))
 
 (defn generate-config
   "Generate the Kondo config that should go in `.clj-kondo/config/modules/config.edn`."
-  []
-  (into (sorted-map)
-        (map (fn [[module uses]]
-               [module {:api (externally-used-namespaces module)
-                        :uses uses}]))
-        (module-dependencies)))
+  ([]
+   (generate-config (dependencies)))
+
+  ([deps]
+   (into (sorted-map)
+         (map (fn [[module uses]]
+                [module {:api  (externally-used-namespaces deps module)
+                         :uses uses}]))
+         (module-dependencies deps))))
 
 (defn kondo-config
   "Read out the Kondo config for the modules linter."
@@ -422,13 +420,16 @@
    diff))
 
 (defn kondo-config-diff
-  []
-  (-> (ddiff/diff
-       (update-vals (kondo-config) #(dissoc % :team))
-       (generate-config))
-      ddiff/minimize
-      kondo-config-diff-ignore-any
-      ddiff/minimize))
+  ([]
+   (kondo-config-diff (dependencies)))
+
+  ([deps]
+   (-> (ddiff/diff
+        (update-vals (kondo-config) #(dissoc % :team))
+        (generate-config deps))
+       ddiff/minimize
+       kondo-config-diff-ignore-any
+       ddiff/minimize)))
 
 (defn print-kondo-config-diff
   "Print the diff between how the config would look if regenerated with [[generate-config]] versus how it looks in
@@ -437,6 +438,6 @@
   (ddiff/pretty-print (kondo-config-diff)))
 
 (comment
-  (module-dependencies 'lib)
+  (module-dependencies (dependencies) 'lib)
 
   (module-usages-of-other-module 'lib 'models))

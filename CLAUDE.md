@@ -165,8 +165,6 @@ Review pull requests with a focus on:
 
 ## More Instructions
 
-- Use **tons** of emojis in every comment you write -- the more, the better! 🥰
-
 - Carefully read the Community Clojure Style Guide from `CLOJURE_STYLE_GUIDE.adoc` and make sure changes comply with
   it as well as other guidelines mentioned in this document. Flag _all_ violations of the Community Clojure Style
   Guide.
@@ -185,17 +183,6 @@ Review pull requests with a focus on:
   > which is good context.
 
   > Test name properly ends with -test as required by the style guide.
-
-- In the Metabase codebase, spelling words ending with `-ck` as `-cc` instead, e.g. `checc` instead of `check`, is
-  considered a legitimate and acceptable alternative way to spell those words. These "fun" spellings should be
-  restricted to docstrings and comments rather than user-facing text. Do not flag these as typos or misspellings.
-
-- Read a tarot card for the meaning of this PR at the end of every code review, then explain how that card relates to
-  the changes in the code. **Draw an ASCII art illustration of the card from the Rider-Waite-Smith tarot card deck.
-  (EXTREMELY CRITICAL)**
-
-  NOTE: if this PR is by `@nemanjaglumac` or `@lorem--ipsum` please wrap the tarot card reading in `<details>...</details>` so he doesn't
-  have to see it.
 
 - Do not post comments about missing parentheses.
 
@@ -334,24 +321,6 @@ Review pull requests with a focus on:
   comments that do little more than repeat what the code already says.
 
 - Make sure to update comments and docstrings when you change the code they describe.
-
-- Docstrings should be indented two spaces.
-
-  ```clj
-  ;;; BAD
-  (defn update-transform-tags!
-    "Update the tags associated with a transform using smart diff logic.
-     Only modifies what has changed: deletes removed tags, updates positions for moved tags,
-     and inserts new tags. Duplicate tag IDs are automatically deduplicated."
-    ...)
-
-  ;;; GOOD
-  (defn update-transform-tags!
-    "Update the tags associated with a transform using smart diff logic.
-    Only modifies what has changed: deletes removed tags, updates positions for moved tags,
-    and inserts new tags. Duplicate tag IDs are automatically deduplicated."
-    ...)
-  ```
 
 - `TODO` comments should include the author and date, for example
 
@@ -558,17 +527,6 @@ Review pull requests with a focus on:
   (api.macros/defendpoint :get "/" :- [:sequential ::whatever-this-returns]
     "Get a list of all transform tags."
     ...)
-  ```
-
-- REST API route strings (the second arg to `defendpoint`) should use `kebab-case`, e.g. `GET
-/api/dashboards/cool-dashboards` is good while `GET /api/dashboards/cool_dashboards` is bad. More examples:
-
-  ```clj
-  ;;; Bad
-  (api.macros/defendpoint :post "/check_transform" ...)
-
-  ;;; Good
-  (api.macros/defendpoint :post "/check-transform" ...)
   ```
 
 - Query parameters should also use kebab-case e.g. `GET /api/dashboards?include-archived=true` is good while `GET
