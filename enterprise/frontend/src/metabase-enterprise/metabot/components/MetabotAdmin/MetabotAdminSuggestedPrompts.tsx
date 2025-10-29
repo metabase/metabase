@@ -101,7 +101,7 @@ export const MetabotPromptSuggestionPane = ({
       <SettingHeader
         id="prompt-suggestions"
         title={t`Prompt suggestions`}
-        description={t`When users open a new Metabot chat, we’ll randomly show them a few suggested prompts based on the models and metrics in the collection you chose.`}
+        description={t`When users open a new Metabot chat, we’ll randomly show them a few suggested prompts based on popular models and metrics in your instance.`}
       />
       <Flex gap="md" align="center">
         <Button
