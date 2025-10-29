@@ -5,7 +5,7 @@ import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 
-import type { QueryEditorUiState } from "../types";
+import type { QueryEditorUiState } from "../../components/QueryEditor/types";
 
 export function useQueryResults(
   question: Question,

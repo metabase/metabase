@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { CodeMirrorEditor as Editor } from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor";
-import { useQueryMetadata } from "metabase/querying/editor/components/QueryEditor/use-query-metadata";
+import { useQueryMetadata } from "metabase/querying/editor/hooks/use-query-metadata";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Center, Loader } from "metabase/ui";

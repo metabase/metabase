@@ -13,7 +13,7 @@ import type {
   QueryEditorModalType,
   QueryEditorSidebarType,
   QueryEditorUiState,
-} from "../types";
+} from "../../components/QueryEditor/types";
 
 const EMPTY_SELECTION_RANGE: SelectionRange = {
   start: { row: 0, column: 0 },

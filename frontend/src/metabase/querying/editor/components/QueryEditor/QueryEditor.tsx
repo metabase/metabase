@@ -6,6 +6,8 @@ import { Center, Flex, Modal } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type { CardType } from "metabase-types/api";
 
+import { useQueryEditor } from "../../hooks/use-query-editor";
+
 import {
   NativeQueryPreviewSidebar,
   NativeQueryPreviewSidebarToggle,
@@ -14,7 +16,6 @@ import { NativeQuerySidebar } from "./NativeQuerySidebar";
 import { QuerySection } from "./QuerySection";
 import { VisualizationSection } from "./VisualizationSection";
 import type { QueryEditorUiOptions, QueryEditorUiState } from "./types";
-import { useQueryEditor } from "./use-query-editor";
 
 type QueryEditorProps = {
   type?: CardType;
