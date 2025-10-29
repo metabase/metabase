@@ -20,7 +20,6 @@
 .DashboardHeaderContainer {
   position: relative;
   z-index: 2;
-  border-bottom: 1px solid var(--mb-color-border);
   transition: var(--transition-theme-change);
 
   &:not(.isEmbeddingSdk) {
@@ -30,6 +29,10 @@
   &.isFullscreen {
     background-color: transparent;
     border-color: transparent;
+  }
+
+  &:not(.noBorder) {
+    border-bottom: 1px solid var(--mb-color-border);
   }
 }
 
