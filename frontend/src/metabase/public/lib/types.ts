@@ -14,6 +14,7 @@ export type EmbedResource = (Card | Dashboard) & {
 };
 
 export type EmbedResourceType = "dashboard" | "question" | "document";
+export type StaticEmbedResourceType = "dashboard" | "question";
 
 export type EmbedResourceParameter = {
   id: string;

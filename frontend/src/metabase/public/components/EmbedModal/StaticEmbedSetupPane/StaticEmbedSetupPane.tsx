@@ -16,10 +16,10 @@ import { getSignedPreviewUrlWithoutHash } from "metabase/public/lib/embed";
 import type {
   EmbedResource,
   EmbedResourceParameter,
-  EmbedResourceType,
   EmbeddingDisplayOptions,
   EmbeddingParameters,
   EmbeddingParametersValues,
+  StaticEmbedResourceType,
 } from "metabase/public/lib/types";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import { Paper, Stack, Tabs } from "metabase/ui";
@@ -41,7 +41,7 @@ import type { ActivePreviewPane, EmbedCodePaneVariant } from "./types";
 
 export interface StaticEmbedSetupPaneProps {
   resource: EmbedResource;
-  resourceType: EmbedResourceType;
+  resourceType: StaticEmbedResourceType;
   resourceParameters: EmbedResourceParameter[];
 
   onUpdateEnableEmbedding: (enableEmbedding: boolean) => void | Promise<void>;
