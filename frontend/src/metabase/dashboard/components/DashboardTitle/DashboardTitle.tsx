@@ -7,13 +7,11 @@ import { useDashboardTitle } from "metabase/dashboard/hooks/use-dashboard-title"
 
 export const DashboardTitle = ({ className }: { className?: string }) => {
   const [title, setTitle] = useDashboardTitle();
-  const { dashboard, hasEditAction } = useDashboardContext();
+  const { dashboard, isEditableDashboard } = useDashboardContext();
 
   if (!dashboard) {
     return null;
   }
-
-  const canEditTitle = hasEditAction && Boolean(dashboard?.can_write);
 
   return (
     <EditableText
@@ -21,7 +19,7 @@ export const DashboardTitle = ({ className }: { className?: string }) => {
       key={title}
       initialValue={title}
       placeholder={t`Add title`}
-      isDisabled={!canEditTitle}
+      isDisabled={!isEditableDashboard}
       data-testid="dashboard-name-heading"
       onChange={setTitle}
       maxLength={DASHBOARD_NAME_MAX_LENGTH}

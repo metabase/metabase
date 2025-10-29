@@ -30,10 +30,8 @@ export const Grid = ({
     onRefreshPeriodChange,
     isLoadingWithoutCards,
     onAddQuestion,
-    hasEditAction,
+    isEditableDashboard,
   } = useDashboardContext();
-
-  const isDashboardEditable = hasEditAction && Boolean(dashboard?.can_write);
 
   const currentTabDashcards = useMemo(() => {
     if (!dashboard || !Array.isArray(dashboard.dashcards)) {
@@ -94,7 +92,7 @@ export const Grid = ({
 
   if (isEmpty) {
     if (!dashboardHasCards) {
-      return isDashboardEditable ? (
+      return isEditableDashboard ? (
         <DashboardEmptyState
           canCreateQuestions={canCreateQuestions}
           addQuestion={handleAddQuestion}
@@ -107,7 +105,7 @@ export const Grid = ({
     }
 
     if (dashboardHasCards && !tabHasCards) {
-      return isDashboardEditable ? (
+      return isEditableDashboard ? (
         <DashboardEmptyState
           canCreateQuestions={canCreateQuestions}
           addQuestion={handleAddQuestion}
