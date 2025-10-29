@@ -67,6 +67,16 @@ export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
 };
 
 /**
+ * If the user forgot to define a theme color,
+ * we apply the fallback color instead if it is also defined.
+ */
+export const SDK_MISSING_COLORS_FALLBACK: Partial<
+  Record<MappableSdkColor, MappableSdkColor>
+> = {
+  "background-secondary": "background",
+};
+
+/**
  * These colors must never be changed.
  * For example, the blue Metabase brand color.
  **/
