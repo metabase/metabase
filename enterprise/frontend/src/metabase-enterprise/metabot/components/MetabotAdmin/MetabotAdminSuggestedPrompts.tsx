@@ -144,7 +144,7 @@ export const MetabotPromptSuggestionPane = ({
                 key={row.id}
                 row={row as SuggestedMetabotPrompt}
                 onDelete={() => handleDeletePrompt(row.id)}
-                metabotId={metabotId}
+                metabotId={metabot.id}
               />
             )
           }
