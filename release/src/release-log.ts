@@ -1,7 +1,6 @@
 import fs from 'fs';
 
 import { Octokit } from '@octokit/rest';
-import { number } from 'prop-types';
 import { $ } from 'zx';
 
 import { getOpenBackportPrs } from './github';
