@@ -884,30 +884,33 @@ export function getXAxisModel(
 export const getXAxisDateRangeFromSortedXAxisValues = (
   xValues: RowValue[],
 ): DateRange | undefined => {
-  xValues = xValues.filter((x) => x !== undefined);
+  const filteredXValues = xValues.filter((x) => x !== undefined);
 
-  if (xValues.length === 0) {
+  if (filteredXValues.length === 0) {
     return undefined;
   }
 
   // Find the first non-null date from the start
   let minDateIndex = 0;
   while (
-    minDateIndex < xValues.length &&
-    tryGetDate(xValues[minDateIndex]) === null
+    minDateIndex < filteredXValues.length &&
+    tryGetDate(filteredXValues[minDateIndex]) === null
   ) {
     minDateIndex++;
   }
 
   // Find the first non-null date from the end
-  let maxDateIndex = xValues.length - 1;
-  while (maxDateIndex >= 0 && tryGetDate(xValues[maxDateIndex]) === null) {
+  let maxDateIndex = filteredXValues.length - 1;
+  while (
+    maxDateIndex >= 0 &&
+    tryGetDate(filteredXValues[maxDateIndex]) === null
+  ) {
     maxDateIndex--;
   }
 
   // Assume the dataset is sorted
-  const minDate = tryGetDate(xValues[minDateIndex]);
-  const maxDate = tryGetDate(xValues[maxDateIndex]);
+  const minDate = tryGetDate(filteredXValues[minDateIndex]);
+  const maxDate = tryGetDate(filteredXValues[maxDateIndex]);
 
   if (minDate == null || maxDate == null) {
     return undefined;
