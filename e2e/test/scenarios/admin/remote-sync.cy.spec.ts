@@ -301,8 +301,10 @@ describe("Remote Sync", () => {
           cy.findByLabelText("Create a new branch and push changes there");
 
           // Choose discard so that we can switch later
-          cy.findByLabelText("Discard these changes (can’t be undone)").click();
-          cy.button(/Discard changes/).click();
+          cy.findByLabelText(
+            "Delete unsynced changes (can’t be undone)",
+          ).click();
+          cy.button(/Delete unsynced changes/).click();
         });
 
         // Now we switched to main
@@ -373,8 +375,8 @@ describe("Remote Sync", () => {
 
       it("delete changes", () => {
         cy.findByRole("dialog", { name: /unsynced changes/ }).within(() => {
-          cy.findByRole("radio", { name: /Discard/ }).click();
-          cy.button("Discard changes").click();
+          cy.findByRole("radio", { name: /Delete/ }).click();
+          cy.button("Delete unsynced changes").click();
         });
 
         H.waitForTask({ taskName: "import" });
@@ -424,7 +426,8 @@ describe("Remote Sync", () => {
         .findByText("Success")
         .should("exist");
 
-      H.modal().should("not.exist", { timeout: 10000 });
+      H.waitForTask({ taskName: "import" });
+      H.modal().should("not.exist");
       cy.findByTestId("exit-admin").click();
 
       H.navigationSidebar().within(() => {
