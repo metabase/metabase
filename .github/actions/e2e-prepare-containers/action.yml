@@ -62,7 +62,7 @@ runs:
             --env LDAP_PASSWORDS=123456,123465 \
             --env LDAP_ROOT=dc=example,dc=org \
             --env LDAP_PORT_NUMBER=389 \
-            bitnami/openldap:2.6.4 &&
+            bitnamilegacy/openldap:2.6.4 &&
           while ! nc -z localhost 389; do sleep 1; done &&
           echo -e "${G}Openldap is up and running!"
         fi
