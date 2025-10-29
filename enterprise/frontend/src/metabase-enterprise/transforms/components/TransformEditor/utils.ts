@@ -38,31 +38,21 @@ export function getEditorOptions(databases: Database[]): QueryEditorUiOptions {
       return !doesDatabaseSupportTransforms(database);
     },
     shouldDisableDataPickerItem: (item) => {
-      // Disable unsupported databases
       if (item.model === "database") {
         const database = databases.find((db) => db.id === item.id);
         return !doesDatabaseSupportTransforms(database);
       }
 
       if (
-        // Disable questions based on unsupported databases
         item.model === "card" ||
         item.model === "dataset" ||
         item.model === "metric" ||
-        // Disable tables based on unsupported databases
         item.model === "table"
       ) {
-        if ("database_id" in item) {
-          const database = databases.find((db) => db.id === item.database_id);
-          return !doesDatabaseSupportTransforms(database);
-        }
-        if ("database" in item) {
-          const database = databases.find((db) => db.id === item.database.id);
-          return !doesDatabaseSupportTransforms(database);
-        }
+        const database = databases.find((db) => db.id === item.database_id);
+        return !doesDatabaseSupportTransforms(database);
       }
 
-      // Disable dashboards altogether
       if (item.model === "dashboard") {
         return true;
       }
