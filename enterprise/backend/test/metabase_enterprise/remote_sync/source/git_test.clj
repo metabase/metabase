@@ -188,8 +188,7 @@
 (deftest write-files
   (let [subdir-path (str "collections/" "r" (subs (u/generate-nano-id "a") 1) "_subdir/")
         otherdir-path (str "collections/" "o" (subs (u/generate-nano-id "b") 1) "_otherdir/")
-        thirddir-path (str "collections/" "s" (subs (u/generate-nano-id "c") 1) "_thirddir/")
-        branched-path (str "collections/" "b" (subs (u/generate-nano-id "d") 1) "_branched/")]
+        thirddir-path (str "collections/" "s" (subs (u/generate-nano-id "c") 1) "_thirddir/")]
     (mt/with-temp-dir [remote-dir nil]
       (let [[master remote] (init-source! "master" remote-dir
                                           :files {"master.txt" "File in master"
@@ -200,8 +199,7 @@
                                                   (str otherdir-path "path2.txt") "File 2 in otherdir"
                                                   (str thirddir-path "path.txt") "File in third dir"
                                                   (str thirddir-path "path2.txt") "File 2 in third dir"}
-                                          :branches ["branch-1" "branch-2"])
-            new-branch (->source! "new-branch" remote)]
+                                          :branches ["branch-1" "branch-2"])]
         (testing "Files in a subdir are replaced, other subdirs and root are unchanged"
           (source.p/write-files! (source.p/snapshot master) "Update 1" [{:path "master.txt" :content "Updated master content"}
                                                                         {:path (str subdir-path "path.txt") :content "Updated subdir content"}

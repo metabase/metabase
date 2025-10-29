@@ -12,13 +12,12 @@
    [metabase.util.yaml :as yaml]
    [methodical.core :as methodical])
   (:import
-   (java.io File)
-   (metabase_enterprise.remote_sync.source.git GitSnapshot)))
+   (java.io File)))
 
 (set! *warn-on-reflection* true)
 
 ;; Wrapping snapshot accepts a list of path regexes to apply to paths in the source returning
-;; nil when they do no match
+;; nil when they do not match
 (defrecord WrappingSnapshot [original-snapshot path-filters]
   source.p/SourceSnapshot
 

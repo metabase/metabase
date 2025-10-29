@@ -26,7 +26,11 @@
     Returns the default branch name as a string, or nil if no default branch is found.")
 
   (snapshot [source]
-    "Returns a snapshot from the source, which allows for consistent reads/writes"))
+    "Creates a snapshot from the source for consistent reads and writes.
+
+     Takes a source instance implementing this protocol.
+
+     Returns a SourceSnapshot instance representing a point-in-time view of the source."))
 
 (defprotocol SourceSnapshot
   (list-files [snapshot]

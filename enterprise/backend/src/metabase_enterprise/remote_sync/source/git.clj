@@ -306,7 +306,7 @@
                                      (when (not (remote-branches branch-name))
                                        branch-name)))
                                  local-refs)]
-    (when (some? branches-to-delete)
+    (when (seq branches-to-delete)
       (log/info "Deleting local branches without remote:" {:branches branches-to-delete}))
     (doseq [branch-name branches-to-delete]
       (call-command (-> (.branchDelete git)

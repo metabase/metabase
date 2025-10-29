@@ -2,8 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.source :as source]
-   [metabase-enterprise.remote-sync.source.protocol :as source.p])
-  (:import (metabase_enterprise.remote_sync.source.protocol SourceSnapshot)))
+   [metabase-enterprise.remote-sync.source.protocol :as source.p]))
 
 (defrecord MockSourceSnapshot [files]
   source.p/SourceSnapshot
