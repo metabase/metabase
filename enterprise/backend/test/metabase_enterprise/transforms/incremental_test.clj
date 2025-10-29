@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase-enterprise.transforms.incremental-test
+(ns ^:mb/driver-tests ^:mb/transforms-python-test metabase-enterprise.transforms.incremental-test
   "Tests for incremental transforms functionality."
   (:require
    [clojure.string :as str]
