@@ -88,7 +88,7 @@
                                schemas (keys by-schema)
                                ;; remove schemas that are not referred to
                                database (limit-db-to-schemas db schemas)
-                               ;; remove tables taht are not referred to
+                               ;; remove tables that are not referred to
                                database (reduce (fn [database [schema tables]]
                                                   (let [tables (into #{} (map :table) tables)]
                                                     (update-in database [:schemas schema] limit-schema-to-tables tables)))

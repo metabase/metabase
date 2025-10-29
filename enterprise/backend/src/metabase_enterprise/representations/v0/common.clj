@@ -134,7 +134,6 @@
   "Is this a table ref?"
   [x]
   (and (map? x)
-       (contains? x :database)
        (contains? x :schema)
        (contains? x :table)
        (not (contains? x :field))))
@@ -143,7 +142,6 @@
   "Is this a field ref?"
   [x]
   (and (map? x)
-       (contains? x :database)
        (contains? x :schema)
        (contains? x :table)
        (contains? x :field)))
@@ -155,7 +153,9 @@
     (walk/postwalk (fn [node]
                      (when (or (table-ref? node)
                                (field-ref? node))
-                       (vswap! v conj (dissoc node :field)))
+                       (vswap! v conj (cond-> (dissoc node :field)
+                                        (not (contains? node :database))
+                                        (assoc :database (:database representation)))))
                      node)
                    representation)
     @v))

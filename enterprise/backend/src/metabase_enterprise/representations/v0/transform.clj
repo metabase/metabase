@@ -1,6 +1,7 @@
 (ns metabase-enterprise.representations.v0.transform
   "The v0 transform representation namespace."
   (:require
+   [flatland.ordered.map :refer [ordered-map]]
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.lookup :as lookup]
@@ -171,30 +172,23 @@
 ;; EXPORT
 
 (defmethod export/export-entity :transform [transform]
-  (let [query (v0-mbql/patch-refs-for-export (-> transform :source :query))]
-    (cond-> {:display_name (:name transform)
+  (let [query (v0-mbql/export-dataset-query (-> transform :source :query))]
+    (cond-> (ordered-map
+             :name (v0-common/unref (v0-common/->ref (:id transform) :transform))
              :type :transform
              :version :v0
-             :name (v0-common/unref (v0-common/->ref (:id transform) :transform))
-             :description (:description transform)
              :entity_id (:entity_id transform)
-             :tags (:tags transform)}
-
-      (#{"native" :native} (:type query))
-      (assoc :query (-> query :native :query)
-             :database (:database query))
-
-      (#{"query" :query} (:type query))
-      (assoc :mbql_query (:query query)
+             :tags (:tags transform)
+             :display_name (:name transform)
+             :description (:description transform)
              :database (:database query))
 
       (#{"table" :table} (-> transform :target :type))
       (assoc :target_table {:schema (-> transform :target :schema)
                             :table (-> transform :target :name)})
 
-      (= :mbql/query (:lib/type query))
-      (assoc :lib_query (:stages query)
-             :database (:database query))
+      :always
+      (assoc :query (:query query))
 
       :always
       u/remove-nils)))
