@@ -6,8 +6,8 @@
    [medley.core :as m]
    [metabase-enterprise.metabot-v3.client-test :as client-test]
    [metabase-enterprise.metabot-v3.util :as metabot.u]
+   [metabase.premium-features.test-util :as tu]
    [metabase.premium-features.token-check :as token-check]
-   [metabase.premium-features.token-check-test :as token-check-test]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -63,12 +63,12 @@
 
 (deftest feedback-endpoint-test
   (mt/with-premium-features #{:metabot-v3}
-    (with-redefs [token-check/fetch-token-status (fn [_x]
-                                                   {:valid    true
-                                                    :status   "fake"
-                                                    :features ["test" "fixture"]
-                                                    :trial    false})]
-      (let [premium-token (token-check-test/random-token)
+    (with-redefs [token-check/check-token (fn [_x]
+                                            {:valid    true
+                                             :status   "fake"
+                                             :features ["test" "fixture"]
+                                             :trial    false})]
+      (let [premium-token (tu/random-token)
             store-url     "http://hm.example"]
         (testing "Submits feedback to Harbormaster with token and base URL"
           (mt/with-temporary-setting-values [premium-embedding-token premium-token
