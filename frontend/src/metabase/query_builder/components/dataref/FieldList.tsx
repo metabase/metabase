@@ -59,7 +59,6 @@ export const FieldList = ({ fields, onFieldClick }: FieldListProps) => (
             <CopyButton
               value={field.name}
               className={S.fieldCopyButton}
-              aria-label={msgid`Copy column name`}
             />
           </HoverParent>
         );
