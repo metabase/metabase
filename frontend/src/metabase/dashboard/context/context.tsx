@@ -81,7 +81,7 @@ export type DashboardContextOwnResult = {
   dashboardId: DashboardId | null;
   dashboardActions?: DashboardActionButtonList;
 
-  /** Does the dashboard has an `edit` dashboard action? */
+  /** Does the dashboard have an `edit` dashboard action? */
   hasEditAction: boolean;
 };
 
