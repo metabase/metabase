@@ -133,6 +133,9 @@ export const isEntityName = (field) =>
 export const isTitle = (field) => field && isa(field.semantic_type, TYPE.Title);
 export const isAddress = (field) =>
   field && isa(field.semantic_type, TYPE.Address);
+export const isScore = (field) => field && isa(field.semantic_type, TYPE.Score);
+export const isQuantity = (field) =>
+  field && isa(field.semantic_type, TYPE.Quantity);
 
 export const isAny = (col) => true;
 

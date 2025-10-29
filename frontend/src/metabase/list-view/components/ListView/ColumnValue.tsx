@@ -10,6 +10,8 @@ import { Badge, Box, Flex, Icon, Image, Stack, Text } from "metabase/ui";
 import { MiniBarCell } from "metabase/visualizations/components/TableInteractive/cells/MiniBarCell";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import * as Lib from "metabase-lib";
+import { isQuantity, isScore } from "metabase-lib/v1/types/utils/isa";
 import type {
   ColumnSettings,
   DatasetColumn,
@@ -18,6 +20,7 @@ import type {
 
 import styles from "./ListView.module.css";
 import { getCategoryColor } from "./styling";
+import { TYPE } from "metabase-lib/v1/types/constants";
 
 interface ColumnValueProps {
   column: DatasetColumn;
@@ -37,7 +40,14 @@ export function ColumnValue({
   rows,
   cols,
 }: ColumnValueProps) {
-  const columnSettings = settings.column?.(column);
+  const columnSettings = useMemo(
+    () => settings.column?.(column),
+    [column, settings],
+  );
+  const columnTypeInfo = useMemo(
+    () => Lib.legacyColumnTypeInfo(column),
+    [column],
+  );
   const value = useMemo(
     () =>
       formatValue(rawValue, {
@@ -48,10 +58,7 @@ export function ColumnValue({
     [rawValue, columnSettings],
   );
   const columnExtent = useMemo(() => {
-    if (
-      column.semantic_type === "type/Quantity" ||
-      column.semantic_type === "type/Score"
-    ) {
+    if (isQuantity(column) || isScore(column)) {
       return getColumnExtent(cols, rows, cols.indexOf(column));
     }
     return null;
@@ -62,7 +69,8 @@ export function ColumnValue({
     return <div />;
   }
 
-  if (column.base_type === "type/Boolean") {
+  // if (column.base_type === "type/Boolean") {
+  if (Lib.isBoolean(columnTypeInfo)) {
     return (
       <Badge
         className={styles.badge}
@@ -87,8 +95,8 @@ export function ColumnValue({
   }
 
   switch (column.semantic_type) {
-    case "type/PK":
-    case "type/FK":
+    case TYPE.PK:
+    case TYPE.FK:
       if (!column.remapped_to_column) {
         return (
           <Badge
@@ -103,7 +111,7 @@ export function ColumnValue({
         );
       }
       break;
-    case "type/Category":
+    case TYPE.Category:
       return (
         <Badge
           className={styles.badge}
@@ -129,7 +137,7 @@ export function ColumnValue({
           {value}
         </Badge>
       );
-    case "type/State":
+    case TYPE.State:
       return (
         <Badge
           className={styles.badge}
@@ -142,10 +150,10 @@ export function ColumnValue({
           {value}
         </Badge>
       );
-    case "type/Name":
-    case "type/Title":
-    case "type/Product":
-    case "type/Source":
+    case TYPE.Name:
+    case TYPE.Title:
+    case TYPE.Product:
+    case TYPE.Source:
       return (
         <Ellipsified
           size="sm"
@@ -157,21 +165,21 @@ export function ColumnValue({
           {value}
         </Ellipsified>
       );
-    case "type/Email":
-    case "type/URL":
+    case TYPE.Email:
+    case TYPE.URL:
       return (
         <Ellipsified size="sm" fw="bold" style={style}>
           {value}
         </Ellipsified>
       );
-    case "type/Quantity":
-    case "type/Score": {
+    case TYPE.Quantity:
+    case TYPE.Score: {
       return (
         <Flex direction="row" align="center" gap="sm">
           <MiniBarCell
             rowIndex={0}
             columnId={column.name}
-            value={Number(value)}
+            value={Number(rawValue)}
             barWidth="4rem"
             barHeight="0.25rem"
             extent={columnExtent}
@@ -187,7 +195,7 @@ export function ColumnValue({
         </Flex>
       );
     }
-    case "type/Percentage": {
+    case TYPE.Percentage: {
       return (
         <Badge
           size="lg"
@@ -211,7 +219,7 @@ export function ColumnValue({
         </Badge>
       );
     }
-    case "type/Currency": {
+    case TYPE.Currency: {
       const options = settings.column?.(column) || {};
       let currencyValue = formatNumber(Number(rawValue), options);
 
@@ -240,8 +248,8 @@ export function ColumnValue({
 
       return <Text fw="bold">{currencyValue}</Text>;
     }
-    case "type/ImageURL":
-    case "type/AvatarURL":
+    case TYPE.ImageURL:
+    case TYPE.AvatarURL:
       return (
         <Image
           src={rawValue}
@@ -254,8 +262,8 @@ export function ColumnValue({
           }}
         />
       );
-    case "type/Float":
-    case "type/Number":
+    case TYPE.Float:
+    case TYPE.Number:
       return (
         <Ellipsified
           size="sm"

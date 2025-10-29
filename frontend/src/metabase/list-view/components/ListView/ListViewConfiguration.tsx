@@ -88,13 +88,11 @@ export const ListViewConfiguration = ({
   useEffect(() => {
     setLeftValues([...(titleColumn ? [titleColumn.name] : [])]);
   }, [titleColumn]);
-  const [rightValues, setRightValues] = useState(
-    () => rightColumns.map((col) => col?.name).filter(Boolean) as string[],
+  const [rightValues, setRightValues] = useState(() =>
+    rightColumns.map((col) => col?.name).filter(Boolean),
   );
   useEffect(() => {
-    setRightValues(
-      rightColumns.map((col) => col?.name).filter(Boolean) as string[],
-    );
+    setRightValues(rightColumns.map((col) => col?.name).filter(Boolean));
   }, [rightColumns]);
 
   // Local state duplication for selected settings to immediately reflect
@@ -106,9 +104,9 @@ export const ListViewConfiguration = ({
         ? null
         : settings?.["list.entity_icon"] || getEntityIcon(entityType),
   );
-  const [selectedIconColor, setSelectedIconColor] = useState<string>(
-    () => settings?.["list.entity_icon_color"] as string,
-  );
+  const [selectedIconColor, setSelectedIconColor] = useState<
+    string | undefined
+  >(() => settings?.["list.entity_icon_color"]);
   const [entityIconEnabled, setEntityIconEnabled] = useState<boolean>(
     () => settings?.["list.entity_icon_enabled"] as boolean,
   );
