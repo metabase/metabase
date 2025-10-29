@@ -29,7 +29,7 @@ export interface CollectionPickerModalProps {
   onChange: (item: CollectionPickerValueItem) => void;
   onClose: () => void;
   options?: CollectionPickerOptions;
-  value: Pick<CollectionPickerValueItem, "id" | "model" | "collection_id">;
+  value?: Pick<CollectionPickerValueItem, "id" | "model" | "collection_id">;
   shouldDisableItem?: (item: CollectionPickerItem) => boolean;
   searchResultFilter?: (searchResults: SearchResult[]) => SearchResult[];
   recentFilter?: (recentItems: RecentItem[]) => RecentItem[];
@@ -38,7 +38,7 @@ export interface CollectionPickerModalProps {
 }
 
 const baseCanSelectItem = (
-  item: Pick<CollectionPickerItem, "can_write" | "model"> | null,
+  item: Pick<CollectionPickerItem, "can_write" | "model"> | null | undefined,
 ): item is CollectionPickerValueItem => {
   return (
     !!item &&
@@ -72,7 +72,10 @@ export const CollectionPickerModal = ({
   );
   const canSelectItem = useCallback(
     (
-      item: Pick<CollectionPickerItem, "id" | "can_write" | "model"> | null,
+      item:
+        | Pick<CollectionPickerItem, "id" | "can_write" | "model">
+        | null
+        | undefined,
     ): item is CollectionPickerValueItem => {
       return baseCanSelectItem(item) && (_canSelectItem?.(item) ?? true);
     },
