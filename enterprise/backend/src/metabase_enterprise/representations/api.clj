@@ -152,6 +152,9 @@
                        (export/export-set)
                        (import/order-representations)
                        (reverse))
+        export-set (cond-> export-set
+                     (> (count export-set) 1)
+                     (export/reduce-tables))
         clean-yamls (mapv v0-common/cleanup-delete-before-output export-set)
         export-yamls (mapv rep-yaml/generate-string clean-yamls)]
     (json/generate-string {:yamls export-yamls})))
