@@ -1,7 +1,7 @@
 drop view if exists v_content;
 
-create or replace
-SQL SECURITY INVOKER
+create or replace 
+SQL SECURITY INVOKER 
 view v_content as
 select
     action.id as entity_id,
