@@ -198,7 +198,7 @@ export function TablePicker({
               width: 40,
             }}
           >
-            <Icon name="model" />
+            <Icon name="model_with_badge" />
           </Button>
         </Tooltip>
       </Group>
