@@ -2,11 +2,6 @@
   "catalogs": [
     {
       "user": "metabase",
-      "catalog": "test-data",
-      "allow": "owner"
-    },
-    {
-      "user": "metabase",
       "allow": "owner"
     },
     {

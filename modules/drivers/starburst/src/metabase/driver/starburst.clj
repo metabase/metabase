@@ -566,7 +566,6 @@
                      (u/id db-or-id-or-spec)     db-or-id-or-spec
                   ;; otherwise it's a spec and we can't get the db
                      :else nil)]
-       (println "SETTING ROLE FOR STARBURST")
        (sql-jdbc.execute/set-role-if-supported! driver conn db))
      (try
        (sql-jdbc.execute/set-best-transaction-level! driver conn)
