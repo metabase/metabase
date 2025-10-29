@@ -609,7 +609,6 @@
                "JavaScript array should contain the correct values")
            (is (= "formatted: 1,2,3" (:value (first result)))
                "Result should contain the formatted value")))
-
        (testing "Converts maps to JavaScript objects"
          (let [received-values (atom [])
                mock-formatter (fn [v]
@@ -618,8 +617,8 @@
                tree [{:value {:a 1 :b 2} :children []}]
                formatters [mock-formatter]
                cols [{:name "col0"}]
-               col-indexes [0]
-               result (#'pivot/format-values-in-tree tree formatters cols col-indexes)]
+               col-indexes [0]]
+           (#'pivot/format-values-in-tree tree formatters cols col-indexes)
            (is (= 1 (count @received-values))
                "Formatter should be called once")
            (is (object? (first @received-values))
@@ -628,7 +627,6 @@
                "JavaScript object should have correct property 'a'")
            (is (= 2 (.-b (first @received-values)))
                "JavaScript object should have correct property 'b'")))
-
        (testing "Does not convert non-collection values"
          (let [received-values (atom [])
                mock-formatter (fn [v]
@@ -639,8 +637,8 @@
                      {:value nil :children []}]
                formatters [mock-formatter mock-formatter mock-formatter]
                cols [{:name "col0"} {:name "col1"} {:name "col2"}]
-               col-indexes [0 1 2]
-               result (#'pivot/format-values-in-tree tree formatters cols col-indexes)]
+               col-indexes [0 1 2]]
+           (#'pivot/format-values-in-tree tree formatters cols col-indexes)
            (is (= 3 (count @received-values))
                "Formatter should be called three times")
            (is (= "string-value" (first @received-values))
@@ -649,18 +647,17 @@
                "Number values should be passed through without conversion")
            (is (nil? (nth @received-values 2))
                "Nil values should be passed through without conversion")))
-
        (testing "Handles nested collections recursively"
          (let [received-values (atom [])
                mock-formatter (fn [v]
                                 (swap! received-values conj v)
-                                (str "formatted"))
+                                "formatted")
                tree [{:value [1 2]
                       :children [{:value {:x 10} :children []}]}]
                formatters [mock-formatter mock-formatter]
                cols [{:name "col0"} {:name "col1"}]
-               col-indexes [0 1]
-               result (#'pivot/format-values-in-tree tree formatters cols col-indexes)]
+               col-indexes [0 1]]
+           (#'pivot/format-values-in-tree tree formatters cols col-indexes)
            (is (= 2 (count @received-values))
                "Formatter should be called for both parent and child")
            (is (array? (first @received-values))
