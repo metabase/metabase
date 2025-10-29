@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [flatland.ordered.map :refer [ordered-map]]
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.v0.common :as v0-common]
@@ -209,16 +210,14 @@
 
 (defmethod export/export-entity :database [database]
   (let [ref (v0-common/unref (v0-common/->ref (:id database) :database))]
-    (-> {:type :database
-         :version :v0
+    (-> (ordered-map
          :name ref
-         :display_name (:name database)
+         :type :database
+         :version :v0
          :engine (:engine database)
+         :display_name (:name database)
          :description (not-empty (:description database))
          :connection_details (some-> (:details database)
                                      (sanitize-connection-details ref))
-         :schemas (get-database-schemas (:id database))}
+         :schemas (get-database-schemas (:id database)))
         u/remove-nils)))
-
-(comment
-  (export (t2/select-one :model/Database 52)))
