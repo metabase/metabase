@@ -19,6 +19,7 @@ interface UseSourceStateResult {
   suggestedTransform: SuggestedTransform | undefined;
   isDirty: boolean;
   setSource: (source: DraftTransformSource) => void;
+  setSourceAndAccept: (source: DraftTransformSource) => void;
   acceptProposed: () => void;
   rejectProposed: () => void;
 }
@@ -27,11 +28,16 @@ export function useSourceState(
   transformId: TransformId | undefined,
   initialSource: DraftTransformSource,
 ): UseSourceStateResult {
-  const [source, setSource] = useState(initialSource);
   const dispatch = useDispatch();
 
   const suggestedTransform = useSelector((state) =>
     getMetabotSuggestedTransform(state, transformId),
+  );
+
+  const [source, setSource] = useState(
+    transformId != null
+      ? initialSource
+      : (suggestedTransform?.source ?? initialSource),
   );
 
   const proposedSource = useMemo(() => {
@@ -42,10 +48,14 @@ export function useSourceState(
   }, [source, suggestedTransform]);
 
   const isDirty = useMemo(() => {
-    return !isSameSource(source, initialSource) || proposedSource != null;
-  }, [source, initialSource, proposedSource]);
+    return (
+      transformId == null ||
+      proposedSource != null ||
+      !isSameSource(source, initialSource)
+    );
+  }, [source, initialSource, proposedSource, transformId]);
 
-  const setSourceAndDeactivate = useCallback(
+  const setSourceAndAccept = useCallback(
     (source: DraftTransformSource) => {
       if (suggestedTransform != null) {
         dispatch(deactivateSuggestedTransform(suggestedTransform.id));
@@ -73,7 +83,8 @@ export function useSourceState(
     proposedSource,
     suggestedTransform,
     isDirty,
-    setSource: setSourceAndDeactivate,
+    setSource,
+    setSourceAndAccept,
     acceptProposed,
     rejectProposed,
   };

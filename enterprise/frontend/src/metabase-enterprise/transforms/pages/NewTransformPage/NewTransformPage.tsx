@@ -80,7 +80,7 @@ function NewTransformPageBody({
     proposedSource,
     suggestedTransform,
     isDirty,
-    setSource,
+    setSourceAndAccept,
     acceptProposed,
     rejectProposed,
   } = useSourceState(undefined, initialSource);
@@ -110,7 +110,7 @@ function NewTransformPageBody({
             isNew={true}
             isDirty={isDirty}
             isSaving={false}
-            onChangeSource={setSource}
+            onChangeSource={setSourceAndAccept}
             onSave={openModal}
             onCancel={handleCancel}
             onAcceptProposed={acceptProposed}
@@ -127,7 +127,7 @@ function NewTransformPageBody({
             isNew={true}
             isSaving={false}
             isDirty={isDirty}
-            onChangeSource={setSource}
+            onChangeSource={setSourceAndAccept}
             onChangeUiState={setUiState}
             onSave={openModal}
             onCancel={handleCancel}
