@@ -976,7 +976,6 @@ describe("issue 40660", () => {
   });
 });
 
-// Skipped since it does not make sense when CSP is disabled
 describe("issue 49142", { tags: "@skip" }, () => {
   const questionDetails = {
     name: "Products",
