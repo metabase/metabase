@@ -1193,6 +1193,14 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: share_component,
       source: share_source,
     },
+    sort: {
+      component: sort_component,
+      source: sort_source,
+    },
+    sort_arrows: {
+      component: sort_arrows_component,
+      source: sort_arrows_source,
+    },
     split: {
       component: split_component,
       source: split_source,
@@ -1216,14 +1224,6 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     sticky_note: {
       component: sticky_note_component,
       source: sticky_note_source,
-    },
-    sort: {
-      component: sort_component,
-      source: sort_source,
-    },
-    sort_arrows: {
-      component: sort_arrows_component,
-      source: sort_arrows_source,
     },
     sum: {
       component: sum_component,

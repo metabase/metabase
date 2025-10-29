@@ -10,7 +10,7 @@ import { Badge, Box, Flex, Icon, Image, Stack, Text } from "metabase/ui";
 import { MiniBarCell } from "metabase/visualizations/components/TableInteractive/cells/MiniBarCell";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import * as Lib from "metabase-lib";
+import { TYPE } from "metabase-lib/v1/types/constants";
 import { isQuantity, isScore } from "metabase-lib/v1/types/utils/isa";
 import type {
   ColumnSettings,
@@ -20,7 +20,6 @@ import type {
 
 import styles from "./ListView.module.css";
 import { getCategoryColor } from "./styling";
-import { TYPE } from "metabase-lib/v1/types/constants";
 
 interface ColumnValueProps {
   column: DatasetColumn;
@@ -44,10 +43,6 @@ export function ColumnValue({
     () => settings.column?.(column),
     [column, settings],
   );
-  const columnTypeInfo = useMemo(
-    () => Lib.legacyColumnTypeInfo(column),
-    [column],
-  );
   const value = useMemo(
     () =>
       formatValue(rawValue, {
@@ -69,8 +64,7 @@ export function ColumnValue({
     return <div />;
   }
 
-  // if (column.base_type === "type/Boolean") {
-  if (Lib.isBoolean(columnTypeInfo)) {
+  if (column.base_type === TYPE.Boolean) {
     return (
       <Badge
         className={styles.badge}
@@ -168,7 +162,7 @@ export function ColumnValue({
     case TYPE.Email:
     case TYPE.URL:
       return (
-        <Ellipsified size="sm" fw="bold" style={style}>
+        <Ellipsified size="sm" fw="bold" style={style} tooltip={rawValue}>
           {value}
         </Ellipsified>
       );
@@ -221,14 +215,14 @@ export function ColumnValue({
     }
     case TYPE.Currency: {
       const options = settings.column?.(column) || {};
-      let currencyValue = formatNumber(Number(rawValue), options);
+      const formattedValue = formatNumber(Number(rawValue), options);
 
       if (
         options.currency_style === "symbol" &&
         typeof options.currency === "string"
       ) {
         const currencySymbol = getCurrencySymbol(options?.currency);
-        currencyValue = currencyValue.replace(currencySymbol, "");
+        const currencyValue = formattedValue.replace(currencySymbol, "");
 
         return (
           <Text fw="bold">
@@ -246,7 +240,7 @@ export function ColumnValue({
         );
       }
 
-      return <Text fw="bold">{currencyValue}</Text>;
+      return <Text fw="bold">{formattedValue}</Text>;
     }
     case TYPE.ImageURL:
     case TYPE.AvatarURL:

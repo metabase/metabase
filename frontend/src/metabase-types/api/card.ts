@@ -1,4 +1,5 @@
 import type { EmbeddingParameters } from "metabase/public/lib/types";
+import type { IconName } from "metabase/ui";
 import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
 
 import type { Collection, CollectionId, LastEditInfo } from "./collection";
@@ -333,7 +334,7 @@ export type VisualizationSettings = {
   "list.columns"?: ListViewColumns; // set of columns selected for custom list view
   "list.entity_icon_enabled"?: boolean; // display/hide first list item column rendering image/icon
   "list.use_image_column"?: boolean; // render image from image/avatar url column instead of icon
-  "list.entity_icon"?: string | null;
+  "list.entity_icon"?: IconName | null;
   "list.entity_icon_color"?: string;
 
   [key: string]: any;

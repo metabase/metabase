@@ -1,3 +1,4 @@
+import type { IconName } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
 
 export const ENTITY_ICONS = {
@@ -16,12 +17,14 @@ export const ENTITY_ICONS = {
   "entity/GenericTable": "document",
   zap: "zap",
   camera: "camera",
-} as const;
+} satisfies Record<string, IconName>;
 
 export const getEntityIcon = (entityType?: string) => {
-  return entityType
-    ? ENTITY_ICONS[entityType as keyof typeof ENTITY_ICONS] || "document"
-    : "document";
+  return (
+    entityType
+      ? ENTITY_ICONS[entityType as keyof typeof ENTITY_ICONS] || "document"
+      : "document"
+  ) as IconName;
 };
 
 export const ENTITY_ICON_COLORS = [
@@ -57,19 +60,23 @@ const CATEGORY_COLORS = [
 ];
 
 // Get a consistent color for a category value based on its hash
-export const getCategoryColor = (value: any, columnName: string) => {
-  if (value == null || value === "") {
+export const getCategoryColor = (categoryValue: any, columnName: string) => {
+  if (categoryValue == null || categoryValue === "") {
     return "var(--mb-color-background-light)";
   }
 
-  const stringValue = String(value);
+  const stringValue = String(categoryValue);
 
   // Use a combination of column name and value for more consistent colors
-  const combinedString = `${columnName}:${stringValue}`;
-  const hash = combinedString.split("").reduce((a, b) => {
-    a = (a << 5) - a + b.charCodeAt(0);
-    return a & a;
-  }, 0);
+  const hashInput = `${columnName}:${stringValue}`;
+  let hash = 0;
+  for (let i = 0; i < hashInput.length; i++) {
+    const char = hashInput.charCodeAt(i);
+    // 5 is used to implement DJB2-like hashing: (hash * 33) + char
+    // Bit shifting by 5 (<< 5) is equivalent to multiplying by 32 (2^5)
+    hash = (hash << 5) + hash + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
 
   const colorIndex = Math.abs(hash) % CATEGORY_COLORS.length;
   return color(CATEGORY_COLORS[colorIndex]);

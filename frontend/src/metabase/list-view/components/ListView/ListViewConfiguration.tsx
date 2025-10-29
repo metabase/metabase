@@ -12,6 +12,7 @@ import {
 import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import { arrayMove } from "@dnd-kit/sortable";
 import cx from "classnames";
+import { defaults } from "underscore";
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -98,21 +99,19 @@ export const ListViewConfiguration = ({
   // Local state duplication for selected settings to immediately reflect
   // list item preview changes.
 
-  const [selectedEntityIcon, setSelectedEntityIcon] = useState<string | null>(
-    () =>
-      settings?.["list.use_image_column"]
-        ? null
-        : settings?.["list.entity_icon"] || getEntityIcon(entityType),
-  );
-  const [selectedIconColor, setSelectedIconColor] = useState<
-    string | undefined
-  >(() => settings?.["list.entity_icon_color"]);
-  const [entityIconEnabled, setEntityIconEnabled] = useState<boolean>(
-    () => settings?.["list.entity_icon_enabled"] as boolean,
-  );
-  const [useImageColumn, setUseImageColumn] = useState<boolean>(
-    () => settings?.["list.use_image_column"] as boolean,
-  );
+  const [iconConfig, setIconConfig] = useState<{
+    selectedEntityIcon: IconName | null;
+    selectedIconColor?: string;
+    entityIconEnabled: boolean;
+    useImageColumn: boolean;
+  }>(() => ({
+    selectedEntityIcon: settings?.["list.use_image_column"]
+      ? null
+      : settings?.["list.entity_icon"] || getEntityIcon(entityType),
+    selectedIconColor: settings?.["list.entity_icon_color"],
+    entityIconEnabled: settings?.["list.entity_icon_enabled"] ?? false,
+    useImageColumn: settings?.["list.use_image_column"] ?? false,
+  }));
 
   // Exclude options already used by any of the two selects, but keep the ones
   // selected in the respective select so tags render properly
@@ -139,13 +138,13 @@ export const ListViewConfiguration = ({
   const selectedRightColumns = rightValues
     .slice(0, 5)
     .map(findColByName)
-    .filter(Boolean) as DatasetColumn[];
+    .filter(Boolean);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
 
-  const onConfigurationChange = ({
+  const handleConfigurationChange = ({
     left = leftValues,
     right = rightValues,
     entityIcon,
@@ -155,7 +154,7 @@ export const ListViewConfiguration = ({
   }: {
     left?: string[];
     right?: string[];
-    entityIcon?: string | null;
+    entityIcon?: IconName | null;
     entityIconColor?: string;
     entityIconEnabled?: boolean;
     useImageColumn?: boolean;
@@ -166,17 +165,24 @@ export const ListViewConfiguration = ({
     if (right !== undefined) {
       setRightValues(right);
     }
-    if (entityIcon !== undefined) {
-      setSelectedEntityIcon(entityIcon);
-    }
-    if (entityIconColor !== undefined) {
-      setSelectedIconColor(entityIconColor);
-    }
-    if (entityIconEnabled !== undefined) {
-      setEntityIconEnabled(entityIconEnabled);
-    }
-    if (useImageColumn !== undefined) {
-      setUseImageColumn(useImageColumn);
+
+    const hasIconConfigChange =
+      entityIcon !== undefined ||
+      entityIconColor !== undefined ||
+      entityIconEnabled !== undefined ||
+      useImageColumn !== undefined;
+    if (hasIconConfigChange) {
+      setIconConfig((prev) =>
+        defaults(
+          {
+            selectedEntityIcon: entityIcon,
+            selectedIconColor: entityIconColor,
+            entityIconEnabled,
+            useImageColumn,
+          },
+          prev,
+        ),
+      );
     }
     onChange({
       left,
@@ -197,7 +203,7 @@ export const ListViewConfiguration = ({
   } = useExternalDragOverlay({
     leftValues,
     rightValues,
-    onConfigurationChange,
+    onConfigurationChange: handleConfigurationChange,
   });
 
   const activeItem = activeId
@@ -255,12 +261,14 @@ export const ListViewConfiguration = ({
                       alignItems: "center",
                       justifyContent: "center",
                       flexShrink: 0,
-                      backgroundColor: entityIconEnabled
-                        ? getIconBackground(selectedIconColor)
+                      backgroundColor: iconConfig.entityIconEnabled
+                        ? getIconBackground(iconConfig.selectedIconColor)
                         : "var(--mb-color-white)",
                     }}
                   >
-                    {useImageColumn && entityIconEnabled && imageColumn ? (
+                    {iconConfig.useImageColumn &&
+                    iconConfig.entityIconEnabled &&
+                    imageColumn ? (
                       <Image
                         src={previewSample[cols.indexOf(imageColumn)]}
                         alt=""
@@ -273,13 +281,18 @@ export const ListViewConfiguration = ({
                       <Icon
                         tooltip="Entity icon"
                         name={
-                          entityIconEnabled
-                            ? (selectedEntityIcon as IconName)
+                          iconConfig.entityIconEnabled &&
+                          iconConfig.selectedEntityIcon
+                            ? iconConfig.selectedEntityIcon
                             : "ban"
                         }
                         size="1rem"
                         className={S.listEntityIcon}
-                        c={entityIconEnabled ? selectedIconColor : "text-light"}
+                        c={
+                          iconConfig.entityIconEnabled
+                            ? iconConfig.selectedIconColor
+                            : "text-light"
+                        }
                       />
                     )}
                   </ActionIcon>
@@ -300,9 +313,9 @@ export const ListViewConfiguration = ({
                     styles={{
                       labelWrapper: { marginRight: "auto" },
                     }}
-                    checked={entityIconEnabled}
+                    checked={iconConfig.entityIconEnabled}
                     onChange={(e) => {
-                      onConfigurationChange({
+                      handleConfigurationChange({
                         left: leftValues,
                         right: rightValues,
                         entityIconEnabled: e.currentTarget.checked,
@@ -320,10 +333,12 @@ export const ListViewConfiguration = ({
                     disabled={!imageColumn}
                     className={cx({
                       [S.imageColumn]: !!imageColumn,
-                      [S.selected]: useImageColumn && entityIconEnabled,
+                      [S.selected]:
+                        iconConfig.useImageColumn &&
+                        iconConfig.entityIconEnabled,
                     })}
                     onClick={() => {
-                      onConfigurationChange({
+                      handleConfigurationChange({
                         left: leftValues,
                         right: rightValues,
                         useImageColumn: true,
@@ -359,23 +374,19 @@ export const ListViewConfiguration = ({
                         radius="lg"
                         className={cx({
                           [S.selected]:
-                            selectedEntityIcon === iconName &&
-                            entityIconEnabled,
+                            iconConfig.selectedEntityIcon === iconName &&
+                            iconConfig.entityIconEnabled,
                         })}
                         onClick={() => {
-                          onConfigurationChange({
+                          handleConfigurationChange({
                             left: leftValues,
                             right: rightValues,
-                            entityIcon: iconName as string,
+                            entityIcon: iconName,
                             useImageColumn: false,
                           });
                         }}
                       >
-                        <Icon
-                          name={iconName as IconName}
-                          size={16}
-                          c="text-primary"
-                        />
+                        <Icon name={iconName} size={16} c="text-primary" />
                       </ActionIcon>
                     </Flex>
                   ))}
@@ -386,12 +397,12 @@ export const ListViewConfiguration = ({
                     <Flex justify="center" align="center" key={color}>
                       <Button
                         className={cx(S.iconColorButton, {
-                          [S.selected]: color === selectedIconColor,
+                          [S.selected]: color === iconConfig.selectedIconColor,
                         })}
                         variant="subtle"
                         bg={color}
                         onClick={() => {
-                          onConfigurationChange({
+                          handleConfigurationChange({
                             entityIconColor: color,
                           });
                         }}
@@ -410,7 +421,7 @@ export const ListViewConfiguration = ({
               data={leftOptions}
               value={leftValues}
               onChange={(value) =>
-                onConfigurationChange({ left: value, right: rightValues })
+                handleConfigurationChange({ left: value, right: rightValues })
               }
               maxValues={MAX_LEFT_COLUMNS}
               placeholder={leftValues.length > 0 ? "" : t`Title`}
@@ -430,7 +441,7 @@ export const ListViewConfiguration = ({
               data={rightOptions}
               value={rightValues}
               onChange={(value) =>
-                onConfigurationChange({ left: leftValues, right: value })
+                handleConfigurationChange({ left: leftValues, right: value })
               }
               maxValues={MAX_RIGHT_COLUMNS}
               placeholder={
@@ -461,13 +472,15 @@ export const ListViewConfiguration = ({
             row={previewSample}
             settings={settings as ComputedVisualizationSettings}
             entityIcon={
-              entityIconEnabled && selectedEntityIcon
-                ? selectedEntityIcon
+              iconConfig.entityIconEnabled && iconConfig.selectedEntityIcon
+                ? iconConfig.selectedEntityIcon
                 : undefined
             }
-            entityIconColor={selectedIconColor}
+            entityIconColor={iconConfig.selectedIconColor}
             imageColumn={
-              entityIconEnabled && useImageColumn ? imageColumn : undefined
+              iconConfig.entityIconEnabled && iconConfig.useImageColumn
+                ? imageColumn
+                : undefined
             }
             titleColumn={selectedTitleColumn}
             rightColumns={selectedRightColumns}
@@ -504,7 +517,7 @@ function useExternalDragOverlay({
   onConfigurationChange: (values: {
     left: string[];
     right: string[];
-    entityIcon?: string | null;
+    entityIcon?: IconName | null;
   }) => void;
 }) {
   // Active drag state for overlay
