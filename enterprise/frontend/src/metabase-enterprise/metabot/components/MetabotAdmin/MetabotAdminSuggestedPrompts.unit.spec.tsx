@@ -33,6 +33,7 @@ const nextPage = async () =>
 
 type SetupOpts = {
   metabotId?: number;
+  metabotCollectionId?: number;
   pageSize?: number;
   mockInitialPage?: boolean;
 };
@@ -59,7 +60,10 @@ const setup = async (opts?: SetupOpts) => {
     : paginationContext;
 
   const TestComponent = () => (
-    <MetabotPromptSuggestionPane metabotId={metabotId} pageSize={pageSize} />
+    <MetabotPromptSuggestionPane
+      metabot={{ id: metabotId, collection_id: null }}
+      pageSize={pageSize}
+    />
   );
 
   renderWithProviders(<Route path="/" component={TestComponent} />, {

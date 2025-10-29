@@ -34,7 +34,7 @@ export const MetabotPromptSuggestionPane = ({
   metabot,
   pageSize = PAGE_SIZE,
 }: {
-  metabot: MetabotInfo;
+  metabot: Pick<MetabotInfo, "id" | "collection_id">;
   pageSize?: number;
 }) => {
   const [sendToast] = useToast();
