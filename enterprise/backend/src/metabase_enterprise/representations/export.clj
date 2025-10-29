@@ -80,10 +80,10 @@
         databases (map db->schema-index databases)
         non-databases (get db-split false)
         ;; remove databases that are not referred to
-        databases (filter #(contains? referred-to-databases (:ref %)) databases)
+        databases (filter #(contains? referred-to-databases (:name %)) databases)
         tables-by-db (group-by (comp v0-common/unref :database) tables)
         databases (map (fn [db]
-                         (let [tables (get tables-by-db (:ref db))
+                         (let [tables (get tables-by-db (:name db))
                                by-schema (group-by :schema tables)
                                schemas (keys by-schema)
                                ;; remove schemas that are not referred to
