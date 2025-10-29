@@ -5,7 +5,15 @@
       "allow": "owner"
     },
     {
-      "user": "employee",
+      "user": "role_a",
+      "allow": "read-only"
+    },
+    {
+      "user": "role_b",
+      "allow": "read-only"
+    },
+    {
+      "user": "widget_role",
       "allow": "read-only"
     }
   ],
@@ -22,12 +30,26 @@
       ]
     },
     {
-      "user": "employee",
-      "table": "employees",
+      "user": "role_a",
+      "table": "venues",
+      "privileges": [
+        "SELECT"
+      ]
+    },
+    {
+      "user": "role_b",
+      "table": "checkins",
+      "privileges": [
+        "SELECT"
+      ]
+    },
+    {
+      "user": "widget_role",
+      "table": "products",
       "privileges": [
         "SELECT"
       ],
-      "filter": "department = 'Engineering'"
+      "filter": "category = 'Widget'"
     }
   ]
 }
