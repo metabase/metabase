@@ -29,18 +29,3 @@
         ;;entities (dissoc entities :database)
         ]
     (dependencies/errors-from-proposed-edits (dissoc entities :database :collection))))
-
-(comment
-
-  (require '[metabase-enterprise.representations.export :as export])
-  (export/export-entity (t2/select-one :model/Card :id 93))
-
-  (check-dependencies [(-> (t2/select-one :model/Database :id 3)
-                           export/export-entity
-
-                           ;;(import/persist! {}) ;; this will lookup db in the app db
-                           )
-                       (-> (t2/select-one :model/Card :id 93)
-                           export/export-entity
-                           (update :type name)
-                           import/normalize-representation)]))

@@ -4,7 +4,7 @@ name: sales-data
 display_name: Sales Data
 description: Monthly sales analysis with product categories and financial metrics
 database: Sample Database
-mbql_query:
+query:
   database: 1
   type: query
   query:

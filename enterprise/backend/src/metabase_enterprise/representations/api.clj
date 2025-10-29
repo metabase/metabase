@@ -14,6 +14,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
    [metabase.util.log :as log]
+   [representations.read :as rep-read]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -70,7 +71,7 @@
         collection (rep-yaml/parse-string yaml-string)
         representations (import/collection-representations collection)
         representations (import/order-representations representations)
-        representations (map import/normalize-representation representations)
+        representations (map rep-read/parse representations)
         errors (deps/check-dependencies representations)]
     (rep-yaml/generate-string errors)))
 
@@ -85,7 +86,7 @@
         collection (rep-yaml/parse-string yaml-string)
         representations (import/collection-representations collection)
         representations (import/order-representations representations)
-        representations (map import/normalize-representation representations)
+        representations (map rep-read/parse representations)
         errors (deps/check-dependencies representations)]
     (rep-yaml/generate-string errors)))
 

@@ -9,80 +9,13 @@
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.v0.mbql :as v0-mbql]
    [metabase.lib.core :as lib]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
-
-(defmethod import/type->schema [:v0 :question] [_]
-  ::question)
-
-;;; ------------------------------------ Schema Definitions ------------------------------------
-
-(mr/def ::type
-  [:enum {:decode/json keyword
-          :description "Type must be 'question'"}
-   :question])
-
-(mr/def ::version
-  [:enum {:decode/json keyword
-          :description "Version of this question schema"}
-   :v0])
-
-(mr/def ::name
-  [:and
-   {:description "Unique reference identifier for the card, used for cross-references"}
-   ::lib.schema.common/non-blank-string
-   [:re #"^[a-z0-9][a-z0-9-_]*$"]])
-
-(mr/def ::display-name
-  [:and
-   {:description "Human-readable name for the card"}
-   ::lib.schema.common/non-blank-string])
-
-(mr/def ::description
-  [:and
-   {:description "Documentation explaining what the card does"}
-   [:or
-    :nil
-    :string]])
-
-(mr/def ::query
-  [:and
-   {:description "Native SQL query or lib query"}
-   :any])
-
-(mr/def ::database
-  [:and
-   {:description "Database reference: integer ID, name string, or ref string"}
-   ::lib.schema.common/non-blank-string])
-
-(mr/def ::collection
-  [:and
-   {:description "Optional collection path for organizing the card"}
-   any?])
-
-;;; ------------------------------------ Main Schema ------------------------------------
-
-(mr/def ::question
-  [:and
-   [:map
-    {:description "v0 schema for human-writable question representation"}
-    [:type ::type]
-    [:version ::version]
-    [:name ::name]
-    [:display_name {:optional true} ::display-name]
-    [:description {:optional true} ::description]
-    [:database ::database]
-    [:query {:optional true} ::query]
-    [:collection {:optional true} ::collection]]])
 
 (defmethod v0-common/type->model :question
   [_]
   :model/Card)
-
-;;; ------------------------------------ Ingestion ------------------------------------
 
 (defmethod import/yaml->toucan [:v0 :question]
   [representation ref-index]
@@ -96,9 +29,7 @@
          :display (:display representation)
          :dataset_query query
          :database_id database-id
-         :query_type (if (lib/native-only-query? query)
-                       :native
-                       :query #_#_#_(= (name (:type query)) "native") :native :query)
+         :query_type (if (lib/native-only-query? query) :native :query)
          :type :question}
         u/remove-nils)))
 
@@ -126,7 +57,6 @@
          :name         card-ref
          :type         (:type card)
          :version      :v0
-         :entity_id    (:entity_id card)
          :display_name (:name card)
          :description  (:description card))
         (merge (v0-mbql/export-dataset-query (:dataset_query card)))

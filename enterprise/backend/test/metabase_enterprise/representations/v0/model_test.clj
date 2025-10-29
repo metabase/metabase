@@ -1,7 +1,5 @@
 (ns metabase-enterprise.representations.v0.model-test
   (:require
-   #_[metabase-enterprise.representations.import :as import]
-   #_[metabase.api.common :as api]
    [clojure.test :refer :all]
    [metabase-enterprise.representations.core :as rep]
    [metabase-enterprise.representations.export :as export]
@@ -9,6 +7,7 @@
    [metabase-enterprise.representations.yaml :as yaml]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [representations.read :as rep-read]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -21,11 +20,10 @@
   (testing "Testing valid examples"
     (doseq [filename
             ["test_resources/representations/v0/product-performance.model.yml"
-             "test_resources/representations/v0/collection-8/sales-data-enriched.model.yml"
              "test_resources/representations/v0/collection-8/sales-data.model.yml"]]
       (testing (str "Validating: " filename)
         (let [rep (yaml/from-file filename)]
-          (is (rep/normalize-representation rep)))))))
+          (is (rep-read/parse rep)))))))
 
 (deftest validate-exported-models
   (doseq [query [(mt/native-query {:query "select 1"})
@@ -36,7 +34,7 @@
             ;; convert to yaml and read back in to convert keywords to strings, etc
             yaml (yaml/generate-string edn)
             rep (yaml/parse-string yaml)]
-        (is (rep/normalize-representation rep))))))
+        (is (rep-read/parse rep))))))
 
 ;; TODO: replace old stale tests
 

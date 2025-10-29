@@ -9,6 +9,7 @@
    [metabase-enterprise.representations.yaml :as rep-yaml]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [representations.read :as rep-read]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -30,43 +31,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Representation Normalization ;;
 
-;; TODO: Move to representations repo
-(defmulti type->schema
-  "Returns the schema for a given type keyword.
-   Each v0 namespace implements this for its own type."
-  {:arglists '([{:keys [version type]}])}
-  (juxt :version :type))
-
-;; TODO: move to representations repo
-(defmethod type->schema :default
-  [{:keys [version type] :as schema}]
-  (throw (ex-info (format "Unknown version: %s or type: %s" version type) schema)))
-
-;; TODO: move to representations repo
-(defn normalize-type
-  "Convert the type and version of the representation to keywords."
-  [representation]
-  (reduce #(update %1 %2 keyword) representation [:version :type]))
-
-;; TODO: move to representations repo
-(defn normalize-representation
-  "Ensures type is set correctly and de-encodes base64 if necessary."
-  [representation]
-  (let [representation' (normalize-type representation)]
-    (if-let [entity-type (:type representation')]
-      (let [version+type (select-keys representation' [:version :type])
-            schema (type->schema version+type)]
-        (if-not schema
-          (throw (ex-info (str "Unknown type: " entity-type) {:type entity-type}))
-          (mu/validate-throw schema representation')))
-      (throw (ex-info "Missing required field: type" {:representation representation})))))
-
 ;; inserting and updating
 
 (defn insert!
   "Insert a representation as a new entity."
   [representation ref-index]
-  (let [representation (normalize-representation representation)]
+  (let [representation (rep-read/parse representation)]
     (if-some [model (v0-common/type->model (:type representation))]
       (let [toucan (yaml->toucan representation ref-index)]
         (t2/insert! model toucan))
@@ -77,7 +47,7 @@
 (defn update!
   "Update an existing entity from a representation."
   [representation id ref-index]
-  (let [representation (normalize-representation representation)]
+  (let [representation (rep-read/parse representation)]
     (if-some [model (v0-common/type->model (:type representation))]
       (let [toucan (->> (yaml->toucan representation ref-index)
                         (rep-t2/with-toucan-defaults model))]
@@ -137,7 +107,7 @@
   (when (or (str/ends-with? (.getName file) ".yml")
             (str/ends-with? (.getName file) ".yaml"))
     (-> (import-yaml file)
-        normalize-representation
+        rep-read/parse
         (assoc :collection (file->collection-id file)))))
 
 (defn- yaml-files
@@ -204,7 +174,7 @@
   "Import a collection from a YAML string containing the full bundle.
    Creates collections first (ordered by parent-child), then other entities."
   [yaml-string]
-  (let [bundle (-> yaml-string rep-yaml/parse-string normalize-representation)
+  (let [bundle (-> yaml-string rep-yaml/parse-string rep-read/parse)
         collection-rep (dissoc bundle :children :databases)
         collection-name (:name collection-rep)
         ;; Select ONLY top-level collections with the name:
@@ -221,7 +191,7 @@
     (let [new-collection (persist! collection-rep {})
           collection-id (:id new-collection)
           representations (flatten-collection-children bundle)
-          normalized (map normalize-representation representations)
+          normalized (map rep-read/parse representations)
           ordered (order-representations normalized)]
       (reduce (fn [index entity]
                 (try
@@ -248,7 +218,7 @@
         (try
           (let [valid-repr (-> (slurp file)
                                (rep-yaml/parse-string)
-                               (normalize-representation))
+                               (rep-read/parse))
                 id (-> (:name valid-repr)
                        (str/split #"-")
                        (last)

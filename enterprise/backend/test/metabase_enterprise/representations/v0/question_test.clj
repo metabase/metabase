@@ -1,19 +1,15 @@
 (ns metabase-enterprise.representations.v0.question-test
   (:require
-   ;; TODO: determine new tests to replace old singleton import/export
-   #_[metabase-enterprise.representations.export :as export]
-   #_[metabase-enterprise.representations.import :as import]
    [clojure.test :refer :all]
    [metabase-enterprise.representations.core :as rep]
    [metabase-enterprise.representations.export :as export]
-   [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.yaml :as rep-yaml]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.test-metadata :as meta]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [representations.read :as rep-read]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -31,7 +27,7 @@
             ["test_resources/representations/v0/invalid.question.yml"]]
       (testing (str "Validating: " filename)
         (let [rep (rep-yaml/from-file filename)]
-          (is (thrown? clojure.lang.ExceptionInfo (rep/normalize-representation rep))))))))
+          (is (thrown? clojure.lang.ExceptionInfo (rep-read/parse rep))))))))
 
 (deftest validate-exported-questions
   (doseq [query [(mt/native-query {:query "select 1"})
@@ -42,7 +38,7 @@
             ;; convert to yaml and read back in to convert keywords to strings, etc
             yaml (rep-yaml/generate-string edn)
             rep (rep-yaml/parse-string yaml)]
-        (is (rep/normalize-representation rep))))))
+        (is (rep-read/parse rep))))))
 
 (deftest can-import
   (let [filename "test_resources/representations/v0/monthly-revenue.question.yml"
@@ -59,7 +55,7 @@
           export-set (export/export-set [edn])
           export-set (export/reduce-tables export-set)
           db-ref (v0-common/unref (:database edn))
-          idx (into {} (map (juxt :ref identity)) export-set)
+          idx (into {} (map (juxt :name identity)) export-set)
           database (get idx db-ref)]
       (is (= 2 (count export-set)))
       (is (= :database (:type database)))
@@ -100,7 +96,7 @@
           (let [card-edn (export/export-entity question)
                 card-yaml (rep-yaml/generate-string card-edn)
                 card-rep (rep-yaml/parse-string card-yaml)
-                card-rep (rep/normalize-representation card-rep)
+                card-rep (rep-read/parse card-rep)
 
                 ;; Build ref-index with database
                 ref-index (v0-common/map-entity-index
@@ -112,7 +108,7 @@
                 edn (export/export-entity question)
                 yaml (rep-yaml/generate-string edn)
                 rep2 (rep-yaml/parse-string yaml)
-                rep2 (rep/normalize-representation rep2)]
+                rep2 (rep-read/parse rep2)]
             (is (=? (dissoc card-rep :name :entity-id) rep2))))))))
 
 (deftest question->card

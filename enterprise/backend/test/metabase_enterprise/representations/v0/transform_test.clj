@@ -1,13 +1,12 @@
 (ns metabase-enterprise.representations.v0.transform-test
   (:require
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [metabase-enterprise.representations.core :as rep]
-   [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.yaml :as yaml]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [representations.read :as rep-read]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -24,13 +23,13 @@
     (doseq [filename good-yamls]
       (testing (str "Validating: " filename)
         (let [rep (yaml/from-file filename)]
-          (is (rep/normalize-representation rep))))))
+          (is (rep-read/parse rep))))))
   (testing "Testing invalid examples"
     (doseq [filename
             []]
       (testing (str "Validating: " filename)
         (let [rep (yaml/from-file filename)]
-          (is (thrown? clojure.lang.ExceptionInfo (rep/normalize-representation rep))))))))
+          (is (thrown? clojure.lang.ExceptionInfo (rep-read/parse rep))))))))
 
 ;; TODO: test passes but I suspect this is also incorrectly using model/Transform:
 (deftest validate-exported-transforms
@@ -46,7 +45,7 @@
             ;; convert to yaml and read back in to convert keywords to strings, etc
             yaml (yaml/generate-string edn)
             rep (yaml/parse-string yaml)]
-        (is (rep/normalize-representation rep))))))
+        (is (rep-read/parse rep))))))
 
 ;; Update schema transformations to toucan (and possibly the yamls)
 #_(deftest can-import
@@ -91,7 +90,7 @@
           (let [edn (rep/export transform)
                 yaml (yaml/generate-string edn)
                 rep (yaml/parse-string yaml)
-                rep (rep/normalize-representation rep)
+                rep (rep-read/parse rep)
                 ref-index (v0-common/map-entity-index
                            {(v0-common/unref (:database edn)) (t2/select-one :model/Database (mt/id))})
                 transform (rep/persist! rep ref-index)
@@ -99,7 +98,7 @@
                 edn (rep/export transform)
                 yaml (yaml/generate-string edn)
                 rep2 (yaml/parse-string yaml)
-                rep2 (rep/normalize-representation rep2)]
+                rep2 (rep-read/parse rep2)]
             (is (=? (dissoc rep :name) rep2)))))))
 
 (deftest representation-type-test

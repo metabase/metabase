@@ -40,8 +40,7 @@
           (is (= :v0 (:version exported)))
           (is (= "Test Document" (:display_name exported)))
           (is (some? (:name exported)))
-          (is (some? (:entity-id exported)))
-          (is (= "application/json+vnd.prose-mirror" (:content_type exported))))))))
+          (is (= :prosemirror (:content_type exported))))))))
 
 (deftest export-import-singleton-test
   (testing "Export then import roundtrip for document"

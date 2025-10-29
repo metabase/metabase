@@ -6,6 +6,7 @@
    [metabase-enterprise.representations.yaml :as rep-yaml]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [representations.read :as rep-read]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -22,28 +23,25 @@
       (let [edn (rep/export database)
             yaml (rep-yaml/generate-string edn)
             rep (rep-yaml/parse-string yaml)
-            rep (rep/normalize-representation rep)
+            rep (rep-read/parse rep)
             database (rep/persist! rep)
             database (t2/select-one :model/Database :id (:id database))
             edn (rep/export database)
             yaml (rep-yaml/generate-string edn)
             rep2 (rep-yaml/parse-string yaml)
 
-            rep2 (rep/normalize-representation rep2)]
+            rep2 (rep-read/parse rep2)]
         (is (=? (dissoc rep :name) rep2)))))
 
   (testing "Testing export then import roundtrip, import doesn't change details"
     (mt/with-temp [:model/Database database {:engine :postgres
                                              :name "abc"
-                                             :description "MY DB"
-                                             :details "{}"}]
+                                             :description "MY DB"}]
       (let [edn (rep/export database)
-            edn (assoc edn
-                       :description "CHANGE"
-                       :details {:url "hello"})
+            edn (assoc edn :description "CHANGE")
             yaml (rep-yaml/generate-string edn)
             rep (rep-yaml/parse-string yaml)
-            rep (rep/normalize-representation rep)
+            rep (rep-read/parse rep)
             database2 (rep/persist! rep)
             database2 (t2/select-one :model/Database :id (:id database2))]
         (is (=? database database2))))))

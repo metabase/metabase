@@ -8,110 +8,12 @@
    [metabase-enterprise.representations.toucan.core :as rep-t2]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.v0.mbql :as v0-mbql]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
-
-(defmethod import/type->schema [:v0 :transform] [_]
-  ::transform)
 
 (defmethod v0-common/representation-type :model/Transform [_entity]
   :transform)
-
-;;; ------------------------------------ Schema Definitions ------------------------------------
-
-(mr/def ::type
-  [:enum {:decode/json keyword
-          :description "Entity type, must be 'transform' for this schema"}
-   :transform])
-
-(mr/def ::version
-  [:enum {:decode/json keyword
-          :description "Version of this transform schema"}
-   :v0])
-
-(mr/def ::display-name
-  [:and
-   {:description "Human-readable name for the transform"}
-   ::lib.schema.common/non-blank-string])
-
-(mr/def ::name
-  [:and
-   {:description "Human-readable name for the transform"}
-   ::lib.schema.common/non-blank-string])
-
-(mr/def ::description
-  [:and
-   {:description "Documentation explaining the transform's purpose"}
-   :string])
-
-(mr/def ::query
-  [:and
-   {:description "SQL query that performs the transformation"}
-   ::lib.schema.common/non-blank-string])
-
-(mr/def ::mbql-query
-  [:and
-   {:description "MBQL (Metabase Query Language) query that performs the transformation"}
-   :map])
-
-(mr/def ::database
-  [:and
-   {:description "Database reference string"}
-   ::lib.schema.common/non-blank-string])
-
-(mr/def ::target-table
-  [:and
-   {:description "Name of the destination table"}
-   ::lib.schema.common/non-blank-string])
-
-(mr/def ::target-schema
-  [:and
-   {:description "Database schema for the target table (e.g., 'public', 'reporting')"}
-   ::lib.schema.common/non-blank-string])
-
-(mr/def ::tags
-  [:sequential
-   {:description "Optional tags for categorizing and organizing transforms"}
-   ::lib.schema.common/non-blank-string])
-
-(mr/def ::source
-  [:map
-   {:description "Source for the transform - either a SQL query or MBQL query"}
-   [:query {:optional true} ::query]
-   [:mbql_query {:optional true} ::mbql-query]])
-
-(mr/def ::target
-  [:map
-   {:description "Target table configuration for the transform output"}
-   [:table ::target-table]
-   [:schema {:optional true} ::target-schema]])
-
-;;; ------------------------------------ Main Schema ------------------------------------
-
-(mr/def ::transform
-  [:and
-   [:map
-    {:description "v0 schema for human-writable transform representation"}
-    [:type ::type]
-    [:version ::version]
-    [:name ::name]
-    [:display_name {:optional true} ::display-name]
-    [:description {:optional true} ::description]
-    [:database ::database]
-    [:source {:optional true} ::source]
-    [:target {:optional true} ::target]
-    [:target_table {:optional true} ::target]
-    [:query {:optional true} ::query]
-    [:mbql_query {:optional true} ::mbql-query]
-    [:tags {:optional true} ::tags]]
-   [:fn {:error/message "Source must have exactly one of :query or :mbql_query or :lib_query"}
-    (fn [{:keys [query mbql_query lib_query] :as transform}]
-      (= 1 (count (filter some? [query mbql_query lib_query #_#_#_(:query transform) (:mbql_query transform) (:lib_query source)]))))]])
-
-;;; ------------------------------------ Ingestion Functions ------------------------------------
 
 (defmethod v0-common/type->model :transform
   [_]
@@ -177,7 +79,6 @@
              :name (v0-common/unref (v0-common/->ref (:id transform) :transform))
              :type :transform
              :version :v0
-             :entity_id (:entity_id transform)
              :tags (:tags transform)
              :display_name (:name transform)
              :description (:description transform)

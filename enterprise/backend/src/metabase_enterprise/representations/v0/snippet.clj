@@ -7,72 +7,14 @@
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.yaml :as rep-yaml]
    [metabase.lib.native :as lib.native]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(defmethod import/type->schema [:v0 :snippet] [_] ::snippet)
-
 (defmethod v0-common/representation-type :model/NativeQuerySnippet [_entity]
   :snippet)
-
-;;; ------------------------------------ Schema Definitions ------------------------------------
-
-(mr/def ::type
-  [:enum {:decode/json keyword
-          :description "Entity type, must be 'snippet' for this schema"}
-   :snippet])
-
-(mr/def ::version
-  [:enum {:decode/json keyword
-          :description "Version of this snippet schema"}
-   :v0])
-
-(mr/def ::name
-  [:and
-   {:description "Unique reference identifier for the snippet, used for cross-references"}
-   ::lib.schema.common/non-blank-string
-   [:re #"^[a-z0-9][a-z0-9-_]*$"]])
-
-(mr/def ::display-name
-  [:and
-   {:description "Globally unique name for the snippet, used in {{snippet:name}} references"}
-   ::lib.schema.common/non-blank-string])
-
-(mr/def ::description
-  [:and
-   {:description "Documentation explaining what the snippet does"}
-   ::lib.schema.common/non-blank-string])
-
-(mr/def ::sql
-  [:and
-   {:description "SQL code that can include {{param}} template tags for parameters"}
-   ::lib.schema.common/non-blank-string])
-
-(mr/def ::collection
-  [:and
-   {:description "Optional collection path for organizing the snippet"}
-   :string])
-
-;;; ------------------------------------ Main Schema ------------------------------------
-
-(mr/def ::snippet
-  [:map
-   {:description "v0 schema for human-writable SQL snippet representation"}
-   [:type ::type]
-   [:version ::version]
-   [:name ::name]
-   [:display_name ::display-name]
-   [:description [:maybe ::description]]
-   [:sql ::sql]
-   [:collection {:optional true} ::collection]
-   [:template_tags :any]])
-
-;;; ------------------------------------ Ingestion ------------------------------------
 
 (defmethod v0-common/type->model :snippet
   [_]

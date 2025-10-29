@@ -1,13 +1,13 @@
 (ns metabase-enterprise.representations.v0.collection-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.representations.core :as rep]
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.yaml :as yaml]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [representations.read :as rep-read]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -24,7 +24,7 @@
         (let [edn (export/export-entity collection)
               yaml-str (yaml/generate-string edn)
               rep (yaml/parse-string yaml-str)]
-          (is (rep/normalize-representation rep))))))
+          (is (rep-read/parse rep))))))
 
   (deftest export-collection-test
     (testing "Collection exports with correct structure"
@@ -67,7 +67,7 @@
         (let [export-1 (export/export-entity collection)
               yaml-str (yaml/generate-string export-1)
               rep (yaml/parse-string yaml-str)
-              normalized (rep/normalize-representation rep)
+              normalized (rep-read/parse rep)
               imported (import/yaml->toucan normalized nil)
             ;; Persist and reload
               persisted (mt/with-test-user :crowberto

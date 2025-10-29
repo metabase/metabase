@@ -9,70 +9,12 @@
    [metabase-enterprise.representations.toucan.core :as rep-t2]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.v0.mbql :as v0-mbql]
-   [metabase-enterprise.representations.yaml :as yaml]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
-(defmethod import/type->schema [:v0 :document] [_]
-  ::document)
-
-;;; ------------------------------------ Schema Definitions ------------------------------------
-
-(mr/def ::type
-  [:enum {:decode/json keyword
-          :description "Entity type, must be 'document' for this schema"}
-   :document])
-
-(mr/def ::version
-  [:enum {:decode/json keyword
-          :description "Version of this document schema"}
-   :v0])
-
-(mr/def ::name
-  [:and
-   {:description "Unique reference identifier for the document, used for cross-references"}
-   ::lib.schema.common/non-blank-string
-   [:re #"^[a-z0-9][a-z0-9-_]*$"]])
-
-(mr/def ::display-name
-  [:and
-   {:description "Human-readable name for the document"}
-   ::lib.schema.common/non-blank-string])
-
-(mr/def ::content-type
-  [:and
-   {:description "Mime type of the document content"}
-   :string])
-
-(mr/def ::content
-  [:and
-   {:description "The document content with optional embedded cards and links
-                  Markdown format supports:
-                  - {{card:card-ref}} for embedding cards
-                  - [link text](card:card-ref) for linking to cards"}
-   :any])
-
-(mr/def ::collection
-  [:and
-   {:description "Optional collection path for organizing the document"}
-   :string])
-
 ;;; ------------------------------------ Main Schema ------------------------------------
-
-(mr/def ::document
-  [:map
-   {:description "v0 schema for human-writable document representation"}
-   [:type ::type]
-   [:version ::version]
-   [:name ::name]
-   [:display_name ::display-name]
-   [:content_type ::content-type]
-   [:content ::content]
-   [:collection {:optional true} ::collection]])
 
 (defmethod v0-common/type->model :document
   [_]
@@ -179,9 +121,8 @@
              :type :document
              :version :v0
              :name document-ref
-             :entity-id (:entity_id document)
              :content doc-content
-             ::v0-common/delete-before-output doc-content
-             :content_type "application/json+vnd.prose-mirror"}
+             ;; TODO: we need to iterate on the schema and code here:
+             :content_type :prosemirror}
       :always
       u/remove-nils)))

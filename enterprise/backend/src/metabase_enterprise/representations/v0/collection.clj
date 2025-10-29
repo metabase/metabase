@@ -5,61 +5,12 @@
    [metabase-enterprise.representations.toucan.core :as rep-t2]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase.collections.api :as coll.api]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
-
-(defmethod import/type->schema [:v0 :collection] [_]
-  ::collection)
 
 (defmethod v0-common/representation-type :model/Collection [_entity]
   :collection)
-
-;;; ------------------------------------ Schema Definitions ------------------------------------
-
-(mr/def ::type
-  [:enum {:decode/json keyword
-          :description "Entity type, must be 'collection' for this schema"}
-   :collection])
-
-(mr/def ::version
-  [:enum {:decode/json keyword
-          :description "Version of this collection schema"}
-   :v0])
-
-(mr/def ::name
-  [:and
-   {:description "Unique reference identifier for the collection, used for cross-references"}
-   ::lib.schema.common/non-blank-string
-   [:re #"^[a-z0-9][a-z0-9-_]*$"]])
-
-(mr/def ::display-name
-  [:and
-   {:description "Human-readable name for the collection"}
-   ::lib.schema.common/non-blank-string])
-
-(mr/def ::description
-  [:and
-   {:description "Optional documentation explaining the collection's purpose"}
-   :string])
-
-;;; ------------------------------------ Main Schema ------------------------------------
-
-(mr/def ::collection
-  [:map
-   {:description "v0 schema for human-writable collection representation
-                  Collections organize cards, dashboards, and other resources.
-                  Every representations directory MUST have a collection.yml file."}
-   [:type ::type]
-   [:version ::version]
-   [:name ::name]
-   [:display_name {:optional true} [:maybe ::display-name]]
-   [:description {:optional true} [:maybe ::description]]
-   [:chilren {:optional true} [:maybe [:vector :string]]]])
-
-;;; -- Export --
 
 (defn- model->url
   "Given a model, return a url."

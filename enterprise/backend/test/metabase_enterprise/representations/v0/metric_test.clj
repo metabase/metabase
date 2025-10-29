@@ -6,19 +6,19 @@
    [metabase-enterprise.representations.yaml :as rep-yaml]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [representations.read :as rep-read]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(def valid-examples ["test_resources/representations/v0/select-1.metric.yml"
-                     "test_resources/representations/v0/number-of-orders.metric.yml"])
+(def valid-examples ["test_resources/representations/v0/select-1.metric.yml"])
 
 (deftest validate-example-yamls
   (testing "Testing valid examples"
     (doseq [filename valid-examples]
       (testing (str "Validating: " filename)
         (let [rep (rep-yaml/from-file filename)]
-          (is (rep/normalize-representation rep)))))))
+          (is (rep-read/parse rep)))))))
 
 (deftest validate-exported-metrics
   (doseq [query [(mt/native-query {:query "select 1"})
@@ -29,7 +29,7 @@
             ;; convert to yaml and read back in to convert keywords to strings, etc
             yaml (rep-yaml/generate-string edn)
             rep (rep-yaml/parse-string yaml)]
-        (is (rep/normalize-representation rep))))))
+        (is (rep-read/parse rep))))))
 
 (deftest can-import
   (doseq [filename valid-examples]

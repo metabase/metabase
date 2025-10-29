@@ -4,7 +4,8 @@
   (:require
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
-   [metabase-enterprise.representations.v0.common :as v0-common]))
+   [metabase-enterprise.representations.v0.common :as v0-common]
+   [representations.read :as rep-read]))
 
 (set! *warn-on-reflection* true)
 
@@ -27,7 +28,8 @@
    Throws an exception if validation fails.
    Returns the decoded and validated representation if validation passes."
   [representation]
-  (import/normalize-representation representation))
+  (rep-read/parse representation)
+  #_(import/normalize-representation representation))
 
 ;;;;;;;;;;;
 ;; Import
