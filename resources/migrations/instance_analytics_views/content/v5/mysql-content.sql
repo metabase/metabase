@@ -1,7 +1,7 @@
 drop view if exists v_content;
 
-create or replace 
-SQL SECURITY INVOKER 
+create or replace
+SQL SECURITY INVOKER
 view v_content as
 select
     action.id as entity_id,
@@ -111,7 +111,7 @@ select
                 case when status = 'verified' then true else false end as is_verified
             from moderation_review
             where most_recent
-        ) as moderation on concat('card_', report_dashboard.id) = moderation.entity_qualified_id
+        ) as moderation on concat('dashboard_', report_dashboard.id) = moderation.entity_qualified_id
 union
 select
     document.id as entity_id,

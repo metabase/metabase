@@ -110,7 +110,7 @@ select
                 case when status = 'verified' then true else false end as is_verified
             from moderation_review
             where most_recent
-        ) as moderation on 'card_' || report_dashboard.id = moderation.entity_qualified_id
+        ) as moderation on 'dashboard_' || report_dashboard.id = moderation.entity_qualified_id
 union
 select
     document.id as entity_id,
