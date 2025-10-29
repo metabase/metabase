@@ -2031,7 +2031,7 @@
                                                  {:name "Doc with bad reference"
                                                   :collection_id remote-synced-id
                                                   :document (prose-mirror-with-smartlink "Link to card" card-id)})]
-              (is (= "Model has non-remote-synced dependencies" (:message response))
+              (is (= "Uses content that is not remote synced." (:message response))
                   "Should report non-remote-synced dependencies"))))))))
 
 (deftest create-document-in-remote-synced-with-remote-synced-smartlink-test
@@ -2107,7 +2107,7 @@
           (let [response (mt/user-http-request :crowberto
                                                :put 400 (format "ee/document/%s" doc-id)
                                                {:document (prose-mirror-with-smartlink "Bad link" card-id)})]
-            (is (= "Model has non-remote-synced dependencies" (:message response)))))))))
+            (is (= "Uses content that is not remote synced." (:message response)))))))))
 
 (deftest update-document-in-remote-synced-with-remote-synced-smartlink-test
   (testing "PUT /api/ee/document/:id - updating document in remote-synced collection to add remote-synced reference"
@@ -2212,7 +2212,7 @@
           (let [response (mt/user-http-request :crowberto
                                                :put 400 (format "ee/document/%s" doc-id)
                                                {:collection_id remote-synced-id})]
-            (is (= "Model has non-remote-synced dependencies" (:message response)))
+            (is (= "Uses content that is not remote synced." (:message response)))
 
             ;; Verify document was NOT moved
             (is (= regular-id (:collection_id (t2/select-one :model/Document :id doc-id)))
@@ -2242,7 +2242,7 @@
                                                :put 400 (format "ee/document/%s" doc-id)
                                                {:document (prose-mirror-with-smartlink "Bad" regular-card-id)
                                                 :collection_id remote-synced-id})]
-            (is (= "Model has non-remote-synced dependencies" (:message response)))))
+            (is (= "Uses content that is not remote synced." (:message response)))))
 
         (testing "Does not throw when moving to a regular collection"
           (mt/user-http-request :crowberto
