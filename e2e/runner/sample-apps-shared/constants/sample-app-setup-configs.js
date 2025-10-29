@@ -36,9 +36,11 @@ export const SAMPLE_APP_SETUP_CONFIGS = {
   "metabase-nodejs-react-sdk-embedding-sample-e2e": {
     ...BASE_SETUP_CONFIG,
     appName: "metabase-nodejs-react-sdk-embedding-sample",
+    defaultBranch: "55-adjust-for-the-new-token-check",
   },
   "metabase-nextjs-sdk-embedding-sample-e2e": {
     ...BASE_SETUP_CONFIG,
+    defaultBranch: "55-adjust-for-the-new-token-check",
     appName: "metabase-nextjs-sdk-embedding-sample",
     env: {
       ...BASE_ENV,
