@@ -13,12 +13,12 @@ import {
   useListTransformJobsQuery,
   useListTransformTagsQuery,
 } from "metabase-enterprise/api";
-import { TimezoneIndicator } from "metabase-enterprise/transforms/components/TimezoneIndicator";
 import type { TransformJob, TransformJobId } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
 import { RunStatusInfo } from "../../../components/RunStatusInfo";
 import { TagList } from "../../../components/TagList";
+import { TimezoneIndicator } from "../../../components/TimezoneIndicator";
 import { parseTimestampWithTimezone } from "../../../utils";
 import { hasFilterParams } from "../utils";
 

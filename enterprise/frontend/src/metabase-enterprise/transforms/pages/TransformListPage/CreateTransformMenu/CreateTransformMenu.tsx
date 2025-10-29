@@ -13,7 +13,8 @@ import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { Button, Center, Icon, Loader, Menu } from "metabase/ui";
-import { trackTransformCreate } from "metabase-enterprise/transforms/analytics";
+
+import { trackTransformCreate } from "../../../analytics";
 
 import { shouldDisableItem } from "./utils";
 
