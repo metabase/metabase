@@ -1583,6 +1583,24 @@
           (is (= {:abc "enabled"}
                  (t2/select-one-fn :embedding_params :model/Card :id (u/the-id card)))))))))
 
+(deftest update-embedding-type-to-nil-test
+  (testing "PUT /api/card/:id"
+    (testing "Admin should be able to set embedding_type to nil to clear it"
+      (mt/with-temporary-setting-values [enable-embedding-static true]
+        (mt/with-temp [:model/Card card {:enable_embedding true
+                                         :embedding_type "static-legacy"}]
+          (testing "Verify initial state has embedding_type set"
+            (is (= "static-legacy"
+                   (t2/select-one-fn :embedding_type :model/Card :id (u/the-id card)))))
+          (testing "Setting embedding_type to nil should clear it"
+            (let [response (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
+                                                 {:embedding_type nil})]
+              (testing "Response should contain nil embedding_type"
+                (is (= nil (:embedding_type response))))
+              (testing "Database should contain nil embedding_type"
+                (is (= nil
+                       (t2/select-one-fn :embedding_type :model/Card :id (u/the-id card))))))))))))
+
 (deftest can-we-change-the-collection-position-of-a-card-
   (mt/with-temp [:model/Card card]
     (with-cards-in-writeable-collection! card
