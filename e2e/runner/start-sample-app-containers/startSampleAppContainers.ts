@@ -43,7 +43,7 @@ export async function startSampleAppContainers(
     env,
     healthcheckPorts,
   } = setupConfig;
-  const branch = userOptions.SAMPLE_APP_BRANCH_NAME || defaultBranch;
+  const branch = defaultBranch;
 
   try {
     const { rootPath } = fetchApp({
