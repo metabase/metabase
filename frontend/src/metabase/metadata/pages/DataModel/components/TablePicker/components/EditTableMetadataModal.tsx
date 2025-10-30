@@ -6,7 +6,6 @@ import {
   DataSourceInput,
   LayerInput,
   UserInput,
-  VisibilityInput,
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button, Flex, Modal, Stack, rem } from "metabase/ui";
@@ -38,8 +37,6 @@ export function EditTableMetadataModal({
 }: Props) {
   const [editTables, { isLoading }] = useEditTablesMutation();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
-  const [visibilityType, setVisibilityType] =
-    useState<LimitedVisibilityType | null>(null);
   const [visibilityType2, setVisibilityType2] =
     useState<TableVisibilityType2 | null>(null);
   const [dataSource, setDataSource] = useState<
@@ -49,7 +46,6 @@ export function EditTableMetadataModal({
   const [userId, setUserId] = useState<UserId | "unknown" | null>(null);
 
   const reset = () => {
-    setVisibilityType(null);
     setVisibilityType2(null);
     setDataSource(null);
     setEmail(null);
@@ -91,7 +87,6 @@ export function EditTableMetadataModal({
     email == null &&
     dataSource == null &&
     userId == null &&
-    visibilityType == null &&
     visibilityType2 == null;
 
   return (
