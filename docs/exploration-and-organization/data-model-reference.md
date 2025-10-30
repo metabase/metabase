@@ -49,7 +49,9 @@ Admins can edit the metadata in this reference by clicking the **Edit** button i
 
 ## Glossary
 
-The glossary is a place where anyone can define terms relevant to your data. Currently, the glossary is a simple key-value store of terms and their definitions.
+The glossary is a place where anyone can define terms relevant to your data. Glossary definitions help others on your team understand context and also provide input to helpful LLMs.
+
+Currently, the glossary is a simple key-value store of terms and their definitions.
 
 To add a new term, click **+ New term**. Add the term name and its definitions, then click the checkmark to save the term to the glossary.
 
