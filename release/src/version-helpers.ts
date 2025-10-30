@@ -454,3 +454,23 @@ export const getNextSdkVersion = (
     majorVersion,
   };
 };
+
+/**
+ * Versions before 55 are considered legacy.
+ *
+ * E2E tests are running using two old tokens (all_features_token and no_features_token)
+ * that do not correspond to real Metabase plans.
+ *
+ * A paradigm shift happened in v55 with the introduction of the proper tokens.
+ * This information is needed to support older releases.
+ */
+export const isLegacyVersion = (version: string) => {
+  if (!isValidVersionString(version)) {
+    throw new Error(`Invalid version string: ${version}`);
+  }
+
+  const MODERN_RELEASE_THRESHOLD = 55;
+  const majorVersion = Number(getMajorVersion(version));
+
+  return majorVersion < MODERN_RELEASE_THRESHOLD;
+};
