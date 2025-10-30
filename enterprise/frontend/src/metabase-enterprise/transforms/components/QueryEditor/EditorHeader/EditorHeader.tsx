@@ -54,7 +54,7 @@ export function EditorHeader({
 
 function getTitle(isNew: boolean, name?: string) {
   if (isNew) {
-    return t`You’re creating a new transform`;
+    return t`You're creating a new transform`;
   } else {
     return t`You’re editing the "${name}" transform`;
   }

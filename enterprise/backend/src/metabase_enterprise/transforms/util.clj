@@ -8,9 +8,13 @@
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.driver :as driver]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -99,7 +103,7 @@
     (finally
       (canceling/chan-end-run! run-id))))
 
-(declare activate-table-and-mark-computed!)
+(declare activate-table-and-mark-computed! target-table)
 
 (defn sync-target!
   "Sync target of a transform"
@@ -174,19 +178,77 @@
   [query]
   (assoc-in query [:middleware :disable-remaps?] true))
 
+(defn- is-keyset-incremental? [source]
+  (= :keyset (some-> source :source-incremental-strategy :type keyword)))
+
+(defn- next-watermark-value
+  [transform-id]
+  (let [{:keys [source target] :as transform} (t2/select-one :model/Transform transform-id)
+        db-id (transforms.i/target-db-id transform)
+        watermark-field-name (-> source :source-incremental-strategy :keyset-column)]
+    (when (is-keyset-incremental? source)
+      (when-let [table (target-table db-id target)]
+        (when-let [field (t2/select-one :model/Field
+                                        :table_id (:id table)
+                                        :name watermark-field-name)]
+          (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
+                table-metadata (lib.metadata/table metadata-provider (:id table))
+                field-metadata (lib.metadata/field metadata-provider (:id field))
+                mbql-query (-> (lib/query metadata-provider table-metadata)
+                               (lib/aggregate (lib/max field-metadata)))]
+            (some-> mbql-query qp/process-query :data :rows first first bigint)))))))
+
+(defn- source->keyset-filter-unique-key
+  [query source-incremental-strategy]
+  (some->> source-incremental-strategy :keyset-filter-unique-key (lib/column-with-unique-key query)))
+
+(defn preprocess-incremental-query
+  "Preprocess a query for incremental transform execution by adding watermark filtering.
+
+  For native queries, injects the watermark value into the query's :parameters vector as a
+  template tag variable named `watermark`, and limit as `limit`.
+
+  For MBQL queries, adds a filter clause that constrains the keyset column to values greater
+  than the current watermark and enforces limit.
+
+  If no watermark value exists for the transform (i.e., this is the first run), returns the
+  query unchanged to allow a full initial load."
+  [query source-incremental-strategy transform-id]
+  (let [watermark-value (next-watermark-value transform-id)
+        limit           (-> source-incremental-strategy :query-limit)]
+    (if (lib.query/native? query)
+      (cond-> query
+        watermark-value
+        (update :parameters conj
+                {:type :number
+                 :target [:variable [:template-tag "watermark"]]
+                 :value watermark-value})
+        limit
+        (update :parameters conj
+                {:type :number
+                 :target [:variable [:template-tag "limit"]]
+                 :value limit}))
+      (cond-> query
+        watermark-value
+        (lib/filter (lib/> (source->keyset-filter-unique-key query source-incremental-strategy) watermark-value))
+
+        limit
+        (lib/limit limit)))))
+
 (defn compile-source
   "Compile the source query of a transform."
-  [{query-type :type :as source}]
+  [{query-type :type :as source} transform-id]
   (case (keyword query-type)
-    :query (:query (qp.compile/compile-with-inline-parameters (massage-sql-query (:query source))))))
+    :query
+    (let [query-with-params (preprocess-incremental-query (:query source) (:source-incremental-strategy source) transform-id)]
+      (:query (qp.compile/compile-with-inline-parameters (massage-sql-query query-with-params))))))
 
-(defn required-database-feature
-  "Returns the database feature necessary to execute `transform`."
+(defn required-database-features
+  "Returns the database features necessary to execute `transform`."
   [transform]
   (if (python-transform? transform)
-    :transforms/python
-    (case (-> transform :target :type)
-      "table"             :transforms/table)))
+    [:transforms/python]
+    [:transforms/table]))
 
 (defn ->instant
   "Convert a temporal value `t` to an Instant in the system timezone."

@@ -107,12 +107,18 @@ export function NewTransformPageInner({
     initialSource,
   );
 
+  const [wantsIncremental, setWantsIncremental] = useState(false);
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
   const dispatch = useDispatch();
 
   const handleCreate = (transform: Transform) => {
-    dispatch(push(Urls.transform(transform.id)));
+    // If user wanted incremental, redirect to query edit page instead of transform detail page
+    if (wantsIncremental) {
+      dispatch(push(Urls.transformQuery(transform.id)));
+    } else {
+      dispatch(push(Urls.transform(transform.id)));
+    }
   };
 
   const handleSave = (newSource: TransformSource) => {
@@ -141,6 +147,12 @@ export function NewTransformPageInner({
     acceptProposed(source);
   };
 
+  const handleModalClose = () => {
+    // If modal is closed without saving, reset the incremental checkbox
+    setWantsIncremental(false);
+    closeModal();
+  };
+
   return (
     <>
       <NewTransformEditorBody
@@ -157,7 +169,8 @@ export function NewTransformPageInner({
           source={source as TransformSource}
           initValues={createTransformInitValues}
           onCreate={handleCreate}
-          onClose={closeModal}
+          onClose={handleModalClose}
+          initialIncremental={wantsIncremental}
         />
       )}
       <LeaveRouteConfirmModal
@@ -179,7 +192,6 @@ interface NewTransformEditorBody {
   onRejectProposed?: () => void;
   onAcceptProposed?: (query: TransformSource) => void;
 }
-
 function NewTransformEditorBody({
   initialSource,
   proposedSource,

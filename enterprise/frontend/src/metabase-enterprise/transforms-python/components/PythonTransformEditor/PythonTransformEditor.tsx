@@ -132,6 +132,7 @@ export function PythonTransformEditor({
     >
       <EditorHeader
         isNew={isNew}
+        name={transform?.name}
         isSaving={isSaving}
         hasProposedQuery={!!proposedSource}
         onSave={handleSave}

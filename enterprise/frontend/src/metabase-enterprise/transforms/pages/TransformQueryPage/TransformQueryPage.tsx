@@ -119,6 +119,9 @@ export function TransformQueryPageBody({
     dispatch(push(Urls.transform(transform.id)));
   };
 
+  // const queryLimit =
+  //   transform.source["source-incremental-strategy"]?.["query-limit"];
+
   return (
     <AdminSettingsLayout fullWidth key={transform.id}>
       <TransformEditorBody
@@ -206,6 +209,8 @@ function TransformEditorBody({
       }
       onRejectProposed={onRejectProposed}
       onAcceptProposed={onAcceptProposed}
+      // @bronsa: TransformId and queryLimit were removed here.
+      // Did we need those?
     />
   );
 }

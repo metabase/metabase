@@ -9,6 +9,16 @@ import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { DatasetQuery } from "metabase-types/api";
 
+// @bronsa: DO WE NEED THESE?
+// type TransformParameters = {
+//     transformId?: number;
+//     queryLimit?: number;
+// };
+
+// export function useQueryResults(
+//   question: Question,
+//   transformParameters?: TransformParameters,
+// =======
 export function useQueryResults(
   question: Question,
   proposedQuestion?: Question,
@@ -25,6 +35,49 @@ export function useQueryResults(
     return deferredRef.current;
   }
 
+  // Inject transform parameters if they exist
+  // const questionWithParams = useMemo(() => {
+  //   if (!transformParameters?.transformId) {
+  //     return question;
+  //   }
+
+  //   // Get the dataset query to find parameter IDs
+  //   const datasetQuery = question.datasetQuery() as any;
+  //   const parameters = question.parameters();
+
+  //   if (!parameters || !Array.isArray(parameters)) {
+  //     return question;
+  //   }
+
+  //   // Build parameter values map by finding the IDs that correspond to transform params
+  //   const parameterValues: ParameterValuesMap = {};
+
+  //   for (const param of parameters) {
+  //     if (
+  //       param.target &&
+  //       Array.isArray(param.target) &&
+  //       param.target[0] === "variable" &&
+  //       Array.isArray(param.target[1]) &&
+  //       param.target[1][0] === "template-tag"
+  //     ) {
+  //       const tagName = param.target[1][1];
+  //       if (tagName === "watermark") {
+  //         parameterValues[param.id] = transformParameters.transformId;
+  //       } else if (tagName === "limit") {
+  //           parameterValues[param.id] = transformParameters.queryLimit;
+  //       }
+  //     }
+  //   }
+
+  //   return question.setParameterValues(parameterValues);
+  // }, [question, transformParameters]);
+
+  // const [{ value: results = null, loading: isRunning }, runQuery] = useAsyncFn(
+  //   () =>
+  //     runQuestionQuery(questionWithParams, {
+  //       cancelDeferred: deferred(),
+  //     }),
+  //   [questionWithParams],
   const currentQuestion = proposedQuestion ?? question;
 
   const [{ value: results = null, loading: isRunning }, runQuery] = useAsyncFn(

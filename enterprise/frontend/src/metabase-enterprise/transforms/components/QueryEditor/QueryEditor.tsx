@@ -90,10 +90,20 @@ export function QueryEditor({
   };
 
   const handleSave = () => {
-    onSave({
+    // Preserve the source-incremental-strategy when saving
+    const newSource: QueryTransformSource = {
       type: "query",
       query: proposedQuestion?.datasetQuery() ?? question.datasetQuery(),
-    });
+    };
+
+    // @stas: Check if it's actually not copied
+    // Copy over the incremental strategy if it exists
+    if (initialSource["source-incremental-strategy"]) {
+      newSource["source-incremental-strategy"] =
+        initialSource["source-incremental-strategy"];
+    }
+
+    onSave(newSource);
   };
 
   const handleCmdEnter = () => {
