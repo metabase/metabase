@@ -10,6 +10,7 @@
    [metabase-enterprise.representations.v0.mbql :as v0-mbql]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [representations.read :as rep-read]
    [toucan2.core :as t2]))
 
 (defmethod v0-common/representation-type :model/Transform [_entity]
@@ -50,6 +51,32 @@
                                                  {:transform_id transform-id
                                                   :tag_id (-> tag by-name :id)
                                                   :position i})))))
+
+(defmethod import/insert! [:v0 :transform]
+  [representation ref-index]
+  (let [representation (rep-read/parse representation)]
+    (if-some [model (v0-common/type->model (:type representation))]
+      (let [toucan (import/yaml->toucan representation ref-index)
+            transform (t2/insert-returning-instance! model toucan)]
+        (set-up-tags (:id transform) (:tags representation))
+        (t2/hydrate transform :transform_tag_names))
+      (throw (ex-info (str "Unknown representation type: " (:type representation))
+                      {:representation representation
+                       :type (:type representation)})))))
+
+(defmethod import/update! :default
+  [representation id ref-index]
+  (let [representation (rep-read/parse representation)]
+    (if-some [model (v0-common/type->model (:type representation))]
+      (let [toucan (->> (import/yaml->toucan representation ref-index)
+                        (rep-t2/with-toucan-defaults model))]
+        (t2/update! model id (dissoc toucan :entity_id))
+        (t2/delete! :model/TransformTransformTag :transform_id id)
+        (set-up-tags id (:tags representation))
+        (t2/hydrate (t2/select-one :model/Transform :id id) :transform_tag_names))
+      (throw (ex-info (str "Unknown representation type: " (:type representation))
+                      {:representation representation
+                       :type (:type representation)})))))
 
 (defmethod import/persist! [:v0 :transform]
   [representation ref-index]

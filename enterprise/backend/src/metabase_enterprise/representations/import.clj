@@ -33,8 +33,12 @@
 
 ;; inserting and updating
 
-(defn insert!
+(defmulti insert!
   "Insert a representation as a new entity."
+  {:arglists '([representation ref-index])}
+  (fn [representation _ref-index] ((juxt :version :type) representation)))
+
+(defmethod insert! :default
   [representation ref-index]
   (let [representation (rep-read/parse representation)]
     (if-some [model (v0-common/type->model (:type representation))]
@@ -44,8 +48,12 @@
                       {:representation representation
                        :type (:type representation)})))))
 
-(defn update!
+(defmulti update!
   "Update an existing entity from a representation."
+  {:arglists '([representation id ref-index])}
+  (fn [representation _ref-index] ((juxt :version :type) representation)))
+
+(defmethod update! :default
   [representation id ref-index]
   (let [representation (rep-read/parse representation)]
     (if-some [model (v0-common/type->model (:type representation))]
