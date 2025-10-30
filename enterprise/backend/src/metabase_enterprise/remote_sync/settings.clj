@@ -105,7 +105,6 @@
    (let [source (git/git-source remote-sync-url "HEAD" remote-sync-token)]
      (when (and (= :production remote-sync-type) (not (str/blank? remote-sync-branch)) (not (some #{remote-sync-branch} (git/branches source))))
        (throw (ex-info "Invalid branch name" {:url remote-sync-url :branch remote-sync-branch})))
-     (git/fetch! source)
      (when-not (git/has-data? source)
        (throw (ex-info "Cannot connect to an uninitialized repository" {:url remote-sync-url}))))))
 
