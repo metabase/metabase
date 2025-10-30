@@ -198,7 +198,10 @@ export const DocumentPage = ({
   const hasUnsavedChanges = useCallback(() => {
     const currentTitle = documentTitle.trim();
     const originalTitle = documentData?.name || "";
-    const titleChanged = currentTitle !== originalTitle;
+    // We call .trim() on documentTitle to ensure that no one can push the save button
+    // with a document name that is all whitespace, the API will reject it. However,
+    // when comparing saved with current titles, we need to use unmofidied values
+    const titleChanged = documentTitle !== originalTitle;
 
     // Check if there are any draft cards
     const hasDraftCards = Object.keys(draftCards).length > 0;
