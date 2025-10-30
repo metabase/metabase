@@ -294,21 +294,23 @@
        ::table-selectors
        [:map
         [:target_collection_id pos-int?]]]]
-  (let [where          (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
-        created-models (t2/with-transaction [_conn]
-                         (into []
-                               (comp
-                                (map t2.realize/realize)
-                                (partition-all 20)
-                                (mapcat (fn [batch]
-                                          ;; TODO (Ngoc 29/10/25) : we should considering using card/create-card! but with
-                                          ;; an option to skip syncing metadata since it's gonna be really expensive
-                                          (t2/insert-returning-instances! :model/Card (mapv (fn [table]
-                                                                                              (table->model table api/*current-user-id* target_collection_id))
-                                                                                            batch)))))
-                               (t2/reducible-select :model/Table :active true {:where where})))]
-    {:created_count (count created-models)
-     :models        created-models}))
+  (let [target-collection (api/check-404 (t2/select-one :model/Collection target_collection_id))
+        where             (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
+        created-models    (t2/with-transaction [_conn]
+                            (into []
+                                  (comp
+                                   (map t2.realize/realize)
+                                   (partition-all 20)
+                                   (mapcat (fn [batch]
+                                            ;; TODO (Ngoc 29/10/25) : we should considering using card/create-card! but with
+                                            ;; an option to skip syncing metadata since it's gonna be really expensive
+                                             (t2/insert-returning-instances! :model/Card (mapv (fn [table]
+                                                                                                 (table->model table api/*current-user-id* target_collection_id))
+                                                                                               batch)))))
+                                  (t2/reducible-select :model/Table :active true {:where where})))]
+    {:created_count     (count created-models)
+     :models            created-models
+     :target_collection target-collection}))
 
 (api.macros/defendpoint :get "/:id/query_metadata"
   "Get metadata about a `Table` useful for running queries.
