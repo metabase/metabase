@@ -10,6 +10,7 @@ import {
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button, Flex, Icon, List, Modal, Stack, Text, rem } from "metabase/ui";
 import type { Card, DatabaseId, SchemaId, TableId } from "metabase-types/api";
+import { ThemeIcon } from "@mantine/core";
 
 interface Props {
   tables?: Set<TableId>;
@@ -98,6 +99,7 @@ export function PublishModelsModal({
           <PublishedModelsList
             publishedModels={publishedModels}
             handleClose={handleClose}
+            collection={selectedCollection}
           />
         ) : (
           <Stack gap="md" pt="sm">
@@ -168,33 +170,57 @@ export function PublishModelsModal({
 
 function PublishedModelsList({
   publishedModels,
+  collection,
   handleClose,
 }: {
   publishedModels: Card[];
+  collection: CollectionPickerValueItem | null;
   handleClose: () => void;
 }) {
   return (
     <Stack gap="md" pt="sm">
-      <Text>
-        {t`Successfully published ${publishedModels.length} model${publishedModels.length !== 1 ? "s" : ""}:`}
+      <Text px={0} style={{ display: "inline-flex", alignItems: "baseline" }}>
+        <span>{t`Successfully published ${publishedModels.length} model${publishedModels.length !== 1 ? "s" : ""} to `}</span>
+        {collection ? (
+          <Button
+            component={Link}
+            h="auto"
+            p={0}
+            to={`/collection/${collection?.id}`}
+            size="xs"
+            variant="subtle"
+          >
+            {collection?.name}
+          </Button>
+        ) : null}
       </Text>
-
-      <List spacing="sm">
-        {publishedModels.map((model) => (
-          <List.Item key={model.id}>
-            <Button
-              component={Link}
-              h="auto"
-              p={0}
-              to={`/model/${model.id}`}
-              size="xs"
-              variant="subtle"
-            >
-              {model.name}
-            </Button>
-          </List.Item>
-        ))}
-      </List>
+      <Text>
+        <List
+          spacing="xs"
+          px={0}
+          center
+          icon={
+            <ThemeIcon radius="xl" color="white">
+              <Icon name="model_with_badge" c="brand" />
+            </ThemeIcon>
+          }
+        >
+          {publishedModels.map((model) => (
+            <List.Item key={model.id}>
+              <Button
+                component={Link}
+                h="auto"
+                p={0}
+                to={`/model/${model.id}`}
+                size="xs"
+                variant="subtle"
+              >
+                {model.name}
+              </Button>
+            </List.Item>
+          ))}
+        </List>
+      </Text>
 
       <Flex justify="flex-end" gap="sm">
         <Button onClick={handleClose}>{t`Close`}</Button>
