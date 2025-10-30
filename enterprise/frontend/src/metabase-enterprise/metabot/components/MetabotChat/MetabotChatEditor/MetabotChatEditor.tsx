@@ -6,13 +6,7 @@ import Text from "@tiptap/extension-text";
 import type { EditorView } from "@tiptap/pm/view";
 import { EditorContent, useEditor } from "@tiptap/react";
 import cx from "classnames";
-import {
-  forwardRef,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useRef,
-} from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
@@ -91,16 +85,6 @@ export const MetabotChatEditor = forwardRef<MetabotChatInputRef | null, Props>(
       }),
     ];
 
-    const handleCopyCut = useCallback((view: EditorView, e: ClipboardEvent) => {
-      e.preventDefault();
-      const { from, to } = view.state.selection;
-      const slice = view.state.doc.slice(from, to);
-      const doc = view.state.schema.topNodeType.create(null, slice.content);
-      const serialized = serializeTiptapToMetabotMessage(doc.toJSON());
-      e.clipboardData?.setData("text/plain", serialized);
-      return true;
-    }, []);
-
     const editor = useEditor(
       {
         extensions,
@@ -114,8 +98,35 @@ export const MetabotChatEditor = forwardRef<MetabotChatInputRef | null, Props>(
         },
         editorProps: {
           handleDOMEvents: {
-            copy: handleCopyCut,
-            cut: handleCopyCut,
+            copy: (view: EditorView, e: ClipboardEvent) => {
+              e.preventDefault();
+              const { from, to } = view.state.selection;
+              const slice = view.state.doc.slice(from, to);
+              const doc = view.state.schema.topNodeType.create(
+                null,
+                slice.content,
+              );
+              const serialized = serializeTiptapToMetabotMessage(doc.toJSON());
+              e.clipboardData?.setData("text/plain", serialized);
+              return true;
+            },
+            cut: (view: EditorView, e: ClipboardEvent) => {
+              e.preventDefault();
+              const { from, to } = view.state.selection;
+              const slice = view.state.doc.slice(from, to);
+              const doc = view.state.schema.topNodeType.create(
+                null,
+                slice.content,
+              );
+              const serialized = serializeTiptapToMetabotMessage(doc.toJSON());
+              e.clipboardData?.setData("text/plain", serialized);
+
+              // Delete the selected text for cut operation
+              const tr = view.state.tr.deleteRange(from, to);
+              view.dispatch(tr);
+
+              return true;
+            },
           },
           handleKeyDown: (view, event) => {
             if (event.key === "Enter") {
