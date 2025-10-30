@@ -89,7 +89,7 @@
   "Get a list of transforms."
   [& {:keys [last_run_start_time last_run_statuses tag_ids]}]
   (api/check-superuser)
-  (let [transforms (t2/select :model/Transform)]
+  (let [transforms (t2/select :model/Transform {:order-by [[:id :asc]]})]
     (into []
           (comp (transforms.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
                 (transforms.util/->status-filter-xf [:last_run :status] last_run_statuses)
