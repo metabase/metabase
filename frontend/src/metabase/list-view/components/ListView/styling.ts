@@ -43,7 +43,7 @@ export function getIconBackground(iconColor?: string) {
     return "var(--mb-color-white)";
   }
 
-  return iconColor !== "text-primary"
+  return iconColor !== color("text-primary")
     ? `color-mix(in srgb, ${color(iconColor)}, transparent 88%)`
     : "var(--mb-color-white)";
 }
