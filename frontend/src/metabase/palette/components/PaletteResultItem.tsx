@@ -68,7 +68,22 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
           </Group>
 
           {subtext && (
-            <Text
+            // <Text
+            //   flex="0 0 auto"
+            //   c={
+            //     active
+            //       ? "var(--mb-color-text-medium)"
+            //       : "var(--mb-color-text-light)"
+            //   }
+            //   fz="0.75rem"
+            //   lh="1rem"
+            //   lineClamp={1}
+            //   maw="40%"
+            // >
+            //   {subtext}
+            // </Text>
+
+            <Flex
               flex="0 0 auto"
               c={
                 active
@@ -77,11 +92,13 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
               }
               fz="0.75rem"
               lh="1rem"
-              lineClamp={1}
               maw="40%"
+              gap="xs"
+              justify="end"
+              align="center"
             >
               {subtext}
-            </Text>
+            </Flex>
           )}
         </Flex>
 
