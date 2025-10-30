@@ -308,7 +308,7 @@
                                              ;; TODO (Ngoc 29/10/25) : we should considering using card/create-card! but with
                                              ;; an option to skip syncing metadata since it's gonna be really expensive
                                              (t2/insert-returning-instances! :model/Card (mapv (fn [table]
-                                                                                                 (table->model table api/*current-user-id* target_collection_id))
+                                                                                                 (table->model table api/*current-user-id* (:id target-collection)))
                                                                                                batch)))))
                                   (t2/reducible-select :model/Table :active true {:where where})))]
     {:created_count     (count created-models)
