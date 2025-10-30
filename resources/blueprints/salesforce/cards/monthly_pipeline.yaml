@@ -1,0 +1,71 @@
+name: '[combo] Monthly Pipeline Creation trend'
+display: combo
+database_id: <<db>>
+dataset_query:
+  database: <<db>>
+  query:
+    aggregation:
+    - - count
+    - - sum
+      - - field
+        - - <<db>>
+          - <<destination_schema>>
+          - <<target.opportunity>>
+          - amount
+        - base-type: type/Decimal
+    breakout:
+    - - field
+      - - <<db>>
+        - <<destination_schema>>
+        - <<target.opportunity>>
+        - created_date
+      - base-type: type/DateTimeWithLocalTZ
+        temporal-unit: month
+    filter:
+    - time-interval
+    - - field
+      - - <<db>>
+        - <<destination_schema>>
+        - <<target.opportunity>>
+        - created_date
+      - base-type: type/DateTimeWithLocalTZ
+    - -6
+    - month
+    - include-current: true
+    source-table:
+    - <<db>>
+    - <<destination_schema>>
+    - <<target.opportunity>>
+  type: query
+visualization_settings:
+  column_settings:
+    '["name","sum"]':
+      decimals: 0
+      number_style: currency
+  graph.dimensions:
+  - created_date
+  graph.label_value_formatting: compact
+  graph.metrics:
+  - count
+  - sum
+  graph.show_values: true
+  graph.x_axis.scale: timeseries
+  pivot_table.column_split:
+    columns: []
+    rows:
+    - created_date
+    values:
+    - count
+    - sum
+  pivot_table.column_widths:
+    leftHeaderWidths:
+    - 123
+    totalLeftHeaderWidths: 123
+    valueHeaderWidths: {}
+  series_settings:
+    count:
+      display: bar
+    sum:
+      display: line
+card_schema: 22
+type: question

@@ -159,7 +159,7 @@ interface DatabaseInfoProps {
   database: Database;
 }
 
-const DatabaseInfo = ({ database }: DatabaseInfoProps) => {
+export const DatabaseInfo = ({ database }: DatabaseInfoProps) => {
   return (
     <DatabaseLink to={Urls.browseDatabase(database)}>
       <DatabaseLinkIcon name="database" />
