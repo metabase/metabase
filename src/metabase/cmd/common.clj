@@ -31,8 +31,6 @@
   (try
     (io/make-parents path)
     (spit path content)
-    (when-not (.exists (io/file path))
-      (throw (ex-info "File write verification failed" {:path path})))
     (catch Exception e
       (throw (ex-info (str "Failed to write documentation file: " path)
                       {:path path}

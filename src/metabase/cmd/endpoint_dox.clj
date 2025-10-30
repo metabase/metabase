@@ -19,7 +19,8 @@
     (throw (ex-info (str "Template must contain exactly one " placeholder " placeholder")
                     {:path template-path
                      :placeholder placeholder
-                     :occurrences (dec (count split-parts))}))))
+                     :expected 1
+                     :found (dec (count split-parts))}))))
 
 (defn- fill-template-placeholder
   "Loads a template resource and replaces a placeholder with content.
