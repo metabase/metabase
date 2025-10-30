@@ -21,13 +21,27 @@ import type {
   RemappingHydratedDatasetColumn,
 } from "metabase/visualizations/types";
 import type {
+  AggregationType,
   DatasetData,
   RowValue,
   RowValues,
   SeriesOrderSetting,
 } from "metabase-types/api";
 
+import { getAggregationByValues } from "../../echarts/cartesian/model/other-series";
+
 import { getChartMetrics } from "./series";
+
+type CombinedMetric = {
+  metricValues: Record<string, number[]>;
+  rawRows: RowValues[];
+};
+
+type CombinedBreakoutMetric = CombinedMetric & {
+  breakoutMetrics?: {
+    [key: string]: CombinedMetric;
+  };
+};
 
 const getMetricValue = (
   value: RowValue,
@@ -49,6 +63,49 @@ const sumMetrics = (left: MetricDatum, right: MetricDatum): MetricDatum => {
     datum[metricKey] = sumMetric(left[metricKey], right[metricKey]);
     return datum;
   }, {});
+};
+
+// adds all metricDatum and rawRows values to the combinedMetric
+const combineMetricValues = (
+  metricDatum: MetricDatum,
+  rawRows: RowValues[],
+  combinedMetric: CombinedMetric,
+) => {
+  for (const key in metricDatum) {
+    const metricValue = metricDatum[key];
+
+    if (metricValue !== null) {
+      combinedMetric.metricValues[key] ??= [];
+      combinedMetric.metricValues[key].push(metricValue);
+    }
+  }
+
+  combinedMetric.rawRows.push(...rawRows);
+};
+
+// TODO: ideally this value should be part of the datum.metric object
+const getAggregationFromKey = (key: string): AggregationType => {
+  return key.split("_")[0] as AggregationType;
+};
+
+// reduces the combinedMetric to a metricDatum with aggregated values
+const aggregateCombinedBreakoutMetric = ({
+  metricValues,
+  rawRows,
+}: CombinedMetric) => {
+  const datum: { metrics: MetricDatum; rawRows: RowValues[] } = {
+    metrics: {},
+    rawRows: rawRows,
+  };
+
+  for (const key in metricValues) {
+    datum.metrics[key] = getAggregationByValues(
+      metricValues[key],
+      getAggregationFromKey(key),
+    );
+  }
+
+  return datum;
 };
 
 export const getGroupedDataset = (
@@ -125,48 +182,59 @@ export const trimData = (
   }
 
   const groupStartingFromIndex = valuesCountLimit - 1;
-  const result = dataset.slice();
-  const dataToGroup = result.splice(groupStartingFromIndex);
+  const slicedDataSet = dataset.slice();
+  const dataToGroup = slicedDataSet.splice(groupStartingFromIndex);
 
   const groupedDatumDimensionValue =
     dataToGroup.length === dataset.length
       ? t`All values (${dataToGroup.length})`
       : t`Other (${dataToGroup.length})`;
 
-  const groupedValuesDatum = dataToGroup.reduce(
-    (groupedValue, currentValue) => {
-      groupedValue.metrics = sumMetrics(
-        groupedValue.metrics,
-        currentValue.metrics,
-      );
+  const combinedGroupedDatum = dataToGroup.reduce<CombinedBreakoutMetric>(
+    (combinedMetric, datum) => {
+      combineMetricValues(datum.metrics, datum.rawRows, combinedMetric);
 
-      Object.keys(currentValue.breakout ?? {}).map((breakoutName) => {
-        groupedValue.breakout ??= {};
-        groupedValue.breakout[breakoutName] = {
-          metrics: sumMetrics(
-            groupedValue.breakout[breakoutName]?.metrics ?? {},
-            currentValue.breakout?.[breakoutName].metrics ?? {},
-          ),
-          rawRows: [
-            ...(groupedValue.breakout[breakoutName]?.rawRows ?? []),
-            ...(currentValue.breakout?.[breakoutName].rawRows ?? []),
-          ],
-        };
-      });
+      const breakout = datum.breakout;
 
-      groupedValue.rawRows.push(...currentValue.rawRows);
+      if (breakout) {
+        combinedMetric.breakoutMetrics ??= {};
 
-      return groupedValue;
+        for (const key in breakout) {
+          combinedMetric.breakoutMetrics[key] ??= {
+            metricValues: {},
+            rawRows: [],
+          };
+
+          combineMetricValues(
+            breakout[key].metrics,
+            breakout[key].rawRows,
+            combinedMetric.breakoutMetrics[key],
+          );
+        }
+      }
+
+      return combinedMetric;
     },
-    {
-      dimensionValue: groupedDatumDimensionValue,
-      metrics: {},
-      isClickable: false,
-      rawRows: [],
-    },
+    { metricValues: {}, rawRows: [] },
   );
 
-  return [...result, groupedValuesDatum];
+  const groupedValuesDatum: GroupedDatum = {
+    dimensionValue: groupedDatumDimensionValue,
+    ...aggregateCombinedBreakoutMetric(combinedGroupedDatum),
+    isClickable: false,
+  };
+
+  if (combinedGroupedDatum.breakoutMetrics) {
+    groupedValuesDatum.breakout = {};
+
+    for (const key in combinedGroupedDatum.breakoutMetrics) {
+      groupedValuesDatum.breakout[key] = aggregateCombinedBreakoutMetric(
+        combinedGroupedDatum.breakoutMetrics[key],
+      );
+    }
+  }
+
+  return [...slicedDataSet, groupedValuesDatum];
 };
 
 const getBreakoutDistinctValues = (
