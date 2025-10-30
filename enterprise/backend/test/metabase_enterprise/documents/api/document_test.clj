@@ -2547,7 +2547,7 @@
           (let [result (mt/user-http-request :rasta
                                              :post 200 "ee/document/"
                                              {:name "Personal Document"
-                                              :document (text->prose-mirror-ast "My personal notes")
+                                              :document (documents.test-util/text->prose-mirror-ast "My personal notes")
                                               :collection_id personal-coll-id})]
             (is (pos? (:id result)))
             (is (= "Personal Document" (:name result)))
@@ -2561,7 +2561,7 @@
           (let [result (mt/user-http-request :crowberto
                                              :post 200 "ee/document/"
                                              {:name "Admin Document in Personal Collection"
-                                              :document (text->prose-mirror-ast "Admin's notes")
+                                              :document (documents.test-util/text->prose-mirror-ast "Admin's notes")
                                               :collection_id personal-coll-id})]
             (is (pos? (:id result)))
             (is (= personal-coll-id (:collection_id result)))))
@@ -2569,5 +2569,5 @@
           (mt/user-http-request :lucky
                                 :post 403 "ee/document/"
                                 {:name "Should Fail"
-                                 :document (text->prose-mirror-ast "Should not be created")
+                                 :document (documents.test-util/text->prose-mirror-ast "Should not be created")
                                  :collection_id personal-coll-id}))))))
