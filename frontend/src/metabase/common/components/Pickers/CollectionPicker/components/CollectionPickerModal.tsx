@@ -62,10 +62,12 @@ export const CollectionPickerModal = ({
   shouldDisableItem,
   searchResultFilter,
   recentFilter,
-  models = ["collection"],
+  models: modelsProp,
   canSelectItem: _canSelectItem,
 }: CollectionPickerModalProps) => {
   options = { ...defaultOptions, ...options };
+
+  const models = modelsProp || ["collection"];
 
   const [selectedItem, setSelectedItem] = useState<CollectionPickerItem | null>(
     null,
@@ -169,9 +171,9 @@ export const CollectionPickerModal = ({
       displayName: models.some((model) => model !== "collection")
         ? t`Browse`
         : t`Collections`,
-      models: models as CollectionPickerModel[],
-      folderModels: ["collection" as const],
-      icon: "folder" as const,
+      models: models,
+      folderModels: ["collection"],
+      icon: "folder",
       render: ({ onItemSelect }) => (
         <CollectionPicker
           initialValue={value}
