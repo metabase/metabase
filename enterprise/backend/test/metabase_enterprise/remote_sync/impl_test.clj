@@ -355,7 +355,7 @@
                                            remote-sync-branch ""]
           (with-redefs [source/source-from-settings (constantly mock-source)
                         impl/async-import! (fn [& _args] (reset! import-started? true) 123)]
-            (impl/finish-remote-config!)
+            (impl/finish-remote-config! false)
             (is (= "main" (setting/get :remote-sync-branch))
                 "Should set branch to default branch")
             (is @import-started?
@@ -377,7 +377,7 @@
                                              (reset! import-args {:branch branch :force? force? :args args})
                                              {:id 123})
                         collection/remote-synced-collection (constantly nil)]
-            (let [task-id (impl/finish-remote-config!)]
+            (let [task-id (impl/finish-remote-config! false)]
               (is (= 123 task-id)
                   "Should return task ID from async-import!")
               (is @import-called?
@@ -398,7 +398,7 @@
                                              remote-sync-type :production]
             (with-redefs [source/source-from-settings (constantly mock-source)
                           impl/async-import! (fn [& _args] (reset! import-called? true) {:id 123})]
-              (let [task-id (impl/finish-remote-config!)]
+              (let [task-id (impl/finish-remote-config! false)]
                 (is (= 123 task-id)
                     "Should return task ID from async-import!")
                 (is @import-called?
@@ -416,7 +416,7 @@
                                              remote-sync-type :development]
             (with-redefs [source/source-from-settings (constantly mock-source)
                           impl/async-import! (fn [& _args] (reset! import-called? true) 123)]
-              (let [result (impl/finish-remote-config!)]
+              (let [result (impl/finish-remote-config! false)]
                 (is (nil? result)
                     "Should return nil when nothing is done")
                 (is (not @import-called?)
@@ -429,7 +429,7 @@
         (mt/with-temp [:model/Collection _ {:name "Remote Collection" :type "remote-synced" :location "/"}]
           (mt/with-temporary-setting-values [remote-sync-enabled false]
             (with-redefs [collection/clear-remote-synced-collection! (fn [] (reset! clear-called? true))]
-              (let [result (impl/finish-remote-config!)]
+              (let [result (impl/finish-remote-config! false)]
                 (is (nil? result)
                     "Should return nil when remote sync is disabled")
                 (is @clear-called?

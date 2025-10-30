@@ -120,20 +120,21 @@
   (api/check-superuser)
   (api/check-400 (not (and (remote-sync.object/dirty-global?) (= :production remote-sync-type)))
                  "There are unsaved changes in the Remote Sync collection which will be overwritten switching to production mode.")
-  (try
-    (settings/check-and-update-remote-settings! settings)
-    (catch Exception e
-      (throw (ex-info (or (ex-message e) "Invalid settings")
-                      {:error       (ex-message e)
-                       :status-code 400} e))))
-  (events/publish-event! :event/remote-sync-settings-update
-                         {:details {:remote-sync-type remote-sync-type}
-                          :user-id api/*current-user-id*})
-  (let [task-id (impl/finish-remote-config!)]
-    (if task-id
-      {:success true
-       :task_id task-id}
-      {:success true})))
+  (let [type-changing (= (settings/remote-sync-type) (:remote-sync-type settings))]
+    (try
+      (settings/check-and-update-remote-settings! settings)
+      (catch Exception e
+        (throw (ex-info (or (ex-message e) "Invalid settings")
+                        {:error       (ex-message e)
+                         :status-code 400} e))))
+    (events/publish-event! :event/remote-sync-settings-update
+                           {:details {:remote-sync-type remote-sync-type}
+                            :user-id api/*current-user-id*})
+    (let [task-id (impl/finish-remote-config! (and (= :production (settings/remote-sync-type) type-changing)))]
+      (if task-id
+        {:success true
+         :task_id task-id}
+        {:success true}))))
 
 (api.macros/defendpoint :get "/branches" :- remote-sync.schema/BranchesResponse
   "Get list of branches from the configured source.

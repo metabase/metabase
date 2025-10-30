@@ -11,10 +11,11 @@
 (set! *warn-on-reflection* true)
 
 (defmethod startup/def-startup-logic! ::RemoteSyncInit [_]
-  ;; Initialize Remote Sync features
+  ;; Initialize Remote Sync features.
+  ;; Need to do this on startup because config may have changed since the last start when using env variables
   (future
     (try
       (settings/check-git-settings!)
-      (impl/finish-remote-config!)
+      (impl/finish-remote-config! false)
       (catch Throwable e
         (log/error e "Error during Remote Sync initialization: " (ex-message e))))))
