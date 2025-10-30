@@ -10,8 +10,27 @@ import { Badge, Box, Flex, Icon, Image, Stack, Text } from "metabase/ui";
 import { MiniBarCell } from "metabase/visualizations/components/TableInteractive/cells/MiniBarCell";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import { TYPE } from "metabase-lib/v1/types/constants";
-import { isQuantity, isScore } from "metabase-lib/v1/types/utils/isa";
+import {
+  isAvatarURL,
+  isBoolean,
+  isCategory,
+  isCurrency,
+  isEmail,
+  isEntityName,
+  isFK,
+  isFloat,
+  isImageURL,
+  isNumber,
+  isPK,
+  isPercentage,
+  isProduct,
+  isQuantity,
+  isScore,
+  isSource,
+  isState,
+  isTitle,
+  isURL,
+} from "metabase-lib/v1/types/utils/isa";
 import type {
   ColumnSettings,
   DatasetColumn,
@@ -64,7 +83,7 @@ export function ColumnValue({
     return <div />;
   }
 
-  if (column.base_type === TYPE.Boolean) {
+  if (isBoolean(column)) {
     return (
       <Badge
         className={styles.badge}
@@ -88,9 +107,10 @@ export function ColumnValue({
     );
   }
 
-  switch (column.semantic_type) {
-    case TYPE.PK:
-    case TYPE.FK:
+  // switch (column.semantic_type) {
+  switch (true) {
+    case isPK(column):
+    case isFK(column):
       if (!column.remapped_to_column) {
         return (
           <Badge
@@ -105,7 +125,7 @@ export function ColumnValue({
         );
       }
       break;
-    case TYPE.Category:
+    case isCategory(column):
       return (
         <Badge
           className={styles.badge}
@@ -131,7 +151,7 @@ export function ColumnValue({
           {value}
         </Badge>
       );
-    case TYPE.State:
+    case isState(column):
       return (
         <Badge
           className={styles.badge}
@@ -144,10 +164,10 @@ export function ColumnValue({
           {value}
         </Badge>
       );
-    case TYPE.Name:
-    case TYPE.Title:
-    case TYPE.Product:
-    case TYPE.Source:
+    case isEntityName(column):
+    case isTitle(column):
+    case isProduct(column):
+    case isSource(column):
       return (
         <Ellipsified
           size="sm"
@@ -159,15 +179,15 @@ export function ColumnValue({
           {value}
         </Ellipsified>
       );
-    case TYPE.Email:
-    case TYPE.URL:
+    case isEmail(column):
+    case isURL(column):
       return (
         <Ellipsified size="sm" fw="bold" style={style} tooltip={rawValue}>
           {value}
         </Ellipsified>
       );
-    case TYPE.Quantity:
-    case TYPE.Score: {
+    case isQuantity(column):
+    case isScore(column): {
       return (
         <Flex direction="row" align="center" gap="sm">
           <MiniBarCell
@@ -189,7 +209,7 @@ export function ColumnValue({
         </Flex>
       );
     }
-    case TYPE.Percentage: {
+    case isPercentage(column): {
       return (
         <Badge
           size="lg"
@@ -213,7 +233,7 @@ export function ColumnValue({
         </Badge>
       );
     }
-    case TYPE.Currency: {
+    case isCurrency(column): {
       const options = settings.column?.(column) || {};
       const formattedValue = formatNumber(Number(rawValue), options);
 
@@ -242,8 +262,8 @@ export function ColumnValue({
 
       return <Text fw="bold">{formattedValue}</Text>;
     }
-    case TYPE.ImageURL:
-    case TYPE.AvatarURL:
+    case isImageURL(column):
+    case isAvatarURL(column):
       return (
         <Image
           src={rawValue}
@@ -256,8 +276,8 @@ export function ColumnValue({
           }}
         />
       );
-    case TYPE.Float:
-    case TYPE.Number:
+    case isFloat(column):
+    case isNumber(column):
       return (
         <Ellipsified
           size="sm"

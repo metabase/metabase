@@ -71,11 +71,11 @@ export function ListView({
       <Stack gap={0} className={styles.listContainer}>
         <div
           className={cx(styles.listHeader, {
-            [styles.withIcon]: !!(entityIcon || imageColumn),
+            [styles.withIcon]: !!entityIconEnabled,
           })}
         >
           {/* Entity Type Icon Column Placeholder */}
-          <div style={{ width: 32, flexShrink: 0 }} />
+          {entityIconEnabled && <div style={{ width: 32, flexShrink: 0 }} />}
 
           {/* Title and Subtitle Column */}
           <div>
