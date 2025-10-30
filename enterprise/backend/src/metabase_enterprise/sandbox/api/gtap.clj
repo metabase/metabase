@@ -1,7 +1,8 @@
 (ns metabase-enterprise.sandbox.api.gtap
   "`/api/mt/gtap` endpoints, for CRUD operations and the like on GTAPs (Group Table Access Policies)."
   (:require
-   [metabase-enterprise.sandbox.models.sandbox :as gtap]
+   [metabase-enterprise.sandbox.models.sandbox :as sandbox]
+   [metabase-enterprise.sandbox.schema :as sandbox.schema]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
@@ -12,6 +13,9 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/"
   "Fetch a list of all GTAPs currently in use, or a single GTAP if both `group_id` and `table_id` are provided."
   [_route-params
@@ -30,12 +34,6 @@
 
 ;; TODO - not sure what other endpoints we might need, e.g. for fetching the list above but for a given group or Table
 
-(def ^:private AttributeRemappings
-  :any
-  ;; TODO -- fix me
-  #_(mu/with-api-error-message [:maybe [:map-of ms/NonBlankString ms/NonBlankString]]
-      "value must be a valid attribute remappings map (attribute name -> remapped name)"))
-
 (api.macros/defendpoint :post "/"
   "Create a new GTAP."
   [_route-params
@@ -44,7 +42,7 @@
             [:table_id             ms/PositiveInt]
             [:card_id              {:optional true} [:maybe ms/PositiveInt]]
             [:group_id             ms/PositiveInt]
-            [:attribute_remappings {:optional true} AttributeRemappings]]]
+            [:attribute_remappings {:optional true} ::sandbox.schema/attribute-remappings]]]
   (first (t2/insert-returning-instances!
           :model/Sandbox
           (select-keys body [:table_id :card_id :group_id :attribute_remappings]))))
@@ -58,7 +56,7 @@
    _query-params
    body :- [:map
             [:card_id              {:optional true} [:maybe ms/PositiveInt]]
-            [:attribute_remappings {:optional true} AttributeRemappings]]]
+            [:attribute_remappings {:optional true} ::sandbox.schema/attribute-remappings]]]
   (api/check-404 (t2/select-one :model/Sandbox :id id))
   ;; Only update `card_id` and/or `attribute_remappings` if the values are present in the body of the request.
   ;; This allows existing values to be "cleared" by being set to nil
@@ -85,8 +83,8 @@
         (throw (ex-info (tru "Sandboxing with a saved question is not enabled for this database.")
                         {:status-code 400
                          :message     (tru "Sandboxing with a saved question is not enabled for this database.")})))))
-  (gtap/check-columns-match-table {:table_id table_id
-                                   :card_id  card_id}))
+  (sandbox/check-columns-match-table {:table_id table_id
+                                      :card_id  card_id}))
 
 (api.macros/defendpoint :delete "/:id"
   "Delete a GTAP entry."

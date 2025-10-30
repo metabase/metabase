@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import type { CurrencyStyle } from "metabase/lib/formatting";
 import type { SdkIframeEmbedSetupSettings } from "metabase-enterprise/embedding_iframe_sdk_setup/types";
 
 import type { InputSettingType } from "./actions";
@@ -27,7 +28,7 @@ export interface NumberFormattingSettings {
 
 export interface CurrencyFormattingSettings {
   currency?: string;
-  currency_style?: string;
+  currency_style?: CurrencyStyle;
   currency_in_header?: boolean;
 }
 
@@ -321,6 +322,8 @@ export const tokenFeatures = [
   "etl_connections",
   "etl_connections_pg",
   "table_data_editing",
+  "remote_sync",
+  "dependencies",
   "documents",
   "semantic_search",
   "transforms",
@@ -628,9 +631,23 @@ export type DatabaseReplicationConnections = Record<
   { connection_id: string }
 >;
 
+export type SyncableEntity =
+  | "transform"
+  | "snippet"
+  | "dataset"
+  | "metric"
+  | "segment"
+  | "dashboard"
+  | "question";
+
 export interface EnterpriseSettings extends Settings {
   "application-colors"?: ColorSettings | null;
   "application-logo-url"?: string;
+  "remote-sync-enabled"?: boolean | null;
+  "remote-sync-token"?: string | null;
+  "remote-sync-url"?: string | null;
+  "remote-sync-branch"?: string | null;
+  "remote-sync-type"?: "production" | "development" | null;
   "login-page-illustration"?: IllustrationSettingValue;
   "login-page-illustration-custom"?: string;
   "landing-page-illustration"?: IllustrationSettingValue;
@@ -688,6 +705,7 @@ export interface EnterpriseSettings extends Settings {
   "python-storage-s-3-container-endpoint"?: string | null;
   "python-storage-s-3-path-style-access"?: boolean | null;
   "python-runner-timeout-seconds"?: number | null;
+  "python-runner-test-run-timeout-seconds"?: number | null;
   /**
    * @deprecated
    */

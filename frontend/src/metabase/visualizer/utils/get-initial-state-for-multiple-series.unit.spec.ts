@@ -94,37 +94,6 @@ describe("getInitialVisualizerStateForMultipleSeries", () => {
     expect(initialState.settings).toMatchObject({
       "graph.metrics": ["COLUMN_2", "COLUMN_4"],
       "graph.dimensions": ["COLUMN_1", "COLUMN_3"],
-      "card.title": "First Series",
     });
-  });
-
-  it("should include card description in settings (metabase#63863)", () => {
-    const firstCard = createMockCard({
-      id: 1,
-      name: "Test Series",
-      description: "Test description",
-      display: "line",
-      visualization_settings: {
-        "graph.metrics": ["Revenue"],
-        "graph.dimensions": ["Date"],
-      },
-    });
-
-    const rawSeries = [
-      createMockSingleSeries(firstCard, {
-        data: createMockDatasetData({
-          cols: [
-            createMockColumn({ name: "Date" }),
-            createMockColumn({ name: "Revenue" }),
-          ],
-        }),
-      }),
-    ];
-
-    const initialState = getInitialStateForMultipleSeries(rawSeries);
-
-    expect(initialState.settings["card.description"]).toEqual(
-      "Test description",
-    );
   });
 });

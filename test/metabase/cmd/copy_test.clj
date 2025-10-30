@@ -32,12 +32,15 @@
     :model/ContentTranslation
     :model/DashboardFavorite
     :model/DatabaseRouter
+    :model/Dependency
     :model/PythonLibrary
     :model/Query
     :model/QueryCache
     :model/QueryExecution
     :model/QueryField
     :model/QueryTable
+    :model/RemoteSyncObject
+    :model/RemoteSyncTask
     :model/SearchIndexMetadata
     :model/SemanticSearchTokenTracking
     :model/TaskHistory

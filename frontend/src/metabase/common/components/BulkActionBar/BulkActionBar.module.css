@@ -22,17 +22,13 @@
   }
 
   &:disabled {
-    color: var(--mb-color-text-tertiary);
+    color: var(--mb-color-text-disabled-inverse);
     border-color: color-mix(
       in srgb,
-      var(--mb-color-background),
+      var(--mb-color-background-disabled-inverse),
       transparent 100%
     );
-    background-color: color-mix(
-      in srgb,
-      var(--mb-color-background),
-      transparent 90%
-    );
+    background-color: var(--mb-color-background-disabled-inverse);
   }
 }
 

@@ -4,6 +4,7 @@ import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/Admi
 import { NotFound } from "metabase/common/components/ErrorPages";
 import {
   PLUGIN_AUTH_PROVIDERS,
+  PLUGIN_REMOTE_SYNC,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 
@@ -57,6 +58,10 @@ export const getSettingsRoutes = () => (
     <Route
       path="authentication/jwt"
       component={() => <PLUGIN_AUTH_PROVIDERS.SettingsJWTForm />}
+    />
+    <Route
+      path="remote-sync"
+      component={() => <PLUGIN_REMOTE_SYNC.RemoteSyncSettings />}
     />
     <Route path="maps" component={MapsSettingsPage} />
     <Route path="localization" component={LocalizationSettingsPage} />

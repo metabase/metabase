@@ -28,7 +28,6 @@ export const Grid = ({
     selectedTabId,
     isEditing,
     onRefreshPeriodChange,
-    shouldRenderAsNightMode,
     isLoadingWithoutCards,
     onAddQuestion,
   } = useDashboardContext();
@@ -99,13 +98,9 @@ export const Grid = ({
           addQuestion={handleAddQuestion}
           isDashboardEmpty={true}
           isEditing={isEditing}
-          isNightMode={shouldRenderAsNightMode}
         />
       ) : (
-        <DashboardEmptyStateWithoutAddPrompt
-          isDashboardEmpty={true}
-          isNightMode={shouldRenderAsNightMode}
-        />
+        <DashboardEmptyStateWithoutAddPrompt isDashboardEmpty={true} />
       );
     }
 
@@ -116,13 +111,9 @@ export const Grid = ({
           addQuestion={handleAddQuestion}
           isDashboardEmpty={false}
           isEditing={isEditing}
-          isNightMode={shouldRenderAsNightMode}
         />
       ) : (
-        <DashboardEmptyStateWithoutAddPrompt
-          isDashboardEmpty={false}
-          isNightMode={shouldRenderAsNightMode}
-        />
+        <DashboardEmptyStateWithoutAddPrompt isDashboardEmpty={false} />
       );
     }
   }
