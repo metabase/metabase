@@ -179,7 +179,10 @@ function PublishedModelsList({
 }) {
   return (
     <Stack gap="md" pt="sm">
-      <Text px={0} style={{ display: "inline-flex", alignItems: "baseline" }}>
+      <Text
+        px={0}
+        style={{ display: "inline-flex", alignItems: "baseline", gap: rem(4) }}
+      >
         <span>{t`Successfully published ${publishedModels.length} model${publishedModels.length !== 1 ? "s" : ""} to `}</span>
         {collection ? (
           <Button
