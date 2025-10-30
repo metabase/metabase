@@ -5415,6 +5415,25 @@
                                           :size_y  4}]})
       (is (not (nil? (t2/select-one :model/PulseCard :card_id new-card-id)))))))
 
+(deftest update-dashboard-embedding-type-to-nil-test
+  (testing "PUT /api/dashboard/:id"
+    (testing "Admin should be able to set embedding_type to nil to clear it"
+      (mt/with-temporary-setting-values [enable-embedding-static true]
+        (mt/with-temp [:model/Dashboard dashboard {:enable_embedding true
+                                                   :embedding_type "static-legacy"}]
+          (with-dashboards-in-writeable-collection! [dashboard]
+            (testing "Verify initial state has embedding_type set"
+              (is (= "static-legacy"
+                     (t2/select-one-fn :embedding_type :model/Dashboard :id (u/the-id dashboard)))))
+            (testing "Setting embedding_type to nil should clear it"
+              (let [response (mt/user-http-request :crowberto :put 200 (str "dashboard/" (u/the-id dashboard))
+                                                   {:embedding_type nil})]
+                (testing "Response should contain nil embedding_type"
+                  (is (= nil (:embedding_type response))))
+                (testing "Database should contain nil embedding_type"
+                  (is (= nil
+                         (t2/select-one-fn :embedding_type :model/Dashboard :id (u/the-id dashboard)))))))))))))
+
 (deftest save-dashboard-test
   (let [response (mt/user-http-request :crowberto :post 200 "dashboard/save" {:auto_apply_filters true,
                                                                               :name               "Test Dashboard",
