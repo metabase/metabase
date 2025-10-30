@@ -1,19 +1,15 @@
-import { useClipboard, useDisclosure } from "@mantine/hooks";
+import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { useToast } from "metabase/common/hooks";
 import {
   ActionIcon,
-  Button,
   Flex,
   type FlexProps,
   Icon,
   type IconName,
-  Modal,
-  Stack,
   Text,
 } from "metabase/ui";
 import { useSubmitMetabotFeedbackMutation } from "metabase-enterprise/api/metabot";
@@ -21,7 +17,6 @@ import type {
   MetabotAgentChatMessage,
   MetabotAgentTextChatMessage,
   MetabotChatMessage,
-  MetabotDebugToolCallMessage,
   MetabotErrorMessage,
   MetabotUserChatMessage,
 } from "metabase-enterprise/metabot/state";
@@ -31,6 +26,7 @@ import { AIMarkdown } from "../AIMarkdown/AIMarkdown";
 
 import { AgentSuggestionMessage } from "./MetabotAgentSuggestionMessage";
 import { AgentTodoListMessage } from "./MetabotAgentTodoMessage";
+import { AgentToolCallMessage } from "./MetabotAgentToolCallMessage";
 import Styles from "./MetabotChat.module.css";
 import { MetabotFeedbackModal } from "./MetabotFeedbackModal";
 
@@ -240,88 +236,6 @@ export const AgentErrorMessage = ({
     )}
   </MessageContainer>
 );
-
-const ToolCallDetailsModal = ({
-  message,
-  onClose,
-}: {
-  message: MetabotDebugToolCallMessage;
-  onClose: () => void;
-}) => {
-  return (
-    <Modal
-      opened
-      onClose={onClose}
-      size="lg"
-      title={t`Tool Call: ${message.name}`}
-      data-testid="tool-call-details-modal"
-    >
-      <Stack gap="md">
-        {message.args && (
-          <Stack gap="xs">
-            <Text fw="bold">{t`Request`}</Text>
-            <CodeEditor
-              value={JSON.stringify(message.args, null, 2)}
-              language="json"
-              readOnly
-            />
-          </Stack>
-        )}
-
-        {message.result && (
-          <Stack gap="xs">
-            <Text fw="bold">{t`Response`}</Text>
-            <CodeEditor value={message.result} readOnly />
-          </Stack>
-        )}
-      </Stack>
-    </Modal>
-  );
-};
-
-export const AgentToolCallMessage = ({
-  message,
-  ...props
-}: FlexProps & {
-  message: MetabotDebugToolCallMessage;
-}) => {
-  const [modalOpen, { open, close }] = useDisclosure(false);
-  const clipboard = useClipboard();
-  const handleCopy = () => clipboard.copy(JSON.stringify(message, null, 2));
-
-  return (
-    <>
-      <MessageContainer
-        chatRole="agent"
-        {...props}
-        p="sm"
-        pl="md"
-        bg="bg-light"
-        bd="1px solid var(--mb-color-border)"
-        bdrs="sm"
-        direction="row"
-        align="center"
-        justify="space-between"
-      >
-        <Flex>
-          <Text mr="sm">🔧</Text>
-          <Text fw="bold">{message.name}</Text>
-        </Flex>
-        <Flex align="center" gap="xs">
-          <Button
-            variant="light"
-            size="compact-xs"
-            onClick={open}
-          >{t`View`}</Button>
-          <ActionIcon h="sm" onClick={handleCopy}>
-            <Icon name="copy" size="1rem" />
-          </ActionIcon>
-        </Flex>
-      </MessageContainer>
-      {modalOpen && <ToolCallDetailsModal message={message} onClose={close} />}
-    </>
-  );
-};
 
 export const getFullAgentReply = (
   messages: MetabotChatMessage[],
