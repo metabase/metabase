@@ -85,17 +85,27 @@
 (defn check-git-settings!
   "Validates git repository settings by attempting to connect and retrieve the default branch.
 
-  Takes a map with :remote-sync-url (required) and :remote-sync-token (optional) keys.
+  If no args are passed, it validates the current settings.
 
   Throws ExceptionInfo if unable to connect to the repository with the provided settings."
-  ([] (when (setting/get :remote-sync-enabled) (check-git-settings! {:remote-sync-url   (setting/get :remote-sync-url)
-                                                                     :remote-sync-token (setting/get :remote-sync-token)})))
+  ([] (when (setting/get :remote-sync-enabled) (check-git-settings! {:remote-sync-url    (setting/get :remote-sync-url)
+                                                                     :remote-sync-token  (setting/get :remote-sync-token)
+                                                                     :remote-sync-branch (setting/get :remote-sync-branch)
+                                                                     :remote-sync-type   (setting/get :remote-sync-type)})))
 
-  ([{:keys [remote-sync-url remote-sync-token]}]
-   (let [source
-         (try (git/git-source remote-sync-url "HEAD" remote-sync-token)
-              (catch Exception e
-                (throw (ex-info "Unable to connect to git repository with the provided settings" {:cause (.getMessage e)} e))))]
+  ([{:keys [remote-sync-url remote-sync-token remote-sync-branch remote-sync-type]}]
+   (when-not (or (not (str/index-of remote-sync-url ":"))
+                 (str/starts-with? remote-sync-url "file://")
+                 (and (or (str/starts-with? remote-sync-url "http://")
+                          (str/starts-with? remote-sync-url "https://"))
+                      (str/index-of remote-sync-url "github.com")))
+     (throw (ex-info "Invalid Repository URL format"
+                     {:url remote-sync-url})))
+
+   (let [source (git/git-source remote-sync-url "HEAD" remote-sync-token)]
+     (when (and (= :production remote-sync-type) (not (str/blank? remote-sync-branch)) (not (some #{remote-sync-branch} (git/branches source))))
+       (throw (ex-info "Invalid branch name" {:url remote-sync-url :branch remote-sync-branch})))
+     (git/fetch! source)
      (when-not (git/has-data? source)
        (throw (ex-info "Cannot connect to an uninitialized repository" {:url remote-sync-url}))))))
 

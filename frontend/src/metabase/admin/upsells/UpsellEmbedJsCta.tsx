@@ -1,8 +1,17 @@
 import { t } from "ttag";
 
 import { useHasTokenFeature } from "metabase/common/hooks";
+import { useDispatch } from "metabase/lib/redux";
 import { isEEBuild } from "metabase/lib/utils";
-import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
+import {
+  PLUGIN_ADMIN_SETTINGS,
+  type SdkIframeEmbedSetupModalProps,
+} from "metabase/plugins";
+import type {
+  EmbedResource,
+  EmbedResourceType,
+} from "metabase/public/lib/types";
+import { setOpenModalWithProps } from "metabase/redux/ui";
 import { Box } from "metabase/ui";
 
 import { UpsellCta } from "./components/UpsellCta";
@@ -10,10 +19,16 @@ import { trackUpsellClicked } from "./components/analytics";
 import { useUpsellLink } from "./components/use-upsell-link";
 
 export function useUpsellEmbedJsCta({
-  embedFlowUrl,
+  resource,
+  resourceType,
+  closeModal,
 }: {
-  embedFlowUrl: string;
+  resource: EmbedResource;
+  resourceType: EmbedResourceType;
+  closeModal: () => void;
 }) {
+  const dispatch = useDispatch();
+
   const campaign = "embedded-analytics-js";
   const location = "static-embed-popover";
 
@@ -33,7 +48,26 @@ export function useUpsellEmbedJsCta({
   });
 
   if (isEmbedJsEnabled) {
-    return { internalLink: embedFlowUrl };
+    return {
+      openEmbedFlow: () => {
+        const modalProps: Pick<SdkIframeEmbedSetupModalProps, "initialState"> =
+          {
+            initialState: {
+              resourceType,
+              resourceId: resource.id,
+            },
+          };
+
+        closeModal();
+
+        dispatch(
+          setOpenModalWithProps({
+            id: "embed",
+            props: modalProps,
+          }),
+        );
+      },
+    };
   }
 
   return {
@@ -43,9 +77,17 @@ export function useUpsellEmbedJsCta({
   };
 }
 
-export function UpsellEmbedJsCta({ embedFlowUrl }: { embedFlowUrl: string }) {
-  const { url, internalLink, triggerUpsellFlow, trackUpsell } =
-    useUpsellEmbedJsCta({ embedFlowUrl });
+export function UpsellEmbedJsCta({
+  resource,
+  resourceType,
+  closeModal,
+}: {
+  resource: EmbedResource;
+  resourceType: EmbedResourceType;
+  closeModal: () => void;
+}) {
+  const { openEmbedFlow, url, triggerUpsellFlow, trackUpsell } =
+    useUpsellEmbedJsCta({ resource, resourceType, closeModal });
 
   if (!isEEBuild()) {
     return null;
@@ -54,8 +96,14 @@ export function UpsellEmbedJsCta({ embedFlowUrl }: { embedFlowUrl: string }) {
   return (
     <Box>
       <UpsellCta
-        onClick={triggerUpsellFlow}
-        internalLink={internalLink}
+        onClick={() => {
+          if (triggerUpsellFlow) {
+            triggerUpsellFlow();
+          } else if (openEmbedFlow) {
+            openEmbedFlow();
+          }
+        }}
+        internalLink={undefined}
         buttonText={t`Try for free`}
         url={url}
         onClickCapture={() => trackUpsell?.()}
