@@ -21,9 +21,9 @@
   :model/NativeQuerySnippet)
 
 (defmethod import/yaml->toucan [:v0 :snippet]
-  [{:keys [_name display_name description sql collection entity-id] :as representation}
+  [{:keys [name display_name description sql collection entity-id] :as representation}
    _ref-index]
-  (-> {:name display_name
+  (-> {:name (or display_name name)
        :description description
        :content sql
        :collection_id (v0-common/find-collection-id collection)

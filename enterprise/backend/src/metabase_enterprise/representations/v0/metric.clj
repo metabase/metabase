@@ -22,7 +22,7 @@
 
 (defmethod import/yaml->toucan [:v0 :metric]
   [{metric-name :display_name
-    :keys [_name description database collection columns] :as representation}
+    :keys [name description database collection columns] :as representation}
    ref-index]
   (let [database-id (lookup/lookup-database-id ref-index database)
         ;; TODO: once we've cleaned up mbql stuff, this explicit lookup should be superfluous.
@@ -30,7 +30,7 @@
         dataset-query (-> (assoc representation :database database-id)
                           (v0-mbql/import-dataset-query ref-index))]
     (-> {;; Core fields
-         :name metric-name
+         :name (or metric-name name)
          :description description
          :dataset_query dataset-query
          :database_id database-id

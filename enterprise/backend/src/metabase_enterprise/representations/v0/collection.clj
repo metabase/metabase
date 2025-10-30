@@ -31,7 +31,7 @@
 
 (defmethod import/yaml->toucan [:v0 :collection]
   [{collection-name :display_name
-    :keys [description collection] :as _representation}
+    :keys [name description collection] :as _representation}
    _ref-index]
   (let [parent-id (when collection
                     (if (number? collection)
@@ -41,7 +41,7 @@
                    (str "/" parent-id "/")
                    "/")]
     (u/remove-nils
-     {:name collection-name
+     {:name (or collection-name name)
       :description description
       :location location})))
 

@@ -36,7 +36,7 @@
 
 (defmethod import/yaml->toucan [:v0 :model]
   [{model-name :display_name
-    :keys [_type _name description database collection columns] :as representation}
+    :keys [_type name description database collection columns] :as representation}
    ref-index]
   (let [database-id (lookup/lookup-database-id ref-index database)
         ;; TODO: once we've cleaned up mbql stuff, this explicit lookup should be superfluous.
@@ -50,7 +50,7 @@
         ;; 4. Pass the result of that into `lib/returned-columns`
         ;; No idea which is better.
         inferred-metadata (card.metadata/infer-metadata dataset-query)]
-    (-> {:name model-name
+    (-> {:name (or model-name name)
          :description description
          :dataset_query dataset-query
          :database_id database-id

@@ -42,8 +42,9 @@
   [representation ref-index]
   (let [representation (rep-read/parse representation)]
     (if-some [model (v0-common/type->model (:type representation))]
-      (let [toucan (yaml->toucan representation ref-index)]
-        (t2/insert! model toucan))
+      (let [toucan (->> (yaml->toucan representation ref-index)
+                        (rep-t2/with-toucan-defaults model))]
+        (t2/insert-returning-instance! model toucan))
       (throw (ex-info (str "Unknown representation type: " (:type representation))
                       {:representation representation
                        :type (:type representation)})))))
@@ -51,15 +52,15 @@
 (defmulti update!
   "Update an existing entity from a representation."
   {:arglists '([representation id ref-index])}
-  (fn [representation _ref-index] ((juxt :version :type) representation)))
+  (fn [representation _id _ref-index] ((juxt :version :type) representation)))
 
 (defmethod update! :default
   [representation id ref-index]
   (let [representation (rep-read/parse representation)]
     (if-some [model (v0-common/type->model (:type representation))]
-      (let [toucan (->> (yaml->toucan representation ref-index)
-                        (rep-t2/with-toucan-defaults model))]
-        (t2/update! model id toucan))
+      (let [toucan (yaml->toucan representation ref-index)]
+        (t2/update! model id toucan)
+        (t2/select-one model :id id))
       (throw (ex-info (str "Unknown representation type: " (:type representation))
                       {:representation representation
                        :type (:type representation)})))))

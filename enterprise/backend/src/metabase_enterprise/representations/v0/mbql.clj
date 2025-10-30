@@ -19,7 +19,7 @@
 
 (defn resolve-source-table
   "Resolves refs in the raw MBQL map, replacing them with IDs for import."
-  [source-table ref-index]
+  [source-table default-db ref-index]
   (cond
     ;; ref to another card/question:
     (v0-common/ref? source-table)
@@ -30,7 +30,7 @@
     ;; map with database ref - resolve database and lookup table
     (v0-common/table-ref? source-table)
     (let [db-id (-> ref-index
-                    (v0-common/lookup-entity (:database source-table))
+                    (v0-common/lookup-entity (:database source-table default-db))
                     (v0-common/ensure-not-nil)
                     (v0-common/ensure-correct-type :database)
                     :id)
@@ -46,23 +46,23 @@
 
 (defn replace-source-tables
   "Resolves refs in the raw MBQL map, replacing them with IDs for import."
-  [mbql-query ref-index]
+  [mbql-query default-db ref-index]
   (walk/postwalk
    (fn [node]
      (if (and (map? node) (:source-table node))
-       (update node :source-table resolve-source-table ref-index)
+       (update node :source-table resolve-source-table default-db ref-index)
        node))
    mbql-query))
 
 (defn replace-fields
   "Resolves field refs in MBQL, converting maps to [:field id] vectors for import."
-  [mbql-query ref-index]
+  [mbql-query default-db ref-index]
   (walk/postwalk
    (fn [node]
      (if (v0-common/field-ref? node)
        ;; It's a field map - resolve it to [:field id]
        (let [db-id (-> ref-index
-                       (v0-common/lookup-entity (:database node))
+                       (v0-common/lookup-entity (:database node default-db))
                        (v0-common/ensure-not-nil)
                        (v0-common/ensure-correct-type :database)
                        :id)
@@ -75,9 +75,30 @@
                        (t2/select-one-fn :id :model/Field
                                          :table_id table-id
                                          :name (:field node)))]
+         ;; use mbql5
          [:field {} field-id])
        node))
    mbql-query))
+
+(defn import-dataset-query
+  "Returns Metabase's dataset_query format, given a representation.
+   Converts representation format to Metabase's internal dataset_query structure."
+  [{:keys [query database]} ref-index]
+  (let [database-id (lookup/lookup-database-id ref-index database)]
+    (if (string? query)
+      {:lib/type :mbql/query
+       :database database-id
+       :stages [{:lib/type :mbql.stage/native
+                 :template-tags {}
+                 :native query}]}
+
+      (let [resolved-lib (-> query
+                             (replace-source-tables database ref-index)
+                             #_(replace-source-cards  ref-index)
+                             (replace-fields database ref-index))]
+        {:lib/type :mbql/query
+         :database database-id
+         :stages resolved-lib}))))
 
 ;; ============================================================================
 ;; Export: Convert Metabase IDs to representation refs
@@ -85,18 +106,24 @@
 
 (defn- table-ref
   "Convert a table ID to a representation ref map."
-  [table-id]
+  [table-id default-db]
   (when-some [t (t2/select-one :model/Table table-id)]
-    (-> {:database (v0-common/->ref (:db_id t) :database)
-         :schema (:schema t)
-         :table (:name t)}
-        u/remove-nils)))
+    (let [db (v0-common/->ref (:db_id t) :database)]
+      (cond-> {:database db
+               :schema (:schema t)
+               :table (:name t)}
+
+        (= db default-db)
+        (dissoc :database)
+
+        :always
+        u/remove-nils))))
 
 (defn- field-ref
   "Convert a field id to a representation ref map."
-  [field-id]
+  [field-id default-db]
   (let [field (t2/select-one :model/Field field-id)
-        tr (table-ref (:table_id field))]
+        tr (table-ref (:table_id field) default-db)]
     (assoc tr :field (:name field))))
 
 (defn id->card-ref
@@ -114,7 +141,7 @@
 
 (defn ->ref-source-table
   "Convert source_table from IDs to representation refs for export."
-  [query]
+  [query default-db]
   (walk/postwalk
    (fn [node]
      (cond
@@ -126,7 +153,7 @@
        (update node :source-table card-ref)
 
        (number? (:source-table node))
-       (update node :source-table table-ref)
+       (update node :source-table table-ref default-db)
 
        :else
        (throw (ex-info "Unknown source table type" {:query query
@@ -165,23 +192,34 @@
        (or (= :field (first x))
            (= "field" (first x)))))
 
+(defn- field-id
+  "Get the field id from a field vector."
+  [[_ a b :as field]]
+  (cond
+    (or (int? a) (string? a)) ;; mbql4, id in second place
+    a
+
+    (or (int? b) (string? b)) ;; mbql5, id in third place
+    b
+
+    :else
+    (throw (ex-info "Cannot get the id from non-field."
+                    {:field field}))))
+
 (defn ->ref-fields
   "Convert fields from [:field id] vectors to representation ref maps for export."
-  [query]
+  [query default-db]
   (walk/postwalk
    (fn [node]
      (if (field? node)
-       (let [[_ _opts id] node]
+       (let [id (field-id node)]
          (cond
            ;; if it's a string, it's referring to a custom field, so we leave it
            (string? id)
            node
 
            (number? id)
-           (field-ref id)
-
-           :else ;; ???: should we fail here?
-           node))
+           (field-ref id default-db)))
        node))
    query))
 
@@ -190,31 +228,11 @@
 
   It currently updates database, source table, and fields."
   [query]
-  (-> query
-      ->ref-database
-      ->ref-source-table
-      ->ref-source-card
-      ->ref-fields))
-
-(defn import-dataset-query
-  "Returns Metabase's dataset_query format, given a representation.
-   Converts representation format to Metabase's internal dataset_query structure."
-  [{:keys [query database]} ref-index]
-  (let [database-id (lookup/lookup-database-id ref-index database)]
-    (if (string? query)
-      {:lib/type :mbql/query
-       :database database-id
-       :stages [{:lib/type :mbql.stage/native
-                 :template-tags {}
-                 :native query}]}
-
-      (let [resolved-lib (-> query
-                             (replace-source-tables ref-index)
-                             #_(replace-source-cards  ref-index)
-                             (replace-fields ref-index))]
-        {:lib/type :mbql/query
-         :database database-id
-         :stages resolved-lib}))))
+  (let [query (->ref-database query)]
+    (-> query
+        (->ref-source-table (:database query))
+        ->ref-source-card
+        (->ref-fields (:database query)))))
 
 (defn export-dataset-query
   "Export a dataset query to representation compatible format.

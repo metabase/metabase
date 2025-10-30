@@ -32,7 +32,8 @@
                         (v0-common/ensure-not-nil))
         query (v0-mbql/import-dataset-query representation ref-index)]
     (-> {:database database-id
-         :name (:display_name representation)
+         :name (or (:display_name representation)
+                   (:name representation))
          :description (:description representation)
          :source {:type "query"
                   :query query}
@@ -56,7 +57,8 @@
   [representation ref-index]
   (let [representation (rep-read/parse representation)]
     (if-some [model (v0-common/type->model (:type representation))]
-      (let [toucan (import/yaml->toucan representation ref-index)
+      (let [toucan (->> (import/yaml->toucan representation ref-index)
+                        (rep-t2/with-toucan-defaults model))
             transform (t2/insert-returning-instance! model toucan)]
         (set-up-tags (:id transform) (:tags representation))
         (t2/hydrate transform :transform_tag_names))
@@ -68,8 +70,7 @@
   [representation id ref-index]
   (let [representation (rep-read/parse representation)]
     (if-some [model (v0-common/type->model (:type representation))]
-      (let [toucan (->> (import/yaml->toucan representation ref-index)
-                        (rep-t2/with-toucan-defaults model))]
+      (let [toucan (import/yaml->toucan representation ref-index)]
         (t2/update! model id (dissoc toucan :entity_id))
         (t2/delete! :model/TransformTransformTag :transform_id id)
         (set-up-tags id (:tags representation))

@@ -45,11 +45,11 @@
 
 (defmethod import/yaml->toucan [:v0 :document]
   [{document-name :display_name
-    :keys [content content_type]}
+    :keys [name content _content_type]}
    ref-index]
   (let [yaml-content content
         yaml-content (v0-common/replace-refs-everywhere yaml-content ref-index)]
-    {:name document-name
+    {:name (or document-name name)
      :document (json/encode yaml-content)
      :content_type "application/json+vnd.prose-mirror"}))
 

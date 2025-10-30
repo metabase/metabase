@@ -20,11 +20,9 @@
 (defmethod import/yaml->toucan [:v0 :question]
   [representation ref-index]
   (let [database-id (lookup/lookup-database-id ref-index (:database representation))
-        ;; TODO: once we've cleaned up mbql stuff, this explicit lookup should be superfluous.
-        ;; Just pull it off of the dataset-query
-        query (-> (assoc representation :database database-id)
-                  (v0-mbql/import-dataset-query ref-index))]
-    (-> {:name (:display_name representation)
+        query (v0-mbql/import-dataset-query representation ref-index)]
+    (-> {:name (or (:display_name representation)
+                   (:name representation))
          :description (:description representation)
          :display (:display representation)
          :dataset_query query

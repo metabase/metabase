@@ -1,5 +1,6 @@
 (ns metabase-enterprise.representations.v0.init
   (:require
+   [metabase-enterprise.representations.v0.card]
    [metabase-enterprise.representations.v0.collection]
    [metabase-enterprise.representations.v0.database]
    [metabase-enterprise.representations.v0.document]

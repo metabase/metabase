@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.representations.core :as rep]
    [metabase-enterprise.representations.export :as export]
+   [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.yaml :as rep-yaml]
    [metabase.lib.core :as lib]
@@ -91,9 +92,10 @@
                      (mt/mbql-query users)
                      (lib/native-query (mt/metadata-provider) "select 1")
                      (lib/query mp (lib.metadata/table mp (mt/id :orders)))]]
-        (mt/with-temp [:model/Card question {:type :question
-                                             :dataset_query query}]
-          (let [card-edn (export/export-entity question)
+        (mt/with-temp [:model/Card {qid :id} {:type :question
+                                              :dataset_query query}]
+          (let [question (t2/select-one :model/Card :id qid)
+                card-edn (export/export-entity question)
                 card-yaml (rep-yaml/generate-string card-edn)
                 card-rep (rep-yaml/parse-string card-yaml)
                 card-rep (rep-read/parse card-rep)
@@ -103,7 +105,7 @@
                            {(v0-common/unref (:database card-edn))
                             (t2/select-one :model/Database (mt/id))})
 
-                question (rep/persist! card-rep ref-index)
+                question (import/insert! card-rep ref-index)
                 question (t2/select-one :model/Card :id (:id question))
                 edn (export/export-entity question)
                 yaml (rep-yaml/generate-string edn)
