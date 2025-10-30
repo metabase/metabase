@@ -471,9 +471,21 @@
       acc
       new-deps))))
 
-(defn y [module]
+(defn module-dependencies-by-namespace
+  "Return a map of external dependency of `module` => set of namespaces in `module` that use it:
+
+    (module-dependencies-by-namespace 'permissions)
+    ;; =>
+    {api #{metabase.permissions.api
+           metabase.permissions.models.collection.graph
+           ...}
+     app-db #{metabase.permissions.api
+              metabase.permissions.models.permissions-group
+              ...}
+     ...}"
+  [module]
   (let [deps (dependencies)]
     (into (sorted-map)
           (map (fn [dep]
-                 [dep (module-usages-of-other-module deps module dep)]))
+                 [dep (into (sorted-set) (keys (module-usages-of-other-module deps module dep)))]))
           (module-dependencies deps module))))
