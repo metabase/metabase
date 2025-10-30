@@ -195,11 +195,11 @@
 
 (def ^{:arglists '([request respond raise])} routes
   "Ring routes for API endpoints."
-  ;; EE routes defined in [[metabase-enterprise.api.routes/routes]] always get the first chance to handle a request, if
-  ;; they exist. If they don't exist, this handler returns `nil` which means we will try the next handler.
+  ;; EE routes defined in [[metabase-enterprise.api-routes.routes/routes]] always get the first chance to handle a
+  ;; request, if they exist. If they don't exist, this handler returns `nil` which means we will try the next handler.
   (handlers/routes
    (if (and config/ee-available? (not *compile-files*))
-     (requiring-resolve 'metabase-enterprise.api.routes/routes)
+     (requiring-resolve 'metabase-enterprise.api-routes.routes/routes)
      pass-thru-handler)
    (handlers/route-map-handler route-map)
    (if (and config/dev-available? (not *compile-files*))

@@ -1,6 +1,7 @@
 (ns metabase-enterprise.audit-app.api.routes
   "API endpoints that are only enabled if we have a premium token with the `:audit-app` feature. These live under
-  `/api/ee/audit-app/`. Feature-flagging for these routes happens in [[metabase-enterprise.api.routes/routes]]."
+  `/api/ee/audit-app/`. Feature-flagging for these routes happens
+  in [[metabase-enterprise.api-routes.routes/routes]]."
   (:require
    [metabase-enterprise.audit-app.api.user]
    [metabase.api.macros :as api.macros]

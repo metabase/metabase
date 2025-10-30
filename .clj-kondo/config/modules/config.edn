@@ -1591,8 +1591,14 @@
 
   enterprise/api
   {:team "UX West"
-   :api  #{metabase-enterprise.api.routes
-           metabase-enterprise.api.routes.common}
+   :api  #{metabase-enterprise.api.core}
+   :uses #{api
+           premium-features
+           util}}
+
+  enterprise/api-routes
+  {:team "UX West"
+   :api  #{metabase-enterprise.api-routes.routes}
    :uses :any}
 
   enterprise/audit-app
