@@ -174,7 +174,6 @@ export const MetabotChat = ({
                 onRetryMessage={handleRetryMessage}
                 isDoingScience={metabot.isDoingScience}
                 showFeedbackButtons
-                debugMode={metabot.debugMode}
               />
               {/* loading */}
               {metabot.isDoingScience && (

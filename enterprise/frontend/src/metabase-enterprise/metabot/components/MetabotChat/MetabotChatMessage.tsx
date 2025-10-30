@@ -1,4 +1,4 @@
-import { useClipboard } from "@mantine/hooks";
+import { useClipboard, useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
@@ -162,6 +162,9 @@ export const AgentMessage = ({
       {message.type === "todo_list" && (
         <AgentTodoListMessage todos={message.payload} />
       )}
+      {message.type === "tool_call" && (
+        <AgentToolCallMessage message={message} />
+      )}
       <Flex className={Styles.messageActions}>
         {!hideActions && (
           <>
@@ -276,51 +279,46 @@ const ToolCallDetailsModal = ({
   );
 };
 
-export const ToolCallMessage = ({
+export const AgentToolCallMessage = ({
   message,
   ...props
 }: FlexProps & {
   message: MetabotDebugToolCallMessage;
 }) => {
-  const [modalOpen, setModalOpen] = useState(false);
+  const [modalOpen, { open, close }] = useDisclosure(false);
+  const clipboard = useClipboard();
+  const handleCopy = () => clipboard.copy(JSON.stringify(message, null, 2));
 
   return (
     <>
-      <MessageContainer chatRole="tool" {...props}>
-        <Flex
-          p="md"
-          mb="md"
-          align="center"
-          justify="space-between"
-          style={{
-            border: "1px solid var(--mb-color-brand)",
-            backgroundColor: "var(--mb-color-bg-light)",
-            borderRadius: "8px",
-          }}
-        >
-          <Flex align="center" gap="xs">
-            <Text fw="bold" c="brand">
-              🔧
-            </Text>
-            <Text fw="bold" c="brand">
-              {message.name}
-            </Text>
-          </Flex>
+      <MessageContainer
+        chatRole="agent"
+        {...props}
+        p="sm"
+        pl="md"
+        bg="bg-light"
+        bd="1px solid var(--mb-color-border)"
+        bdrs="sm"
+        direction="row"
+        align="center"
+        justify="space-between"
+      >
+        <Flex>
+          <Text mr="sm">🔧</Text>
+          <Text fw="bold">{message.name}</Text>
+        </Flex>
+        <Flex align="center" gap="xs">
           <Button
-            variant="filled"
-            size="xs"
-            bg="brand"
-            c="white"
-            onClick={() => setModalOpen(true)}
-          >{t`View details`}</Button>
+            variant="light"
+            size="compact-xs"
+            onClick={open}
+          >{t`View`}</Button>
+          <ActionIcon h="sm" onClick={handleCopy}>
+            <Icon name="copy" size="1rem" />
+          </ActionIcon>
         </Flex>
       </MessageContainer>
-      {modalOpen && (
-        <ToolCallDetailsModal
-          message={message}
-          onClose={() => setModalOpen(false)}
-        />
-      )}
+      {modalOpen && <ToolCallDetailsModal message={message} onClose={close} />}
     </>
   );
 };
@@ -360,7 +358,6 @@ export const Messages = ({
   isDoingScience,
   showFeedbackButtons,
   onInternalLinkClick,
-  debugMode = false,
 }: {
   messages: MetabotChatMessage[];
   errorMessages: MetabotErrorMessage[];
@@ -368,7 +365,6 @@ export const Messages = ({
   isDoingScience: boolean;
   showFeedbackButtons: boolean;
   onInternalLinkClick?: (navigateToPath: string) => void;
-  debugMode?: boolean;
 }) => {
   const clipboard = useClipboard();
   const [sendToast] = useToast();
@@ -425,13 +421,9 @@ export const Messages = ({
     [showFeedbackButtons],
   );
 
-  const visibleMessages = debugMode
-    ? messages
-    : messages.filter((msg) => msg.role !== "tool");
-
   return (
     <>
-      {visibleMessages.map((message, index) =>
+      {messages.map((message, index) =>
         message.role === "agent" ? (
           <AgentMessage
             key={"msg-" + message.id}
@@ -443,22 +435,16 @@ export const Messages = ({
             setFeedbackMessage={setFeedbackModal}
             submittedFeedback={feedbackState.submitted[message.id]}
             hideActions={
-              isDoingScience || visibleMessages[index + 1]?.role === "agent"
+              isDoingScience || messages[index + 1]?.role === "agent"
             }
             onInternalLinkClick={onInternalLinkClick}
-          />
-        ) : message.role === "tool" ? (
-          <ToolCallMessage
-            key={"tool-" + message.id}
-            data-testid="metabot-tool-call-message"
-            message={message}
           />
         ) : (
           <UserMessage
             key={"msg-" + message.id}
             data-testid="metabot-chat-message"
             message={message}
-            hideActions={isDoingScience && visibleMessages.length === index + 1}
+            hideActions={isDoingScience && messages.length === index + 1}
             onCopy={() => {
               const copyText =
                 message.type === "action"

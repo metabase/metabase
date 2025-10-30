@@ -57,7 +57,7 @@ export type MetabotAgentEditSuggestionChatMessage = {
 
 export type MetabotDebugToolCallMessage = {
   id: string;
-  role: "tool";
+  role: "agent";
   type: "tool_call";
   name: string;
   args?: Record<string, any> | string;
@@ -68,7 +68,8 @@ export type MetabotDebugToolCallMessage = {
 export type MetabotAgentChatMessage =
   | MetabotAgentTextChatMessage
   | MetabotAgentTodoListChatMessage
-  | MetabotAgentEditSuggestionChatMessage;
+  | MetabotAgentEditSuggestionChatMessage
+  | MetabotDebugToolCallMessage;
 
 export type MetabotUserChatMessage =
   | MetabotUserTextChatMessage
@@ -113,8 +114,8 @@ export interface MetabotState {
   state: any;
   reactions: MetabotReactionsState;
   activeToolCalls: MetabotToolCall[];
-  debugMode: boolean;
   experimental: {
+    debugMode: boolean;
     metabotReqIdOverride: string | undefined;
     profileOverride: string | undefined;
   };
@@ -133,8 +134,8 @@ export const getMetabotInitialState = (): MetabotState => ({
     suggestedTransforms: [],
   },
   activeToolCalls: [],
-  debugMode: false,
   experimental: {
+    debugMode: false,
     metabotReqIdOverride: undefined,
     profileOverride: undefined,
   },
@@ -213,7 +214,7 @@ export const metabot = createSlice({
       }
       state.messages.push({
         id: toolCallId,
-        role: "tool",
+        role: "agent",
         type: "tool_call",
         name: toolName,
         args: parsedArgs,
@@ -235,15 +236,13 @@ export const metabot = createSlice({
       );
 
       // Update the message in messages array with result for debug history
-      const messageIndex = state.messages.findLastIndex(
-        (msg) => msg.role === "tool" && msg.id === action.payload.toolCallId,
+      const message = state.messages.findLast(
+        (msg) =>
+          msg.type === "tool_call" && msg.id === action.payload.toolCallId,
       );
-      if (messageIndex !== -1) {
-        const message = state.messages[messageIndex];
-        if (message.role === "tool") {
-          message.status = "ended";
-          message.result = action.payload.result;
-        }
+      if (message?.type === "tool_call") {
+        message.status = "ended";
+        message.result = action.payload.result;
       }
     },
     // NOTE: this reducer fn should be made smarter if/when we want to have
@@ -296,7 +295,7 @@ export const metabot = createSlice({
       state.experimental.profileOverride = action.payload;
     },
     setDebugMode: (state, action: PayloadAction<boolean>) => {
-      state.debugMode = action.payload;
+      state.experimental.debugMode = action.payload;
     },
     addSuggestedTransform: (
       state,
