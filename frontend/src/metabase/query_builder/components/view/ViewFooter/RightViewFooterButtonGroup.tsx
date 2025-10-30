@@ -2,6 +2,7 @@ import cx from "classnames";
 
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
+import { ViewFooterCopyWidget } from "metabase/query_builder/components/view/ViewFooter/ViewFooterCopyWidget";
 import { ViewFooterDownloadWidget } from "metabase/query_builder/components/view/ViewFooter/ViewFooterDownloadWidget";
 import {
   getFirstQueryResult,
@@ -38,6 +39,7 @@ export const RightViewFooterButtonGroup = () => {
             result={result}
           />
         )}
+        <ViewFooterCopyWidget />
         <ViewFooterDownloadWidget />
         {QuestionTimelineWidget.shouldRender({ isTimeseries }) && (
           <QuestionTimelineWidget className={cx(CS.hide, CS.smShow)} />

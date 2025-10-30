@@ -34,6 +34,7 @@ interface DashCardMenuProps {
   position?: MenuProps["position"];
   onEditVisualization?: () => void;
   openUnderlyingQuestionItems?: React.ReactNode;
+  cardRootRef?: React.RefObject<HTMLElement>;
   canEdit?: boolean;
 }
 
@@ -58,6 +59,7 @@ export const DashCardMenu = ({
   position = "bottom-end",
   onEditVisualization,
   openUnderlyingQuestionItems,
+  cardRootRef,
   canEdit,
 }: DashCardMenuProps) => {
   const store = useStore();
@@ -69,7 +71,7 @@ export const DashCardMenu = ({
   const dashcardId = dashcard.id;
   const { dashboard, dashboardId, dashcardMenu, downloadsEnabled } =
     useDashboardContext();
-  const [{ loading: isDownloadingData }, handleDownload] = useDownloadData({
+  const [{ loading: isDownloadingData }, handleExport] = useDownloadData({
     question,
     result,
     dashboardId: checkNotNull(dashboardId),
@@ -107,7 +109,11 @@ export const DashCardMenu = ({
           result={result}
           onDownload={(opts) => {
             close();
-            handleDownload(opts);
+            handleExport(opts);
+          }}
+          onCopy={(opts) => {
+            close();
+            handleExport({ ...opts, exportVariant: "copy-to-clipboard" });
           }}
         />
       );
@@ -122,6 +128,7 @@ export const DashCardMenu = ({
           isDownloadingData={isDownloadingData}
           onDownload={() => setMenuView("download")}
           onEditVisualization={onEditVisualization}
+          cardRootRef={cardRootRef}
           canEdit={canEdit}
         />
         {openUnderlyingQuestionItems && (

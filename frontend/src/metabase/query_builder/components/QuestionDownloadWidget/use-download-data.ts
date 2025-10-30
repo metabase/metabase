@@ -1,14 +1,16 @@
 import { useAsyncFn } from "react-use";
 import type { AsyncFnReturn } from "react-use/lib/useAsyncFn";
+import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
 import {
-  type DownloadQueryResultsOpts,
-  downloadQueryResults,
+  type ExportQueryResultsOpts,
+  exportQueryResults,
 } from "metabase/redux/downloads";
+import { addUndo } from "metabase/redux/undo";
 
 export type UseDownloadDataParams = Pick<
-  DownloadQueryResultsOpts,
+  ExportQueryResultsOpts,
   | "question"
   | "result"
   | "dashboardId"
@@ -22,8 +24,8 @@ export type UseDownloadDataParams = Pick<
 >;
 
 type HandleDataDownloadParams = Pick<
-  DownloadQueryResultsOpts,
-  "type" | "enableFormatting" | "enablePivot"
+  ExportQueryResultsOpts,
+  "type" | "enableFormatting" | "enablePivot" | "exportVariant"
 >;
 
 export const useDownloadData = ({
@@ -47,9 +49,10 @@ export const useDownloadData = ({
       type,
       enableFormatting,
       enablePivot,
+      exportVariant,
     }: HandleDataDownloadParams) => {
       await dispatch(
-        downloadQueryResults({
+        exportQueryResults({
           type,
           enableFormatting,
           enablePivot,
@@ -63,8 +66,12 @@ export const useDownloadData = ({
           documentId,
           params,
           visualizationSettings,
+          exportVariant,
         }),
       );
+      if (exportVariant === "copy-to-clipboard") {
+        dispatch(addUndo({ message: t`Data copied to clipboard` }));
+      }
     },
     [
       dashboardId,

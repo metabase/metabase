@@ -8,3 +8,9 @@
     color: var(--mb-color-text-dark);
   }
 }
+
+.Disabled {
+  opacity: 0.5;
+  pointer-events: none;
+  cursor: not-allowed;
+}

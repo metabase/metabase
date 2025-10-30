@@ -63,6 +63,10 @@ interface Props {
   className?: string;
   onAddParameter: (options: NewParameterOpts) => void;
   onEditVisualization?: () => void;
+  /**
+   * Ref to the DashCard root element, used for copying as image.
+   */
+  cardRootRef?: React.RefObject<HTMLElement>;
 }
 
 function DashCardActionsPanelInner({
