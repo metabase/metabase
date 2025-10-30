@@ -98,7 +98,7 @@ export function MetabotAdminPage() {
             <MetabotCollectionConfigurationPane metabot={metabot} />
           )}
 
-          <MetabotPromptSuggestionPane metabotId={metabotId} />
+          <MetabotPromptSuggestionPane metabot={metabot} />
         </SettingsSection>
       </ErrorBoundary>
     </AdminSettingsLayout>
