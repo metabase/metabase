@@ -69,7 +69,7 @@ function getPreviewQuery(
     database: databaseId,
     query: {
       "source-table": tableId,
-      limit: 50,
+      limit: 2000,
     },
   };
 }

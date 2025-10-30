@@ -78,6 +78,10 @@ export class PyodideWorkerManager {
     }
   }
 
+  cleanup() {
+    this.worker.terminate();
+  }
+
   private send(message: PyodideWorkerCommand) {
     this.worker.postMessage(message);
   }

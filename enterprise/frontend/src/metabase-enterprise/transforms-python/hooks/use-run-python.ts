@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { getErrorMessage } from "metabase/api/utils";
 
@@ -13,6 +13,13 @@ export function useRunPython<T = unknown>() {
   const controller = useRef<AbortController | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [data, setData] = useState<PythonExecutionResult<T> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      // Clean up all workers when the component unmounts
+      pool.cleanup();
+    };
+  }, [pool]);
 
   const executePython = async (
     code: string,

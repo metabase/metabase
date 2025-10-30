@@ -8,7 +8,7 @@ import type {
 const MAX_PYODIDE_WORKERS = 5;
 
 // A pool of Pyodide workers.
-// The pool attemps to keep MAX_PYODIDE_WORKERS workers ready at all times.
+// The pool attempts to keep MAX_PYODIDE_WORKERS workers ready at all times.
 // Pyodide workers cannot be reused because the user-script can polute
 // the global namespace in the Python vm.
 //
@@ -31,6 +31,11 @@ export class PyodideWorkerPool {
   ): Promise<PythonExecutionResult<T>> {
     const worker = this.getWorker();
     return worker.executePython(code, libraries, options);
+  }
+
+  cleanup() {
+    this.workers.forEach((worker) => worker.cleanup());
+    this.workers = [];
   }
 
   private getWorker(): PyodideWorkerManager {

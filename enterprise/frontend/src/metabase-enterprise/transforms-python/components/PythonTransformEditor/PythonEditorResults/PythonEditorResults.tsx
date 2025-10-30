@@ -6,7 +6,17 @@ import { AnsiLogs } from "metabase/common/components/AnsiLogs";
 import DebouncedFrame from "metabase/common/components/DebouncedFrame";
 import { LoadingSpinner } from "metabase/common/components/MetadataInfo/MetadataInfo.styled";
 import { isMac } from "metabase/lib/browser";
-import { Box, Flex, Group, Icon, Stack, Switch, Tabs, Text } from "metabase/ui";
+import {
+  Box,
+  Center,
+  Flex,
+  Group,
+  Icon,
+  Stack,
+  Switch,
+  Tabs,
+  Text,
+} from "metabase/ui";
 import type { PythonTransformResultData } from "metabase-enterprise/transforms-python/hooks/use-test-python-transform";
 import type { PythonExecutionResult } from "metabase-enterprise/transforms-python/services/pyodide-worker";
 
@@ -115,7 +125,7 @@ function EmptyState() {
   const keyboardShortcut = getRunQueryShortcut();
 
   return (
-    <Flex h="100%" align="center" justify="center">
+    <Center h="100%">
       <Stack maw="25rem" gap={0} ta="center" align="center">
         <Box maw="3rem" mb="0.75rem">
           <img src={EmptyCodeResult} alt="Code prompt icon" />
@@ -127,13 +137,13 @@ function EmptyState() {
           )}`}
         </Text>
       </Stack>
-    </Flex>
+    </Center>
   );
 }
 
 function ErrorState({ error }: { error: string }) {
   return (
-    <Stack gap="sm" h="100%" p="md" c="error" className={S.error}>
+    <Stack gap="sm" h="100%" p="md" c="error" bg="background-error">
       <Group fw="bold" gap="sm">
         <Icon name="warning" />
         {t`Error`}
