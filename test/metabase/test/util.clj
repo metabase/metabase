@@ -600,7 +600,7 @@
   The token-value binding will contain the random token that was set."
   [[token-value] & body]
   `(let [~token-value (premium-features.test-util/random-token)]
-     (with-redefs [metabase.premium-features.token-check/fetch-token-status
+     (with-redefs [metabase.premium-features.token-check/check-token
                    (constantly {:valid    true
                                 :status   "fake"
                                 :features ["test" "fixture"]
