@@ -67,7 +67,7 @@ export function useSourceState({
     setSource(source);
   };
 
-  const acceptProposed = async () => {
+  const acceptProposed = () => {
     if (suggestedTransform != null) {
       setSource(suggestedTransform.source);
       dispatch(deactivateSuggestedTransform(suggestedTransform.id));
