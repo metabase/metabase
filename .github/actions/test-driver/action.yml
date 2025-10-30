@@ -25,7 +25,7 @@ runs:
       env:
         MB_EDITION: ee
     - name: Test database driver
-      run: timeout -s SIGKILL 3m clojure -X:dev:ci:ee:ee-dev:drivers:drivers-dev:test ${{ inputs.test-args }}
+      run: clojure -X:dev:ci:ee:ee-dev:drivers:drivers-dev:test ${{ inputs.test-args }}
       shell: bash
       id: run-test
       # Trunk Quarantine controls the final state of the run in the CI!
