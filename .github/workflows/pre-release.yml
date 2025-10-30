@@ -34,6 +34,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           sparse-checkout: release
+      - name: Prepare build scripts
+        run: cd ${{ github.workspace }}/release && yarn && yarn build
       # note: this block can be removed after we stop needing to be able to test versions before v55
       - name: Get test mode config
         id: config
