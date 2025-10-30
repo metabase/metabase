@@ -39,7 +39,10 @@ const NATIVE_EDITOR_SIDEBAR_FEATURES = {
 type QuerySectionProps = {
   question: Question;
   proposedQuestion: Question | undefined;
-  modalSnippet?: NativeQuerySnippet | null;
+  modalSnippet?:
+    | NativeQuerySnippet
+    | Partial<Omit<NativeQuerySnippet, "id">>
+    | null;
   nativeEditorSelectedText?: string | null;
   isNative: boolean;
   isRunnable: boolean;
@@ -56,7 +59,7 @@ type QuerySectionProps = {
   onToggleDataReference: () => void;
   onToggleSnippetSidebar: () => void;
   onCancelQuery: () => void;
-  onInsertSnippet?: (snippet: NativeQuerySnippet) => void;
+  onInsertSnippet: (snippet: NativeQuerySnippet) => void;
   onChangeModalSnippet: (snippet: NativeQuerySnippet | null) => void;
   onChangeNativeEditorSelection: (range: SelectionRange[]) => void;
   onOpenModal: (type: QueryModalType) => void;

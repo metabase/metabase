@@ -28,7 +28,10 @@ export type QueryEditorDatabasePickerItem = Omit<
 export type QueryEditorUiState = {
   lastRunQuery: DatasetQuery | null;
   selectionRange: SelectionRange[];
-  modalSnippet: NativeQuerySnippet | null;
+  modalSnippet:
+    | NativeQuerySnippet
+    | Partial<Omit<NativeQuerySnippet, "id">>
+    | null;
   modalType: QueryEditorModalType | null;
   sidebarType: QueryEditorSidebarType | null;
 };

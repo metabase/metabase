@@ -13,7 +13,7 @@ import type {
   QueryEditorModalType,
   QueryEditorSidebarType,
   QueryEditorUiState,
-} from "../../components/QueryEditor/types";
+} from "../../types";
 
 const EMPTY_SELECTION_RANGE: SelectionRange = {
   start: { row: 0, column: 0 },
@@ -39,6 +39,10 @@ export function useQueryControls(
 
   const setModalSnippet = (modalSnippet: NativeQuerySnippet | null) => {
     setUiState({ ...uiState, modalSnippet });
+  };
+
+  const openSnippetModalWithSelectedText = () => {
+    setUiState({ ...uiState, modalSnippet: { content: selectedText } });
   };
 
   const openModal = (type: QueryModalType) => {
@@ -103,6 +107,7 @@ export function useQueryControls(
     openModal,
     setSelectionRange,
     setModalSnippet,
+    openSnippetModalWithSelectedText,
     insertSnippet,
     convertToNative,
     toggleDataReferenceSidebar,

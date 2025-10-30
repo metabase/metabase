@@ -1,6 +1,6 @@
 import * as Lib from "metabase-lib";
 
-import type { QueryEditorUiState } from "../../components/QueryEditor/types";
+import type { QueryEditorUiState } from "../../types";
 import { useQueryControls } from "../use-query-controls";
 import { useQueryMetadata } from "../use-query-metadata";
 import { useQueryQuestion } from "../use-query-question";
@@ -41,6 +41,7 @@ export function useQueryEditor({
     openModal,
     setSelectionRange,
     setModalSnippet,
+    openSnippetModalWithSelectedText,
     insertSnippet,
     convertToNative,
     toggleDataReferenceSidebar,
@@ -68,6 +69,7 @@ export function useQueryEditor({
     openModal,
     setSelectionRange,
     setModalSnippet,
+    openSnippetModalWithSelectedText,
     insertSnippet,
     convertToNative,
     toggleDataReferenceSidebar,

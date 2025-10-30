@@ -6,6 +6,7 @@ import { Center, Flex, Modal } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import { useQueryEditor } from "../../hooks/use-query-editor";
+import type { QueryEditorUiOptions, QueryEditorUiState } from "../../types";
 
 import {
   NativeQueryPreviewSidebar,
@@ -14,7 +15,6 @@ import {
 import { NativeQuerySidebar } from "./NativeQuerySidebar";
 import { QuerySection } from "./QuerySection";
 import { VisualizationSection } from "./VisualizationSection";
-import type { QueryEditorUiOptions, QueryEditorUiState } from "./types";
 
 type QueryEditorProps = {
   query: Lib.Query;
@@ -55,6 +55,7 @@ export function QueryEditor({
     openModal,
     setSelectionRange,
     setModalSnippet,
+    openSnippetModalWithSelectedText,
     insertSnippet,
     convertToNative,
     toggleDataReferenceSidebar,
@@ -101,6 +102,7 @@ export function QueryEditor({
             onToggleSnippetSidebar={toggleSnippetSidebar}
             onOpenModal={openModal}
             onChangeModalSnippet={setModalSnippet}
+            onInsertSnippet={insertSnippet}
             onChangeNativeEditorSelection={setSelectionRange}
             onAcceptProposed={onAcceptProposed}
             onRejectProposed={onRejectProposed}
@@ -135,6 +137,9 @@ export function QueryEditor({
             onToggleDataReference={toggleDataReferenceSidebar}
             onToggleSnippetSidebar={toggleSnippetSidebar}
             onChangeModalSnippet={setModalSnippet}
+            onOpenSnippetModalWithSelectedText={
+              openSnippetModalWithSelectedText
+            }
           />
         )}
         {!isNative && uiState.sidebarType === "native-query" && (

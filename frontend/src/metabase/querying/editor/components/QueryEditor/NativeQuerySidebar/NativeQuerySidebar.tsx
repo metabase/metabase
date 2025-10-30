@@ -19,6 +19,7 @@ type NativeQuerySidebarProps = {
   onToggleDataReference: () => void;
   onToggleSnippetSidebar: () => void;
   onChangeModalSnippet: (snippet: NativeQuerySnippet) => void;
+  onOpenSnippetModalWithSelectedText: () => void;
 };
 
 export function NativeQuerySidebar({
@@ -83,11 +84,12 @@ function QuerySnippetSidebar({
   onInsertSnippet,
   onToggleSnippetSidebar,
   onChangeModalSnippet,
+  onOpenSnippetModalWithSelectedText,
 }: NativeQuerySidebarProps) {
   return (
     <SnippetSidebar
       snippetCollectionId={null}
-      openSnippetModalWithSelectedText={onChangeModalSnippet}
+      openSnippetModalWithSelectedText={onOpenSnippetModalWithSelectedText}
       setModalSnippet={onChangeModalSnippet}
       insertSnippet={onInsertSnippet}
       onClose={onToggleSnippetSidebar}

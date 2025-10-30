@@ -1,4 +1,4 @@
-import type { QueryEditorUiState } from "./types";
+import type { QueryEditorUiState } from "../../types";
 
 export function getInitialUiState(): QueryEditorUiState {
   return {

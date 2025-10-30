@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import type { QueryEditorUiOptions } from "metabase/querying/editor/components/QueryEditor/types";
+import type { QueryEditorUiOptions } from "metabase/querying/editor/types";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
