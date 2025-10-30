@@ -8,27 +8,33 @@ import type { QueryValidationResult } from "../types";
 
 type EditorHeaderProps = {
   validationResult: QueryValidationResult;
+  name?: string;
   isNew: boolean;
   isQueryDirty: boolean;
   isSaving: boolean;
+  hasProposedQuery: boolean;
   onSave: () => void;
   onCancel: () => void;
 };
 
 export function EditorHeader({
   validationResult,
+  name,
   isNew,
   isQueryDirty,
   isSaving,
+  hasProposedQuery,
   onSave,
   onCancel,
 }: EditorHeaderProps) {
   const canSave =
-    (isNew || isQueryDirty) && validationResult.isValid && !isSaving;
+    (isNew || isQueryDirty || hasProposedQuery) &&
+    validationResult.isValid &&
+    !isSaving;
 
   return (
     <EditBar
-      title={getTitle(isNew)}
+      title={getTitle(isNew, name)}
       admin
       buttons={[
         <Button key="cancel" small onClick={onCancel}>{t`Cancel`}</Button>,
@@ -46,11 +52,11 @@ export function EditorHeader({
   );
 }
 
-function getTitle(isNew: boolean) {
+function getTitle(isNew: boolean, name?: string) {
   if (isNew) {
     return t`You’re creating a new transform`;
   } else {
-    return t`You’re editing a transform`;
+    return t`You’re editing the "${name}" transform`;
   }
 }
 

@@ -137,8 +137,8 @@
         t1             (ts "2025-01-01T10:00:00Z")
         t2             (ts "2025-01-01T11:00:00Z")
         t3             (ts "2025-01-01T12:00:00Z")
-        c1             {:model "card" :id "1" :name "Test" :searchable_text "Content"}
-        c2             {:model "card" :id "2" :name "Test" :searchable_text "Content"}
+        c1             {:model "card" :id "1" :name "Test" :searchable_text "Content" :embeddable_text "Content"}
+        c2             {:model "card" :id "2" :name "Test" :searchable_text "Content" :embeddable_text "Content"}
         version        semantic.gate/search-doc->gate-doc
         delete         (fn [doc t] (semantic.gate/deleted-search-doc->gate-doc (:model doc) (:id doc) t))]
 
@@ -202,8 +202,8 @@
         clock-ref        (volatile! (Instant/parse "2025-01-04T00:00:00Z"))
         clock            (reify InstantSource (instant [_] @clock-ref))
         t1               (ts "2025-01-01T10:00:00Z")
-        c1               {:model "card" :id "1" :name "Test" :searchable_text "Content"}
-        c2               {:model "card" :id "2" :name "Test" :searchable_text "Content"}
+        c1               {:model "card" :id "1" :name "Test" :searchable_text "Content" :embeddable_text "Content"}
+        c2               {:model "card" :id "2" :name "Test" :searchable_text "Content" :embeddable_text "Content"}
         version          semantic.gate/search-doc->gate-doc
         add-gate-to-dlq! (fn [pgvector index-metadata index-id]
                            (->> (semantic.gate/poll pgvector index-metadata {})
@@ -309,7 +309,8 @@
                                            (.setValue (json/encode {:model           "card"
                                                                     :name            "hey"
                                                                     :id              "1"
-                                                                    :searchable_text "foo"})))
+                                                                    :searchable_text "foo"
+                                                                    :embeddable_text "foo"})))
                          :gated_at       (ts "2025-01-04T09:00:00Z")
                          :error_gated_at (ts "2025-01-04T09:00:00Z")}
                         {:id             "card_2"

@@ -191,7 +191,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
 
     it(
       "should be possible to create and run a Python transform",
-      { tags: ["@transforms-python"] },
+      { tags: ["@python"] },
       () => {
         setPythonRunnerSettings();
         cy.log("create a new transform");
@@ -1400,7 +1400,7 @@ LIMIT
       H.assertQueryBuilderRowCount(1);
     });
 
-    it("should be able to update a Python query", () => {
+    it("should be able to update a Python query", { tags: ["@python"] }, () => {
       setPythonRunnerSettings();
       cy.log("create a new transform");
       H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
@@ -1675,7 +1675,7 @@ LIMIT
   describe("python > common library", () => {
     it(
       "should be possible to edit and save the common library",
-      { tags: ["@transforms-python"] },
+      { tags: ["@python"] },
       () => {
         visitCommonLibrary();
 
@@ -1713,7 +1713,7 @@ LIMIT
 
     it(
       "should be possible to use the common library",
-      { tags: ["@transforms-python"] },
+      { tags: ["@python"] },
       () => {
         setPythonRunnerSettings();
         createPythonLibrary(
@@ -2840,96 +2840,41 @@ function runJobAndWaitForFailure() {
   getRunButton().should("have.text", "Run failed");
 }
 
-function createMbqlTransform({
-  sourceTable = SOURCE_TABLE,
-  targetTable = TARGET_TABLE,
-  targetSchema = TARGET_SCHEMA,
-  tagIds,
-  databaseId,
-  name = "MBQL transform",
-  visitTransform,
-}: {
-  sourceTable?: string;
-  targetTable?: string;
-  targetSchema?: string | null;
-  tagIds?: TransformTagId[];
-  name?: string;
-  databaseId?: number;
-  visitTransform?: boolean;
-} = {}) {
-  return H.getTableId({ databaseId, name: sourceTable }).then((tableId) => {
-    return H.createTransform(
-      {
-        name,
-        source: {
-          type: "query",
-          query: {
-            database: WRITABLE_DB_ID,
-            type: "query",
-            query: {
-              "source-table": tableId,
-              limit: 5,
-            },
-          },
-        },
-        target: {
-          type: "table",
-          database: WRITABLE_DB_ID,
-          name: targetTable,
-          schema: targetSchema,
-        },
-        tag_ids: tagIds,
-      },
-      { visitTransform },
-    );
+function createMbqlTransform(
+  opts: {
+    sourceTable?: string;
+    targetTable?: string;
+    targetSchema?: string | null;
+    tagIds?: TransformTagId[];
+    name?: string;
+    databaseId?: number;
+    visitTransform?: boolean;
+  } = {},
+) {
+  return H.createMbqlTransform({
+    sourceTable: SOURCE_TABLE,
+    targetTable: TARGET_TABLE,
+    targetSchema: TARGET_SCHEMA,
+    name: "MBQL transform",
+    ...opts,
   });
 }
 
-function createSqlTransform({
-  sourceQuery,
-  targetTable = TARGET_TABLE,
-  targetSchema = TARGET_SCHEMA,
-  tagIds,
-  visitTransform,
-}: {
+function createSqlTransform(opts: {
   sourceQuery: string;
   targetTable?: string;
   targetSchema?: string;
   tagIds?: TransformTagId[];
   visitTransform?: boolean;
 }) {
-  H.createTransform(
-    {
-      name: "SQL transform",
-      source: {
-        type: "query",
-        query: {
-          database: WRITABLE_DB_ID,
-          type: "native",
-          native: {
-            query: sourceQuery,
-          },
-        },
-      },
-      target: {
-        type: "table",
-        database: WRITABLE_DB_ID,
-        name: targetTable,
-        schema: targetSchema,
-      },
-      tag_ids: tagIds,
-    },
-    { wrapId: true, visitTransform },
-  );
+  return H.createSqlTransform({
+    targetTable: TARGET_TABLE,
+    targetSchema: TARGET_SCHEMA,
+    ...opts,
+  });
 }
-function createPythonTransform({
-  body,
-  sourceTables,
-  targetTable = TARGET_TABLE,
-  targetSchema = TARGET_SCHEMA,
-  tagIds,
-  visitTransform,
-}: {
+
+function createPythonTransform(opts: {
   body: string;
   sourceTables: PythonTransformTableAliases;
   targetTable?: string;
@@ -2937,25 +2882,11 @@ function createPythonTransform({
   tagIds?: TransformTagId[];
   visitTransform?: boolean;
 }) {
-  H.createTransform(
-    {
-      name: "Python transform",
-      source: {
-        type: "python",
-        "source-database": WRITABLE_DB_ID,
-        "source-tables": sourceTables,
-        body,
-      },
-      target: {
-        type: "table",
-        database: WRITABLE_DB_ID,
-        name: targetTable,
-        schema: targetSchema,
-      },
-      tag_ids: tagIds,
-    },
-    { wrapId: true, visitTransform },
-  );
+  return H.createPythonTransform({
+    targetTable: TARGET_TABLE,
+    targetSchema: TARGET_SCHEMA,
+    ...opts,
+  });
 }
 
 function visitTableQuestion({

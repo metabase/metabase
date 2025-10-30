@@ -398,7 +398,12 @@
                                               :value 2}]}}
                   (client/client :get 202 (str "public/card/" uuid "/query")
                                  :parameters (json/encode [{:id    "_VENUE_ID_"
-                                                            :value 2}]))))))
+                                                            :type  :number/=
+                                                            :value 2}])))))))))
+
+(deftest execute-public-card-with-parameters-test-2
+  (testing "JSON-encoded MBQL parameters passed as a query parameter should work (#17019)"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
       ;; see longer explanation in [[metabase.legacy-mbql.schema/parameter-types]]
       (testing "If the FE client is incorrectly passing in the parameter as a `:category` type, allow it for now"
         (with-temp-public-card [{uuid :public_uuid} {:dataset_query {:database (mt/id)
@@ -490,7 +495,8 @@
     (is (= [[22]]
            (mt/rows
             (client/client :get 202 (str "public/card/" uuid "/query")
-                           :parameters (json/encode [{:type   :number
+                           :parameters (json/encode [{:id     "_PRICE_"
+                                                      :type   :number
                                                       :target [:variable [:template-tag "price"]]
                                                       :value  1}])))))))
 

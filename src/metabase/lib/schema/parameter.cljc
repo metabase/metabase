@@ -13,7 +13,7 @@
      what type of widget to display, and also tells us what types of parameters we should allow. Examples:
      `:date/all-options`, `:category`, etc.
 
-  One type is used in the [[Parameter]] list (`:parameters`):
+  One type is used in the list (`:parameters`):
 
   3. Parameter `:type` -- specifies the type of the value being passed in. e.g. `:text` or `:string/!=`
 
@@ -27,6 +27,7 @@
    [malli.core :as mc]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
 (defn- variadic-opts-first
@@ -152,17 +153,34 @@
                                     ;; a lot of broken code in Actions was setting param types to invalid things like
                                     ;; `:type/Text`... fix it
                                     (when-let [param-type (lib.schema.common/normalize-keyword param-type)]
-                                      (if (= (namespace param-type) "type")
-                                        (keyword (u/lower-case-en (name param-type)))
-                                        param-type)))}]
+                                      (cond
+                                        (= (namespace param-type) "type") (keyword (u/lower-case-en (name param-type)))
+                                        (= param-type :category/=)        :category
+                                        :else                             param-type)))}]
         (keys types)))
 
 (mr/def ::widget-type
+  "The type of widget to display in the FE UI for the user to use to pick values for this parameter."
   (into [:enum
-         {:error/message    "valid template tag widget type"
+         {:error/message    "valid parameter widget type"
           :decode/normalize lib.schema.common/normalize-keyword}
          :none]
         (keys types)))
+
+(mu/defn parameter-type-and-widget-type-allowed-together?
+  "Whether `parameter-type` (the `:type` of the value in an MBQL query `:parameters` list, e.g. `:text`) and
+  `widget-type` (the declared type of the parameter in the Card/Dashboard definition, e.g. `:number`) are compatible."
+  [parameter-type :- ::type
+   widget-type    :- ::widget-type]
+  (when-let [allowed-template-tag-types (get-in types [parameter-type :allowed-for])]
+    (contains? allowed-template-tag-types widget-type)))
+
+(mu/defn allowed-parameter-types-for-template-tag-widget-type :- [:set ::type]
+  "Set of allowed parameter types for a given `:widget-type`."
+  [widget-type :- ::widget-type]
+  (into #{} (for [[parameter-type {:keys [allowed-for]}] types
+                  :when                                  (contains? allowed-for widget-type)]
+              parameter-type)))
 
 ;; the next few clauses are used for parameter `:target`... this maps the parameter to an actual template tag in a
 ;; native query or Field for MBQL queries.
@@ -190,20 +208,11 @@
 ;;; update [[metabase.lib.convert]] to convert `:parameters` back and forth and add UUIDs and what not. But parameters
 ;;; is not ported to MLv2 yet, so conversion isn't implemented YET.
 
-(defn- normalize-legacy-ref [legacy-ref]
-  (if (pos-int? legacy-ref)
-    [:field legacy-ref nil]
-    ((#?(:clj requiring-resolve :cljs resolve) 'metabase.legacy-mbql.normalize/normalize-field-ref) legacy-ref)))
-
 (mr/def ::target.legacy-field-ref
-  [:ref
-   {:decode/normalize normalize-legacy-ref}
-   :metabase.legacy-mbql.schema/field])
+  [:ref :metabase.legacy-mbql.schema/field])
 
 (mr/def ::target.legacy-expression-ref
-  [:ref
-   {:decode/normalize normalize-legacy-ref}
-   :metabase.legacy-mbql.schema/expression])
+  [:ref :metabase.legacy-mbql.schema/expression])
 
 (mr/def ::dimension.target
   [:multi {:dispatch lib.schema.common/mbql-clause-tag
@@ -248,19 +257,22 @@
    [:target  ::dimension.target]
    [:options [:? [:maybe ::dimension.options]]]])
 
+(mr/def ::template-tag.tag-name
+  [:multi {:dispatch map?}
+   [true  [:map
+           [:id ::lib.schema.common/non-blank-string]]]
+   [false [:schema
+           {:decode/normalize (fn [x]
+                                (cond-> x
+                                  (keyword? x) u/qualified-name))}
+           ::lib.schema.common/non-blank-string]]])
+
 (mr/def ::template-tag
   "This is the reference like [:template-tag <whatever>], not the schema for native query template tags -- that lives
   in [[metabase.lib.schema.template-tag]]."
   [:tuple
    #_tag      [:= {:decode/normalize lib.schema.common/normalize-keyword} :template-tag]
-   #_tag-name [:multi {:dispatch map?}
-               [true  [:map
-                       [:id ::lib.schema.common/non-blank-string]]]
-               [false [:schema
-                       {:decode/normalize (fn [x]
-                                            (cond-> x
-                                              (keyword? x) u/qualified-name))}
-                       ::lib.schema.common/non-blank-string]]]])
+   #_tag-name ::template-tag.tag-name])
 
 (mr/def ::variable.target
   [:multi {:dispatch      lib.schema.common/mbql-clause-tag
@@ -285,7 +297,11 @@
   [:multi {:dispatch (fn [x]
                        (if (pos-int? x)
                          :field
-                         (lib.schema.common/mbql-clause-tag x)))
+                         (let [tag (lib.schema.common/mbql-clause-tag x)]
+                           ;; MBQL 3 refs like `:field-id` should get normalized to `:field`
+                           (case tag
+                             (:field-id :field-literal :fk->) :field
+                             tag))))
            :error/fn (fn [{:keys [value]} _]
                        (str "Invalid parameter :target, must be either :field, :dimension, :variable, or :text-tag; got: "
                             (pr-str value)))
@@ -297,14 +313,10 @@
                                  x))}
    ;; TODO (Cam 9/12/25) -- the old legacy MBQL schema also said `:expression` refs where allowed here, but I don't
    ;; know if we actually did allow that in practice.
-   [:dimension     [:ref ::dimension]]
-   [:variable      [:ref ::variable]]
-   [:text-tag      [:ref ::text-tag]]
-   [:field         [:ref ::target.legacy-field-ref]]
-   ;; MBQL 3 refs like `:field-id` should get normalized to `:field`
-   [:field-id      [:ref ::target.legacy-field-ref]]
-   [:field-literal [:ref ::target.legacy-field-ref]]
-   [:fk->          [:ref ::target.legacy-field-ref]]])
+   [:dimension [:ref ::dimension]]
+   [:variable  [:ref ::variable]]
+   [:text-tag  [:ref ::text-tag]]
+   [:field     [:ref ::target.legacy-field-ref]]])
 
 (defn- normalize-parameter
   [param]
@@ -338,7 +350,10 @@
 
 (mr/def ::parameter
   "Schema for the *value* of a parameter (e.g. a Dashboard parameter or a native query template tag) as passed in as
-  part of the `:parameters` list in a query."
+  part of the `:parameters` list in a query.
+
+  Note that this is different from the parameter declarations that are saved as part of Dashboards and Cards; for THAT
+  schema refer to `:metabase.parameters.schema/parameter`."
   [:and
    [:map
     {:decode/normalize #'normalize-parameter}
@@ -348,7 +363,7 @@
     [:id       {:optional true} [:ref ::id]]
     [:target   {:optional true} [:ref ::target]]
     ;; not specified if the param has no value. TODO - make this stricter; type of `:value` should be validated based
-    ;; on the [[ParameterType]]
+    ;; on the `::type`
     [:value    {:optional true} [:ref ::parameter.value]]
     ;; the name of the parameter we're trying to set -- this is actually required now I think, or at least needs to get
     ;; merged in appropriately

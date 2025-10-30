@@ -326,7 +326,7 @@
     ;; came from. Prefer one of the other name keys instead, only falling back to `:name` if they are not present.
     [:name      :string]
     ;; TODO -- ignore `base_type` and make `effective_type` required; see #29707
-    [:base-type ::lib.schema.common/base-type]
+    [:base-type {:default :type/*} ::lib.schema.common/base-type]
     ;; This is nillable because internal remap columns have `:id nil`.
     [:id             {:optional true} [:maybe ::lib.schema.id/field]]
     [:display-name   {:optional true} [:maybe :string]]
@@ -571,10 +571,9 @@
                 ;; if this has `:lib/type` we know FOR SURE that it's lib-style metadata; but we should also be able
                 ;; to infer this fact automatically if it's using `kebab-case` keys. `:base-type` is required for both
                 ;; styles so look at that.
-                (let [col (lib.schema.common/normalize-map-no-kebab-case col)]
-                  (if ((some-fn :lib/type :base-type) col)
-                    :lib
-                    :legacy)))}
+                (if ((some-fn :lib/type #(get % "lib/type") :base-type #(get % "base-type")) col)
+                  :lib
+                  :legacy))}
    [:lib
     [:merge
      [:ref ::column]
