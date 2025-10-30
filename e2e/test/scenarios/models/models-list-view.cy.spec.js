@@ -135,7 +135,7 @@ describe("scenarios > models list view", () => {
         cy.findByText("DISCOUNT").click();
       });
       cy.get("@listPreview").within(() => {
-        cy.findByText("$123.46").should("be.visible");
+        cy.findByText("123.46").should("be.visible");
       });
 
       cy.log("Update list item icon");

@@ -61,7 +61,7 @@ export const ListViewConfiguration = ({
   onChange: (settings: {
     left: string[];
     right: string[];
-    entityIcon?: string | null;
+    entityIcon?: IconName | null;
     entityIconColor?: string;
     entityIconEnabled?: boolean;
     useImageColumn?: boolean;
