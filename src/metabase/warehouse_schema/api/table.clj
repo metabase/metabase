@@ -136,9 +136,9 @@
    body]
   (when-let [changes (not-empty (u/select-keys-when body
                                                     :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
-                                                    :present [:description :caveats :points_of_interest :visibility_type :data_authority
+                                                    :present [:description :caveats :points_of_interest :visibility_type :visibility_type2
                                                               ;; bulk-metadata-editing
-                                                              :data_source :visibility_type2 :owner_email :owner_user_id]))]
+                                                              :data_authority :data_source :visibility_type2 :owner_email :owner_user_id]))]
     (t2/update! :model/Table id changes))
   (let [updated-table        (t2/select-one :model/Table :id id)
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
@@ -264,6 +264,8 @@
                  :owner_email
                  :owner_user_id]
         set-map (select-keys body set-ks)
+        ;; Sync visibility fields
+        set-map (table/sync-visibility-fields set-map {})
         stmt    {:update :metabase_table
                  :set    set-map
                  :where  where}]

@@ -1271,3 +1271,55 @@
               (is (some? (mt/process-query (-> response :models first :dataset_query)))))
             (testing "models are persisted in database"
               (is (= 2 (t2/count :model/Card :collection_id collection-id :type :model))))))))))
+
+(deftest ^:parallel bulk-edit-visibility-sync-test
+  (testing "POST /api/table/edit visibility field synchronization"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    {table-1-id :id} {:db_id db-id}
+                   :model/Table    {table-2-id :id} {:db_id db-id}
+                   :model/Table    {table-3-id :id} {:db_id db-id}]
+
+      (testing "updating visibility_type syncs to visibility_type2 for all tables"
+        (mt/user-http-request :crowberto :post 200 "table/edit"
+                              {:table_ids       [table-1-id table-2-id table-3-id]
+                               :visibility_type "hidden"})
+        (is (= #{:copper} (t2/select-fn-set :visibility_type2 :model/Table :id [:in [table-1-id table-2-id table-3-id]])))
+        (is (= #{:hidden} (t2/select-fn-set :visibility_type :model/Table :id [:in [table-1-id table-2-id table-3-id]]))))
+
+      (testing "updating visibility_type2 syncs to visibility_type for all tables"
+        (mt/user-http-request :crowberto :post 200 "table/edit"
+                              {:table_ids        [table-1-id table-2-id]
+                               :visibility_type2 "gold"})
+        (is (= :gold (t2/select-one-fn :visibility_type2 :model/Table :id table-1-id)))
+        (is (= nil (t2/select-one-fn :visibility_type :model/Table :id table-1-id)))
+        (is (= :gold (t2/select-one-fn :visibility_type2 :model/Table :id table-2-id)))
+        (is (= nil (t2/select-one-fn :visibility_type :model/Table :id table-2-id)))
+        (is (= :copper (t2/select-one-fn :visibility_type2 :model/Table :id table-3-id))))
+
+      (testing "cannot update both visibility_type and visibility_type2 at once"
+        (is (= "Cannot update both visibility_type and visibility_type2"
+               (mt/user-http-request :crowberto :post 400 "table/edit"
+                                     {:table_ids        [table-1-id]
+                                      :visibility_type  "hidden"
+                                      :visibility_type2 "copper"})))))))
+
+(deftest ^:parallel update-table-visibility-sync-test
+  (testing "PUT /api/table/:id visibility field synchronization"
+    (mt/with-temp [:model/Table table {}]
+      (testing "updating visibility_type syncs to visibility_type2"
+        (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
+                              {:visibility_type "hidden"})
+        (is (= :copper (t2/select-one-fn :visibility_type2 :model/Table :id (u/the-id table))))
+        (is (= :hidden (t2/select-one-fn :visibility_type :model/Table :id (u/the-id table)))))
+
+      (testing "updating visibility_type2 syncs to visibility_type"
+        (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
+                              {:visibility_type2 "gold"})
+        (is (= :gold (t2/select-one-fn :visibility_type2 :model/Table :id (u/the-id table))))
+        (is (= nil (t2/select-one-fn :visibility_type :model/Table :id (u/the-id table)))))
+
+      (testing "cannot update both visibility_type and visibility_type2 at once"
+        (is (= "Cannot update both visibility_type and visibility_type2"
+               (mt/user-http-request :crowberto :put 400 (format "table/%d" (u/the-id table))
+                                     {:visibility_type  "hidden"
+                                      :visibility_type2 "copper"})))))))
