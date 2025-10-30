@@ -172,7 +172,7 @@ export function TablePicker({
             <Tooltip
               label={
                 hasSelectedItems
-                  ? t`Edit or publish tables`
+                  ? t`Edit or publish selected tables`
                   : t`No tables selected`
               }
             >
