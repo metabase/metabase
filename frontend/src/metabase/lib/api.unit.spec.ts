@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import api, { GET, POST, setOnBeforeRequestHandler } from "./api";
+import api, { GET, POST } from "./api";
 
 describe("api", () => {
   describe("on before request handlers", () => {
@@ -294,7 +294,7 @@ describe("api", () => {
           handler: mockHandler,
         };
 
-        setOnBeforeRequestHandler(handlerDescription);
+        api.setOnBeforeRequestHandler(handlerDescription);
 
         expect(api.onBeforeRequestHandlers).toHaveLength(1);
         expect(api.onBeforeRequestHandlers[0]).toEqual(handlerDescription);
@@ -304,11 +304,11 @@ describe("api", () => {
         const handler1 = jest.fn();
         const handler2 = jest.fn();
 
-        setOnBeforeRequestHandler({ key: "shared-key", handler: handler1 });
+        api.setOnBeforeRequestHandler({ key: "shared-key", handler: handler1 });
         expect(api.onBeforeRequestHandlers).toHaveLength(1);
         expect(api.onBeforeRequestHandlers[0].handler).toBe(handler1);
 
-        setOnBeforeRequestHandler({ key: "shared-key", handler: handler2 });
+        api.setOnBeforeRequestHandler({ key: "shared-key", handler: handler2 });
         expect(api.onBeforeRequestHandlers).toHaveLength(1);
         expect(api.onBeforeRequestHandlers[0].handler).toBe(handler2);
       });
@@ -318,9 +318,9 @@ describe("api", () => {
         const handler2 = jest.fn();
         const handler3 = jest.fn();
 
-        setOnBeforeRequestHandler({ key: "handler1", handler: handler1 });
-        setOnBeforeRequestHandler({ key: "handler2", handler: handler2 });
-        setOnBeforeRequestHandler({ key: "handler3", handler: handler3 });
+        api.setOnBeforeRequestHandler({ key: "handler1", handler: handler1 });
+        api.setOnBeforeRequestHandler({ key: "handler2", handler: handler2 });
+        api.setOnBeforeRequestHandler({ key: "handler3", handler: handler3 });
 
         expect(api.onBeforeRequestHandlers).toHaveLength(3);
         expect(api.onBeforeRequestHandlers[0].key).toBe("handler1");
@@ -334,11 +334,11 @@ describe("api", () => {
         const handler3 = jest.fn();
         const handler2Updated = jest.fn();
 
-        setOnBeforeRequestHandler({ key: "handler1", handler: handler1 });
-        setOnBeforeRequestHandler({ key: "handler2", handler: handler2 });
-        setOnBeforeRequestHandler({ key: "handler3", handler: handler3 });
+        api.setOnBeforeRequestHandler({ key: "handler1", handler: handler1 });
+        api.setOnBeforeRequestHandler({ key: "handler2", handler: handler2 });
+        api.setOnBeforeRequestHandler({ key: "handler3", handler: handler3 });
 
-        setOnBeforeRequestHandler({
+        api.setOnBeforeRequestHandler({
           key: "handler2",
           handler: handler2Updated,
         });

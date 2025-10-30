@@ -420,6 +420,22 @@ export class Api extends EventEmitter {
         }
       });
   }
+
+  /**
+   * @param {OnBeforeRequestHandlerDescription} handlerDescription
+   */
+  setOnBeforeRequestHandler(handlerDescription) {
+    const existingHandlerKeyIndex = this.onBeforeRequestHandlers.findIndex(
+      ({ key }) => key === handlerDescription.key,
+    );
+
+    if (existingHandlerKeyIndex >= 0) {
+      this.onBeforeRequestHandlers[existingHandlerKeyIndex] =
+        handlerDescription;
+    } else {
+      this.onBeforeRequestHandlers.push(handlerDescription);
+    }
+  }
 }
 
 const instance = new Api();
@@ -434,20 +450,4 @@ export const setLocaleHeader = (locale) => {
    */
   // eslint-disable-next-line no-literal-metabase-strings -- Header name, not a user facing string
   DEFAULT_OPTIONS.headers["X-Metabase-Locale"] = locale ?? undefined;
-};
-
-/**
- * @param {OnBeforeRequestHandlerDescription} handlerDescription
- */
-export const setOnBeforeRequestHandler = (handlerDescription) => {
-  const existingHandlerKeyIndex = instance.onBeforeRequestHandlers.findIndex(
-    ({ key }) => key === handlerDescription.key,
-  );
-
-  if (existingHandlerKeyIndex >= 0) {
-    instance.onBeforeRequestHandlers[existingHandlerKeyIndex] =
-      handlerDescription;
-  } else {
-    instance.onBeforeRequestHandlers.push(handlerDescription);
-  }
 };
