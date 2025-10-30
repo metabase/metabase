@@ -24,7 +24,7 @@ jobs:
         env:
           MB_EDITION: ee
       - name: Collect the test coverage
-        run: clojure -X:dev:ci:ee:ee-dev:test:cloverage
+        run: clojure -X:dev:ci:ee:ee-dev:test:cloverage :ns-regex '["^metabase\\.actions\\..*"]'
 
       - name: Upload coverage to codecov.io
         uses: codecov/codecov-action@v5
