@@ -7,15 +7,13 @@ import {
   getDashboardId,
   getIsEditing as getIsEditingDashboard,
 } from "metabase/dashboard/selectors";
+import { isEmbeddingIframe } from "metabase/embedding-sdk/config";
 import { PLUGIN_DOCUMENTS } from "metabase/plugins";
 import {
   getIsSavedQuestionChanged,
   getQuestion,
 } from "metabase/query_builder/selectors";
-import {
-  getEmbedOptions,
-  getIsEmbeddingIframe,
-} from "metabase/selectors/embed";
+import { getEmbedOptions } from "metabase/selectors/embed";
 import { getUser } from "metabase/selectors/user";
 import type { State } from "metabase-types/store";
 
@@ -68,11 +66,11 @@ export const getIsCollectionPathVisible = createSelector(
     getDashboard,
     (state) => PLUGIN_DOCUMENTS.getCurrentDocument(state),
     getRouterPath,
-    getIsEmbeddingIframe,
     getEmbedOptions,
+    isEmbeddingIframe,
   ],
-  (question, dashboard, document, path, isEmbedded, embedOptions) => {
-    if (isEmbedded && !embedOptions.breadcrumbs) {
+  (question, dashboard, document, path, embedOptions, isEmbeddingIframe) => {
+    if (isEmbeddingIframe && !embedOptions.breadcrumbs) {
       return false;
     }
 
@@ -102,14 +100,14 @@ export const getIsNavBarEnabled = createSelector(
     getUser,
     getRouterPath,
     getIsEditingDashboard,
-    getIsEmbeddingIframe,
     getEmbedOptions,
+    isEmbeddingIframe,
   ],
-  (currentUser, path, isEditingDashboard, isEmbedded, embedOptions) => {
+  (currentUser, path, isEditingDashboard, embedOptions, isEmbeddingIframe) => {
     if (!currentUser || isEditingDashboard) {
       return false;
     }
-    if (isEmbedded && !embedOptions.side_nav) {
+    if (isEmbeddingIframe && !embedOptions.side_nav) {
       return false;
     }
 
@@ -148,8 +146,8 @@ export const getIsAppBarVisible = createSelector(
     getRouterHash,
     getIsAdminApp,
     getIsEditingDashboard,
-    getIsEmbeddingIframe,
     getIsEmbeddedAppBarVisible,
+    isEmbeddingIframe,
   ],
   (
     currentUser,
@@ -157,14 +155,14 @@ export const getIsAppBarVisible = createSelector(
     hash,
     isAdminApp,
     isEditingDashboard,
-    isEmbedded,
     isEmbeddedAppBarVisible,
+    isEmbeddingIframe,
   ) => {
     const isFullscreen = hash.includes("fullscreen");
 
     if (
       !currentUser ||
-      (isEmbedded && !isEmbeddedAppBarVisible) ||
+      (isEmbeddingIframe && !isEmbeddedAppBarVisible) ||
       isAdminApp ||
       isEditingDashboard ||
       isFullscreen
@@ -176,29 +174,24 @@ export const getIsAppBarVisible = createSelector(
 );
 
 export const getIsLogoVisible = createSelector(
-  [getIsEmbeddingIframe, getEmbedOptions],
-  (isEmbeddingIframe, embedOptions) => {
+  [getEmbedOptions, isEmbeddingIframe],
+  (embedOptions, isEmbeddingIframe) => {
     return !isEmbeddingIframe || embedOptions.logo;
   },
 );
 
 export const getIsSearchVisible = createSelector(
-  [getIsEmbeddingIframe, getEmbedOptions],
-  (isEmbeddingIframe, embedOptions) => {
+  [getEmbedOptions, isEmbeddingIframe],
+  (embedOptions, isEmbeddingIframe) => {
     return !isEmbeddingIframe || embedOptions.search;
   },
 );
 
 export const getIsNewButtonVisible = createSelector(
-  [getIsEmbeddingIframe, getEmbedOptions],
-  (isEmbeddingIframe, embedOptions) => {
+  [getEmbedOptions, isEmbeddingIframe],
+  (embedOptions, isEmbeddingIframe) => {
     return !isEmbeddingIframe || embedOptions.new_button;
   },
-);
-
-export const getIsProfileLinkVisible = createSelector(
-  [getIsEmbeddingIframe],
-  (isEmbeddingIframe) => !isEmbeddingIframe,
 );
 
 export const getErrorPage = (state: State) => {
@@ -241,12 +234,12 @@ export const getCollectionId = createSelector(
 
 export const getIsNavbarOpen: Selector<State, boolean> = createSelector(
   [
-    getIsEmbeddingIframe,
     getEmbedOptions,
     getIsAppBarVisible,
     (state: State) => state.app.isNavbarOpen,
+    isEmbeddingIframe,
   ],
-  (isEmbeddingIframe, embedOptions, isAppBarVisible, isNavbarOpen) => {
+  (embedOptions, isAppBarVisible, isNavbarOpen, isEmbeddingIframe) => {
     // in an embedded instance, when the app bar is hidden, but the nav bar is not
     // we need to force the sidebar to be open or else it will be totally inaccessible
     if (
