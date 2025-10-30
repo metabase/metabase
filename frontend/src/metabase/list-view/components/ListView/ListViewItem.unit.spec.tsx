@@ -8,7 +8,7 @@ import { ListViewItem } from "./ListViewItem";
 function makeSettings(overrides: Partial<ComputedVisualizationSettings> = {}) {
   const base: ComputedVisualizationSettings = {
     column: () => ({}),
-  } as any;
+  };
   return { ...base, ...overrides } as ComputedVisualizationSettings;
 }
 

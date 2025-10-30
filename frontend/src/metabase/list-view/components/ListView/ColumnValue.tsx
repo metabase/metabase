@@ -180,7 +180,7 @@ export function ColumnValue({
         </Ellipsified>
       );
     case isEmail(column):
-    case isURL(column):
+    case isURL(column) && !isImageURL(column) && !isAvatarURL(column):
       return (
         <Ellipsified size="sm" fw="bold" style={style} tooltip={rawValue}>
           {value}
