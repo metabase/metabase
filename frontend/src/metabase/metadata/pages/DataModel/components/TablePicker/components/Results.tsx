@@ -295,6 +295,7 @@ export function Results({
                 handleItemSelect();
               }}
               onFocus={() => onSelectedIndexChange?.(index)}
+              pe="sm"
             >
               <Flex align="center" mih={ITEM_MIN_HEIGHT} p="sm" w="100%">
                 <Flex align="center" gap="xs" w="100%">
