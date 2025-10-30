@@ -13,8 +13,7 @@
    [metabase.util.malli.schema :as ms]
    [rewrite-clj.node :as n]
    [rewrite-clj.parser :as r.parser]
-   [rewrite-clj.zip :as z]
-   [clojure.set :as set]))
+   [rewrite-clj.zip :as z]))
 
 (set! *warn-on-reflection* true)
 
@@ -471,3 +470,10 @@
         (all-module-deps-paths deps new-dep acc already-seen (conj path new-dep)))
       acc
       new-deps))))
+
+(defn y [module]
+  (let [deps (dependencies)]
+    (into (sorted-map)
+          (map (fn [dep]
+                 [dep (module-usages-of-other-module deps module dep)]))
+          (module-dependencies deps module))))

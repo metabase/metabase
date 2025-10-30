@@ -1173,18 +1173,24 @@
 
   settings
   {:team "DevEx"
-   :api  #{metabase.settings.api
-           metabase.settings.core
+   :api  #{metabase.settings.core
            metabase.settings.init}
    :uses #{api
            app-db
            config
            events
            models
-           permissions
            premium-features
            util
            enterprise/advanced-permissions}}
+
+  settings-rest
+  {:team "DevEx"
+   :api  #{metabase.settings-rest.api}
+   :uses #{api
+           permissions
+           settings
+           util}}
 
   setup
   {:team "UX West"
