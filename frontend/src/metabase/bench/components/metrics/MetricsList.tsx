@@ -14,28 +14,30 @@ import { t } from "ttag";
 import { noop } from "underscore";
 
 import {
-  searchApi,
   useGetCardQuery,
   useListCollectionsTreeQuery,
+  useListDatabasesQuery,
+  useUpdateCardMutation,
 } from "metabase/api";
-import { listTag } from "metabase/api/tags";
 import { BenchFlatListItem } from "metabase/bench/components/shared/BenchFlatListItem";
 import { useItemsListFilter } from "metabase/bench/hooks/useItemsListFilter";
 import { getIcon } from "metabase/browse/models/utils";
 import ActionButton from "metabase/common/components/ActionButton/ActionButton";
-import Button from "metabase/common/components/Button";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
 import { SidesheetCard } from "metabase/common/components/Sidesheet/SidesheetCard";
+import { ToolbarButton } from "metabase/common/components/ToolbarButton/ToolbarButton";
 import { VirtualizedFlatList } from "metabase/common/components/VirtualizedFlatList";
 import { VirtualizedTree } from "metabase/common/components/tree/VirtualizedTree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { useFetchMetrics } from "metabase/common/hooks/use-fetch-metrics";
 import ButtonsS from "metabase/css/components/buttons.module.css";
+import { INJECT_RTK_QUERY_QUESTION_VALUE } from "metabase/entities/questions";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { newQuestion } from "metabase/lib/urls/questions";
 import { EmptyState } from "metabase/metadata/pages/DataModel/components/TablePicker/components/EmptyState";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import {
+  API_UPDATE_QUESTION,
   type QueryParams,
   cancelQuery,
   initializeQB,
@@ -43,6 +45,7 @@ import {
   runQuestionQuery,
   updateQuestion,
 } from "metabase/query_builder/actions";
+import { QuestionInfoSidebar } from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/QuestionInfoSidebar";
 import { shouldShowQuestionSettingsSidebar } from "metabase/query_builder/components/view/sidebars/QuestionSettingsSidebar";
 import { useCreateQuestion } from "metabase/query_builder/containers/use-create-question";
 import { useSaveQuestion } from "metabase/query_builder/containers/use-save-question";
@@ -50,15 +53,17 @@ import {
   getFirstQueryResult,
   getIsDirty,
   getIsResultDirty,
+  getOriginalQuestion,
   getQuestion,
   getRawSeries,
   getUiControls,
 } from "metabase/query_builder/selectors";
 import { MetricEditor as QBMetricEditor } from "metabase/querying/metrics/components/MetricEditor/MetricEditor";
 import { QUESTION_NAME_MAX_LENGTH } from "metabase/questions/constants";
+import { getHasDataAccess } from "metabase/selectors/data";
 import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
-import { Box, Center, Icon, Input, Loader, Stack } from "metabase/ui";
+import { Box, Button, Center, Group, Icon, Input, Loader } from "metabase/ui";
 import Question from "metabase-lib/v1/Question";
 import type { RawSeries, SearchResult } from "metabase-types/api";
 
@@ -124,6 +129,9 @@ function MetricsList({
     ),
   );
 
+  const { data: dbData } = useListDatabasesQuery();
+  const hasDataAccess = getHasDataAccess(dbData?.data ?? []);
+
   const treeData = useMemo(() => {
     return filteredMetrics && collections && currentUser && display === "tree"
       ? getTreeItems(collections, filteredMetrics, "metric", currentUser.id)
@@ -167,15 +175,17 @@ function MetricsList({
       }
       onCollapse={onCollapse}
       addButton={
-        <ItemsListAddButton
-          onClick={() => {
-            const url = newQuestion({
-              mode: "bench",
-              cardType: "metric",
-            });
-            dispatch(push(url));
-          }}
-        />
+        hasDataAccess && (
+          <ItemsListAddButton
+            onClick={() => {
+              const url = newQuestion({
+                mode: "bench",
+                cardType: "metric",
+              });
+              dispatch(push(url));
+            }}
+          />
+        )
       }
       searchInput={
         <Input
@@ -294,20 +304,59 @@ const MetricHeader = ({
   params: QueryParams;
   question: Question;
 }) => {
+  const dispatch = useDispatch();
+  const handleSave = useSaveQuestion();
+  const [updateCard] = useUpdateCardMutation();
+
+  const isDirty = useSelector(getIsDirty);
+  const [modal, setModal] = useState<"info" | null>(null);
+
   const enableSettingsSidebar = shouldShowQuestionSettingsSidebar(question);
 
   return (
-    <BenchPaneHeader
-      title={
-        <Stack>
+    <>
+      <BenchPaneHeader
+        withBorder
+        title={
           <BenchNameInput
             initialValue={question.displayName() || ""}
             maxLength={QUESTION_NAME_MAX_LENGTH}
-            onChange={() => {
-              // TODO: Update title (figure out if this is going to use `qb` actions or not)
+            onChange={async (name) => {
+              if (!question.isSaved()) {
+                dispatch(updateQuestion(question.setDisplayName(name)));
+                return;
+              }
+              const res = await updateCard({ id: question.id(), name });
+              const updatedCard = res.data;
+              if (updatedCard) {
+                // HACK: Keeps entity framework data in sync
+                dispatch({
+                  type: API_UPDATE_QUESTION,
+                  payload: updatedCard,
+                });
+                dispatch({
+                  type: INJECT_RTK_QUERY_QUESTION_VALUE,
+                  payload: updatedCard,
+                });
+              }
             }}
           />
-          {question.isSaved() && (
+        }
+        actions={
+          <>
+            {isDirty && actions}
+            {question.isSaved() && !isDirty && (
+              <ToolbarButton
+                icon="info"
+                onClick={() => setModal("info")}
+                tooltipLabel={t`More info`}
+                aria-label={t`More info`}
+              />
+            )}
+          </>
+        }
+        tabs={
+          question.isSaved() && (
             <BenchTabs
               tabs={[
                 {
@@ -322,11 +371,17 @@ const MetricHeader = ({
                 },
               ].filter((t) => !!t)}
             />
-          )}
-        </Stack>
-      }
-      actions={actions}
-    />
+          )
+        }
+      />
+      {modal === "info" && (
+        <QuestionInfoSidebar
+          question={question}
+          onSave={handleSave}
+          onClose={() => setModal(null)}
+        />
+      )}
+    </>
   );
 };
 
@@ -352,6 +407,7 @@ export const MetricEditor = ({
   const handleSave = useSaveQuestion();
 
   const question = useSelector(getQuestion);
+  const originalQuestion = useSelector(getOriginalQuestion);
   const reportTimezone = useSelector((state) =>
     getSetting(state, "report-timezone-long"),
   );
@@ -378,12 +434,6 @@ export const MetricEditor = ({
       onCreate={async (q) => {
         const result = await handleCreate(q);
         dispatch(push(`/bench/metric/${result.id()}`));
-
-        // TODO: Find a way to remove the setTimeout. Search reindexing appears to be async so refetching immediately doesn't return a list containing the newly added item.
-        setTimeout(() => {
-          dispatch(searchApi.util.invalidateTags([listTag("card")]));
-        }, 100);
-
         return result;
       }}
       onSave={handleSave}
@@ -395,31 +445,41 @@ export const MetricEditor = ({
           params={params}
           question={question}
           actions={
-            !question.isSaved() ? (
+            <Group>
               <Button
-                key="create"
-                primary
-                small
-                onClick={() => headerProps.onCreate(question)}
-              >
-                {t`Save`}
-              </Button>
-            ) : (
-              <ActionButton
-                key="save"
-                actionFn={() => headerProps.onSave(question)}
-                disabled={!headerProps.isRunnable || !isDirty}
-                normalText={t`Save`}
-                activeText={t`Saving…`}
-                failedText={t`Save failed`}
-                successText={t`Saved`}
-                className={cx(
-                  ButtonsS.Button,
-                  ButtonsS.ButtonPrimary,
-                  ButtonsS.ButtonSmall,
-                )}
-              />
-            )
+                size="sm"
+                onClick={() => {
+                  if (!question.isSaved()) {
+                    dispatch(push("/bench/metric"));
+                  } else {
+                    dispatch(updateQuestion(originalQuestion));
+                  }
+                }}
+              >{t`Cancel`}</Button>
+              {!question.isSaved() ? (
+                <Button
+                  size="sm"
+                  variant="filled"
+                  onClick={() => headerProps.onCreate(question)}
+                >
+                  {t`Save`}
+                </Button>
+              ) : (
+                <ActionButton
+                  actionFn={() => headerProps.onSave(question)}
+                  disabled={!headerProps.isRunnable || !isDirty}
+                  normalText={t`Save`}
+                  activeText={t`Saving…`}
+                  failedText={t`Save failed`}
+                  successText={t`Saved`}
+                  className={cx(
+                    ButtonsS.Button,
+                    ButtonsS.ButtonPrimary,
+                    ButtonsS.ButtonSmall,
+                  )}
+                />
+              )}
+            </Group>
           }
         />
       )}

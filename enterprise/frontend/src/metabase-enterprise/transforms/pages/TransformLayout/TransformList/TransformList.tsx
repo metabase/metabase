@@ -26,9 +26,11 @@ import {
   useListTransformTagsQuery,
   useListTransformsQuery,
 } from "metabase-enterprise/api";
-import type { Transform, TransformTag } from "metabase-types/api";
+import type { Transform, TransformId, TransformTag } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
+import { TransformMoreMenu } from "../../../components/TransformMoreMenu";
+import type { TransformMoreMenuModalState } from "../../../types";
 import { getTagById, getTagList } from "../../RunListPage/RunList/TagList";
 
 import { CreateTransformMenu } from "./CreateTransformMenu";
@@ -43,7 +45,11 @@ const TransformsTreeNode = (props: TreeNodeProps) => (
       }
 
       return (
-        <Box p="sm" style={{ overflow: "hidden", fontWeight: "normal" }}>
+        <Box
+          p="sm"
+          flex={1}
+          style={{ overflow: "hidden", fontWeight: "normal" }}
+        >
           <BenchFlatListItemContent
             label={transform.name}
             icon="table2"
@@ -63,11 +69,11 @@ const lastModifiedSorter = <T extends { updated_at: string }>(a: T, b: T) =>
   a.updated_at < b.updated_at ? 1 : a.updated_at > b.updated_at ? -1 : 0;
 
 type TransformListProps = {
-  selectedId?: Transform["id"];
-  onCollapse?: () => void;
+  selectedId: TransformId | undefined;
+  onOpenModal: (modal: TransformMoreMenuModalState) => void;
 };
 
-export function TransformList({ selectedId, onCollapse }: TransformListProps) {
+export function TransformList({ selectedId, onOpenModal }: TransformListProps) {
   const dispatch = useDispatch();
   const {
     data: transforms = [],
@@ -163,7 +169,6 @@ export function TransformList({ selectedId, onCollapse }: TransformListProps) {
   return (
     <ItemsListSection
       testId="transform-list-page"
-      onCollapse={onCollapse}
       addButton={<CreateTransformMenu />}
       settings={
         <ItemsListSettings
@@ -202,11 +207,19 @@ export function TransformList({ selectedId, onCollapse }: TransformListProps) {
             selectedId={selectedId}
             onSelect={(node) => {
               if (typeof node.id === "number") {
-                dispatch(push(`/bench/transforms/${node.id}`));
+                dispatch(push(Urls.transform(node.id)));
               }
             }}
             estimateSize={getTreeItemEstimateSize}
             TreeNode={TransformsTreeNode}
+            rightSection={(node) =>
+              node.data != null ? (
+                <TransformMoreMenu
+                  transformId={Number(node.id)}
+                  onOpenModal={onOpenModal}
+                />
+              ) : null
+            }
           />
         ) : (
           <VirtualizedFlatList
@@ -219,6 +232,7 @@ export function TransformList({ selectedId, onCollapse }: TransformListProps) {
                 transform={transform}
                 tags={tags}
                 selectedId={selectedId}
+                onOpenModal={onOpenModal}
               />
             )}
           />
@@ -231,13 +245,15 @@ export function TransformList({ selectedId, onCollapse }: TransformListProps) {
 interface TransformFlatListItemProps {
   transform: Transform;
   tags: TransformTag[];
-  selectedId?: Transform["id"];
+  selectedId?: TransformId;
+  onOpenModal: (modal: TransformMoreMenuModalState) => void;
 }
 
 function TransformFlatListItem({
   transform,
   tags,
   selectedId,
+  onOpenModal,
 }: TransformFlatListItemProps) {
   const tagById = useMemo(() => getTagById(tags), [tags]);
   const tagNames = getTagList(transform.tag_ids ?? [], tagById).map(
@@ -260,6 +276,12 @@ function TransformFlatListItem({
         >
           {tagNames.join(" · ")}
         </Ellipsified>
+      }
+      rightGroup={
+        <TransformMoreMenu
+          transformId={transform.id}
+          onOpenModal={onOpenModal}
+        />
       }
     />
   );

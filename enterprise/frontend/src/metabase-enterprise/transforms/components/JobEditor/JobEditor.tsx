@@ -8,7 +8,6 @@ import { NAME_MAX_LENGTH } from "../../constants";
 import { ColumnLayout, ColumnLayoutBody } from "../ColumnLayout";
 
 import { DependenciesSection } from "./DependenciesSection";
-import { ManageSection } from "./ManageSection";
 import { ScheduleSection } from "./ScheduleSection";
 import { TagSection } from "./TagSection";
 import type { TransformJobInfo } from "./types";
@@ -47,7 +46,6 @@ export function JobEditor({
       <ColumnLayoutBody>
         <ScheduleSection job={job} onScheduleChange={onScheduleChange} />
         <TagSection job={job} onTagsChange={onTagListChange} />
-        {job.id != null && <ManageSection job={job} />}
         {job.id != null && <DependenciesSection jobId={job.id} />}
       </ColumnLayoutBody>
     </ColumnLayout>

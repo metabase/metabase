@@ -4,7 +4,13 @@
 }
 
 .menuItem:hover {
-  background-color: var(--mb-color-bg-secondary);
+  background-color: var(--mb-color-background-hover);
+  color: var(--mb-color-text-hover);
+}
+
+.menuItem[data-active="true"] {
+  color: var(--mb-color-text-selected);
+  background-color: var(--mb-color-background-selected);
 }
 
 .menuItemIcon {

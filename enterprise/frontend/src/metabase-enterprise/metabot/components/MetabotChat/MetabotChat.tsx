@@ -194,7 +194,6 @@ export const MetabotChat = ({
               Styles.inputContainer,
               metabot.isDoingScience && Styles.inputContainerLoading,
             )}
-            data-testid="metabot-chat-input"
           >
             <MetabotChatEditor
               ref={metabot.promptInputRef}

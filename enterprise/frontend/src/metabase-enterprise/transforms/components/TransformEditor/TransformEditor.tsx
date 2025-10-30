@@ -13,7 +13,8 @@ import { Center, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { QueryTransformSource, TransformId } from "metabase-types/api";
 
-import { TransformHeaderView } from "../TransformHeader";
+import { TransformHeader } from "../TransformHeader";
+import { TransformMoreMenuWithModal } from "../TransformMoreMenu";
 
 import { EditorActions } from "./EditorActions";
 import { shouldDisableDatabase, shouldDisableItem } from "./utils";
@@ -52,7 +53,7 @@ export function TransformEditor({
   onRejectProposed,
 }: TransformEditorProps) {
   const metadata = useSelector(getMetadata);
-  const { query } = useMemo(() => {
+  const { query, proposedQuery } = useMemo(() => {
     const metadataProvider = Lib.metadataProvider(
       source.query.database,
       metadata,
@@ -84,23 +85,26 @@ export function TransformEditor({
 
   return (
     <Flex direction="column" h="100%">
-      <TransformHeaderView
+      <TransformHeader
         id={id}
         name={name}
         actions={
-          (isSaving || isSourceDirty) && (
+          isSaving || isSourceDirty ? (
             <EditorActions
               query={query}
               isSaving={isSaving}
               onSave={onSave}
               onCancel={onCancel}
             />
-          )
+          ) : id != null ? (
+            <TransformMoreMenuWithModal transformId={id} />
+          ) : null
         }
         onNameChange={onNameChange}
       />
       <QueryEditor
         query={query}
+        proposedQuery={proposedQuery}
         type="question"
         uiControls={uiControls}
         convertToNativeTitle={t`SQL for this transform`}

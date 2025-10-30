@@ -33,7 +33,11 @@ export function RunList({ runs, totalCount, params, tags }: RunListProps) {
   if (runs.length === 0) {
     const hasFilters = hasFilterParams(params);
     return (
-      <ListEmptyState label={hasFilters ? t`No runs found` : t`No runs yet`} />
+      <Card p={0} shadow="none" withBorder>
+        <ListEmptyState
+          label={hasFilters ? t`No runs found` : t`No runs yet`}
+        />
+      </Card>
     );
   }
 

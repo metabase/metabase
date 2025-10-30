@@ -18,7 +18,8 @@ export function BenchNameInput({
       initialValue={initialValue}
       maxLength={maxLength}
       placeholder={t`Name`}
-      p={0}
+      p="xs"
+      ml="-xs"
       fw="bold"
       fz="h3"
       lh="h3"

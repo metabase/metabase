@@ -22,10 +22,11 @@ export function EditorActions({
 
   return (
     <Group>
-      <Button onClick={onCancel}>{t`Cancel`}</Button>
+      <Button size="sm" onClick={onCancel}>{t`Cancel`}</Button>
       <Tooltip label={errorMessage} disabled={errorMessage == null}>
         <Button
           variant="filled"
+          size="sm"
           disabled={!isValid || isSaving}
           onClick={onSave}
         >

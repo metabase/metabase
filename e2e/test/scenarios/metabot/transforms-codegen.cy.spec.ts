@@ -7,7 +7,7 @@ const { H } = cy;
 const SOURCE_TABLE = "Animals";
 
 // Helper functions for metabot transform interactions
-const visitTransformListPage = () => cy.visit("/admin/transforms");
+const visitTransformListPage = () => cy.visit("/bench/transforms");
 
 const suggestions = () => cy.findAllByTestId("metabot-chat-suggestion");
 // eslint-disable-next-line no-unsafe-element-filtering
@@ -47,10 +47,17 @@ const assertSuggestionInSidebar = (values: {
   }
 };
 
-const assertEditorDiffState = (opts: { exists: boolean }) => {
+const assertEditorDiffState = (
+  editorType: EditorType,
+  opts: { exists: boolean },
+) => {
   const should = opts.exists ? "exist" : "not.exist";
-  cy.findByRole("button", { name: /apply|create/i }).should(should);
-  cy.findByRole("button", { name: /reject/i }).should(should);
+  editor(editorType)
+    .get()
+    .within(() => {
+      cy.findByRole("button", { name: /apply|create/i }).should(should);
+      cy.findByRole("button", { name: /reject/i }).should(should);
+    });
 };
 
 const assertAcceptRejectUI = (opts: { visible: boolean }) => {
@@ -93,8 +100,8 @@ H.describeWithSnowplowEE("scenarios > metabot > transforms codegen", () => {
 
         cy.log("Should be able to visit and the see new transform");
         viewLastSuggestion();
-        cy.url().should("include", "/admin/transforms/new/native");
-        assertEditorDiffState({ exists: false }); // nothing to diff, so we shouldn't show the UI for it
+        cy.url().should("include", "/bench/transforms/new/native");
+        assertEditorDiffState("native", { exists: false }); // nothing to diff, so we shouldn't show the UI for it
         assertEditorContent("native", "SELECT 1");
 
         // User should ask metabot for a change
@@ -165,8 +172,8 @@ H.describeWithSnowplowEE("scenarios > metabot > transforms codegen", () => {
 
         cy.log("Should be able to visit and the see new transform");
         viewLastSuggestion();
-        cy.url().should("include", "/admin/transforms/new/python");
-        assertEditorDiffState({ exists: false }); // nothing to diff, so we shouldn't show the UI for it
+        cy.url().should("include", "/bench/transforms/new/python");
+        assertEditorDiffState("python", { exists: false }); // nothing to diff, so we shouldn't show the UI for it
         assertEditorContent("python", "pd.DataFrame({'value': [1]})");
 
         // User should ask metabot for a change

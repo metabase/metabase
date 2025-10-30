@@ -62,7 +62,7 @@ function SnippetListItem({
   active?: boolean;
 }) {
   return (
-    <Box mb="sm" mx="md">
+    <Box mb="sm" px="lg">
       <BenchFlatListItem
         icon="snippet"
         href={`/bench/snippet/${snippet.id}`}

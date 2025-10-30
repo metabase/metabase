@@ -2,8 +2,7 @@
   flex: 1;
   position: relative;
   overflow: auto;
-  padding: var(--mantine-spacing-md);
-  padding-top: 0;
+  padding: 0 var(--mantine-spacing-lg) var(--mantine-spacing-md);
 }
 
 .listContainer {
@@ -14,8 +13,6 @@
   position: absolute;
   border-radius: 8px;
   cursor: pointer;
-  padding-left: var(--mantine-spacing-sm);
-  padding-right: var(--mantine-spacing-sm);
   left: 0;
   right: 0;
 

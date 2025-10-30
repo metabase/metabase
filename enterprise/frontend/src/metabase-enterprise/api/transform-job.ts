@@ -132,8 +132,11 @@ export const transformJobApi = EnterpriseApi.injectEndpoints({
         method: "DELETE",
         url: `/api/ee/transform-job/${id}`,
       }),
-      invalidatesTags: (_, error) =>
-        invalidateTags(error, [listTag("transform-job")]),
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [
+          listTag("transform-job"),
+          idTag("transform-job", id),
+        ]),
     }),
   }),
 });

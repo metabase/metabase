@@ -8,42 +8,39 @@ import {
 } from "metabase/forms";
 import { Box, Button, FocusTrap, Group, Modal, Stack, Text } from "metabase/ui";
 import { useDeleteTransformJobMutation } from "metabase-enterprise/api";
-
-import type { TransformJobInfo } from "../types";
+import type { TransformJobId } from "metabase-types/api";
 
 type DeleteJobModalProps = {
-  job: TransformJobInfo;
+  jobId: TransformJobId;
   onDelete: () => void;
   onClose: () => void;
 };
 
 export function DeleteJobModal({
-  job,
+  jobId,
   onDelete,
   onClose,
 }: DeleteJobModalProps) {
   return (
     <Modal title={t`Delete this job?`} opened padding="xl" onClose={onClose}>
       <FocusTrap.InitialFocus />
-      <DeleteJobForm job={job} onDelete={onDelete} onClose={onClose} />
+      <DeleteJobForm jobId={jobId} onDelete={onDelete} onClose={onClose} />
     </Modal>
   );
 }
 
 type DeleteJobFormProps = {
-  job: TransformJobInfo;
+  jobId: TransformJobId;
   onDelete: () => void;
   onClose: () => void;
 };
 
-function DeleteJobForm({ job, onDelete, onClose }: DeleteJobFormProps) {
+function DeleteJobForm({ jobId, onDelete, onClose }: DeleteJobFormProps) {
   const [deleteJob] = useDeleteTransformJobMutation();
 
   const handleSubmit = async () => {
-    if (job.id != null) {
-      await deleteJob(job.id).unwrap();
-      onDelete();
-    }
+    await deleteJob(jobId).unwrap();
+    onDelete();
   };
 
   return (

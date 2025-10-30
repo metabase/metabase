@@ -143,8 +143,8 @@ function SegmentListAppInner({ onCollapse, ...props }: SegmentListAppProps) {
         />
       }
       listItems={
-        display === "tree" ? (
-          <Box mx="-sm">
+        <Box px="lg" pt={0} pb="md">
+          {display === "tree" ? (
             <Tree
               data={treeData}
               selectedId={selectedId}
@@ -167,26 +167,31 @@ function SegmentListAppInner({ onCollapse, ...props }: SegmentListAppProps) {
                 );
               }}
             />
-          </Box>
-        ) : (
-          <Stack gap="xs">
-            {segments.map((segment) => (
-              <SegmentItem
-                key={segment.id}
-                onRetire={() => setArchived(segment, true)}
-                segment={segment}
-                isActive={selectedId === segment.id}
-              />
-            ))}
-            {segments.length === 0 && (
-              <div
-                className={cx(CS.flex, CS.layoutCentered, CS.m4, CS.textMedium)}
-              >
-                {t`Create segments to add them to the Filter dropdown in the query builder`}
-              </div>
-            )}
-          </Stack>
-        )
+          ) : (
+            <Stack gap="xs">
+              {segments.map((segment) => (
+                <SegmentItem
+                  key={segment.id}
+                  onRetire={() => setArchived(segment, true)}
+                  segment={segment}
+                  isActive={selectedId === segment.id}
+                />
+              ))}
+              {segments.length === 0 && (
+                <div
+                  className={cx(
+                    CS.flex,
+                    CS.layoutCentered,
+                    CS.m4,
+                    CS.textMedium,
+                  )}
+                >
+                  {t`Create segments to add them to the Filter dropdown in the query builder`}
+                </div>
+              )}
+            </Stack>
+          )}
+        </Box>
       }
     />
   );

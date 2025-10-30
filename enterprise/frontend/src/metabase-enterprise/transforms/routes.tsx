@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { createBenchAdminRouteGuard } from "metabase/bench/components/utils";
 import type { BenchNavItem } from "metabase/bench/constants/navigation";
 import { Route } from "metabase/hoc/Title";
+import * as Urls from "metabase/lib/urls";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_TRANSFORMS_PYTHON,
@@ -78,7 +79,7 @@ export const getBenchNavItems = (isAdmin: boolean): BenchNavItem[] => {
   return [
     {
       id: "transforms",
-      url: "/bench/transforms",
+      url: Urls.transformList(),
       icon: "transform",
       getLabel: () => t`Transforms`,
       getDescription: () =>
@@ -86,7 +87,7 @@ export const getBenchNavItems = (isAdmin: boolean): BenchNavItem[] => {
     },
     {
       id: "jobs",
-      url: "/bench/jobs",
+      url: Urls.transformJobList(),
       icon: "play_outlined",
       getLabel: () => t`Jobs`,
       parentId: "transforms",
@@ -94,7 +95,7 @@ export const getBenchNavItems = (isAdmin: boolean): BenchNavItem[] => {
     },
     {
       id: "runs",
-      url: "/bench/runs",
+      url: Urls.transformRunList(),
       icon: "list",
       getLabel: () => t`Runs`,
       parentId: "transforms",

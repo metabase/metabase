@@ -18,6 +18,7 @@ import type {
 } from "metabase-types/api";
 
 import { JobEditor } from "../../components/JobEditor";
+import { JobMoreMenuWithModal } from "../../components/JobMoreMenu";
 import { POLLING_INTERVAL } from "../../constants";
 
 type JobPageParams = {
@@ -125,6 +126,7 @@ function JobPageBody({ job }: JobPageBodyProps) {
   return (
     <JobEditor
       job={job}
+      actions={<JobMoreMenuWithModal jobId={job.id} />}
       onNameChange={handleNameChange}
       onScheduleChange={handleScheduleChange}
       onTagListChange={handleTagListChange}
