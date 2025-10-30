@@ -1,6 +1,7 @@
 (ns metabase.sync.sync-metadata.fks
   "Logic for updating FK properties of Fields from metadata fetched from a physical DB."
   (:require
+   [clojure.set :as set]
    [honey.sql :as sql]
    [metabase.app-db.core :as mdb]
    [metabase.driver.util :as driver.u]
@@ -103,6 +104,67 @@
                                                                   :schema (:fk-table-schema metadata))
                                 (sync-util/field-name-for-logging :name (:pk-column-name metadata)))))))
 
+(mu/defn- our-fk-metadata
+  "Fetch FK relationships currently stored in Metabase for a database. Returns a set of FK metadata maps
+  that match the format used by database FK metadata, allowing for comparison."
+  [database :- i/DatabaseInstance]
+  (let [fk-fields (t2/select [:model/Field :id :name :fk_target_field_id :table_id]
+                             {:where [:and
+                                      [:not= :fk_target_field_id nil]
+                                      [:in :table_id
+                                       {:select [:id]
+                                        :from [:metabase_table]
+                                        :where [:and
+                                                [:= :db_id (:id database)]
+                                                [:= :active true]]}]]})]
+    (into #{}
+          (for [fk-field fk-fields
+                :let [fk-table (t2/select-one [:model/Table :name :schema] :id (:table_id fk-field))
+                      pk-field (t2/select-one [:model/Field :name :table_id] :id (:fk_target_field_id fk-field))
+                      pk-table (when pk-field (t2/select-one [:model/Table :name :schema] :id (:table_id pk-field)))]
+                :when (and fk-table pk-field pk-table)]
+            {:fk-table-name (:name fk-table)
+             :fk-table-schema (:schema fk-table)
+             :fk-column-name (:name fk-field)
+             :pk-table-name (:name pk-table)
+             :pk-table-schema (:schema pk-table)
+             :pk-column-name (:name pk-field)}))))
+
+(mu/defn- clear-fk!
+  "Clears FK relationship for a field that no longer has an FK constraint in the database.
+  Updates fk_target_field_id to NULL and resets semantic_type to a sensible default."
+  [database :- i/DatabaseInstance
+   fk-metadata :- i/FKMetadataEntry]
+  (let [field-query {:select [:f.id]
+                     :from [[:metabase_field :f]]
+                     :join [[:metabase_table :t] [:= :f.table_id :t.id]]
+                     :left-join [[:metabase_field_user_settings :u] [:= :f.id :u.field_id]]
+                     :where [:and
+                             ;; ensure we are not overriding user-set fks
+                             [:= :u.fk_target_field_id nil]
+                             [:= :u.semantic_type nil]
+
+                             [:= :t.db_id (:id database)]
+                             [:= [:lower :f.name] (u/lower-case-en (:fk-column-name fk-metadata))]
+                             [:= [:lower :t.name] (u/lower-case-en (:fk-table-name fk-metadata))]
+                             [:= [:lower :t.schema] (some-> (:fk-table-schema fk-metadata) u/lower-case-en)]
+                             [:= :f.active true]
+                             [:not= :f.visibility_type "retired"]
+                             [:= :t.active true]
+                             [:= :t.visibility_type nil]
+                             ;; Only clear fields that currently have FK relationships
+                             [:not= :f.fk_target_field_id nil]]}
+        update-query {:update :metabase_field
+                      :set {:fk_target_field_id nil
+                            :semantic_type "type/Category"}
+                      :where [:in :id field-query]}]
+    (u/prog1 (t2/query update-query)
+      (when (pos? <>)
+        (log/info (u/format-color 'yellow "Clearing dropped foreign key from %s %s"
+                                  (sync-util/table-name-for-logging :name (:fk-table-name fk-metadata)
+                                                                    :schema (:fk-table-schema fk-metadata))
+                                  (sync-util/field-name-for-logging :name (:fk-column-name fk-metadata))))))))
+
 (mu/defn sync-fks-for-table!
   "Sync the foreign keys for a specific `table`."
   ([table :- i/TableInstance]
@@ -129,20 +191,42 @@
              (let [driver       (driver.u/database->driver database)
                    schema-names (when (driver.u/supports? driver :schemas database)
                                   (sync-util/sync-schemas database))
-                   fk-metadata  (fetch-metadata/fk-metadata database :schema-names schema-names)]
-               (transduce (map (fn [x]
-                                 (let [[updated failed] (try [(mark-fk! database x) 0]
-                                                             (catch Exception e
-                                                               (log/error e)
-                                                               [0 1]))]
-                                   {:total-fks    1
-                                    :updated-fks  updated
-                                    :total-failed failed})))
-                          (partial merge-with +)
-                          {:total-fks    0
-                           :updated-fks  0
-                           :total-failed 0}
-                          fk-metadata)))
+                   db-fk-metadata (into #{} (fetch-metadata/fk-metadata database :schema-names schema-names))
+                   our-fk-metadata (our-fk-metadata database)
+                   ;; FK relationships that exist in DB but not in Metabase (need to be added/updated)
+                   fks-to-add (set/difference db-fk-metadata our-fk-metadata)
+                   ;; FK relationships that exist in Metabase but not in DB (need to be cleared)
+                   fks-to-clear (set/difference our-fk-metadata db-fk-metadata)
+                   ;; Process FK additions/updates
+                   add-results (transduce (map (fn [x]
+                                                 (let [[updated failed] (try [(mark-fk! database x) 0]
+                                                                             (catch Exception e
+                                                                               (log/error e)
+                                                                               [0 1]))]
+                                                   {:total-fks 1
+                                                    :updated-fks updated
+                                                    :total-failed failed})))
+                                          (partial merge-with +)
+                                          {:total-fks 0
+                                           :updated-fks 0
+                                           :total-failed 0}
+                                          fks-to-add)
+                   ;; Process FK removals
+                   clear-results (transduce (map (fn [x]
+                                                   (let [[cleared failed] (try [(clear-fk! database x) 0]
+                                                                               (catch Exception e
+                                                                                 (log/error e)
+                                                                                 [0 1]))]
+                                                     {:cleared-fks 1
+                                                      :updated-fks cleared
+                                                      :total-failed failed})))
+                                            (partial merge-with +)
+                                            {:cleared-fks 0
+                                             :updated-fks 0
+                                             :total-failed 0}
+                                            fks-to-clear)]
+               ;; Combine results
+               (merge-with + add-results clear-results {:total-fks (+ (count fks-to-add) (count fks-to-clear))})))
     ;; Mark the table as done with its initial sync once this step is done even if it failed, because only
     ;; sync-aborting errors should be surfaced to the UI (see
     ;; `:metabase.sync.util/exception-classes-not-to-retry`).
