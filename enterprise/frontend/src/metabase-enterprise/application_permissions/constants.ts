@@ -16,3 +16,10 @@ export const APPLICATION_PERMISSIONS_OPTIONS = {
     iconColor: "danger",
   },
 };
+
+export const APPLICATION_PERMISSIONS_LABELS = {
+  setting: () => t`Settings access`,
+  monitoring: () => t`Monitoring access`,
+  subscription: () => t`Subscriptions and Alerts`,
+  "public-link": () => t`Public link`,
+};
