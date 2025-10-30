@@ -89,7 +89,7 @@
   "Get a list of transforms."
   [& {:keys [last_run_start_time last_run_statuses tag_ids]}]
   (api/check-superuser)
-  (let [transforms (t2/select :model/Transform)]
+  (let [transforms (t2/select :model/Transform {:order-by [[:id :asc]]})]
     (into []
           (comp (transforms.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
                 (transforms.util/->status-filter-xf [:last_run :status] last_run_statuses)
@@ -232,7 +232,11 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (t2/delete! :model/Transform id)
+  (let [transform (api/check-404 (t2/select-one :model/Transform id))]
+    (t2/delete! :model/Transform id)
+    (events/publish-event! :event/transform-delete
+                           {:object transform
+                            :user-id api/*current-user-id*}))
   nil)
 
 (api.macros/defendpoint :delete "/:id/table"

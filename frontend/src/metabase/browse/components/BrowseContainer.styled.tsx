@@ -8,9 +8,11 @@ export const BrowseContainer = styled.div`
   display: flex;
   flex: 1;
   flex-flow: column nowrap;
-  margin-top: 1rem;
+  padding-top: 1rem;
   container-name: ItemsTableContainer;
   container-type: inline-size;
+  background-color: var(--mb-color-background-light);
+  min-height: 100%;
 `;
 
 export const BrowseSection = styled(Flex)`
