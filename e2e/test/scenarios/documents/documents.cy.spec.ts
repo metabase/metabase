@@ -706,6 +706,31 @@ H.describeWithSnowplowEE("documents", () => {
         H.getDocumentCard("Orders").should("exist");
       });
 
+      it("should support renaming cards", () => {
+        cy.log("Add card");
+        H.documentContent().click();
+        H.addToDocument("/", false);
+        H.commandSuggestionItem("Chart").click();
+        H.commandSuggestionDialog()
+          .findByText(PRODUCTS_COUNT_BY_CATEGORY_PIE.name)
+          .click();
+
+        cy.log("Rename card");
+        cy.findByTestId("card-embed-title").realHover();
+        cy.icon("pencil").click();
+        cy.realType("New name{enter}");
+
+        cy.log("Edit query");
+        H.openDocumentCardMenu("New name");
+        H.popover().findByText("Edit Query").click();
+        H.removeSummaryGroupingField({ field: "Category" });
+        H.addSummaryGroupingField({ field: "Price" });
+        H.modal().findByRole("button", { name: "Save and use" }).click();
+
+        cy.log("Assert new name is preserved");
+        H.getDocumentCard("New name").should("exist");
+      });
+
       it("should support resizing cards", () => {
         H.documentContent().click();
         H.addToDocument("/", false);
