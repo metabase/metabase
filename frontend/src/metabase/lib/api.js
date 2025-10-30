@@ -53,9 +53,9 @@ export class Api extends EventEmitter {
    * @typedef {{
    *   key: string;
    *   handler: OnBeforeRequestHandler
-   * }} OnBeforeRequestHandlerDescription
+   * }} OnBeforeRequestHandlerDescriptor
    *
-   * @type {OnBeforeRequestHandlerDescription[]}
+   * @type {OnBeforeRequestHandlerDescriptor[]}
    */
   onBeforeRequestHandlers = [];
   onResponseError;
@@ -422,18 +422,17 @@ export class Api extends EventEmitter {
   }
 
   /**
-   * @param {OnBeforeRequestHandlerDescription} handlerDescription
+   * @param {OnBeforeRequestHandlerDescriptor} handlerDescriptor
    */
-  setOnBeforeRequestHandler(handlerDescription) {
+  setOnBeforeRequestHandler(handlerDescriptor) {
     const existingHandlerKeyIndex = this.onBeforeRequestHandlers.findIndex(
-      ({ key }) => key === handlerDescription.key,
+      ({ key }) => key === handlerDescriptor.key,
     );
 
     if (existingHandlerKeyIndex >= 0) {
-      this.onBeforeRequestHandlers[existingHandlerKeyIndex] =
-        handlerDescription;
+      this.onBeforeRequestHandlers[existingHandlerKeyIndex] = handlerDescriptor;
     } else {
-      this.onBeforeRequestHandlers.push(handlerDescription);
+      this.onBeforeRequestHandlers.push(handlerDescriptor);
     }
   }
 }
