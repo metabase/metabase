@@ -87,8 +87,12 @@ describe("ListViewItem - ColumnValue rendering", () => {
     expect(screen.getByText("false")).toBeInTheDocument();
 
     // Icons from ColumnValue for booleans
-    expect(screen.getByRole("img", { name: /check icon/i })).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: /close icon/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("img", { name: /check icon/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("img", { name: /close icon/i }),
+    ).toBeInTheDocument();
   });
 
   it("renders category as a badge with label", () => {

@@ -10,7 +10,7 @@ import {
   getIsListViewConfigurationShown,
   getQuestion,
 } from "metabase/query_builder/selectors";
-import { Box } from "metabase/ui";
+import { Box, type IconName } from "metabase/ui";
 import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {
@@ -326,7 +326,7 @@ export const ListViz = ({
   }: {
     left?: string[];
     right?: string[];
-    entityIcon?: string | null;
+    entityIcon?: IconName | null;
     entityIconColor?: string;
     entityIconEnabled?: boolean;
     useImageColumn?: boolean;
