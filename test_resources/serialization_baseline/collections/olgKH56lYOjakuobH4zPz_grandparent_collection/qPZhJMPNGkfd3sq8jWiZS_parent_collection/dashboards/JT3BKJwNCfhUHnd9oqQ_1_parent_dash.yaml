@@ -10,6 +10,7 @@ collection_position: null
 position: null
 enable_embedding: false
 embedding_params: null
+embedding_type: null
 made_public_by_id: null
 public_uuid: null
 show_in_getting_started: false
