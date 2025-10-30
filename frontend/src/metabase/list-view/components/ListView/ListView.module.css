@@ -38,6 +38,7 @@
 
   /* Columns rendering */
   .badge {
+    cursor: inherit;
     padding-inline: var(--mantine-spacing-sm);
     color: var(--mb-color-text-secondary);
     border-color: var(--mb-color-border-secondary);
