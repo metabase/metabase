@@ -259,6 +259,21 @@ export function publishChanges(apiPath, callback) {
   });
 }
 
+/**
+ * Unpublish a static dashboard or question
+ * @param {"card" | "dashboard"} apiPath
+ * @param callback
+ */
+export function unpublishChanges(apiPath, callback) {
+  cy.intercept("PUT", `/api/${apiPath}/*`).as("unpublishChanges");
+
+  cy.button("Unpublish").click();
+
+  cy.wait("@unpublishChanges").then((xhr) => {
+    callback?.(xhr);
+  });
+}
+
 export function getParametersContainer() {
   return cy.findByLabelText("Configuring parameters");
 }
