@@ -1,3 +1,4 @@
+import Color from "color";
 import { t } from "ttag";
 
 import { DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
@@ -216,9 +217,11 @@ export const saveDashboardPdf = async ({
     headerHeight + parametersHeight + (includeBranding ? brandingHeight : 0);
   const contentHeight = gridNode.offsetHeight + verticalOffset;
 
-  let backgroundColor = getComputedStyle(document.documentElement)
-    .getPropertyValue("--mb-color-bg-dashboard")
-    .trim();
+  let backgroundColor = Color(
+    getComputedStyle(document.documentElement)
+      .getPropertyValue("--mb-color-bg-dashboard")
+      .trim(),
+  ).hex();
 
   if (!(await isValidColor(backgroundColor))) {
     backgroundColor = "white"; // Fallback to white if the color is invalid

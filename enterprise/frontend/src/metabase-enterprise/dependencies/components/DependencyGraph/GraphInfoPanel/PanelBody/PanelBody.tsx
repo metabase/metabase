@@ -5,7 +5,7 @@ import { getColumnIcon } from "metabase/common/utils/columns";
 import { getUserName } from "metabase/lib/user";
 import { Box, FixedSizeIcon, Group, Stack, Title } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { DependencyNode } from "metabase-types/api";
+import type { DependencyEntry, DependencyNode } from "metabase-types/api";
 
 import { GraphBreadcrumbs } from "../../GraphBreadcrumbs";
 import { GraphExternalLink } from "../../GraphExternalLink";
@@ -25,14 +25,15 @@ import {
 
 type PanelBodyProps = {
   node: DependencyNode;
+  getGraphUrl: (entry: DependencyEntry) => string;
 };
 
-export function PanelBody({ node }: PanelBodyProps) {
+export function PanelBody({ node, getGraphUrl }: PanelBodyProps) {
   return (
     <Stack className={S.body} p="lg" gap="lg">
       <DescriptionSection node={node} />
       <CreatorAndLastEditorSection node={node} />
-      <TableSection node={node} />
+      <TableSection node={node} getGraphUrl={getGraphUrl} />
       <FieldsSection node={node} />
     </Stack>
   );
@@ -98,8 +99,13 @@ function CreatorAndLastEditorSection({ node }: SectionProps) {
   );
 }
 
-function TableSection({ node }: SectionProps) {
-  const info = getNodeTableInfo(node);
+type TableSectionProps = {
+  node: DependencyNode;
+  getGraphUrl: (entry: DependencyEntry) => string;
+};
+
+function TableSection({ node, getGraphUrl }: TableSectionProps) {
+  const info = getNodeTableInfo(node, getGraphUrl);
   if (info == null) {
     return null;
   }

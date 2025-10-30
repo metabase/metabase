@@ -8,6 +8,7 @@ import {
   setupUpdateSettingsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, waitFor } from "__support__/ui";
+import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
 import {
   createMockDashboard,
   createMockDashboardQueryMetadata,
@@ -18,19 +19,12 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import { SdkIframeEmbedSetup } from "../SdkIframeEmbedSetup";
-
-const mockUseLocation = jest.fn();
-
-jest.mock("react-use", () => ({
-  ...jest.requireActual("react-use"),
-  useLocation: () => mockUseLocation(),
-}));
+import { SdkIframeEmbedSetupModal } from "../SdkIframeEmbedSetupModal";
 
 export const setup = (options?: {
   simpleEmbeddingEnabled?: boolean;
   jwtReady?: boolean;
-  urlSearchParams?: string;
+  initialState?: SdkIframeEmbedSetupModalInitialState;
 }) => {
   const mockDatabase = createMockDatabase();
   const mockDashboard = createMockDashboard();
@@ -46,19 +40,25 @@ export const setup = (options?: {
   setupUpdateSettingsEndpoint();
   setupUpdateSettingEndpoint();
 
-  mockUseLocation.mockReturnValue({
-    search: options?.urlSearchParams || "",
-  });
-
-  renderWithProviders(<SdkIframeEmbedSetup />, {
-    storeInitialState: createMockState({
-      settings: createMockSettingsState({
-        "enable-embedding-simple": options?.simpleEmbeddingEnabled ?? false,
-        "jwt-enabled": options?.jwtReady ?? false,
-        "jwt-configured": options?.jwtReady ?? false,
+  renderWithProviders(
+    <SdkIframeEmbedSetupModal
+      opened
+      initialState={{
+        useExistingUserSession: true,
+        ...options?.initialState,
+      }}
+      onClose={jest.fn()}
+    />,
+    {
+      storeInitialState: createMockState({
+        settings: createMockSettingsState({
+          "enable-embedding-simple": options?.simpleEmbeddingEnabled ?? false,
+          "jwt-enabled": options?.jwtReady ?? false,
+          "jwt-configured": options?.jwtReady ?? false,
+        }),
       }),
-    }),
-  });
+    },
+  );
 };
 
 export async function waitForPutRequests() {

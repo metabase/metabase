@@ -8,6 +8,9 @@ import "react-resizable/css/styles.css";
 import noResultsSource from "assets/img/no_results.svg";
 import { useUpdateSettingsMutation } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
+import { useDispatch } from "metabase/lib/redux";
+import type { SdkIframeEmbedSetupModalProps } from "metabase/plugins";
+import { closeModal } from "metabase/redux/ui";
 import {
   Box,
   Button,
@@ -16,6 +19,7 @@ import {
   Group,
   Icon,
   Image,
+  Modal,
   Stack,
 } from "metabase/ui";
 import type { SettingKey } from "metabase-types/api";
@@ -28,6 +32,7 @@ import S from "./SdkIframeEmbedSetup.module.css";
 import { SdkIframeEmbedSetupProvider } from "./SdkIframeEmbedSetupProvider";
 
 export const SdkIframeEmbedSetupContent = () => {
+  const dispatch = useDispatch();
   const [updateSettings] = useUpdateSettingsMutation();
   const { currentStep, settings } = useSdkIframeEmbedSetupContext();
 
@@ -44,7 +49,7 @@ export const SdkIframeEmbedSetupContent = () => {
 
     updateSettings({ [settingKey]: true });
 
-    window.history.back();
+    dispatch(closeModal());
   }
 
   const nextStepButton = match(currentStep)
@@ -96,6 +101,8 @@ export const SdkIframeEmbedSetupContent = () => {
 
       <Box className={S.PreviewPanel}>
         <Stack h="100%">
+          <Modal.CloseButton />
+
           {isSimpleEmbeddingEnabled ? (
             <SdkIframeEmbedPreview />
           ) : (
@@ -129,8 +136,22 @@ const SidebarResizer = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-export const SdkIframeEmbedSetup = () => (
-  <SdkIframeEmbedSetupProvider>
-    <SdkIframeEmbedSetupContent />
-  </SdkIframeEmbedSetupProvider>
+export const SdkIframeEmbedSetupModal = ({
+  opened,
+  onClose,
+  initialState,
+}: SdkIframeEmbedSetupModalProps) => (
+  <Modal
+    opened={opened}
+    fullScreen
+    withCloseButton={false}
+    transitionProps={{ transition: "fade", duration: 200 }}
+    onClose={onClose}
+  >
+    <Modal.Content style={{ overflow: "hidden" }}>
+      <SdkIframeEmbedSetupProvider initialState={initialState}>
+        <SdkIframeEmbedSetupContent />
+      </SdkIframeEmbedSetupProvider>
+    </Modal.Content>
+  </Modal>
 );
