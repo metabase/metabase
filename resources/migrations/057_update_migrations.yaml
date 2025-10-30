@@ -2387,6 +2387,36 @@ databaseChangeLog:
             columnName: source_type
             columnDataType: varchar(32)
 
+  - changeSet:
+      id: v57.2025-10-27T19:01:00
+      author: qnkhuat
+      comment: Usage analytics; Add documents to content view
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/content/v5/postgres-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/content/v5/mysql-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/content/v5/h2-content.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/content/v3/postgres-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/content/v4/mysql-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/content/v3/h2-content.sql
+            relativeToChangelogFile: true
 
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
