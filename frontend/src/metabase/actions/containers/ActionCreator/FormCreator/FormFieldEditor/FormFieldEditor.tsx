@@ -18,9 +18,9 @@ import type {
 
 import { FieldSettingsButtons } from "../FieldSettingsButtons";
 
+import { DragHandle } from "./DragHandle";
 import {
   Column,
-  DragHandle,
   EditorContainer,
   FormFieldContainer,
   Header,
@@ -109,9 +109,8 @@ function FormFieldEditor({
         <Column>
           {isEditable && (
             <DragHandle
-              name="grabber"
               ref={dragHandleRef}
-              {...dragHandleListeners}
+              dragHandleListeners={dragHandleListeners}
             />
           )}
         </Column>
