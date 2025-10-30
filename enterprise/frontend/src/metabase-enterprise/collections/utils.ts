@@ -31,11 +31,13 @@ export function isRegularCollection({
 export function getCollectionType({
   authority_level,
   type,
-}: Partial<Collection>):
+  collection_type,
+}: Partial<Collection> & { collection_type?: Collection["type"] }):
   | CollectionAuthorityLevelConfig
   | CollectionInstanceAnaltyicsConfig {
   return (
-    COLLECTION_TYPES?.[String(type || authority_level)] ?? REGULAR_COLLECTION
+    COLLECTION_TYPES?.[String(type || collection_type || authority_level)] ??
+    REGULAR_COLLECTION
   );
 }
 
@@ -54,7 +56,10 @@ export function isSyncedCollection(
 }
 
 export const getIcon = (item: ObjectWithModel): IconData => {
-  const collectionType = getCollectionType({ type: item.type }).type;
+  const collectionType = getCollectionType({
+    type: item.type,
+    collection_type: item.collection_type,
+  }).type;
   if (collectionType === "instance-analytics") {
     return {
       name: INSTANCE_ANALYTICS_COLLECTION.icon,

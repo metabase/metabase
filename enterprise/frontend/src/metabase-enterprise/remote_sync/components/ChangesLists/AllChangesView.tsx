@@ -133,7 +133,7 @@ export const AllChangesView = ({
                   bg="bg-light"
                   bdrs="md"
                 >
-                  <Icon name="synced_collection" size={16} c="text-secondary" />
+                  <Icon name="repository" size={16} c="text-secondary" />
                   <CollectionPath segments={group.pathSegments} />
                   {group.collectionEntity && (
                     <Icon

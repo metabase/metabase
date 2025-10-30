@@ -73,7 +73,9 @@ export function isInstanceAnalyticsCustomCollection(
   );
 }
 
-export function isSyncedCollection(collection: Partial<Collection>): boolean {
+export function isSyncedCollection(
+  collection: Partial<Collection>,
+): boolean {
   return PLUGIN_COLLECTIONS.isSyncedCollection(collection);
 }
 
