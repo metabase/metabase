@@ -227,7 +227,7 @@ export const ListViewConfiguration = ({
         className={S.listViewContainer}
         style={{ "--grid-columns": Math.max(rightValues.length, 1) }}
       >
-        <Stack justify="center" flex={1} maw="var(--max-width)" w="100%">
+        <Stack justify="center" flex={1} w="100%">
           <Text fw="bold">{t`Customize List columns`}</Text>
           <Box className={S.listViewConfigurationInputs}>
             {/* Icon selector */}
@@ -437,7 +437,6 @@ export const ListViewConfiguration = ({
         <Divider w="100%" />
         <Stack
           w="100%"
-          maw="var(--max-width)"
           flex={1}
           justify="center"
           className={S.listContainer}
