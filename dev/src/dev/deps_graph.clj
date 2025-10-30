@@ -2,6 +2,7 @@
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.tools.namespace.file :as ns.file]
    [clojure.tools.namespace.find :as ns.find]
@@ -483,9 +484,32 @@
               metabase.permissions.models.permissions-group
               ...}
      ...}"
-  [module]
-  (let [deps (dependencies)]
-    (into (sorted-map)
-          (map (fn [dep]
-                 [dep (into (sorted-set) (keys (module-usages-of-other-module deps module dep)))]))
-          (module-dependencies deps module))))
+  ([module]
+   (module-dependencies-by-namespace (dependencies) module))
+
+  ([deps module]
+   (into (sorted-map)
+         (map (fn [dep]
+                [dep (into (sorted-set) (keys (module-usages-of-other-module deps module dep)))]))
+         (module-dependencies deps module))))
+
+(defn dependencies-eliminated-by-removing-namespaces
+  "Return the set of `module` dependencies that we could eliminate if we were to split namespace(s) off into a separate
+  module.
+
+    ;; if we move `metabase.permissions.api` into a separate module then `permissions` no longer has a dependency on
+    ;; `request`
+    (dependencies-eliminated-by-removing-namespaces 'permissions 'metabase.permissions.api)
+    ;; =>
+    #{request}"
+  [module namespace-symb-or-set]
+  (let [deps            (dependencies)
+        namespace-symbs (if (symbol? namespace-symb-or-set)
+                          #{namespace-symb-or-set}
+                          namespace-symb-or-set)
+        dep->namespaces (module-dependencies-by-namespace deps module)]
+    (into (sorted-set)
+          (keep (fn [[dep namespaces]]
+                  (when (empty? (set/difference namespaces namespace-symbs))
+                    dep)))
+          dep->namespaces)))
