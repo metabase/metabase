@@ -37,12 +37,6 @@ export function SearchNew({
     refetch,
   } = useListTablesQuery({
     term: query,
-    visibility_type:
-      filters.visibilityType == null
-        ? undefined
-        : filters.visibilityType === "visible"
-          ? null
-          : filters.visibilityType,
     visibility_type2: filters.visibilityType2 ?? undefined,
     data_source:
       filters.dataSource === "unknown"
@@ -53,7 +47,7 @@ export function SearchNew({
         ? null
         : (filters.ownerUserId ?? undefined),
     owner_email: filters.ownerEmail ?? undefined,
-    include_hidden: filters.visibilityType != null,
+    include_hidden: filters.visibilityType2 != null,
   });
 
   useEffect(() => {
@@ -112,7 +106,7 @@ export function SearchNew({
                 [S.active]: active,
               })}
               key={table.id}
-              py="xs"
+              p="sm"
               align="center"
               gap="sm"
               to={getUrl({
