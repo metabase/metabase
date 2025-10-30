@@ -15,7 +15,6 @@ import {
   NameDescriptionInput,
   SortableFieldList,
   UserInput,
-  VisibilityInput,
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
@@ -41,7 +40,6 @@ import type {
 import type { RouteParams } from "../../types";
 import { getUrl, parseRouteParams } from "../../utils";
 import { ResponsiveButton } from "../ResponsiveButton";
-import type { LimitedVisibilityType } from "../TablePicker/types";
 import { TitledSection } from "../TitledSection";
 
 import { FieldList } from "./FieldList";
@@ -319,11 +317,6 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
 
       <Box pb="xl" px="xl">
         <TitledSection title={t`Metadata`}>
-          <VisibilityInput
-            value={table.visibility_type == null ? "visible" : "hidden"}
-            onChange={handleVisibilityTypeChange}
-          />
-
           <LayerInput
             value={table.visibility_type2 ?? "copper"}
             onChange={handleLayerChange}

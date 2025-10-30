@@ -5,7 +5,6 @@ import {
   DataSourceInput,
   LayerInput,
   UserInput,
-  VisibilityInput,
 } from "metabase/metadata/components";
 import { ActionIcon, Button, Group, Icon, Stack, Tooltip } from "metabase/ui";
 import type {
@@ -14,11 +13,9 @@ import type {
   UserId,
 } from "metabase-types/api";
 
-import type { LimitedVisibilityType } from "../types";
 import { getFiltersCount } from "../utils";
 
 export interface FilterState {
-  visibilityType: LimitedVisibilityType | null;
   visibilityType2: TableVisibilityType2 | null;
   dataSource: TableDataSource | "unknown" | null;
   ownerEmail: string | null;
@@ -40,7 +37,6 @@ export function FilterPopover({ filters, onClose, onSubmit }: Props) {
       dataSource: null,
       ownerEmail: null,
       ownerUserId: null,
-      visibilityType: null,
       visibilityType2: null,
     });
   };
@@ -53,14 +49,6 @@ export function FilterPopover({ filters, onClose, onSubmit }: Props) {
       }}
     >
       <Stack gap="md" p="lg">
-        <VisibilityInput
-          clearable
-          value={form.visibilityType}
-          onChange={(visibilityType) => {
-            setForm((form) => ({ ...form, visibilityType }));
-          }}
-        />
-
         <LayerInput
           clearable
           value={form.visibilityType2}

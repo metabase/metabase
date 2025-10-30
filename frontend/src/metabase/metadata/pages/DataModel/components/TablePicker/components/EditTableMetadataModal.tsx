@@ -19,8 +19,6 @@ import type {
   UserId,
 } from "metabase-types/api";
 
-import type { LimitedVisibilityType } from "../types";
-
 interface Props {
   tables?: Set<TableId>;
   schemas?: Set<SchemaId>;
@@ -63,12 +61,6 @@ export function EditTableMetadataModal({
       table_ids: Array.from(tables),
       schema_ids: Array.from(schemas),
       database_ids: Array.from(databases),
-      visibility_type:
-        visibilityType === null
-          ? undefined
-          : visibilityType === "visible"
-            ? null
-            : "hidden",
       visibility_type2: visibilityType2 ?? undefined,
       data_source: dataSource === "unknown" ? null : (dataSource ?? undefined),
       owner_email:
@@ -111,12 +103,6 @@ export function EditTableMetadataModal({
       onClose={handleClose}
     >
       <Stack gap="md" pt="sm">
-        <VisibilityInput
-          clearable
-          value={visibilityType}
-          onChange={setVisibilityType}
-        />
-
         <LayerInput
           clearable
           value={visibilityType2}

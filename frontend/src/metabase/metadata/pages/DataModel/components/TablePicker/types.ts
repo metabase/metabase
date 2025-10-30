@@ -137,10 +137,7 @@ export interface ChangeOptions {
   isAutomatic?: boolean;
 }
 
-export type LimitedVisibilityType = "visible" | "hidden";
-
 export interface FilterState {
-  visibilityType: LimitedVisibilityType | null;
   visibilityType2: TableVisibilityType2 | null;
   dataSource: TableDataSource | "unknown" | null;
   ownerEmail: string | null;
