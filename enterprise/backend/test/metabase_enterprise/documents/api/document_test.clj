@@ -9,8 +9,10 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
+(use-fixtures :once (fixtures/initialize :db :test-users :test-users-personal-collections))
 (use-fixtures :each (fn [f] (mt/with-premium-features #{:documents} (f))))
 
 (deftest post-document-basic-creation-test
@@ -2318,7 +2320,7 @@
                                                  {:name "Doc with bad reference"
                                                   :collection_id remote-synced-id
                                                   :document (prose-mirror-with-smartlink "Link to card" card-id)})]
-              (is (= "Model has non-remote-synced dependencies" (:message response))
+              (is (= "Uses content that is not remote synced." (:message response))
                   "Should report non-remote-synced dependencies"))))))))
 
 (deftest create-document-in-remote-synced-with-remote-synced-smartlink-test
@@ -2394,7 +2396,7 @@
           (let [response (mt/user-http-request :crowberto
                                                :put 400 (format "ee/document/%s" doc-id)
                                                {:document (prose-mirror-with-smartlink "Bad link" card-id)})]
-            (is (= "Model has non-remote-synced dependencies" (:message response)))))))))
+            (is (= "Uses content that is not remote synced." (:message response)))))))))
 
 (deftest update-document-in-remote-synced-with-remote-synced-smartlink-test
   (testing "PUT /api/ee/document/:id - updating document in remote-synced collection to add remote-synced reference"
@@ -2499,7 +2501,7 @@
           (let [response (mt/user-http-request :crowberto
                                                :put 400 (format "ee/document/%s" doc-id)
                                                {:collection_id remote-synced-id})]
-            (is (= "Model has non-remote-synced dependencies" (:message response)))
+            (is (= "Uses content that is not remote synced." (:message response)))
 
             ;; Verify document was NOT moved
             (is (= regular-id (:collection_id (t2/select-one :model/Document :id doc-id)))
@@ -2529,10 +2531,43 @@
                                                :put 400 (format "ee/document/%s" doc-id)
                                                {:document (prose-mirror-with-smartlink "Bad" regular-card-id)
                                                 :collection_id remote-synced-id})]
-            (is (= "Model has non-remote-synced dependencies" (:message response)))))
+            (is (= "Uses content that is not remote synced." (:message response)))))
 
         (testing "Does not throw when moving to a regular collection"
           (mt/user-http-request :crowberto
                                 :put 200 (format "ee/document/%s" doc-id)
                                 {:document (prose-mirror-with-smartlink "Good" remote-card-id)
                                  :collection_id regular-id}))))))
+
+(deftest post-document-to-personal-collection-test
+  (testing "POST /api/ee/document/ - creating a document in a personal collection"
+    (mt/with-model-cleanup [:model/Document]
+      (let [personal-coll-id (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :rasta))]
+        (testing "User can create a document in their own personal collection"
+          (let [result (mt/user-http-request :rasta
+                                             :post 200 "ee/document/"
+                                             {:name "Personal Document"
+                                              :document (text->prose-mirror-ast "My personal notes")
+                                              :collection_id personal-coll-id})]
+            (is (pos? (:id result)))
+            (is (= "Personal Document" (:name result)))
+            (is (= personal-coll-id (:collection_id result)))
+            (testing "Document is successfully saved in the database"
+              (let [doc (t2/select-one :model/Document :id (:id result))]
+                (is (some? doc))
+                (is (= personal-coll-id (:collection_id doc)))
+                (is (= "Personal Document" (:name doc)))))))
+        (testing "Admin can also create a document in someone else's personal collection"
+          (let [result (mt/user-http-request :crowberto
+                                             :post 200 "ee/document/"
+                                             {:name "Admin Document in Personal Collection"
+                                              :document (text->prose-mirror-ast "Admin's notes")
+                                              :collection_id personal-coll-id})]
+            (is (pos? (:id result)))
+            (is (= personal-coll-id (:collection_id result)))))
+        (testing "Other users cannot create documents in someone else's personal collection"
+          (mt/user-http-request :lucky
+                                :post 403 "ee/document/"
+                                {:name "Should Fail"
+                                 :document (text->prose-mirror-ast "Should not be created")
+                                 :collection_id personal-coll-id}))))))

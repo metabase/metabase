@@ -105,7 +105,7 @@ describe("Remote Sync", () => {
       cy.wait("@updateDashboard").then((req) => {
         expect(req.response?.statusCode).to.eq(400);
         expect(req.response?.body.message).to.contain(
-          "non-remote-synced dependencies",
+          "content that is not remote synced",
         );
       });
 
