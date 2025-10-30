@@ -35,4 +35,4 @@ jobs:
         languages: javascript
         config-file: ./.github/codeql/codeql-config.yml
     - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v2
+      uses: github/codeql-action/analyze@v4
