@@ -23,7 +23,8 @@
   :type :string
   :visibility :admin
   :encryption :no
-  :export? false)
+  :export? false
+  :can-read-from-env? false)
 
 (defsetting remote-sync-token
   (deferred-tru "An Authorization Bearer token allowing access to the git repo over HTTP")
@@ -33,14 +34,16 @@
   :export? false
   :sensitive? true
   :encryption :when-encryption-key-set
-  :audit :getter)
+  :audit :getter
+  :can-read-from-env? false)
 
 (defsetting remote-sync-url
   (deferred-tru "The location of your git repository, e.g. https://github.com/acme-inco/metabase.git")
   :type :string
   :visibility :admin
   :encryption :no
-  :export? false)
+  :export? false
+  :can-read-from-env? false)
 
 (defsetting remote-sync-type
   (deferred-tru "Git synchronization type - :development or :production")
@@ -56,7 +59,8 @@
                             (throw (ex-info "Remote-sync-type set to an unsupported value"
                                             {:value new-value
                                              :options (seq valid-types)})))]
-              (setting/set-value-of-type! :keyword :remote-sync-type value))))
+              (setting/set-value-of-type! :keyword :remote-sync-type value)))
+  :can-read-from-env? false)
 
 (defsetting remote-sync-auto-import
   (deferred-tru "Whether to automatically import from the remote git repository. Only applies if remote-sync-type is :production.")
