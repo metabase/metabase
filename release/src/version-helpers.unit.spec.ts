@@ -20,7 +20,6 @@ import {
   getVersionFromReleaseBranch,
   getVersionType,
   isEnterpriseVersion,
-  isLegacyVersion,
   isPreReleaseVersion,
   isValidVersionString,
   versionSort,
@@ -870,37 +869,6 @@ describe("version-helpers", () => {
           majorVersion: "57",
         });
       });
-    });
-  });
-
-  describe("isLegacyVersion", () => {
-    it("returns true for versions below 55", () => {
-      expect(isLegacyVersion("v0.54.0")).toBe(true);
-      expect(isLegacyVersion("v1.54.0")).toBe(true);
-      expect(isLegacyVersion("v0.10.0")).toBe(true);
-      expect(isLegacyVersion("v1.0.0")).toBe(true);
-    });
-
-    it("returns false for versions 55 and above", () => {
-      expect(isLegacyVersion("v0.55.0")).toBe(false);
-      expect(isLegacyVersion("v1.55.0")).toBe(false);
-      expect(isLegacyVersion("v0.56.0")).toBe(false);
-      expect(isLegacyVersion("v1.99.0")).toBe(false);
-    });
-
-    it("throws for invalid version strings", () => {
-      expect(() => isLegacyVersion("invalid")).toThrow(
-        "Invalid version string: invalid",
-      );
-      expect(() => isLegacyVersion("v2.0")).toThrow(
-        "Invalid version string: v2.0",
-      );
-      expect(() => isLegacyVersion("")).toThrow("Invalid version string: ");
-    });
-
-    it("handles pre-release versions", () => {
-      expect(isLegacyVersion("v0.54.0-beta")).toBe(true);
-      expect(isLegacyVersion("v0.55.0-rc1")).toBe(false);
     });
   });
 });
