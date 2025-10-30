@@ -13,7 +13,8 @@
    [metabase.util.malli.schema :as ms]
    [rewrite-clj.node :as n]
    [rewrite-clj.parser :as r.parser]
-   [rewrite-clj.zip :as z]))
+   [rewrite-clj.zip :as z]
+   [clojure.set :as set]))
 
 (set! *warn-on-reflection* true)
 
@@ -432,12 +433,41 @@
        ddiff/minimize)))
 
 (defn print-kondo-config-diff
-  "Print the diff between how the config would look if regenerated with [[generate-config]] versus how it looks in
+    "Print the diff between how the config would look if regenerated with [[generate-config]] versus how it looks in
   reality ([[kondo-config]]). Use this to suggest updates to make to the config file."
-  []
-  (ddiff/pretty-print (kondo-config-diff)))
+    []
+    (ddiff/pretty-print (kondo-config-diff)))
 
 (comment
+  (external-usages 'core)
+
   (module-dependencies (dependencies) 'lib)
 
   (module-usages-of-other-module 'lib 'models))
+
+(defn all-module-deps-paths
+  "Build a map of
+
+    dep => path-to-dep
+
+  for each dependency (direct or indirect) of a module, e.g.
+
+    (all-module-deps-paths 'settings)
+    ;; =>
+    {api      []                         ; settings depends on api directly
+     api-keys [permissions collections]} ; settings depends on permissions which depends on collections which depends on api-keys"
+  ([module]
+   (all-module-deps-paths (dependencies) module (sorted-map) (atom #{}) []))
+  ([deps module acc already-seen path]
+   (let [module-deps  (module-dependencies deps module)
+         new-deps     (remove @already-seen module-deps)
+         acc          (into acc
+                            (map (fn [dep]
+                                   [dep path]))
+                            new-deps)]
+     (swap! already-seen into new-deps)
+     (reduce
+      (fn [acc new-dep]
+        (all-module-deps-paths deps new-dep acc already-seen (conj path new-dep)))
+      acc
+      new-deps))))

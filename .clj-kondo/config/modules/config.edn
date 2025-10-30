@@ -381,7 +381,7 @@
 
   core
   {:team "UX West"
-   :api  #{metabase.core.initialization-status}
+   :api  #{}
    :uses :any}
 
   dashboards
@@ -584,6 +584,11 @@
            sync
            task
            util}}
+
+  initialization-status
+  {:team "UX West"
+   :api  #{metabase.initialization-status.core}
+   :uses #{}}
 
   internal-stats
   {:team "UX West"
@@ -907,7 +912,7 @@
            metabase.queries.core
            metabase.queries.init
            metabase.queries.models.query ; TODO FIXME
-           metabase.queries.schema} ; TODO FIXME
+           metabase.queries.schema}      ; TODO FIXME
    :uses #{analytics
            analyze
            api
@@ -1036,7 +1041,7 @@
    :uses #{api
            config
            embedding
-           permissions ; FIXME
+           permissions                  ; FIXME
            session
            settings
            users
@@ -1132,9 +1137,9 @@
            app-db
            appearance
            config
-           core
            driver
            embedding
+           initialization-status
            lib-be
            premium-features
            query-processor
@@ -1151,7 +1156,7 @@
            metabase.session.core
            metabase.session.init
            metabase.session.models.session ; TODO -- shouldn't be exposed as an API namespace
-           metabase.session.settings} ; TODO -- shouldn't be exposed as an API namespace
+           metabase.session.settings}      ; TODO -- shouldn't be exposed as an API namespace
    :uses #{api
            app-db
            channel
@@ -1903,7 +1908,7 @@
            query-processor
            util}}
 
- enterprise/remote-sync
+  enterprise/remote-sync
   {:team "UX West"
    :api  #{metabase-enterprise.remote-sync.api
            metabase-enterprise.remote-sync.core

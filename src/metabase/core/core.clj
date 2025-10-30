@@ -12,7 +12,7 @@
    [metabase.config.core :as config]
    [metabase.core.config-from-file :as config-from-file]
    [metabase.core.init]
-   [metabase.core.initialization-status :as init-status]
+   [metabase.initialization-status.core :as init-status]
    [metabase.driver.h2]
    [metabase.driver.mysql]
    [metabase.driver.postgres]

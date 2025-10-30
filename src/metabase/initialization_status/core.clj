@@ -1,4 +1,4 @@
-(ns metabase.core.initialization-status
+(ns metabase.initialization-status.core
   "Code related to tracking the progress of metabase initialization.
    This is kept in a separate, tiny namespace so it can be loaded right away when the application launches
    (and so we don't need to wait for [[metabase.core.core]] to load to check the status).")
