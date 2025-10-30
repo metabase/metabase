@@ -1,4 +1,5 @@
 import { useClipboard, useDisclosure } from "@mantine/hooks";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { CodeEditor } from "metabase/common/components/CodeEditor";
@@ -25,6 +26,18 @@ const ToolCallDetailsModal = ({
   const clipboard = useClipboard();
   const copy = (value: any) => clipboard.copy(JSON.stringify(value, null, 2));
 
+  const parsedArgs = useMemo(() => {
+    try {
+      return message.args
+        ? // done for formatting
+          JSON.stringify(JSON.parse(message.args), null, 2)
+        : undefined;
+    } catch {
+      console.warn("Failed to parse tool call args as JSON", message.args);
+      return message.args;
+    }
+  }, [message.args]);
+
   return (
     <Modal
       opened
@@ -45,16 +58,12 @@ const ToolCallDetailsModal = ({
           <Stack gap="xs">
             <Flex gap="xs">
               <Text fw="bold">{t`Request`}</Text>
-              <ActionIcon h="sm" onClick={() => copy(message.args)}>
+              <ActionIcon h="sm" onClick={() => copy(parsedArgs)}>
                 <Icon name="copy" size="1rem" />
               </ActionIcon>
             </Flex>
             <Box mx="-1.5rem">
-              <CodeEditor
-                value={JSON.stringify(message.args, null, 2)}
-                language="json"
-                readOnly
-              />
+              <CodeEditor value={parsedArgs} language="json" readOnly />
             </Box>
           </Stack>
         )}
