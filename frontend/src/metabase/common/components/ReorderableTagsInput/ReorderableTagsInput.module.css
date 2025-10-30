@@ -14,7 +14,7 @@
   cursor: not-allowed;
 }
 
-.dragOver {
+.dragOver:not(.max) {
   box-shadow: 0 0 2px 1px var(--mb-color-saturated-blue);
   cursor: none !important;
 }
