@@ -24,6 +24,31 @@ on:
         required: true
 
 jobs:
+  test-mode-config:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    outputs:
+      run_mode: ${{ steps.config.outputs.runMode }}
+      dev_server: ${{ steps.config.outputs.metastoreDevServer }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: release
+      - name: Get test mode config
+        id: config
+        uses: actions/github-script@v7
+        with:
+          script: | # js
+            const { isLegacyVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+            const version = '${{ inputs.version }}';
+            const isLegacy = isLegacyVersion(version);
+
+            return {
+              runMode: isLegacy ? 'prod' : 'e2e';
+              metastoreDevServer: isLegacy ? '' : '${{ secrets.METASTORE_DEV_SERVER_URL }}'
+            }
+
   release-artifact:
     runs-on: ubuntu-22.04
     timeout-minutes: 10
@@ -96,23 +121,23 @@ jobs:
   run-sanity-check:
     runs-on: ubuntu-22.04
     timeout-minutes: 30
-    needs: [release-artifact]
+    needs: [test-mode-config, release-artifact]
     strategy:
       matrix:
         edition: [oss, ee]
     env:
       MB_EDITION: ${{ matrix.edition }}
       DISPLAY: ""
-      MB_RUN_MODE: e2e
-      METASTORE_DEV_SERVER_URL: ${{ secrets.METASTORE_DEV_SERVER_URL }}
+      MB_RUN_MODE: ${{ needs.test-mode-config.outputs.run_mode }}
+      METASTORE_DEV_SERVER_URL: ${{ needs.test-mode-config.outputs.dev_server }}
       CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
       CYPRESS_MB_STARTER_CLOUD_TOKEN: ${{ secrets.STAGING_MB_STARTER_CLOUD_TOKEN }}
       CYPRESS_MB_PRO_CLOUD_TOKEN: ${{ secrets.STAGING_MB_PRO_CLOUD_TOKEN }}
       CYPRESS_MB_PRO_SELF_HOSTED_TOKEN: ${{ secrets.STAGING_MB_PRO_SELF_HOSTED_TOKEN }}
       # these are needed for backwards compatibility with release branches earlier than v55, since
       # this workflow always runs from master, but we run tests from the release branch
-      CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
-      CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.STAGING_MB_STARTER_CLOUD_TOKEN }}
+      CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.MB_ALL_FEATURES_TOKEN }}
+      CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.MB_STARTER_CLOUD_TOKEN }}
       # disabled because of out of memory issues
       # probably related to https://github.com/cypress-io/cypress/issues/27415
       CYPRESS_NO_COMMAND_LOG: 1
