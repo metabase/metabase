@@ -277,12 +277,12 @@ export const colorConfig = {
     dark: baseColors.lobster[90],
   },
   "background-hover": {
-    light: `color-mix(in srgb, var(--mb-color-brand) 15%, transparent)`, //baseColors.oceanAlpha[10],
-    dark: `color-mix(in srgb, var(--mb-color-brand) 15%, transparent)`, //baseColors.oceanAlpha[20],
+    light: `color-mix(in srgb, var(--mb-color-brand) 21%, transparent)`, //baseColors.oceanAlpha[10],
+    dark: `color-mix(in srgb, var(--mb-color-brand) 21%, transparent)`, //baseColors.oceanAlpha[20],
   },
   "background-hover-light": {
-    light: `color-mix(in srgb, var(--mb-color-brand) 5%, transparent)`, //baseColors.oceanAlpha[5],
-    dark: `color-mix(in srgb, var(--mb-color-brand) 5%, transparent)`, //baseColors.oceanAlpha[10],
+    light: `color-mix(in srgb, var(--mb-color-brand) 7%, transparent)`, //baseColors.oceanAlpha[5],
+    dark: `color-mix(in srgb, var(--mb-color-brand) 7%, transparent)`, //baseColors.oceanAlpha[10],
   },
   "background-inverse": {
     light: baseColors.orion[80],
@@ -360,11 +360,11 @@ export const colorConfig = {
   },
   "brand-light": {
     light: baseColors.brand[10],
-    dark: baseColors.brand[90],
+    dark: baseColors.brand[80],
   },
   "brand-lighter": {
     light: baseColors.brand[5],
-    dark: baseColors.brand[100],
+    dark: baseColors.brand[90],
   },
   brand: {
     light: whitelabelColors.brand || baseColors.blue[40],
@@ -642,10 +642,6 @@ export const colorConfig = {
   "border-subtle": {
     light: baseColors.orionAlpha[10],
     dark: baseColors.orionAlphaInverse[10],
-  },
-  "select-background-hover": {
-    light: baseColors.orionAlpha[10],
-    dark: baseColors.orionAlphaInverse[20],
   },
 };
 
