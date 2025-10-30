@@ -5,8 +5,8 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.config.core :as config]
    [metabase.embedding.settings :as embed.settings]
+   [metabase.premium-features.test-util :as tu]
    [metabase.premium-features.token-check :as token-check]
-   [metabase.premium-features.token-check-test :as token-check-test]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -22,12 +22,12 @@
             (is (not (embed.settings/show-static-embed-terms)))))
         (when config/ee-available?
           (testing "should return false when an EE user has a valid token"
-            (with-redefs [token-check/fetch-token-status (fn [_x]
-                                                           {:valid    true
-                                                            :status   "fake"
-                                                            :features ["test" "fixture"]
-                                                            :trial    false})]
-              (mt/with-temporary-setting-values [premium-embedding-token (token-check-test/random-token)]
+            (with-redefs [token-check/check-token (fn [_x]
+                                                    {:valid    true
+                                                     :status   "fake"
+                                                     :features ["test" "fixture"]
+                                                     :trial    false})]
+              (mt/with-temporary-setting-values [premium-embedding-token (tu/random-token)]
                 (is (not (embed.settings/show-static-embed-terms)))
                 (embed.settings/show-static-embed-terms! false)
                 (is (not (embed.settings/show-static-embed-terms))))))
