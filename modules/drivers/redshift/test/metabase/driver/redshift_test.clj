@@ -506,6 +506,8 @@
                                          ["longtext" :type/Text]
                                          ["varchar(100)" :type/Text]
                                          ["varchar(100)" :type/Text]
+                                         ["enum('A','B')" :type/Text]
+                                         ["string" :type/Text]
                                          ["int(11) unsigned" :type/Integer]
                                          ["int(10)" :type/Integer]
                                          ["tinyint(1)" :type/Integer]

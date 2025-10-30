@@ -213,6 +213,7 @@
         (str/starts-with? stn "char")                       :type/Text
         (str/starts-with? stn "varchar")                    :type/Text
         (str/starts-with? stn "text")                       :type/Text
+        (str/starts-with? stn "enum")                       :type/Text
         ;; https://dev.mysql.com/doc/refman/8.4/en/charset-national.html
         (str/starts-with? stn "national varchar")           :type/Text
         (str/starts-with? stn "nvarchar")                   :type/Text
@@ -224,6 +225,7 @@
         (str/starts-with? stn "mediumtext") :type/Text
         (str/starts-with? stn "longtext")   :type/Text
 
+        (= stn "string")                    :type/Text ; Iceberg text type
         (= stn "datetime")                  :type/DateTime
         (= stn "year")                      :type/Integer))))
 
