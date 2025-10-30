@@ -231,6 +231,23 @@
       :cljs
       (core/mapv f coll1 coll2 coll3 coll4))))
 
+#?(:clj
+   (defn mapv-indexed
+     "Like `clojure.core/map-indexed`, but returns a vector and uses Java iterators under the hood and optimized small
+  transient vectors. Requires `f` to be a primitive function of (long, Object) -> Object."
+     [f coll]
+     (if (nil? coll)
+       []
+       (let [n (count coll)
+             it1 (.iterator ^Iterable coll)]
+         (loop [i 0, res (if (<= n 32)
+                           (small-transient n identity)
+                           (transient []))]
+           (if (.hasNext it1)
+             ;; Use .invokePrim directly to prevent index from autoboxing.
+             (recur (inc i) (conj! res (.invokePrim ^clojure.lang.IFn$LOO f i (.next it1))))
+             (persistent! res)))))))
+
 (defn run!
   "Drop-in replacement for `clojure.core/run!`.
   Iterates collections more efficiently and uses Java iterators under the hood."
