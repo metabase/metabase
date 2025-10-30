@@ -884,7 +884,6 @@ export const CardEmbedComponent = memo(
                 onSave={(result) => {
                   updateAttributes({
                     id: result.card_id,
-                    name: null,
                   });
                   setIsModifyModalOpen(false);
                 }}
@@ -897,7 +896,6 @@ export const CardEmbedComponent = memo(
                 onSave={(result) => {
                   updateAttributes({
                     id: result.card_id,
-                    name: null,
                   });
                   setIsModifyModalOpen(false);
                 }}
