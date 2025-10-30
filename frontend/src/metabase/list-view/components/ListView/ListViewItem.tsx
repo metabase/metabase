@@ -19,7 +19,7 @@ export interface ListViewItemProps {
   entityIconColor?: string;
   imageColumn?: DatasetColumn | null;
   titleColumn?: DatasetColumn | null;
-  rightColumns: DatasetColumn[];
+  rightColumns?: DatasetColumn[];
   style?: CSSProperties;
   onClick: () => void;
 }
@@ -47,7 +47,6 @@ export function ListViewItem({
       onClick={onClick}
       style={style}
     >
-      {/* Entity Type Icon */}
       {entityIcon && !imageColumn && (
         <Box
           w={32}
@@ -61,7 +60,7 @@ export function ListViewItem({
             backgroundColor: getIconBackground(entityIconColor),
           }}
         >
-          <Icon name={entityIcon as IconName} size={16} c={entityIconColor} />
+          <Icon name={entityIcon as IconName} c={entityIconColor} />
         </Box>
       )}
       {imageColumn && (
@@ -78,7 +77,6 @@ export function ListViewItem({
         />
       )}
 
-      {/* Title and Subtitle Content */}
       <Flex align="center" gap="md" style={{ flexShrink: 0 }}>
         {titleColumn && (
           <ColumnValue
@@ -95,8 +93,7 @@ export function ListViewItem({
         )}
       </Flex>
 
-      {/* Right Columns */}
-      {rightColumns.map((col) => {
+      {rightColumns?.map((col) => {
         const rawValue = row[cols.indexOf(col)];
         return (
           <ColumnValue

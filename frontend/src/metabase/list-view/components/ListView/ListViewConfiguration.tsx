@@ -1,20 +1,16 @@
 import {
   DndContext,
-  type DragEndEvent,
-  type DragOverEvent,
   DragOverlay,
-  type DragStartEvent,
   PointerSensor,
   closestCenter,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
 import { snapCenterToCursor } from "@dnd-kit/modifiers";
-import { arrayMove } from "@dnd-kit/sortable";
 import cx from "classnames";
-import { defaults } from "underscore";
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
+import { defaults } from "underscore";
 
 import {
   ReorderableTagsInput,
@@ -49,10 +45,10 @@ import {
   getEntityIcon,
   getIconBackground,
 } from "./styling";
+import { useExternalDragOverlay } from "./use-external-drag-overlay";
 
 const MAX_LEFT_COLUMNS = 1;
 const MAX_RIGHT_COLUMNS = 5;
-type ContainerId = "left" | "right";
 
 export const ListViewConfiguration = ({
   data,
@@ -138,7 +134,7 @@ export const ListViewConfiguration = ({
   const selectedRightColumns = rightValues
     .slice(0, 5)
     .map(findColByName)
-    .filter(Boolean);
+    .filter((col) => !!col);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -203,6 +199,8 @@ export const ListViewConfiguration = ({
   } = useExternalDragOverlay({
     leftValues,
     rightValues,
+    maxLeftColumns: MAX_LEFT_COLUMNS,
+    maxRightColumns: MAX_RIGHT_COLUMNS,
     onConfigurationChange: handleConfigurationChange,
   });
 
@@ -235,32 +233,12 @@ export const ListViewConfiguration = ({
             {/* Icon selector */}
             <Menu shadow="md" width={200}>
               <Menu.Target>
-                <Flex
-                  bg="var(--mb-color-background-hover-light)"
-                  w="3rem"
-                  h="3rem"
-                  justify="center"
-                  align="center"
-                  style={{
-                    border: "1px dashed var(--mb-color-saturated-blue)",
-                    borderRadius: "50%",
-                    overflow: "hidden",
-                    padding: "0.5rem",
-                  }}
-                >
+                <Flex className={S.iconMenuButtonContainer}>
                   <ActionIcon
                     data-testid="list-view-icon"
                     variant="subtle"
-                    p={0}
-                    w="100%"
-                    h="100%"
+                    className={S.iconMenuButton}
                     style={{
-                      display: "flex",
-                      borderRadius: "50%",
-                      border: "1px solid var(--mb-color-border)",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexShrink: 0,
                       backgroundColor: iconConfig.entityIconEnabled
                         ? getIconBackground(iconConfig.selectedIconColor)
                         : "var(--mb-color-white)",
@@ -386,7 +364,7 @@ export const ListViewConfiguration = ({
                           });
                         }}
                       >
-                        <Icon name={iconName} size={16} c="text-primary" />
+                        <Icon name={iconName} c="text-primary" />
                       </ActionIcon>
                     </Flex>
                   ))}
@@ -505,135 +483,4 @@ function generatePreviewSample(rows: RowValues[], cols: Lib.ColumnMetadata[]) {
   return sample.map((value, index) =>
     value == null ? getColumnExample(cols[index]) : value,
   );
-}
-
-function useExternalDragOverlay({
-  leftValues,
-  rightValues,
-  onConfigurationChange,
-}: {
-  leftValues: string[];
-  rightValues: string[];
-  onConfigurationChange: (values: {
-    left: string[];
-    right: string[];
-    entityIcon?: IconName | null;
-  }) => void;
-}) {
-  // Active drag state for overlay
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [currentDroppable, setCurrentDroppable] = useState<string | null>(null);
-
-  const handleDragStart = (event: DragStartEvent) => {
-    setActiveId(event.active.id as string);
-  };
-
-  const handleDragOver = (event: DragOverEvent) => {
-    const { over } = event;
-    const containerId = over?.data?.current?.containerId;
-    if (!containerId) {
-      return;
-    }
-    // Storing the id of container under dragged element
-    // to hide it in original container when dragging between the two.
-    setCurrentDroppable(containerId);
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    setActiveId(null);
-    setCurrentDroppable(null);
-    const { active, over } = event;
-
-    if (!over) {
-      return;
-    }
-
-    const activeId = String(active.id);
-    const from = active.data?.current?.containerId as ContainerId | undefined;
-
-    if (!from) {
-      return;
-    }
-
-    // Determine target container - could be from over item's containerId or over.id itself
-    let to: ContainerId | undefined;
-    let overIndexInTo = -1;
-
-    // Check if we're dropping on an item (has containerId)
-    if (over.data?.current?.containerId) {
-      to = over.data.current.containerId as ContainerId;
-      const toList = to === "left" ? leftValues : rightValues;
-      overIndexInTo = toList.indexOf(String(over.id));
-    }
-    // Check if we're dropping on a container itself (droppable area)
-    else if (over.id === "left" || over.id === "right") {
-      to = over.id as ContainerId;
-      overIndexInTo = -1; // Append to end when dropping on container
-    }
-
-    if (!to) {
-      return;
-    }
-
-    const fromList = from === "left" ? leftValues : rightValues;
-
-    const fromIndex = fromList.indexOf(activeId);
-    if (fromIndex === -1) {
-      return;
-    }
-
-    // Same container: reorder
-    if (from === to) {
-      if (overIndexInTo === -1 || fromIndex === overIndexInTo) {
-        return;
-      }
-      const next = arrayMove(fromList, fromIndex, overIndexInTo);
-      if (from === "left") {
-        onConfigurationChange({
-          left: next,
-          right: rightValues,
-        });
-      } else {
-        onConfigurationChange({
-          left: leftValues,
-          right: next,
-        });
-      }
-      return;
-    }
-
-    // Moving items between containers
-    const maxForTo = to === "left" ? MAX_LEFT_COLUMNS : MAX_RIGHT_COLUMNS;
-    const toCurrent = to === "left" ? leftValues : rightValues;
-    if (toCurrent.length >= maxForTo) {
-      return;
-    }
-
-    const nextFrom = fromList.slice() as string[];
-    nextFrom.splice(fromIndex, 1);
-
-    const nextTo = toCurrent.slice() as string[];
-    const insertIndex = overIndexInTo === -1 ? nextTo.length : overIndexInTo;
-    nextTo.splice(insertIndex, 0, activeId);
-
-    if (to === "left") {
-      onConfigurationChange({
-        left: nextTo,
-        right: nextFrom,
-      });
-    } else {
-      onConfigurationChange({
-        left: nextFrom,
-        right: nextTo,
-      });
-    }
-  };
-
-  return {
-    activeId,
-    currentDroppable,
-    handleDragStart,
-    handleDragOver,
-    handleDragEnd,
-  };
 }
