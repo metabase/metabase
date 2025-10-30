@@ -48,8 +48,8 @@
                 active-filters)))
 
 (deftest search-context->applicable-models-test
-  (testing "All models are relevant if we're not looking in the trash"
-    (is (= search.config/all-models
+  (testing "All models (except transforms, which are admin-only) are relevant if we're not looking in the trash"
+    (is (= (disj search.config/all-models "transform")
            (search.filter/search-context->applicable-models (with-all-models-and-regular-user {:archived? false})))))
 
   (testing "We only search for certain models in the trash"
@@ -57,8 +57,8 @@
              config/ee-available? (conj "document"))
            (search.filter/search-context->applicable-models (with-all-models-and-regular-user {:archived? true})))))
 
-  (testing "Indexed entities are not visible for sandboxed users"
-    (is (= (disj search.config/all-models "indexed-entity")
+  (testing "Indexed entities and transforms (which are admin-only) are not visible for sandboxed users"
+    (is (= (disj search.config/all-models "indexed-entity" "transform")
            (search.filter/search-context->applicable-models (with-all-models-and-sandboxed-user {:archived? false})))))
 
   (doseq [active-filters (active-filter-combinations)]
