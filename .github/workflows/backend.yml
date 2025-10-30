@@ -24,7 +24,6 @@ jobs:
           repository: metabase/representations
           token: ${{ secrets.REPRESENTATIONS_GITHUB_PTA }}
           path: representations
-          ref: initial
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - name: Run clj-kondo
@@ -42,7 +41,6 @@ jobs:
           repository: metabase/representations
           token: ${{ secrets.REPRESENTATIONS_GITHUB_PTA }}
           path: representations
-          ref: initial
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood
@@ -119,7 +117,6 @@ jobs:
           repository: metabase/representations
           token: ${{ secrets.REPRESENTATIONS_GITHUB_PTA }}
           path: representations
-          ref: initial
       - name: Prepare front-end environment
         if: ${{ matrix.job.build-static-viz == 'true' }}
         uses: ./.github/actions/prepare-frontend
@@ -201,7 +198,6 @@ jobs:
           repository: metabase/representations
           token: ${{ secrets.REPRESENTATIONS_GITHUB_PTA }}
           path: representations
-          ref: initial
       - name: Prepare backend
         uses: ./.github/actions/prepare-backend
       # TODO -- we should probably also check WITHOUT ee -- do a check with only OSS namespaces on the classpath
@@ -220,7 +216,6 @@ jobs:
           repository: metabase/representations
           token: ${{ secrets.REPRESENTATIONS_GITHUB_PTA }}
           path: representations
-          ref: initial
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - name: Run cljfmt

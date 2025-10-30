@@ -47,7 +47,6 @@ jobs:
           repository: metabase/representations
           token: ${{ secrets.REPRESENTATIONS_GITHUB_PTA }}
           path: representations
-          ref: initial
 
       - name: Prepare frontend environment
         uses: ./.github/actions/prepare-frontend

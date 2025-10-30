@@ -18,7 +18,6 @@ jobs:
         repository: metabase/representations
         token: ${{ secrets.REPRESENTATIONS_GITHUB_PTA }}
         path: representations
-        ref: initial
     - name: Prepare back-end environment
       timeout-minutes: 5
       uses: ./.github/actions/prepare-backend
