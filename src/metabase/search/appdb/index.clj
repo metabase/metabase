@@ -176,7 +176,9 @@
 (defn create-table!
   "Create an index table with the given name. Should fail if it already exists."
   [table-name]
-  (t2/with-transaction [_]
+  ;; Create with a separate transaction so that postgresql will complete the index creations before returning,
+  ;; even when already running in a transaction
+  (t2/with-transaction [_ (mdb/app-db)]
     (-> (sql.helpers/create-table table-name)
         (sql.helpers/with-columns (specialization/table-schema base-schema))
         t2/query)
