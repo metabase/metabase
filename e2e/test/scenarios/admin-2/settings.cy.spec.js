@@ -495,7 +495,6 @@ describe("Cloud settings section", () => {
   });
 
   it("should prompt us to migrate to cloud if we are not hosted", () => {
-    H.setTokenFeatures("all");
     cy.visit("/admin");
     cy.findAllByTestId("settings-sidebar-link")
       .filter(":contains(Cloud)")
