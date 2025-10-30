@@ -585,10 +585,24 @@ export const PLUGIN_EMBEDDING_IFRAME_SDK = {
   SdkIframeEmbedRoute: (): ReactNode => null,
 };
 
+export type SdkIframeEmbedSetupModalProps = {
+  opened: boolean;
+  onClose: () => void;
+  initialState?: SdkIframeEmbedSetupModalInitialState;
+};
+
+export type SdkIframeEmbedSetupModalInitialState = {
+  resourceType?: string | null;
+  resourceId?: string | number | null;
+  useExistingUserSession?: boolean;
+};
+
 export const PLUGIN_EMBEDDING_IFRAME_SDK_SETUP = {
   isFeatureEnabled: () => false,
   shouldShowEmbedInNewItemMenu: () => false,
-  SdkIframeEmbedSetup: (): ReactNode => null,
+  SdkIframeEmbedSetupModal: (
+    _props: SdkIframeEmbedSetupModalProps,
+  ): ReactNode => null,
 };
 
 export const PLUGIN_CONTENT_VERIFICATION = {
@@ -859,6 +873,11 @@ export const PLUGIN_DOCUMENTS = {
   getSidebarOpen: (_state: any) => false,
   getCommentSidebarOpen: (_state: any) => false,
   DocumentCopyForm: (_props: any) => null as React.ReactElement | null,
+};
+
+export const PLUGIN_PUBLIC_SHARING = {
+  PublicDocumentRoute: (_props: any) => null as React.ReactElement | null,
+  PublicLinksDocumentListing: () => null as React.ReactElement | null,
 };
 
 export const PLUGIN_ENTITIES = {

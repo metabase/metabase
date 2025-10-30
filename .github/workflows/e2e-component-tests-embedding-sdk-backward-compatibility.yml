@@ -1,4 +1,4 @@
-# Thi workflow does the backward compatibility tests
+# This workflow does the backward compatibility tests
 # between the Embedding SDK package of version N and Embedding SDK Bundle of version N - 1
 # N - 1 is a target of a PR
 name: Embedding SDK backward-compatibility E2E Component Tests

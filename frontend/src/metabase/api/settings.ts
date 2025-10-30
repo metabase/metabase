@@ -65,7 +65,10 @@ export const settingsApi = Api.injectEndpoints({
         body: settings,
       }),
       invalidatesTags: (_, error) =>
-        invalidateTags(error, [tag("session-properties")]),
+        invalidateTags(error, [
+          tag("session-properties"),
+          listTag("embedding-hub-checklist"),
+        ]),
     }),
   }),
 });

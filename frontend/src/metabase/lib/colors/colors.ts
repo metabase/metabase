@@ -399,8 +399,8 @@ export const colorConfig = {
     dark: baseColors.orion[10],
   },
   "icon-secondary": {
-    light: baseColors.brand[20],
-    dark: baseColors.brand[20],
+    light: baseColors.orion[50],
+    dark: baseColors.orion[50],
   },
   "metabase-brand": {
     light: baseColors.blue[40], // not for whitelabeling
