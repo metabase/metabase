@@ -277,11 +277,11 @@ export const colorConfig = {
     dark: baseColors.lobster[90],
   },
   "background-hover": {
-    light: `color-mix(in srgb, var(--mb-color-brand) 21%, transparent)`, //baseColors.oceanAlpha[10],
+    light: `color-mix(in srgb, var(--mb-color-brand) 21%, transparent)`, //baseColors.oceanAlpha[20],
     dark: `color-mix(in srgb, var(--mb-color-brand) 21%, transparent)`, //baseColors.oceanAlpha[20],
   },
   "background-hover-light": {
-    light: `color-mix(in srgb, var(--mb-color-brand) 7%, transparent)`, //baseColors.oceanAlpha[5],
+    light: `color-mix(in srgb, var(--mb-color-brand) 7%, transparent)`, //baseColors.oceanAlpha[10],
     dark: `color-mix(in srgb, var(--mb-color-brand) 7%, transparent)`, //baseColors.oceanAlpha[10],
   },
   "background-inverse": {
