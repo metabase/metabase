@@ -15,17 +15,21 @@ import {
 
 import { SiteUrlWidget } from "./SiteUrlWidget";
 
-const setup = () => {
-  setupPropertiesEndpoints(
-    createMockSettings({
-      "site-url": "http://mysite.biz",
-    }),
-  );
+const setup = (props: { isHosted?: boolean; isEnvSetting?: boolean }) => {
+  const siteUrlWidgetSettings = {
+    "site-url": "http://mysite.biz",
+  } as const;
+
+  const settings = createMockSettings(siteUrlWidgetSettings);
+
+  setupPropertiesEndpoints(settings);
   setupUpdateSettingEndpoint();
   setupSettingsEndpoints([
     createMockSettingDefinition({
       key: "site-url",
       value: "http://mysite.biz",
+      is_env_setting: props.isEnvSetting,
+      env_name: props.isEnvSetting ? "MB_SITE_URL" : undefined,
     }),
   ]);
 
@@ -39,12 +43,12 @@ const setup = () => {
 
 describe("siteUrlWidget", () => {
   it("should render a SiteUrlWidget", async () => {
-    setup();
+    setup({});
     expect(await screen.findByText("Site url")).toBeInTheDocument();
   });
 
   it("should load existing value", async () => {
-    setup();
+    setup({});
     const selectInput = await screen.findByRole("textbox", {
       name: "input-prefix",
     });
@@ -55,7 +59,7 @@ describe("siteUrlWidget", () => {
   });
 
   it("should update the value", async () => {
-    setup();
+    setup({});
     const input = await screen.findByDisplayValue("mysite.biz");
     await userEvent.clear(input);
     await userEvent.type(input, "newsite.guru");
@@ -68,7 +72,7 @@ describe("siteUrlWidget", () => {
   });
 
   it("can change from http to https", async () => {
-    setup();
+    setup({});
     await userEvent.click(
       await screen.findByRole("textbox", { name: "input-prefix" }),
     );
@@ -80,7 +84,7 @@ describe("siteUrlWidget", () => {
   });
 
   it("should show success toast", async () => {
-    setup();
+    setup({});
     const input = await screen.findByDisplayValue("mysite.biz");
     await userEvent.clear(input);
     await userEvent.type(input, "newsite.guru");
@@ -94,7 +98,7 @@ describe("siteUrlWidget", () => {
   });
 
   it("should show error message", async () => {
-    setup();
+    setup({});
     setupUpdateSettingEndpoint({ status: 500 });
 
     const input = await screen.findByDisplayValue("mysite.biz");
@@ -106,5 +110,39 @@ describe("siteUrlWidget", () => {
     expect(
       await screen.findByText("Error saving Site URL"),
     ).toBeInTheDocument();
+  });
+
+  it("should not render if it's hosted", async () => {
+    setup({ isHosted: true });
+    expect(screen.queryByText("Site url")).not.toBeInTheDocument();
+  });
+
+  it("should show environment variable message when site URL is set via env var", async () => {
+    setup({ isEnvSetting: true });
+    expect(
+      await screen.findByText(/This has been set by the/),
+    ).toBeInTheDocument();
+    expect(await screen.findByText("MB_SITE_URL")).toBeInTheDocument();
+  });
+
+  it("should not show the input when site URL is set via env var", async () => {
+    setup({ isEnvSetting: true });
+    await screen.findByText(/This has been set by the/);
+
+    expect(
+      screen.queryByRole("textbox", { name: "input-prefix" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByPlaceholderText("http://example.com"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should show the input when site URL is not set via env var", async () => {
+    setup({ isEnvSetting: false });
+
+    expect(
+      await screen.findByRole("textbox", { name: "input-prefix" }),
+    ).toBeInTheDocument();
+    expect(await screen.findByDisplayValue("mysite.biz")).toBeInTheDocument();
   });
 });
