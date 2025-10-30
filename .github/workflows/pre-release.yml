@@ -53,7 +53,7 @@ jobs:
             const oldTestToken = majorVersion < MULTIPLE_TEST_TOKEN_THRESHOLD;
 
             return ({
-              runMode: oldTestToken ? 'prod' : 'e2e';
+              runMode: oldTestToken ? 'prod' : 'e2e',
               metastoreDevServer: oldTestToken ? '' : '${{ secrets.METASTORE_DEV_SERVER_URL }}'
             });
 
