@@ -1,6 +1,6 @@
 (ns metabase-enterprise.advanced-permissions.models.permissions.application-permissions
-  "Code for generating and updating the Application Permission graph. See [[metabase.permissions.models.permissions]] for more
-  details and for the code for generating and updating the *data* permissions graph."
+  "Code for generating and updating the Application Permission graph. See [[metabase.permissions.models.permissions]]
+  for more details and for the code for generating and updating the *data* permissions graph."
   (:require
    [clojure.data :as data]
    [metabase.permissions.core :as perms]
@@ -71,7 +71,7 @@
 
 (mu/defn update-graph!
   "Update the application Permissions graph.
-  This works just like [[metabase.permissions.models.data-permissions.graph/update-data-perms-graph!]], but for
+  This works just like [[metabase.permissions-rest.data-permissions.graph/update-data-perms-graph!]], but for
   Application permissions; refer to that function's extensive documentation to get a sense for how this works."
   ([new-graph :- ApplicationPermissionsGraph]
    (update-graph! new-graph false))

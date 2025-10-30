@@ -29,7 +29,7 @@
    [metabase.model-persistence.api]
    [metabase.native-query-snippets.api]
    [metabase.notification.api]
-   [metabase.permissions.api]
+   [metabase.permissions-rest.api]
    [metabase.premium-features.api]
    [metabase.product-feedback.api]
    [metabase.public-sharing.api]
@@ -76,7 +76,7 @@
          metabase.login-history.api/keep-me
          metabase.model-persistence.api/keep-me
          metabase.native-query-snippets.api/keep-me
-         metabase.permissions.api/keep-me
+         metabase.permissions-rest.api/keep-me
          metabase.product-feedback.api/keep-me
          metabase.public-sharing.api/keep-me
          metabase.query-processor.api/keep-me
@@ -160,7 +160,7 @@
    "/native-query-snippet" (+auth 'metabase.native-query-snippets.api)
    "/notification"         metabase.notification.api/notification-routes
    "/notify"               (+static-apikey metabase.sync.api/notify-routes)
-   "/permissions"          (+auth 'metabase.permissions.api)
+   "/permissions"          (+auth 'metabase.permissions-rest.api)
    "/persist"              (+auth 'metabase.model-persistence.api)
    "/premium-features"     (+auth metabase.premium-features.api/routes)
    "/preview_embed"        (+auth metabase.embedding.api/preview-embedding-routes)

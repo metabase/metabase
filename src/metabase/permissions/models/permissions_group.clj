@@ -190,3 +190,24 @@
   "Returns a boolean representing whether this group is a tenant group."
   [group-id]
   (t2/select-one-fn :is_tenant_group :model/PermissionsGroup :id (u/the-id group-id)))
+
+(defn- group-id->num-members
+  "Return a map of `PermissionsGroup` ID -> number of members in the group. (This doesn't include entries for empty
+  groups.)"
+  []
+  (let [results (mdb/query
+                 {:select    [[:pgm.group_id :group_id] [[:count :pgm.id] :members]]
+                  :from      [[:permissions_group_membership :pgm]]
+                  :left-join [[:core_user :user] [:= :pgm.user_id :user.id]]
+                  :where     [:= :user.is_active true]
+                  :group-by  [:pgm.group_id]})]
+    (zipmap
+     (map :group_id results)
+     (map :members results))))
+
+(methodical/defmethod t2/batched-hydrate [:model/PermissionsGroup :member_count]
+  "Efficiently add `:member_count` to PermissionGroups."
+  [_model _k groups]
+  (let [group-id->num-members (group-id->num-members)]
+    (for [group groups]
+      (assoc group :member_count (get group-id->num-members (u/the-id group) 0)))))

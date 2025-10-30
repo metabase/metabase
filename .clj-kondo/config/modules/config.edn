@@ -800,9 +800,9 @@
 
   permissions
   {:team "UX West"
-   :api  #{metabase.permissions.api
-           metabase.permissions.core
-           metabase.permissions.init}
+   :api  #{metabase.permissions.core
+           metabase.permissions.init
+           metabase.permissions.schema}
    :uses #{api
            app-db
            audit-app
@@ -813,10 +813,20 @@
            models
            premium-features
            remote-sync
-           request
            settings
            util
            enterprise/advanced-permissions}}
+
+  permissions-rest
+  {:team "UX West"
+   :api  #{metabase.permissions-rest.api}
+   :uses #{api
+           audit-app
+           events
+           permissions
+           premium-features
+           request
+           util}}
 
   pivot
   {:team "UX West"
