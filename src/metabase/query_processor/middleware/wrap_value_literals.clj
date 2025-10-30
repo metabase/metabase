@@ -53,8 +53,9 @@
                                       (:source-metadata %))
                                    (:joins inner-query))
                              (:source-metadata inner-query))
-          [{[_ field-name :as field-ref] :field_ref :as field-metadata}] (filter #(= (:name %) field-name)
-                                                                                 source-metadatas)]
+          [{[_ field-name :as field-ref] :field_ref :as field-metadata}]
+          (filter #(or (= (:lib/desired-column-alias %) field-name) (= (:name %) field-name))
+                  source-metadatas)]
       (-> (if (and field-ref (integer? field-name))
             (type-info field-ref)
             {})
