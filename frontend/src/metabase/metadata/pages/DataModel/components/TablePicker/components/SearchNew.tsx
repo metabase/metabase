@@ -106,7 +106,7 @@ export function SearchNew({
                 [S.active]: active,
               })}
               key={table.id}
-              py="xs"
+              p="sm"
               align="center"
               gap="sm"
               to={getUrl({
