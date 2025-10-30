@@ -13,7 +13,7 @@ import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config"
 import type { MetabaseEmbeddingSessionToken } from "embedding-sdk-bundle/types/refresh-token";
 import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
-import api, { setOnBeforeRequestHandler } from "metabase/lib/api";
+import api from "metabase/lib/api";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
@@ -48,7 +48,7 @@ export const initAuth = createAsyncThunk(
       // Use existing user session. Do nothing.
     } else if (isValidInstanceUrl) {
       // SSO setup
-      setOnBeforeRequestHandler({
+      api.setOnBeforeRequestHandler({
         key: "get-or-refresh-session-handler",
         handler: async () => {
           const session = await dispatch(
