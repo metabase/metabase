@@ -49,7 +49,7 @@
                                                                                               (update-vals str))})]
         (if (= :ok success)
           (do
-            (premium-features/clear-cache)
+            (premium-features/clear-cache!)
             {:status 200 :body {}})
           (do
             (log/warnf "Error (%d) adding purchasing add-on '%s'" status product-type)

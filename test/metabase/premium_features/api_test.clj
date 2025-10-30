@@ -1,20 +1,20 @@
 (ns metabase.premium-features.api-test
   (:require
    [clojure.test :refer :all]
+   [metabase.premium-features.test-util :as tu]
    [metabase.premium-features.token-check :as token-check]
-   [metabase.premium-features.token-check-test :as token-check-test]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
 (deftest get-token-status-test
   (testing "GET /api/premium-features/token/status"
-    (with-redefs [token-check/fetch-token-status (fn [_x]
-                                                   {:valid    true
-                                                    :status   "fake"
-                                                    :features ["test" "fixture"]
-                                                    :trial    false})]
-      (mt/with-temporary-setting-values [:premium-embedding-token (token-check-test/random-token)]
+    (with-redefs [token-check/check-token (fn [_x]
+                                            {:valid    true
+                                             :status   "fake"
+                                             :features ["test" "fixture"]
+                                             :trial    false})]
+      (mt/with-temporary-setting-values [:premium-embedding-token (tu/random-token)]
         (testing "returns correctly"
           (is (= {:valid    true
                   :status   "fake"
