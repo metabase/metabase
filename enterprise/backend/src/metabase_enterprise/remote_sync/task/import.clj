@@ -10,6 +10,7 @@
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
+   [metabase.task-history.core :as task-history]
    [metabase.task.core :as task]
    [metabase.util.log :as log]))
 
@@ -30,10 +31,12 @@
         (let [{task-id :id existing? :existing?} (impl/create-task-with-lock! "import")]
           (if existing?
             (log/info "Remote sync already in progress, not auto-importing")
-            (dh/with-timeout {:interrupt? true
-                              :timeout-ms (* (settings/remote-sync-task-time-limit-ms) 10)}
-              (log/info "Auto-importing remote-sync collections")
-              (impl/handle-task-result! (impl/import! snapshot task-id) task-id))))))))
+            (task-history/with-task-history {:task "remote-sync-auto-import"
+                                             :task_details {:task-id task-id}}
+              (dh/with-timeout {:interrupt? true
+                                :timeout-ms (* (settings/remote-sync-task-time-limit-ms) 10)}
+                (log/info "Auto-importing remote-sync collections")
+                (impl/handle-task-result! (impl/import! snapshot task-id) task-id)))))))))
 
 (task/defjob ^{:doc "Auto-imports any remote collections."} AutoImport [_]
   (auto-import!))

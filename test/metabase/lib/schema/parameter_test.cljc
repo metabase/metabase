@@ -77,9 +77,14 @@
          (lib/normalize ::lib.schema.parameter/target [:template-tag "x"]))))
 
 (deftest ^:parallel decode-busted-param-type-test
-  (is (= :text
-         (lib/normalize ::lib.schema.parameter/type "type/Text")
-         (lib/normalize ::lib.schema.parameter/type :type/Text))))
+  (testing "type namespace should be removed"
+    (is (= :text
+           (lib/normalize ::lib.schema.parameter/type "type/Text")
+           (lib/normalize ::lib.schema.parameter/type :type/Text))))
+  (testing ":category/= should normalize to :category"
+    (is (= :category
+           (lib/normalize ::lib.schema.parameter/type "category/=")
+           (lib/normalize ::lib.schema.parameter/type :category/=)))))
 
 (deftest ^:parallel default-to-type-text-test
   (is (= {:id "x", :type :text}
