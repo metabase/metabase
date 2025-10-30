@@ -10,6 +10,7 @@ import {
   Group,
   Icon,
   Input,
+  Menu,
   Popover,
   Stack,
   Tooltip,
@@ -165,42 +166,43 @@ export function TablePicker({
             />
           </Popover.Dropdown>
         </Popover>
-        <Tooltip
-          label={
-            hasSelectedItems ? t`Edit selected items` : t`No items selected`
-          }
-        >
-          <Button
-            onClick={() => setIsModalOpen(true)}
-            p="sm"
-            disabled={!hasSelectedItems}
-            variant="filled"
-            style={{
-              width: 40,
-            }}
-          >
-            <Icon name="pencil" />
-          </Button>
-        </Tooltip>
-        <Tooltip
-          label={
-            hasSelectedItems
-              ? t`Publish selected items as models`
-              : t`No items selected`
-          }
-        >
-          <Button
-            onClick={() => setIsPublishModalOpen(true)}
-            p="sm"
-            disabled={!hasSelectedItems}
-            variant="filled"
-            style={{
-              width: 40,
-            }}
-          >
-            <Icon name="model_with_badge" />
-          </Button>
-        </Tooltip>
+
+        <Menu position="bottom-start">
+          <Menu.Target>
+            <Tooltip
+              label={
+                hasSelectedItems
+                  ? t`Edit or publish tables`
+                  : t`No tables selected`
+              }
+            >
+              <Button
+                p="sm"
+                leftSection={<Icon name="pencil" />}
+                disabled={!hasSelectedItems}
+                style={{
+                  width: 40,
+                }}
+              />
+            </Tooltip>
+          </Menu.Target>
+
+          <Menu.Dropdown>
+            <Menu.Item
+              leftSection={<Icon name="pencil" />}
+              onClick={() => setIsModalOpen(true)}
+            >
+              {t`Edit`}
+            </Menu.Item>
+
+            <Menu.Item
+              leftSection={<Icon name="model_with_badge" />}
+              onClick={() => setIsPublishModalOpen(true)}
+            >
+              {t`Publish`}
+            </Menu.Item>
+          </Menu.Dropdown>
+        </Menu>
       </Group>
 
       <Box style={{ overflow: "auto" }}>
