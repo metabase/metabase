@@ -1225,8 +1225,9 @@
                                             {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
                                             {:conversation_id conversation-id})
                       (update :structured_output (fn [output]
-                                                   (filter #(#{(:id t1) (:id t2) (:id t3)} (:id %))
-                                                           output)))))))))))
+                                                   (->> output
+                                                        (filter #(#{(:id t1) (:id t2) (:id t3)} (:id %)))
+                                                        (sort-by :id))))))))))))
 
 (deftest get-transform-test
   (mt/with-premium-features #{:metabot-v3 :transforms}
