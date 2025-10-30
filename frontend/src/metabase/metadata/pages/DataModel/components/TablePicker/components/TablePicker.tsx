@@ -61,7 +61,7 @@ export function TablePicker({
     new Set(),
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
+  const [isCreateModelsModalOpen, setIsCreateModelsModalOpen] = useState(false);
   const [onUpdateCallback, setOnUpdateCallback] = useState<(() => void) | null>(
     null,
   );
@@ -196,10 +196,30 @@ export function TablePicker({
             </Menu.Item>
 
             <Menu.Item
-              leftSection={<Icon name="model_with_badge" />}
-              onClick={() => setIsPublishModalOpen(true)}
+              leftSection={<Icon name="model" />}
+              rightSection={
+                <Tooltip
+                  label={t`Create a model for each table and place them in a given collection.`}
+                >
+                  <Icon name="info_outline" />
+                </Tooltip>
+              }
+              onClick={() => setIsCreateModelsModalOpen(true)}
             >
-              {t`Publish`}
+              {t`Create models`}
+            </Menu.Item>
+
+            <Menu.Item
+              leftSection={<Icon name="model_with_badge" />}
+              rightSection={
+                <Tooltip
+                  label={t`Create a model for each table and publish them in the Library.`}
+                >
+                  <Icon name="info_outline" />
+                </Tooltip>
+              }
+            >
+              {t`Publish models`}
             </Menu.Item>
           </Menu.Dropdown>
         </Menu>
@@ -243,8 +263,8 @@ export function TablePicker({
         tables={selectedTables}
         schemas={selectedSchemas}
         databases={selectedDatabases}
-        isOpen={isPublishModalOpen}
-        onClose={() => setIsPublishModalOpen(false)}
+        isOpen={isCreateModelsModalOpen}
+        onClose={() => setIsCreateModelsModalOpen(false)}
         onSuccess={handlePublishSuccess}
       />
     </Stack>

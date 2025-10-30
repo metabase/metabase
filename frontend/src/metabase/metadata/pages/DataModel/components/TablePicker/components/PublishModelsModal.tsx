@@ -1,3 +1,4 @@
+import { ThemeIcon } from "@mantine/core";
 import { useState } from "react";
 import { t } from "ttag";
 
@@ -10,7 +11,6 @@ import {
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button, Flex, Icon, List, Modal, Stack, Text, rem } from "metabase/ui";
 import type { Card, DatabaseId, SchemaId, TableId } from "metabase-types/api";
-import { ThemeIcon } from "@mantine/core";
 
 interface Props {
   tables?: Set<TableId>;
@@ -92,7 +92,7 @@ export function PublishModelsModal({
         opened={isOpen}
         padding="xl"
         size={rem(512)}
-        title={publishedModels ? t`Published models` : t`Publish models`}
+        title={publishedModels ? t`Create models` : t`Created models`}
         onClose={handleClose}
       >
         {publishedModels ? (
