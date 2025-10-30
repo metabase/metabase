@@ -128,6 +128,7 @@ export function SmartScalar({
             totalNumGridCols={totalNumGridCols}
             value={displayValue as string}
             width={getValueWidth(width)}
+            isSmartScalar
           />
         </span>
       </ScalarContainer>
