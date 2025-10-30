@@ -22,6 +22,7 @@ import {
   Modal,
   Stack,
 } from "metabase/ui";
+import { SdkIframeStaticEmbeddingStatusBar } from "metabase-enterprise/embedding_iframe_sdk_setup/components/SdkIframeStaticEmbeddingStatusBar";
 import type { SettingKey } from "metabase-types/api";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
@@ -37,6 +38,13 @@ export const SdkIframeEmbedSetupContent = () => {
   const { currentStep, settings } = useSdkIframeEmbedSetupContext();
 
   const isSimpleEmbeddingEnabled = useSetting("enable-embedding-simple");
+  const isStaticEmbeddingEnabled = useSetting("enable-embedding-static");
+
+  const isStaticEmbedding = !!settings.isStatic;
+
+  const isEmbeddingEnabled = isStaticEmbedding
+    ? isSimpleEmbeddingEnabled && isStaticEmbeddingEnabled
+    : isSimpleEmbeddingEnabled;
 
   const { handleNext, handleBack, canGoBack, StepContent } =
     useSdkIframeEmbedNavigation();
@@ -71,7 +79,7 @@ export const SdkIframeEmbedSetupContent = () => {
       <Button
         variant="filled"
         onClick={handleNext}
-        disabled={!isSimpleEmbeddingEnabled}
+        disabled={!isEmbeddingEnabled}
       >
         {t`Next`}
       </Button>
@@ -81,15 +89,15 @@ export const SdkIframeEmbedSetupContent = () => {
     <Box className={S.Container}>
       <SidebarResizer>
         <Box className={S.Sidebar} component="aside">
-          <Box className={S.SidebarContent}>
+          <Stack className={S.SidebarContent} gap="md">
             <StepContent />
-          </Box>
+          </Stack>
 
           <Group className={S.Navigation} justify="space-between">
             <Button
               variant="default"
               onClick={handleBack}
-              disabled={!canGoBack || !isSimpleEmbeddingEnabled}
+              disabled={!canGoBack || !isEmbeddingEnabled}
             >
               {t`Back`}
             </Button>
@@ -103,7 +111,9 @@ export const SdkIframeEmbedSetupContent = () => {
         <Stack h="100%">
           <Modal.CloseButton />
 
-          {isSimpleEmbeddingEnabled ? (
+          <SdkIframeStaticEmbeddingStatusBar />
+
+          {isEmbeddingEnabled ? (
             <SdkIframeEmbedPreview />
           ) : (
             <Card h="100%">

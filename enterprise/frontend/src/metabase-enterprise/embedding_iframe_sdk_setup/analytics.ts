@@ -1,6 +1,7 @@
 import _ from "underscore";
 
 import { trackSimpleEvent } from "metabase/lib/analytics";
+import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
 import type {
   SdkIframeEmbedSettingKey,
   SdkIframeEmbedSettings,
@@ -67,12 +68,18 @@ export const trackEmbedWizardResourceSelectionCompleted = (
 const getEmbedSettingsToCompare = (settings: Partial<SdkIframeEmbedSettings>) =>
   _.omit(_.omit(settings, ...EMBED_SETTINGS_TO_IGNORE), _.isUndefined);
 
-export const trackEmbedWizardOptionsCompleted = (
-  settings: Partial<SdkIframeEmbedSettings>,
-  experience: SdkIframeEmbedSetupExperience,
-) => {
+export const trackEmbedWizardOptionsCompleted = ({
+  initialState,
+  settings,
+  experience,
+}: {
+  initialState: SdkIframeEmbedSetupModalInitialState | undefined;
+  settings: Partial<SdkIframeEmbedSettings>;
+  experience: SdkIframeEmbedSetupExperience;
+}) => {
   // Get defaults for this experience type (with a dummy resource ID)
   const defaultSettings = getDefaultSdkIframeEmbedSettings({
+    initialState,
     experience,
     resourceId: 0,
   });

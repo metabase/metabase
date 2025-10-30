@@ -1,6 +1,7 @@
 import { P, match } from "ts-pattern";
 
 import type { SdkDashboardId, SdkQuestionId } from "embedding-sdk-bundle/types";
+import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
 import type {
   BrowserEmbedOptions,
   DashboardEmbedOptions,
@@ -14,14 +15,18 @@ import type {
   SdkIframeEmbedSetupSettings,
 } from "../types";
 
+import { getCommonEmbedSettings } from "./get-common-embed-settings";
+
 export const getDefaultSdkIframeEmbedSettings = ({
+  initialState,
   experience,
   resourceId,
 }: {
+  initialState: SdkIframeEmbedSetupModalInitialState | undefined;
   experience: SdkIframeEmbedSetupExperience;
   resourceId: SdkDashboardId | SdkQuestionId;
 }): SdkIframeEmbedSetupSettings => {
-  const templateDefaults = match(experience)
+  const defaults = match(experience)
     .with(
       "dashboard",
       (): DashboardEmbedOptions => ({
@@ -68,8 +73,9 @@ export const getDefaultSdkIframeEmbedSettings = ({
     .exhaustive();
 
   return {
-    ...templateDefaults,
     useExistingUserSession: true,
+    ...defaults,
+    ...getCommonEmbedSettings({ state: initialState, experience }),
   };
 };
 

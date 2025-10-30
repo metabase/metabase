@@ -48,10 +48,18 @@ export const QuestionEmbedWidget = (props: QuestionEmbedWidgetProps) => {
           onCreatePublicLink={() => createPublicQuestionLink({ id: card.id })}
           onDeletePublicLink={() => deletePublicQuestionLink({ id: card.id })}
           onUpdateEnableEmbedding={(enable_embedding) =>
-            updateEnableEmbedding({ id: card.id, enable_embedding })
+            updateEnableEmbedding({
+              id: card.id,
+              enable_embedding,
+              embedding_type: enable_embedding ? "static-legacy" : null,
+            })
           }
           onUpdateEmbeddingParams={(embedding_params) =>
-            updateEmbeddingParams({ id: card.id, embedding_params })
+            updateEmbeddingParams({
+              id: card.id,
+              embedding_params,
+              embedding_type: "static-legacy",
+            })
           }
           getPublicUrl={getPublicQuestionUrl}
           onClose={onClose}

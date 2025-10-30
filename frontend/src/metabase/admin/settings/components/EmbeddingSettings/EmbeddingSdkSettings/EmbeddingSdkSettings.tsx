@@ -18,6 +18,7 @@ import { isEEBuild } from "metabase/lib/utils";
 import {
   PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
   PLUGIN_EMBEDDING_SDK,
+  type SdkIframeEmbedSetupModalProps,
 } from "metabase/plugins";
 import { setOpenModalWithProps } from "metabase/redux/ui";
 import { Box, Button, Group, HoverCard, Icon, Stack, Text } from "metabase/ui";
@@ -159,7 +160,19 @@ export function EmbeddingSdkSettings() {
               variant="brand"
               size="sm"
               onClick={() => {
-                dispatch(setOpenModalWithProps({ id: "embed" }));
+                const modalProps: Pick<
+                  SdkIframeEmbedSetupModalProps,
+                  "initialState"
+                > = {
+                  initialState: {
+                    isStatic: true,
+                    useExistingUserSession: false,
+                  },
+                };
+
+                dispatch(
+                  setOpenModalWithProps({ id: "embed", props: modalProps }),
+                );
               }}
             >
               {t`New embed`}

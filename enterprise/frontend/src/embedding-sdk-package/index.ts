@@ -94,6 +94,7 @@ export type {
   MetabaseAuthConfigWithApiKey,
   MetabaseAuthConfigWithJwt,
   MetabaseAuthConfigWithSaml,
+  MetabaseStaticAuthConfig,
   MetabaseClickActionPluginsConfig,
   MetabaseColors,
   MetabaseClickAction,

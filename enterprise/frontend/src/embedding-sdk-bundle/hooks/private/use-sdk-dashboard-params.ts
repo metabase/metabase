@@ -1,5 +1,6 @@
 import { pick } from "underscore";
 
+import type { SdkEntityToken } from "embedding-sdk-bundle/types";
 import type { SdkDashboardId } from "embedding-sdk-bundle/types/dashboard";
 import type { CommonStylingProps } from "embedding-sdk-bundle/types/props";
 import { DEFAULT_DASHBOARD_DISPLAY_OPTIONS } from "metabase/dashboard/constants";
@@ -17,7 +18,14 @@ export type SdkDashboardDisplayProps = {
    *  <br/>
    *  - the string ID found in the `entity_id` key of the dashboard object when using the API directly or using the SDK Collection Browser to return data
    */
-  dashboardId: SdkDashboardId;
+  dashboardId: SdkDashboardId | null;
+
+  /**
+   * A valid JWT token for the anonymous embedding.
+   *
+   * @internal
+   */
+  token?: SdkEntityToken | null;
 
   /**
    * Query parameters for the dashboard. For a single option, use a `string` value, and use a list of strings for multiple options.
@@ -58,7 +66,10 @@ export const useSdkDashboardParams = ({
   withTitle,
   withCardTitle,
   hiddenParameters,
-}: SdkDashboardDisplayProps) => {
+}: Pick<
+  SdkDashboardDisplayProps,
+  "withDownloads" | "withTitle" | "withCardTitle" | "hiddenParameters"
+>) => {
   // temporary name until we change `hideDownloadButton` to `downloads`
   const hideDownloadButton = !withDownloads;
 

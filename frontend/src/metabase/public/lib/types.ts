@@ -14,6 +14,7 @@ export type EmbedResource = (Card | Dashboard) & {
 };
 
 export type EmbedResourceType = "dashboard" | "question" | "document";
+export type StaticEmbedResourceType = "dashboard" | "question";
 
 export type EmbedResourceParameter = {
   id: string;
@@ -28,6 +29,8 @@ export type EmbedResourceDownloadOptions = {
   pdf?: boolean;
   results?: boolean;
 };
+
+export type EmbeddingType = "static-legacy" | "static-embed-js";
 
 export type EmbeddingParameterVisibility = "disabled" | "enabled" | "locked";
 

@@ -55,6 +55,8 @@ export function useUpsellEmbedJsCta({
             initialState: {
               resourceType,
               resourceId: resource.id,
+              isStatic: true,
+              useExistingUserSession: false,
             },
           };
 

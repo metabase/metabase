@@ -2,22 +2,130 @@ import { useCallback, useMemo } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
+import { useSetting } from "metabase/common/hooks";
 import type { MetabaseColors } from "metabase/embedding-sdk/theme";
-import { Card, Checkbox, Divider, Stack, Text } from "metabase/ui";
+import {
+  Card,
+  Checkbox,
+  Divider,
+  Flex,
+  HoverCard,
+  Icon,
+  Radio,
+  Stack,
+  Text,
+} from "metabase/ui";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
 
 import { ColorCustomizationSection } from "./ColorCustomizationSection";
+import { LegacyStaticEmbeddingAlert } from "./LegacyStaticEmbeddingAlert";
 import { MetabotLayoutSetting } from "./MetabotLayoutSetting";
 import { ParameterSettings } from "./ParameterSettings";
 
 export const SelectEmbedOptionsStep = () => {
   return (
     <Stack gap="md">
+      <AuthenticationSection />
       <BehaviorSection />
       <ParametersSection />
       <AppearanceSection />
+      <LegacyStaticEmbeddingAlert />
     </Stack>
+  );
+};
+
+const AuthenticationSection = () => {
+  const { experience, settings, updateSettings } =
+    useSdkIframeEmbedSetupContext();
+
+  const isStaticEmbedding = !!settings.isStatic;
+  const isQuestionOrDashboardEmbed =
+    (experience === "dashboard" && settings.dashboardId) ||
+    (experience === "chart" && settings.questionId);
+
+  const isJwtEnabled = useSetting("jwt-enabled");
+  const isSamlEnabled = useSetting("saml-enabled");
+  const isJwtConfigured = useSetting("jwt-configured");
+  const isSamlConfigured = useSetting("saml-configured");
+
+  const isSsoEnabledAndConfigured =
+    (isJwtEnabled && isJwtConfigured) || (isSamlEnabled && isSamlConfigured);
+
+  const authType = isStaticEmbedding
+    ? "no-user"
+    : settings.useExistingUserSession
+      ? "user-session"
+      : "sso";
+
+  const handleAuthTypeChange = (value: string) => {
+    const isStatic = value === "no-user";
+    const useExistingUserSession = value === "user-session";
+
+    updateSettings({
+      isStatic,
+      useExistingUserSession,
+    });
+  };
+
+  return (
+    <Card p="md">
+      <Stack gap="md" p="xs">
+        <Text size="lg" fw="bold">
+          {t`Authentication`}
+        </Text>
+
+        <Text size="sm" c="text-medium">
+          {t`Choose the authentication method for embedding:`}
+        </Text>
+
+        <Radio.Group value={authType} onChange={handleAuthTypeChange}>
+          <Stack gap="sm">
+            {isQuestionOrDashboardEmbed && (
+              <Radio value="no-user" label={t`Unauthenticated`} />
+            )}
+
+            <Radio
+              value="user-session"
+              label={
+                <Flex align="center" gap="xs">
+                  {/* eslint-disable-next-line no-literal-metabase-strings -- this string is only shown for admins. */}
+                  <Text>{t`Existing Metabase session`}</Text>
+                  <HoverCard position="bottom">
+                    <HoverCard.Target>
+                      <Icon
+                        name="info"
+                        size={14}
+                        c="text-medium"
+                        cursor="pointer"
+                      />
+                    </HoverCard.Target>
+                    <HoverCard.Dropdown>
+                      <Text lh="md" p="md" style={{ width: 300 }}>
+                        {/* eslint-disable-next-line no-literal-metabase-strings -- this string is only shown for admins. */}
+                        {t`This option lets you test Embedded Analytics JS locally using your existing Metabase session cookie. This only works for testing locally, using your admin account and on this browser. This may not work on Safari and Firefox. We recommend testing this in Chrome.`}
+                      </Text>
+                    </HoverCard.Dropdown>
+                  </HoverCard>
+                </Flex>
+              }
+            />
+
+            <Radio
+              value="sso"
+              label={t`Single sign-on (SSO)`}
+              disabled={!isSsoEnabledAndConfigured}
+            />
+          </Stack>
+        </Radio.Group>
+
+        {authType === "sso" && (
+          <Text size="sm" c="text-medium">
+            {t`Select this option if you have already set up SSO. This option relies on SSO to sign in your application users into the embedded iframe, and groups and permissions to enforce limits on what users can access. `}
+          </Text>
+        )}
+      </Stack>
+    </Card>
   );
 };
 
@@ -26,13 +134,18 @@ const BehaviorSection = () => {
 
   const behaviorSection = useMemo(() => {
     return match(settings)
-      .with({ template: "exploration" }, (settings) => (
-        <Checkbox
-          label={t`Allow people to save new questions`}
-          checked={settings.isSaveEnabled}
-          onChange={(e) => updateSettings({ isSaveEnabled: e.target.checked })}
-        />
-      ))
+      .with(
+        { template: "exploration", isStatic: P.optional(false) },
+        (settings) => (
+          <Checkbox
+            label={t`Allow people to save new questions`}
+            checked={settings.isSaveEnabled}
+            onChange={(e) =>
+              updateSettings({ isSaveEnabled: e.target.checked })
+            }
+          />
+        ),
+      )
       .with(
         { componentName: "metabase-question", questionId: P.nonNullable },
         (settings) => (
@@ -53,6 +166,7 @@ const BehaviorSection = () => {
 
             <Checkbox
               label={t`Allow people to save new questions`}
+              disabled={settings.isStatic}
               checked={settings.isSaveEnabled}
               onChange={(e) =>
                 updateSettings({ isSaveEnabled: e.target.checked })
@@ -67,6 +181,7 @@ const BehaviorSection = () => {
           <Stack gap="md">
             <Checkbox
               label={t`Allow people to drill through on data points`}
+              disabled={settings.isStatic}
               checked={settings.drills}
               onChange={(e) => updateSettings({ drills: e.target.checked })}
             />
@@ -81,13 +196,16 @@ const BehaviorSection = () => {
           </Stack>
         ),
       )
-      .with({ componentName: "metabase-browser" }, (settings) => (
-        <Checkbox
-          label={t`Allow editing dashboards and questions`}
-          checked={!settings.readOnly}
-          onChange={(e) => updateSettings({ readOnly: !e.target.checked })}
-        />
-      ))
+      .with(
+        { componentName: "metabase-browser", isStatic: P.optional(false) },
+        (settings) => (
+          <Checkbox
+            label={t`Allow editing dashboards and questions`}
+            checked={!settings.readOnly}
+            onChange={(e) => updateSettings({ readOnly: !e.target.checked })}
+          />
+        ),
+      )
       .otherwise(() => null);
   }, [settings, updateSettings]);
 

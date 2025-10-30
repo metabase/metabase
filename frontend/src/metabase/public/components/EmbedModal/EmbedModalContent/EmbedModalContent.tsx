@@ -4,8 +4,8 @@ import type {
   EmbedModalStep,
   EmbedResource,
   EmbedResourceParameter,
-  EmbedResourceType,
   EmbeddingParameters,
+  StaticEmbedResourceType,
 } from "metabase/public/lib/types";
 
 import { SelectEmbedTypePane } from "../SelectEmbedTypePane";
@@ -16,7 +16,7 @@ export interface EmbedModalContentProps {
   goToNextStep: () => void;
 
   resource: EmbedResource;
-  resourceType: EmbedResourceType;
+  resourceType: StaticEmbedResourceType;
   resourceParameters: EmbedResourceParameter[];
 
   onUpdateEnableEmbedding: (enableEmbedding: boolean) => void;
