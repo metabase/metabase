@@ -28,8 +28,7 @@
    Throws an exception if validation fails.
    Returns the decoded and validated representation if validation passes."
   [representation]
-  (rep-read/parse representation)
-  #_(import/normalize-representation representation))
+  (rep-read/parse representation))
 
 ;;;;;;;;;;;
 ;; Import

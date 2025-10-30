@@ -8,7 +8,6 @@
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.yaml :as rep-yaml]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
    [representations.read :as rep-read]
    [toucan2.core :as t2]))
 
