@@ -69,7 +69,8 @@
                              x))
                          obj)
                         obj)
-                      (dissoc :export-format))]
+                      (dissoc :export-format)
+                      (cond-> (server.settings/hide-stacktraces) (dissoc :stacktrace :trace :via)))]
           (with-open [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
             (json/encode-to obj writer {})))
         (catch EofException _)
