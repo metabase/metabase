@@ -46,6 +46,7 @@ import type {
   EditParameterSidebarState,
   State,
   StoreDashboard,
+  StoreDashcard,
 } from "metabase-types/store";
 
 import { getNewCardUrl } from "./actions/getNewCardUrl";
@@ -188,14 +189,9 @@ export const getDashboardById = (state: State, dashboardId: DashboardId) => {
   return dashboards[dashboardId];
 };
 
-export const getDashboardComplete = createSelector(
-  [getDashboard, getDashcards],
-  (dashboard, dashcards) => {
-    if (!dashboard) {
-      return null;
-    }
-
-    const orderedDashcards = dashboard.dashcards
+const getOrderedDashcards = _.memoize(
+  (cards: DashCardId[], dashcards: Record<number, StoreDashcard>) => {
+    const orderedDashcards = cards
       .map((id) => dashcards[id])
       .filter((dc) => !dc.isRemoved)
       .sort((a, b) => {
@@ -210,12 +206,42 @@ export const getDashboardComplete = createSelector(
         return a.col - b.col;
       });
 
+    return orderedDashcards;
+  },
+  (cards: DashCardId[]) => cards.join("-"),
+);
+
+const getDashboardMemoized = _.memoize(
+  (
+    dashboard: StoreDashboard | undefined,
+    dashcards: Record<number, StoreDashcard>,
+  ) => {
+    const orderedDashcards = getOrderedDashcards(
+      dashboard?.dashcards || [],
+      dashcards,
+    );
+
     return (
       dashboard && {
         ...dashboard,
         dashcards: orderedDashcards,
       }
     );
+  },
+  (dashboard: StoreDashboard | undefined) => dashboard?.id?.toString() || "",
+);
+
+export const getDashboardComplete = createSelector(
+  [getDashboard, getDashcards],
+  (
+    dashboard: StoreDashboard | undefined,
+    dashcards: Record<number, StoreDashcard>,
+  ) => {
+    if (!dashboard) {
+      return null;
+    }
+
+    return getDashboardMemoized(dashboard, dashcards);
   },
 );
 
@@ -457,6 +483,8 @@ export const getDashboardHeaderValuePopulatedParameters = createSelector(
   (parameters, values) => _getValuePopulatedParameters({ parameters, values }),
 );
 
+const DEFAULT_INLINE_PARAMS: ReturnType<typeof _getValuePopulatedParameters> =
+  [];
 export const getDashCardInlineValuePopulatedParameters = createSelector(
   [
     getDashcards,
@@ -467,7 +495,7 @@ export const getDashCardInlineValuePopulatedParameters = createSelector(
   (dashcards, parameters, parameterValues, dashcardId) => {
     const dashcard = dashcards[dashcardId];
     if (!dashcard || !hasInlineParameters(dashcard)) {
-      return [];
+      return DEFAULT_INLINE_PARAMS;
     }
     const inlineParameters = dashcard.inline_parameters
       .map((parameterId) => parameters.find((p) => p.id === parameterId))

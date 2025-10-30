@@ -1,6 +1,6 @@
 import cx from "classnames";
 import type { PropsWithChildren } from "react";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { Route, WithRouterProps } from "react-router";
 import { replace } from "react-router-redux";
 
@@ -147,6 +147,29 @@ export const DashboardApp = ({
   const { autoScrollToDashcardId, reportAutoScrolledToDashcard } =
     useAutoScrollToDashcard(location);
 
+  const navigateToNewCardFromDashboardCallback = useCallback(
+    (opts) => dispatch(navigateToNewCardFromDashboard(opts)),
+    [dispatch],
+  );
+
+  const onError = useCallback(
+    (error: unknown) => dispatch(setErrorPage(error)),
+    [dispatch],
+  );
+
+  const onNewQuestion = useCallback(
+    () => dispatch(addDashboardQuestion("notebook")),
+    [dispatch],
+  );
+
+  const onAddQuestion = useCallback(
+    (dashboard: IDashboard | null) => {
+      dispatch(setEditingDashboard(dashboard));
+      dispatch(toggleSidebar(SIDEBAR_NAME.addQuestion));
+    },
+    [dispatch],
+  );
+
   return (
     <ErrorBoundary message={error}>
       <DashboardContextProvider
@@ -155,15 +178,10 @@ export const DashboardApp = ({
         autoScrollToDashcardId={autoScrollToDashcardId}
         reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
         onLoadWithoutCards={onLoadDashboard}
-        onError={(error) => dispatch(setErrorPage(error))}
-        navigateToNewCardFromDashboard={(opts) =>
-          dispatch(navigateToNewCardFromDashboard(opts))
-        }
-        onNewQuestion={() => dispatch(addDashboardQuestion("notebook"))}
-        onAddQuestion={(dashboard: IDashboard | null) => {
-          dispatch(setEditingDashboard(dashboard));
-          dispatch(toggleSidebar(SIDEBAR_NAME.addQuestion));
-        }}
+        onError={onError}
+        navigateToNewCardFromDashboard={navigateToNewCardFromDashboardCallback}
+        onNewQuestion={onNewQuestion}
+        onAddQuestion={onAddQuestion}
         dashboardActions={DASHBOARD_APP_ACTIONS}
       >
         <DashboardAppInner location={location} route={route}>

@@ -42,6 +42,9 @@ import type {
 } from "../types";
 
 import { type ReduxProps, connector } from "./context.redux";
+import { useSelector } from "metabase/lib/redux";
+import { getDashboard, getDashcards } from "../selectors";
+import { dashcards } from "embedding-sdk-bundle/components/public/dashboard/tests/setup";
 
 export type DashboardContextErrorState = {
   error: unknown | null;
@@ -112,6 +115,8 @@ type FetchOption = {
   forceRefetch?: boolean;
 };
 
+const defaultDownloadsEnabled = { pdf: true, results: true };
+
 const DashboardContextProviderInner = forwardRef(
   function DashboardContextProviderInner(
     {
@@ -133,7 +138,7 @@ const DashboardContextProviderInner = forwardRef(
       titled = true,
       font = null,
       hideParameters: hide_parameters = null,
-      downloadsEnabled = { pdf: true, results: true },
+      downloadsEnabled = defaultDownloadsEnabled,
       autoScrollToDashcardId = undefined,
       reportAutoScrolledToDashcard = noop,
       cardTitled = true,
@@ -141,7 +146,7 @@ const DashboardContextProviderInner = forwardRef(
       withFooter = true,
 
       // redux selectors
-      dashboard,
+      // dashboard,
       selectedTabId,
       isEditing,
       isNavigatingBackToDashboard,
@@ -162,13 +167,104 @@ const DashboardContextProviderInner = forwardRef(
       reset,
       closeDashboard,
       navigateToNewCardFromDashboard,
-      ...reduxProps
+      headerParameters,
+      tabs,
+      canManageSubscriptions,
+      isAdmin,
+      isSharing,
+      dashboardBeforeEditing,
+      isEditingParameter,
+      editingParameter,
+      isDirty,
+      slowCards,
+      draftParameterValues,
+      loadingStartTime,
+      clickBehaviorSidebarDashcard,
+      isAddParameterPopoverOpen,
+      sidebar,
+      isRunning,
+      isLoadingComplete,
+      isHeaderVisible,
+      isAdditionalInfoVisible,
+      addHeadingDashCardToDashboard,
+      addMarkdownDashCardToDashboard,
+      addLinkDashCardToDashboard,
+      setDashboardAttributes,
+      setSharing,
+      closeSidebar,
+      addParameter,
+      setParameterName,
+      setParameterType,
+      setParameterValue,
+      setParameterIndex,
+      setParameterValueToDefault,
+      setEditingParameter,
+      setParameterDefaultValue,
+      setParameterRequired,
+      setParameterTemporalUnits,
+      setParameterIsMultiSelect,
+      setParameterQueryType,
+      setParameterSourceType,
+      setParameterSourceConfig,
+      setParameterFilteringParameters,
+      showAddParameterPopover,
+      removeParameter,
+      onReplaceAllDashCardVisualizationSettings,
+      onUpdateDashCardVisualizationSettings,
+      onUpdateDashCardColumnSettings,
+      updateDashboardAndCards,
+      updateDashboard,
+      setSidebar,
+      hideAddParameterPopover,
+      onChangeLocation,
+      setArchivedDashboard,
+      deletePermanently,
+      moveDashboardToCollection,
+      createNewTab,
+      deleteTab,
+      duplicateTab,
+      moveTab,
+      renameTab,
+      selectTab,
+      undoDeleteTab,
+      onAddQuestion,
     }: PropsWithChildren<ContextProps>,
     ref,
   ) {
     const [error, setError] = useState<unknown | null>(null);
     const previousIsLoading = usePrevious(isLoading);
     const previousIsLoadingWithoutCards = usePrevious(isLoadingWithoutCards);
+
+    const _dashboard = useSelector(getDashboard);
+    const dashcards = useSelector(getDashcards);
+
+    const dashboard = useMemo(() => {
+      if (!_dashboard) {
+        return null;
+      }
+
+      const orderedDashcards = _dashboard.dashcards
+        .map((id) => dashcards[id])
+        .filter((dc) => !dc.isRemoved)
+        .sort((a, b) => {
+          const rowDiff = a.row - b.row;
+
+          // sort by y position first
+          if (rowDiff !== 0) {
+            return rowDiff;
+          }
+
+          // for items on the same row, sort by x position
+          return a.col - b.col;
+        });
+
+      return (
+        _dashboard && {
+          ..._dashboard,
+          dashcards: orderedDashcards,
+        }
+      );
+    }, [_dashboard?.id]);
 
     const previousDashboard = usePrevious(dashboard);
     const previousDashboardId = usePrevious(dashboardId);
@@ -348,63 +444,232 @@ const DashboardContextProviderInner = forwardRef(
         ? initDashboardActions({ isEditing, downloadsEnabled })
         : (initDashboardActions ?? null);
 
+    const contextValue = useMemo(() => {
+      return {
+        dashboardId,
+        dashboard: dashboardWithFilteredCards,
+        parameterQueryParams,
+        onLoad,
+        onError,
+        dashcardMenu,
+        dashboardActions,
+        onNewQuestion,
+
+        navigateToNewCardFromDashboard,
+        isLoading,
+        isLoadingWithoutCards,
+        error,
+
+        isFullscreen,
+        onFullscreenChange,
+        fullscreenRef,
+        refreshPeriod,
+        setRefreshElapsedHook,
+        onRefreshPeriodChange,
+        theme,
+        background,
+        bordered,
+        titled,
+        font,
+        hideParameters,
+        downloadsEnabled,
+        autoScrollToDashcardId,
+        reportAutoScrolledToDashcard,
+        cardTitled,
+        getClickActionMode,
+        withFooter,
+
+        // redux selectors
+        selectedTabId,
+        isEditing,
+        isNavigatingBackToDashboard,
+        parameters,
+        parameterValues,
+        isEmbeddingIframe,
+
+        // redux actions
+        addCardToDashboard,
+        cancelFetchDashboardCardData,
+        fetchDashboard,
+        fetchDashboardCardData,
+        initialize,
+        setEditingDashboard,
+        toggleSidebar,
+        reset,
+        closeDashboard,
+        headerParameters,
+        tabs,
+        canManageSubscriptions,
+        isAdmin,
+        isSharing,
+        dashboardBeforeEditing,
+        isEditingParameter,
+        editingParameter,
+        isDirty,
+        slowCards,
+        draftParameterValues,
+        loadingStartTime,
+        clickBehaviorSidebarDashcard,
+        isAddParameterPopoverOpen,
+        sidebar,
+        isRunning,
+        isLoadingComplete,
+        isHeaderVisible,
+        isAdditionalInfoVisible,
+        addHeadingDashCardToDashboard,
+        addMarkdownDashCardToDashboard,
+        addLinkDashCardToDashboard,
+        setDashboardAttributes,
+        setSharing,
+        closeSidebar,
+        addParameter,
+        setParameterName,
+        setParameterType,
+        setParameterValue,
+        setParameterIndex,
+        setParameterValueToDefault,
+        setEditingParameter,
+        setParameterDefaultValue,
+        setParameterRequired,
+        setParameterTemporalUnits,
+        setParameterIsMultiSelect,
+        setParameterQueryType,
+        setParameterSourceType,
+        setParameterSourceConfig,
+        setParameterFilteringParameters,
+        showAddParameterPopover,
+        removeParameter,
+        onReplaceAllDashCardVisualizationSettings,
+        onUpdateDashCardVisualizationSettings,
+        onUpdateDashCardColumnSettings,
+        updateDashboardAndCards,
+        updateDashboard,
+        setSidebar,
+        hideAddParameterPopover,
+        onChangeLocation,
+        setArchivedDashboard,
+        deletePermanently,
+        moveDashboardToCollection,
+        createNewTab,
+        deleteTab,
+        duplicateTab,
+        moveTab,
+        renameTab,
+        selectTab,
+        undoDeleteTab,
+        onAddQuestion,
+      };
+    }, [
+      dashboardId,
+      dashboardWithFilteredCards,
+      parameterQueryParams,
+      onLoad,
+      onError,
+      dashcardMenu,
+      dashboardActions,
+      onNewQuestion,
+      navigateToNewCardFromDashboard,
+      isLoading,
+      isLoadingWithoutCards,
+      error,
+      isFullscreen,
+      onFullscreenChange,
+      fullscreenRef,
+      refreshPeriod,
+      setRefreshElapsedHook,
+      onRefreshPeriodChange,
+      theme,
+      background,
+      bordered,
+      titled,
+      font,
+      hideParameters,
+      downloadsEnabled,
+      autoScrollToDashcardId,
+      reportAutoScrolledToDashcard,
+      cardTitled,
+      getClickActionMode,
+      withFooter,
+      selectedTabId,
+      isEditing,
+      isNavigatingBackToDashboard,
+      parameters,
+      parameterValues,
+      isEmbeddingIframe,
+      addCardToDashboard,
+      cancelFetchDashboardCardData,
+      fetchDashboard,
+      fetchDashboardCardData,
+      initialize,
+      setEditingDashboard,
+      toggleSidebar,
+      reset,
+      closeDashboard,
+      headerParameters,
+      tabs,
+      canManageSubscriptions,
+      isAdmin,
+      isSharing,
+      dashboardBeforeEditing,
+      isEditingParameter,
+      editingParameter,
+      isDirty,
+      slowCards,
+      draftParameterValues,
+      loadingStartTime,
+      clickBehaviorSidebarDashcard,
+      isAddParameterPopoverOpen,
+      sidebar,
+      isRunning,
+      isLoadingComplete,
+      isHeaderVisible,
+      isAdditionalInfoVisible,
+      addHeadingDashCardToDashboard,
+      addMarkdownDashCardToDashboard,
+      addLinkDashCardToDashboard,
+      setDashboardAttributes,
+      setSharing,
+      closeSidebar,
+      addParameter,
+      setParameterName,
+      setParameterType,
+      setParameterValue,
+      setParameterIndex,
+      setParameterValueToDefault,
+      setEditingParameter,
+      setParameterDefaultValue,
+      setParameterRequired,
+      setParameterTemporalUnits,
+      setParameterIsMultiSelect,
+      setParameterQueryType,
+      setParameterSourceType,
+      setParameterSourceConfig,
+      setParameterFilteringParameters,
+      showAddParameterPopover,
+      removeParameter,
+      onReplaceAllDashCardVisualizationSettings,
+      onUpdateDashCardVisualizationSettings,
+      onUpdateDashCardColumnSettings,
+      updateDashboardAndCards,
+      updateDashboard,
+      setSidebar,
+      hideAddParameterPopover,
+      onChangeLocation,
+      setArchivedDashboard,
+      deletePermanently,
+      moveDashboardToCollection,
+      createNewTab,
+      deleteTab,
+      duplicateTab,
+      moveTab,
+      renameTab,
+      selectTab,
+      undoDeleteTab,
+      onAddQuestion,
+    ]);
+
     return (
-      <DashboardContext.Provider
-        value={{
-          dashboardId,
-          dashboard: dashboardWithFilteredCards,
-          parameterQueryParams,
-          onLoad,
-          onError,
-          dashcardMenu,
-          dashboardActions,
-          onNewQuestion,
-
-          navigateToNewCardFromDashboard,
-          isLoading,
-          isLoadingWithoutCards,
-          error,
-
-          isFullscreen,
-          onFullscreenChange,
-          fullscreenRef,
-          refreshPeriod,
-          setRefreshElapsedHook,
-          onRefreshPeriodChange,
-          theme,
-          background,
-          bordered,
-          titled,
-          font,
-          hideParameters,
-          downloadsEnabled,
-          autoScrollToDashcardId,
-          reportAutoScrolledToDashcard,
-          cardTitled,
-          getClickActionMode,
-          withFooter,
-
-          // redux selectors
-          selectedTabId,
-          isEditing,
-          isNavigatingBackToDashboard,
-          parameters,
-          parameterValues,
-          isEmbeddingIframe,
-
-          // redux actions
-          addCardToDashboard,
-          cancelFetchDashboardCardData,
-          fetchDashboard,
-          fetchDashboardCardData,
-          initialize,
-          setEditingDashboard,
-          toggleSidebar,
-          reset,
-          closeDashboard,
-          ...reduxProps,
-        }}
-      >
+      <DashboardContext.Provider value={contextValue}>
         {children}
       </DashboardContext.Provider>
     );
