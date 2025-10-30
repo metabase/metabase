@@ -455,7 +455,6 @@ export const DocumentPage = ({
           <CollectionPickerModal
             title={t`Where should we save this document?`}
             onClose={() => setCollectionPickerMode(null)}
-            value={{ id: "root", model: "collection" }}
             options={{
               showPersonalCollections: true,
               showRootCollection: true,
