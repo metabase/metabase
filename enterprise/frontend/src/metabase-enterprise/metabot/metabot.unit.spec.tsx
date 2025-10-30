@@ -72,13 +72,16 @@ function setup(
 
   setupEnterprisePlugins();
 
-  const ui = options?.ui ?? <Metabot />;
-  const currentUser = options?.currentUser ?? createMockUser();
-  const metabotPluginInitialState = options?.metabotPluginInitialState ?? {
-    ...getMetabotInitialState(),
-    visible: true,
-  };
-  const promptSuggestions = options?.promptSuggestions ?? [];
+  const {
+    ui = <Metabot />,
+    currentUser = createMockUser(),
+    metabotPluginInitialState = {
+      ...getMetabotInitialState(),
+      visible: true,
+      useStreaming: true,
+    },
+    promptSuggestions = [],
+  } = options || {};
 
   fetchMock.get(
     `path:/api/ee/metabot-v3/metabot/${FIXED_METABOT_IDS.DEFAULT}/prompt-suggestions`,

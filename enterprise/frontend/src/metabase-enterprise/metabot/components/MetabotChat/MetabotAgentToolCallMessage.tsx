@@ -31,10 +31,10 @@ const ToolCallDetailsModal = ({
       return message.args
         ? // done for formatting
           JSON.stringify(JSON.parse(message.args), null, 2)
-        : undefined;
+        : "{}";
     } catch {
       console.warn("Failed to parse tool call args as JSON", message.args);
-      return message.args;
+      return message.args ?? "{}";
     }
   }, [message.args]);
 
