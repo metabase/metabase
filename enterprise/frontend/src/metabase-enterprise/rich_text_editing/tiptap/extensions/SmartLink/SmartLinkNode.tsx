@@ -8,10 +8,12 @@ import { memo, useEffect } from "react";
 import { t } from "ttag";
 
 import {
+  useGetActionQuery,
   useGetCardQuery,
   useGetCollectionQuery,
   useGetDashboardQuery,
   useGetDatabaseQuery,
+  useGetSegmentQuery,
   useGetTableQuery,
 } from "metabase/api";
 import {
@@ -25,6 +27,7 @@ import { extractEntityId } from "metabase/lib/urls/utils";
 import { Icon } from "metabase/ui";
 import {
   useGetDocumentQuery,
+  useGetTransformQuery,
   useListMentionsQuery,
 } from "metabase-enterprise/api";
 import { updateMentionsCache } from "metabase-enterprise/documents/documents.slice";
@@ -40,8 +43,10 @@ import type {
   Database,
   Document,
   MentionableUser,
+  Segment,
   Table,
   Transform,
+  WritebackAction,
 } from "metabase-types/api";
 
 import {
@@ -60,6 +65,8 @@ export type SmartLinkEntity =
   | Transform
   | Database
   | Document
+  | WritebackAction
+  | Segment
   | MentionableUser;
 
 // Utility function to parse entity URLs and extract entityId and model
@@ -253,6 +260,10 @@ export const SmartLink = Node.create<{
   },
 });
 
+function assertUnreachable(value: never): never {
+  throw new Error(`Unhandled model type: ${value}`);
+}
+
 export const useEntityData = (
   entityId: number | null,
   model: SuggestionModel | null,
@@ -291,70 +302,96 @@ export const useEntityData = (
     },
   );
 
+  const transformQuery = useGetTransformQuery(entityId!, {
+    skip: !entityId || model !== "transform",
+  });
+
+  const actionQuery = useGetActionQuery(
+    { id: entityId! },
+    { skip: !entityId || model !== "action" },
+  );
+
+  const segmentQuery = useGetSegmentQuery(entityId!, {
+    skip: !entityId || model !== "segment",
+  });
+
   const usersQuery = useListMentionsQuery(undefined, {
     skip: !entityId || model !== "user",
   });
 
   // Determine which query is active and return its state
-  if (model === "card" || model === "dataset") {
-    return {
-      entity: cardQuery.data,
-      isLoading: cardQuery.isLoading,
-      error: cardQuery.error,
-    };
+  switch (model) {
+    case "card":
+    case "dataset":
+    case "metric":
+      return {
+        entity: cardQuery.data,
+        isLoading: cardQuery.isLoading,
+        error: cardQuery.error,
+      };
+    case "dashboard":
+      return {
+        entity: dashboardQuery.data,
+        isLoading: dashboardQuery.isLoading,
+        error: dashboardQuery.error,
+      };
+    case "collection":
+      return {
+        entity: collectionQuery.data,
+        isLoading: collectionQuery.isLoading,
+        error: collectionQuery.error,
+      };
+    case "table":
+      return {
+        entity: tableQuery.data,
+        isLoading: tableQuery.isLoading,
+        error: tableQuery.error,
+      };
+    case "database":
+      return {
+        entity: databaseQuery.data,
+        isLoading: databaseQuery.isLoading,
+        error: databaseQuery.error,
+      };
+    case "document":
+      return {
+        entity: documentQuery.data,
+        isLoading: documentQuery.isLoading,
+        error: documentQuery.error,
+      };
+    case "transform":
+      return {
+        entity: transformQuery.data,
+        isLoading: transformQuery.isLoading,
+        error: transformQuery.error,
+      };
+    case "action":
+      return {
+        entity: actionQuery.data,
+        isLoading: actionQuery.isLoading,
+        error: actionQuery.error,
+      };
+    case "segment":
+      return {
+        entity: segmentQuery.data,
+        isLoading: segmentQuery.isLoading,
+        error: segmentQuery.error,
+      };
+    case "user": {
+      const user = usersQuery.data?.data.find((user) => user.id === entityId);
+
+      return {
+        entity: user ? { ...user, name: user.common_name } : null,
+        isLoading: usersQuery.isLoading,
+        error: usersQuery.error,
+      };
+    }
+    case "indexed-entity":
+    case null:
+      return { entity: null, isLoading: false, error: null };
+    default:
+      return assertUnreachable(model);
   }
-
-  if (model === "dashboard") {
-    return {
-      entity: dashboardQuery.data,
-      isLoading: dashboardQuery.isLoading,
-      error: dashboardQuery.error,
-    };
-  }
-
-  if (model === "collection") {
-    return {
-      entity: collectionQuery.data,
-      isLoading: collectionQuery.isLoading,
-      error: collectionQuery.error,
-    };
-  }
-
-  if (model === "table") {
-    return {
-      entity: tableQuery.data,
-      isLoading: tableQuery.isLoading,
-      error: tableQuery.error,
-    };
-  }
-
-  if (model === "database") {
-    return {
-      entity: databaseQuery.data,
-      isLoading: databaseQuery.isLoading,
-      error: databaseQuery.error,
-    };
-  }
-
-  if (model === "document") {
-    return {
-      entity: documentQuery.data,
-      isLoading: documentQuery.isLoading,
-      error: documentQuery.error,
-    };
-  }
-
-  if (model === "user") {
-    const user = usersQuery.data?.data.find((user) => user.id === entityId);
-
-    return {
-      entity: user ? { ...user, name: user.common_name } : null,
-      isLoading: usersQuery.isLoading,
-      error: usersQuery.error,
-    };
-  }
-
-  return { entity: null, isLoading: false, error: null };
 };
 
 export const SmartLinkComponent = memo(
