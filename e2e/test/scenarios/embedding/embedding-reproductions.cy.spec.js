@@ -976,7 +976,7 @@ describe("issue 40660", () => {
   });
 });
 
-describe("issue 49142", { tags: "@skip" }, () => {
+describe("issue 49142", () => {
   const questionDetails = {
     name: "Products",
     query: { "source-table": PRODUCTS_ID, limit: 2 },
