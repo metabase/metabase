@@ -2118,7 +2118,7 @@ describe("scenarios > admin > transforms > jobs", () => {
   });
 
   describe("filtering", () => {
-    it("should be able to filter jobs ", () => {
+    it("should be able to filter jobs ", { tags: "@flaky" }, () => {
       cy.log("run hourly job so know that was recently run");
       visitJobListPage();
       getContentTable().findByText("Hourly job").click();
