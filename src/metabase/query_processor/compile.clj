@@ -69,14 +69,18 @@
   this under `:native`, but that causes the MBQL schema to blow up. We can't just change this to a regular native
   query outright and remove the MBQL `:query`, because that would break perms checks."
   [preprocessed :- ::lib.schema/query]
-  (let [preprocessed (dissoc preprocessed :qp/compiled :qp/compiled-inline)]
+  (let [preprocessed (dissoc preprocessed :qp/compiled :qp/compiled-inline)
+        compiled (compile-preprocessed preprocessed)]
     (-> preprocessed
-        (assoc :qp/compiled (compile-preprocessed preprocessed))
+        (assoc :qp/compiled compiled)
         ;; if this query is pure-MBQL then we can reliably (re)compile it with inline parameters. If it has any native
         ;; stage then it might already have parameters, and we're not about to try to splice them back in.
+        ;; If the normally compiled query didn't have any parameters, reuse it as it's already effectively "inline".
         (cond-> (not (lib/any-native-stage? preprocessed))
-          (assoc :qp/compiled-inline (binding [driver/*compile-with-inline-parameters* true]
-                                       (compile-preprocessed preprocessed)))))))
+          (assoc :qp/compiled-inline (if (empty? (:params compiled))
+                                       compiled
+                                       (binding [driver/*compile-with-inline-parameters* true]
+                                         (compile-preprocessed preprocessed))))))))
 
 (mu/defn compile-with-inline-parameters :- ::compiled-with-inlined-parameters
   "Return the native form for a `query`, with any prepared statement (or equivalent) parameters spliced into the query
