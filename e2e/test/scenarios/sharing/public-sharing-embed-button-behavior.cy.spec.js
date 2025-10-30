@@ -301,6 +301,11 @@ describe("#39152 sharing an unsaved question", () => {
         assert.deepEqual(request.body.embedding_type, "static-legacy");
         assert.deepEqual(response.body.embedding_type, "static-legacy");
       });
+
+      H.unpublishChanges(apiPath, ({ request, response }) => {
+        assert.deepEqual(request.body.embedding_type, null);
+        assert.deepEqual(response.body.embedding_type, null);
+      });
     });
   });
 
