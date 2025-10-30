@@ -37,17 +37,14 @@ export const LegacyStaticEmbeddingAlert = () => {
         </Box>
 
         <Stack>
-          {c(
-            "{0} is the legacy static embedding usage alert when opening a modern static embedding wizard. {1} is the link that enables legacy static embedding wizard",
-          ).jt`${(
-            <Text key="legacy-static-embedding-alert" c="text-primary" lh="lg">
-              {t`This embed uses the legacy static embedding method. The controls shown are for the new embedding method, which is recommended.`}
-            </Text>
-          )}${(
-            <Anchor key="anchor" fw="bold" lh="lg">
-              {t`Use legacy static embedding (not recommended)`}
-            </Anchor>
-          )}`}
+          <Text key="legacy-static-embedding-alert" c="text-primary" lh="lg">
+            {t`This embed uses the legacy static embedding method. The controls shown are for the new embedding method, which is recommended.`}
+          </Text>
+
+          <Anchor key="anchor" fw="bold" lh="lg">
+            {c("A link that toggles the legacy static embedding wizard.")
+              .t`Use legacy static embedding (not recommended)`}
+          </Anchor>
         </Stack>
       </Flex>
     </Alert>
