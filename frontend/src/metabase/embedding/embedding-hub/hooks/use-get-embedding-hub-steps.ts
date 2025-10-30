@@ -35,7 +35,7 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
             openEmbedModal({
               initialState: {
                 isStatic: true,
-                useExistingUserSession: true
+                useExistingUserSession: true,
               },
             });
           },
