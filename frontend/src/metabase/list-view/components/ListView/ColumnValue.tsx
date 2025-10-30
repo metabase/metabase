@@ -10,10 +10,10 @@ import { Badge, Box, Flex, Icon, Image, Stack, Text } from "metabase/ui";
 import { MiniBarCell } from "metabase/visualizations/components/TableInteractive/cells/MiniBarCell";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import { TYPE } from "metabase-lib/v1/types/constants";
 import {
   isAvatarURL,
   isBoolean,
-  isCategory,
   isCurrency,
   isEmail,
   isEntityName,
@@ -125,7 +125,9 @@ export function ColumnValue({
         );
       }
       break;
-    case isCategory(column):
+    // Not using `isCategory` because it incorrectly gives false positive
+    // for many other category subtypes, like Name / Title / City (which we dont' want here).
+    case column.semantic_type === TYPE.Category:
       return (
         <Badge
           className={styles.badge}
