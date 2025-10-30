@@ -63,7 +63,7 @@ const ToolCallDetailsModal = ({
           <Stack gap="xs">
             <Flex gap="xs">
               <Text fw="bold">{t`Response`}</Text>
-              <ActionIcon h="sm" onClick={() => copy(message.args)}>
+              <ActionIcon h="sm" onClick={() => copy(message.result)}>
                 <Icon name="copy" size="1rem" />
               </ActionIcon>
             </Flex>
