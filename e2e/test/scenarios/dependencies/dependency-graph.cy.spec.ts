@@ -235,6 +235,7 @@ describe("scenarios > dependencies > dependency graph", () => {
         .click();
       graphEntryButton().findByText(dependentItemTitle).should("be.visible");
       cy.go("back");
+      graphEntryButton().findByText(itemTitle).should("be.visible");
     }
 
     it("should display dependencies for a table and navigate to them", () => {
