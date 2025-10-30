@@ -10,12 +10,17 @@ const LOCAL_GIT_URL = "file://" + H.LOCAL_GIT_PATH + "/.git";
 
 const REMOTE_QUESTION_NAME = "Remote Sync Test Question";
 
-describe("Remote Sync", () => {
+H.describeWithSnowplowEE("Remote Sync", () => {
   beforeEach(() => {
     H.restore();
+    H.resetSnowplow();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
     H.setupGitSync();
+  });
+
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
   });
 
   describe("Development Mode", () => {
@@ -53,6 +58,11 @@ describe("Remote Sync", () => {
         .button(/Push changes/)
         .click();
 
+      H.expectUnstructuredSnowplowEvent({
+        event: "remote_sync_push_changes",
+        triggered_from: "sidebar",
+      });
+
       H.navigationSidebar()
         .findByRole("link", { name: /Library/ })
         .findByTestId("remote-sync-status", { timeout: 10000 })
@@ -71,6 +81,11 @@ describe("Remote Sync", () => {
       cy.findByTestId("main-navbar-root")
         .findByRole("button", { name: "Pull from Git" })
         .click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "remote_sync_pull_changes",
+        triggered_from: "sidebar",
+      });
 
       H.collectionTable()
         .findByText(UPDATED_REMOTE_QUESTION_NAME, { timeout: 10000 })
@@ -146,6 +161,11 @@ describe("Remote Sync", () => {
         H.popover()
           .findByRole("option", { name: /Create branch/ })
           .click();
+
+        H.expectUnstructuredSnowplowEvent({
+          event: "remote_sync_branch_created",
+          triggered_from: "branch-picker",
+        });
 
         H.navigationSidebar()
           .findByTestId("branch-picker-button")
@@ -235,6 +255,11 @@ describe("Remote Sync", () => {
           .type(NEW_BRANCH_1);
         cy.findByRole("option", { name: NEW_BRANCH_1 }).click();
 
+        H.expectUnstructuredSnowplowEvent({
+          event: "remote_sync_branch_switched",
+          triggered_from: "sidebar",
+        });
+
         H.collectionTable().findByText("Orders, Count").should("exist");
         // The second item should not exist in the first branch
         H.collectionTable().findByText("Orders Model").should("not.exist");
@@ -258,6 +283,12 @@ describe("Remote Sync", () => {
         .type(LOCAL_GIT_URL);
       cy.findByTestId("admin-layout-content").findByText("Development").click();
       cy.button("Set up Remote Sync").click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "remote_sync_settings_changed",
+        triggered_from: "admin-settings",
+      });
+
       cy.findByTestId("admin-layout-content")
         .findByText("Success")
         .should("exist");
@@ -343,6 +374,11 @@ describe("Remote Sync", () => {
           "exist",
         );
         cy.button("Disable").click();
+      });
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "remote_sync_deactivated",
+        triggered_from: "admin-settings",
       });
 
       cy.findByTestId("admin-layout-content")
