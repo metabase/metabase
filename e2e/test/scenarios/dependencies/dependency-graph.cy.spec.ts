@@ -531,7 +531,7 @@ function visitGraph() {
 }
 
 function visitGraphForEntity(id: DependencyId, type: DependencyType) {
-  return cy.visit(`/${BASE_URL}`, { qs: { id, type } });
+  return cy.visit(BASE_URL, { qs: { id, type } });
 }
 
 function dependencyGraph() {
