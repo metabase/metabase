@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from "react";
+import { useMemo } from "react";
 
 import type {
   Location,
@@ -26,16 +26,6 @@ export function useQueryControls(
   setQuestion: (newQuestion: Question) => void,
   setUiState: (newUiState: QueryEditorUiState) => void,
 ) {
-  const stateRef = useRef(uiState);
-  stateRef.current = uiState;
-
-  const setState = useCallback(
-    (callback: (state: QueryEditorUiState) => QueryEditorUiState) => {
-      setUiState(callback(stateRef.current));
-    },
-    [setUiState],
-  );
-
   const selectedText = useMemo(() => {
     const query = question.query();
     const text = Lib.rawNativeQuery(query) ?? "";
@@ -43,94 +33,70 @@ export function useQueryControls(
     return text.slice(start, end);
   }, [question, uiState.selectionRange]);
 
-  const setSelectionRange = useCallback(
-    (selectionRange: SelectionRange[]) => {
-      setState((state) => ({ ...state, selectionRange }));
-    },
-    [setState],
-  );
+  const setSelectionRange = (selectionRange: SelectionRange[]) => {
+    setUiState({ ...uiState, selectionRange });
+  };
 
-  const setModalSnippet = useCallback(
-    (modalSnippet: NativeQuerySnippet | null) => {
-      setState((state) => ({ ...state, modalSnippet }));
-    },
-    [setState],
-  );
+  const setModalSnippet = (modalSnippet: NativeQuerySnippet | null) => {
+    setUiState({ ...uiState, modalSnippet });
+  };
 
-  const openModal = useCallback(
-    (type: QueryModalType) => {
-      if (type === "preview-query") {
-        setState((state) => ({
-          ...state,
-          modalType: "preview-query",
-        }));
-      }
-    },
-    [setState],
-  );
+  const openModal = (type: QueryModalType) => {
+    if (type === "preview-query") {
+      setUiState({
+        ...uiState,
+        modalType: "preview-query",
+      });
+    }
+  };
 
-  const insertSnippet = useCallback(
-    (snippet: NativeQuerySnippet) => {
-      const query = question.query();
-      const text = Lib.rawNativeQuery(query) ?? "";
+  const insertSnippet = (snippet: NativeQuerySnippet) => {
+    const query = question.query();
+    const text = Lib.rawNativeQuery(query) ?? "";
 
-      const { start, end } = getSelectionPositions(
-        text,
-        uiState.selectionRange,
-      );
-      const pre = text.slice(0, start);
-      const post = text.slice(end);
-      const newText = `${pre}{{snippet: ${snippet.name}}}${post}`;
-      const newQuery = Lib.withNativeQuery(query, newText);
+    const { start, end } = getSelectionPositions(text, uiState.selectionRange);
+    const pre = text.slice(0, start);
+    const post = text.slice(end);
+    const newText = `${pre}{{snippet: ${snippet.name}}}${post}`;
+    const newQuery = Lib.withNativeQuery(query, newText);
 
-      setQuestion(question.setQuery(newQuery));
-    },
-    [question, setQuestion, uiState.selectionRange],
-  );
+    setQuestion(question.setQuery(newQuery));
+  };
 
-  const convertToNative = useCallback(
-    (newQuestion: Question) => {
-      setState((state) => ({ ...state, sidebarType: null }));
-      setQuestion(newQuestion);
-    },
-    [setQuestion, setState],
-  );
+  const convertToNative = (newQuestion: Question) => {
+    setUiState({ ...uiState, sidebarType: null });
+    setQuestion(newQuestion);
+  };
 
-  const toggleSidebar = useCallback(
-    (sidebarType: QueryEditorSidebarType) => {
-      setState((state) => ({
-        ...state,
-        sidebarType: state.sidebarType === sidebarType ? null : sidebarType,
-      }));
-    },
-    [setState],
-  );
+  const toggleSidebar = (sidebarType: QueryEditorSidebarType) => {
+    setUiState({
+      ...uiState,
+      sidebarType: uiState.sidebarType === sidebarType ? null : sidebarType,
+    });
+  };
 
-  const toggleDataReferenceSidebar = useCallback(() => {
+  const toggleDataReferenceSidebar = () => {
     toggleSidebar("data-reference");
-  }, [toggleSidebar]);
+  };
 
-  const toggleSnippetSidebar = useCallback(() => {
+  const toggleSnippetSidebar = () => {
     toggleSidebar("snippet");
-  }, [toggleSidebar]);
+  };
 
-  const toggleNativeQuerySidebar = useCallback(() => {
+  const toggleNativeQuerySidebar = () => {
     toggleSidebar("native-query");
-  }, [toggleSidebar]);
+  };
 
-  const toggleModal = useCallback(
-    (modalType: QueryEditorModalType) => {
-      setState((state) => ({
-        ...state,
-        modalType: state.modalType === modalType ? null : modalType,
-      }));
-    },
-    [setState],
-  );
+  const toggleModal = (modalType: QueryEditorModalType) => {
+    setUiState({
+      ...uiState,
+      modalType: uiState.modalType === modalType ? null : modalType,
+    });
+  };
 
-  const togglePreviewQueryModal = useCallback(() => {
+  const togglePreviewQueryModal = () => {
     toggleModal("preview-query");
-  }, [toggleModal]);
+  };
 
   return {
     selectedText,

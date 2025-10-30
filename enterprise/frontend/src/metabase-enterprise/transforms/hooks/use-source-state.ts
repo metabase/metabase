@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
@@ -60,28 +60,25 @@ export function useSourceState({
     );
   }, [source, initialSource, proposedSource, transformId]);
 
-  const setSourceAndRejectProposed = useCallback(
-    (source: DraftTransformSource) => {
-      if (suggestedTransform != null) {
-        dispatch(deactivateSuggestedTransform(suggestedTransform.id));
-      }
-      setSource(source);
-    },
-    [dispatch, suggestedTransform],
-  );
+  const setSourceAndRejectProposed = (source: DraftTransformSource) => {
+    if (suggestedTransform != null) {
+      dispatch(deactivateSuggestedTransform(suggestedTransform.id));
+    }
+    setSource(source);
+  };
 
-  const acceptProposed = useCallback(async () => {
+  const acceptProposed = async () => {
     if (suggestedTransform != null) {
       setSource(suggestedTransform.source);
       dispatch(deactivateSuggestedTransform(suggestedTransform.id));
     }
-  }, [dispatch, suggestedTransform]);
+  };
 
-  const rejectProposed = useCallback(() => {
+  const rejectProposed = () => {
     if (suggestedTransform != null) {
       dispatch(deactivateSuggestedTransform(suggestedTransform.id));
     }
-  }, [dispatch, suggestedTransform]);
+  };
 
   return {
     source,

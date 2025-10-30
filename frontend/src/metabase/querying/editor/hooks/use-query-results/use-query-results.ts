@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from "react";
+import { useMemo, useRef } from "react";
 
 import { useLazyGetAdhocQueryQuery } from "metabase/api";
 import * as Lib from "metabase-lib";
@@ -16,8 +16,6 @@ export function useQueryResults(
   const [runAdhocQuery, { data = null, isFetching: isRunning = false }] =
     useLazyGetAdhocQueryQuery();
   const abortRef = useRef<() => void>();
-  const stateRef = useRef(uiState);
-  stateRef.current = uiState;
 
   const { result, rawSeries, isRunnable, isResultDirty } = useMemo(() => {
     const lastRunQuestion = lastRunQuery
@@ -47,20 +45,20 @@ export function useQueryResults(
     };
   }, [question, data, lastRunQuery]);
 
-  const runQuery = useCallback(async () => {
+  const runQuery = async () => {
     const result = runAdhocQuery({
       ...question.datasetQuery(),
       parameters: normalizeParameters(question.parameters()),
     });
     abortRef.current = result.abort;
     await result;
-    setUiState({ ...stateRef.current, lastRunQuery: question.datasetQuery() });
-  }, [question, setUiState, runAdhocQuery]);
+    setUiState({ ...uiState, lastRunQuery: question.datasetQuery() });
+  };
 
-  const cancelQuery = useCallback(() => {
+  const cancelQuery = () => {
     abortRef.current?.();
     abortRef.current = undefined;
-  }, []);
+  };
 
   return {
     result,

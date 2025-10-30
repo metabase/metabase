@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -36,12 +36,9 @@ export function useQueryQuestion(
     [query, proposedQuery, metadata],
   );
 
-  const setQuestion = useCallback(
-    (newQuestion: Question) => {
-      setQuery(newQuestion.query());
-    },
-    [setQuery],
-  );
+  const setQuestion = (newQuestion: Question) => {
+    setQuery(newQuestion.query());
+  };
 
   return { question, proposedQuestion, setQuestion };
 }
