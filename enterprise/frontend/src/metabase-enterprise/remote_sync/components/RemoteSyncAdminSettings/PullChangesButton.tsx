@@ -5,6 +5,8 @@ import { useToast } from "metabase/common/hooks";
 import { Button, Tooltip } from "metabase/ui";
 import { useImportChangesMutation } from "metabase-enterprise/api";
 
+import { trackPullChanges } from "../../analytics";
+
 interface PullChangesButtonProps {
   dirty: boolean; // disambiguation: local form state, not the git-synced collection state
   branch: string;
@@ -20,6 +22,12 @@ export const PullChangesButton = (props: PullChangesButtonProps) => {
   const handlePullChanges = useCallback(async () => {
     try {
       await importChanges({ branch, force: forcePull }).unwrap();
+
+      trackPullChanges({
+        triggeredFrom: "admin-settings",
+        force: forcePull,
+      });
+
       sendToast({
         message: t`Latest changes have been pulled successfully`,
         icon: "check",

@@ -14,6 +14,7 @@ import {
 import { useExportChangesMutation } from "metabase-enterprise/api";
 import type { Collection } from "metabase-types/api";
 
+import { trackPushChanges } from "../../analytics";
 import { type SyncError, parseSyncError } from "../../utils";
 import { ChangesLists } from "../ChangesLists";
 import { SyncConflictModal } from "../SyncConflictModal";
@@ -57,6 +58,11 @@ export const PushChangesModal = ({
     exportChanges({
       message: commitMessage.trim() || undefined,
       branch: currentBranch,
+    });
+
+    trackPushChanges({
+      triggeredFrom: "sidebar",
+      force: false,
     });
   }, [commitMessage, exportChanges, currentBranch]);
 

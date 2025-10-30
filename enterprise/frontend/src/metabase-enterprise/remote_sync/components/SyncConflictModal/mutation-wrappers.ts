@@ -12,6 +12,8 @@ import {
   parseSyncError,
 } from "metabase-enterprise/remote_sync/utils";
 
+import { trackBranchCreated, trackPushChanges } from "../../analytics";
+
 export const usePushChangesAction = () => {
   const [exportChanges, { isLoading: isPushingChanges }] =
     useExportChangesMutation();
@@ -25,6 +27,12 @@ export const usePushChangesAction = () => {
             branch,
             force,
           }).unwrap();
+
+          trackPushChanges({
+            triggeredFrom: "conflict-modal",
+            force,
+          });
+
           sendToast({
             message: c("{0} is the GitHub branch name")
               .t`Changes pushed to branch ${branch} successfully.`,
@@ -74,6 +82,11 @@ export const useStashToNewBranchAction = (existingBranches: string[]) => {
         try {
           setIsStashing(true);
           await createBranch({ name: newBranchName }).unwrap();
+
+          trackBranchCreated({
+            triggeredFrom: "conflict-modal",
+          });
+
           await exportChanges({
             branch: newBranchName,
           }).unwrap();
