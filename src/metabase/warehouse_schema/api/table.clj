@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as app-db]
+   [metabase.collections.core :as collections]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
@@ -293,8 +294,10 @@
    :- [:merge
        ::table-selectors
        [:map
-        [:target_collection_id pos-int?]]]]
-  (let [target-collection (api/check-404 (t2/select-one :model/Collection target_collection_id))
+        [:target_collection_id [:or pos-int? [:= "library"]]]]]]
+  (let [target-collection (if (= "library" target_collection_id)
+                            (api/check-403 (collections/remote-synced-collection))
+                            (api/check-404 (t2/select-one :model/Collection target_collection_id)))
         where             (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
         created-models    (t2/with-transaction [_conn]
                             (into []
@@ -302,8 +305,8 @@
                                    (map t2.realize/realize)
                                    (partition-all 20)
                                    (mapcat (fn [batch]
-                                            ;; TODO (Ngoc 29/10/25) : we should considering using card/create-card! but with
-                                            ;; an option to skip syncing metadata since it's gonna be really expensive
+                                             ;; TODO (Ngoc 29/10/25) : we should considering using card/create-card! but with
+                                             ;; an option to skip syncing metadata since it's gonna be really expensive
                                              (t2/insert-returning-instances! :model/Card (mapv (fn [table]
                                                                                                  (table->model table api/*current-user-id* target_collection_id))
                                                                                                batch)))))
