@@ -165,11 +165,7 @@ def __override():
 
   # Banned built-in functions that allow code execution or system access
   dangerous_builtins = [
-    "eval",
-    "exec",
-    "compile",
     "open",
-    "__import__",
   ]
 
   real_import = builtins.__import__
