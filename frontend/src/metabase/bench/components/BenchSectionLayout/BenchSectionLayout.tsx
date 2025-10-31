@@ -67,7 +67,7 @@ export function BenchSectionTabs({ tabs }: BenchSectionTabsProps) {
 
   return (
     <Tabs value={selectedTab ? selectedTab.to : null}>
-      <Tabs.List>
+      <Tabs.List style={{ "--tab-border-color": "transparent" }}>
         {tabs.map((tab) => (
           <Tabs.Tab
             key={tab.to}
