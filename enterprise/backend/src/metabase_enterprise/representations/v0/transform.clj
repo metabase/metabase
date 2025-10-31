@@ -2,7 +2,6 @@
   "The v0 transform representation namespace."
   (:require
    [flatland.ordered.map :refer [ordered-map]]
-   [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.lookup :as lookup]
    [metabase-enterprise.representations.toucan.core :as rep-t2]
    [metabase-enterprise.representations.v0.common :as v0-common]
@@ -53,21 +52,23 @@
                                                   :tag_id (-> tag by-name :id)
                                                   :position i})))))
 
-(defmethod import/insert! [:v0 :transform]
+(defn insert!
+  "Insert a v0 transform as a new entity, handling tags as well"
   [representation ref-index]
   (let [representation (rep-read/parse representation)]
     (assert (= :transform (:type representation)))
-    (let [toucan (->> (import/yaml->toucan representation ref-index)
+    (let [toucan (->> (yaml->toucan representation ref-index)
                       (rep-t2/with-toucan-defaults :model/Transform))
           transform (t2/insert-returning-instance! :model/Transform toucan)]
       (set-up-tags (:id transform) (:tags representation))
       (t2/hydrate transform :transform_tag_names))))
 
-(defmethod import/update! [:v0 :transform]
+(defn update!
+  "Update an existing v0 transform from a representation."
   [representation id ref-index]
   (let [representation (rep-read/parse representation)]
     (assert (= :transform (:type representation)))
-    (let [toucan (import/yaml->toucan representation ref-index)]
+    (let [toucan (yaml->toucan representation ref-index)]
       (t2/update! :model/Transform id (dissoc toucan :entity_id))
       (t2/delete! :model/TransformTransformTag :transform_id id)
       (set-up-tags id (:tags representation))

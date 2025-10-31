@@ -1,9 +1,7 @@
 (ns metabase-enterprise.representations.v0.snippet
   (:require
-   [metabase-enterprise.representations.core :as core]
    [metabase-enterprise.representations.toucan.core :as rep-t2]
    [metabase-enterprise.representations.v0.common :as v0-common]
-   [metabase-enterprise.representations.yaml :as rep-yaml]
    [metabase.lib.native :as lib.native]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -69,35 +67,3 @@
      :description (:description snippet)
      :sql (:content snippet)
      :template_tags template-tags}))
-
-(comment
-
-  (let [snippet (t2/select-one :model/NativeQuerySnippet 7)
-        snippet-repr (core/export snippet)
-        snippet-yaml (rep-yaml/generate-string snippet-repr)]
-    (spit "/tmp/snippet.yml" snippet-yaml))
-
-  (let [snippet (t2/select-one :model/NativeQuerySnippet 9)
-        snippet-repr (core/export snippet)
-        snippet-yaml (rep-yaml/generate-string snippet-repr)]
-    (spit "/tmp/snippet.yml" snippet-yaml))
-
-  (try (let [snippet-repr (rep-yaml/from-file "/tmp/snippet.yml")
-             normalized-repr (core/normalize-representation snippet-repr)]
-         (core/yaml->toucan normalized-repr))
-       (catch Exception e
-         (tap> e)
-         (throw e)))
-
-  (let [snippet (t2/select-one :model/Card 1455)
-        snippet-repr (core/export snippet)
-        snippet-yaml (rep-yaml/generate-string snippet-repr)]
-    (spit "/tmp/card.yml" snippet-yaml))
-
-  (try (let [snippet-repr (rep-yaml/from-file "/tmp/card.yml")]
-         (core/normalize-representation snippet-repr))
-       (catch Exception e
-         (tap> e)
-         (throw e)))
-
-  (tap> 1))

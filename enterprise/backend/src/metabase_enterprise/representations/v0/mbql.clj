@@ -4,7 +4,6 @@
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
-   [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.lookup :as lookup]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase.lib.core :as lib]
@@ -126,10 +125,16 @@
         tr (table-ref (:table_id field) default-db)]
     (assoc tr :field (:name field))))
 
+(defmulti export-entity
+  "This is a hack working around the fact that our export code flow doesn't currently
+  keep track of things like refs."
+  ^{:arglists '([t2-entity])}
+  identity)
+
 (defn id->card-ref
   "Take a card ID and turn it into a ref to the card."
   [id]
-  (let [rep (export/export-entity (t2/select-one :model/Card :id id))]
+  (let [rep (export-entity (t2/select-one :model/Card :id id))]
     (str "ref:" (:name rep))))
 
 (defn- card-ref

@@ -1,15 +1,19 @@
 (ns metabase-enterprise.representations.v0.core
   (:require
+   [metabase-enterprise.representations.toucan.core :as rep-t2]
    [metabase-enterprise.representations.v0.card]
    [metabase-enterprise.representations.v0.collection :as v0-coll]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.v0.database :as v0-database]
    [metabase-enterprise.representations.v0.document :as v0-document]
+   [metabase-enterprise.representations.v0.mbql :as v0-mbql]
    [metabase-enterprise.representations.v0.metric :as v0-metric]
    [metabase-enterprise.representations.v0.model :as v0-model]
    [metabase-enterprise.representations.v0.question :as v0-question]
    [metabase-enterprise.representations.v0.snippet :as v0-snippet]
-   [metabase-enterprise.representations.v0.transform :as v0-transform]))
+   [metabase-enterprise.representations.v0.transform :as v0-transform]
+   [representations.read :as rep-read]
+   [toucan2.core :as t2]))
 
 (defn toucan-model
   [representation-type]
@@ -36,6 +40,10 @@
     :snippet (v0-snippet/export-snippet t2-entity)
     :transform (v0-transform/export-transform t2-entity)))
 
+(defmethod v0-mbql/export-entity :default
+  [t2-entity]
+  (export-entity t2-entity))
+
 (defn yaml->toucan
   "Convert a v0 representation into data suitable for creating/updating an entity."
   [representation ref-index]
@@ -61,3 +69,26 @@
     :question (v0-question/persist! representation ref-index)
     :snippet (v0-snippet/persist! representation ref-index)
     :transform (v0-transform/persist! representation ref-index)))
+
+(defn insert!
+  "Insert a v0 representation as a new entity."
+  [representation ref-index]
+  (if (identical? :transform (:type representation))
+    (v0-transform/insert! representation ref-index)
+    ;; Everything else is simple:
+    (let [representation (rep-read/parse representation)
+          model (toucan-model representation)
+          toucan (->> (yaml->toucan representation ref-index)
+                      (rep-t2/with-toucan-defaults model))]
+      (t2/insert-returning-instance! model toucan))))
+
+(defn update!
+  "Update an existing v0 entity from a representation."
+  [representation id ref-index]
+  (if (identical? :transform (:type representation))
+    (v0-transform/update! representation id ref-index)
+    (let [representation (rep-read/parse representation)
+          model (toucan-model (:type representation))
+          toucan (yaml->toucan representation ref-index)]
+      (t2/update! model id toucan)
+      (t2/select-one model :id id))))

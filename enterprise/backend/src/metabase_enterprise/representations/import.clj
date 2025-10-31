@@ -32,39 +32,17 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Representation Normalization ;;
 
-;; inserting and updating
-
-(defmulti insert!
-  "Insert a representation as a new entity."
-  {:arglists '([representation ref-index])}
-  (fn [representation _ref-index] ((juxt :version :type) representation)))
-
-(defmethod insert! :default
+(defn insert!
+  "Insert a representation as a new entity in the database."
   [representation ref-index]
-  (let [representation (rep-read/parse representation)]
-    (if-some [model (common/toucan-model representation)]
-      (let [toucan (->> (yaml->toucan representation ref-index)
-                        (rep-t2/with-toucan-defaults model))]
-        (t2/insert-returning-instance! model toucan))
-      (throw (ex-info (str "Unknown representation type: " (:type representation))
-                      {:representation representation
-                       :type (:type representation)})))))
+  (case (:version representation)
+    :v0 (v0-core/insert! representation ref-index)))
 
-(defmulti update!
+(defn update!
   "Update an existing entity from a representation."
-  {:arglists '([representation id ref-index])}
-  (fn [representation _id _ref-index] ((juxt :version :type) representation)))
-
-(defmethod update! :default
   [representation id ref-index]
-  (let [representation (rep-read/parse representation)]
-    (if-some [model (common/toucan-model representation)]
-      (let [toucan (yaml->toucan representation ref-index)]
-        (t2/update! model id toucan)
-        (t2/select-one model :id id))
-      (throw (ex-info (str "Unknown representation type: " (:type representation))
-                      {:representation representation
-                       :type (:type representation)})))))
+  (case (:version representation)
+    :v0 (v0-core/update! representation id ref-index)))
 
 (defn- file->collection-id
   [^java.io.File file]
