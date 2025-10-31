@@ -1,11 +1,12 @@
 import { t } from "ttag";
 
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-import type {
-  Collection,
-  CollectionEssentials,
-  CollectionId,
-  CollectionItem,
+import {
+  type Collection,
+  type CollectionEssentials,
+  type CollectionId,
+  type CollectionItem,
+  isBaseEntityID,
 } from "metabase-types/api";
 
 export function nonPersonalOrArchivedCollection(
@@ -236,6 +237,16 @@ export function canonicalCollectionId(
   } else {
     return parseInt(collectionId, 10);
   }
+}
+
+export function canonicalCollectionIdOrEntityId(
+  collectionId: string | number | null | undefined,
+): number | string | null {
+  if (isBaseEntityID(collectionId)) {
+    return collectionId;
+  }
+
+  return canonicalCollectionId(collectionId);
 }
 
 export function isValidCollectionId(
