@@ -40,10 +40,9 @@ function ResizableHandle({
   initialWidth,
   onResizeEnd,
 }: ResizableHandleProps) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({
-      id,
-    });
+  const { attributes, listeners, setNodeRef, transform } = useDraggable({
+    id,
+  });
 
   const prevTransformRef = useRef<{ x: number; y: number } | null>(null);
 
@@ -60,16 +59,6 @@ function ResizableHandle({
     }
   }, [transform, initialWidth, onResizeEnd]);
 
-  // Prevent text selection during drag (similar to react-draggable's enableUserSelectHack)
-  useEffect(() => {
-    if (isDragging) {
-      document.body.style.userSelect = "none";
-      return () => {
-        document.body.style.userSelect = "";
-      };
-    }
-  }, [isDragging]);
-
   const currentPosition = initialWidth + (transform ? transform.x : 0);
 
   return (
@@ -79,7 +68,6 @@ function ResizableHandle({
       style={{
         left: `${currentPosition}px`,
         cursor: "col-resize",
-        userSelect: isDragging ? "none" : "auto",
       }}
       {...listeners}
       {...attributes}
