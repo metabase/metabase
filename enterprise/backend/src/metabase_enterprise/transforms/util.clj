@@ -49,7 +49,7 @@
   [transform]
   (when (query-transform? transform)
     (let [query (-> transform :source :query)]
-      (lib.query/native? query))))
+      (lib/native-only-query? query))))
 
 (defn python-transform?
   "Check if this is a Python transform."
@@ -62,7 +62,7 @@
   [source]
   (case (keyword (:type source))
     :python :python
-    :query  (if (lib.query/native? (:query source))
+    :query  (if (lib/native-only-query? (:query source))
               :native
               :mbql)
     (throw (ex-info (str "Unknown transform source type: " (:type source))
