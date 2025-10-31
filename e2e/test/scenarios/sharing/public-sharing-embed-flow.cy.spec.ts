@@ -28,17 +28,10 @@ H.describeWithSnowplow(suiteTitle, () => {
     H.openSharingMenu("Embed");
 
     H.getEmbedModalSharingPane().within(() => {
-      cy.findByRole("link", { name: "Embedded Analytics JS" }).click();
+      cy.findByRole("button", { name: "Embedded Analytics JS" }).click();
     });
 
     H.expectUnstructuredSnowplowEvent({ event: "embed_wizard_opened" });
-
-    cy.location("search").should((search) => {
-      const params = new URLSearchParams(search);
-
-      expect(params.get("resource_type")).to.equal("dashboard");
-      expect(params.get("resource_id")).to.equal(String(ORDERS_DASHBOARD_ID));
-    });
 
     getEmbedSidebar().within(() => {
       cy.findByText("Behavior").should("be.visible");
@@ -64,17 +57,10 @@ H.describeWithSnowplow(suiteTitle, () => {
     H.openSharingMenu("Embed");
 
     H.getEmbedModalSharingPane()
-      .findByRole("link", { name: "Embedded Analytics JS" })
+      .findByRole("button", { name: "Embedded Analytics JS" })
       .click();
 
     H.expectUnstructuredSnowplowEvent({ event: "embed_wizard_opened" });
-
-    cy.location("search").should((search) => {
-      const params = new URLSearchParams(search);
-
-      expect(params.get("resource_type")).to.equal("question");
-      expect(params.get("resource_id")).to.equal(String(ORDERS_QUESTION_ID));
-    });
 
     getEmbedSidebar().within(() => {
       cy.findByText("Behavior").should("be.visible");
@@ -100,7 +86,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     H.openSharingMenu("Embed");
 
     H.getEmbedModalSharingPane().within(() => {
-      cy.findByRole("link", { name: "Embedded Analytics JS" }).click();
+      cy.findByRole("button", { name: "Embedded Analytics JS" }).click();
     });
 
     H.expectUnstructuredSnowplowEvent({ event: "embed_wizard_opened" });
@@ -123,7 +109,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     H.openSharingMenu("Embed");
 
     H.getEmbedModalSharingPane().within(() => {
-      cy.findByRole("link", { name: "Embedded Analytics JS" }).click();
+      cy.findByRole("button", { name: "Embedded Analytics JS" }).click();
     });
 
     H.expectUnstructuredSnowplowEvent({ event: "embed_wizard_opened" });

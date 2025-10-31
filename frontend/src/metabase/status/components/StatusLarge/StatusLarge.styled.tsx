@@ -12,6 +12,7 @@ export const StatusRoot = styled.div`
   box-shadow: 0 1px 12px var(--mb-color-shadow);
   overflow: hidden;
   margin-top: 1rem;
+  border: 1px solid var(--mb-color-border);
 `;
 
 export const StatusHeader = styled.div`

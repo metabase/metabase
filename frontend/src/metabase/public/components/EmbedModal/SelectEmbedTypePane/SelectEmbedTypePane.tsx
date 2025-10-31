@@ -1,6 +1,6 @@
 import cx from "classnames";
 import type React from "react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -40,6 +40,7 @@ interface SelectEmbedTypePaneProps {
   onDeletePublicLink: () => void;
   getPublicUrl: (publicUuid: string, extension?: ExportFormatType) => string;
   goToNextStep: () => void;
+  closeModal: () => void;
 }
 
 export function SelectEmbedTypePane({
@@ -49,20 +50,9 @@ export function SelectEmbedTypePane({
   onDeletePublicLink,
   getPublicUrl,
   goToNextStep,
+  closeModal,
 }: SelectEmbedTypePaneProps) {
-  const embedFlowUrl = useMemo(() => {
-    const params = new URLSearchParams();
-
-    params.set("resource_type", resourceType);
-
-    if (resource.id) {
-      params.set("resource_id", resource.id.toString());
-    }
-
-    return "/embed-js?" + params.toString();
-  }, [resourceType, resource.id]);
-
-  const { url } = useUpsellEmbedJsCta({ embedFlowUrl });
+  const { url } = useUpsellEmbedJsCta({ resource, resourceType, closeModal });
   const hasPublicLink = resource.public_uuid != null;
 
   const utmTags = {
@@ -144,8 +134,10 @@ export function SelectEmbedTypePane({
 
         {/* Embedded Analytics JS: render either upsell or embed flow link */}
         <MaybeLinkEmbedJs
+          resource={resource}
+          resourceType={resourceType}
           shouldRenderLink={!isEmbedJsAvailable || isEmbedJsEnabled}
-          embedFlowUrl={embedFlowUrl}
+          closeModal={closeModal}
         >
           <SharingPaneButton
             title={t`Embedded Analytics JS`}
@@ -155,7 +147,11 @@ export function SelectEmbedTypePane({
             disabledLink="/admin/embedding/modular"
             actionHint={
               !isEmbedJsAvailable ? (
-                <UpsellEmbedJsCta embedFlowUrl={embedFlowUrl} />
+                <UpsellEmbedJsCta
+                  resource={resource}
+                  resourceType={resourceType}
+                  closeModal={closeModal}
+                />
               ) : undefined
             }
           >
@@ -242,26 +238,38 @@ function LearnMore({ url }: { url: string | undefined }) {
 }
 
 function MaybeLinkEmbedJs({
+  resource,
+  resourceType,
   shouldRenderLink,
-  embedFlowUrl,
+  closeModal,
   ...props
 }: {
-  shouldRenderLink?: boolean;
-  embedFlowUrl: string;
   children: React.ReactNode;
+  resource: EmbedResource;
+  resourceType: EmbedResourceType;
+  shouldRenderLink?: boolean;
+  closeModal: () => void;
 }) {
-  const { url, internalLink, triggerUpsellFlow } = useUpsellEmbedJsCta({
-    embedFlowUrl,
+  const { openEmbedFlow, url, triggerUpsellFlow } = useUpsellEmbedJsCta({
+    resource,
+    resourceType,
+    closeModal,
   });
 
   if (!shouldRenderLink) {
     return props.children;
   }
 
-  if (triggerUpsellFlow) {
+  if (openEmbedFlow || triggerUpsellFlow) {
     return (
       <UnstyledButton
-        onClick={triggerUpsellFlow}
+        onClick={() => {
+          if (triggerUpsellFlow) {
+            triggerUpsellFlow();
+          } else if (openEmbedFlow) {
+            openEmbedFlow();
+          }
+        }}
         type="button"
         aria-label={t`Embedded Analytics JS`}
       >
@@ -276,16 +284,6 @@ function MaybeLinkEmbedJs({
         {...props}
         href={url}
         target="_blank"
-        aria-label={t`Embedded Analytics JS`}
-      />
-    );
-  }
-
-  if (internalLink) {
-    return (
-      <Link
-        {...props}
-        to={internalLink}
         aria-label={t`Embedded Analytics JS`}
       />
     );

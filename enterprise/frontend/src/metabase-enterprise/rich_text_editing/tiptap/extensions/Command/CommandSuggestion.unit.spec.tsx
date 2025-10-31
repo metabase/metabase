@@ -3,6 +3,8 @@ import type { Editor } from "@tiptap/core";
 import { useState } from "react";
 
 import {
+  setupCollectionByIdEndpoint,
+  setupCollectionItemsEndpoint,
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
@@ -320,6 +322,15 @@ describe("CommandSuggestion", () => {
     // Setup with empty recent items to reproduce the bug
     setupSearchEndpoints(SEARCH_ITEMS);
     setupRecentViewsEndpoints([]);
+    setupCollectionByIdEndpoint({ collections: [] });
+    setupCollectionItemsEndpoint({
+      collection: { id: "root" },
+      collectionItems: [],
+    });
+    setupCollectionItemsEndpoint({
+      collection: { id: 1 },
+      collectionItems: [],
+    });
 
     const command = jest.fn();
     const editor = {
@@ -349,6 +360,15 @@ describe("CommandSuggestion", () => {
     // Setup with empty recent items to reproduce the bug
     setupSearchEndpoints(SEARCH_ITEMS);
     setupRecentViewsEndpoints([]);
+    setupCollectionByIdEndpoint({ collections: [] });
+    setupCollectionItemsEndpoint({
+      collection: { id: "root" },
+      collectionItems: [],
+    });
+    setupCollectionItemsEndpoint({
+      collection: { id: 1 },
+      collectionItems: [],
+    });
 
     const command = jest.fn();
     const editor = {

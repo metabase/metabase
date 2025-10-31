@@ -14,8 +14,10 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [medley.core :as m]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.binning :as lib.binning]
+   [metabase.lib.core :as lib]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
@@ -213,13 +215,16 @@
 (def ^{:deprecated "0.57.0"} transform-legacy-field-ref
   "Transform field refs"
   {:in  json-in
-   :out (comp (catch-normalization-exceptions mbql.normalize/normalize-field-ref) json-out-with-keywordization)})
+   :out (comp (catch-normalization-exceptions #_{:clj-kondo/ignore [:deprecated-var]} mbql.normalize/normalize-field-ref)
+              json-out-with-keywordization)})
 
 (defn- normalize-result-metadata-column [col]
   (if (:lib/type col)
     (lib.normalize/normalize ::lib.schema.metadata/column col)
+    ;; legacy usages -- do not use these going forward
+    #_{:clj-kondo/ignore [:deprecated-var]}
     (-> col
-        mbql.normalize/normalize-source-metadata
+        (->> (lib/normalize :metabase.query-processor.schema/result-metadata.column))
         ;; This is necessary, because in the wild, there may be cards created prior to this change.
         lib.temporal-bucket/ensure-temporal-unit-in-display-name
         lib.binning/ensure-binning-in-display-name)))
@@ -310,12 +315,41 @@
   {:in  encrypted-json-in
    :out cached-encrypted-json-out})
 
+;;; TODO (Cam 10/27/25) -- this stuff should be moved into a different module instead of the general models interface,
+;;; either `queries` or a new module along with [[metabase.models.visualization-settings]].
+(mr/def ::viz-settings-ref
+  "Apparently in some cases legacy viz settings keys can be wrapped in `[:ref ...]` e.g.
+
+    [:ref [:field 1 nil]]"
+  [:tuple
+   {:decode/normalize vec}
+   [:= {:decode/normalize keyword} :ref]
+   [:ref ::mbql.s/Reference]])
+
+(mr/def ::viz-settings-name
+  "Apparently in some cases legacy viz settings keys can be wrapped in `[:ref ...]` e.g.
+
+    [:ref [:field 1 nil]]"
+  [:tuple
+   {:decode/normalize vec}
+   [:= {:decode/normalize keyword} :name]
+   :string])
+
 (defn normalize-visualization-settings
   "The frontend uses JSON-serialized versions of MBQL clauses as keys in `:column_settings`. This normalizes them
    to MBQL 4 clauses so things work correctly."
   [viz-settings]
   (letfn [(normalize-column-settings-key [k]
-            (some-> k u/qualified-name json/decode mbql.normalize/normalize json/encode))
+            (some-> k
+                    u/qualified-name
+                    json/decode
+                    ((fn [x]
+                       (cond
+                         (not (sequential? x)) x
+                         (= (first x) "ref")   (lib/normalize ::viz-settings-ref x)
+                         (= (first x) "name")  (lib/normalize ::viz-settings-name x)
+                         :else                 (mbql.normalize/normalize x))))
+                    json/encode))
           (normalize-column-settings [column-settings]
             (into {} (for [[k v] column-settings]
                        [(normalize-column-settings-key k) (walk/keywordize-keys v)])))
@@ -524,7 +558,6 @@
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/updated-at-timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/created-at-timestamped? :hook/entity-id)
-
 ;; --- helper fns
 (defn changes-with-pk
   "The row merged with the changes in pre-update hooks.

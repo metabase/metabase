@@ -1,0 +1,18 @@
+authority_level: null
+description: null
+archived: false
+slug: library
+archive_operation_id: null
+name: Library
+personal_owner_id: null
+type: remote-synced
+is_sample: false
+parent_id: null
+serdes/meta:
+- model: Collection
+  id: AF_m-cEw4pFjXYd90_tnj
+  label: library
+archived_directly: null
+entity_id: AF_m-cEw4pFjXYd90_tnj
+namespace: null
+created_at: '2025-10-23T09:38:19.057632-07:00'

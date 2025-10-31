@@ -62,7 +62,8 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ;; legacy usages -- do not use in new code
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
@@ -582,10 +583,10 @@
    NOTE: This is called during **EXPORT**.
 
    Dispatched on model-name."
-  {:arglists '([model-name db-id])}
-  (fn [model-name _] model-name))
+  {:arglists '([model-name db-id opts])}
+  (fn [model-name _ _] model-name))
 
-(defmethod descendants :default [_ _]
+(defmethod descendants :default [_ _ _]
   nil)
 
 (defmulti required
@@ -1110,10 +1111,15 @@
   [form]
   (mbql.normalize/is-clause? #{:field :field-id :fk-> :dimension :metric :segment} form))
 
+(defn- normalize [mbql]
+  (if-not (mbql-entity-reference? mbql)
+    mbql
+    (into [(keyword (first mbql))] (map normalize) (rest mbql))))
+
 (defn- mbql-id->fully-qualified-name
   [mbql]
   (-> mbql
-      mbql.normalize/normalize-tokens
+      normalize
       (lib.util.match/replace
         ;; `integer?` guard is here to make the operation idempotent
         [:field (id :guard integer?) opts]

@@ -178,13 +178,9 @@ function getIframeUrl() {
  * @param {string} [selector]
  */
 export function getIframeBody(selector = "iframe") {
-  return cy
-    .get(selector)
-    .its("0.contentDocument")
-    .should("exist")
-    .its("body")
-    .should("not.be.undefined")
-    .then(cy.wrap);
+  cy.frameLoaded(selector);
+  cy.wait(1); // unclear why, but the tests are flaky without this
+  return cy.iframe(selector);
 }
 
 export function getEmbedModalSharingPane() {
@@ -301,6 +297,10 @@ export function createPublicQuestionLink(questionId) {
 
 export function createPublicDashboardLink(dashboardId) {
   return cy.request("POST", `/api/dashboard/${dashboardId}/public_link`, {});
+}
+
+export function createPublicDocumentLink(documentId) {
+  return cy.request("POST", `/api/ee/document/${documentId}/public-link`, {});
 }
 
 /**
