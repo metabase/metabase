@@ -131,9 +131,22 @@ jobs:
     needs: [uberjar]
     if: |
       !cancelled() &&
-      contains(github.event.pull_request.labels.*.name, 'PR-Env')
+      contains(github.event.pull_request.labels.*.name, 'PR-Env') &&
+      !contains(github.event.pull_request.labels.*.name, 'PR-Env-self-hosting')
     uses: ./.github/workflows/pr-env.yml
     secrets: inherit
+    with:
+      self_hosting: false
+
+  pr-env-self-hosting:
+    needs: [uberjar]
+    if: |
+      !cancelled() &&
+      contains(github.event.pull_request.labels.*.name, 'PR-Env-self-hosting')
+    uses: ./.github/workflows/pr-env.yml
+    secrets: inherit
+    with:
+      self_hosting: true
 
   containerize:
     needs: [uberjar]
