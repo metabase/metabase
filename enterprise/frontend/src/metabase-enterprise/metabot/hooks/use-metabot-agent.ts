@@ -21,6 +21,8 @@ import {
   getProfileOverride,
   resetConversation as resetConversationAction,
   retryPrompt,
+  setDebugMode,
+  setProfileOverride,
   setVisible as setVisibleAction,
   submitInput as submitInputAction,
 } from "../state";
@@ -154,15 +156,25 @@ export const useMetabotAgent = () => {
   );
 
   const startNewConversation = useCallback(
-    async (message: string) => {
+    async (input: {
+      message: string;
+      profile?: string;
+      debugMode: boolean;
+    }) => {
       await resetConversation();
       setVisible(true);
-      if (message) {
-        submitInput(message);
+      if (input.profile) {
+        dispatch(setProfileOverride(input.profile));
+      }
+      if (input.debugMode) {
+        dispatch(setDebugMode(true));
+      }
+      if (input.message) {
+        submitInput(input.message);
       }
       promptInputRef?.current?.focus();
     },
-    [resetConversation, setVisible, promptInputRef, submitInput],
+    [dispatch, resetConversation, setVisible, promptInputRef, submitInput],
   );
 
   return {
