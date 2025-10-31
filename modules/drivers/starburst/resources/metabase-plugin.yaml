@@ -34,13 +34,6 @@ driver:
       display-name: Role (optional)
       required: false
       helper-text: Specify a role to override the database user’s default role.
-    - name: impersonation
-      display-name: User impersonation
-      type: boolean
-      required: false
-      description: Impersonate end user when running queries
-      visible-if:
-        never-visible: true
     - name: prepared-optimized
       display-name: Optimized prepared statements
       type: boolean
