@@ -17,6 +17,7 @@ import type {
 } from "embedding-sdk-bundle/types/ui";
 import type { SdkUsageProblem } from "embedding-sdk-bundle/types/usage-problem";
 import type { LoginStatus } from "embedding-sdk-bundle/types/user";
+import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import type { State } from "metabase-types/store";
 
 export type EmbeddingSessionTokenState = {
@@ -31,6 +32,12 @@ export type SdkStore = Omit<Store<SdkStoreState, Action>, "dispatch"> & {
 
 export type SdkDispatch = ThunkDispatch<SdkStoreState, void, AnyAction>;
 
+export type SdkThemeState = {
+  theme: MetabaseTheme | null;
+  loading: boolean;
+  error: Error | null;
+};
+
 export type SdkState = {
   metabaseInstanceUrl: MetabaseAuthConfig["metabaseInstanceUrl"];
   metabaseInstanceVersion: string | null;
@@ -43,6 +50,7 @@ export type SdkState = {
   loaderComponent: null | (() => JSX.Element);
   errorComponent: null | SdkErrorComponent;
   fetchRefreshTokenFn: null | MetabaseAuthConfig["fetchRequestToken"];
+  themeState: SdkThemeState;
 };
 
 export interface SdkStoreState extends State {
