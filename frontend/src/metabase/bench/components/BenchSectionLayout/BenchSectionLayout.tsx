@@ -18,7 +18,7 @@ export function BenchSectionLayout({
 }: BenchSectionLayoutProps) {
   return (
     <Stack h="100%" gap={0}>
-      <Stack className={S.header} px="lg" py="md">
+      <Stack className={S.header} px="lg" pt="md" gap="sm">
         {title}
         {tabs}
       </Stack>
@@ -29,7 +29,7 @@ export function BenchSectionLayout({
 
 type BenchSectionTitleProps = {
   title: string;
-  description: string;
+  description?: string;
 };
 
 export function BenchSectionTitle({
@@ -41,7 +41,7 @@ export function BenchSectionTitle({
       <Box fz="lg" lh="h3">
         {title}
       </Box>
-      <Box c="text-secondary">{description}</Box>
+      {description != null && <Box c="text-secondary">{description}</Box>}
     </Group>
   );
 }

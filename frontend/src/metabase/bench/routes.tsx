@@ -1,4 +1,4 @@
-import { Route } from "react-router";
+import { IndexRedirect, Route } from "react-router";
 
 import { PLUGIN_DEPENDENCIES, PLUGIN_TRANSFORMS } from "metabase/plugins";
 
@@ -8,6 +8,7 @@ import { DataSectionLayout } from "./pages/DataSectionLayout";
 export function getBenchRoutes() {
   return (
     <Route path="bench" component={BenchLayout}>
+      <IndexRedirect to="data" />
       <Route path="data" component={DataSectionLayout}>
         {PLUGIN_TRANSFORMS.getBenchRoutes()}
       </Route>
