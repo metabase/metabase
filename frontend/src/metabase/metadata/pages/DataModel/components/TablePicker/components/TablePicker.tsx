@@ -265,7 +265,7 @@ export function TablePicker({
               {t`Create models`}
             </Menu.Item>
 
-            <Menu.Item
+{/*             <Menu.Item
               leftSection={<Icon name="model_with_badge" />}
               rightSection={
                 <Tooltip
@@ -277,7 +277,7 @@ export function TablePicker({
               onClick={handlePublishModels}
             >
               {t`Publish models`}
-            </Menu.Item>
+            </Menu.Item> */}
           </Menu.Dropdown>
         </Menu>
       </Group>

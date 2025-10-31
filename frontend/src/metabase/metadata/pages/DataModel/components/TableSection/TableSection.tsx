@@ -320,7 +320,7 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
       </Box>
 
       <Box px="xl" pb="xl">
-        <Group justify="flex-end">
+        <Group justify="space-between">
           <Button
             component={Link}
             leftSection={<Icon name="network" />}
@@ -354,7 +354,7 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
                 {t`Create model`}
               </Menu.Item>
 
-              <Menu.Item
+{/*               <Menu.Item
                 leftSection={<Icon name="model_with_badge" />}
                 rightSection={
                   <Tooltip
@@ -366,7 +366,7 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
                 onClick={handlePublishModel}
               >
                 {t`Publish model`}
-              </Menu.Item>
+              </Menu.Item> */}
 
               <Menu.Item
                 leftSection={<Icon name="sync" />}
