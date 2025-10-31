@@ -941,17 +941,16 @@
                   ;; internal property values back; only merge in the ones the driver might recognize
                   (merge ssl-prms (select-keys props (keys ssl-prms))))
                 (merge disable-ssl-params props))
-        props (as-> props it
-                (set/rename-keys it {:dbname :db})
-                (driver-api/spec :postgres it)
-                (sql-jdbc.common/handle-additional-options it details-map))
         props (if use-iam?
-                ;; TODO: move to handle-additional-options?
                 (-> props
                     (assoc :subprotocol "aws-wrapper:postgresql"
                            :wrapperPlugins "iam")
                     (dissoc :auth-provider :use-auth-provider))
-                props)]
+                props)
+        props (as-> props it
+                (set/rename-keys it {:dbname :db})
+                (driver-api/spec :postgres it)
+                (sql-jdbc.common/handle-additional-options it details-map))]
     props))
 
 (defmethod sql-jdbc.sync/excluded-schemas :postgres [_driver] #{"information_schema" "pg_catalog"})
