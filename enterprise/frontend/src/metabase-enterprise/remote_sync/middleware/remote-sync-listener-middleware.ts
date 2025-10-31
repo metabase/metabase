@@ -50,8 +50,8 @@ function shouldInvalidateForEntity(
 }
 
 function shouldInvalidateForCollection(
-  oldCollection?: Collection | null,
-  newCollection?: Collection | null,
+  oldCollection?: Collection,
+  newCollection?: Collection,
 ): boolean {
   if (!newCollection) {
     return false;

@@ -6,7 +6,7 @@ import type { State } from "metabase-types/store";
 export const getCollectionFromCollectionsTree = (
   state: State,
   collectionId: CollectionId,
-): Collection | null => {
+): Collection | undefined => {
   const queriesCache = state[collectionApi.reducerPath]?.queries || {};
 
   for (const [queryName, queryState] of Object.entries(queriesCache)) {
@@ -24,5 +24,5 @@ export const getCollectionFromCollectionsTree = (
     }
   }
 
-  return null;
+  return undefined;
 };

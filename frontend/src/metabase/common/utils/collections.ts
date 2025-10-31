@@ -15,10 +15,7 @@ export const findCollectionById = (
   }
 
   return findCollectionById(
-    collections
-      .map((c) => c.children)
-      .filter(Boolean)
-      .flat() as Collection[],
+    collections.map((c) => c.children || []).flat(),
     collectionId,
   );
 };
