@@ -6,7 +6,15 @@ import {
   LayerInput,
   UserInput,
 } from "metabase/metadata/components";
-import { ActionIcon, Button, Group, Icon, Stack, Tooltip } from "metabase/ui";
+import {
+  ActionIcon,
+  Button,
+  Checkbox,
+  Group,
+  Icon,
+  Stack,
+  Tooltip,
+} from "metabase/ui";
 import type {
   TableDataSource,
   TableVisibilityType2,
@@ -20,6 +28,7 @@ export interface FilterState {
   dataSource: TableDataSource | "unknown" | null;
   ownerEmail: string | null;
   ownerUserId: UserId | "unknown" | null;
+  orphansOnly: boolean | null;
 }
 
 interface Props {
@@ -38,6 +47,7 @@ export function FilterPopover({ filters, onClose, onSubmit }: Props) {
       ownerEmail: null,
       ownerUserId: null,
       visibilityType2: null,
+      orphansOnly: null,
     });
   };
 
@@ -77,6 +87,14 @@ export function FilterPopover({ filters, onClose, onSubmit }: Props) {
           onChange={(dataSource) => {
             setForm((form) => ({ ...form, dataSource }));
           }}
+        />
+
+        <Checkbox
+          label={t`Only show unused tables`}
+          checked={form.orphansOnly === true}
+          onChange={(e) =>
+            setForm((form) => ({ ...form, orphansOnly: e.target.checked }))
+          }
         />
 
         <Group justify="space-between" wrap="nowrap">

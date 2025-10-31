@@ -51,6 +51,7 @@ export function TablePicker({
     dataSource: null,
     ownerEmail: null,
     ownerUserId: null,
+    orphansOnly: null,
   });
   const [isOpen, { toggle, close }] = useDisclosure();
   const filtersCount = getFiltersCount(filters);
@@ -309,6 +310,10 @@ function getFiltersCount(filters: FilterState): number {
   }
 
   if (filters.ownerEmail != null || filters.ownerUserId != null) {
+    ++count;
+  }
+
+  if (filters.orphansOnly === true) {
     ++count;
   }
 
