@@ -46,7 +46,7 @@
    :target      mi/transform-json
    :run_trigger mi/transform-keyword})
 
-(defn- compute-transform-source-type
+(defn compute-transform-source-type
   "Compute the top-level source_type field for a transform based on its source."
   [source]
   (case (keyword (:type source))
