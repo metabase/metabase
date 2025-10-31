@@ -15,7 +15,7 @@ export function getBenchRoutes() {
       </Route>
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <Route path="dependencies" component={DependencySectionLayout}>
-          <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
+          {PLUGIN_DEPENDENCIES.getBenchRoutes()}
         </Route>
       )}
     </Route>
