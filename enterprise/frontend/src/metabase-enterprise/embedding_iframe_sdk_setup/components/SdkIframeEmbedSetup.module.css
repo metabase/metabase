@@ -14,10 +14,10 @@
   width: 4px;
   height: 100%;
   cursor: col-resize;
-  background-color: var(--mb-color-border);
   position: absolute;
   right: 0;
   top: 0;
+  transition: background-color 0.4s ease;
 }
 
 .Sidebar {
