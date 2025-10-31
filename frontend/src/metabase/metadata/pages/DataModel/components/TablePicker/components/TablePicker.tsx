@@ -1,9 +1,14 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useDeferredValue, useEffect, useState } from "react";
+import { Link } from "react-router";
 import { usePrevious } from "react-use";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 
-import { usePublishModelsMutation } from "metabase/api";
+import {
+  useListCollectionsTreeQuery,
+  usePublishModelsMutation,
+} from "metabase/api";
+import { isSyncedCollection } from "metabase/collections/utils";
 import { useToast } from "metabase/common/hooks";
 import {
   Badge,
@@ -18,7 +23,7 @@ import {
   Tooltip,
   rem,
 } from "metabase/ui";
-import type { DatabaseId, TableId } from "metabase-types/api";
+import type { CollectionId, DatabaseId, TableId } from "metabase-types/api";
 
 import type { RouteParams } from "../../../types";
 import type { ChangeOptions, TreePath } from "../types";
@@ -105,8 +110,27 @@ export function TablePicker({
     }
   }, [deferredQuery, previousDeferredQuery]);
 
+  const { data: collections = [] } = useListCollectionsTreeQuery({
+    "exclude-other-user-collections": true,
+    "exclude-archived": true,
+  });
+
   const [publishModels] = usePublishModelsMutation();
   const [sendToast] = useToast();
+  const libraryId = collections.reduce<CollectionId | undefined>(
+    (result, collection) => {
+      if (result) {
+        return result;
+      }
+
+      if (isSyncedCollection(collection) && collection.name === "Library") {
+        return collection.id;
+      }
+
+      return result;
+    },
+    undefined,
+  );
 
   const handlePublishModels = async () => {
     const { error } = await publishModels({
@@ -122,7 +146,13 @@ export function TablePicker({
       });
     } else {
       sendToast({
-        message: t`Tables published in the Library`,
+        message: libraryId ? (
+          <span>
+            {jt`Tables published in ${(<Link key="link" to={`/collection/${libraryId}`} style={{ textDecoration: "underline" }}>{t`the Library`}</Link>)}`}
+          </span>
+        ) : (
+          t`Tables published in the Library`
+        ),
       });
       resetSelection();
     }
