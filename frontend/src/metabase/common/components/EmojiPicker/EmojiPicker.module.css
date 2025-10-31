@@ -36,7 +36,7 @@
   }
   /*
     For some reason &:not(:focus-within) always matches, so to highlight first emoji
-    when popup is not focuses, we use a workaround.
+    when popup is not focused, we use a workaround.
    */
   &:not(:has(.pickerSearch:focus)) {
     [aria-rowindex="0"] [aria-colindex="0"] {
