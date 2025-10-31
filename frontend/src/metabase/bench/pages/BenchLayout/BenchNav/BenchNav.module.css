@@ -3,5 +3,12 @@
 }
 
 .item {
+  color: var(--mb-color-text-primary);
   background-color: var(--mb-color-bg-medium);
+
+  &:hover,
+  &.active {
+    color: var(--mb-color-text-selected);
+    background-color: var(--mb-color-bg-dark);
+  }
 }
