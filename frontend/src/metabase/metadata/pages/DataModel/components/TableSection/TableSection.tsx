@@ -43,6 +43,7 @@ import type {
 import type { RouteParams } from "../../types";
 import { getUrl, parseRouteParams } from "../../utils";
 import { ResponsiveButton } from "../ResponsiveButton";
+import { PublishModelsModal } from "../TablePicker/components/PublishModelsModal";
 import { TitledSection } from "../TitledSection";
 
 import { FieldList } from "./FieldList";
@@ -63,6 +64,7 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
   const [updateTableFieldsOrder] = useUpdateTableFieldsOrderMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
+  const [isCreateModelsModalOpen, setIsCreateModelsModalOpen] = useState(false);
   const { height: headerHeight, ref: headerRef } = useElementSize();
   const [isSorting, setIsSorting] = useState(false);
   const hasFields = Boolean(table.fields && table.fields.length > 0);
@@ -315,6 +317,15 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
 
       <Box px="xl" pb="xl">
         <Group justify="flex-end">
+          <Tooltip
+            label={t`Create a model and place it in a given collection.`}
+          >
+            <Button
+              leftSection={<Icon name="model" />}
+              onClick={() => setIsCreateModelsModalOpen(true)}
+            >{t`Create model`}</Button>
+          </Tooltip>
+
           <Tooltip label={t`Create a model and publish it in the Library.`}>
             <Button
               leftSection={<Icon name="model_with_badge" />}
@@ -442,6 +453,12 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
           )}
         </Stack>
       </Stack>
+
+      <PublishModelsModal
+        tables={new Set([table.id])}
+        isOpen={isCreateModelsModalOpen}
+        onClose={() => setIsCreateModelsModalOpen(false)}
+      />
     </Stack>
   );
 };
