@@ -278,8 +278,6 @@ export const getRoutes = (store) => {
             <Route path=":slug/query" component={QueryBuilder} />
           </Route>
 
-          {getBenchRoutes()}
-
           <Route path="browse">
             <IndexRedirect to="/browse/models" />
             <Route path="metrics" component={BrowseMetrics} />
@@ -366,6 +364,9 @@ export const getRoutes = (store) => {
 
           {/* ADMIN */}
           {getAdminRoutes(store, CanAccessSettings, IsAdmin)}
+
+          {/* ANALYST WORKBENCH */}
+          {getBenchRoutes()}
         </Route>
       </Route>
 

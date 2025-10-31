@@ -1,0 +1,7 @@
+.nav {
+  border-right: 1px solid var(--mb-color-border);
+}
+
+.item {
+  background-color: var(--mb-color-bg-medium);
+}
