@@ -170,6 +170,7 @@ yaml:
   - "**/*.yaml"
 
 codeql:
+  - ".github/workflows/codeql.yml"
   - "frontend/src/**"
   - "enterprise/frontend/src/**"
 
