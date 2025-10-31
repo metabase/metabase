@@ -17,15 +17,26 @@ export function BenchSectionLayout({
 }: BenchSectionLayoutProps) {
   return (
     <Stack h="100%" gap={0}>
-      <Stack className={S.header} px="lg" py="md">
-        <Group gap="md">
-          <Box fz="lg" lh="h3">
-            {title}
-          </Box>
-          <Box c="text-secondary">{description}</Box>
-        </Group>
-      </Stack>
+      <BenchHeader title={title} description={description} />
       <Box flex={1}>{children}</Box>
+    </Stack>
+  );
+}
+
+type BenchHeaderProps = {
+  title: string;
+  description: string;
+};
+
+function BenchHeader({ title, description }: BenchHeaderProps) {
+  return (
+    <Stack className={S.header} px="lg" py="md">
+      <Group gap="md">
+        <Box fz="lg" lh="h3">
+          {title}
+        </Box>
+        <Box c="text-secondary">{description}</Box>
+      </Group>
     </Stack>
   );
 }
