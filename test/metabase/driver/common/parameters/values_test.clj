@@ -90,6 +90,42 @@
             {:name "id", :id test-uuid, :display-name "ID", :type :number}
             [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value "9223372036854775808"}])))))
 
+(deftest ^:parallel variable-multiple-values-test
+  (testing "Allows multiple bindings of the same tag"
+    (testing "if only one has a value set"
+      (is (= "2"
+             (#'params.values/value-for-tag
+              {:name "id", :display-name "ID", :type :text, :required true, :default "100"}
+              [{:type :category, :target [:variable [:template-tag "id"]], :value "2"}
+               {:type :category, :target [:variable [:template-tag "id"]], :value nil}
+               {:type :category, :target [:variable [:template-tag "id"]], :value nil}]))))
+    (testing "if all values are equal"
+      (is (= "2"
+             (#'params.values/value-for-tag
+              {:name "id", :display-name "ID", :type :text, :required true, :default "100"}
+              [{:type :category, :target [:variable [:template-tag "id"]], :value "2"}
+               {:type :category, :target [:variable [:template-tag "id"]], :value "2"}
+               {:type :category, :target [:variable [:template-tag "id"]], :value nil}]))))
+    (testing "if no values are given"
+      (testing "required tags use their defaults"
+        (is (= "100"
+               (#'params.values/value-for-tag
+                {:name "id", :display-name "ID", :type :text, :required true, :default "100"}
+                [{:type :category, :target [:variable [:template-tag "id"]], :value nil}
+                 {:type :category, :target [:variable [:template-tag "id"]], :value nil}]))))
+      (testing "optional tags get no value"
+        (is (= params/no-value
+               (#'params.values/value-for-tag
+                {:name "id", :display-name "ID", :type :text, :required false, :default "100"}
+                [{:type :category, :target [:variable [:template-tag "id"]], :value nil}
+                 {:type :category, :target [:variable [:template-tag "id"]], :value nil}]))))))
+  (testing "Throws if multiple real values are set"
+    (is (thrown-with-msg? Exception #"Multiple conflicting values"
+                          (#'params.values/value-for-tag
+                           {:name "id", :display-name "ID", :type :text, :required true, :default "100"}
+                           [{:type :category, :target [:variable [:template-tag "id"]], :value "2"}
+                            {:type :category, :target [:variable [:template-tag "id"]], :value "8"}])))))
+
 (defn- value-for-tag
   "Call the private function and de-recordize the field"
   [field-info info]
