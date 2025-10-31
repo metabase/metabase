@@ -1,5 +1,4 @@
-import { DndContext, useDraggable } from "@dnd-kit/core";
-import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
+import { useDraggable } from "@dnd-kit/core";
 import cx from "classnames";
 import { useEffect, useId, useRef } from "react";
 
@@ -92,7 +91,7 @@ export function Cell({
 }: CellProps) {
   const cellId = useId();
 
-  const content = (
+  return (
     <PivotTableCell
       data-allow-page-break-after
       data-testid="pivot-table-cell"
@@ -130,14 +129,6 @@ export function Cell({
       </>
     </PivotTableCell>
   );
-
-  if (onResize) {
-    return (
-      <DndContext modifiers={[restrictToHorizontalAxis]}>{content}</DndContext>
-    );
-  }
-
-  return content;
 }
 
 type CellClickHandler = (
