@@ -27,6 +27,38 @@ jobs:
           - appearance
           - audit-app
           - auth-provider
+          - batch-processing
+          - bookmarks
+          - bug-reporting
+          - cache
+          - channel
+          - classloader
+          - cloud-migration
+          - cmd
+          - collections
+          - config
+          - connection-pool
+          - content-translation
+          - content-verification
+          - core
+          - dashboards
+          - database-routing
+          - driver
+          - driver-api
+          - eid-translation
+          - embedding
+          - events
+          - formatter
+          - geojson
+          - glossary
+          - graph
+          - indexed-entities
+          - internal-stats
+          - legacy-mbql
+          - lib
+          - lib-be
+          - logger
+          - login-history
     steps:
       - uses: actions/checkout@v4
       - name: Prepare front-end environment
