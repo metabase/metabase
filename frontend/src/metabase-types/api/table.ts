@@ -197,7 +197,7 @@ export interface PublishModelsResponse {
 
 export interface SubstituteModelRequest {
   id: TableId;
-  collection_id: number;
+  collection_id: number | null;
 }
 
 export interface SubstituteModelResponse {

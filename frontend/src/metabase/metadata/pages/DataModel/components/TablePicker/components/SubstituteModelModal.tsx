@@ -10,7 +10,7 @@ import {
 } from "metabase/common/components/Pickers/CollectionPicker";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button, Flex, Icon, List, Modal, Stack, Text, rem } from "metabase/ui";
-import type { TableId } from "metabase-types/api";
+import type { Card, TableId } from "metabase-types/api";
 
 interface SubstituteModelModalProps {
   tableId: TableId;
@@ -37,14 +37,17 @@ export function SubstituteModelModal({
   };
 
   const handleSubmit = async () => {
-    if (!selectedCollection || selectedCollection.id === "root") {
+    if (!selectedCollection) {
       sendErrorToast(t`Please select a collection`);
       return;
     }
 
+    const collectionId =
+      selectedCollection.id === "root" ? null : Number(selectedCollection.id);
+
     const { error, data } = await substituteModel({
       id: tableId,
-      collection_id: Number(selectedCollection.id),
+      collection_id: collectionId,
     });
 
     if (error) {
@@ -185,6 +188,7 @@ export function SubstituteModelModal({
           title={t`Select a collection for the model`}
           onClose={() => setIsCollectionPickerOpen(false)}
           onChange={(collection) => {
+            console.log({ collection });
             setSelectedCollection(collection);
             setIsCollectionPickerOpen(false);
           }}

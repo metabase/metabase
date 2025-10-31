@@ -184,7 +184,7 @@ export const tableApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error) =>
-        invalidateTags(error, [tag("card"), tag("dependency")]),
+        invalidateTags(error, [tag("card"), tag("collection")]),
     }),
   }),
 });
