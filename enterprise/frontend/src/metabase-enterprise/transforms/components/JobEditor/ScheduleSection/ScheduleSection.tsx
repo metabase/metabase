@@ -13,9 +13,9 @@ import type {
 } from "metabase-types/api";
 
 import { trackTransformJobTriggerManualRun } from "../../../analytics";
-import { RunButton } from "../../../components/RunButton";
-import { RunStatus } from "../../../components/RunStatus";
-import { SplitSection } from "../../../components/SplitSection";
+import { RunButton } from "../../RunButton";
+import { RunStatus } from "../../RunStatus";
+import { TitleSection } from "../../TitleSection";
 import type { TransformJobInfo } from "../types";
 
 type ScheduleSectionProps = {
@@ -31,7 +31,7 @@ export function ScheduleSection({
   onScheduleChange,
 }: ScheduleSectionProps) {
   return (
-    <SplitSection
+    <TitleSection
       label={t`Schedule`}
       description={t`Configure when this job should run.`}
     >
@@ -46,7 +46,7 @@ export function ScheduleSection({
         />
         <RunButtonSection job={job} />
       </Group>
-    </SplitSection>
+    </TitleSection>
   );
 }
 
@@ -137,6 +137,7 @@ function RunButtonSection({ job }: RunButtonSectionProps) {
   return (
     <Tooltip label={t`This job doesn't have tags to run.`} disabled={hasTags}>
       <RunButton
+        id={job.id}
         run={job.last_run}
         isDisabled={!isSaved || !hasTags}
         onRun={handleRun}

@@ -5,7 +5,7 @@ import {
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockTransformJob } from "metabase-types/api/mocks";
 
-import { JobView } from "./JobView";
+import { JobEditor } from "./JobEditor";
 import type { TransformJobInfo } from "./types";
 
 type SetupOpts = {
@@ -14,7 +14,6 @@ type SetupOpts = {
 
 function setup({ job = createMockTransformJob() }: SetupOpts) {
   const onNameChange = jest.fn();
-  const onDescriptionChange = jest.fn();
   const onScheduleChange = jest.fn();
   const onTagListChange = jest.fn();
 
@@ -24,10 +23,9 @@ function setup({ job = createMockTransformJob() }: SetupOpts) {
   }
 
   renderWithProviders(
-    <JobView
+    <JobEditor
       job={job}
       onNameChange={onNameChange}
-      onDescriptionChange={onDescriptionChange}
       onScheduleChange={onScheduleChange}
       onTagListChange={onTagListChange}
     />,
@@ -35,7 +33,6 @@ function setup({ job = createMockTransformJob() }: SetupOpts) {
 
   return {
     onNameChange,
-    onDescriptionChange,
     onScheduleChange,
     onTagListChange,
   };
