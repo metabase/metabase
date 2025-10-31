@@ -11,7 +11,7 @@ interface BenchHeaderProps {
 
 export const BenchHeader = ({ title, actions }: BenchHeaderProps) => {
   return (
-    <Flex className={S.header} p="md" align="center">
+    <Flex className={S.header} p="md" justify="space-between" align="center">
       {title}
       {actions}
     </Flex>
