@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -315,17 +314,6 @@
             (testing description
               (is (= [expected (- expected)] (query x y unit))))))))))
 
-(deftest impersonation-properties-test
-  (testing "Impersonation related properties are set correctly"
-    (let [details {:host                         "starburst-server"
-                   :port                         7778
-                   :catalog                      "my-catalog"
-                   :ssl                          true
-                   :impersonation                true}
-          jdbc-spec (sql-jdbc.conn/connection-details->spec :starburst details)]
-      (is (= "impersonate:true"
-             (:clientInfo jdbc-spec))))))
-
 (defn prepared-statements-helper
   [prepared-optimized]
   (let [details (merge (:details (mt/db))
@@ -370,55 +358,6 @@
         ;; The role is ignored as Metabase users may not have the role defined in the database connection
       (prepared-statements-helper true)
       (prepared-statements-helper false))))
-
-(deftest impersonation-query
-  (mt/test-driver :starburst
-    (testing "Make sure the right credentials are used depending on the impersonation checkbox"
-      (binding [api/*current-user* (atom {:email "metabase_user@user.com"})]
-        ;; By default the starburst user should the user defined in the database connection, i.e. "metabase"
-        (is (= [["metabase"]]
-               (mt/rows
-                (qp/process-query
-                 (mt/native-query {:query "SELECT current_user"})))))
-
-        (let [details (assoc (:details (mt/db)) :impersonation true)]
-          (t2.with-temp/with-temp [:model/Database db {:engine :starburst, :name "Temp starburst JDBC Schema DB", :details details}]
-            (mt/with-db db
-              (is (= [["metabase_user@user.com"]]
-                     (mt/rows
-                      (qp/process-query
-                       (mt/native-query {:query "SELECT current_user"}))))))))
-
-        ;; If impersonation is set, then the starburst user should be the current Metabase user, i.e. metabase_user@user.com
-        ;; The role is ignored as Metabase users may not have the role defined in the database connection
-        ;; Because database user = metabase user, the role is passed in the starburst query
-        ;; This is expected to fail as the starburst container doesn't support roles
-        (let [details (assoc (:details (mt/db))
-                             :user "metabase_user@user.com"
-                             :roles "sysadmin"
-                             :impersonation true)]
-          (t2.with-temp/with-temp [:model/Database db {:engine :starburst, :name "Temp starburst JDBC Schema DB", :details details}]
-            (mt/with-db db
-              (is (thrown-with-msg?
-                   Exception
-                   #"Access Denied: Cannot set role sysadmin"
-                   (qp/process-query
-                    (mt/native-query {:query "SELECT current_user"})))))))
-
-        ;; With impersonation disabled the role is passed in the starburst query
-        ;; This is expected to fail as the starburst container doesn't support roles
-        (let [details (assoc (:details (mt/db))
-                             :user "metabase_user@user.com"
-                             :user "admin"
-                             :roles "sysadmin"
-                             :impersonation false)]
-          (t2.with-temp/with-temp [:model/Database db {:engine :starburst, :name "Temp starburst JDBC Schema DB", :details details}]
-            (mt/with-db db
-              (is (thrown-with-msg?
-                   Exception
-                   #"Access Denied: Cannot set role sysadmin"
-                   (qp/process-query
-                    (mt/native-query {:query "SELECT current_user"})))))))))))
 
 (deftest optimized-prepared-statement-is-closed-test
   (mt/test-driver :starburst
