@@ -1,4 +1,4 @@
-import { IndexRedirect, IndexRoute, Route } from "react-router";
+import { IndexRoute, Route } from "react-router";
 
 import { PLUGIN_DEPENDENCIES, PLUGIN_TRANSFORMS } from "metabase/plugins";
 
@@ -9,9 +9,8 @@ import { DependencySectionLayout } from "./pages/DependencySectionLayout";
 export function getBenchRoutes() {
   return (
     <Route path="bench" component={BenchLayout}>
-      <IndexRedirect to="data" />
       <Route component={DataSectionLayout}>
-        <Route path="data" />
+        <IndexRoute />
         {PLUGIN_TRANSFORMS.getBenchRoutes()}
       </Route>
       {PLUGIN_DEPENDENCIES.isEnabled && (

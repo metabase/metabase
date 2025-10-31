@@ -39,7 +39,7 @@ export function DataSectionLayout({
 
 function getTabs(): BenchSectionTab[] {
   return [
-    { label: t`Data`, to: "/bench/data" },
+    { label: t`Data`, to: Urls.bench() },
     { label: t`Transforms`, to: Urls.transformList() },
   ];
 }
