@@ -1,8 +1,10 @@
 import type React from "react";
 import { useCallback, useMemo, useRef } from "react";
+import { renderToString } from "react-dom/server";
 
+import ExternalLink from "metabase/common/components/ExternalLink";
+import Link from "metabase/common/components/Link";
 import { BodyCell } from "metabase/data-grid/components/BodyCell/BodyCell";
-import { reactNodeToHtmlString } from "metabase/lib/react-to-html";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { ThemeProvider } from "metabase/ui";
 
@@ -62,8 +64,9 @@ export const useCellMeasure = (
       if (typeof content === "string") {
         contentCell.textContent = content;
       } else {
-        contentCell.innerHTML = reactNodeToHtmlString(content);
+        contentCell.innerHTML = getContentCellHtmlString(content);
       }
+
       const boundingRect = rootEl.getBoundingClientRect();
       return {
         width: boundingRect.width,
@@ -112,3 +115,36 @@ export const useBodyCellMeasure = (theme?: DataGridTheme) => {
     measureRoot,
   };
 };
+
+function getContentCellHtmlString(content: React.ReactNode): string {
+  // This renders a lightweight HTML on the SDK for DOM measurement.
+  // `renderToString` from react-dom/server will crash Embedding SDK (metabase#58393)
+  // Therefore, `process.env` is needed to tree-shake react-dom/server out of the SDK.
+  // `reactNodeToHtmlString` will throw "cannot flush when React is already rendering" error (metabase#61164),
+  if (process.env.IS_EMBEDDING_SDK === "true") {
+    if (isLink(content)) {
+      const { className, children } = content.props;
+      const anchor = document.createElement("a");
+      anchor.className = className;
+      anchor.textContent = children;
+      return anchor.outerHTML;
+    }
+
+    return "";
+  }
+
+  return renderToString(content);
+}
+
+const isLink = (
+  content: React.ReactNode,
+): content is React.ReactElement<{
+  className: string;
+  children: string;
+}> =>
+  Boolean(
+    content &&
+      typeof content === "object" &&
+      "type" in content &&
+      (content.type === Link || content.type === ExternalLink),
+  );
