@@ -81,8 +81,7 @@ import type {
   ModelCacheRefreshStatus,
   ParameterId,
   Pulse,
-  PythonTransformSource,
-  PythonTransformTableAliases,
+  PythonTransformSourceDraft,
   Revision,
   SearchModel,
   Series,
@@ -941,44 +940,40 @@ export const PLUGIN_REMOTE_SYNC: {
   }),
 };
 
+export type PythonTransformEditorProps = {
+  name?: string;
+  source: PythonTransformSourceDraft;
+  proposedSource?: PythonTransformSourceDraft;
+  isNew: boolean;
+  isDirty: boolean;
+  isSaving: boolean;
+  onChangeSource: (source: PythonTransformSourceDraft) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  onAcceptProposed: () => void;
+  onRejectProposed: () => void;
+};
+
+export type PythonTransformSourceSectionProps = {
+  transform: Transform;
+};
+
 export type PythonTransformsPlugin = {
+  isEnabled: boolean;
+  TransformEditor: ComponentType<PythonTransformEditorProps>;
+  SourceSection: ComponentType<PythonTransformSourceSectionProps>;
   PythonRunnerSettingsPage: ComponentType;
-  SourceSection: ComponentType<{ transform: Transform }>;
-  TransformEditor: ComponentType<{
-    transform?: Transform | undefined;
-    initialSource: {
-      type: "python";
-      body: string;
-      "source-database": DatabaseId | undefined;
-      "source-tables": PythonTransformTableAliases;
-    };
-    proposedSource?: PythonTransformSource;
-    isNew?: boolean;
-    isSaving?: boolean;
-    isRunnable?: boolean;
-    onChange?: (newSource: {
-      type: "python";
-      body: string;
-      "source-database": DatabaseId | undefined;
-      "source-tables": PythonTransformTableAliases;
-    }) => void;
-    onSave: (newSource: PythonTransformSource) => void;
-    onCancel: () => void;
-    onRejectProposed?: () => void;
-    onAcceptProposed?: (query: PythonTransformSource) => void;
-  }>;
   getAdminRoutes: () => ReactNode;
   getTransformsNavLinks: () => ReactNode;
-  getCreateTransformsMenuItems: () => ReactNode;
 };
 
 export const PLUGIN_TRANSFORMS_PYTHON: PythonTransformsPlugin = {
-  PythonRunnerSettingsPage: NotFoundPlaceholder,
-  TransformEditor: NotFoundPlaceholder,
+  isEnabled: false,
+  TransformEditor: PluginPlaceholder,
   SourceSection: PluginPlaceholder,
+  PythonRunnerSettingsPage: NotFoundPlaceholder,
   getAdminRoutes: () => null,
   getTransformsNavLinks: () => null,
-  getCreateTransformsMenuItems: () => null,
 };
 
 type DependenciesPlugin = {

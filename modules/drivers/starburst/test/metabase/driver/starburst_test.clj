@@ -64,20 +64,17 @@
         (is (false? (sql-jdbc.sync.interface/have-select-privilege?
                      :starburst mock-conn "sales_data" "iceberg_table")))))
 
-    (testing "Rethrows SQLException for non-mixed-catalog errors"
+    (testing "Returns false for non-mixed-catalog errors"
       (let [mock-conn (reify Connection
                         (getCatalog [_] "hive")
                         (prepareStatement [_ sql]
                           (is (= "DESCRIBE \"hive\".\"sales_data\".\"restricted_table\"" sql))
                           (reify PreparedStatement
                             (executeQuery [_]
-                              ;; This is a regular permission error, not a mixed catalog issue (different error code)
                               (throw (SQLException. "Access Denied: Cannot access table restricted_table" nil 42000)))
                             (close [_] nil))))]
-        ;; This should throw the exception rather than returning false
-        (is (thrown? SQLException
-                     (sql-jdbc.sync.interface/have-select-privilege?
-                      :starburst mock-conn "sales_data" "restricted_table")))))))
+        (is (false? (sql-jdbc.sync.interface/have-select-privilege?
+                     :starburst mock-conn "sales_data" "restricted_table")))))))
 
 (deftest describe-database-test
   (mt/test-driver :starburst
@@ -434,3 +431,22 @@
            (is (false? (.isClosed prepared-stmt)))
            (.close stmt)
            (is (true? (.isClosed prepared-stmt)))))))))
+
+(deftest have-select-privilege-doesnt-throw-test
+  (mt/test-driver :starburst
+    (testing "have-select-privilege? returns true if table exists"
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver/*driver*
+       (mt/db)
+       nil
+       (fn [^Connection conn]
+         (is (true?
+              (sql-jdbc.sync.interface/have-select-privilege? driver/*driver* conn "default" "products"))))))
+    (testing "have-select-privilege? returns false if table does not exist"
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver/*driver*
+       (mt/db)
+       nil
+       (fn [^Connection conn]
+         (is (false?
+              (sql-jdbc.sync.interface/have-select-privilege? driver/*driver* conn "default" "fake_table"))))))))

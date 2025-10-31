@@ -454,12 +454,10 @@
       ;; but we can't check the type directly since the relevant io.trino.spi.* classes are not
       ;; included in trino-jdbc. We check the vendor-specific error code instead.
       ;; See HiveMetadata.java and UnknownTableTypeException.java in trinodb/trino
-      (if (= 133001 (.getErrorCode e))
-        (do
-          (log/debugf e "Table %s.%s is not accessible through this catalog (mixed catalog table type)"
-                      table-schema table-name)
-          false)
-        (throw e)))))
+      (when (= 133001 (.getErrorCode e))
+        (log/debugf e "Table %s.%s is not accessible through this catalog (mixed catalog table type)"
+                    table-schema table-name))
+      false)))
 
 (defn- describe-schema
   "Gets a set of maps for all tables in the given `catalog` and `schema`."

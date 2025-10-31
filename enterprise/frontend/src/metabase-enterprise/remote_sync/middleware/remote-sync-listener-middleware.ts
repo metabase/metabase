@@ -15,7 +15,6 @@ import type {
   Collection,
   Dashboard,
   Document,
-  ListDashboardsResponse,
   RemoteSyncTaskStatus,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -35,12 +34,7 @@ function invalidateRemoteSyncTags(dispatch: any) {
 }
 
 function shouldInvalidateForEntity(
-  oldEntity:
-    | Card
-    | Dashboard
-    | ListDashboardsResponse[number]
-    | Document
-    | undefined,
+  oldEntity: Card | Dashboard | Document | undefined,
   newEntity: Card | Dashboard | Document,
 ): boolean {
   const oldSynced = oldEntity?.is_remote_synced ?? false;

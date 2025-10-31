@@ -315,7 +315,11 @@
     (mapv
      (fn [{:keys [value children] :as node}]
        (assoc node
-              :value (formatter value)
+              :value #?(:clj (formatter value)
+                        ;; if we're in clojurescript these formatting functions are JS-based which means
+                        ;; they cannot handle clojure data types so we need to convert collections into js
+                        ;; types. We do it only for collections so as not to convert unnecessarily
+                        :cljs (formatter (cond-> value (coll? value) perf/clj->js)))
               :children (format-values-in-tree children (rest formatters) (rest cols) (rest col-indexes))
               :rawValue value
               :clicked {:value value

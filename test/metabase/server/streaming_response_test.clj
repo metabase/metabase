@@ -10,7 +10,8 @@
    [metabase.server.streaming-response.thread-pool :as thread-pool]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [metabase.util.json :as json])
   (:import
    (jakarta.servlet AsyncContext ServletOutputStream)
    (jakarta.servlet.http HttpServletResponse)
@@ -175,3 +176,107 @@
              (deref complete-promise 1000 ::timed-out)))
         (is (= "2 cans"
                (String. (.toByteArray os) "UTF-8")))))))
+
+(deftest write-error-includes-stacktrace-when-hide-stacktraces-disabled-test
+  (testing "write-error! includes stacktrace and exception chain when hide-stacktraces is false"
+    (mt/with-temporary-setting-values [hide-stacktraces false]
+      (with-open [os (java.io.ByteArrayOutputStream.)]
+        (let [exception (ex-info "Test error message" {:custom-data "test-value"})]
+          (#'streaming-response/write-error! os exception :api)
+          (let [error-response (json/decode (String. (.toByteArray os) "UTF-8") true)]
+            (is (= "Test error message" (:cause error-response))
+                "Response includes the error message")
+            (is (contains? error-response :trace)
+                "Response should contain :trace key")
+            (is (vector? (:trace error-response))
+                "Stacktrace should be a vector")
+            (is (contains? error-response :via)
+                "Response should contain :via key")
+            (is (= "test-value" (get-in error-response [:data :custom-data]))
+                "Response should include custom data from ex-info")))))))
+
+(deftest write-error-omits-stacktrace-when-hide-stacktraces-enabled-test
+  (testing "write-error! omits stacktrace and exception chain when hide-stacktraces is true"
+    (mt/with-temporary-setting-values [hide-stacktraces true]
+      (with-open [os (java.io.ByteArrayOutputStream.)]
+        (let [exception (ex-info "Test error message with sensitive info" {:custom-data "test-value"})]
+          (#'streaming-response/write-error! os exception :api)
+          (let [error-response (json/decode (String. (.toByteArray os) "UTF-8") true)]
+            (is (= "Test error message with sensitive info" (:cause error-response))
+                "Response includes the error message")
+            (is (not (contains? error-response :trace))
+                "Response should not contain :trace key")
+            (is (not (contains? error-response :via))
+                "Response should not contain :via key")
+            (is (= "test-value" (get-in error-response [:data :custom-data]))
+                "Response should include custom data from ex-info")
+            (is (contains? error-response :_status)
+                "Response should include :_status")))))))
+
+(deftest write-error-nested-exception-with-stacktraces-disabled-test
+  (testing "write-error! includes nested exception details when hide-stacktraces is false"
+    (mt/with-temporary-setting-values [hide-stacktraces false]
+      (with-open [os (java.io.ByteArrayOutputStream.)]
+        (let [inner-exception (ex-info "Inner error" {:inner-data "secret"})
+              outer-exception (ex-info "Outer error" {:outer-data "visible"} inner-exception)]
+          (#'streaming-response/write-error! os outer-exception :api)
+          (let [error-response (json/decode (String. (.toByteArray os) "UTF-8") true)]
+            (is (contains? error-response :via)
+                "Response should contain :via key")
+            (is (> (count (:via error-response)) 1)
+                "Exception chain should include multiple exceptions")))))))
+
+(deftest write-error-nested-exception-with-stacktraces-enabled-test
+  (testing "write-error! omits nested exception details when hide-stacktraces is true"
+    (mt/with-temporary-setting-values [hide-stacktraces true]
+      (with-open [os (java.io.ByteArrayOutputStream.)]
+        (let [inner-exception (ex-info "Inner error" {:inner-data "secret"})
+              outer-exception (ex-info "Outer error" {:outer-data "visible"} inner-exception)]
+          (#'streaming-response/write-error! os outer-exception :api)
+          (let [error-response (json/decode (String. (.toByteArray os) "UTF-8") true)]
+            (is (not (contains? error-response :via))
+                "Response should not contain :via key with nested exception information")))))))
+
+(deftest write-error-map-preserves-sensitive-keys-when-hide-stacktraces-disabled-test
+  (testing "write-error! preserves sensitive keys when a map is supplied and hide-stacktraces is false"
+    (mt/with-temporary-setting-values [hide-stacktraces false]
+      (with-open [os (java.io.ByteArrayOutputStream.)]
+        (let [error-map {:message "Error occurred"
+                         :stacktrace ["line1" "line2" "line3"]
+                         :trace ["frame1" "frame2"]
+                         :via [{:type "Exception1"} {:type "Exception2"}]
+                         :custom-data "preserve-me"}]
+          (#'streaming-response/write-error! os error-map :api)
+          (let [error-response (json/decode (String. (.toByteArray os) "UTF-8") true)]
+            (is (= "Error occurred" (:message error-response))
+                "Response should include the message")
+            (is (contains? error-response :stacktrace)
+                "Response should contain :stacktrace key")
+            (is (contains? error-response :trace)
+                "Response should contain :trace key")
+            (is (contains? error-response :via)
+                "Response should contain :via key")
+            (is (= "preserve-me" (:custom-data error-response))
+                "Response should include custom data")))))))
+
+(deftest write-error-map-omits-sensitive-keys-when-hide-stacktraces-enabled-test
+  (testing "write-error! omits sensitive keys when a map is supplied and hide-stacktraces is true"
+    (mt/with-temporary-setting-values [hide-stacktraces true]
+      (with-open [os (java.io.ByteArrayOutputStream.)]
+        (let [error-map {:message "Error occurred"
+                         :stacktrace ["line1" "line2" "line3"]
+                         :trace ["frame1" "frame2"]
+                         :via [{:type "Exception1"} {:type "Exception2"}]
+                         :custom-data "preserve-me"}]
+          (#'streaming-response/write-error! os error-map :api)
+          (let [error-response (json/decode (String. (.toByteArray os) "UTF-8") true)]
+            (is (= "Error occurred" (:message error-response))
+                "Response should include the message")
+            (is (not (contains? error-response :stacktrace))
+                "Response should not contain :stacktrace key")
+            (is (not (contains? error-response :trace))
+                "Response should not contain :trace key")
+            (is (not (contains? error-response :via))
+                "Response should not contain :via key")
+            (is (= "preserve-me" (:custom-data error-response))
+                "Response should still include custom data")))))))
