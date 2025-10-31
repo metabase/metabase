@@ -59,6 +59,52 @@ jobs:
           - lib-be
           - logger
           - login-history
+          - model-persistence
+          - models
+          - native-query-snippets
+          - notification
+          - parameters
+          - permissions
+          - pivot
+          - plugins
+          - premium-features
+          - product-feedback
+          - public-sharing
+          - pulse
+          - queries
+          - query-permissions
+          - query-processor
+          - remote-sync
+          - request
+          - revisions
+          - sample-data
+          - search
+          - secrets
+          - segments
+          - server
+          - session
+          - settings
+          - setup
+          - sso
+          - startup
+          - store-api
+          - sync
+          - system
+          - task
+          - task-history
+          - testing-api
+          - tiles
+          - timeline
+          - types
+          - upload
+          - user-key-value
+          - users
+          - util
+          - version
+          - view-log
+          - warehouse-schema
+          - warehouses
+          - xrays
     steps:
       - uses: actions/checkout@v4
       - name: Prepare front-end environment
