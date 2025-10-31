@@ -1,19 +1,28 @@
+import cx from "classnames";
+import type { Location } from "history";
 import { Link } from "react-router";
 
 import * as Urls from "metabase/lib/urls";
+import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Box, Icon, type IconName, Stack } from "metabase/ui";
 
 import S from "./BenchNav.module.css";
 
-export function BenchNav() {
+type BenchNavProps = {
+  location: Location;
+};
+
+export function BenchNav({ location }: BenchNavProps) {
   return (
     <Stack className={S.nav} justify="space-between" h="100%" p="0.75rem">
-      <Stack>
-        <BenchNavItem icon="database" to="" />
-      </Stack>
-      <Stack>
-        <BenchNavItem icon="schema" to={Urls.dependencyGraph()} />
-      </Stack>
+      <BenchNavItem icon="database" to="" location={location} />
+      {PLUGIN_DEPENDENCIES.isEnabled && (
+        <BenchNavItem
+          icon="schema"
+          to={Urls.dependencyGraph()}
+          location={location}
+        />
+      )}
     </Stack>
   );
 }
@@ -21,12 +30,15 @@ export function BenchNav() {
 type BenchNavItemProps = {
   icon: IconName;
   to: string;
+  location: Location;
 };
 
-function BenchNavItem({ to, icon }: BenchNavItemProps) {
+function BenchNavItem({ icon, to, location }: BenchNavItemProps) {
+  const isActive = location.pathname.startsWith(to);
+
   return (
     <Box
-      className={S.item}
+      className={cx(S.item, { [S.active]: isActive })}
       component={Link}
       to={to}
       display="block"
