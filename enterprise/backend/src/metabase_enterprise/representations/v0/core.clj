@@ -12,7 +12,6 @@
    [metabase-enterprise.representations.v0.question :as v0-question]
    [metabase-enterprise.representations.v0.snippet :as v0-snippet]
    [metabase-enterprise.representations.v0.transform :as v0-transform]
-   [representations.read :as rep-read]
    [toucan2.core :as t2]))
 
 (defn toucan-model
