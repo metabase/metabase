@@ -863,6 +863,7 @@ H.describeWithSnowplowEE("documents", () => {
         H.getDocumentCard("Orders, Count, Grouped by Created At (year)").should(
           "be.visible",
         );
+
         H.cartesianChartCircle().eq(1).click();
 
         H.popover().findByText("See these Orders").click();

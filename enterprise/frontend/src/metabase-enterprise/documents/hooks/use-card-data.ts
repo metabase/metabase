@@ -18,7 +18,7 @@ interface UseCardDataProps {
   id: number;
 }
 
-interface UseCardDataResult {
+export interface UseCardDataResult {
   card?: Card;
   dataset?: Dataset;
   isLoading: boolean;
