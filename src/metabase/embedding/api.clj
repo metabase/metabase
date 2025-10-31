@@ -22,7 +22,3 @@
 (def ^{:arglists '([request respond raise])} theme-routes
   "`/api/theme` routes"
   (api.macros/ns-handler 'metabase.embedding.api.theme))
-
-;; (def ^{:arglists '([request respond raise])} theme-v1-routes
-;;   "`/api/theme/v1` routes"
-;;   (api.macros/ns-handler 'metabase.embedding.api.theme-v1))
