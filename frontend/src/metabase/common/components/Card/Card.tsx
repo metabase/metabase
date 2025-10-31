@@ -3,8 +3,6 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { alpha } from "metabase/lib/colors";
-
 type CardProps = {
   className?: string;
   dark?: boolean;
@@ -28,7 +26,7 @@ const Card = styled.div<CardProps>`
     hoverable &&
     css`
       &:hover {
-        box-shadow: 0 10px 22px ${alpha(theme.fn.themeColor("shadow"), 0.09)};
+        box-shadow: 0 10px 22px ${theme.fn.themeColor("shadow")};
       }
     `};
   ${(props) =>

@@ -8,6 +8,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.premium-features.core :as premium-features]
+   [metabase.store-api.core :as store-api]
    [metabase.util :as u]
    [metabase.util.date-2.parse :as u.date.parse]
    [metabase.util.i18n :as i18n]
@@ -18,13 +19,16 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private ^String metabase-billing-info-url "https://store-api.metabase.com/api/v2/metabase/billing_info")
+(defn- metabase-billing-info-url
+  "Returns the Store URL for fetching billing info for the current Metabase instance."
+  ^String []
+  (str (store-api/store-api-url) "/api/v2/metabase/billing_info"))
 
 (def ^:private ^{:arglists '([token email language])} fetch-billing-status*
   (memoize/ttl
    ^{::memoize/args-fn (fn [[token email language]] [token email language])}
    (fn [token email language]
-     (try (some-> metabase-billing-info-url
+     (try (some-> (metabase-billing-info-url)
                   (http/get {:basic-auth   [email token]
                              :language     language
                              :content-type :json})

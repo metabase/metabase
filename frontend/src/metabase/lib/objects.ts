@@ -13,3 +13,50 @@ export const getObjectKeys = <K extends string>(
 export const getObjectValues = <V>(obj: Record<string, V>): V[] => {
   return Object.values(obj) as V[];
 };
+
+export function isSerializable(value: unknown): boolean {
+  if (value === null || value === undefined) {
+    return true;
+  }
+
+  const type = typeof value;
+
+  if (
+    type === "string" ||
+    type === "number" ||
+    type === "boolean" ||
+    type === "bigint"
+  ) {
+    return true;
+  }
+
+  if (type === "function" || type === "symbol") {
+    return false;
+  }
+
+  if (value instanceof Date) {
+    return false;
+  }
+
+  if (type === "object") {
+    const proto = Object.getPrototypeOf(value);
+
+    if (
+      proto === Object.prototype ||
+      proto === Array.prototype ||
+      proto === null
+    ) {
+      if (Array.isArray(value)) {
+        return value.every(isSerializable);
+      }
+
+      return Object.values(value as Record<string, unknown>).every(
+        isSerializable,
+      );
+    }
+
+    return false;
+  }
+
+  return false;
+}

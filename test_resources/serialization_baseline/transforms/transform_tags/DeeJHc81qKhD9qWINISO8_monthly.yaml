@@ -1,0 +1,8 @@
+built_in_type: monthly
+created_at: '2025-09-18T14:56:47.400051Z'
+entity_id: DeeJHc81qKhD9qWINISO8
+name: monthly
+serdes/meta:
+- id: DeeJHc81qKhD9qWINISO8
+  label: monthly
+  model: TransformTag

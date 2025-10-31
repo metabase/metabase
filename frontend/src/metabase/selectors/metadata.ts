@@ -87,6 +87,7 @@ const getNormalizedFields = createSelector(
 
 const getNormalizedSegments = (state: State) => state.entities.segments;
 const getNormalizedQuestions = (state: State) => state.entities.questions;
+const getNormalizedSnippets = (state: State) => state.entities.snippets;
 
 export const getShallowDatabases = getNormalizedDatabases;
 export const getShallowTables = getNormalizedTables;
@@ -104,9 +105,19 @@ export const getMetadata: (
     getNormalizedFields,
     getNormalizedSegments,
     getNormalizedQuestions,
+    getNormalizedSnippets,
     getSettings,
   ],
-  (databases, schemas, tables, fields, segments, questions, settings) => {
+  (
+    databases,
+    schemas,
+    tables,
+    fields,
+    segments,
+    questions,
+    snippets,
+    settings,
+  ) => {
     const metadata = new Metadata({ settings });
 
     metadata.databases = Object.fromEntries(
@@ -128,6 +139,9 @@ export const getMetadata: (
     );
     metadata.questions = Object.fromEntries(
       Object.values(questions).map((c) => [c.id, createQuestion(c, metadata)]),
+    );
+    metadata.snippets = Object.fromEntries(
+      Object.values(snippets).map((snippet) => [snippet.id, snippet]),
     );
 
     Object.values(metadata.databases).forEach((database) => {

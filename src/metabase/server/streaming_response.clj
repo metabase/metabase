@@ -5,6 +5,7 @@
    [compojure.response]
    [metabase.api.common.internal]
    [metabase.server.protocols :as server.protocols]
+   [metabase.server.settings :as server.settings]
    [metabase.server.streaming-response.thread-pool :as thread-pool]
    [metabase.util :as u]
    [metabase.util.async :as async.u]
@@ -42,7 +43,8 @@
       500))
 
 (defn- format-exception [e]
-  (assoc (Throwable->map e) :_status (ex-status-code e)))
+  (cond-> (assoc (Throwable->map e) :_status (ex-status-code e))
+    (server.settings/hide-stacktraces) (dissoc :via :trace)))
 
 (def ^:private ^:dynamic *http-response* nil)
 
@@ -75,12 +77,14 @@
                               x))
                           obj)
                          obj)
-                       (dissoc :export-format))]
-           (with-open [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
-             (json/encode-to obj writer {})))
-         (catch EofException _)
-         (catch Throwable e
-           (log/error e "Error writing error to output stream" obj)))))))
+                        obj)
+                      (dissoc :export-format)
+                      (cond-> (server.settings/hide-stacktraces) (dissoc :stacktrace :trace :via)))]
+          (with-open [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
+            (json/encode-to obj writer {})))
+        (catch EofException _)
+        (catch Throwable e
+          (log/error e "Error writing error to output stream" obj))))))
 
 (defn- do-f* [f ^OutputStream os _finished-chan canceled-chan]
   (try

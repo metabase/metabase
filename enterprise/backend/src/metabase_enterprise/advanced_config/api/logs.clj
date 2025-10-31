@@ -32,6 +32,8 @@
                                          (date-part :month month)]})]
     results))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :get "/query_execution/:yyyy-mm"
   "Fetch rows for the month specified by `:yyyy-mm` from the query_execution logs table.
   Must be a superuser."

@@ -5,6 +5,7 @@ import _ from "underscore";
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useAdminSetting } from "metabase/api/utils";
 import {
+  type CurrencyStyle,
   getCurrencyOptions,
   getCurrencyStyleOptions,
   getDateStyleOptionsForUnit,
@@ -63,10 +64,12 @@ export function FormattingWidget() {
     const currencyOptions = (
       getCurrencyOptions() as { name: string; value: string }[]
     ).map(mapNameToLabel);
-    const currencyStyleOptions =
-      getCurrencyStyleOptions(currency).map(mapNameToLabel);
+    const currencyStyleOptions = getCurrencyStyleOptions(
+      currency,
+      currencyStyle,
+    ).map(mapNameToLabel);
     return [currencyOptions, currencyStyleOptions];
-  }, [currency]);
+  }, [currency, currencyStyle]);
 
   if (isLoading) {
     return null;
@@ -158,7 +161,7 @@ export function FormattingWidget() {
                 { label: "100 000,00", value: ", " },
                 { label: "100.000,00", value: ",." },
                 { label: "100000.00", value: "." },
-                { label: "100'000.00", value: ".'" },
+                { label: "100’000.00", value: ".’" },
               ]}
               onChange={(newValue) =>
                 handleChange({
@@ -199,7 +202,7 @@ export function FormattingWidget() {
                   ...localValue,
                   "type/Currency": {
                     ...localValue?.["type/Currency"],
-                    currency_style: newValue as string,
+                    currency_style: newValue as CurrencyStyle,
                   },
                 })
               }

@@ -7,30 +7,32 @@ import {
   useCallback,
 } from "react";
 import { ResizableBox, type ResizableBoxProps } from "react-resizable";
+import { t } from "ttag";
 import _ from "underscore";
 
 import ExplicitSize from "metabase/common/components/ExplicitSize";
-import Modal from "metabase/common/components/Modal";
 import Databases from "metabase/entities/databases";
 import SnippetCollections from "metabase/entities/snippet-collections";
 import Snippets from "metabase/entities/snippets";
 import { useDispatch } from "metabase/lib/redux";
 import {
-  runQuestionOrSelectedQuery,
+  runOrCancelQuestionOrSelectedQuery,
   setIsNativeEditorOpen,
   setUIControls,
 } from "metabase/query_builder/actions";
-import SnippetFormModal from "metabase/query_builder/components/template_tags/SnippetFormModal";
+import { SnippetFormModal } from "metabase/query_builder/components/template_tags/SnippetFormModal";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
-import { Flex } from "metabase/ui";
+import { Button, Flex, Icon, Stack, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   CardId,
   Collection,
   DatabaseId,
+  DatasetQuery,
   NativeQuerySnippet,
   ParameterId,
 } from "metabase-types/api";
@@ -58,6 +60,10 @@ import {
 type OwnProps = {
   question: Question;
   query: NativeQuery;
+
+  proposedQuestion?: Question | undefined;
+  onRejectProposed?: () => void;
+  onAcceptProposed?: (query: DatasetQuery) => void;
 
   nativeEditorSelectedText?: string;
   modalSnippet?: NativeQuerySnippet;
@@ -108,6 +114,7 @@ type OwnProps = {
   cancelQuery?: () => void;
   closeSnippetModal?: () => void;
   onSetDatabaseId?: (id: DatabaseId) => void;
+  databaseIsDisabled?: (database: Database) => boolean;
 };
 
 interface ExplicitSizeProps {
@@ -179,10 +186,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
   onChange = (queryText: string) => {
     const { query, setDatasetQuery } = this.props;
     if (query.queryText() !== queryText) {
-      const updatedQuery = query
-        .setQueryText(queryText)
-        .updateSnippetsWithIds(this.props.snippets);
-
+      const updatedQuery = query.setQueryText(queryText);
       setDatasetQuery(updatedQuery);
     }
   };
@@ -241,6 +245,9 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
       resizableBoxProps = {},
       snippetCollections = [],
       question,
+      proposedQuestion,
+      onRejectProposed,
+      onAcceptProposed,
       query,
       readOnly,
       isNativeEditorOpen,
@@ -278,7 +285,6 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
             hasEditingSidebar={hasEditingSidebar}
             question={question}
             query={query}
-            onChange={this.onChange}
             focus={this.focus}
             canChangeDatabase={canChangeDatabase}
             sidebarFeatures={sidebarFeatures}
@@ -291,16 +297,17 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
             isShowingTemplateTagsEditor={this.props.isShowingTemplateTagsEditor}
             setIsNativeEditorOpen={this.props.setIsNativeEditorOpen}
             snippets={this.props.snippets}
-            nativeEditorSelectedText={this.props.nativeEditorSelectedText}
             editorContext={this.props.editorContext}
             onSetDatabaseId={this.props.onSetDatabaseId}
             isShowingSnippetSidebar={this.props.isShowingSnippetSidebar}
             isNativeEditorOpen={this.props.isNativeEditorOpen}
             toggleEditor={this.props.toggleEditor}
             toggleDataReference={this.props.toggleDataReference}
+            toggleSnippetSidebar={this.props.toggleSnippetSidebar}
             setParameterValue={this.props.setParameterValue}
             setDatasetQuery={this.props.setDatasetQuery}
             onFormatQuery={canFormatQuery ? this.handleFormatQuery : undefined}
+            databaseIsDisabled={this.props.databaseIsDisabled}
           />
         )}
         <div
@@ -338,6 +345,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
               <CodeMirrorEditor
                 ref={this.editor}
                 query={question.query()}
+                proposedQuery={proposedQuestion?.query()}
                 readOnly={readOnly}
                 placeholder={placeholder}
                 highlightedLineNumbers={highlightedLineNumbers}
@@ -351,16 +359,55 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
                 }
               />
 
-              {hasRunButton && !readOnly && (
-                <NativeQueryEditorRunButton
-                  cancelQuery={this.props.cancelQuery}
-                  isResultDirty={this.props.isResultDirty}
-                  isRunnable={this.props.isRunnable}
-                  isRunning={this.props.isRunning}
-                  nativeEditorSelectedText={this.props.nativeEditorSelectedText}
-                  runQuery={this.props.runQuery}
-                />
-              )}
+              <Stack m="1rem" gap="md" mt="auto">
+                {proposedQuestion && onRejectProposed && onAcceptProposed && (
+                  <>
+                    <Tooltip label={t`Accept proposed changes`} position="top">
+                      <Button
+                        data-testid="accept-proposed-changes-button"
+                        variant="filled"
+                        bg="success"
+                        px="0"
+                        w="2.5rem"
+                        onClick={() => {
+                          const proposedQuery =
+                            proposedQuestion.legacyNativeQuery();
+                          if (proposedQuery) {
+                            this.onChange(proposedQuery.queryText());
+                            onAcceptProposed(proposedQuery.datasetQuery());
+                          }
+                        }}
+                      >
+                        <Icon name="check" />
+                      </Button>
+                    </Tooltip>
+                    <Tooltip label={t`Reject proposed changes`} position="top">
+                      <Button
+                        data-testid="reject-proposed-changes-button"
+                        w="2.5rem"
+                        px="0"
+                        variant="filled"
+                        bg="danger"
+                        onClick={onRejectProposed}
+                      >
+                        <Icon name="close" />
+                      </Button>
+                    </Tooltip>
+                  </>
+                )}
+                {hasRunButton && !readOnly && (
+                  <NativeQueryEditorRunButton
+                    cancelQuery={this.props.cancelQuery}
+                    isResultDirty={this.props.isResultDirty}
+                    isRunnable={this.props.isRunnable}
+                    isRunning={this.props.isRunning}
+                    nativeEditorSelectedText={
+                      this.props.nativeEditorSelectedText
+                    }
+                    runQuery={this.props.runQuery}
+                  />
+                )}
+              </Stack>
             </Flex>
           </ResizableBox>
         </div>
@@ -373,20 +420,23 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
           canSaveSnippets={canSaveSnippets}
         />
 
-        {this.props.modalSnippet && (
-          <Modal onClose={this.props.closeSnippetModal}>
+        {this.props.modalSnippet &&
+          this.props.insertSnippet &&
+          this.props.closeSnippetModal && (
             <SnippetFormModal
               snippet={this.props.modalSnippet}
               onCreate={this.props.insertSnippet}
               onUpdate={(newSnippet, oldSnippet) => {
-                if (newSnippet.name !== oldSnippet.name) {
-                  setDatasetQuery(query.updateSnippetNames([newSnippet]));
-                }
+                // get the query instance with the latest Metadata that has the updated snippet
+                const newQuery = this.props.query.updateSnippet(
+                  oldSnippet,
+                  newSnippet,
+                );
+                setDatasetQuery(newQuery);
               }}
               onClose={this.props.closeSnippetModal}
             />
-          </Modal>
-        )}
+          )}
       </div>
     );
   }
@@ -401,7 +451,7 @@ const NativeQueryEditorWrapper = forwardRef<
   const { isNativeEditorOpen } = props;
 
   const runQuery = useCallback(() => {
-    dispatch(runQuestionOrSelectedQuery());
+    dispatch(runOrCancelQuestionOrSelectedQuery());
   }, [dispatch]);
 
   /**

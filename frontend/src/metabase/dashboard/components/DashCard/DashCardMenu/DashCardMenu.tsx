@@ -3,8 +3,6 @@ import cx from "classnames";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-/* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
-import { transformSdkQuestion } from "embedding-sdk/lib/transform-question";
 import {
   canDownloadResults,
   canEditQuestion,
@@ -14,6 +12,7 @@ import {
   useDashboardContext,
 } from "metabase/dashboard/context";
 import { getParameterValuesBySlugMap } from "metabase/dashboard/selectors";
+import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
 import { useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { QuestionDownloadWidget } from "metabase/query_builder/components/QuestionDownloadWidget";
@@ -35,6 +34,7 @@ interface DashCardMenuProps {
   position?: MenuProps["position"];
   onEditVisualization?: () => void;
   openUnderlyingQuestionItems?: React.ReactNode;
+  canEdit?: boolean;
 }
 
 function isDashCardMenuEmpty(
@@ -58,6 +58,7 @@ export const DashCardMenu = ({
   position = "bottom-end",
   onEditVisualization,
   openUnderlyingQuestionItems,
+  canEdit,
 }: DashCardMenuProps) => {
   const store = useStore();
 
@@ -121,6 +122,7 @@ export const DashCardMenu = ({
           isDownloadingData={isDownloadingData}
           onDownload={() => setMenuView("download")}
           onEditVisualization={onEditVisualization}
+          canEdit={canEdit}
         />
         {openUnderlyingQuestionItems && (
           <Menu trigger="click-hover" shadow="md" position="right" width={200}>

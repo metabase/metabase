@@ -8,8 +8,8 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.dashboards.api :as api.dashboard]
+   [metabase.dashboards.schema :as dashboards.schema]
    [metabase.events.core :as events]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.models.interface :as mi]
@@ -60,16 +60,20 @@
   [card]
   (assoc card :parameters (qp.card/combined-parameters-and-template-tags card)))
 
-(defn- remove-card-non-public-columns
-  "Remove everyting from public `card` that shouldn't be visible to the general public."
+(defn remove-card-non-public-columns
+  "Remove everything from public `card` that shouldn't be visible to the general public.
+
+  This function is used by both OSS (for public cards) and EE (for cards in public documents) to ensure
+  consistent filtering of sensitive fields across all public sharing endpoints."
   [card]
   ;; We need to check this to resolve params - we set `request/as-admin` there
   (if qp.perms/*param-values-query*
     card
     (mi/instance
      :model/Card
-     (u/select-nested-keys card [:id :name :description :display :visualization_settings :parameters :entity_id
-                                 [:dataset_query :type [:native :template-tags]]]))))
+     (-> card
+         (select-keys [:id :name :description :display :visualization_settings :parameters :entity_id :dataset_query])
+         (update :dataset_query select-keys [:lib/metadata :lib/type :database :stages])))))
 
 (defn public-card
   "Return a public Card matching key-value `conditions`, removing all columns that should not be visible to the general
@@ -91,8 +95,7 @@
   [{:keys [uuid]} :- [:map
                       [:uuid ms/UUIDString]]]
   (public-sharing.validation/check-public-sharing-enabled)
-  (u/prog1 (card-with-uuid uuid)
-    (events/publish-event! :event/card-read {:object-id (:id <>), :user-id api/*current-user-id*, :context :question})))
+  (card-with-uuid uuid))
 
 (defmulti ^:private transform-qp-result
   "Transform results to be suitable for a public endpoint"
@@ -124,7 +127,7 @@
   "Create the `:make-run` function used for [[process-query-for-card-with-id]] and [[process-query-for-dashcard]]."
   [qp export-format]
   (fn run [query info]
-    (qp.streaming/streaming-response [rff export-format (u/slugify (:card-name info))]
+    (qp.streaming/streaming-response [rff export-format (qp.streaming/safe-filename-prefix (:card-name info))]
       (binding [qp.pipeline/*result* (comp qp.pipeline/*result* transform-qp-result)]
         (request/as-admin
           (qp (update query :info merge info) rff))))))
@@ -176,6 +179,9 @@
                             [:parameters {:optional true} [:maybe ms/JSONString]]]]
   (process-query-for-card-with-public-uuid uuid :api (json/decode+kw parameters)))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/card/:uuid/query/:export-format"
   "Fetch a publicly-accessible Card and return query results in the specified format. Does not require auth
   credentials. Public sharing must be enabled."
@@ -222,7 +228,7 @@
                                                        (m/remove-keys hidden-parameter-ids fields)))
         (select-keys action-public-keys))))
 
-(defn public-dashboard
+(mu/defn public-dashboard :- ::dashboards.schema/dashboard
   "Return a public Dashboard matching key-value `conditions`, removing all columns that should not be visible to the
   general public. Throws a 404 if the Dashboard doesn't exist."
   [& conditions]
@@ -248,10 +254,9 @@
   "Fetch a publicly-accessible Dashboard. Does not require auth credentials. Public sharing must be enabled."
   [{:keys [uuid]} :- [:map
                       [:uuid ms/UUIDString]]]
-  (lib.metadata.jvm/with-metadata-provider-cache
-    (public-sharing.validation/check-public-sharing-enabled)
-    (u/prog1 (dashboard-with-uuid uuid)
-      (events/publish-event! :event/dashboard-read {:object-id (:id <>), :user-id api/*current-user-id*}))))
+  (public-sharing.validation/check-public-sharing-enabled)
+  (u/prog1 (dashboard-with-uuid uuid)
+    (events/publish-event! :event/dashboard-read {:object-id (:id <>), :user-id api/*current-user-id*})))
 
 (defn process-query-for-dashcard
   "Return the results of running a query for Card with `card-id` belonging to Dashboard with `dashboard-id` via
@@ -294,13 +299,12 @@
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-404 (t2/select-one-pk :model/Card :id card-id :archived false))
   (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false))]
-    (u/prog1 (process-query-for-dashcard
-              :dashboard-id  dashboard-id
-              :card-id       card-id
-              :dashcard-id   dashcard-id
-              :export-format :api
-              :parameters    parameters)
-      (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :dashboard}))))
+    (process-query-for-dashcard
+     :dashboard-id  dashboard-id
+     :card-id       card-id
+     :dashcard-id   dashcard-id
+     :export-format :api
+     :parameters    parameters)))
 
 (api.macros/defendpoint :post ["/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:export-format"
                                :export-format qp.schema/export-formats-regex]
@@ -463,11 +467,10 @@
                                 [:uuid      ms/UUIDString]
                                 [:param-key ms/NonBlankString]]
    constraint-param-key->value :- [:map-of string? any?]]
-  (lib.metadata.jvm/with-metadata-provider-cache
-    (let [dashboard (dashboard-with-uuid uuid)]
-      (request/as-admin
-        (binding [qp.perms/*param-values-query* true]
-          (parameters.dashboard/param-values dashboard param-key constraint-param-key->value))))))
+  (let [dashboard (dashboard-with-uuid uuid)]
+    (request/as-admin
+      (binding [qp.perms/*param-values-query* true]
+        (parameters.dashboard/param-values dashboard param-key constraint-param-key->value)))))
 
 (api.macros/defendpoint :get "/dashboard/:uuid/params/:param-key/search/:query"
   "Fetch filter values for dashboard parameter `param-key`, containing specified `query`."
@@ -517,14 +520,13 @@
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-404 (t2/select-one-pk :model/Card :id card-id :archived false))
   (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false))]
-    (u/prog1 (process-query-for-dashcard
-              :dashboard-id  dashboard-id
-              :card-id       card-id
-              :dashcard-id   dashcard-id
-              :export-format :api
-              :parameters    parameters
-              :qp            qp.pivot/run-pivot-query)
-      (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :dashboard}))))
+    (process-query-for-dashcard
+     :dashboard-id  dashboard-id
+     :card-id       card-id
+     :dashcard-id   dashcard-id
+     :export-format :api
+     :parameters    parameters
+     :qp            qp.pivot/run-pivot-query)))
 
 (def ^:private action-execution-throttle
   "Rate limit at 10 actions per 1000 ms on a per action basis.
@@ -573,43 +575,49 @@
 
 ;;; ----------------------------------------------------- Map Tiles --------------------------------------------------
 
-(api.macros/defendpoint :get "/tiles/card/:uuid/:zoom/:x/:y/:lat-field/:lon-field"
+(api.macros/defendpoint :get "/tiles/card/:uuid/:zoom/:x/:y"
   "Generates a single tile image for a publicly-accessible Card using the map visualization. Does not require auth
   credentials. Public sharing must be enabled."
-  [{:keys [uuid zoom x y lat-field lon-field]}
-   :- [:merge
-       :api.tiles/route-params
-       [:map
-        [:uuid ms/UUIDString]]]
-   {:keys [parameters]}
+  [{:keys [uuid zoom x y]}
    :- [:map
-       [:parameters {:optional true} ms/JSONString]]]
+       [:uuid ms/UUIDString]
+       [:zoom ms/Int]
+       [:x ms/Int]
+       [:y ms/Int]]
+   {:keys [parameters latField lonField]}
+   :- [:map
+       [:parameters {:optional true} ms/JSONString]
+       [:latField string?]
+       [:lonField string?]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [card-id    (api/check-404 (t2/select-one-pk :model/Card :public_uuid uuid, :archived false))
-        parameters (json/decode+kw parameters)
-        lat-field  (json/decode+kw lat-field)
-        lon-field  (json/decode+kw lon-field)]
+        parameters (when parameters (json/decode+kw parameters))
+        lat-field  (json/decode+kw latField)
+        lon-field  (json/decode+kw lonField)]
     (request/as-admin
       (api.tiles/process-tiles-query-for-card card-id parameters zoom x y lat-field lon-field))))
 
-(api.macros/defendpoint :get "/tiles/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
+(api.macros/defendpoint :get "/tiles/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y"
   "Generates a single tile image for a Card using the map visualization in a publicly-accessible Dashboard. Does not
   require auth credentials. Public sharing must be enabled."
-  [{:keys [uuid dashcard-id card-id zoom x y lat-field lon-field]}
-   :- [:merge
-       :api.tiles/route-params
-       [:map
-        [:uuid        ms/UUIDString]
-        [:dashcard-id ms/PositiveInt]
-        [:card-id     ms/PositiveInt]]]
-   {:keys [parameters]}
+  [{:keys [uuid dashcard-id card-id zoom x y]}
    :- [:map
-       [:parameters {:optional true} ms/JSONString]]]
+       [:uuid        ms/UUIDString]
+       [:dashcard-id ms/PositiveInt]
+       [:card-id     ms/PositiveInt]
+       [:zoom        ms/Int]
+       [:x           ms/Int]
+       [:y           ms/Int]]
+   {:keys [parameters latField lonField]}
+   :- [:map
+       [:parameters {:optional true} ms/JSONString]
+       [:latField string?]
+       [:lonField string?]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false))
-        parameters   (json/decode+kw parameters)
-        lat-field    (json/decode+kw lat-field)
-        lon-field    (json/decode+kw lon-field)]
+        parameters   (when parameters (json/decode+kw parameters))
+        lat-field    (json/decode+kw latField)
+        lon-field    (json/decode+kw lonField)]
     (request/as-admin
       (api.tiles/process-tiles-query-for-dashcard dashboard-id dashcard-id card-id parameters zoom x y lat-field lon-field))))
 

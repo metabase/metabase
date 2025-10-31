@@ -20,6 +20,7 @@ describe("parameters/utils/field-filters", () => {
       isCountry: () => false,
       isNumeric: () => false,
       isString: () => false,
+      isStringLike: () => false,
       isBoolean: () => false,
       isAddress: () => false,
       isCoordinate: () => false,
@@ -103,6 +104,17 @@ describe("parameters/utils/field-filters", () => {
           field: () => ({
             ...field,
             isString: () => true,
+          }),
+        },
+      ],
+      [
+        { type: "string/=" },
+        {
+          type: "string",
+          field: () => ({
+            ...field,
+            isString: () => false,
+            isStringLike: () => true,
           }),
         },
       ],

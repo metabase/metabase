@@ -16,6 +16,7 @@ import _ from "underscore";
 
 import ExplicitSize from "metabase/common/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { sumArray } from "metabase/lib/arrays";
 import {
   COLUMN_SHOW_TOTALS,
@@ -80,7 +81,6 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       width,
       height,
       onUpdateVisualizationSettings,
-      isNightMode,
       isDashboard,
       fontFamily,
       isEditing,
@@ -133,14 +133,16 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
     const leftHeaderRef = useRef<Collection>(null);
     const topHeaderRef = useRef<Collection>(null);
 
+    const tc = useTranslateContent();
+
     const getColumnTitle = useCallback(
       function (columnIndex: number) {
         const column = data.cols.filter((col) => !isPivotGroupColumn(col))[
           columnIndex
         ];
-        return getTitleForColumn(column, settings);
+        return tc(getTitleForColumn(column, settings));
       },
-      [data, settings],
+      [data, settings, tc],
     );
 
     function isColumnCollapsible(columnIndex: number) {
@@ -404,7 +406,6 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
         shouldOverflow={shouldOverflow}
         shouldHideScrollbars={isEditing && isDashboard}
         isDashboard={isDashboard}
-        isNightMode={isNightMode}
         data-testid="pivot-table"
       >
         <ScrollSync>
@@ -413,7 +414,6 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
               <div className={CS.flex} style={{ height: topHeaderHeight }}>
                 {/* top left corner - displays left header columns */}
                 <PivotTableTopLeftCellsContainer
-                  isNightMode={isNightMode}
                   style={{
                     width: leftHeaderWidth,
                   }}
@@ -426,7 +426,6 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
                       isBorderedHeader
                       isTransparent
                       hasTopBorder={topHeaderRows > 1}
-                      isNightMode={isNightMode}
                       value={getColumnTitle(rowIndex)}
                       onResize={(newWidth: number) =>
                         handleColumnResize("leftHeader", index, newWidth)
@@ -462,7 +461,6 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
                   style={{ minWidth: `${topHeaderWidth}px` }}
                   ref={topHeaderRef}
                   className={CS.scrollHideAll}
-                  isNightMode={isNightMode}
                   width={topHeaderWidth}
                   height={topHeaderHeight}
                   cellCount={topHeaderItems.length}
@@ -472,7 +470,6 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
                       style={style}
                       item={topHeaderItems[index]}
                       getCellClickHandler={getCellClickHandler}
-                      isNightMode={isNightMode}
                       onResize={(newWidth: number) =>
                         handleColumnResize(
                           "value",
@@ -514,7 +511,6 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
                               onUpdateVisualizationSettings
                             }
                             settings={settings}
-                            isNightMode={isNightMode}
                             getCellClickHandler={getCellClickHandler}
                           />
                         )}
@@ -568,7 +564,6 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
                               style={style}
                               showTooltip={!isScrolling}
                               rowSection={getRowSection(columnIndex, rowIndex)}
-                              isNightMode={isNightMode}
                               getCellClickHandler={getCellClickHandler}
                               cellWidths={getCellWidthsForSection(
                                 valueHeaderWidths,

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import type { TransformTagId } from "metabase-types/api";
+import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
 
 import { JobView, type TransformJobInfo } from "../../components/JobView";
 
@@ -16,8 +16,11 @@ export function NewJobPage() {
     setJob({ ...job, description });
   };
 
-  const handleScheduleChange = (schedule: string) => {
-    setJob({ ...job, schedule });
+  const handleScheduleChange = (
+    schedule: string,
+    uiDisplayType: ScheduleDisplayType,
+  ) => {
+    setJob({ ...job, schedule, ui_display_type: uiDisplayType });
   };
 
   const handleTagListChange = (tagIds: TransformTagId[]) => {
@@ -40,6 +43,7 @@ function getNewJobInfo(): TransformJobInfo {
     name: t`New job`,
     description: null,
     schedule: "0 0 0 * * ? *",
+    ui_display_type: "cron/builder",
     tag_ids: [],
   };
 }

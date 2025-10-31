@@ -10,8 +10,9 @@ import {
   inputPadding,
   inputTypography,
 } from "metabase/common/style/input";
-import { color } from "metabase/lib/colors";
-import { monospaceFontFamily, space } from "metabase/styled-components/theme";
+import type { ColorName } from "metabase/lib/colors/types";
+import { monospaceFontFamily } from "metabase/styled-components/theme";
+import { color } from "metabase/ui/utils/colors";
 
 import type { InputSize } from "../../style/types";
 
@@ -23,7 +24,7 @@ interface InputProps {
   hasLeftIcon?: boolean;
   hasRightIcon?: boolean;
   hasClearButton?: boolean;
-  colorScheme: string;
+  colorScheme: ColorName;
 }
 
 interface InputRootProps {
@@ -61,7 +62,7 @@ export const InputField = styled.input<InputProps>`
   font-family: inherit;
   color: var(--mb-color-text-primary);
   border: 1px solid var(--mb-color-border);
-  border-radius: ${space(1)};
+  border-radius: var(--mantine-spacing-sm);
   background-color: ${(props) =>
     props.readOnly
       ? "var(--mb-color-background-disabled)"

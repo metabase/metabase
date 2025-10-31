@@ -17,7 +17,7 @@ export interface CurrencyOption {
   value: string;
 }
 
-export type CurrencyStyle = "symbol" | "code" | "name";
+export type CurrencyStyle = Intl.NumberFormatOptionsCurrencyDisplay;
 
 export interface CurrencyStyleOption {
   name: string;
@@ -29,14 +29,26 @@ export interface CompactCurrencyOptions {
   currency_style: CurrencyStyle;
 }
 
-let currencyMapCache: Record<string, CurrencyInfo>;
+const getCurrencyMapCache = (() => {
+  let currencyMapCache: Record<string, CurrencyInfo>;
+
+  return () => {
+    if (!currencyMapCache) {
+      currencyMapCache = Object.fromEntries(currency);
+    }
+
+    return currencyMapCache;
+  };
+})();
 
 export function getCurrencySymbol(currencyCode: string): string {
-  if (!currencyMapCache) {
-    // only turn the array into a map if we call this function
-    currencyMapCache = Object.fromEntries(currency);
-  }
-  return currencyMapCache[currencyCode]?.symbol || currencyCode || "$";
+  return getCurrencyMapCache()[currencyCode]?.symbol || currencyCode || "$";
+}
+
+export function getCurrencyNarrowSymbol(currencyCode: string): string {
+  return (
+    getCurrencyMapCache()[currencyCode]?.symbol_native || currencyCode || "$"
+  );
 }
 
 export const COMPACT_CURRENCY_OPTIONS: CompactCurrencyOptions = {
@@ -49,16 +61,27 @@ export const COMPACT_CURRENCY_OPTIONS: CompactCurrencyOptions = {
 
 export function getCurrencyStyleOptions(
   currency = "USD",
+  value?: CurrencyStyle,
 ): CurrencyStyleOption[] {
   const symbol = getCurrencySymbol(currency);
+  const narrowSymbol = getCurrencyNarrowSymbol(currency);
   const code = getCurrency(currency, "code");
   const name = getCurrency(currency, "name");
   return [
-    ...(symbol !== code
+    ...(symbol !== code || value === "symbol"
       ? [
           {
             name: t`Symbol` + ` ` + `(${symbol})`,
             value: "symbol" as const,
+          },
+        ]
+      : []),
+    ...((narrowSymbol !== code && narrowSymbol !== symbol) ||
+    value === "narrowSymbol"
+      ? [
+          {
+            name: t`Local symbol` + ` ` + `(${narrowSymbol})`,
+            value: "narrowSymbol" as const,
           },
         ]
       : []),

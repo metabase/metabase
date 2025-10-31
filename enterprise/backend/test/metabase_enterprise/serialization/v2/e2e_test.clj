@@ -10,6 +10,7 @@
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase-enterprise.serialization.v2.storage :as storage]
    [metabase.models.serialization :as serdes]
+   [metabase.search.core :as search]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.generate :as test-gen]
@@ -21,6 +22,12 @@
    (java.nio.file Path)))
 
 (set! *warn-on-reflection* true)
+
+;; `reindex!` below is ok in a parallel test since it's not actually executing anything
+#_{:clj-kondo/ignore [:metabase/validate-deftest]}
+(use-fixtures :each (fn [thunk]
+                      (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+                        (thunk))))
 
 (defn- dir->contents-set [p ^File dir]
   (->> dir
@@ -414,7 +421,7 @@
                                                   :value_field [:field
                                                                 ["my-db" nil "CUSTOMERS" (:name field1s)]
                                                                 nil]},
-                           :values_source_type   "card"}]
+                           :values_source_type   :card}]
                          (:parameters (first (by-model extraction "Dashboard")))))
 
                   ;; card1s has no parameters, card2s does.
@@ -426,7 +433,7 @@
                                                     :value_field [:field
                                                                   ["my-db" nil "CUSTOMERS" (:name field1s)]
                                                                   nil]},
-                             :values_source_type   "card"}]}
+                             :values_source_type   :card}]}
                          (set (map :parameters (by-model extraction "Card")))))
 
                   (storage/store! (seq extraction) dump-dir)))
@@ -449,7 +456,7 @@
                                  :parameters
                                  first
                                  :values_source_config)))
-                      (is (some? (t2/select-one 'ParameterCard :parameterized_object_type "dashboard" :parameterized_object_id (:id dash1d)))))
+                      (is (some? (t2/select-one :model/ParameterCard :parameterized_object_type "dashboard" :parameterized_object_id (:id dash1d)))))
 
                     (testing "parameter on card is loaded correctly"
                       (is (= {:card_id     (:id card1d),
@@ -458,7 +465,7 @@
                                  :parameters
                                  first
                                  :values_source_config)))
-                      (is (some? (t2/select-one 'ParameterCard :parameterized_object_type "card" :parameterized_object_id (:id card2d)))))))))))))))
+                      (is (some? (t2/select-one :model/ParameterCard :parameterized_object_type "card" :parameterized_object_id (:id card2d)))))))))))))))
 
 (deftest dashcards-with-link-cards-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
@@ -925,15 +932,14 @@
                   (is (int? new-coll-id))
                   (is (=? {:name "Metric Card"
                            :collection_id new-coll-id
-                           :dataset_query (mt/mbql-query orders
-                                            {:aggregation [[:count]]
-                                             :breakout    [$product_id->products.category $created_at]})}
+                           :dataset_query {:stages [{:aggregation [[:count {}]]
+                                                     :breakout    [[:field {} (mt/id :products :category)]
+                                                                   [:field {} (mt/id :orders :created_at)]]}]}}
                           new-metric))
                   (is (=? {:name "Metric Consuming Question Card"
                            :collection_id new-coll-id
-                           :dataset_query (mt/mbql-query orders
-                                            {:aggregation [[:metric (:id new-metric)]]
-                                             :breakout    [[:field %orders.user_id nil]]})}
+                           :dataset_query {:stages [{:aggregation [[:metric {} (:id new-metric)]]
+                                                     :breakout    [[:field {} (mt/id :orders :user_id)]]}]}}
                           (t2/select-one :model/Card :name "Metric Consuming Question Card"))))))))))))
 
 (deftest schema-coercion-test

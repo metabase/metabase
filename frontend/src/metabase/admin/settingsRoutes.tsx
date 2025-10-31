@@ -2,20 +2,19 @@ import { IndexRedirect, Route } from "react-router";
 
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { NotFound } from "metabase/common/components/ErrorPages";
-import { PLUGIN_ADMIN_SETTINGS, PLUGIN_AUTH_PROVIDERS } from "metabase/plugins";
+import {
+  PLUGIN_AUTH_PROVIDERS,
+  PLUGIN_REMOTE_SYNC,
+  PLUGIN_TRANSFORMS_PYTHON,
+} from "metabase/plugins";
 
 import { GoogleAuthForm } from "./settings/auth/components/GoogleAuthForm";
-import {
-  EmbeddingSdkSettings,
-  StaticEmbeddingSettings,
-} from "./settings/components/EmbeddingSettings";
 import { SettingsLdapForm } from "./settings/components/SettingsLdapForm";
 import { SettingsNav } from "./settings/components/SettingsNav";
 import { AppearanceSettingsPage } from "./settings/components/SettingsPages/AppearanceSettingsPage";
 import { AuthenticationSettingsPage } from "./settings/components/SettingsPages/AuthenticationSettingsPage";
 import { CloudSettingsPage } from "./settings/components/SettingsPages/CloudSettingsPage";
 import { EmailSettingsPage } from "./settings/components/SettingsPages/EmailSettingsPage";
-import { EmbeddingSettingsPage } from "./settings/components/SettingsPages/EmbeddingSettingsPage";
 import { GeneralSettingsPage } from "./settings/components/SettingsPages/GeneralSettingsPage";
 import { LicenseSettingsPage } from "./settings/components/SettingsPages/LicenseSettingsPage";
 import { LocalizationSettingsPage } from "./settings/components/SettingsPages/LocalizationSettingsPage";
@@ -60,26 +59,18 @@ export const getSettingsRoutes = () => (
       path="authentication/jwt"
       component={() => <PLUGIN_AUTH_PROVIDERS.SettingsJWTForm />}
     />
+    <Route
+      path="remote-sync"
+      component={() => <PLUGIN_REMOTE_SYNC.RemoteSyncSettings />}
+    />
     <Route path="maps" component={MapsSettingsPage} />
     <Route path="localization" component={LocalizationSettingsPage} />
     <Route path="uploads" component={UploadSettingsPage} />
+    <Route
+      path="python-runner"
+      component={PLUGIN_TRANSFORMS_PYTHON.PythonRunnerSettingsPage}
+    />
     <Route path="public-sharing" component={PublicSharingSettingsPage} />
-    <Route
-      path="embedding-in-other-applications"
-      component={EmbeddingSettingsPage}
-    />
-    <Route
-      path="embedding-in-other-applications/standalone"
-      component={StaticEmbeddingSettings}
-    />
-    <Route
-      path="embedding-in-other-applications/sdk"
-      component={EmbeddingSdkSettings}
-    />
-    <Route
-      path="embedding-in-other-applications/full-app"
-      component={() => <PLUGIN_ADMIN_SETTINGS.InteractiveEmbeddingSettings />}
-    />
     <Route path="license" component={LicenseSettingsPage} />
     <Route path="appearance" component={() => <AppearanceSettingsPage />} />
     <Route

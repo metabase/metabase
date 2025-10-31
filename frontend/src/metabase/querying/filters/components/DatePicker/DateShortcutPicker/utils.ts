@@ -1,23 +1,23 @@
 import type {
   DatePickerOperator,
   DatePickerShortcut,
+  RelativeIntervalDirection,
   ShortcutOption,
 } from "metabase/querying/filters/types";
 
 import { SHORTCUT_OPTION_GROUPS, TYPE_OPTIONS } from "./constants";
 import type { TypeOption } from "./types";
 
-export function getShortcutOptions(
-  availableShortcuts: DatePickerShortcut[],
-): ShortcutOption[] {
-  return getShortcutOptionGroups(availableShortcuts).flat();
-}
-
 export function getShortcutOptionGroups(
   availableShortcuts: DatePickerShortcut[],
+  availableDirections: RelativeIntervalDirection[],
 ): ShortcutOption[][] {
   return SHORTCUT_OPTION_GROUPS.map((options) =>
-    options.filter((option) => availableShortcuts.includes(option.shortcut)),
+    options.filter(
+      (option) =>
+        availableShortcuts.includes(option.shortcut) &&
+        availableDirections.includes(option.direction),
+    ),
   ).filter((options) => options.length > 0);
 }
 

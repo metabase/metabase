@@ -469,7 +469,7 @@ describe("scenarios > question > nested", () => {
       "contain",
       "Swaniawski, Casper and Hilll",
     );
-    cy.findByTestId("object-detail-close-button").click();
+    cy.findByLabelText("Close").click();
 
     cy.log("Should be able to save a nested question (metabase#18364)");
     saveQuestion();

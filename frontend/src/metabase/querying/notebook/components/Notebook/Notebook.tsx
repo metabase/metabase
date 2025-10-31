@@ -4,6 +4,7 @@ import { setUIControls } from "metabase/query_builder/actions";
 import { Box } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
+import type { NotebookDataPickerOptions } from "../../types";
 import { NotebookStepList } from "../NotebookStepList";
 
 import { VisualizeButton } from "./VisualizationButton";
@@ -21,6 +22,7 @@ export type NotebookProps = {
   setQueryBuilderMode?: (mode: string) => void;
   readOnly?: boolean;
   modelsFilterList?: DataPickerValue["model"][];
+  dataPickerOptions?: NotebookDataPickerOptions;
 };
 
 export const Notebook = ({
@@ -35,6 +37,7 @@ export const Notebook = ({
   runQuestionQuery,
   setQueryBuilderMode,
   modelsFilterList,
+  dataPickerOptions,
 }: NotebookProps) => {
   const dispatch = useDispatch();
 
@@ -51,6 +54,7 @@ export const Notebook = ({
           question={question}
           reportTimezone={reportTimezone}
           readOnly={readOnly}
+          dataPickerOptions={dataPickerOptions}
         />
         {hasVisualizeButton && runQuestionQuery && (
           <VisualizeButton

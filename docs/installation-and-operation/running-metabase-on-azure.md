@@ -165,7 +165,7 @@ Change the version of the container to the new version in the **Full Image Name 
 
 Visit your web app in Azure, and navigate to **Monitoring -> Log stream**.
 
-You should be able to see the logs as well inside Metabase by going to Settings -> Admin -> Troubleshooting -> Logs.
+You should be able to see the logs as well inside Metabase by going to Settings -> Admin -> Tools -> Logs.
 
 ### Performance tuning
 

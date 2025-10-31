@@ -3,31 +3,11 @@ import userEvent from "@testing-library/user-event";
 import { screen } from "__support__/ui";
 import { createMockCollection } from "metabase-types/api/mocks";
 
-import { openMenu, setupQuestionSharingMenu } from "./setup";
+import { setupQuestionSharingMenu } from "./setup";
 
 describe("QuestionSharingMenu > Enterprise", () => {
   describe("non-admins", () => {
-    it('Should show the "Create an alert" menu item to non-admins if the user has subscriptions/alerts permissions', async () => {
-      setupQuestionSharingMenu({
-        canManageSubscriptions: true,
-        isEmailSetup: true,
-        isEnterprise: true,
-      });
-      await openMenu();
-      expect(screen.getByText("Create an alert")).toBeInTheDocument();
-    });
-
     describe("alerts permission disabled", () => {
-      it('Should not show the "Create an alert" menu item to non-admins if the user lacks subscriptions/alerts permissions', async () => {
-        setupQuestionSharingMenu({
-          canManageSubscriptions: false,
-          isEmailSetup: true,
-          isEnterprise: true,
-        });
-        await openMenu();
-        expect(screen.queryByText("Create an alert")).not.toBeInTheDocument();
-      });
-
       it('should show a "Public link" button item if public sharing is enabled and the user lacks alerts permissions', async () => {
         setupQuestionSharingMenu({
           canManageSubscriptions: false,

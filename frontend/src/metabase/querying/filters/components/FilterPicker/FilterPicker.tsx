@@ -29,6 +29,7 @@ export type FilterPickerProps = {
   onSelect: (filter: Lib.Filterable) => void;
   onClose?: () => void;
   onBack?: () => void;
+  readOnly?: boolean;
 } & Pick<
   FilterColumnPickerProps,
   "withColumnItemIcon" | "withColumnGroupIcon" | "withCustomExpression"
@@ -46,6 +47,7 @@ export function FilterPicker({
   withColumnItemIcon,
   withColumnGroupIcon,
   withCustomExpression,
+  readOnly,
 }: FilterPickerProps) {
   const [filter, setFilter] = useState(initialFilter);
   const [column, setColumn] = useState(
@@ -155,6 +157,7 @@ export function FilterPicker({
       isNew={isNewFilter}
       onChange={handleChange}
       onBack={handleBack}
+      readOnly={readOnly}
     />
   );
 }

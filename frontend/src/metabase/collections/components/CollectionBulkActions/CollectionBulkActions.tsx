@@ -54,6 +54,12 @@ export const CollectionBulkActions = memo(
       clearSelected();
     };
 
+    const handleCancelModal = () => {
+      setSelectedItems(null);
+      setSelectedAction(null);
+      setRememberedDestination(null);
+    };
+
     const tryOrClear = (promise: Promise<any>) =>
       promise.finally(() => clearSelected());
 
@@ -157,7 +163,7 @@ export const CollectionBulkActions = memo(
         {selectedItems && hasSelectedItems && selectedAction === "move" && (
           <BulkMoveModal
             selectedItems={selectedItems}
-            onClose={handleCloseModal}
+            onClose={handleCancelModal}
             onMove={handleBulkMove}
             initialCollectionId={
               isTrashedCollection(collection) ? "root" : collection.id

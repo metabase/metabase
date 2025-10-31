@@ -9,7 +9,10 @@
    [metabase.search.appdb.scoring-test :as appdb.scoring-test]
    [metabase.search.in-place.scoring :as scoring]
    [metabase.test :as mt]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json])
+  (:import [java.time Instant]))
+
+(set! *warn-on-reflection* true)
 
 (deftest ^:parallel verified-score-test
   (let [score #'ee-scoring/verified-score
@@ -180,3 +183,31 @@
         (is (= [["card" 1 "card normal"]
                 ["card" 2 "card verified"]]
                (appdb.scoring-test/search-results* "card")))))))
+
+(deftest ^:parallel transforms-user-recency-test
+  (mt/with-premium-features #{:transforms}
+    (let [user-id (mt/user->id :crowberto)
+          now     (Instant/now)
+          recent-view (fn [model-id timestamp]
+                        {:model     "card"
+                         :model_id  model-id
+                         :user_id   user-id
+                         :timestamp timestamp})]
+      (mt/with-temp [:model/Card        {c1 :id} {}
+                     :model/Card        {c2 :id} {}
+                     :model/Transform   {t1 :id} {:name "test transform"
+                                                  :source {:type "query"
+                                                           :query (mt/native-query {:query "SELECT 1"})}
+                                                  :target {:type "table"
+                                                           :name "test_table"}}
+                     :model/RecentViews _ (recent-view c1 now)]
+        (appdb.scoring-test/with-index-contents
+          [{:model "card"      :id c1 :name "test card recent"}
+           {:model "card"      :id c2 :name "test card unseen"}
+           {:model "transform" :id t1 :name "test transform"}]
+          (testing "Transforms get a hardcoded 1-day recency (between recently viewed card and never viewed card)"
+            (is (= [["card"      c1 "test card recent"]
+                    ["transform" t1 "test transform"]
+                    ["card"      c2 "test card unseen"]]
+                   (appdb.scoring-test/search-results :user-recency "test" {:current-user-id user-id
+                                                                            :context :metabot})))))))))

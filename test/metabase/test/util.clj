@@ -132,6 +132,12 @@
             {:name (u.random/random-name)
              :channel_type "channel/metabase-test"}))
 
+   :model/Comment
+   (fn [_] (default-timestamped
+            {:target_type "document"
+             :creator_id  (rasta-id)
+             :content     {:text (u.random/random-name)}}))
+
    :model/Dashboard
    (fn [_] (default-timestamped
             {:creator_id (rasta-id)
@@ -167,6 +173,21 @@
    (fn [_] (default-timestamped
             {:name (u.random/random-name)
              :type "internal"}))
+
+   :model/Document
+   (fn [_] (default-timestamped
+            {:name (u.random/random-name)
+             :document {:type "doc"
+                        :content [{:attrs {:_id (str (random-uuid))}
+                                   :type "paragraph"
+                                   :content [{:type "text"
+                                              :text "Hello"}]}
+                                  {:attrs {:_id (str (random-uuid))}
+                                   :type "paragraph"
+                                   :content [{:type "text"
+                                              :text "World"}]}]}
+             :content_type "application/json+vnd.prose-mirror"
+             :creator_id (rasta-id)}))
 
    :model/Field
    (fn [_] (default-timestamped
@@ -248,19 +269,6 @@
              :schedule_type :daily
              :schedule_hour 15}))
 
-   :model/Document
-   (fn [_] (default-timestamped
-            {:name (u.random/random-name)
-             :document {:type "doc"
-                        :content [{:type "paragraph"
-                                   :content [{:type "text"
-                                              :text "Hello"}]}
-                                  {:type "paragraph"
-                                   :content [{:type "text"
-                                              :text "World"}]}]}
-             :content_type "application/json+vnd.prose-mirror"
-             :creator_id (rasta-id)}))
-
    :model/Revision
    (fn [_] {:user_id (rasta-id)
             :is_creation false
@@ -327,8 +335,9 @@
    :model/TransformJob
    (fn [_]
      (default-timestamped
-      {:name (str "Test Transform Job " (u/generate-nano-id))
-       :schedule "0 0 * * * ?"}))
+      {:name            (str "Test Transform Job " (u/generate-nano-id))
+       :schedule        "0 0 * * * ?"
+       :ui_display_type :cron/raw}))
 
    :model/TransformRun
    (fn [_]
@@ -580,6 +589,24 @@
   {:style/indent 1}
   [settings & body]
   `(do-with-discarded-setting-changes! ~(mapv keyword settings) (fn [] ~@body)))
+
+(defmacro with-random-premium-token!
+  "Temporarily sets a premium embedding token to a random value and stubs token check to avoid
+  triggering premium token status checks. Use like:
+
+  (mt/with-random-premium-token [token-value]
+    (some-call))
+
+  The token-value binding will contain the random token that was set."
+  [[token-value] & body]
+  `(let [~token-value (premium-features.test-util/random-token)]
+     (with-redefs [metabase.premium-features.token-check/check-token
+                   (constantly {:valid    true
+                                :status   "fake"
+                                :features ["test" "fixture"]
+                                :trial    false})]
+       (with-temporary-raw-setting-values [:premium-embedding-token ~token-value]
+         ~@body))))
 
 (defn- maybe-merge-original-values
   "For some map columns like `Database.settings` or `User.settings`, merge the original values with the temp ones to
@@ -834,7 +861,7 @@
            {:delete-from (t2/table-name model)
             :where [:and max-id-condition additional-conditions]}))
         ;; TODO we don't (currently) have index update hooks on deletes, so we need this to ensure rollback happens.
-        (search/reindex! {:in-place? true})))))
+        (search/reindex! {:in-place? true :async? false})))))
 
 (defmacro with-model-cleanup
   "Execute `body`, then delete any *new* rows created for each model in `models`. Calls `delete!`, so if the model has
@@ -851,7 +878,16 @@
       (created-query-cache!)
       (is cached?))
 
-  Only works for models that have a numeric primary key e.g. `:id`."
+  Only works for models that have a numeric primary key e.g. `:id`.
+
+  # TODO (Cam 9/29/25)
+
+  I'm planning on deprecating and removing this in near future. Instead of using this you can do
+
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      ...)
+
+  which is thread-safe."
   [models & body]
   `(do-with-model-cleanup ~models (fn [] ~@body)))
 
@@ -875,30 +911,29 @@
           (testing "Shouldn't delete other Cards"
             (is (pos? (t2/count :model/Card)))))))))
 
-(defn do-with-verified-cards!
-  "Impl for [[with-verified-cards!]]."
-  [card-or-ids thunk]
+(defn do-with-verified!
+  "Impl for [[with-verified!]]."
+  [cards-or-dashes thunk]
   (with-model-cleanup [:model/ModerationReview]
-    (doseq [card-or-id card-or-ids]
+    (doseq [[item-type model-or-ids] cards-or-dashes
+            model-or-id              model-or-ids]
       (doseq [status ["verified" nil "verified"]]
         ;; create multiple moderation review for a card, but the end result is it's still verified
         (moderation-review/create-review!
-         {:moderated_item_id (u/the-id card-or-id)
-          :moderated_item_type "card"
-          :moderator_id ((requiring-resolve 'metabase.test.data.users/user->id) :rasta)
-          :status status})))
+         {:moderated_item_id   (u/the-id model-or-id)
+          :moderated_item_type (name item-type)
+          :moderator_id        ((requiring-resolve 'metabase.test.data.users/user->id) :rasta)
+          :status              status})))
     (thunk)))
 
-(defmacro with-verified-cards!
+(defmacro with-verified!
   "Execute the body with all `card-or-ids` verified."
-  [card-or-ids & body]
-  `(do-with-verified-cards! ~card-or-ids (fn [] ~@body)))
+  [cards-or-dashes & body]
+  `(do-with-verified! ~cards-or-dashes (fn [] ~@body)))
 
-(deftest with-verified-cards-test
-  #_{:clj-kondo/ignore [:discouraged-var]}
-  (t2.with-temp/with-temp
-    [:model/Card {card-id :id} {}]
-    (with-verified-cards! [card-id]
+(deftest with-verified-test
+  (t2.with-temp/with-temp [:model/Card {card-id :id} {}]
+    (with-verified! {:card [card-id]}
       (is (=? #{{:moderated_item_id card-id
                  :moderated_item_type :card
                  :most_recent true
@@ -1579,7 +1614,7 @@
   `(fn [{:keys ~(mapv (comp symbol name) bindings)}]
      ~@body))
 
-(defn do-poll-until [^Long timeout-ms thunk]
+(defn do-poll-until [^Long timeout-ms code thunk]
   (let [result-prom (promise)
         _timeouter (future (Thread/sleep timeout-ms) (deliver result-prom ::timeout))
         _runner (future (loop []
@@ -1588,7 +1623,8 @@
                             (recur))))
         result @result-prom]
     (cond (= result ::timeout) (throw (ex-info (str "Timeout after " timeout-ms "ms")
-                                               {:timeout-ms timeout-ms}))
+                                               {:timeout-ms timeout-ms
+                                                :code code}))
           (instance? Throwable result) (throw result)
           :else result)))
 
@@ -1602,6 +1638,7 @@
   [timeout-ms & body]
   `(do-poll-until
     ~timeout-ms
+    '~@body
     (fn ~'poll-body [] ~@body)))
 
 (methodical/defmethod =?/=?-diff [(Class/forName "[B") (Class/forName "[B")]

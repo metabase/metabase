@@ -1,6 +1,6 @@
 services:
   snowplow-micro:
-    image: snowplow/snowplow-micro:1.2.1
+    image: snowplow/snowplow-micro:2.3.0
     ports:
       - "9090:9090"
     volumes:

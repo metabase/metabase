@@ -1,0 +1,227 @@
+description: null
+archived: false
+collection_position: null
+source_card_id: null
+table_id:
+  - "Sample Database"
+  - PUBLIC
+  - PRODUCTS
+result_metadata:
+  - {
+      description: "The numerical product number. Only used internally. All external communication should use the title or EAN.",
+      database_type: BIGINT,
+      semantic_type: type/PK,
+      table_id: ["Sample Database", PUBLIC, PRODUCTS],
+      "qp/implicit-field?": true,
+      lib/deduplicated-name: ID,
+      lib/original-name: ID,
+      name: ID,
+      lib/source: source/table-defaults,
+      lib/source-column-alias: ID,
+      lib/original-display-name: ID,
+      source: fields,
+      field_ref: [field, "- Sample Database\n- PUBLIC\n- PRODUCTS\n- ID", null],
+      effective_type: type/BigInteger,
+      active: true,
+      id: ["Sample Database", PUBLIC, PRODUCTS, ID],
+      lib/desired-column-alias: ID,
+      position: 0,
+      visibility_type: normal,
+      display_name: ID,
+      base_type: type/BigInteger,
+    }
+  - {
+      description: "The international article number. A 13 digit number uniquely identifying the product.",
+      database_type: CHARACTER,
+      table_id: ["Sample Database", PUBLIC, PRODUCTS],
+      "qp/implicit-field?": true,
+      lib/deduplicated-name: EAN,
+      lib/original-name: EAN,
+      name: EAN,
+      lib/source: source/table-defaults,
+      lib/source-column-alias: EAN,
+      lib/original-display-name: Ean,
+      source: fields,
+      field_ref:
+        [field, "- Sample Database\n- PUBLIC\n- PRODUCTS\n- EAN", null],
+      effective_type: type/Text,
+      active: true,
+      id: ["Sample Database", PUBLIC, PRODUCTS, EAN],
+      lib/desired-column-alias: EAN,
+      position: 1,
+      visibility_type: normal,
+      display_name: Ean,
+      base_type: type/Text,
+    }
+  - {
+      description: "The name of the product as it should be displayed to customers.",
+      database_type: "CHARACTER VARYING",
+      semantic_type: type/Title,
+      table_id: ["Sample Database", PUBLIC, PRODUCTS],
+      "qp/implicit-field?": true,
+      lib/deduplicated-name: TITLE,
+      lib/original-name: TITLE,
+      name: TITLE,
+      lib/source: source/table-defaults,
+      lib/source-column-alias: TITLE,
+      lib/original-display-name: Title,
+      source: fields,
+      field_ref:
+        [field, "- Sample Database\n- PUBLIC\n- PRODUCTS\n- TITLE", null],
+      effective_type: type/Text,
+      active: true,
+      id: ["Sample Database", PUBLIC, PRODUCTS, TITLE],
+      lib/desired-column-alias: TITLE,
+      position: 2,
+      visibility_type: normal,
+      display_name: Title,
+      base_type: type/Text,
+    }
+  - {
+      description: "The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget",
+      database_type: "CHARACTER VARYING",
+      semantic_type: type/Category,
+      table_id: ["Sample Database", PUBLIC, PRODUCTS],
+      "qp/implicit-field?": true,
+      lib/deduplicated-name: CATEGORY,
+      lib/original-name: CATEGORY,
+      name: CATEGORY,
+      lib/source: source/table-defaults,
+      lib/source-column-alias: CATEGORY,
+      lib/original-display-name: Category,
+      source: fields,
+      field_ref:
+        [field, "- Sample Database\n- PUBLIC\n- PRODUCTS\n- CATEGORY", null],
+      effective_type: type/Text,
+      active: true,
+      id: ["Sample Database", PUBLIC, PRODUCTS, CATEGORY],
+      lib/desired-column-alias: CATEGORY,
+      position: 3,
+      visibility_type: normal,
+      display_name: Category,
+      base_type: type/Text,
+    }
+  - {
+      description: "The source of the product.",
+      database_type: "CHARACTER VARYING",
+      semantic_type: type/Company,
+      table_id: ["Sample Database", PUBLIC, PRODUCTS],
+      "qp/implicit-field?": true,
+      lib/deduplicated-name: VENDOR,
+      lib/original-name: VENDOR,
+      name: VENDOR,
+      lib/source: source/table-defaults,
+      lib/source-column-alias: VENDOR,
+      lib/original-display-name: Vendor,
+      source: fields,
+      field_ref:
+        [field, "- Sample Database\n- PUBLIC\n- PRODUCTS\n- VENDOR", null],
+      effective_type: type/Text,
+      active: true,
+      id: ["Sample Database", PUBLIC, PRODUCTS, VENDOR],
+      lib/desired-column-alias: VENDOR,
+      position: 4,
+      visibility_type: normal,
+      display_name: Vendor,
+      base_type: type/Text,
+    }
+  - {
+      description: "The list price of the product. Note that this is not always the price the product sold for due to discounts, promotions, etc.",
+      database_type: "DOUBLE PRECISION",
+      table_id: ["Sample Database", PUBLIC, PRODUCTS],
+      "qp/implicit-field?": true,
+      lib/deduplicated-name: PRICE,
+      lib/original-name: PRICE,
+      name: PRICE,
+      lib/source: source/table-defaults,
+      lib/source-column-alias: PRICE,
+      lib/original-display-name: Price,
+      source: fields,
+      field_ref:
+        [field, "- Sample Database\n- PUBLIC\n- PRODUCTS\n- PRICE", null],
+      effective_type: type/Float,
+      active: true,
+      id: ["Sample Database", PUBLIC, PRODUCTS, PRICE],
+      lib/desired-column-alias: PRICE,
+      position: 5,
+      visibility_type: normal,
+      display_name: Price,
+      base_type: type/Float,
+    }
+  - {
+      description: "The average rating users have given the product. This ranges from 1 - 5",
+      database_type: "DOUBLE PRECISION",
+      semantic_type: type/Score,
+      table_id: ["Sample Database", PUBLIC, PRODUCTS],
+      "qp/implicit-field?": true,
+      lib/deduplicated-name: RATING,
+      lib/original-name: RATING,
+      name: RATING,
+      lib/source: source/table-defaults,
+      lib/source-column-alias: RATING,
+      lib/original-display-name: Rating,
+      source: fields,
+      field_ref:
+        [field, "- Sample Database\n- PUBLIC\n- PRODUCTS\n- RATING", null],
+      effective_type: type/Float,
+      active: true,
+      id: ["Sample Database", PUBLIC, PRODUCTS, RATING],
+      lib/desired-column-alias: RATING,
+      position: 6,
+      visibility_type: normal,
+      display_name: Rating,
+      base_type: type/Float,
+    }
+  - {
+      description: "The date the product was added to our catalog.",
+      database_type: TIMESTAMP,
+      semantic_type: type/CreationTimestamp,
+      table_id: ["Sample Database", PUBLIC, PRODUCTS],
+      "qp/implicit-field?": true,
+      lib/deduplicated-name: CREATED_AT,
+      lib/original-name: CREATED_AT,
+      name: CREATED_AT,
+      lib/source: source/table-defaults,
+      lib/source-column-alias: CREATED_AT,
+      lib/original-display-name: "Created At",
+      source: fields,
+      field_ref:
+        [field, "- Sample Database\n- PUBLIC\n- PRODUCTS\n- CREATED_AT", null],
+      effective_type: type/DateTime,
+      active: true,
+      id: ["Sample Database", PUBLIC, PRODUCTS, CREATED_AT],
+      lib/desired-column-alias: CREATED_AT,
+      position: 7,
+      visibility_type: normal,
+      display_name: "Created At",
+      base_type: type/DateTime,
+    }
+card_schema: 22
+database_id: "Sample Database"
+enable_embedding: false
+collection_id: AF_m-cEw4pFjXYd90_tnj
+query_type: query
+name: "Remote Sync Test Question"
+document_id: null
+type: question
+creator_id: admin@metabase.test
+made_public_by_id: null
+embedding_params: null
+dataset_query:
+  database: "Sample Database"
+  type: query
+  query: { source-table: ["Sample Database", PUBLIC, PRODUCTS] }
+parameter_mappings: []
+serdes/meta:
+  - { model: Card, id: emoZpKzkmTi_zmyqeUB1O, label: remote_sync_test_question }
+display: table
+archived_directly: false
+entity_id: emoZpKzkmTi_zmyqeUB1O
+collection_preview: true
+visualization_settings:
+  column_settings: null
+metabase_version: "v1.57.1-SNAPSHOT (fb3e96f)"
+parameters: []
+dashboard_id: null
+created_at: "2025-10-23T09:38:19.622872-07:00"
+public_uuid: null

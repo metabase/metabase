@@ -1,6 +1,6 @@
 import type { MouseEventHandler } from "react";
 
-import { Center, Icon, type IconName, Menu } from "metabase/ui";
+import { Icon, type IconName, Menu } from "metabase/ui";
 
 type CommonNotificationsMenuItemProps = {
   iconName: IconName;
@@ -18,11 +18,7 @@ export const CommonNotificationsMenuItem = ({
   return (
     <Menu.Item
       data-testid="question-alert-menu-item"
-      leftSection={
-        <Center mr="xs">
-          <Icon name={iconName} />
-        </Center>
-      }
+      leftSection={<Icon name={iconName} />}
       disabled={disabled}
       onClick={onClick}
     >

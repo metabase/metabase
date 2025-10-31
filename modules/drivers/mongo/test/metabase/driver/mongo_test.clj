@@ -14,7 +14,6 @@
    [metabase.driver.mongo.util :as mongo.util]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor :as qp]
@@ -100,7 +99,7 @@
           (is (= expected
                  (driver/database-supports? :mongo :expressions db))))))
     (is (= #{:collection}
-           (lib/required-native-extras (lib.metadata.jvm/application-database-metadata-provider (mt/id)))))))
+           (lib/required-native-extras (mt/metadata-provider))))))
 
 (def ^:private native-query
   "[{\"$project\": {\"_id\": \"$_id\"}},
@@ -123,12 +122,15 @@
                                           :field_ref    [:field "count" {:base-type :type/Integer}]}]
                       :native_form      {:collection "venues"
                                          :query      native-query}
-                      :results_timezone "UTC"}}
+                      :results_timezone "UTC"
+                      :results_metadata {:columns [{:name           "count"
+                                                    :base_type      :type/Integer
+                                                    :effective_type :type/Integer}]}}}
          (-> (qp/process-query {:native   {:query      native-query
                                            :collection "venues"}
                                 :type     :native
                                 :database (mt/id)})
-             (m/dissoc-in [:data :results_metadata] [:data :insights]))))))
+             (m/dissoc-in [:data :insights]))))))
 
 (deftest ^:parallel nested-native-query-test
   (mt/test-driver :mongo
@@ -1129,3 +1131,46 @@
     (with-describe-table-for-sample
       []
       (is (=? #{} @nested-fields)))))
+
+(deftest dbref-field-test
+  (mt/test-driver :mongo
+    (let [id-1 (ObjectId. "68bee671b76da7388a01e6c1")
+          id-2 (ObjectId. "68bee676e7c18921ff7dcf04")
+          ref-1 (com.mongodb.DBRef. "some_collection" id-1)
+          ref-2 (com.mongodb.DBRef. "some_db" "some_collection" id-2)]
+      (mt/dataset (mt/dataset-definition
+                   "dbref_db"
+                   [["dbref_coll"
+                     [{:field-name "name", :base-type :type/Text}
+                      {:field-name "dbref", :base-type :type/*}]
+                     [["ref1" ref-1]
+                      ["ref2" ref-2]]]])
+        (is (= [[1 "ref1" ref-1 "some_collection" id-1 nil]
+                [2 "ref2" ref-2 "some_collection" id-2 "some_db"]]
+               (mt/rows (mt/run-mbql-query dbref_coll))))))))
+
+(deftest ^:parallel type->database-type-test
+  (testing "type->database-type multimethod returns correct MongoDB types"
+    (are [base-type expected] (= expected (driver/type->database-type :mongo base-type))
+      :type/TextLike           "string"
+      :type/Text               "string"
+      :type/Number             "long"
+      :type/Integer            "int"
+      :type/BigInteger         "long"
+      :type/Float              "double"
+      :type/Decimal            "decimal"
+      :type/Boolean            "bool"
+      :type/Date               "date"
+      :type/DateTime           "date"
+      :type/DateTimeWithTZ     "date"
+      :type/Time               "date"
+      :type/TimeWithTZ         "date"
+      :type/Instant            "date"
+      :type/UUID               "uuid"
+      :type/JSON               "object"
+      :type/SerializedJSON     "string"
+      :type/Array              "array"
+      :type/Dictionary         "object"
+      :type/MongoBSONID        "objectId"
+      :type/MongoBinData       "binData"
+      :type/IPAddress          "string")))

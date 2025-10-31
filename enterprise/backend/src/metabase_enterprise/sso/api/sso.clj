@@ -93,6 +93,9 @@
                       (str (urls/site-url) metabase-slo-redirect-url))))}))
 
 ;; POST /auth/sso/to_session
+;;
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :post "/to_session"
   "If a user wants to simply convert a JWT to a session token (which they'll manage)
   this provides a path for them to do so."
@@ -106,6 +109,9 @@
   {:session_token (jwt/jwt->session jwt request)})
 
 ;; POST /auth/sso/handle_slo
+;;
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :post "/handle_slo"
   "Handles client confirmation of saml logout via slo"
   [_route-params _query-params _body request]

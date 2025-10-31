@@ -43,7 +43,8 @@ export async function aiStreamingQuery(
     }
     inflightAiStreamingRequests.set(reqId, { abortController });
 
-    const response = await fetch(req.url, {
+    // The basename is needed to work within the Embedding SDK
+    const response = await fetch(`${api.basename}${req.url}`, {
       method: "POST",
       headers: {
         ...api.getClientHeaders(),

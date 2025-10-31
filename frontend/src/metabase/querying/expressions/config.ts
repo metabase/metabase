@@ -1855,17 +1855,18 @@ export const EXPRESSION_OPERATORS = {
   ...COMPARISON_OPERATORS,
 } as const;
 
-export const AGGREGATION_FUNCTIONS = {
-  ...AGGREGATION,
-  ...WINDOW,
-} as const;
-
 export const EXPRESSION_FUNCTIONS = {
   ...CONVERSION,
   ...STRING,
   ...DATE,
   ...MATH,
   ...LOGICAL,
+} as const;
+
+export const AGGREGATION_FUNCTIONS = {
+  ...EXPRESSION_FUNCTIONS,
+  ...AGGREGATION,
+  ...WINDOW,
 } as const;
 
 export const MBQL_CLAUSES = {

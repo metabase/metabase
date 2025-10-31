@@ -1,12 +1,10 @@
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
-
-import "regenerator-runtime/runtime";
+import "@xyflow/react/dist/style.css";
 
 // This is conditionally aliased in the webpack config.
 // If EE isn't enabled, it loads an empty file.
 // Should be imported before any other metabase import
-// eslint-disable-next-line import/no-duplicates
 import "ee-overrides";
 
 import "metabase/lib/dayjs";
@@ -26,7 +24,6 @@ import "metabase/plugins/builtin";
 
 // This is conditionally aliased in the webpack config.
 // If EE isn't enabled, it loads an empty file.
-// eslint-disable-next-line import/no-duplicates
 import "ee-plugins";
 
 // Set nonce for mantine v6 deps

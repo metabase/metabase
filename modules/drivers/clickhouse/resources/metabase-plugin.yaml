@@ -14,15 +14,25 @@ driver:
         - default: 8123
     - user
     - password
-    - name: dbname
-      display-name: Databases
-      placeholder: default
-      helper-text: "To specify multiple databases, separate them by the space symbol. For example: default data logs."
-    - name: scan-all-databases
-      display-name: Scan all databases
+    - name: enable-multiple-db
+      display-name: Enable multiple databases
       type: boolean
-      default: false
-      description: Scan all tables from all available ClickHouse databases except the system ones.
+      default: true
+      description: Enable syncing and scanning tables from multiple ClickHouse databases except the system ones.
+    - name: dbname
+      visible-if:
+        enable-multiple-db: false
+      display-name: Default database
+      placeholder: default
+      helper-text: "Specify the default database to connect to"
+    - name: db-filters
+      visible-if:
+        enable-multiple-db: true
+      type: schema-filters
+      display-name: Databases
+      placeholder: >-
+        database_1, database_2
+      helper-text: Optionally filter which databases are visible.
 
     - ssl
     - ssh-tunnel

@@ -1,3 +1,4 @@
+export * from "./UpsellEmbedHomepage";
 export * from "./UpsellBetterSupport";
 export * from "./UpsellCacheConfig";
 export * from "./UpsellCloud";

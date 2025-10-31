@@ -4,16 +4,18 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [honey.sql :as sql]
+   [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.gate :as semantic.gate]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+   [metabase.test.util :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs])
   (:import (java.io Closeable)
-           (java.sql Timestamp)
+           (java.sql Timestamp SQLException)
            (java.time Duration Instant)
            (org.postgresql.util PGobject)))
 
@@ -35,6 +37,7 @@
           search-doc {:model           "card"
                       :id              "123"
                       :searchable_text "Dog Training Guide"
+                      :embeddable_text "Dog Training Guide"
                       :updated_at      t1}
           sut        semantic.gate/search-doc->gate-doc]
       (is (= {:id            "card_123"
@@ -53,7 +56,7 @@
                (:updated_at (sut (assoc search-doc :updated_at nil) t2))))))))
 
 (deftest gate-doc->search-doc-test
-  (let [original-search-doc {:model "card" :id "123" :searchable_text "Dog Training Guide"}
+  (let [original-search-doc {:model "card" :id "123" :searchable_text "Dog Training Guide" :embeddable_text "Dog Training Guide"}
         gate-doc            {:document (doto (PGobject.)
                                          (.setType "jsonb")
                                          (.setValue (json/encode original-search-doc)))}
@@ -88,16 +91,16 @@
   (:ts (jdbc/execute-one! pgvector ["select clock_timestamp() ts"])))
 
 (deftest gate-documents!-test
-  (let [pgvector       semantic.tu/db
+  (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.tu/unique-index-metadata)
         t0             (ts "2025-01-01T00:00:00Z")
         t1             (ts "2025-01-01T00:01:00Z")
         t2             (ts "2025-01-02T00:03:10Z")
         t3             (ts "2025-01-03T00:02:42Z")
-        c1             {:model "card" :id "123" :searchable_text "Dog Training Guide"}
-        c2             {:model "card" :id "123" :searchable_text "Dog Training Guide 2"}
-        c3             {:model "card" :id "123" :searchable_text "Dog Training Guide 3"}
-        d1             {:model "dashboard" :id "456" :searchable_text "Elephant Migration"}
+        c1             {:model "card" :id "123" :searchable_text "Dog Training Guide" :embeddable_text "Dog Training Guide"}
+        c2             {:model "card" :id "123" :searchable_text "Dog Training Guide 2" :embeddable_text "Dog Training Guide 2"}
+        c3             {:model "card" :id "123" :searchable_text "Dog Training Guide 3" :embeddable_text "Dog Training Guide 3"}
+        d1             {:model "dashboard" :id "456" :searchable_text "Elephant Migration" :embeddable_text "Elephant Migration"}
         version        semantic.gate/search-doc->gate-doc
         delete         (fn [doc t] (semantic.gate/deleted-search-doc->gate-doc (:model doc) (:id doc) t))
         sut            semantic.gate/gate-documents!]
@@ -167,12 +170,12 @@
                (comparable-gate-row (dissoc (get-gate-row! pgvector index-metadata (:id (version c3 t3))) :gated_at))))))))
 
 (deftest poll-test
-  (let [pgvector        semantic.tu/db
+  (let [pgvector        (semantic.env/get-pgvector-datasource!)
         index-metadata  (semantic.tu/unique-index-metadata)
         epoch-watermark {:last-poll Instant/EPOCH :last-seen Instant/EPOCH}
-        c1              {:model "card" :id "123" :searchable_text "a"}
-        c2              {:model "card" :id "234" :searchable_text "b"}
-        c3              {:model "card" :id "345" :searchable_text "c"}
+        c1              {:model "card" :id "123" :searchable_text "a" :embeddable_text "a"}
+        c2              {:model "card" :id "234" :searchable_text "b" :embeddable_text "b"}
+        c3              {:model "card" :id "345" :searchable_text "c" :embeddable_text "c"}
         t0              (ts "2025-01-01T00:00:00Z")
         t1              (ts "2025-01-01T00:01:00Z")
         t2              (ts "2025-01-02T00:03:10Z")
@@ -274,7 +277,7 @@
              (:last-seen watermark))))))
 
 (deftest flush-watermark!-test
-  (let [pgvector       semantic.tu/db
+  (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.tu/unique-index-metadata)
         model1         {:provider "foo" :model-name "m1" :vector-dimensions 42}
         model2         {:provider "foo" :model-name "m2" :vector-dimensions 42}
@@ -326,3 +329,37 @@
                    :indexer_last_seen_hash "bar"
                    :indexer_last_seen      (:gated_at (:last-seen watermark))}
                   index2-meta)))))))
+
+(deftest gate-documents-metrics-test
+  (mt/with-prometheus-system! [_ system]
+    (let [pgvector       (semantic.env/get-pgvector-datasource!)
+          index-metadata (semantic.tu/unique-index-metadata)
+          t1             (ts "2025-01-01T00:01:00Z")
+          c1             {:model "card" :id "123" :searchable_text "Dog Training Guide" :embeddable_text "Dog Training Guide"}
+          d1             {:model "dashboard" :id "456" :searchable_text "Elephant Migration" :embeddable_text "Elephant Migration"}
+          version        semantic.gate/search-doc->gate-doc
+          sut            semantic.gate/gate-documents!]
+      (with-open [_ (open-tables! pgvector index-metadata)]
+        (let [docs [(version c1 t1) (version d1 t1)]]
+          (testing "Gating triggers write metrics"
+            (sut pgvector index-metadata docs)
+            (is (=? {:sum #(and (number? %) (> % 0)) :count (partial == 1) :buckets #(= 11 (count %))}
+                    (mt/metric-value system :metabase-search/semantic-gate-write-ms)))
+            (is (== 2 (mt/metric-value system :metabase-search/semantic-gate-write-documents)))
+            (is (== 2 (mt/metric-value system :metabase-search/semantic-gate-write-modified))))
+          (testing ":metabase-search/semantic-gate-write-modified is not increased if documets are gated"
+            (sut pgvector index-metadata docs)
+            (is (== 4 (mt/metric-value system :metabase-search/semantic-gate-write-documents)))
+            (is (== 2 (mt/metric-value system :metabase-search/semantic-gate-write-modified))))
+          (testing ":metabase-search/semantic-gate-timeout-ms is updated on timeout"
+            (with-redefs [semantic.gate/execute-upsert!
+                          (fn [& _] (throw (org.postgresql.util.PSQLException.
+                                            "ERROR: canceling statement due to statement timeout"
+                                            org.postgresql.util.PSQLState/QUERY_CANCELED)))]
+              (let [ex (try
+                         (sut pgvector index-metadata docs)
+                         (catch Exception e e))]
+                (is (and (instance? SQLException ex)
+                         (= "57014" (.getSQLState ^SQLException ex)))))
+              (is (=? {:sum #(and (number? %) (> % 0)) :count (partial == 1) :buckets #(= 11 (count %))}
+                      (mt/metric-value system :metabase-search/semantic-gate-timeout-ms))))))))))

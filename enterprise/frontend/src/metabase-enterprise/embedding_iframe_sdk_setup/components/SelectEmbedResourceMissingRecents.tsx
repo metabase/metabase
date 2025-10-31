@@ -1,7 +1,7 @@
 import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
-import { Anchor, Icon, Stack, Text } from "metabase/ui";
+import { Anchor, Icon, type IconName, Stack, Text } from "metabase/ui";
 
 import type { SdkIframeEmbedSetupExperience } from "../types";
 
@@ -12,7 +12,10 @@ export const SelectEmbedResourceMissingRecents = ({
   experience: SdkIframeEmbedSetupExperience;
   openPicker: () => void;
 }) => {
-  const embedIcon = experience === "dashboard" ? "dashboard" : "bar";
+  const embedIcon = match<SdkIframeEmbedSetupExperience, IconName>(experience)
+    .with("dashboard", () => "dashboard")
+    .with("browser", () => "collection")
+    .otherwise(() => "bar");
 
   return (
     <Stack
@@ -40,16 +43,18 @@ export const SelectEmbedResourceMissingRecents = ({
   );
 };
 
-const getEmptyStateTitle = (experience: string) =>
+const getEmptyStateTitle = (experience: SdkIframeEmbedSetupExperience) =>
   match(experience)
     .with("dashboard", () => t`No recent dashboards`)
     .with("chart", () => t`No recent charts`)
+    .with("browser", () => t`No recent collections`)
     .otherwise(() => null);
 
 const getEmptyStateDescription = (experience: SdkIframeEmbedSetupExperience) =>
   match(experience)
     .with("dashboard", () => t`You haven't visited any dashboards recently.`)
     .with("chart", () => t`You haven't visited any charts recently.`)
+    .with("browser", () => t`You haven't visited any collections recently.`)
     .otherwise(() => null);
 
 const getSearchLink = (

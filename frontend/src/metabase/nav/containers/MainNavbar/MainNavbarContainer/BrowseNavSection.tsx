@@ -7,17 +7,20 @@ import { useSelector } from "metabase/lib/redux";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getEntityTypes } from "metabase/selectors/embedding-data-picker";
 import {
-  Button,
+  ActionIcon,
   Collapse,
   Flex,
   Group,
   Icon,
+  Tooltip,
   UnstyledButton,
 } from "metabase/ui";
 
 import { PaddedSidebarLink, SidebarHeading } from "../MainNavbar.styled";
 import { trackAddDataModalOpened } from "../analytics";
 import type { SelectedItem } from "../types";
+
+import { useAddDataPermissions } from "./AddDataModal/use-add-data-permission";
 
 export const BrowseNavSection = ({
   nonEntityItem,
@@ -38,8 +41,8 @@ export const BrowseNavSection = ({
     "expand-browse-in-nav",
   );
 
+  const { canPerformMeaningfulActions } = useAddDataPermissions();
   const [opened, { toggle }] = useDisclosure(expandBrowse);
-
   const entityTypes = useSelector(getEntityTypes);
   const isEmbeddingIframe = useSelector(getIsEmbeddingIframe);
 
@@ -47,6 +50,8 @@ export const BrowseNavSection = ({
     toggle();
     setExpandBrowse(!opened);
   };
+
+  const showAddDataButton = canPerformMeaningfulActions && !isEmbeddingIframe;
 
   return (
     <div aria-selected={opened} role="tab">
@@ -64,20 +69,19 @@ export const BrowseNavSection = ({
           </SidebarHeading>
           <Icon name={opened ? "chevrondown" : "chevronright"} size={8} />
         </Group>
-        {!isEmbeddingIframe && (
-          <Button
-            aria-label="Add data"
-            variant="subtle"
-            leftSection={<Icon name="add_data" />}
-            h="auto"
-            p={0}
-            onClick={() => {
-              trackAddDataModalOpened("left-nav");
-              onAddDataModalOpen();
-            }}
-          >
-            {t`Add`}
-          </Button>
+        {showAddDataButton && (
+          <Tooltip label={t`Add data`}>
+            <ActionIcon
+              aria-label={t`Add data`}
+              color="var(--mb-color-text-medium)"
+              onClick={() => {
+                trackAddDataModalOpened("left-nav");
+                onAddDataModalOpen();
+              }}
+            >
+              <Icon name="add" />
+            </ActionIcon>
+          </Tooltip>
         )}
       </Flex>
 

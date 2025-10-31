@@ -19,7 +19,7 @@ If you're looking for date, time, number, or currency formatting, see [Formattin
 
 ## Changing Metabase's appearance
 
-Hit cmd/ctrl + k to bring up the command palette and search for "Appearance" and click on Settings -> Appearance.
+Hit cmd/ctrl + k to bring up the command palette and search for "Branding" and click on Settings -> Branding.
 
 You can also click on the **gear** icon at the bottom of the navigation sidebar and click through **Admin settings** > **Settings** > **Appearance**.
 
@@ -27,6 +27,10 @@ Appearance settings are split across different tabs:
 
 - [Branding](#branding)
 - [Conceal Metabase](#conceal-metabase)
+
+## Dark mode
+
+People can display their Metabase in dark mode in their [account settings](../people-and-groups/account-settings.md#theme). Dark mode is a user-level setting, not an instance-level setting. Currently, there's no way to change the theme to dark mode for the entire instance, but you can edit some [user interface colors](#user-interface-colors).
 
 ## Branding
 

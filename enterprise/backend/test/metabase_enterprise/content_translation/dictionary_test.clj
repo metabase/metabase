@@ -114,6 +114,11 @@
         (is (thrown-with-msg?
              Exception #"Row 1.*CSV error.*unexpected character.*X"
              (dictionary/read-and-import-csv! file)))))
+    (testing "Reads CSV with invalid header name and throws informative error"
+      (let [file (.getBytes "Loca,String,Translation\nes-mx,hello,hola")] ; bad header
+        (is (thrown-with-msg?
+             Exception #"This file could not be uploaded due to the following error\(s\):"
+             (dictionary/read-and-import-csv! file)))))
     (testing "Reads CSV with invalid data row and throws informative error"
       (let [file (.getBytes "Language,String,Translation\nde,Title,Titel\nde,Vendor,\"Anbieter\"X")] ; character outside quotation marks
         (is (thrown-with-msg?
@@ -152,24 +157,103 @@
             (is (some #(and (= (:locale %) "es") (= (:msgid %) "Hello") (= (:msgstr %) "Hola")) translations))
             (is (some #(and (= (:locale %) "fr") (= (:msgid %) "Goodbye") (= (:msgstr %) "Au revoir")) translations))))))))
 
-(deftest ^:parallel format-row-test
+(deftest read-and-import-csv-different-locale-headers-test
+  (ct-utils/with-clean-translations!
+    (testing "CSV with 'locale' header is imported correctly"
+      (mt/with-premium-features #{:content-translation}
+        (let [csv-with-locale "locale,string,translation\nes,Hello,Hola\nfr,Goodbye,Au revoir"
+              file (.getBytes csv-with-locale)]
+          (dictionary/read-and-import-csv! file)
+          (is (= 2 (count-translations)))
+          (let [translations (get-translations)]
+            (is (some #(and (= (:locale %) "es") (= (:msgid %) "Hello") (= (:msgstr %) "Hola")) translations))
+            (is (some #(and (= (:locale %) "fr") (= (:msgid %) "Goodbye") (= (:msgstr %) "Au revoir")) translations))))))
+
+    (testing "CSV with 'locale code' header is imported correctly"
+      (mt/with-premium-features #{:content-translation}
+        (let [csv-with-locale-code "locale code,string,translation\nde,Thank you,Danke\nit,Good morning,Buongiorno"
+              file (.getBytes csv-with-locale-code)]
+          (dictionary/read-and-import-csv! file)
+          (is (= 2 (count-translations)))
+          (let [translations (get-translations)]
+            (is (some #(and (= (:locale %) "de") (= (:msgid %) "Thank you") (= (:msgstr %) "Danke")) translations))
+            (is (some #(and (= (:locale %) "it") (= (:msgid %) "Good morning") (= (:msgstr %) "Buongiorno")) translations))))))
+
+    (testing "CSV with 'language' header is imported correctly"
+      (mt/with-premium-features #{:content-translation}
+        (let [csv-with-language "language,string,translation\npt_BR,Welcome,Bem-vindo\nzh_CN,Hello,你好"
+              file (.getBytes csv-with-language)]
+          (dictionary/read-and-import-csv! file)
+          (is (= 2 (count-translations)))
+          (let [translations (get-translations)]
+            (is (some #(and (= (:locale %) "pt_BR") (= (:msgid %) "Welcome") (= (:msgstr %) "Bem-vindo")) translations))
+            (is (some #(and (= (:locale %) "zh_CN") (= (:msgid %) "Hello") (= (:msgstr %) "你好")) translations))))))))
+
+(deftest ^:parallel format-row-locale-standardization-test
   (testing "Format function standardizes locale"
     (is (=
          ["pt_BR" "msgid" "msgstr"]
-         (#'dictionary/format-row [:language :string :translation] ["pt-br" "msgid" "msgstr"])))
+         (#'dictionary/format-row ["language" "string" "translation"] ["pt-br" "msgid" "msgstr"])))
     (is (=
          ["pt_BR" "msgid" "msgstr"]
-         (#'dictionary/format-row [:language :string :translation] ["Pt-bR" "msgid" "msgstr"])))
+         (#'dictionary/format-row ["language" "string" "translation"] ["Pt-bR" "msgid" "msgstr"])))
     (is (=
          ["pt_BR" "msgid" "msgstr"]
-         (#'dictionary/format-row [:language :string :translation] ["pt_br" "msgid" "msgstr"])))
+         (#'dictionary/format-row ["language" "string" "translation"] ["pt_br" "msgid" "msgstr"])))
     (is (=
          ["zh_CN" "msgid" "msgstr"]
-         (#'dictionary/format-row [:language :string :translation] ["ZH-cn" "msgid" "msgstr"]))))
+         (#'dictionary/format-row ["language" "string" "translation"] ["ZH-cn" "msgid" "msgstr"])))))
+
+(deftest ^:parallel format-row-trimming-test
   (testing "Format function trims all fields"
     (is (=
          ["pt_BR" "msgid" "msgstr"]
-         (#'dictionary/format-row [:language :string :translation] [" pt-BR " "msgid " " msgstr"])))))
+         (#'dictionary/format-row ["language" "string" "translation"] [" pt-BR " "msgid " " msgstr"])))))
+
+(deftest ^:parallel format-row-header-names-test
+  (testing "Format function works with different locale header names"
+    (is (=
+         ["pt_BR" "msgid" "msgstr"]
+         (#'dictionary/format-row ["locale" "string" "translation"] ["pt-br" "msgid" "msgstr"])))
+    (is (=
+         ["pt_BR" "msgid" "msgstr"]
+         (#'dictionary/format-row ["locale code" "string" "translation"] ["pt-br" "msgid" "msgstr"])))
+    (is (=
+         ["pt_BR" "msgid" "msgstr"]
+         (#'dictionary/format-row ["language" "string" "translation"] ["pt-br" "msgid" "msgstr"])))))
+
+(deftest ^:parallel format-row-field-order-test
+  (testing "Format function extracts fields in correct order regardless of input order"
+    (is (=
+         ["es" "Hello" "Hola"]
+         (#'dictionary/format-row ["language" "string" "translation"] ["es" "Hello" "Hola"])))
+    (is (=
+         ["es" "Hello" "Hola"]
+         (#'dictionary/format-row ["string" "language" "translation"] ["Hello" "es" "Hola"])))
+    (is (=
+         ["es" "Hello" "Hola"]
+         (#'dictionary/format-row ["translation" "string" "language"] ["Hola" "Hello" "es"])))
+    (is (=
+         ["es" "Hello" "Hola"]
+         (#'dictionary/format-row ["string" "translation" "language"] ["Hello" "Hola" "es"])))
+    (is (=
+         ["es" "Hello" "Hola"]
+         (#'dictionary/format-row ["language" "translation" "string"] ["es" "Hola" "Hello"])))
+    (is (=
+         ["es" "Hello" "Hola"]
+         (#'dictionary/format-row ["translation" "language" "string"] ["Hola" "es" "Hello"])))))
+
+(deftest ^:parallel format-row-mixed-headers-order-test
+  (testing "Format function works with different locale header names in different orders"
+    (is (=
+         ["fr" "Goodbye" "Au revoir"]
+         (#'dictionary/format-row ["locale" "string" "translation"] ["fr" "Goodbye" "Au revoir"])))
+    (is (=
+         ["fr" "Goodbye" "Au revoir"]
+         (#'dictionary/format-row ["string" "locale" "translation"] ["Goodbye" "fr" "Au revoir"])))
+    (is (=
+         ["fr" "Goodbye" "Au revoir"]
+         (#'dictionary/format-row ["locale code" "translation" "string"] ["fr" "Au revoir" "Goodbye"])))))
 
 (deftest import-translations-success-test
   (ct-utils/with-clean-translations!

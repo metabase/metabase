@@ -7,6 +7,7 @@
    [clojure.string :as str]
    [hiccup.util]
    [metabase.appearance.core :as appearance]
+   [metabase.config.core :as config]
    [metabase.core.initialization-status :as init-status]
    [metabase.settings.core :as setting]
    [metabase.system.core :as system]
@@ -88,7 +89,11 @@
      :siteLocalizationJSON (escape-script (load-localization (system/site-locale)))
      :nonceJSON            (escape-script (json/encode nonce))
      :language             (hiccup.util/escape-html (or (i18n/user-locale-string) (system/site-locale)))
-     :favicon              (hiccup.util/escape-html (appearance/application-favicon-url))
+     :favicon              (hiccup.util/escape-html (let [custom-favicon (appearance/application-favicon-url)]
+                                                      (if (and config/is-dev?
+                                                               (= custom-favicon "app/assets/img/favicon.ico"))
+                                                        "app/assets/img/favicon-dev.ico"
+                                                        custom-favicon)))
      :applicationName      (hiccup.util/escape-html (appearance/application-name))
      :uri                  (hiccup.util/escape-html uri)
      :baseHref             (hiccup.util/escape-html (base-href))

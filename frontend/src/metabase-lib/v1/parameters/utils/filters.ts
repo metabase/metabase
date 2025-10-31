@@ -68,7 +68,7 @@ export function fieldFilterForParameter(
 ): (field: Field) => boolean {
   return (field) =>
     isParameterCompatibleWithColumn(parameter, {
-      isString: field.isString(),
+      isString: field.isString() || field.isStringLike(),
       isNumeric: field.isNumeric(),
       isBoolean: field.isBoolean(),
       isTemporal: field.isDate(),

@@ -20,32 +20,12 @@ jobs:
 
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "cljs"
 
       - name: Compile CLJS
         run: yarn build-pure:cljs
 
-      - name: Build Storybook
-        # We won't be able to use Storybook play's `userEvent` with production build
-        # see https://github.com/storybookjs/storybook/issues/19758
-        run: NODE_ENV=development yarn build-storybook
-
-      - name: Serve Storybook
-        run: yarn http-server storybook-static -p 6006 &
-        shell: bash
-
-      - name: Wait for Storybook to become available
-        run: |
-          echo "Waiting for Storybook to be served..."
-          while ! curl --silent --fail http://localhost:6006; do
-            sleep 5
-            echo "Retrying..."
-          done
-          echo "Storybook is being served!"
-
       - name: Update Loki Snapshots
-        run: yarn test-visual:loki || yarn test-visual:loki-approve-diff && yarn test-visual:loki-prune
+        run: yarn test-visual:loki:ci || yarn test-visual:loki-approve-diff && yarn test-visual:loki-prune
 
       - name: Check for changes
         id: check-changes

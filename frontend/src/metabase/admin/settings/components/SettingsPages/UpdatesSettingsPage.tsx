@@ -12,6 +12,7 @@ import CS from "metabase/css/core/index.css";
 
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
 import { VersionUpdateNotice } from "../widgets/VersionUpdateNotice";
+import { NewVersionInfo } from "../widgets/VersionUpdateNotice/VersionUpdateNotice";
 
 export function UpdatesSettingsPage() {
   const isHosted = useSetting("is-hosted?");
@@ -38,6 +39,7 @@ export function UpdatesSettingsPage() {
             <VersionUpdateNotice />
           </div>
         )}
+        <NewVersionInfo />
       </SettingsSection>
       <UpsellHostingBanner location="settings-updates-migrate_to_cloud" />
     </SettingsPageWrapper>

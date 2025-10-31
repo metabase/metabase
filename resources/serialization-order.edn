@@ -141,6 +141,8 @@
                                   :description
                                   :entity_id
                                   :created_at]
+ [:NativeQuerySnippet
+  :template_tags]                []
  :Table                          [:name
                                   :display_name
                                   :description
@@ -157,6 +159,12 @@
                                   :points_of_interest
                                   :caveats
                                   :serdes/meta]
+ :Transform                      []
+ [:Transform :source]            []
+ [:Transform :target]            []
+ :TransformJob                   []
+ [:TransformJob :job_tags]       []
+ :TransformTag                   []
  :Metabot                        [:name
                                   :description
                                   :created_at

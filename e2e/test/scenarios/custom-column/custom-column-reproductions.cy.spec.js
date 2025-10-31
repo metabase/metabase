@@ -1264,6 +1264,25 @@ describe("issue 49304", () => {
   });
 });
 
+describe("issue 41305", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should allow to right click in the suggestion popover without closing it (metabase#41305)", () => {
+    H.openProductsTable({ mode: "notebook" });
+    H.addCustomColumn();
+    H.enterCustomColumnDetails({ formula: "contains(", blur: false });
+    H.popover()
+      .should("have.length", 2)
+      .last()
+      .findByText("The column or text to check.")
+      .rightclick();
+    H.popover().should("have.length", 2);
+  });
+});
+
 describe("issue 49305", () => {
   beforeEach(() => {
     H.restore();
@@ -1959,7 +1978,6 @@ describe("issue 55687", () => {
   });
 });
 
-// TODO: re-enable this test when we have a fix for metabase/metabase#58371
 describe("issue 58371", { tags: "@skip" }, () => {
   beforeEach(() => {
     H.restore();
@@ -2006,7 +2024,7 @@ describe("issue 58371", { tags: "@skip" }, () => {
               0,
               [
                 "field",
-                "Aggregation with Dash-in-name",
+                "count_where",
                 {
                   "base-type": "type/Float",
                   "join-alias": "Other Question",
@@ -2308,7 +2326,84 @@ describe("Issue 38498", { tags: "@external" }, () => {
   });
 });
 
-describe("Issue 61010", () => {
+describe("issue 52451", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should be possible to use a custom expression in a join condition from the same stage in the LHS (metabase#52451)", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    H.addCustomColumn();
+    H.enterCustomColumnDetails({
+      name: "Expr",
+      formula: "[ID] * 1000",
+    });
+    H.popover().button("Done").click();
+    H.join();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
+      cy.findByText("Reviews").click();
+    });
+    H.popover().findByText("Expr").click();
+    H.popover().findByText("ID").click();
+    H.getNotebookStep("join").findByLabelText("Change join type").click();
+    H.popover().findByText("Inner join").click();
+    H.visualize();
+    H.assertQueryBuilderRowCount(1);
+  });
+});
+
+describe("issue 56602", () => {
+  const productsModelDetails = {
+    name: "M1",
+    type: "model",
+    query: {
+      "source-table": PRODUCTS_ID,
+    },
+  };
+
+  const ordersModelDetails = {
+    name: "M2",
+    type: "model",
+    query: {
+      "source-table": ORDERS_ID,
+    },
+  };
+
+  const expressionName = "awesome stuff";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should allow to use expressions when joining models (metabase#56602)", () => {
+    H.createQuestion(productsModelDetails);
+    H.createQuestion(ordersModelDetails);
+    H.startNewQuestion();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Collections").click();
+      cy.findByText(productsModelDetails.name).click();
+    });
+    H.join();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Collections").click();
+      cy.findByText(ordersModelDetails.name).click();
+    });
+    H.addCustomColumn();
+    H.enterCustomColumnDetails({
+      name: expressionName,
+      formula: `coalesce([User -> Birth Date], [${ordersModelDetails.name} -> Created At])`,
+    });
+    H.popover().button("Done").click();
+    H.visualize();
+    H.tableInteractive().should("be.visible");
+    H.tableInteractiveHeader().should("contain", expressionName);
+  });
+});
+
+describe("issue 61010", () => {
   const CUSTOM_COLUMN_NAME = "Foo";
   const AGGREGATION_NAME = "New count";
 
@@ -2363,5 +2458,104 @@ describe("Issue 61010", () => {
     H.popover()
       .findByText("Unknown Aggregation or Metric: New count")
       .should("be.visible");
+  });
+});
+
+describe("issue 62987", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.createQuestion(
+      {
+        query: { "source-table": ORDERS_ID },
+      },
+      { visitQuestion: true },
+    );
+
+    H.openNotebook();
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").click();
+  });
+
+  it("should be possible to complete non-aggregation functions in custom aggregation (metabase#62987)", () => {
+    H.CustomExpressionEditor.type("Coun");
+    H.CustomExpressionEditor.completion("CountIf").should("be.visible").click();
+
+    H.CustomExpressionEditor.type("notEm", { focus: false });
+    H.CustomExpressionEditor.completion("notEmpty")
+      .should("be.visible")
+      .click();
+
+    H.CustomExpressionEditor.value().should("eq", "CountIf(notEmpty(column))");
+
+    H.expressionEditorWidget().button("Function browser").click();
+    H.CustomExpressionEditor.functionBrowser().within(() => {
+      cy.findByText("CountIf").should("be.visible");
+      cy.findByText("notEmpty").should("be.visible");
+    });
+  });
+});
+
+describe("issue 63180", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          expressions: {
+            Foo: ["+", 1, 2],
+          },
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    H.openNotebook();
+  });
+
+  it("should not be possible to close the custom expression editor when creating a new expression from a combine or extract shortcut (metabase#63180)", () => {
+    function testCombineColumns() {
+      H.getNotebookStep("expression").icon("add").click();
+      H.expressionEditorWidget().within(() => {
+        cy.findByText("Combine columns").click();
+        cy.button("Done").scrollIntoView().click();
+      });
+
+      cy.log("clicking outside the editor should not close it");
+      H.getNotebookStep("data").click();
+      H.expressionEditorWidget().should("be.visible");
+      H.modal().should("not.exist");
+
+      cy.log("clearing the expression should allow clicking outside to work");
+      H.CustomExpressionEditor.clear();
+      H.getNotebookStep("data").click();
+      H.expressionEditorWidget().should("not.exist");
+      H.modal().should("not.exist");
+    }
+
+    function testExtractColumns() {
+      H.getNotebookStep("expression").icon("add").click();
+      H.expressionEditorWidget().within(() => {
+        cy.findByText("Extract columns").click();
+        cy.findByText("Email").click();
+        cy.findByText("Domain").click();
+      });
+
+      cy.log("clicking outside the editor should not close it");
+      H.getNotebookStep("data").click();
+      H.expressionEditorWidget().should("be.visible");
+      H.modal().should("not.exist");
+
+      cy.log("clearing the expression should allow clicking outside to work");
+      H.CustomExpressionEditor.clear();
+      H.getNotebookStep("data").click();
+      H.expressionEditorWidget().should("not.exist");
+      H.modal().should("not.exist");
+    }
+
+    testCombineColumns();
+    testExtractColumns();
   });
 });

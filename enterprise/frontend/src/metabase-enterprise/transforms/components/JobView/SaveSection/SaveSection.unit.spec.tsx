@@ -6,10 +6,9 @@ import {
   setupGetTransformJobEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
+import * as Urls from "metabase/lib/urls";
 import type { TransformJob } from "metabase-types/api";
 import { createMockTransformJob } from "metabase-types/api/mocks";
-
-import { getJobListUrl, getJobUrl, getNewJobUrl } from "../../../urls";
 
 import { SaveSection } from "./SaveSection";
 
@@ -24,16 +23,19 @@ function setup({ job = createMockTransformJob() }: SetupOpts = {}) {
   renderWithProviders(
     <>
       <Route
-        path={getNewJobUrl()}
+        path={Urls.newTransformJob()}
         component={() => <SaveSection job={job} />}
       />
-      <Route path={getJobUrl(job.id)} component={() => <div>Job page</div>} />
       <Route
-        path={getJobListUrl()}
+        path={Urls.transformJob(job.id)}
+        component={() => <div>Job page</div>}
+      />
+      <Route
+        path={Urls.transformJobList()}
         component={() => <div>Job list page</div>}
       />
     </>,
-    { withRouter: true, initialRoute: getNewJobUrl() },
+    { withRouter: true, initialRoute: Urls.newTransformJob() },
   );
 }
 

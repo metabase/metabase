@@ -40,8 +40,6 @@ jobs:
           ref: ${{ inputs.ref }}
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: generative-query-test
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
 

@@ -471,7 +471,7 @@ describe("ValuesSourceModal", () => {
         );
         expect(screen.getByText("do it once in a model")).toBeInTheDocument();
         expect(screen.getByText("do it once in a model").tagName).not.toBe("A");
-      });
+      }, 45000); // The test continues to exceed 30 seconds timeout in ci: https://github.com/metabase/metabase/actions/runs/18809109055/job/53668418124#step:5:786
     });
   });
 

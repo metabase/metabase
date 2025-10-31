@@ -34,7 +34,7 @@
         translations (if (empty? translations)
                        sample-translations
                        translations)
-        csv-data (cons ["Language" "String" "Translation"]
+        csv-data (cons ["Locale Code" "String" "Translation"]
                        (map (fn [{:keys [locale msgid msgstr]}]
                               [locale msgid msgstr])
                             translations))]

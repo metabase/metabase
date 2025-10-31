@@ -2,10 +2,11 @@
   (:require
    [metabase.api.common :as api]
    [metabase.config.core :as config]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.permissions.core :as perms]
    [metabase.search.settings :as search.settings]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
 
@@ -42,7 +43,8 @@
 (def model->db-model
   "Mapping of model name to :db_model and :alias"
   (cond-> api/model->db-model
-    config/ee-available? (assoc "document" {:db-model :model/Document :alias :document})))
+    config/ee-available? (assoc "document" {:db-model :model/Document :alias :document}
+                                "transform" {:db-model :model/Transform :alias :transform})))
 
 ;; We won't need this once fully migrated to specs, but kept for now in case legacy cod falls out of sync
 (def excluded-models
@@ -73,7 +75,7 @@
   "The order of this list influences the order of the results: items earlier in the
   list will be ranked higher."
   (cond-> ["dashboard" "metric" "segment" "indexed-entity" "card" "dataset" "collection" "table" "action"]
-    config/ee-available? (conj "document")
+    config/ee-available? (concat ["document" "transform"])
     :always (conj "database")))
 
 (assert (= all-models (set models-search-order)) "The models search order has to include all models")
@@ -94,8 +96,8 @@
     :mine                1
     :exact               5
     :prefix              0
-    ;; TODO figure out a better way to blend these scorers with wildly different scale.
-    :rrf                 5000}
+    ;; RRF is the "Reciprocal Rank Fusion" score used by the semantic search backend to blend semantic and keyword scores
+    :rrf                 500}
    :command-palette
    {:prefix               5
     :model/collection     1
@@ -171,8 +173,9 @@
   {:default         {:archived               false
                      ;; keys will typically those in [[filters]], but this is an atypical filter.
                      ;; we plan to generify it, by precalculating it on the index.
-                     :personal-collection-id "all"}
-   :command-palette {:personal-collection-id "exclude-others"}})
+                     :filter-items-in-personal-collection "all"}
+   :search-app      {:filter-items-in-personal-collection "exclude-others"}
+   :command-palette {:filter-items-in-personal-collection "exclude-others"}})
 
 (defn filter-default
   "Get the default value for the given filter in the given context. Is non-contextual for legacy search."
@@ -257,7 +260,7 @@
    [:last-edited-by                      {:optional true} [:set {:min 1} ms/PositiveInt]]
    [:limit-int                           {:optional true} ms/Int]
    [:offset-int                          {:optional true} ms/Int]
-   [:search-native-query                 {:optional true} true?]
+   [:search-native-query                 {:optional true} :boolean]
    [:table-db-id                         {:optional true} ms/PositiveInt]
    ;; true to search for verified items only, nil will return all items
    [:verified                            {:optional true} true?]
@@ -279,7 +282,7 @@
 
 (defmethod column->string [:card :dataset_query]
   [value _ _]
-  (let [query (json/decode+kw value)]
-    (if (= "native" (:type query))
-      (-> query :native :query)
-      "")))
+  (or (when-let [query (not-empty ((lib-be/transform-query :out) value))]
+        (when (lib/native-only-query? query)
+          (lib/raw-native-query query)))
+      ""))

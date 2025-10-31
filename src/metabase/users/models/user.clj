@@ -2,6 +2,7 @@
   (:require
    [clojure.data :as data]
    [clojure.string :as str]
+   [honey.sql.helpers :as sql.helpers]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
@@ -12,9 +13,10 @@
    [metabase.settings.core :as setting]
    [metabase.setup.core :as setup]
    [metabase.system.core :as system]
+   [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :as i18n :refer [deferred-tru trs tru]]
+   [metabase.util.i18n :as i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -277,25 +279,6 @@
 
 (declare form-password-reset-url set-password-reset-token!)
 
-(def LoginAttributes
-  "Login attributes, currently not collected for LDAP or Google Auth. Will ultimately be stored as JSON."
-  (mu/with-api-error-message
-   [:map-of ms/KeywordOrString :any]
-   (deferred-tru "login attribute keys must be a keyword or string")))
-
-(def NewUser
-  "Required/optionals parameters needed to create a new user (for any backend)"
-  [:map
-   [:first_name       {:optional true} [:maybe ms/NonBlankString]]
-   [:last_name        {:optional true} [:maybe ms/NonBlankString]]
-   [:email                             ms/Email]
-   [:password         {:optional true} [:maybe ms/NonBlankString]]
-   [:login_attributes {:optional true} [:maybe LoginAttributes]]
-   [:jwt_attributes   {:optional true} [:maybe LoginAttributes]]
-   [:sso_source       {:optional true} [:maybe ms/NonBlankString]]
-   [:locale           {:optional true} [:maybe ms/KeywordOrString]]
-   [:type             {:optional true} [:maybe ms/KeywordOrString]]])
-
 (def ^:private Invitor
   "Map with info about the admin creating the user, used in the new user notification code"
   [:map
@@ -304,7 +287,7 @@
 
 (mu/defn insert-new-user!
   "Creates a new user, defaulting the password when not provided"
-  [new-user :- NewUser]
+  [new-user :- users.schema/NewUser]
   (t2/insert-returning-instance! :model/User (update new-user :password #(or % (str (random-uuid))))))
 
 (defn serdes-synthesize-user!
@@ -317,7 +300,7 @@
   "Convenience function for inviting a new `User` and sending them a welcome email.
   This function will create the user, which will trigger the built-in system event
   notification to send an invite via email."
-  [new-user :- NewUser invitor :- Invitor setup? :- :boolean]
+  [new-user :- users.schema/NewUser invitor :- Invitor setup? :- :boolean]
   ;; create the new user
   (u/prog1 (insert-new-user! new-user)
     ;; TODO make sure the email being sent synchronously.
@@ -333,22 +316,11 @@
 (mu/defn create-new-google-auth-user!
   "Convenience for creating a new user via Google Auth. This account is considered active immediately; thus all active
   admins will receive an email right away."
-  [new-user :- NewUser]
+  [new-user :- users.schema/NewUser]
   (u/prog1 (insert-new-user! (assoc new-user :sso_source "google"))
     ;; send an email to everyone including the site admin if that's set
     (when (setting/get :send-new-sso-user-admin-email?)
       ((requiring-resolve 'metabase.channel.email.messages/send-user-joined-admin-notification-email!) <>, :google-auth? true))))
-
-;;; TODO -- this should probably be moved into [[metabase.sso.ldap]]
-(mu/defn create-new-ldap-auth-user!
-  "Convenience for creating a new user via LDAP. This account is considered active immediately; thus all active admins
-  will receive an email right away."
-  [new-user :- NewUser]
-  (insert-new-user!
-   (-> new-user
-       ;; We should not store LDAP passwords
-       (dissoc :password)
-       (assoc :sso_source "ldap"))))
 
 ;;; TODO -- it seems like maybe this should just be part of the [[pre-update]] logic whenever `:password` changes; then
 ;;; we can remove this function altogether.
@@ -400,3 +372,50 @@
   "Adds the `:attributes` key to a user."
   [{:keys [login_attributes jwt_attributes] :as user}]
   (assoc user :attributes (merge jwt_attributes login_attributes)))
+
+;;; Filtering users
+
+(defn- status-clause
+  "Figure out what `where` clause to add to the user query when
+  we get a fiddly status and include_deactivated query.
+
+  This is to keep backwards compatibility with `include_deactivated` while adding `status."
+  [status include_deactivated]
+  (if include_deactivated
+    nil
+    (case status
+      "all"         nil
+      "deactivated" [:= :is_active false]
+      "active"      [:= :is_active true]
+      [:= :is_active true])))
+
+(defn- wildcard-query [query] (str "%" (u/lower-case-en query) "%"))
+
+(defn- query-clause
+  "Honeysql clause to shove into user query if there's a query"
+  [query]
+  [:or
+   [:like :%lower.first_name (wildcard-query query)]
+   [:like :%lower.last_name  (wildcard-query query)]
+   [:like :%lower.email      (wildcard-query query)]])
+
+(defn filter-clauses
+  "Honeysql clauses for filtering on users
+  - with a status,
+  - with a query,
+  - with a group_id,
+  - with include_deactivated"
+  [status query group_ids include_deactivated & [{:keys [limit offset]}]]
+  (cond-> {}
+    true                                    (sql.helpers/where [:= :core_user.type "personal"])
+    true                                    (sql.helpers/where (status-clause status include_deactivated))
+    ;; don't send the internal user
+    (perms/sandboxed-or-impersonated-user?) (sql.helpers/where [:= :core_user.id api/*current-user-id*])
+    (some? query)                           (sql.helpers/where (query-clause query))
+    (some? group_ids)                       (sql.helpers/right-join
+                                             :permissions_group_membership
+                                             [:= :core_user.id :permissions_group_membership.user_id])
+    (some? group_ids)                       (sql.helpers/where
+                                             [:in :permissions_group_membership.group_id group_ids])
+    (some? limit)                           (sql.helpers/limit limit)
+    (some? offset)                          (sql.helpers/offset offset)))

@@ -43,7 +43,8 @@
             :max-threads   (config/config-int :mb-jetty-maxthreads)
             :min-threads   (config/config-int :mb-jetty-minthreads)
             :max-queued    (config/config-int :mb-jetty-maxqueued)
-            :max-idle-time (config/config-int :mb-jetty-maxidletime)})
+            :max-idle-time (config/config-int :mb-jetty-maxidletime)
+            :send-server-version? false})
     (config/config-int :mb-jetty-request-header-size) (assoc :request-header-size (config/config-int
                                                                                    :mb-jetty-request-header-size))
     (config/config-str :mb-jetty-daemon) (assoc :daemon? (config/config-bool :mb-jetty-daemon))

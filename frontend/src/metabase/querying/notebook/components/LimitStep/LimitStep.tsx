@@ -16,6 +16,7 @@ export function LimitStep({
   step,
   color,
   updateQuery,
+  readOnly,
 }: NotebookStepProps) {
   const { stageIndex } = step;
 
@@ -52,6 +53,7 @@ export function LimitStep({
         small
         onBlur={handleBlur}
         onChange={handleChange}
+        readOnly={readOnly}
       />
     </NotebookCell>
   );

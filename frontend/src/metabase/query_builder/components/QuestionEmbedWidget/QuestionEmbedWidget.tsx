@@ -54,6 +54,7 @@ export const QuestionEmbedWidget = (props: QuestionEmbedWidgetProps) => {
             updateEmbeddingParams({ id: card.id, embedding_params })
           }
           getPublicUrl={getPublicQuestionUrl}
+          onClose={onClose}
         />
       )}
     </EmbedModal>

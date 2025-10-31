@@ -3,15 +3,15 @@ import type { QueryModalType } from "metabase/query_builder/constants";
 import type { Widget } from "metabase/visualizations/components/ChartSettings/types";
 import type {
   Card,
-  DashboardId,
+  CollectionItemModel,
   Dataset,
   Field,
-  ParameterValueOrArray,
+  ParameterValuesMap,
   TimelineEventId,
 } from "metabase-types/api";
 
 export type QueryBuilderMode = "view" | "notebook" | "dataset";
-export type DatasetEditorTab = "query" | "metadata";
+export type DatasetEditorTab = "query" | "columns" | "metadata";
 export type QueryBuilderQueryStatus = "idle" | "running" | "complete";
 export type InitialChartSettingState = {
   section?: string | null;
@@ -51,6 +51,7 @@ export interface QueryBuilderUIControls {
   modalContext: TimelineEventId | null;
   dataReferenceStack: null;
   highlightedNativeQueryLineNumbers: number[];
+  isShowingListViewConfiguration: boolean;
 }
 
 export interface QueryBuilderLoadingControls {
@@ -59,15 +60,17 @@ export interface QueryBuilderLoadingControls {
   timeoutId: string;
 }
 
-export interface QueryBuilderDashboardState {
-  dashboardId: DashboardId | null;
+export interface QueryBuilderParentEntityState {
+  id: number | string | null;
+  name: string | null;
+  model: CollectionItemModel | null;
   isEditing: boolean;
 }
 
 export interface QueryBuilderState {
   uiControls: QueryBuilderUIControls;
   loadingControls: QueryBuilderLoadingControls;
-  parentDashboard: QueryBuilderDashboardState;
+  parentEntity: QueryBuilderParentEntityState;
   queryStatus: QueryBuilderQueryStatus;
   queryResults: Dataset[] | null;
   queryStartTime: number | null;
@@ -77,7 +80,7 @@ export interface QueryBuilderState {
   originalCard: Card | null;
   lastRunCard: Card | null;
 
-  parameterValues: Record<string, ParameterValueOrArray>;
+  parameterValues: ParameterValuesMap;
 
   zoomedRowObjectId: number | string | null;
   tableForeignKeyReferences: Record<number, ForeignKeyReference> | null;

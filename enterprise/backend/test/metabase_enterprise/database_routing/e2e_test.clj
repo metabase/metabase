@@ -213,7 +213,7 @@
 
 (defmethod router-dataset-name :default [_driver] "db-router-data")
 
-(doseq [driver [:redshift :databricks :athena :presto-jdbc]]
+(doseq [driver [:redshift :databricks :presto-jdbc]]
   (defmethod router-dataset-name driver [_driver] "db-routing-data"))
 
 (defmulti routed-dataset-name
@@ -224,28 +224,79 @@
 
 (defmethod routed-dataset-name :default [_driver] "db-routed-data")
 
-(doseq [driver [:redshift :databricks :athena :presto-jdbc]]
+(doseq [driver [:redshift :databricks :presto-jdbc]]
   (defmethod routed-dataset-name driver [_driver] "db-routing-data"))
+
+(defmulti router-dataset-details
+  "Modified details for the router dataset"
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod router-dataset-details :default [_driver] {})
+
+(defmethod router-dataset-details :clickhouse [_driver]
+  {:dbname "db_router_data"
+   :enable-multiple-db false})
+
+(defmethod router-dataset-details :bigquery-cloud-sdk [_driver]
+  {:dataset-filters-patterns "metabase_routing_dataset"})
+
+(defmethod router-dataset-details :databricks [driver]
+  {:multi-level-schema false
+   :schema-filters-patterns (router-dataset-name driver)})
+
+(defmulti routed-dataset-details
+  "Modified details for the routed dataset"
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod routed-dataset-details :default [_driver] {})
+
+(defmethod routed-dataset-details :clickhouse [_driver]
+  {:dbname "db_routed_data"
+   :enable-multiple-db false})
+
+(defmethod routed-dataset-details :bigquery-cloud-sdk [driver]
+  {:service-account-json (tx/db-test-env-var-or-throw driver :service-account-json-routing)
+   :dataset-filters-patterns "metabase_routing_dataset"})
+
+(defmethod routed-dataset-details :redshift [driver]
+  {:db (tx/db-test-env-var-or-throw driver :db-routing)})
+
+(defmethod routed-dataset-details :databricks [driver]
+  {:catalog (tx/db-test-env-var-or-throw driver :catalog-routing)
+   :multi-level-schema false
+   :schema-filters-patterns (routed-dataset-name driver)})
 
 (deftest db-routing-e2e-test
   (mt/test-drivers (mt/normal-driver-select {:+features [:database-routing]})
     (mt/with-premium-features #{:database-routing}
-      (binding [tx/*use-routing-dataset* true
-                tx/*use-routing-details* true]
+      (binding [tx/*use-routing-details* true]
         (mt/dataset (mt/dataset-definition (routed-dataset-name driver/*driver*)
                                            [["t"
                                              [{:field-name "f", :base-type :type/Text}]
                                              [["routed-foo"]
                                               ["routed-bar"]]]])
           (let [routed (mt/db)]
-            (when-not (get-in routed [:details :multi-level-schema])
-              (binding [tx/*use-routing-details* false]
-                (mt/dataset (mt/dataset-definition (router-dataset-name driver/*driver*)
-                                                   [["t"
-                                                     [{:field-name "f", :base-type :type/Text}]
-                                                     [["original-foo"]
-                                                      ["original-bar"]]]])
-                  (let [router (mt/db)]
+            (binding [tx/*use-routing-details* false]
+              (mt/dataset (mt/dataset-definition (router-dataset-name driver/*driver*)
+                                                 [["t"
+                                                   [{:field-name "f", :base-type :type/Text}]
+                                                   [["original-foo"]
+                                                    ["original-bar"]]]])
+                (let [router (mt/db)]
+                  (t2/update! :model/Database (u/the-id routed)
+                              {:details (merge (:details routed)
+                                               (routed-dataset-details driver/*driver*))})
+                  (t2/update! :model/Database (u/the-id router)
+                              {:details (merge (:details router)
+                                               (router-dataset-details driver/*driver*))})
+                  (let [router (t2/select-one :model/Database :id (u/the-id router))
+                        routed (t2/select-one :model/Database :id (u/the-id routed))]
+                    (sync/sync-database! router {:scan :schema})
+                    (sync/sync-database! routed {:scan :schema})
                     (wire-routing {:parent router :children [routed]})
                     (mt/with-temp [:model/DatabaseRouter _ {:database_id    (u/the-id router)
                                                             :user_attribute "db_name"}]
@@ -258,5 +309,49 @@
                         (mt/with-current-user (mt/user->id :rasta)
                           (is (= [[1 "routed-foo"] [2 "routed-bar"]]
                                  (->> (mt/query t)
+                                      (mt/process-query)
+                                      (mt/formatted-rows [int str])))))))))))))))))
+
+(deftest athena-region-bucket-routing-test
+  (mt/test-driver :athena
+    (mt/with-premium-features #{:database-routing}
+      (binding [tx/*use-routing-details* true]
+        (mt/dataset (mt/dataset-definition "db-routing-data"
+                                           [["t_0"
+                                             [{:field-name "f", :base-type :type/Text}]
+                                             [["us-east-2-foo"]
+                                              ["us-east-2-bar"]]]])
+          (let [routed (mt/db)]
+            (binding [tx/*use-routing-details* false]
+              (mt/dataset (mt/dataset-definition "db-routing-data"
+                                                 [["t_0"
+                                                   [{:field-name "f", :base-type :type/Text}]
+                                                   [["us-east-1-foo"]
+                                                    ["us-east-1-bar"]]]])
+                (let [router (mt/db)]
+                  (t2/update! :model/Database (u/the-id routed)
+                              {:details (assoc (:details routed)
+                                               :dbname nil
+                                               :s3_staging_dir (tx/db-test-env-var-or-throw :athena :s3-staging-dir-routing)
+                                               :region (tx/db-test-env-var-or-throw :athena :region-routing))})
+                  (t2/update! :model/Database (u/the-id router)
+                              {:details (assoc (:details router)
+                                               :dbname nil)})
+                  (let [router (t2/select-one :model/Database :id (u/the-id router))
+                        routed (t2/select-one :model/Database :id (u/the-id routed))]
+                    (sync/sync-database! router {:scan :schema})
+                    (sync/sync-database! routed {:scan :schema})
+                    (wire-routing {:parent router :children [routed]})
+                    (mt/with-temp [:model/DatabaseRouter _ {:database_id    (u/the-id router)
+                                                            :user_attribute "db_name"}]
+                      (met/with-user-attributes! :rasta {"db_name" (:name routed)}
+                        (mt/with-current-user (mt/user->id :crowberto)
+                          (is (= [[1 "us-east-1-foo"] [2 "us-east-1-bar"]]
+                                 (->> (mt/query t_0)
+                                      (mt/process-query)
+                                      (mt/formatted-rows [int str])))))
+                        (mt/with-current-user (mt/user->id :rasta)
+                          (is (= [[1 "us-east-2-foo"] [2 "us-east-2-bar"]]
+                                 (->> (mt/query t_0)
                                       (mt/process-query)
                                       (mt/formatted-rows [int str])))))))))))))))))

@@ -3,6 +3,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]))
@@ -269,54 +272,69 @@
                  {:aggregation [[:aggregation-options [:- [:sum $price] 41] {:name "sum_41"}]]
                   :breakout    [$price]}))))))))
 
-(deftest metrics-test
+(defn- metrics-test-metadata-provider []
+  (lib.tu/mock-metadata-provider
+   (mt/metadata-provider)
+   {:cards [{:id            1
+             :dataset-query (mt/mbql-query venues
+                              {:aggregation  [:sum $price]
+                               :filter       [:> $price 1]
+                               :source-table $$venues})
+             :type          :metric}]}))
+
+(deftest ^:parallel metrics-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
-    (let [card-definition {:dataset_query (mt/mbql-query venues
-                                            {:aggregation [:sum $price]
-                                             :filter      [:> $price 1]
-                                             :source-table $$venues})
-                           :type :metric}]
-      (testing "check that we can handle Metrics inside expression aggregation clauses"
-        (mt/with-temp [:model/Card {metric-id :id} card-definition]
-          (is (= [[2 119]
-                  [3  40]
-                  [4  25]]
-                 (mt/formatted-rows
-                  [int int]
-                  (mt/run-mbql-query venues
-                    {:aggregation  [:+ [:metric metric-id] 1]
-                     :breakout     [$price]
-                     :source-table (str "card__" metric-id)}))))))
+    (testing "check that we can handle Metrics inside expression aggregation clauses"
+      (is (= [[2 119]
+              [3  40]
+              [4  25]]
+             (mt/formatted-rows
+              [int int]
+              (qp/process-query
+               (lib/query
+                (metrics-test-metadata-provider)
+                (mt/mbql-query venues
+                  {:aggregation  [:+ [:metric 1] 1]
+                   :breakout     [$price]
+                   :source-table "card__1"})))))))))
 
-      (testing "check that we can handle Metrics inside an `:aggregation-options` clause"
-        (mt/with-temp [:model/Card {metric-id :id} card-definition]
-          (is (= {:rows    [[2 118]
-                            [3  39]
-                            [4  24]]
-                  :columns [(mt/format-name "price")
-                            "auto_generated_name"]}
-                 (mt/format-rows-by
-                  [int int]
-                  (mt/rows+column-names
-                   (mt/run-mbql-query venues
-                     {:aggregation  [[:aggregation-options [:metric metric-id] {:name "auto_generated_name"}]]
-                      :breakout     [$price]
-                      :source-table (str "card__" metric-id)})))))))
+(deftest ^:parallel metrics-test-2
+  (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
+    (testing "check that we can handle Metrics inside an `:aggregation-options` clause"
+      (is (= {:rows    [[2 118]
+                        [3  39]
+                        [4  24]]
+              :columns [(mt/format-name "price")
+                        "auto_generated_name"]}
+             (mt/format-rows-by
+              [int int]
+              (mt/rows+column-names
+               (qp/process-query
+                (lib/query
+                 (metrics-test-metadata-provider)
+                 (mt/mbql-query venues
+                   {:aggregation  [[:aggregation-options [:metric 1] {:name "auto_generated_name"}]]
+                    :breakout     [$price]
+                    :source-table "card__1"}))))))))))
 
-      (testing "check that Metrics with a nested aggregation still work inside an `:aggregation-options` clause"
-        (mt/with-temp [:model/Card {metric-id :id} card-definition]
-          (is (= {:rows    [[2 118]
-                            [3  39]
-                            [4  24]]
-                  :columns [(mt/format-name "price")
-                            "auto_generated_name"]}
-                 (mt/format-rows-by
-                  [int int]
-                  (mt/rows+column-names
-                   (mt/run-mbql-query venues
-                     {:aggregation  [[:aggregation-options [:metric metric-id] {:name "auto_generated_name"}]]
-                      :breakout     [$price]
-                      :source-table (str "card__" metric-id)}))))))))))
+(deftest ^:parallel metrics-test-3
+  (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
+    (testing "check that Metrics with a nested aggregation still work inside an `:aggregation-options` clause"
+      (is (= {:rows    [[2 118]
+                        [3  39]
+                        [4  24]]
+              :columns [(mt/format-name "price")
+                        "auto_generated_name"]}
+             (mt/format-rows-by
+              [int int]
+              (mt/rows+column-names
+               (qp/process-query
+                (lib/query
+                 (metrics-test-metadata-provider)
+                 (mt/mbql-query venues
+                   {:aggregation  [[:aggregation-options [:metric 1] {:name "auto_generated_name"}]]
+                    :breakout     [$price]
+                    :source-table "card__1"}))))))))))
 
 (deftest ^:parallel named-aggregations-metadata-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)

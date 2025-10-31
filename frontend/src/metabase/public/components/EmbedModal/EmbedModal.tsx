@@ -1,11 +1,14 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { Link } from "react-router";
 import { t } from "ttag";
 
 import Modal from "metabase/common/components/Modal";
+import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import type { EmbedModalStep } from "metabase/public/lib/types";
 import { getSetting } from "metabase/selectors/settings";
 import { getApplicationName } from "metabase/selectors/whitelabel";
+import { Group, Icon, Stack, Text } from "metabase/ui";
 
 import { EmbedModalHeader } from "./EmbedModal.styled";
 
@@ -49,11 +52,17 @@ export const EmbedModal = ({ children, isOpen, onClose }: EmbedModalProps) => {
     setEmbedType(null);
   };
 
+  const modalTitle = useMemo(() => {
+    if (isEmbeddingSetupStage) {
+      return <EmbedModalTitle applicationName={applicationName} />;
+    }
+  }, [isEmbeddingSetupStage, applicationName]);
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={onEmbedClose}
-      title={isEmbeddingSetupStage ? t`Embed ${applicationName}` : undefined}
+      title={modalTitle}
       fit
       formModal={false}
       // needed to allow selecting with the mouse on the code samples
@@ -68,3 +77,16 @@ export const EmbedModal = ({ children, isOpen, onClose }: EmbedModalProps) => {
     </Modal>
   );
 };
+
+const EmbedModalTitle = ({ applicationName }: { applicationName: string }) => (
+  <Stack gap="sm">
+    <Text fw="bold" fz="h2">{t`Embed ${applicationName}`}</Text>
+
+    <Link to="/admin/embedding/modular" className={CS.link} target="_blank">
+      <Group gap="xs">
+        <Text c="brand">{t`Embedding settings`}</Text>
+        <Icon c="brand" name="external" />
+      </Group>
+    </Link>
+  </Stack>
+);

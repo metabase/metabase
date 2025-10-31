@@ -420,6 +420,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
                 [
                   [">", ["field", ORDERS.DISCOUNT, null], 0],
                   ["field", ORDERS.DISCOUNT],
+                  // no idea why this is here, a `case` subclause only has two args, this actually makes this invalid.
                   null,
                 ],
               ],

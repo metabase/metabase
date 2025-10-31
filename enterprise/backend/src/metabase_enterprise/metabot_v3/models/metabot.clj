@@ -18,32 +18,32 @@
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
-(methodical/defmethod t2/batched-hydrate [:model/Metabot :entities]
-  "Hydrate the list of entities for a collection of metabots."
+(methodical/defmethod t2/batched-hydrate [:model/Metabot :prompts]
+  "Hydrate the list of prompts for a collection of metabots."
   [_model k metabots]
   (mi/instances-with-hydrated-data
    metabots k
    #(group-by :metabot_id
-              (t2/select :model/MetabotEntity {:where [:in :metabot_id (map :id metabots)]}))
+              (t2/select :model/MetabotPrompt {:where [:in :metabot_id (map :id metabots)]}))
    :id
    {:default []}))
-;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
+
+;;; ------------------------------------------------- Serialization -------------------------------------------------
 
 (defmethod serdes/hash-fields :model/Metabot
   [_table]
   [:name])
 
-;;; ------------------------------------------------- Serialization -------------------------------------------------
-
 (defmethod serdes/dependencies "Metabot"
-  [{:keys [entities]}]
-  (into #{} (mapcat serdes/dependencies) entities))
+  [{:keys [prompts]}]
+  (set (mapcat serdes/dependencies prompts)))
 
 (defmethod serdes/generate-path "Metabot" [_ metabot]
   [(serdes/infer-self-path "Metabot" metabot)])
 
 (defmethod serdes/make-spec "Metabot" [_model-name opts]
-  {:copy      [:name :description :entity_id]
-   :transform {:created_at (serdes/date)
-               :updated_at (serdes/date)
-               :entities   (serdes/nested :model/MetabotEntity :metabot_id opts)}})
+  {:copy      [:name :description :entity_id :use_verified_content]
+   :transform {:created_at    (serdes/date)
+               :updated_at    (serdes/date)
+               :collection_id (serdes/fk :model/Collection)
+               :prompts       (serdes/nested :model/MetabotPrompt :metabot_id opts)}})

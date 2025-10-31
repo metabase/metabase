@@ -115,7 +115,8 @@ export const DestinationDatabaseConnectionModalInner = ({
         <Flex
           py="sm"
           px="md"
-          mb="md"
+          mx="xl"
+          my="md"
           bg="accent-gray-light"
           align="center"
           justify="space-between"
@@ -144,6 +145,7 @@ export const DestinationDatabaseConnectionModalInner = ({
             engine: { fieldState: "hidden" },
           }}
           autofocusFieldName="name"
+          formLocation="admin"
         />
       </LoadingAndErrorWrapper>
     </Modal>

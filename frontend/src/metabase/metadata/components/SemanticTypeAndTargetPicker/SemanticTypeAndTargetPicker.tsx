@@ -83,7 +83,7 @@ export const SemanticTypeAndTargetPicker = ({
 
           <CurrencyPicker
             {...selectProps}
-            value={getFieldCurrency(field)}
+            value={getFieldCurrency(field.settings)}
             onChange={handleChangeCurrency}
           />
         </>

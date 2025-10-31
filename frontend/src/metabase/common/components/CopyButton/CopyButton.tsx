@@ -58,7 +58,7 @@ export const CopyButton = ({
     <CopyToClipboard text={value} onCopy={onCopyValue}>
       <div className={className} style={style} data-testid="copy-button">
         <Tooltip
-          label={<Text fw={700} c="white">{t`Copied!`}</Text>}
+          label={<Text fw={700} c="inherit">{t`Copied!`}</Text>}
           opened={copied}
         >
           <span onKeyDown={copyOnEnter}>{target}</span>

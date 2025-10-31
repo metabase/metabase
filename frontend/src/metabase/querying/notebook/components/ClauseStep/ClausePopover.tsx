@@ -8,7 +8,7 @@ import S from "./ClausePopover.module.css";
 
 interface ClausePopoverProps {
   isInitiallyOpen?: boolean;
-  renderItem: (open: () => void) => JSX.Element | string;
+  renderItem: (open: () => void, hasPopover?: boolean) => JSX.Element | string;
   renderPopover: (close: () => void) => JSX.Element | null;
 }
 
@@ -38,6 +38,9 @@ export function ClausePopover({
     }
   }, [active]);
 
+  const content = renderPopover(handleClose);
+  const hasPopover = content !== null;
+
   return (
     <PreventPopoverExitProvider>
       <Popover
@@ -47,11 +50,12 @@ export function ClausePopover({
         trapFocus
         onChange={handleChange}
         classNames={{ dropdown: S.dropdown }}
+        disabled={!hasPopover}
       >
-        <Popover.Target>{renderItem(handleOpen)}</Popover.Target>
+        <Popover.Target>{renderItem(handleOpen, hasPopover)}</Popover.Target>
         <Popover.Dropdown data-testid="clause-popover">
           <Box className={S.dropdownContent} data-testid="popover-content">
-            {renderPopover(handleClose)}
+            {content}
           </Box>
         </Popover.Dropdown>
       </Popover>

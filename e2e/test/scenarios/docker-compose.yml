@@ -53,7 +53,7 @@ services:
       - ./maildev-keys:/keys
 
   ldap:
-    image: bitnami/openldap:2.6.4
+    image: bitnamilegacy/openldap:2.6.4
     ports:
       - "389:389"
     environment:

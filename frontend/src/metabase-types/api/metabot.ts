@@ -2,12 +2,13 @@ import type {
   CardDisplayType,
   CardId,
   CardType,
-  CollectionId,
   DashboardId,
   DatasetQuery,
+  DraftTransform,
   PaginationResponse,
   RowValue,
-  SearchModel,
+  SuggestedTransform,
+  Transform,
   UnsavedCard,
   Version,
 } from ".";
@@ -56,18 +57,6 @@ export type MetabotHistoryEntry =
 export type MetabotHistory = any[];
 
 export type MetabotStateContext = Record<string, any>;
-
-export type MetabotMessageReaction = {
-  type: "metabot.reaction/message";
-  message: string;
-};
-
-export type MetabotRedirectReaction = {
-  type: "metabot.reaction/redirect";
-  url: string;
-};
-
-export type MetabotReaction = MetabotMessageReaction | MetabotRedirectReaction;
 
 export type MetabotColumnType =
   | "number"
@@ -135,11 +124,17 @@ export type MetabotDocumentInfo = {
   id: number;
 };
 
+export type MetabotTransformInfo =
+  | ({ type: "transform" } & Transform) // edit
+  | ({ type: "transform" } & SuggestedTransform) // edit saved suggested
+  | ({ type: "transform" } & DraftTransform); // edit unsaved suggested
+
 export type MetabotEntityInfo =
   | MetabotCardInfo
   | MetabotDashboardInfo
   | MetabotAdhocQueryInfo
-  | MetabotDocumentInfo;
+  | MetabotDocumentInfo
+  | MetabotTransformInfo;
 
 /* Metabot v3 - API Request Types */
 
@@ -150,10 +145,10 @@ export type MetabotAgentRequest = {
   state: MetabotStateContext;
   conversation_id: string; // uuid
   metabot_id?: string;
+  profile_id?: string;
 };
 
 export type MetabotAgentResponse = {
-  reactions: MetabotReaction[];
   history: MetabotHistory[];
   conversation_id: string;
   state: any;
@@ -218,19 +213,13 @@ export type MetabotName = string;
 
 export type MetabotInfo = {
   id: MetabotId;
+  entity_id: string;
   name: MetabotName;
-};
-
-export type MetabotEntity = {
-  name: string;
-  id: CollectionId;
-  model: Extract<SearchModel, "collection">;
-  collection_id: CollectionId;
-  collection_name: string;
-};
-
-export type MetabotApiEntity = Omit<MetabotEntity, "id"> & {
-  model_id: MetabotEntity["id"];
+  description: string;
+  use_verified_content: boolean;
+  collection_id: number | null;
+  created_at: string;
+  updated_at: string;
 };
 
 /* Metabot v3 - Document Types */
@@ -245,3 +234,12 @@ export interface MetabotGenerateContentResponse {
   description: string;
   error: string | null;
 }
+
+/* Metabot v3 - Data Part Types */
+
+export type MetabotTodoItem = {
+  id: string;
+  content: string;
+  status: "pending" | "in_progress" | "completed" | "cancelled";
+  priority: "high" | "medium" | "low";
+};

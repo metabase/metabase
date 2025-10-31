@@ -1,0 +1,29 @@
+.iconContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.commandItemStack {
+  flex: 1;
+}
+
+.commandButton {
+  display: block;
+  width: 100%;
+  padding: var(--mantine-spacing-sm);
+  font-size: var(--mantine-font-size-md);
+  line-height: var(--mantine-line-height-lg);
+  background-color: transparent;
+  color: var(--mb-color-text-primary);
+  transition:
+    background-color 100ms,
+    color 100ms;
+  border-radius: 6px;
+}
+
+.commandButton:hover,
+.commandButton[aria-selected="true"] {
+  color: var(--mb-color-brand);
+  background-color: var(--mb-color-background-hover);
+}

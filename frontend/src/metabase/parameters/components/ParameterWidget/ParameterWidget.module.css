@@ -9,7 +9,7 @@
 
   &:hover:not(.isEditingParameter) {
     border-color: var(--mb-color-brand);
-    color: var(--mb-base-color-brand-60);
+    color: var(--mb-color-brand-dark);
   }
 
   &.isEditingParameter {

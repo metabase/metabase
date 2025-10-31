@@ -14,6 +14,7 @@ if (shouldLintCssModules) {
 }
 
 module.exports = {
+  ignorePatterns: ["!.storybook"],
   rules: {
     strict: [2, "never"],
     "no-undef": 2,
@@ -135,7 +136,7 @@ module.exports = {
   },
   env: {
     browser: true,
-    es6: true,
+    es2020: true,
     commonjs: true,
     jest: true,
     "jest/globals": true,
@@ -179,6 +180,7 @@ module.exports = {
     {
       files: ["*.js", "*.jsx", "*.ts", "*.tsx"],
       rules: {
+        "jtag-missing-key": "error",
         "no-unconditional-metabase-links-render": "error",
         "no-color-literals": "error",
         "no-literal-metabase-strings": "error",
@@ -201,8 +203,10 @@ module.exports = {
         "frontend/src/metabase/admin/**/*",
         "frontend/src/metabase/setup/**/*",
         "enterprise/frontend/src/metabase-enterprise/whitelabel/**/*",
+        "enterprise/frontend/src/metabase-enterprise/embedding/**/*",
         "frontend/lint/**/*",
         "*.stories.*",
+        "**/.storybook/*",
         "stories-data.*",
         "e2e/**/*",
         "**/tests/*",

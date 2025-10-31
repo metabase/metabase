@@ -7,7 +7,7 @@ export const ScimTextWarning = ({
 }) => (
   <Flex my=".25rem" gap="sm" align="start" c="text-medium">
     <Box mt=".25rem">
-      <FixedSizeIcon name="info_filled" />
+      <FixedSizeIcon name="info" />
     </Box>
     <Text fz=".75rem">{children}</Text>
   </Flex>

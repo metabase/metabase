@@ -41,7 +41,7 @@
        (mbql-query-impl/maybe-add-source-table <> table-name)
        (mbql-query-impl/wrap-inner-query <>)))))
 
-(mu/defn- maybe-add-source-table-mbql-5 :- :map
+(mu/defn- maybe-add-source-table-mbql5 :- :map
   [query :- :map
    table-name]
   (cond
@@ -82,7 +82,7 @@
           (mbql-query-impl/parse-tokens table-name $query)
           (u/assoc-default $query
                            :lib/type :mbql/query, :database '(metabase.lib.test-metadata/id))
-          (maybe-add-source-table-mbql-5 $query table-name)
+          (maybe-add-source-table-mbql5 $query table-name)
           `(lib.query/query
             meta/metadata-provider
             ~$query)))))))

@@ -11,6 +11,7 @@ interface LeaveRouteConfirmModalProps {
   isLocationAllowed?: (location?: Location) => boolean;
   route: Route;
   router: InjectedRouter;
+  onConfirm?: () => void;
 }
 
 const _LeaveRouteConfirmModal = ({
@@ -18,6 +19,7 @@ const _LeaveRouteConfirmModal = ({
   isLocationAllowed,
   route,
   router,
+  onConfirm,
 }: LeaveRouteConfirmModalProps) => {
   const { opened, close, confirm } = useConfirmRouteLeaveModal({
     isEnabled,
@@ -26,8 +28,17 @@ const _LeaveRouteConfirmModal = ({
     router,
   });
 
+  const handleConfirm = () => {
+    confirm();
+    onConfirm?.();
+  };
+
   return (
-    <LeaveConfirmModal onConfirm={confirm} onClose={close} opened={opened} />
+    <LeaveConfirmModal
+      onConfirm={handleConfirm}
+      onClose={close}
+      opened={opened}
+    />
   );
 };
 

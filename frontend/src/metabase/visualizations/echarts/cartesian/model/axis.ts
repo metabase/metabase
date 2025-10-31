@@ -48,6 +48,7 @@ import { computeNumericDataInterval } from "metabase/visualizations/lib/numeric"
 import type {
   ColumnSettings,
   ComputedVisualizationSettings,
+  VisualizationGridSize,
 } from "metabase/visualizations/types";
 import type {
   DatasetColumn,
@@ -529,6 +530,7 @@ export function getYAxisModel(
   columnByDataKey: Record<DataKey, DatasetColumn>,
   stackType: StackType,
   formattingOptions?: OptionsType,
+  gridSize?: VisualizationGridSize,
 ): YAxisModel | null {
   if (seriesKeys.length === 0) {
     return null;
@@ -568,7 +570,9 @@ export function getYAxisModel(
     splitNumber:
       settings["graph.y_axis.split_number"] > 0
         ? settings["graph.y_axis.split_number"]
-        : undefined,
+        : gridSize?.height && gridSize.height <= 5
+          ? 2 // Use fewer ticks for small dashboard charts
+          : 5, // Default to 5 ticks for consistent behavior between single and multiple series
   };
 }
 
@@ -581,6 +585,7 @@ export function getYAxesModels(
   isAutoSplitSupported: boolean,
   stackModels: StackModel[],
   isCompactFormatting: boolean,
+  gridSize?: VisualizationGridSize,
 ) {
   const seriesDataKeys = seriesModels.map((seriesModel) => seriesModel.dataKey);
   const extents = getDatasetExtents(seriesDataKeys, dataset);
@@ -626,6 +631,7 @@ export function getYAxesModels(
       columnByDataKey,
       settings["stackable.stack_type"] ?? null,
       { compact: isCompactFormatting },
+      gridSize,
     ),
     rightAxisModel: getYAxisModel(
       rightAxisSeriesKeys,
@@ -638,6 +644,7 @@ export function getYAxesModels(
         ? null
         : (settings["stackable.stack_type"] ?? null),
       { compact: isCompactFormatting },
+      gridSize,
     ),
   };
 }
@@ -874,31 +881,36 @@ export function getXAxisModel(
   };
 }
 
-const getXAxisDateRangeFromSortedXAxisValues = (
+export const getXAxisDateRangeFromSortedXAxisValues = (
   xValues: RowValue[],
 ): DateRange | undefined => {
-  if (xValues.length === 0) {
+  const filteredXValues = xValues.filter((x) => x !== undefined);
+
+  if (filteredXValues.length === 0) {
     return undefined;
   }
 
   // Find the first non-null date from the start
   let minDateIndex = 0;
   while (
-    minDateIndex < xValues.length &&
-    tryGetDate(xValues[minDateIndex]) === null
+    minDateIndex < filteredXValues.length &&
+    tryGetDate(filteredXValues[minDateIndex]) === null
   ) {
     minDateIndex++;
   }
 
   // Find the first non-null date from the end
-  let maxDateIndex = xValues.length - 1;
-  while (maxDateIndex >= 0 && tryGetDate(xValues[maxDateIndex]) === null) {
+  let maxDateIndex = filteredXValues.length - 1;
+  while (
+    maxDateIndex >= 0 &&
+    tryGetDate(filteredXValues[maxDateIndex]) === null
+  ) {
     maxDateIndex--;
   }
 
   // Assume the dataset is sorted
-  const minDate = tryGetDate(xValues[minDateIndex]);
-  const maxDate = tryGetDate(xValues[maxDateIndex]);
+  const minDate = tryGetDate(filteredXValues[minDateIndex]);
+  const maxDate = tryGetDate(filteredXValues[maxDateIndex]);
 
   if (minDate == null || maxDate == null) {
     return undefined;

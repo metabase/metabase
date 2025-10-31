@@ -689,18 +689,51 @@ jobs:
         junit-name: 'be-tests-starburst-ee'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
+  login-to-ecr:
+    if: inputs.driver == 'Vertica'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.CI_IAM_ROLE }}
+        role-session-name: GitHub_to_AWS_via_FederatedOIDC
+        aws-region: us-east-1
+    - name: Get ECR password
+      id: login-ecr
+      run: |
+        PASSWORD=$(aws ecr get-login-password --region us-east-1)
+
+        REGISTRY="$(aws sts get-caller-identity --query Account --output text).dkr.ecr.us-east-1.amazonaws.com"
+
+        echo "docker_username=AWS" >> $GITHUB_OUTPUT
+        echo "docker_password=$PASSWORD" >> $GITHUB_OUTPUT
+        echo "registry=$REGISTRY" >> $GITHUB_OUTPUT
+    outputs:
+      registry: ${{ steps.login-ecr.outputs.registry }}
+      docker_username: ${{ steps.login-ecr.outputs.docker_username }}
+      docker_password: ${{ steps.login-ecr.outputs.docker_password }}
+
   be-tests-vertica-ee:
     if: inputs.driver == 'Vertica'
     runs-on: ubuntu-22.04
+    needs: login-to-ecr
     timeout-minutes: 90
     env:
       CI: 'true'
       DRIVERS: vertica
     services:
       vertica:
-        image: vertica/vertica-ce:12.0.2-0
+        image: ${{ needs.login-to-ecr.outputs.registry }}/vertica-ce:25.3.0-0
         ports:
           - "5433:5433"
+        credentials:
+          username: ${{ needs.login-to-ecr.outputs.docker_username }}
+          password: ${{ needs.login-to-ecr.outputs.docker_password }}
     steps:
     - uses: actions/checkout@v4
     - name: Make plugins directory

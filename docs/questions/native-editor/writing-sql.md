@@ -9,6 +9,8 @@ redirect-from:
 
 If you ever need to ask questions that can't be expressed using the query builder, you can use [SQL][sql-gloss] instead.
 
+You can also use [Metabot](../../ai/metabot.md) to generate SQL from natural language. Just ask Metabot to "Write a SQL query that..." and describe what you want to know about your data.
+
 ## What's SQL?
 
 SQL (pronounced "sequel", or sometimes as S.Q.L. — people argue about this) stands for Structured Query Language, and is a widely used standard for getting data from databases. We won't try to teach you all about SQL right now, but to learn more about it, check out [Working with SQL][learn-sql].

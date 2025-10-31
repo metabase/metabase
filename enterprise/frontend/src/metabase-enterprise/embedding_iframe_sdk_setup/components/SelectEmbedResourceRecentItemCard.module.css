@@ -1,12 +1,16 @@
 .ResourceCard {
   cursor: pointer;
-  border: 2px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border);
   transition: border-color 0.2s ease-in-out;
   user-select: none;
 }
 
 .ResourceCard[data-selected="true"] {
   border-color: var(--mb-color-brand);
+}
+
+.ResourceCard:hover {
+  background: var(--mb-color-background-hover-light);
 }
 
 @media (prefers-reduced-motion) {

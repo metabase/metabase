@@ -2,14 +2,13 @@
   (:require
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]))
 
 (deftest ^:parallel temporal-unit-in-display-name-test
-  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [mp (mt/metadata-provider)
         single-stage-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                                (lib/aggregate (lib/count))
                                (lib/breakout (lib/with-temporal-bucket

@@ -18,12 +18,7 @@
   }
 
   &:hover:not([data-disabled="true"]) {
-    color: var(--mb-color-text-hover);
     background-color: var(--mb-color-background-hover);
-
-    .itemSection[data-position="right"] {
-      color: var(--mb-color-text-hover);
-    }
   }
 }
 

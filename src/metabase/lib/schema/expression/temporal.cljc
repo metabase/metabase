@@ -1,4 +1,5 @@
 (ns metabase.lib.schema.expression.temporal
+  (:refer-clojure :exclude [some #?(:clj doseq) #?(:clj for)])
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -10,6 +11,7 @@
    [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [some #?(:clj doseq) #?(:clj for)]]
    [metabase.util.time.impl-common :as u.time.impl-common])
   #?@
    (:clj
@@ -113,7 +115,7 @@
     [:cat
      [:merge
       ::common/options
-      [:map [:mode {:optional true} ;; no mode should be iso string
+      [:map [:mode {:optional true} ; no mode should be iso string
              (into [:enum {:decode/normalize normalize-datetime-mode}]
                    datetime-string-modes)]]]
      [:schema [:ref ::expression/string]]]
@@ -132,7 +134,7 @@
       ::common/options
       [:map [:mode (into [:enum {:decode/normalize normalize-datetime-mode}]
                          datetime-binary-modes)]]]
-     :any]]])
+     [:schema [:ref ::expression/expression]]]]])
 
 ;; doesn't contain `:millisecond`
 (mr/def ::datetime-diff-unit
@@ -273,10 +275,15 @@
    [true  [:= {:decode/normalize common/normalize-keyword-lower} :current]]
    [false :int]])
 
+(mr/def ::relative-datetime.unit
+  [:or
+   [:= :default]
+   [:ref ::temporal-bucketing/unit.date-time.interval]])
+
 ;;; TODO (Cam 7/16/25) -- I think unit is rewuired unless `n` is `:current`
 (mbql-clause/define-catn-mbql-clause :relative-datetime :- :type/DateTime
   [:n    [:schema [:ref ::relative-datetime.amount]]]
-  [:unit [:? [:schema [:ref ::temporal-bucketing/unit.date-time.interval]]]])
+  [:unit [:? [:schema [:ref ::relative-datetime.unit]]]])
 
 (mbql-clause/define-tuple-mbql-clause :time :- :type/Time
   #_:timestr [:schema [:ref ::expression/string]]

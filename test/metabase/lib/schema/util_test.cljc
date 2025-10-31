@@ -77,6 +77,13 @@
      [:field {:lib/uuid "00000000-0000-0000-0000-000000000001", :effective-type :type/Number} 1]]
 
     [[:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :effective-type :type/Integer} 1]
+     [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1]]
+
+    ;; do not consider (inherited-)temporal-unit = default and no temporal-unit to be distinct
+    [[:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :temporal-unit :default} 1]
+     [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1]]
+
+    [[:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :inherited-temporal-unit :default} 1]
      [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1]]))
 
 (deftest ^:parallel distinct-mbql-clauses-schema-test

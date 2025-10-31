@@ -1,3 +1,4 @@
+import { getDeduplicatedTableColumnSettings } from "metabase/visualizations/lib/settings/utils";
 import * as Lib from "metabase-lib";
 import {
   getColumnKey,
@@ -187,7 +188,7 @@ function syncTableColumns(
   return {
     ...settings,
     "table.columns": syncColumns({
-      settings: columnSettings,
+      settings: getDeduplicatedTableColumnSettings(columnSettings),
       newColumns,
       oldColumns,
       getColumnName: (setting) => setting.name,

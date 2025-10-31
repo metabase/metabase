@@ -13,7 +13,10 @@
      toucan2.core/insert-returning-pk!
      toucan2.core/insert-returning-pks!
      clojure.core.async/<!!
+     clojure.core.async/<!
      clojure.core.async/>!!
+     clojure.core.async/>!
+     clojure.core.async/alts!
      clojure.core.async/alts!!
      clojure.core.async/close!
      clojure.core.async/poll!

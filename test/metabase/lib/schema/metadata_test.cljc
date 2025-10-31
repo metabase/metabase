@@ -1,6 +1,6 @@
 (ns metabase.lib.schema.metadata-test
   (:require
-   [clojure.test :refer [are deftest is]]
+   [clojure.test :refer [are deftest is testing]]
    [clojure.walk :as walk]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
@@ -121,3 +121,8 @@
                                                    :type/Number {:q1 1.459}}}}))
     ::mbql.s/legacy-column-metadata
     ::lib.schema.metadata/lib-or-legacy-column))
+
+(deftest ^:parallel remove-inner-ident-test
+  (testing "Remove deprecated keys like :model/inner_ident automatically (GIT-8399)"
+    (is (= {:lib/type :metadata/column, :base-type :type/*, :name "X"}
+           (lib/normalize ::lib.schema.metadata/column {:name "X", :model/inner_ident "wow"})))))

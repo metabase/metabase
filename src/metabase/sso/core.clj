@@ -14,6 +14,7 @@
   do-google-auth
   google-auth-create-new-user!]
  [metabase.sso.ldap.default-implementation
+  create-new-ldap-auth-user!
   LDAPSettings
   ldap-groups->mb-group-ids
   ldap-search-result->user-info]

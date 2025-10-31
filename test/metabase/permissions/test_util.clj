@@ -15,7 +15,7 @@
   ;; Select sandboxes _before_ permissions.
   (let [original-perms     (t2/select :model/Permissions)
         original-sandboxes (if config/ee-available?
-                             (t2/select :model/GroupTableAccessPolicy)
+                             (t2/select :model/Sandbox)
                              [])]
     (try
       (thunk)
@@ -23,12 +23,12 @@
         (binding [perms/*allow-root-entries* true
                   perms/*allow-admin-permissions-changes* true]
           (when config/ee-available?
-            (t2/delete! :model/GroupTableAccessPolicy))
+            (t2/delete! :model/Sandbox))
           (t2/delete! :model/Permissions)
           ;; Insert perms _before_ sandboxes because of a foreign key constraint on sandboxes.permission_id
           (t2/insert! :model/Permissions original-perms)
           (when config/ee-available?
-            (t2/insert! :model/GroupTableAccessPolicy original-sandboxes)))))))
+            (t2/insert! :model/Sandbox original-sandboxes)))))))
 
 (defmacro with-restored-perms!
   "Runs `body`, and restores permissions and sandboxes to their original state afterwards."

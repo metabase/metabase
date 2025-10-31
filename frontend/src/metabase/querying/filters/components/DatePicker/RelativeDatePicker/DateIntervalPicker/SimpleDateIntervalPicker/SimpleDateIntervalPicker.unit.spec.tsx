@@ -15,7 +15,7 @@ function getDefaultValue(
 ): RelativeDatePickerValue {
   return {
     type: "relative",
-    value: direction === "last" ? -30 : 30,
+    value: direction === "past" ? -30 : 30,
     unit: "day",
   };
 }
@@ -45,7 +45,7 @@ describe("SimpleDateIntervalPicker", () => {
     jest.setSystemTime(new Date(2020, 0, 1));
   });
 
-  describe.each<RelativeIntervalDirection>(["last", "next"])(
+  describe.each<RelativeIntervalDirection>(["past", "future"])(
     "%s",
     (direction) => {
       const defaultValue = getDefaultValue(direction);
@@ -61,7 +61,7 @@ describe("SimpleDateIntervalPicker", () => {
 
         expect(onChange).toHaveBeenLastCalledWith({
           ...defaultValue,
-          value: direction === "last" ? -20 : 20,
+          value: direction === "past" ? -20 : 20,
         });
       });
 
@@ -76,7 +76,7 @@ describe("SimpleDateIntervalPicker", () => {
 
         expect(onChange).toHaveBeenLastCalledWith({
           ...defaultValue,
-          value: direction === "last" ? -10 : 10,
+          value: direction === "past" ? -10 : 10,
         });
       });
 
@@ -92,7 +92,7 @@ describe("SimpleDateIntervalPicker", () => {
 
         expect(onChange).toHaveBeenLastCalledWith({
           ...defaultValue,
-          value: direction === "last" ? -1 : 1,
+          value: direction === "past" ? -1 : 1,
         });
       });
 

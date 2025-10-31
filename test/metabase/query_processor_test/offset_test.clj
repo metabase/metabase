@@ -5,7 +5,6 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
@@ -21,7 +20,7 @@
 
 (deftest ^:parallel simple-offset-test
   (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/offset)
-    (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [metadata-provider (mt/metadata-provider)
           orders            (lib.metadata/table metadata-provider (mt/id :orders))
           orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
           orders-total      (lib.metadata/field metadata-provider (mt/id :orders :total))
@@ -46,7 +45,7 @@
 (deftest ^:parallel offset-aggregation-test
   (testing "yearly growth (this year sales vs last year sales) (#5606)"
     (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/offset)
-      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (let [metadata-provider (mt/metadata-provider)
             orders            (lib.metadata/table metadata-provider (mt/id :orders))
             orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
             orders-total      (lib.metadata/field metadata-provider (mt/id :orders :total))
@@ -73,7 +72,7 @@
 
 (deftest ^:parallel offset-aggregation-two-breakouts-test
   (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/offset)
-    (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [metadata-provider (mt/metadata-provider)
           orders            (lib.metadata/table metadata-provider (mt/id :orders))
           orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
           orders-total      (lib.metadata/field metadata-provider (mt/id :orders :total))
@@ -112,7 +111,7 @@
 (deftest ^:parallel rolling-window-test
   (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/offset)
     (testing "Rolling windows: rolling total of sales last 3 months (#8977)"
-      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (let [metadata-provider (mt/metadata-provider)
             orders            (lib.metadata/table metadata-provider (mt/id :orders))
             orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
             orders-total      (lib.metadata/field metadata-provider (mt/id :orders :total))
@@ -141,7 +140,7 @@
 (deftest ^:parallel lead-test
   (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/offset)
     (testing "Rolling windows: sales for current month and next month (LEAD instead of LAG)"
-      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (let [metadata-provider (mt/metadata-provider)
             orders            (lib.metadata/table metadata-provider (mt/id :orders))
             orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
             orders-total      (lib.metadata/field metadata-provider (mt/id :orders :total))
@@ -214,7 +213,7 @@
 (deftest ^:parallel external-remapping-with-offset-test
   (testing "External remapping works correctly with offset (#45348)"
     (let [mp (lib.tu/remap-metadata-provider
-              (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+              (mt/metadata-provider)
               (mt/id :orders :product_id)
               (mt/id :products :title))]
       (doseq [[multiple-breakouts? ofs-col-index]

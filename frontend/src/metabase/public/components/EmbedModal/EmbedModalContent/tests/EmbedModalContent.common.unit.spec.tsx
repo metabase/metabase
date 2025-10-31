@@ -1,6 +1,8 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { createMockTokenFeatures } from "metabase-types/api/mocks";
+
 import { setup } from "./setup";
 
 describe("EmbedModalContent", () => {
@@ -10,8 +12,8 @@ describe("EmbedModalContent", () => {
         setup();
 
         expect(screen.getByText("Static embedding")).toBeInTheDocument();
-        expect(screen.getByText("Interactive embedding")).toBeInTheDocument();
-        expect(screen.getByText("Embedded analytics SDK")).toBeInTheDocument();
+        expect(screen.getByText("Embedded Analytics JS")).toBeInTheDocument();
+        expect(screen.getByText("SDK for React")).toBeInTheDocument();
       });
     });
 
@@ -37,10 +39,7 @@ describe("EmbedModalContent", () => {
           withinStaticEmbeddingCard.getByRole("link", {
             name: "Enable in admin settings",
           }),
-        ).toHaveAttribute(
-          "href",
-          "/admin/settings/embedding-in-other-applications/standalone",
-        );
+        ).toHaveAttribute("href", "/admin/embedding/static");
       });
     });
 
@@ -74,7 +73,7 @@ describe("EmbedModalContent", () => {
   });
 
   describe("Interactive Embedding", () => {
-    const INTERACTIVE_EMBEDDING_TITLE = "Interactive embedding";
+    const INTERACTIVE_EMBEDDING_TITLE = "Embedded Analytics JS";
 
     describe("when Interactive Embedding is disabled", () => {
       it("should mention Interactive Embedding and lead users to learn more link", () => {
@@ -85,7 +84,7 @@ describe("EmbedModalContent", () => {
           screen.queryByRole("link", { name: INTERACTIVE_EMBEDDING_TITLE }),
         ).toHaveProperty(
           "href",
-          "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=upsell&utm_campaign=embedding-interactive&utm_content=static-embed-popover&source_plan=oss",
+          "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=upsell&utm_campaign=embedded-analytics-js&utm_content=static-embed-popover&source_plan=oss",
         );
 
         // We show the learn more link
@@ -119,7 +118,7 @@ describe("EmbedModalContent", () => {
           screen.queryByRole("link", { name: INTERACTIVE_EMBEDDING_TITLE }),
         ).toHaveProperty(
           "href",
-          "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=upsell&utm_campaign=embedding-interactive&utm_content=static-embed-popover&source_plan=oss",
+          "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=upsell&utm_campaign=embedded-analytics-js&utm_content=static-embed-popover&source_plan=oss",
         );
 
         // We show the learn more link
@@ -134,16 +133,17 @@ describe("EmbedModalContent", () => {
   });
 
   describe("Embedding SDK", () => {
-    const SDK_TITLE = "Embedded analytics SDK";
+    const SDK_TITLE = "SDK for React";
 
     describe("when the SDK is disabled", () => {
       it("should mention the sdk and tell admin to enable the SDK in the setting", () => {
-        setup();
+        setup({
+          tokenFeatures: createMockTokenFeatures(),
+        });
 
-        // The card is not clickable
         expect(
-          screen.queryByRole("link", { name: SDK_TITLE }),
-        ).not.toBeInTheDocument();
+          screen.getByRole("link", { name: SDK_TITLE }),
+        ).toBeInTheDocument();
 
         // We show the link at the bottom of the card
         const withinSdkCard = within(
@@ -154,10 +154,7 @@ describe("EmbedModalContent", () => {
           withinSdkCard.getByRole("link", {
             name: "Enable in admin settings",
           }),
-        ).toHaveAttribute(
-          "href",
-          "/admin/settings/embedding-in-other-applications/sdk",
-        );
+        ).toHaveAttribute("href", "/admin/embedding/modular");
       });
     });
 
@@ -169,11 +166,9 @@ describe("EmbedModalContent", () => {
           },
         });
 
-        // The card is clickable
         expect(screen.getByRole("link", { name: SDK_TITLE })).toHaveProperty(
           "href",
-          // I have no idea why only this URL is absolute in the test, it is relative in the markup 🤷
-          "http://localhost/admin/settings/embedding-in-other-applications/sdk",
+          "https://www.metabase.com/docs/latest/embedding/sdk/introduction.html?utm_source=product&utm_medium=docs&utm_content=embed-modal&source_plan=oss",
         );
 
         // We don't show the link at the bottom of the card

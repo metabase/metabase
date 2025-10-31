@@ -8,8 +8,8 @@
   `:email`. It is not a full User object (missing some superuser metadata, last login time, and a common name). This
   was done to prevent another db call and hooking up timestamps to users but this can be added if preferred."
   (:require
-   [clj-time.core :as time]
    [clojure.set :as set]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -69,7 +69,7 @@
   last-edit-info, you must construct it from `@api/*current-user*` and the current timestamp rather than checking the
   revisions table as those revisions may not be present yet."
   [user]
-  (merge {:timestamp (time/now)}
+  (merge {:timestamp (t/instant)}
          (select-keys user [:id :first_name :last_name :email])))
 
 (def ^:private CollectionLastEditInfo

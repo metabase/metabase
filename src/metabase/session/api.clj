@@ -67,7 +67,15 @@
                             {:status-code 401
                              :errors      {:_error disabled-account-snippet}})))))
       (catch LDAPSDKException e
-        (log/error e "Problem connecting to LDAP server, will fall back to local authentication")))))
+        (log/error e "Problem connecting to LDAP server, will fall back to local authentication"))
+      (catch dev.failsafe.TimeoutExceededException e
+        (log/error e "Timeout from LDAP server, will fall back to local authentication"))
+      ;; Failsafe wraps exceptions in a `FailsafeException` - unwrap these if necessary
+      (catch dev.failsafe.FailsafeException e
+        (let [cause (.getCause e)]
+          (if (instance? LDAPSDKException cause)
+            (log/error cause "Problem connecting to LDAP server, will fall back to local authentication")
+            (throw e)))))))
 
 (mu/defn- email-login :- [:maybe [:map [:key ms/UUIDString]]]
   "Find a matching `User` if one exists and return a new Session for them, or `nil` if they couldn't be authenticated."
@@ -193,6 +201,8 @@
       (events/publish-event! :event/password-reset-initiated
                              {:object (assoc user :token (t2/select-one-fn :reset_token :model/User :id user-id))}))))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :post "/forgot_password"
   "Send a reset email when user has forgotten their password."
   [_route-params
@@ -232,6 +242,8 @@
   "Throttler for password_reset. There's no good field to mark so use password as a default."
   (throttle/make-throttler :password :attempts-threshold 10))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :post "/reset_password"
   "Reset password with a reset token."
   [_route-params
@@ -258,6 +270,8 @@
             (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))))
       (api/throw-invalid-param-exception :password (tru "Invalid reset token"))))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :get "/password_reset_token_valid"
   "Check if a password reset token is valid and isn't expired."
   [_route-params
@@ -271,6 +285,8 @@
   []
   (setting/user-readable-values-map (setting/current-user-readable-visibilities)))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :post "/google_auth"
   "Login with Google Auth."
   [_route-params

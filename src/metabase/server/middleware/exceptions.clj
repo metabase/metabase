@@ -4,6 +4,8 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [metabase.server.middleware.security :as mw.security]
+   [metabase.server.settings :as server.settings]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log])
   (:import
    (java.sql SQLException)
@@ -35,6 +37,11 @@
                                           ;; ex-data.
                                           (and status-code (:errors other-info))
                                           other-info
+
+                                          ;; allow administrators to configure their instances to suppress stacktraces
+                                          ;; returns 500 with a generic message
+                                          (server.settings/hide-stacktraces)
+                                          {:message (tru "Something went wrong")}
 
                                           ;; Otherwise return the full `Throwable->map` representation with Stacktrace
                                           ;; and ex-data

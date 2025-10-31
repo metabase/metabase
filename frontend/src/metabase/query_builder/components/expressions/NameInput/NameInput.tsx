@@ -11,11 +11,13 @@ export function NameInput({
   onChange,
   onSubmit,
   expressionMode,
+  readOnly,
 }: {
   value: string;
   onChange: (value: string) => void;
   onSubmit: () => void;
   expressionMode: Lib.ExpressionMode;
+  readOnly?: boolean;
 }) {
   const handleChange = useCallback(
     (evt: ChangeEvent<HTMLInputElement>) => {
@@ -45,6 +47,7 @@ export function NameInput({
       placeholder={getPlaceholder(expressionMode)}
       onChange={handleChange}
       onKeyDown={handleKeyDown}
+      readOnly={readOnly}
       classNames={{
         root: S.root,
         input: S.input,

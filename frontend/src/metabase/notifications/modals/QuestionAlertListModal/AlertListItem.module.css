@@ -11,7 +11,7 @@
 
 .notificationListItemEditable {
   &:hover {
-    background: var(--mb-base-color-brand-10);
+    background-color: var(--mb-color-background-hover);
     cursor: pointer;
     border-color: transparent;
 

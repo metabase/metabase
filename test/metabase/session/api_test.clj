@@ -12,6 +12,7 @@
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.settings.models.setting]
    [metabase.sso.ldap-test-util :as ldap.test]
+   [metabase.sso.ldap.default-implementation]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
@@ -627,6 +628,17 @@
           (is (malli= SessionResponse
                       (mt/client :post 200 "session" {:username "ngoc@metabase.com"
                                                       :password "securedpassword"}))))))
+
+    (testing "Test that login will fallback to local for slow LDAP"
+      (mt/with-temporary-setting-values [ldap-timeout-seconds 0.01]
+        ;; Kinda reaching deep into the guts here to create artificial slowness
+        (mt/with-dynamic-fn-redefs [metabase.sso.ldap.default-implementation/search (fn [& _args]
+                                                                                      (Thread/sleep 500))]
+          (mt/with-temp [:model/User _ {:email    "ngoc@metabase.com"
+                                        :password "securedpassword"}]
+            (is (malli= SessionResponse
+                        (mt/client :post 200 "session" {:username "ngoc@metabase.com"
+                                                        :password "securedpassword"})))))))
 
     (testing "Test that we can login with LDAP with new user"
       (try

@@ -51,6 +51,7 @@ Metabase's reference documentation.
 - [Monitoring your Metabase](./installation-and-operation/monitoring-metabase.md)
 - [Development instances](./installation-and-operation/development-instance.md)
 - [Serialization](./installation-and-operation/serialization.md)
+- [Remote sync](./installation-and-operation/remote-sync.md)
 - [Commands](./installation-and-operation/commands.md)
 - [Supported browsers](./installation-and-operation/supported-browsers.md)
 - [Privacy](./installation-and-operation/privacy.md)
@@ -120,6 +121,10 @@ Metabase's reference documentation.
 - [Dashboard subscriptions](./dashboards/subscriptions.md)
 - [Actions on dashboards](./dashboards/actions.md)
 
+### Documents
+
+- [Introduction to documents](./documents/introduction.md)
+
 ### Data modeling
 
 - [Data modeling overview](./data-modeling/start.md)
@@ -138,6 +143,12 @@ Metabase's reference documentation.
 - [Introduction to actions](./actions/introduction.md)
 - [Basic actions](./actions/basic.md)
 - [Custom actions](./actions/custom.md)
+
+### AI
+
+- [AI overview](./ai/start.md)
+- [Metabot](./ai/metabot.md)
+- [Setting up Metabot](./ai/settings.md)
 
 ### Exploration and organization
 

@@ -101,7 +101,7 @@ Admins, and people with [permission to manage table metadata](../permissions/dat
 
 Data types can't be edited in Metabase directly, but you can cast certain [data types to different types](./metadata-editing.md#cast-to-a-specific-data-type) so that, for example, Metabase will interpret a text data type as a date type.
 
-Changes made in Table Metadata apply across your entire Metabase. Metabase currently only supports casting to a datetime type in Metadata settings. However, if you build a query in the query builder, you can use type casting custom expressions like [`date()`](../questions/query-builder/expressions-list.md#date) or [`integer()`](../questions/query-builder/expressions-list.md#integer) to cast a string to a different type in your query.
+Changes made in Table Metadata apply across your entire Metabase. However, if you build a query in the query builder, you can use type casting custom expressions like [`date()`](../questions/query-builder/expressions-list.md#date) or [`integer()`](../questions/query-builder/expressions-list.md#integer) to cast a string to a different type just in your query.
 
 ### Semantic types don't change the data types
 

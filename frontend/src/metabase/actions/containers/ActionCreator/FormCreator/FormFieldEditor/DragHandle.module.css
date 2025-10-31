@@ -1,0 +1,9 @@
+.dragHandle {
+  color: var(--mb-color-text-medium);
+  margin-top: 4px;
+  cursor: grab;
+}
+
+.dragHandle:active {
+  cursor: grabbing;
+}

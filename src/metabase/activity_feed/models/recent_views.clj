@@ -407,7 +407,7 @@
     (let [;; these have their parent collection id in effective_location, but we need the id, name, and authority_level.
           collections (t2/select :model/Collection
                                  {:select [:id :name :description :authority_level
-                                           :archived :location]
+                                           :archived :location :type]
                                   :where [:and
                                           [:in :id collection-ids]
                                           [:= :archived false]]})]
@@ -426,6 +426,7 @@
      :can_write (mi/can-write? collection)
      :timestamp (str timestamp)
      :authority_level (some-> (:authority_level collection) name)
+     :collection_type (some-> (:type collection) name)
      :effective_location (:effective_location collection)
      :parent_collection (or (:effective_parent collection) (root-coll))}))
 
@@ -438,7 +439,7 @@
              {:select [:t.id :t.name :t.description
                        :t.display_name :t.active :t.visibility_type :t.schema
                        [:db.name :database-name]
-                       [:db.id :database-id]
+                       [:db.id :db_id]
                        [:db.initial_sync_status :initial-sync-status]]
               :from [[:metabase_table :t]]
               :where (let [base-condition [:or
@@ -472,7 +473,7 @@
        :can_write (mi/can-write? table)
        :timestamp (str timestamp)
        :table_schema (:schema table)
-       :database {:id (:database-id table)
+       :database {:id (:db_id table)
                   :name (:database-name table)
                   :initial_sync_status (:initial-sync-status table)}})))
 

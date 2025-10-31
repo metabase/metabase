@@ -14,6 +14,10 @@ Metabase supports the oldest supported version of SQL Server through the latest 
 
 You can edit these settings at any time. Just remember to save your changes.
 
+### Connection string
+
+Paste a connection string here to pre-fill the remaining fields below.
+
 ### Display name
 
 The display name for the database in the Metabase interface.

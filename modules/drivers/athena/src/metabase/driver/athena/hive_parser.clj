@@ -1,8 +1,8 @@
 (ns metabase.driver.athena.hive-parser
   (:require
    [clojure.string :as str]
-   [clojure.walk :as walk]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [metabase.util.performance :as perf]))
 
 (set! *warn-on-reflection* true)
 
@@ -59,4 +59,4 @@
   (-> schema
       parse-to-json-string
       json/decode
-      walk/keywordize-keys))
+      perf/keywordize-keys))

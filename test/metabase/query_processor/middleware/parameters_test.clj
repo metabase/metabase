@@ -174,7 +174,7 @@
 (defn- card-template-tag
   [card-id]
   (let [tag (str "#" card-id)]
-    {:id tag, :name tag, :display-name tag, :type "card", :card-id card-id}))
+    {:id tag, :name tag, :display-name tag, :type :card, :card-id card-id}))
 
 (defn card-template-tags
   "Generate the map representing card template tags (sub-queries) for the given `card-ids`."
@@ -317,22 +317,22 @@
                                       :name        "Filter: expensive venues"}]
              :cards                 [{:id            1
                                       :dataset-query (mt/native-query
-                                                       {:query         (str "SELECT {{ Venue fields }} "
-                                                                            "FROM venues "
-                                                                            "WHERE {{ Filter: expensive venues }}")
-                                                        :template-tags (snippet-template-tags
-                                                                        {"Venue fields"             1
-                                                                         "Filter: expensive venues" 2})})}]})]
+                                                      {:query         (str "SELECT {{ Venue fields }} "
+                                                                           "FROM venues "
+                                                                           "WHERE {{ Filter: expensive venues }}")
+                                                       :template-tags (snippet-template-tags
+                                                                       {"Venue fields"             1
+                                                                        "Filter: expensive venues" 2})})}]})]
     (testing "multiple snippets are correctly expanded in parent query"
-      (is (=? {:native {:query "SELECT name, price FROM venues WHERE price > 2", :params nil}}
+      (is (=? {:stages [{:native "SELECT name, price FROM venues WHERE price > 2", :params nil}]}
               (substitute-params mp (:dataset-query (lib.metadata/card mp 1))))))
     (testing "multiple snippets are expanded from saved sub-query"
       (is (=? {:native {:query "SELECT * FROM (SELECT name, price FROM venues WHERE price > 2) AS x", :params []}}
               (substitute-params
                mp
                (mt/native-query
-                 {:query         "SELECT * FROM {{#1}} AS x"
-                  :template-tags (card-template-tags [1])})))))))
+                {:query         "SELECT * FROM {{#1}} AS x"
+                 :template-tags (card-template-tags [1])})))))))
 
 (deftest ^:parallel include-card-parameters-test
   (testing "Expanding a Card reference should include its parameters (#12236)"
@@ -402,9 +402,7 @@
                                     {}
                                     [:field {:temporal-unit :default} "DATE"]
                                     [:absolute-datetime {} #t "2014-01-06" :default]]]}]}
-              (-> query
-                  qp.preprocess/preprocess
-                  lib/->pMBQL))))))
+              (qp.preprocess/preprocess query))))))
 
 (deftest ^:parallel nil-values-test
   (let [mp    meta/metadata-provider
@@ -459,9 +457,7 @@
                        :native   (str "select PRODUCTS.TITLE, PRODUCTS.RATING"
                                       " from PRODUCTS"
                                       " where true AND (\"PUBLIC\".\"PRODUCTS\".\"RATING\" = 3.8)")}]}
-            (-> query
-                qp.preprocess/preprocess
-                lib/->pMBQL)))))
+            (qp.preprocess/preprocess query)))))
 
 (deftest ^:parallel ignore-template-tag-parameters-in-mbql-stages-test
   (let [query {:lib/type     :mbql/query

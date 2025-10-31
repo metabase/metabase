@@ -12,7 +12,7 @@ redirect_from:
 
 # Limitation of Metabase Cloud
 
-There are some limitations that could impact your migration to Metabase Cloud. These limitations apply to all [Metabase Cloud plans](/pricing/).
+There are some limitations that could impact your migration to Metabase Cloud. These limitations apply to all [Metabase Cloud plans](https://www.metabase.com/pricing/).
 
 ## Metabase Cloud only supports official databases
 

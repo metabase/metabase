@@ -82,8 +82,8 @@ const newModelQueryTabLocation = createMockLocation({
   pathname: "/model/query",
 });
 
-const newModelMetadataTabLocation = createMockLocation({
-  pathname: "/model/metadata",
+const newModelColumnsTabLocation = createMockLocation({
+  pathname: "/model/columns",
 });
 
 const newMetricQueryTabLocation = createMockLocation({
@@ -104,8 +104,8 @@ const getViewModelLocations = (model: Question) => [
 const getEditModelLocations = (model: Question) => [
   createMockLocation({ pathname: `/model/${model.id()}/query` }),
   createMockLocation({ pathname: `/model/${model.slug()}/query` }),
-  createMockLocation({ pathname: `/model/${model.id()}/metadata` }),
-  createMockLocation({ pathname: `/model/${model.slug()}/metadata` }),
+  createMockLocation({ pathname: `/model/${model.id()}/columns` }),
+  createMockLocation({ pathname: `/model/${model.slug()}/columns` }),
   createMockLocation({ pathname: `/model/${model.id()}/notebook` }),
   createMockLocation({ pathname: `/model/${model.slug()}/notebook` }),
 ];
@@ -231,7 +231,7 @@ describe("isNavigationAllowed", () => {
       ...getStructuredQuestionLocations(structuredQuestion),
       ...getNativeQuestionLocations(nativeQuestion),
       newModelQueryTabLocation,
-      newModelMetadataTabLocation,
+      newModelColumnsTabLocation,
       newMetricQueryTabLocation,
       runModelLocation,
       runNewModelLocation,
@@ -264,7 +264,7 @@ describe("isNavigationAllowed", () => {
         ...getStructuredQuestionLocations(structuredQuestion),
         ...getNativeQuestionLocations(nativeQuestion),
         newModelQueryTabLocation,
-        newModelMetadataTabLocation,
+        newModelColumnsTabLocation,
         newMetricQueryTabLocation,
         runModelLocation,
         runNewModelLocation,
@@ -307,7 +307,7 @@ describe("isNavigationAllowed", () => {
         ...getNativeQuestionLocations(nativeQuestion),
         ...getRunQuestionLocations(structuredQuestion),
         newModelQueryTabLocation,
-        newModelMetadataTabLocation,
+        newModelColumnsTabLocation,
         newMetricQueryTabLocation,
         runModelLocation,
         runNewModelLocation,
@@ -365,7 +365,7 @@ describe("isNavigationAllowed", () => {
         ...getNativeQuestionLocations(nativeQuestion),
         ...getRunQuestionLocations(nativeQuestion),
         newModelQueryTabLocation,
-        newModelMetadataTabLocation,
+        newModelColumnsTabLocation,
         newMetricQueryTabLocation,
       ])("to `$pathname`", (destination) => {
         expect(
@@ -400,7 +400,7 @@ describe("isNavigationAllowed", () => {
         ...getNativeQuestionLocations(nativeQuestion),
         ...getRunQuestionLocations(structuredQuestion),
         newModelQueryTabLocation,
-        newModelMetadataTabLocation,
+        newModelColumnsTabLocation,
         newMetricQueryTabLocation,
         runModelLocation,
         runNewModelLocation,
@@ -419,8 +419,8 @@ describe("isNavigationAllowed", () => {
     const isNewQuestion = true;
     const question = structuredModelQuestion;
 
-    describe("allows navigating between model query & metadata tabs", () => {
-      it.each([newModelQueryTabLocation, newModelMetadataTabLocation])(
+    describe("allows navigating between model query & columns tabs", () => {
+      it.each([newModelQueryTabLocation, newModelColumnsTabLocation])(
         "to `$pathname`",
         (destination) => {
           expect(
@@ -462,7 +462,7 @@ describe("isNavigationAllowed", () => {
     const isNewQuestion = false;
     const question = structuredModelQuestion;
 
-    describe("allows navigating between model query & metadata tabs", () => {
+    describe("allows navigating between model query & columns tabs", () => {
       it.each(getEditModelLocations(question))(
         "to `$pathname`",
         (destination) => {
@@ -498,7 +498,7 @@ describe("isNavigationAllowed", () => {
         ...getStructuredQuestionLocations(structuredQuestion),
         ...getNativeQuestionLocations(nativeQuestion),
         newModelQueryTabLocation,
-        newModelMetadataTabLocation,
+        newModelColumnsTabLocation,
         newMetricQueryTabLocation,
         runMetricLocation,
         runNewMetricLocation,
@@ -515,7 +515,7 @@ describe("isNavigationAllowed", () => {
     const isNewQuestion = false;
     const question = nativeModelQuestion;
 
-    describe("allows navigating between model query & metadata tabs", () => {
+    describe("allows navigating between model query & columns tabs", () => {
       it.each(getEditModelLocations(question))(
         "to `$pathname`",
         (destination) => {
@@ -551,7 +551,7 @@ describe("isNavigationAllowed", () => {
         ...getStructuredQuestionLocations(structuredQuestion),
         ...getNativeQuestionLocations(nativeQuestion),
         newModelQueryTabLocation,
-        newModelMetadataTabLocation,
+        newModelColumnsTabLocation,
         newMetricQueryTabLocation,
         runMetricLocation,
         runNewMetricLocation,
@@ -609,7 +609,7 @@ describe("isNavigationAllowed", () => {
     const isNewQuestion = false;
     const question = structuredMetricQuestion;
 
-    describe("allows navigating between metric query & metadata tabs", () => {
+    describe("allows navigating between metric query & columns tabs", () => {
       it.each(getEditMetricLocations(question))(
         "to `$pathname`",
         (destination) => {
@@ -645,7 +645,7 @@ describe("isNavigationAllowed", () => {
         ...getStructuredQuestionLocations(structuredQuestion),
         ...getNativeQuestionLocations(nativeQuestion),
         newModelQueryTabLocation,
-        newModelMetadataTabLocation,
+        newModelColumnsTabLocation,
         newMetricQueryTabLocation,
         runQuestionEditNotebookLocation,
       ])("to `$pathname`", (destination) => {

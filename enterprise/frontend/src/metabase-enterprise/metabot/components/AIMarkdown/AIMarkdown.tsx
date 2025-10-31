@@ -1,16 +1,24 @@
 // TODO: consolidate this component w/ AIAnalysisContent
 
 import cx from "classnames";
-import { memo } from "react";
+import { memo, useMemo } from "react";
 
-import Link from "metabase/common/components/Link/Link";
 import Markdown, {
   type MarkdownProps,
 } from "metabase/common/components/Markdown";
+import { parseMetabaseProtocolLink } from "metabase-enterprise/metabot/utils/links";
 
 import S from "./AIMarkdown.module.css";
+import { InternalLink } from "./components/InternalLink";
+import { MarkdownSmartLink } from "./components/MarkdownSmartLink";
 
-const components = {
+type AIMarkdownProps = MarkdownProps & {
+  onInternalLinkClick?: (link: string) => void;
+};
+
+const getComponents = ({
+  onInternalLinkClick,
+}: Pick<AIMarkdownProps, "onInternalLinkClick">) => ({
   a: ({
     href,
     children,
@@ -22,11 +30,22 @@ const components = {
     node?: any;
     [key: string]: any;
   }) => {
-    if (href && href.startsWith("/")) {
+    const parsed = parseMetabaseProtocolLink(node.properties.href);
+    if (parsed) {
       return (
-        <Link to={href} variant="brand">
+        <MarkdownSmartLink
+          onInternalLinkClick={onInternalLinkClick}
+          name={String(node.children?.[0]?.value ?? "")}
+          {...parsed}
+        />
+      );
+    }
+
+    if (href?.startsWith("/")) {
+      return (
+        <InternalLink onInternalLinkClick={onInternalLinkClick} href={href}>
           {children}
-        </Link>
+        </InternalLink>
       );
     }
 
@@ -37,13 +56,23 @@ const components = {
       </a>
     );
   },
-};
+});
 
-export const AIMarkdown = memo(({ className, ...props }: MarkdownProps) => (
-  <Markdown
-    className={cx(S.aiMarkdown, className)}
-    components={components}
-    {...props}
-  />
-));
+export const AIMarkdown = memo(
+  ({ className, onInternalLinkClick, ...props }: AIMarkdownProps) => {
+    const components = useMemo(
+      () => getComponents({ onInternalLinkClick }),
+      [onInternalLinkClick],
+    );
+
+    return (
+      <Markdown
+        className={cx(S.aiMarkdown, className)}
+        components={components}
+        {...props}
+      />
+    );
+  },
+);
+
 AIMarkdown.displayName = "AIMarkdown";

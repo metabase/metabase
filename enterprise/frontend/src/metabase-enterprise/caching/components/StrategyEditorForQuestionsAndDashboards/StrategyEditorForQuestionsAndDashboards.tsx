@@ -92,6 +92,7 @@ const _StrategyEditorForQuestionsAndDashboards = ({
       ? {
           models: ["card"],
           ids: questionIds,
+          include_dashboard_questions: true,
           //FIXME: Add `ancestors: true` once jds/ancestors-for-all-the-things is merged
         }
       : skipToken,

@@ -9,7 +9,8 @@
   :encryption :no
   :default    "http://localhost:8000"
   :visibility :internal
-  :export?    false)
+  :export?    false
+  :doc        false)
 
 (defsetting site-uuid-for-metabot-tools
   "UUID that we use for encrypting JWT tokens given to the AI service to make callbacks with."
@@ -30,3 +31,21 @@
   :doc        false
   :export?    true
   :audit      :never)
+
+(defsetting metabot-id
+  (deferred-tru "Override Metabot ID for agent streaming requests.")
+  :type       :string
+  :visibility :internal
+  :feature    :metabot-v3
+  :encryption :no
+  :export?    false
+  :doc        false)
+
+(defsetting ai-service-profile-id
+  (deferred-tru "Override Metabot profile ID for agent streaming requests.")
+  :type       :string
+  :visibility :internal
+  :feature    :metabot-v3
+  :encryption :no
+  :export?    false
+  :doc        false)

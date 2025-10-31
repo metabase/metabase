@@ -65,6 +65,14 @@ export function setupCardsEndpoints(cards: Card[]) {
   cards.forEach((card) => setupCardEndpoints(card));
 }
 
+export function setupCardsUsingModelEndpoint(card: Card, usedBy: Card[] = []) {
+  fetchMock.get({
+    url: "path:/api/card",
+    query: { f: "using_model", model_id: card.id },
+    response: usedBy,
+  });
+}
+
 export function setupCardCreateEndpoint() {
   fetchMock.post(
     "path:/api/card",

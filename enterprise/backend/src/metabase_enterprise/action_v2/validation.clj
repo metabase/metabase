@@ -6,11 +6,12 @@
 
   Though we do want to have a light validation to gives users nice error messages."
   (:require
+   [java-time.api :as t]
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
-   [java.time LocalDate LocalTime LocalDateTime]
-   [java.time.format DateTimeFormatter DateTimeParseException]))
+   (java.time OffsetDateTime LocalDate LocalTime LocalDateTime)
+   (java.time.format DateTimeParseException)))
 
 (set! *warn-on-reflection* true)
 
@@ -76,7 +77,7 @@
   [_ttype value]
   (when-not (and (string? value)
                  (try
-                   (LocalDate/parse value (DateTimeFormatter/ofPattern "yyyy-MM-dd"))
+                   (LocalDate/parse value (t/formatter :iso-local-date))
                    true
                    (catch DateTimeParseException _
                      false)))
@@ -86,7 +87,7 @@
   [_ttype value]
   (when-not (and (string? value)
                  (try
-                   (LocalTime/parse value (DateTimeFormatter/ofPattern "HH:mm:ss"))
+                   (LocalTime/parse value (t/formatter :iso-local-time))
                    true
                    (catch DateTimeParseException _
                      false)))
@@ -95,15 +96,15 @@
 (defmethod validate-type :type/DateTime
   [_ttype value]
   (when-not (and (string? value)
-                 (some (fn [formatter]
+                 (some (fn [parser]
                          (try
-                           (LocalDateTime/parse value formatter)
+                           (parser value)
                            true
                            (catch DateTimeParseException _
                              false)))
-                       [(DateTimeFormatter/ofPattern "yyyy-MM-dd'T'HH:mm:ss")
-                        (DateTimeFormatter/ofPattern "yyyy-MM-dd'T'HH:mm:ss'Z'")]))
-    "Must be a valid datetime in format YYYY-MM-DDTHH:mm:ssZ"))
+                       [#(LocalDateTime/parse % (t/formatter :iso-local-date-time))
+                        #(OffsetDateTime/parse % (t/formatter :iso-offset-date-time))]))
+    "Must be a valid datetime in format YYYY-MM-DDTHH:mm:ss or YYYY-MM-DDTHH:mm:ssZ"))
 
 (defmethod validate-type :type/Boolean
   [_ttype value]

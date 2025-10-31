@@ -107,7 +107,7 @@
             ;; This :where clause is a set to avoid flakes, since the clause order will be non-deterministic.
             :where  #{:and
                       [:in :search_index.model (cond-> #{"dashboard" "table" "segment" "collection" "database" "action" "indexed-entity" "metric" "card"}
-                                                 config/ee-available? (conj "document"))]
+                                                 config/ee-available? (conj "document" "transform"))]
                       [:in :search_index.model_id ["1" "2" "3" "4"]]
                       [:in :search_index.model ["card" "dataset" "metric" "dashboard" "action"]]
                       [:= :search_index.archived true]

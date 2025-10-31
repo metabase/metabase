@@ -5,6 +5,8 @@
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.config.core :as config]
+   [metabase.events.core :as events]
    [metabase.timeline.models.timeline :as timeline]
    [metabase.timeline.models.timeline-event :as timeline-event]
    [metabase.util :as u]
@@ -33,13 +35,15 @@
                                                               [:icon          {:optional true} [:maybe timeline-event/Icon]]
                                                               [:collection_id {:optional true} [:maybe ms/PositiveInt]]
                                                               [:archived      {:optional true} [:maybe :boolean]]]]
-  (collection/check-write-perms-for-collection collection-id)
+  (api/create-check :model/Timeline {:collection_id collection-id})
   (let [tl (merge
             body
             {:creator_id api/*current-user-id*}
             (when-not icon
               {:icon timeline-event/default-icon}))]
-    (first (t2/insert-returning-instances! :model/Timeline tl))))
+    (u/prog1 (first (t2/insert-returning-instances! :model/Timeline tl))
+      (when config/ee-available?
+        (events/publish-event! :event/timeline-create {:object <> :user-id api/*current-user-id*})))))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::Timeline]
   "Fetch a list of `Timeline`s. Can include `archived=true` to return archived timelines."
@@ -53,7 +57,7 @@
                                               (collection/visible-collection-filter-clause)]
                                    :order-by [[:%lower.name :asc]]})
                        (map collection.root/hydrate-root-collection))]
-    (cond->> (t2/hydrate timelines :creator [:collection :can_write])
+    (cond->> (t2/hydrate timelines :creator [:collection :can_write] :is_remote_synced)
       (= include :events)
       (map #(timeline-event/include-events-singular % {:events/all? archived?})))))
 
@@ -69,7 +73,7 @@
                                             [:end      {:optional true}  ms/TemporalString]]]
   (let [archived? archived
         timeline  (api/read-check (t2/select-one :model/Timeline :id id))]
-    (cond-> (t2/hydrate timeline :creator [:collection :can_write])
+    (cond-> (t2/hydrate timeline :creator [:collection :can_write] :is_remote_synced)
       ;; `collection_id` `nil` means we need to assoc 'root' collection
       ;; because hydrate `:collection` needs a proper `:id` to work.
       (nil? (:collection_id timeline))
@@ -102,14 +106,18 @@
                                     :non-nil #{:name}))
     (when (and (some? archived) (not= current-archived archived))
       (t2/update! :model/TimelineEvent {:timeline_id id} {:archived archived}))
-    (t2/hydrate (t2/select-one :model/Timeline :id id) :creator [:collection :can_write])))
+    (u/prog1 (t2/hydrate (t2/select-one :model/Timeline :id id) :creator [:collection :can_write] :is_remote_synced)
+      (when config/ee-available?
+        (events/publish-event! :event/timeline-update {:object <> :user-id api/*current-user-id*})))))
 
 (api.macros/defendpoint :delete "/:id"
   "Delete a [[Timeline]]. Will cascade delete its events as well."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api/write-check :model/Timeline id)
-  (t2/delete! :model/Timeline :id id)
+  (let [timeline (api/write-check :model/Timeline id)]
+    (t2/delete! :model/Timeline :id id)
+    (when config/ee-available?
+      (events/publish-event! :event/timeline-delete {:object timeline :user-id api/*current-user-id*})))
   api/generic-204-no-content)
 
 (api.macros/defendpoint :get "/collection/root"

@@ -1,5 +1,7 @@
 (ns metabase.lib.schema.expression.string
+  #?(:clj (:refer-clojure :exclude [doseq]))
   (:require
+   #?(:clj [metabase.util.performance :refer [doseq]])
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.mbql-clause :as mbql-clause]))
 
@@ -31,8 +33,8 @@
   #_replace [:schema :string])
 
 (mbql-clause/define-catn-mbql-clause :substring :- :type/Text
-  [:str [:schema [:ref ::expression/string]]]
-  [:start [:schema [:ref ::expression/integer]]]
+  [:str    [:schema [:ref ::expression/string]]]
+  [:start  [:schema [:ref ::expression/integer]]]
   [:length [:? [:schema [:ref ::expression/integer]]]])
 
 (mbql-clause/define-tuple-mbql-clause :split-part :- :type/Text

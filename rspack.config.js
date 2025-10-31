@@ -4,7 +4,7 @@
 
 const configs = [require("./rspack.main.config")];
 
-if (process.env.MB_EDITION === "ee") {
+if (process.env.MB_EDITION === "ee" && process.env.SKIP_EMBEDDING_SDK !== "true") {
   // Build the embed.js script for the sdk iframe embedding.
   configs.push(require("./rspack.iframe-sdk-embed.config"));
   // Build the Embedding SDK npm package.

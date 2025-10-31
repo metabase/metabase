@@ -1,4 +1,5 @@
-import type { Document } from "metabase-types/api";
+import { uuid } from "metabase/lib/uuid";
+import type { Document, DocumentContent } from "metabase-types/api";
 
 import { createMockUser } from "./user";
 
@@ -7,7 +8,7 @@ export const createMockDocument = (opts?: Partial<Document>): Document => ({
   name: "Test Document",
   creator: createMockUser(),
   creator_id: 1,
-  document: { type: "doc", content: [] },
+  document: createMockDocumentContent(),
   version: 1,
   collection_id: null,
   created_at: "2024-01-01T10:30:00Z",
@@ -17,4 +18,22 @@ export const createMockDocument = (opts?: Partial<Document>): Document => ({
   can_restore: true,
   can_write: true,
   ...opts,
+});
+
+export const createMockDocumentContent = (
+  opts?: Partial<DocumentContent>,
+): DocumentContent => ({
+  type: "doc",
+  content: [],
+  ...opts,
+});
+
+export const createMockDocumentContentParagraph = (
+  text: string,
+): DocumentContent => ({
+  type: "paragraph",
+  attrs: {
+    _id: uuid(),
+  },
+  content: [{ type: "text", text }],
 });

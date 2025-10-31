@@ -10,12 +10,16 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2])
   (:import (clojure.lang ExceptionInfo)))
+
+(use-fixtures :each (fn [t]
+                      (mt/with-test-user :rasta
+                        (t))))
 
 (mu/defn- cast-values :- ::actions.args/row
   [driver        :- :keyword
@@ -231,7 +235,7 @@
      (testing "violate fk constraint"
        (testing "when creating"
          (is (=? {:message     "Unable to create a new record."
-                  :errors      {"group_id" "This Group-id does not exist."}
+                  :errors      {"group_id" "This value does not exist in table \"group\"."}
                   :type        actions.error/violate-foreign-key-constraint
                   :status-code 400}
                  (perform-action-ex-data :model.row/create (mt/$ids {:create-row {user-name    "new"
@@ -246,7 +250,7 @@
      (testing "violate fk constraint"
        (testing "when updating"
          (is (=? {:message     "Unable to update the record."
-                  :errors      {"group_id" "This Group-id does not exist."}
+                  :errors      {"group_id" "This value does not exist in table \"group\"."}
                   :type        actions.error/violate-foreign-key-constraint
                   :status-code 400}
                  (perform-action-ex-data :model.row/update (mt/$ids {:update-row {user-group-id 999}
@@ -260,7 +264,7 @@
    (fn [{:keys [db-id]}]
      (testing "violate fk constraint"
        (testing "when deleting"
-         (is (=? {:message "Other tables rely on this row so it cannot be deleted."
+         (is (=? {:message "Other rows refer to this row so it cannot be deleted."
                   :errors {}
                   :type        actions.error/violate-foreign-key-constraint
                   :status-code 400}

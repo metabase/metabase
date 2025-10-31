@@ -4,6 +4,7 @@
    [metabase-enterprise.semantic-search.core :as semantic]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.env :as semantic.env]
+   [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.test :as mt]))
 
@@ -16,20 +17,15 @@
 (defn- without-init! [test-func]
   (mt/with-premium-features #{:semantic-search}
     (try
-      (semantic.tu/cleanup-index-metadata! semantic.tu/db semantic.tu/mock-index-metadata)
-      (with-redefs [semantic.db.datasource/data-source (atom nil)
-                    semantic.env/get-index-metadata (constantly semantic.tu/mock-index-metadata)
-                    semantic.env/get-configured-embedding-model (constantly semantic.tu/mock-embedding-model)]
+      (semantic.tu/cleanup-index-metadata! (semantic.env/get-pgvector-datasource!)
+                                           semantic.tu/mock-index-metadata)
+      (with-redefs [semantic.db.datasource/data-source          (atom nil)
+                    semantic.env/get-index-metadata             (constantly semantic.tu/mock-index-metadata)
+                    semantic.env/get-configured-embedding-model (constantly semantic.tu/mock-embedding-model)
+                    semantic.index/model-table-suffix           semantic.tu/mock-table-suffix]
         (test-func))
       (finally
-        (semantic.tu/cleanup-index-metadata! semantic.tu/db semantic.tu/mock-index-metadata)))))
-
-(deftest reindex!-without-init!-test
-  (without-init!
-   #(testing "reindex! works without init!"
-      (semantic.tu/blocking-index!
-       (semantic/reindex! (semantic.tu/mock-documents) {}))
-      (semantic.tu/check-index-has-mock-docs))))
+        (semantic.tu/cleanup-index-metadata! (semantic.env/get-pgvector-datasource!) semantic.tu/mock-index-metadata)))))
 
 (deftest update-index!-without-init!-test
   (without-init!

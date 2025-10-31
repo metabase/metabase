@@ -1,4 +1,7 @@
 (ns ^:mb/driver-tests metabase.driver.sql-jdbc.sync.describe-database-test
+  {:clj-kondo/config '{:linters
+                       ;; allowing this for now since sync doesn't work with Metadata Providers
+                       {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
@@ -10,7 +13,7 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.util :as driver.u]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
@@ -83,14 +86,14 @@
                  sort))))))
 
 (deftest describe-database-test
-  (is (= {:tables #{{:name "USERS", :schema "PUBLIC", :description nil}
-                    {:name "VENUES", :schema "PUBLIC", :description nil}
-                    {:name "CATEGORIES", :schema "PUBLIC", :description nil}
-                    {:name "CHECKINS", :schema "PUBLIC", :description nil}
-                    {:name "ORDERS", :schema "PUBLIC", :description nil}
-                    {:name "PEOPLE", :schema "PUBLIC", :description nil}
-                    {:name "PRODUCTS", :schema "PUBLIC", :description nil}
-                    {:name "REVIEWS", :schema "PUBLIC", :description nil}}}
+  (is (= {:tables #{{:name "USERS", :schema "PUBLIC", :description nil, :is_writable true}
+                    {:name "VENUES", :schema "PUBLIC", :description nil, :is_writable true}
+                    {:name "CATEGORIES", :schema "PUBLIC", :description nil, :is_writable true}
+                    {:name "CHECKINS", :schema "PUBLIC", :description nil, :is_writable true}
+                    {:name "ORDERS", :schema "PUBLIC", :description nil, :is_writable true}
+                    {:name "PEOPLE", :schema "PUBLIC", :description nil, :is_writable true}
+                    {:name "PRODUCTS", :schema "PUBLIC", :description nil, :is_writable true}
+                    {:name "REVIEWS", :schema "PUBLIC", :description nil, :is_writable true}}}
          (sql-jdbc.describe-database/describe-database :h2 (mt/id)))))
 
 (defn- describe-database-with-open-resultset-count!
@@ -165,9 +168,8 @@
   [_driver _feature _database]
   true)
 
-;;; BigQuery is tested separately in [[metabase.driver.bigquery-cloud-sdk-test/dataset-filtering-test]], because
-;;; otherwise this test takes too long and flakes intermittently Redshift is also tested separately because it flakes.
-(doseq [driver [:bigquery-cloud-sdk :redshift]]
+;;; These drivers are tested separately because they take too long and flake in CI
+(doseq [driver [:bigquery-cloud-sdk :redshift :databricks]]
   (defmethod driver/database-supports? [driver ::database-schema-filtering-test]
     [_driver _feature _database]
     false))

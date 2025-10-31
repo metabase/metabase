@@ -46,7 +46,7 @@ export const InviteUserForm = ({
       validationContext={user}
       onSubmit={onSubmit}
     >
-      <Form>
+      <Form data-testid="invite-user-form">
         <UserFieldGroup>
           <FormInput
             name="first_name"

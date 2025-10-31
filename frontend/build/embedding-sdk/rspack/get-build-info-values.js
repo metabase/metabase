@@ -4,9 +4,10 @@ module.exports.getBuildInfoValues = ({ version }) => ({
     .execSync("git rev-parse --abbrev-ref HEAD")
     .toString()
     .trim(),
-  GIT_COMMIT: require("child_process")
+  GIT_COMMIT_SHA: require("child_process")
     .execSync("git rev-parse HEAD")
     .toString()
-    .trim(),
+    .trim()
+    .slice(0, 7),
   BUILD_TIME: new Date().toISOString(),
 });

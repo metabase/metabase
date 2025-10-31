@@ -72,7 +72,7 @@ function SearchApp({ location }) {
     [onChangeLocation, searchText],
   );
 
-  const { data, error, isFetching } = useSearchQuery(query);
+  const { data, error, isFetching, requestId } = useSearchQuery(query);
   const list = useMemo(() => {
     return data?.data?.map((item) => Search.wrapEntity(item, dispatch)) ?? [];
   }, [data, dispatch]);
@@ -103,7 +103,15 @@ function SearchApp({ location }) {
 
           {!error && !isFetching && list.length > 0 && (
             <Box>
-              <SearchResultSection totalResults={data.total} results={list} />
+              <SearchResultSection
+                totalResults={data.total}
+                results={list}
+                searchEngine={data.engine}
+                searchRequestId={requestId}
+                searchTerm={searchText}
+                page={page}
+                pageSize={PAGE_SIZE}
+              />
               <Group justify="flex-end" align="center" my="1rem">
                 <PaginationControls
                   showTotal

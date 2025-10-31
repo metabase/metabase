@@ -49,7 +49,7 @@ export function multiLevelPivot(data, settings) {
     indexes.map((index) =>
       _.memoize(
         (value) => formatValue(value, columnSettings[index]),
-        (value) => [value, index].join(),
+        (value) => JSON.stringify(value) + String(index),
       ),
     ),
   );
@@ -179,6 +179,7 @@ export function pivot(data, normalCol, pivotCol, cellCol) {
     columns: pivotValues,
     rows: pivotedRows,
     sourceRows,
+    rows_truncated: data.rows_truncated,
   };
 }
 

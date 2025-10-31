@@ -97,16 +97,19 @@ export const QuestionInfoSidebar = ({
           <Tabs.Panel value="overview">
             <Stack gap="lg">
               <SidesheetCard pb="md">
-                <Stack gap="sm">
+                <Stack gap={0}>
                   <SidesheetCardTitle>{t`Description`}</SidesheetCardTitle>
-                  <SidesheetEditableDescription
-                    description={description}
-                    onChange={handleSave}
-                    canWrite={canWrite}
-                  />
-                  <PLUGIN_MODERATION.ModerationReviewTextForQuestion
-                    question={question}
-                  />
+
+                  <Stack gap="sm">
+                    <SidesheetEditableDescription
+                      description={description}
+                      onChange={handleSave}
+                      canWrite={canWrite}
+                    />
+                    <PLUGIN_MODERATION.ModerationReviewTextForQuestion
+                      question={question}
+                    />
+                  </Stack>
                 </Stack>
               </SidesheetCard>
               <SidesheetCard>

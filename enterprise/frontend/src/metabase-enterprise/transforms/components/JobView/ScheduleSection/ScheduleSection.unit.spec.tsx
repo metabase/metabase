@@ -31,12 +31,17 @@ function setup({ job = createMockTransformJob() }: SetupOpts = {}) {
 
 describe("ScheduleSection", () => {
   it("should allow to change the schedule", async () => {
-    const { onScheduleChange } = setup();
+    const { onScheduleChange } = setup({
+      job: createMockTransformJob({ ui_display_type: "cron/raw" }),
+    });
     const cronInput = screen.getByPlaceholderText("For example 5 0 * Aug ?");
     await userEvent.clear(cronInput);
     await userEvent.type(cronInput, "0/12 * * * ?");
     await userEvent.tab();
-    expect(onScheduleChange).toHaveBeenCalledWith("0 0/12 * * * ? *");
+    expect(onScheduleChange).toHaveBeenCalledWith(
+      "0 0/12 * * * ? *",
+      "cron/raw",
+    );
   });
 
   it("should allow to manually run a job", async () => {

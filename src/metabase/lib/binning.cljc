@@ -1,4 +1,5 @@
 (ns metabase.lib.binning
+  (:refer-clojure :exclude [mapv select-keys])
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -14,14 +15,16 @@
    [metabase.util :as u]
    [metabase.util.formatting.numbers :as fmt.num]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [mapv select-keys]]))
 
 (defmulti with-binning-method
   "Implementation for [[with-binning]]. Implement this to tell [[with-binning]] how to add binning to a particular MBQL
   clause."
   {:arglists '([x binning])}
   (fn [x _binning]
-    (lib.dispatch/dispatch-value x)) :hierarchy lib.hierarchy/hierarchy)
+    (lib.dispatch/dispatch-value x))
+  :hierarchy lib.hierarchy/hierarchy)
 
 (mu/defn with-binning
   "Add binning to an MBQL clause or something that can be converted to an MBQL clause.
@@ -231,6 +234,7 @@
 ;;; belongs in Lib in its current shape.
 (defn ensure-binning-in-display-name
   "Update results column so binning is contained in its display_name."
+  {:deprecated "0.57.0"}
   [column]
   (if (:binning_info column)
     (update column :display_name #(ensure-ends-with-binning %1

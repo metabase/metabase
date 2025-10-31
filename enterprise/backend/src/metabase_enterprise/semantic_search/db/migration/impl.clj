@@ -7,7 +7,7 @@
 (def schema-version
   "Version to compare the [[metabase-enterprise.semantic-search.db.migration/db-version]] with. If this is higher,
   schema migration will be performed."
-  1)
+  2)
 
 (defn- drop-all-but-migration-table
   [tx]

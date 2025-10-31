@@ -1,7 +1,9 @@
 (ns metabase.lib.expression
-  (:refer-clojure :exclude [+ - * / case coalesce abs time concat replace float])
+  (:refer-clojure :exclude [+ - * / case coalesce abs time concat replace float mapv some select-keys
+                            #?(:clj doseq) #?(:clj for)])
   (:require
    [clojure.string :as str]
+   [malli.core :as mc]
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -26,7 +28,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.number :as u.number]))
+   [metabase.util.number :as u.number]
+   [metabase.util.performance :refer [mapv some select-keys #?(:clj doseq) #?(:clj for)]]))
 
 (mu/defn column-metadata->expression-ref :- :mbql.clause/expression
   "Given `:metadata/column` column metadata for an expression, construct an `:expression` reference."
@@ -392,8 +395,14 @@
    [:relative-datetime {:lib/uuid (str (random-uuid))} t])
 
   ([t    :- ::lib.schema.expression.temporal/relative-datetime.amount
-    unit :- ::lib.schema.temporal-bucketing/unit.date-time.interval]
+    unit :- ::lib.schema.expression.temporal/relative-datetime.unit]
    [:relative-datetime {:lib/uuid (str (random-uuid))} t unit]))
+
+(doseq [tag [:relative-datetime
+             :absolute-datetime]]
+  (defmethod lib.temporal-bucket/temporal-bucket-method tag
+    [[_tag _opts _t unit]]
+    unit))
 
 (mu/defn value :- ::lib.schema.expression/expression
   "Creates a `:value` clause for the `literal`. Converts bigint literals to strings for serialization purposes."
@@ -510,6 +519,9 @@
 (def ^:private expression-validator
   (mr/validator ::lib.schema.expression/expression))
 
+(def ^:private expression-explainer
+  (mr/explainer ::lib.schema.expression/expression))
+
 (defn expression-clause?
   "Returns true if `expression-clause` is indeed an expression clause, false otherwise."
   [expression-clause]
@@ -538,11 +550,11 @@
              (assoc :lib/expression-name new-name))
          (assoc opts :name new-name :display-name new-name))))))
 
-(def ^:private aggregation-validator
-  (mr/validator ::lib.schema.aggregation/aggregation))
+(def ^:private aggregation-explainer
+  (mr/explainer ::lib.schema.aggregation/aggregation))
 
-(def ^:private filter-validator
-  (mr/validator ::lib.schema.expression/boolean))
+(def ^:private filter-explainer
+  (mr/explainer ::lib.schema.expression/boolean))
 
 (defn- expression->name
   [expr]
@@ -628,13 +640,22 @@
    expr                :- :any
    expression-position :- [:maybe :int]]
   (binding [lib.schema.expression/*suppress-expression-type-check?* false]
-    (let [validator (clojure.core/case expression-mode
-                      :expression expression-validator
-                      :aggregation aggregation-validator
-                      :filter filter-validator)]
-      (or (when-not (validator expr)
-            {:message  (i18n/tru "Types are incompatible.")
-             :friendly true})
+    (let [explainer (clojure.core/case expression-mode
+                      :expression expression-explainer
+                      :aggregation aggregation-explainer
+                      :filter filter-explainer)]
+      (or (when-let [explanation (explainer expr)]
+            (let [error (first (:errors explanation))
+                  schema (:schema error)
+                  props (or (mc/properties schema)
+                            (mc/type-properties schema))
+                  error-friendly? (:error/friendly props)
+                  error-message-or-fn (:error/message props)
+                  error-message (if (fn? error-message-or-fn) (str (error-message-or-fn)) (str error-message-or-fn))
+                  fallback-message (i18n/tru "Types are incompatible.")
+                  message (if error-friendly? error-message fallback-message)]
+              {:message message
+               :friendly true}))
           (when-let [dependency-path
                      (when expression-position
                        (clojure.core/case expression-mode

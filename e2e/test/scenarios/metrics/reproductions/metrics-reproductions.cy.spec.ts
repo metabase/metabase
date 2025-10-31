@@ -201,3 +201,50 @@ describe("issue 32037", () => {
     });
   });
 });
+
+describe("issue 30574", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not throw when diving a metric by another metric with a custom aggregation expression with a custom name (metabase#30574)", () => {
+    cy.visit("/browse/metrics");
+
+    cy.log("create the first metric");
+    H.main().findByText("Create metric").click();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").click();
+    });
+    cy.findByTestId("edit-bar").button("Save").click();
+    H.modal().within(() => {
+      cy.findByLabelText("Name").clear().type("M1");
+      cy.button("Save").click();
+    });
+    H.queryBuilderHeader().should("be.visible");
+
+    cy.log("create the second metric");
+    H.openNavigationSidebar();
+    H.navigationSidebar().findByText("Metrics").click();
+    H.main().findByLabelText("Create a new metric").click();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").click();
+    });
+    H.getNotebookStep("summarize").findByText("Count").click();
+    H.popover().findByText("Custom Expression").click();
+    H.enterCustomColumnDetails({
+      name: "X",
+      formula: "[M1]/[M1]",
+    });
+    H.popover().button("Update").click();
+    cy.findByTestId("edit-bar").button("Save").click();
+    H.modal().within(() => {
+      cy.findByLabelText("Name").clear().type("M2");
+      cy.button("Save").click();
+    });
+    H.queryBuilderHeader().should("be.visible");
+    H.assertQueryBuilderRowCount(1);
+  });
+});

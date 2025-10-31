@@ -9,6 +9,7 @@ import {
   getPermissionErrorMessage,
 } from "metabase/visualizations/lib/errors";
 import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
+import Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   areParameterValuesIdentical,
@@ -37,7 +38,7 @@ import type {
 import type { SelectedTabId } from "metabase-types/store";
 
 export function syncParametersAndEmbeddingParams(before: any, after: any) {
-  if (after.parameters && before.embedding_params) {
+  if (after.parameters && before.embedding_params && before.enable_embedding) {
     return Object.keys(before.embedding_params).reduce((memo, embedSlug) => {
       const slugParam = _.find(before.parameters, (param) => {
         return param.slug === embedSlug;
@@ -198,7 +199,11 @@ export function getInlineParameterTabMap(dashboard: Dashboard) {
 
 export function isNativeDashCard(dashcard: QuestionDashboardCard) {
   // The `dataset_query` is null for questions on a dashboard the user doesn't have access to
-  return dashcard.card.dataset_query?.type === "native";
+  if (dashcard.card.dataset_query == null) {
+    return false;
+  }
+  const question = new Question(dashcard.card);
+  return question.isNative();
 }
 
 // For a virtual (text) dashcard without any parameters, returns a boolean indicating whether we should display the
@@ -207,11 +212,9 @@ export function showVirtualDashCardInfoText(
   dashcard: DashboardCard,
   isMobile: boolean,
 ) {
-  if (isVirtualDashCard(dashcard)) {
-    return isMobile || dashcard.size_y > 2 || dashcard.size_x > 5;
-  } else {
-    return true;
-  }
+  const dashcardAreaSize = dashcard.size_y * dashcard.size_x;
+
+  return isMobile || (dashcardAreaSize >= 12 && dashcard.size_x > 3);
 }
 
 export function getAllDashboardCards(dashboard: Dashboard) {

@@ -7,6 +7,7 @@ import {
   CopyDashboardFormConnected,
   type CopyDashboardFormProperties,
 } from "metabase/dashboard/containers/CopyDashboardForm";
+import { PLUGIN_DOCUMENTS } from "metabase/plugins";
 import { CopyQuestionForm } from "metabase/questions/components/CopyQuestionForm";
 
 interface EntityCopyModalProps {
@@ -64,6 +65,16 @@ const EntityCopyModal = ({
       )}
       {entityType === "questions" && (
         <CopyQuestionForm
+          onSubmit={copy}
+          onCancel={onClose}
+          onSaved={onSaved}
+          initialValues={initialValues}
+          model={entityObject?.type}
+          {...props}
+        />
+      )}
+      {entityType === "documents" && (
+        <PLUGIN_DOCUMENTS.DocumentCopyForm
           onSubmit={copy}
           onCancel={onClose}
           onSaved={onSaved}

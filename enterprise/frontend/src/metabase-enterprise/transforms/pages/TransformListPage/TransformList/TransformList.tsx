@@ -3,8 +3,10 @@ import { t } from "ttag";
 
 import { AdminContentTable } from "metabase/common/components/AdminContentTable";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
-import { Card } from "metabase/ui";
+import * as Urls from "metabase/lib/urls";
+import { Card, Flex } from "metabase/ui";
 import {
   useListTransformTagsQuery,
   useListTransformsQuery,
@@ -14,17 +16,27 @@ import type { Transform } from "metabase-types/api";
 import { ListEmptyState } from "../../../components/ListEmptyState";
 import { RunStatusInfo } from "../../../components/RunStatusInfo";
 import { TagList } from "../../../components/TagList";
-import { getTransformUrl } from "../../../urls";
-import { parseLocalTimestamp } from "../../../utils";
+import { TimezoneIndicator } from "../../../components/TimezoneIndicator";
+import { parseTimestampWithTimezone } from "../../../utils";
+import { hasFilterParams } from "../utils";
 
 import S from "./TransformList.module.css";
 
-export function TransformList() {
+type TransformListProps = {
+  params: Urls.TransformListParams;
+};
+
+export function TransformList({ params }: TransformListProps) {
+  const systemTimezone = useSetting("system-timezone");
   const {
     data: transforms = [],
     isLoading: isLoadingTransforms,
     error: transformsError,
-  } = useListTransformsQuery();
+  } = useListTransformsQuery({
+    last_run_start_time: params.lastRunStartTime,
+    last_run_statuses: params.lastRunStatuses,
+    tag_ids: params.tagIds,
+  });
   const {
     data: tags = [],
     isLoading: isLoadingTags,
@@ -35,7 +47,7 @@ export function TransformList() {
   const dispatch = useDispatch();
 
   const handleRowClick = (transform: Transform) => {
-    dispatch(push(getTransformUrl(transform.id)));
+    dispatch(push(Urls.transform(transform.id)));
   };
 
   if (isLoading || error != null) {
@@ -43,7 +55,12 @@ export function TransformList() {
   }
 
   if (transforms.length === 0) {
-    return <ListEmptyState label={t`No transforms yet`} />;
+    const hasFilters = hasFilterParams(params);
+    return (
+      <ListEmptyState
+        label={hasFilters ? t`No transforms found` : t`No transforms yet`}
+      />
+    );
   }
 
   return (
@@ -52,8 +69,13 @@ export function TransformList() {
         columnTitles={[
           t`Transform`,
           t`Target`,
-          t`Last run at`,
-          t`Last run status`,
+          <Flex key="last-run-at" component="span" align="center" gap="xs">
+            <span className={S.nowrap}>{t`Last run at`}</span>{" "}
+            <TimezoneIndicator />
+          </Flex>,
+          <span key="last-run-status" className={S.nowrap}>
+            {t`Last run status`}
+          </span>,
           t`Tags`,
         ]}
       >
@@ -63,29 +85,33 @@ export function TransformList() {
             className={S.row}
             onClick={() => handleRowClick(transform)}
           >
-            <td>{transform.name}</td>
-            <td>{transform.target.name}</td>
-            <td>
+            <td className={S.wrap}>{transform.name}</td>
+            <td className={S.wrap}>{transform.target.name}</td>
+            <td className={S.nowrap}>
               {transform.last_run?.end_time
-                ? parseLocalTimestamp(transform.last_run.end_time).format("lll")
+                ? parseTimestampWithTimezone(
+                    transform.last_run.end_time,
+                    systemTimezone,
+                  ).format("lll")
                 : null}
             </td>
-            <td>
+            <td className={S.nowrap}>
               {transform.last_run != null ? (
                 <RunStatusInfo
                   status={transform.last_run.status}
                   message={transform.last_run.message}
                   endTime={
                     transform.last_run.end_time != null
-                      ? parseLocalTimestamp(
+                      ? parseTimestampWithTimezone(
                           transform.last_run.end_time,
+                          systemTimezone,
                         ).toDate()
                       : null
                   }
                 />
               ) : null}
             </td>
-            <td>
+            <td className={S.wrap}>
               <TagList tags={tags} tagIds={transform.tag_ids ?? []} />
             </td>
           </tr>

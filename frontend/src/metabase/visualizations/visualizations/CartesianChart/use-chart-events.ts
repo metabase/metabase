@@ -412,13 +412,11 @@ export const useChartEvents = (
         cardId: seriesModel.cardId,
         dimensions,
         settings,
+        element: event.currentTarget,
       };
 
       if (hasBreakout && visualizationIsClickable(clickData)) {
-        onVisualizationClick({
-          ...clickData,
-          element: event.currentTarget,
-        });
+        onVisualizationClick(clickData);
       } else if (isDashboard) {
         onOpenQuestion(seriesModel.cardId);
       }

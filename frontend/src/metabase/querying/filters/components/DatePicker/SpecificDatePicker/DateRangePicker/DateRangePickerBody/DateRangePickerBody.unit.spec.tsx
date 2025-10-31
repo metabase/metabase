@@ -52,4 +52,36 @@ describe("DateRangePickerBody", () => {
       new Date(2020, 1, 8),
     ]);
   });
+
+  describe("text input synchronization with calendar navigation", () => {
+    it("should navigate calendar with start date input (metabase#64602)", async () => {
+      setup({
+        value: [new Date(2020, 0, 5), new Date(2020, 1, 20)], // Jan 5 - Feb 20
+      });
+
+      expect(screen.getByText("January 2020")).toBeInTheDocument();
+
+      const dateInput = screen.getByLabelText("Start date");
+      await userEvent.clear(dateInput);
+      await userEvent.type(dateInput, "03/15/2020");
+
+      expect(screen.getByText("March 2020")).toBeInTheDocument();
+      expect(screen.queryByText("January 2020")).not.toBeInTheDocument();
+    });
+
+    it("should navigate calendar with end date input (metabase#64602)", async () => {
+      setup({
+        value: [new Date(2020, 0, 5), new Date(2020, 1, 20)], // Jan 5 - Feb 20
+      });
+
+      expect(screen.getByText("January 2020")).toBeInTheDocument();
+
+      const dateInput = screen.getByLabelText("End date");
+      await userEvent.clear(dateInput);
+      await userEvent.type(dateInput, "01/15/2019");
+
+      expect(screen.getByText("January 2019")).toBeInTheDocument();
+      expect(screen.queryByText("January 2020")).not.toBeInTheDocument();
+    });
+  });
 });

@@ -1,10 +1,13 @@
 import { createContext, useContext } from "react";
 
-import type { Parameter } from "metabase-types/api";
+import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
+import type { EmbeddingParametersValues } from "metabase/public/lib/types";
+import type { Card, Dashboard, Parameter } from "metabase-types/api";
 
 import type {
   SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupRecentItem,
+  SdkIframeEmbedSetupRecentItemType,
   SdkIframeEmbedSetupSettings,
   SdkIframeEmbedSetupStep,
 } from "./types";
@@ -14,24 +17,38 @@ export interface SdkIframeEmbedSetupContextType {
   currentStep: SdkIframeEmbedSetupStep;
   setCurrentStep: (step: SdkIframeEmbedSetupStep) => void;
 
+  // Initial state
+  initialState: SdkIframeEmbedSetupModalInitialState | undefined;
+
   experience: SdkIframeEmbedSetupExperience;
+
+  // Loaded resources
+  resource: Dashboard | Card | null;
+  isError: boolean;
+  isLoading: boolean;
+  isFetching: boolean;
 
   // Embed settings
   settings: SdkIframeEmbedSetupSettings;
+  defaultSettings: {
+    resourceId: string | number;
+    experience: SdkIframeEmbedSetupExperience;
+  };
   updateSettings: (nextSettings: Partial<SdkIframeEmbedSetupSettings>) => void;
   replaceSettings: (settings: SdkIframeEmbedSetupSettings) => void;
 
   // Recent items
   recentDashboards: SdkIframeEmbedSetupRecentItem[];
   recentQuestions: SdkIframeEmbedSetupRecentItem[];
+  recentCollections: SdkIframeEmbedSetupRecentItem[];
   addRecentItem: (
-    type: "dashboard" | "question",
+    type: SdkIframeEmbedSetupRecentItemType,
     recentItem: SdkIframeEmbedSetupRecentItem,
   ) => void;
 
   // Parameters for dashboards and questions
   availableParameters: Parameter[];
-  isLoadingParameters: boolean;
+  parametersValuesById: EmbeddingParametersValues;
 
   isEmbedSettingsLoaded: boolean;
 }

@@ -1163,7 +1163,7 @@ const assertQ1PlusQ2Joins = () => {
 
     cy.findByLabelText("Right column").within(() => {
       cy.findByText(QUESTION_2.name).should("exist");
-      cy.findByText("Category").should("exist");
+      cy.findByText("Q2 - Category → Category").should("exist");
     });
   });
 };

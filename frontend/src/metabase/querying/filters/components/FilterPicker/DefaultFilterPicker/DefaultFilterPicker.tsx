@@ -20,6 +20,7 @@ export function DefaultFilterPicker({
   withSubmitButton,
   onBack,
   onChange,
+  readOnly,
 }: FilterPickerWidgetProps) {
   const columnInfo = useMemo(
     () => Lib.displayInfo(query, stageIndex, column),
@@ -70,6 +71,7 @@ export function DefaultFilterPicker({
       <FilterPickerHeader
         columnName={columnInfo.longDisplayName}
         onBack={onBack}
+        readOnly={readOnly}
       />
       <div>
         <Radio.Group value={operator} onChange={handleOperatorChange}>

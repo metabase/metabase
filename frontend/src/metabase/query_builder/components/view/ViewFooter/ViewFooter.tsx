@@ -7,7 +7,7 @@ import {
   getIsVisualized,
   getQuestion,
 } from "metabase/query_builder/selectors";
-import { Group } from "metabase/ui";
+import { Box, Group } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import ViewSection from "../ViewSection";
@@ -38,7 +38,7 @@ export const ViewFooter = ({ className }: ViewFooterProps) => {
       data-testid="view-footer"
     >
       <Group justify="space-between" pos="relative" wrap="nowrap" w="100%">
-        {!hideChartSettings && <LeftViewFooterButtonGroup />}
+        {hideChartSettings ? <Box flex={1} /> : <LeftViewFooterButtonGroup />}
         {isVisualized && <CenterViewFooterButtonGroup />}
         <RightViewFooterButtonGroup />
       </Group>

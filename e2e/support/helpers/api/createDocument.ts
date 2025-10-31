@@ -9,11 +9,13 @@ export const createDocument = ({
   collection_id,
   document,
   alias,
+  idAlias,
 }: {
   name: string;
   collection_id?: RegularCollectionId | null;
   document: DocumentContent;
   alias?: string;
+  idAlias?: string;
 }): Cypress.Chainable<Cypress.Response<Document>> => {
   cy.log(`Create a document: ${name}`);
 
@@ -25,7 +27,10 @@ export const createDocument = ({
     })
     .then((response) => {
       if (alias) {
-        cy.wrap(response.body.id).as(alias);
+        cy.wrap(response.body).as(alias);
+      }
+      if (idAlias) {
+        cy.wrap(response.body.id).as(idAlias);
       }
     });
 };

@@ -50,7 +50,7 @@ Current customers can add storage through the Metabase Store:
 
 ## Metabase Cloud Storage pricing
 
-Pricing depends on how much data you need to store. See the Storage section on our [pricing page](/pricing/).
+Pricing depends on how much data you need to store. See the Storage section on our [pricing page](https://www.metabase.com/pricing/).
 
 ## Increasing Metabase Cloud Storage
 

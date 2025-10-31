@@ -38,6 +38,9 @@
   "Schema for a valid `Field` visibility type."
   (into [:enum] (map name field/visibility-types)))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/:id"
   "Get `Field` with ID."
   [{:keys [id]} :- [:map
@@ -265,6 +268,8 @@
       (api/check-500 (pos? updated-pk))))
   {:status :success})
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :post "/:id/rescan_values"
   "Manually trigger an update for the FieldValues for this Field. Only applies to Fields that are eligible for
    FieldValues."
@@ -279,6 +284,8 @@
       (field-values/create-or-update-full-field-values! field)))
   {:status :success})
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :post "/:id/discard_values"
   "Discard the FieldValues belonging to this Field. Only applies to fields that have FieldValues. If this Field's
    Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."

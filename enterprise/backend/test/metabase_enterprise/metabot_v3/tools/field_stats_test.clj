@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.tools.field-stats :as metabot-v3.tools.field-stats]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
@@ -39,7 +38,7 @@
 (deftest field-values-table-test
   (ensure-fresh-field-values! (mt/id :people :state))
   (ensure-fresh-field-values! (mt/id :products :category))
-  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [mp (mt/metadata-provider)
         people-id (mt/id :people)
         people-query (table-query mp people-id)
         birth-date-id (visible-field-id people-query (metabot-v3.tools.u/table-field-id-prefix people-id) "Birth Date")
@@ -84,7 +83,7 @@
   (ensure-fresh-field-values! (mt/id :products :category))
   (mt/with-temp [:model/Card {model-id :id} {:dataset_query (mt/mbql-query orders)
                                              :type :model}]
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [mp (mt/metadata-provider)
           model-query (lib/query mp (lib.metadata/card mp model-id))
           field-id-prefix (metabot-v3.tools.u/card-field-id-prefix model-id)
           birth-date-id (visible-field-id model-query field-id-prefix "Birth Date")
@@ -127,7 +126,7 @@
                                                                {:aggregation [[:count]]
                                                                 :breakout    [!year.user_id->people.birth_date]})
                                               :type :metric}]
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [mp (mt/metadata-provider)
           metric-query (lib/query mp (lib.metadata/metric mp metric-id))
           field-id-prefix (metabot-v3.tools.u/card-field-id-prefix metric-id)
           birth-date-id (filterable-field-id metric-query field-id-prefix "Birth Date")]

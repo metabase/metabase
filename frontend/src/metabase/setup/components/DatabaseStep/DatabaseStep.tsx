@@ -4,6 +4,13 @@ import { c, t } from "ttag";
 import { useToast } from "metabase/common/hooks";
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import {
+  getDatabase,
+  getDatabaseEngine,
+  getInvite,
+  getIsEmailConfigured,
+  getUser,
+} from "metabase/setup";
 import { Text } from "metabase/ui";
 import type { DatabaseData } from "metabase-types/api";
 import type { InviteInfo } from "metabase-types/store";
@@ -14,13 +21,6 @@ import {
   submitUserInvite,
   updateDatabaseEngine,
 } from "../../actions";
-import {
-  getDatabase,
-  getDatabaseEngine,
-  getInvite,
-  getIsEmailConfigured,
-  getUser,
-} from "../../selectors";
 import { useStep } from "../../useStep";
 import { ActiveStep } from "../ActiveStep";
 import { InactiveStep } from "../InactiveStep";
@@ -54,8 +54,8 @@ export const DatabaseStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
     }
   };
 
-  const handleInviteSubmit = (invite: InviteInfo) => {
-    dispatch(submitUserInvite(invite));
+  const handleInviteSubmit = async (invite: InviteInfo) => {
+    await dispatch(submitUserInvite(invite)).unwrap();
   };
 
   const handleStepCancel = () => {
@@ -72,6 +72,8 @@ export const DatabaseStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
     );
   }
 
+  const optional = <strong key="optional">{t`(optional)`}</strong>;
+
   return (
     <ActiveStep
       title={getStepTitle(database, invite, isStepCompleted)}
@@ -79,7 +81,7 @@ export const DatabaseStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
     >
       <Text mt="sm" mb="md">
         {c("{0} referes to the word '(optional)'")
-          .jt`Are you ready to start exploring your data? Add it below ${(<strong key="optional">{t`(optional)`}</strong>)}.`}
+          .jt`Are you ready to start exploring your data? Add it below ${optional}.`}
       </Text>
 
       <DatabaseForm

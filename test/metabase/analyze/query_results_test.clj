@@ -7,7 +7,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.sync :as test.sync]
@@ -94,7 +94,7 @@
                 "as it's just an integer flowing through, similarly Price isn't found to be a category as we're inferring by name "
                 "only")
     (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
-                                      (mt/application-database-metadata-provider (mt/id))
+                                      (mt/metadata-provider)
                                       {:cards [{:id            1
                                                 :dataset-query {:database (mt/id)
                                                                 :type     :native

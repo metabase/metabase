@@ -6,13 +6,17 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
-   [metabase.models.interface :as mi]
+   [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries.core :as card]
    [metabase.query-permissions.core :as query-perms]
+   [metabase.query-processor.api :as api.dataset]
+   [metabase.query-processor.card :as qp.card]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -130,7 +134,7 @@
   [id]
   (u/prog1 (api/check-404
             (api/read-check
-             (t2/hydrate (t2/select-one :model/Document :id id) :creator :can_write :can_delete :can_restore)))
+             (t2/hydrate (t2/select-one :model/Document :id id) :creator :can_write :can_delete :can_restore :is_remote_synced)))
     (events/publish-event! :event/document-read
                            {:object-id id
                             :user-id api/*current-user-id*})))
@@ -142,38 +146,39 @@
   {:items (t2/hydrate (t2/select :model/Document {:where [:and
                                                           (collection/visible-collection-filter-clause)
                                                           [:= :archived false]]})
-                      :creator :can_write)})
+                      :creator :can_write :is_remote_synced)})
 
 (api.macros/defendpoint :post "/"
   "Create a new `Document`."
   [_route-params
    _query-params
    {:keys [name document collection_id collection_position cards]} :- DocumentCreateOptions]
-  (collection/check-write-perms-for-collection collection_id)
-  (let [document-id (t2/with-transaction [_conn]
-                      (when collection_position
-                        (api/maybe-reconcile-collection-position! {:collection_id collection_id
-                                                                   :collection_position collection_position}))
-                      (let [document-id (t2/insert-returning-pk! :model/Document {:name name
-                                                                                  :collection_id collection_id
-                                                                                  :collection_position collection_position
-                                                                                  :document document
-                                                                                  :content_type prose-mirror/prose-mirror-content-type
-                                                                                  :creator_id api/*current-user-id*})
-                            cards-to-update-in-ast (merge (clone-cards-in-document! {:id document-id
-                                                                                     :collection_id collection_id
-                                                                                     :document document
-                                                                                     :content_type prose-mirror/prose-mirror-content-type})
-                                                          (when-not (empty? cards)
-                                                            (create-cards-for-document! cards document-id collection_id @api/*current-user*)))]
-                        (when (seq cards-to-update-in-ast)
-                          (t2/update! :model/Document :id document-id
-                                      (update-cards-in-ast
-                                       {:document document
-                                        :content_type prose-mirror/prose-mirror-content-type}
-                                       cards-to-update-in-ast)))
-                        document-id))
-        created-document (get-document document-id)]
+  (api/create-check :model/Document {:collection_id collection_id})
+  (let [created-document (t2/with-transaction [_conn]
+                           (when collection_position
+                             (api/maybe-reconcile-collection-position! {:collection_id collection_id
+                                                                        :collection_position collection_position}))
+                           (let [document-id (t2/insert-returning-pk! :model/Document {:name name
+                                                                                       :collection_id collection_id
+                                                                                       :collection_position collection_position
+                                                                                       :document document
+                                                                                       :content_type prose-mirror/prose-mirror-content-type
+                                                                                       :creator_id api/*current-user-id*})
+                                 cards-to-update-in-ast (merge (clone-cards-in-document! {:id document-id
+                                                                                          :collection_id collection_id
+                                                                                          :document document
+                                                                                          :content_type prose-mirror/prose-mirror-content-type})
+                                                               (when-not (empty? cards)
+                                                                 (create-cards-for-document! cards document-id collection_id @api/*current-user*)))]
+                             (when (seq cards-to-update-in-ast)
+                               (t2/update! :model/Document :id document-id
+                                           (update-cards-in-ast
+                                            {:document document
+                                             :content_type prose-mirror/prose-mirror-content-type}
+                                            cards-to-update-in-ast)))
+                             (u/prog1 (get-document document-id)
+                               (when (collections/remote-synced-collection? (:collection_id <>))
+                                 (collections/check-non-remote-synced-dependencies <>)))))]
     ;; Publish event after successful creation
     (events/publish-event! :event/document-create
                            {:object created-document
@@ -192,7 +197,9 @@
    _query-params
    {:keys [name document collection_id collection_position cards] :as body} :- DocumentUpdateOptions]
   (let [existing-document (api/check-404 (get-document document-id))]
-    (api/check-403 (mi/can-write? existing-document))
+    (when-not (contains? body :archived)
+      (api/check-not-archived existing-document))
+    (api/write-check existing-document)
     (when (api/column-will-change? :collection_id existing-document body)
       (m.document/validate-collection-move-permissions (:collection_id existing-document) collection_id))
 
@@ -213,7 +220,8 @@
                                         (clone-cards-in-document! (assoc existing-document :document document))
                                         (when-not (empty? cards) (create-cards-for-document! cards document-id collection_id @api/*current-user*)))))
                       name (assoc :name name)
-                      (contains? body :collection_id) (assoc :collection_id collection_id))))
+                      (contains? body :collection_id) (assoc :collection_id collection_id)))
+        (collections/check-for-remote-sync-update existing-document))
       (let [updated-document (get-document document-id)]
         ;; Publish appropriate events
         (if (:archived document-updates)
@@ -229,7 +237,7 @@
   "Permanently deletes an archived Document."
   [{:keys [document-id]} :- [:map [:document-id ms/PositiveInt]]]
   (let [document (api/check-404 (t2/select-one :model/Document :id document-id))]
-    (api/check-403 (mi/can-write? document))
+    (api/write-check document)
     (when-not (:archived document)
       (let [msg (tru "Document must be archived before it can be deleted.")]
         (throw (ex-info msg {:status-code 400, :errors {:archived msg}}))))
@@ -238,6 +246,129 @@
                            {:object document
                             :user-id api/*current-user-id*})
     api/generic-204-no-content))
+
+;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
+
+(api.macros/defendpoint :post "/:document-id/public-link" :- [:map [:uuid ms/UUIDString]]
+  "Generate a publicly-accessible UUID for a Document.
+
+  Creates a public link that allows viewing the Document without authentication. If the Document already has
+  a public UUID, returns the existing one rather than generating a new one. This enables sharing the Document
+  via `GET /api/ee/public/document/:uuid`.
+
+  Returns a map containing `:uuid` (the public UUID string).
+
+  Requires superuser permissions. Public sharing must be enabled via the `enable-public-sharing` setting."
+  [{:keys [document-id]} :- [:map
+                             [:document-id ms/PositiveInt]]]
+  (api/check-superuser)
+  (public-sharing.validation/check-public-sharing-enabled)
+  (api/check-exists? :model/Document :id document-id, :archived false)
+  ;; Use a transaction to prevent race conditions when two requests arrive simultaneously.
+  ;; Only one request will successfully create the UUID; both will return the same value.
+  (t2/with-transaction [_conn]
+    (if-let [existing-uuid (t2/select-one-fn :public_uuid :model/Document :id document-id)]
+      {:uuid existing-uuid}
+      (do
+        (t2/update! :model/Document document-id
+                    {:public_uuid       (str (random-uuid))
+                     :made_public_by_id api/*current-user-id*})
+        ;; Always select after update to ensure we return what's actually stored
+        {:uuid (t2/select-one-fn :public_uuid :model/Document :id document-id)}))))
+
+(api.macros/defendpoint :delete "/:document-id/public-link"
+  "Remove the public link for a Document.
+
+  Deletes the public UUID from the Document, making it no longer accessible via the public sharing endpoint.
+  This revokes public access to the Document - the existing public link will no longer work.
+
+  Returns a 204 No Content response on success.
+
+  Requires superuser permissions. Public sharing must be enabled via the `enable-public-sharing` setting.
+  Throws a 404 if the Document doesn't exist, is archived, or doesn't have a public link."
+  [{:keys [document-id]} :- [:map
+                             [:document-id ms/PositiveInt]]]
+  (api/check-superuser)
+  (public-sharing.validation/check-public-sharing-enabled)
+  (api/check-exists? :model/Document :id document-id, :public_uuid [:not= nil], :archived false)
+  (t2/update! :model/Document document-id
+              {:public_uuid       nil
+               :made_public_by_id nil})
+  api/generic-204-no-content)
+
+(api.macros/defendpoint :get "/public" :- [:sequential [:map
+                                                        [:name :string]
+                                                        [:id ms/PositiveInt]
+                                                        [:public_uuid ms/UUIDString]]]
+  "List all Documents that have public links.
+
+  Returns a sequence of Documents that have been publicly shared. Each Document includes its `:id`, `:name`,
+  and `:public_uuid`. Documents are only actually accessible via the public endpoint if public sharing is
+  currently enabled. Archived Documents are excluded from the results.
+
+  This endpoint is used to populate the public links listing in the Admin settings UI.
+
+  Requires superuser permissions. Public sharing must be enabled via the `enable-public-sharing` setting."
+  []
+  (api/check-superuser)
+  (public-sharing.validation/check-public-sharing-enabled)
+  (t2/select [:model/Document :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
+
+;;; ------------------------------------------------ Card Downloads --------------------------------------------------
+
+(defn- validate-card-in-document
+  "Validates that the document and card exist, are not archived, and that the card belongs to the document.
+   Also checks that the current user has read access to the document.
+
+   Throws a 404 exception via `api/check-404` if any validation fails. Returns card-id on success."
+  [document-id card-id]
+  (let [document (api/check-404 (t2/select-one :model/Document :id document-id :archived false))]
+    (api/read-check document)
+    (api/check-404 (t2/exists? :model/Card :id card-id :document_id document-id :archived false))))
+
+(api.macros/defendpoint :post "/:document-id/card/:card-id/query/:export-format"
+  "Download query results for a Card embedded in a Document.
+
+  Returns query results in the requested format. The user must have read access to the document
+  to download results. If the card's query fails, standard query error responses are returned.
+
+  Route parameters:
+  - document-id: ID of the document containing the card
+  - card-id: ID of the card to download results from
+  - export-format: Output format (csv, xlsx, json)
+
+  Body parameters (snake_case):
+  - parameters: Optional query parameters (array of maps or JSON string)
+  - format_rows: Whether to apply formatting to results (boolean, default false)
+  - pivot_results: Whether to pivot results (boolean, default false)"
+  [{:keys [document-id card-id export-format]} :- [:map
+                                                   [:document-id   ms/PositiveInt]
+                                                   [:card-id       ms/PositiveInt]
+                                                   [:export-format :keyword]]
+   _query-params
+   {:keys          [parameters]
+    pivot-results? :pivot_results
+    format-rows?   :format_rows
+    :as            _body}
+   :- [:map
+       [:parameters    {:optional true} [:maybe [:or
+                                                 [:sequential ms/Map]
+                                                 ms/JSONString]]]
+       [:format_rows   {:default false} ms/BooleanValue]
+       [:pivot_results {:default false} ms/BooleanValue]]]
+  (validate-card-in-document document-id card-id)
+  (qp.card/process-query-for-card
+   card-id export-format
+   :parameters  (cond-> parameters
+                  (string? parameters) json/decode+kw)
+   :constraints nil
+   :context     (api.dataset/export-format->context export-format)
+   :middleware  {:process-viz-settings?  true
+                 :skip-results-metadata? true
+                 :ignore-cached-results? true
+                 :format-rows?           format-rows?
+                 :pivot?                 pivot-results?
+                 :js-int-to-string?      false}))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/document/` routes."

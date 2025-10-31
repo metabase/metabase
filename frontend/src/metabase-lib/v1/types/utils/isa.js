@@ -22,9 +22,11 @@ import {
  * @example
  * isa(field.semantic_type, TYPE.Currency);
  *
- * @param {string} x
- * @param {string} y
- * @return {boolean}
+ * @template X extends string
+ * @template Y extends string
+ * @param {X} x
+ * @param {Y} y
+ * @returns {x is Y}
  */
 export const isa = (x, y) => cljs_isa(x, y);
 
@@ -38,6 +40,10 @@ export function isTypePK(type) {
 
 export function isTypeFK(type) {
   return isa(type, TYPE.FK);
+}
+
+export function isTypeCurrency(type) {
+  return isa(type, TYPE.Currency);
 }
 
 export function isFieldType(type, field) {
@@ -116,12 +122,26 @@ export const isDimension = (col) => col && col.source !== "aggregation";
 export const isMetric = (col) =>
   col && col.source !== "breakout" && isSummable(col) && !hasNonMetricName(col);
 
+/**
+ * @param {Field | DatasetColumn} field
+ * @returns {boolean}
+ */
 export const isFK = (field) => field && isTypeFK(field.semantic_type);
 export const isPK = (field) => field && isTypePK(field.semantic_type);
 export const isEntityName = (field) =>
   field && isa(field.semantic_type, TYPE.Name);
+export const isTitle = (field) => field && isa(field.semantic_type, TYPE.Title);
+export const isProduct = (field) =>
+  field && isa(field.semantic_type, TYPE.Product);
+export const isSource = (field) =>
+  field && isa(field.semantic_type, TYPE.Source);
 export const isAddress = (field) =>
   field && isa(field.semantic_type, TYPE.Address);
+export const isScore = (field) => field && isa(field.semantic_type, TYPE.Score);
+export const isQuantity = (field) =>
+  field && isa(field.semantic_type, TYPE.Quantity);
+export const isCategory = (field) =>
+  field && isa(field.semantic_type, TYPE.Category);
 
 export const isAny = (col) => true;
 
@@ -154,6 +174,7 @@ export const isNumber = (field) =>
   (field.semantic_type == null ||
     isa(field.semantic_type, TYPE.Number) ||
     isa(field.semantic_type, TYPE.Category));
+export const isFloat = (field) => field && isa(field.semantic_type, TYPE.Float);
 
 export const isTime = (field) => {
   if (!field) {

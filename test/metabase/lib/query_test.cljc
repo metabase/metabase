@@ -209,7 +209,6 @@
              :lib/type               :mbql/query
              :lib/metadata           lib.metadata.protocols/cached-metadata-provider?
              :stages                 [{:lib/type :mbql.stage/native
-                                       :template-tags {}
                                        :native "select * from products limit 3;"}]
              :lib.convert/converted? true
              :type                   (symbol "nil #_\"key is not present.\"")
@@ -249,7 +248,7 @@
                           (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :people :birth-date) :year)))
       true  :metric   (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
                           (lib/aggregate (lib/count))
-                          (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :people :birth-date) :hour-of-day)))
+                          (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :people :birth-date) :month-of-year)))
       false :metric   (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
                           (lib/aggregate (lib/count))
                           (lib/breakout (meta/field-metadata :people :created-at))
@@ -285,7 +284,7 @@
                           (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :people :birth-date) :year)))
       true  :metric   (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
                           (lib/aggregate (lib/count))
-                          (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :people :birth-date) :hour-of-day)))
+                          (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :people :birth-date) :month-of-year)))
       false :metric   (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
                           (lib/aggregate (lib/count))
                           (lib/breakout (meta/field-metadata :people :created-at))
@@ -615,3 +614,11 @@
       (is (lib.metadata.protocols/cached-metadata-provider? mp))
       (is (lib.metadata.protocols/cached-metadata-provider-with-cache? mp))
       (is (identical? mp (:lib/metadata (#'lib.query/ensure-cached-metadata-provider {:lib/metadata mp})))))))
+
+(deftest ^:parallel preserve-database-id-with-invalid-metadata-provider-test
+  (mu/disable-enforcement
+    (is (=? {:database 1
+             :stages   [{:source-table 2, :lib/type :mbql.stage/mbql}]
+             :lib/type :mbql/query}
+            (lib.query/query (lib.tu/mock-metadata-provider {})
+                             {"database" 1, "type" "query", "query" {"source-table" 2}})))))

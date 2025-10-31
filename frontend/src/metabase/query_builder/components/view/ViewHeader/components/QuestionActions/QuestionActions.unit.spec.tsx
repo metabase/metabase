@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupListNotificationEndpoints } from "__support__/server-mocks/notification";
 import { setupGetUserKeyValueEndpoint } from "__support__/server-mocks/user-key-value";
 import { createMockEntitiesState } from "__support__/store";
 import {
@@ -69,6 +70,8 @@ function setup({
     value: hasAcknowledgedModelModal,
   });
 
+  setupListNotificationEndpoints({ card_id: card.id }, []);
+
   const state = createMockState({
     entities: createMockEntitiesState({
       databases: hasDataPermissions ? [createSampleDatabase()] : [],
@@ -119,7 +122,7 @@ describe("QuestionActions", () => {
     },
   );
 
-  describe("model query & metadata", () => {
+  describe("model query & columns", () => {
     it("should allow to edit the model with write data & collection permissions", async () => {
       const { onSetQueryBuilderMode } = setup({
         card: createMockCard({
@@ -142,7 +145,7 @@ describe("QuestionActions", () => {
       await userEvent.click(screen.getByText("Edit metadata"));
       await waitFor(() => {
         expect(onSetQueryBuilderMode).toHaveBeenCalledWith("dataset", {
-          datasetEditorTab: "metadata",
+          datasetEditorTab: "columns",
         });
       });
     });

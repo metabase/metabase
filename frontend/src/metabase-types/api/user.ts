@@ -105,6 +105,7 @@ export type CreateUserRequest = {
   user_group_memberships?: { id: number; is_group_manager: boolean }[];
   login_attributes?: UserAttributeMap;
   password?: string;
+  source?: "setup" | "admin";
 };
 
 export type UpdatePasswordRequest = {

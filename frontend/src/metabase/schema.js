@@ -13,6 +13,7 @@ export const CacheConfigSchema = new schema.Entity("cacheConfigs");
 export const IndexedEntitySchema = new schema.Entity("indexedEntities");
 export const BookmarkSchema = new schema.Entity("bookmarks");
 export const DocumentSchema = new schema.Entity("documents");
+export const TransformSchema = new schema.Entity("transforms");
 export const DashboardSchema = new schema.Entity("dashboards");
 export const PulseSchema = new schema.Entity("pulses");
 export const CollectionSchema = new schema.Entity("collections");
@@ -67,6 +68,7 @@ export const FieldSchema = new schema.Entity("fields", undefined, {
   },
 });
 
+export const ForeignKeySchema = new schema.Entity("foreignKeys");
 export const SegmentSchema = new schema.Entity("segments");
 export const PersistedModelSchema = new schema.Entity("persistedModels");
 export const SnippetSchema = new schema.Entity("snippets");
@@ -99,6 +101,11 @@ FieldSchema.define({
   table: TableSchema,
   name_field: FieldSchema,
   dimensions: [{ human_readable_field: FieldSchema }],
+});
+
+ForeignKeySchema.define({
+  origin: FieldSchema,
+  destination: FieldSchema,
 });
 
 SegmentSchema.define({
@@ -135,3 +142,12 @@ export const ObjectUnionSchema = new schema.Union(
 CollectionSchema.define({
   items: [ObjectUnionSchema],
 });
+
+export const QueryMetadataSchema = {
+  databases: [DatabaseSchema],
+  tables: [TableSchema],
+  fields: [FieldSchema],
+  snippets: [SnippetSchema],
+  cards: [QuestionSchema],
+  dashboards: [DashboardSchema],
+};

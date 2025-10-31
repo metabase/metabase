@@ -11,9 +11,14 @@
 
   Of course, it would be entirely possible to call `(t2/select-one Field :id 10)` every time you needed information
   about that Field, but fetching all Fields in a single pass and storing them for reuse is dramatically more efficient
-  than fetching those Fields potentially dozens of times in a single query execution."
+  than fetching those Fields potentially dozens of times in a single query execution.
+
+  THE QP STORE IS DEPRECATED! It's only needed for legacy queries, and we're moving to an MBQL 5 world. Don't use it
+  in new code going forward."
+  ;; This whole namespace is in the process of deprecation so ignore deprecated vars in this namespace.
+  {:clj-kondo/config '{:linters {:deprecated-var {:level :off}}}, :deprecated "0.57.0"}
   (:require
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
@@ -58,16 +63,19 @@
 
 (mu/defn store-miscellaneous-value!
   "Store a miscellaneous value in a the cache. Persists for the life of this QP invocation, including for recursive
-  calls."
+  calls.
+
+  DEPRECATED -- use [[metabase.lib.metadata/general-cached-value]] going forward."
+  {:deprecated "0.57.0"}
   [ks :- [:sequential :any]
    v]
   (swap! *store* assoc-in ks v))
 
-;;; TODO (Cam 7/7/25) -- now that we use cached metadata providers consistently and cached metadata providers support
-;;; general value caching we should use those facilities instead. We can remove the bespoke logic here and
-;;; use the stuff in [[metabase.lib.metadata.cache]] instead going forward
 (mu/defn miscellaneous-value
-  "Fetch a miscellaneous value from the cache. Unlike other Store functions, does not throw if value is not found."
+  "Fetch a miscellaneous value from the cache. Unlike other Store functions, does not throw if value is not found.
+
+  DEPRECATED -- use [[metabase.lib.metadata/general-cached-value]] going forward."
+  {:deprecated "0.57.0"}
   ([ks]
    (miscellaneous-value ks nil))
 
@@ -80,7 +88,10 @@
   value, stores it in the cache, and returns the value. You can use this to ensure a given function is only ran once
   during the duration of a QP execution.
 
-  See also `cached` macro."
+  See also `cached` macro.
+
+  DEPRECATED -- use [[metabase.lib.metadata/general-cached-value]] going forward."
+  {:deprecated "0.57.0"}
   [ks thunk]
   (let [cached-value (miscellaneous-value ks ::not-found)]
     (if-not (= cached-value ::not-found)
@@ -99,8 +110,10 @@
 
     ;; cache lookups of Card.dataset_query
     (qp.store/cached card-id
-      (t2/select-one-fn :dataset_query Card :id card-id))"
-  {:style/indent 1}
+      (t2/select-one-fn :dataset_query Card :id card-id))
+
+  DEPRECATED -- use [[metabase.lib.core/general-cached-value]] going forward."
+  {:style/indent 1, :deprecated "0.57.0"}
   [k-or-ks & body]
   ;; for the unique key use a gensym prefixed by the namespace to make for easier store debugging if needed
   (let [ks (into [(list 'quote (gensym (str (name (ns-name *ns*)) "/misc-cache-")))] (u/one-or-many k-or-ks))]
@@ -126,7 +139,7 @@
 (mu/defn- ->metadata-provider :- ::lib.schema.metadata/metadata-provider
   [database-id-or-metadata-providerable :- ::database-id-or-metadata-providerable]
   (let [mp (if (pos-int? database-id-or-metadata-providerable)
-             (lib.metadata.jvm/application-database-metadata-provider database-id-or-metadata-providerable)
+             (lib-be/application-database-metadata-provider database-id-or-metadata-providerable)
              (lib.metadata/->metadata-provider database-id-or-metadata-providerable))]
     (ensure-cached-metadata-provider mp)))
 
@@ -203,7 +216,7 @@
 ;;;; DEPRECATED STUFF
 ;;;;
 
-(defn ->legacy-metadata
+(mu/defn ->legacy-metadata
   "For compatibility: convert MLv2-style metadata as returned by [[metabase.lib.metadata.protocols]]
   or [[metabase.lib.metadata]] functions
   (with `kebab-case` keys and `:lib/type`) to legacy QP/application database style metadata (with `snake_case` keys
@@ -214,11 +227,8 @@
   (Note: it is preferable to use [[metabase.lib.core/lib-metadata-column->legacy-metadata-column]] instead of this
   function if you REALLY need to do this sort of conversion.)"
   {:deprecated "0.48.0"}
-  [lib-metadata-col]
-  (let [model (case (:lib/type lib-metadata-col)
-                :metadata/database :model/Database
-                :metadata/table    :model/Table
-                :metadata/column   :model/Field)]
-    (-> lib-metadata-col
-        lib/lib-metadata-column->legacy-metadata-column
-        (vary-meta assoc :type model))))
+  [lib-metadata-col :- [:map
+                        [:lib/type [:= :metadata/column]]]]
+  (-> lib-metadata-col
+      lib/lib-metadata-column->legacy-metadata-column
+      (vary-meta assoc :type :metadata/column)))

@@ -1,6 +1,5 @@
 import { c, msgid, t } from "ttag";
 
-import { color } from "metabase/lib/colors";
 import type { ObjectWithModel } from "metabase/lib/icon";
 import { getIcon } from "metabase/lib/icon";
 import {
@@ -32,14 +31,14 @@ export const getEntityPickerIcon = <Id, Model extends string>(
   }
 
   if (isSelected && !icon.color) {
-    icon.color = color("text-white");
+    icon.color = "text-white";
   }
 
   if (icon.name === "folder" && isSelected) {
     icon.name = "folder_filled";
   }
 
-  return { ...icon, color: color(icon.color ?? "brand") };
+  return { ...icon, color: undefined, c: icon.color ?? "brand" };
 };
 
 export const isSelectedItem = <Id, Model extends string>(

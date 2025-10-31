@@ -190,7 +190,7 @@ Cypress._.times(N, () => {
 
 ### Embedding SDK tests
 
-See [sdk docs about e2e](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/dev.md)
+See [sdk docs about e2e](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk-package/dev.md)
 
 ## DB Snapshots
 

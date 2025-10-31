@@ -5,7 +5,6 @@
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
    [metabase-enterprise.metabot-v3.dummy-tools :as metabot-v3.dummy-tools]
    [metabase-enterprise.metabot-v3.tools.find-outliers :as metabot-v3.tools.find-outliers]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -14,11 +13,11 @@
 
 (defn- by-name
   [dimensions dimension-name]
-  (m/find-first (comp #{dimension-name} :name) dimensions))
+  (m/find-first (comp #{dimension-name} :display_name) dimensions))
 
 (defn- test-card
   []
-  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [mp (mt/metadata-provider)
         created-at-meta (lib.metadata/field mp (mt/id :orders :created_at))
         query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                   (lib/aggregate (lib/avg (lib.metadata/field mp (mt/id :orders :subtotal))))
@@ -71,7 +70,7 @@
   (mt/with-temp [:model/Card {report-id :id} (assoc (test-card) :type :question)]
     (let [report-details (mt/with-current-user (mt/user->id :crowberto)
                            (#'metabot-v3.dummy-tools/card-details report-id))
-          ->field-id #(u/prog1 (-> report-details :fields (by-name %) :field-id)
+          ->field-id #(u/prog1 (-> report-details :fields (by-name %) :field_id)
                         (when-not <>
                           (throw (ex-info (str "Column " % " not found") {:column %}))))
           result-field-id (->field-id "Average of Subtotal")]
@@ -83,7 +82,7 @@
   (let [query-id (u/generate-nano-id)
         query-details (mt/with-current-user (mt/user->id :crowberto)
                         (#'metabot-v3.dummy-tools/execute-query query-id (:dataset_query (test-card))))
-        ->field-id #(u/prog1 (-> query-details :result-columns (by-name %) :field-id)
+        ->field-id #(u/prog1 (-> query-details :result-columns (by-name %) :field_id)
                       (when-not <>
                         (throw (ex-info (str "Column " % " not found") {:column %}))))
         result-field-id (->field-id "Average of Subtotal")]
@@ -119,7 +118,7 @@
   (let [query-id (u/generate-nano-id)
         query-details (mt/with-current-user (mt/user->id :crowberto)
                         (#'metabot-v3.dummy-tools/execute-query query-id (:dataset_query (test-card))))
-        ->field-id #(u/prog1 (-> query-details :result-columns (by-name %) :field-id)
+        ->field-id #(u/prog1 (-> query-details :result-columns (by-name %) :field_id)
                       (when-not <>
                         (throw (ex-info (str "Column " % " not found") {:column %}))))
         result-field-id (->field-id "Average of Subtotal")]

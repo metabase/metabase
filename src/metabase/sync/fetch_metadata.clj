@@ -19,7 +19,7 @@
   `(try
      ~@body
      (catch Throwable e#
-       (log/errorf e# "Error while fetching metdata with '%s'" ~function-name)
+       (log/errorf e# "Error while fetching metadata with '%s'" ~function-name)
        (throw e#))))
 
 (mu/defn db-metadata :- i/DatabaseMetadata

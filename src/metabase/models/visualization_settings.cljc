@@ -22,9 +22,10 @@
   (:require
    #?@(:clj [[metabase.util.json :as json]])
    [clojure.set :as set]
+   [clojure.walk :as walk]
    [malli.core :as mc]
    [medley.core :as m]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -38,7 +39,7 @@
 ;; here, only report that it's a string and set it in the ref map appropriately
 (def ^:private column-ref-schema
   [:map
-   [::field-id {:optional true} integer?]
+   [::field-id {:optional true} ::lib.schema.id/field]
    [::column-name {:optional true} string?]
    [::field-str {:optional true} string?]
    [::field-metadata {:optional true} field-metadata-schema]])
@@ -49,7 +50,7 @@
             [:= "ref"]
             [:tuple
              [:= "field"]
-             [:orn [:field-id int?] [:field-str string?]]
+             [:orn [:field-id ::lib.schema.id/field] [:field-str string?]]
              [:orn [:field-metadata map?] [:nil nil?]]]]]
    [:expression [:tuple [:= "ref"] [:tuple [:= "expression"] string?]]]
    [:column-name [:tuple [:= "name"] string?]]])
@@ -65,7 +66,7 @@
    [::link-template {:optional true} string?]
    [::link-text {:optional true} string?]
    ;; target ID can be the auto generated ID or fully qualified name for serialization
-   [::link-target-id {:optional true} [:or int? string?]]])
+   [::link-target-id {:optional true} [:or ::lib.schema.id/field string?]]])
 
 (def ^:private db-column-ref-schema
   [:orn [:string? string?] [:vector? vector?] [:keyword? keyword?]])
@@ -79,9 +80,10 @@
 
   If passed, `field-metadata` is also included in the map (but not interpreted)."
   {:added "0.40.0"}
-  ([field-id :- int?]
+  ([field-id :- ::lib.schema.id/field]
    {::field-id field-id})
-  ([field-id :- int?, field-metadata :- [:maybe field-metadata-schema]]
+  ([field-id :- ::lib.schema.id/field
+    field-metadata :- [:maybe field-metadata-schema]]
    (cond-> {::field-id field-id}
      (some? field-metadata) (assoc ::field-metadata field-metadata))))
 
@@ -217,7 +219,7 @@
   `parameter-mapping` is an optional argument."
   {:added "0.40.0"}
   [entity-type :- entity-type-schema
-   entity-id :- int?
+   entity-id :- pos-int?
    parameter-mapping :- [:maybe parameter-mapping-schema]]
   (cond-> {::click-behavior-type ::link
            ::link-type           entity-type
@@ -242,9 +244,9 @@
   be replaced."
   {:added "0.40.0"}
   [settings :- map?
-   from-field-id :- int?
+   from-field-id :- ::lib.schema.id/field
    to-entity-type :- entity-type-schema
-   to-entity-id :- int?
+   to-entity-id :- pos-int?
    parameter-mapping :- [:maybe parameter-mapping-schema]]
   (with-click-action settings (field-id->column-ref from-field-id) (entity-click-action
                                                                     to-entity-type
@@ -255,8 +257,8 @@
   "Creates a parameter mapping for `source-col-name` (`source-field-id`) to `target-field-id` in normalized form."
   {:added "0.40.0"}
   [source-col-name :- :string
-   source-field-id :- int?
-   target-field-id :- int?]
+   source-field-id :- ::lib.schema.id/field
+   target-field-id :- ::lib.schema.id/field]
   (let [id         [:dimension [:fk-> [:field source-field-id nil] [:field target-field-id nil]]]
         dimension  {:dimension [:field target-field-id {:source-field source-field-id}]}]
     {id #::{:param-mapping-id     id
@@ -364,6 +366,15 @@
   [mapping]
   (= "dimension" (get-in mapping [:target :type])))
 
+(defn- normalize [form]
+  (walk/postwalk
+   (fn [form]
+     (if (and (sequential? form)
+              (string? (first form)))
+       (into [(keyword (first form))] (map normalize) (rest form))
+       form))
+   form))
+
 (defn db->norm-param-mapping
   "Converts a `parameter-mapping` (i.e. value of `:parameterMapping`) from DB to normalized form"
   {:added "0.40.0"}
@@ -377,7 +388,7 @@
                        (if (dimension-param-mapping? v)
                          (let [parsed-id (-> (if (keyword? k) (keyname k) k)
                                              parse-json-string
-                                             mbql.normalize/normalize-tokens)]
+                                             normalize)]
                            [parsed-id (cond-> v
                                         (:source v) (assoc ::param-mapping-source
                                                            (db->norm-param-ref parsed-id (:source v)))
@@ -482,9 +493,9 @@
   [settings]
   (reduce-kv (fn [m k v]
                (try
-                 (let [k1 (parse-db-column-ref k)
-                       v1 (db->norm-column-settings-entries v)]
-                   (assoc m k1 v1))
+                 (let [k' (parse-db-column-ref k)
+                       v' (db->norm-column-settings-entries v)]
+                   (assoc m k' v'))
                  (catch #?(:clj Throwable :cljs js/Error) _e
                    m)))
              {}

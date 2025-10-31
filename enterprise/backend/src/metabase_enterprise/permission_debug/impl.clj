@@ -13,7 +13,7 @@
   (:require
    [clojure.set :as set]
    [metabase.api.common :as api]
-   [metabase.lib.util :as lib.util]
+   [metabase.lib.core :as lib]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -176,7 +176,7 @@
    {[db-name schema table-name] #{group-name-1 group-name-2}}"
   [user-id card permissions-blocking permissions-granting]
   (let [query (-> card :dataset_query qp.preprocess/preprocess)
-        query-tables (-> query :query lib.util/collect-source-tables)
+        query-tables (lib/all-source-table-ids query)
         native? (boolean (lib.util.match/match-one query (m :guard (every-pred map? :native))))]
     (->>
      (cond

@@ -5,10 +5,10 @@
   --external-link-icon-color: var(--mb-color-text-light);
 
   &:hover {
-    border-color: var(--mb-base-color-blue-40);
+    border-color: var(--mb-color-brand);
     background-color: var(--mb-color-bg-light);
 
-    --external-link-icon-color: var(--mb-base-color-blue-40);
+    --external-link-icon-color: var(--mb-color-brand);
   }
 }
 

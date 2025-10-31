@@ -93,7 +93,7 @@ describe("CustomHomepageDashboardSetting", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("switch")).toBeInTheDocument();
     expect(screen.getByRole("switch")).not.toBeChecked();
-    expect(screen.queryByText(/select a dashboard/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("Pick a dashboard")).not.toBeInTheDocument();
   });
 
   it("should render dashboard picker if toggle is on", async () => {
@@ -101,7 +101,7 @@ describe("CustomHomepageDashboardSetting", () => {
     await waitFor(() => {
       expect(screen.getByRole("switch")).toBeChecked();
     });
-    expect(screen.getByText(/select a dashboard/i)).toBeInTheDocument();
+    expect(screen.getByText("Pick a dashboard")).toBeInTheDocument();
   });
 
   it("should update the toggle value", async () => {
@@ -123,7 +123,7 @@ describe("CustomHomepageDashboardSetting", () => {
 
   it("should update the dashboard value", async () => {
     setup({ "custom-homepage": true });
-    const dashboardSelector = await screen.findByText(/select a dashboard/i);
+    const dashboardSelector = await screen.findByText("Pick a dashboard");
     await userEvent.click(dashboardSelector);
 
     await screen.findByText("Choose a dashboard"); // modal opens
@@ -157,12 +157,12 @@ describe("CustomHomepageDashboardSetting", () => {
     await userEvent.click(toggle);
     expect(await screen.findByRole("switch")).not.toBeChecked();
     expect(screen.queryByText(/my dashboard/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/select a dashboard/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("Pick a dashboard")).not.toBeInTheDocument();
   });
 
   it("should refresh current user after updating settings", async () => {
     setup({ "custom-homepage": true });
-    const dashboardSelector = await screen.findByText(/select a dashboard/i);
+    const dashboardSelector = await screen.findByText("Pick a dashboard");
     await userEvent.click(dashboardSelector);
 
     await userEvent.click(await screen.findByText("My dashboard"));

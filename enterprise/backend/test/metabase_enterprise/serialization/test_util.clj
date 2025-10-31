@@ -2,7 +2,6 @@
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
-   [metabase-enterprise.serialization.names :as names]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.schema-migrations-test.impl :as schema-migrations-test.impl]
@@ -72,7 +71,7 @@
 (defn- do-with-in-memory-h2-db [f]
   (schema-migrations-test.impl/do-with-temp-empty-app-db*
    :h2
-   (fn [data-source]
+   (fn [^javax.sql.DataSource data-source]
      ;; DB should stay open as long as `conn` is held open.
      (with-open [_conn (.getConnection data-source)]
        (next.jdbc/execute! data-source ["RUNSCRIPT FROM ?" (str @data/h2-app-db-script)])
@@ -525,9 +524,6 @@
                    users-pk-field-id
                    venues-pk-field-id]}]
       ~@body)))
-
-;; Don't memoize as IDs change in each `with-world` context
-(alter-var-root #'names/path->context (fn [_] #'names/path->context*))
 
 (defn extract-one [model-name where]
   (let [where (cond

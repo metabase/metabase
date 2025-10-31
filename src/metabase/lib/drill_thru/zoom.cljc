@@ -33,13 +33,15 @@
   drills ([[metabase.lib.drill-thru.pk]], [[metabase.lib.drill-thru.fk-details]],
   or [[metabase.lib.drill-thru.zoom]]); see [[metabase.lib.drill-thru.object-details]] for the high-level logic that
   calls out to the individual implementations."
+  (:refer-clojure :exclude [select-keys])
   (:require
    [medley.core :as m]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [select-keys]]))
 
 (defn- zoom-drill* [column value]
   {:lib/type  :metabase.lib.drill-thru/drill-thru

@@ -179,6 +179,20 @@
            (into #{} (map #(contains? system-stats %) [:java_version :java_runtime_name :max_memory]))))
       "Spot checking a few system stats to ensure conversion from property names and presence in the anonymous-usage-stats"))
 
+(deftest metrics-anonymous-usage-stats-test
+  (testing "should report the metric count"
+    (mt/with-temp [:model/Card _ {:type :metric}
+                   :model/Card _ {:type :metric :archived true}]
+      (is (=?
+           {:stats {:metric {:metrics 1}}}
+           (legacy-anonymous-usage-stats)))))
+  (testing "should correctly check for the card type"
+    (mt/with-temp [:model/Card _ {:type :question}
+                   :model/Card _ {:type :model}]
+      (is (=?
+           {:stats {:metric {:metrics 0}}}
+           (legacy-anonymous-usage-stats))))))
+
 (defn- bin-large-number
   "Return large bin number. Assumes positive inputs."
   [x]
@@ -341,41 +355,44 @@
 
 (deftest question-metrics-test
   (testing "Returns metrics for cards using a single sql query"
-    (mt/with-temp [:model/User      u {}
-                   :model/Dashboard d {:creator_id (u/the-id u)}
-                   :model/Card      _ {}
-                   :model/Card      _ {:query_type "native"}
-                   :model/Card      _ {:query_type "gui"}
-                   :model/Card      _ {:public_uuid (str (random-uuid))}
-                   :model/Card      _ {:dashboard_id (u/the-id d)}
-                   :model/Card      _ {:enable_embedding true}
-                   :model/Card      _ {:enable_embedding true :public_uuid (str (random-uuid))
-                                       :dataset_query {:native {:template-tags {:param {:name "param" :display-name "Param" :type :number}}}}
-                                       :embedding_params {:category_name "locked" :name_category "disabled"}}
-                   :model/Card      _ {:enable_embedding true :public_uuid (str (random-uuid))
-                                       :dataset_query {:native {:template-tags {:param {:name "param" :display-name "Param" :type :string}}}}
-                                       :embedding_params {:category_name "enabled" :name_category "enabled"}}]
-      (testing "reported metrics for all app db types"
-        (is (malli= [:map
-                     [:questions [:map
-                                  [:total [:= 8]]
-                                  [:native [:= 1]]
-                                  [:gui [:= 1]]
-                                  [:is_dashboard_question [:= 1]]]]
-                     [:public [:map
-                               [:total [:= 3]]]]
-                     [:embedded [:map
-                                 [:total [:= 3]]]]]
-                    (#'stats/question-metrics))))
-      (when (contains? #{:mysql :postgres} (mdb/db-type))
-        (testing "reports json column derived-metrics"
-          (let [reported (#'stats/question-metrics)]
-            (is (= 2 (get-in reported [:questions :with_params])))
-            (is (= 2 (get-in reported [:public :with_params])))
-            (is (= 2 (get-in reported [:embedded :with_params])))
-            (is (= 1 (get-in reported [:embedded :with_enabled_params])))
-            (is (= 1 (get-in reported [:embedded :with_locked_params])))
-            (is (= 1 (get-in reported [:embedded :with_disabled_params])))))))))
+    (mt/with-empty-h2-app-db!
+      (mt/with-temp [:model/User      u {}
+                     :model/Dashboard d {:creator_id (u/the-id u)}
+                     :model/Card      _ {}
+                     :model/Card      _ {:query_type "native"}
+                     :model/Card      _ {:query_type "gui"}
+                     :model/Card      _ {:public_uuid (str (random-uuid))}
+                     :model/Card      _ {:dashboard_id (u/the-id d)}
+                     :model/Card      _ {:enable_embedding true}
+                     :model/Card      _ {:enable_embedding true :public_uuid (str (random-uuid))
+                                         :dataset_query    {:database (mt/id)
+                                                            :type     :native
+                                                            :native   {:query         "SELECT *"
+                                                                       :template-tags {:param {:name "param" :display-name "Param" :type :number}}}}
+                                         :embedding_params {:category_name "locked" :name_category "disabled"}}
+                     :model/Card      _ {:enable_embedding true :public_uuid (str (random-uuid))
+                                         :dataset_query    {:database (mt/id)
+                                                            :type     :native
+                                                            :native   {:query         "SELECT *"
+                                                                       :template-tags {:param {:name "param" :display-name "Param" :type :text}}}}
+                                         :embedding_params {:category_name "enabled" :name_category "enabled"}}]
+        (testing "reported metrics for all app db types"
+          (is (=? {:questions {:total                 8
+                               :native                3
+                               :gui                   1
+                               :is_dashboard_question 1}
+                   :public    {:total 3}
+                   :embedded  {:total 3}}
+                  (#'stats/question-metrics))))
+        (when (contains? #{:mysql :postgres} (mdb/db-type))
+          (testing "reports json column derived-metrics"
+            (let [reported (#'stats/question-metrics)]
+              (is (= 2 (get-in reported [:questions :with_params])))
+              (is (= 2 (get-in reported [:public :with_params])))
+              (is (= 2 (get-in reported [:embedded :with_params])))
+              (is (= 1 (get-in reported [:embedded :with_enabled_params])))
+              (is (= 1 (get-in reported [:embedded :with_locked_params])))
+              (is (= 1 (get-in reported [:embedded :with_disabled_params]))))))))))
 
 (deftest internal-content-metrics-test
   (testing "Internal content doesn't contribute to stats"
@@ -544,13 +561,15 @@
     :embedding
     :embedding-sdk
     :embedding-simple
+    :embedding-hub
     :enhancements
     :etl-connections
     :etl-connections-pg
     :llm-autodescription
     :query-reference-validation
     :cloud-custom-smtp
-    :session-timeout-config})
+    :session-timeout-config
+    :offer-metabase-ai})
 
 (deftest every-feature-is-accounted-for-test
   (testing "Is every premium feature either tracked under the :features key, or intentionally excluded?"

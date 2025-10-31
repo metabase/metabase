@@ -66,6 +66,7 @@ export const DashboardSharingEmbeddingModal = ({
             })
           }
           getPublicUrl={getPublicUrl}
+          onClose={onClose}
         />
       )}
     </EmbedModal>

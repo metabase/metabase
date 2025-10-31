@@ -30,6 +30,6 @@ describe("TagSection", () => {
     const { onTagsChange } = setup({ tags: [tag] });
     await userEvent.click(screen.getByPlaceholderText("Add tags"));
     await userEvent.click(await screen.findByText(tag.name));
-    expect(onTagsChange).toHaveBeenLastCalledWith([tag.id]);
+    expect(onTagsChange).toHaveBeenLastCalledWith([tag.id], true);
   });
 });

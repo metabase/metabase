@@ -4606,7 +4606,7 @@
    :name "E-commerce",
    :personal_owner_id nil,
    :type nil,
-   :is_sample false,
+   :is_sample true,
    :id 3,
    :archived_directly true,
    :entity_id "54O0IbgCzm290Nnxf1wRH",

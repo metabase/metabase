@@ -41,7 +41,25 @@ H.describeWithSnowplow(suiteTitle, () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("can select a recent dashboard to embed", () => {
+  it("tracks 'default' when keeping the default dashboard selection", () => {
+    visitNewEmbedPage();
+
+    getEmbedSidebar().within(() => {
+      cy.findByText("Next").click();
+      cy.findByText("Select a dashboard to embed").should("be.visible");
+
+      cy.log("first dashboard should be selected by default");
+      getRecentItemCards().first().should("have.attr", "data-selected", "true");
+      cy.findByText("Next").click();
+    });
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_resource_selection_completed",
+      event_detail: "default",
+    });
+  });
+
+  it("tracks 'custom' when selecting a different dashboard", () => {
     cy.log("add two dashboards to activity log");
 
     H.createDashboard({ name: SECOND_DASHBOARD_NAME }).then(
@@ -70,14 +88,6 @@ H.describeWithSnowplow(suiteTitle, () => {
       cy.log("second dashboard can be selected");
       cy.findByText(SECOND_DASHBOARD_NAME).click();
 
-      cy.get("@secondDashboardId").then((secondDashboardId) => {
-        H.expectUnstructuredSnowplowEvent({
-          event: "embed_wizard_resource_selected",
-          target_id: secondDashboardId,
-          event_detail: "dashboard",
-        });
-      });
-
       getRecentItemCards().eq(1).should("have.attr", "data-selected", "true");
     });
 
@@ -87,22 +97,11 @@ H.describeWithSnowplow(suiteTitle, () => {
       cy.findByText(SECOND_DASHBOARD_NAME).should("be.visible");
     });
 
-    cy.log("select the same the dashboard again");
-    getEmbedSidebar().within(() => {
-      cy.findByText(SECOND_DASHBOARD_NAME).click();
-      cy.findByText(SECOND_DASHBOARD_NAME).click();
-    });
+    getEmbedSidebar().findByText("Next").click();
 
-    cy.get("@secondDashboardId").then((secondDashboardId) => {
-      cy.log("only a single snowplow event should be sent");
-      H.expectUnstructuredSnowplowEvent(
-        {
-          event: "embed_wizard_resource_selected",
-          target_id: secondDashboardId,
-          event_detail: "dashboard",
-        },
-        1,
-      );
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_resource_selection_completed",
+      event_detail: "custom",
     });
   });
 
@@ -131,13 +130,14 @@ H.describeWithSnowplow(suiteTitle, () => {
       cy.log("second question can be selected");
       cy.findByText(SECOND_QUESTION_NAME).click();
 
-      H.expectUnstructuredSnowplowEvent({
-        event: "embed_wizard_resource_selected",
-        target_id: ORDERS_BY_YEAR_QUESTION_ID,
-        event_detail: "chart",
-      });
-
       getRecentItemCards().eq(1).should("have.attr", "data-selected", "true");
+
+      cy.findByText("Next").click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "embed_wizard_resource_selection_completed",
+        event_detail: "custom",
+      });
     });
 
     cy.log("selected question should be shown in the preview");
@@ -164,14 +164,6 @@ H.describeWithSnowplow(suiteTitle, () => {
       cy.findByText("Select a dashboard").should("be.visible");
       cy.findByText("Dashboards").click();
       cy.findByText(SECOND_DASHBOARD_NAME).click();
-    });
-
-    cy.get("@secondDashboardId").then((secondDashboardId) => {
-      H.expectUnstructuredSnowplowEvent({
-        event: "embed_wizard_resource_selected",
-        target_id: secondDashboardId,
-        event_detail: "dashboard",
-      });
     });
 
     cy.log("dashboard is added to the top of recents list and selected");
@@ -204,12 +196,6 @@ H.describeWithSnowplow(suiteTitle, () => {
       cy.findByText(FIRST_QUESTION_NAME).click();
     });
 
-    H.expectUnstructuredSnowplowEvent({
-      event: "embed_wizard_resource_selected",
-      target_id: ORDERS_COUNT_QUESTION_ID,
-      event_detail: "chart",
-    });
-
     cy.log("question is added to the top of recents list and selected");
     getEmbedSidebar().within(() => {
       getRecentItemCards()
@@ -217,11 +203,52 @@ H.describeWithSnowplow(suiteTitle, () => {
         .first()
         .should("contain", FIRST_QUESTION_NAME)
         .should("have.attr", "data-selected", "true");
+
+      cy.findByText("Next").click();
+    });
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_resource_selection_completed",
+      event_detail: "custom",
     });
 
     cy.wait("@cardQuery");
     H.getSimpleEmbedIframeContent().within(() => {
       cy.findByText(FIRST_QUESTION_NAME).should("be.visible");
+    });
+  });
+
+  it("can search and select a collection for browser", () => {
+    visitNewEmbedPage();
+
+    getEmbedSidebar().within(() => {
+      cy.findByText("Browser").click();
+      cy.findByText("Next").click();
+      cy.findByText("Select a collection to embed").should("be.visible");
+      cy.findByTestId("embed-browse-entity-button").click();
+    });
+
+    H.entityPickerModal().within(() => {
+      cy.findByText("Select a collection").should("be.visible");
+      cy.findByText("First collection").click();
+      cy.findByText("Select").click();
+    });
+
+    cy.log("collection is added to recents list");
+    getEmbedSidebar().within(() => {
+      getRecentItemCards()
+        .should("contain", "First collection")
+        .should("have.attr", "data-selected", "true");
+    });
+
+    cy.log("collection is shown in the breadcrumbs and preview");
+    H.getSimpleEmbedIframeContent().within(() => {
+      cy.findByTestId("sdk-breadcrumbs")
+        .findAllByText("First collection")
+        .first()
+        .should("be.visible");
+
+      cy.findByText("Second collection").should("be.visible");
     });
   });
 
@@ -271,6 +298,23 @@ H.describeWithSnowplow(suiteTitle, () => {
 
       H.entityPickerModal().within(() => {
         cy.findByText("Select a chart").should("be.visible");
+      });
+    });
+
+    it("can open a collection picker from browser empty state", () => {
+      getEmbedSidebar().within(() => {
+        cy.findByText("Browser").click();
+        cy.findByText("Next").click();
+
+        cy.log("shows empty state for missing recent collections");
+        cy.findByTestId("embed-recent-item-card").should("not.exist");
+        cy.findByText("No recent collections").should("be.visible");
+
+        cy.findByTitle("Browse collections").click();
+      });
+
+      H.entityPickerModal().within(() => {
+        cy.findByText("Select a collection").should("be.visible");
       });
     });
   });
