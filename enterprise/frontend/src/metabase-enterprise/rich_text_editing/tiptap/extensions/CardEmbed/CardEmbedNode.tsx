@@ -405,6 +405,7 @@ export const CardEmbedComponent = memo(
     } = useUpdateCardOperations({
       document,
       regularCardData,
+      question,
       editor,
       embedIndex,
       cardId: id,

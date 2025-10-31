@@ -1,9 +1,18 @@
+import type { NodeViewProps } from "@tiptap/react";
 import { useCallback, useRef, useState } from "react";
 import { useMount, useUnmount } from "react-use";
 
 const DRAG_LEAVE_TIMEOUT = 300;
 
-export const useDndHelpers = ({ editor, node, getPos }) => {
+export const useDndHelpers = ({
+  editor,
+  node,
+  getPos,
+}: {
+  editor: NodeViewProps["editor"];
+  node: NodeViewProps["node"];
+  getPos: NodeViewProps["getPos"];
+}) => {
   const [dragState, setDragState] = useState<{
     isDraggedOver: boolean;
     side: "left" | "right" | null;

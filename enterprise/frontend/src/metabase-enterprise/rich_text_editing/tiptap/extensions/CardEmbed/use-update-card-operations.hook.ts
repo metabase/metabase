@@ -1,20 +1,30 @@
+import type { NodeViewProps } from "@tiptap/core";
 import { useCallback } from "react";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { navigateToCardFromDocument } from "metabase-enterprise/documents/actions";
 import { updateVizSettings } from "metabase-enterprise/documents/documents.slice";
+import type { UseCardDataResult } from "metabase-enterprise/documents/hooks/use-card-data";
 import { useDraftCardOperations } from "metabase-enterprise/documents/hooks/use-draft-card-operations";
 import Question from "metabase-lib/v1/Question";
 import { getUrl } from "metabase-lib/v1/urls";
-import type { Card, VisualizationSettings } from "metabase-types/api";
+import type { Card, Document, VisualizationSettings } from "metabase-types/api";
 
 export const useUpdateCardOperations = ({
   document,
+  question,
   regularCardData,
   editor,
   embedIndex,
   cardId,
+}: {
+  document: Document | null;
+  question: Question | undefined;
+  regularCardData: UseCardDataResult;
+  editor: NodeViewProps["editor"];
+  embedIndex: number;
+  cardId: number;
 }) => {
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
@@ -91,15 +101,14 @@ export const useUpdateCardOperations = ({
     [card, cardId, dispatch, draftCard, embedIndex, ensureDraftCard],
   );
 
-  const handleUpdateQuestion = useCallback(
-    (question: Question) => {
+  const handleUpdateQuestion = useCallback(() => {
+    if (question) {
       // this is used by HideColumn action, which changes the question, but in reality it updates visualization_settings
       const newVizSettings = question.card().visualization_settings;
 
       handleUpdateVisualizationSettings(newVizSettings);
-    },
-    [handleUpdateVisualizationSettings],
-  );
+    }
+  }, [handleUpdateVisualizationSettings, question]);
 
   return {
     handleChangeCardAndRun,
