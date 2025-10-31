@@ -15,7 +15,7 @@ type BenchNavProps = {
 export function BenchNav({ location }: BenchNavProps) {
   return (
     <Stack className={S.nav} justify="space-between" h="100%" p="0.75rem">
-      <BenchNavItem icon="database" to="" location={location} />
+      <BenchNavItem icon="database" to="/bench/data" location={location} />
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <BenchNavItem
           icon="schema"

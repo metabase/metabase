@@ -9,6 +9,6 @@
   &:hover,
   &.active {
     color: var(--mb-color-text-selected);
-    background-color: var(--mb-color-bg-dark);
+    background-color: var(--mb-color-bg-black);
   }
 }
