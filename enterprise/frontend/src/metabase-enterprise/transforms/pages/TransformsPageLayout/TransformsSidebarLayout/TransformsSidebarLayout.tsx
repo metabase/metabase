@@ -1,4 +1,4 @@
-import { Flex } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
 
 import { JobsSidebar } from "../JobsSidebar";
 import { TransformsSidebar } from "../TransformsSidebar";
@@ -25,12 +25,12 @@ export const TransformsSidebarLayout = ({
   const selectedJobId = params?.jobId ? parseInt(params.jobId, 10) : undefined;
 
   return (
-    <Flex direction="row" h="100%">
+    <Flex direction="row" w="100%" h="100%">
       {currentTab === "transforms" && (
         <TransformsSidebar selectedTransformId={selectedTransformId} />
       )}
       {currentTab === "jobs" && <JobsSidebar selectedJobId={selectedJobId} />}
-      <Flex>{children}</Flex>
+      <Box flex={1}>{children}</Box>
     </Flex>
   );
 };
