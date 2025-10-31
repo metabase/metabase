@@ -900,14 +900,12 @@ export type TransformPickerProps = {
 
 export type TransformsPlugin = {
   TransformPicker: ComponentType<TransformPickerProps>;
-  getAdminPaths(): AdminPath[];
-  getAdminRoutes(): ReactNode;
+  getBenchRoutes(): ReactNode;
 };
 
 export const PLUGIN_TRANSFORMS: TransformsPlugin = {
   TransformPicker: PluginPlaceholder,
-  getAdminPaths: () => [],
-  getAdminRoutes: () => null,
+  getBenchRoutes: () => null,
 };
 
 export const PLUGIN_REMOTE_SYNC: {

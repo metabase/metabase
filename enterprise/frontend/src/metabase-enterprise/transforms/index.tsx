@@ -1,7 +1,6 @@
 import { IndexRoute } from "react-router";
 import { t } from "ttag";
 
-import { createAdminRouteGuard } from "metabase/admin/utils";
 import { Route } from "metabase/hoc/Title";
 import {
   PLUGIN_ENTITIES,
@@ -31,12 +30,8 @@ if (hasPremiumFeature("transforms")) {
   PLUGIN_ENTITIES.entities["transforms"] = Transforms;
   PLUGIN_TRANSFORMS.TransformPicker = TransformPicker;
 
-  PLUGIN_TRANSFORMS.getAdminPaths = () => [
-    { key: "transforms", name: t`Transforms`, path: "/admin/transforms" },
-  ];
-
-  PLUGIN_TRANSFORMS.getAdminRoutes = () => (
-    <Route path="transforms" component={createAdminRouteGuard("transforms")}>
+  PLUGIN_TRANSFORMS.getBenchRoutes = () => (
+    <Route path="transforms">
       <Route title={t`Transforms`}>
         <Route component={ListPageLayout}>
           <IndexRoute component={TransformListPage} />
