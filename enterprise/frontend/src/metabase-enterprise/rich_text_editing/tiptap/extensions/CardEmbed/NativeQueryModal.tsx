@@ -7,7 +7,8 @@ import { ErrorMessage } from "metabase/common/components/ErrorMessage";
 import { isMac } from "metabase/lib/browser";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
-import DataReference, {
+import {
+  DataReference,
   type DataReferenceStackItem,
 } from "metabase/query_builder/components/dataref/DataReference";
 import { createRawSeries } from "metabase/query_builder/utils";

@@ -2,7 +2,8 @@ import { match } from "ts-pattern";
 
 import { PLUGIN_AI_ENTITY_ANALYSIS } from "metabase/plugins";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
-import DataReference, {
+import {
+  DataReference,
   type DataReferenceStackItem,
 } from "metabase/query_builder/components/dataref/DataReference";
 import { SnippetSidebar } from "metabase/query_builder/components/template_tags/SnippetSidebar";
