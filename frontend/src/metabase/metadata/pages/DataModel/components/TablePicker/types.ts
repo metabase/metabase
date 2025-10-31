@@ -142,4 +142,5 @@ export interface FilterState {
   dataSource: TableDataSource | "unknown" | null;
   ownerEmail: string | null;
   ownerUserId: UserId | "unknown" | null;
+  orphansOnly: boolean | null;
 }

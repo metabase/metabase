@@ -22,6 +22,7 @@ import type { DatabaseId, TableId } from "metabase-types/api";
 
 import type { RouteParams } from "../../../types";
 import type { ChangeOptions, TreePath } from "../types";
+import { getFiltersCount } from "../utils";
 
 import { EditTableMetadataModal } from "./EditTableMetadataModal";
 import { FilterPopover, type FilterState } from "./FilterPopover";
@@ -296,26 +297,4 @@ export function TablePicker({
       />
     </Stack>
   );
-}
-
-function getFiltersCount(filters: FilterState): number {
-  let count = 0;
-
-  if (filters.dataSource != null) {
-    ++count;
-  }
-
-  if (filters.visibilityType2 != null) {
-    ++count;
-  }
-
-  if (filters.ownerEmail != null || filters.ownerUserId != null) {
-    ++count;
-  }
-
-  if (filters.orphansOnly === true) {
-    ++count;
-  }
-
-  return count;
 }

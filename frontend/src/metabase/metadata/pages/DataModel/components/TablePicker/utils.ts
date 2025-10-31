@@ -390,10 +390,6 @@ export function buildTreeFromSearchResults(
 export function getFiltersCount(filters: FilterState): number {
   let count = 0;
 
-  if (filters.visibilityType != null) {
-    ++count;
-  }
-
   if (filters.dataSource != null) {
     ++count;
   }
@@ -403,6 +399,10 @@ export function getFiltersCount(filters: FilterState): number {
   }
 
   if (filters.ownerEmail != null || filters.ownerUserId != null) {
+    ++count;
+  }
+
+  if (filters.orphansOnly === true) {
     ++count;
   }
 
