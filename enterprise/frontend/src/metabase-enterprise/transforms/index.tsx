@@ -11,7 +11,7 @@ import { Transforms } from "metabase-enterprise/entities/transforms";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { TransformPicker } from "./components/TransformPicker";
-import { JobListPage } from "./pages/JobListPage";
+import { JobEmptyPage } from "./pages/JobEmptyPage";
 import { JobPage } from "./pages/JobPage";
 import { NewJobPage } from "./pages/NewJobPage";
 import {
@@ -21,10 +21,8 @@ import {
   NewQueryTransformPage,
 } from "./pages/NewTransformPage";
 import { RunListPage } from "./pages/RunListPage";
-import { TransformListPage } from "./pages/TransformListPage";
+import { TransformEmptyPage } from "./pages/TransformEmptyPage";
 import { TransformPage } from "./pages/TransformPage";
-import { DetailsPageLayout } from "./pages/TransformPageLayout";
-import { TransformQueryPage } from "./pages/TransformQueryPage";
 import { TransformsSidebarLayout } from "./pages/TransformsPageLayout/TransformsSidebarLayout";
 import { TransformsTopNavLayout } from "./pages/TransformsPageLayout/TransformsTopNavLayout";
 
@@ -35,26 +33,22 @@ if (hasPremiumFeature("transforms")) {
   PLUGIN_TRANSFORMS.getBenchRoutes = () => (
     <Route path="transforms">
       <Route title={t`Transforms`}>
-        <Route component={TransformsSidebarLayout}>
-          <IndexRoute component={TransformListPage} />
-          <Route path="jobs" component={JobListPage} />
-        </Route>
         <Route path="runs" component={TransformsTopNavLayout}>
           <IndexRoute component={RunListPage} />
         </Route>
-        <Route component={DetailsPageLayout}>
+        <Route component={TransformsSidebarLayout}>
+          <IndexRoute component={TransformEmptyPage} />
+          <Route path="jobs" component={JobEmptyPage} />
           <Route path="jobs/new" component={NewJobPage} />
           <Route path="jobs/:jobId" component={JobPage} />
+          <Route path="new/query" component={NewQueryTransformPage} />
+          <Route path="new/native" component={NewNativeTransformPage} />
+          <Route path="new/card/:cardId" component={NewCardTransformPage} />
+          {PLUGIN_TRANSFORMS_PYTHON.isEnabled && (
+            <Route path="new/python" component={NewPythonTransformPage} />
+          )}
           <Route path=":transformId" component={TransformPage} />
         </Route>
-        {PLUGIN_TRANSFORMS_PYTHON.getAdminRoutes()}
-        <Route path="new/query" component={NewQueryTransformPage} />
-        <Route path="new/native" component={NewNativeTransformPage} />
-        <Route path="new/card/:cardId" component={NewCardTransformPage} />
-        {PLUGIN_TRANSFORMS_PYTHON.isEnabled && (
-          <Route path="new/python" component={NewPythonTransformPage} />
-        )}
-        <Route path=":transformId/query" component={TransformQueryPage} />
       </Route>
     </Route>
   );
