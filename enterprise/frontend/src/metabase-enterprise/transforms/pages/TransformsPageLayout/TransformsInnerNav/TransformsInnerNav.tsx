@@ -1,14 +1,11 @@
-import type { Location } from "history";
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
 import { SegmentedControl } from "metabase/ui";
 
-interface TransformsInnerNavProps {
-  location: Location;
-}
+import { useTransformsCurrentTab } from "../hooks";
 
 const TRANSFORMS_BASE_PATH = "/bench/transforms";
 
@@ -33,32 +30,9 @@ const NAV_ITEMS = [
   },
 ];
 
-type NavValue = (typeof NAV_ITEMS)[number]["value"];
-
-function getActiveNavValue(pathname: string): NavValue {
-  const pathSegments = pathname.split("/").filter(Boolean);
-  const transformsIndex = pathSegments.indexOf("transforms");
-
-  if (transformsIndex === -1 || transformsIndex >= pathSegments.length - 1) {
-    return "transforms";
-  }
-
-  const nextSegment = pathSegments[transformsIndex + 1];
-
-  if (nextSegment === "jobs" || nextSegment === "runs") {
-    return nextSegment;
-  }
-
-  return "transforms";
-}
-
-export const TransformsInnerNav = ({ location }: TransformsInnerNavProps) => {
+export const TransformsInnerNav = () => {
   const dispatch = useDispatch();
-
-  const value = useMemo(
-    () => getActiveNavValue(location.pathname),
-    [location.pathname],
-  );
+  const currentTab = useTransformsCurrentTab();
 
   const handleChange = useCallback(
     (newValue: string) => {
@@ -75,7 +49,7 @@ export const TransformsInnerNav = ({ location }: TransformsInnerNavProps) => {
   return (
     <SegmentedControl
       fullWidth
-      value={value}
+      value={currentTab}
       onChange={handleChange}
       data={NAV_ITEMS}
     />

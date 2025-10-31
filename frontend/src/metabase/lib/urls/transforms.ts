@@ -10,9 +10,9 @@ import type {
 } from "metabase-types/api";
 
 const TRANSFORMS_ROOT_URL = `/bench/transforms`;
-const JOBS_ROOT_URL = `/bench/jobs`;
-const RUNS_ROOT_URL = `/bench/runs`;
-const LIBRARY_ROOT_URL = `/bench/library`;
+const JOBS_ROOT_URL = `${TRANSFORMS_ROOT_URL}/jobs`;
+const RUNS_ROOT_URL = `${TRANSFORMS_ROOT_URL}/runs`;
+const LIBRARY_ROOT_URL = `${TRANSFORMS_ROOT_URL}/library`;
 
 export type TransformPythonLibraryParams = {
   path: string;
