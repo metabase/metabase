@@ -30,8 +30,10 @@ export function PythonTransformEditor({
   onRejectProposed,
 }: PythonTransformEditorProps) {
   const [testRunner, setTestRunner] = useState<"pyodide" | "api">("pyodide");
-  const { isRunning, cancel, run, executionResult } =
-    useTestPythonTransform(source, testRunner);
+  const { isRunning, cancel, run, executionResult } = useTestPythonTransform(
+    source,
+    testRunner,
+  );
 
   const handleScriptChange = (body: string) => {
     const newSource = {
