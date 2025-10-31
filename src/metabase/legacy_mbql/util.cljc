@@ -204,7 +204,9 @@
 
     [:not-empty clause]
     (if (emptyable? clause)
-      [:and [:!= clause nil] [:!= clause ""]]
+      ;; For emptyable types, we need both NOT NULL and not empty string
+      ;; Use a more direct approach to avoid redundant OR clauses in SQL generation
+      [:and [:!= clause nil] [:not [:= clause ""]]]
       [:!= clause nil])))
 
 (defn- replace-field-or-expression
