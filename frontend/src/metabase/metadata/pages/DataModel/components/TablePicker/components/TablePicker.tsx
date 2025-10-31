@@ -52,7 +52,6 @@ export function TablePicker({
   const deferredQuery = useDeferredValue(query);
   const previousDeferredQuery = usePrevious(deferredQuery);
   const [filters, setFilters] = useState<FilterState>({
-    visibilityType: null,
     visibilityType2: null,
     dataSource: null,
     ownerEmail: null,

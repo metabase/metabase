@@ -27,6 +27,7 @@ import {
   Group,
   Icon,
   Loader,
+  Menu,
   Stack,
   Text,
   Tooltip,
@@ -316,30 +317,55 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
       </Box>
 
       <Box px="xl" pb="xl">
-        <Group justify="space-between">
+        <Group justify="flex-end">
           <Button
             component={Link}
             leftSection={<Icon name="network" />}
             to={`/bench/dependencies?id=${table.id}&type=table`}
           >{t`Dependency graph`}</Button>
 
-          <Group justify="flex-end">
-            <Tooltip
-              label={t`Create a model and place it in a given collection.`}
-            >
-              <Button
+          <Menu position="bottom-end">
+            <Menu.Target>
+              <Tooltip label={`Table actions`}>
+                <Button
+                  p="sm"
+                  leftSection={<Icon name="ellipsis" />}
+                  style={{
+                    width: 40,
+                  }}
+                />
+              </Tooltip>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Item
                 leftSection={<Icon name="model" />}
+                rightSection={
+                  <Tooltip
+                    label={t`Create a model and place it in a given collection.`}
+                  >
+                    <Icon name="info_outline" />
+                  </Tooltip>
+                }
                 onClick={() => setIsCreateModelsModalOpen(true)}
-              >{t`Create model`}</Button>
-            </Tooltip>
+              >
+                {t`Create model`}
+              </Menu.Item>
 
-            <Tooltip label={t`Create a model and publish it in the Library.`}>
-              <Button
+              <Menu.Item
                 leftSection={<Icon name="model_with_badge" />}
+                rightSection={
+                  <Tooltip
+                    label={t`Create a model and publish it in the Library.`}
+                  >
+                    <Icon name="info_outline" />
+                  </Tooltip>
+                }
                 onClick={handlePublishModel}
-              >{t`Publish model`}</Button>
-            </Tooltip>
-          </Group>
+              >
+                {t`Publish model`}
+              </Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
         </Group>
       </Box>
 
