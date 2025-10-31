@@ -186,7 +186,7 @@ export interface PublishModelsRequest {
   database_ids?: DatabaseId[];
   schema_ids?: SchemaId[];
   table_ids?: TableId[];
-  target_collection_id: number;
+  target_collection_id: number | "library";
 }
 
 export interface PublishModelsResponse {

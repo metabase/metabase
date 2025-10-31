@@ -3,6 +3,8 @@ import { useDeferredValue, useEffect, useState } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
+import { usePublishModelsMutation } from "metabase/api";
+import { useToast } from "metabase/common/hooks";
 import {
   Badge,
   Box,
@@ -101,6 +103,28 @@ export function TablePicker({
     }
   }, [deferredQuery, previousDeferredQuery]);
 
+  const [publishModels] = usePublishModelsMutation();
+  const [sendToast] = useToast();
+
+  const handlePublishModels = async () => {
+    const { error } = await publishModels({
+      table_ids: Array.from(selectedTables),
+      schema_ids: Array.from(selectedSchemas),
+      database_ids: Array.from(selectedDatabases),
+      target_collection_id: "library",
+    });
+
+    if (error) {
+      sendToast({
+        message: t`Failed to publish`,
+      });
+    } else {
+      sendToast({
+        message: t`Tables published in the Library`,
+      });
+    }
+  };
+
   return (
     <Stack
       data-testid="table-picker"
@@ -178,7 +202,7 @@ export function TablePicker({
             >
               <Button
                 p="sm"
-                leftSection={<Icon name="pencil" />}
+                leftSection={<Icon name="ellipsis" />}
                 disabled={!hasSelectedItems}
                 style={{
                   width: 40,
@@ -218,6 +242,7 @@ export function TablePicker({
                   <Icon name="info_outline" />
                 </Tooltip>
               }
+              onClick={handlePublishModels}
             >
               {t`Publish models`}
             </Menu.Item>
