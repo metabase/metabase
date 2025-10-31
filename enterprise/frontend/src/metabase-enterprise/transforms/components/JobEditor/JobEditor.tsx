@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
 
-import { BenchHeader } from "metabase/bench/components/BenchHeader";
-import { BenchNameInput } from "metabase/bench/components/BenchNameInput";
+import {
+  BenchHeader,
+  BenchHeaderInput,
+} from "metabase/bench/components/BenchHeader";
 import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
 
 import { NAME_MAX_LENGTH } from "../../constants";
@@ -34,7 +36,7 @@ export function JobEditor({
     <ColumnLayout>
       <BenchHeader
         title={
-          <BenchNameInput
+          <BenchHeaderInput
             initialValue={job.name}
             maxLength={NAME_MAX_LENGTH}
             onChange={onNameChange}

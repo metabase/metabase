@@ -6,13 +6,13 @@ import {
   BenchSectionTitle,
 } from "../../components/BenchSectionLayout";
 
-type DependencySectionLayoutProps = {
+type DependenciesSectionLayoutProps = {
   children?: ReactNode;
 };
 
-export function DependencySectionLayout({
+export function DependenciesSectionLayout({
   children,
-}: DependencySectionLayoutProps) {
+}: DependenciesSectionLayoutProps) {
   return (
     <BenchSectionLayout
       title={<BenchSectionTitle title={t`Dependency graph`} />}

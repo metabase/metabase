@@ -4,7 +4,7 @@ import { PLUGIN_DEPENDENCIES, PLUGIN_TRANSFORMS } from "metabase/plugins";
 
 import { BenchLayout } from "./pages/BenchLayout";
 import { DataSectionLayout } from "./pages/DataSectionLayout";
-import { DependencySectionLayout } from "./pages/DependencySectionLayout";
+import { DependenciesSectionLayout } from "./pages/DependenciesSectionLayout";
 
 export function getBenchRoutes() {
   return (
@@ -14,7 +14,7 @@ export function getBenchRoutes() {
         {PLUGIN_TRANSFORMS.getBenchRoutes()}
       </Route>
       {PLUGIN_DEPENDENCIES.isEnabled && (
-        <Route path="dependencies" component={DependencySectionLayout}>
+        <Route path="dependencies" component={DependenciesSectionLayout}>
           {PLUGIN_DEPENDENCIES.getBenchRoutes()}
         </Route>
       )}

@@ -21,8 +21,11 @@ import {
   NewQueryTransformPage,
 } from "./pages/NewTransformPage";
 import { RunListPage } from "./pages/RunListPage";
+import { TransformDependenciesPage } from "./pages/TransformDependenciesPage";
 import { TransformEmptyPage } from "./pages/TransformEmptyPage";
 import { TransformPage } from "./pages/TransformPage";
+import { TransformRunPage } from "./pages/TransformRunPage";
+import { TransformTargetPage } from "./pages/TransformTargetPage";
 import { TransformsSidebarLayout } from "./pages/TransformsPageLayout/TransformsSidebarLayout";
 import { TransformsTopNavLayout } from "./pages/TransformsPageLayout/TransformsTopNavLayout";
 
@@ -48,6 +51,12 @@ if (hasPremiumFeature("transforms")) {
             <Route path="new/python" component={NewPythonTransformPage} />
           )}
           <Route path=":transformId" component={TransformPage} />
+          <Route path=":transformId/run" component={TransformRunPage} />
+          <Route path=":transformId/target" component={TransformTargetPage} />
+          <Route
+            path=":transformId/dependencies"
+            component={TransformDependenciesPage}
+          />
         </Route>
       </Route>
     </Route>
