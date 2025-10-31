@@ -122,6 +122,7 @@ export function TablePicker({
       sendToast({
         message: t`Tables published in the Library`,
       });
+      resetSelection();
     }
   };
 
