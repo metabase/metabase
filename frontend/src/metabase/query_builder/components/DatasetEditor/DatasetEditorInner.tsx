@@ -32,7 +32,9 @@ import {
 } from "metabase/query_builder/actions";
 import { calcInitialEditorHeight } from "metabase/query_builder/components/NativeQueryEditor/utils";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
-import DataReference from "metabase/query_builder/components/dataref/DataReference";
+import DataReference, {
+  type DataReferenceStackItem,
+} from "metabase/query_builder/components/dataref/DataReference";
 import { SnippetSidebar } from "metabase/query_builder/components/template_tags/SnippetSidebar/SnippetSidebar";
 import { TagEditorSidebar } from "metabase/query_builder/components/template_tags/TagEditorSidebar";
 import ViewSidebar from "metabase/query_builder/components/view/ViewSidebar";
@@ -60,6 +62,7 @@ import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   DatasetColumn,
   Field,
+  ModelIndex,
   RawSeries,
   ResultsMetadata,
   VisualizationSettings,
@@ -120,6 +123,9 @@ export type DatasetEditorInnerProps = {
   toggleDataReference: () => void;
   toggleSnippetSidebar: () => void;
   forwardedRef?: React.Ref<HTMLDivElement>;
+  dataReferenceStack: DataReferenceStackItem[];
+  popDataReferenceStack: () => void;
+  pushDataReferenceStack: (item: DataReferenceStackItem) => void;
 };
 
 const INITIAL_NOTEBOOK_EDITOR_HEIGHT = 500;
@@ -141,7 +147,7 @@ function mapStateToProps(state: any) {
 const mapDispatchToProps = { setDatasetEditorTab };
 
 function getSidebar(
-  props: DatasetEditorInnerProps & { modelIndexes?: unknown },
+  props: DatasetEditorInnerProps & { modelIndexes?: ModelIndex[] },
   {
     datasetEditorTab,
     isQueryError,
