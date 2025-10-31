@@ -830,6 +830,16 @@ H.describeWithSnowplowEE("documents", () => {
         H.getDocumentCard("Orders, Count, Grouped by Created At (year)").should(
           "be.visible",
         );
+
+        H.cartesianChartCircle().eq(1).click();
+
+        H.popover().findByText("See these Orders").click();
+
+        cy.findByLabelText("Back to Foo Document").click();
+
+        cy.get("@documentId").then((id) =>
+          cy.location("pathname").should("equal", `/document/${id}`),
+        );
       });
     });
   });
