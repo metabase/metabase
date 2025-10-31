@@ -29,7 +29,8 @@ jobs:
     timeout-minutes: 5
     outputs:
       run_mode: ${{ steps.config.outputs.result.runMode }}
-      dev_server: ${{ steps.config.outputs.result.metastoreDevServer }}
+      run_mode: ${{ fromJson(steps.config.outputs.result).runMode }}
+      dev_server: ${{ fromJson(steps.config.outputs.result).metastoreDevServer }}
     steps:
       - uses: actions/checkout@v4
         with:
