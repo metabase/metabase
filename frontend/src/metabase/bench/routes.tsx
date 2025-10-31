@@ -8,8 +8,9 @@ import { DataSectionLayout } from "./pages/DataSectionLayout";
 export function getBenchRoutes() {
   return (
     <Route path="bench" component={BenchLayout}>
-      <Route path="data" component={DataSectionLayout} />
-      {PLUGIN_TRANSFORMS.getBenchRoutes()}
+      <Route path="data" component={DataSectionLayout}>
+        {PLUGIN_TRANSFORMS.getBenchRoutes()}
+      </Route>
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <Route
           path="dependencies"
