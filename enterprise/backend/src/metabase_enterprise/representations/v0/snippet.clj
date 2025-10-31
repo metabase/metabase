@@ -1,7 +1,6 @@
 (ns metabase-enterprise.representations.v0.snippet
   (:require
    [metabase-enterprise.representations.core :as core]
-   [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.toucan.core :as rep-t2]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.yaml :as rep-yaml]
@@ -19,7 +18,8 @@
   "The toucan model keyword associated with snippet representations"
   :model/NativeQuerySnippet)
 
-(defmethod import/yaml->toucan [:v0 :snippet]
+(defn yaml->toucan
+  "Convert a v0 snippet representation to Toucan-compatible data."
   [{:keys [name display_name description sql collection entity-id] :as representation}
    _ref-index]
   (-> {:name (or display_name name)
@@ -29,9 +29,10 @@
        :template_tags (lib.native/recognize-template-tags sql)}
       u/remove-nils))
 
-(defmethod import/persist! [:v0 :snippet]
+(defn persist!
+  "Persist a v0 snippet representation by creating or updating it in the database."
   [representation ref-index]
-  (let [snippet-data (->> (import/yaml->toucan representation ref-index)
+  (let [snippet-data (->> (yaml->toucan representation ref-index)
                           (rep-t2/with-toucan-defaults :model/NativeQuerySnippet))
         entity-id (:entity_id snippet-data)
         existing (when entity-id (t2/select-one :model/NativeQuerySnippet :entity_id entity-id))]

@@ -3,7 +3,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [flatland.ordered.map :refer [ordered-map]]
-   [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
@@ -19,7 +18,8 @@
 (defmethod v0-common/representation-type :model/Database [_entity]
   :database)
 
-(defmethod import/yaml->toucan [:v0 :database]
+(defn yaml->toucan
+  "Convert a v0 database representation to Toucan-compatible data."
   [representation _ref-index]
   (-> representation
       (set/rename-keys {:connection_details :details
@@ -28,9 +28,10 @@
       (v0-common/hydrate-env-vars)
       (u/remove-nils)))
 
-(defmethod import/persist! [:v0 :database]
+(defn persist!
+  "Persist a v0 database representation by matching it to an existing database."
   [representation ref-index]
-  (let [representation (import/yaml->toucan representation ref-index)]
+  (let [representation (yaml->toucan representation ref-index)]
     (if-some [existing (t2/select-one :model/Database
                                       :name (:name representation)
                                       :engine (:engine representation))]

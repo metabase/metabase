@@ -1,7 +1,6 @@
 (ns metabase-enterprise.representations.v0.model
   (:require
    [flatland.ordered.map :refer [ordered-map]]
-   [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.lookup :as lookup]
    [metabase-enterprise.representations.toucan.core :as rep-t2]
    [metabase-enterprise.representations.v0.card]
@@ -33,7 +32,8 @@
   "The toucan model keyword associated with model representations"
   :model/Card)
 
-(defmethod import/yaml->toucan [:v0 :model]
+(defn yaml->toucan
+  "Convert a v0 model representation to Toucan-compatible data."
   [{model-name :display_name
     :keys [_type name description database collection columns] :as representation}
    ref-index]
@@ -60,9 +60,10 @@
          :collection_id (v0-common/find-collection-id collection)}
         u/remove-nils)))
 
-(defmethod import/persist! [:v0 :model]
+(defn persist!
+  "Persist a v0 model representation by creating or updating it in the database."
   [representation ref-index]
-  (let [model-data (->> (import/yaml->toucan representation ref-index)
+  (let [model-data (->> (yaml->toucan representation ref-index)
                         (rep-t2/with-toucan-defaults :model/Card))
         entity-id (:entity_id model-data)
         existing (when entity-id

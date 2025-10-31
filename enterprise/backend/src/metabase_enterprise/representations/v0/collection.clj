@@ -1,6 +1,5 @@
 (ns metabase-enterprise.representations.v0.collection
   (:require
-   [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.toucan.core :as rep-t2]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase.collections.api :as coll.api]
@@ -34,7 +33,8 @@
        :data
        (mapv model->url)))
 
-(defmethod import/yaml->toucan [:v0 :collection]
+(defn yaml->toucan
+  "Convert a v0 collection representation to Toucan-compatible data."
   [{collection-name :display_name
     :keys [name description collection] :as _representation}
    _ref-index]
@@ -50,7 +50,7 @@
       :description description
       :location location})))
 
-(defn- persist!
+(defn- insert-collection!
   [new-collection]
   (log/debug "Creating new collection" (:name new-collection))
   (t2/insert-returning-instance! :model/Collection new-collection))
@@ -61,17 +61,18 @@
         archived-name (str collection-name " (archived)")]
     (log/info "Renaming existing collection" collection-name "to" archived-name)
     (t2/update! :model/Collection (:id existing-collection) {:name archived-name})
-    (persist! new-collection)))
+    (insert-collection! new-collection)))
 
-(defmethod import/persist! [:v0 :collection]
+(defn persist!
+  "Persist a v0 collection representation by creating or updating it in the database."
   [representation ref-index]
-  (let [new-collection (->> (import/yaml->toucan representation ref-index)
+  (let [new-collection (->> (yaml->toucan representation ref-index)
                             (rep-t2/with-toucan-defaults :model/Collection))
         collection-name (:name new-collection)
         existing (t2/select-one :model/Collection :name collection-name :location "/")]
     (if existing
       (archive-and-persist! existing new-collection)
-      (persist! new-collection))))
+      (insert-collection! new-collection))))
 
 (defn export-collection
   "Export a Collection Toucan entity to a v0 collection representation."

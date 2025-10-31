@@ -1,7 +1,6 @@
 (ns metabase-enterprise.representations.v0.metric
   (:require
    [flatland.ordered.map :refer [ordered-map]]
-   [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.lookup :as lookup]
    [metabase-enterprise.representations.toucan.core :as rep-t2]
    [metabase-enterprise.representations.v0.card]
@@ -19,7 +18,8 @@
   "The toucan model keyword associated with metric representations"
   :model/Card)
 
-(defmethod import/yaml->toucan [:v0 :metric]
+(defn yaml->toucan
+  "Convert a v0 metric representation to Toucan-compatible data."
   [{metric-name :display_name
     :keys [name description database collection columns] :as representation}
    ref-index]
@@ -39,9 +39,10 @@
          :collection_id (v0-common/find-collection-id collection)}
         u/remove-nils)))
 
-(defmethod import/persist! [:v0 :metric]
+(defn persist!
+  "Persist a v0 metric representation by creating or updating it in the database."
   [representation ref-index]
-  (let [metric-data (->> (import/yaml->toucan representation ref-index)
+  (let [metric-data (->> (yaml->toucan representation ref-index)
                          (rep-t2/with-toucan-defaults :model/Card))
         ;; Generate stable entity_id from ref and collection
         entity-id (v0-common/generate-entity-id representation)

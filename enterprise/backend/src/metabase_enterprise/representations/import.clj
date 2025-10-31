@@ -7,6 +7,7 @@
    [metabase-enterprise.representations.common :as common]
    [metabase-enterprise.representations.toucan.core :as rep-t2]
    [metabase-enterprise.representations.v0.common :as v0-common]
+   [metabase-enterprise.representations.v0.core :as v0-core]
    [metabase-enterprise.representations.yaml :as rep-yaml]
    [metabase.util.log :as log]
    [representations.read :as rep-read]
@@ -14,19 +15,19 @@
 
 (set! *warn-on-reflection* true)
 
-(defmulti persist!
-  "Ingest a validated representation and create/update the entity in the database.
-   Dispatches on the :type field of the representation."
-  {:arglists '([representation ref-index])}
-  (fn [entity _ref-index] ((juxt :version :type) entity)))
+(defn persist!
+  "Ingest a validated representation and create/update the entity in the database."
+  [representation ref-index]
+  (case (:version representation)
+    :v0 (v0-core/persist! representation ref-index)))
 
-(defmulti yaml->toucan
+(defn yaml->toucan
   "Convert a validated representation into data suitable for creating/updating an entity.
    Returns a map with keys matching the Toucan model fields.
-   Does NOT insert into the database - just transforms the data.
-   Dispatches on the :version and :type fields of the representation."
-  {:arglists '([representation ref-index])}
-  (fn [entity _ref-index] ((juxt :version :type) entity)))
+   Does NOT insert into the database - just transforms the data."
+  [representation ref-index]
+  (case (:version representation)
+    :v0 (v0-core/yaml->toucan representation ref-index)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Representation Normalization ;;

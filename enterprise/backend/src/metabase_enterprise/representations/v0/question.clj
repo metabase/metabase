@@ -1,7 +1,6 @@
 (ns metabase-enterprise.representations.v0.question
   (:require
    [flatland.ordered.map :refer [ordered-map]]
-   [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.lookup :as lookup]
    [metabase-enterprise.representations.toucan.core :as rep-t2]
    [metabase-enterprise.representations.v0.card]
@@ -16,7 +15,8 @@
   "The toucan model keyword associated with question representations"
   :model/Card)
 
-(defmethod import/yaml->toucan [:v0 :question]
+(defn yaml->toucan
+  "Convert a v0 question representation to Toucan-compatible data."
   [representation ref-index]
   (let [database-id (lookup/lookup-database-id ref-index (:database representation))
         query (v0-mbql/import-dataset-query representation ref-index)]
@@ -30,9 +30,10 @@
          :type :question}
         u/remove-nils)))
 
-(defmethod import/persist! [:v0 :question]
+(defn persist!
+  "Persist a v0 question representation by creating or updating it in the database."
   [representation ref-index]
-  (let [question-data (->> (import/yaml->toucan representation ref-index)
+  (let [question-data (->> (yaml->toucan representation ref-index)
                            (rep-t2/with-toucan-defaults :model/Card))
         entity-id (:entity_id question-data)
         existing (when entity-id

@@ -35,3 +35,29 @@
     :question (v0-question/export-question t2-entity)
     :snippet (v0-snippet/export-snippet t2-entity)
     :transform (v0-transform/export-transform t2-entity)))
+
+(defn yaml->toucan
+  "Convert a v0 representation into data suitable for creating/updating an entity."
+  [representation ref-index]
+  (case (:type representation)
+    :collection (v0-coll/yaml->toucan representation ref-index)
+    :database (v0-database/yaml->toucan representation ref-index)
+    :document (v0-document/yaml->toucan representation ref-index)
+    :metric (v0-metric/yaml->toucan representation ref-index)
+    :model (v0-model/yaml->toucan representation ref-index)
+    :question (v0-question/yaml->toucan representation ref-index)
+    :snippet (v0-snippet/yaml->toucan representation ref-index)
+    :transform (v0-transform/yaml->toucan representation ref-index)))
+
+(defn persist!
+  "Persist a v0 representation by creating or updating the entity in the database."
+  [representation ref-index]
+  (case (:type representation)
+    :collection (v0-coll/persist! representation ref-index)
+    :database (v0-database/persist! representation ref-index)
+    :document (v0-document/persist! representation ref-index)
+    :metric (v0-metric/persist! representation ref-index)
+    :model (v0-model/persist! representation ref-index)
+    :question (v0-question/persist! representation ref-index)
+    :snippet (v0-snippet/persist! representation ref-index)
+    :transform (v0-transform/persist! representation ref-index)))

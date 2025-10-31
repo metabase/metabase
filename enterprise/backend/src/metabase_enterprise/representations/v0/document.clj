@@ -4,7 +4,6 @@
    [clojure.java.shell :as sh]
    [clojure.string :as str]
    [clojure.walk :as walk]
-   [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.toucan.core :as rep-t2]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.v0.mbql :as v0-mbql]
@@ -42,7 +41,8 @@
                        :exit-code (:exit result)})))
     (str/trim (:out result))))
 
-(defmethod import/yaml->toucan [:v0 :document]
+(defn yaml->toucan
+  "Convert a v0 document representation to Toucan-compatible data."
   [{document-name :display_name
     :keys [name content _content_type]}
    ref-index]
@@ -52,9 +52,10 @@
      :document (json/encode yaml-content)
      :content_type "application/json+vnd.prose-mirror"}))
 
-(defmethod import/persist! [:v0 :document]
+(defn persist!
+  "Persist a v0 document representation by creating or updating it in the database."
   [representation ref-index]
-  (let [document-data (->> (import/yaml->toucan representation ref-index)
+  (let [document-data (->> (yaml->toucan representation ref-index)
                            (rep-t2/with-toucan-defaults :model/Document))
         entity-id (:entity_id document-data)
         existing (when entity-id

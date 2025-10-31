@@ -19,7 +19,8 @@
   "The toucan model keyword associated with transform representations"
   :model/Transform)
 
-(defmethod import/yaml->toucan [:v0 :transform]
+(defn yaml->toucan
+  "Convert a v0 transform representation to Toucan-compatible data."
   [{:keys [database] :as representation}
    ref-index]
   (let [database-id (-> ref-index
@@ -72,9 +73,10 @@
       (set-up-tags id (:tags representation))
       (t2/hydrate (t2/select-one :model/Transform :id id) :transform_tag_names))))
 
-(defmethod import/persist! [:v0 :transform]
+(defn persist!
+  "Persist a v0 transform representation by creating or updating it in the database."
   [representation ref-index]
-  (let [transform-data (->> (import/yaml->toucan representation ref-index)
+  (let [transform-data (->> (yaml->toucan representation ref-index)
                             (rep-t2/with-toucan-defaults :model/Transform))
         entity-id (:entity_id transform-data)
         existing (when entity-id
