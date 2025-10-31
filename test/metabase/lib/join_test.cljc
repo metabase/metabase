@@ -1337,7 +1337,6 @@
                   "join =\n"               (u/pprint-to-str join-or-joinable)                         \newline
                   "existing joins = "      (u/pprint-to-str (map lib.options/uuid (lib/joins query))) \newline
                   "first join? "           first-join?)
-      #_(prn "join-or-joinable" join-or-joinable)
       (testing "When passing an explicit LHS column, use display name for its `:table`"
         (is (= "Orders"
                (lib/join-lhs-display-name query join-or-joinable (meta/field-metadata :orders :product-id)))))

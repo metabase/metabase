@@ -1079,13 +1079,13 @@
 
 (defn- join-lhs-display-name-from-condition-lhs
   [query stage-number join-or-joinable condition-lhs-or-nil]
-  (when-let [lhs-column-refs (or (and condition-lhs-or-nil [condition-lhs-or-nil])
-                                 (when (join? join-or-joinable)
-                                   (->> (join-conditions join-or-joinable)
-                                        (keep #(let [lhs (standard-join-condition-lhs %)]
-                                                 (when (and lhs (lib.util/field-clause? lhs))
-                                                   lhs)))
-                                        seq)))]
+  (when-let [lhs-column-refs (cond
+                               condition-lhs-or-nil [condition-lhs-or-nil]
+                               (join? join-or-joinable) (->> (join-conditions join-or-joinable)
+                                                             (keep #(let [lhs (standard-join-condition-lhs %)]
+                                                                      (when (and lhs (lib.util/field-clause? lhs))
+                                                                        lhs)))
+                                                             seq))]
     (let [table-names (into #{}
                             (map #(-> (lib.metadata.calculation/display-info query stage-number %)
                                       (get-in [:table :display-name])))
