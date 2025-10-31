@@ -71,7 +71,7 @@
   (let [yaml-string (slurp (:body request))
         collection (rep-yaml/parse-string yaml-string)
         representations (import/collection-representations collection)
-        representations (import/order-representations representations)
+        representations (v0-common/order-representations representations)
         representations (map rep-read/parse representations)
         errors (deps/check-dependencies representations)]
     (rep-yaml/generate-string errors)))
@@ -86,7 +86,7 @@
   (let [yaml-string (slurp (:body request))
         collection (rep-yaml/parse-string yaml-string)
         representations (import/collection-representations collection)
-        representations (import/order-representations representations)
+        representations (v0-common/order-representations representations)
         representations (map rep-read/parse representations)
         errors (deps/check-dependencies representations)]
     (rep-yaml/generate-string errors)))
@@ -159,7 +159,7 @@
         export-set (-> [representation]
                        (export/export-set)
                        (reduce-tables)
-                       (import/order-representations)
+                       (v0-common/order-representations)
                        (reverse))
         export-set (mapv #(dissoc % :entity_id :entity-id) export-set)
         clean-yamls (mapv v0-common/cleanup-delete-before-output export-set)
