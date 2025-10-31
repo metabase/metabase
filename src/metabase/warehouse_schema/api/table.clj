@@ -16,6 +16,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.premium-features.core :as premium-features]
    [metabase.queries.models.card :as card]
    [metabase.query-processor :as qp]
    ;; legacy usage -- don't do things like this going forward
@@ -61,7 +62,7 @@
 (api.macros/defendpoint :get "/"
   "Get all `Tables`."
   [_
-   {:keys [term visibility_type visibility_type2 data_source owner_user_id owner_email]}
+   {:keys [term visibility_type visibility_type2 data_source owner_user_id owner_email orphan_only]}
    :- [:map
        ;; conjunctive search terms
        [:term {:optional true} :string]
@@ -69,18 +70,32 @@
        [:visibility_type2 {:optional true} :string]
        [:data_source {:optional true} :string]
        [:owner_user_id {:optional true} [:or :int [:enum ""]]]
-       [:owner_email {:optional true} :string]]]
+       [:owner_email {:optional true} :string]
+       [:orphan_only {:optional true} [:maybe ms/BooleanValue]]]]
   (let [like       (case (app-db/db-type) (:h2 :postgres) :ilike :like)
         pattern    (some-> term (str/replace "*" "%") (cond-> (not (str/ends-with? term "%")) (str "%")))
         empty-null (fn [x] (if (and (string? x) (str/blank? x)) nil x))
-        where      (cond-> [:and true]
+        where      (cond-> [:and [:= :active true]]
                      (not (str/blank? term)) (conj [like :name pattern])
                      visibility_type         (conj [:= :visibility_type  (empty-null visibility_type)])
                      visibility_type2        (conj [:= :visibility_type2 (empty-null visibility_type2)])
                      data_source             (conj [:= :data_source      (empty-null data_source)])
                      owner_user_id           (conj [:= :owner_user_id    (empty-null owner_user_id)])
-                     owner_email             (conj [:= :owner_email      (empty-null owner_email)]))]
-    (as-> (t2/select :model/Table, :active true, {:where where, :order-by [[:name :asc]]}) tables
+                     owner_email             (conj [:= :owner_email      (empty-null owner_email)]))
+        ;; Use LEFT JOIN to efficiently filter orphaned tables
+        ;; Exclude transforms as dependents since they produce tables
+        query      (cond-> {:where    where
+                            :order-by [[:name :asc]]}
+                     (and orphan_only (premium-features/has-feature? :dependencies))
+                     (assoc :left-join [[:dependency :d]
+                                        [:and
+                                         [:= :d.to_entity_type "table"]
+                                         [:= :d.to_entity_id :metabase_table.id]
+                                         ;; TODO: Ngoc (31/10/2025) we are not sure whether to exclude transform here
+                                         ;; let's circle back before merging bulk editing
+                                         [:not= :d.from_entity_type "transform"]]]
+                            :where     [:and where [:= :d.id nil]]))]
+    (as-> (t2/select :model/Table query) tables
       (t2/hydrate tables :db)
       (into [] (comp (filter mi/can-read?)
                      (map schema.table/present-table))
