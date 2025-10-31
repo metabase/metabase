@@ -243,7 +243,7 @@
   Replaces all files in the branch organized by collection prefix - files not in the provided list but in the same
   collection prefix will be deleted.
 
-  Returns the result of pushing the branch to the remote repository. Throws ExceptionInfo if the write or push
+  Returns the version written. Throws ExceptionInfo if the write or push
   operation fails."
   [{:keys [^Git git ^String version ^String branch] :as snapshot} ^String message files]
   (let [repo (.getRepository git)
@@ -291,8 +291,9 @@
             (.flush inserter)
             (doto (.updateRef repo branch-ref)
               (.setNewObjectId commit-id)
-              (.update))))))
-    (push-branch! snapshot)))
+              (.update))
+            (push-branch! snapshot)
+            (.name commit-id)))))))
 
 (defn branches
   "Retrieves all branch names from the remote repository.

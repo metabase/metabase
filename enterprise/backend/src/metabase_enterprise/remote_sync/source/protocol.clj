@@ -53,7 +53,7 @@
     Takes a SourceSnapshot instance implementing this protocol, a message (the commit message to use when writing files),
     and files (a sequence of file specs, which are maps with :path and :content keys).
 
-    Returns the result of the write operation.")
+    Returns the version of the written files.")
 
   (version [snapshot]
     "Gets a version identifier for the current state of the snapshot.

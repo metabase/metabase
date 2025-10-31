@@ -70,7 +70,7 @@
   SourceSnapshot protocol where files will be written), a task-id (the RemoteSyncTask identifier used to track progress
   updates), and a message (the commit message to use when writing files to the source).
 
-  Returns the result of calling write-files! on the source with the serialized files.
+  Returns the version written to the source.
 
   Throws Exception if any entity in the stream is an Exception instance."
   [stream snapshot task-id message]

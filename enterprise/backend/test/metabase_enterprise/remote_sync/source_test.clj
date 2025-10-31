@@ -23,7 +23,8 @@
 
   (write-files! [_ message files]
     (let [realized-files (vec files)]
-      (reset! written-files {:message message :files realized-files})))
+      (reset! written-files {:message message :files realized-files}))
+    "mock-written-version")
 
   (version [_]
     "mock-version"))
@@ -62,7 +63,7 @@
             test-entities [(create-test-entity "test-id-1" "entity-one" "Collection")
                            (create-test-entity "test-id-2" "entity-two" "Card")]]
 
-        (source/store! test-entities (source.p/snapshot mock-source) task-id "Test commit message")
+        (is (= "mock-written-version" (source/store! test-entities (source.p/snapshot mock-source) task-id "Test commit message")))
 
         (testing "write-files! was called with correct message"
           (is (= "Test commit message" (:message @written-files))))

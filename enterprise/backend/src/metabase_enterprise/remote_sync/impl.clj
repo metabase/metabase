@@ -199,8 +199,8 @@
                                                  :continue-on-error false
                                                  :skip-archived true})]
               (remote-sync.task/update-progress! task-id 0.3)
-              (source/store! models snapshot task-id message)
-              (remote-sync.task/set-version! task-id (source.p/version snapshot))
+              (let [written-version (source/store! models snapshot task-id message)]
+                (remote-sync.task/set-version! task-id written-version))
               (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at sync-timestamp})))
           {:status :success
            :version (source.p/version snapshot)}
