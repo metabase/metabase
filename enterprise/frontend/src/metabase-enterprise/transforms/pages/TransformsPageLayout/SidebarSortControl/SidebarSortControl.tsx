@@ -4,12 +4,12 @@ import { Button, Group, Icon, Select } from "metabase/ui";
 
 export type SortOption = "tree" | "alphabetical" | "last-modified";
 
-type SortOptionData = {
+export type SortOptionData = {
   value: SortOption;
   label: string;
 };
 
-const SORT_OPTIONS: SortOptionData[] = [
+export const TRANSFORM_SORT_OPTIONS: SortOptionData[] = [
   {
     value: "tree" as const,
     get label() {
@@ -30,25 +30,59 @@ const SORT_OPTIONS: SortOptionData[] = [
   },
 ];
 
+export const JOB_SORT_OPTIONS: SortOptionData[] = [
+  {
+    value: "alphabetical" as const,
+    get label() {
+      return t`Alphabetical`;
+    },
+  },
+  {
+    value: "last-modified" as const,
+    get label() {
+      return t`Last modified`;
+    },
+  },
+];
+
 interface SidebarSortControlProps {
   value: SortOption;
   onChange: (value: SortOption) => void;
   onAdd?: () => void;
+  options: SortOptionData[];
 }
 
 export const SidebarSortControl = ({
   value,
   onChange,
   onAdd,
+  options,
 }: SidebarSortControlProps) => {
+  if (!options || options.length === 0) {
+    return null;
+  }
+
+  const selectData = options.map((opt) => ({
+    value: opt.value,
+    label: opt.label,
+  }));
+
+  const validValue =
+    selectData.find((opt) => opt.value === value)?.value ??
+    selectData[0]?.value;
+
   return (
     <Group gap="sm" wrap="nowrap">
       <Select
         size="sm"
         flex={1}
-        value={value}
-        onChange={(value) => onChange(value as SortOption)}
-        data={SORT_OPTIONS}
+        value={validValue}
+        onChange={(value) => {
+          if (value) {
+            onChange(value as SortOption);
+          }
+        }}
+        data={selectData}
       />
       {onAdd && (
         <Button
