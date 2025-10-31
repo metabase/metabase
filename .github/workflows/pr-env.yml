@@ -156,6 +156,7 @@ jobs:
           DB_HOST: ${{ secrets.PR_ENV_DB_HOST }}
           DB_USERNAME: ${{ secrets.PR_ENV_DB_USER }}
           DB_PASSWORD: ${{ secrets.PR_ENV_DB_PASSWORD }}
+          CONFIG: ${{ secrets.PR_ENV_CONFIG }}
 
       - name: Setup Helm
         if: ${{ inputs.self_hosting }}
