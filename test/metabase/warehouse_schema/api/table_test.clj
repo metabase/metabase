@@ -1271,6 +1271,7 @@
               (is (some? (mt/process-query (-> response :models first :dataset_query)))))
             (testing "models are persisted in database"
               (is (= 2 (t2/count :model/Card :collection_id collection-id :type :model))))))))))
+;: TODO (Ngoc 31/10/2025): test publish model to library mark the library as dirty
 
 (deftest ^:parallel bulk-edit-visibility-sync-test
   (testing "POST /api/table/edit visibility field synchronization"
