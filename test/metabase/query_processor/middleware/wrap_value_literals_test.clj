@@ -350,3 +350,35 @@
                  :source-query {:source-table $$products
                                 :aggregation [[:count]]
                                 :breakout [$category]}})))))))
+
+(deftest ^:parallel str-id-field->type-info-with-desired-column-alias-test
+  (testing "str-id-field->type-info should match on :lib/desired-column-alias for implicitly joined fields (#64891)"
+    (qp.store/with-metadata-provider meta/metadata-provider
+      (let [;; Taken from the source-metadata of the repro in #64891
+            source-metadata [{:name "id",
+                              :lib/desired-column-alias "id",
+                              :database_type "int4",
+                              :effective_type :type/Integer,
+                              :base_type :type/Integer}
+                             {:name "company_id",
+                              :lib/desired-column-alias "company_id",
+                              :database_type "int4",
+                              :effective_type :type/Integer,
+                              :base_type :type/Integer}
+                             {:name "id_2",
+                              :lib/desired-column-alias "Company__id"
+                              :effective_type :type/Integer,
+                              :database_type "int4",
+                              :base_type :type/Integer}
+                             {:name "size",
+                              :lib/desired-column-alias "Company__size",
+                              :database_type "company_size",
+                              :effective_type :type/PostgresEnum,
+                              :base_type :type/PostgresEnum}]
+            inner-query {:source-metadata source-metadata}
+            ;; Field with prefixed name (no explicit join-alias)
+            field [:field "Company__size" {}]]
+        (is (= {:base_type :type/PostgresEnum
+                :effective_type :type/PostgresEnum
+                :database_type "company_size"}
+               (#'qp.wrap-value-literals/str-id-field->type-info field inner-query)))))))
