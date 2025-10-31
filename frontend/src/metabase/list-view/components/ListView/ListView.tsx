@@ -53,7 +53,7 @@ export function ListView({
     settings?.["list.columns"],
   );
 
-  const openObjectDetail = useObjectDetail(data);
+  const openObjectDetail = useObjectDetail();
 
   // Get the appropriate icon based on entity type
   const entityIcon =
