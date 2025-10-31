@@ -62,3 +62,9 @@ export const getLabels = (settings: VisualizationSettings) => {
     yLabel,
   };
 };
+
+export const getShouldGroupRemainingValues = (
+  settings: VisualizationSettings,
+) => {
+  return settings["graph.row_chart.group_remaining_values"] !== false;
+};
