@@ -20,7 +20,7 @@ export function DataSectionLayout({
   location,
   children,
 }: DataSectionLayoutProps) {
-  const tabs = getTabs();
+  const tabs = getTabs(location);
 
   return (
     <BenchSectionLayout
@@ -30,16 +30,24 @@ export function DataSectionLayout({
           description={t`Explore and manage your data assets`}
         />
       }
-      tabs={<BenchSectionTabs tabs={tabs} location={location} />}
+      tabs={<BenchSectionTabs tabs={tabs} />}
     >
       {children}
     </BenchSectionLayout>
   );
 }
 
-function getTabs(): BenchSectionTab[] {
+function getTabs({ pathname }: Location): BenchSectionTab[] {
   return [
-    { label: t`Data`, to: Urls.bench() },
-    { label: t`Transforms`, to: Urls.transformList() },
+    {
+      label: t`Data`,
+      to: Urls.bench(),
+      isSelected: pathname === Urls.bench(),
+    },
+    {
+      label: t`Transforms`,
+      to: Urls.transformList(),
+      isSelected: pathname.startsWith(Urls.transformList()),
+    },
   ];
 }

@@ -1,4 +1,3 @@
-import type { Location } from "history";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 
@@ -56,18 +55,18 @@ export function BenchSectionTitle({
 export type BenchSectionTab = {
   label: string;
   to: string;
+  isSelected: boolean;
 };
 
 type BenchSectionTabsProps = {
   tabs: BenchSectionTab[];
-  location: Location;
 };
 
-export function BenchSectionTabs({ tabs, location }: BenchSectionTabsProps) {
-  const selectedTab = tabs.find((tab) => location.pathname.startsWith(tab.to));
+export function BenchSectionTabs({ tabs }: BenchSectionTabsProps) {
+  const selectedTab = tabs.find((tab) => tab.isSelected);
 
   return (
-    <Tabs value={selectedTab?.to}>
+    <Tabs value={selectedTab ? selectedTab.to : null}>
       <Tabs.List>
         {tabs.map((tab) => (
           <Tabs.Tab

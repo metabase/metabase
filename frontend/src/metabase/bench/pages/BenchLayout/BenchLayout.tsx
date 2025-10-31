@@ -30,14 +30,22 @@ type BenchNavProps = {
 };
 
 function BenchNav({ location }: BenchNavProps) {
+  const { pathname } = location;
+
   return (
     <Stack className={S.nav} justify="space-between" h="100%" p="0.75rem">
-      <BenchNavItem icon="database" to={Urls.bench()} location={location} />
+      <BenchNavItem
+        to={Urls.bench()}
+        icon="database"
+        isSelected={
+          pathname === Urls.bench() || pathname.startsWith(Urls.transformList())
+        }
+      />
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <BenchNavItem
           icon="schema"
           to={Urls.dependencyGraph()}
-          location={location}
+          isSelected={pathname.startsWith(Urls.dependencyGraph())}
         />
       )}
     </Stack>
@@ -45,17 +53,15 @@ function BenchNav({ location }: BenchNavProps) {
 }
 
 type BenchNavItemProps = {
-  icon: IconName;
   to: string;
-  location: Location;
+  icon: IconName;
+  isSelected: boolean;
 };
 
-function BenchNavItem({ icon, to, location }: BenchNavItemProps) {
-  const isActive = location.pathname.startsWith(to);
-
+function BenchNavItem({ to, icon, isSelected }: BenchNavItemProps) {
   return (
     <Box
-      className={cx(S.item, { [S.active]: isActive })}
+      className={cx(S.item, { [S.selected]: isSelected })}
       component={Link}
       to={to}
       display="block"

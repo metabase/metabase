@@ -7,7 +7,7 @@
   background-color: var(--mb-color-bg-medium);
 
   &:hover,
-  &.active {
+  &.selected {
     color: var(--mb-color-text-selected);
     background-color: var(--mb-color-bg-black);
   }
