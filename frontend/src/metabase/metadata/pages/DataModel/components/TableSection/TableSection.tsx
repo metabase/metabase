@@ -316,22 +316,30 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
       </Box>
 
       <Box px="xl" pb="xl">
-        <Group justify="flex-end">
-          <Tooltip
-            label={t`Create a model and place it in a given collection.`}
-          >
-            <Button
-              leftSection={<Icon name="model" />}
-              onClick={() => setIsCreateModelsModalOpen(true)}
-            >{t`Create model`}</Button>
-          </Tooltip>
+        <Group justify="space-between">
+          <Button
+            component={Link}
+            leftSection={<Icon name="network" />}
+            to={`/bench/dependencies?id=${table.id}&type=table`}
+          >{t`Dependency graph`}</Button>
 
-          <Tooltip label={t`Create a model and publish it in the Library.`}>
-            <Button
-              leftSection={<Icon name="model_with_badge" />}
-              onClick={handlePublishModel}
-            >{t`Publish model`}</Button>
-          </Tooltip>
+          <Group justify="flex-end">
+            <Tooltip
+              label={t`Create a model and place it in a given collection.`}
+            >
+              <Button
+                leftSection={<Icon name="model" />}
+                onClick={() => setIsCreateModelsModalOpen(true)}
+              >{t`Create model`}</Button>
+            </Tooltip>
+
+            <Tooltip label={t`Create a model and publish it in the Library.`}>
+              <Button
+                leftSection={<Icon name="model_with_badge" />}
+                onClick={handlePublishModel}
+              >{t`Publish model`}</Button>
+            </Tooltip>
+          </Group>
         </Group>
       </Box>
 
