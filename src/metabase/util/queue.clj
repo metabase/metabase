@@ -1,14 +1,21 @@
 (ns metabase.util.queue
   "Functionality for working with queues.
-   There are two main blocks of functionality: a custom BoundedTransferQueue and a queue listener.
 
-  The BoundedTransferQueue allows for callers to decide whether to block the previous synchronous put to complete
-  before adding another message, or attempt to add it to a fixed-sized async queue if there is space.
-  See `bounded-transfer-queue` for more details.
+  The main functionality is exposed by:
 
-  The queue listener allows the creation and management of (possibly) multithreaded queue listeners that can
-  process messages off the queue in batches.
-  Listeners should generally be managed with `init-listener! which calls `listen!`.
+  - the `create-delay-queue-listener` and `create-array-blocking-queue-listener` functions.
+
+  Both of these functions create and register queue listeners. Registered queue listeners will be started/stopped along with Metabase.
+
+  The delay queue listener allows submitting events with a delay. These events will not be processed until the delay has passed.
+
+  Once started, the queue listener will dispatch incoming messages, in batches, to the handler provided.
+
+  - `put!` and `put-with-delay!`, which allow enqueing items or events to the queue
+
+  - `queue-size` allows getting the current size of the queue
+
+  - `start-listeners!` and `stop-listeners!` start and stop all registered listeners, respectively.
   "
   (:require
    [com.climate.claypoole :as cp]
@@ -16,7 +23,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli.schema :as ms]
+   [metabase.util.queue.protocols :as protocols])
   (:import
    (java.time Duration Instant)
    (java.util.concurrent
@@ -25,55 +33,9 @@
     DelayQueue
     Delayed
     ExecutorService
-    ScheduledExecutorService
-    SynchronousQueue
     TimeUnit)))
 
 (set! *warn-on-reflection* true)
-
-(defprotocol BoundedTransferQueue
-  (maybe-put! [queue msg]
-    "Put a message on the queue if there is space for it, otherwise drop it.
-     Returns whether the item was enqueued.")
-  (blocking-put! [queue timeout msg]
-    "Put a message on the queue. If necessary, block until there is space for it.")
-  (blocking-take! [queue timeout]
-    "Take a message off the queue, blocking if necessary.")
-  (clear! [queue]
-    "Discard all messages on the given queue."))
-
-;; Similar to java.util.concurrent.LinkedTransferQueue, but bounded.
-(deftype ^:private ArrayTransferQueue [^ArrayBlockingQueue async-queue
-                                       ^SynchronousQueue sync-queue
-                                       ^long block-ms
-                                       ^long sleep-ms]
-  BoundedTransferQueue
-  (maybe-put! [_ msg]
-    (.offer async-queue msg))
-  (blocking-put! [_ timeout msg]
-    (.offer sync-queue msg timeout TimeUnit/MILLISECONDS))
-  (blocking-take! [_ timeout]
-    (loop [time-remaining timeout]
-      (when (pos? time-remaining)
-        ;; Async messages are given higher priority, as sync messages will never be dropped.
-        (or (.poll async-queue)
-            (.poll sync-queue block-ms TimeUnit/MILLISECONDS)
-            (do (Thread/sleep ^long sleep-ms)
-                ;; This is an underestimate, as the thread may have taken a while to wake up. That's OK.
-                (recur (- time-remaining block-ms sleep-ms)))))))
-  (clear! [_]
-    (.clear sync-queue)
-    (.clear async-queue)))
-
-(defn bounded-transfer-queue
-  "Create a bounded transfer queue, specialized based on the high-level options."
-  [capacity & {:keys [block-ms sleep-ms]
-               :or   {block-ms 100
-                      sleep-ms 100}}]
-  (->ArrayTransferQueue (ArrayBlockingQueue. capacity)
-                        (SynchronousQueue.)
-                        block-ms
-                        sleep-ms))
 
 (defrecord DelayValue [value ^Instant ready-at]
   Delayed
@@ -83,12 +45,12 @@
     (Long/compare (.getDelay this TimeUnit/MILLISECONDS)
                   (.getDelay ^Delayed other TimeUnit/MILLISECONDS))))
 
-(defn delay-queue
+(defn- delay-queue
   "Return an unbounded queue that returns each item only after some specified delay."
   ^DelayQueue []
   (DelayQueue.))
 
-(defn put-with-delay!
+(defn- -put-with-delay!
   "Put an item on a delay queue, with a delay given in milliseconds."
   [^DelayQueue queue delay-ms value]
   (.offer queue (->DelayValue value (.plus (Instant/now) (Duration/ofMillis delay-ms)))))
@@ -113,130 +75,249 @@
    (when-let [fst (.poll queue max-first-ms TimeUnit/MILLISECONDS)]
      (take-batch* queue max-batch-messages max-next-ms [(if (instance? DelayQueue queue) (:value fst) fst)]))))
 
-(mr/def ::listener-options [:map [:success-handler {:optional true} [:=> [:cat :any :double :string] :any]
-                                  :err-handler {:optional true} [:=> [:cat [:fn (ms/InstanceOfClass Throwable) :string]] :any]
-                                  :pool-size {:optional true} number?
-                                  :max-batch-messages {:optional true} number?
-                                  :max-next-ms {:optional true} number?]])
+(defn- handle-batch! [{:keys [listener-name
+                              handler
+                              success-handler
+                              error-handler]
+                       :as ql}
+                      pool
+                      batch]
+  (cp/future pool
+             (try
+               (let [timer (u/start-timer)
+                     output (handler batch)
+                     duration (u/since-ms timer)]
+                 (log/debugf "Listener %s processed batch in %.0fms" listener-name duration)
+                 (success-handler ql output duration listener-name))
+               (catch Exception e
+                 (error-handler ql e listener-name)
+                 (log/errorf e "Error in %s while processing batch" listener-name)))))
+
+(defrecord QueueListener [^BlockingQueue queue
+                          state
+                          listener-name
+                          handler
+                          success-handler
+                          error-handler
+                          max-batch-messages
+                          max-next-ms
+                          pool-size]
+  protocols/IQueueListener
+  (-stop [_this]
+    (let [{:keys [status executor dispatcher]} @state]
+      (when (= status ::running)
+        (log/info "Cancelling running queue listener")
+        (swap! state assoc :status ::shutting-down)
+        (future
+          ;; wait for the dispatcher to finish processing the items from the queue
+          (log/info "Waiting for dispatcher to finish processing")
+          (deref dispatcher)
+          ;; shutdown the executor
+          (log/info "Gracefully shutting down")
+          (cp/shutdown executor)
+          (log/info "Executor shutodwn complete")
+          (swap! state assoc :status ::shut-down)))))
+  (-stop! [this]
+    (let [{:keys [executor]} @state]
+      (log/warn "Forcibly shutting down")
+      (protocols/-stop this)
+      (when executor (cp/shutdown! executor))
+      (swap! state assoc :status ::shut-down)))
+  (-await-termination [_this timeout-ms]
+    (if-let [executor ^ExecutorService (:executor @state)]
+      (.awaitTermination executor timeout-ms TimeUnit/MILLISECONDS)
+      true))
+  (-start [this]
+    (log/info "Starting threadpool/dispatcher" {:listener-name listener-name})
+    (let [executor (cp/threadpool pool-size)]
+      (reset! state {:status ::running
+                     :executor executor
+                     :dispatcher (future
+                                   (log/with-context {:listener-name listener-name}
+                                     (loop []
+                                       (log/trace "Listener waiting for next batch")
+                                       (if (protocols/-closed? this)
+                                         (do
+                                           (log/warn "Listener processing last batches - shutdown")
+                                           (while (not (zero? (protocols/queue-size this)))
+                                             (when-let [batch (seq (take-batch! queue 0 max-batch-messages 0))]
+                                               (handle-batch! this executor batch))))
+                                         (if-let [batch (seq (take-batch! queue max-next-ms max-batch-messages max-next-ms))]
+                                           (do
+                                             (log/info "Listener processing batch" {:batch-size (count batch)
+                                                                                    :max-next-ms max-next-ms
+                                                                                    :max-batch-messages max-batch-messages})
+                                             (log/trace "Listener processing batch" {:batch batch})
+                                             (handle-batch! this executor batch)
+                                             (recur))
+                                           (do
+                                             (log/trace "No items to process")
+                                             (Thread/sleep 100)
+                                             (recur)))))))})))
+  (-closed? [_this]
+    (not (contains? #{::running ::initialized}
+                    (get @state :status))))
+  (queue-size [_this] (.size queue)))
+
+(defrecord DelayQueueListener [ql]
+  protocols/IDelayQueuePutter
+  (put-with-delay! [_this delay-ms item]
+    (when (protocols/-closed? ql)
+      (throw (ex-info "Queue listener is closed, no items may be added." {})))
+    (-put-with-delay! (:queue ql) delay-ms item))
+  protocols/IQueuePutter
+  (put! [this item]
+    (protocols/put-with-delay! this 0 item))
+  protocols/IQueueListener
+  (-start [_this] (protocols/-start ql))
+  (-stop [_this] (protocols/-stop ql))
+  (-stop! [_this] (protocols/-stop! ql))
+  (-closed? [_this] (protocols/-closed? ql))
+  (-await-termination [_this timeout-ms] (protocols/-await-termination ql timeout-ms))
+  (queue-size [_this] (protocols/queue-size ql)))
+
+(defrecord BlockingQueueListener [ql]
+  protocols/IQueuePutter
+  (put! [_this item]
+    (.offer ^BlockingQueue (:queue ql) item))
+  protocols/IQueueListener
+  (-start [_this] (protocols/-start ql))
+  (-stop [_this] (protocols/-stop ql))
+  (-stop! [_this] (protocols/-stop! ql))
+  (-closed? [_this] (protocols/-closed? ql))
+  (-await-termination [_this timeout-ms] (protocols/-await-termination ql timeout-ms))
+  (queue-size [_this] (protocols/queue-size ql)))
 
 (defonce
   ^:private
-  ^{:malli/schema [:map-of :string (ms/InstanceOfClass ScheduledExecutorService)]}
+  ^{:malli/schema [:map-of :string #(satisfies? protocols/IQueueListener %)]}
   listeners (atom {}))
 
-(defn listener-exists?
+(defn- listener-exists?
   "Returns true if there is a running listener with the given name"
   [listener-name]
   (contains? @listeners listener-name))
 
-(mu/defn- listener-thread [listener-name :- :string
-                           queue :- (ms/InstanceOfClass BlockingQueue)
-                           handler :- [:=> [:cat [:sequential :any]] :any]
-                           {:keys [success-handler err-handler max-batch-messages max-next-ms]} :- ::listener-options]
-  (log/debugf "Thread for listener %s started" listener-name)
-  (while true
-    (try
-      (log/debugf "Listener %s waiting for next batch..." listener-name)
-      (let [batch (take-batch! queue Long/MAX_VALUE max-batch-messages max-next-ms)]
-        (if (seq batch)
-          (do
-            (log/debugf "Listener %s processing batch of %d" listener-name (count batch))
-            (log/tracef "Listener %s processing batch: %s" listener-name batch)
-            (let [timer (u/start-timer)
-                  output (handler batch)
-                  duration (u/since-ms timer)]
-              (log/debugf "Listener %s processed batch in %.0fms" listener-name duration)
-              (success-handler output duration listener-name)))
-          (log/debugf "Listener %s found no items to process" listener-name)))
-      (catch InterruptedException e
-        (log/debugf "Listener thread %s stopped" listener-name)
-        (throw e))
-      (catch Exception e
-        (err-handler e listener-name)
-        (log/errorf e "Error in %s while processing batch" listener-name))))
-  (log/infof "Listener %s stopped" listener-name))
-
-(mu/defn listen!
-  "Starts an async listener on the given queue. This should generally be called from `init-listener!` in a task namespace.
-
-  Arguments:
-  - listener-name: A unique string. Calls to register another listener with the same name will be a no-op
-  - queue: The queue to listen on
-  - handler: A function taking a list of 1 or more values that have been sent to the queue.
-
-  Options:
-  - success-handler: A function called when handler does not throw an exception. Accepts [result-of-handler, duration-in-ms, listener-name]
-  - err-handler: A function called when the handler throws an exception. Accepts [exception, duration-in-ms, listener-name]
-  - pool-size: Number of threads in the listener. Default: 1
-  - max-batch-messages: Max number of items to batch up before calling handler. Default 50
-  - max-next-ms: Max number of ms to wait for each additional message before calling the handler. Default 100"
-  [listener-name :- :string
-   queue :- (ms/InstanceOfClass BlockingQueue)
-   handler :- [:=> [:cat [:sequential :any]] :any]
-   {:keys [success-handler
-           err-handler
-           pool-size
-           max-batch-messages
-           max-next-ms]
-    :or   {success-handler    (constantly nil)
-           err-handler        (constantly nil)
-           pool-size          1
-           max-batch-messages 50
-           max-next-ms        100}} :- ::listener-options]
-  (if (listener-exists? listener-name)
-    (log/errorf "Listener %s already exists" listener-name)
-
-    (let [executor (cp/threadpool pool-size {:name (str "queue-" listener-name)})]
-      (log/infof "Starting listener %s with %d threads %s" (u/format-color 'green listener-name) pool-size (u/emoji "\uD83C\uDFA7"))
-      (dotimes [_ pool-size]
-        (cp/future executor (listener-thread listener-name queue handler
-                                             {:success-handler    success-handler
-                                              :err-handler        err-handler
-                                              :max-batch-messages max-batch-messages
-                                              :max-next-ms        max-next-ms})))
-
-      (swap! listeners assoc listener-name executor))))
-
-(mu/defn stop-listening!
+(mu/defn- stop-listening!
   "Stops the listener previously started with (listen!).
   If there is no running listener with the given name, it is a no-op"
   [listener-name :- :string]
-  (if-let [^ExecutorService executor (get @listeners listener-name)]
-    (do
-      (log/infof "Stopping listener %s..." listener-name)
-      (cp/shutdown! executor)
-      ;; wait up to 10 seconds for executor to stop. Largely for CI/tests FAIL in (listener-handler-test) (queue_test.clj:178)
-      (.awaitTermination executor 10 TimeUnit/SECONDS)
+  (log/with-context {:listener-name listener-name}
+    (if-let [ql (get @listeners listener-name)]
+      (do
+        (log/info "Shutting down...")
+        (protocols/-stop ql)
+        (if (protocols/-await-termination ql 9000)
+          (log/info "Finished graceful shutdown")
+          (do
+            (protocols/-stop! ql)
+            (if (protocols/-await-termination ql 1000)
+              (log/warn "Threadpool terminated by cancelling running tasks")
+              (log/error "Unable to terminate")))))
+      (log/info "No running listener"))))
 
-      (swap! listeners dissoc listener-name)
-      (log/infof "Stopping listener %s...done" listener-name))
-    (log/infof "No running listener named %s" listener-name)))
+(mu/defn- create-queue-listener
+  [{:keys [listener-name
+           queue
+           handler
+           success-handler
+           error-handler
+           pool-size
+           max-batch-messages
+           max-next-ms
+           register?]
+    :as args
+    :or {success-handler (constantly nil)
+         error-handler (constantly nil)
+         pool-size 1
+         max-batch-messages 50
+         max-next-ms 100
+         register? true}}]
+  (log/with-context {:listener listener-name}
+    (if (listener-exists? listener-name)
+      (do
+        (log/warn "Listener exists")
+        (stop-listening! listener-name)
+        (swap! listeners dissoc listener-name)
+        (create-queue-listener args))
+      (let [inner-ql (map->QueueListener {:queue queue
+                                          :pool-size pool-size
+                                          :state (atom {:status ::initialized})
+                                          :listener-name listener-name
+                                          :handler handler
+                                          :success-handler success-handler
+                                          :error-handler error-handler
+                                          :max-batch-messages max-batch-messages
+                                          :max-next-ms max-next-ms})
+            ql (if (instance? DelayQueue queue)
+                 (->DelayQueueListener inner-ql)
+                 (->BlockingQueueListener inner-ql))]
+        (when register? (swap! listeners assoc listener-name ql))
+        ql))))
 
-(defmulti init-listener!
-  "Initialize a listener with a given name. All implementations of this method are called once and only
-  once when the server is starting up. Task namespaces (`metabase.*.task`) should add new
-  implementations of this method to start new listeners they define (i.e., with a call to `queue/listen!`.)
+(mr/def ::listener-options
+  :any
+  #_[:map
+   ;; hook for when we successfully handle a batch
+     [:success-handler {:optional true} [:=> [:cat #(satisfies? protocols/IQueueListener %)
+                                              :any
+                                              :double
+                                              :string]
+                                         :any]
+    ;; hook for when an error occurs while processing a batch
+      :error-handler {:optional true} [:=> [:cat
+                                            #(satisfies? protocols/IQueueListener %)
+                                            [:fn (ms/InstanceOfClass Throwable) :string]]
+                                       :any]
+    ;; the number of threads that should process batches
+      :pool-size {:optional true} [:or number? #(= :serial %)]
+    ;; the name of the listener. Used for registration and logging.
+      :listener-name string?
+    ;; if `true`, we will register this listener globally such that it will be started/shut down with metabase
+      :register? {:optional true} boolean?
+    ;; the maximum number of messages that can be processed at once by the handler
+      :max-batch-messages {:optional true} number?
+    ;; how long should we wait after receiving one message for the rest of a batch?
+      :max-next-ms {:optional true} number?]])
 
-  The dispatch value for this function can be any unique keyword, but by convention is a namespaced keyword version of
-  the name of the listener being initialized; for sake of consistency with the listener name itself, the keyword should be left
-  CamelCased.
+(mu/defn create-delay-queue-listener
+  "Creates and optional registers a queue and (optionally) multithreaded listeners on the queue.
+  See `::listener-options` for details on what options may be passed."
+  [listener-name :- :string
+   handler :- [:=> [:cat [:sequential :any]] :any]
+   args :- ::listener-options]
+  (create-queue-listener (assoc args :handler handler :queue (delay-queue) :listener-name listener-name)))
 
-    (defmethod queue/init-listener! ::ExampleListener [_]
-      (queue/listen! \"example-listener\" queue handler)"
-  {:arglists '([job-name-string])}
-  keyword)
+(mu/defn create-array-blocking-queue-listener
+  "Creates and optionally registers a queue and (optionally) multithreaded listeners on the queue.
+  See `::listener-options` for details on what options may be passed."
+  [listener-name :- :string
+   handler :- [:=> [:cat [:sequential :any]] :any]
+   {:keys [queue-size] :as args} :- [:and
+                                     ::listener-options
+                                     [:map
+                                      [:queue-size pos-int?]]]]
+  (create-queue-listener (assoc args :handler handler :queue (ArrayBlockingQueue. queue-size) :listener-name listener-name)))
 
 (defn start-listeners!
   "Call all implementations of `init-listener!`. Called by metabase.core/init!"
   []
-  (doseq [[k f] (methods init-listener!)]
-    (try
-      (f k)
-      (catch Throwable e
-        (log/errorf e "Error initializing listener %s" k)))))
+  (doseq [[listener-name queue-listener] @listeners]
+    (try (protocols/-start queue-listener)
+         (catch Throwable e
+           (log/errorf e "Error initializing listener %s" listener-name)))))
 
 (defn stop-listeners!
   "Stops all running listeners"
   []
   (doseq [[name _] @listeners]
     (stop-listening! name)))
+
+(defn put! [ql item]
+  (protocols/put! ql item))
+
+(defn put-with-delay! [ql delay-ms item]
+  (protocols/put-with-delay! ql delay-ms item))
+
+(defn queue-size [ql]
+  (protocols/queue-size ql))

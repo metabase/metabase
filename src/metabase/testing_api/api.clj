@@ -18,10 +18,11 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.queue :as queue]
+   [metabase.util.queue.protocols :as queue.proto]
    [toucan2.core :as t2])
   (:import
    (com.mchange.v2.c3p0 PoolBackedDataSource)
-   (java.util Queue)
    (java.util.concurrent.locks ReentrantReadWriteLock)))
 
 (set! *warn-on-reflection* true)
@@ -122,7 +123,9 @@
   "Restore a database snapshot for testing purposes."
   [{snapshot-name :name} :- [:map
                              [:name ms/NonBlankString]]]
-  (.clear ^Queue @#'search.ingestion/queue)
+  (queue.proto/-stop! @#'search.ingestion/queue)
+  (when-not (queue.proto/-await-termination @#'search.ingestion/queue 1000)
+    (throw (ex-info "Could not shut down search ingestion queue" {})))
   (restore-snapshot! snapshot-name)
   (search/reindex! {:async? false})
   nil)
