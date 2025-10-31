@@ -3,8 +3,8 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [metabase-enterprise.representations.common :as common]
-   [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.v0.core :as v0]
    [metabase-enterprise.representations.yaml :as rep-yaml]
    [metabase.collections.api :as coll.api]
@@ -40,6 +40,62 @@
                    (read-from-ref version refs))]
         (recur (into acc reps) acc))
       acc)))
+
+(defn ref-from-name
+  [reps]
+  (map #(assoc % ::proposed-ref (:display_name %)) reps))
+
+(defn add-type
+  [reps]
+  (map #(update % ::proposed-ref str "-" (name (:type %))) reps))
+
+(defn add-sequence-number
+  [reps]
+  (map-indexed (fn [i rep]
+                 (update rep ::proposed-ref str "-" i))
+               reps))
+
+(def standard-ref-strategies
+  [add-type])
+
+(defn- rename-refs-map
+  [representations initial-gen-ref middle-gen-refs final-gen-ref]
+  (loop [gen-refs middle-gen-refs
+         acc (into #{} (initial-gen-ref representations))]
+    (prn acc)
+    (let [gen-ref (or (first gen-refs) final-gen-ref)
+          new-ref-to-reps (group-by ::proposed-ref acc)
+          acc' (reduce (fn [acc [to-remove to-add]]
+                         (into (apply disj acc to-remove) to-add))
+                       acc (for [[_ref reps] new-ref-to-reps
+                                 :when (> (count reps) 1)]
+                             [reps (gen-ref reps)]))]
+      (if (= acc' acc) ;; base case
+        (into {} (map (juxt :name ::proposed-ref)) acc')
+        (recur (rest gen-refs) acc')))))
+
+(defn rename-refs
+  "Rename a set of representations based on a sequence of ref strategy functions `gen-refs`.
+
+  Each `gen-ref` takes a sequence of representations and returns a new sequence with proposed refs."
+  [representations initial-gen-ref middle-gen-refs final-gen-ref]
+  (let [ref-map (rename-refs-map representations initial-gen-ref middle-gen-refs final-gen-ref)
+        _ (prn ref-map)
+        renamed (mapv #(update % :name ref-map) representations)
+        ref:ref-map (into {} (map (fn [[old new]]
+                                    [(str "ref:" old) (str "ref:" new)]))
+                          ref-map)]
+    (prn renamed)
+    (->> renamed
+         (walk/postwalk-replace ref:ref-map)
+         (mapv #(dissoc % ::proposed-ref)))))
+
+(comment
+  (rename-refs-map [{:name "1" :display_name "b-question-1" :type :question :database "ref:2"}
+                    {:name "2" :display_name "b" :type :database}
+                    {:name "3" :display_name "b" :type :question}]
+                   standard-ref-strategies
+                   add-sequence-number))
 
 (defn- schema->table-index [schema]
   (let [tables (:tables schema)
