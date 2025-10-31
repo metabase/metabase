@@ -5,7 +5,6 @@
    [metabase-enterprise.metabot-v3.context :as context]
    [metabase-enterprise.metabot-v3.table-utils :as table-utils]
    [metabase.lib.core :as lib]
-   [metabase.lib.test-metadata :as meta]
    [metabase.test :as mt]))
 
 (deftest database-tables-for-context-prioritization
