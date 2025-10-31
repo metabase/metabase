@@ -53,23 +53,14 @@ export function initializePlugin() {
             <Route path=":transformId" component={TransformPage} />
           </Route>
           {PLUGIN_TRANSFORMS_PYTHON.getAdminRoutes()}
-          <Route path="new/:type" component={NewTransformPage} />
-          <Route path="new/card/:cardId" component={NewTransformPage} />
+          <Route path="new/query" component={NewQueryTransformPage} />
+          <Route path="new/native" component={NewNativeTransformPage} />
+          <Route path="new/card/:cardId" component={NewCardTransformPage} />
+          {PLUGIN_TRANSFORMS_PYTHON.isEnabled && (
+            <Route path="new/python" component={NewPythonTransformPage} />
+          )}
           <Route path=":transformId/query" component={TransformQueryPage} />
         </Route>
-        <Route component={DetailsPageLayout}>
-          <Route path="jobs/new" component={NewJobPage} />
-          <Route path="jobs/:jobId" component={JobPage} />
-          <Route path=":transformId" component={TransformPage} />
-        </Route>
-        {PLUGIN_TRANSFORMS_PYTHON.getAdminRoutes()}
-        <Route path="new/query" component={NewQueryTransformPage} />
-        <Route path="new/native" component={NewNativeTransformPage} />
-        <Route path="new/card/:cardId" component={NewCardTransformPage} />
-        {PLUGIN_TRANSFORMS_PYTHON.isEnabled && (
-          <Route path="new/python" component={NewPythonTransformPage} />
-        )}
-        <Route path=":transformId/query" component={TransformQueryPage} />
       </Route>
     );
   }
