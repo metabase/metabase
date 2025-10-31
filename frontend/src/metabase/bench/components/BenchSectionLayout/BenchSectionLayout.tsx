@@ -28,7 +28,9 @@ export function BenchSectionLayout({
         {title}
         {tabs}
       </Stack>
-      <Box flex={1}>{children}</Box>
+      <Box flex={1} mih={0}>
+        {children}
+      </Box>
     </Stack>
   );
 }
