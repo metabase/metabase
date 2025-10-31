@@ -2,32 +2,29 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase-enterprise.documents.test-util :as documents.test-util]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
+(use-fixtures :once (fixtures/initialize :db :test-users :test-users-personal-collections))
 (use-fixtures :each (fn [f] (mt/with-premium-features #{:documents} (f))))
-
-(defn- text->prose-mirror-ast
-  "Convert plain text to a ProseMirror AST structure."
-  [text]
-  {:type "doc"
-   :content [{:type "paragraph"
-              :content [{:type "text"
-                         :text text}]}]})
 
 (deftest post-document-basic-creation-test
   (testing "POST /api/ee/document/ - basic document creation"
     (mt/with-model-cleanup [:model/Document]
       (let [result (mt/user-http-request :crowberto
                                          :post 200 "ee/document/" {:name "Document 1"
-                                                                   :document (text->prose-mirror-ast "Doc 1")})
+                                                                   :document (documents.test-util/text->prose-mirror-ast "Doc 1")})
             document-row (t2/select-one :model/Document :id (:id result))]
-        (is (partial= {:name "Document 1" :document (text->prose-mirror-ast "Doc 1")} result))
+        (is (partial= {:name "Document 1" :document (documents.test-util/text->prose-mirror-ast "Doc 1")} result))
         (is (pos? (:id result)))
-        (is (partial= {:name "Document 1" :document (text->prose-mirror-ast "Doc 1")} document-row))))))
+        (is (partial= {:name "Document 1" :document (documents.test-util/text->prose-mirror-ast "Doc 1")} document-row))))))
 
 (deftest post-document-creation-non-blank-name-test
   (testing "POST /api/ee/document/ - basic document creation"
@@ -35,7 +32,7 @@
       (is (=? {:errors {:name "value must be a non-blank string between 1 and 254 characters."}}
               (mt/user-http-request :crowberto
                                     :post 400 "ee/document/" {:name ""
-                                                              :document (text->prose-mirror-ast "Doc 1")}))))))
+                                                              :document (documents.test-util/text->prose-mirror-ast "Doc 1")}))))))
 
 (deftest post-document-creation-long-name-test
   (testing "POST /api/ee/document/id - basic document update"
@@ -43,64 +40,75 @@
             (mt/user-http-request :crowberto
                                   :post 400 "ee/document"
                                   {:name (apply str (repeat 255 "c"))
-                                   :document (text->prose-mirror-ast "Doc 1")})))))
+                                   :document (documents.test-util/text->prose-mirror-ast "Doc 1")})))))
 
 (deftest put-document-basic-update-test
   (testing "PUT /api/ee/document/id - basic document update"
     (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"
-                                                      :document (text->prose-mirror-ast "Initial Doc")}]
+                                                      :document (documents.test-util/text->prose-mirror-ast "Initial Doc")}]
       (let [result (mt/user-http-request :crowberto
-                                         :put 200 (format "ee/document/%s" document-id) {:name "Document 2" :document (text->prose-mirror-ast "Doc 2")})]
+                                         :put 200 (format "ee/document/%s" document-id) {:name "Document 2" :document (documents.test-util/text->prose-mirror-ast "Doc 2")})]
         (is (partial= {:name "Document 2"
-                       :document (text->prose-mirror-ast "Doc 2")} result))))))
+                       :document (documents.test-util/text->prose-mirror-ast "Doc 2")} result))))))
 
 (deftest put-document-update-non-blank-name-test
   (testing "PUT /api/ee/document/id - basic document update"
     (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"
-                                                      :document (text->prose-mirror-ast "Initial Doc")}]
+                                                      :document (documents.test-util/text->prose-mirror-ast "Initial Doc")}]
       (is (=? {:errors {:name "value must be a non-blank string between 1 and 254 characters."}}
               (mt/user-http-request :crowberto
                                     :put 400 (format "ee/document/%s" document-id)
                                     {:name ""
-                                     :document (text->prose-mirror-ast "Doc 1")}))))))
+                                     :document (documents.test-util/text->prose-mirror-ast "Doc 1")}))))))
 
 (deftest put-document-update-long-name-test
   (testing "PUT /api/ee/document/id - basic document update"
     (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"
-                                                      :document (text->prose-mirror-ast "Initial Doc")}]
+                                                      :document (documents.test-util/text->prose-mirror-ast "Initial Doc")}]
       (is (=? {:errors {:name "value must be a non-blank string between 1 and 254 characters."}}
               (mt/user-http-request :crowberto
                                     :put 400 (format "ee/document/%s" document-id)
                                     {:name (apply str (repeat 255 "c"))
-                                     :document (text->prose-mirror-ast "Doc 1")}))))))
+                                     :document (documents.test-util/text->prose-mirror-ast "Doc 1")}))))))
 
 (deftest put-document-nonexistent-document-test
   (testing "PUT /api/ee/document/id - should return 404 for non-existent document"
     (mt/user-http-request :crowberto
-                          :put 404 "ee/document/99999" {:name "Non-existent Document" :document (text->prose-mirror-ast "Doc")})))
+                          :put 404 "ee/document/99999" {:name "Non-existent Document" :document (documents.test-util/text->prose-mirror-ast "Doc")})))
 
 (deftest put-document-with-no-perms-test
   (mt/with-temp [:model/Collection {coll-id :id} {}
                  :model/Document {document-id :id} {:collection_id coll-id
                                                     :name "Test Document"
-                                                    :document (text->prose-mirror-ast "Doc 1")}]
+                                                    :document (documents.test-util/text->prose-mirror-ast "Doc 1")}]
     (mt/with-non-admin-groups-no-collection-perms coll-id
       (mt/user-http-request :rasta :put 403 (str "ee/document/" document-id)
                             {:name "Meow"}))))
+
+(deftest put-document-archived-test
+  (testing "PUT /api/ee/document/:id - cannot update archived document"
+    (mt/with-temp [:model/Document {doc-id :id} {:name "Test Document"
+                                                 :document (documents.test-util/text->prose-mirror-ast "Initial")
+                                                 :archived true}]
+      (testing "editing archived document returns 404"
+        (is (= "The object has been archived."
+               (:message (mt/user-http-request :crowberto
+                                               :put 404 (format "ee/document/%s" doc-id)
+                                               {:name "Updated Name"}))))))))
 
 (deftest post-document-with-no-perms-test
   (mt/with-temp [:model/Collection {coll-id :id} {}]
     (mt/with-non-admin-groups-no-collection-perms coll-id
       (mt/user-http-request :rasta :post 403 "ee/document/"
                             {:name "Foo"
-                             :document (text->prose-mirror-ast "Bar")
+                             :document (documents.test-util/text->prose-mirror-ast "Bar")
                              :collection_id coll-id}))))
 
 (deftest get-document-test-requires-documents-feature
   (testing "GET /api/ee/document/id"
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"
-                                                        :document (text->prose-mirror-ast "Doc 1")}]
+                                                        :document (documents.test-util/text->prose-mirror-ast "Doc 1")}]
         (testing "should not get the document"
           (mt/user-http-request :crowberto
                                 :get 402 (format "ee/document/%s" document-id)))))))
@@ -108,12 +116,12 @@
 (deftest get-document-test
   (testing "GET /api/ee/document/id"
     (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"
-                                                      :document (text->prose-mirror-ast "Doc 1")}]
+                                                      :document (documents.test-util/text->prose-mirror-ast "Doc 1")}]
       (testing "should get the document"
         (let [result (mt/user-http-request :crowberto
                                            :get 200 (format "ee/document/%s" document-id))]
           (is (partial= {:name "Test Document"
-                         :document (text->prose-mirror-ast "Doc 1")} result))
+                         :document (documents.test-util/text->prose-mirror-ast "Doc 1")} result))
           result))
       (testing "should return 404 for non-existent document"
         (mt/user-http-request :crowberto
@@ -122,14 +130,14 @@
 (deftest get-documents-test
   (testing "GET /api/ee/document"
     (mt/with-temp [:model/Document _ {:name "Document 1"
-                                      :document (text->prose-mirror-ast "Initial Doc 1")}
+                                      :document (documents.test-util/text->prose-mirror-ast "Initial Doc 1")}
                    :model/Document _ {:name "Document 2"
-                                      :document (text->prose-mirror-ast "Initial Doc 2")}]
+                                      :document (documents.test-util/text->prose-mirror-ast "Initial Doc 2")}]
       (testing "should get existing documents"
         (let [result (:items (mt/user-http-request :crowberto
                                                    :get 200 "ee/document/"))]
           (is (set/subset? #{"Document 1" "Document 2"} (set (map :name result))))
-          (is (set/subset? #{(text->prose-mirror-ast "Initial Doc 1") (text->prose-mirror-ast "Initial Doc 2")} (set (map :document result))))
+          (is (set/subset? #{(documents.test-util/text->prose-mirror-ast "Initial Doc 1") (documents.test-util/text->prose-mirror-ast "Initial Doc 2")} (set (map :document result))))
           result))))
   (testing "should return 404 for non-existent document"
     (mt/user-http-request :crowberto
@@ -141,7 +149,7 @@
                    :model/Collection {new-collection-id :id} {:name "New Collection"}
                    :model/Document {document-id :id} {:collection_id old-collection-id
                                                       :name "Integration Test Document"
-                                                      :document (text->prose-mirror-ast "Integration test doc")}]
+                                                      :document (documents.test-util/text->prose-mirror-ast "Integration test doc")}]
       ;; Create cards associated with the document
       (mt/with-temp [:model/Card {card1-id :id} {:name "Integration Card 1"
                                                  :document_id document-id
@@ -194,7 +202,7 @@
                    :model/Collection {collection2-id :id} {:name "Permission Collection 2"}
                    :model/Document {document-id :id} {:collection_id collection1-id
                                                       :name "Permission Test Document"
-                                                      :document (text->prose-mirror-ast "Permission test doc")}]
+                                                      :document (documents.test-util/text->prose-mirror-ast "Permission test doc")}]
       ;; Create cards in the original collection
       (mt/with-temp [:model/Card {card-id :id} {:name "Permission Test Card"
                                                 :document_id document-id
@@ -316,7 +324,7 @@
       (let [result (mt/user-http-request :crowberto
                                          :post 200 "ee/document/"
                                          {:name "Document with Empty Cards To Create"
-                                          :document (text->prose-mirror-ast "Doc with empty cards")
+                                          :document (documents.test-util/text->prose-mirror-ast "Doc with empty cards")
                                           :cards {}})]
         (is (pos? (:id result)))))))
 
@@ -326,7 +334,7 @@
       (let [result (mt/user-http-request :crowberto
                                          :post 200 "ee/document/"
                                          {:name "Document with Nil Cards To Create"
-                                          :document (text->prose-mirror-ast "Doc with nil cards")
+                                          :document (documents.test-util/text->prose-mirror-ast "Doc with nil cards")
                                           :cards nil})]
         (is (pos? (:id result)))))))
 
@@ -334,7 +342,7 @@
   (testing "PUT /api/ee/document/:id - update document with new cards via cards"
     (mt/with-temp [:model/Collection {col-id :id} {}
                    :model/Document {document-id :id} {:name "Test Document"
-                                                      :document (text->prose-mirror-ast "Initial Doc")
+                                                      :document (documents.test-util/text->prose-mirror-ast "Initial Doc")
                                                       :collection_id col-id}]
       (let [cards-to-create {-10 {:name "Updated Generated Card 1"
                                   :type :question
@@ -406,7 +414,7 @@
         (mt/user-http-request :crowberto
                               :post 400 "ee/document/"
                               {:name "Document with Invalid Keys"
-                               :document (text->prose-mirror-ast "Doc")
+                               :document (documents.test-util/text->prose-mirror-ast "Doc")
                                :cards {1 {:name "Invalid Key Card"
                                           :type :question
                                           :dataset_query (mt/mbql-query venues)
@@ -417,14 +425,14 @@
         (mt/user-http-request :crowberto
                               :post 400 "ee/document/"
                               {:name "Document with Invalid Card"
-                               :document (text->prose-mirror-ast "Doc")
+                               :document (documents.test-util/text->prose-mirror-ast "Doc")
                                :cards {-1 {:name "Incomplete Card"}}})) ; missing required fields
 
       (testing "should reject non-map card data"
         (mt/user-http-request :crowberto
                               :post 400 "ee/document/"
                               {:name "Document with Invalid Card Data"
-                               :document (text->prose-mirror-ast "Doc")
+                               :document (documents.test-util/text->prose-mirror-ast "Doc")
                                :cards {-1 "not a map"}})))))
 
 (deftest cards-to-create-transaction-rollback-test
@@ -438,7 +446,7 @@
         (mt/user-http-request :crowberto
                               :post 403 "ee/document/"
                               {:name "Document That Should Rollback"
-                               :document (text->prose-mirror-ast "Doc that should rollback")
+                               :document (documents.test-util/text->prose-mirror-ast "Doc that should rollback")
                                :cards invalid-cards})
 
         ;; Verify no document was created
@@ -447,7 +455,7 @@
 (deftest put-document-cards-to-create-transaction-rollback-test
   (testing "PUT /api/ee/document/:id - transaction rollback on card creation failure"
     (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"
-                                                      :document (text->prose-mirror-ast "Initial Doc")}]
+                                                      :document (documents.test-util/text->prose-mirror-ast "Initial Doc")}]
       (let [initial-document (t2/select-one :model/Document :id document-id)
             invalid-cards {-1 {:name "Card with Invalid Query"
                                :type :question
@@ -458,7 +466,7 @@
         (mt/user-http-request :crowberto
                               :put 403 (format "ee/document/%s" document-id)
                               {:name "Document That Should Rollback"
-                               :document (text->prose-mirror-ast "Doc that should rollback")
+                               :document (documents.test-util/text->prose-mirror-ast "Doc that should rollback")
                                :cards invalid-cards})
 
         ;; Verify document wasn't updated
@@ -478,7 +486,7 @@
               result (mt/user-http-request :crowberto
                                            :post 200 "ee/document/"
                                            {:name "Root Collection Document"
-                                            :document (text->prose-mirror-ast "Doc in root collection")
+                                            :document (documents.test-util/text->prose-mirror-ast "Doc in root collection")
                                             :collection_id nil
                                             :cards cards-to-create})
               created-cards (t2/select :model/Card :document_id (:id result))
@@ -533,7 +541,7 @@
   (testing "PUT /api/ee/document/:id - normalizes card type from :model to :question and removes dashboard_id"
     (mt/with-temp [:model/Collection {col-id :id} {}
                    :model/Document {document-id :id} {:name "Test Document"
-                                                      :document (text->prose-mirror-ast "Initial Doc")
+                                                      :document (documents.test-util/text->prose-mirror-ast "Initial Doc")
                                                       :collection_id col-id}
                    :model/Dashboard {dash-id :id} {:name "Test Dashboard"}]
       (let [cards-to-create {-10 {:name "Updated Model Card"
@@ -741,7 +749,7 @@
     (mt/with-model-cleanup [:model/Document :model/Card]
       (mt/with-temp [:model/Collection {col-id :id} {}
                      :model/Document {other-doc-id :id} {:name "Other Document"
-                                                         :document (text->prose-mirror-ast "Other Doc")
+                                                         :document (documents.test-util/text->prose-mirror-ast "Other Doc")
                                                          :collection_id col-id}
                      :model/Card {associated-card :id} {:name "Already Associated Card"
                                                         :type :question
@@ -791,7 +799,7 @@
   (testing "Cards already belonging to the current document are not cloned"
     (mt/with-temp [:model/Collection {col-id :id} {}
                    :model/Document {document-id :id} {:name "Test Document"
-                                                      :document (text->prose-mirror-ast "Initial Doc")
+                                                      :document (documents.test-util/text->prose-mirror-ast "Initial Doc")
                                                       :collection_id col-id}
                    :model/Card {existing-card-in-doc :id} {:name "Card Already in Document"
                                                            :type :question
@@ -844,7 +852,7 @@
   (testing "PUT /api/ee/document/:id - clones existing cards and substitutes IDs in AST"
     (mt/with-temp [:model/Collection {col-id :id} {}
                    :model/Document {document-id :id} {:name "Test Document"
-                                                      :document (text->prose-mirror-ast "Initial Doc")
+                                                      :document (documents.test-util/text->prose-mirror-ast "Initial Doc")
                                                       :collection_id col-id}
                    :model/Card {existing-card-1 :id} {:name "Existing Card 1"
                                                       :type :question
@@ -905,7 +913,7 @@
   (testing "PUT /api/ee/document/:id - handles both cloned existing cards and new cards"
     (mt/with-temp [:model/Collection {col-id :id} {}
                    :model/Document {document-id :id} {:name "Test Document"
-                                                      :document (text->prose-mirror-ast "Initial Doc")
+                                                      :document (documents.test-util/text->prose-mirror-ast "Initial Doc")
                                                       :collection_id col-id}
                    :model/Card {existing-card :id} {:name "Existing Card"
                                                     :type :question
@@ -1091,7 +1099,7 @@
   (testing "Multiple updates with same cards don't create duplicate clones"
     (mt/with-temp [:model/Collection {col-id :id} {}
                    :model/Document {document-id :id} {:name "Test Document"
-                                                      :document (text->prose-mirror-ast "Initial Doc")
+                                                      :document (documents.test-util/text->prose-mirror-ast "Initial Doc")
                                                       :collection_id col-id}
                    :model/Card {existing-card :id} {:name "Existing Card"
                                                     :type :question
@@ -1148,7 +1156,7 @@
               (let [result (mt/user-http-request :rasta
                                                  :post 200 "ee/document/"
                                                  {:name "Rasta's Document"
-                                                  :document (text->prose-mirror-ast "Created by Rasta")
+                                                  :document (documents.test-util/text->prose-mirror-ast "Created by Rasta")
                                                   :collection_id write-col})]
                 (is (pos? (:id result)))
                 (is (= "Rasta's Document" (:name result)))
@@ -1158,14 +1166,14 @@
             (mt/user-http-request :rasta
                                   :post 403 "ee/document/"
                                   {:name "Should Fail"
-                                   :document (text->prose-mirror-ast "Should not be created")
+                                   :document (documents.test-util/text->prose-mirror-ast "Should not be created")
                                    :collection_id read-only-col}))
 
           (testing "POST /api/ee/document/ - :rasta cannot create documents in no-access collections"
             (mt/user-http-request :rasta
                                   :post 403 "ee/document/"
                                   {:name "Should Fail"
-                                   :document (text->prose-mirror-ast "Should not be created")
+                                   :document (documents.test-util/text->prose-mirror-ast "Should not be created")
                                    :collection_id no-access-col})))))))
 
 (deftest rasta-document-update-permissions-test
@@ -1185,19 +1193,19 @@
 
           (testing "PUT /api/ee/document/:id - :rasta can update documents in collections with write access"
             (mt/with-temp [:model/Document {doc-id :id} {:name "Original Document"
-                                                         :document (text->prose-mirror-ast "Original content")
+                                                         :document (documents.test-util/text->prose-mirror-ast "Original content")
                                                          :collection_id write-col}]
               (let [result (mt/user-http-request :rasta
                                                  :put 200 (format "ee/document/%s" doc-id)
                                                  {:name "Updated by Rasta"
-                                                  :document (text->prose-mirror-ast "Updated content")})]
+                                                  :document (documents.test-util/text->prose-mirror-ast "Updated content")})]
                 (is (= doc-id (:id result)))
                 (is (= "Updated by Rasta" (:name result)))
-                (is (= (text->prose-mirror-ast "Updated content") (:document result))))))
+                (is (= (documents.test-util/text->prose-mirror-ast "Updated content") (:document result))))))
 
           (testing "PUT /api/ee/document/:id - :rasta cannot update documents in read-only collections"
             (mt/with-temp [:model/Document {doc-id :id} {:name "Read Only Document"
-                                                         :document (text->prose-mirror-ast "Read only content")
+                                                         :document (documents.test-util/text->prose-mirror-ast "Read only content")
                                                          :collection_id read-only-col}]
               (mt/user-http-request :rasta
                                     :put 403 (format "ee/document/%s" doc-id)
@@ -1205,7 +1213,7 @@
 
           (testing "PUT /api/ee/document/:id - :rasta cannot update documents in no-access collections"
             (mt/with-temp [:model/Document {doc-id :id} {:name "No Access Document"
-                                                         :document (text->prose-mirror-ast "No access content")
+                                                         :document (documents.test-util/text->prose-mirror-ast "No access content")
                                                          :collection_id no-access-col}]
               (mt/user-http-request :rasta
                                     :put 403 (format "ee/document/%s" doc-id)
@@ -1229,7 +1237,7 @@
 
           (testing "PUT /api/ee/document/:id - :rasta can move documents between collections with write access to both"
             (mt/with-temp [:model/Document {doc-id :id} {:name "Document to Move"
-                                                         :document (text->prose-mirror-ast "Moving document")
+                                                         :document (documents.test-util/text->prose-mirror-ast "Moving document")
                                                          :collection_id write-col}]
               (let [result (mt/user-http-request :rasta
                                                  :put 200 (format "ee/document/%s" doc-id)
@@ -1241,7 +1249,7 @@
 
           (testing "PUT /api/ee/document/:id - :rasta cannot move documents from collections without write access"
             (mt/with-temp [:model/Document {doc-id :id} {:name "Cannot Move From Here"
-                                                         :document (text->prose-mirror-ast "No permission to move")
+                                                         :document (documents.test-util/text->prose-mirror-ast "No permission to move")
                                                          :collection_id read-only-col}]
               (mt/user-http-request :rasta
                                     :put 403 (format "ee/document/%s" doc-id)
@@ -1251,7 +1259,7 @@
 
           (testing "PUT /api/ee/document/:id - :rasta cannot move documents to collections without write access"
             (mt/with-temp [:model/Document {doc-id :id} {:name "Cannot Move To There"
-                                                         :document (text->prose-mirror-ast "No permission for destination")
+                                                         :document (documents.test-util/text->prose-mirror-ast "No permission for destination")
                                                          :collection_id write-col}]
               (mt/user-http-request :rasta
                                     :put 403 (format "ee/document/%s" doc-id)
@@ -1276,29 +1284,29 @@
 
           (testing "GET /api/ee/document/:id - :rasta can read documents from collections with write access"
             (mt/with-temp [:model/Document {doc-id :id} {:name "Write Access Document"
-                                                         :document (text->prose-mirror-ast "Can read with write access")
+                                                         :document (documents.test-util/text->prose-mirror-ast "Can read with write access")
                                                          :collection_id write-col}]
               (let [result (mt/user-http-request :rasta
                                                  :get 200 (format "ee/document/%s" doc-id))]
                 (is (= "Write Access Document" (:name result)))
-                (is (= (text->prose-mirror-ast "Can read with write access") (:document result)))
+                (is (= (documents.test-util/text->prose-mirror-ast "Can read with write access") (:document result)))
                 (testing "includes can_write=true for collections with write access"
                   (is (true? (get result :can_write)))))))
 
           (testing "GET /api/ee/document/:id - :rasta can read documents from collections with read access"
             (mt/with-temp [:model/Document {doc-id :id} {:name "Read Access Document"
-                                                         :document (text->prose-mirror-ast "Can read with read access")
+                                                         :document (documents.test-util/text->prose-mirror-ast "Can read with read access")
                                                          :collection_id read-only-col}]
               (let [result (mt/user-http-request :rasta
                                                  :get 200 (format "ee/document/%s" doc-id))]
                 (is (= "Read Access Document" (:name result)))
-                (is (= (text->prose-mirror-ast "Can read with read access") (:document result)))
+                (is (= (documents.test-util/text->prose-mirror-ast "Can read with read access") (:document result)))
                 (testing "includes can_write=false for collections with only read access"
                   (is (false? (get result :can_write)))))))
 
           (testing "GET /api/ee/document/:id - :rasta cannot read documents from collections without access"
             (mt/with-temp [:model/Document {doc-id :id} {:name "No Access Document"
-                                                         :document (text->prose-mirror-ast "Cannot read this")
+                                                         :document (documents.test-util/text->prose-mirror-ast "Cannot read this")
                                                          :collection_id no-access-col}]
               (mt/user-http-request :rasta
                                     :get 403 (format "ee/document/%s" doc-id)))))))))
@@ -1320,13 +1328,13 @@
 
           (testing "GET /api/ee/document - :rasta only sees documents from accessible collections"
             (mt/with-temp [:model/Document _ {:name "Doc in Write Collection"
-                                              :document (text->prose-mirror-ast "In write collection")
+                                              :document (documents.test-util/text->prose-mirror-ast "In write collection")
                                               :collection_id write-col}
                            :model/Document _ {:name "Doc in Read Collection"
-                                              :document (text->prose-mirror-ast "In read collection")
+                                              :document (documents.test-util/text->prose-mirror-ast "In read collection")
                                               :collection_id read-only-col}
                            :model/Document _ {:name "Doc in No Access Collection"
-                                              :document (text->prose-mirror-ast "In no access collection")
+                                              :document (documents.test-util/text->prose-mirror-ast "In no access collection")
                                               :collection_id no-access-col}]
               (let [result (mt/user-http-request :rasta :get 200 "ee/document/")
                     doc-names (set (map :name (:items result)))]
@@ -1347,7 +1355,7 @@
   (testing "PUT /api/ee/document/:id - basic document archiving"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Document {doc-id :id} {:name "Test Document"
-                                                 :document (text->prose-mirror-ast "Test content")
+                                                 :document (documents.test-util/text->prose-mirror-ast "Test content")
                                                  :collection_id coll-id}]
       (testing "can archive document with archived=true"
         (let [result (mt/user-http-request :crowberto
@@ -1375,7 +1383,7 @@
   (testing "Document archiving includes associated cards"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Document {doc-id :id} {:name "Document with Cards"
-                                                 :document (text->prose-mirror-ast "Doc with cards")
+                                                 :document (documents.test-util/text->prose-mirror-ast "Doc with cards")
                                                  :collection_id coll-id}
                    :model/Card {card1-id :id} {:name "Associated Card 1"
                                                :document_id doc-id
@@ -1425,10 +1433,10 @@
       (mt/with-temp [:model/Collection {read-only-col :id} {}
                      :model/Collection {write-col :id} {}
                      :model/Document {read-only-doc-id :id} {:name "Read Only Document"
-                                                             :document (text->prose-mirror-ast "Read only")
+                                                             :document (documents.test-util/text->prose-mirror-ast "Read only")
                                                              :collection_id read-only-col}
                      :model/Document {write-doc-id :id} {:name "Write Document"
-                                                         :document (text->prose-mirror-ast "Writable")
+                                                         :document (documents.test-util/text->prose-mirror-ast "Writable")
                                                          :collection_id write-col}]
 
         (mt/with-group-for-user [group :rasta]
@@ -1461,10 +1469,10 @@
   (testing "Collection archiving includes documents and associated cards"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Collection to Archive"}
                    :model/Document {doc1-id :id} {:name "Document 1"
-                                                  :document (text->prose-mirror-ast "Doc 1")
+                                                  :document (documents.test-util/text->prose-mirror-ast "Doc 1")
                                                   :collection_id coll-id}
                    :model/Document {doc2-id :id} {:name "Document 2"
-                                                  :document (text->prose-mirror-ast "Doc 2")
+                                                  :document (documents.test-util/text->prose-mirror-ast "Doc 2")
                                                   :collection_id coll-id}
                    :model/Card {card1-id :id} {:name "Associated Card 1"
                                                :document_id doc1-id
@@ -1521,7 +1529,7 @@
   (testing "Document archived_directly flag behavior"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Document {doc-id :id} {:name "Test Document"
-                                                 :document (text->prose-mirror-ast "Test")
+                                                 :document (documents.test-util/text->prose-mirror-ast "Test")
                                                  :collection_id coll-id}
                    :model/Card {card-id :id} {:name "Associated Card"
                                               :document_id doc-id
@@ -1591,10 +1599,10 @@
   (testing "Archived documents are properly filtered from various endpoints"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Document {active-doc-id :id} {:name "Active Document"
-                                                        :document (text->prose-mirror-ast "Active")
+                                                        :document (documents.test-util/text->prose-mirror-ast "Active")
                                                         :collection_id coll-id}
                    :model/Document {archived-doc-id :id} {:name "Archived Document"
-                                                          :document (text->prose-mirror-ast "Archived")
+                                                          :document (documents.test-util/text->prose-mirror-ast "Archived")
                                                           :collection_id coll-id
                                                           :archived true}]
 
@@ -1620,7 +1628,7 @@
 (deftest document-archive-events-test
   (testing "Document archiving publishes appropriate events"
     (mt/with-temp [:model/Document {doc-id :id} {:name "Event Test Document"
-                                                 :document (text->prose-mirror-ast "Event test")}]
+                                                 :document (documents.test-util/text->prose-mirror-ast "Event test")}]
 
       (testing "archiving document publishes archive event"
         (mt/with-model-cleanup [:model/Document]
@@ -1650,7 +1658,7 @@
 (deftest document-archive-transaction-rollback-test
   (testing "Document archiving transaction rollback on failure"
     (mt/with-temp [:model/Document {doc-id :id} {:name "Transaction Test Document"
-                                                 :document (text->prose-mirror-ast "Transaction test")}
+                                                 :document (documents.test-util/text->prose-mirror-ast "Transaction test")}
                    :model/Card {card-id :id} {:name "Associated Card"
                                               :document_id doc-id
                                               :dataset_query (mt/mbql-query venues)}]
@@ -1673,17 +1681,17 @@
   (testing "Mixed archiving scenarios - documents with different archival states"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Document {directly-archived-doc :id} {:name "Directly Archived Document"
-                                                                :document (text->prose-mirror-ast "Direct")
+                                                                :document (documents.test-util/text->prose-mirror-ast "Direct")
                                                                 :collection_id coll-id
                                                                 :archived true
                                                                 :archived_directly true}
                    :model/Document {collection-archived-doc :id} {:name "Collection Archived Document"
-                                                                  :document (text->prose-mirror-ast "Collection")
+                                                                  :document (documents.test-util/text->prose-mirror-ast "Collection")
                                                                   :collection_id coll-id
                                                                   :archived false
                                                                   :archived_directly false}
                    :model/Document {active-doc :id} {:name "Active Document"
-                                                     :document (text->prose-mirror-ast "Active")
+                                                     :document (documents.test-util/text->prose-mirror-ast "Active")
                                                      :collection_id coll-id}]
 
       (testing "unarchiving collection only restores collection-archived documents"
@@ -1710,7 +1718,7 @@
 
     (testing "archiving already archived document is idempotent"
       (mt/with-temp [:model/Document {doc-id :id} {:name "Already Archived"
-                                                   :document (text->prose-mirror-ast "Already archived")
+                                                   :document (documents.test-util/text->prose-mirror-ast "Already archived")
                                                    :archived true
                                                    :archived_directly true}]
         (let [result (mt/user-http-request :crowberto
@@ -1721,7 +1729,7 @@
 
     (testing "unarchiving already active document is idempotent"
       (mt/with-temp [:model/Document {doc-id :id} {:name "Already Active"
-                                                   :document (text->prose-mirror-ast "Already active")}]
+                                                   :document (documents.test-util/text->prose-mirror-ast "Already active")}]
         (let [result (mt/user-http-request :crowberto
                                            :put 200 (format "ee/document/%s" doc-id)
                                            {:archived false})]
@@ -1730,7 +1738,7 @@
     (testing "archiving document in trash collection"
       (let [trash-collection-id (collection/trash-collection-id)]
         (mt/with-temp [:model/Document {doc-id :id} {:name "Document in Trash"
-                                                     :document (text->prose-mirror-ast "In trash")
+                                                     :document (documents.test-util/text->prose-mirror-ast "In trash")
                                                      :collection_id trash-collection-id}]
             ;; Should be able to archive document in trash
           (let [result (mt/user-http-request :crowberto
@@ -1740,7 +1748,7 @@
 
     (testing "document with no associated cards"
       (mt/with-temp [:model/Document {doc-id :id} {:name "No Cards Document"
-                                                   :document (text->prose-mirror-ast "No cards")}]
+                                                   :document (documents.test-util/text->prose-mirror-ast "No cards")}]
         (let [result (mt/user-http-request :crowberto
                                            :put 200 (format "ee/document/%s" doc-id)
                                            {:archived true})]
@@ -1750,20 +1758,20 @@
 
     (testing "archiving and updating other fields simultaneously"
       (mt/with-temp [:model/Document {doc-id :id} {:name "Original Name"
-                                                   :document (text->prose-mirror-ast "Original")}]
+                                                   :document (documents.test-util/text->prose-mirror-ast "Original")}]
         (let [result (mt/user-http-request :crowberto
                                            :put 200 (format "ee/document/%s" doc-id)
                                            {:archived true
                                             :name "Updated Name"
-                                            :document (text->prose-mirror-ast "Updated content")})]
+                                            :document (documents.test-util/text->prose-mirror-ast "Updated content")})]
           (is (true? (:archived result)))
           (is (= "Updated Name" (:name result)))
-          (is (= (text->prose-mirror-ast "Updated content") (:document result))))))))
+          (is (= (documents.test-util/text->prose-mirror-ast "Updated content") (:document result))))))))
 
 (deftest delete-document-basic-test
   (testing "DELETE /api/ee/document/:id - basic document deletion"
     (mt/with-temp [:model/Document {doc-id :id} {:name "Test Document"
-                                                 :document (text->prose-mirror-ast "Test content")
+                                                 :document (documents.test-util/text->prose-mirror-ast "Test content")
                                                  :archived true}]
       (testing "can delete archived document"
         (mt/user-http-request :crowberto :delete (format "ee/document/%s" doc-id))
@@ -1777,7 +1785,7 @@
 (deftest delete-document-not-archived-test
   (testing "DELETE /api/ee/document/:id - cannot delete non-archived document"
     (mt/with-temp [:model/Document {doc-id :id} {:name "Active Document"
-                                                 :document (text->prose-mirror-ast "Active content")
+                                                 :document (documents.test-util/text->prose-mirror-ast "Active content")
                                                  :archived false}]
       (testing "returns 400 error when trying to delete non-archived document"
         (mt/user-http-request :crowberto :delete 400 (format "ee/document/%s" doc-id))
@@ -1791,11 +1799,11 @@
       (mt/with-temp [:model/Collection {read-only-col :id} {}
                      :model/Collection {write-col :id} {}
                      :model/Document {read-only-doc-id :id} {:name "Read Only Document"
-                                                             :document (text->prose-mirror-ast "Read only")
+                                                             :document (documents.test-util/text->prose-mirror-ast "Read only")
                                                              :collection_id read-only-col
                                                              :archived true}
                      :model/Document {write-doc-id :id} {:name "Write Document"
-                                                         :document (text->prose-mirror-ast "Writable")
+                                                         :document (documents.test-util/text->prose-mirror-ast "Writable")
                                                          :collection_id write-col
                                                          :archived true}]
 
@@ -1821,7 +1829,7 @@
   (testing "DELETE /api/ee/document/:id - deletes document with associated cards"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Document {doc-id :id} {:name "Document with Cards"
-                                                 :document (text->prose-mirror-ast "Doc with cards")
+                                                 :document (documents.test-util/text->prose-mirror-ast "Doc with cards")
                                                  :collection_id coll-id
                                                  :archived true}
                    :model/Card {card1-id :id} {:name "Associated Card 1"
@@ -1858,7 +1866,7 @@
 (deftest delete-document-events-test
   (testing "DELETE /api/ee/document/:id - publishes delete event"
     (mt/with-temp [:model/Document {doc-id :id} {:name "Event Test Document"
-                                                 :document (text->prose-mirror-ast "Event test")
+                                                 :document (documents.test-util/text->prose-mirror-ast "Event test")
                                                  :archived true}]
       (let [events (atom [])]
         (with-redefs [events/publish-event! (fn [topic event]
@@ -1878,7 +1886,7 @@
       (let [existing-doc-result (mt/user-http-request :crowberto
                                                       :post 200 "ee/document/"
                                                       {:name "Existing Document"
-                                                       :document (text->prose-mirror-ast "Existing doc")
+                                                       :document (documents.test-util/text->prose-mirror-ast "Existing doc")
                                                        :collection_id collection-id
                                                        :collection_position 3})
             existing-doc-id (:id existing-doc-result)]
@@ -1888,7 +1896,7 @@
           (let [new-doc-result (mt/user-http-request :crowberto
                                                      :post 200 "ee/document/"
                                                      {:name "New Document"
-                                                      :document (text->prose-mirror-ast "New doc")
+                                                      :document (documents.test-util/text->prose-mirror-ast "New doc")
                                                       :collection_id collection-id
                                                       :collection_position 3})]
             ;; New document should have position 3
@@ -1902,7 +1910,7 @@
           (let [no-position-result (mt/user-http-request :crowberto
                                                          :post 200 "ee/document/"
                                                          {:name "No Position Document"
-                                                          :document (text->prose-mirror-ast "No position doc")
+                                                          :document (documents.test-util/text->prose-mirror-ast "No position doc")
                                                           :collection_id collection-id})]
             (is (nil? (:collection_position no-position-result)))))))))
 
@@ -1913,19 +1921,19 @@
       (let [doc1-result (mt/user-http-request :crowberto
                                               :post 200 "ee/document/"
                                               {:name "Document 1"
-                                               :document (text->prose-mirror-ast "Doc 1")
+                                               :document (documents.test-util/text->prose-mirror-ast "Doc 1")
                                                :collection_id collection-id
                                                :collection_position 1})
             doc2-result (mt/user-http-request :crowberto
                                               :post 200 "ee/document/"
                                               {:name "Document 2"
-                                               :document (text->prose-mirror-ast "Doc 2")
+                                               :document (documents.test-util/text->prose-mirror-ast "Doc 2")
                                                :collection_id collection-id
                                                :collection_position 2})
             doc3-result (mt/user-http-request :crowberto
                                               :post 200 "ee/document/"
                                               {:name "Document 3"
-                                               :document (text->prose-mirror-ast "Doc 3")
+                                               :document (documents.test-util/text->prose-mirror-ast "Doc 3")
                                                :collection_id collection-id
                                                :collection_position 3})
             doc1-id (:id doc1-result)
@@ -1969,7 +1977,7 @@
         (let [document-result (mt/user-http-request :crowberto
                                                     :post 200 "ee/document/"
                                                     {:name "Positioned Document"
-                                                     :document (text->prose-mirror-ast "Positioned doc")
+                                                     :document (documents.test-util/text->prose-mirror-ast "Positioned doc")
                                                      :collection_id collection-id
                                                      :collection_position 5})]
           (is (= 5 (:collection_position document-result)))))
@@ -1978,7 +1986,7 @@
         (let [document-result (mt/user-http-request :crowberto
                                                     :post 200 "ee/document/"
                                                     {:name "Update Position Document"
-                                                     :document (text->prose-mirror-ast "Update position doc")
+                                                     :document (documents.test-util/text->prose-mirror-ast "Update position doc")
                                                      :collection_id collection-id
                                                      :collection_position 5})
               document-id (:id document-result)
@@ -1991,7 +1999,7 @@
         (let [document-result (mt/user-http-request :crowberto
                                                     :post 200 "ee/document/"
                                                     {:name "Nil Position Document"
-                                                     :document (text->prose-mirror-ast "Nil position doc")
+                                                     :document (documents.test-util/text->prose-mirror-ast "Nil position doc")
                                                      :collection_id collection-id
                                                      :collection_position 5})
               document-id (:id document-result)
@@ -2000,6 +2008,298 @@
                                                    {:collection_position nil})]
           (is (nil? (:collection_position updated-result))))))))
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                            PUBLIC SHARING ENDPOINTS                                            |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- shared-document []
+  {:public_uuid       (str (random-uuid))
+   :made_public_by_id (mt/user->id :crowberto)})
+
+(defn- document-with-public-link
+  "Create test Document data including a public UUID and made_public_by_id.
+
+  Accepts an `overrides` map to customize the returned Document attributes. Base attributes include
+  `:name`, `:document` (ProseMirror AST), `:public_uuid`, and `:made_public_by_id`."
+  [overrides]
+  (merge {:name "Test Document"
+          :document (documents.test-util/text->prose-mirror-ast "Test content")}
+         (shared-document)
+         overrides))
+
+;;; -------------------------------------- POST /api/ee/document/:id/public-link ---------------------------------------
+
+(deftest share-document-test
+  (mt/with-temporary-setting-values [enable-public-sharing true]
+    (testing "Test that we can share a Document"
+      (mt/with-temp [:model/Document document {:name "Test Document"
+                                               :document (documents.test-util/text->prose-mirror-ast "Test content")}]
+        (let [{uuid :uuid} (mt/user-http-request :crowberto :post 200
+                                                 (format "ee/document/%d/public-link" (:id document)))]
+          (is (t2/exists? :model/Document :id (:id document), :public_uuid uuid))
+          (testing "Test that if a Document has already been shared we reuse the existing UUID"
+            (is (= uuid
+                   (:uuid (mt/user-http-request :crowberto :post 200
+                                                (format "ee/document/%d/public-link" (:id document))))))))))
+
+    (mt/with-temp [:model/Document document {:name "Test Document"
+                                             :document (documents.test-util/text->prose-mirror-ast "Test content")}]
+      (testing "Test that we *cannot* share a Document if we aren't admins"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :post 403 (format "ee/document/%d/public-link" (:id document))))))
+
+      (testing "Test that we *cannot* share a Document if the setting is disabled"
+        (mt/with-temporary-setting-values [enable-public-sharing false]
+          (is (= "Public sharing is not enabled."
+                 (mt/user-http-request :crowberto :post 400 (format "ee/document/%d/public-link" (:id document))))))))
+
+    (testing "Test that we get a 404 if the Document doesn't exist"
+      (is (= "Not found."
+             (mt/user-http-request :crowberto :post 404 (format "ee/document/%d/public-link" Integer/MAX_VALUE)))))))
+
+(deftest delete-public-link-test
+  (testing "DELETE /api/ee/document/:id/public-link"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (testing "Test that we can unshare a Document"
+        (mt/with-temp [:model/Document document (document-with-public-link {})]
+          (mt/user-http-request :crowberto :delete 204 (format "ee/document/%d/public-link" (:id document)))
+          (is (not (t2/exists? :model/Document :id (:id document), :public_uuid (:public_uuid document))))))
+
+      (testing "Test that we *cannot* unshare a Document if we are not admins"
+        (mt/with-temp [:model/Document document (document-with-public-link {})]
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :delete 403 (format "ee/document/%d/public-link" (:id document)))))))
+
+      (testing "Test that we get a 404 if Document isn't shared"
+        (mt/with-temp [:model/Document document {:name "Test Document"
+                                                 :document (documents.test-util/text->prose-mirror-ast "Test content")}]
+          (is (= "Not found."
+                 (mt/user-http-request :crowberto :delete 404 (format "ee/document/%d/public-link" (:id document)))))))
+
+      (testing "Test that we get a 404 if Document doesn't exist"
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :delete 404 (format "ee/document/%d/public-link" Integer/MAX_VALUE))))))))
+
+(deftest fetch-public-documents-test
+  (testing "GET /api/ee/document/public"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Document _document (document-with-public-link {:name "Public Document"
+                                                                           :document (documents.test-util/text->prose-mirror-ast "Public content")})]
+        (testing "Test that it requires superuser"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 "ee/document/public"))))
+        (testing "Test that superusers can fetch a list of publicly-accessible documents"
+          (is (= [{:name true, :id true, :public_uuid true}]
+                 (for [doc (mt/user-http-request :crowberto :get 200 "ee/document/public")]
+                   (m/map-vals boolean doc)))))))))
+
+;;; ---------------------------------------- GET /api/ee/public/document/:uuid ----------------------------------------------
+
+(deftest fetch-public-document-test
+  (testing "GET /api/ee/public/document/:uuid"
+    (testing "Test that we can fetch a public Document"
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (mt/with-temp [:model/Document document (document-with-public-link {:name "Public Test Document"
+                                                                            :document (documents.test-util/text->prose-mirror-ast "Public test content")})]
+          (is (partial= {:name "Public Test Document"
+                         :document (documents.test-util/text->prose-mirror-ast "Public test content")
+                         :id (:id document)}
+                        (mt/client :get 200 (str "ee/public/document/" (:public_uuid document))))))))))
+
+(deftest public-document-returns-only-safe-fields-test
+  (testing "GET /api/ee/public/document/:uuid should only return safe fields"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Document document (document-with-public-link {:name "Public Test Document"
+                                                                          :document (documents.test-util/text->prose-mirror-ast "Public test content")})]
+        (let [result (mt/client :get 200 (str "ee/public/document/" (:public_uuid document)))]
+          (testing "Should include safe fields"
+            (is (contains? result :id))
+            (is (contains? result :name))
+            (is (contains? result :document))
+            (is (contains? result :created_at))
+            (is (contains? result :updated_at)))
+          (testing "Should not include sensitive fields"
+            (is (not (contains? result :public_uuid)))
+            (is (not (contains? result :made_public_by_id)))
+            (is (not (contains? result :collection_id)))
+            (is (not (contains? result :description)))))))))
+
+(deftest get-public-document-errors-test
+  (testing "GET /api/ee/public/document/:uuid"
+    (testing "Shouldn't be able to fetch a public Document if public sharing is disabled"
+      (mt/with-temporary-setting-values [enable-public-sharing false]
+        (mt/with-temp [:model/Document document (document-with-public-link {})]
+          (is (= "API endpoint does not exist."
+                 (mt/client :get 404 (str "ee/public/document/" (:public_uuid document))))))))
+
+    (testing "Should get a 404 if the Document doesn't exist"
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (is (= "Not found."
+               (mt/client :get 404 (str "ee/public/document/" (random-uuid)))))))))
+
+(deftest share-archived-document-test
+  (testing "POST /api/ee/document/:id/public-link should not work for archived documents"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Document document {:name "Archived Document"
+                                               :document (documents.test-util/text->prose-mirror-ast "Archived content")
+                                               :archived true}]
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :post 404 (format "ee/document/%d/public-link" (:id document)))))))))
+
+(deftest unshare-archived-document-test
+  (testing "DELETE /api/ee/document/:id/public-link should not work for archived documents"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Document document (document-with-public-link {:name "Archived Shared Document"
+                                                                          :document (documents.test-util/text->prose-mirror-ast "Archived shared content")
+                                                                          :archived true})]
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :delete 404 (format "ee/document/%d/public-link" (:id document)))))))))
+
+(deftest public-document-not-accessible-when-archived-test
+  (testing "GET /api/ee/public/document/:uuid should not work for archived documents"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Document document (document-with-public-link {})]
+        (let [uuid (:public_uuid document)]
+          (testing "Document is accessible when not archived"
+            (is (= 200
+                   (:status (mt/client-full-response :get (str "ee/public/document/" uuid))))))
+          (testing "Document is not accessible after archiving"
+            (t2/update! :model/Document (:id document) {:archived true})
+            (is (= "Not found."
+                   (mt/client :get 404 (str "ee/public/document/" uuid))))))))))
+
+(deftest public-document-listing-excludes-archived-test
+  (testing "GET /api/ee/document/public should not include archived documents"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Document active-doc (document-with-public-link {:name "Active Public Document"
+                                                                            :document (documents.test-util/text->prose-mirror-ast "Active content")})
+                     :model/Document _archived-doc (document-with-public-link {:name "Archived Public Document"
+                                                                               :document (documents.test-util/text->prose-mirror-ast "Archived content")
+                                                                               :archived true})]
+        (let [public-docs (mt/user-http-request :crowberto :get 200 "ee/document/public")
+              public-doc-ids (set (map :id public-docs))]
+          (testing "Active document should be in the list"
+            (is (contains? public-doc-ids (:id active-doc))))
+          (testing "Archived document should not be in the list"
+            (is (= 1 (count public-docs)))))))))
+
+(deftest download-document-card-test
+  (testing "POST /api/ee/document/:document-id/card/:card-id/query/:export-format"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Card {card-id :id} {:name "Test Card"
+                                                :dataset_query (mt/mbql-query venues {:limit 10})
+                                                :display :table
+                                                :collection_id coll-id}
+                     :model/Document {doc-id :id} {:name "Test Document"
+                                                   :collection_id coll-id
+                                                   :document {:type "doc"
+                                                              :content [{:type "cardEmbed"
+                                                                         :attrs {:id card-id}}]}}]
+        (t2/update! :model/Card card-id {:document_id doc-id})
+
+        (mt/with-group-for-user [group :rasta {:name "Rasta Group"}]
+          (testing "Read-only users can download"
+            (perms/grant-collection-read-permissions! group coll-id)
+            (let [response (mt/user-http-request :rasta
+                                                 :post 200
+                                                 (format "ee/document/%s/card/%s/query/csv" doc-id card-id)
+                                                 {:parameters []
+                                                  :format_rows false
+                                                  :pivot_results false})]
+              (is (some? response))
+              (is (string? response))))
+
+          (testing "No access returns 403"
+            (perms/revoke-collection-permissions! group coll-id)
+            (mt/user-http-request :rasta
+                                  :post 403
+                                  (format "ee/document/%s/card/%s/query/csv" doc-id card-id)
+                                  {:parameters []
+                                   :format_rows false
+                                   :pivot_results false}))
+
+          (testing "Card not in document returns 404"
+            (perms/grant-collection-read-permissions! group coll-id)
+            (mt/with-temp [:model/Card {other-card-id :id} {:name "Other Card"
+                                                            :dataset_query (mt/mbql-query venues {:limit 5})
+                                                            :display :table
+                                                            :collection_id coll-id}]
+              (mt/user-http-request :rasta
+                                    :post 404
+                                    (format "ee/document/%s/card/%s/query/csv" doc-id other-card-id)
+                                    {:parameters []
+                                     :format_rows false
+                                     :pivot_results false})))
+
+          (testing "Archived document returns 404"
+            (t2/update! :model/Document doc-id {:archived true})
+            (mt/user-http-request :rasta
+                                  :post 404
+                                  (format "ee/document/%s/card/%s/query/csv" doc-id card-id)
+                                  {:parameters []
+                                   :format_rows false
+                                   :pivot_results false})))))))
+
+(deftest download-document-card-respects-download-permissions-test
+  (testing "POST /api/ee/document/:document-id/card/:card-id/query/:export-format respects database download permissions"
+    (mt/with-premium-features #{:documents :advanced-permissions}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection {coll-id :id} {}
+                       :model/Card {card-id :id} {:name "Test Card"
+                                                  :dataset_query (mt/mbql-query venues {:limit 10})
+                                                  :display :table
+                                                  :collection_id coll-id}
+                       :model/Document {doc-id :id} {:name "Test Document"
+                                                     :collection_id coll-id
+                                                     :document {:type "doc"
+                                                                :content [{:type "cardEmbed"
+                                                                           :attrs {:id card-id}}]}}]
+          (t2/update! :model/Card card-id {:document_id doc-id})
+
+          (let [all-users-group (perms/all-users-group)]
+            ;; Grant collection read permissions so user can access the document
+            (perms/grant-collection-read-permissions! all-users-group coll-id)
+
+            (testing "User without download permissions yields permissions error in body (streaming uses 200)"
+              ;; Set download permissions to :no (no downloads allowed) for All Users group
+              (data-perms/set-database-permission! all-users-group (mt/id) :perms/download-results :no)
+
+              (is (malli= [:map
+                           [:status [:= "failed"]]
+                           [:error_type [:= "missing-required-permissions"]]
+                           [:ex-data [:map
+                                      [:permissions-error? [:= true]]]]]
+                          (mt/user-http-request :rasta
+                                                :post 200
+                                                (format "ee/document/%s/card/%s/query/csv" doc-id card-id)
+                                                {:parameters []
+                                                 :format_rows false
+                                                 :pivot_results false}))))
+
+            (testing "User with limited download permissions (10k rows) can download"
+              (data-perms/set-database-permission! all-users-group (mt/id) :perms/download-results :ten-thousand-rows)
+
+              (let [response (mt/user-http-request :rasta
+                                                   :post 200
+                                                   (format "ee/document/%s/card/%s/query/csv" doc-id card-id)
+                                                   {:parameters []
+                                                    :format_rows false
+                                                    :pivot_results false})]
+                (is (some? response))
+                (is (string? response))))
+
+            (testing "User with full download permissions can download"
+              (data-perms/set-database-permission! all-users-group (mt/id) :perms/download-results :one-million-rows)
+
+              (let [response (mt/user-http-request :rasta
+                                                   :post 200
+                                                   (format "ee/document/%s/card/%s/query/csv" doc-id card-id)
+                                                   {:parameters []
+                                                    :format_rows false
+                                                    :pivot_results false})]
+                (is (some? response))
+                (is (string? response))))))))))
 (defn- prose-mirror-with-smartlink
   "Create a ProseMirror AST with a smartlink to a card."
   [text card-id]
@@ -2031,7 +2331,7 @@
                                                  {:name "Doc with bad reference"
                                                   :collection_id remote-synced-id
                                                   :document (prose-mirror-with-smartlink "Link to card" card-id)})]
-              (is (= "Model has non-remote-synced dependencies" (:message response))
+              (is (= "Uses content that is not remote synced." (:message response))
                   "Should report non-remote-synced dependencies"))))))))
 
 (deftest create-document-in-remote-synced-with-remote-synced-smartlink-test
@@ -2098,7 +2398,7 @@
                                                          :type nil}
                      :model/Document {doc-id :id} {:name "Test Document"
                                                    :collection_id remote-synced-id
-                                                   :document (text->prose-mirror-ast "Initial")}
+                                                   :document (documents.test-util/text->prose-mirror-ast "Initial")}
                      :model/Card {card-id :id} {:name "Regular Card"
                                                 :collection_id regular-id
                                                 :dataset_query (mt/mbql-query venues)}]
@@ -2107,7 +2407,7 @@
           (let [response (mt/user-http-request :crowberto
                                                :put 400 (format "ee/document/%s" doc-id)
                                                {:document (prose-mirror-with-smartlink "Bad link" card-id)})]
-            (is (= "Model has non-remote-synced dependencies" (:message response)))))))))
+            (is (= "Uses content that is not remote synced." (:message response)))))))))
 
 (deftest update-document-in-remote-synced-with-remote-synced-smartlink-test
   (testing "PUT /api/ee/document/:id - updating document in remote-synced collection to add remote-synced reference"
@@ -2117,7 +2417,7 @@
                                                                :type "remote-synced"}
                      :model/Document {doc-id :id} {:name "Test Document"
                                                    :collection_id remote-synced-id
-                                                   :document (text->prose-mirror-ast "Initial")}
+                                                   :document (documents.test-util/text->prose-mirror-ast "Initial")}
                      :model/Card {card-id :id} {:name "Remote-Synced Card"
                                                 :collection_id remote-synced-id
                                                 :dataset_query (mt/mbql-query venues)}]
@@ -2183,7 +2483,7 @@
                                                          :type nil}
                      :model/Document {doc-id :id} {:name "Doc without refs"
                                                    :collection_id remote-synced-id
-                                                   :document (text->prose-mirror-ast "No references")}]
+                                                   :document (documents.test-util/text->prose-mirror-ast "No references")}]
 
         (testing "Successfully moves when document has no remote-synced references"
           (let [response (mt/user-http-request :crowberto
@@ -2212,7 +2512,7 @@
           (let [response (mt/user-http-request :crowberto
                                                :put 400 (format "ee/document/%s" doc-id)
                                                {:collection_id remote-synced-id})]
-            (is (= "Model has non-remote-synced dependencies" (:message response)))
+            (is (= "Uses content that is not remote synced." (:message response)))
 
             ;; Verify document was NOT moved
             (is (= regular-id (:collection_id (t2/select-one :model/Document :id doc-id)))
@@ -2235,17 +2535,50 @@
                                                         :dataset_query (mt/mbql-query venues)}
                      :model/Document {doc-id :id} {:name "Test Doc"
                                                    :collection_id remote-synced-id
-                                                   :document (text->prose-mirror-ast "Initial")}]
+                                                   :document (documents.test-util/text->prose-mirror-ast "Initial")}]
 
         (testing "Throws exception when adding non-remote-synced ref and staying in remote-synced collection"
           (let [response (mt/user-http-request :crowberto
                                                :put 400 (format "ee/document/%s" doc-id)
                                                {:document (prose-mirror-with-smartlink "Bad" regular-card-id)
                                                 :collection_id remote-synced-id})]
-            (is (= "Model has non-remote-synced dependencies" (:message response)))))
+            (is (= "Uses content that is not remote synced." (:message response)))))
 
         (testing "Does not throw when moving to a regular collection"
           (mt/user-http-request :crowberto
                                 :put 200 (format "ee/document/%s" doc-id)
                                 {:document (prose-mirror-with-smartlink "Good" remote-card-id)
                                  :collection_id regular-id}))))))
+
+(deftest post-document-to-personal-collection-test
+  (testing "POST /api/ee/document/ - creating a document in a personal collection"
+    (mt/with-model-cleanup [:model/Document]
+      (let [personal-coll-id (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :rasta))]
+        (testing "User can create a document in their own personal collection"
+          (let [result (mt/user-http-request :rasta
+                                             :post 200 "ee/document/"
+                                             {:name "Personal Document"
+                                              :document (documents.test-util/text->prose-mirror-ast "My personal notes")
+                                              :collection_id personal-coll-id})]
+            (is (pos? (:id result)))
+            (is (= "Personal Document" (:name result)))
+            (is (= personal-coll-id (:collection_id result)))
+            (testing "Document is successfully saved in the database"
+              (let [doc (t2/select-one :model/Document :id (:id result))]
+                (is (some? doc))
+                (is (= personal-coll-id (:collection_id doc)))
+                (is (= "Personal Document" (:name doc)))))))
+        (testing "Admin can also create a document in someone else's personal collection"
+          (let [result (mt/user-http-request :crowberto
+                                             :post 200 "ee/document/"
+                                             {:name "Admin Document in Personal Collection"
+                                              :document (documents.test-util/text->prose-mirror-ast "Admin's notes")
+                                              :collection_id personal-coll-id})]
+            (is (pos? (:id result)))
+            (is (= personal-coll-id (:collection_id result)))))
+        (testing "Other users cannot create documents in someone else's personal collection"
+          (mt/user-http-request :lucky
+                                :post 403 "ee/document/"
+                                {:name "Should Fail"
+                                 :document (documents.test-util/text->prose-mirror-ast "Should not be created")
+                                 :collection_id personal-coll-id}))))))

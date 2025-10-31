@@ -60,8 +60,11 @@
   [card]
   (assoc card :parameters (qp.card/combined-parameters-and-template-tags card)))
 
-(defn- remove-card-non-public-columns
-  "Remove everyting from public `card` that shouldn't be visible to the general public."
+(defn remove-card-non-public-columns
+  "Remove everything from public `card` that shouldn't be visible to the general public.
+
+  This function is used by both OSS (for public cards) and EE (for cards in public documents) to ensure
+  consistent filtering of sensitive fields across all public sharing endpoints."
   [card]
   ;; We need to check this to resolve params - we set `request/as-admin` there
   (if qp.perms/*param-values-query*

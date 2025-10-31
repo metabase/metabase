@@ -81,8 +81,7 @@ import type {
   ModelCacheRefreshStatus,
   ParameterId,
   Pulse,
-  PythonTransformSource,
-  PythonTransformTableAliases,
+  PythonTransformSourceDraft,
   Revision,
   SearchModel,
   Series,
@@ -585,10 +584,24 @@ export const PLUGIN_EMBEDDING_IFRAME_SDK = {
   SdkIframeEmbedRoute: (): ReactNode => null,
 };
 
+export type SdkIframeEmbedSetupModalProps = {
+  opened: boolean;
+  onClose: () => void;
+  initialState?: SdkIframeEmbedSetupModalInitialState;
+};
+
+export type SdkIframeEmbedSetupModalInitialState = {
+  resourceType?: string | null;
+  resourceId?: string | number | null;
+  useExistingUserSession?: boolean;
+};
+
 export const PLUGIN_EMBEDDING_IFRAME_SDK_SETUP = {
   isFeatureEnabled: () => false,
   shouldShowEmbedInNewItemMenu: () => false,
-  SdkIframeEmbedSetup: (): ReactNode => null,
+  SdkIframeEmbedSetupModal: (
+    _props: SdkIframeEmbedSetupModalProps,
+  ): ReactNode => null,
 };
 
 export const PLUGIN_CONTENT_VERIFICATION = {
@@ -861,6 +874,11 @@ export const PLUGIN_DOCUMENTS = {
   DocumentCopyForm: (_props: any) => null as React.ReactElement | null,
 };
 
+export const PLUGIN_PUBLIC_SHARING = {
+  PublicDocumentRoute: (_props: any) => null as React.ReactElement | null,
+  PublicLinksDocumentListing: () => null as React.ReactElement | null,
+};
+
 export const PLUGIN_ENTITIES = {
   entities: {} as Record<string, any>,
 };
@@ -922,44 +940,40 @@ export const PLUGIN_REMOTE_SYNC: {
   }),
 };
 
+export type PythonTransformEditorProps = {
+  name?: string;
+  source: PythonTransformSourceDraft;
+  proposedSource?: PythonTransformSourceDraft;
+  isNew: boolean;
+  isDirty: boolean;
+  isSaving: boolean;
+  onChangeSource: (source: PythonTransformSourceDraft) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  onAcceptProposed: () => void;
+  onRejectProposed: () => void;
+};
+
+export type PythonTransformSourceSectionProps = {
+  transform: Transform;
+};
+
 export type PythonTransformsPlugin = {
+  isEnabled: boolean;
+  TransformEditor: ComponentType<PythonTransformEditorProps>;
+  SourceSection: ComponentType<PythonTransformSourceSectionProps>;
   PythonRunnerSettingsPage: ComponentType;
-  SourceSection: ComponentType<{ transform: Transform }>;
-  TransformEditor: ComponentType<{
-    transform?: Transform | undefined;
-    initialSource: {
-      type: "python";
-      body: string;
-      "source-database": DatabaseId | undefined;
-      "source-tables": PythonTransformTableAliases;
-    };
-    proposedSource?: PythonTransformSource;
-    isNew?: boolean;
-    isSaving?: boolean;
-    isRunnable?: boolean;
-    onChange?: (newSource: {
-      type: "python";
-      body: string;
-      "source-database": DatabaseId | undefined;
-      "source-tables": PythonTransformTableAliases;
-    }) => void;
-    onSave: (newSource: PythonTransformSource) => void;
-    onCancel: () => void;
-    onRejectProposed?: () => void;
-    onAcceptProposed?: (query: PythonTransformSource) => void;
-  }>;
   getAdminRoutes: () => ReactNode;
   getTransformsNavLinks: () => ReactNode;
-  getCreateTransformsMenuItems: () => ReactNode;
 };
 
 export const PLUGIN_TRANSFORMS_PYTHON: PythonTransformsPlugin = {
-  PythonRunnerSettingsPage: NotFoundPlaceholder,
-  TransformEditor: NotFoundPlaceholder,
+  isEnabled: false,
+  TransformEditor: PluginPlaceholder,
   SourceSection: PluginPlaceholder,
+  PythonRunnerSettingsPage: NotFoundPlaceholder,
   getAdminRoutes: () => null,
   getTransformsNavLinks: () => null,
-  getCreateTransformsMenuItems: () => null,
 };
 
 type DependenciesPlugin = {

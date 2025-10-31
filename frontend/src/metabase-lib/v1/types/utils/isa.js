@@ -131,8 +131,17 @@ export const isPK = (field) => field && isTypePK(field.semantic_type);
 export const isEntityName = (field) =>
   field && isa(field.semantic_type, TYPE.Name);
 export const isTitle = (field) => field && isa(field.semantic_type, TYPE.Title);
+export const isProduct = (field) =>
+  field && isa(field.semantic_type, TYPE.Product);
+export const isSource = (field) =>
+  field && isa(field.semantic_type, TYPE.Source);
 export const isAddress = (field) =>
   field && isa(field.semantic_type, TYPE.Address);
+export const isScore = (field) => field && isa(field.semantic_type, TYPE.Score);
+export const isQuantity = (field) =>
+  field && isa(field.semantic_type, TYPE.Quantity);
+export const isCategory = (field) =>
+  field && isa(field.semantic_type, TYPE.Category);
 
 export const isAny = (col) => true;
 
@@ -165,6 +174,7 @@ export const isNumber = (field) =>
   (field.semantic_type == null ||
     isa(field.semantic_type, TYPE.Number) ||
     isa(field.semantic_type, TYPE.Category));
+export const isFloat = (field) => field && isa(field.semantic_type, TYPE.Float);
 
 export const isTime = (field) => {
   if (!field) {

@@ -22,7 +22,7 @@ interface ModifyQuestionModalProps {
   card: Card;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (result: { card_id: number; name: string }) => void;
+  onSave: (result: { card_id: number }) => void;
 }
 
 export const ModifyQuestionModal = ({
@@ -110,7 +110,7 @@ export const ModifyQuestionModal = ({
         }),
       );
 
-      onSave({ card_id: newCardId, name: card.name });
+      onSave({ card_id: newCardId });
       onClose();
     } catch (error) {
       console.error("Failed to save modified question:", error);

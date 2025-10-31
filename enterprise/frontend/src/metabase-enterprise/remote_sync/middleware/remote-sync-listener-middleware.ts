@@ -8,7 +8,6 @@ import { dashboardApi } from "metabase/api/dashboard";
 import { tag } from "metabase/api/tags";
 import { timelineApi } from "metabase/api/timeline";
 import { timelineEventApi } from "metabase/api/timeline-event";
-import { delay } from "metabase/lib/promise";
 import type {
   Card,
   Collection,
@@ -352,16 +351,13 @@ remoteSyncListenerMiddleware.startListening({
       const isTerminalState = terminalTaskStates.includes(task.status);
 
       if (isTerminalState && task.ended_at) {
-        // FIXME: Currently backend doesn't immediately update settings or dirty state
-        // after task finishes, adding a slight delay to ensure the state is updated
-        const hackTimeout = task.sync_task_type === "import" ? 1000 : 2500;
-        await delay(hackTimeout);
-
         const isImportTask = task.sync_task_type === "import";
         const isSuccessful = task.status === "successful";
 
         if (isSuccessful) {
-          dispatch(modalDismissed());
+          setTimeout(() => {
+            dispatch(modalDismissed());
+          }, 500);
 
           if (isImportTask) {
             dispatch(Api.util.invalidateTags(ALL_INVALIDATION_TAGS));
