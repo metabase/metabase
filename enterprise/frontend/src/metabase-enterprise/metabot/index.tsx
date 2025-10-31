@@ -16,6 +16,7 @@ import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
 import { MetabotToggleButton } from "./components/MetabotToggleButton";
 import { MetabotContext, MetabotProvider, defaultContext } from "./context";
 import { getMetabotVisible, metabotReducer } from "./state";
+import { MetabotPlaygroundAdminPage } from "./components/MetabotAdmin/MetabotPlaygroundPage";
 
 if (hasPremiumFeature("metabot_v3")) {
   PLUGIN_METABOT.isEnabled = () => true;
@@ -37,6 +38,7 @@ if (hasPremiumFeature("metabot_v3")) {
       component={createAdminRouteGuard("metabot")}
     >
       <IndexRoute component={MetabotAdminPage} />
+      <Route path="playground" component={MetabotPlaygroundAdminPage} />
       <Route path=":metabotId" component={MetabotAdminPage} />
     </Route>
   );

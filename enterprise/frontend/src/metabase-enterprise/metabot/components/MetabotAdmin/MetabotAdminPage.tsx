@@ -47,6 +47,7 @@ import type {
 
 import { MetabotPromptSuggestionPane } from "./MetabotAdminSuggestedPrompts";
 import { useMetabotIdPath } from "./utils";
+import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
 export function MetabotAdminPage() {
   const metabotId = useMetabotIdPath() ?? FIXED_METABOT_IDS.DEFAULT;
@@ -104,20 +105,21 @@ export function MetabotAdminPage() {
   );
 }
 
-function MetabotNavPane() {
+export function MetabotNavPane() {
   const { data, isLoading } = useListMetabotsQuery();
-  const metabotId = useMetabotIdPath();
+  const { debugMode } = useMetabotAgent();
+  const pathId = useMetabotIdPath();
   const dispatch = useDispatch();
 
   const metabots = useMemo(() => _.sortBy(data?.items ?? [], "id"), [data]);
 
   useEffect(() => {
-    const hasMetabotId = metabots?.some((metabot) => metabot.id === metabotId);
+    const hasMetabotId = metabots?.some((metabot) => metabot.id === pathId);
 
-    if (!hasMetabotId && metabots?.length) {
+    if (pathId !== "playground" && !hasMetabotId && metabots?.length) {
       dispatch(push(`/admin/metabot/${metabots[0]?.id}`));
     }
-  }, [metabots, metabotId, dispatch]);
+  }, [metabots, pathId, dispatch]);
 
   if (isLoading || !data) {
     return null;
@@ -134,6 +136,15 @@ function MetabotNavPane() {
             path={`/admin/metabot/${metabot.id}`}
           />
         ))}
+
+        {debugMode && (
+          <AdminNavItem
+            key="playground"
+            icon="sql"
+            label={t`Playground`}
+            path={`/admin/metabot/playground`}
+          />
+        )}
       </AdminNavWrapper>
     </Flex>
   );
