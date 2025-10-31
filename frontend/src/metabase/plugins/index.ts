@@ -88,7 +88,6 @@ import type {
   TableId,
   Timeline,
   TimelineEvent,
-  Transform,
   TransformId,
   UpdateSnippetRequest,
   UpdateTransformRequest,
@@ -953,14 +952,9 @@ export type PythonTransformEditorProps = {
   onRejectProposed: () => void;
 };
 
-export type PythonTransformSourceSectionProps = {
-  transform: Transform;
-};
-
 export type PythonTransformsPlugin = {
   isEnabled: boolean;
   TransformEditor: ComponentType<PythonTransformEditorProps>;
-  SourceSection: ComponentType<PythonTransformSourceSectionProps>;
   PythonRunnerSettingsPage: ComponentType;
   getAdminRoutes: () => ReactNode;
   getTransformsNavLinks: () => ReactNode;
@@ -969,7 +963,6 @@ export type PythonTransformsPlugin = {
 export const PLUGIN_TRANSFORMS_PYTHON: PythonTransformsPlugin = {
   isEnabled: false,
   TransformEditor: PluginPlaceholder,
-  SourceSection: PluginPlaceholder,
   PythonRunnerSettingsPage: NotFoundPlaceholder,
   getAdminRoutes: () => null,
   getTransformsNavLinks: () => null,

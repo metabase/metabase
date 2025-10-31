@@ -7,9 +7,9 @@ import { AnsiLogs } from "metabase/common/components/AnsiLogs";
 
 import S from "./LogOutput.modules.css";
 
-interface LogOutputProps {
+type LogOutputProps = {
   content?: string;
-}
+};
 
 export function LogOutput({ content }: LogOutputProps) {
   const containerRef = useRef<HTMLDivElement>(null);
