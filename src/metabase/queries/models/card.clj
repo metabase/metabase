@@ -1334,7 +1334,9 @@
    :bookmark     [:model/CardBookmark [:and
                                        [:= :bookmark.card_id :this.id]
                                        [:= :bookmark.user_id :current_user/id]]]
-   :where        [:and [:= :collection.namespace nil] [:= :this.document_id nil]]
+   :where        [:and
+                  [:or [:= :collection.namespace nil] [:= :collection.namespace "analytics"]]
+                  [:= :this.document_id nil]]
    :joins        {:collection [:model/Collection [:= :collection.id :this.collection_id]]
                   :r          [:model/Revision [:and
                                                 [:= :r.model_id :this.id]
