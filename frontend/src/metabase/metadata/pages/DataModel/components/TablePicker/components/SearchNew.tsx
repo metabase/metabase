@@ -48,6 +48,7 @@ export function SearchNew({
         : (filters.ownerUserId ?? undefined),
     owner_email: filters.ownerEmail ?? undefined,
     include_hidden: filters.visibilityType2 != null,
+    orphan_only: filters.orphansOnly === true ? true : undefined,
   });
 
   useEffect(() => {
