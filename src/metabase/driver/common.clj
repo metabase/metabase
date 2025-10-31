@@ -264,6 +264,8 @@
     :type :select
     :options [{:name (deferred-tru "Azure Managed Identity")
                :value "azure-managed-identity"}
+              {:name (deferred-tru "AWS IAM")
+               :value "aws-iam"}
               {:name (deferred-tru "OAuth")
                :value "oauth"}]
     :default "azure-managed-identity"
