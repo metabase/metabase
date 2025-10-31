@@ -30,7 +30,11 @@ Appearance settings are split across different tabs:
 
 ## Dark mode
 
-People can display their Metabase in dark mode in their [account settings](../people-and-groups/account-settings.md#theme). Options are to use the system default (which is also the default setting), always use dark mode, or always use light mode. When using the system default, Metabase will switch between light and dark mode when the system switches without having to reload the page.
+People can display their Metabase in dark mode in their [account settings](../people-and-groups/account-settings.md#theme). Options are:
+
+ - System default (which is also the default setting). Metabase will switch between light and dark mode when the system switches without having to reload the page.
+ - Always use dark mode.
+ - Always use light mode. 
 
 Dark mode is a user-level setting, not an instance-level setting. Currently, there's no way to change the theme to dark mode for the entire instance, but you can edit some [user interface colors](#user-interface-colors).
 
