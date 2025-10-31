@@ -12,6 +12,10 @@ jobs:
     if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
     runs-on: ubuntu-22.04
     timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        modules: [actions, activity-feed]
     steps:
       - uses: actions/checkout@v4
       - name: Prepare front-end environment
@@ -26,10 +30,12 @@ jobs:
       - name: Collect the test coverage
         run: |
           clojure -X:dev:ci:ee:ee-dev:test:cloverage \
-            :ns-regex     '["^metabase\\.actions\\..*"]' \
-            :test-ns-path '["test/metabase/actions"]'
+            :ns-regex     '["^metabase\\.${{ matrix.modules }}\\..*"]' \
+            :test-ns-path '["test/metabase/${{ matrix.modules }}"]'
+        continue-on-error: true
 
       - name: Upload coverage to codecov.io
+        if: always()
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
