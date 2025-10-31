@@ -7,6 +7,9 @@ import { collectionApi } from "metabase/api/collection";
 import { dashboardApi } from "metabase/api/dashboard";
 import { timelineApi } from "metabase/api/timeline";
 import { timelineEventApi } from "metabase/api/timeline-event";
+import { getCollectionFromCollectionsTree } from "metabase/selectors/collection";
+import { documentApi } from "metabase-enterprise/api/document";
+import { remoteSyncApi } from "metabase-enterprise/api/remote-sync";
 import type {
   Card,
   Collection,
@@ -16,8 +19,6 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import { documentApi } from "../../api/document";
-import { remoteSyncApi } from "../../api/remote-sync";
 import { REMOTE_SYNC_INVALIDATION_TAGS } from "../constants";
 import {
   modalDismissed,
@@ -43,8 +44,8 @@ function shouldInvalidateForEntity(
 }
 
 function shouldInvalidateForCollection(
-  oldCollection: Collection | undefined,
-  newCollection: Collection | undefined,
+  oldCollection?: Collection,
+  newCollection?: Collection,
 ): boolean {
   if (!newCollection) {
     return false;
@@ -81,11 +82,7 @@ remoteSyncListenerMiddleware.startListening({
     { getOriginalState, dispatch },
   ) => {
     const newCard = action.payload;
-    const originalState = getOriginalState();
-
-    const oldCard = cardApi.endpoints.getCard.select({ id: newCard.id })(
-      originalState,
-    )?.data;
+    const oldCard = getOriginalState().entities.questions[newCard.id];
 
     if (shouldInvalidateForEntity(oldCard, newCard)) {
       invalidateRemoteSyncTags(dispatch);
@@ -100,11 +97,8 @@ remoteSyncListenerMiddleware.startListening({
     { getOriginalState, dispatch },
   ) => {
     const newDashboard = action.payload;
-    const originalState = getOriginalState();
-
-    const oldDashboard = dashboardApi.endpoints.getDashboard.select({
-      id: newDashboard.id,
-    })(originalState)?.data;
+    const oldDashboard =
+      getOriginalState().entities.dashboards[newDashboard.id];
 
     if (shouldInvalidateForEntity(oldDashboard, newDashboard)) {
       invalidateRemoteSyncTags(dispatch);
@@ -119,11 +113,7 @@ remoteSyncListenerMiddleware.startListening({
     { getOriginalState, dispatch },
   ) => {
     const newDocument = action.payload;
-    const originalState = getOriginalState();
-
-    const oldDocument = documentApi.endpoints.getDocument.select({
-      id: newDocument.id,
-    })(originalState as any)?.data;
+    const oldDocument = getOriginalState().entities.documents[newDocument.id];
 
     if (shouldInvalidateForEntity(oldDocument, newDocument)) {
       invalidateRemoteSyncTags(dispatch);
@@ -203,11 +193,10 @@ remoteSyncListenerMiddleware.startListening({
     { getOriginalState, dispatch },
   ) => {
     const newCollection = action.payload;
-    const originalState = getOriginalState();
-
-    const oldCollection = collectionApi.endpoints.getCollection.select({
-      id: newCollection.id,
-    })(originalState)?.data;
+    const oldCollection = getCollectionFromCollectionsTree(
+      getOriginalState(),
+      newCollection.id,
+    );
 
     if (shouldInvalidateForCollection(oldCollection, newCollection)) {
       invalidateRemoteSyncTags(dispatch);
