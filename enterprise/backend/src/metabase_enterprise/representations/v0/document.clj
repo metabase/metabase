@@ -4,7 +4,6 @@
    [clojure.java.shell :as sh]
    [clojure.string :as str]
    [clojure.walk :as walk]
-   [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.toucan.core :as rep-t2]
    [metabase-enterprise.representations.v0.common :as v0-common]
@@ -16,8 +15,8 @@
 
 ;;; ------------------------------------ Main Schema ------------------------------------
 
-(defmethod v0-common/type->model :document
-  [_]
+(def toucan-model
+  "The toucan model keyword associated with document representations"
   :model/Document)
 
 (defmethod v0-common/representation-type :model/Document [_entity]
@@ -102,7 +101,9 @@
                        :exit-code (:exit result)})))
     (str/trim (:out result))))
 
-(defmethod export/export-entity :document [document]
+(defn export-document
+  "Export a Document Toucan entity to a v0 document representation."
+  [document]
   (let [document-ref (v0-common/unref (v0-common/->ref (:id document) :document))
         document (patch-refs-for-export document)
         doc-content (let [doc (:document document)]
@@ -122,7 +123,6 @@
              :version :v0
              :name document-ref
              :content doc-content
-             ;; TODO: we need to iterate on the schema and code here:
              :content_type :prosemirror}
       :always
       u/remove-nils)))

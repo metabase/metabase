@@ -12,10 +12,6 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(deftest type->model-test
-  (testing "type->model returns correct model for :model"
-    (is (= :model/Card (v0-common/type->model :model)))))
-
 (deftest validate-example-yamls
   (testing "Testing valid examples"
     (doseq [filename

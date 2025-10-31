@@ -88,10 +88,6 @@
       (let [document (t2/select-one :model/Document :id document-id)]
         (is (= :document (v0-common/representation-type document)))))))
 
-(deftest type->model-test
-  (testing "type->model multimethod converts :document to :model/Document"
-    (is (= :model/Document (v0-common/type->model :document)))))
-
 (deftest document-card-embed-refs
   (mt/with-temp [:model/Card card {:type :question
                                    :dataset_query (lib/native-query (mt/metadata-provider) "select 1")}

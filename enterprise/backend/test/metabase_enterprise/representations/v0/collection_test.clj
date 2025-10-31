@@ -12,10 +12,6 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(deftest type->model-test
-  (testing "type->model returns correct model for collection"
-    (is (= :model/Collection (v0-common/type->model :collection)))))
-
 (comment
   (deftest validate-exported-collections-test
     (testing "Exported collections validate against schema"

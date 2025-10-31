@@ -2,7 +2,6 @@
   "The v0 transform representation namespace."
   (:require
    [flatland.ordered.map :refer [ordered-map]]
-   [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.lookup :as lookup]
    [metabase-enterprise.representations.toucan.core :as rep-t2]
@@ -16,8 +15,8 @@
 (defmethod v0-common/representation-type :model/Transform [_entity]
   :transform)
 
-(defmethod v0-common/type->model :transform
-  [_]
+(def toucan-model
+  "The toucan model keyword associated with transform representations"
   :model/Transform)
 
 (defmethod import/yaml->toucan [:v0 :transform]
@@ -26,8 +25,8 @@
   (let [database-id (-> ref-index
                         (v0-common/lookup-entity database)
                         (v0-common/ensure-correct-type :database)
-                        (or (lookup/lookup-by-name :database database))
-                        (or (lookup/lookup-by-id :database database))
+                        (or (lookup/lookup-by-name :model/Database database))
+                        (or (lookup/lookup-by-id :model/Database database))
                         :id
                         (v0-common/ensure-not-nil))
         query (v0-mbql/import-dataset-query representation ref-index)]
@@ -56,28 +55,22 @@
 (defmethod import/insert! [:v0 :transform]
   [representation ref-index]
   (let [representation (rep-read/parse representation)]
-    (if-some [model (v0-common/type->model (:type representation))]
-      (let [toucan (->> (import/yaml->toucan representation ref-index)
-                        (rep-t2/with-toucan-defaults model))
-            transform (t2/insert-returning-instance! model toucan)]
-        (set-up-tags (:id transform) (:tags representation))
-        (t2/hydrate transform :transform_tag_names))
-      (throw (ex-info (str "Unknown representation type: " (:type representation))
-                      {:representation representation
-                       :type (:type representation)})))))
+    (assert (= :transform (:type representation)))
+    (let [toucan (->> (import/yaml->toucan representation ref-index)
+                      (rep-t2/with-toucan-defaults :model/Transform))
+          transform (t2/insert-returning-instance! :model/Transform toucan)]
+      (set-up-tags (:id transform) (:tags representation))
+      (t2/hydrate transform :transform_tag_names))))
 
 (defmethod import/update! [:v0 :transform]
   [representation id ref-index]
   (let [representation (rep-read/parse representation)]
-    (if-some [model (v0-common/type->model (:type representation))]
-      (let [toucan (import/yaml->toucan representation ref-index)]
-        (t2/update! model id (dissoc toucan :entity_id))
-        (t2/delete! :model/TransformTransformTag :transform_id id)
-        (set-up-tags id (:tags representation))
-        (t2/hydrate (t2/select-one :model/Transform :id id) :transform_tag_names))
-      (throw (ex-info (str "Unknown representation type: " (:type representation))
-                      {:representation representation
-                       :type (:type representation)})))))
+    (assert (= :transform (:type representation)))
+    (let [toucan (import/yaml->toucan representation ref-index)]
+      (t2/update! :model/Transform id (dissoc toucan :entity_id))
+      (t2/delete! :model/TransformTransformTag :transform_id id)
+      (set-up-tags id (:tags representation))
+      (t2/hydrate (t2/select-one :model/Transform :id id) :transform_tag_names))))
 
 (defmethod import/persist! [:v0 :transform]
   [representation ref-index]
@@ -101,7 +94,9 @@
 
 ;; EXPORT
 
-(defmethod export/export-entity :transform [transform]
+(defn export-transform
+  "Export a Transform Toucan entity to a v0 transform representation."
+  [transform]
   (let [query (v0-mbql/export-dataset-query (-> transform :source :query))]
     (cond-> (ordered-map
              :name (v0-common/unref (v0-common/->ref (:id transform) :transform))

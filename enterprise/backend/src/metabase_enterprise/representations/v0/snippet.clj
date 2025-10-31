@@ -1,7 +1,6 @@
 (ns metabase-enterprise.representations.v0.snippet
   (:require
    [metabase-enterprise.representations.core :as core]
-   [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.toucan.core :as rep-t2]
    [metabase-enterprise.representations.v0.common :as v0-common]
@@ -16,8 +15,8 @@
 (defmethod v0-common/representation-type :model/NativeQuerySnippet [_entity]
   :snippet)
 
-(defmethod v0-common/type->model :snippet
-  [_]
+(def toucan-model
+  "The toucan model keyword associated with snippet representations"
   :model/NativeQuerySnippet)
 
 (defmethod import/yaml->toucan [:v0 :snippet]
@@ -53,7 +52,9 @@
           (= type :card) (v0-common/->ref (:card-id template-tag) :card)
           :else (throw (ex-info "Unknown template tag type" {:template-tag template-tag})))))
 
-(defmethod export/export-entity :snippet [snippet]
+(defn export-snippet
+  "Export a NativeQuerySnippet Toucan entity to a v0 snippet representation."
+  [snippet]
   (let [snippet-ref (v0-common/unref (v0-common/->ref (:id snippet) :snippet))
         template-tags (into {}
                             (comp
@@ -65,7 +66,7 @@
      :version :v0
      :display_name (:name snippet)
      :description (:description snippet)
-     :sql (:content snippet) ;; todo: change this :sql
+     :sql (:content snippet)
      :template_tags template-tags}))
 
 (comment

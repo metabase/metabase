@@ -14,6 +14,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
    [metabase.util.log :as log]
+   [representations.core :as rep-core]
    [representations.read :as rep-read]
    [toucan2.core :as t2]))
 
@@ -151,7 +152,8 @@
    _request]
   (let [id (Long/parseLong id)
         type-keyword (keyword type)
-        model (v0-common/type->model type-keyword)
+        model (import/internal-model {:version rep-core/latest-version
+                                      :type type-keyword})
         entity (api/check-404 (t2/select-one model :id id))
         representation (export/export-entity entity)
         export-set (-> [representation]

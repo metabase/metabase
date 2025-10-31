@@ -14,10 +14,6 @@
 (def good-yamls ["test_resources/representations/v0/orders-count.transform.yml"
                  "test_resources/representations/v0/orders-count-existing.transform.yml"])
 
-(deftest type->model-test
-  (testing "type->model returns correct model for :transform"
-    (is (= :model/Transform (v0-common/type->model :transform)))))
-
 (deftest validate-example-yamls
   (testing "Testing valid examples"
     (doseq [filename good-yamls]

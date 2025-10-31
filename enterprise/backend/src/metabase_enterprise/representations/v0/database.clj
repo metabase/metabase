@@ -3,7 +3,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [flatland.ordered.map :refer [ordered-map]]
-   [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase.driver.util :as driver.u]
@@ -13,12 +12,12 @@
 
 (set! *warn-on-reflection* true)
 
+(def toucan-model
+  "The toucan model keyword associated with database representations"
+  :model/Database)
+
 (defmethod v0-common/representation-type :model/Database [_entity]
   :database)
-
-(defmethod v0-common/type->model :database
-  [_]
-  :model/Database)
 
 (defmethod import/yaml->toucan [:v0 :database]
   [representation _ref-index]
@@ -100,7 +99,9 @@
             details
             driver.u/default-sensitive-fields)))
 
-(defmethod export/export-entity :database [database]
+(defn export-database
+  "Export a Database Toucan entity to a v0 database representation."
+  [database]
   (let [ref (v0-common/unref (v0-common/->ref (:id database) :database))]
     (-> (ordered-map
          :name ref

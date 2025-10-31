@@ -1,7 +1,6 @@
 (ns metabase-enterprise.representations.v0.metric
   (:require
    [flatland.ordered.map :refer [ordered-map]]
-   [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.lookup :as lookup]
    [metabase-enterprise.representations.toucan.core :as rep-t2]
@@ -16,8 +15,8 @@
    [representations.schema.v0.column :as rep-v0-column]
    [toucan2.core :as t2]))
 
-(defmethod v0-common/type->model :metric
-  [_]
+(def toucan-model
+  "The toucan model keyword associated with metric representations"
   :model/Card)
 
 (defmethod import/yaml->toucan [:v0 :metric]
@@ -63,16 +62,17 @@
 
 ;;; -- Export --
 
-(defmethod export/export-entity :metric [card]
+(defn export-metric
+  "Export a Metric Card Toucan entity to a v0 metric representation."
+  [card]
   (-> (ordered-map
-       :name         (v0-common/unref (v0-common/->ref (:id card) :metric))
-       :type         (:type card)
-       :version      :v0
+       :name (v0-common/unref (v0-common/->ref (:id card) :metric))
+       :type (:type card)
+       :version :v0
        :display_name (:name card)
-       :description  (:description card)
-       :columns      (into []
-                           (map #(select-keys % rep-v0-column/column-keys))
-                           (:result_metadata card)))
-
+       :description (:description card)
+       :columns (into []
+                      (map #(select-keys % rep-v0-column/column-keys))
+                      (:result_metadata card)))
       (merge (v0-mbql/export-dataset-query (:dataset_query card)))
       u/remove-nils))

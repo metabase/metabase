@@ -3,7 +3,9 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase-enterprise.representations.common :as common]
    [metabase-enterprise.representations.v0.common :as v0-common]
+   [metabase-enterprise.representations.v0.core :as v0]
    [metabase-enterprise.representations.yaml :as rep-yaml]
    [metabase.collections.api :as coll.api]
    [metabase.util.log :as log]
@@ -13,18 +15,16 @@
 
 (set! *warn-on-reflection* true)
 
-(comment
-  (def export-entity nil))
-
-(defmulti export-entity
+(defn export-entity
   "Export a Metabase entity to its human-readable representation format.
    Dispatches on [model type] for Cards, [model nil] for other entities."
-  {:arglists '[[entity]]}
-  v0-common/representation-type)
+  [t2-entity]
+  ;; v0 because that's the latest version
+  (v0/export-entity t2-entity))
 
-(defn- read-from-ref [ref]
+(defn- read-from-ref [version ref]
   (let [[type id] (str/split ref #"-" 2)]
-    (-> (v0-common/type->model (keyword type))
+    (-> (common/toucan-model {:version version :type (keyword type)})
         (t2/select-one :id (Long/parseLong id))
         (export-entity))))
 
@@ -34,8 +34,10 @@
   (loop [acc (set representations)
          prev #{}]
     (if-some [new (seq (set/difference acc prev))]
-      (let [refs (set (mapcat v0-common/refs new))
-            reps (map read-from-ref refs)]
+      (let [reps (for [rep new
+                       :let [version (:version rep)]
+                       refs (v0-common/refs rep)]
+                   (read-from-ref version refs))]
         (recur (into acc reps) acc))
       acc)))
 

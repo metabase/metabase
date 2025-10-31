@@ -1,7 +1,6 @@
 (ns metabase-enterprise.representations.v0.question
   (:require
    [flatland.ordered.map :refer [ordered-map]]
-   [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.lookup :as lookup]
    [metabase-enterprise.representations.toucan.core :as rep-t2]
@@ -13,8 +12,8 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
-(defmethod v0-common/type->model :question
-  [_]
+(def toucan-model
+  "The toucan model keyword associated with question representations"
   :model/Card)
 
 (defmethod import/yaml->toucan [:v0 :question]
@@ -49,13 +48,15 @@
 
 ;; -- Export --
 
-(defmethod export/export-entity :question [card]
+(defn export-question
+  "Export a Question Card Toucan entity to a v0 question representation."
+  [card]
   (let [card-ref (v0-common/unref (v0-common/->ref (:id card) :question))]
     (-> (ordered-map
-         :name         card-ref
-         :type         (:type card)
-         :version      :v0
+         :name card-ref
+         :type (:type card)
+         :version :v0
          :display_name (:name card)
-         :description  (:description card))
+         :description (:description card))
         (merge (v0-mbql/export-dataset-query (:dataset_query card)))
         u/remove-nils)))

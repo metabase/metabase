@@ -8,16 +8,6 @@
 
 (set! *warn-on-reflection* true)
 
-(defmulti type->model
-  "Conversion from representation type (keyword) to Toucan model keyword."
-  {:arglists '([type])}
-  identity)
-
-(defmethod type->model :default
-  [type]
-  (throw (ex-info (str "Cannot convert type to model for type: " type)
-                  {:type type})))
-
 (defmulti representation-type
   "Returns the representation type for an entity (e.g., :question, :model, :metric).
    For plain maps (like MBQL data), uses :type field. For Toucan models, uses t2/model."
@@ -39,9 +29,6 @@
 (defn generate-entity-id
   "Generate a stable entity-id from the representation's collection-ref and its own ref."
   [representation]
-  ;; Behold the beauty of this mechanism!
-  ;; A bit hacky.
-  ;; TODO: raw `:collection` key could be fragile; use name?
   (entity-id (:name representation) (:collection representation)))
 
 (defn add-entity-id-from-ref-hash
@@ -176,20 +163,6 @@
   "Create a new index from a map of ref -> toucan entity."
   [mp]
   (->MapEntityIndex mp))
-
-;; Use this bad boy for testing where you want to parse a ref that looks like ref:question-45 to have it return 45
-(defrecord ParseRefEntityIndex []
-  EntityLookup
-  (lookup-id [_this ref]
-    (let [ur (unref ref)
-          [_type id] (str/split ur #"-")
-          id (Long/parseLong id)]
-      id))
-  (lookup-entity [_this ref]
-    (let [ur (unref ref)
-          [type id] (str/split ur #"-")
-          id (Long/parseLong id)]
-      (t2/select-one (type->model type) :id id))))
 
 (defn ensure-not-nil [entity]
   (when (nil? entity)

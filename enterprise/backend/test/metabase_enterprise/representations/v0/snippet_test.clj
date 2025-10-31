@@ -13,10 +13,6 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(deftest type->model-test
-  (testing "type->model returns correct model for :snippet"
-    (is (= :model/NativeQuerySnippet (v0-common/type->model :snippet)))))
-
 (defn- run-snippet-export-import-test! [name description content exp-tags]
   (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id :as snippet} {:name name
                                                                          :description description

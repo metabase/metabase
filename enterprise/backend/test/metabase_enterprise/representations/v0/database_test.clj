@@ -11,10 +11,6 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(deftest type->model-test
-  (testing "type->model returns correct model for :database"
-    (is (= :model/Database (v0-common/type->model :database)))))
-
 (deftest export-import
   (testing "Testing export then import roundtrip"
     (mt/with-temp [:model/Database database {:engine :postgres

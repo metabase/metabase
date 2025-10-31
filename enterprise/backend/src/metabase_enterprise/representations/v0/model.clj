@@ -1,7 +1,6 @@
 (ns metabase-enterprise.representations.v0.model
   (:require
    [flatland.ordered.map :refer [ordered-map]]
-   [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.lookup :as lookup]
    [metabase-enterprise.representations.toucan.core :as rep-t2]
@@ -30,8 +29,8 @@
         user-metadata
         inferred-metadata))
 
-(defmethod v0-common/type->model :model
-  [_]
+(def toucan-model
+  "The toucan model keyword associated with model representations"
   :model/Card)
 
 (defmethod import/yaml->toucan [:v0 :model]
@@ -104,7 +103,9 @@
       editable (merge editable)
       settings (assoc :settings settings))))
 
-(defmethod export/export-entity :model [card]
+(defn export-model
+  "Export a Model Card Toucan entity to a v0 model representation."
+  [card]
   (let [card-ref (v0-common/unref (v0-common/->ref (:id card) :model))
         columns (when-let [result-metadata (:result_metadata card)]
                   (seq (mapv extract-user-editable-column-metadata result-metadata)))]
@@ -114,7 +115,6 @@
           :version :v0
           :display_name (:name card)
           :description (:description card)})
-
         (merge (v0-mbql/export-dataset-query (:dataset_query card)))
         (assoc :columns columns)
         u/remove-nils)))

@@ -1,11 +1,26 @@
 (ns metabase-enterprise.representations.v0.common-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.representations.v0.common :as v0-common]
-   [toucan2.core :as t2]))
+   [metabase-enterprise.representations.v0.core :as v0]
+   [toucan2.core :as t2])
+  ())
 
-(deftest type->model-test
-  (is (thrown? clojure.lang.ExceptionInfo (v0-common/type->model :unknown))))
+(set! *warn-on-reflection* true)
+
+;; Use this bad boy for testing where you want to parse a ref that looks like ref:question-45 to have it return 45
+(defrecord ParseRefEntityIndex []
+  v0-common/EntityLookup
+  (lookup-id [_this ref]
+    (let [ur (v0-common/unref ref)
+          [_type id] (str/split ur #"-")]
+      (Long/parseLong id)))
+  (lookup-entity [_this ref]
+    (let [ur (v0-common/unref ref)
+          [type id] (str/split ur #"-")
+          id (Long/parseLong id)]
+      (t2/select-one (v0/toucan-model type) :id id))))
 
 (deftest map-entity-index-lookup-success-test
   (testing "MapEntityIndex successfully looks up entity by ref"
@@ -28,7 +43,7 @@
 
 (deftest parse-ref-entity-index-success-test
   (testing "ParseRefEntityIndex successfully parses ref and returns ID as Long"
-    (let [idx (v0-common/->ParseRefEntityIndex)]
+    (let [idx (->ParseRefEntityIndex)]
       (is (= 123 (v0-common/lookup-id idx "ref:database-123")))
       (is (= 456 (v0-common/lookup-id idx "ref:question-456")))
       (is (= 789 (v0-common/lookup-id idx "ref:model-789")))

@@ -4,6 +4,7 @@
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase-enterprise.representations.common :as common]
    [metabase-enterprise.representations.toucan.core :as rep-t2]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.yaml :as rep-yaml]
@@ -40,7 +41,7 @@
 (defmethod insert! :default
   [representation ref-index]
   (let [representation (rep-read/parse representation)]
-    (if-some [model (v0-common/type->model (:type representation))]
+    (if-some [model (common/toucan-model representation)]
       (let [toucan (->> (yaml->toucan representation ref-index)
                         (rep-t2/with-toucan-defaults model))]
         (t2/insert-returning-instance! model toucan))
@@ -56,7 +57,7 @@
 (defmethod update! :default
   [representation id ref-index]
   (let [representation (rep-read/parse representation)]
-    (if-some [model (v0-common/type->model (:type representation))]
+    (if-some [model (common/toucan-model representation)]
       (let [toucan (yaml->toucan representation ref-index)]
         (t2/update! model id toucan)
         (t2/select-one model :id id))
