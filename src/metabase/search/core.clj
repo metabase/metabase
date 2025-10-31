@@ -131,7 +131,13 @@
   Respects `search.ingestion/*force-sync*` and waits for the future if it's true.
   Alternately, if `:async?` is false, it will also run synchronously."
   [& {:keys [async?] :or {async? true} :as opts}]
-  (let [f #(reindex-logic! opts)]
+  (let [f (fn []
+            (try
+              (reindex-logic! opts)
+              (catch Exception e
+                (log/error e "Reindex failed")
+                (analytics/inc! :metabase-search/index-error)
+                (throw e))))]
     (if (or search.ingestion/*force-sync* (not async?))
       (doto (promise) (deliver (f)))
       (future (f)))))
