@@ -62,7 +62,7 @@
   [source]
   (case (keyword (:type source))
     :python :python
-    :query  (if (lib/native-only-query? (:query source))
+    :query  (if (lib.query/native? (:query source))
               :native
               :mbql)
     (throw (ex-info (str "Unknown transform source type: " (:type source))
