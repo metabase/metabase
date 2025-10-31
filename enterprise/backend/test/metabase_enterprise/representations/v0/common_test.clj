@@ -4,8 +4,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.v0.core :as v0]
-   [toucan2.core :as t2])
-  ())
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -51,7 +50,7 @@
 
 (deftest parse-ref-entity-index-malformed-ref-test
   (testing "ParseRefEntityIndex throws exception for malformed refs"
-    (let [idx (v0-common/->ParseRefEntityIndex)]
+    (let [idx (->ParseRefEntityIndex)]
       (testing "ref without dash separator"
         (is (thrown? NumberFormatException
                      (v0-common/lookup-id idx "ref:database123"))))
@@ -62,7 +61,7 @@
 (deftest entity-lookup-protocol-satisfaction-test
   (testing "Both implementations satisfy EntityLookup protocol"
     (let [map-idx (v0-common/map-entity-index {})
-          parse-idx (v0-common/->ParseRefEntityIndex)]
+          parse-idx (->ParseRefEntityIndex)]
       (is (satisfies? v0-common/EntityLookup map-idx))
       (is (satisfies? v0-common/EntityLookup parse-idx)))))
 
