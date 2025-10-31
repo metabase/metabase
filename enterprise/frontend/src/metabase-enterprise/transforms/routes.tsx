@@ -2,7 +2,10 @@ import { IndexRoute } from "react-router";
 import { t } from "ttag";
 
 import { Route } from "metabase/hoc/Title";
-import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import {
+  PLUGIN_DEPENDENCIES,
+  PLUGIN_TRANSFORMS_PYTHON,
+} from "metabase/plugins";
 
 import { JobEmptyPage } from "./pages/JobEmptyPage";
 import { JobPage } from "./pages/JobPage";
@@ -43,10 +46,14 @@ export function getBenchRoutes() {
           <Route path=":transformId" component={TransformQueryPage} />
           <Route path=":transformId/run" component={TransformRunPage} />
           <Route path=":transformId/target" component={TransformTargetPage} />
-          <Route
-            path=":transformId/dependencies"
-            component={TransformDependenciesPage}
-          />
+          {PLUGIN_DEPENDENCIES.isEnabled && (
+            <Route
+              path=":transformId/dependencies"
+              component={TransformDependenciesPage}
+            >
+              <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
+            </Route>
+          )}
         </Route>
       </Route>
     </Route>
