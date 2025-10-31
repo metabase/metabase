@@ -662,12 +662,11 @@ export const colors = getColors(whitelabelColors);
 export const mutateColors = (settings: ColorSettings) => {
   Object.assign(colorConfig, getColorConfig(settings));
 
-  // Updates or unsets values in global `colors` object
-  const newColors = getColors(settings);
+  // Empty the `colors` object to make sure we don't hold onto previously defined (now undefined) values
   Object.keys(colors).forEach((key) => {
-    const colorName = key as keyof typeof colors;
-    colors[colorName] = newColors[colorName];
+    delete colors[key as keyof typeof colors];
   });
+  Object.assign(colors, getColors(settings));
 };
 
 export const staticVizOverrides = {
