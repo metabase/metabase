@@ -312,10 +312,11 @@
    :- [:merge
        ::table-selectors
        [:map
-        [:target_collection_id [:or pos-int? [:= "library"]]]]]]
-  (let [target-collection (if (= "library" target_collection_id)
-                            (api/check-403 (collections/remote-synced-collection))
-                            (api/check-404 (t2/select-one :model/Collection target_collection_id)))
+        [:target_collection_id [:maybe [:or pos-int? [:= "library"]]]]]]]
+  (let [target-collection (cond
+                            (= "library" target_collection_id) (api/check-403 (collections/remote-synced-collection))
+                            (nil? target_collection_id) nil
+                            :else (api/check-404 (t2/select-one :model/Collection target_collection_id)))
         where             (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
         created-models    (t2/with-transaction [_conn]
                             (into []

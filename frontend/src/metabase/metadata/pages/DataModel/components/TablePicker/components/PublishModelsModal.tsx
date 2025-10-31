@@ -43,16 +43,19 @@ export function PublishModelsModal({
   };
 
   const handleSubmit = async () => {
-    if (!selectedCollection || selectedCollection.id === "root") {
+    if (!selectedCollection) {
       sendErrorToast(t`Please select a collection`);
       return;
     }
+
+    const collectionId =
+      selectedCollection.id === "root" ? null : Number(selectedCollection.id);
 
     const { error, data } = await publishModels({
       table_ids: Array.from(tables),
       schema_ids: Array.from(schemas),
       database_ids: Array.from(databases),
-      target_collection_id: Number(selectedCollection.id),
+      target_collection_id: collectionId,
     });
 
     if (error) {
