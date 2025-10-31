@@ -23,8 +23,10 @@ import {
 import { RunListPage } from "./pages/RunListPage";
 import { TransformListPage } from "./pages/TransformListPage";
 import { TransformPage } from "./pages/TransformPage";
-import { DetailsPageLayout, ListPageLayout } from "./pages/TransformPageLayout";
+import { DetailsPageLayout } from "./pages/TransformPageLayout";
 import { TransformQueryPage } from "./pages/TransformQueryPage";
+import { TransformsSidebarLayout } from "./pages/TransformsPageLayout/TransformsSidebarLayout";
+import { TransformsTopNavLayout } from "./pages/TransformsPageLayout/TransformsTopNavLayout";
 
 if (hasPremiumFeature("transforms")) {
   PLUGIN_ENTITIES.entities["transforms"] = Transforms;
@@ -33,10 +35,12 @@ if (hasPremiumFeature("transforms")) {
   PLUGIN_TRANSFORMS.getBenchRoutes = () => (
     <Route path="transforms">
       <Route title={t`Transforms`}>
-        <Route component={ListPageLayout}>
+        <Route component={TransformsSidebarLayout}>
           <IndexRoute component={TransformListPage} />
           <Route path="jobs" component={JobListPage} />
-          <Route path="runs" component={RunListPage} />
+        </Route>
+        <Route path="runs" component={TransformsTopNavLayout}>
+          <IndexRoute component={RunListPage} />
         </Route>
         <Route component={DetailsPageLayout}>
           <Route path="jobs/new" component={NewJobPage} />
