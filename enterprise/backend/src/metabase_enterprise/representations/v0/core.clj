@@ -76,8 +76,7 @@
   (if (identical? :transform (:type representation))
     (v0-transform/insert! representation ref-index)
     ;; Everything else is simple:
-    (let [representation (rep-read/parse representation)
-          model (toucan-model representation)
+    (let [model (toucan-model (:type representation))
           toucan (->> (yaml->toucan representation ref-index)
                       (rep-t2/with-toucan-defaults model))]
       (t2/insert-returning-instance! model toucan))))
@@ -87,8 +86,7 @@
   [representation id ref-index]
   (if (identical? :transform (:type representation))
     (v0-transform/update! representation id ref-index)
-    (let [representation (rep-read/parse representation)
-          model (toucan-model (:type representation))
+    (let [model (toucan-model (:type representation))
           toucan (yaml->toucan representation ref-index)]
       (t2/update! model id toucan)
       (t2/select-one model :id id))))

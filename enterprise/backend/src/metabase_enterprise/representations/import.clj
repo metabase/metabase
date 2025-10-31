@@ -35,14 +35,16 @@
 (defn insert!
   "Insert a representation as a new entity in the database."
   [representation ref-index]
-  (case (:version representation)
-    :v0 (v0-core/insert! representation ref-index)))
+  (let [representation (rep-read/parse representation)]
+    (case (:version representation)
+      :v0 (v0-core/insert! representation ref-index))))
 
 (defn update!
   "Update an existing entity from a representation."
   [representation id ref-index]
-  (case (:version representation)
-    :v0 (v0-core/update! representation id ref-index)))
+  (let [representation (rep-read/parse representation)]
+    (case (:version representation)
+      :v0 (v0-core/update! representation id ref-index))))
 
 (defn- file->collection-id
   [^java.io.File file]
