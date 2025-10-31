@@ -1875,6 +1875,7 @@
            warehouses
            enterprise/dependencies
            enterprise/documents
+           enterprise/llm
            enterprise/transforms
            enterprise/transforms-python}}
 
