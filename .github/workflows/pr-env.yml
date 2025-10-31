@@ -176,7 +176,9 @@ jobs:
             oci://quay.io/enterprisemetabase/chart-metabase-stack \
             --namespace hosting-pr${{ github.event.number }} \
             --create-namespace \
-            --values ./values.yaml
+            --values ./values.yaml \
+            --atomic \
+            --timeout 10m
   preview_links:
     runs-on: ubuntu-latest
     needs: [deploy_pr]
