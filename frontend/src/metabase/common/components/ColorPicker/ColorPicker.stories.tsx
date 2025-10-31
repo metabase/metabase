@@ -3,7 +3,7 @@ import type { StoryFn } from "@storybook/react";
 
 import { color } from "metabase/lib/colors";
 
-import ColorPicker from "./ColorPicker";
+import { ColorPicker } from "./ColorPicker";
 
 export default {
   title: "Components/ColorPicker",

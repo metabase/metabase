@@ -10,7 +10,7 @@ export interface ColorPickerTriggerProps
   value: string;
   placeholder?: string;
   isAuto?: boolean;
-  onChange?: (value?: string) => void;
+  onChange: (value?: string) => void;
 }
 
 const ColorPickerTrigger = forwardRef(function ColorPickerTrigger(

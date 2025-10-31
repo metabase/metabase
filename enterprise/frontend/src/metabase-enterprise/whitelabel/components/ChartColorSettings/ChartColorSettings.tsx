@@ -3,7 +3,7 @@ import { memo, useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import ColorPicker from "metabase/common/components/ColorPicker";
+import { ColorPicker } from "metabase/common/components/ColorPicker";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { useCurrentRef } from "metabase/common/hooks/use-current-ref";
 import { color } from "metabase/lib/colors";

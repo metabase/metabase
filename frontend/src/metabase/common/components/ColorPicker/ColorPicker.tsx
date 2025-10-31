@@ -3,7 +3,7 @@ import { forwardRef } from "react";
 
 import TippyPopoverWithTrigger from "metabase/common/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 
-import ColorPickerContent from "./ColorPickerContent";
+import { ColorPickerContent } from "./ColorPickerContent";
 import ColorPickerTrigger from "./ColorPickerTrigger";
 
 export type ColorPickerAttributes = Omit<
@@ -15,7 +15,7 @@ export interface ColorPickerProps extends ColorPickerAttributes {
   value: string;
   placeholder?: string;
   isAuto?: boolean;
-  onChange?: (color?: string) => void;
+  onChange: (color?: string) => void;
 }
 
 const ColorPicker = forwardRef(function ColorPicker(
@@ -41,5 +41,4 @@ const ColorPicker = forwardRef(function ColorPicker(
   );
 });
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ColorPicker;
+export { ColorPicker };
