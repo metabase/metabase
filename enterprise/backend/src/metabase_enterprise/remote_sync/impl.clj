@@ -305,15 +305,15 @@
 (defn finish-remote-config!
   "Based on the current configuration, fill in any missing settings and finalize remote sync setup.
 
-  Will attempt, import the remote collection if no remote-collection exists locally, OR if force-import? is true.
+  Will attempt, import the remote collection if no remote-collection exists locally or you are in production mode.
 
   Returns the async-task id if an async task was started, otherwise nil."
-  [force-import?]
+  []
   (if (settings/remote-sync-enabled)
     (do
       (when (str/blank? (setting/get :remote-sync-branch))
         (setting/set! :remote-sync-branch (source.p/default-branch (source/source-from-settings))))
-      (when (or force-import? (nil? (collection/remote-synced-collection)))
+      (when (or (nil? (collection/remote-synced-collection)) (= :production (settings/remote-sync-type)))
         (:id (async-import! (settings/remote-sync-branch) true {}))))
     (u/prog1 nil
       (collection/clear-remote-synced-collection!))))
