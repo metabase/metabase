@@ -43,7 +43,7 @@
                       v)) "" additional-opts)))
 
 (defn handle-additional-options
-  "If `details` contains an `:addtional-options` key, append those options to the connection string in `connection-spec`.
+  "If `details` contains an `:additional-options` key, append those options to the connection string in `connection-spec`.
    (Some drivers like MySQL provide this details field to allow special behavior where needed).
 
    Optionally specify `seperator-style`, which defaults to `:url` (e.g. `?a=1&b=2`). You may instead set it to
