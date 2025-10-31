@@ -37,21 +37,5 @@ export function initializePlugin() {
         icon="code_block"
       />
     );
-
-    PLUGIN_TRANSFORMS_PYTHON.getCreateTransformsMenuItems = () => (
-      <Menu.Item
-        component={ForwardRefLink}
-        to={Urls.newTransformFromType("python")}
-        leftSection={<Icon name="code_block" />}
-        onClick={() => {
-          trackTransformCreate({
-            triggeredFrom: "transform-page-create-menu",
-            creationType: "python",
-          });
-        }}
-      >
-        {t`Python script`}
-      </Menu.Item>
-    );
   }
 }
