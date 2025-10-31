@@ -76,6 +76,8 @@ For example, if you want to build a progress bar comparing count of orders this 
 
 ![Conditional counts as metric and goal](../images/progress-conditional-count.png)
 
+Note that both columns are computed fields here, one for 2024 and one for the current year.
+
 Once you have a column that you want to use, set it as a goal:
 
 1. While viewing the progress bar visualization, click on the **Gear** icon in bottom left to open settings.

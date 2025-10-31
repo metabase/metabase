@@ -390,10 +390,6 @@ jobs:
     name: H2
     steps:
     - uses: actions/checkout@v4
-    - name: Setup python-runner
-      uses: ./.github/actions/setup-python-runner
-      with:
-        metabase-automation-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
     - name: Test H2 driver
       id: test-driver
       uses: ./.github/actions/test-driver
@@ -413,12 +409,6 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
-    - name: Cleanup python-runner
-      if: always()
-      uses: ./.github/actions/cleanup-python-runner
-      with:
-        upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
-        logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
   be-tests-mysql-mariadb:
     if: ${{ !inputs.skip }}
