@@ -8,20 +8,25 @@ import {
 import { getMetadata } from "metabase/selectors/metadata";
 import { Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { Database, QueryTransformSource } from "metabase-types/api";
+import type {
+  Database,
+  QueryTransformSource,
+  TransformId,
+} from "metabase-types/api";
 
 import { EditorHeader } from "./EditorHeader";
 import { getEditorOptions, getQuery, getValidationResult } from "./utils";
 
 type TransformEditorProps = {
-  name?: string;
+  id?: TransformId;
+  name: string;
   source: QueryTransformSource;
   uiState: QueryEditorUiState;
   proposedSource: QueryTransformSource | undefined;
   databases: Database[];
-  isNew: boolean;
   isDirty: boolean;
   isSaving: boolean;
+  onChangeName: (name: string) => void;
   onChangeSource: (source: QueryTransformSource) => void;
   onChangeUiState: (state: QueryEditorUiState) => void;
   onSave: () => void;
@@ -31,15 +36,16 @@ type TransformEditorProps = {
 };
 
 export function TransformEditor({
+  id,
   name,
   source,
   proposedSource,
   databases,
   uiState,
-  isNew,
   isDirty,
   isSaving,
   onSave,
+  onChangeName,
   onChangeSource,
   onChangeUiState,
   onCancel,
@@ -69,11 +75,12 @@ export function TransformEditor({
       gap={0}
     >
       <EditorHeader
+        id={id}
         name={name}
         validationResult={validationResult}
-        isNew={isNew}
         isDirty={isDirty}
         isSaving={isSaving}
+        onChangeName={onChangeName}
         onSave={onSave}
         onCancel={onCancel}
       />

@@ -19,14 +19,14 @@ type TransformHeaderProps = {
   id?: TransformId;
   name: string;
   actions?: ReactNode;
-  onNameChange: (name: string) => void;
+  onChangeName: (name: string) => void;
 };
 
 export function TransformHeader({
   id,
   name,
   actions,
-  onNameChange,
+  onChangeName,
 }: TransformHeaderProps) {
   return (
     <BenchHeader
@@ -34,7 +34,7 @@ export function TransformHeader({
         <BenchHeaderInput
           initialValue={name}
           maxLength={NAME_MAX_LENGTH}
-          onChange={onNameChange}
+          onChange={onChangeName}
         />
       }
       tabs={id != null && <TransformTabs id={id} />}
@@ -95,7 +95,7 @@ export function TransformHeaderWithActions({
   const [updateTransform] = useUpdateTransformMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
-  const handleNameChange = async (newName: string) => {
+  const handleChangeName = async (newName: string) => {
     const { error } = await updateTransform({
       id: transform.id,
       name: newName,
@@ -112,7 +112,7 @@ export function TransformHeaderWithActions({
     <TransformHeader
       id={transform.id}
       name={transform.name}
-      onNameChange={handleNameChange}
+      onChangeName={handleChangeName}
     />
   );
 }

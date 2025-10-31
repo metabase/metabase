@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useMemo, useState } from "react";
 import type { Route } from "react-router";
 import { push } from "react-router-redux";
+import { t } from "ttag";
 
 import {
   skipToken,
@@ -28,6 +29,7 @@ import { isNotDraftSource } from "../../utils";
 
 import { CreateTransformModal } from "./CreateTransformModal";
 import {
+  getDefaultValues,
   getInitialCardSource,
   getInitialNativeSource,
   getInitialPythonSource,
@@ -35,11 +37,16 @@ import {
 } from "./utils";
 
 type NewTransformPageProps = {
+  initialName?: string;
   initialSource: DraftTransformSource;
   route: Route;
 };
 
-function NewTransformPage({ initialSource, route }: NewTransformPageProps) {
+function NewTransformPage({
+  initialName = t`New transform`,
+  initialSource,
+  route,
+}: NewTransformPageProps) {
   const {
     data: databases,
     isLoading,
@@ -56,6 +63,7 @@ function NewTransformPage({ initialSource, route }: NewTransformPageProps) {
 
   return (
     <NewTransformPageBody
+      initialName={initialName}
       initialSource={initialSource}
       databases={databases.data}
       route={route}
@@ -64,12 +72,14 @@ function NewTransformPage({ initialSource, route }: NewTransformPageProps) {
 }
 
 type NewTransformPageBodyProps = {
+  initialName: string;
   initialSource: DraftTransformSource;
   databases: Database[];
   route: Route;
 };
 
 function NewTransformPageBody({
+  initialName,
   initialSource,
   databases,
   route,
@@ -83,6 +93,7 @@ function NewTransformPageBody({
     acceptProposed,
     rejectProposed,
   } = useSourceState({ initialSource });
+  const [name, setName] = useState(suggestedTransform?.name ?? initialName);
   const [uiState, setUiState] = useState(getInitialUiState);
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
@@ -116,15 +127,16 @@ function NewTransformPageBody({
         />
       ) : (
         <TransformEditor
+          name={name}
           source={source}
           proposedSource={
             proposedSource?.type === "query" ? proposedSource : undefined
           }
           uiState={uiState}
           databases={databases}
-          isNew={true}
           isSaving={false}
           isDirty={isDirty}
+          onChangeName={setName}
           onChangeSource={setSourceAndRejectProposed}
           onChangeUiState={setUiState}
           onSave={openModal}
@@ -136,7 +148,7 @@ function NewTransformPageBody({
       {isModalOpened && isNotDraftSource(source) && (
         <CreateTransformModal
           source={source}
-          suggestedTransform={suggestedTransform}
+          defaultValues={getDefaultValues(name, suggestedTransform)}
           onCreate={handleCreate}
           onClose={closeModal}
         />

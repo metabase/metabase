@@ -92,8 +92,8 @@ export function TransformQueryPageBody({
     initialSource: transform.source,
   });
   const [uiState, setUiState] = useState(getInitialUiState);
-  const [updateTransform, { isLoading: isSaving }] =
-    useUpdateTransformMutation();
+  const [updateName] = useUpdateTransformMutation();
+  const [updateSource, { isLoading: isSaving }] = useUpdateTransformMutation();
   const dispatch = useDispatch();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   useRegisterMetabotTransformContext(transform, source);
@@ -107,6 +107,19 @@ export function TransformQueryPageBody({
     resetRef.current();
   }, [transform.id, resetRef]);
 
+  const handleChangeName = async (newName: string) => {
+    const { error } = await updateName({
+      id: transform.id,
+      name: newName,
+    });
+
+    if (error) {
+      sendErrorToast(t`Failed to update transform name`);
+    } else {
+      sendSuccessToast(t`Transform name updated`);
+    }
+  };
+
   const {
     checkData,
     isCheckingDependencies,
@@ -116,7 +129,7 @@ export function TransformQueryPageBody({
     handleCloseConfirmation,
   } = PLUGIN_DEPENDENCIES.useCheckTransformDependencies({
     onSave: async (request) => {
-      const { error } = await updateTransform(request);
+      const { error } = await updateSource(request);
       if (error) {
         sendErrorToast(t`Failed to update transform query`);
       } else {
@@ -159,6 +172,7 @@ export function TransformQueryPageBody({
         />
       ) : (
         <TransformEditor
+          id={transform.id}
           name={transform.name}
           source={source}
           proposedSource={
@@ -166,9 +180,9 @@ export function TransformQueryPageBody({
           }
           uiState={uiState}
           databases={databases}
-          isNew={false}
           isDirty={isDirty}
           isSaving={isSaving || isCheckingDependencies}
+          onChangeName={handleChangeName}
           onChangeSource={setSourceAndRejectProposed}
           onChangeUiState={setUiState}
           onSave={handleSave}

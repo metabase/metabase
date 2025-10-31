@@ -17,12 +17,13 @@ import {
 } from "./utils";
 
 export function PythonTransformEditor({
+  id,
   name,
   source,
   proposedSource,
-  isNew = false,
   isDirty = false,
   isSaving = false,
+  onChangeName,
   onChangeSource,
   onSave,
   onCancel,
@@ -86,11 +87,12 @@ export function PythonTransformEditor({
       gap={0}
     >
       <EditorHeader
+        id={id}
         name={name}
         validationResult={validationResult}
-        isNew={isNew}
         isDirty={isDirty}
         isSaving={isSaving}
+        onChangeName={onChangeName}
         onSave={onSave}
         onCancel={onCancel}
       />

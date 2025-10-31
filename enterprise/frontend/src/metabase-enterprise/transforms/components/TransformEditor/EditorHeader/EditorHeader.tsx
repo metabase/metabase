@@ -1,64 +1,55 @@
 import { t } from "ttag";
 
-import Button from "metabase/common/components/Button";
-import EditBar from "metabase/common/components/EditBar";
-import { Tooltip } from "metabase/ui";
+import { Button, Group, Tooltip } from "metabase/ui";
+import type { TransformId } from "metabase-types/api";
+
+import { TransformHeader } from "../../TransformHeader";
 
 import type { ValidationResult } from "./types";
 
 type EditorHeaderProps = {
-  name?: string;
+  id?: TransformId;
+  name: string;
   validationResult: ValidationResult;
-  isNew: boolean;
   isDirty: boolean;
   isSaving: boolean;
   onSave: () => void;
   onCancel: () => void;
+  onChangeName: (name: string) => void;
 };
 
 export function EditorHeader({
+  id,
   name,
   validationResult,
-  isNew,
   isDirty,
   isSaving,
   onSave,
   onCancel,
+  onChangeName,
 }: EditorHeaderProps) {
-  const canSave = (isNew || isDirty) && !isSaving && validationResult.isValid;
+  const canSave = isDirty && !isSaving && validationResult.isValid;
 
   return (
-    <EditBar
-      title={getTitle(name, isNew)}
-      admin
-      buttons={[
-        <Button key="cancel" small onClick={onCancel}>{t`Cancel`}</Button>,
-        <Tooltip
-          key="save"
-          label={validationResult.errorMessage}
-          disabled={validationResult.errorMessage == null}
-        >
-          <Button onClick={onSave} primary small disabled={!canSave}>
-            {getSaveButtonLabel(isNew, isSaving)}
-          </Button>
-        </Tooltip>,
-      ]}
+    <TransformHeader
+      id={id}
+      name={name}
+      actions={
+        isDirty && (
+          <Group>
+            <Button onClick={onCancel}>{t`Cancel`}</Button>
+            <Tooltip
+              label={validationResult.errorMessage}
+              disabled={validationResult.errorMessage == null}
+            >
+              <Button variant="filled" disabled={!canSave} onClick={onSave}>
+                {t`Save`}
+              </Button>
+            </Tooltip>
+          </Group>
+        )
+      }
+      onChangeName={onChangeName}
     />
   );
-}
-
-function getTitle(name: string | undefined, isNew: boolean) {
-  if (isNew) {
-    return t`You’re creating a new transform`;
-  } else {
-    return t`You’re editing the "${name}" transform`;
-  }
-}
-
-function getSaveButtonLabel(isNew: boolean, isSaving: boolean) {
-  if (isSaving) {
-    return isNew ? t`Saving` : t`Saving changes`;
-  } else {
-    return isNew ? t`Save` : t`Save changes`;
-  }
 }

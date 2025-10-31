@@ -65,7 +65,7 @@ export function NewJobPage({ route }: NewJobPageProps) {
     <>
       <JobEditor
         job={job}
-        actions={<JobActions iSaving={isSaving} onSave={handleSave} />}
+        actions={<JobActions isSaving={isSaving} onSave={handleSave} />}
         onNameChange={handleNameChange}
         onScheduleChange={handleScheduleChange}
         onTagListChange={handleTagListChange}

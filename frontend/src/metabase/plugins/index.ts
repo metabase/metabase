@@ -939,12 +939,13 @@ export const PLUGIN_REMOTE_SYNC: {
 };
 
 export type PythonTransformEditorProps = {
-  name?: string;
+  id?: TransformId;
+  name: string;
   source: PythonTransformSourceDraft;
   proposedSource?: PythonTransformSourceDraft;
-  isNew: boolean;
   isDirty: boolean;
   isSaving: boolean;
+  onChangeName: (name: string) => void;
   onChangeSource: (source: PythonTransformSourceDraft) => void;
   onSave: () => void;
   onCancel: () => void;
