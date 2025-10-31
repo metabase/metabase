@@ -5,6 +5,7 @@
    [metabase-enterprise.metabot-v3.context :as context]
    [metabase-enterprise.metabot-v3.table-utils :as table-utils]
    [metabase.lib.core :as lib]
+   [metabase.lib.test-metadata :as meta]
    [metabase.test :as mt]))
 
 (deftest database-tables-for-context-prioritization
@@ -196,7 +197,7 @@
   (testing "Annotates draft MBQL transform with source_type :mbql"
     (let [input {:user_is_viewing [{:type "transform"
                                     :source {:type :query
-                                             :query (mt/mbql-query venues)}}]}
+                                             :query (lib/query (mt/metadata-provider) (mt/mbql-query venues))}}]}
           result (#'context/annotate-transform-source-types input)]
       (is (= :mbql (get-in result [:user_is_viewing 0 :source_type]))))))
 
