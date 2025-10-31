@@ -92,7 +92,7 @@ export function PublishModelsModal({
         opened={isOpen}
         padding="xl"
         size={rem(512)}
-        title={publishedModels ? t`Create models` : t`Created models`}
+        title={publishedModels ? t`Created models` : t`Create models`}
         onClose={handleClose}
       >
         {publishedModels ? (
