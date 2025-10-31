@@ -1,0 +1,10 @@
+type: question
+version: v0
+name: monthly-revenue
+display_name: Monthly Revenue Report
+description: Tracks total revenue by month for the current year
+query: |
+  SELECT
+    *
+  FROM orders
+database: ref:sample-database

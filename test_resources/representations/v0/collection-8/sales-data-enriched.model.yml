@@ -1,0 +1,91 @@
+# Vastly overcomplicated, I know, but experimental
+
+type: model
+version: v0
+name: sales-data-experiment
+display_name: Sales Data
+description: Monthly sales analysis with product categories and financial metrics
+database: Sample Database
+query:
+  database: 1
+  type: query
+  query:
+    source-table: "card__117"
+columns:
+  - name: category
+    display_name: Product
+    description: "The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget"
+    base_type: type/Text
+    semantic_type: type/Category
+    # Additional fields from reference-model.json
+    database_type: CHARACTER VARYING
+    table_id: 3
+    qp/implicit-field?: true
+    lib/deduplicated-name: CATEGORY
+    lib/original-name: CATEGORY
+    lib/breakout?: false
+    lib/card-id: 117
+    lib/source: source/previous-stage
+    lib/source-column-alias: Products__CATEGORY
+    lib/original-display-name: Category
+    source: fields
+    lib/original-join-alias: Products
+    field_ref: ["field", 18, null]
+    effective_type: type/Text
+    active: true
+    id: 18
+    lib/desired-column-alias: Products__CATEGORY
+    position: 3
+    visibility_type: normal
+    fingerprint:
+      global:
+        distinct-count: 4
+        nil%: 0
+      type:
+        type/Text:
+          percent-json: 0
+          percent-url: 0
+          percent-email: 0
+          percent-state: 0
+          average-length: 6.375
+    source_alias: Products
+
+  - name: created_at_month
+    display_name: Month of Creation
+    description: The date and time an order was submitted
+    base_type: type/DateTime
+    semantic_type: type/CreationDate
+    # Additional fields from reference-model.json
+    database_type: TIMESTAMP
+    table_id: 2
+    qp/implicit-field?: true
+    # lib/deduplicated-name: CREATED_AT # YES with id
+    # lib/source-column-alias: CREATED_AT # YES with id
+    id: 13 # <-- REQUIRED FOR NAME
+    # lib/desired-column-alias: CREATED_AT # YES with id
+
+  - name: avg_price
+    display_name: Price
+    description: Average price for products in this category
+    base_type: type/Float
+    semantic_type: type/Currency
+    currency: USD
+    # Additional fields from reference-model.json
+    lib/deduplicated-name: avg
+
+  - name: avg_quantity
+    display_name: Quantity
+    description: Average quantity ordered
+    base_type: type/Float
+    semantic_type: type/Quantity
+    lib/desired-column-alias: avg_2
+
+  - name: avg_tax
+    display_name: Tax
+    description: Average tax amount
+    base_type: type/Float
+    semantic_type: type/Currency
+    currency: USD
+    # lib/deduplicated-name: avg_3 # <--- This would work too
+    # lib/desired-column-alias: avg_3 # <--- This would work too
+    lib/source-column-alias: avg_3
