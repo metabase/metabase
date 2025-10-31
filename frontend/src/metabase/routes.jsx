@@ -9,6 +9,7 @@ import { ForgotPassword } from "metabase/auth/components/ForgotPassword";
 import { Login } from "metabase/auth/components/Login";
 import { Logout } from "metabase/auth/components/Logout";
 import { ResetPassword } from "metabase/auth/components/ResetPassword";
+import { getBenchRoutes } from "metabase/bench/routes";
 import {
   BrowseDatabases,
   BrowseMetrics,
@@ -276,6 +277,8 @@ export const getRoutes = (store) => {
             <Route path=":slug/notebook" component={QueryBuilder} />
             <Route path=":slug/query" component={QueryBuilder} />
           </Route>
+
+          {getBenchRoutes()}
 
           <Route path="browse">
             <IndexRedirect to="/browse/models" />
