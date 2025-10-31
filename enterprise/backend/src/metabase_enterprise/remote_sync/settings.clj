@@ -23,13 +23,14 @@
   :type :string
   :visibility :admin
   :encryption :no
-  :export? false)
+  :export? false
+  :doc false)
 
 (defsetting remote-sync-token
   (deferred-tru "An Authorization Bearer token allowing access to the git repo over HTTP")
   :type :string
   :visibility :admin
-  :doc true
+  :doc false
   :export? false
   :sensitive? true
   :encryption :when-encryption-key-set
@@ -40,7 +41,8 @@
   :type :string
   :visibility :admin
   :encryption :no
-  :export? false)
+  :export? false
+  :doc false)
 
 (defsetting remote-sync-type
   (deferred-tru "Git synchronization type - :development or :production")
@@ -49,6 +51,7 @@
   :export? false
   :encryption :no
   :default :production
+  :doc false
   :setter (fn [new-value]
             (let [new-value (or new-value :production)
                   valid-types #{:production :development}
@@ -64,7 +67,8 @@
   :visibility :authenticated
   :export? false
   :encryption :no
-  :default false)
+  :default false
+  :doc false)
 
 (defsetting remote-sync-auto-import-rate
   (deferred-tru "If remote-sync-type is :production and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5.")
@@ -72,7 +76,8 @@
   :visibility :authenticated
   :export? false
   :encryption :no
-  :default 5)
+  :default 5
+  :doc false)
 
 (defsetting remote-sync-task-time-limit-ms
   (deferred-tru "The maximum amount of time a remote sync task will be given to complete")
@@ -80,7 +85,8 @@
   :visibility :authenticated
   :export? false
   :encryption :no
-  :default (* 1000 60 5))
+  :default (* 1000 60 5)
+  :doc false)
 
 (defn check-git-settings!
   "Validates git repository settings by attempting to connect and retrieve the default branch.
