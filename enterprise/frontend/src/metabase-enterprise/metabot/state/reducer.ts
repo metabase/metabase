@@ -55,18 +55,32 @@ export type MetabotAgentEditSuggestionChatMessage = {
   };
 };
 
+export type MetabotDebugToolCallMessage = {
+  id: string;
+  role: "agent";
+  type: "tool_call";
+  name: string;
+  args?: string;
+  status: "started" | "ended";
+  result?: string;
+};
+
 export type MetabotAgentChatMessage =
   | MetabotAgentTextChatMessage
   | MetabotAgentTodoListChatMessage
-  | MetabotAgentEditSuggestionChatMessage;
+  | MetabotAgentEditSuggestionChatMessage
+  | MetabotDebugToolCallMessage;
 
 export type MetabotUserChatMessage =
   | MetabotUserTextChatMessage
   | MetabotUserActionChatMessage;
 
+export type MetabotDebugChatMessage = MetabotDebugToolCallMessage;
+
 export type MetabotChatMessage =
   | MetabotUserChatMessage
-  | MetabotAgentChatMessage;
+  | MetabotAgentChatMessage
+  | MetabotDebugChatMessage;
 
 export type MetabotErrorMessage = {
   type: "message" | "alert";
@@ -99,8 +113,9 @@ export interface MetabotState {
   history: MetabotHistory;
   state: any;
   reactions: MetabotReactionsState;
-  toolCalls: MetabotToolCall[];
+  activeToolCalls: MetabotToolCall[];
   experimental: {
+    debugMode: boolean;
     metabotReqIdOverride: string | undefined;
     profileOverride: string | undefined;
   };
@@ -118,8 +133,9 @@ export const getMetabotInitialState = (): MetabotState => ({
     navigateToPath: null,
     suggestedTransforms: [],
   },
-  toolCalls: [],
+  activeToolCalls: [],
   experimental: {
+    debugMode: false,
     metabotReqIdOverride: undefined,
     profileOverride: undefined,
   },
@@ -143,7 +159,7 @@ export const metabot = createSlice({
       state,
       action: PayloadAction<Omit<MetabotAgentChatMessage, "id" | "role">>,
     ) => {
-      state.toolCalls = [];
+      state.activeToolCalls = [];
       state.messages.push({
         id: createMessageId(),
         role: "agent",
@@ -160,7 +176,7 @@ export const metabot = createSlice({
       state.errorMessages.push(action.payload);
     },
     addAgentTextDelta: (state, action: PayloadAction<string>) => {
-      const hasToolCalls = state.toolCalls.length > 0;
+      const hasToolCalls = state.activeToolCalls.length > 0;
       const lastMessage = _.last(state.messages);
       const canAppend =
         !hasToolCalls &&
@@ -178,24 +194,49 @@ export const metabot = createSlice({
         });
       }
 
-      state.toolCalls = hasToolCalls ? [] : state.toolCalls;
+      state.activeToolCalls = hasToolCalls ? [] : state.activeToolCalls;
     },
     toolCallStart: (
       state,
-      action: PayloadAction<{ toolCallId: string; toolName: string }>,
+      action: PayloadAction<{
+        toolCallId: string;
+        toolName: string;
+        args?: string;
+      }>,
     ) => {
-      const { toolCallId, toolName } = action.payload;
-      state.toolCalls.push({
+      const { toolCallId, toolName, args } = action.payload;
+      state.messages.push({
+        id: toolCallId,
+        role: "agent",
+        type: "tool_call",
+        name: toolName,
+        args,
+        status: "started",
+      });
+      state.activeToolCalls.push({
         id: toolCallId,
         name: toolName,
         message: TOOL_CALL_MESSAGES[toolName],
         status: "started",
       });
     },
-    toolCallEnd: (state, action: PayloadAction<{ toolCallId: string }>) => {
-      state.toolCalls = state.toolCalls.map((tc) =>
+    toolCallEnd: (
+      state,
+      action: PayloadAction<{ toolCallId: string; result?: any }>,
+    ) => {
+      state.activeToolCalls = state.activeToolCalls.map((tc) =>
         tc.id === action.payload.toolCallId ? { ...tc, status: "ended" } : tc,
       );
+
+      // Update the message in messages array with result for debug history
+      const message = state.messages.findLast(
+        (msg) =>
+          msg.type === "tool_call" && msg.id === action.payload.toolCallId,
+      );
+      if (message?.type === "tool_call") {
+        message.status = "ended";
+        message.result = action.payload.result;
+      }
     },
     // NOTE: this reducer fn should be made smarter if/when we want to have
     // metabot's `state` object be able to remove / forget values. currently
@@ -220,7 +261,7 @@ export const metabot = createSlice({
       state.history = [];
       state.state = {};
       state.isProcessing = false;
-      state.toolCalls = [];
+      state.activeToolCalls = [];
       state.conversationId = uuid();
       state.reactions.suggestedTransforms = [];
       state.experimental.metabotReqIdOverride = undefined;
@@ -245,6 +286,9 @@ export const metabot = createSlice({
     },
     setProfileOverride: (state, action: PayloadAction<string | undefined>) => {
       state.experimental.profileOverride = action.payload;
+    },
+    setDebugMode: (state, action: PayloadAction<boolean>) => {
+      state.experimental.debugMode = action.payload;
     },
     addSuggestedTransform: (
       state,
@@ -297,11 +341,11 @@ export const metabot = createSlice({
       .addCase(sendAgentRequest.fulfilled, (state, action) => {
         state.history = action.payload?.history?.slice() ?? [];
         state.state = { ...(action.payload?.state ?? {}) };
-        state.toolCalls = [];
+        state.activeToolCalls = [];
         state.isProcessing = false;
       })
       .addCase(sendAgentRequest.rejected, (state) => {
-        state.toolCalls = [];
+        state.activeToolCalls = [];
         state.isProcessing = false;
       });
   },

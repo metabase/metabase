@@ -100,4 +100,17 @@ describe("StaticDashboard", () => {
       dashboardHeader.queryByTestId("dashboard-header-row-button"),
     ).not.toBeInTheDocument();
   });
+
+  it("should not show 'Add a chart' button on empty dashboards", async () => {
+    await setup({ dashcards: [] });
+
+    expect(screen.getByText("This dashboard is empty")).toBeInTheDocument();
+    expect(screen.queryByText("Add a chart")).not.toBeInTheDocument();
+  });
+
+  it("should not allow editing the dashboard title", async () => {
+    await setup();
+
+    expect(screen.getByTestId("dashboard-name-heading")).toBeDisabled();
+  });
 });
