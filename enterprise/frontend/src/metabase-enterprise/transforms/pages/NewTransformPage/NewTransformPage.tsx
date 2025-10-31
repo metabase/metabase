@@ -8,7 +8,6 @@ import {
   useGetCardQuery,
   useListDatabasesQuery,
 } from "metabase/api";
-import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
@@ -100,42 +99,40 @@ function NewTransformPageBody({
 
   return (
     <>
-      <AdminSettingsLayout fullWidth>
-        {source.type === "python" ? (
-          <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
-            source={source}
-            proposedSource={
-              proposedSource?.type === "python" ? proposedSource : undefined
-            }
-            isNew={true}
-            isDirty={isDirty}
-            isSaving={false}
-            onChangeSource={setSourceAndRejectProposed}
-            onSave={openModal}
-            onCancel={handleCancel}
-            onAcceptProposed={acceptProposed}
-            onRejectProposed={rejectProposed}
-          />
-        ) : (
-          <TransformEditor
-            source={source}
-            proposedSource={
-              proposedSource?.type === "query" ? proposedSource : undefined
-            }
-            uiState={uiState}
-            databases={databases}
-            isNew={true}
-            isSaving={false}
-            isDirty={isDirty}
-            onChangeSource={setSourceAndRejectProposed}
-            onChangeUiState={setUiState}
-            onSave={openModal}
-            onCancel={handleCancel}
-            onAcceptProposed={acceptProposed}
-            onRejectProposed={rejectProposed}
-          />
-        )}
-      </AdminSettingsLayout>
+      {source.type === "python" ? (
+        <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
+          source={source}
+          proposedSource={
+            proposedSource?.type === "python" ? proposedSource : undefined
+          }
+          isNew={true}
+          isDirty={isDirty}
+          isSaving={false}
+          onChangeSource={setSourceAndRejectProposed}
+          onSave={openModal}
+          onCancel={handleCancel}
+          onAcceptProposed={acceptProposed}
+          onRejectProposed={rejectProposed}
+        />
+      ) : (
+        <TransformEditor
+          source={source}
+          proposedSource={
+            proposedSource?.type === "query" ? proposedSource : undefined
+          }
+          uiState={uiState}
+          databases={databases}
+          isNew={true}
+          isSaving={false}
+          isDirty={isDirty}
+          onChangeSource={setSourceAndRejectProposed}
+          onChangeUiState={setUiState}
+          onSave={openModal}
+          onCancel={handleCancel}
+          onAcceptProposed={acceptProposed}
+          onRejectProposed={rejectProposed}
+        />
+      )}
       {isModalOpened && isNotDraftSource(source) && (
         <CreateTransformModal
           source={source}
