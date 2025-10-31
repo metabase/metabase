@@ -35,6 +35,13 @@ runs:
         path: node_modules
         key: ${{ steps.get-cache-keys.outputs.node-cache-key }}
 
+    - name: Restore Pyodide cache
+      uses: actions/cache/restore@v4
+      id: pyodide-cache
+      with:
+        path: resources/frontend_client/app/assets/pyodide
+        key: ${{ steps.get-cache-keys.outputs.pyodide-cache-key }}
+
     # postinstall lifecycle hook can be dangerous in CI so we only run it locally (see package.json)
     # If a job wants to patch packages, it does so explicitly in the CI. This setting is opt-out.
     # For example, we never want to cache node_modules with patches already applied so cache-generator.yml skips that step.
@@ -44,4 +51,8 @@ runs:
     - name: Patch frontend dependencies
       if: inputs.apply-patches == 'true'
       run: yarn patch-package
+      shell: bash
+    - name: Download pyodide packages
+      if: steps.pyodide-cache.outputs.cache-hit != 'true'
+      run: yarn download-pyodide
       shell: bash
