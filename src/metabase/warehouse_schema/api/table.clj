@@ -338,7 +338,7 @@
   "Creates a model that wraps the table, all entities dependent on the table will instead be made dependent on the model."
   [{table-id :id} :- [:map [:id :int]]
    _query-params
-   {:keys [collection_id]} :- [:map [:collection_id :int]]]
+   {:keys [collection_id]} :- [:map [:collection_id [:maybe :int]]]]
   ;; todo prem feature, auth, actual impl and all that
   (t2/with-transaction []
     (let [edges            (t2/select :model/Dependency :from_entity_type "card" :to_entity_type "table" :to_entity_id table-id)
