@@ -93,7 +93,24 @@ export const getDashcardDataMap = (state: State) =>
 export const getDashcardData = createSelector(
   [getDashcardDataMap, (_state: State, dashcardId: DashCardId) => dashcardId],
   (dashcardDataMap, dashcardId) => {
-    return dashcardDataMap[dashcardId];
+    const data = dashcardDataMap[dashcardId];
+    if (typeof data === "object") {
+      return Object.keys(data).reduce((result, key) => {
+        if (
+          data[key] &&
+          data[key].error &&
+          data[key].error.status &&
+          data[key].error.status >= 400 &&
+          data[key].error.status < 500
+        ) {
+          result[key] = data[key].error.data;
+        } else {
+          result[key] = data[key];
+        }
+        return result;
+      }, {});
+    }
+    return data;
   },
 );
 
