@@ -117,7 +117,7 @@ describe("nav > containers > Navbar > Core App", () => {
     expect(screen.queryByTestId("main-navbar-root")).not.toBeInTheDocument();
   });
 
-  ["question/1", "model/1", "dashboard/1", "embed-js"].forEach((pathname) => {
+  ["question/1", "model/1", "dashboard/1"].forEach((pathname) => {
     it(`should be hidden on initial load for a ${pathname}`, async () => {
       await setup({ pathname: `/${pathname}` });
       await expectNavbarClosed();

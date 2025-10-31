@@ -2,7 +2,7 @@ name: Mage Tests
 
 on:
   pull_request:
-    paths: ["mage/**", "test/mage/**"]
+    paths: ["mage/**"]
 
 jobs:
   # run mage tests even if the rest of be isnt needed
@@ -22,4 +22,4 @@ jobs:
       - name: bb task list
         run: bb tasks
       - name: Run mage tests
-        run: bb ./test/mage/runtests.clj
+        run: bb ./mage/test/mage/runtests.clj

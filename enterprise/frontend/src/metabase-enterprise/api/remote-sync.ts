@@ -87,6 +87,7 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
         url: `/api/ee/remote-sync/settings`,
         body: settings,
       }),
+      invalidatesTags: () => [tag("session-properties")],
     }),
     getBranches: builder.query<GetBranchesResponse, void>({
       query: () => ({

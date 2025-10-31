@@ -117,15 +117,11 @@
  limit/absolute-max-results
  limit/determine-query-max-rows
  logger/level-enabled?
- mbql.s/Join
- mbql.s/MBQLQuery
  mbql.u/aggregation-at-index
  mbql.u/assoc-field-options
  mbql.u/desugar-filter-clause
  mbql.u/expression-with-name
  mbql.u/field-options
- mbql.u/is-clause?
- mbql.u/mbql-clause?
  mbql.u/negate-filter-clause
  mbql.u/normalize-token
  mbql.u/query->max-rows-limit
@@ -139,6 +135,8 @@
  mdb/spec
  metabase.driver-api.impl/cached
  metabase.driver-api.impl/dispatch-by-clause-name-or-class
+ metabase.driver-api.impl/is-clause?
+ metabase.driver-api.impl/mbql-clause?
  metabase.driver-api.impl/nest-expressions
  mi/instance-of?
  premium-features/is-hosted?
@@ -266,7 +264,7 @@
 
 (def mbql.schema.value
   "mbql.s/value"
-  mbql.s/value)
+  ::mbql.s/value)
 
 (def mbql.schema.field
   "mbql.s/field"
@@ -311,3 +309,11 @@
 (def qp.compile.query-with-compiled-query
   "Schema for the output of [[compile]]: `:metabase.query-processor.compile/query-with-compiled-query`"
   ::qp.compile/query-with-compiled-query)
+
+(def MBQLQuery
+  "Schema for a legacy MBQL inner query."
+  ::mbql.s/MBQLQuery)
+
+(def Join
+  "Schema for a legacy MBQL join."
+  ::mbql.s/Join)

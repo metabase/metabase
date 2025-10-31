@@ -6,7 +6,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { useSearchParam } from "react-use";
 import { match } from "ts-pattern";
 
 import { useSetting } from "metabase/common/hooks";
@@ -37,8 +36,6 @@ declare global {
 export const SdkIframeEmbedPreview = () => {
   const { settings } = useSdkIframeEmbedSetupContext();
   const [isLoading, setIsLoading] = useState(true);
-
-  const localeOverride = useSearchParam("locale");
 
   const instanceUrl = useSetting("site-url");
   const applicationColors = useSetting("application-colors");
@@ -85,10 +82,9 @@ export const SdkIframeEmbedPreview = () => {
     () => ({
       instanceUrl,
       theme: derivedTheme,
-      ...(localeOverride ? { locale: localeOverride } : {}),
       useExistingUserSession: true,
     }),
-    [instanceUrl, localeOverride, derivedTheme],
+    [instanceUrl, derivedTheme],
   );
 
   // initial configuration, needed so that the element finds the config on first render

@@ -73,7 +73,7 @@
   "Get a list of transforms."
   [& {:keys [last_run_start_time last_run_statuses tag_ids]}]
   (api/check-superuser)
-  (let [transforms (t2/select :model/Transform)]
+  (let [transforms (t2/select :model/Transform {:order-by [[:id :asc]]})]
     (into []
           (comp (transforms.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
                 (transforms.util/->status-filter-xf [:last_run :status] last_run_statuses)
@@ -81,6 +81,9 @@
                 (map #(update % :last_run transforms.util/localize-run-timestamps)))
           (t2/hydrate transforms :last_run :transform_tag_ids))))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/"
   "Get a list of transforms."
   [_route-params
@@ -112,7 +115,8 @@
   (let [transform (t2/with-transaction [_]
                     (let [tag-ids (:tag_ids body)
                           transform (t2/insert-returning-instance!
-                                     :model/Transform (select-keys body [:name :description :source :target :run_trigger]))]
+                                     :model/Transform
+                                     (select-keys body [:name :description :source :target :run_trigger]))]
                       ;; Add tag associations if provided
                       (when (seq tag-ids)
                         (transform.model/update-transform-tags! (:id transform) tag-ids))
@@ -149,6 +153,9 @@
         dep-ids (get global-ordering id)]
     (map id->transform dep-ids)))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/run"
   "Get transform runs based on a set of filter params."
   [_route-params
@@ -210,7 +217,11 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (t2/delete! :model/Transform id)
+  (let [transform (api/check-404 (t2/select-one :model/Transform id))]
+    (t2/delete! :model/Transform id)
+    (events/publish-event! :event/transform-delete
+                           {:object transform
+                            :user-id api/*current-user-id*}))
   nil)
 
 (api.macros/defendpoint :delete "/:id/table"
