@@ -77,14 +77,13 @@
                               x))
                           obj)
                          obj)
-                        obj)
-                      (dissoc :export-format)
-                      (cond-> (server.settings/hide-stacktraces) (dissoc :stacktrace :trace :via)))]
-          (with-open [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
-            (json/encode-to obj writer {})))
-        (catch EofException _)
-        (catch Throwable e
-          (log/error e "Error writing error to output stream" obj))))))
+                       (dissoc :export-format)
+                       (cond-> (server.settings/hide-stacktraces) (dissoc :stacktrace :trace :via)))]
+           (with-open [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
+             (json/encode-to obj writer {})))
+         (catch EofException _)
+         (catch Throwable e
+           (log/error e "Error writing error to output stream" obj)))))))
 
 (defn- do-f* [f ^OutputStream os _finished-chan canceled-chan]
   (try
