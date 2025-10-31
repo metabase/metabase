@@ -3,6 +3,7 @@ import type { CardId, SearchResult, TableId } from "metabase-types/api";
 
 import { getUrl as getUrl_ } from "../../utils";
 
+import { type NodeSelection, isItemSelected } from "./bulk-selection.utils";
 import {
   CHILD_TYPES,
   LEAF_ITEM_ICON_COLOR,
@@ -12,6 +13,7 @@ import type {
   CollectionNode,
   DatabaseNode,
   ExpandedState,
+  FilterState,
   FlatItem,
   ItemType,
   ModelNode,
@@ -100,6 +102,7 @@ export function flatten(
     level?: number;
     parent?: NodeKey;
     canFlattenSingleSchema?: boolean;
+    selection?: NodeSelection;
   } = {},
 ): FlatItem[] {
   const {
@@ -109,6 +112,7 @@ export function flatten(
     canFlattenSingleSchema,
     level = 0,
     parent,
+    selection,
   } = opts;
   if (node.type === "root") {
     // root node doesn't render a title and is always expanded
@@ -122,6 +126,8 @@ export function flatten(
     }
     return node.children.flatMap((child) => flatten(child, opts));
   }
+
+  const isSelected = selection ? isItemSelected(node, selection) : "no";
 
   if (
     node.type === "schema" &&
@@ -141,22 +147,22 @@ export function flatten(
   }
 
   if (typeof isExpanded === "function" && !isExpanded(node.key)) {
-    return [{ ...node, level, parent } as FlatItem];
+    return [{ ...node, level, parent, isSelected } as FlatItem];
   }
 
   if (addLoadingNodes && node.children.length === 0) {
     const childType = CHILD_TYPES[node.type];
     if (!childType) {
-      return [{ ...node, level, parent }];
+      return [{ ...node, level, parent, isSelected }];
     }
     return [
-      { ...node, isExpanded: true, level, parent },
+      { ...node, isExpanded: true, level, parent, isSelected },
       loadingItem(childType, level + 1, node),
     ];
   }
 
   return [
-    { ...node, isExpanded: true, level, parent },
+    { ...node, isExpanded: true, level, parent, isSelected },
     ...node.children.flatMap((child) =>
       flatten(child, {
         ...opts,
@@ -379,4 +385,26 @@ export function buildTreeFromSearchResults(
   });
 
   return tree;
+}
+
+export function getFiltersCount(filters: FilterState): number {
+  let count = 0;
+
+  if (filters.dataSource != null) {
+    ++count;
+  }
+
+  if (filters.visibilityType2 != null) {
+    ++count;
+  }
+
+  if (filters.ownerEmail != null || filters.ownerUserId != null) {
+    ++count;
+  }
+
+  if (filters.orphansOnly === true) {
+    ++count;
+  }
+
+  return count;
 }

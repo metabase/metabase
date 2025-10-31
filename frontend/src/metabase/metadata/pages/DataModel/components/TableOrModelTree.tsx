@@ -32,6 +32,7 @@ export const TableOrModelTree = ({ params }: Props) => {
             tableId={tableId}
             collectionId={collectionId}
             modelId={modelId}
+            params={params}
           />
         )
       }

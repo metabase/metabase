@@ -4,7 +4,16 @@ import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 
 import CS from "metabase/css/core/index.css";
-import { Box, Flex, Icon, Skeleton, Text, rem } from "metabase/ui";
+import {
+  Box,
+  Checkbox,
+  type CheckboxProps,
+  Flex,
+  Icon,
+  Skeleton,
+  Text,
+  rem,
+} from "metabase/ui";
 
 import { getUrl } from "../../../utils";
 import { TYPE_ICONS } from "../constants";
@@ -18,9 +27,7 @@ import type {
 } from "../types";
 import { isItemWithHiddenExpandIcon, isLeafNode } from "../utils";
 
-import { BulkTableVisibilityToggle } from "./BulkTableVisibilityToggle";
 import S from "./Results.module.css";
-import { TableVisibilityToggle } from "./TableVisibilityToggle";
 
 const VIRTUAL_OVERSCAN = 5;
 const ITEM_MIN_HEIGHT = 32; // items can vary in size because of text wrapping
@@ -35,17 +42,17 @@ interface Props {
   withMassToggle?: boolean;
   onItemClick?: (path: TreePath) => void;
   onSelectedIndexChange?: (index: number) => void;
+  onItemToggle?: (item: FlatItem) => void;
 }
 
 export function Results({
   items,
   path,
-  reload,
   selectedIndex,
   toggle,
-  withMassToggle,
   onItemClick,
   onSelectedIndexChange,
+  onItemToggle,
 }: Props) {
   const [activeItem, setActiveItem] = useState<
     { type: ItemType; id: number | string } | undefined
@@ -288,6 +295,7 @@ export function Results({
                 handleItemSelect();
               }}
               onFocus={() => onSelectedIndexChange?.(index)}
+              pe="sm"
             >
               <Flex align="center" mih={ITEM_MIN_HEIGHT} p="sm" w="100%">
                 <Flex align="center" gap="xs" w="100%">
@@ -331,55 +339,46 @@ export function Results({
                 </Flex>
               </Flex>
 
-              {withMassToggle &&
-                type === "database" &&
-                value?.databaseId !== undefined &&
-                hasTableChildren &&
-                !disabled && (
-                  <BulkTableVisibilityToggle
-                    className={S.massVisibilityToggle}
-                    tables={children.flatMap((child) =>
-                      child.type === "table" && child.table != null
-                        ? [child.table]
-                        : [],
-                    )}
-                    onUpdate={() => reload?.(value)}
-                  />
-                )}
-
-              {withMassToggle &&
-                type === "schema" &&
-                value?.schemaName !== undefined &&
-                hasTableChildren &&
-                !disabled && (
-                  <BulkTableVisibilityToggle
-                    className={S.massVisibilityToggle}
-                    tables={children.flatMap((child) =>
-                      child.type === "table" && child.table != null
-                        ? [child.table]
-                        : [],
-                    )}
-                    onUpdate={() => reload?.(value)}
-                  />
-                )}
-
-              {type === "table" &&
-                value?.tableId !== undefined &&
-                item.table &&
-                !disabled && (
-                  <TableVisibilityToggle
-                    className={cx(S.visibilityToggle, {
-                      [S.hidden]: item.table.visibility_type == null,
-                    })}
-                    table={item.table}
-                    onUpdate={() => reload?.(value)}
-                  />
-                )}
+              <ElementCheckbox item={item} onItemToggle={onItemToggle} />
             </Flex>
           );
         })}
       </Box>
     </Box>
+  );
+}
+
+// workaround to use indeterminate icon from the Checkbox component before
+// this fixed is released https://github.com/mantinedev/mantine/pull/8385
+const CheckboxDashIcon: CheckboxProps["icon"] = ({ ...others }) => (
+  <Icon name="dash" {...others} />
+);
+
+function ElementCheckbox({
+  item,
+  onItemToggle,
+}: {
+  item: FlatItem;
+  onItemToggle: ((item: FlatItem) => void) | undefined;
+}) {
+  if (item.isLoading) {
+    return null;
+  }
+
+  const { isSelected } = item;
+  return (
+    <Checkbox
+      size="sm"
+      checked={isSelected !== "no"}
+      onClick={(event) => {
+        event.stopPropagation();
+      }}
+      icon={isSelected === "some" ? CheckboxDashIcon : undefined}
+      onChange={() => {
+        onItemToggle?.(item);
+      }}
+      // indeterminate={indeterminate}
+    />
   );
 }
 
