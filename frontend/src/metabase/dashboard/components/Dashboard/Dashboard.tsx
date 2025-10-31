@@ -20,7 +20,6 @@ import {
   DashboardInfoButton,
   ExportAsPdfButton,
   FullscreenToggle,
-  NightModeToggleButton,
 } from "../DashboardHeader/buttons";
 import { DashboardParameterPanel } from "../DashboardParameterPanel";
 import { DashboardSidebars } from "../DashboardSidebars";
@@ -147,7 +146,6 @@ type DashboardComponentType = typeof DashboardDefaultView & {
   FullscreenButton: typeof FullscreenToggle;
   ExportAsPdfButton: typeof ExportAsPdfButton;
   InfoButton: typeof DashboardInfoButton;
-  NightModeButton: typeof NightModeToggleButton;
   RefreshPeriod: typeof RefreshWidget;
 };
 
@@ -160,7 +158,6 @@ DashboardComponent.ParametersList = ParametersList;
 DashboardComponent.FullscreenButton = FullscreenToggle;
 DashboardComponent.ExportAsPdfButton = ExportAsPdfButton;
 DashboardComponent.InfoButton = DashboardInfoButton;
-DashboardComponent.NightModeButton = NightModeToggleButton;
 DashboardComponent.RefreshPeriod = RefreshWidget;
 
 export const Dashboard = DashboardComponent;
