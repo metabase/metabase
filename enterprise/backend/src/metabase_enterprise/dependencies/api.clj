@@ -192,7 +192,9 @@
    :dashboard [:id :name :description :created_at :creator_id :collection_id]
    :document  [:id :name :created_at :creator_id :collection_id]
    :table     [:id :name :description :display_name :db_id :schema]
-   :transform [:id :name :description]
+   :transform [:id :name :description
+               ;; :source has to be selected otherwise the BE won't know what DB it belongs to
+               :source]
    :snippet   [:id :name :description]
    :sandbox   [:id :table_id]})
 
