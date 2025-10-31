@@ -4,10 +4,12 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import {
+  usePublishModelsMutation,
   useUpdateTableFieldsOrderMutation,
   useUpdateTableMutation,
 } from "metabase/api";
 import EmptyState from "metabase/common/components/EmptyState";
+import { useToast } from "metabase/common/hooks";
 import {
   DataSourceInput,
   FieldOrderPicker,
@@ -21,6 +23,7 @@ import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
   ActionIcon,
   Box,
+  Button,
   Group,
   Icon,
   Loader,
@@ -104,31 +107,6 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
         const { error } = await updateTable({
           id: table.id,
           description: table.description ?? "",
-        });
-        sendUndoToast(error);
-      });
-    }
-  };
-
-  const handleVisibilityTypeChange = async (
-    visibilityType: LimitedVisibilityType | null,
-  ) => {
-    if (visibilityType == null) {
-      return; // should never happen as the input is not clearable here
-    }
-
-    const { error } = await updateTable({
-      id: table.id,
-      visibility_type: visibilityType === "visible" ? null : "hidden",
-    });
-
-    if (error) {
-      sendErrorToast(t`Failed to update table visibility`);
-    } else {
-      sendSuccessToast(t`Table visibility updated`, async () => {
-        const { error } = await updateTable({
-          id: table.id,
-          visibility_type: table.visibility_type,
         });
         sendUndoToast(error);
       });
@@ -278,6 +256,26 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
     }
   };
 
+  const [publishModels] = usePublishModelsMutation();
+  const [sendToast] = useToast();
+
+  const handlePublishModel = async () => {
+    const { error } = await publishModels({
+      table_ids: [table.id],
+      target_collection_id: "library",
+    });
+
+    if (error) {
+      sendToast({
+        message: t`Failed to publish`,
+      });
+    } else {
+      sendToast({
+        message: t`Table published in the Library`,
+      });
+    }
+  };
+
   return (
     <Stack data-testid="table-section" gap={0} pb="xl">
       <Box
@@ -313,6 +311,17 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
           onNameChange={handleNameChange}
           onDescriptionChange={handleDescriptionChange}
         />
+      </Box>
+
+      <Box px="xl" pb="xl">
+        <Group justify="flex-end">
+          <Tooltip label={t`Create a model and publish it in the Library.`}>
+            <Button
+              leftSection={<Icon name="model_with_badge" />}
+              onClick={handlePublishModel}
+            >{t`Publish model`}</Button>
+          </Tooltip>
+        </Group>
       </Box>
 
       <Box pb="xl" px="xl">
