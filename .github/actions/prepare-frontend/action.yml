@@ -35,6 +35,12 @@ runs:
         path: node_modules
         key: ${{ steps.get-cache-keys.outputs.node-cache-key }}
 
+    - uses: pnpm/action-setup@v4
+      name: Install pnpm
+      with:
+        version: 10
+        run_install: false
+
     # postinstall lifecycle hook can be dangerous in CI so we only run it locally (see package.json)
     # If a job wants to patch packages, it does so explicitly in the CI. This setting is opt-out.
     # For example, we never want to cache node_modules with patches already applied so cache-generator.yml skips that step.
