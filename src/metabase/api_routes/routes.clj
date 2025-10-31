@@ -177,6 +177,8 @@
    "/table"                (+auth metabase.warehouse-schema.api/table-routes)
    "/task"                 (+auth 'metabase.task-history.api)
    "/testing"              (if metabase.testing-api.core/enable-testing-routes? 'metabase.testing-api.api pass-thru-handler)
+   "/theme"                (+auth metabase.embedding.api/theme-routes)
+   ;; "/theme/v1"             (+public-exceptions metabase.embedding.api/theme-v1-routes)
    "/tiles"                (+auth 'metabase.tiles.api)
    "/timeline"             (+auth metabase.timeline.api/timeline-routes)
    "/timeline-event"       (+auth metabase.timeline.api/timeline-event-routes)
