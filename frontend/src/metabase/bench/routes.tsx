@@ -1,9 +1,10 @@
-import { IndexRedirect, Route } from "react-router";
+import { IndexRedirect, IndexRoute, Route } from "react-router";
 
 import { PLUGIN_DEPENDENCIES, PLUGIN_TRANSFORMS } from "metabase/plugins";
 
 import { BenchLayout } from "./pages/BenchLayout";
 import { DataSectionLayout } from "./pages/DataSectionLayout";
+import { DependencySectionLayout } from "./pages/DependencySectionLayout";
 
 export function getBenchRoutes() {
   return (
@@ -13,10 +14,9 @@ export function getBenchRoutes() {
         {PLUGIN_TRANSFORMS.getBenchRoutes()}
       </Route>
       {PLUGIN_DEPENDENCIES.isEnabled && (
-        <Route
-          path="dependencies"
-          component={PLUGIN_DEPENDENCIES.DependencyGraphPage}
-        />
+        <Route path="dependencies" component={DependencySectionLayout}>
+          <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
+        </Route>
       )}
     </Route>
   );

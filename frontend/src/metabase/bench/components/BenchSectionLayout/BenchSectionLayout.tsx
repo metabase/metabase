@@ -18,7 +18,13 @@ export function BenchSectionLayout({
 }: BenchSectionLayoutProps) {
   return (
     <Stack h="100%" gap={0}>
-      <Stack className={S.header} px="lg" pt="md" gap="sm">
+      <Stack
+        className={S.header}
+        px="lg"
+        pt="md"
+        py={tabs ? undefined : "md"}
+        gap="sm"
+      >
         {title}
         {tabs}
       </Stack>
