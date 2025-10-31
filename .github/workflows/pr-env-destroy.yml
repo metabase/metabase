@@ -3,6 +3,12 @@ run-name: Destroying Dynamic PR Environment for ${{ github.ref_name }} by @${{ g
 
 on:
   workflow_call:
+    inputs:
+      self_hosting:
+        description: 'Self-hosting stack'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   destroy_pr:
@@ -54,9 +60,20 @@ jobs:
                 namespace: default
                 user: oidc-token
       - name: Destroy PR Review ENV
+        if: ${{ !inputs.self_hosting }}
         run: |
           kubectl delete metabase -n hosting-pr${{ github.event.number }} hosting-pr${{ github.event.number }}
           kubectl delete ns hosting-pr${{ github.event.number }}
+      - name: Setup Helm
+        if: ${{ inputs.self_hosting }}
+        uses: azure/setup-helm@v4
+        with:
+          version: 'latest'
+      - name: Destroy PR Review ENV (self-hosting)
+        if: ${{ inputs.self_hosting }}
+        run: |
+          helm uninstall hosting-pr${{ github.event.number }} --namespace hosting-pr${{ github.event.number }} || true
+          kubectl delete ns hosting-pr${{ github.event.number }} || true
       - name: Setup psql client
         run: |
           sudo apt-get update
