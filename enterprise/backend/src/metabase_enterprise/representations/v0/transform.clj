@@ -66,7 +66,7 @@
                       {:representation representation
                        :type (:type representation)})))))
 
-(defmethod import/update! :default
+(defmethod import/update! [:v0 :transform]
   [representation id ref-index]
   (let [representation (rep-read/parse representation)]
     (if-some [model (v0-common/type->model (:type representation))]
