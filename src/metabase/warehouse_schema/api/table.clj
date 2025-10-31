@@ -3,6 +3,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as app-db]
@@ -14,6 +15,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.query :as lib.query]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
@@ -331,6 +333,51 @@
     {:created_count     (count created-models)
      :models            created-models
      :target_collection target-collection}))
+
+(api.macros/defendpoint :post "/:id/substitute-model"
+  "Creates a model that wraps the table, all entities dependent on the table will instead be made dependent on the model."
+  [{table-id :id} :- [:map [:id :int]]
+   _query-params
+   {:keys [collection_id]} :- [:map [:collection_id :int]]]
+  ;; todo prem feature, auth, actual impl and all that
+  (t2/with-transaction []
+    (let [edges            (t2/select :model/Dependency :from_entity_type "card" :to_entity_type "table" :to_entity_id table-id)
+          {card-ids :card} (u/group-by :from_entity_type :from_entity_id edges)
+          cards            (when (seq card-ids) (t2/select :model/Card :id [:in (sort card-ids)]))
+          table-fields     (t2/select-pk->fn :name [:model/Field :id :name] :table_id table-id)
+          queries          (map :dataset_query cards)
+          table            (t2/select-one [:model/Table :db_id :display_name] table-id)
+          user             (t2/select-one :model/User api/*current-user-id*)
+          model            (card/create-card! {:type          :model
+                                               :display       :table
+                                               :name          (:display_name table)
+                                               :collection_id collection_id
+                                               :database_id   (:db_id table)
+                                               :table_id      table-id
+                                               :visualization_settings {}
+                                               :dataset_query {:type     :query
+                                                               :database (:db_id table)
+                                                               :query    {:source-table table-id}}}
+                                              user)
+          matching-stage?  (fn [x] (and (map? x) (= table-id (:source-table x))))
+          stage-sub        (fn [stage] (-> stage (dissoc :source-table) (assoc :source-card (:id model))))
+          stage-subs-xf    (comp (filter matching-stage?) (map (juxt identity stage-sub)))
+          stage-subs       (into {} stage-subs-xf (tree-seq seqable? seq queries))
+          matching-ref?    (fn [x]
+                             (and (vector? x)
+                                  (= :field (nth x 0 nil))
+                                  (contains? table-fields (nth x 2 nil))))
+          ref-sub          (fn [[_ m id]] [:field m (table-fields id)])
+          ref-subs-xf      (comp (filter matching-ref?) (map (juxt identity ref-sub)))
+          ref-subs         (into {} ref-subs-xf (tree-seq seqable? seq queries))
+          all-subs         (merge stage-subs ref-subs)]
+      (doseq [card cards
+              :let [{:keys [dataset_query]} card]
+              :when (not (lib.query/native? dataset_query))]
+        (card/update-card! {:card-before-update card
+                            :card-updates       {:dataset_query (walk/postwalk-replace all-subs dataset_query)}
+                            :actor              user}))
+      {:model model})))
 
 (api.macros/defendpoint :get "/:id/query_metadata"
   "Get metadata about a `Table` useful for running queries.
