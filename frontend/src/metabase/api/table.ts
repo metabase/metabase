@@ -8,6 +8,8 @@ import type {
   GetTableRequest,
   PublishModelsRequest,
   PublishModelsResponse,
+  SubstituteModelRequest,
+  SubstituteModelResponse,
   Table,
   TableData,
   TableId,
@@ -172,6 +174,18 @@ export const tableApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("card"), tag("collection")]),
     }),
+    substituteModel: builder.mutation<
+      SubstituteModelResponse,
+      SubstituteModelRequest
+    >({
+      query: ({ id, ...body }) => ({
+        method: "POST",
+        url: `/api/table/${id}/substitute-model`,
+        body,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [tag("card"), tag("dependency")]),
+    }),
   }),
 });
 
@@ -190,4 +204,5 @@ export const {
   useSyncTableSchemaMutation,
   useDiscardTableFieldValuesMutation,
   usePublishModelsMutation,
+  useSubstituteModelMutation,
 } = tableApi;

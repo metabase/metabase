@@ -195,6 +195,15 @@ export interface PublishModelsResponse {
   models: Card[];
 }
 
+export interface SubstituteModelRequest {
+  id: TableId;
+  collection_id: number;
+}
+
+export interface SubstituteModelResponse {
+  model: Card;
+}
+
 export type TableData = {
   data: DatasetData;
   database_id: DatabaseId;

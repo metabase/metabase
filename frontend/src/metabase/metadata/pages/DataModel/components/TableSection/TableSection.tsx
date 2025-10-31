@@ -45,6 +45,7 @@ import type { RouteParams } from "../../types";
 import { getUrl, parseRouteParams } from "../../utils";
 import { ResponsiveButton } from "../ResponsiveButton";
 import { PublishModelsModal } from "../TablePicker/components/PublishModelsModal";
+import { SubstituteModelModal } from "../TablePicker/components/SubstituteModelModal";
 import { TitledSection } from "../TitledSection";
 
 import { FieldList } from "./FieldList";
@@ -66,6 +67,8 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
   const [isCreateModelsModalOpen, setIsCreateModelsModalOpen] = useState(false);
+  const [isSubstituteModelModalOpen, setIsSubstituteModelModalOpen] =
+    useState(false);
   const { height: headerHeight, ref: headerRef } = useElementSize();
   const [isSorting, setIsSorting] = useState(false);
   const hasFields = Boolean(table.fields && table.fields.length > 0);
@@ -364,6 +367,20 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
               >
                 {t`Publish model`}
               </Menu.Item>
+
+              <Menu.Item
+                leftSection={<Icon name="sync" />}
+                rightSection={
+                  <Tooltip
+                    label={t`Create a model that wraps this table. All dependent entities will be updated to reference the model instead.`}
+                  >
+                    <Icon name="info_outline" />
+                  </Tooltip>
+                }
+                onClick={() => setIsSubstituteModelModalOpen(true)}
+              >
+                {t`Substitute with model`}
+              </Menu.Item>
             </Menu.Dropdown>
           </Menu>
         </Group>
@@ -492,6 +509,12 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
         tables={new Set([table.id])}
         isOpen={isCreateModelsModalOpen}
         onClose={() => setIsCreateModelsModalOpen(false)}
+      />
+
+      <SubstituteModelModal
+        tableId={table.id}
+        isOpen={isSubstituteModelModalOpen}
+        onClose={() => setIsSubstituteModelModalOpen(false)}
       />
     </Stack>
   );
