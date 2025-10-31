@@ -134,7 +134,9 @@ describe("MetabotTrialPage", () => {
     expect(
       await screen.findByText(/Setting up Metabot AI, please wait/),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Done/ })).toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: /Done/ }),
+    ).not.toBeInTheDocument();
 
     const postRequests = await findRequests("POST");
     const cloudAddOnsRequest = postRequests.find(({ url }) =>

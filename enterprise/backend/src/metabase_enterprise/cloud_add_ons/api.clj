@@ -12,6 +12,9 @@
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]))
 
+(def ^:private requires-terms-of-service?
+  #{"metabase-ai" "metabase-ai-tiered"})
+
 (def ^:private error-no-connection
   (deferred-tru "Could not establish a connection to Metabase Cloud."))
 (def ^:private error-cannot-purchase
@@ -26,6 +29,8 @@
   (deferred-tru "Only Metabase Store users can purchase add-ons."))
 (def ^:private error-terms-not-accepted
   (deferred-tru "Need to accept terms of service."))
+(def ^:private error-no-quantity
+  (deferred-tru "Purchase of add-on requires quantity."))
 
 (def ^:private response-not-hosted
   {:status 400 :body error-not-hosted})
@@ -35,6 +40,8 @@
   {:status 403 :body error-not-store-user})
 (def ^:private response-terms-not-accepted
   {:status 400 :body {:errors {:terms_of_service error-terms-not-accepted}}})
+(def ^:private response-no-quantity
+  {:status 400 :body {:errors {:quantity error-no-quantity}}})
 (def ^:private response-success-empty
   {:status 200 :body {}})
 
@@ -89,21 +96,31 @@
 (api.macros/defendpoint :post "/:product-type"
   "Purchase an add-on."
   [{:keys [product-type]} :- [:map
-                              [:product-type [:enum "metabase-ai" "python-execution"]]]
+                              [:product-type [:enum "metabase-ai" "metabase-ai-tiered" "python-execution"]]]
    _query-params
-   {terms-of-service :terms_of_service} :- [:map
+   {:keys            [quantity]
+    terms-of-service :terms_of_service} :- [:map
+                                            [:quantity {:optional true} [:maybe :int]]
                                             [:terms_of_service {:optional true} [:maybe :boolean]]]]
   (api/check-superuser)
   (cond
     (not (premium-features/is-hosted?))
     response-not-hosted
 
-    (and (= product-type "metabase-ai")
+    (and (requires-terms-of-service? product-type)
          (not terms-of-service))
     response-terms-not-accepted
 
+    (and (= product-type "metabase-ai-tiered")
+         (not quantity))
+    response-no-quantity
+
     (and (= product-type "metabase-ai")
-         (not (premium-features/offer-metabase-ai?)))
+         (not (premium-features/offer-metabase-ai-trial?)))
+    response-not-eligible
+
+    (and (= product-type "metabase-ai-tiered")
+         (not (premium-features/offer-metabase-ai-paid?)))
     response-not-eligible
 
     (and (= product-type "python-execution")
@@ -116,7 +133,8 @@
 
     :else
     (try
-      (let [add-on {:product-type product-type}]
+      (let [add-on (cond-> {:product-type product-type}
+                     quantity (assoc :prepaid-units quantity))]
         (events/publish-event! :event/cloud-add-on-purchase {:details {:add-on add-on}, :user-id api/*current-user-id*})
         (hm.client/call :change-add-ons :upsert-add-ons [add-on]))
       (premium-features/clear-cache!)
