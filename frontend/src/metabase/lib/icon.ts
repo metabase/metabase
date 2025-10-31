@@ -27,6 +27,7 @@ export type ObjectWithModel = {
   moderated_status?: "verified" | string | null;
   display?: CardDisplayType | null;
   type?: Collection["type"];
+  collection_type?: Collection["type"];
   is_personal?: boolean;
 };
 
