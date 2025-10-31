@@ -463,7 +463,8 @@
                          [:id :int]
                          [:type [:= :user]]
                          [:name :string]
-                         [:email_address :string]]]]
+                         [:email_address :string]
+                         [:glossary [:maybe [:map-of :string :string]]]]]]
    [:map [:output :string]]])
 (mr/def ::get-dashboard-details-result
   [:or
