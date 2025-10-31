@@ -85,6 +85,17 @@
       (mt/user-http-request :rasta :put 403 (str "ee/document/" document-id)
                             {:name "Meow"}))))
 
+(deftest put-document-archived-test
+  (testing "PUT /api/ee/document/:id - cannot update archived document"
+    (mt/with-temp [:model/Document {doc-id :id} {:name "Test Document"
+                                                 :document (documents.test-util/text->prose-mirror-ast "Initial")
+                                                 :archived true}]
+      (testing "editing archived document returns 404"
+        (is (= "The object has been archived."
+               (:message (mt/user-http-request :crowberto
+                                               :put 404 (format "ee/document/%s" doc-id)
+                                               {:name "Updated Name"}))))))))
+
 (deftest post-document-with-no-perms-test
   (mt/with-temp [:model/Collection {coll-id :id} {}]
     (mt/with-non-admin-groups-no-collection-perms coll-id
