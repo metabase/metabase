@@ -49,6 +49,7 @@ const QuestionDisplayToggle = ({
       }}
       tabIndex={0}
       value={isShowingRawTable ? "data" : "visualization"}
+      data-testid="query-display-tabular-toggle"
       data={[
         {
           disabled: true,

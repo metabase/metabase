@@ -1548,3 +1548,52 @@ describe("issue 63745", () => {
     });
   });
 });
+
+describe("issue 56094", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should allow to switch between automatic pivot table and usual table visualization (metabase#56094)", () => {
+    H.visitQuestionAdhoc({
+      name: "56094",
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "field",
+              PRODUCTS.CATEGORY,
+              {
+                "base-type": "type/Text",
+              },
+            ],
+            [
+              "field",
+              PRODUCTS.RATING,
+              {
+                binning: {
+                  strategy: "default",
+                },
+              },
+            ],
+          ],
+
+          limit: 20,
+        },
+      },
+    });
+
+    H.queryBuilderFooter().findByLabelText("Switch to data").click();
+
+    H.queryBuilderFooterDisplayToggle().should("exist");
+
+    H.queryBuilderFooter().findByLabelText("Switch to visualization").click();
+
+    H.queryBuilderFooterDisplayToggle().should("exist");
+  });
+});

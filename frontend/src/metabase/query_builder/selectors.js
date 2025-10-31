@@ -941,7 +941,9 @@ export const getIsVisualized = createSelector(
     ((question.display() !== "table" &&
       question.display() !== "pivot" &&
       question.display() !== "list") ||
-      (settings != null && settings["table.pivot"])),
+      (settings != null &&
+        (settings["table.pivot"] ||
+          (question.display() === "table" && settings["table.pivot_column"])))), // last case - pivot_column is set but display is set to table viz (#56094)
 );
 
 export const getIsLiveResizable = createSelector(

@@ -254,6 +254,10 @@ export const queryBuilderFooter = () => {
   return cy.findByTestId("view-footer");
 };
 
+export const queryBuilderFooterDisplayToggle = () => {
+  return cy.findByTestId("query-display-tabular-toggle");
+};
+
 export const closeQuestionActions = () => {
   queryBuilderHeader().click();
 };
