@@ -8,7 +8,9 @@ import {
   type PythonLibraries,
 } from "../services/pyodide-worker";
 
-export function useRunPython<T = unknown>() {
+import type { PythonTransformResultData } from "./use-test-python-transform";
+
+export function useRunPython<T = PythonTransformResultData>() {
   const [pool] = useState(() => new PyodideWorkerPool());
   const controller = useRef<AbortController | null>(null);
   const [isRunning, setIsRunning] = useState(false);
