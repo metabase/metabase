@@ -920,8 +920,12 @@
   {:sslmode "disable"})
 
 (defmethod sql-jdbc.conn/connection-details->spec :postgres
-  [_ {ssl? :ssl, :as details-map}]
-  (let [props (-> details-map
+  [_ {ssl? :ssl, auth-provider :auth-provider, :as details-map}]
+  (let [use-iam? (= auth-provider "aws-iam")
+        ;; AWS IAM authentication requires SSL
+        ;; TODO: should be reflected in the UI
+        ssl? (or ssl? use-iam?)
+        props (-> details-map
                   (update :port (fn [port]
                                   (if (string? port)
                                     (Integer/parseInt port)
@@ -940,7 +944,14 @@
         props (as-> props it
                 (set/rename-keys it {:dbname :db})
                 (driver-api/spec :postgres it)
-                (sql-jdbc.common/handle-additional-options it details-map))]
+                (sql-jdbc.common/handle-additional-options it details-map))
+        props (if use-iam?
+                ;; TODO: move to handle-additional-options?
+                (-> props
+                    (assoc :subprotocol "aws-wrapper:postgresql"
+                           :wrapperPlugins "iam")
+                    (dissoc :auth-provider :use-auth-provider))
+                props)]
     props))
 
 (defmethod sql-jdbc.sync/excluded-schemas :postgres [_driver] #{"information_schema" "pg_catalog"})
