@@ -6,12 +6,14 @@ export async function startContainers({
   env,
   dockerUpCommand,
   dockerDownCommand,
+  appName,
   healthcheckPorts,
 }: {
   cwd: string;
   env: Record<string, string | number>;
   dockerUpCommand: string;
   dockerDownCommand: string;
+  appName: string;
   healthcheckPorts: number[];
 }) {
   console.log("Starting app in background...");
@@ -29,6 +31,11 @@ export async function startContainers({
 
     await Promise.all(healthcheckPromises);
   } catch {
-    shell(dockerDownCommand, { cwd, env });
+    // docker compose up failed, grab recent logs
+    shell(`docker logs --tail 100 ${appName}-metabase-1`, { cwd, env });
+
+    setTimeout(() => {
+      shell(dockerDownCommand, { cwd, env });
+    }, 5000);
   }
 }

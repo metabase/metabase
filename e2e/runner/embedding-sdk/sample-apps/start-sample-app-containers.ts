@@ -73,6 +73,7 @@ export async function startSampleAppContainers(
       env,
       dockerUpCommand,
       dockerDownCommand,
+      appName,
       healthcheckPorts,
     });
 
