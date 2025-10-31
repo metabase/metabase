@@ -16,6 +16,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.queries.models.card :as card]
    [metabase.query-processor :as qp]
    ;; legacy usage -- don't do things like this going forward
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]}
@@ -305,11 +306,12 @@
                                    (map t2.realize/realize)
                                    (partition-all 20)
                                    (mapcat (fn [batch]
-                                             ;; TODO (Ngoc 29/10/25) : we should considering using card/create-card! but with
-                                             ;; an option to skip syncing metadata since it's gonna be really expensive
-                                             (t2/insert-returning-instances! :model/Card (mapv (fn [table]
-                                                                                                 (table->model table api/*current-user-id* (:id target-collection)))
-                                                                                               batch)))))
+                                             ;; TODO (Ngoc 29/10/25): create-card! does async calculation of metadata
+                                             ;; and it's gonna be expensive if we're doing this for lots of tables.
+                                             ;; maybe we should an option to skip it
+                                             (mapv (fn [table]
+                                                     (card/create-card! (table->model table api/*current-user-id* (:id target-collection)) @api/*current-user*))
+                                                   batch))))
                                   (t2/reducible-select :model/Table :active true {:where where})))]
     {:created_count     (count created-models)
      :models            created-models
