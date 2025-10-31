@@ -1,21 +1,35 @@
-import type { Location } from "history";
-
 import { Flex } from "metabase/ui";
 
-import { TransformsPageSidebar } from "../TransformsPageSidebar";
+import { JobsSidebar } from "../JobsSidebar";
+import { TransformsSidebar } from "../TransformsSidebar";
+import { useTransformsCurrentTab } from "../hooks";
 
 interface TransformsSidebarLayoutProps {
   children: React.ReactNode;
-  location: Location;
+  params?: {
+    transformId?: string;
+    jobId?: string;
+  };
 }
 
 export const TransformsSidebarLayout = ({
   children,
-  location,
+  params,
 }: TransformsSidebarLayoutProps) => {
+  const currentTab = useTransformsCurrentTab();
+
+  const selectedTransformId = params?.transformId
+    ? parseInt(params.transformId, 10)
+    : undefined;
+
+  const selectedJobId = params?.jobId ? parseInt(params.jobId, 10) : undefined;
+
   return (
-    <Flex direction="row">
-      <TransformsPageSidebar location={location} />
+    <Flex direction="row" h="100%">
+      {currentTab === "transforms" && (
+        <TransformsSidebar selectedTransformId={selectedTransformId} />
+      )}
+      {currentTab === "jobs" && <JobsSidebar selectedJobId={selectedJobId} />}
       <Flex>{children}</Flex>
     </Flex>
   );
