@@ -375,7 +375,7 @@
                         impl/async-import! (fn [branch force? args]
                                              (reset! import-called? true)
                                              (reset! import-args {:branch branch :force? force? :args args})
-                                             123)
+                                             {:id 123})
                         collection/remote-synced-collection (constantly nil)]
             (let [task-id (impl/finish-remote-config!)]
               (is (= 123 task-id)
@@ -397,7 +397,7 @@
                                              remote-sync-branch "main"
                                              remote-sync-type :production]
             (with-redefs [source/source-from-settings (constantly mock-source)
-                          impl/async-import! (fn [& _args] (reset! import-called? true) 123)]
+                          impl/async-import! (fn [& _args] (reset! import-called? true) {:id 123})]
               (let [task-id (impl/finish-remote-config!)]
                 (is (= 123 task-id)
                     "Should return task ID from async-import!")

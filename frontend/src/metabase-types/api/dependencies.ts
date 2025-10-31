@@ -1,3 +1,8 @@
+// IMPORTANT: The field selections in the *DependencyNodeData types below
+// MUST be kept in sync with the backend field selections in:
+// enterprise/backend/src/metabase_enterprise/dependencies/api.clj
+// (See entity-select-fields map)
+
 import type { Card, CardType } from "./card";
 import type { Dashboard } from "./dashboard";
 import type { Document } from "./document";

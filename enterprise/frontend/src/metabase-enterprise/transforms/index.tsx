@@ -15,7 +15,12 @@ import { TransformPicker } from "./components/TransformPicker";
 import { JobListPage } from "./pages/JobListPage";
 import { JobPage } from "./pages/JobPage";
 import { NewJobPage } from "./pages/NewJobPage";
-import { NewTransformPage } from "./pages/NewTransformPage";
+import {
+  NewCardTransformPage,
+  NewNativeTransformPage,
+  NewPythonTransformPage,
+  NewQueryTransformPage,
+} from "./pages/NewTransformPage";
 import { RunListPage } from "./pages/RunListPage";
 import { TransformListPage } from "./pages/TransformListPage";
 import { TransformPage } from "./pages/TransformPage";
@@ -44,8 +49,12 @@ if (hasPremiumFeature("transforms")) {
           <Route path=":transformId" component={TransformPage} />
         </Route>
         {PLUGIN_TRANSFORMS_PYTHON.getAdminRoutes()}
-        <Route path="new/:type" component={NewTransformPage} />
-        <Route path="new/card/:cardId" component={NewTransformPage} />
+        <Route path="new/query" component={NewQueryTransformPage} />
+        <Route path="new/native" component={NewNativeTransformPage} />
+        <Route path="new/card/:cardId" component={NewCardTransformPage} />
+        {PLUGIN_TRANSFORMS_PYTHON.isEnabled && (
+          <Route path="new/python" component={NewPythonTransformPage} />
+        )}
         <Route path=":transformId/query" component={TransformQueryPage} />
       </Route>
     </Route>
