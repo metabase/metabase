@@ -47,8 +47,6 @@ export const storybookSdkAuthDefaultConfig =
   getStorybookSdkAuthConfigForUser("normal");
 
 export const CommonSdkStoryWrapper = (Story: StoryFn, context: any) => {
-  const sdkTheme = context.globals.sdkTheme;
-  const theme = sdkTheme ? storybookThemes[sdkTheme] : undefined;
   const locale = context.globals.locale;
   const user = context.globals.user;
 
