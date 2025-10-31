@@ -16,7 +16,7 @@ import {
 import { RunListPage } from "./pages/RunListPage";
 import { TransformDependenciesPage } from "./pages/TransformDependenciesPage";
 import { TransformEmptyPage } from "./pages/TransformEmptyPage";
-import { TransformPage } from "./pages/TransformPage";
+import { TransformQueryPage } from "./pages/TransformQueryPage";
 import { TransformRunPage } from "./pages/TransformRunPage";
 import { TransformTargetPage } from "./pages/TransformTargetPage";
 import { TransformsSidebarLayout } from "./pages/TransformsPageLayout/TransformsSidebarLayout";
@@ -40,7 +40,7 @@ export function getBenchRoutes() {
           {PLUGIN_TRANSFORMS_PYTHON.isEnabled && (
             <Route path="new/python" component={NewPythonTransformPage} />
           )}
-          <Route path=":transformId" component={TransformPage} />
+          <Route path=":transformId" component={TransformQueryPage} />
           <Route path=":transformId/run" component={TransformRunPage} />
           <Route path=":transformId/target" component={TransformTargetPage} />
           <Route
