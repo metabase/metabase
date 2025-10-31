@@ -21,8 +21,8 @@ interface BenchHeaderProps {
 
 export const BenchHeader = ({ title, tabs, actions }: BenchHeaderProps) => {
   return (
-    <Stack p="md" gap="sm">
-      <Group className={S.header} justify="space-between" align="center">
+    <Stack className={S.header} p="md" gap="sm">
+      <Group justify="space-between" align="center">
         {title}
         {actions}
       </Group>
