@@ -1,4 +1,5 @@
 import { useHotkeys } from "@mantine/hooks";
+import { useState } from "react";
 
 import type { PythonTransformEditorProps } from "metabase/plugins";
 import { Flex, Stack } from "metabase/ui";
@@ -8,12 +9,11 @@ import type { PythonTransformTableAliases, Table } from "metabase-types/api";
 import { PythonDataPicker } from "./PythonDataPicker";
 import { PythonEditorBody } from "./PythonEditorBody";
 import { PythonEditorResults } from "./PythonEditorResults";
+import { useTestPythonTransform } from "./hooks";
 import {
   getValidationResult,
   isPythonTransformSource,
   updateTransformSignature,
-  useShouldShowPythonDebugger,
-  useTestPythonTransform,
 } from "./utils";
 
 export function PythonTransformEditor({
@@ -29,8 +29,11 @@ export function PythonTransformEditor({
   onAcceptProposed,
   onRejectProposed,
 }: PythonTransformEditorProps) {
-  const { isRunning, cancel, run, executionResult } =
-    useTestPythonTransform(source);
+  const [testRunner, setTestRunner] = useState<"pyodide" | "api">("pyodide");
+  const { isRunning, cancel, run, executionResult } = useTestPythonTransform(
+    source,
+    testRunner,
+  );
 
   const handleScriptChange = (body: string) => {
     const newSource = {
@@ -60,12 +63,7 @@ export function PythonTransformEditor({
     onChangeSource(newSource);
   };
 
-  const showDebugger = useShouldShowPythonDebugger();
-
   const handleCmdEnter = () => {
-    if (!showDebugger) {
-      return;
-    }
     if (isRunning) {
       cancel();
     } else if (isPythonTransformSource(source)) {
@@ -104,22 +102,22 @@ export function PythonTransformEditor({
           <PythonEditorBody
             isRunnable={isPythonTransformSource(source)}
             isRunning={isRunning}
-            isDirty={isDirty}
+            isDirty
             onRun={run}
             onCancel={cancel}
             source={source.body}
             proposedSource={proposedSource?.body}
             onChange={handleScriptChange}
-            withDebugger={showDebugger}
+            withDebugger
             onAcceptProposed={onAcceptProposed}
             onRejectProposed={onRejectProposed}
           />
-          {showDebugger && (
-            <PythonEditorResults
-              isRunning={isRunning}
-              executionResult={executionResult}
-            />
-          )}
+          <PythonEditorResults
+            isRunning={isRunning}
+            executionResult={executionResult}
+            testRunner={testRunner}
+            onTestRunnerChange={setTestRunner}
+          />
         </Stack>
       </Flex>
     </Stack>

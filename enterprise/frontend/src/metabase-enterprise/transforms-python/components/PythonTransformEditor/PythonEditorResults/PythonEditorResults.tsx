@@ -1,42 +1,112 @@
-import type { ReactNode } from "react";
+import { useState } from "react";
 import { c, t } from "ttag";
 
 import EmptyCodeResult from "assets/img/empty-states/code.svg";
+import { AnsiLogs } from "metabase/common/components/AnsiLogs";
 import DebouncedFrame from "metabase/common/components/DebouncedFrame";
 import { LoadingSpinner } from "metabase/common/components/MetadataInfo/MetadataInfo.styled";
 import { isMac } from "metabase/lib/browser";
-import { Box, Flex, Icon, Stack, Text, Title } from "metabase/ui";
-
-import type { ExecutionResult } from "../utils";
+import {
+  Box,
+  Center,
+  Flex,
+  Group,
+  Icon,
+  Stack,
+  Switch,
+  Tabs,
+  Text,
+} from "metabase/ui";
+import type { PythonTransformResultData } from "metabase-enterprise/transforms-python/hooks/use-test-python-transform";
+import type { PythonExecutionResult } from "metabase-enterprise/transforms-python/services/pyodide-worker";
 
 import { ExecutionOutputTable } from "./ExecutionOutputTable";
 import S from "./PythonEditorResults.module.css";
 
-type PythonEditorProps = {
+type PythonResultsProps = {
   isRunning?: boolean;
-  executionResult?: ExecutionResult | null;
+  executionResult?: PythonExecutionResult<PythonTransformResultData> | null;
+  testRunner: "pyodide" | "api";
+  onTestRunnerChange: (runner: "pyodide" | "api") => void;
 };
+
+type ResultsTab = "results" | "output";
 
 export function PythonEditorResults({
   executionResult,
   isRunning,
-}: PythonEditorProps) {
+  testRunner,
+  onTestRunnerChange,
+}: PythonResultsProps) {
+  const [tab, setTab] = useState<ResultsTab>("results");
   return (
     <DebouncedFrame className={S.visualization}>
-      <ExecutionResultHeader executionResult={executionResult} />
-      <ExecutionResults executionResult={executionResult} />
-      {isRunning && <LoadingState />}
+      <Stack data-testid="python-results" gap={0} h="100%">
+        <ExecutionResultHeader
+          executionResult={executionResult}
+          tab={tab}
+          onTabChange={setTab}
+          testRunner={testRunner}
+          onTestRunnerChange={onTestRunnerChange}
+        />
+        {!executionResult && <EmptyState />}
+        {executionResult &&
+          tab === "results" &&
+          (executionResult?.error ? (
+            <ErrorState error={executionResult.error.message} />
+          ) : (
+            <ExecutionOutputTable output={executionResult?.output} />
+          ))}
+        {executionResult && tab === "output" && (
+          <ExecutionOutputLogs executionResult={executionResult} />
+        )}
+        {isRunning && <LoadingState />}
+      </Stack>
     </DebouncedFrame>
   );
 }
 
 function ExecutionResultHeader({
   executionResult,
+  tab,
+  onTabChange,
+  testRunner,
+  onTestRunnerChange,
 }: {
-  executionResult?: ExecutionResult | null;
+  executionResult?: PythonExecutionResult | null;
+  tab: ResultsTab;
+  onTabChange: (tab: ResultsTab) => void;
+  testRunner: "pyodide" | "api";
+  onTestRunnerChange: (runner: "pyodide" | "api") => void;
 }) {
   const message = getMessageForExecutionResult(executionResult);
-  return <Flex w="100%">{message}</Flex>;
+
+  return (
+    <Group className={S.header} justify="space-between">
+      <Group align="center">
+        <Box mt="xs">
+          <Tabs
+            value={tab}
+            onChange={(value) => {
+              if (value) {
+                onTabChange(value as ResultsTab);
+              }
+            }}
+          >
+            <Tabs.List>
+              <Tabs.Tab value="results">{t`Results`}</Tabs.Tab>
+              <Tabs.Tab value="output">{t`Output`}</Tabs.Tab>
+            </Tabs.List>
+          </Tabs>
+        </Box>
+        {message}
+      </Group>
+      <RunnerToggle
+        testRunner={testRunner}
+        onTestRunnerChange={onTestRunnerChange}
+      />
+    </Group>
+  );
 }
 
 function getRunQueryShortcut() {
@@ -55,7 +125,7 @@ function EmptyState() {
   const keyboardShortcut = getRunQueryShortcut();
 
   return (
-    <Flex h="100%" align="center" justify="center" className={S.empty}>
+    <Center h="100%">
       <Stack maw="25rem" gap={0} ta="center" align="center">
         <Box maw="3rem" mb="0.75rem">
           <img src={EmptyCodeResult} alt="Code prompt icon" />
@@ -67,109 +137,93 @@ function EmptyState() {
           )}`}
         </Text>
       </Stack>
-    </Flex>
+    </Center>
   );
 }
 
-function ExecutionResults({
-  executionResult,
-}: {
-  executionResult?: ExecutionResult | null;
-}) {
-  if (!executionResult) {
-    return <EmptyState />;
-  }
-
+function ErrorState({ error }: { error: string }) {
   return (
-    <Stack gap={0}>
-      <ExecutionLogs
-        label={t`Standard output:`}
-        content={executionResult.stdout}
-      />
-      <ExecutionLogs
-        label={t`Standard error:`}
-        content={executionResult.stderr}
-      />
-
-      <ExecutionOutputTable output={executionResult.output} />
+    <Stack gap="sm" h="100%" p="md" c="error" bg="background-error">
+      <Group fw="bold" gap="sm">
+        <Icon name="warning" />
+        {t`Error`}
+      </Group>
+      <Box className={S.traceback} fz="sm">
+        {error}
+      </Box>
     </Stack>
   );
 }
 
 function getMessageForExecutionResult(
-  executionResult?: ExecutionResult | null,
+  executionResult?: PythonExecutionResult | null,
 ) {
   if (!executionResult) {
     return null;
   }
+
   if (executionResult.error) {
     return (
-      <Box className={S.error} p="sm" w="100%">
-        <Flex gap="sm">
-          <Icon name="warning" />
-          <Stack gap={0}>
-            <Title order={5} mb="xs">
-              {t`An error occurred while executing your Python script`}
-            </Title>
-            {executionResult.error}
-          </Stack>
-        </Flex>
-      </Box>
-    );
-  }
-
-  if (!executionResult.output) {
-    return (
-      <Flex className={S.info} p="sm" gap="sm" align="center" w="100%">
-        <Icon name="info" />
-        {t`No results to display.`}
+      <Flex gap="sm" align="center" pr="md" c="error">
+        <Icon name="warning" />
+        {t`An error occurred while executing your Python script`}
       </Flex>
     );
   }
 
   return (
-    <Flex className={S.success} p="sm" gap="sm" align="center" w="100%">
-      <Icon name="check" />
-      {t`Script executed successfully.`}
+    <Flex gap="sm" align="center" pr="md" c="success">
+      <Icon name="check_filled" />
+      {t`Script executed successfully`}
     </Flex>
   );
 }
 
-function ExecutionLogs({
-  label,
-  content,
+function ExecutionOutputLogs({
+  executionResult,
 }: {
-  label: string;
-  content?: string | null;
+  executionResult: PythonExecutionResult;
 }) {
-  if (!content) {
-    return null;
-  }
-
   return (
-    <Section title={label}>
-      <Box p="sm" bg="bg-light" mah="150px" bdrs="xs" className={S.logs}>
-        {content}
-      </Box>
-    </Section>
+    <Box
+      fz="sm"
+      p="md"
+      bg="bg-light"
+      h="100%"
+      className={S.logs}
+      data-testid="python-logs"
+    >
+      {executionResult.logs ? (
+        <AnsiLogs>{executionResult.logs}</AnsiLogs>
+      ) : (
+        <Text
+          c="text-light"
+          fz="sm"
+          fs="italic"
+        >{t`No output to display`}</Text>
+      )}
+    </Box>
   );
 }
 
-function Section({
-  title,
-  children,
+function RunnerToggle({
+  testRunner,
+  onTestRunnerChange,
 }: {
-  title: ReactNode;
-  children: ReactNode;
+  testRunner: "pyodide" | "api";
+  onTestRunnerChange: (runner: "pyodide" | "api") => void;
 }) {
   return (
-    <Box>
-      {title && (
-        <Title order={5} mb="xs">
-          {title}
-        </Title>
-      )}
-      {children}
-    </Box>
+    <Group align="center" pr="md" c="text-light">
+      <Switch
+        size="xs"
+        label={t`Emulate runner in-browser`}
+        labelPosition="left"
+        checked={testRunner === "pyodide"}
+        onChange={({ target }) => {
+          onTestRunnerChange(target.checked ? "pyodide" : "api");
+        }}
+      />
+    </Group>
   );
 }
