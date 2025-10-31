@@ -1,5 +1,6 @@
 (ns metabase-enterprise.representations.v0.common
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [metabase.util :as u]
@@ -231,3 +232,28 @@
        (dissoc node ::delete-before-output)
        node))
    data))
+
+(defn order-representations
+  "Order representations topologically by ref dependency"
+  [representations]
+  (loop [iterations (count representations) ;; should take at most one iteration per representation
+         acc []
+         remaining (set representations)]
+    (cond
+      (empty? remaining) ;; we're done!
+      acc
+
+      (neg? iterations) ;; we've used too many iterations, probably in a cycle
+      (throw (ex-info "Used too many iterations. Cycle?"
+                      {:representations representations}))
+
+      :else
+      (let [done (set (map :name acc))
+            ready (filter #(set/subset? (refs %) done)
+                          remaining)
+            acc' (into acc ready)
+            next-remaining (set/difference remaining (set acc'))]
+        (when (= remaining next-remaining)
+          (throw (ex-info "No progress made. Cycle?"
+                          {:representations representations})))
+        (recur (dec iterations) acc' next-remaining)))))

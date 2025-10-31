@@ -64,31 +64,6 @@
                       {:representation representation
                        :type (:type representation)})))))
 
-(defn order-representations
-  "Order representations topologically by ref dependency"
-  [representations]
-  (loop [iterations (count representations) ;; should take at most one iteration per representation
-         acc []
-         remaining (set representations)]
-    (cond
-      (empty? remaining) ;; we're done!
-      acc
-
-      (neg? iterations) ;; we've used too many iterations, probably in a cycle
-      (throw (ex-info "Used too many iterations. Cycle?"
-                      {:representations representations}))
-
-      :else
-      (let [done (set (map :name acc))
-            ready (filter #(set/subset? (v0-common/refs %) done)
-                          remaining)
-            acc' (into acc ready)
-            next-remaining (set/difference remaining (set acc'))]
-        (when (= remaining next-remaining)
-          (throw (ex-info "No progress made. Cycle?"
-                          {:representations representations})))
-        (recur (dec iterations) acc' next-remaining)))))
-
 (defn- file->collection-id
   [^java.io.File file]
   (let [id
@@ -124,7 +99,7 @@
   (->> (io/file dir)
        file-seq
        (keep prepare-yaml)
-       (order-representations)))
+       (v0-common/order-representations)))
 
 (defn persist-dir!
   "Given a dir containing yaml representations, sorts them topologically, then persists them in order."
@@ -200,7 +175,7 @@
           collection-id (:id new-collection)
           representations (flatten-collection-children bundle)
           normalized (map rep-read/parse representations)
-          ordered (order-representations normalized)]
+          ordered (v0-common/order-representations normalized)]
       (reduce (fn [index entity]
                 (try
                   (let [persisted (persist! (assoc entity :collection collection-id)
