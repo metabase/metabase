@@ -9,7 +9,7 @@ import type {
   TransformTagId,
 } from "metabase-types/api";
 
-const ROOT_URL = "/bench/data/transforms";
+const ROOT_URL = "/bench/transforms";
 
 export type TransformListParams = {
   lastRunStartTime?: string;

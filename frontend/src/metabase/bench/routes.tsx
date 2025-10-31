@@ -10,7 +10,8 @@ export function getBenchRoutes() {
   return (
     <Route path="bench" component={BenchLayout}>
       <IndexRedirect to="data" />
-      <Route path="data" component={DataSectionLayout}>
+      <Route component={DataSectionLayout}>
+        <Route path="data" />
         {PLUGIN_TRANSFORMS.getBenchRoutes()}
       </Route>
       {PLUGIN_DEPENDENCIES.isEnabled && (

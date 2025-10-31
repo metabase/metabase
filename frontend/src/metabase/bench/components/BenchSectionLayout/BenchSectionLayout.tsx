@@ -1,5 +1,6 @@
 import type { Location } from "history";
 import type { ReactNode } from "react";
+import { Link } from "react-router";
 
 import { Box, Group, Stack, Tabs } from "metabase/ui";
 
@@ -69,7 +70,12 @@ export function BenchSectionTabs({ tabs, location }: BenchSectionTabsProps) {
     <Tabs value={selectedTab?.to}>
       <Tabs.List>
         {tabs.map((tab) => (
-          <Tabs.Tab key={tab.to} value={tab.to}>
+          <Tabs.Tab
+            key={tab.to}
+            component={Link}
+            value={tab.to}
+            {...{ to: tab.to }}
+          >
             {tab.label}
           </Tabs.Tab>
         ))}
