@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [metabase-enterprise.representations.common :as common]
+   [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.v0.core :as v0]
    [metabase-enterprise.representations.yaml :as rep-yaml]
    [metabase.collections.api :as coll.api]
@@ -62,7 +63,6 @@
   [representations initial-gen-ref middle-gen-refs final-gen-ref]
   (loop [gen-refs middle-gen-refs
          acc (into #{} (initial-gen-ref representations))]
-    (prn acc)
     (let [gen-ref (or (first gen-refs) final-gen-ref)
           new-ref-to-reps (group-by ::proposed-ref acc)
           acc' (reduce (fn [acc [to-remove to-add]]
@@ -80,22 +80,13 @@
   Each `gen-ref` takes a sequence of representations and returns a new sequence with proposed refs."
   [representations initial-gen-ref middle-gen-refs final-gen-ref]
   (let [ref-map (rename-refs-map representations initial-gen-ref middle-gen-refs final-gen-ref)
-        _ (prn ref-map)
         renamed (mapv #(update % :name ref-map) representations)
         ref:ref-map (into {} (map (fn [[old new]]
                                     [(str "ref:" old) (str "ref:" new)]))
                           ref-map)]
-    (prn renamed)
     (->> renamed
          (walk/postwalk-replace ref:ref-map)
          (mapv #(dissoc % ::proposed-ref)))))
-
-(comment
-  (rename-refs-map [{:name "1" :display_name "b-question-1" :type :question :database "ref:2"}
-                    {:name "2" :display_name "b" :type :database}
-                    {:name "3" :display_name "b" :type :question}]
-                   standard-ref-strategies
-                   add-sequence-number))
 
 (defn- schema->table-index [schema]
   (let [tables (:tables schema)
