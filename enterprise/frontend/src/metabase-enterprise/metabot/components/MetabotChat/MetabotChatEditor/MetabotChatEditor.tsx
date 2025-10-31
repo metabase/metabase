@@ -33,6 +33,7 @@ import {
   parseMetabotMessageToTiptapDoc,
   serializeTiptapToMetabotMessage,
 } from "./utils";
+import { defaultSuggestionModels } from "../MetabotChat";
 
 interface Props {
   value: string;
@@ -41,7 +42,7 @@ interface Props {
   disabled?: boolean;
   onChange: (value: string) => void;
   onSubmit: () => void;
-  suggestionModels: SuggestionModel[];
+  suggestionModels?: SuggestionModel[];
 }
 
 export const MetabotChatEditor = forwardRef<MetabotChatInputRef | null, Props>(
@@ -51,7 +52,7 @@ export const MetabotChatEditor = forwardRef<MetabotChatInputRef | null, Props>(
       placeholder = t`Tell me to do something, or ask a question`,
       autoFocus = false,
       disabled = false,
-      suggestionModels,
+      suggestionModels = defaultSuggestionModels,
       onChange,
       onSubmit,
     },
