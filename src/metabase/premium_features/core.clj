@@ -30,7 +30,8 @@
   plan-alias
   premium-embedding-token
   token-status
-  TokenStatus])
+  TokenStatus
+  clear-cache!])
 
 (def premium-features
   "Set of defined premium feature keywords."
