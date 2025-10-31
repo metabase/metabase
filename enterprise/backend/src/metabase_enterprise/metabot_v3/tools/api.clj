@@ -314,7 +314,7 @@
      [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
       [:type [:= :query]]
       [:query_id :string]
-      [:query mbql.s/Query]
+      [:query ::mbql.s/Query]
       [:result_columns [:sequential ::column]]]]]
    [:map
     [:output :string]]])
@@ -463,7 +463,8 @@
                          [:id :int]
                          [:type [:= :user]]
                          [:name :string]
-                         [:email_address :string]]]]
+                         [:email_address :string]
+                         [:glossary [:maybe [:map-of :string :string]]]]]]
    [:map [:output :string]]])
 (mr/def ::get-dashboard-details-result
   [:or
@@ -602,20 +603,17 @@
                                :with_metric_default_temporal_breakout :with-default-temporal-breakout?})}]])
 
 (mr/def ::table-result
-  [:schema
-   {:registry {::table-result
-               [:map
-                [:id :int]
-                [:type [:enum :model :table]]
-                [:name :string]
-                [:display_name :string]
-                [:database_id :int]
-                [:database_schema {:optional true} [:maybe :string]] ; Schema name, if applicable
-                [:fields ::columns]
-                [:related_tables {:optional true} [:sequential [:ref ::table-result]]]
-                [:description {:optional true} [:maybe :string]]
-                [:metrics {:optional true} [:sequential ::basic-metric]]]}}
-   ::table-result])
+  [:map
+   [:id :int]
+   [:type [:enum :model :table]]
+   [:name :string]
+   [:display_name :string]
+   [:database_id :int]
+   [:database_schema {:optional true} [:maybe :string]] ; Schema name, if applicable
+   [:fields ::columns]
+   [:related_tables {:optional true} [:sequential [:ref ::table-result]]]
+   [:description {:optional true} [:maybe :string]]
+   [:metrics {:optional true} [:sequential ::basic-metric]]])
 
 (mr/def ::get-table-details-result
   [:or
@@ -628,6 +626,7 @@
    {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
    [:id :int]
    [:name :string]
+   [:type [:enum {:decode/tool-api-response name} "mbql" "native" "python"]]
    [:description {:optional true} [:maybe :string]]
    [:entity_id {:optional true} [:maybe :string]]
    ;; :source keys are not snake_cased to match what the FE expects / provides in user_is_viewing context
