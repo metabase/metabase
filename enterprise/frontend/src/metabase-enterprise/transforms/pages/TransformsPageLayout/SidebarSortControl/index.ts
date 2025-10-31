@@ -1,1 +1,1 @@
-export { SidebarSortControl } from "./SidebarSortControl";
+export { SidebarSortControl, type SortOption } from "./SidebarSortControl";

@@ -2,9 +2,37 @@ import { t } from "ttag";
 
 import { Button, Group, Icon, Select } from "metabase/ui";
 
+export type SortOption = "tree" | "alphabetical" | "last-modified";
+
+type SortOptionData = {
+  value: SortOption;
+  label: string;
+};
+
+const SORT_OPTIONS: SortOptionData[] = [
+  {
+    value: "tree" as const,
+    get label() {
+      return t`Target table`;
+    },
+  },
+  {
+    value: "alphabetical" as const,
+    get label() {
+      return t`Alphabetical`;
+    },
+  },
+  {
+    value: "last-modified" as const,
+    get label() {
+      return t`Last modified`;
+    },
+  },
+];
+
 interface SidebarSortControlProps {
-  value: string | null;
-  onChange: (value: string | null) => void;
+  value: SortOption;
+  onChange: (value: SortOption) => void;
   onAdd?: () => void;
 }
 
@@ -19,11 +47,8 @@ export const SidebarSortControl = ({
         size="sm"
         flex={1}
         value={value}
-        onChange={onChange}
-        data={[
-          { value: "last-modified", label: t`Last modified` },
-          { value: "collections", label: t`Collections` },
-        ]}
+        onChange={(value) => onChange(value as SortOption)}
+        data={SORT_OPTIONS}
       />
       {onAdd && (
         <Button
