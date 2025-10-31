@@ -921,7 +921,7 @@
 
 (defmethod sql-jdbc.conn/connection-details->spec :postgres
   [_ {ssl? :ssl, auth-provider :auth-provider, :as details-map}]
-  (let [use-iam? (= auth-provider "aws-iam")
+  (let [use-iam? (= (some-> auth-provider keyword) :aws-iam)
         ;; AWS IAM authentication requires SSL
         ;; TODO: should be reflected in the UI
         ssl? (or ssl? use-iam?)
@@ -944,6 +944,7 @@
         props (if use-iam?
                 (-> props
                     (assoc :subprotocol "aws-wrapper:postgresql"
+                           :classname "software.amazon.jdbc.ds.AwsWrapperDataSource"
                            :wrapperPlugins "iam")
                     (dissoc :auth-provider :use-auth-provider))
                 props)
