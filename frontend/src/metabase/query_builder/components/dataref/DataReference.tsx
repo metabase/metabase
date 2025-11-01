@@ -1,6 +1,8 @@
-/* eslint "react/prop-types": "warn" */
-import PropTypes from "prop-types";
 import { useCallback } from "react";
+
+import type Field from "metabase-lib/v1/metadata/Field";
+import type Schema from "metabase-lib/v1/metadata/Schema";
+import type { CardId, ConcreteTableId, DatabaseId } from "metabase-types/api";
 
 import DatabasePane from "./DatabasePane";
 import FieldPane from "./FieldPane";
@@ -8,6 +10,36 @@ import MainPane from "./MainPane";
 import { QuestionPane } from "./QuestionPane";
 import SchemaPane from "./SchemaPane";
 import { TablePane } from "./TablePane";
+
+type DatabaseItem = {
+  id: DatabaseId;
+};
+
+type SchemaItem = Schema;
+
+type TableItem = {
+  id: ConcreteTableId;
+};
+
+type QuestionItem = {
+  id: CardId;
+};
+
+type FieldItem = Field;
+
+type PageType = string;
+
+type PageItem =
+  | DatabaseItem
+  | SchemaItem
+  | TableItem
+  | QuestionItem
+  | FieldItem;
+
+export type DataReferenceStackItem = {
+  type: PageType;
+  item: PageItem;
+};
 
 const PANES = {
   database: DatabasePane, // lists schemas, tables and models of a database
@@ -17,12 +49,12 @@ const PANES = {
   field: FieldPane, // field details and metadata
 };
 
-const DataReferencePropTypes = {
-  dataReferenceStack: PropTypes.array.isRequired,
-  popDataReferenceStack: PropTypes.func.isRequired,
-  pushDataReferenceStack: PropTypes.func.isRequired,
-  onClose: PropTypes.func,
-  onBack: PropTypes.func,
+type DataReferenceProps = {
+  dataReferenceStack: DataReferenceStackItem[];
+  popDataReferenceStack: () => void;
+  pushDataReferenceStack: (item: DataReferenceStackItem) => void;
+  onClose?: () => void;
+  onBack?: () => void;
 };
 
 const DataReference = ({
@@ -31,15 +63,19 @@ const DataReference = ({
   pushDataReferenceStack,
   onClose,
   onBack,
-}) => {
+}: DataReferenceProps) => {
   const onItemClick = useCallback(
-    (type, item) => pushDataReferenceStack({ type, item }),
+    (type: string, item: unknown) =>
+      pushDataReferenceStack({
+        type: type as PageType,
+        item: item as PageItem,
+      }),
     [pushDataReferenceStack],
   );
 
   if (dataReferenceStack.length) {
     const page = dataReferenceStack[dataReferenceStack.length - 1];
-    const Pane = PANES[page.type];
+    const Pane = PANES[page.type as keyof typeof PANES];
     return (
       <Pane
         {...{ [page.type]: page.item }}
@@ -55,6 +91,4 @@ const DataReference = ({
   }
 };
 
-DataReference.propTypes = DataReferencePropTypes;
-
-export default DataReference;
+export { DataReference };
