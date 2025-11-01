@@ -49,6 +49,7 @@ interface SidebarSortControlProps {
   value: SortOption;
   onChange: (value: SortOption) => void;
   onAdd?: () => void;
+  addButton?: React.ReactNode;
   options: SortOptionData[];
 }
 
@@ -56,6 +57,7 @@ export const SidebarSortControl = ({
   value,
   onChange,
   onAdd,
+  addButton,
   options,
 }: SidebarSortControlProps) => {
   if (!options || options.length === 0) {
@@ -84,15 +86,16 @@ export const SidebarSortControl = ({
         }}
         data={selectData}
       />
-      {onAdd && (
-        <Button
-          p="sm"
-          w={36}
-          h={36}
-          leftSection={<Icon name="add" size={16} />}
-          onClick={onAdd}
-        />
-      )}
+      {addButton ||
+        (onAdd && (
+          <Button
+            p="sm"
+            w={36}
+            h={36}
+            leftSection={<Icon name="add" size={16} />}
+            onClick={onAdd}
+          />
+        ))}
     </Group>
   );
 };

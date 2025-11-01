@@ -12,6 +12,7 @@ import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useListTransformsQuery } from "metabase-enterprise/api";
 
+import { CreateTransformMenu } from "../CreateTransformMenu";
 import { ListEmptyState } from "../ListEmptyState";
 import { SidebarContainer } from "../SidebarContainer";
 import { SidebarSearch } from "../SidebarSearch";
@@ -93,6 +94,7 @@ export const TransformsSidebar = ({
         value={sortType}
         onChange={setSortType}
         options={TRANSFORM_SORT_OPTIONS}
+        addButton={<CreateTransformMenu />}
       />
       {transformsSorted.length === 0 ? (
         <ListEmptyState
