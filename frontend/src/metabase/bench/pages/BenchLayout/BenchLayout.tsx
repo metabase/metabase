@@ -35,7 +35,8 @@ function BenchNav() {
         to={Urls.bench()}
         icon="database"
         isSelected={
-          pathname === Urls.bench() || pathname.startsWith(Urls.transformList())
+          pathname.startsWith(Urls.dataModel()) ||
+          pathname.startsWith(Urls.transformList())
         }
       />
       {PLUGIN_DEPENDENCIES.isEnabled && (
