@@ -541,7 +541,11 @@ export const getCardResponses = (questions: SimpleCollectionItem[]) => {
   expect(questions.length).to.be.greaterThan(0);
   return H.cypressWaitAll(
     questions.map((question) =>
-      cy.request<DatasetResponse>("POST", `/api/card/${question.id}/query`),
+      cy.request<DatasetResponse>({
+        method: "POST",
+        url: `/api/card/${question.id}/query`,
+        failOnStatusCode: false,
+      }),
     ),
   ).then((responses) => {
     return { responses, questions };

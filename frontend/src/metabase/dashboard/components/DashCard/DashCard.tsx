@@ -120,6 +120,7 @@ function DashCardInner({
   const dashcardData = useSelector((state) =>
     getDashcardData(state, dashcard.id),
   );
+  //console.log("DD:", dashcardData);
   const store = useStore();
   const dispatch = useDispatch();
   const getHref = useCallback(

@@ -88,6 +88,8 @@ export function PublicOrEmbeddedQuestionView({
     untranslatedRawSeries,
   );
 
+  (console.log(result))
+
   return (
     <EmbedFrame
       name={card && card.name}

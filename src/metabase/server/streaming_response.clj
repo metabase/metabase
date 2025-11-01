@@ -46,36 +46,44 @@
   (cond-> (assoc (Throwable->map e) :_status (ex-status-code e))
     (server.settings/hide-stacktraces) (dissoc :via :trace)))
 
+(def ^:private ^:dynamic *http-response* nil)
+
 (defn write-error!
   "Write an error to the output stream, formatting it nicely. Closes output stream afterwards."
-  [^OutputStream os obj export-format]
-  (cond
-    (some #(instance? % obj)
-          [InterruptedException EofException])
-    (log/trace "Error is an InterruptedException or EofException, not writing to output stream")
+  ([os obj export-format]
+   (write-error! os obj export-format nil))
+  ([^OutputStream os obj export-format status-code]
+   (when (and *http-response*
+              (not (.isCommitted ^HttpServletResponse *http-response*)))
+     (.setStatus ^HttpServletResponse *http-response* (or status-code 500))
+     (.setContentType ^HttpServletResponse *http-response* "application/json"))
+   (cond
+     (some #(instance? % obj)
+           [InterruptedException EofException])
+     (log/trace "Error is an InterruptedException or EofException, not writing to output stream")
 
-    (instance? Throwable obj)
-    (recur os (format-exception obj) export-format)
+     (instance? Throwable obj)
+     (recur os (format-exception obj) export-format status-code)
 
-    :else
-    (with-open [os os]
-      (log/trace (u/pprint-to-str (list 'write-error! obj)))
-      (try
-        (let [obj (-> (if (not= :api export-format)
-                        (walk/prewalk
-                         (fn [x]
-                           (if (map? x)
-                             (apply dissoc x [:json_query :preprocessed])
-                             x))
+     :else
+     (with-open [os os]
+       (log/trace (u/pprint-to-str (list 'write-error! obj)))
+       (try
+         (let [obj (-> (if (not= :api export-format)
+                         (walk/prewalk
+                          (fn [x]
+                            (if (map? x)
+                              (apply dissoc x [:json_query :preprocessed])
+                              x))
+                          obj)
                          obj)
-                        obj)
-                      (dissoc :export-format)
-                      (cond-> (server.settings/hide-stacktraces) (dissoc :stacktrace :trace :via)))]
-          (with-open [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
-            (json/encode-to obj writer {})))
-        (catch EofException _)
-        (catch Throwable e
-          (log/error e "Error writing error to output stream" obj))))))
+                       (dissoc :export-format)
+                       (cond-> (server.settings/hide-stacktraces) (dissoc :stacktrace :trace :via)))]
+           (with-open [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
+             (json/encode-to obj writer {})))
+         (catch EofException _)
+         (catch Throwable e
+           (log/error e "Error writing error to output stream" obj)))))))
 
 (defn- do-f* [f ^OutputStream os _finished-chan canceled-chan]
   (try
@@ -90,22 +98,23 @@
 (defn- do-f-async
   "Runs `f` asynchronously on the streaming response `thread-pool`, returning immediately. When `f` finishes,
   completes (i.e., closes) Jetty `async-context`."
-  [^AsyncContext async-context f ^OutputStream os finished-chan canceled-chan]
+  [^AsyncContext async-context response f ^OutputStream os finished-chan canceled-chan]
   {:pre [(some? os)]}
   (let [task (^:once fn* []
-               (try
-                 (do-f* f os finished-chan canceled-chan)
-                 (catch Throwable e
-                   (log/error e "Caught unexpected Exception in streaming response body")
-                   (a/>!! finished-chan :unexpected-error)
-                   (write-error! os e nil))
-                 (finally
-                   (a/>!! finished-chan (if (a/poll! canceled-chan)
-                                          :canceled
-                                          :completed))
-                   (a/close! finished-chan)
-                   (a/close! canceled-chan)
-                   (.complete async-context))))]
+               (binding [*http-response* response]
+                 (try
+                   (do-f* f os finished-chan canceled-chan)
+                   (catch Throwable e
+                     (log/error e "Caught unexpected Exception in streaming response body")
+                     (a/>!! finished-chan :unexpected-error)
+                     (write-error! os e nil))
+                   (finally
+                     (a/>!! finished-chan (if (a/poll! canceled-chan)
+                                            :canceled
+                                            :completed))
+                     (a/close! finished-chan)
+                     (a/close! canceled-chan)
+                     (.complete async-context)))))]
     (.submit (thread-pool/thread-pool) ^Runnable task)
     nil))
 
@@ -239,7 +248,7 @@
         (let [output-stream-delay (output-stream-delay gzip? response)
               delay-os            (delay-output-stream output-stream-delay)]
           (start-async-cancel-loop! request finished-chan canceled-chan)
-          (do-f-async async-context f delay-os finished-chan canceled-chan)))
+          (do-f-async async-context response f delay-os finished-chan canceled-chan)))
       (catch Throwable e
         (log/error e "Unexpected exception in do-f-async")
         (try

@@ -342,7 +342,7 @@
     (mt/test-helpers-set-global-values!
       (do-response-formats [response-format _request-options]
         (with-embedding-enabled-and-new-secret-key!
-          (let [expected-status (response-format->status-code response-format)]
+          (let [expected-status 400]
             (testing (str "If the card has an invalid query we should just get a generic \"query failed\" "
                           "exception (rather than leaking query info)")
               (with-temp-card [card {:enable_embedding true, :dataset_query {:database (mt/id)

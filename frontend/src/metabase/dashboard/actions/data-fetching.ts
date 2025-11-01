@@ -267,6 +267,7 @@ export const fetchCardDataAction = createAsyncThunk<
       // if reload not set, check to see if the last result has the same query dict and return that
       if (
         lastResult &&
+        !lastResult.error &&
         equals(
           getDatasetQueryParams(lastResult.json_query),
           getDatasetQueryParams(datasetQuery),

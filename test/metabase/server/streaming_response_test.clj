@@ -15,6 +15,7 @@
   (:import
    (jakarta.servlet AsyncContext ServletOutputStream)
    (jakarta.servlet.http HttpServletResponse)
+   (java.io ByteArrayOutputStream)
    (java.util.concurrent Executors)
    (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)))
 
@@ -95,21 +96,21 @@
               (mt/user-http-request :lucky
                                     :post 202 "dataset"
                                     {:database (mt/id)
-                                     :type     "native"
-                                     :native   {:query {:sleep 10}}})))))))
+                                     :type "native"
+                                     :native {:query {:sleep 10}}})))))))
 
 (deftest truly-async-test
   (testing "StreamingResponses should truly be asynchronous, and not block Jetty threads while waiting for results"
     (with-test-driver-db!
-      (let [num-requests       (+ thread-pool-size 20)
-            remaining          (atom num-requests)
-            session-token      (client/authenticate (mt/user->credentials :lucky))
-            url                (client/build-url "dataset" nil)
-            request            (client/build-request-map session-token
-                                                         {:database (mt/id)
-                                                          :type     "native"
-                                                          :native   {:query {:sleep 2000}}}
-                                                         nil)]
+      (let [num-requests (+ thread-pool-size 20)
+            remaining (atom num-requests)
+            session-token (client/authenticate (mt/user->credentials :lucky))
+            url (client/build-url "dataset" nil)
+            request (client/build-request-map session-token
+                                              {:database (mt/id)
+                                               :type "native"
+                                               :native {:query {:sleep 2000}}}
+                                              nil)]
         (testing (format "%d simultaneous queries" num-requests)
           (dotimes [_ num-requests]
             (future (http/post url request)))
@@ -130,14 +131,14 @@
         (with-test-driver-db!
           (reset! canceled? false)
           (with-start-execution-chan [start-chan]
-            (let [url           (client/build-url "dataset" nil)
+            (let [url (client/build-url "dataset" nil)
                   session-token (client/authenticate (mt/user->credentials :lucky))
-                  request       (client/build-request-map session-token
-                                                          {:database (mt/id)
-                                                           :type     "native"
-                                                           :native   {:query {:sleep 5000}}}
-                                                          nil)
-                  futur         (http/post url (assoc request :async? true) identity (fn [e] (throw e)))]
+                  request (client/build-request-map session-token
+                                                    {:database (mt/id)
+                                                     :type "native"
+                                                     :native {:query {:sleep 5000}}}
+                                                    nil)
+                  futur (http/post url (assoc request :async? true) identity (fn [e] (throw e)))]
               (is (future? futur))
              ;; wait a little while for the query to start running -- this should usually happen fairly quickly
               (mt/wait-for-result start-chan (u/seconds->ms 15))
@@ -157,18 +158,18 @@
       (let [streaming-response (binding [*number-of-cans* 2]
                                  (streaming-response/streaming-response nil [os _]
                                    (.write os (.getBytes (format "%s cans" *number-of-cans*) "UTF-8"))))
-            complete-promise   (promise)]
+            complete-promise (promise)]
         (server.protocols/respond streaming-response
-                                  {:response      (reify HttpServletResponse
-                                                    (setStatus [_ _])
-                                                    (setHeader [_ _ _])
-                                                    (getOutputStream [_]
-                                                      (proxy [ServletOutputStream] []
-                                                        (write
-                                                          ([byytes]
-                                                           (.write os ^bytes byytes))
-                                                          ([byytes offset length]
-                                                           (.write os ^bytes byytes offset length))))))
+                                  {:response (reify HttpServletResponse
+                                               (setStatus [_ _])
+                                               (setHeader [_ _ _])
+                                               (getOutputStream [_]
+                                                 (proxy [ServletOutputStream] []
+                                                   (write
+                                                     ([byytes]
+                                                      (.write os ^bytes byytes))
+                                                     ([byytes offset length]
+                                                      (.write os ^bytes byytes offset length))))))
                                    :async-context (reify AsyncContext
                                                     (complete [_]
                                                       (deliver complete-promise true)))})
@@ -177,6 +178,110 @@
         (is (= "2 cans"
                (String. (.toByteArray os) "UTF-8")))))))
 
+(deftest write-error-uncommitted-response-test
+  (testing "write-error! should set status and content type when response is not committed"
+    (let [os (ByteArrayOutputStream.)
+          status-called (atom nil)
+          content-type-called (atom nil)
+          mock-response (reify HttpServletResponse
+                          (isCommitted [_] false)
+                          (setStatus [_ status] (reset! status-called status))
+                          (setContentType [_ content-type] (reset! content-type-called content-type)))]
+      (binding [streaming-response/*http-response* mock-response]
+        (streaming-response/write-error! os {:error "test error"} :api 400))
+      (testing "Status should be set to provided status code"
+        (is (= 400 @status-called)))
+      (testing "Content type should be set to application/json"
+        (is (= "application/json" @content-type-called))))))
+
+(deftest write-error-committed-response-test
+  (testing "write-error! should not set status or content type when response is committed"
+    (let [os (ByteArrayOutputStream.)
+          status-called (atom nil)
+          content-type-called (atom nil)
+          mock-response (reify HttpServletResponse
+                          (isCommitted [_] true)
+                          (setStatus [_ status] (reset! status-called status))
+                          (setContentType [_ content-type] (reset! content-type-called content-type)))]
+      (binding [streaming-response/*http-response* mock-response]
+        (streaming-response/write-error! os {:error "test error"} :api 400))
+      (testing "Status should not be set when response is committed"
+        (is (nil? @status-called)))
+      (testing "Content type should not be set when response is committed"
+        (is (nil? @content-type-called))))))
+
+(deftest write-error-no-http-response-test
+  (testing "write-error! should not attempt to set status when no *http-response* is bound"
+    (let [os (ByteArrayOutputStream.)]
+      (binding [streaming-response/*http-response* nil]
+        ;; Should not throw exception when no response is bound
+        (is (some? (streaming-response/write-error! os {:error "test error"} :api 500)))))))
+
+(deftest write-error-default-status-test
+  (testing "write-error! should use default status 500 when no status provided"
+    (let [os (ByteArrayOutputStream.)
+          status-called (atom nil)
+          mock-response (reify HttpServletResponse
+                          (isCommitted [_] false)
+                          (setStatus [_ status] (reset! status-called status))
+                          (setContentType [_ _]))]
+      (binding [streaming-response/*http-response* mock-response]
+        (streaming-response/write-error! os {:error "test error"} :api))
+      (testing "Status should default to 500 when not provided"
+        (is (= 500 @status-called))))))
+
+(deftest write-error-exception-handling-test
+  (testing "write-error! should handle different exception types appropriately"
+    (let [os (ByteArrayOutputStream.)
+          mock-response (reify HttpServletResponse
+                          (isCommitted [_] false)
+                          (setStatus [_ _])
+                          (setContentType [_ _]))]
+      (binding [streaming-response/*http-response* mock-response]
+        (testing "InterruptedException should not write to output stream"
+          (streaming-response/write-error! os (InterruptedException. "interrupted") :api)
+          (is (zero? (.size os))))
+
+        (testing "EofException should not write to output stream"
+          (.reset os)
+          (streaming-response/write-error! os (org.eclipse.jetty.io.EofException. "eof") :api)
+          (is (zero? (.size os))))
+
+        (testing "Other exceptions should be formatted and written"
+          (.reset os)
+          (streaming-response/write-error! os (RuntimeException. "runtime error") :api)
+          (is (pos? (.size os)))
+          (let [output (String. (.toByteArray os) "UTF-8")]
+            (is (re-find #"runtime error" output))))))))
+
+(deftest write-error-json-output-test
+  (testing "write-error! should write valid JSON to output stream"
+    (let [os (ByteArrayOutputStream.)
+          mock-response (reify HttpServletResponse
+                          (isCommitted [_] false)
+                          (setStatus [_ _])
+                          (setContentType [_ _]))]
+      (binding [streaming-response/*http-response* mock-response]
+        (streaming-response/write-error! os {:error "test error" :code 123} :api))
+      (let [output (String. (.toByteArray os) "UTF-8")]
+        (is (re-find #"\"error\":\s*\"test error\"" output))
+        (is (re-find #"\"code\":\s*123" output))))))
+
+(deftest write-error-non-api-format-test
+  (testing "write-error! should strip sensitive fields for non-API export formats"
+    (let [os (ByteArrayOutputStream.)
+          mock-response (reify HttpServletResponse
+                          (isCommitted [_] false)
+                          (setStatus [_ _])
+                          (setContentType [_ _]))]
+      (binding [streaming-response/*http-response* mock-response]
+        (streaming-response/write-error! os {:error "test error"
+                                             :json_query "SELECT * FROM table"
+                                             :preprocessed "some data"} :csv))
+      (let [output (String. (.toByteArray os) "UTF-8")]
+        (is (re-find #"\"error\":\s*\"test error\"" output))
+        (is (not (re-find #"json_query" output)))
+        (is (not (re-find #"preprocessed" output)))))))
 (deftest write-error-includes-stacktrace-when-hide-stacktraces-disabled-test
   (testing "write-error! includes stacktrace and exception chain when hide-stacktraces is false"
     (mt/with-temporary-setting-values [hide-stacktraces false]

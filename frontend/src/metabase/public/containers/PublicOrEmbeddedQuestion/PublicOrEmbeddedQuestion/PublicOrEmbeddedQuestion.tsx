@@ -128,16 +128,24 @@ export const PublicOrEmbeddedQuestion = ({
       let newResult;
       if (token) {
         // embeds apply parameter values server-side
-        newResult = await maybeUsePivotEndpoint(
-          EmbedApi.cardQuery,
-          card,
-          metadataRef.current,
-        )({
-          token,
-          parameters: JSON.stringify(
-            getParameterValuesBySlug(parameters, parameterValues),
-          ),
-        });
+        try {
+          newResult = await maybeUsePivotEndpoint(
+            EmbedApi.cardQuery,
+            card,
+            metadataRef.current,
+          )({
+            token,
+            parameters: JSON.stringify(
+              getParameterValuesBySlug(parameters, parameterValues),
+            ),
+          });
+        } catch (e) {
+          if (e.status < 500) {
+            newResult = e.data;
+          } else {
+            throw e;
+          }
+        }
       } else if (uuid) {
         // public links currently apply parameters client-side
         const datasetQuery = applyParameters(
@@ -147,14 +155,22 @@ export const PublicOrEmbeddedQuestion = ({
           [],
           { sparse: true },
         );
-        newResult = await maybeUsePivotEndpoint(
-          PublicApi.cardQuery,
-          card,
-          metadataRef.current,
-        )({
-          uuid,
-          parameters: JSON.stringify(datasetQuery.parameters),
-        });
+        try {
+          newResult = await maybeUsePivotEndpoint(
+            PublicApi.cardQuery,
+            card,
+            metadataRef.current,
+          )({
+            uuid,
+            parameters: JSON.stringify(datasetQuery.parameters),
+          });
+        } catch (e) {
+          if (e.status < 500) {
+            newResult = e.data;
+          } else {
+            throw e;
+          }
+        }
       } else {
         throw { status: 404 };
       }

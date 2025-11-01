@@ -27,7 +27,7 @@ import { adjustPositions, stripRemarks } from "./utils";
 
 interface VisualizationErrorProps {
   className?: string;
-  via: Record<string, any>[];
+  via?: Record<string, any>[];
   question: Question;
   duration: number;
   error: DatasetError;
@@ -46,8 +46,7 @@ export function VisualizationError({
   const isResultDirty = useSelector(getIsResultDirty);
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
   const isNative = question && Lib.queryDisplayInfo(query).isNative;
-
-  if (typeof error === "object" && error.status != null) {
+  if (typeof error === "object" && error.status >= 500) {
     // Assume if the request took more than 15 seconds it was due to a timeout
     // Some platforms like Heroku return a 503 for numerous types of errors so we can't use the status code to distinguish between timeouts and other failures.
     if (duration > VISUALIZATION_SLOW_TIMEOUT) {
@@ -113,8 +112,14 @@ export function VisualizationError({
 
   if (isNative) {
     // always show errors for native queries
-    let processedError = String(error);
-    const origSql = getIn(via, [(via || "").length - 1, "ex-data", "sql"]);
+    let processedError =
+      typeof error === "string" ? String(error) : error.data.error;
+    const viaField = typeof error === "string" ? via : error.data.via;
+    const origSql = getIn(viaField, [
+      (viaField || "").length - 1,
+      "ex-data",
+      "sql",
+    ]);
     if (typeof origSql === "string") {
       processedError = adjustPositions(error, origSql);
     }
@@ -165,15 +170,19 @@ export function VisualizationError({
           QueryBuilderS.QueryErrorImageQueryError,
           CS.mr4,
         )}
-      />
-      <div className={QueryBuilderS.QueryError2Details}>
-        <h1
-          className={CS.textBold}
-        >{t`There was a problem with your question`}</h1>
-        <p
-          className={QueryBuilderS.QueryErrorMessageText}
-        >{t`Most of the time this is caused by an invalid selection or bad input value. Double check your inputs and retry your query.`}</p>
-        <ErrorDetails className={CS.pt2} details={error} />
+      >
+        <div className={QueryBuilderS.QueryError2Details}>
+          <h1
+            className={CS.textBold}
+          >{t`There was a problem with your question`}</h1>
+          <p
+            className={QueryBuilderS.QueryErrorMessageText}
+          >{t`Most of the time this is caused by an invalid selection or bad input value. Double check your inputs and retry your query.`}</p>
+          <ErrorDetails
+            className={CS.pt2}
+            details={typeof error === "string" ? error : error.data.error}
+          />
+        </div>
       </div>
     </div>
   );
