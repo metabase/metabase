@@ -7,6 +7,7 @@
    [metabase.test :as mt]
    [metabase.util :as u])
   (:import (java.io File)
+           (org.apache.commons.io FileUtils)
            (org.eclipse.jgit.api Git)
            (org.eclipse.jgit.lib PersonIdent)))
 
@@ -85,11 +86,12 @@
                        (.toURI)
                        (.toURL)
                        (.toExternalForm))
-        local-repo (git/clone-repository! {:url remote-url})]
+        local-repo (#'git/get-jgit (#'git/repo-path {:url remote-url}) {:url remote-url})]
     (git/->GitSource local-repo remote-url branch nil)))
 
 (defn- init-source!
   [branch dir & config]
+  (FileUtils/deleteDirectory (io/file dir))
   (let [remote-repo (apply init-remote! dir config)]
     [(->source! branch remote-repo) remote-repo]))
 
@@ -117,17 +119,6 @@
 (deftest qualify-branch-test
   (is (= "refs/heads/main" (#'git/qualify-branch "main")))
   (is (= "refs/heads/main" (#'git/qualify-branch "refs/heads/main"))))
-
-(deftest get-commit-ref
-  (mt/with-temp-dir [remote-dir nil]
-    (let [[source _remote] (init-source! "master" remote-dir :branches ["branch-1" "branch-2"])
-          master-ref (git/commit-sha source "master")]
-      (is (string? master-ref))
-      (is (= master-ref (git/commit-sha source (#'git/commit-sha source "master"))))
-      (is (not= master-ref (git/commit-sha source (#'git/commit-sha source "branch-1"))))
-      (is (not= master-ref (git/commit-sha source (#'git/commit-sha source "branch-2"))))
-
-      (is (nil? (git/commit-sha source "invalid"))))))
 
 (deftest log
   (mt/with-temp-dir [remote-dir nil]

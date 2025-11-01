@@ -9,7 +9,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
-   (org.apache.commons.io FileUtils)
+   (java.io File)
    (org.eclipse.jgit.api Git GitCommand TransportCommand)
    (org.eclipse.jgit.dircache DirCache DirCacheEntry)
    (org.eclipse.jgit.lib CommitBuilder Constants FileMode PersonIdent Ref)
@@ -75,18 +75,10 @@
     (u/prog1 (call-remote-command (.fetch git) git-source))
     (log/info "Successfully fetched repository")))
 
-(defn- existing-git-repo [^java.io.File dir {:keys [^String token]}]
-  (io/make-parents dir)
-  (try
-    (when (.exists dir)
-      (u/prog1 (Git/open dir)
-        (fetch! {:git <> :token token})))
-    (catch Exception e
-      (log/warnf e "Existing git repo at %s is not configured correctly. Deleting it" dir)
-      (FileUtils/deleteDirectory dir)
-      nil)))
+(defn- repo-path [{:keys [^String url ^String token]}]
+  (io/file (System/getProperty "java.io.tmpdir") "metabase-git" (-> (str/join ":" [url token]) buddy-hash/sha1 codecs/bytes->hex)))
 
-(defn clone-repository!
+(defn- clone-repository!
   "Clones a git repository to a temporary directory using JGit.
 
   Takes a map with :url (the git repository URL) and optional :token (authentication token for private
@@ -94,22 +86,27 @@
   directory and is valid, returns the existing repository after fetching.
 
   Throws ExceptionInfo if cloning fails due to network issues, invalid URL, authentication failure, etc."
-  [{:keys [^String url ^String token] :as args}]
-  (let [dir (io/file (System/getProperty "java.io.tmpdir") "metabase-git" (-> (str/join ":" [url token]) buddy-hash/sha1 codecs/bytes->hex))]
-    (if-let [repo (existing-git-repo dir args)]
-      repo
-      (try
-        (log/info "Cloning repository" {:url url :dir dir})
-        (u/prog1 (call-remote-command (-> (Git/cloneRepository)
-                                          (.setDirectory dir)
-                                          (.setURI url)
-                                          (.setBare true)) {:token token})
-          (log/info "Successfully cloned repository" {:dir dir}))
-        (catch Exception e
-          (throw (ex-info (format "Failed to clone git repository: %s" (ex-message e))
-                          {:url url
-                           :dir dir
-                           :error (.getMessage e)} e)))))))
+  [repo-path {:keys [^String url ^String token]}]
+  (log/info "Cloning repository" {:url url :repo-path repo-path})
+  (io/make-parents repo-path)
+  (try
+    (u/prog1 (call-remote-command (-> (Git/cloneRepository)
+                                      (.setDirectory repo-path)
+                                      (.setURI url)
+                                      (.setBare true)) {:token token})
+      (log/info "Successfully cloned repository" {:repo-path repo-path}))
+    (catch Exception e
+      (throw (ex-info (format "Failed to clone git repository: %s" (ex-message e))
+                      {:url       url
+                       :repo-path repo-path
+                       :error     (.getMessage e)} e)))))
+
+(defn- open-jgit [^File repo-path args]
+  (if (.exists repo-path)
+    (do
+      (log/debugf "Opening existing at %" repo-path)
+      (Git/open repo-path))
+    (clone-repository! repo-path args)))
 
 (defn commit-sha
   "Resolves a branch name or commit-ish string to a full commit reference SHA.
@@ -143,15 +140,6 @@
                                       :author-email (.getEmailAddress (.getAuthorIdent commit))
                                       :id (.name (.abbreviate commit 8))
                                       :parent (when (< 0 (.getParentCount commit)) (.name (.abbreviate (.getParent commit 0) 8)))}) log-result)))))
-
-(defn has-data?
-  "Checks if the git repository has any commits/data.
-
-  Takes a source map containing a :git Git instance and :commit-ish to check for data.
-
-  Returns true if the repository has at least one commit, false otherwise."
-  [{:keys [^Git git]}]
-  (< 0 (count (call-command (.branchList git)))))
 
 (defn list-files
   "Lists all files in the git repository at the current commit.
@@ -314,6 +302,15 @@
        (map #(str/replace-first (.getName ^Ref %) "refs/heads/" ""))
        sort))
 
+(defn has-data?
+  "Checks if the remote git repository has any commits/data.
+
+  Takes a source map to check for data.
+
+  Returns true if the repository has at least one commit, false otherwise."
+  [source]
+  (< 0 (count (branches source))))
+
 (defn- delete-branches-without-remote!
   [{:keys [^Git git] :as source}]
   (let [remote-branches (set (branches source))
@@ -380,11 +377,14 @@
   (version [this]
     (commit-sha this)))
 
-(def ^:private get-repo
-  (memoize
-   (fn [url token]
-     (clone-repository! {:url url
-                         :token token}))))
+(def ^:private jgit (atom {}))
+
+(defn- get-jgit [^File path {:keys [url token]}]
+  (if-let [obj (get @jgit (.getPath path))]
+    obj
+    (get (swap! jgit assoc (.getPath path) (open-jgit path {:url   url
+                                                            :token token}))
+         (.getPath path))))
 
 (defn git-source
   "Creates a new GitSource instance for a git repository.
@@ -394,5 +394,5 @@
 
   Returns a GitSource record implementing the Source protocol."
   [url commit-ish token]
-  (->GitSource (get-repo url token)
+  (->GitSource (get-jgit (repo-path {:url url :token token}) {:url url :token token})
                url commit-ish token))
