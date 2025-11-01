@@ -12,15 +12,15 @@ export const getMetabotQuickLinks = () => {
       path="metabot/new"
       component={(props) => {
         const { startNewConversation } = useMetabotAgent();
-        const prompt = String(props.location.query?.q ?? "");
         const dispatch = useDispatch();
 
         useMount(() => {
           dispatch(replace("/"));
-
-          if (prompt) {
-            startNewConversation(prompt);
-          }
+          startNewConversation({
+            message: String(props.location.query?.q ?? ""),
+            profile: String(props.location.query?.p ?? ""),
+            debugMode: Boolean(props.location.query?.d ?? ""),
+          });
         });
 
         return null;
