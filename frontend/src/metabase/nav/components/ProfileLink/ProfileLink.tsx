@@ -4,6 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
+import { logout } from "metabase/auth/actions";
 import { ErrorDiagnosticModalWrapper } from "metabase/common/components/ErrorPages/ErrorDiagnosticModal";
 import { trackErrorDiagnosticModalOpened } from "metabase/common/components/ErrorPages/analytics";
 import { ForwardRefLink } from "metabase/common/components/Link";
@@ -39,15 +40,16 @@ const mapStateToProps = (state: State) => ({
 });
 
 const mapDispatchToProps = {
-  openDiagnostics,
+  onOpenDiagnostics: openDiagnostics,
+  onLogout: logout,
 };
 
 interface ProfileLinkProps {
   adminItems: AdminPath[];
   canAccessOnboardingPage: boolean;
   isNewInstance: boolean;
+  onOpenDiagnostics: () => void;
   onLogout: () => void;
-  openDiagnostics: () => void;
 }
 
 interface MenuItem {
@@ -65,7 +67,7 @@ function ProfileLinkInner({
   canAccessOnboardingPage,
   isNewInstance,
   onLogout,
-  openDiagnostics,
+  onOpenDiagnostics,
 }: ProfileLinkProps) {
   const [modalOpen, setModalOpen] = useState<string | null>(null);
   const version = useSetting("version") as MetabaseInfo["version"];
@@ -128,7 +130,7 @@ function ProfileLinkInner({
         icon: null,
         action: () => {
           trackErrorDiagnosticModalOpened("profile-menu");
-          openDiagnostics();
+          onOpenDiagnostics();
         },
         event: `Navbar;Profile Dropdown;Report Bug`,
       },

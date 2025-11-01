@@ -34,7 +34,6 @@ export interface AppBarLargeProps {
   isCollectionPathVisible?: boolean;
   isQuestionLineageVisible?: boolean;
   onToggleNavbar: () => void;
-  onLogout: () => void;
 }
 
 const AppBarLarge = ({
@@ -53,7 +52,6 @@ const AppBarLarge = ({
   isCollectionPathVisible,
   isQuestionLineageVisible,
   onToggleNavbar,
-  onLogout,
 }: AppBarLargeProps): JSX.Element => {
   const isNavBarVisible = isNavBarOpen && isNavBarEnabled;
 
@@ -106,7 +104,7 @@ const AppBarLarge = ({
           {!isEmbeddingIframe && <PLUGIN_METABOT.MetabotAppBarButton />}
           {isProfileLinkVisible && (
             <Box c="var(--mb-color-text-primary)" aria-label={t`Settings menu`}>
-              <ProfileLink onLogout={onLogout} />
+              <ProfileLink />
             </Box>
           )}
         </Flex>
