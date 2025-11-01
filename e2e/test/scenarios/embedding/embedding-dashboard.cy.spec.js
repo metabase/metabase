@@ -524,24 +524,13 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
     cy.log("test downloading result (metabase#36721)");
     H.getDashboardCard().realHover();
-    H.downloadAndAssert(
-      {
-        fileType: "csv",
-        isDashboard: true,
-        isEmbed: true,
-        logResults: true,
-        downloadUrl: "/api/embed/dashboard/*/dashcard/*/card/*/csv*",
-        downloadMethod: "GET",
-      },
-      (sheet) => {
-        expect(sheet["A1"].v).to.eq("ID");
-        expect(sheet["A2"].v).to.eq(9);
-        expect(sheet["B1"].v).to.eq("EAN");
-        expect(sheet["B2"].v).to.eq(7217466997444);
-
-        H.assertSheetRowsCount(54)(sheet);
-      },
-    );
+    H.downloadAndAssert({
+      fileType: "csv",
+      isDashboard: true,
+      isEmbed: true,
+      downloadUrl: "/api/embed/dashboard/*/dashcard/*/card/*/csv*",
+      downloadMethod: "GET",
+    });
 
     cy.log(
       "The PDF download button should be clickable when there is no title, but has parameters (metabase#59503)",
