@@ -34,5 +34,6 @@ jobs:
       with:
         languages: javascript
         config-file: ./.github/codeql/codeql-config.yml
+        trap-caching: false
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v4
