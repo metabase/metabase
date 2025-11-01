@@ -66,8 +66,7 @@
 (defn- mbql-clauses?
   [xs]
   (and (sequential? xs)
-       (or (empty? xs)
-           (every? mbql-clause? xs))))
+       (every? mbql-clause? xs)))
 
 (defn- opts-distinct-key [opts]
   ;; Using reduce-kv to remove namespaced keys and some other keys to perform the comparison. This is allegedly faster.
@@ -84,21 +83,28 @@
 (mu/defn mbql-clause-distinct-key
   "For deduplicating MBQL clauses: keep just the keys in options that are essential to distinguish one clause from
   another. Removes namespaced keywords and type information keys like `:base-type`."
-  [[tag opts & children]]
-  (into [tag
-         (opts-distinct-key opts)]
-        (map (fn [child]
-               (cond-> child
-                 (mbql-clause? child) mbql-clause-distinct-key)))
-        children))
+  [[tag opts first-child :as clause]]
+  (if (= (count clause) 3) ;; Slightly faster path.
+    [tag (opts-distinct-key opts) (cond-> first-child
+                                    (mbql-clause? first-child) mbql-clause-distinct-key)]
+    (into [tag (opts-distinct-key opts)]
+          (map (fn [child]
+                 (cond-> child
+                   (mbql-clause? child) mbql-clause-distinct-key)))
+          (nthrest clause 2))))
 
 (defn distinct-mbql-clauses?
   "Is a sequence of `mbql-clauses` distinct for the purposes of appearing in things like `:fields`, `:breakouts`, or
   `:order-by`? (Are they distinct ignoring keys that aren't important such as namespaced keys and type info?)"
   [mbql-clauses]
-  (and (mbql-clauses? mbql-clauses)
-       (or (< (count mbql-clauses) 2)
-           (apply distinct? (map mbql-clause-distinct-key mbql-clauses)))))
+  (let [n (count mbql-clauses)]
+    (and (mbql-clauses? mbql-clauses)
+         (cond (< n 2) true
+               (= n 2) (not= (mbql-clause-distinct-key (first mbql-clauses))
+                             (mbql-clause-distinct-key (second mbql-clauses)))
+               ;; Accumulating a set and comparing length is no different from using `clojure.core/distinct` because
+               ;; the latter has to construct a set anyway.
+               :else  (= n (count (into #{} (m/distinct-by mbql-clause-distinct-key) mbql-clauses)))))))
 
 (mr/def ::distinct-mbql-clauses
   [:fn
