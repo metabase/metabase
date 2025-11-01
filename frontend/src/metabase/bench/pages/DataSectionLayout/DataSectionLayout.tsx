@@ -42,8 +42,7 @@ function getTabs({ pathname }: Location): BenchSectionTab[] {
     {
       label: t`Data`,
       to: Urls.bench(),
-      isSelected:
-        pathname === Urls.bench() || pathname.startsWith(Urls.dataModel()),
+      isSelected: pathname.startsWith(Urls.dataModel()),
     },
     {
       label: t`Transforms`,
