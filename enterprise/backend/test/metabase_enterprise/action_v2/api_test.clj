@@ -16,10 +16,10 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
+   [metabase.util.queue :as queue]
+   [metabase.util.queue-test :as queue-test]
    [metabase.warehouse-schema.models.field-values :as field-values]
-   [toucan2.core :as t2])
-  (:import
-   (java.util.concurrent ArrayBlockingQueue)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -532,41 +532,39 @@
   (mt/with-premium-features #{actions-feature-flag}
     (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
       (action-v2.tu/with-test-tables! [table-id [{:id 'auto-inc-type, :n [:text]} {:primary-key [:id]}]]
-        (let [field-id         (t2/select-one-fn :id :model/Field :table_id table-id :name "n")
-              _                (t2/update! :model/Field {:id field-id} {:semantic_type "type/Category"})
-              field-values     #(vec (:values (field-values/get-latest-full-field-values field-id)))
-              test-queue       (ArrayBlockingQueue. 100)
-              create!          #(action-v2.tu/create-rows! table-id %)
-              update!          #(action-v2.tu/update-rows! table-id %)
-              process-queue!   (fn []
-                                 (when-let [field-ids (.poll test-queue)]
-                                   (#'data-editing/batch-invalidate-field-values! [field-ids])
-                                   (recur)))]
-          (binding [data-editing/*field-value-invalidate-queue* test-queue]
-            (is (= [] (field-values)))
+        (let [field-id             (t2/select-one-fn :id :model/Field :table_id table-id :name "n")
+              _                    (t2/update! :model/Field {:id field-id} {:semantic_type "type/Category"})
+              field-values         #(vec (:values (field-values/get-latest-full-field-values field-id)))
+              create!              #(action-v2.tu/create-rows! table-id %)
+              update!              #(action-v2.tu/update-rows! table-id %)
+              last-processed-batch (atom nil)
+              queue                (queue/create-array-blocking-queue-listener "test-queue"
+                                                                               (fn [batch]
+                                                                                 (reset! last-processed-batch batch)
+                                                                                 (#'data-editing/batch-invalidate-field-values! batch))
+                                                                               {:max-batch-messages 10
+                                                                                :max-next-ms        10
+                                                                                :queue-size         1000
+                                                                                :register?          false})]
+          (binding [data-editing/*field-value-invalidate-queue* queue]
+            (queue-test/with-queue queue
+              (is (= [] (field-values)))
+              (create! [{:n "a"}])
+              (queue-test/with-stopped-queue queue
+                (is (= ["a"] (field-values))))
 
-            (create! [{:n "a"}])
-            (is (pos? (.size test-queue)))
-            (process-queue!)
-            (is (= ["a"] (field-values)))
+              (create! [{:n "b"} {:n "c"}])
+              (queue-test/with-stopped-queue queue
+                (is (= ["a" "b" "c"] (field-values))))
 
-            (create! [{:n "b"} {:n "c"}])
-            (is (pos? (.size test-queue)))
-            (process-queue!)
-            (is (= ["a" "b" "c"] (field-values)))
+              (update! [{:id 2, :n "d"}])
+              (queue-test/with-stopped-queue queue
+                (is (= ["a" "c" "d"] (field-values))))
 
-            (update! [{:id 2, :n "d"}])
-            (is (pos? (.size test-queue)))
-            (process-queue!)
-            (is (= ["a" "c" "d"] (field-values)))
-
-            (create! [{:n "a"}])
-            (is (zero? (.size test-queue)))
-            (process-queue!)
-            (update! [{:id 1, :n "e"}])
-            (is (pos? (.size test-queue)))
-            (process-queue!)
-            (is (= ["a" "c" "d" "e"] (field-values)))))))))
+              (create! [{:n "a"}])
+              (update! [{:id 1, :n "e"}])
+              (queue-test/with-stopped-queue queue
+                (is (= ["a" "c" "d" "e"] (field-values)))))))))))
 
 (deftest execute-form-built-in-table-action-test
   (mt/with-premium-features #{actions-feature-flag}
