@@ -1409,9 +1409,133 @@ redirect_from:
         },
         "required" : [ "id", "type", "name" ]
       },
+      "metabase-enterprise.metabot-v3.tools.api.basic-snippet" : {
+        "type" : "object",
+        "properties" : {
+          "description" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "name" ]
+      },
+      "metabase-enterprise.metabot-v3.tools.api.basic-transform" : {
+        "type" : "object",
+        "properties" : {
+          "description" : {
+            "type" : "string"
+          },
+          "entity_id" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "source" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.transforms.transform-source"
+          },
+          "type" : {
+            "type" : "string",
+            "enum" : [ "mbql", "native", "python" ]
+          }
+        },
+        "required" : [ "id", "name", "type", "source" ]
+      },
+      "metabase-enterprise.metabot-v3.tools.api.broken-question" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "name" ]
+      },
+      "metabase-enterprise.metabot-v3.tools.api.broken-transform" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "name" ]
+      },
       "metabase-enterprise.metabot-v3.tools.api.bucket" : {
         "type" : "string",
         "enum" : [ "millisecond", "second", "minute", "hour", "day", "week", "month", "quarter", "year", "second-of-minute", "minute-of-hour", "hour-of-day", "day-of-week", "day-of-month", "day-of-year", "week-of-year", "month-of-year", "quarter-of-year", "year-of-era" ]
+      },
+      "metabase-enterprise.metabot-v3.tools.api.check-transform-dependencies-arguments" : {
+        "allOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "source" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.transforms.transform-source"
+            },
+            "transform_id" : {
+              "type" : "integer"
+            }
+          },
+          "required" : [ "transform_id", "source" ]
+        }, {
+          "type" : "object",
+          "properties" : { }
+        } ]
+      },
+      "metabase-enterprise.metabot-v3.tools.api.check-transform-dependencies-result" : {
+        "anyOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "structured_output" : {
+              "type" : "object",
+              "properties" : {
+                "bad_question_count" : {
+                  "type" : "integer"
+                },
+                "bad_questions" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.broken-question"
+                  }
+                },
+                "bad_transform_count" : {
+                  "type" : "integer"
+                },
+                "bad_transforms" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.broken-transform"
+                  }
+                },
+                "success" : {
+                  "type" : "boolean"
+                }
+              },
+              "required" : [ "success", "bad_transform_count", "bad_transforms", "bad_question_count", "bad_questions" ]
+            }
+          },
+          "required" : [ "structured_output" ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "output" : {
+              "type" : "string"
+            }
+          },
+          "required" : [ "output" ]
+        } ]
       },
       "metabase-enterprise.metabot-v3.tools.api.column" : {
         "type" : "object",
@@ -1931,6 +2055,60 @@ redirect_from:
         },
         "required" : [ "id", "type", "name" ]
       },
+      "metabase-enterprise.metabot-v3.tools.api.full-snippet" : {
+        "type" : "object",
+        "properties" : {
+          "content" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "name", "content" ]
+      },
+      "metabase-enterprise.metabot-v3.tools.api.full-transform" : {
+        "type" : "object",
+        "properties" : {
+          "entity_id" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "updated_at" : {
+            "description" : "value must be a valid date string",
+            "type" : "string"
+          },
+          "source" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.transforms.transform-source"
+          },
+          "type" : {
+            "type" : "string",
+            "enum" : [ "mbql", "native", "python" ]
+          },
+          "target" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.transforms.transform-target"
+          },
+          "created_at" : {
+            "description" : "value must be a valid date string",
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "name", "type", "source", "created_at", "updated_at", "target" ]
+      },
       "metabase-enterprise.metabot-v3.tools.api.generate-insights-arguments" : {
         "type" : "object",
         "properties" : {
@@ -2231,6 +2409,43 @@ redirect_from:
           "required" : [ "output" ]
         } ]
       },
+      "metabase-enterprise.metabot-v3.tools.api.get-snippet-details-arguments" : {
+        "allOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "snippet_id" : {
+              "type" : "integer"
+            }
+          },
+          "required" : [ "snippet_id" ]
+        }, {
+          "type" : "object",
+          "properties" : { }
+        } ]
+      },
+      "metabase-enterprise.metabot-v3.tools.api.get-snippet-details-result" : {
+        "description" : "Schema for SQL snippet detail results",
+        "type" : "object",
+        "properties" : {
+          "structured_output" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.full-snippet"
+          }
+        },
+        "required" : [ "structured_output" ]
+      },
+      "metabase-enterprise.metabot-v3.tools.api.get-snippets-result" : {
+        "description" : "Schema for SQL snippet list results",
+        "type" : "object",
+        "properties" : {
+          "structured_output" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.basic-snippet"
+            }
+          }
+        },
+        "required" : [ "structured_output" ]
+      },
       "metabase-enterprise.metabot-v3.tools.api.get-table-details-arguments" : {
         "allOf" : [ {
           "type" : "object",
@@ -2370,6 +2585,114 @@ redirect_from:
                 }
               },
               "required" : [ "database", "tables" ]
+            }
+          },
+          "required" : [ "structured_output" ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "output" : {
+              "type" : "string"
+            }
+          },
+          "required" : [ "output" ]
+        } ]
+      },
+      "metabase-enterprise.metabot-v3.tools.api.get-transform-details-arguments" : {
+        "allOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "transform_id" : {
+              "type" : "integer"
+            }
+          },
+          "required" : [ "transform_id" ]
+        }, {
+          "type" : "object",
+          "properties" : { }
+        } ]
+      },
+      "metabase-enterprise.metabot-v3.tools.api.get-transform-details-result" : {
+        "anyOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "structured_output" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.full-transform"
+              }
+            }
+          },
+          "required" : [ "structured_output" ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "output" : {
+              "type" : "string"
+            }
+          },
+          "required" : [ "output" ]
+        } ]
+      },
+      "metabase-enterprise.metabot-v3.tools.api.get-transform-python-library-details-arguments" : {
+        "allOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "path" : {
+              "type" : "string"
+            }
+          },
+          "required" : [ "path" ]
+        }, {
+          "type" : "object",
+          "properties" : { }
+        } ]
+      },
+      "metabase-enterprise.metabot-v3.tools.api.get-transform-python-library-details-result" : {
+        "anyOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "structured_output" : {
+              "type" : "object",
+              "properties" : {
+                "created_at" : {
+                  "description" : "value must be a valid date string",
+                  "type" : "string"
+                },
+                "path" : {
+                  "type" : "string"
+                },
+                "source" : {
+                  "type" : "string"
+                },
+                "updated_at" : {
+                  "description" : "value must be a valid date string",
+                  "type" : "string"
+                }
+              },
+              "required" : [ "source", "path", "created_at", "updated_at" ]
+            }
+          },
+          "required" : [ "structured_output" ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "output" : {
+              "type" : "string"
+            }
+          },
+          "required" : [ "output" ]
+        } ]
+      },
+      "metabase-enterprise.metabot-v3.tools.api.get-transforms-result" : {
+        "anyOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "structured_output" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.basic-transform"
+              }
             }
           },
           "required" : [ "structured_output" ]
@@ -2586,7 +2909,7 @@ redirect_from:
               "type" : "array",
               "items" : {
                 "type" : "string",
-                "enum" : [ "table", "model", "question", "dashboard", "metric", "database" ]
+                "enum" : [ "table", "model", "question", "dashboard", "metric", "database", "transform" ]
               }
             },
             "last_edited_at" : {
@@ -2596,6 +2919,10 @@ redirect_from:
             "limit" : {
               "default" : 50,
               "type" : "integer"
+            },
+            "search_native_query" : {
+              "type" : "boolean",
+              "default" : false
             },
             "semantic_queries" : {
               "type" : "array",
@@ -2681,7 +3008,7 @@ redirect_from:
           },
           "type" : {
             "type" : "string",
-            "enum" : [ "table", "model", "dashboard", "question", "metric", "database" ]
+            "enum" : [ "table", "model", "dashboard", "question", "metric", "database", "transform" ]
           },
           "database_schema" : {
             "type" : "string"
@@ -2827,7 +3154,47 @@ redirect_from:
         } ]
       },
       "metabase-enterprise.metabot-v3.tools.api.table-result" : {
-        "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.table-result"
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "database_id" : {
+            "type" : "integer"
+          },
+          "related_tables" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.table-result"
+            }
+          },
+          "display_name" : {
+            "type" : "string"
+          },
+          "type" : {
+            "type" : "string",
+            "enum" : [ "model", "table" ]
+          },
+          "fields" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.columns"
+          },
+          "database_schema" : {
+            "type" : "string"
+          },
+          "metrics" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.basic-metric"
+            }
+          },
+          "description" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "type", "name", "display_name", "database_id", "fields" ]
       },
       "metabase-enterprise.metabot-v3.tools.api.temporal-extraction-filter" : {
         "allOf" : [ {
@@ -2889,6 +3256,12 @@ redirect_from:
         },
         "required" : [ "conversation_id" ]
       },
+      "metabase-enterprise.metabot-v3.tools.transforms.transform-source" : {
+        "$ref" : "#/components/schemas/metabase-enterprise.transforms.api.transform-source"
+      },
+      "metabase-enterprise.metabot-v3.tools.transforms.transform-target" : {
+        "$ref" : "#/components/schemas/metabase-enterprise.transforms.api.transform-target"
+      },
       "metabase-enterprise.permission-debug.impl.group-id" : {
         "type" : "integer"
       },
@@ -2933,6 +3306,21 @@ redirect_from:
         },
         "required" : [ "model-type", "model-id", "decision", "segment", "message", "data", "suggestions" ]
       },
+      "metabase-enterprise.sandbox.schema.attribute-remappings" : {
+        "type" : "object",
+        "additionalProperties" : {
+          "anyOf" : [ {
+            "type" : "string",
+            "minLength" : 1
+          }, {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+          }, {
+            "$ref" : "#/components/schemas/metabase.lib.schema.parameter.target"
+          } ]
+        },
+        "description" : "value must be a valid attribute remappings map (attribute name -> remapped name)",
+        "optional" : true
+      },
       "metabase-enterprise.transforms.api.run-trigger" : {
         "type" : "string",
         "enum" : [ "none", "global-schedule" ]
@@ -2942,13 +3330,7 @@ redirect_from:
           "type" : "object",
           "properties" : {
             "query" : {
-              "type" : "object",
-              "properties" : {
-                "database" : {
-                  "type" : "integer"
-                }
-              },
-              "required" : [ "database" ]
+              "$ref" : "#/components/schemas/metabase.queries.schema.query"
             },
             "type" : {
               "const" : "query"
@@ -3595,53 +3977,219 @@ redirect_from:
         "required" : [ "moved" ]
       },
       "metabase.legacy-mbql.schema.!=" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :!= clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.*" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :* clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.+" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :+ clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.-" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :- clause",
         "allOf" : [ ]
       },
-      "metabase.legacy-mbql.schema..expression.options" : {
-        "description" : "Options for a legacy `:expression` ref in MBQL 4 are the same as in MBQL 5, except that `:lib/uuid` is optional and\n  it cannot be empty.",
-        "default" : { },
+      "metabase.legacy-mbql.schema..NativeQuery.Common" : {
+        "allOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "collection" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+            },
+            "template-tags" : {
+              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.TemplateTagMap"
+            }
+          }
+        }, {
+          "allOf" : [ ]
+        } ]
+      },
+      "metabase.legacy-mbql.schema..TemplateTag.Common" : {
+        "description" : "Things required by all template tag types.",
         "type" : "object",
         "properties" : {
-          "base-type" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
-          },
-          "database-type" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-          },
           "display-name" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
           },
-          "effective-type" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
-          },
-          "lib/uuid" : {
-            "type" : "string",
-            "minLength" : 36,
-            "maxLength" : 36
+          "id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.id"
           },
           "name" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
           },
-          "semantic-type" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.semantic-or-relation-type"
-          },
-          "temporal-unit" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
+          "type" : {
+            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.TemplateTagType"
           }
-        }
+        },
+        "required" : [ "type", "name", "display-name" ]
+      },
+      "metabase.legacy-mbql.schema..TemplateTag.FieldFilter" : {
+        "description" : "Things required by all template tag types.",
+        "type" : "object",
+        "properties" : {
+          "display-name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.id"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "required" : {
+            "type" : "boolean"
+          },
+          "type" : {
+            "const" : "dimension"
+          },
+          "alias" : {
+            "type" : "string"
+          },
+          "options" : {
+            "type" : "object",
+            "additionalProperties" : { },
+            "description" : "optional map to be appended to filter clause"
+          },
+          "dimension" : {
+            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.field"
+          },
+          "default" : { },
+          "widget-type" : {
+            "default" : "category",
+            "description" : "which type of widget the frontend should show for this Field Filter; this also affects which parameter types\n  are allowed to be specified for it.",
+            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.WidgetType"
+          }
+        },
+        "required" : [ "type", "name", "display-name", "dimension", "widget-type" ]
+      },
+      "metabase.legacy-mbql.schema..TemplateTag.RawValue" : {
+        "description" : "Things required by all template tag types.",
+        "type" : "object",
+        "properties" : {
+          "default" : { },
+          "display-name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.id"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "required" : {
+            "type" : "boolean"
+          },
+          "type" : {
+            "type" : "string",
+            "enum" : [ "date", "number", "boolean", "text" ]
+          }
+        },
+        "required" : [ "type", "name", "display-name" ]
+      },
+      "metabase.legacy-mbql.schema..TemplateTag.Snippet" : {
+        "description" : "Things required by all template tag types.",
+        "type" : "object",
+        "properties" : {
+          "database" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+          },
+          "display-name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.id"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "snippet-id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.snippet"
+          },
+          "snippet-name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "type" : {
+            "const" : "snippet"
+          }
+        },
+        "required" : [ "type", "name", "display-name", "snippet-name", "snippet-id" ]
+      },
+      "metabase.legacy-mbql.schema..TemplateTag.SourceQuery" : {
+        "description" : "Things required by all template tag types.",
+        "type" : "object",
+        "properties" : {
+          "card-id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+          },
+          "display-name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.id"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "type" : {
+            "const" : "card"
+          }
+        },
+        "required" : [ "type", "name", "display-name", "card-id" ]
+      },
+      "metabase.legacy-mbql.schema..TemplateTag.TemporalUnit" : {
+        "description" : "Things required by all template tag types.",
+        "type" : "object",
+        "properties" : {
+          "alias" : {
+            "type" : "string"
+          },
+          "default" : { },
+          "dimension" : {
+            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.field"
+          },
+          "display-name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.id"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "required" : {
+            "type" : "boolean"
+          },
+          "type" : {
+            "const" : "temporal-unit"
+          }
+        },
+        "required" : [ "type", "name", "display-name", "dimension" ]
+      },
+      "metabase.legacy-mbql.schema..TemplateTag.Value.Common" : {
+        "description" : "Things required by all template tag types.",
+        "type" : "object",
+        "properties" : {
+          "default" : { },
+          "display-name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.id"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "required" : {
+            "type" : "boolean"
+          },
+          "type" : {
+            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.TemplateTagType"
+          }
+        },
+        "required" : [ "type", "name", "display-name" ]
       },
       "metabase.legacy-mbql.schema..legacy-column-metadata.binning-info" : {
         "type" : "object",
@@ -3830,44 +4378,72 @@ redirect_from:
         }
       },
       "metabase.legacy-mbql.schema./" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :/ clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.<" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :< clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.<=" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :<= clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.=" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 := clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.>" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :> clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.>=" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :>= clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.Addable" : {
         "anyOf" : [ {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.NumericExpressionArg"
+        }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.DateTimeExpressionArg"
         }, {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.interval"
-        }, {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.NumericExpressionArg"
+          "oneOf" : [ {
+            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.interval"
+          }, {
+            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.segment"
+          } ]
         } ]
       },
       "metabase.legacy-mbql.schema.Aggregation" : {
+        "description" : "Schema for anything that is a valid `:aggregation` clause.",
         "oneOf" : [ {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.aggregation-options"
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.UnnamedAggregation"
         } ]
+      },
+      "metabase.legacy-mbql.schema.AggregationOptionsOptions" : {
+        "description" : "Additional options for any aggregation clause when wrapping it in `:aggregation-options`.",
+        "type" : "object",
+        "properties" : {
+          "display-name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          }
+        }
+      },
+      "metabase.legacy-mbql.schema.Aggregations" : {
+        "type" : "array",
+        "items" : {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Aggregation"
+        },
+        "minItems" : 1
+      },
+      "metabase.legacy-mbql.schema.ArithmeticDateTimeUnit" : {
+        "type" : "string",
+        "enum" : [ "millisecond", "second", "minute", "hour", "day", "week", "month", "quarter", "year" ]
       },
       "metabase.legacy-mbql.schema.BooleanExpression" : {
         "oneOf" : [ {
@@ -3920,6 +4496,42 @@ redirect_from:
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.during"
         } ]
       },
+      "metabase.legacy-mbql.schema.Breakouts" : {
+        "type" : "array",
+        "items" : {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.FieldOrExpressionRef"
+        },
+        "minItems" : 1
+      },
+      "metabase.legacy-mbql.schema.CaseOptions" : {
+        "type" : "object",
+        "properties" : {
+          "default" : {
+            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.ExpressionArg"
+          }
+        }
+      },
+      "metabase.legacy-mbql.schema.CaseSubclause" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Filter"
+        }, {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.ExpressionArg"
+        } ]
+      },
+      "metabase.legacy-mbql.schema.CaseSubclauses" : {
+        "type" : "array",
+        "items" : {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.CaseSubclause"
+        },
+        "minItems" : 1
+      },
+      "metabase.legacy-mbql.schema.CheckKeysForQueryType" : {
+        "allOf" : [ ]
+      },
+      "metabase.legacy-mbql.schema.CheckQueryDoesNotHaveSourceMetadata" : {
+        "description" : "`:source-metadata` is added to queries when `card__id` source queries are resolved. It contains info about the\n  columns in the source query.\n\n  Where this is added was changed in Metabase 0.33.0 -- previously, when `card__id` source queries were resolved, the\n  middleware would add `:source-metadata` to the top-level; to support joins against source queries, this has been\n  changed so it is always added at the same level the resolved `:source-query` is added.\n\n  This should automatically be fixed by `normalize`; if we encounter it, it means some middleware is not functioning\n  properly."
+      },
       "metabase.legacy-mbql.schema.DatabaseID" : {
         "description" : "Schema for a valid `:database` ID, in the top-level 'outer' query. Either a positive integer (referring to an\n  actual Database), or the saved questions virtual ID, which is a placeholder used for queries using the\n  `:source-table \"card__id\"` shorthand for a source query resolved by middleware (since clients might not know the\n  actual DB for that source query.)",
         "anyOf" : [ {
@@ -3951,7 +4563,7 @@ redirect_from:
           "anyOf" : [ {
             "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.DateOrDatetimeLiteral"
           }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.field-or-expression-ref"
+            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.FieldOrExpressionRef"
           } ]
         } ]
       },
@@ -3971,6 +4583,7 @@ redirect_from:
         "enum" : [ "second", "minute", "hour", "day", "week", "month", "quarter", "year" ]
       },
       "metabase.legacy-mbql.schema.DatetimeExpression" : {
+        "description" : "Schema for the definition of a date function expression.",
         "oneOf" : [ {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.+"
         }, {
@@ -3989,11 +4602,24 @@ redirect_from:
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.today"
         } ]
       },
+      "metabase.legacy-mbql.schema.DatetimeOptions" : {
+        "type" : "object",
+        "properties" : {
+          "mode" : {
+            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.DatetimeOptionsMode"
+          }
+        }
+      },
+      "metabase.legacy-mbql.schema.DatetimeOptionsMode" : {
+        "type" : "string",
+        "enum" : [ "simple-bytes", "unix-nanoseconds", "simple", "iso", "iso-bytes", "unix-seconds", "unix-milliseconds", "unix-microseconds" ]
+      },
       "metabase.legacy-mbql.schema.Emptyable" : {
+        "description" : "Schema for a valid is-empty or not-empty argument.",
         "anyOf" : [ {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.StringExpressionArg"
         }, {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.field-or-expression-ref"
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.FieldOrExpressionRef"
         } ]
       },
       "metabase.legacy-mbql.schema.EqualityComparable" : {
@@ -4006,17 +4632,18 @@ redirect_from:
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.TemporalLiteral"
         }, {
-          "oneOf" : [ {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.relative-datetime"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.field-or-expression-ref"
-          } ]
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.FieldOrExpressionRefOrRelativeDatetime"
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.ExpressionArg"
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.value"
         } ],
+        "description" : "Schema for things that make sense in a `=` or `!=` filter, i.e. things that can be compared for equality.",
         "optional" : true
+      },
+      "metabase.legacy-mbql.schema.EqualityFilterFieldArg" : {
+        "description" : "Schema for the first arg to `=`, `!=`, and friends.",
+        "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.EqualityComparable"
       },
       "metabase.legacy-mbql.schema.ExpressionArg" : {
         "oneOf" : [ {
@@ -4038,15 +4665,93 @@ redirect_from:
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.value"
         }, {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.field-or-expression-ref"
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.FieldOrExpressionRef"
         } ]
+      },
+      "metabase.legacy-mbql.schema.ExpressionName" : {
+        "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+      },
+      "metabase.legacy-mbql.schema.ExpressionRefOptions" : {
+        "description" : "Options for a legacy `:expression` ref in MBQL 4 are the same as in MBQL 5, except that `:lib/uuid` is optional and\n  it cannot be empty.",
+        "default" : { },
+        "type" : "object",
+        "properties" : {
+          "base-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
+          },
+          "database-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "display-name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "effective-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
+          },
+          "lib/uuid" : {
+            "type" : "string",
+            "minLength" : 36,
+            "maxLength" : 36
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "semantic-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.semantic-or-relation-type"
+          },
+          "temporal-unit" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
+          }
+        }
+      },
+      "metabase.legacy-mbql.schema.Expressions" : {
+        "type" : "object",
+        "additionalProperties" : {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.FieldOrExpressionDef"
+        }
       },
       "metabase.legacy-mbql.schema.ExtractWeekMode" : {
         "description" : "Valid modes to extract weeks.",
         "type" : "string",
         "enum" : [ "iso", "us", "instance" ]
       },
-      "metabase.legacy-mbql.schema.FieldOptions" : {
+      "metabase.legacy-mbql.schema.FieldOrExpressionDef" : {
+        "description" : "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a\n  `:+` clause or a `:field` or `:value` clause.",
+        "oneOf" : [ {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.NumericExpression"
+        }, {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.StringExpression"
+        }, {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.BooleanExpression"
+        }, {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.DatetimeExpression"
+        }, {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.case"
+        }, {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.if"
+        }, {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.offset"
+        }, {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.value"
+        }, {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.FieldOrExpressionRef"
+        } ]
+      },
+      "metabase.legacy-mbql.schema.FieldOrExpressionRef" : {
+        "oneOf" : [ {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.expression"
+        }, {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.field"
+        } ]
+      },
+      "metabase.legacy-mbql.schema.FieldOrExpressionRefOrRelativeDatetime" : {
+        "oneOf" : [ {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.relative-datetime"
+        }, {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.FieldOrExpressionRef"
+        } ]
+      },
+      "metabase.legacy-mbql.schema.FieldRefOptions" : {
         "default" : { },
         "type" : "object",
         "properties" : {
@@ -4107,33 +4812,11 @@ redirect_from:
         "description" : "Options for an MBQL 4 `:field` ref are the same as MBQL 5, except that `:lib/uuid` is not required and it cannot be\n  empty.",
         "optional" : true
       },
-      "metabase.legacy-mbql.schema.FieldOrExpressionDef" : {
-        "description" : "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a\n  `:+` clause or a `:field` or `:value` clause.",
-        "oneOf" : [ {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.NumericExpression"
-        }, {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.StringExpression"
-        }, {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.BooleanExpression"
-        }, {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.DatetimeExpression"
-        }, {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.case"
-        }, {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.if"
-        }, {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.offset"
-        }, {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.value"
-        }, {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.field-or-expression-ref"
-        } ]
-      },
       "metabase.legacy-mbql.schema.Fields" : {
         "allOf" : [ {
           "type" : "array",
           "items" : {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.field-or-expression-ref"
+            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.FieldOrExpressionRef"
           },
           "minItems" : 1
         }, {
@@ -4141,6 +4824,7 @@ redirect_from:
         } ]
       },
       "metabase.legacy-mbql.schema.Filter" : {
+        "description" : "Schema for a valid MBQL `:filter` clause.",
         "oneOf" : [ {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.DatetimeExpression"
         }, {
@@ -4154,7 +4838,7 @@ redirect_from:
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.segment"
         }, {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.field-or-expression-ref"
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.FieldOrExpressionRef"
         } ]
       },
       "metabase.legacy-mbql.schema.IntGreaterThanZeroOrNumericExpression" : {
@@ -4180,12 +4864,7 @@ redirect_from:
             },
             "fields" : {
               "description" : "The Fields from this join to include in parent-level results. This can be either `:none`, `:all`, or a sequence\n  of `:field` clauses.\n\n  * `:none`: no Fields from the joined table or nested query are included (unless indirectly included by breakouts or\n     other clauses). This is the default, and what is used for automatically-generated joins.\n\n  * `:all`: will include all of the Field from the joined table or query\n\n  * a sequence of Field clauses: include only the Fields specified. Valid clauses are the same as the top-level\n    `:fields` clause. This should be non-empty and all elements should be distinct. The normalizer will automatically\n    remove duplicate fields for you, and replace empty clauses with `:none`.\n\n  Driver implementations: you can ignore this clause. Relevant fields will be added to top-level `:fields` clause with\n  appropriate aliases.",
-              "anyOf" : [ {
-                "type" : "string",
-                "enum" : [ "all", "none" ]
-              }, {
-                "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Fields"
-              } ]
+              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.JoinFields"
             },
             "fk-field-id" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.id.field",
@@ -4203,23 +4882,24 @@ redirect_from:
             },
             "source-table" : {
               "description" : "*What* to JOIN. Self-joins can be done by using the same `:source-table` as in the query where\n  this is specified. YOU MUST SUPPLY EITHER `:source-table` OR `:source-query`, BUT NOT BOTH!",
-              "anyOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
-              }, {
-                "description" : "`card__<id>` string Table ID",
-                "type" : "string",
-                "pattern" : "^card__[1-9]\\d*$"
-              } ]
+              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.SourceTable"
             },
             "strategy" : {
               "description" : "Defaults to `:left-join`; used for all automatically-generated JOINs\n\n  Driver implementations: this is guaranteed to be present after pre-processing.",
-              "type" : "string",
-              "enum" : [ "full-join", "right-join", "left-join", "inner-join" ]
+              "$ref" : "#/components/schemas/metabase.lib.schema.join.strategy"
             }
           },
           "required" : [ "condition" ]
         }, {
           "allOf" : [ ]
+        } ]
+      },
+      "metabase.legacy-mbql.schema.JoinFields" : {
+        "anyOf" : [ {
+          "type" : "string",
+          "enum" : [ "all", "none" ]
+        }, {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Fields"
         } ]
       },
       "metabase.legacy-mbql.schema.Joins" : {
@@ -4235,11 +4915,7 @@ redirect_from:
           "type" : "object",
           "properties" : {
             "breakout" : {
-              "type" : "array",
-              "items" : {
-                "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.field-or-expression-ref"
-              },
-              "minItems" : 1
+              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Breakouts"
             },
             "source-metadata" : {
               "type" : "array",
@@ -4261,23 +4937,13 @@ redirect_from:
               "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Joins"
             },
             "aggregation" : {
-              "type" : "array",
-              "items" : {
-                "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Aggregation"
-              },
-              "minItems" : 1
+              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Aggregations"
             },
             "fields" : {
               "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Fields"
             },
             "source-table" : {
-              "anyOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
-              }, {
-                "description" : "`card__<id>` string Table ID",
-                "type" : "string",
-                "pattern" : "^card__[1-9]\\d*$"
-              } ]
+              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.SourceTable"
             },
             "order-by" : {
               "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.OrderBys"
@@ -4286,12 +4952,32 @@ redirect_from:
               "$ref" : "#/components/schemas/metabase.lib.schema.page"
             },
             "expressions" : {
-              "type" : "object",
-              "additionalProperties" : {
-                "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.FieldOrExpressionDef"
-              }
+              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Expressions"
             }
           }
+        }, {
+          "type" : "object",
+          "properties" : { }
+        }, {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.RemoveFieldRefsFromFieldsAlreadyInBreakout"
+        }, {
+          "allOf" : [ ]
+        } ]
+      },
+      "metabase.legacy-mbql.schema.NativeQuery" : {
+        "description" : "Schema for a valid, normalized native [inner] query.",
+        "allOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "collection" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+            },
+            "query" : { },
+            "template-tags" : {
+              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.TemplateTagMap"
+            }
+          },
+          "required" : [ "query" ]
         }, {
           "allOf" : [ ]
         } ]
@@ -4314,6 +5000,7 @@ redirect_from:
         } ]
       },
       "metabase.legacy-mbql.schema.NumericExpression" : {
+        "description" : "Schema for the definition of a numeric expression. All numeric expressions evaluate to numeric values.",
         "oneOf" : [ {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.+"
         }, {
@@ -4409,6 +5096,7 @@ redirect_from:
         } ]
       },
       "metabase.legacy-mbql.schema.OrderComparable" : {
+        "description" : "Schema for things that make sense in a filter like `>` or `<`, i.e. things that can be sorted.",
         "oneOf" : [ {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.value"
         }, {
@@ -4421,16 +5109,20 @@ redirect_from:
           }, {
             "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.ExpressionArg"
           }, {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.relative-datetime"
-            }, {
-              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.field-or-expression-ref"
-            } ]
+            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.FieldOrExpressionRefOrRelativeDatetime"
           } ]
         } ]
       },
+      "metabase.legacy-mbql.schema.OrderedFilterFieldArg" : {
+        "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.OrderComparable"
+      },
       "metabase.legacy-mbql.schema.Query" : {
         "allOf" : [ {
+          "type" : "object",
+          "properties" : { }
+        }, {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.CheckQueryDoesNotHaveSourceMetadata"
+        }, {
           "type" : "object",
           "properties" : {
             "update-row" : {
@@ -4446,21 +5138,7 @@ redirect_from:
               "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.MBQLQuery"
             },
             "native" : {
-              "allOf" : [ {
-                "type" : "object",
-                "properties" : {
-                  "collection" : {
-                    "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-                  },
-                  "query" : { },
-                  "template-tags" : {
-                    "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.TemplateTagMap"
-                  }
-                },
-                "required" : [ "query" ]
-              }, {
-                "allOf" : [ ]
-              } ]
+              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.NativeQuery"
             },
             "info" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.info.info",
@@ -4486,14 +5164,13 @@ redirect_from:
           },
           "required" : [ "type" ]
         }, {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.check-keys-for-query-type"
-        }, {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.check-query-does-not-have-source-metadata"
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.CheckKeysForQueryType"
         }, {
           "allOf" : [ ]
         } ]
       },
       "metabase.legacy-mbql.schema.Reference" : {
+        "description" : "Schema for any type of valid Field clause, or for an indexed reference to an aggregation clause.",
         "oneOf" : [ {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.aggregation"
         }, {
@@ -4506,11 +5183,23 @@ redirect_from:
         "type" : "string",
         "enum" : [ "default", "minute", "hour", "day", "week", "month", "quarter", "year" ]
       },
+      "metabase.legacy-mbql.schema.RemoveFieldRefsFromFieldsAlreadyInBreakout" : { },
       "metabase.legacy-mbql.schema.SourceQuery" : {
+        "description" : "Schema for a valid value for a `:source-query`.",
         "oneOf" : [ {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.NativeSourceQuery"
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.MBQLQuery"
+        } ]
+      },
+      "metabase.legacy-mbql.schema.SourceTable" : {
+        "description" : "Schema for a valid value for the `:source-table` clause of an MBQL query.",
+        "anyOf" : [ {
+          "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
+        }, {
+          "description" : "`card__<id>` string Table ID",
+          "type" : "string",
+          "pattern" : "^card__[1-9]\\d*$"
         } ]
       },
       "metabase.legacy-mbql.schema.StringExpression" : {
@@ -4566,163 +5255,30 @@ redirect_from:
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.value"
         }, {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.field-or-expression-ref"
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.FieldOrExpressionRef"
         } ]
+      },
+      "metabase.legacy-mbql.schema.StringFilterOptions" : {
+        "type" : "object",
+        "properties" : {
+          "case-sensitive" : {
+            "type" : "boolean"
+          }
+        }
       },
       "metabase.legacy-mbql.schema.TemplateTag" : {
         "description" : "Schema for a template tag as specified in a native query. There are four types of template tags, differentiated by\n  `:type`.\n\n  Template tags are used to specify {{placeholders}} in native queries that are replaced with some sort of value when\n  the query itself runs. There are four basic types of template tag for native queries:\n\n  1. Field filters, which are used like\n\n         SELECT * FROM table WHERE {{field_filter}}\n\n     These reference specific Fields and are replaced with entire conditions, e.g. `some_field > 1000`\n\n  2. Raw values, which are used like\n\n         SELECT * FROM table WHERE my_field = {{x}}\n\n     These are replaced with raw values.\n\n   3. Native query snippets, which might be used like\n\n          SELECT * FROM ({{snippet: orders}}) source\n\n      These are replaced with `NativeQuerySnippet`s from the application database.\n\n   4. Source query Card IDs, which are used like\n\n          SELECT * FROM ({{#123}}) source\n\n      These are replaced with the query from the Card with that ID.\n\n  Field filters and raw values usually have their value specified by `:parameters`.",
         "oneOf" : [ {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.TemplateTag:FieldFilter"
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema..TemplateTag.FieldFilter"
         }, {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.TemplateTag:Snippet"
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema..TemplateTag.Snippet"
         }, {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.TemplateTag:SourceQuery"
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema..TemplateTag.SourceQuery"
         }, {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.TemplateTag:TemporalUnit"
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema..TemplateTag.TemporalUnit"
         }, {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.TemplateTag:RawValue"
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema..TemplateTag.RawValue"
         } ]
-      },
-      "metabase.legacy-mbql.schema.TemplateTag:FieldFilter" : {
-        "description" : "Schema for a field filter template tag.",
-        "type" : "object",
-        "properties" : {
-          "display-name" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-          },
-          "id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.id"
-          },
-          "name" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-          },
-          "required" : {
-            "type" : "boolean"
-          },
-          "type" : {
-            "const" : "dimension"
-          },
-          "alias" : {
-            "type" : "string"
-          },
-          "options" : {
-            "type" : "object",
-            "additionalProperties" : { },
-            "description" : "optional map to be appended to filter clause"
-          },
-          "dimension" : {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.field"
-          },
-          "default" : { },
-          "widget-type" : {
-            "description" : "which type of widget the frontend should show for this Field Filter; this also affects which parameter types\n  are allowed to be specified for it.",
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.WidgetType"
-          }
-        },
-        "required" : [ "type", "name", "display-name", "dimension", "widget-type" ]
-      },
-      "metabase.legacy-mbql.schema.TemplateTag:RawValue" : {
-        "description" : "Schema for a raw value template tag.",
-        "type" : "object",
-        "properties" : {
-          "default" : { },
-          "display-name" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-          },
-          "id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.id"
-          },
-          "name" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-          },
-          "required" : {
-            "type" : "boolean"
-          },
-          "type" : {
-            "type" : "string",
-            "enum" : [ "date", "number", "boolean", "text" ]
-          }
-        },
-        "required" : [ "type", "name", "display-name" ]
-      },
-      "metabase.legacy-mbql.schema.TemplateTag:Snippet" : {
-        "description" : "Schema for a native query snippet template tag.",
-        "type" : "object",
-        "properties" : {
-          "database" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-          },
-          "display-name" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-          },
-          "id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.id"
-          },
-          "name" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-          },
-          "snippet-id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.snippet"
-          },
-          "snippet-name" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-          },
-          "type" : {
-            "const" : "snippet"
-          }
-        },
-        "required" : [ "type", "name", "display-name", "snippet-name", "snippet-id" ]
-      },
-      "metabase.legacy-mbql.schema.TemplateTag:SourceQuery" : {
-        "description" : "Schema for a source query template tag.",
-        "type" : "object",
-        "properties" : {
-          "card-id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
-          },
-          "display-name" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-          },
-          "id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.id"
-          },
-          "name" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-          },
-          "type" : {
-            "const" : "card"
-          }
-        },
-        "required" : [ "type", "name", "display-name", "card-id" ]
-      },
-      "metabase.legacy-mbql.schema.TemplateTag:TemporalUnit" : {
-        "description" : "Schema for a temporal unit template tag.",
-        "type" : "object",
-        "properties" : {
-          "alias" : {
-            "type" : "string"
-          },
-          "default" : { },
-          "dimension" : {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.field"
-          },
-          "display-name" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-          },
-          "id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.id"
-          },
-          "name" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-          },
-          "required" : {
-            "type" : "boolean"
-          },
-          "type" : {
-            "const" : "temporal-unit"
-          }
-        },
-        "required" : [ "type", "name", "display-name", "dimension" ]
       },
       "metabase.legacy-mbql.schema.TemplateTagMap" : {
         "description" : "Schema for the `:template-tags` map passed in as part of a native query.\n\n  Map of template tag name -> template tag definition",
@@ -4734,6 +5290,11 @@ redirect_from:
         }, {
           "$ref" : "#/components/schemas/metabase.lib.schema.template-tag..template-tag-map.validate-names"
         } ]
+      },
+      "metabase.legacy-mbql.schema.TemplateTagType" : {
+        "description" : "Schema for valid values of template tag `:type`.",
+        "type" : "string",
+        "enum" : [ "snippet", "card", "dimension", "number", "text", "date" ]
       },
       "metabase.legacy-mbql.schema.TemporalExtractUnit" : {
         "description" : "Valid units to extract from a temporal.",
@@ -4747,6 +5308,14 @@ redirect_from:
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.TimeLiteral"
         } ]
+      },
+      "metabase.legacy-mbql.schema.TimeIntervalOptions" : {
+        "type" : "object",
+        "properties" : {
+          "include-current" : {
+            "type" : "boolean"
+          }
+        }
       },
       "metabase.legacy-mbql.schema.TimeLiteral" : {
         "description" : "Schema for valid time literals.",
@@ -4832,657 +5401,667 @@ redirect_from:
         }
       },
       "metabase.legacy-mbql.schema.WidgetType" : {
-        "description" : "Schema for valid values of `:widget-type` for a [[::TemplateTag:FieldFilter]].",
+        "description" : "Schema for valid values of `:widget-type` for a [[::TemplateTag.FieldFilter]].",
         "$ref" : "#/components/schemas/metabase.lib.schema.parameter.widget-type"
       },
       "metabase.legacy-mbql.schema.abs" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :abs clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.absolute-datetime" : {
+        "description" : "Schema for a valid MBQL 4 :absolute-datetime clause.",
         "oneOf" : [ { }, {
-          "description" : "schema for a valid legacy MBQL :tag clause",
+          "description" : "schema for a valid MBQL 4 :absolute-datetime clause",
           "allOf" : [ ]
         }, {
-          "description" : "schema for a valid legacy MBQL :tag clause",
+          "description" : "schema for a valid MBQL 4 :absolute-datetime clause",
           "allOf" : [ ]
         } ]
       },
       "metabase.legacy-mbql.schema.aggregation" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :aggregation clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.aggregation-options" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :aggregation-options clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.and" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
-        "allOf" : [ ]
+        "description" : "Schema for a valid MBQL 4 :and clause.",
+        "oneOf" : [ {
+          "description" : "schema for a valid MBQL 4 :and clause",
+          "allOf" : [ ]
+        }, {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Filter"
+        } ]
       },
       "metabase.legacy-mbql.schema.asc" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :asc clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.avg" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :avg clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.between" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :between clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.case" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :case clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.ceil" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :ceil clause",
         "allOf" : [ ]
-      },
-      "metabase.legacy-mbql.schema.check-keys-for-query-type" : {
-        "allOf" : [ ]
-      },
-      "metabase.legacy-mbql.schema.check-query-does-not-have-source-metadata" : {
-        "description" : "`:source-metadata` is added to queries when `card__id` source queries are resolved. It contains info about the\n  columns in the source query.\n\n  Where this is added was changed in Metabase 0.33.0 -- previously, when `card__id` source queries were resolved, the\n  middleware would add `:source-metadata` to the top-level; to support joins against source queries, this has been\n  changed so it is always added at the same level the resolved `:source-query` is added.\n\n  This should automatically be fixed by `normalize`; if we encounter it, it means some middleware is not functioning\n  properly."
       },
       "metabase.legacy-mbql.schema.coalesce" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :coalesce clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.concat" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :concat clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.contains" : {
+        "description" : "Schema for a valid MBQL 4 :metabase.legacy-mbql.schema/contains clause.",
         "anyOf" : [ {
-          "description" : "schema for a valid legacy MBQL :tag clause",
+          "description" : "schema for a valid MBQL 4 :contains clause",
           "allOf" : [ ]
         }, {
-          "description" : "schema for a valid legacy MBQL :tag clause",
+          "description" : "schema for a valid MBQL 4 :contains clause",
           "allOf" : [ ]
         } ]
       },
       "metabase.legacy-mbql.schema.convert-timezone" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :convert-timezone clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.count" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :count clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.count-where" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :count-where clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.cum-count" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :cum-count clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.cum-sum" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :cum-sum clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.date" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :date clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.datetime" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :datetime clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.datetime-add" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :datetime-add clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.datetime-diff" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :datetime-diff clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.datetime-subtract" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :datetime-subtract clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.day-name" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :day-name clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.desc" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :desc clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.distinct" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :distinct clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.distinct-where" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :distinct-where clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.does-not-contain" : {
+        "description" : "Schema for a valid MBQL 4 :metabase.legacy-mbql.schema/does-not-contain clause.",
         "anyOf" : [ {
-          "description" : "schema for a valid legacy MBQL :tag clause",
+          "description" : "schema for a valid MBQL 4 :does-not-contain clause",
           "allOf" : [ ]
         }, {
-          "description" : "schema for a valid legacy MBQL :tag clause",
+          "description" : "schema for a valid MBQL 4 :does-not-contain clause",
           "allOf" : [ ]
         } ]
       },
       "metabase.legacy-mbql.schema.domain" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :domain clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.during" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :during clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.ends-with" : {
+        "description" : "Schema for a valid MBQL 4 :metabase.legacy-mbql.schema/ends-with clause.",
         "anyOf" : [ {
-          "description" : "schema for a valid legacy MBQL :tag clause",
+          "description" : "schema for a valid MBQL 4 :ends-with clause",
           "allOf" : [ ]
         }, {
-          "description" : "schema for a valid legacy MBQL :tag clause",
+          "description" : "schema for a valid MBQL 4 :ends-with clause",
           "allOf" : [ ]
         } ]
       },
       "metabase.legacy-mbql.schema.exp" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :exp clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.expression" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :expression clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.field" : {
+        "description" : "Schema for a valid MBQL 4 :field clause.",
         "allOf" : [ {
-          "description" : "schema for a valid legacy MBQL :tag clause",
+          "description" : "schema for a valid MBQL 4 :field clause",
           "allOf" : [ ]
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.require-base-type-for-field-name"
         } ]
       },
-      "metabase.legacy-mbql.schema.field-or-expression-ref" : {
-        "oneOf" : [ {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.expression"
-        }, {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.field"
-        } ]
-      },
       "metabase.legacy-mbql.schema.float" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :float clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.floor" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :floor clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.get-day" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :get-day clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.get-day-of-week" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :get-day-of-week clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.get-hour" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :get-hour clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.get-minute" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :get-minute clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.get-month" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :get-month clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.get-quarter" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :get-quarter clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.get-second" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :get-second clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.get-week" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :get-week clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.get-year" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :get-year clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.helpers.distinct" : {
         "description" : "values must be distinct"
       },
       "metabase.legacy-mbql.schema.host" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :host clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.if" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :if clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.in" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :in clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.inside" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :inside clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.integer" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :integer clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.interval" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :interval clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.is-empty" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :is-empty clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.is-null" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :is-null clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.legacy-column-metadata" : {
         "description" : "Schema for a single legacy metadata column. This is the pre-Lib equivalent of\n  `:metabase.lib.schema.metadata/column`.",
-        "type" : "object",
-        "properties" : {
-          "field_ref" : {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Reference"
-          },
-          "lib/external-remap" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.remapping.external"
-          },
-          "lib/source-column-alias" : {
-            "description" : "Name for a column as returned/projected by the previous stage of the query or source Table/source Card. The\n  left-hand side (LHS) of\n\n    SELECT lhs AS rhs",
-            "type" : "string"
-          },
-          "lib/type" : {
-            "default" : "metadata/column",
-            "const" : "metadata/column"
-          },
-          "fingerprint" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.metadata.fingerprint.fingerprint"
-          },
-          "visibility_type" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.visibility-type"
-          },
-          "base_type" : {
-            "default" : "type/*",
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
-          },
-          "lib/source-uuid" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.uuid"
-          },
-          "qp/implicit-field?" : {
-            "type" : "boolean"
-          },
-          "lib/ref-name" : {
-            "type" : "string"
-          },
-          "id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
-          },
-          "lib/deduplicated-name" : {
-            "type" : "string",
-            "description" : "The simply-deduplicated name that was historically used in QP results metadata (originally calculated by\n  the [[metabase.query-processor.middleware.annotate]] middleware, now calculated\n  by [[metabase.lib.middleware.result-metadata]]). This just adds suffixes to column names e.g. `ID` and `ID` become\n  `ID` and `ID_2`, respectively. Kept around because many old field refs use this column name."
-          },
-          "lib/original-expression-name" : {
-            "type" : "string",
-            "minLength" : 1
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "lib/card-id" : {
-            "description" : "Valid Card ID",
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "lib/expression-name" : {
-            "type" : "string",
-            "minLength" : 1
-          },
-          "lib/breakout?" : {
-            "type" : "boolean"
-          },
-          "metabase.lib.field/temporal-unit" : {
-            "type" : "string",
-            "enum" : [ "day", "day-of-month", "day-of-week", "day-of-year", "default", "hour", "hour-of-day", "millisecond", "minute", "minute-of-hour", "month", "month-of-year", "quarter", "quarter-of-year", "second", "second-of-minute", "week", "week-of-year", "year", "year-of-era" ]
-          },
-          "metabase.lib.field/binning" : {
-            "description" : "Schema for `:binning` options passed to a `:field` clause.",
-            "allOf" : [ {
-              "type" : "object",
-              "properties" : {
-                "strategy" : {
-                  "$ref" : "#/components/schemas/metabase.lib.schema.binning.strategy"
-                }
-              },
-              "required" : [ "strategy" ]
-            }, {
-              "oneOf" : [ {
+        "allOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "field_ref" : {
+              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Reference"
+            },
+            "lib/external-remap" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.remapping.external"
+            },
+            "lib/source-column-alias" : {
+              "description" : "Name for a column as returned/projected by the previous stage of the query or source Table/source Card. The\n  left-hand side (LHS) of\n\n    SELECT lhs AS rhs",
+              "type" : "string"
+            },
+            "lib/type" : {
+              "default" : "metadata/column",
+              "const" : "metadata/column"
+            },
+            "fingerprint" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.metadata.fingerprint.fingerprint"
+            },
+            "visibility_type" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.visibility-type"
+            },
+            "base_type" : {
+              "default" : "type/*",
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
+            },
+            "lib/source-uuid" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.uuid"
+            },
+            "qp/implicit-field?" : {
+              "type" : "boolean"
+            },
+            "lib/ref-name" : {
+              "type" : "string"
+            },
+            "id" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+            },
+            "lib/deduplicated-name" : {
+              "type" : "string",
+              "description" : "The simply-deduplicated name that was historically used in QP results metadata (originally calculated by\n  the [[metabase.query-processor.middleware.annotate]] middleware, now calculated\n  by [[metabase.lib.middleware.result-metadata]]). This just adds suffixes to column names e.g. `ID` and `ID` become\n  `ID` and `ID_2`, respectively. Kept around because many old field refs use this column name."
+            },
+            "lib/original-expression-name" : {
+              "type" : "string",
+              "minLength" : 1
+            },
+            "name" : {
+              "type" : "string"
+            },
+            "lib/card-id" : {
+              "description" : "Valid Card ID",
+              "type" : "integer",
+              "minimum" : 1
+            },
+            "lib/expression-name" : {
+              "type" : "string",
+              "minLength" : 1
+            },
+            "lib/breakout?" : {
+              "type" : "boolean"
+            },
+            "metabase.lib.field/temporal-unit" : {
+              "type" : "string",
+              "enum" : [ "day", "day-of-month", "day-of-week", "day-of-year", "default", "hour", "hour-of-day", "millisecond", "minute", "minute-of-hour", "month", "month-of-year", "quarter", "quarter-of-year", "second", "second-of-minute", "week", "week-of-year", "year", "year-of-era" ]
+            },
+            "metabase.lib.field/binning" : {
+              "description" : "Schema for `:binning` options passed to a `:field` clause.",
+              "allOf" : [ {
                 "type" : "object",
                 "properties" : {
                   "strategy" : {
-                    "const" : "default"
+                    "$ref" : "#/components/schemas/metabase.lib.schema.binning.strategy"
                   }
                 },
                 "required" : [ "strategy" ]
               }, {
-                "type" : "object",
-                "properties" : {
-                  "bin-width" : {
-                    "$ref" : "#/components/schemas/metabase.lib.schema.binning.bin-width"
+                "oneOf" : [ {
+                  "type" : "object",
+                  "properties" : {
+                    "strategy" : {
+                      "const" : "default"
+                    }
                   },
-                  "strategy" : {
-                    "const" : "bin-width"
-                  }
-                },
-                "required" : [ "strategy", "bin-width" ]
-              }, {
-                "type" : "object",
-                "properties" : {
-                  "num-bins" : {
-                    "$ref" : "#/components/schemas/metabase.lib.schema.binning.num-bins"
+                  "required" : [ "strategy" ]
+                }, {
+                  "type" : "object",
+                  "properties" : {
+                    "bin-width" : {
+                      "$ref" : "#/components/schemas/metabase.lib.schema.binning.bin-width"
+                    },
+                    "strategy" : {
+                      "const" : "bin-width"
+                    }
                   },
-                  "strategy" : {
-                    "const" : "num-bins"
-                  }
-                },
-                "required" : [ "strategy", "num-bins" ]
+                  "required" : [ "strategy", "bin-width" ]
+                }, {
+                  "type" : "object",
+                  "properties" : {
+                    "num-bins" : {
+                      "$ref" : "#/components/schemas/metabase.lib.schema.binning.num-bins"
+                    },
+                    "strategy" : {
+                      "const" : "num-bins"
+                    }
+                  },
+                  "required" : [ "strategy", "num-bins" ]
+                } ]
               } ]
-            } ]
-          },
-          "semantic_type" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.semantic-or-relation-type"
-          },
-          "display_name" : {
-            "type" : "string"
-          },
-          "lib/model-display-name" : {
-            "type" : "string"
-          },
-          "lib/internal-remap" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.remapping.internal"
-          },
-          "converted_timezone" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.expression.temporal.timezone-id"
-          },
-          "source" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.legacy-source"
-          },
-          "metabase.lib.join/join-alias" : {
-            "type" : "string",
-            "minLength" : 1
-          },
-          "binning_info" : {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema..legacy-column-metadata.binning-info"
-          },
-          "lib/original-binning" : {
-            "description" : "Schema for `:binning` options passed to a `:field` clause.",
-            "allOf" : [ {
-              "type" : "object",
-              "properties" : {
-                "strategy" : {
-                  "$ref" : "#/components/schemas/metabase.lib.schema.binning.strategy"
-                }
-              },
-              "required" : [ "strategy" ]
-            }, {
-              "oneOf" : [ {
+            },
+            "semantic_type" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.semantic-or-relation-type"
+            },
+            "display_name" : {
+              "type" : "string"
+            },
+            "lib/model-display-name" : {
+              "type" : "string"
+            },
+            "lib/internal-remap" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.remapping.internal"
+            },
+            "converted_timezone" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.expression.temporal.timezone-id"
+            },
+            "source" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.legacy-source"
+            },
+            "metabase.lib.join/join-alias" : {
+              "type" : "string",
+              "minLength" : 1
+            },
+            "binning_info" : {
+              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema..legacy-column-metadata.binning-info"
+            },
+            "lib/original-binning" : {
+              "description" : "Schema for `:binning` options passed to a `:field` clause.",
+              "allOf" : [ {
                 "type" : "object",
                 "properties" : {
                   "strategy" : {
-                    "const" : "default"
+                    "$ref" : "#/components/schemas/metabase.lib.schema.binning.strategy"
                   }
                 },
                 "required" : [ "strategy" ]
               }, {
-                "type" : "object",
-                "properties" : {
-                  "bin-width" : {
-                    "$ref" : "#/components/schemas/metabase.lib.schema.binning.bin-width"
+                "oneOf" : [ {
+                  "type" : "object",
+                  "properties" : {
+                    "strategy" : {
+                      "const" : "default"
+                    }
                   },
-                  "strategy" : {
-                    "const" : "bin-width"
-                  }
-                },
-                "required" : [ "strategy", "bin-width" ]
-              }, {
-                "type" : "object",
-                "properties" : {
-                  "num-bins" : {
-                    "$ref" : "#/components/schemas/metabase.lib.schema.binning.num-bins"
+                  "required" : [ "strategy" ]
+                }, {
+                  "type" : "object",
+                  "properties" : {
+                    "bin-width" : {
+                      "$ref" : "#/components/schemas/metabase.lib.schema.binning.bin-width"
+                    },
+                    "strategy" : {
+                      "const" : "bin-width"
+                    }
                   },
-                  "strategy" : {
-                    "const" : "num-bins"
-                  }
-                },
-                "required" : [ "strategy", "num-bins" ]
+                  "required" : [ "strategy", "bin-width" ]
+                }, {
+                  "type" : "object",
+                  "properties" : {
+                    "num-bins" : {
+                      "$ref" : "#/components/schemas/metabase.lib.schema.binning.num-bins"
+                    },
+                    "strategy" : {
+                      "const" : "num-bins"
+                    }
+                  },
+                  "required" : [ "strategy", "num-bins" ]
+                } ]
               } ]
-            } ]
+            },
+            "effective_type" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
+            },
+            "lib/original-join-alias" : {
+              "type" : "string",
+              "minLength" : 1
+            },
+            "lib/original-display-name" : {
+              "type" : "string"
+            },
+            "unit" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
+            },
+            "lib/source" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.source"
+            },
+            "lib/ref-display-name" : {
+              "type" : "string"
+            },
+            "lib/original-name" : {
+              "type" : "string",
+              "description" : "The original name of the column as it appeared in the very first place it came from (i.e., the physical name of the\n  column in the table it appears in). This should be the same as the `:lib/source-column-alias` for the very first\n  usage of the column.\n  Allowed to be blank because some databases like SQL Server allow blank column names."
+            },
+            "description" : {
+              "type" : "string"
+            },
+            "lib/desired-column-alias" : {
+              "description" : "Name we should use as a column alias for a column in this stage of a query. The desired column alias in stage N\n  becomes the source column alias in stage N+1. The right-hand side (RHS) in\n\n    SELECT lhs AS rhs",
+              "type" : "string"
+            }
           },
-          "effective_type" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
-          },
-          "lib/original-join-alias" : {
-            "type" : "string",
-            "minLength" : 1
-          },
-          "lib/original-display-name" : {
-            "type" : "string"
-          },
-          "unit" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
-          },
-          "lib/source" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.source"
-          },
-          "lib/ref-display-name" : {
-            "type" : "string"
-          },
-          "lib/original-name" : {
-            "type" : "string",
-            "description" : "The original name of the column as it appeared in the very first place it came from (i.e., the physical name of the\n  column in the table it appears in). This should be the same as the `:lib/source-column-alias` for the very first\n  usage of the column.\n  Allowed to be blank because some databases like SQL Server allow blank column names."
-          },
-          "lib/desired-column-alias" : {
-            "description" : "Name we should use as a column alias for a column in this stage of a query. The desired column alias in stage N\n  becomes the source column alias in stage N+1. The right-hand side (RHS) in\n\n    SELECT lhs AS rhs",
-            "type" : "string"
-          }
-        },
-        "required" : [ "base_type", "display_name", "name" ]
+          "required" : [ "base_type", "display_name", "name" ]
+        }, {
+          "allOf" : [ ]
+        } ]
       },
       "metabase.legacy-mbql.schema.length" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :length clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.log" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :log clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.lower" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :lower clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.ltrim" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :ltrim clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.max" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :max clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.median" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :median clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.metric" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :metric clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.min" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :min clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.month-name" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :month-name clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.not" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :not clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.not-empty" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :not-empty clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.not-in" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :not-in clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.not-null" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :not-null clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.now" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :now clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.offset" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :offset clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.or" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
-        "allOf" : [ ]
+        "description" : "Schema for a valid MBQL 4 :or clause.",
+        "oneOf" : [ {
+          "description" : "schema for a valid MBQL 4 :or clause",
+          "allOf" : [ ]
+        }, {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Filter"
+        } ]
       },
       "metabase.legacy-mbql.schema.path" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :path clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.percentile" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :percentile clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.power" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :power clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.quarter-name" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :quarter-name clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.regex-match-first" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :regex-match-first clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.relative-datetime" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :relative-datetime clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.relative-time-interval" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :relative-time-interval clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.replace" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :replace clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.require-base-type-for-field-name" : {
         "description" : "Fields using names rather than integer IDs are required to specify `:base-type`."
       },
       "metabase.legacy-mbql.schema.round" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :round clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.rtrim" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :rtrim clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.segment" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :segment clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.share" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :share clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.split-part" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :split-part clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.sqrt" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :sqrt clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.starts-with" : {
+        "description" : "Schema for a valid MBQL 4 :metabase.legacy-mbql.schema/starts-with clause.",
         "anyOf" : [ {
-          "description" : "schema for a valid legacy MBQL :tag clause",
+          "description" : "schema for a valid MBQL 4 :starts-with clause",
           "allOf" : [ ]
         }, {
-          "description" : "schema for a valid legacy MBQL :tag clause",
+          "description" : "schema for a valid MBQL 4 :starts-with clause",
           "allOf" : [ ]
         } ]
       },
       "metabase.legacy-mbql.schema.stddev" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :stddev clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.subdomain" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :subdomain clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.substring" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :substring clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.sum" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :sum clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.sum-where" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :sum-where clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.temporal-extract" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :temporal-extract clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.text" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :text clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.time" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :time clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.time-interval" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :time-interval clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.today" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :today clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.trim" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :trim clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.upper" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :upper clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.value" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :value clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.var" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
+        "description" : "schema for a valid MBQL 4 :var clause",
         "allOf" : [ ]
       },
       "metabase.lib.metadata.protocols.metadata-provider" : {
@@ -6016,6 +6595,7 @@ redirect_from:
         "minimum" : 1
       },
       "metabase.lib.schema.info.context" : {
+        "description" : "Schema for `info.context`; used for informational purposes to record how a query was executed.",
         "type" : "string",
         "enum" : [ "action", "ad-hoc", "cache-refresh", "collection", "map-tiles", "pulse", "dashboard-subscription", "dashboard", "question", "csv-download", "xlsx-download", "json-download", "public-dashboard", "public-question", "public-csv-download", "public-xlsx-download", "public-json-download", "embedded-dashboard", "embedded-question", "embedded-csv-download", "embedded-xlsx-download", "embedded-json-download", "table-grid" ]
       },
@@ -8553,6 +9133,12 @@ redirect_from:
         "type" : "string",
         "enum" : [ "static-list", "card" ]
       },
+      "metabase.queries.schema..card.result-metadata" : {
+        "type" : "array",
+        "items" : {
+          "$ref" : "#/components/schemas/metabase.lib.schema.metadata.lib-or-legacy-column"
+        }
+      },
       "metabase.queries.schema.card" : {
         "description" : "Schema for an instance of a `:model/Card` (everything is optional to support updates).",
         "type" : "object",
@@ -8570,10 +9156,7 @@ redirect_from:
             "$ref" : "#/components/schemas/metabase.parameters.schema.parameters"
           },
           "result_metadata" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.metadata.lib-or-legacy-column"
-            }
+            "$ref" : "#/components/schemas/metabase.queries.schema..card.result-metadata"
           },
           "type" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.metadata..card.type"
@@ -11864,6 +12447,10 @@ redirect_from:
                     "description" : "value must be an integer greater than zero.",
                     "type" : "integer",
                     "minimum" : 1
+                  },
+                  "type" : {
+                    "type" : "string",
+                    "enum" : [ "remote-synced" ]
                   }
                 },
                 "required" : [ "name" ]
@@ -12025,6 +12612,14 @@ redirect_from:
               "type" : "string",
               "enum" : [ "dashboard", "dataset", "no_models", "timeline", "snippet", "collection", "document", "pulse", "metric", "card" ]
             }
+          }
+        }, {
+          "in" : "query",
+          "name" : "collection_type",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "remote-synced" ]
           }
         }, {
           "in" : "query",
@@ -12312,6 +12907,10 @@ redirect_from:
                     "description" : "value must be an integer greater than zero.",
                     "type" : "integer",
                     "minimum" : 1
+                  },
+                  "type" : {
+                    "type" : "string",
+                    "enum" : [ "remote-synced" ]
                   }
                 },
                 "required" : [ ]
@@ -13734,7 +14333,7 @@ redirect_from:
     "/api/database/" : {
       "get" : {
         "summary" : "GET /api/database/",
-        "description" : "Fetch all `Databases`.\n\n  * `include=tables` means we should hydrate the Tables belonging to each DB. Default: `false`.\n\n  * `saved` means we should include the saved questions virtual database. Default: `false`.\n\n  * `include_editable_data_model` will only include DBs for which the current user has data model editing\n    permissions. (If `include=tables`, this also applies to the list of tables in each DB). Should only be used if\n    Enterprise Edition code is available the advanced-permissions feature is enabled.\n\n  * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no\n    effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled.\n\n  * `include_only_uploadable` will only include DBs into which Metabase can insert new data.\n\n  Independently of these flags, the implementation of [[metabase.models.interface/to-json]] for `:model/Database` in\n  [[metabase.warehouses.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for `:model/Database`\n  in [[metabase.warehouses.models.database]] to exclude the `details` field, if the requesting user lacks permission to change the\n  database details.",
+        "description" : "Fetch all `Databases`.\n\n  * `include=tables` means we should hydrate the Tables belonging to each DB. Default: `false`.\n\n  * `saved` means we should include the saved questions virtual database. Default: `false`.\n\n  * `include_editable_data_model` will only include DBs for which the current user has data model editing\n    permissions. (If `include=tables`, this also applies to the list of tables in each DB). Should only be used if\n    Enterprise Edition code is available the advanced-permissions feature is enabled.\n\n  * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no\n    effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled.\n\n  * `include_only_uploadable` will only include DBs into which Metabase can insert new data.\n\n  Independently of these flags, the implementation of [[metabase.models.interface/to-json]] for `:model/Database` in\n  [[metabase.warehouses.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for\n  `:model/Database` in [[metabase.warehouses.models.database]] to exclude the `details` field, if the requesting user\n  lacks permission to change the database details.",
         "parameters" : [ {
           "in" : "query",
           "name" : "include",
@@ -16344,7 +16943,7 @@ redirect_from:
     "/api/ee/dependencies/graph" : {
       "get" : {
         "summary" : "GET /api/ee/dependencies/graph",
-        "description" : "TODO: This endpoint is supposed to take an :id and :type of an entity (currently :table, :card, :snippet,\n  or :transform) and return the entity with all its upstream and downstream dependencies that should be fetched\n  recursively. :edges match our :model/Dependency format. Each node in :nodes has :id, :type, and :data, and :data\n  depends on the node type. For :table, there should be :display_name. For :card, there should be :name\n  and :type. For :snippet -> :name. For :transform -> :name.",
+        "description" : "This endpoint takes an :id and a supported entity :type, and returns a graph of all its upstream dependencies.\n  The graph is represented by a list of :nodes and a list of :edges. Each node has an :id, :type, :data (which\n  depends on the node type), and a map of :dependent_counts per entity type. Each edge is a :model/Dependency",
         "parameters" : [ {
           "in" : "query",
           "name" : "id",
@@ -16360,7 +16959,7 @@ redirect_from:
           "required" : false,
           "schema" : {
             "type" : "string",
-            "enum" : [ "table", "card", "snippet", "transform" ]
+            "enum" : [ "table", "card", "snippet", "transform", "dashboard", "document", "sandbox" ]
           }
         } ],
         "responses" : {
@@ -16380,7 +16979,7 @@ redirect_from:
     "/api/ee/dependencies/graph/dependents" : {
       "get" : {
         "summary" : "GET /api/ee/dependencies/graph/dependents",
-        "description" : "TODO: This endpoint is supposed to take an :id and :type of an entity (currently :table, :card, :snippet,\n  or :transform) and return the entity with all its upstream and downstream dependencies that should be fetched\n  recursively. :edges match our :model/Dependency format. Each node in :nodes has :id, :type, and :data, and :data\n  depends on the node type. For :table, there should be :display_name. For :card, there should be :name\n  and :type. For :snippet -> :name. For :transform -> :name.",
+        "description" : "This endpoint takes an :id, :type, :dependent_type, and an optional :dependent_card_type, and returns a list of\n   all that entity's dependents with :dependent_type. If the :dependent_type is :card, the dependents are further\n   filtered by :dependent_card_type.",
         "parameters" : [ {
           "in" : "query",
           "name" : "id",
@@ -16396,7 +16995,7 @@ redirect_from:
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "table", "card", "snippet", "transform" ]
+            "enum" : [ "table", "card", "snippet", "transform", "dashboard", "document", "sandbox" ]
           }
         }, {
           "in" : "query",
@@ -16404,7 +17003,7 @@ redirect_from:
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "table", "card", "snippet", "transform" ]
+            "enum" : [ "table", "card", "snippet", "transform", "dashboard", "document", "sandbox" ]
           }
         }, {
           "in" : "query",
@@ -16552,6 +17151,51 @@ redirect_from:
                 "required" : [ "name", "document" ]
               }
             }
+          }
+        },
+        "tags" : [ "/api/ee/document" ]
+      }
+    },
+    "/api/ee/document/public" : {
+      "get" : {
+        "summary" : "GET /api/ee/document/public",
+        "description" : "List all Documents that have public links.\n\n  Returns a sequence of Documents that have been publicly shared. Each Document includes its `:id`, `:name`,\n  and `:public_uuid`. Documents are only actually accessible via the public endpoint if public sharing is\n  currently enabled. Archived Documents are excluded from the results.\n\n  This endpoint is used to populate the public links listing in the Admin settings UI.\n\n  Requires superuser permissions. Public sharing must be enabled via the `enable-public-sharing` setting.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "sequence of map where {:name -> <string>, :id -> <value must be an integer greater than zero.>, :public_uuid -> <value must be a valid UUID.>}",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "properties" : {
+                      "id" : {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      },
+                      "name" : {
+                        "type" : "string"
+                      },
+                      "public_uuid" : {
+                        "description" : "value must be a valid UUID.",
+                        "type" : "string",
+                        "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                      }
+                    },
+                    "required" : [ "name", "id", "public_uuid" ]
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
           }
         },
         "tags" : [ "/api/ee/document" ]
@@ -16707,6 +17351,152 @@ redirect_from:
       "delete" : {
         "summary" : "DELETE /api/ee/document/{document-id}",
         "description" : "Permanently deletes an archived Document.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "document-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/document" ]
+      }
+    },
+    "/api/ee/document/{document-id}/card/{card-id}/query/{export-format}" : {
+      "post" : {
+        "summary" : "POST /api/ee/document/{document-id}/card/{card-id}/query/{export-format}",
+        "description" : "Download query results for a Card embedded in a Document.\n\n  Returns query results in the requested format. The user must have read access to the document\n  to download results. If the card's query fails, standard query error responses are returned.\n\n  Route parameters:\n  - document-id: ID of the document containing the card\n  - card-id: ID of the card to download results from\n  - export-format: Output format (csv, xlsx, json)\n\n  Body parameters (snake_case):\n  - parameters: Optional query parameters (array of maps or JSON string)\n  - format_rows: Whether to apply formatting to results (boolean, default false)\n  - pivot_results: Whether to pivot results (boolean, default false)",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "document-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "path",
+          "name" : "card-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "path",
+          "name" : "export-format",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "format_rows" : {
+                    "default" : false,
+                    "type" : "boolean"
+                  },
+                  "parameters" : {
+                    "anyOf" : [ {
+                      "type" : "array",
+                      "items" : {
+                        "description" : "Value must be a map.",
+                        "type" : "object",
+                        "properties" : { }
+                      }
+                    }, {
+                      "description" : "value must be a valid JSON string.",
+                      "type" : "string"
+                    } ]
+                  },
+                  "pivot_results" : {
+                    "default" : false,
+                    "type" : "boolean"
+                  }
+                },
+                "required" : [ "format_rows", "pivot_results" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/document" ]
+      }
+    },
+    "/api/ee/document/{document-id}/public-link" : {
+      "post" : {
+        "summary" : "POST /api/ee/document/{document-id}/public-link",
+        "description" : "Generate a publicly-accessible UUID for a Document.\n\n  Creates a public link that allows viewing the Document without authentication. If the Document already has\n  a public UUID, returns the existing one rather than generating a new one. This enables sharing the Document\n  via `GET /api/ee/public/document/:uuid`.\n\n  Returns a map containing `:uuid` (the public UUID string).\n\n  Requires superuser permissions. Public sharing must be enabled via the `enable-public-sharing` setting.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "document-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "map where {:uuid -> <value must be a valid UUID.>}",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "uuid" : {
+                      "description" : "value must be a valid UUID.",
+                      "type" : "string",
+                      "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    }
+                  },
+                  "required" : [ "uuid" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/document" ]
+      },
+      "delete" : {
+        "summary" : "DELETE /api/ee/document/{document-id}/public-link",
+        "description" : "Remove the public link for a Document.\n\n  Deletes the public UUID from the Document, making it no longer accessible via the public sharing endpoint.\n  This revokes public access to the Document - the existing public link will no longer work.\n\n  Returns a 204 No Content response on success.\n\n  Requires superuser permissions. Public sharing must be enabled via the `enable-public-sharing` setting.\n  Throws a 404 if the Document doesn't exist, is archived, or doesn't have a public link.",
         "parameters" : [ {
           "in" : "path",
           "name" : "document-id",
@@ -17041,6 +17831,60 @@ redirect_from:
                   }
                 },
                 "required" : [ "conversation_id" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/metabot-tools" ]
+      }
+    },
+    "/api/ee/metabot-tools/check-transform-dependencies" : {
+      "post" : {
+        "summary" : "POST /api/ee/metabot-tools/check-transform-dependencies",
+        "description" : "Check a proposed edit to a transform and return details of cards or transforms that would be broken by the change.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "map where {:conversation_id -> <value must be a valid UUID.>}",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "conversation_id" : {
+                      "description" : "value must be a valid UUID.",
+                      "type" : "string",
+                      "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    }
+                  },
+                  "required" : [ "conversation_id" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "arguments" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.check-transform-dependencies-arguments"
+                  },
+                  "conversation_id" : {
+                    "description" : "value must be a valid UUID.",
+                    "type" : "string",
+                    "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                  }
+                },
+                "required" : [ "arguments", "conversation_id" ]
               }
             }
           }
@@ -17656,6 +18500,114 @@ redirect_from:
         "tags" : [ "/api/ee/metabot-tools" ]
       }
     },
+    "/api/ee/metabot-tools/get-snippet-details" : {
+      "post" : {
+        "summary" : "POST /api/ee/metabot-tools/get-snippet-details",
+        "description" : "Get the content of a single SQL snippet.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Schema for SQL snippet detail results",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "description" : "Schema for SQL snippet detail results",
+                  "type" : "object",
+                  "properties" : {
+                    "conversation_id" : {
+                      "description" : "value must be a valid UUID.",
+                      "type" : "string",
+                      "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    },
+                    "structured_output" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.full-snippet"
+                    }
+                  },
+                  "required" : [ "structured_output", "conversation_id" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "arguments" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.get-snippet-details-arguments"
+                  },
+                  "conversation_id" : {
+                    "description" : "value must be a valid UUID.",
+                    "type" : "string",
+                    "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                  }
+                },
+                "required" : [ "arguments", "conversation_id" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/metabot-tools" ]
+      }
+    },
+    "/api/ee/metabot-tools/get-snippets" : {
+      "post" : {
+        "summary" : "POST /api/ee/metabot-tools/get-snippets",
+        "description" : "Get a list of all known SQL snippets.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Schema for SQL snippet list results",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "description" : "Schema for SQL snippet list results",
+                  "type" : "object",
+                  "properties" : {
+                    "conversation_id" : {
+                      "description" : "value must be a valid UUID.",
+                      "type" : "string",
+                      "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    },
+                    "structured_output" : {
+                      "type" : "array",
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.basic-snippet"
+                      }
+                    }
+                  },
+                  "required" : [ "structured_output", "conversation_id" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.tool-request"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/metabot-tools" ]
+      }
+    },
     "/api/ee/metabot-tools/get-table-details" : {
       "post" : {
         "summary" : "POST /api/ee/metabot-tools/get-table-details",
@@ -17757,6 +18709,157 @@ redirect_from:
                   }
                 },
                 "required" : [ "arguments", "conversation_id" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/metabot-tools" ]
+      }
+    },
+    "/api/ee/metabot-tools/get-transform-details" : {
+      "post" : {
+        "summary" : "POST /api/ee/metabot-tools/get-transform-details",
+        "description" : "Get information about a transform.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "map where {:conversation_id -> <value must be a valid UUID.>}",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "conversation_id" : {
+                      "description" : "value must be a valid UUID.",
+                      "type" : "string",
+                      "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    }
+                  },
+                  "required" : [ "conversation_id" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "arguments" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.get-transform-details-arguments"
+                  },
+                  "conversation_id" : {
+                    "description" : "value must be a valid UUID.",
+                    "type" : "string",
+                    "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                  }
+                },
+                "required" : [ "arguments", "conversation_id" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/metabot-tools" ]
+      }
+    },
+    "/api/ee/metabot-tools/get-transform-python-library-details" : {
+      "post" : {
+        "summary" : "POST /api/ee/metabot-tools/get-transform-python-library-details",
+        "description" : "Get information about a Python library by path.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "map where {:conversation_id -> <value must be a valid UUID.>}",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "conversation_id" : {
+                      "description" : "value must be a valid UUID.",
+                      "type" : "string",
+                      "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    }
+                  },
+                  "required" : [ "conversation_id" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "arguments" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.get-transform-python-library-details-arguments"
+                  },
+                  "conversation_id" : {
+                    "description" : "value must be a valid UUID.",
+                    "type" : "string",
+                    "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                  }
+                },
+                "required" : [ "arguments", "conversation_id" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/metabot-tools" ]
+      }
+    },
+    "/api/ee/metabot-tools/get-transforms" : {
+      "post" : {
+        "summary" : "POST /api/ee/metabot-tools/get-transforms",
+        "description" : "Get a list of all known transforms.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "map where {:conversation_id -> <value must be a valid UUID.>}",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "conversation_id" : {
+                      "description" : "value must be a valid UUID.",
+                      "type" : "string",
+                      "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    }
+                  },
+                  "required" : [ "conversation_id" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.tool-request"
               }
             }
           }
@@ -17930,6 +19033,60 @@ redirect_from:
       "post" : {
         "summary" : "POST /api/ee/metabot-tools/search",
         "description" : "Enhanced search with term and semantic queries using Reciprocal Rank Fusion.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "map where {:conversation_id -> <value must be a valid UUID.>}",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "conversation_id" : {
+                      "description" : "value must be a valid UUID.",
+                      "type" : "string",
+                      "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    }
+                  },
+                  "required" : [ "conversation_id" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "arguments" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.search-arguments"
+                  },
+                  "conversation_id" : {
+                    "description" : "value must be a valid UUID.",
+                    "type" : "string",
+                    "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                  }
+                },
+                "required" : [ "conversation_id" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/metabot-tools" ]
+      }
+    },
+    "/api/ee/metabot-tools/search_v2" : {
+      "post" : {
+        "summary" : "POST /api/ee/metabot-tools/search_v2",
+        "description" : "Enhanced search with term and semantic queries using Reciprocal Rank Fusion. This is identical to /search, but\n  duplicated in order to add a new capability to AI service that indicates that Metabot can search transforms. The\n  /search endpoint is kept around for backward compatibility.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -18379,6 +19536,680 @@ redirect_from:
           }
         },
         "tags" : [ "/api/ee/permission_debug" ]
+      }
+    },
+    "/api/ee/public/document/{uuid}" : {
+      "get" : {
+        "summary" : "GET /api/ee/public/document/{uuid}",
+        "description" : "Fetch a publicly-accessible Document. Does not require auth credentials. Public sharing must be enabled.\n\n  Returns a Document with sensitive fields removed (excludes collection_id, permissions, creator details, etc.).\n  Includes all embedded Cards with their metadata hydrated so the frontend doesn't need to make separate\n  requests for each card — just like public Dashboards do.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "uuid",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+          },
+          "description" : "value must be a valid UUID."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/public" ]
+      }
+    },
+    "/api/ee/public/document/{uuid}/card/{card-id}" : {
+      "get" : {
+        "summary" : "GET /api/ee/public/document/{uuid}/card/{card-id}",
+        "description" : "Run a query for a Card that's embedded in a public Document. Doesn't require auth credentials. Public sharing must\n  be enabled.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "uuid",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+          },
+          "description" : "value must be a valid UUID."
+        }, {
+          "in" : "path",
+          "name" : "card-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "parameters",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          },
+          "description" : "value must be a valid JSON string."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/public" ]
+      }
+    },
+    "/api/ee/public/document/{uuid}/card/{card-id}/{export-format}" : {
+      "post" : {
+        "summary" : "POST /api/ee/public/document/{uuid}/card/{card-id}/{export-format}",
+        "description" : "Fetch a Card embedded in a public Document and return query results in the specified format.\n  Does not require auth credentials. Public sharing must be enabled.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "uuid",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+          },
+          "description" : "value must be a valid UUID."
+        }, {
+          "in" : "path",
+          "name" : "card-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "path",
+          "name" : "export-format",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase.query-processor.schema.export-format"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "format_rows" : {
+                    "default" : false,
+                    "type" : "boolean"
+                  },
+                  "parameters" : {
+                    "anyOf" : [ {
+                      "type" : "array",
+                      "items" : {
+                        "description" : "Value must be a map.",
+                        "type" : "object",
+                        "properties" : { }
+                      }
+                    }, {
+                      "description" : "value must be a valid JSON string.",
+                      "type" : "string"
+                    } ]
+                  },
+                  "pivot_results" : {
+                    "default" : false,
+                    "type" : "boolean"
+                  }
+                },
+                "required" : [ "format_rows", "pivot_results" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/public" ]
+      }
+    },
+    "/api/ee/remote-sync/branches" : {
+      "get" : {
+        "summary" : "GET /api/ee/remote-sync/branches",
+        "description" : "Get list of branches from the configured source.\n\n  Returns a JSON object with branch names under the :items key.\n\n  Requires superuser permissions.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "map where {:items -> <sequence of string>}",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "items" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "string"
+                      }
+                    }
+                  },
+                  "required" : [ "items" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/remote-sync" ]
+      }
+    },
+    "/api/ee/remote-sync/create-branch" : {
+      "post" : {
+        "summary" : "POST /api/ee/remote-sync/create-branch",
+        "description" : "Create a new branch from the current remote-sync branch and switches the current remote-sync branch to it.\n  Requires superuser permissions.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "map where {:status -> <string>, :message -> <string>}",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "message" : {
+                      "type" : "string"
+                    },
+                    "status" : {
+                      "type" : "string"
+                    }
+                  },
+                  "required" : [ "status", "message" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "name" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  }
+                },
+                "required" : [ "name" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/remote-sync" ]
+      }
+    },
+    "/api/ee/remote-sync/current-task" : {
+      "get" : {
+        "summary" : "GET /api/ee/remote-sync/current-task",
+        "description" : "Get the current sync task",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "nullable map where {:id -> <integer greater than 0>, :sync_task_type -> <enum of import, export>, :initiated_by (optional) -> <nullable integer greater than 0>, :progress -> <nullable float between 0.0 and 1.0 inclusive>, :started_at -> <anything>, :ended_at (optional) -> <nullable anything>, :last_progress_report_at (optional) -> <nullable anything>, :version (optional) -> <nullable string>, :cancelled (optional) -> <nullable boolean>, :error_message (optional) -> <nullable string>, :status -> <enum of :running, :successful, :errored, :cancelled, :timed-out>}",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "progress" : {
+                      "type" : "number",
+                      "minimum" : 0.0,
+                      "maximum" : 1.0
+                    },
+                    "last_progress_report_at" : { },
+                    "id" : {
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "started_at" : { },
+                    "ended_at" : { },
+                    "initiated_by" : {
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "cancelled" : {
+                      "type" : "boolean"
+                    },
+                    "status" : {
+                      "type" : "string",
+                      "enum" : [ "running", "successful", "errored", "cancelled", "timed-out" ]
+                    },
+                    "error_message" : {
+                      "type" : "string"
+                    },
+                    "sync_task_type" : {
+                      "type" : "string",
+                      "enum" : [ "import", "export" ]
+                    },
+                    "version" : {
+                      "type" : "string"
+                    }
+                  },
+                  "required" : [ "id", "sync_task_type", "started_at", "status" ],
+                  "optional" : true
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/remote-sync" ]
+      }
+    },
+    "/api/ee/remote-sync/current-task/cancel" : {
+      "post" : {
+        "summary" : "POST /api/ee/remote-sync/current-task/cancel",
+        "description" : "Cancels the current task if one is running",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "map where {:id -> <integer greater than 0>, :sync_task_type -> <enum of import, export>, :initiated_by (optional) -> <nullable integer greater than 0>, :progress -> <nullable float between 0.0 and 1.0 inclusive>, :started_at -> <anything>, :ended_at (optional) -> <nullable anything>, :last_progress_report_at (optional) -> <nullable anything>, :version (optional) -> <nullable string>, :cancelled (optional) -> <nullable boolean>, :error_message (optional) -> <nullable string>, :status -> <enum of :running, :successful, :errored, :cancelled, :timed-out>}",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "progress" : {
+                      "type" : "number",
+                      "minimum" : 0.0,
+                      "maximum" : 1.0
+                    },
+                    "last_progress_report_at" : { },
+                    "id" : {
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "started_at" : { },
+                    "ended_at" : { },
+                    "initiated_by" : {
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "cancelled" : {
+                      "type" : "boolean"
+                    },
+                    "status" : {
+                      "type" : "string",
+                      "enum" : [ "running", "successful", "errored", "cancelled", "timed-out" ]
+                    },
+                    "error_message" : {
+                      "type" : "string"
+                    },
+                    "sync_task_type" : {
+                      "type" : "string",
+                      "enum" : [ "import", "export" ]
+                    },
+                    "version" : {
+                      "type" : "string"
+                    }
+                  },
+                  "required" : [ "id", "sync_task_type", "started_at", "status" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/remote-sync" ]
+      }
+    },
+    "/api/ee/remote-sync/dirty" : {
+      "get" : {
+        "summary" : "GET /api/ee/remote-sync/dirty",
+        "description" : "Return all models with changes that have not been pushed to the remote sync source in any\n  remote-synced collection.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "map where {:dirty -> <sequence of map where {:id -> <integer greater than 0>, :name -> <nullable string>, :model -> <string>, :sync_status -> <string>, :created_at (optional) -> <anything>, :updated_at (optional) -> <nullable anything>, :collection_id (optional) -> <nullable integer greater than 0>, :authority_level (optional) -> <nullable string>, :display (optional) -> <nullable string>, :query_type (optional) -> <nullable string>, :description (optional) -> <nullable string>}>}",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "dirty" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "model" : {
+                            "type" : "string"
+                          },
+                          "authority_level" : {
+                            "type" : "string"
+                          },
+                          "id" : {
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "name" : {
+                            "type" : "string"
+                          },
+                          "updated_at" : { },
+                          "query_type" : {
+                            "type" : "string"
+                          },
+                          "collection_id" : {
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "created_at" : { },
+                          "display" : {
+                            "type" : "string"
+                          },
+                          "sync_status" : {
+                            "type" : "string"
+                          },
+                          "description" : {
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "id", "model", "sync_status" ]
+                      }
+                    }
+                  },
+                  "required" : [ "dirty" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/remote-sync" ]
+      }
+    },
+    "/api/ee/remote-sync/export" : {
+      "post" : {
+        "summary" : "POST /api/ee/remote-sync/export",
+        "description" : "Export the current state of the Remote Sync collection to a Source.\n\n  This endpoint will:\n  - Fetch the latest changes from the source\n  - Create a branch or subdirectory (depending on source support)\n    If no branch is supplied, use the configured export branch\n  - Export the Remote Sync collection via serialization to the branch or subdirectory\n  - Commit the changes if possible\n  - Sync to the source if possible\n\n  Requires superuser permissions.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "map where {:message -> <string>, :task_id -> <integer greater than 0>}",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "message" : {
+                      "type" : "string"
+                    },
+                    "task_id" : {
+                      "type" : "integer",
+                      "minimum" : 1
+                    }
+                  },
+                  "required" : [ "message", "task_id" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/remote-sync" ]
+      }
+    },
+    "/api/ee/remote-sync/import" : {
+      "post" : {
+        "summary" : "POST /api/ee/remote-sync/import",
+        "description" : "Import Metabase content from configured Remote Sync source.\n\n  This endpoint will:\n  - Fetch the latest changes from the configured source\n  - Load the updated content using the serialization/deserialization system\n\n  If `force=false` (default) and there are unsaved changes in the Remote Sync collection,\n  the import returns a 400 response.\n\n  Requires superuser permissions.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "map where {:status -> <must equal :success>, :task_id -> <nullable integer greater than 0>, :message (optional) -> <nullable string>}",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "message" : {
+                      "type" : "string"
+                    },
+                    "status" : {
+                      "const" : "success"
+                    },
+                    "task_id" : {
+                      "type" : "integer",
+                      "minimum" : 1
+                    }
+                  },
+                  "required" : [ "status" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "branch" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  },
+                  "force" : {
+                    "type" : "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/remote-sync" ]
+      }
+    },
+    "/api/ee/remote-sync/is-dirty" : {
+      "get" : {
+        "summary" : "GET /api/ee/remote-sync/is-dirty",
+        "description" : "Check if any remote-synced collection or collection item has local changes that have not been pushed\n  to the remote sync source.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "map where {:is_dirty -> <boolean>}",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "is_dirty" : {
+                      "type" : "boolean"
+                    }
+                  },
+                  "required" : [ "is_dirty" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/remote-sync" ]
+      }
+    },
+    "/api/ee/remote-sync/settings" : {
+      "put" : {
+        "summary" : "PUT /api/ee/remote-sync/settings",
+        "description" : "Update Remote Sync related settings. You must be a superuser to do this.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "map where {:success -> <boolean>, :task_id (optional) -> <integer greater than 0>}",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "success" : {
+                      "type" : "boolean"
+                    },
+                    "task_id" : {
+                      "type" : "integer",
+                      "minimum" : 1
+                    }
+                  },
+                  "required" : [ "success" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "remote-sync-branch" : {
+                    "type" : "string"
+                  },
+                  "remote-sync-token" : {
+                    "type" : "string"
+                  },
+                  "remote-sync-type" : {
+                    "type" : "string",
+                    "enum" : [ "production", "development" ]
+                  },
+                  "remote-sync-url" : {
+                    "type" : "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/remote-sync" ]
+      }
+    },
+    "/api/ee/remote-sync/stash" : {
+      "post" : {
+        "summary" : "POST /api/ee/remote-sync/stash",
+        "description" : "Stashes changes to a new branch, and changes the current branch to it.\n  Requires superuser permissions.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "map where {:status -> <string>, :message -> <string>, :task_id -> <integer greater than 0>}",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "message" : {
+                      "type" : "string"
+                    },
+                    "status" : {
+                      "type" : "string"
+                    },
+                    "task_id" : {
+                      "type" : "integer",
+                      "minimum" : 1
+                    }
+                  },
+                  "required" : [ "status", "message", "task_id" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "message" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  },
+                  "new_branch" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  }
+                },
+                "required" : [ "new_branch", "message" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/remote-sync" ]
       }
     },
     "/api/ee/scim/api_key" : {
@@ -22180,7 +24011,9 @@ redirect_from:
               "schema" : {
                 "type" : "object",
                 "properties" : {
-                  "attribute_remappings" : { },
+                  "attribute_remappings" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.sandbox.schema.attribute-remappings"
+                  },
                   "card_id" : {
                     "description" : "value must be an integer greater than zero.",
                     "type" : "integer",
@@ -22303,7 +24136,9 @@ redirect_from:
               "schema" : {
                 "type" : "object",
                 "properties" : {
-                  "attribute_remappings" : { },
+                  "attribute_remappings" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.sandbox.schema.attribute-remappings"
+                  },
                   "card_id" : {
                     "description" : "value must be an integer greater than zero.",
                     "type" : "integer",
@@ -25891,7 +27726,7 @@ redirect_from:
     "/api/search/" : {
       "get" : {
         "summary" : "GET /api/search/",
-        "description" : "Search for items in Metabase.\n  For the list of supported models, check [[metabase.search.config/all-models]].\n\n  Filters:\n  - `archived`: set to true to search archived items only, default is false\n  - `table_db_id`: search for tables, cards, and models of a certain DB\n  - `models`: only search for items of specific models. If not provided, search for all models\n  - `filters_items_in_personal_collection`: only search for items in personal collections\n  - `created_at`: search for items created at a specific timestamp\n  - `created_by`: search for items created by a specific user\n  - `last_edited_at`: search for items last edited at a specific timestamp\n  - `last_edited_by`: search for items last edited by a specific user\n  - `search_native_query`: set to true to search the content of native queries\n  - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)\n  - `ids`: search for items with those ids, works iff single value passed to `models`\n  - `display_type`: search for cards/models with specific display types\n  - `non_temporal_dim_ids`: search for cards/metrics/datasets with this exact set of non temporal dimension field IDs (requires appdb engine)\n  - `has_temporal_dim`: set to true for cards/metrics/datasets with 1 or more temporal dimensions (requires appdb engine)\n\n  Note that not all item types support all filters, and the results will include only models that support the provided filters. For example:\n  - The `created-by` filter supports dashboards, models, actions, and cards.\n  - The `verified` filter supports models and cards.\n\n  A search query that has both filters applied will only return models and cards.",
+        "description" : "Search for items in Metabase.\n  For the list of supported models, check [[metabase.search.config/all-models]].\n\n  Filters:\n  - `archived`: set to true to search archived items only, default is false\n  - `table_db_id`: search for tables, cards, and models of a certain DB\n  - `models`: only search for items of specific models. If not provided, search for all models\n  - `filters_items_in_personal_collection`: only search for items in personal collections\n  - `created_at`: search for items created at a specific timestamp\n  - `created_by`: search for items created by a specific user\n  - `last_edited_at`: search for items last edited at a specific timestamp\n  - `last_edited_by`: search for items last edited by a specific user\n  - `search_native_query`: set to true to search the content of native queries\n  - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)\n  - `ids`: search for items with those ids, works iff single value passed to `models`\n  - `display_type`: search for cards/models with specific display types\n  - `non_temporal_dim_ids`: search for cards/metrics/datasets with this exact set of non temporal dimension field IDs (requires appdb engine)\n  - `has_temporal_dim`: set to true for cards/metrics/datasets with 1 or more temporal dimensions (requires appdb engine)\n\n  Note that not all item types support all filters, and the results will include only models that support the provided\n  filters. For example:\n\n  - The `created-by` filter supports dashboards, models, actions, and cards.\n  - The `verified` filter supports models and cards.\n\n  A search query that has both filters applied will only return models and cards.",
         "parameters" : [ {
           "in" : "query",
           "name" : "q",
@@ -28558,7 +30393,7 @@ redirect_from:
     "/api/user/" : {
       "get" : {
         "summary" : "GET /api/user/",
-        "description" : "Fetch a list of `Users` for admins or group managers.\n  By default returns only active users for admins and only active users within groups that the group manager is managing for group managers.\n\n   - If `status` is `deactivated`, include deactivated users only.\n   - If `status` is `all`, include all users (active and inactive).\n   - Also supports `include_deactivated`, which if true, is equivalent to `status=all`; If is false, is equivalent to `status=active`.\n   `status` and `include_deactivated` requires superuser permissions.\n   - `include_deactivated` is a legacy alias for `status` and will be removed in a future release, users are advised to use `status` for better support and flexibility.\n   If both params are passed, `status` takes precedence.\n\n  For users with segmented permissions, return only themselves.\n\n  Takes `limit`, `offset` for pagination.\n  Takes `query` for filtering on first name, last name, email.\n  Also takes `group_id`, which filters on group id.",
+        "description" : "Fetch a list of `Users` for admins or group managers.\n  By default returns only active users for admins and only active users within groups that the group manager is\n  managing for group managers.\n\n   - If `status` is `deactivated`, include deactivated users only.\n\n   - If `status` is `all`, include all users (active and inactive).\n\n   - Also supports `include_deactivated`, which if true, is equivalent to `status=all`; If is false, is equivalent to\n     `status=active`. `status` and `include_deactivated` requires superuser permissions.\n\n   - `include_deactivated` is a legacy alias for `status` and will be removed in a future release, users are advised\n     to use `status` for better support and flexibility.\n\n   If both params are passed, `status` takes precedence.\n\n  For users with segmented permissions, return only themselves.\n\n  Takes `limit`, `offset` for pagination.\n\n  Takes `query` for filtering on first name, last name, email.\n\n  Also takes `group_id`, which filters on group id.",
         "parameters" : [ {
           "in" : "query",
           "name" : "status",

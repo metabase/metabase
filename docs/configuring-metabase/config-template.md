@@ -215,6 +215,13 @@ config:
     query-caching-max-kb: 2000
     query-caching-max-ttl: 3024000.0
     redirect-all-requests-to-https: false
+    remote-sync-auto-import: false
+    remote-sync-auto-import-rate: 5
+    remote-sync-branch: null
+    remote-sync-task-time-limit-ms: 300000
+    remote-sync-token: null
+    remote-sync-type: production
+    remote-sync-url: null
     report-timezone: null
     reset-token-ttl-hours: 48
     retry-initial-interval: 500

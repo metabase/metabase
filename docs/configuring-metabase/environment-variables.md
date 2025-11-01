@@ -1306,6 +1306,62 @@ The absolute maximum time to keep any cached query results, in seconds.
 
 Force all traffic to use HTTPS via a redirect, if the site URL is HTTPS.
 
+### `MB_REMOTE_SYNC_AUTO_IMPORT`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `remote-sync-auto-import`
+
+Whether to automatically import from the remote git repository. Only applies if remote-sync-type is :production.
+
+### `MB_REMOTE_SYNC_AUTO_IMPORT_RATE`
+
+- Type: integer
+- Default: `5`
+- [Configuration file name](./config-file.md): `remote-sync-auto-import-rate`
+
+If remote-sync-type is :production and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5.
+
+### `MB_REMOTE_SYNC_BRANCH`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `remote-sync-branch`
+
+The remote branch to sync with, e.g. `main`.
+
+### `MB_REMOTE_SYNC_TASK_TIME_LIMIT_MS`
+
+- Type: integer
+- Default: `300000`
+- [Configuration file name](./config-file.md): `remote-sync-task-time-limit-ms`
+
+The maximum amount of time a remote sync task will be given to complete.
+
+### `MB_REMOTE_SYNC_TOKEN`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `remote-sync-token`
+
+An Authorization Bearer token allowing access to the git repo over HTTP.
+
+### `MB_REMOTE_SYNC_TYPE`
+
+- Type: keyword
+- Default: `production`
+- [Configuration file name](./config-file.md): `remote-sync-type`
+
+Git synchronization type - :development or :production.
+
+### `MB_REMOTE_SYNC_URL`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `remote-sync-url`
+
+The location of your git repository, e.g. https://github.com/acme-inco/metabase.git.
+
 ### `MB_REPORT_TIMEZONE`
 
 - Type: string
@@ -1950,7 +2006,7 @@ Maximum number of async Jetty threads. If not set, then [MB_JETTY_MAXTHREADS](#m
 Type: integer<br>
 Default: `20`<br>
 
-Limits the number of rows Metabase will display in tables sent with dashboard subscriptions and alerts. Range: 1-100. To limit the total number of rows included in the file attachment for an email dashboard subscription, use [MB_UNAGGREGATED_QUERY_ROW_LIMIT](#mb_unaggregated_query_row_limit).
+Limits the number of rows Metabase will display in tables sent with dashboard subscriptions and alerts. Range: 1-100. To limit the total number of rows included in the file attachment for an email dashboard subscription, use [MB_ATTACHMENT_ROW_LIMIT](#mb_attachment_row_limit).
 
 ### `MB_AUDIT_MAX_RETENTION_DAYS`
 
