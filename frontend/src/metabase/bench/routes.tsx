@@ -1,5 +1,6 @@
-import { IndexRoute, Route } from "react-router";
+import { Route } from "react-router";
 
+import { getMetadataRoutes } from "metabase/metadata/routes";
 import { PLUGIN_DEPENDENCIES, PLUGIN_TRANSFORMS } from "metabase/plugins";
 
 import { BenchLayout } from "./pages/BenchLayout";
@@ -10,7 +11,7 @@ export function getBenchRoutes() {
   return (
     <Route path="bench" component={BenchLayout}>
       <Route component={DataSectionLayout}>
-        <IndexRoute />
+        {getMetadataRoutes()}
         {PLUGIN_TRANSFORMS.getBenchRoutes()}
       </Route>
       {PLUGIN_DEPENDENCIES.isEnabled && (
