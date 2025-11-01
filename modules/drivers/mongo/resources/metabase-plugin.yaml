@@ -11,7 +11,7 @@ driver:
       type: section
       default: false
     - name: conn-uri
-      type: string
+      type: password
       display-name: Paste your connection string
       placeholder: 'mongodb://[username:password@]host1[:port1][,...hostN[:portN]][/[dbname][?options]]'
       required: true
