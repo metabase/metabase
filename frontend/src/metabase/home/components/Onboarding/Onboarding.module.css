@@ -1,11 +1,6 @@
 .page {
   background-color: var(--mb-color-bg-white);
-
-  @media screen and (--breakpoint-min-lg) {
-    background-image: url("~assets/img/onboarding_bg.svg");
-    background-repeat: no-repeat;
-    background-position: bottom right;
-  }
+  position: relative;
 }
 
 .item:not([data-css-specificity-hack="🪗"]) {

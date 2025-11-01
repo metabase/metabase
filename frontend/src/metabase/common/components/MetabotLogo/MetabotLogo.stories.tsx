@@ -7,11 +7,17 @@ import type { EnterpriseSettings } from "metabase-types/api";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
-import MetabotLogo from "./MetabotLogo";
+import { MetabotLogo, type MetabotLogoProps } from "./MetabotLogo";
 
 export default {
   title: "App/MetabotLogo",
   component: MetabotLogo,
+  argTypes: {
+    variant: {
+      options: ["happy", "sad", "cool", "bug", "cloud"],
+      control: { type: "radio" },
+    },
+  },
   decorators: [
     (
       Story: StoryFn,
@@ -38,8 +44,8 @@ function getState(settings?: Partial<EnterpriseSettings>) {
 }
 
 export const Default = {
-  render: () => {
-    return <MetabotLogo />;
+  render: (args: MetabotLogoProps) => {
+    return <MetabotLogo {...args} />;
   },
 };
 
