@@ -954,18 +954,16 @@ export type PythonTransformEditorProps = {
 
 export type PythonTransformsPlugin = {
   isEnabled: boolean;
+  getBenchRoutes: () => ReactNode;
   TransformEditor: ComponentType<PythonTransformEditorProps>;
   PythonRunnerSettingsPage: ComponentType;
-  getAdminRoutes: () => ReactNode;
-  getTransformsNavLinks: () => ReactNode;
 };
 
 export const PLUGIN_TRANSFORMS_PYTHON: PythonTransformsPlugin = {
   isEnabled: false,
+  getBenchRoutes: () => null,
   TransformEditor: PluginPlaceholder,
   PythonRunnerSettingsPage: NotFoundPlaceholder,
-  getAdminRoutes: () => null,
-  getTransformsNavLinks: () => null,
 };
 
 type DependenciesPlugin = {

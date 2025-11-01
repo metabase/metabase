@@ -54,6 +54,7 @@ export function getBenchRoutes() {
               <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
             </Route>
           )}
+          {PLUGIN_TRANSFORMS_PYTHON.getBenchRoutes()}
         </Route>
       </Route>
     </Route>
