@@ -1,9 +1,9 @@
-(ns metabase.permissions.models.data-permissions.graph-test
+(ns metabase.permissions-rest.data-permissions.graph-test
   (:require
    [clojure.test :refer :all]
    [metabase.audit-app.core :as audit]
+   [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.data-permissions :as data-perms]
-   [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -21,7 +21,7 @@
         (are [api-graph db-graph] (= db-graph
                                      (do
                                        (data-perms.graph/update-data-perms-graph! {:groups api-graph})
-                                       (data-perms/data-permissions-graph :group-id group-id-1)))
+                                       (data-perms.graph/data-permissions-graph :group-id group-id-1)))
           {group-id-1
            {database-id-1
             {:view-data :unrestricted}}}
@@ -65,7 +65,7 @@
                                        ;; Clear default perms for the group
                                        (t2/delete! :model/DataPermissions :group_id group-id-1)
                                        (data-perms.graph/update-data-perms-graph! {:groups api-graph})
-                                       (data-perms/data-permissions-graph :group-id group-id-1)))
+                                       (data-perms.graph/data-permissions-graph :group-id group-id-1)))
           {group-id-1
            {database-id-1
             {:create-queries :query-builder-and-native}}}
@@ -135,7 +135,7 @@
         (are [api-graph db-graph] (= db-graph
                                      (do
                                        (data-perms.graph/update-data-perms-graph! {:groups api-graph})
-                                       (data-perms/data-permissions-graph :group-id group-id-1)))
+                                       (data-perms.graph/data-permissions-graph :group-id group-id-1)))
           ;; Setting granular data access permissions
           {group-id-1
            {database-id-1
@@ -204,7 +204,7 @@
       (are [api-graph db-graph] (= db-graph
                                    (do
                                      (data-perms.graph/update-data-perms-graph! {:groups api-graph})
-                                     (data-perms/data-permissions-graph :group-id group-id-1)))
+                                     (data-perms.graph/data-permissions-graph :group-id group-id-1)))
         ;; Setting granular download permissions
         {group-id-1
          {database-id-1
@@ -269,7 +269,7 @@
       (are [api-graph db-graph] (= db-graph
                                    (do
                                      (data-perms.graph/update-data-perms-graph! {:groups api-graph})
-                                     (data-perms/data-permissions-graph :group-id group-id-1)))
+                                     (data-perms.graph/data-permissions-graph :group-id group-id-1)))
         ;; Setting granular data model editing permissions
         {group-id-1
          {database-id-1
@@ -328,7 +328,7 @@
       (are [api-graph db-graph] (= db-graph
                                    (do
                                      (data-perms.graph/update-data-perms-graph! {:groups api-graph})
-                                     (data-perms/data-permissions-graph :group-id group-id-1)))
+                                     (data-perms.graph/data-permissions-graph :group-id group-id-1)))
         ;; Granting permission to edit database details
         {group-id-1
          {database-id-1

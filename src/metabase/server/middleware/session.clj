@@ -23,7 +23,7 @@
    [metabase.api-keys.schema :as api-keys.schema]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
-   [metabase.core.initialization-status :as init-status]
+   [metabase.initialization-status.core :as init-status]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.request.schema :as request.schema]

@@ -1,16 +1,16 @@
-(ns metabase.settings.api
+(ns metabase.settings-rest.api
   "/api/setting endpoints"
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.permissions.core :as perms]
-   [metabase.settings.models.setting :as setting]
+   [metabase.settings.core :as setting]
    [metabase.util :as u]))
 
 (defn- do-with-setting-access-control
   [thunk]
   (try
-    (binding [setting/*enforce-setting-access-checks* true]
+    (setting/with-enforced-setting-access-checks
       (thunk))
     (catch clojure.lang.ExceptionInfo e
       ;; Throw a generic 403 for non-admins, so as to not reveal details about settings

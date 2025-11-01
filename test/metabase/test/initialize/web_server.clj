@@ -1,7 +1,7 @@
 (ns metabase.test.initialize.web-server
   (:require
    [metabase.config.core :as config]
-   [metabase.core.initialization-status :as init-status]
+   [metabase.initialization-status.core :as init-status]
    [metabase.server.core :as server]
    [metabase.server.test-handler :as server.test-handler]
    [metabase.settings.core :as setting]
