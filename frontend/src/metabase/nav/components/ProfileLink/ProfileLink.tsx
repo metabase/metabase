@@ -21,6 +21,7 @@ import { connect, useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { openDiagnostics } from "metabase/redux/app";
 import { setOpenModal } from "metabase/redux/ui";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   getApplicationName,
   getIsWhiteLabeling,
@@ -75,6 +76,7 @@ function ProfileLinkInner({
   const { tag, date, ...versionExtra } = version;
   const helpLink = useHelpLink();
   const dispatch = useDispatch();
+  const isAdmin = useSelector(getUserIsAdmin);
 
   const openModal = (modalName: string) => {
     setModalOpen(modalName);
@@ -103,10 +105,11 @@ function ProfileLinkInner({
         link: "/admin",
         event: `Navbar;Profile Dropdown;Enter Admin`,
       },
-      {
-        title: t`Keyboard shortcuts`,
+      isAdmin && {
+        title: t`Workbench`,
         icon: null,
-        action: () => dispatch(setOpenModal("help")),
+        link: Urls.bench(),
+        event: `Navbar;Profile Dropdown;Enter workbench`,
       },
       {
         separator: true,
@@ -124,6 +127,11 @@ function ProfileLinkInner({
         icon: null,
         link: "/getting-started",
         event: `Navbar;Profile Dropdown;Getting Started`,
+      },
+      {
+        title: t`Keyboard shortcuts`,
+        icon: null,
+        action: () => dispatch(setOpenModal("help")),
       },
       {
         title: t`Report an issue`,

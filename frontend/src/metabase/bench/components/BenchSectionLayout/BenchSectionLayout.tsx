@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
+import { t } from "ttag";
 
-import { Box, Group, Stack, Tabs } from "metabase/ui";
+import { Box, Button, Group, Stack, Tabs } from "metabase/ui";
 
 import S from "./BenchSectionLayout.module.css";
 
@@ -18,16 +19,22 @@ export function BenchSectionLayout({
 }: BenchSectionLayoutProps) {
   return (
     <Stack h="100%" gap={0}>
-      <Stack
+      <Group
         className={S.header}
         px="lg"
         pt="md"
         py={tabs ? undefined : "md"}
-        gap="sm"
+        justify="space-between"
+        align="start"
       >
-        {title}
-        {tabs}
-      </Stack>
+        <Stack gap="sm">
+          {title}
+          {tabs}
+        </Stack>
+        <Button component={Link} to="/">
+          {t`Exit workbench`}
+        </Button>
+      </Group>
       <Box flex={1} mih={0}>
         {children}
       </Box>
