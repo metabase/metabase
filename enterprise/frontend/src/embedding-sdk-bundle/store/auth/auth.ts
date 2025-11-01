@@ -48,17 +48,20 @@ export const initAuth = createAsyncThunk(
       // Use existing user session. Do nothing.
     } else if (isValidInstanceUrl) {
       // SSO setup
-      api.onBeforeRequest = async () => {
-        const session = await dispatch(
-          getOrRefreshSession({
-            metabaseInstanceUrl,
-            preferredAuthMethod,
-          }),
-        ).unwrap();
-        if (session?.id) {
-          api.sessionToken = session.id;
-        }
-      };
+      api.setOnBeforeRequestHandler({
+        key: "get-or-refresh-session-handler",
+        handler: async () => {
+          const session = await dispatch(
+            getOrRefreshSession({
+              metabaseInstanceUrl,
+              preferredAuthMethod,
+            }),
+          ).unwrap();
+          if (session?.id) {
+            api.sessionToken = session.id;
+          }
+        },
+      });
       try {
         // verify that the session is actually valid before proceeding
         await dispatch(

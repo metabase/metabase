@@ -36,7 +36,26 @@ export class Api extends EventEmitter {
   apiKey = "";
   sessionToken;
 
-  onBeforeRequest;
+  /**
+   * @typedef {{
+   *    method: "GET" | "POST";
+   *    url: string;
+   *    options: {
+   *      headers?: Record<string, string>;
+   *      hasBody: boolean;
+   *    } & Record<string, unknown>;
+   * }} OnBeforeRequestHandlerData
+   *
+   * @typedef {(data: OnBeforeRequestHandlerData) => (Promise<void | OnBeforeRequestHandlerData>)} OnBeforeRequestHandler
+   *
+   * @typedef {{
+   *   key: string;
+   *   handler: OnBeforeRequestHandler
+   * }} OnBeforeRequestHandlerDescriptor
+   *
+   * @type {OnBeforeRequestHandlerDescriptor[]}
+   */
+  onBeforeRequestHandlers = [];
   onResponseError;
 
   /**
@@ -110,7 +129,7 @@ export class Api extends EventEmitter {
     return headers;
   }
 
-  _makeMethod(method, creatorOptions = {}) {
+  _makeMethod(methodTemplate, creatorOptions = {}) {
     return (urlTemplate, methodOptions = {}) => {
       if (typeof methodOptions === "function") {
         methodOptions = { transformResponse: methodOptions };
@@ -123,12 +142,37 @@ export class Api extends EventEmitter {
       };
 
       return async (rawData, invocationOptions = {}) => {
-        if (this.onBeforeRequest) {
-          await this.onBeforeRequest();
+        let options = { ...defaultOptions, ...invocationOptions };
+        let method = methodTemplate;
+        let url = urlTemplate;
+
+        if (this.onBeforeRequestHandlers.length) {
+          for (const { handler } of this.onBeforeRequestHandlers) {
+            const onBeforeRequestHandlerResult = await handler({
+              method,
+              url,
+              options,
+            });
+
+            if (onBeforeRequestHandlerResult) {
+              if (onBeforeRequestHandlerResult.method) {
+                method = onBeforeRequestHandlerResult.method;
+              }
+
+              if (onBeforeRequestHandlerResult.url) {
+                url = onBeforeRequestHandlerResult.url;
+              }
+
+              if (onBeforeRequestHandlerResult.options) {
+                options = {
+                  ...options,
+                  ...onBeforeRequestHandlerResult.options,
+                };
+              }
+            }
+          }
         }
 
-        const options = { ...defaultOptions, ...invocationOptions };
-        let url = urlTemplate;
         // this will transform arrays to objects with numeric keys
         // we shouldn't be using top level-arrays in the API
         const data = { ...rawData };
@@ -371,6 +415,21 @@ export class Api extends EventEmitter {
           throw error;
         }
       });
+  }
+
+  /**
+   * @param {OnBeforeRequestHandlerDescriptor} handlerDescriptor
+   */
+  setOnBeforeRequestHandler(handlerDescriptor) {
+    const existingHandlerKeyIndex = this.onBeforeRequestHandlers.findIndex(
+      ({ key }) => key === handlerDescriptor.key,
+    );
+
+    if (existingHandlerKeyIndex >= 0) {
+      this.onBeforeRequestHandlers[existingHandlerKeyIndex] = handlerDescriptor;
+    } else {
+      this.onBeforeRequestHandlers.push(handlerDescriptor);
+    }
   }
 }
 
