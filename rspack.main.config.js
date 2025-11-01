@@ -245,7 +245,9 @@ const config = {
       "sdk-iframe-embedding-ee-plugins": resolveEnterprisePathOrNoop(
         "/sdk-iframe-embedding-plugins",
       ),
-      "sdk-ee-plugins": resolveEnterprisePathOrNoop("/sdk-plugins"),
+      "sdk-ee-plugins": process.env.MB_EDITION === "ee"
+        ? ENTERPRISE_SRC_PATH + "/sdk-plugins"
+        : SRC_PATH + "/lib/sdk-plugins-noop",
       "sdk-specific-imports": SRC_PATH + "/lib/noop",
     },
     fallback: {
