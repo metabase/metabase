@@ -1239,6 +1239,14 @@ By default "Site Url" is used in notification links, but can be overridden.
 The base URL where dashboard notitification links will point to instead of the Metabase base URL.
         Only applicable for users who utilize interactive embedding and subscriptions.
 
+### `MB_NOTIFICATION_TEMP_FILE_SIZE_MAX_BYTES`
+
+- Type: integer
+- Default: `10485760`
+
+Controls the maximum temporary file size used when rendering charts for notifications. Set to 0 for unbounded limits, but this is discouraged as large renders can cause OOM crashes.
+If the file size exceeds the value, the chart will fail to render and be replaced by a text message suggesting that the query size be reduced.
+
 ### `MB_NOTIFICATION_SYSTEM_EVENT_THREAD_POOL_SIZE`
 
 - Type: integer
