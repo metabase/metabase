@@ -2,20 +2,21 @@ import { useCallback, useEffect, useState } from "react";
 import * as React from "react";
 import { usePrevious } from "react-use";
 
+import type { BoxProps } from "metabase/ui";
+
 import { TreeNode as DefaultTreeNode } from "./TreeNode";
 import { TreeNodeList } from "./TreeNodeList";
 import type { ITreeNodeItem } from "./types";
 import { getAllExpandableIds, getInitialExpandedIds } from "./utils";
 
-interface TreeProps {
+interface TreeProps extends Omit<BoxProps, "children"> {
   data: ITreeNodeItem[];
   selectedId?: ITreeNodeItem["id"];
-  role?: string;
   emptyState?: React.ReactNode;
   initiallyExpanded?: boolean;
   onSelect?: (item: ITreeNodeItem) => void;
   rightSection?: (item: ITreeNodeItem) => React.ReactNode;
-  TreeNode?: any; // This was previously set to TreeNodeComponent, but after upgrading to react 18, the type no longer played nice with forward ref compontents, including styled components
+  TreeNode?: any;
 }
 
 function BaseTree({
@@ -27,6 +28,7 @@ function BaseTree({
   onSelect,
   TreeNode = DefaultTreeNode,
   rightSection,
+  ...boxProps
 }: TreeProps) {
   const [expandedIds, setExpandedIds] = useState(() => {
     if (initiallyExpanded) {
@@ -84,8 +86,8 @@ function BaseTree({
 
   return (
     <TreeNodeList
-      items={data}
       role={role}
+      items={data}
       TreeNode={TreeNode}
       expandedIds={expandedIds}
       selectedId={selectedId}
@@ -93,6 +95,7 @@ function BaseTree({
       onSelect={onSelect}
       onToggleExpand={handleToggleExpand}
       rightSection={rightSection}
+      {...boxProps}
     />
   );
 }

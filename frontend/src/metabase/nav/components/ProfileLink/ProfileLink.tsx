@@ -4,6 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
+import { logout } from "metabase/auth/actions";
 import { ErrorDiagnosticModalWrapper } from "metabase/common/components/ErrorPages/ErrorDiagnosticModal";
 import { trackErrorDiagnosticModalOpened } from "metabase/common/components/ErrorPages/analytics";
 import { ForwardRefLink } from "metabase/common/components/Link";
@@ -20,6 +21,7 @@ import { connect, useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { openDiagnostics } from "metabase/redux/app";
 import { setOpenModal } from "metabase/redux/ui";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   getApplicationName,
   getIsWhiteLabeling,
@@ -39,15 +41,16 @@ const mapStateToProps = (state: State) => ({
 });
 
 const mapDispatchToProps = {
-  openDiagnostics,
+  onOpenDiagnostics: openDiagnostics,
+  onLogout: logout,
 };
 
 interface ProfileLinkProps {
   adminItems: AdminPath[];
   canAccessOnboardingPage: boolean;
   isNewInstance: boolean;
+  onOpenDiagnostics: () => void;
   onLogout: () => void;
-  openDiagnostics: () => void;
 }
 
 interface MenuItem {
@@ -65,7 +68,7 @@ function ProfileLinkInner({
   canAccessOnboardingPage,
   isNewInstance,
   onLogout,
-  openDiagnostics,
+  onOpenDiagnostics,
 }: ProfileLinkProps) {
   const [modalOpen, setModalOpen] = useState<string | null>(null);
   const version = useSetting("version") as MetabaseInfo["version"];
@@ -73,6 +76,7 @@ function ProfileLinkInner({
   const { tag, date, ...versionExtra } = version;
   const helpLink = useHelpLink();
   const dispatch = useDispatch();
+  const isAdmin = useSelector(getUserIsAdmin);
 
   const openModal = (modalName: string) => {
     setModalOpen(modalName);
@@ -101,10 +105,11 @@ function ProfileLinkInner({
         link: "/admin",
         event: `Navbar;Profile Dropdown;Enter Admin`,
       },
-      {
-        title: t`Keyboard shortcuts`,
+      isAdmin && {
+        title: t`Workbench`,
         icon: null,
-        action: () => dispatch(setOpenModal("help")),
+        link: Urls.bench(),
+        event: `Navbar;Profile Dropdown;Enter workbench`,
       },
       {
         separator: true,
@@ -124,11 +129,16 @@ function ProfileLinkInner({
         event: `Navbar;Profile Dropdown;Getting Started`,
       },
       {
+        title: t`Keyboard shortcuts`,
+        icon: null,
+        action: () => dispatch(setOpenModal("help")),
+      },
+      {
         title: t`Report an issue`,
         icon: null,
         action: () => {
           trackErrorDiagnosticModalOpened("profile-menu");
-          openDiagnostics();
+          onOpenDiagnostics();
         },
         event: `Navbar;Profile Dropdown;Report Bug`,
       },

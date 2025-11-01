@@ -1,0 +1,11 @@
+.treeNodeRoot {
+  align-items: flex-start;
+}
+
+.contentBox {
+  flex: 1;
+  overflow: hidden;
+  font-weight: normal;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}

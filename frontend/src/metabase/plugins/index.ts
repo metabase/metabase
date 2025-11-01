@@ -88,7 +88,6 @@ import type {
   TableId,
   Timeline,
   TimelineEvent,
-  Transform,
   TransformId,
   UpdateSnippetRequest,
   UpdateTransformRequest,
@@ -900,14 +899,12 @@ export type TransformPickerProps = {
 
 export type TransformsPlugin = {
   TransformPicker: ComponentType<TransformPickerProps>;
-  getAdminPaths(): AdminPath[];
-  getAdminRoutes(): ReactNode;
+  getBenchRoutes(): ReactNode;
 };
 
 export const PLUGIN_TRANSFORMS: TransformsPlugin = {
   TransformPicker: PluginPlaceholder,
-  getAdminPaths: () => [],
-  getAdminRoutes: () => null,
+  getBenchRoutes: () => null,
 };
 
 export const PLUGIN_REMOTE_SYNC: {
@@ -941,12 +938,13 @@ export const PLUGIN_REMOTE_SYNC: {
 };
 
 export type PythonTransformEditorProps = {
-  name?: string;
+  id?: TransformId;
+  name: string;
   source: PythonTransformSourceDraft;
   proposedSource?: PythonTransformSourceDraft;
-  isNew: boolean;
   isDirty: boolean;
   isSaving: boolean;
+  onChangeName?: (name: string) => void;
   onChangeSource: (source: PythonTransformSourceDraft) => void;
   onSave: () => void;
   onCancel: () => void;
@@ -954,30 +952,23 @@ export type PythonTransformEditorProps = {
   onRejectProposed: () => void;
 };
 
-export type PythonTransformSourceSectionProps = {
-  transform: Transform;
-};
-
 export type PythonTransformsPlugin = {
   isEnabled: boolean;
+  getBenchRoutes: () => ReactNode;
   TransformEditor: ComponentType<PythonTransformEditorProps>;
-  SourceSection: ComponentType<PythonTransformSourceSectionProps>;
   PythonRunnerSettingsPage: ComponentType;
-  getAdminRoutes: () => ReactNode;
-  getTransformsNavLinks: () => ReactNode;
 };
 
 export const PLUGIN_TRANSFORMS_PYTHON: PythonTransformsPlugin = {
   isEnabled: false,
+  getBenchRoutes: () => null,
   TransformEditor: PluginPlaceholder,
-  SourceSection: PluginPlaceholder,
   PythonRunnerSettingsPage: NotFoundPlaceholder,
-  getAdminRoutes: () => null,
-  getTransformsNavLinks: () => null,
 };
 
 type DependenciesPlugin = {
   isEnabled: boolean;
+  getBenchRoutes: () => ReactNode;
   DependencyGraphPage: ComponentType;
   DependencyGraphPageContext: Context<DependencyGraphPageContextType>;
   CheckDependenciesForm: ComponentType<CheckDependenciesFormProps>;
@@ -1039,6 +1030,7 @@ function useCheckDependencies<TChange>({
 
 export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
   isEnabled: false,
+  getBenchRoutes: () => null,
   DependencyGraphPage: PluginPlaceholder,
   DependencyGraphPageContext: createContext({}),
   CheckDependenciesForm: PluginPlaceholder,

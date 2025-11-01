@@ -1,0 +1,53 @@
+import type { Location } from "history";
+import type { ReactNode } from "react";
+import { t } from "ttag";
+
+import * as Urls from "metabase/lib/urls";
+
+import {
+  BenchSectionLayout,
+  type BenchSectionTab,
+  BenchSectionTabs,
+  BenchSectionTitle,
+} from "../../components/BenchSectionLayout";
+
+type DataSectionLayoutProps = {
+  location: Location;
+  children?: ReactNode;
+};
+
+export function DataSectionLayout({
+  location,
+  children,
+}: DataSectionLayoutProps) {
+  const tabs = getTabs(location);
+
+  return (
+    <BenchSectionLayout
+      title={
+        <BenchSectionTitle
+          title={t`Data structure`}
+          description={t`Explore and manage your data assets`}
+        />
+      }
+      tabs={<BenchSectionTabs tabs={tabs} />}
+    >
+      {children}
+    </BenchSectionLayout>
+  );
+}
+
+function getTabs({ pathname }: Location): BenchSectionTab[] {
+  return [
+    {
+      label: t`Data`,
+      to: Urls.bench(),
+      isSelected: pathname.startsWith(Urls.dataModel()),
+    },
+    {
+      label: t`Transforms`,
+      to: Urls.transformList(),
+      isSelected: pathname.startsWith(Urls.transformList()),
+    },
+  ];
+}

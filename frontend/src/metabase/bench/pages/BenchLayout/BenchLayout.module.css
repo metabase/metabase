@@ -1,0 +1,14 @@
+.nav {
+  border-right: 1px solid var(--mb-color-border);
+}
+
+.item {
+  color: var(--mb-color-text-primary);
+  background-color: var(--mb-color-bg-medium);
+
+  &:hover,
+  &.selected {
+    color: var(--mb-color-text-selected);
+    background-color: var(--mb-color-bg-black);
+  }
+}

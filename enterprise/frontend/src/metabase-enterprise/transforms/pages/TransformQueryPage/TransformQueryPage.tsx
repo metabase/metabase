@@ -136,7 +136,7 @@ export function TransformQueryPageBody({
   };
 
   const handleCancel = () => {
-    dispatch(push(Urls.transform(transform.id)));
+    setSourceAndRejectProposed(transform.source);
   };
 
   return (
@@ -148,7 +148,6 @@ export function TransformQueryPageBody({
           proposedSource={
             proposedSource?.type === "python" ? proposedSource : undefined
           }
-          isNew={false}
           isDirty={isDirty}
           isSaving={isSaving || isCheckingDependencies}
           onChangeSource={setSourceAndRejectProposed}
@@ -159,6 +158,7 @@ export function TransformQueryPageBody({
         />
       ) : (
         <TransformEditor
+          id={transform.id}
           name={transform.name}
           source={source}
           proposedSource={
@@ -166,7 +166,6 @@ export function TransformQueryPageBody({
           }
           uiState={uiState}
           databases={databases}
-          isNew={false}
           isDirty={isDirty}
           isSaving={isSaving || isCheckingDependencies}
           onChangeSource={setSourceAndRejectProposed}

@@ -27,22 +27,22 @@ export function getUrl(params: ParsedRouteParams): string {
     tableId != null &&
     fieldId != null
   ) {
-    return `/admin/datamodel/database/${databaseId}/schema/${schemaId}/table/${tableId}/field/${fieldId}`;
+    return `/bench/data/database/${databaseId}/schema/${schemaId}/table/${tableId}/field/${fieldId}`;
   }
 
   if (databaseId != null && schemaName != null && tableId != null) {
-    return `/admin/datamodel/database/${databaseId}/schema/${schemaId}/table/${tableId}`;
+    return `/bench/data/database/${databaseId}/schema/${schemaId}/table/${tableId}`;
   }
 
   if (databaseId != null && schemaName != null) {
-    return `/admin/datamodel/database/${databaseId}/schema/${schemaId}`;
+    return `/bench/data/database/${databaseId}/schema/${schemaId}`;
   }
 
   if (databaseId != null) {
-    return `/admin/datamodel/database/${databaseId}`;
+    return `/bench/data/database/${databaseId}`;
   }
 
-  return `/admin/datamodel`;
+  return `/bench/data`;
 }
 
 export function getTableMetadataQuery(
