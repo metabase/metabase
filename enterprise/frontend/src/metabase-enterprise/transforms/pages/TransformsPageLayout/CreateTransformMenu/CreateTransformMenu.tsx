@@ -1,17 +1,24 @@
-import { useState } from "react";
+import { useDisclosure } from "@mantine/hooks";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { useListDatabasesQuery } from "metabase/api";
+import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
-import { Button, Icon, Menu } from "metabase/ui";
+import { Button, Center, Icon, Loader, Menu } from "metabase/ui";
 
-import { PickQuestionModal } from "./PickQuestionModal";
+import { shouldDisableItem } from "./utils";
 
 export const CreateTransformMenu = () => {
   const dispatch = useDispatch();
-  const [isPickQuestionOpen, setIsPickQuestionOpen] = useState(false);
+  const [isPickerOpened, { open: openPicker, close: closePicker }] =
+    useDisclosure();
+
+  const { data: databases, isLoading } = useListDatabasesQuery({
+    include_analytics: true,
+  });
 
   return (
     <>
@@ -25,42 +32,55 @@ export const CreateTransformMenu = () => {
           />
         </Menu.Target>
         <Menu.Dropdown>
-          <Menu.Item
-            leftSection={<Icon name="notebook" />}
-            onClick={() => dispatch(push(Urls.newQueryTransform()))}
-          >
-            {t`Query builder`}
-          </Menu.Item>
-          <Menu.Item
-            leftSection={<Icon name="sql" />}
-            onClick={() => dispatch(push(Urls.newNativeTransform()))}
-          >
-            {t`Native query`}
-          </Menu.Item>
-          {PLUGIN_TRANSFORMS_PYTHON.isEnabled && (
-            <Menu.Item
-              leftSection={<Icon name="snippet" />}
-              onClick={() => dispatch(push(Urls.newPythonTransform()))}
-            >
-              {t`Python`}
-            </Menu.Item>
+          {isLoading ? (
+            <Center>
+              <Loader size="sm" />
+            </Center>
+          ) : (
+            <>
+              <Menu.Item
+                leftSection={<Icon name="notebook" />}
+                onClick={() => dispatch(push(Urls.newQueryTransform()))}
+              >
+                {t`Query builder`}
+              </Menu.Item>
+              <Menu.Item
+                leftSection={<Icon name="sql" />}
+                onClick={() => dispatch(push(Urls.newNativeTransform()))}
+              >
+                {t`SQL query`}
+              </Menu.Item>
+              {PLUGIN_TRANSFORMS_PYTHON.isEnabled && (
+                <Menu.Item
+                  leftSection={<Icon name="code_block" />}
+                  onClick={() => dispatch(push(Urls.newPythonTransform()))}
+                >
+                  {t`Python script`}
+                </Menu.Item>
+              )}
+              <Menu.Item
+                leftSection={<Icon name="folder" />}
+                onClick={openPicker}
+              >
+                {t`Copy of a saved question`}
+              </Menu.Item>
+            </>
           )}
-          <Menu.Item
-            leftSection={<Icon name="table" />}
-            onClick={() => setIsPickQuestionOpen(true)}
-          >
-            {t`From existing question`}
-          </Menu.Item>
         </Menu.Dropdown>
       </Menu>
 
-      {isPickQuestionOpen && (
-        <PickQuestionModal
-          onSelect={(cardId) => {
-            dispatch(push(Urls.newTransformFromCard(cardId)));
-            setIsPickQuestionOpen(false);
+      {isPickerOpened && (
+        <QuestionPickerModal
+          title={t`Pick a question`}
+          models={["card", "dataset"]}
+          shouldDisableItem={(item) => shouldDisableItem(item, databases?.data)}
+          onChange={(item) => {
+            if (item.model === "card") {
+              dispatch(push(Urls.newTransformFromCard(item.id)));
+              closePicker();
+            }
           }}
-          onClose={() => setIsPickQuestionOpen(false)}
+          onClose={closePicker}
         />
       )}
     </>
