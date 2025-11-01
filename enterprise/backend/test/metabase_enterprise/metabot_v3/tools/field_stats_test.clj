@@ -145,3 +145,38 @@
                             :percent-null   0.0
                             :earliest       "1958-04-26"
                             :latest         "2000-04-03"}}))))))
+
+;; only cards for now
+(deftest sample-values-test
+  (mt/with-temp [:model/Card {model-id :id} {:dataset_query (mt/mbql-query orders)
+                                             :type :model}]
+    (let [mp (mt/metadata-provider)
+          model-query (lib/query mp (lib.metadata/card mp model-id))
+          field-id-prefix (metabot-v3.tools.u/card-field-id-prefix model-id)]
+      (mt/as-admin
+        (testing "Sample values available for primary key column"
+          (is (= {:structured-output {:values (mapv inc (range 10))}}
+                 (metabot-v3.tools.field-stats/field-values
+                  {:entity-type "model"
+                   :entity-id model-id
+                   :field-id (visible-field-id model-query field-id-prefix "ID")
+                   :limit 10}))))
+         ;; TODO: This trashes logs. How to resolve that?
+        (testing "Values are not added on timeout and exception is swallowed"
+          (with-redefs [metabot-v3.tools.field-stats/sample-values-timeout-ms 1]
+            (is (= {:structured-output nil}
+                   (metabot-v3.tools.field-stats/field-values
+                    {:entity-type "model"
+                     :entity-id model-id
+                     :field-id (visible-field-id model-query field-id-prefix "ID")
+                     :limit 10})))))
+        (testing "Any other exception is swallowed"
+          (with-redefs [metabot-v3.tools.field-stats/sample-values-rff
+                        (fn [& _args]
+                          (throw (Exception. "hey")))]
+            (is (= {:structured-output nil}
+                   (metabot-v3.tools.field-stats/field-values
+                    {:entity-type "model"
+                     :entity-id model-id
+                     :field-id (visible-field-id model-query field-id-prefix "ID")
+                     :limit 10})))))))))
