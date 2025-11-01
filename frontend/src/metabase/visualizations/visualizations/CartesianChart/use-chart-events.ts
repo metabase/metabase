@@ -253,6 +253,13 @@ export const useChartEvents = (
 
           if (eventData) {
             onChangeCardAndRun?.(eventData);
+
+            // clear selected brush area after calling change handler
+            chartRef.current?.dispatchAction({
+              type: "brush",
+              command: "clear",
+              areas: [],
+            });
           }
         },
       },
