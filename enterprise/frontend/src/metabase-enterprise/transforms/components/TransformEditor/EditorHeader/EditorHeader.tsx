@@ -15,7 +15,7 @@ type EditorHeaderProps = {
   isSaving: boolean;
   onSave: () => void;
   onCancel: () => void;
-  onChangeName: (name: string) => void;
+  onChangeName?: (name: string) => void;
 };
 
 export function EditorHeader({
@@ -49,6 +49,7 @@ export function EditorHeader({
           </Group>
         )
       }
+      hasMenu={!isDirty}
       onChangeName={onChangeName}
     />
   );

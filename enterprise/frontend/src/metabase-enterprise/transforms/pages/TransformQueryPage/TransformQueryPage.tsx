@@ -92,8 +92,8 @@ export function TransformQueryPageBody({
     initialSource: transform.source,
   });
   const [uiState, setUiState] = useState(getInitialUiState);
-  const [updateName] = useUpdateTransformMutation();
-  const [updateSource, { isLoading: isSaving }] = useUpdateTransformMutation();
+  const [updateTransform, { isLoading: isSaving }] =
+    useUpdateTransformMutation();
   const dispatch = useDispatch();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   useRegisterMetabotTransformContext(transform, source);
@@ -107,19 +107,6 @@ export function TransformQueryPageBody({
     resetRef.current();
   }, [transform.id, resetRef]);
 
-  const handleChangeName = async (newName: string) => {
-    const { error } = await updateName({
-      id: transform.id,
-      name: newName,
-    });
-
-    if (error) {
-      sendErrorToast(t`Failed to update transform name`);
-    } else {
-      sendSuccessToast(t`Transform name updated`);
-    }
-  };
-
   const {
     checkData,
     isCheckingDependencies,
@@ -129,7 +116,7 @@ export function TransformQueryPageBody({
     handleCloseConfirmation,
   } = PLUGIN_DEPENDENCIES.useCheckTransformDependencies({
     onSave: async (request) => {
-      const { error } = await updateSource(request);
+      const { error } = await updateTransform(request);
       if (error) {
         sendErrorToast(t`Failed to update transform query`);
       } else {
@@ -149,7 +136,7 @@ export function TransformQueryPageBody({
   };
 
   const handleCancel = () => {
-    dispatch(push(Urls.transform(transform.id)));
+    setSourceAndRejectProposed(transform.source);
   };
 
   return (
@@ -161,7 +148,6 @@ export function TransformQueryPageBody({
           proposedSource={
             proposedSource?.type === "python" ? proposedSource : undefined
           }
-          isNew={false}
           isDirty={isDirty}
           isSaving={isSaving || isCheckingDependencies}
           onChangeSource={setSourceAndRejectProposed}
@@ -182,7 +168,6 @@ export function TransformQueryPageBody({
           databases={databases}
           isDirty={isDirty}
           isSaving={isSaving || isCheckingDependencies}
-          onChangeName={handleChangeName}
           onChangeSource={setSourceAndRejectProposed}
           onChangeUiState={setUiState}
           onSave={handleSave}

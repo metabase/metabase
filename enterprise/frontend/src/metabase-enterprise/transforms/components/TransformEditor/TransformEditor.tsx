@@ -26,7 +26,7 @@ type TransformEditorProps = {
   databases: Database[];
   isDirty: boolean;
   isSaving: boolean;
-  onChangeName: (name: string) => void;
+  onChangeName?: (name: string) => void;
   onChangeSource: (source: QueryTransformSource) => void;
   onChangeUiState: (state: QueryEditorUiState) => void;
   onSave: () => void;

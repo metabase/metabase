@@ -8,7 +8,7 @@ import { useGetTransformQuery } from "metabase-enterprise/api";
 import type { Transform } from "metabase-types/api";
 
 import { ColumnLayout, ColumnLayoutBody } from "../../components/ColumnLayout";
-import { TransformHeaderWithActions } from "../../components/TransformHeader";
+import { TransformHeader } from "../../components/TransformHeader";
 import { POLLING_INTERVAL } from "../../constants";
 import { isTransformCanceling, isTransformRunning } from "../../utils";
 
@@ -47,7 +47,7 @@ export function TransformRunPage({ params }: TransformRunPageProps) {
 
   return (
     <ColumnLayout>
-      <TransformHeaderWithActions transform={transform} />
+      <TransformHeader id={transform.id} name={transform.name} />
       <ColumnLayoutBody>
         <RunSection transform={transform} />
       </ColumnLayoutBody>

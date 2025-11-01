@@ -7,7 +7,7 @@ import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Center, Flex } from "metabase/ui";
 import { useGetTransformQuery } from "metabase-enterprise/api";
 
-import { TransformHeaderWithActions } from "../../components/TransformHeader";
+import { TransformHeader } from "../../components/TransformHeader";
 
 export type TransformDependenciesPageParams = {
   transformId: string;
@@ -39,7 +39,7 @@ export function TransformDependenciesPage({
 
   return (
     <Flex direction="column" h="100%">
-      <TransformHeaderWithActions transform={transform} />
+      <TransformHeader id={transform.id} name={transform.name} />
       <PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider
         value={{
           baseUrl: Urls.transformDependencies(transform.id),

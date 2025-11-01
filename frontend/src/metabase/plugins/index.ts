@@ -944,7 +944,7 @@ export type PythonTransformEditorProps = {
   proposedSource?: PythonTransformSourceDraft;
   isDirty: boolean;
   isSaving: boolean;
-  onChangeName: (name: string) => void;
+  onChangeName?: (name: string) => void;
   onChangeSource: (source: PythonTransformSourceDraft) => void;
   onSave: () => void;
   onCancel: () => void;

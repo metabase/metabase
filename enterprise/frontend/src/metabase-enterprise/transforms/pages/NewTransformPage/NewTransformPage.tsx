@@ -112,13 +112,14 @@ function NewTransformPageBody({
     <>
       {source.type === "python" ? (
         <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
+          name={name}
           source={source}
           proposedSource={
             proposedSource?.type === "python" ? proposedSource : undefined
           }
-          isNew={true}
           isDirty={isDirty}
           isSaving={false}
+          onChangeName={setName}
           onChangeSource={setSourceAndRejectProposed}
           onSave={openModal}
           onCancel={handleCancel}

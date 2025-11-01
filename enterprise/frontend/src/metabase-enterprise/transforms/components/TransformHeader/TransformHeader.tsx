@@ -14,34 +14,78 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
 import { useUpdateTransformMutation } from "metabase-enterprise/api";
-import type { Transform, TransformId } from "metabase-types/api";
+import type { TransformId } from "metabase-types/api";
 
 import { NAME_MAX_LENGTH } from "../../constants";
+import { TransformMoreMenuWithModal } from "../TransformMoreMenu";
 
 type TransformHeaderProps = {
   id?: TransformId;
   name: string;
   actions?: ReactNode;
-  onChangeName: (name: string) => void;
+  hasMenu?: boolean;
+  onChangeName?: (name: string) => void;
 };
 
 export function TransformHeader({
   id,
   name,
   actions,
+  hasMenu = true,
   onChangeName,
 }: TransformHeaderProps) {
   return (
     <BenchHeader
       title={
-        <BenchHeaderInput
-          initialValue={name}
-          maxLength={NAME_MAX_LENGTH}
-          onChange={onChangeName}
-        />
+        <TransformNameInput id={id} name={name} onChangeName={onChangeName} />
+      }
+      menu={
+        id != null && hasMenu && <TransformMoreMenuWithModal transformId={id} />
       }
       tabs={id != null && <TransformTabs id={id} />}
       actions={actions}
+    />
+  );
+}
+
+type TransformNameInputProps = {
+  id: TransformId | undefined;
+  name: string;
+  onChangeName?: (name: string) => void;
+};
+
+function TransformNameInput({
+  id,
+  name,
+  onChangeName,
+}: TransformNameInputProps) {
+  const [updateTransform] = useUpdateTransformMutation();
+  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
+
+  const handleChangeName = async (newName: string) => {
+    onChangeName?.(newName);
+
+    if (id == null) {
+      return;
+    }
+
+    const { error } = await updateTransform({
+      id,
+      name: newName,
+    });
+
+    if (error) {
+      sendErrorToast(t`Failed to update transform name`);
+    } else {
+      sendSuccessToast(t`Transform name updated`);
+    }
+  };
+
+  return (
+    <BenchHeaderInput
+      initialValue={name}
+      maxLength={NAME_MAX_LENGTH}
+      onChange={handleChangeName}
     />
   );
 }
@@ -87,36 +131,4 @@ function getTabs(id: TransformId, { pathname }: Location): BenchHeaderTab[] {
         ]
       : []),
   ];
-}
-
-type TransformHeaderWithActionsProps = {
-  transform: Transform;
-};
-
-export function TransformHeaderWithActions({
-  transform,
-}: TransformHeaderWithActionsProps) {
-  const [updateTransform] = useUpdateTransformMutation();
-  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
-
-  const handleChangeName = async (newName: string) => {
-    const { error } = await updateTransform({
-      id: transform.id,
-      name: newName,
-    });
-
-    if (error) {
-      sendErrorToast(t`Failed to update transform name`);
-    } else {
-      sendSuccessToast(t`Transform name updated`);
-    }
-  };
-
-  return (
-    <TransformHeader
-      id={transform.id}
-      name={transform.name}
-      onChangeName={handleChangeName}
-    />
-  );
 }

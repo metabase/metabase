@@ -15,19 +15,28 @@ import S from "./BenchHeader.module.css";
 
 interface BenchHeaderProps {
   title: ReactNode;
+  menu?: ReactNode;
   tabs?: ReactNode;
   actions?: ReactNode;
 }
 
-export const BenchHeader = ({ title, tabs, actions }: BenchHeaderProps) => {
+export const BenchHeader = ({
+  title,
+  menu,
+  tabs,
+  actions,
+}: BenchHeaderProps) => {
   return (
-    <Stack className={S.header} p="md" gap="sm">
-      <Group justify="space-between" align="center">
-        {title}
-        {actions}
-      </Group>
-      {tabs}
-    </Stack>
+    <Group className={S.header} p="md" justify="space-between" gap="sm">
+      <Stack gap="sm">
+        <Group align="center" gap="xs">
+          {title}
+          {menu}
+        </Group>
+        {tabs}
+      </Stack>
+      {actions}
+    </Group>
   );
 };
 
