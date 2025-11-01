@@ -130,3 +130,84 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./target/coverage/codecov.json
           flags: back-end
+
+  be-linter-cloverage-enterprise:
+    # don't run this workflow on a cron for forks
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        modules:
+          - action-v2
+          - advanced-config
+          - advanced-permissions
+          - ai-entity-analysis
+          - ai-sql-fixer
+          - ai-sql-generation
+          - analytics
+          - api
+          - audit-app
+          - auth-provider
+          - billing
+          - bookmarks
+          - cache
+          - cloud-add-ons
+          - comments
+          - content-translation
+          - content-verification
+          - core
+          - dashboard-subscription-filters
+          - database-replication
+          - database-routing
+          - dependencies
+          - documents
+          - email
+          - embedding-hub
+          - gsheets
+          - harbormaster
+          - impersonation
+          - internal-stats
+          - llm
+          - metabot-v3
+          - permission-debug
+          - premium-features
+          - public-sharing
+          - remote-sync
+          - sandbox
+          - scim
+          - search
+          - semantic-search
+          - serialization
+          - snippet-collections
+          - sso
+          - stale
+          - transforms
+          - transforms-python
+          - upload-management
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+
+      - name: Build static viz frontend
+        run: yarn build-static-viz
+        env:
+          MB_EDITION: ee
+      - name: Collect the test coverage
+        run: |
+          clojure -X:dev:ci:ee:ee-dev:test:cloverage \
+            :ns-regex     '["^metabase-enterprise\\.${{ matrix.modules }}\\..*"]' \
+            :test-ns-path '["enterprise/backend/test/metabase/${{ matrix.modules }}"]'
+        continue-on-error: true
+
+      - name: Upload coverage to codecov.io
+        if: always()
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./target/coverage/codecov.json
+          flags: back-end
