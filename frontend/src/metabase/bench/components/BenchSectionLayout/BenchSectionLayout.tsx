@@ -22,16 +22,14 @@ export function BenchSectionLayout({
       <Group
         className={S.header}
         px="lg"
-        pt="md"
-        py={tabs ? undefined : "md"}
         justify="space-between"
-        align="start"
+        align={tabs ? "start" : "center"}
       >
-        <Stack gap="sm">
+        <Stack gap="sm" pt="md" py={tabs ? undefined : "md"}>
           {title}
           {tabs}
         </Stack>
-        <Button component={Link} to="/">
+        <Button my="md" component={Link} to="/">
           {t`Exit workbench`}
         </Button>
       </Group>
