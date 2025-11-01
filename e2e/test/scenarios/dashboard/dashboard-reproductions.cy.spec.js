@@ -2263,3 +2263,113 @@ describe("issue 64138", () => {
       .last();
   }
 });
+
+describe("issue 62107", () => {
+  const PARAMETER_ID = "7c9ege62";
+  const QUESTION = {
+    query: {
+      "source-table": ORDERS_ID,
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should respect global formatting in dashboard filters (metabase#62107)", () => {
+    setNumberSeparators(".,");
+    createDashboardWithParameter({
+      values_query_type: "list",
+      values_source_type: "card",
+    });
+
+    H.filterWidget().should("contain.text", "1,000.12");
+    H.filterWidget().click();
+    H.multiAutocompleteValue(0).should("have.text", "1,000.12");
+
+    setNumberSeparators(",.");
+    cy.reload();
+
+    H.filterWidget().should("contain.text", "1.000,12");
+    H.filterWidget().click();
+    H.multiAutocompleteValue(0).should("have.text", "1.000,12");
+  });
+
+  it("should respect global formatting in dashboard filters (metabase#62107)", () => {
+    setNumberSeparators(".,");
+
+    H.createQuestion({
+      query: {
+        "source-table": ORDERS_ID,
+      },
+    }).then(({ body: question }) => {
+      createDashboardWithParameter({
+        values_query_type: "list",
+        values_source_type: "card",
+        values_source_config: {
+          card_id: question.id,
+          value_field: ["field", ORDERS.TAX, null],
+        },
+      });
+    });
+
+    H.filterWidget().should("contain.text", "1,000.12");
+    H.filterWidget().click();
+    H.popover().findByText("1,000.12").should("be.visible");
+
+    setNumberSeparators(",.");
+    cy.reload();
+
+    H.filterWidget().should("contain.text", "1.000,12");
+    H.filterWidget().click();
+    H.popover().findByText("1.000,12").should("be.visible");
+  });
+
+  function createDashboardWithParameter(parameterDetails) {
+    H.createQuestionAndDashboard({ questionDetails: QUESTION }).then(
+      ({ body: { id, card_id, dashboard_id } }) => {
+        // Add dashboard filter
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          parameters: [
+            {
+              id: PARAMETER_ID,
+              name: "Param",
+              slug: "param",
+              sectionId: "number",
+              type: "number/=",
+              ...parameterDetails,
+            },
+          ],
+          dashcards: [
+            {
+              id,
+              card_id,
+              row: 0,
+              col: 0,
+              size_x: 16,
+              size_y: 10,
+              parameter_mappings: [
+                {
+                  parameter_id: PARAMETER_ID,
+                  card_id,
+                  target: ["dimension", ["field", ORDERS.TOTAL, null]],
+                },
+              ],
+            },
+          ],
+        });
+
+        H.visitDashboard(dashboard_id, { params: { param: "1000.12" } });
+      },
+    );
+  }
+
+  function setNumberSeparators(number_separators) {
+    H.updateSetting("custom-formatting", {
+      ["type/Number"]: {
+        number_separators,
+      },
+    });
+  }
+});

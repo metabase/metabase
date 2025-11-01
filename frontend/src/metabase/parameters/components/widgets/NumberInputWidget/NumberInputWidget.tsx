@@ -13,6 +13,7 @@ import {
   serializeNumberParameterValue,
 } from "metabase/querying/parameters/utils/parsing";
 import { Box, type ComboboxItem, MultiAutocomplete } from "metabase/ui";
+import { getFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import { hasValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Parameter,
@@ -20,6 +21,7 @@ import type {
   ParameterValueOrArray,
 } from "metabase-types/api";
 
+import { Value } from "../ParameterFieldWidget/Value";
 import { Footer, TokenFieldWrapper, WidgetLabel } from "../Widget";
 import { COMBOBOX_PROPS, WIDTH } from "../constants";
 
@@ -92,6 +94,20 @@ export function NumberInputWidget({
     }
   };
 
+  function renderValue({ value }: { value: string }) {
+    if (value in labelByValue) {
+      return labelByValue[value];
+    }
+    return (
+      <Value
+        value={value}
+        column={getFields(parameter)[0]}
+        parameter={parameter}
+        maximumFractionDigits={20}
+      />
+    );
+  }
+
   return (
     <Box
       component="form"
@@ -109,7 +125,7 @@ export function NumberInputWidget({
             autoFocus={autoFocus}
             comboboxProps={COMBOBOX_PROPS}
             parseValue={parseValue}
-            renderValue={({ value }) => labelByValue[value] ?? value}
+            renderValue={renderValue}
             onChange={handleChange}
           />
         </TokenFieldWrapper>

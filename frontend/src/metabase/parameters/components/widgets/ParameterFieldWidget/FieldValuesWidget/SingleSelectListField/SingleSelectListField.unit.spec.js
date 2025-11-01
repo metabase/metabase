@@ -1,7 +1,7 @@
 import { waitForElementToBeRemoved } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { render, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 
 import { Value as ValueComponent } from "../../Value";
 
@@ -35,7 +35,7 @@ function setup(opts = {}) {
   const onChange = jest.fn();
   const onSearchChange = jest.fn();
 
-  render(
+  renderWithProviders(
     <SingleSelectListField
       onChange={onChange}
       onSearchChange={onSearchChange}
