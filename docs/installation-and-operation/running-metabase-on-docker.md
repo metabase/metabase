@@ -174,6 +174,16 @@ networks:
 
 You can use any of the custom settings from [Customizing the Metabase Jetty Webserver](../configuring-metabase/customizing-jetty-webserver.md) by setting environment variables in your Docker run command.
 
+### Setting the Java Timezone
+
+It's best to set your Java timezone to match the timezone you'd like all your reports to come in. You can do this by simply specifying the `JAVA_TIMEZONE` environment variable which is picked up by the Metabase launch script. For example:
+
+```
+docker run -d -p 3000:3000 \
+  -e "JAVA_TIMEZONE=US/Pacific" \
+  --name metabase metabase/metabase
+```
+
 ### Copying the application database
 
 When you run Metabase without an external application database, it will use an embedded H2 database in the container's filesystem. The default location for this H2 database is the directory `/metabase.db`. You can copy this directory out of the container using the following command (replacing `CONTAINER_ID` with the actual container ID or name, `metabase`, if you named the container):
