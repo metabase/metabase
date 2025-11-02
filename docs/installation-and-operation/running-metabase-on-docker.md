@@ -208,8 +208,9 @@ mkdir ~/metabase-data
 
 # Run Metabase as your host machine's user
 docker run -d -p 3000:3000 \
-  -v ~/metabase-data:/metabase.db \
+  -v ~/metabase-data:/metabase-data \
   --user $(id -u):$(id -g) \
+  -e MB_DB_FILE=/metabase-data/metabase.db \
   --name metabase metabase/metabase
 ```
 
