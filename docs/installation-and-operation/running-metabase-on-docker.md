@@ -161,10 +161,9 @@ networks:
 ## Additional Docker maintenance and configuration
 
 - [Customizing the Metabase Jetty server](#customizing-the-metabase-jetty-server)
-- [Docker-specific environment variables](#docker-specific-environment-variables)
 - [Setting the Java Timezone](#setting-the-java-timezone)
 - [Copying the application database](#copying-the-application-database)
-- [Mounting a mapped file storage volume](#mounting-a-mapped-file-storage-volume)
+- [Persisting the H2 application database on your host machine](#persisting-the-h2-application-database-on-your-host-machine)
 - [Getting your config back if you stopped your container](#getting-your-config-back-if-you-stopped-your-container)
 - [Adding external dependencies or plugins](#adding-external-dependencies-or-plugins)
 - [Use Docker Secrets to hide sensitive parameters](#use-docker-secrets-to-hide-sensitive-parameters)
@@ -175,48 +174,34 @@ networks:
 
 You can use any of the custom settings from [Customizing the Metabase Jetty Webserver](../configuring-metabase/customizing-jetty-webserver.md) by setting environment variables in your Docker run command.
 
-### Docker-specific environment variables
-
-In addition to the standard custom settings there are two docker specific environment variables `MUID` and `MGID` which are used to set the user and group IDs used by metabase when running in a docker container. These settings make it possible to match file permissions when files, such as the application database, are shared between the host and the container.
-
-Here's how to use a database file, owned by your account and stored in your home directory:
-
-```
-docker run -d -v ~/my-metabase-db:/metabase.db --name metabase -e MB_DB_FILE=/metabase.db -e MUID=$UID -e MGID=$GID -p 3000:3000 metabase/metabase
-```
-
-### Setting the Java Timezone
-
-It's best to set your Java timezone to match the timezone you'd like all your reports to come in. You can do this by simply specifying the `JAVA_TIMEZONE` environment variable which is picked up by the Metabase launch script. For example:
-
-```
-docker run -d -p 3000:3000 \
-  -e "JAVA_TIMEZONE=US/Pacific" \
-  --name metabase metabase/metabase
-```
-
 ### Copying the application database
 
-The default location for the application database in the container is `/metabase.db/metabase.db.mv.db`. You can copy this directory out of the container using the following command (replacing `CONTAINER_ID` with the actual container ID or name, `metabase` if you named the container):
+When you run Metabase without an external application database, it will use an embedded H2 database in the container's filesystem. The default location for this H2 database is the directory `/metabase.db`. You can copy this directory out of the container using the following command (replacing `CONTAINER_ID` with the actual container ID or name, `metabase`, if you named the container):
 
 ```
 docker cp CONTAINER_ID:/metabase.db ./
 ```
 
-The DB contents will be left in a directory named metabase.db.
+The database contents will be left in a directory named `metabase.db` on your host filesystem.
 
-### Mounting a mapped file storage volume
+### Persisting the H2 application database on your host machine
 
-To persist your data outside of the container and make it available for use between container launches, we can mount a local file path inside our container.
+By default, Metabase stores the embedded H2 application database inside the container. If the container is ever deleted, or you create a new one running a different Metabase version, the database will be lost.
 
-```
+You can make the H2 database more durable by storing it on your host machine, and mounting it inside the container.
+
+You will need to ensure this directory is read-writable by the container. One way to achieve this is by running the container as the same user from your host machine:
+
+```bash
+# Ensure the directory exists and is owned by your host machine's user
+mkdir ~/metabase-data
+
+# Run Metabase as your host machine's user
 docker run -d -p 3000:3000 \
-  -v ~/metabase-data:/metabase-data \
-  -e "MB_DB_FILE=/metabase-data/metabase.db" \
+  -v ~/metabase-data:/metabase.db \
+  --user $(id -u):$(id -g) \
   --name metabase metabase/metabase
 ```
-
-When you launch your container, Metabase will use the database file (`MB_DB_FILE`) at `~/metabase-data/metabase.db` instead of its default location. and we are mounting that folder from our local filesystem into the container.
 
 ### Getting your config back if you stopped your container
 
@@ -247,7 +232,7 @@ docker run -d -p 3000:3000 --name metabase mycompany/metabase-custom
 430bb02a37bb2471176e54ca323d0940c4e0ee210c3ab04262cb6576fe4ded6d
 ```
 
-You should have your previously configured Metabase Installation back. If it's not the one you expected, try a different stopped container and repeat these steps.
+You should have your previously configured Metabase installation back. If it's not the one you expected, try a different stopped container and repeat these steps.
 
 ### Adding external dependencies or plugins
 
