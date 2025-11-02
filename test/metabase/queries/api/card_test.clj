@@ -72,6 +72,7 @@
    :description            nil
    :display                "scalar"
    :enable_embedding       false
+   :embedding_type         nil
    :initially_published_at nil
    :entity_id              nil
    :embedding_params       nil
@@ -899,6 +900,21 @@
                                                                        :visualization_settings {}
                                                                        :enable_embedding       true})))))))))
 
+(deftest create-card-disallow-setting-embedding-type-test
+  (testing "POST /api/card"
+    (testing "Ignore values of `embedding_type` while creating a Card (this must be done via `PUT /api/card/:id` instead)"
+                    ;; should be ignored regardless of the value of the `embedding-type` Setting.
+      (doseq [embedding-type [true false]]
+        (mt/with-temporary-setting-values [enable-embedding-static embedding-type]
+          (mt/with-model-cleanup [:model/Card]
+            (is (=? {:embedding_type nil}
+                    (mt/user-http-request :crowberto :post 200 "card" {:name                   "My Card"
+                                                                       :display                :table
+                                                                       :dataset_query          (mt/mbql-query venues)
+                                                                       :visualization_settings {}
+                                                                       :enable_embedding       true
+                                                                       :embedding_type       "static-legacy"})))))))))
+
 (deftest save-empty-card-test
   (testing "POST /api/card"
     (testing "Should be able to save an empty Card"
@@ -1566,6 +1582,24 @@
                                 {:embedding_params {:abc "enabled"}})
           (is (= {:abc "enabled"}
                  (t2/select-one-fn :embedding_params :model/Card :id (u/the-id card)))))))))
+
+(deftest update-embedding-type-to-nil-test
+  (testing "PUT /api/card/:id"
+    (testing "Admin should be able to set embedding_type to nil to clear it"
+      (mt/with-temporary-setting-values [enable-embedding-static true]
+        (mt/with-temp [:model/Card card {:enable_embedding true
+                                         :embedding_type "static-legacy"}]
+          (testing "Verify initial state has embedding_type set"
+            (is (= "static-legacy"
+                   (t2/select-one-fn :embedding_type :model/Card :id (u/the-id card)))))
+          (testing "Setting embedding_type to nil should clear it"
+            (let [response (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
+                                                 {:embedding_type nil})]
+              (testing "Response should contain nil embedding_type"
+                (is (= nil (:embedding_type response))))
+              (testing "Database should contain nil embedding_type"
+                (is (= nil
+                       (t2/select-one-fn :embedding_type :model/Card :id (u/the-id card))))))))))))
 
 (deftest can-we-change-the-collection-position-of-a-card-
   (mt/with-temp [:model/Card card]

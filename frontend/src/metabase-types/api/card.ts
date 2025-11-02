@@ -1,4 +1,7 @@
-import type { EmbeddingParameters } from "metabase/public/lib/types";
+import type {
+  EmbeddingParameters,
+  EmbeddingType,
+} from "metabase/public/lib/types";
 import type { IconName } from "metabase/ui";
 import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
 
@@ -48,6 +51,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
 
   /* Indicates whether static embedding for this card has been published */
   enable_embedding: boolean;
+  embedding_type?: EmbeddingType | null;
   embedding_params: EmbeddingParameters | null;
   can_write: boolean;
   can_restore: boolean;
@@ -411,6 +415,7 @@ export interface UpdateCardRequest {
   visualization_settings?: VisualizationSettings;
   archived?: boolean;
   enable_embedding?: boolean;
+  embedding_type?: EmbeddingType | null;
   embedding_params?: EmbeddingParameters;
   collection_id?: CollectionId | null;
   dashboard_id?: DashboardId | null;
