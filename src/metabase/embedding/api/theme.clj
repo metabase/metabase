@@ -3,8 +3,6 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.util :as u]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -13,22 +11,38 @@
 (api.macros/defendpoint :get "/"
   "Fetch a list of all embedding themes."
   []
-  (t2/select :model/EmbeddingTheme {:order-by [[:%lower.name :asc]]}))
+  (t2/select :model/EmbeddingTheme [:id :name :created_at :updated_at] {:order-by [[:name :asc]]}))
 
 (api.macros/defendpoint :post "/"
-  "Create a new `EmbeddingTheme`."
+  "Create a new embedding theme."
   [_route-params
    _query-params
    {:keys [name settings]} :- [:map
                                [:name     ms/NonBlankString]
-                               [:settings [:map-of :keyword :any]]]]
+                               [:settings :map]]]
   (api/check-superuser)
   (first (t2/insert-returning-instances! :model/EmbeddingTheme
                                          {:name name
                                           :settings settings})))
 
+(api.macros/defendpoint :put "/:id"
+  "Update an embedding theme."
+  [{:keys [id]}
+   _query-params
+   {:keys [name settings]} :- [:map
+                               [:name {:optional true} [:maybe ms/NonBlankString]]
+                               [:settings {:optional true} [:maybe :map]]]]
+  (api/check-superuser)
+  (let [theme (t2/select-one :model/EmbeddingTheme :id id)]
+    (api/check-404 theme)
+    (t2/update! :model/EmbeddingTheme id
+                (cond-> {}
+                  name (assoc :name name)
+                  settings (assoc :settings settings)))
+    (t2/select-one :model/EmbeddingTheme :id id)))
+
 (api.macros/defendpoint :delete "/:id"
-  "Delete an `EmbeddingTheme`."
+  "Delete an embedding theme."
   [id :- ms/PositiveInt]
   (api/check-superuser)
   (let [theme (t2/select-one :model/EmbeddingTheme :id id)]
