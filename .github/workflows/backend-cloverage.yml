@@ -1,7 +1,6 @@
 name: Backend-Cloverage
 
 on:
-  push: # only temporary to test it
   workflow_dispatch:
   schedule:
     - cron: '0 10 * * 1-5' # every weekday at 5am US eastern time
