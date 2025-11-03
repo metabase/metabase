@@ -6,4 +6,3 @@
    [metabase.test.fixtures :as fixtures]))
 
 (use-fixtures :once (fixtures/initialize :db))
-
