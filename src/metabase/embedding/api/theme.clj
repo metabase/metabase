@@ -26,7 +26,7 @@
   "Fetch a list of all embedding themes."
   []
   (api/check-superuser)
-  (t2/select :model/EmbeddingTheme {:order-by [[:created_at :asc]]
+  (t2/select :model/EmbeddingTheme {:order-by [[:created_at :desc]]
                                     :select [:id :name :created_at :updated_at]}))
 
 (api.macros/defendpoint :get "/:id" :- ::EmbeddingTheme
