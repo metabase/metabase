@@ -76,7 +76,7 @@ export class Api extends EventEmitter {
       // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
       headers["X-Metabase-Embedded"] = "true";
       /**
-       * We counted static embed preview query executions which lead to wrong embedding stats (EMB-930)
+       * We counted static embed preview query executions which led to wrong embedding stats (EMB-930)
        * This header is only used for logging in `view_log` and `query_execution` tables, so it's safe to exclude it.
        */
       if (!IS_EMBED_PREVIEW) {
