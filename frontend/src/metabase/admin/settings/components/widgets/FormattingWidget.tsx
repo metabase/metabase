@@ -4,14 +4,14 @@ import _ from "underscore";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useAdminSetting } from "metabase/api/utils";
+import { DateFormatInput } from "metabase/common/components/DateFormatInput";
 import {
   type CurrencyStyle,
   getCurrencyOptions,
   getCurrencyStyleOptions,
-  getDateStyleOptionsForUnit,
   getTimeStyleOptions,
 } from "metabase/lib/formatting";
-import { Autocomplete, Box, Radio, Select, Stack, Switch, Text } from "metabase/ui";
+import { Box, Radio, Select, Stack, Switch, Text } from "metabase/ui";
 import type { FormattingSettings } from "metabase-types/api";
 
 import { SetByEnvVar } from "./AdminSettingInput";
@@ -75,8 +75,6 @@ export function FormattingWidget() {
     return null;
   }
 
-  const dateStyleOptions = getDateStyleOptionsForUnit("default", dateAbreviate);
-
   const handleChange = (newValue: FormattingSettings) => {
     if (_.isEqual(newValue, localValue)) {
       return;
@@ -92,10 +90,8 @@ export function FormattingWidget() {
       ) : (
         <>
           <SettingsSection title={t`Dates and times`}>
-            <Autocomplete
-              id="date_style"
-              label={t`Date style`}
-              value={dateStyle}
+            <DateFormatInput
+              value={dateStyle ?? ""}
               onChange={(newValue) =>
                 handleChange({
                   ...localValue,
@@ -104,12 +100,6 @@ export function FormattingWidget() {
                     date_style: newValue as string,
                   },
                 })
-              }
-              data={
-                dateStyleOptions.map(({ name, value }) => ({
-                  label: name,
-                  value,
-                })) ?? []
               }
             />
             <FormattingInput
