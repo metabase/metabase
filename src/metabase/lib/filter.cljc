@@ -1,5 +1,6 @@
 (ns metabase.lib.filter
-  (:refer-clojure :exclude [filter and or not = < <= > >= not-empty case every? some mapv #?(:clj doseq) #?(:clj for)])
+  (:refer-clojure :exclude [filter and or not = < <= > >= not-empty case every? some mapv empty? not-empty
+                            #?(:clj doseq) #?(:clj for)])
   (:require
    [inflections.core :as inflections]
    [medley.core :as m]
@@ -25,7 +26,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.number :as u.number]
-   [metabase.util.performance :refer [every? some mapv #?(:clj doseq) #?(:clj for)]]
+   [metabase.util.performance :as perf :refer [every? some mapv empty? #?(:clj doseq) #?(:clj for)]]
    [metabase.util.time :as u.time]))
 
 (doseq [tag [:and :or]]
@@ -42,7 +43,7 @@
 
 (defmethod lib.metadata.calculation/describe-top-level-key-method :filters
   [query stage-number _key]
-  (when-let [filters (clojure.core/not-empty (:filters (lib.util/query-stage query stage-number)))]
+  (when-let [filters (perf/not-empty (:filters (lib.util/query-stage query stage-number)))]
     (i18n/tru "Filtered by {0}"
               (lib.util/join-strings-with-conjunction
                (i18n/tru "and")
@@ -419,7 +420,7 @@
   ([query :- :metabase.lib.schema/query] (filters query nil))
   ([query :- :metabase.lib.schema/query
     stage-number :- [:maybe :int]]
-   (clojure.core/not-empty (:filters (lib.util/query-stage query (clojure.core/or stage-number -1))))))
+   (perf/not-empty (:filters (lib.util/query-stage query (clojure.core/or stage-number -1))))))
 
 (def ColumnWithOperators
   "Malli schema for ColumnMetadata extended with the list of applicable operators."
@@ -437,7 +438,7 @@
   "Extend the column metadata with the available operators if any."
   [column :- ::lib.schema.metadata/column]
   (let [operators (lib.filter.operator/filter-operators column)]
-    (m/assoc-some column :operators (clojure.core/not-empty operators))))
+    (m/assoc-some column :operators (perf/not-empty operators))))
 
 (defn- leading-ref
   "Returns the first argument of `a-filter` if it is a reference clause, nil otherwise."
