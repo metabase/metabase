@@ -137,6 +137,7 @@ export interface UpdateTableRequest {
 
   data_source?: TableDataSource | null;
   data_layer?: TableDataLayer | null;
+  entity_type?: string | null;
   owner_email?: string | null;
   owner_user_id?: UserId | null;
 }
@@ -152,6 +153,7 @@ export interface UpdateTableListRequest {
 
   data_source?: TableDataSource | null;
   data_layer?: TableDataLayer | null;
+  entity_type?: string | null;
   owner_email?: string | null;
   owner_user_id?: UserId | null;
 }

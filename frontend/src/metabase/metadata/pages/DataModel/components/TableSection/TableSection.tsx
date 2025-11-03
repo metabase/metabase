@@ -47,6 +47,7 @@ import { ResponsiveButton } from "../ResponsiveButton";
 import { PublishModelsModal } from "../TablePicker/components/PublishModelsModal";
 import { SubstituteModelModal } from "../TablePicker/components/SubstituteModelModal";
 import { TitledSection } from "../TitledSection";
+import { TableMetadataSection } from "./TableMetadataSection";
 
 import { FieldList } from "./FieldList";
 import S from "./TableSection.module.css";
@@ -386,6 +387,9 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
         </Group>
       </Box>
 
+      <Box px="xl" pb="xl">
+        <TableMetadataSection table={table} />
+      </Box>
       <Box pb="xl" px="xl">
         <TitledSection title={t`Metadata`}>
           <LayerInput

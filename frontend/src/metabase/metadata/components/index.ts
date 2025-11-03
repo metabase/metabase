@@ -19,3 +19,4 @@ export * from "./UnfoldJsonPicker";
 export * from "./DataSourceInput";
 export * from "./UserInput";
 export * from "./LayerInput";
+export * from "./EntityTypeInput";
