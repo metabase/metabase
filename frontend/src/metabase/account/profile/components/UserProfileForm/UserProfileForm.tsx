@@ -12,9 +12,9 @@ import FormSubmitButton from "metabase/common/components/FormSubmitButton";
 import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import { Box, Flex, Text } from "metabase/ui";
+import type { User } from "metabase-types/api";
+import { MetabaseSessionApiAvailableLocale } from "metabase-types/openapi";
 
-import type { MetabaseUsersApiUser } from "../../../../../../../ts-types/hey-api/types.gen";
-import { MetabaseSessionApiAvailableLocale } from "../../../../../../../ts-types/hey-api/types.gen";
 import type { UserProfileData } from "../../types";
 
 const SSO_PROFILE_SCHEMA = Yup.object({
@@ -27,10 +27,23 @@ const LOCAL_PROFILE_SCHEMA = SSO_PROFILE_SCHEMA.shape({
   email: Yup.string().ensure().required(Errors.required).email(Errors.email),
 });
 
+const getLocaleOptions = (locales: [string, string][] | null) => {
+  const options = _.chain(locales ?? [["en", "English"]])
+    .map(([value, name]) => ({ name, value }))
+    .sortBy(({ name }) => name)
+    .value();
+
+  return [{ name: t`Use site default`, value: null }, ...options];
+};
+
+const localeOptions = getLocaleOptions(
+  Object.values(MetabaseSessionApiAvailableLocale).map((x) => [x[0], x[1]]),
+);
+
 export interface UserProfileFormProps {
-  user: MetabaseUsersApiUser;
+  user: User;
   isSsoUser: boolean;
-  onSubmit: (user: MetabaseUsersApiUser, data: UserProfileData) => void;
+  onSubmit: (user: User, data: UserProfileData) => void;
 }
 
 const UserProfileForm = ({
@@ -43,14 +56,6 @@ const UserProfileForm = ({
   const initialValues = useMemo(() => {
     return schema.cast(user, { stripUnknown: true });
   }, [user, schema]);
-
-  // const localeOptions = useMemo(() => {
-  //   return getLocaleOptions(locales);
-  // }, [locales]);
-
-  const localeOptions = getLocaleOptions(
-    Object.values(MetabaseSessionApiAvailableLocale).map((x) => [x[0], x[1]]),
-  );
 
   const handleSubmit = useCallback(
     (values: UserProfileData) => onSubmit(user, values),
@@ -108,15 +113,6 @@ const UserProfileForm = ({
       </FormProvider>
     </Box>
   );
-};
-
-const getLocaleOptions = (locales: [string, string][] | null) => {
-  const options = _.chain(locales ?? [["en", "English"]])
-    .map(([value, name]) => ({ name, value }))
-    .sortBy(({ name }) => name)
-    .value();
-
-  return [{ name: t`Use site default`, value: null }, ...options];
 };
 
 const ColorSchemeSwitcher = () => {

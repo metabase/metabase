@@ -1,9 +1,9 @@
 import { defineConfig } from "@hey-api/openapi-ts";
 
+// eslint-disable-next-line import/no-default-export
 export default defineConfig({
-  client: "@hey-api/client-fetch",
-  input: "ts-types//openapi.json", // or .yaml
-  output: "ts-types/hey-api",
+  input: "./ts-types/openapi.json", // or .yaml
+  output: "frontend/src/metabase-types/openapi",
   types: {
     enums: "javascript", // This generates runtime enums!
   },
