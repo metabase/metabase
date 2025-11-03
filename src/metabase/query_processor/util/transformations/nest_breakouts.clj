@@ -1,7 +1,7 @@
 (ns metabase.query-processor.util.transformations.nest-breakouts
   "TODO (Cam 8/7/25) -- this is a pure-MBQL-5 high-level query transformation, and almost certainly belongs in Lib
   rather than in QP -- we should move it there. (This also applies to [[metabase.query-processor.util.nest-query]])."
-  (:refer-clojure :exclude [mapv select-keys some])
+  (:refer-clojure :exclude [mapv select-keys some not-empty])
   (:require
    [flatland.ordered.set :as ordered-set]
    [medley.core :as m]
@@ -14,7 +14,7 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv select-keys some]]))
+   [metabase.util.performance :refer [mapv select-keys some not-empty]]))
 
 (defn- stage-has-window-aggregation? [stage]
   (lib.util.match/match (:aggregation stage)
