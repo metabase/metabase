@@ -266,6 +266,22 @@ export async function fetchDataOrError<T>(dataPromise: Promise<T>) {
   try {
     return await dataPromise;
   } catch (error) {
+    // For 4xx errors from streaming query endpoints, the error response body
+    // contains the actual error data that should be displayed (just like the old
+    // 202-with-error-in-body behavior). Treat these as successful responses.
+    if (
+      error &&
+      typeof error === "object" &&
+      "status" in error &&
+      typeof error.status === "number" &&
+      error.status >= 400 &&
+      error.status < 500 &&
+      "data" in error
+    ) {
+      // Return the error data as if it were a successful response
+      return error.data;
+    }
+    // For 5xx errors or other errors, maintain the original behavior
     return { error };
   }
 }
