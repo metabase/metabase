@@ -75,6 +75,9 @@ jobs:
           m2-cache-key: "cljs"
       - name: Run frontend unit tests
         run: yarn run test-unit --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }}
+        # We want Trunk to still receive test reports even if this job fails.
+        # It will filter out the quarantined tests, and will control the job exit code based on the analysis.
+        continue-on-error: true
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
