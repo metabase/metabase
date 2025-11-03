@@ -664,6 +664,8 @@
         ssl-cert?     (and ssl? (some? ssl-cert))]
     (when (and ssl? (not (contains? addl-opts-map "trustServerCertificate")))
       (log/info "You may need to add 'trustServerCertificate=true' to the additional connection options to connect with SSL."))
+    (when (and use-iam? (not ssl?))
+      (log/error "You must enable SSL in order to use AWS IAM authentication"))
     (merge
      default-connection-args
      ;; newer versions of MySQL will complain if you don't specify this when not using SSL
