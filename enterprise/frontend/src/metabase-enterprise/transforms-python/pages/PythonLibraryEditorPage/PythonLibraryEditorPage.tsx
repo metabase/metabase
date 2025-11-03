@@ -1,7 +1,9 @@
 import { useLayoutEffect, useState } from "react";
+import type { Route } from "react-router";
 import { t } from "ttag";
 
 import { BenchHeader } from "metabase/bench/components/BenchHeader";
+import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { isResourceNotFoundError } from "metabase/lib/errors";
 import type * as Urls from "metabase/lib/urls";
@@ -18,6 +20,7 @@ import S from "./PythonLibraryEditorPage.module.css";
 
 type PythonLibraryEditorPageProps = {
   params: Urls.TransformPythonLibraryParams;
+  route: Route;
 };
 
 const EMPTY_LIBRARY_SOURCE = `
@@ -29,6 +32,7 @@ const EMPTY_LIBRARY_SOURCE = `
 
 export function PythonLibraryEditorPage({
   params,
+  route,
 }: PythonLibraryEditorPageProps) {
   const { path } = params;
   const [source, setSource] = useState("");
@@ -84,21 +88,24 @@ export function PythonLibraryEditorPage({
   }
 
   return (
-    <Flex h="100%" w="100%" gap={0} direction="column">
-      <LibraryEditorHeader
-        onSave={handleSave}
-        onRevert={handleRevert}
-        isDirty={isDirty}
-        isSaving={isSaving}
-      />
-      <PythonEditor
-        value={source}
-        onChange={setSource}
-        withPandasCompletions
-        className={S.editor}
-        data-testid="python-editor"
-      />
-    </Flex>
+    <>
+      <Flex h="100%" w="100%" gap={0} direction="column">
+        <LibraryEditorHeader
+          onSave={handleSave}
+          onRevert={handleRevert}
+          isDirty={isDirty}
+          isSaving={isSaving}
+        />
+        <PythonEditor
+          value={source}
+          onChange={setSource}
+          withPandasCompletions
+          className={S.editor}
+          data-testid="python-editor"
+        />
+      </Flex>
+      <LeaveRouteConfirmModal route={route} isEnabled={isDirty} />
+    </>
   );
 }
 
