@@ -29,7 +29,7 @@
   (str "//" (when-not (str/blank? host) (str host ":" port)) (if-not (str/blank? db) (str "/" db) "/")))
 
 (defmethod spec :postgres
-  [_ {:keys [host port db]
+  [_ {:keys [host port db aws-iam]
       :or   {host "localhost", port 5432, db ""}
       :as   opts}]
   (merge
@@ -39,6 +39,10 @@
     ;; I think this is done to prevent conflicts with redshift driver registering itself to handle postgres://
     :OpenSourceSubProtocolOverride true
     :ApplicationName               config/mb-version-and-process-identifier}
+   (when aws-iam
+     {:subprotocol "aws-wrapper:postgresql"
+      :classname "software.amazon.jdbc.ds.AwsWrapperDataSource"
+      :wrapperPlugins "iam"})
    (dissoc opts :host :port :db)))
 
 (defmethod spec :mysql

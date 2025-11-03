@@ -77,7 +77,7 @@
 (defn- broken-out-details
   "Connection details that can be used when pretending the Metabase DB is itself a `Database` (e.g., to use the Generic
   SQL driver functions on the Metabase DB itself)."
-  [db-type {:keys [mb-db-dbname mb-db-host mb-db-pass mb-db-port mb-db-user mb-db-azure-managed-identity-client-id]
+  [db-type {:keys [mb-db-dbname mb-db-host mb-db-pass mb-db-port mb-db-user mb-db-azure-managed-identity-client-id mb-db-aws-iam]
             :as   env-vars}]
   (if (= db-type :h2)
     (assoc h2-connection-properties
@@ -87,7 +87,8 @@
      :db                               mb-db-dbname
      :user                             mb-db-user
      :password                         mb-db-pass
-     :azure-managed-identity-client-id mb-db-azure-managed-identity-client-id}))
+     :azure-managed-identity-client-id mb-db-azure-managed-identity-client-id
+     :aws-iam                          mb-db-aws-iam}))
 
 (defn- env->DataSource
   [db-type {:keys [mb-db-connection-uri mb-db-user mb-db-pass mb-db-azure-managed-identity-client-id], :as env-vars}]
@@ -131,7 +132,8 @@
     :mb-db-dbname                           (config/config-str :mb-db-dbname)
     :mb-db-user                             (config/config-str :mb-db-user)
     :mb-db-pass                             (config/config-str :mb-db-pass)
-    :mb-db-azure-managed-identity-client-id (config/config-str :mb-db-azure-managed-identity-client-id)}
+    :mb-db-azure-managed-identity-client-id (config/config-str :mb-db-azure-managed-identity-client-id)
+    :mb-db-aws-iam                          (config/config-bool :mb-db-aws-iam)}
    (env-defaults db-type)))
 
 (def env
