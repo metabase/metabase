@@ -2,19 +2,28 @@
   "/api/table endpoints."
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
+   [clojure.walk :as walk]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.app-db.core :as app-db]
+   [metabase.collections.core :as collections]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.query :as lib.query]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.premium-features.core :as premium-features]
+   [metabase.queries.models.card :as card]
    [metabase.query-processor :as qp]
    ;; legacy usage -- don't do things like this going forward
-   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]}
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.sync.core :as sync]
@@ -31,7 +40,8 @@
    [metabase.warehouses.api :as warehouses]
    [metabase.xrays.core :as xrays]
    [steffan-westcott.clj-otel.api.trace.span :as span]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
 
@@ -53,12 +63,45 @@
 
 (api.macros/defendpoint :get "/"
   "Get all `Tables`."
-  []
-  (as-> (t2/select :model/Table, :active true, {:order-by [[:name :asc]]}) tables
-    (t2/hydrate tables :db)
-    (into [] (comp (filter mi/can-read?)
-                   (map schema.table/present-table))
-          tables)))
+  [_
+   {:keys [term visibility_type data_layer data_source owner_user_id owner_email orphan_only]}
+   :- [:map
+       ;; conjunctive search terms
+       [:term {:optional true} :string]
+       [:visibility_type {:optional true} :string]
+       [:data_layer {:optional true} :string]
+       [:data_source {:optional true} :string]
+       [:owner_user_id {:optional true} [:or :int [:enum ""]]]
+       [:owner_email {:optional true} :string]
+       [:orphan_only {:optional true} [:maybe ms/BooleanValue]]]]
+  (let [like       (case (app-db/db-type) (:h2 :postgres) :ilike :like)
+        pattern    (some-> term (str/replace "*" "%") (cond-> (not (str/ends-with? term "%")) (str "%")))
+        empty-null (fn [x] (if (and (string? x) (str/blank? x)) nil x))
+        where      (cond-> [:and [:= :active true]]
+                     (not (str/blank? term)) (conj [like :name pattern])
+                     visibility_type         (conj [:= :visibility_type (empty-null visibility_type)])
+                     data_layer              (conj [:= :data_layer      (empty-null data_layer)])
+                     data_source             (conj [:= :data_source     (empty-null data_source)])
+                     owner_user_id           (conj [:= :owner_user_id   (empty-null owner_user_id)])
+                     owner_email             (conj [:= :owner_email     (empty-null owner_email)]))
+        ;; Use LEFT JOIN to efficiently filter orphaned tables
+        ;; Exclude transforms as dependents since they produce tables
+        query      (cond-> {:where    where
+                            :order-by [[:name :asc]]}
+                     (and orphan_only (premium-features/has-feature? :dependencies))
+                     (assoc :left-join [[:dependency :d]
+                                        [:and
+                                         [:= :d.to_entity_type "table"]
+                                         [:= :d.to_entity_id :metabase_table.id]
+                                         ;; TODO: Ngoc (31/10/2025) we are not sure whether to exclude transform here
+                                         ;; let's circle back before merging bulk editing
+                                         [:not= :d.from_entity_type "transform"]]]
+                            :where     [:and where [:= :d.id nil]]))]
+    (as-> (t2/select :model/Table query) tables
+      (t2/hydrate tables :db)
+      (into [] (comp (filter mi/can-read?)
+                     (map schema.table/present-table))
+            tables))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -115,7 +158,9 @@
    body]
   (when-let [changes (not-empty (u/select-keys-when body
                                                     :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
-                                                    :present [:description :caveats :points_of_interest :visibility_type :data_authority]))]
+                                                    :present [:description :caveats :points_of_interest :visibility_type :data_layer
+                                                              ;; bulk-metadata-editing
+                                                              :data_authority :data_source :owner_email :owner_user_id]))]
     (t2/update! :model/Table id changes))
   (let [updated-table        (t2/select-one :model/Table :id id)
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
@@ -168,7 +213,12 @@
             [:points_of_interest      {:optional true} [:maybe :string]]
             [:show_in_getting_started {:optional true} [:maybe :boolean]]
             [:field_order             {:optional true} [:maybe FieldOrder]]
-            [:data_authority          {:optional true} [:maybe ::data-authority-write]]]]
+            [:data_authority          {:optional true} [:maybe ::data-authority-write]]
+            ;; bulk-metadata-editing
+            [:data_source             {:optional true} [:maybe :string]]
+            [:data_layer              {:optional true} [:maybe :string]]
+            [:owner_email             {:optional true} [:maybe :string]]
+            [:owner_user_id           {:optional true} [:maybe :int]]]]
   (first (update-tables! [id] body)))
 
 (api.macros/defendpoint :put "/"
@@ -184,11 +234,155 @@
                                [:caveats                 {:optional true} [:maybe :string]]
                                [:points_of_interest      {:optional true} [:maybe :string]]
                                [:show_in_getting_started {:optional true} [:maybe :boolean]]
-                               [:data_authority          {:optional true} [:maybe ::data-authority-write]]]]
+                               [:data_authority          {:optional true} [:maybe ::data-authority-write]]
+                               ;; bulk-metadata-editing
+                               [:data_source             {:optional true} [:maybe :string]]
+                               [:data_layer              {:optional true} [:maybe :string]]
+                               [:owner_email             {:optional true} [:maybe :string]]
+                               [:owner_user_id           {:optional true} [:maybe :int]]]]
   (update-tables! ids body))
 
-;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-;;
+(mr/def ::table-selectors
+  [:map
+   ;; disjunctive filters (e.g. db_id IN $database_ids OR id IN $table_ids)
+   [:database_ids {:optional true} [:sequential ms/PositiveInt]]
+   [:schema_ids {:optional true} [:sequential :string]] ;todo find schema
+   [:table_ids {:optional true} [:sequential ms/PositiveInt]]])
+
+(mu/defn ^:private table-selectors->filter
+  [{:keys [database_ids table_ids schema_ids]}]
+  (let [schema-expr (fn [s]
+                      (let [[schema-db-id schema-name] (str/split s #"\:")]
+                        [:and [:= :db_id (parse-long schema-db-id)] [:= :schema schema-name]]))]
+    (-> (cond-> [:or false]
+          (seq database_ids) (conj [:in :db_id (sort database_ids)])
+          (seq table_ids)    (conj [:in :id    (sort table_ids)])
+          (seq schema_ids)   (conj (into [:or] (map schema-expr) (sort schema_ids)))))))
+
+(api.macros/defendpoint :post "/edit"
+  "DEMOWARE: Edit tables associated with one or more databases/schemas
+  - the API will live somewhere else (at least needs to apply to models)
+  - auth lol
+  - return a kind of token or identifier for status/undo."
+  [_route-params
+   _query-params
+   body
+   :- [:merge
+       ::table-selectors
+       [:map
+        ;; settables
+        [:visibility_type {:optional true} [:maybe :string]]
+        [:data_authority {:optional true} [:maybe :string]]
+        [:data_source {:optional true} [:maybe :string]]
+        [:data_layer {:optional true} [:maybe :string]]
+        [:owner_email {:optional true} [:maybe :string]]
+        [:owner_user_id {:optional true} [:maybe :int]]]]]
+  ;; todo so much
+  (let [where   (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
+        set-ks  [:visibility_type
+                 :data_authority
+                 :data_source
+                 :data_layer
+                 :owner_email
+                 :owner_user_id]
+        set-map (select-keys body set-ks)
+        ;; Sync visibility fields
+        set-map (table/sync-visibility-fields set-map {})
+        stmt    {:update :metabase_table
+                 :set    set-map
+                 :where  where}]
+    (when (seq set-map) (t2/query stmt))
+    {}))
+
+(defn- table->model
+  [{:keys [id name db_id] :as _table} creator-id collection-id]
+  {:name                   (format "Model based on %s" name)
+   :description            (format "Base model for table %s " name)
+   :dataset_query          (let [mp (lib-be/application-database-metadata-provider db_id)]
+                             (lib/query mp (lib.metadata/table mp id)))
+   :type                   :model
+   :display                :table
+   :visualization_settings {}
+   :creator_id             creator-id
+   :collection_id          collection-id})
+
+(api.macros/defendpoint :post "/publish-model"
+  "Create a model for each of selected tables"
+  [_route-params
+   _query-params
+   {:keys [target_collection_id]
+    :as body}
+   :- [:merge
+       ::table-selectors
+       [:map
+        [:target_collection_id [:maybe [:or pos-int? [:= "library"]]]]]]]
+  (let [target-collection (cond
+                            (= "library" target_collection_id) (api/check-403 (collections/remote-synced-collection))
+                            (nil? target_collection_id) nil
+                            :else (api/check-404 (t2/select-one :model/Collection target_collection_id)))
+        where             (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
+        created-models    (t2/with-transaction [_conn]
+                            (into []
+                                  (comp
+                                   (map t2.realize/realize)
+                                   (partition-all 20)
+                                   (mapcat (fn [batch]
+                                             ;; TODO (Ngoc 29/10/25): create-card! does async calculation of metadata
+                                             ;; and it's gonna be expensive if we're doing this for lots of tables.
+                                             ;; maybe we should an option to skip it
+                                             (mapv (fn [table]
+                                                     (card/create-card! (table->model table api/*current-user-id* (:id target-collection)) @api/*current-user*))
+                                                   batch))))
+                                  (t2/reducible-select :model/Table :active true {:where where})))]
+    {:created_count     (count created-models)
+     :models            created-models
+     :target_collection target-collection}))
+
+(api.macros/defendpoint :post "/:id/substitute-model"
+  "Creates a model that wraps the table, all entities dependent on the table will instead be made dependent on the model."
+  [{table-id :id} :- [:map [:id :int]]
+   _query-params
+   {:keys [collection_id]} :- [:map [:collection_id [:maybe :int]]]]
+  ;; todo prem feature, auth, actual impl and all that
+  (t2/with-transaction []
+    (let [edges            (t2/select :model/Dependency :from_entity_type "card" :to_entity_type "table" :to_entity_id table-id)
+          {card-ids :card} (u/group-by :from_entity_type :from_entity_id edges)
+          cards            (when (seq card-ids) (t2/select :model/Card :id [:in (sort card-ids)]))
+          table-fields     (t2/select-pk->fn :name [:model/Field :id :name] :table_id table-id)
+          queries          (map :dataset_query cards)
+          table            (t2/select-one [:model/Table :db_id :display_name] table-id)
+          user             (t2/select-one :model/User api/*current-user-id*)
+          model            (card/create-card! {:type          :model
+                                               :display       :table
+                                               :name          (:display_name table)
+                                               :collection_id collection_id
+                                               :database_id   (:db_id table)
+                                               :table_id      table-id
+                                               :visualization_settings {}
+                                               :dataset_query {:type     :query
+                                                               :database (:db_id table)
+                                                               :query    {:source-table table-id}}}
+                                              user)
+          matching-stage?  (fn [x] (and (map? x) (= table-id (:source-table x))))
+          stage-sub        (fn [stage] (-> stage (dissoc :source-table) (assoc :source-card (:id model))))
+          stage-subs-xf    (comp (filter matching-stage?) (map (juxt identity stage-sub)))
+          stage-subs       (into {} stage-subs-xf (tree-seq seqable? seq queries))
+          matching-ref?    (fn [x]
+                             (and (vector? x)
+                                  (= :field (nth x 0 nil))
+                                  (contains? table-fields (nth x 2 nil))))
+          ref-sub          (fn [[_ m id]] [:field m (table-fields id)])
+          ref-subs-xf      (comp (filter matching-ref?) (map (juxt identity ref-sub)))
+          ref-subs         (into {} ref-subs-xf (tree-seq seqable? seq queries))
+          all-subs         (merge stage-subs ref-subs)]
+      (doseq [card cards
+              :let [{:keys [dataset_query]} card]
+              :when (not (lib.query/native? dataset_query))]
+        (card/update-card! {:card-before-update card
+                            :card-updates       {:dataset_query (walk/postwalk-replace all-subs dataset_query)}
+                            :actor              user}))
+      {:model model})))
+
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
