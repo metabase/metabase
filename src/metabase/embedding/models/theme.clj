@@ -1,5 +1,5 @@
-(ns metabase.embedding.models.embedding-theme
-  "Model for EmbeddingTheme, which stores named themes for React SDK and EAJS embedding."
+(ns metabase.embedding.models.theme
+  "Model for embedding themes for use in the embedding theme editor."
   (:require
    [metabase.models.interface :as mi]
    [metabase.util.malli.registry :as mr]

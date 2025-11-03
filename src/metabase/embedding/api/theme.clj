@@ -11,7 +11,14 @@
 (api.macros/defendpoint :get "/"
   "Fetch a list of all embedding themes."
   []
+  (api/check-superuser)
   (t2/select :model/EmbeddingTheme [:id :name :created_at :updated_at] {:order-by [[:name :asc]]}))
+
+(api.macros/defendpoint :get "/:id"
+  "Fetch a single embedding theme by ID."
+  [{:keys [id]}]
+  (api/check-superuser)
+  (api/check-404 (t2/select-one :model/EmbeddingTheme :id id)))
 
 (api.macros/defendpoint :post "/"
   "Create a new embedding theme."
