@@ -2,6 +2,7 @@
   (:require
    [cheshire.core :as json]
    [clojure.pprint :refer [pprint]]
+   [metabase-enterprise.representations.common :as common]
    [metabase-enterprise.representations.core :as rep]
    [metabase-enterprise.representations.dependencies :as deps]
    [metabase-enterprise.representations.export :as export]
@@ -152,8 +153,8 @@
    _request]
   (let [id (Long/parseLong id)
         type-keyword (keyword type)
-        model (import/internal-model {:version rep-core/latest-version
-                                      :type type-keyword})
+        model (common/toucan-model {:version rep-core/latest-version
+                                    :type type-keyword})
         entity (api/check-404 (t2/select-one model :id id))
         representation (export/export-entity entity)
         export-set (-> [representation]
