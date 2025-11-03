@@ -1,10 +1,15 @@
 import { updateMetadata } from "metabase/lib/redux/metadata";
 import { ForeignKeySchema, TableSchema } from "metabase/schema";
 import type {
+  EditTablesRequest,
   ForeignKey,
   GetTableDataRequest,
   GetTableQueryMetadataRequest,
   GetTableRequest,
+  PublishModelsRequest,
+  PublishModelsResponse,
+  SubstituteModelRequest,
+  SubstituteModelResponse,
   Table,
   TableData,
   TableId,
@@ -101,6 +106,15 @@ export const tableApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("table"), tag("database"), tag("card")]),
     }),
+    editTables: builder.mutation<Record<string, never>, EditTablesRequest>({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/table/edit",
+        body,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [tag("table"), tag("database"), tag("card")]),
+    }),
     updateTableFieldsOrder: builder.mutation<
       Table,
       UpdateTableFieldsOrderRequest
@@ -148,11 +162,36 @@ export const tableApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
     }),
+    publishModels: builder.mutation<
+      PublishModelsResponse,
+      PublishModelsRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/table/publish-model",
+        body,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [tag("card"), tag("collection")]),
+    }),
+    substituteModel: builder.mutation<
+      SubstituteModelResponse,
+      SubstituteModelRequest
+    >({
+      query: ({ id, ...body }) => ({
+        method: "POST",
+        url: `/api/table/${id}/substitute-model`,
+        body,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [tag("card"), tag("collection")]),
+    }),
   }),
 });
 
 export const {
   useListTablesQuery,
+  useEditTablesMutation,
   useGetTableQuery,
   useGetTableQueryMetadataQuery,
   useGetTableDataQuery,
@@ -164,4 +203,6 @@ export const {
   useRescanTableFieldValuesMutation,
   useSyncTableSchemaMutation,
   useDiscardTableFieldValuesMutation,
+  usePublishModelsMutation,
+  useSubstituteModelMutation,
 } = tableApi;

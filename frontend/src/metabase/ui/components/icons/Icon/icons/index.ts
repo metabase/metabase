@@ -276,6 +276,8 @@ import mail_component from "./mail.svg?component";
 import mail_source from "./mail.svg?source";
 import mail_filled_component from "./mail_filled.svg?component";
 import mail_filled_source from "./mail_filled.svg?source";
+import medallion_component from "./medallion.svg?component";
+import medallion_source from "./medallion.svg?source";
 import message_circle_component from "./message_circle.svg?component";
 import message_circle_source from "./message_circle.svg?source";
 import metabot_component from "./metabot.svg?component";
@@ -1041,6 +1043,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: mail_filled_component,
       source: mail_filled_source,
     },
+    medallion: {
+      component: medallion_component,
+      source: medallion_source,
+    },
     message_circle: {
       component: message_circle_component,
       source: message_circle_source,
@@ -1664,7 +1670,6 @@ export type IconName =
   | "lock"
   | "lock_filled"
   | "mail"
-  | "mail_filled"
   | "message_circle"
   | "metabot"
   | "metabot_sad"

@@ -3,6 +3,9 @@ import type {
   SchemaName,
   Table,
   TableId,
+  TableDataSource,
+  TableVisibilityType2,
+  UserId,
 } from "metabase-types/api";
 
 export type NodeKey = string;
@@ -65,6 +68,7 @@ type ExpandedItem = Item & {
   parent?: NodeKey;
   level: number;
   disabled?: boolean;
+  isSelected?: "yes" | "no" | "some";
 };
 
 type LoadingItem = {
@@ -86,4 +90,12 @@ export type ExpandedState = {
 
 export interface ChangeOptions {
   isAutomatic?: boolean;
+}
+
+export interface FilterState {
+  visibilityType2: TableVisibilityType2 | null;
+  dataSource: TableDataSource | "unknown" | null;
+  ownerEmail: string | null;
+  ownerUserId: UserId | "unknown" | null;
+  orphansOnly: boolean | null;
 }

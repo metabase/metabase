@@ -1,34 +1,52 @@
+import { useElementSize } from "@mantine/hooks";
 import { memo, useState } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
 import {
+  usePublishModelsMutation,
   useUpdateTableFieldsOrderMutation,
   useUpdateTableMutation,
 } from "metabase/api";
 import EmptyState from "metabase/common/components/EmptyState";
-import * as Urls from "metabase/lib/urls";
+import { useToast } from "metabase/common/hooks";
 import {
+  DataSourceInput,
   FieldOrderPicker,
+  LayerInput,
   NameDescriptionInput,
   SortableFieldList,
+  UserInput,
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
   ActionIcon,
+  Box,
+  Button,
   Group,
   Icon,
   Loader,
+  Menu,
   Stack,
   Text,
   Tooltip,
 } from "metabase/ui";
-import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
+import type {
+  FieldId,
+  Table,
+  TableDataSource,
+  TableFieldOrder,
+  TableVisibilityType2,
+  UserId,
+} from "metabase-types/api";
 
 import type { RouteParams } from "../../types";
 import { getUrl, parseRouteParams } from "../../utils";
 import { ResponsiveButton } from "../ResponsiveButton";
+import { PublishModelsModal } from "../TablePicker/components/PublishModelsModal";
+import { SubstituteModelModal } from "../TablePicker/components/SubstituteModelModal";
+import { TitledSection } from "../TitledSection";
 
 import { FieldList } from "./FieldList";
 import S from "./TableSection.module.css";
@@ -48,6 +66,10 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
   const [updateTableFieldsOrder] = useUpdateTableFieldsOrderMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
+  const [isCreateModelsModalOpen, setIsCreateModelsModalOpen] = useState(false);
+  const [isSubstituteModelModalOpen, setIsSubstituteModelModalOpen] =
+    useState(false);
+  const { height: headerHeight, ref: headerRef } = useElementSize();
   const [isSorting, setIsSorting] = useState(false);
   const hasFields = Boolean(table.fields && table.fields.length > 0);
   const {
@@ -91,6 +113,102 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
         const { error } = await updateTable({
           id: table.id,
           description: table.description ?? "",
+        });
+        sendUndoToast(error);
+      });
+    }
+  };
+
+  const handleLayerChange = async (
+    visibilityType: TableVisibilityType2 | null,
+  ) => {
+    if (visibilityType == null) {
+      return; // should never happen as the input is not clearable here
+    }
+
+    const { error } = await updateTable({
+      id: table.id,
+      data_layer: visibilityType,
+    });
+
+    if (error) {
+      sendErrorToast(t`Failed to update table layer`);
+    } else {
+      sendSuccessToast(t`Table layer updated`, async () => {
+        const { error } = await updateTable({
+          id: table.id,
+          data_layer: table.data_layer,
+        });
+        sendUndoToast(error);
+      });
+    }
+  };
+
+  const handleDataSourceChange = async (
+    dataSource: TableDataSource | "unknown" | null,
+  ) => {
+    if (dataSource == null) {
+      return; // should never happen as the input is not clearable here
+    }
+
+    const { error } = await updateTable({
+      id: table.id,
+      data_source: dataSource === "unknown" ? null : dataSource,
+    });
+
+    if (error) {
+      sendErrorToast(t`Failed to update table data source`);
+    } else {
+      sendSuccessToast(t`Table data source updated`, async () => {
+        const { error } = await updateTable({
+          id: table.id,
+          data_source: table.data_source,
+        });
+        sendUndoToast(error);
+      });
+    }
+  };
+
+  const handleOwnerEmailChange = async (email: string | null) => {
+    const { error } = await updateTable({
+      id: table.id,
+      owner_email: email,
+      owner_user_id: null,
+    });
+
+    if (error) {
+      sendErrorToast(t`Failed to update table owner`);
+    } else {
+      sendSuccessToast(t`Table owner updated`, async () => {
+        const { error } = await updateTable({
+          id: table.id,
+          owner_email: table.owner_email,
+          owner_user_id: table.owner_user_id,
+        });
+        sendUndoToast(error);
+      });
+    }
+  };
+
+  const handleOwnerUserIdChange = async (userId: UserId | "unknown" | null) => {
+    if (userId == null) {
+      return; // should never happen as the input is not clearable here
+    }
+
+    const { error } = await updateTable({
+      id: table.id,
+      owner_email: null,
+      owner_user_id: userId === "unknown" ? null : userId,
+    });
+
+    if (error) {
+      sendErrorToast(t`Failed to update table owner`);
+    } else {
+      sendSuccessToast(t`Table owner updated`, async () => {
+        const { error } = await updateTable({
+          id: table.id,
+          owner_email: table.owner_email,
+          owner_user_id: table.owner_user_id,
         });
         sendUndoToast(error);
       });
@@ -144,16 +262,34 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
     }
   };
 
+  const [publishModels] = usePublishModelsMutation();
+  const [sendToast] = useToast();
+
+  const handlePublishModel = async () => {
+    const { error } = await publishModels({
+      table_ids: [table.id],
+      target_collection_id: "library",
+    });
+
+    if (error) {
+      sendToast({
+        message: t`Failed to publish`,
+      });
+    } else {
+      sendToast({
+        message: t`Table published in the Library`,
+      });
+    }
+  };
+
   return (
     <Stack data-testid="table-section" gap={0} pb="xl">
-      <Stack
-        bg="accent-gray-light"
+      <Box
         className={S.header}
-        gap="lg"
-        pb={12}
+        bg="accent-gray-light"
+        p="xl"
         pos="sticky"
-        pt="xl"
-        px="xl"
+        ref={headerRef}
         top={0}
       >
         <NameDescriptionInput
@@ -167,7 +303,7 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
             <Tooltip label={t`Go to this table`} position="top">
               <ActionIcon
                 component={Link}
-                to={Urls.queryBuilderTable(table.id, table.db_id)}
+                to={getQueryBuilderUrl(table)}
                 variant="subtle"
                 color="text-light"
                 size="sm"
@@ -181,12 +317,116 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
           onNameChange={handleNameChange}
           onDescriptionChange={handleDescriptionChange}
         />
+      </Box>
 
+      <Box px="xl" pb="xl">
+        <Group justify="space-between">
+          <Button
+            component={Link}
+            leftSection={<Icon name="network" />}
+            to={`/bench/dependencies?id=${table.id}&type=table`}
+          >{t`Dependency graph`}</Button>
+
+          <Menu position="bottom-end">
+            <Menu.Target>
+              <Tooltip label={`Table actions`}>
+                <Button
+                  p="sm"
+                  leftSection={<Icon name="ellipsis" />}
+                  style={{
+                    width: 40,
+                  }}
+                />
+              </Tooltip>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Item
+                leftSection={<Icon name="model" />}
+                rightSection={
+                  <Tooltip
+                    label={t`Create a model and place it in a given collection.`}
+                  >
+                    <Icon name="info_outline" />
+                  </Tooltip>
+                }
+                onClick={() => setIsCreateModelsModalOpen(true)}
+              >
+                {t`Create model`}
+              </Menu.Item>
+
+              {/*               <Menu.Item
+                leftSection={<Icon name="model_with_badge" />}
+                rightSection={
+                  <Tooltip
+                    label={t`Create a model and publish it in the Library.`}
+                  >
+                    <Icon name="info_outline" />
+                  </Tooltip>
+                }
+                onClick={handlePublishModel}
+              >
+                {t`Publish model`}
+              </Menu.Item> */}
+
+              <Menu.Item
+                leftSection={<Icon name="sync" />}
+                rightSection={
+                  <Tooltip
+                    label={t`Create a model that wraps this table. All dependent entities will be updated to reference the model instead.`}
+                  >
+                    <Icon name="info_outline" />
+                  </Tooltip>
+                }
+                onClick={() => setIsSubstituteModelModalOpen(true)}
+              >
+                {t`Substitute with model`}
+              </Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
+        </Group>
+      </Box>
+
+      <Box pb="xl" px="xl">
+        <TitledSection title={t`Metadata`}>
+          <LayerInput
+            value={table.data_layer ?? "copper"}
+            onChange={handleLayerChange}
+          />
+
+          <UserInput
+            email={table.owner_email}
+            label={t`Owner`}
+            userId={
+              !table.owner_email && !table.owner_user_id
+                ? "unknown"
+                : table.owner_user_id
+            }
+            onEmailChange={handleOwnerEmailChange}
+            onUserIdChange={handleOwnerUserIdChange}
+          />
+
+          <DataSourceInput
+            transformId={table.transform_id}
+            value={table.data_source ?? "unknown"}
+            onChange={handleDataSourceChange}
+          />
+        </TitledSection>
+      </Box>
+
+      <Box
+        bg="accent-gray-light"
+        className={S.header}
+        pos="sticky"
+        top={headerHeight - 8}
+        pb={12}
+        px="xl"
+      >
         <Group
           align="center"
           gap="md"
           justify="space-between"
           miw={0}
+          top={0}
           wrap="nowrap"
         >
           <Text flex="0 0 auto" fw="bold">{t`Fields`}</Text>
@@ -241,7 +481,7 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
             )}
           </Group>
         </Group>
-      </Stack>
+      </Box>
 
       <Stack gap="lg" px="xl">
         <Stack gap={12}>
@@ -264,8 +504,24 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
           )}
         </Stack>
       </Stack>
+
+      <PublishModelsModal
+        tables={new Set([table.id])}
+        isOpen={isCreateModelsModalOpen}
+        onClose={() => setIsCreateModelsModalOpen(false)}
+      />
+
+      <SubstituteModelModal
+        tableId={table.id}
+        isOpen={isSubstituteModelModalOpen}
+        onClose={() => setIsSubstituteModelModalOpen(false)}
+      />
     </Stack>
   );
 };
+
+function getQueryBuilderUrl(table: Table) {
+  return `/question#?db=${table.db_id}&table=${table.id}`;
+}
 
 export const TableSection = memo(TableSectionBase);
