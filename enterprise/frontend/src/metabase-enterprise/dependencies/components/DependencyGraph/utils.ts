@@ -137,7 +137,7 @@ export function getNodeIconWithType(
     case "table":
       return "table";
     case "transform":
-      return "refresh_downstream";
+      return "transform";
     case "snippet":
       return "sql";
     case "dashboard":
