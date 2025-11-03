@@ -5,6 +5,7 @@ import { PLUGIN_DEPENDENCIES, PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { BenchLayout } from "./pages/BenchLayout";
 import { DataSectionLayout } from "./pages/DataSectionLayout";
 import { DependenciesSectionLayout } from "./pages/DependenciesSectionLayout";
+import { ModelingSectionLayout } from "./pages/ModelingSectionLayout";
 
 export function getWorkbenchRoutes() {
   return (
@@ -13,6 +14,7 @@ export function getWorkbenchRoutes() {
         {getMetadataRoutes()}
         {PLUGIN_TRANSFORMS.getTransformRoutes()}
       </Route>
+      <Route component={ModelingSectionLayout} />
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <Route
           title={`Dependency graph`}

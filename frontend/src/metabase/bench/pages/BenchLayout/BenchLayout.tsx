@@ -29,10 +29,6 @@ function BenchNav() {
   const location = useSelector(getLocation);
   const { pathname } = location;
 
-  if (!PLUGIN_DEPENDENCIES.isEnabled) {
-    return null;
-  }
-
   return (
     <Stack className={S.nav} h="100%" p="0.75rem" gap="0.75rem">
       <BenchNavItem
@@ -44,6 +40,7 @@ function BenchNav() {
           pathname.startsWith(Urls.transformList())
         }
       />
+      <BenchNavItem to="/" icon="model" isSelected={false} />
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <BenchNavItem
           icon="schema"
