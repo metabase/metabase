@@ -31,15 +31,16 @@ import {
   getValuePopulatedParameters as _getValuePopulatedParameters,
   getParameterValuesBySlug,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
-import type {
-  Card,
-  DashCardId,
-  Dashboard,
-  DashboardCard,
-  DashboardId,
-  DashboardParameterMapping,
-  ParameterId,
-  VirtualCard,
+import {
+  type Card,
+  type DashCardId,
+  type Dashboard,
+  type DashboardCard,
+  type DashboardId,
+  type DashboardParameterMapping,
+  type ParameterId,
+  type VirtualCard,
+  isBaseEntityID,
 } from "metabase-types/api";
 import type {
   ClickBehaviorSidebarState,
@@ -189,7 +190,7 @@ export const getDashboardById = (
 ): StoreDashboard => {
   const dashboards = getDashboards(state);
 
-  const isEntityId = typeof dashboardId === "string";
+  const isEntityId = isBaseEntityID(dashboardId);
   if (isEntityId) {
     return checkNotNull(
       Object.values(dashboards).find(
@@ -197,7 +198,7 @@ export const getDashboardById = (
       ),
     );
   } else {
-    // Number ID
+    // Number and jwt (static embed) IDs
     return dashboards[dashboardId];
   }
 };
