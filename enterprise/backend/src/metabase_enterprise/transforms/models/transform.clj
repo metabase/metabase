@@ -266,6 +266,7 @@
 
 (search.spec/define-spec "transform"
   {:model        :model/Transform
+   :visibility   :superuser
    :attrs        {:archived      false
                   :collection-id false
                   :creator-id    false
