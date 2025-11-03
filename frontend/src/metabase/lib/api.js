@@ -77,7 +77,8 @@ export class Api extends EventEmitter {
       headers["X-Metabase-Embedded"] = "true";
       /**
        * We counted static embed preview query executions which led to wrong embedding stats (EMB-930)
-       * This header is only used for logging in `view_log` and `query_execution` tables, so it's safe to exclude it.
+       * This header is only used for analytics and for checking if we want to disable some features in the
+       * embedding iframe (only for Documents at the time of this comment)
        */
       if (!IS_EMBED_PREVIEW) {
         // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
