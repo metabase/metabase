@@ -3,24 +3,41 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(api.macros/defendpoint :get "/"
+(mr/def ::EmbeddingTheme
+  [:map
+   [:id       ms/PositiveInt]
+   [:name     ms/NonBlankString]
+   [:settings :map]
+   [:created_at  :any]
+   [:updated_at  :any]])
+
+(api.macros/defendpoint :get "/" :- [:sequential
+                                     [:map
+                                      [:id          ms/PositiveInt]
+                                      [:name        ms/NonBlankString]
+                                      [:created_at  :any]
+                                      [:updated_at  :any]]]
   "Fetch a list of all embedding themes."
   []
   (api/check-superuser)
-  (t2/select :model/EmbeddingTheme [:id :name :created_at :updated_at] {:order-by [[:name :asc]]}))
+  (t2/select :model/EmbeddingTheme {:order-by [[:created_at :asc]]
+                                    :select [:id :name :created_at :updated_at]}))
 
-(api.macros/defendpoint :get "/:id"
+(api.macros/defendpoint :get "/:id" :- ::EmbeddingTheme
   "Fetch a single embedding theme by ID."
-  [{:keys [id]}]
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (api/check-404 (t2/select-one :model/EmbeddingTheme :id id)))
+  (let [theme (t2/select-one :model/EmbeddingTheme :id id)]
+    (api/check-404 theme)
+    theme))
 
-(api.macros/defendpoint :post "/"
+(api.macros/defendpoint :post "/" :- ::EmbeddingTheme
   "Create a new embedding theme."
   [_route-params
    _query-params
@@ -32,9 +49,9 @@
                                          {:name name
                                           :settings settings})))
 
-(api.macros/defendpoint :put "/:id"
+(api.macros/defendpoint :put "/:id" :- ::EmbeddingTheme
   "Update an embedding theme."
-  [{:keys [id]}
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    {:keys [name settings]} :- [:map
                                [:name {:optional true} [:maybe ms/NonBlankString]]
@@ -50,7 +67,7 @@
 
 (api.macros/defendpoint :delete "/:id"
   "Delete an embedding theme."
-  [id :- ms/PositiveInt]
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-superuser)
   (let [theme (t2/select-one :model/EmbeddingTheme :id id)]
     (api/check-404 theme)
