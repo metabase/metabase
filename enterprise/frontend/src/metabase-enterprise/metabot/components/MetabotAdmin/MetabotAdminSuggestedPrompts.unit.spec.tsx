@@ -59,7 +59,10 @@ const setup = async (opts?: SetupOpts) => {
     : paginationContext;
 
   const TestComponent = () => (
-    <MetabotPromptSuggestionPane metabotId={metabotId} pageSize={pageSize} />
+    <MetabotPromptSuggestionPane
+      metabot={{ id: metabotId, collection_id: null }}
+      pageSize={pageSize}
+    />
   );
 
   renderWithProviders(<Route path="/" component={TestComponent} />, {

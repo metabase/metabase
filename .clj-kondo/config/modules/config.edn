@@ -1735,6 +1735,7 @@
            lib-be
            models
            native-query-snippets
+           permissions
            premium-features
            queries
            query-processor
