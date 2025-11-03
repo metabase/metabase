@@ -605,3 +605,19 @@
     (doseq [table tables]
       (quick-task/submit-task! #(database-routing/with-database-routing-off (sync/sync-table! table))))
     {:status :ok}))
+
+(api.macros/defendpoint :post "/rescan_values"
+  "Batch version of /table/:id/rescan_values. Takes an abstract table selection as /table/edit does."
+  [_
+   _
+   body :- ::table-selectors]
+  (let [tables (t2/select :model/Table {:where (table-selectors->filter body), :order-by [[:id]]})]
+    (doseq [table tables]
+      (api/write-check table))
+    (doseq [table tables]
+      (events/publish-event! :event/table-manual-scan {:object table :user-id api/*current-user-id*}))
+    ;; same permission skip as the single-table api, see comment in /:id/rescan_values
+    (request/as-admin
+      (doseq [table tables]
+        (quick-task/submit-task! #(sync/update-field-values-for-table! table))))
+    {:status :ok}))

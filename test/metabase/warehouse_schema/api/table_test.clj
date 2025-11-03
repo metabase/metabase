@@ -1427,3 +1427,26 @@
         (testing "sync called?"
           (is (true? (.await latch 4 TimeUnit/SECONDS)))
           (is (= [t1 t2 t4 t5] (map :id @tables))))))))
+
+(deftest trigger-rescan-values-for-tables-test
+  ;; lot more to test here but will wait for firmer ground
+  (testing "Can we trigger a field values sync for a filtered set of tables"
+    (let [tables       (atom [])
+          latch        (CountDownLatch. 4)]
+      (mt/with-temp [:model/Database {d1 :id} {:engine "h2", :details (:details (mt/db))}
+                     :model/Database {d2 :id} {:engine "h2", :details (:details (mt/db))}
+                     :model/Table    {t1 :id} {:db_id d1, :schema "PUBLIC"}
+                     :model/Table    {t2 :id} {:db_id d1, :schema "PUBLIC"}
+                     :model/Table    {t3 :id} {:db_id d2, :schema "PUBLIC"}
+                     :model/Table    {t4 :id} {:db_id d2, :schema "PUBLIC"}
+                     :model/Table    {t5 :id} {:db_id d2, :schema "FOO"}]
+        (with-redefs [sync/update-field-values-for-table! (fn [table]
+                                                            (swap! tables conj table)
+                                                            (.countDown latch)
+                                                            nil)]
+          (mt/user-http-request :crowberto :post 200 "table/rescan_values" {:database_ids [d1],
+                                                                            :schema_ids   [(format "%d:FOO" d2)]
+                                                                            :table_ids    [t4]}))
+        (testing "rescanned?"
+          (is (true? (.await latch 4 TimeUnit/SECONDS)))
+          (is (= [t1 t2 t4 t5] (map :id @tables))))))))
