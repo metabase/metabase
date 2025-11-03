@@ -13,7 +13,8 @@
     (get files path))
 
   (write-files! [_ _message new-files]
-    (into {} (map (juxt :path :content) new-files)))
+    (into {} (map (juxt :path :content) new-files))
+    "written-files-version")
 
   (version [_]
     "mock-version"))
