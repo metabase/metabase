@@ -1,12 +1,13 @@
 import { useCallback } from "react";
 import { push } from "react-router-redux";
+import { t } from "ttag";
 import _ from "underscore";
 
 import { getDashboard } from "metabase/api";
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import Modal from "metabase/common/components/Modal";
-import QuestionSavedModal from "metabase/common/components/QuestionSavedModal";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
+import { useToast } from "metabase/common/hooks";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -65,6 +66,7 @@ export function QueryModals({
   onChangeLocation,
 }: QueryModalsProps) {
   const dispatch = useDispatch();
+  const [sendToast] = useToast();
 
   const initialCollectionId = useGetDefaultCollectionId();
   const underlyingQuestion = useSelector(getQuestionWithoutComposing);
@@ -131,17 +133,25 @@ export function QueryModals({
           options?.dashboardTabId,
         );
       } else {
-        onOpenModal(MODAL_TYPES.SAVED);
+        onCloseModal();
+        setQueryBuilderMode("view");
+
+        sendToast({
+          message: t`Saved!`,
+          actionLabel: t`Add this to a dashboard`,
+          action: () => onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD),
+        });
       }
 
       return newQuestion;
     },
     [
-      onCloseModal,
       onCreate,
-      onOpenModal,
+      onCloseModal,
       setQueryBuilderMode,
       navigateToDashboardQuestionDashboard,
+      sendToast,
+      onOpenModal,
     ],
   );
 
@@ -164,14 +174,22 @@ export function QueryModals({
         onCloseModal();
         setQueryBuilderMode("view");
       } else {
-        onOpenModal(MODAL_TYPES.SAVED);
+        onCloseModal();
+        setQueryBuilderMode("view");
+
+        sendToast({
+          message: t`Saved!`,
+          actionLabel: t`Add this to a dashboard`,
+          action: () => onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD),
+        });
       }
     },
     [
-      onOpenModal,
       navigateToDashboardQuestionDashboard,
-      setQueryBuilderMode,
       onCloseModal,
+      setQueryBuilderMode,
+      sendToast,
+      onOpenModal,
     ],
   );
 
@@ -186,37 +204,6 @@ export function QueryModals({
           onCreate={handleSaveModalCreate}
           onClose={onCloseModal}
           opened={true}
-        />
-      );
-    case MODAL_TYPES.SAVED:
-      return (
-        <Modal small onClose={onCloseModal}>
-          <QuestionSavedModal
-            onClose={onCloseModal}
-            addToDashboard={() => {
-              onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD);
-            }}
-          />
-        </Modal>
-      );
-    case MODAL_TYPES.ADD_TO_DASHBOARD_SAVE:
-      return (
-        <SaveQuestionModal
-          question={question}
-          originalQuestion={originalQuestion}
-          initialCollectionId={initialCollectionId}
-          onSave={async (question) => {
-            await onSave(question);
-            onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD);
-          }}
-          onCreate={async (question, options) => {
-            const newQuestion = await onCreate(question, options);
-            onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD);
-            return newQuestion;
-          }}
-          onClose={onCloseModal}
-          opened={true}
-          multiStep
         />
       );
     case MODAL_TYPES.ADD_TO_DASHBOARD:
