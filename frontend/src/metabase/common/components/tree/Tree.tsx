@@ -14,6 +14,7 @@ interface TreeProps extends Omit<BoxProps, "children"> {
   selectedId?: ITreeNodeItem["id"];
   emptyState?: React.ReactNode;
   initiallyExpanded?: boolean;
+  role?: string;
   onSelect?: (item: ITreeNodeItem) => void;
   rightSection?: (item: ITreeNodeItem) => React.ReactNode;
   TreeNode?: any;

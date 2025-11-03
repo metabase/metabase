@@ -35,6 +35,8 @@ import { lastModifiedSorter, nameSorter } from "../utils";
 import { TransformsTreeNode } from "./TransformsTreeNode";
 import { buildTreeData } from "./utils";
 
+const DEFAULT_SORT_TYPE = "tree";
+
 interface TransformsSidebarProps {
   selectedTransformId?: number;
 }
@@ -47,9 +49,11 @@ export const TransformsSidebar = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery] = useDebouncedValue(searchQuery, 300);
   // TODO use useUserKeyValue
-  const [sortType = "tree", setSortType] = useLocalStorage<SortOption>(
-    "metabase-transforms-display",
-  );
+  const [sortType = DEFAULT_SORT_TYPE, setSortType] =
+    useLocalStorage<SortOption>(
+      "metabase-transforms-display",
+      DEFAULT_SORT_TYPE,
+    );
 
   const { data: transforms, error, isLoading } = useListTransformsQuery({});
   const { data: databaseData } = useListDatabasesQuery();

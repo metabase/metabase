@@ -25,6 +25,8 @@ import { SidebarList } from "../TransformsSidebarLayout/SidebarList";
 import { SidebarListItem } from "../TransformsSidebarLayout/SidebarListItem/SidebarListItem";
 import { lastModifiedSorter, nameSorter } from "../utils";
 
+const DEFAULT_SORT_TYPE = "alphabetical";
+
 interface JobsSidebarProps {
   selectedJobId?: number;
 }
@@ -35,10 +37,8 @@ export const JobsSidebar = ({ selectedJobId }: JobsSidebarProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery] = useDebouncedValue(searchQuery, 300);
   // TODO use useUserKeyValue
-  const [sortType, setSortType] = useLocalStorage<SortOption>(
-    "metabase-jobs-display",
-    "alphabetical",
-  );
+  const [sortType = DEFAULT_SORT_TYPE, setSortType] =
+    useLocalStorage<SortOption>("metabase-jobs-display", DEFAULT_SORT_TYPE);
 
   const { data: jobs, error, isLoading } = useListTransformJobsQuery({});
 

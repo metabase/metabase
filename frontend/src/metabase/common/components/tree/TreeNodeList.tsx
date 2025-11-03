@@ -11,6 +11,7 @@ interface TreeNodeListProps extends Omit<BoxProps, "children"> {
   expandedIds: Set<ITreeNodeItem["id"]>;
   selectedId?: ITreeNodeItem["id"];
   depth: number;
+  role?: string;
   onToggleExpand: (id: ITreeNodeItem["id"]) => void;
   onSelect?: (item: ITreeNodeItem) => void;
   TreeNode: TreeNodeComponent;
@@ -26,12 +27,13 @@ function BaseTreeNodeList({
   onToggleExpand,
   TreeNode,
   rightSection,
+  role,
   ...boxProps
 }: TreeNodeListProps) {
   const selectedRef = useScrollOnMount();
 
   return (
-    <Box component="ul" {...boxProps}>
+    <Box component="ul" role={role} {...boxProps}>
       {items.map((item) => {
         const isSelected = selectedId === item.id;
         const hasChildren =
