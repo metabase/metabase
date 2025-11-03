@@ -21,7 +21,8 @@ import {
 } from "metabase/forms";
 import { useSelector } from "metabase/lib/redux";
 import { Divider, Flex, Group, List, Stack, Text } from "metabase/ui";
-import { MetabotPurchaseSettingUpModal } from "metabase-enterprise/metabot/components/MetabotAdmin/MetabotPurchaseSettingUpModal";
+
+import { MetabotSettingUpModal } from "./MetabotSettingUpModal";
 
 // https://redux-toolkit.js.org/rtk-query/usage/error-handling
 // https://redux-toolkit.js.org/rtk-query/usage-with-typescript#type-safe-error-handling
@@ -68,11 +69,11 @@ const validationSchema = Yup.object({
   terms_of_service: Yup.boolean(),
 });
 
-interface MetabotPurchaseFormFields {
+interface MetabotTrialFormFields {
   terms_of_service: boolean;
 }
 
-export const MetabotPurchasePage = () => {
+export const MetabotTrialPage = () => {
   const currentUser = useSelector(getCurrentUser);
   const tokenStatus = useSetting("token-status");
   const storeUserEmails =
@@ -86,7 +87,7 @@ export const MetabotPurchasePage = () => {
   const [settingUpModalOpened, settingUpModalHandlers] = useDisclosure(false);
   const [purchaseCloudAddOn] = usePurchaseCloudAddOnMutation();
   const onSubmit = useCallback(
-    async ({ terms_of_service }: MetabotPurchaseFormFields) => {
+    async ({ terms_of_service }: MetabotTrialFormFields) => {
       settingUpModalHandlers.open();
       await purchaseCloudAddOn({
         product_type: "metabase-ai",
@@ -180,7 +181,7 @@ export const MetabotPurchasePage = () => {
           </Text>
         )}
       </SettingsSection>
-      <MetabotPurchaseSettingUpModal
+      <MetabotSettingUpModal
         opened={settingUpModalOpened}
         onClose={() => {
           settingUpModalHandlers.close();

@@ -14,7 +14,7 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks";
 
-import { MetabotPurchasePage } from "./MetabotPurchasePage";
+import { MetabotTrialPage } from "./MetabotTrialPage";
 
 const setupRefreshableProperties = ({
   current_user_matches_store_user,
@@ -52,7 +52,7 @@ const setup = async ({
 
   fetchMock.post("path:/api/ee/cloud-add-ons/metabase-ai", 200);
 
-  renderWithProviders(<MetabotPurchasePage />, {
+  renderWithProviders(<MetabotTrialPage />, {
     // Calling `setupPropertiesEndpoints` above is not enough; we also need to set `storeInitialState`:
     storeInitialState: {
       settings: createMockSettingsState(settings),
@@ -63,7 +63,7 @@ const setup = async ({
   await screen.findByText(/Get a free month of Metabot/);
 };
 
-describe("MetabotPurchasePage", () => {
+describe("MetabotTrialPage", () => {
   it("shows empty state alternate text when current user is not a store user", async () => {
     await setup({ current_user_matches_store_user: false });
     expect(screen.getByText(/Get a free month of Metabot/)).toBeInTheDocument();

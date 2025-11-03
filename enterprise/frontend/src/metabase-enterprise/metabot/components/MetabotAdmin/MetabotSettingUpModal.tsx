@@ -15,7 +15,7 @@ import {
 } from "metabase/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-export const MetabotPurchaseSettingUpModal = ({
+export const MetabotSettingUpModal = ({
   onClose,
   opened,
 }: Pick<ModalProps, "opened" | "onClose">) => {

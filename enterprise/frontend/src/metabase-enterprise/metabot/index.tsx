@@ -5,7 +5,7 @@ import { createAdminRouteGuard } from "metabase/admin/utils";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { Route } from "metabase/hoc/Title";
 import { PLUGIN_METABOT, PLUGIN_REDUCERS } from "metabase/plugins";
-import { MetabotPurchasePage } from "metabase-enterprise/metabot/components/MetabotAdmin/MetabotPurchasePage";
+import { MetabotTrialPage } from "metabase-enterprise/metabot/components/MetabotAdmin/MetabotTrialPage";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { Metabot } from "./components/Metabot";
@@ -75,7 +75,7 @@ export function initializePlugin() {
     PLUGIN_METABOT.getAdminRoutes = () => (
       <Route path="metabot" component={createAdminRouteGuard("metabot")}>
         <Route title={t`AI`} component={AdminSettingsLayout}>
-          <IndexRoute component={MetabotPurchasePage} />
+          <IndexRoute component={MetabotTrialPage} />
         </Route>
       </Route>
     );
