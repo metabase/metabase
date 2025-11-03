@@ -15,22 +15,11 @@
 
 ;;;; schemas
 
-(mr/def ::id
-  ms/PositiveInt)
-
-(mr/def ::name
-  [:and
-   ms/NonBlankString
-   [:string {:max 255}]])
-
-(mr/def ::settings
-  [:map-of :keyword :any])
-
 (mr/def ::EmbeddingTheme
   [:map
-   [:id                           ::id]
-   [:name                         ::name]
-   [:settings                     ::settings]
+   [:id                           ms/PositiveInt]
+   [:name                         [:and ms/NonBlankString [:string {:max 255}]]]
+   [:settings                     [:map-of :keyword :any]]
    [:created_at                   ms/TemporalString]
    [:updated_at                   ms/TemporalString]])
 

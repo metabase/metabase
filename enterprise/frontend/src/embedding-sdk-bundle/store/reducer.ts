@@ -18,7 +18,6 @@ import type {
   SdkLoadingError,
 } from "embedding-sdk-bundle/types/ui";
 import type { SdkUsageProblem } from "embedding-sdk-bundle/types/usage-problem";
-import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { createAsyncThunk } from "metabase/lib/redux";
 
 import { initAuth, refreshTokenAsync } from "./auth";
@@ -107,14 +106,6 @@ export const setUsageProblem = createAction<SdkUsageProblem | null>(
   SET_USAGE_PROBLEM,
 );
 
-const SET_THEME = "sdk/SET_THEME";
-const SET_THEME_LOADING = "sdk/SET_THEME_LOADING";
-const SET_THEME_ERROR = "sdk/SET_THEME_ERROR";
-
-export const setTheme = createAction<MetabaseTheme | null>(SET_THEME);
-export const setThemeLoading = createAction<boolean>(SET_THEME_LOADING);
-export const setThemeError = createAction<Error | null>(SET_THEME_ERROR);
-
 const initialState: SdkState = {
   metabaseInstanceUrl: "",
   metabaseInstanceVersion: null,
@@ -131,11 +122,6 @@ const initialState: SdkState = {
   loaderComponent: null,
   errorComponent: null,
   fetchRefreshTokenFn: null,
-  themeState: {
-    theme: null,
-    loading: false,
-    error: null,
-  },
 };
 
 export const sdk = createReducer(initialState, (builder) => {
@@ -206,20 +192,5 @@ export const sdk = createReducer(initialState, (builder) => {
 
   builder.addCase(setUsageProblem, (state, action) => {
     state.usageProblem = action.payload;
-  });
-
-  builder.addCase(setTheme, (state, action) => {
-    state.themeState.theme = action.payload;
-    state.themeState.loading = false;
-    state.themeState.error = null;
-  });
-
-  builder.addCase(setThemeLoading, (state, action) => {
-    state.themeState.loading = action.payload;
-  });
-
-  builder.addCase(setThemeError, (state, action) => {
-    state.themeState.error = action.payload;
-    state.themeState.loading = false;
   });
 });

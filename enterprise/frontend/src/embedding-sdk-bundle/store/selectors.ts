@@ -38,5 +38,3 @@ export const getFetchRefreshTokenFn = (state: SdkStoreState) =>
 
 export const getAvailableFonts = (state: SdkStoreState) =>
   getSetting(state, "available-fonts");
-
-export const getThemeState = (state: SdkStoreState) => state.sdk.themeState;

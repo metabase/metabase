@@ -31,11 +31,8 @@ export interface MetabaseProviderProps {
 
   /**
    * See [Appearance](https://www.metabase.com/docs/latest/embedding/sdk/appearance).
-   *
-   * Can be a MetabaseTheme object or a string referencing a named theme
-   * (e.g., "Dark" or "Light"). Named themes are loaded from the backend API.
    */
-  theme?: MetabaseTheme | string;
+  theme?: MetabaseTheme;
 
   /**
    * See [Plugins](https://www.metabase.com/docs/latest/embedding/sdk/plugins).
