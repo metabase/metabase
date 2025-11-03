@@ -53,8 +53,12 @@ export function useSourceState({
   }, [source, suggestedTransform]);
 
   const isDirty = useMemo(() => {
-    return proposedSource != null || !isSameSource(source, initialSource);
-  }, [source, initialSource, proposedSource]);
+    return (
+      transformId == null ||
+      proposedSource != null ||
+      !isSameSource(source, initialSource)
+    );
+  }, [source, initialSource, proposedSource, transformId]);
 
   const setSourceAndRejectProposed = (source: DraftTransformSource) => {
     if (suggestedTransform != null) {
