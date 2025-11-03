@@ -83,41 +83,46 @@ export function downloadAndAssert({
    * https://github.com/cypress-io/cypress-example-recipes/blob/master/examples/testing-dom__download/cypress/integration/form-submission-spec.js
    */
 
-  cy.intercept(method, endpoint, (req) => {
-    /**
-     * We must redirect in order to avoid Cypress being stuck on waiting for the new page to load.
-     * Intentionally redirecting to a non-existing page.
-     *
-     * Explanation:
-     * If we redirect to ANY of the existing pages, there's a lot of requests that need to complete for that page.
-     *  - This helper function is usually the last piece of code to execute in any given test.
-     *  - As soon as the assertions are complete, the new test starts
-     *  - Assertions are usually faster than all of the previously mentioned requests from the redirect
-     *  - This results in the next test being polluted with the requests that didn't finish from the last one.
-     *  - Those "spill-over" requests end up in the beforeEach hook of the next test and can have unexpected results.
-     */
+  if (method === "POST") {
+    // For POST requests, we need to redirect to prevent Cypress from hanging
+    cy.intercept(method, endpoint, (req) => {
+      /**
+       * We must redirect in order to avoid Cypress being stuck on waiting for the new page to load.
+       * Intentionally redirecting to a non-existing page.
+       *
+       * Explanation:
+       * If we redirect to ANY of the existing pages, there's a lot of requests that need to complete for that page.
+       *  - This helper function is usually the last piece of code to execute in any given test.
+       *  - As soon as the assertions are complete, the new test starts
+       *  - Assertions are usually faster than all of the previously mentioned requests from the redirect
+       *  - This results in the next test being polluted with the requests that didn't finish from the last one.
+       *  - Those "spill-over" requests end up in the beforeEach hook of the next test and can have unexpected results.
+       */
 
-    req.continue((res) => {
-      const expectedContentType =
-        fileType === "csv"
-          ? "text/csv"
-          : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+      req.continue((res) => {
+        const expectedContentType =
+          fileType === "csv"
+            ? "text/csv"
+            : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
-      // Assert before redirecting
-      expect(res.statusCode).to.eq(200);
-      expect(res.headers["content-type"]).to.include(expectedContentType);
+        expect(res.statusCode).to.eq(200);
+        expect(res.headers["content-type"]).to.include(expectedContentType);
 
-      // Assert parameters if provided
-      if (assertParameters && req.body?.parameters) {
-        expect(req.body.parameters).to.have.lengthOf(assertParameters.length);
-        assertParameters.forEach((expectedParam, index) => {
-          expect(req.body.parameters[index]).to.deep.include(expectedParam);
-        });
-      }
+        if (assertParameters && req.body?.parameters) {
+          expect(req.body.parameters).to.have.lengthOf(assertParameters.length);
+          assertParameters.forEach((expectedParam, index) => {
+            expect(req.body.parameters[index]).to.deep.include(expectedParam);
+          });
+        }
 
-      res.send({ statusCode: 302, headers: { location: "/foo" } });
-    });
-  }).as("fileDownload");
+        // After assertions pass, redirect to prevent navigation
+        res.send({ statusCode: 302, headers: { location: "/foo" } });
+      });
+    }).as("fileDownload");
+  } else {
+    // For GET requests the server redirects automatically so no need to do it manually
+    cy.intercept(method, endpoint).as("fileDownload");
+  }
 
   cy.log(`Downloading ${fileType} file`);
 
