@@ -39,7 +39,7 @@ function DataStudioNav() {
           pathname.startsWith(Urls.transformList())
         }
       />
-      <BenchNavItem to="/" icon="model" isSelected={false} />
+      <DataStudioNavItem to="/" icon="model" isSelected={false} />
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <DataStudioNavItem
           icon="schema"
