@@ -5,7 +5,7 @@ import type { Editor as TiptapEditor } from "@tiptap/react";
 // @ts-expect-error - BubbleMenu is a Tiptap extension that is registered through @tiptap/extension-bubble-menu
 import { BubbleMenu } from "@tiptap/react/menus";
 import type React from "react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { useForceUpdate } from "metabase/common/hooks/use-force-update";
@@ -14,6 +14,7 @@ import { Flex } from "metabase/ui";
 import { FormatButton } from "../FormatButton/FormatButton";
 
 import S from "./EditorBubbleMenu.module.css";
+import { LinkPopup } from "./LinkPopup";
 import type { FormattingOptions } from "./types";
 
 const DEFAULT_ALLOWED_FORMATTING: FormattingOptions = {
@@ -28,6 +29,7 @@ const DEFAULT_ALLOWED_FORMATTING: FormattingOptions = {
   quote: true,
   inline_code: true,
   code_block: true,
+  link: true,
 };
 
 interface EditorBubbleMenuProps {
@@ -46,6 +48,32 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
   className,
 }) => {
   const forceUpdate = useForceUpdate();
+  const [isLinkPopupOpen, setIsLinkPopupOpen] = useState(false);
+  const [initialLinkUrl, setInitialLinkUrl] = useState("");
+
+  const handleLinkClick = () => {
+    if (isLinkPopupOpen) {
+      setIsLinkPopupOpen(false);
+      editor.commands.focus();
+      return;
+    }
+    const existingLink = editor.getAttributes("link");
+    setInitialLinkUrl(existingLink.href || "");
+    setIsLinkPopupOpen(true);
+  };
+
+  const handleLinkSubmit = (url: string) => {
+    if (url.trim()) {
+      editor.chain().focus().setLink({ href: url.trim() }).run();
+    } else {
+      editor.chain().focus().unsetLink().run();
+    }
+    setIsLinkPopupOpen(false);
+  };
+
+  const handleLinkCancel = () => {
+    setIsLinkPopupOpen(false);
+  };
 
   useEffect(() => {
     editor.on("selectionUpdate", forceUpdate);
@@ -137,6 +165,14 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
             icon="format_code"
           />
         )}
+        {allowedFormatting.link && (
+          <FormatButton
+            isActive={isLinkPopupOpen || editor.isActive("link")}
+            onClick={handleLinkClick}
+            tooltip={t`Link`}
+            icon="link"
+          />
+        )}
         {allowedFormatting.h1 && (
           <FormatButton
             isActive={editor.isActive("heading", { level: 1 })}
@@ -200,6 +236,14 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
           />
         )}
       </Flex>
+      {isLinkPopupOpen && (
+        <LinkPopup
+          isOpen={isLinkPopupOpen}
+          initialUrl={initialLinkUrl}
+          onSubmit={handleLinkSubmit}
+          onCancel={handleLinkCancel}
+        />
+      )}
     </BubbleMenu>
   );
 };
