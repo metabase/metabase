@@ -169,6 +169,7 @@
   "Used to filter out environment variables with high foot-gun indices."
   [env-var]
   (or (false? (:doc env-var))
+      (false? (:can-read-from-env? env-var))
               ;; Ideally, we'd move off of this list completely,
               ;; but not all environment variables are defsettings.
       (contains? env-vars-not-to-mess-with (format-prefix env-var))))
