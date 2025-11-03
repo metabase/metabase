@@ -8,9 +8,13 @@ import { useListDatabasesQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { VirtualizedTree } from "metabase/common/components/tree/VirtualizedTree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import { getUserIsAdmin } from "metabase/selectors/user";
+import { Box, Flex } from "metabase/ui";
 import { useListTransformsQuery } from "metabase-enterprise/api";
+import { SHARED_LIB_IMPORT_PATH } from "metabase-enterprise/transforms-python/constants";
 
 import { CreateTransformMenu } from "../CreateTransformMenu";
 import { ListEmptyState } from "../ListEmptyState";
@@ -23,6 +27,7 @@ import {
 } from "../SidebarSortControl";
 import { TransformsInnerNav } from "../TransformsInnerNav";
 import { SidebarList } from "../TransformsSidebarLayout/SidebarList";
+import { SidebarListItem } from "../TransformsSidebarLayout/SidebarListItem/SidebarListItem";
 import { TransformListItem } from "../TransformsSidebarLayout/SidebarListItem/TransformListItem";
 import { lastModifiedSorter, nameSorter } from "../utils";
 
@@ -37,6 +42,7 @@ export const TransformsSidebar = ({
   selectedTransformId,
 }: TransformsSidebarProps) => {
   const dispatch = useDispatch();
+  const isAdmin = useSelector(getUserIsAdmin);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery] = useDebouncedValue(searchQuery, 300);
   const [sortType = "tree", setSortType] = useLocalStorage<SortOption>(
@@ -88,44 +94,61 @@ export const TransformsSidebar = ({
 
   return (
     <SidebarContainer>
-      <TransformsInnerNav />
-      <SidebarSearch value={searchQuery} onChange={setSearchQuery} />
-      <SidebarSortControl
-        value={sortType}
-        onChange={setSortType}
-        options={TRANSFORM_SORT_OPTIONS}
-        addButton={<CreateTransformMenu />}
-      />
-      {transformsSorted.length === 0 ? (
-        <ListEmptyState
-          label={
-            debouncedSearchQuery ? t`No transforms found` : t`No transforms yet`
-          }
+      <Flex direction="column" gap="md" p="md">
+        <TransformsInnerNav />
+        <SidebarSearch value={searchQuery} onChange={setSearchQuery} />
+        <SidebarSortControl
+          value={sortType}
+          onChange={setSortType}
+          options={TRANSFORM_SORT_OPTIONS}
+          addButton={<CreateTransformMenu />}
         />
-      ) : sortType === "tree" ? (
-        <VirtualizedTree
-          initiallyExpanded
-          data={treeData}
-          selectedId={selectedTransformId}
-          onSelect={(node) => {
-            if (typeof node.id === "number") {
-              dispatch(push(Urls.transform(node.id)));
+      </Flex>
+      <Flex direction="column" flex={1} mih={0}>
+        {transformsSorted.length === 0 ? (
+          <ListEmptyState
+            label={
+              debouncedSearchQuery
+                ? t`No transforms found`
+                : t`No transforms yet`
             }
-          }}
-          TreeNode={TransformsTreeNode}
-          estimateSize={getTreeItemEstimateSize}
-          p={0}
-        />
-      ) : (
-        <SidebarList>
-          {transformsSorted.map((transform) => (
-            <TransformListItem
-              key={transform.id}
-              transform={transform}
-              selectedId={selectedTransformId}
-            />
-          ))}
-        </SidebarList>
+          />
+        ) : sortType === "tree" ? (
+          <VirtualizedTree
+            initiallyExpanded
+            data={treeData}
+            selectedId={selectedTransformId}
+            onSelect={(node) => {
+              if (typeof node.id === "number") {
+                dispatch(push(Urls.transform(node.id)));
+              }
+            }}
+            TreeNode={TransformsTreeNode}
+            estimateSize={getTreeItemEstimateSize}
+            px="md"
+            p={0}
+          />
+        ) : (
+          <SidebarList>
+            {transformsSorted.map((transform) => (
+              <TransformListItem
+                key={transform.id}
+                transform={transform}
+                selectedId={selectedTransformId}
+              />
+            ))}
+          </SidebarList>
+        )}
+      </Flex>
+      {isAdmin && PLUGIN_TRANSFORMS_PYTHON.isEnabled && (
+        <Box p="sm" style={{ borderTop: "1px solid var(--mb-color-border)" }}>
+          <SidebarListItem
+            icon="code_block"
+            href={Urls.transformPythonLibrary({ path: SHARED_LIB_IMPORT_PATH })}
+            label={t`Python Library`}
+            subtitle={t`Shared helper functions`}
+          />
+        </Box>
       )}
     </SidebarContainer>
   );

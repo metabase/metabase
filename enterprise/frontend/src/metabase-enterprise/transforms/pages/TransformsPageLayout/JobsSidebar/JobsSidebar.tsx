@@ -8,6 +8,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { Flex } from "metabase/ui";
 import { useListTransformJobsQuery } from "metabase-enterprise/api";
 
 import { ListEmptyState } from "../ListEmptyState";
@@ -69,14 +70,16 @@ export const JobsSidebar = ({ selectedJobId }: JobsSidebarProps) => {
 
   return (
     <SidebarContainer>
-      <TransformsInnerNav />
-      <SidebarSearch value={searchQuery} onChange={setSearchQuery} />
-      <SidebarSortControl
-        value={sortType}
-        onChange={setSortType}
-        onAdd={handleAdd}
-        options={JOB_SORT_OPTIONS}
-      />
+      <Flex direction="column" gap="md" px="md" pt="md" pb="md">
+        <TransformsInnerNav />
+        <SidebarSearch value={searchQuery} onChange={setSearchQuery} />
+        <SidebarSortControl
+          value={sortType}
+          onChange={setSortType}
+          onAdd={handleAdd}
+          options={JOB_SORT_OPTIONS}
+        />
+      </Flex>
       {jobsSorted.length === 0 ? (
         <ListEmptyState
           label={debouncedSearchQuery ? t`No jobs found` : t`No jobs yet`}
