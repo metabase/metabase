@@ -23,6 +23,31 @@
    (Basically any non-nil value is a reason for hiding the table.)"
   #{:hidden :technical :cruft})
 
+(def data-layer-types
+  "Valid values for `Table.data_layer`.
+  :gold   - highest quality, fully visible
+  :silver - high quality, visible
+  :bronze - acceptable quality, visible
+  :copper - low quality, hidden"
+  #{:gold :silver :bronze :copper})
+
+(defn- visibility-type->data-layer
+  "Convert legacy visibility_type to data_layer.
+  Used when updating via the legacy field."
+  [visibility-type]
+  (if (contains? #{:hidden :retired :sensitive :technical :cruft} visibility-type)
+    "copper"
+    "gold"))
+
+(defn- data-layer->visibility-type
+  "Convert data_layer back to legacy visibility_type.
+  Used for rollback compatibility to v56."
+  [data-layer]
+  (case data-layer
+    :copper "hidden"
+    ;; gold, silver, bronze all map to visible (nil)
+    nil))
+
 (def field-orderings
   "Valid values for `Table.field_order`.
   `:database`     - use the same order as in the table definition in the DB;
@@ -80,11 +105,12 @@
           (some-> value name))})
 
 (t2/deftransforms :model/Table
-  {:entity_type     mi/transform-keyword
+  {:entity_type    mi/transform-keyword
    :visibility_type mi/transform-keyword
-   :field_order     mi/transform-keyword
+   :data_layer     mi/transform-keyword
+   :field_order    mi/transform-keyword
    ;; Warning: by using a transform to handle unexpected enum values, serialization becomes lossy
-   :data_authority  transform-data-authority})
+   :data_authority transform-data-authority})
 
 (methodical/defmethod t2/model-for-automagic-hydration [:default :table]
   [_original-model _k]
@@ -93,6 +119,34 @@
 (t2/define-after-select :model/Table
   [table]
   (dissoc table :is_defective_duplicate :unique_table_helper))
+
+(defn sync-visibility-fields
+  "Sync visibility_type and data_layer fields, ensuring only one is updated at a time.
+  Returns updated changes map with both fields in sync for rollback compatibility."
+  [{:keys [visibility_type data_layer] :as changes}
+   {original-v1 :visibility_type, original-v2 :data_layer}]
+  (let [v1-changing? (and (contains? changes :visibility_type)
+                          (not= (keyword visibility_type)
+                                (keyword original-v1)))
+        v2-changing? (and (contains? changes :data_layer)
+                          (not= (keyword data_layer)
+                                (keyword original-v2)))]
+    (cond
+      ;; Error: don't allow updating both at once
+      (and v1-changing? v2-changing?)
+      (throw (ex-info "Cannot update both visibility_type and data_layer"
+                      {:status-code 400}))
+
+      ;; Legacy field update -> convert to new field and sync back
+      v1-changing?
+      (assoc changes :data_layer (visibility-type->data-layer (keyword visibility_type)))
+
+      ;; New field update -> sync back to legacy field for rollback
+      v2-changing?
+      (assoc changes :visibility_type
+             (data-layer->visibility-type (keyword data_layer)))
+
+      :else changes)))
 
 (t2/define-before-insert :model/Table
   [table]
@@ -119,18 +173,20 @@
       (throw (ex-info "Cannot set data_authority back to unconfigured once it has been configured"
                       {:status-code 400})))
 
-    (cond
-      ;; active: true -> false (table being deactivated)
-      (and (true? current-active) (false? new-active))
-      (assoc changes :deactivated_at (mi/now))
+    ;; Sync visibility_type and data_layer fields
+    (let [changes (sync-visibility-fields changes original-table)]
+      (cond
+        ;; active: true -> false (table being deactivated)
+        (and (true? current-active) (false? new-active))
+        (assoc changes :deactivated_at (mi/now))
 
-      ;; active: false -> true (table being reactivated)
-      (and (false? current-active) (true? new-active))
-      (assoc changes
-             :deactivated_at nil
-             :archived_at nil)
+        ;; active: false -> true (table being reactivated)
+        (and (false? current-active) (true? new-active))
+        (assoc changes
+               :deactivated_at nil
+               :archived_at nil)
 
-      :else table)))
+        :else (merge table changes)))))
 
 (defn- set-new-table-permissions!
   [table]
@@ -360,7 +416,10 @@
 (defmethod serdes/make-spec "Table" [_model-name _opts]
   {:copy      [:name :description :entity_type :active :display_name :visibility_type :schema
                :points_of_interest :caveats :show_in_getting_started :field_order :initial_sync_status :is_upload
-               :database_require_filter :is_defective_duplicate :unique_table_helper :is_writable :data_authority]
+               :database_require_filter :is_defective_duplicate :unique_table_helper :is_writable :data_authority
+               :data_source :data_update_frequency :transform_id
+               :owner_email :owner_user_id
+               :data_layer]
    :skip      [:estimated_row_count :view_count]
    :transform {:created_at (serdes/date)
                :archived_at (serdes/date)
