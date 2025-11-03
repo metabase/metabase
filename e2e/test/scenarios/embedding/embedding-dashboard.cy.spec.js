@@ -774,6 +774,15 @@ describe("scenarios > embedding > dashboard appearance", () => {
       cy.findByRole("tab", { name: "Look and Feel" }).click();
       cy.get("@previewEmbedSpy").should("have.callCount", 1);
 
+      cy.log(
+        'Embed preview requests should not have "X-Metabase-Client: embedding-iframe" header (EMB-930)',
+      );
+      cy.get("@previewEmbed").then(({ request }) => {
+        expect(request?.headers?.["x-metabase-client"]).to.not.equal(
+          "embedding-iframe",
+        );
+      });
+
       cy.log("Assert dashboard theme");
       H.getIframeBody()
         .findByTestId("embed-frame")
