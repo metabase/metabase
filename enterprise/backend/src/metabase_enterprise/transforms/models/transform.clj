@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
+   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -46,31 +47,20 @@
    :target      mi/transform-json
    :run_trigger mi/transform-keyword})
 
-(defn- compute-transform-source-type
-  "Compute the top-level source_type field for a transform based on its source."
-  [source]
-  (case (keyword (:type source))
-    :python :python
-    :query  (if (lib/native-only-query? (:query source))
-              :native
-              :mbql)
-    (throw (ex-info (str "Unknown transform source type: " (:type source))
-                    {:source source}))))
-
 (t2/define-before-insert :model/Transform
   [{:keys [source] :as transform}]
-  (assoc transform :source_type (compute-transform-source-type source)))
+  (assoc transform :source_type (transforms.util/transform-source-type source)))
 
 (t2/define-before-update :model/Transform
   [{:keys [source] :as transform}]
   (if source
-    (assoc transform :source_type (compute-transform-source-type source))
+    (assoc transform :source_type (transforms.util/transform-source-type source))
     transform))
 
 (t2/define-after-select :model/Transform
   [{:keys [source] :as transform}]
   (if source
-    (assoc transform :source_type (compute-transform-source-type source))
+    (assoc transform :source_type (transforms.util/transform-source-type source))
     transform))
 
 (methodical/defmethod t2/batched-hydrate [:model/TransformRun :transform]
