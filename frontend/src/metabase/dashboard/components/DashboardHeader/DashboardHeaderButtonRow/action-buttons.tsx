@@ -17,7 +17,6 @@ import {
   ExportAsPdfButton,
   FullscreenAnalyticsDashboard,
   FullscreenToggle,
-  NightModeToggleButton,
 } from "../buttons";
 import { AddLinkOrEmbedButton } from "../buttons/AddLinkOrEmbedButton";
 
@@ -72,11 +71,6 @@ export const dashboardActionButtons: Record<
   [DASHBOARD_ACTION.REFRESH_WIDGET]: {
     component: () => <RefreshWidget />,
     enabled: ({ dashboard, isEditing }) => !isEditing && !dashboard?.archived,
-  },
-  [DASHBOARD_ACTION.NIGHT_MODE_TOGGLE]: {
-    component: () => <NightModeToggleButton />,
-    enabled: ({ isEditing, isFullscreen, dashboard }) =>
-      Boolean(!isEditing && isFullscreen && !dashboard.archived),
   },
   [DASHBOARD_ACTION.FULLSCREEN_TOGGLE]: {
     component: FullscreenToggle,

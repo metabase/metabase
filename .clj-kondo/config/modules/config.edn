@@ -560,6 +560,7 @@
   {:team "Gadget"
    :api  #{metabase.glossary.api}
    :uses #{api
+           events
            models
            util}}
 
@@ -1509,6 +1510,7 @@
    :uses #{actions
            api
            driver
+           events
            lib
            models
            query-processor
@@ -1733,6 +1735,7 @@
            lib-be
            models
            native-query-snippets
+           permissions
            premium-features
            queries
            query-processor
@@ -1916,6 +1919,7 @@
            settings
            startup
            task
+           task-history
            util
            enterprise/serialization}}
 

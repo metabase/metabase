@@ -1,6 +1,6 @@
 (ns metabase.lib.stage
   "Method implementations for a stage of a query."
-  (:refer-clojure :exclude [mapv some #?(:clj for)])
+  (:refer-clojure :exclude [mapv some not-empty #?(:clj for)])
   (:require
    [clojure.string :as str]
    [metabase.lib.aggregation :as lib.aggregation]
@@ -25,7 +25,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.namespaces :as shared.ns]
-   [metabase.util.performance :refer [mapv some #?(:clj for)]]))
+   [metabase.util.performance :refer [mapv some not-empty #?(:clj for)]]))
 
 (comment metabase.lib.stage.util/keep-me)
 
@@ -60,7 +60,10 @@
                             :mbql.stage/mbql   :source/card)]
           (not-empty
            (into []
-                 (comp (map #(assoc % :lib/source source-type))
+                 (comp (map (fn [col]
+                              (cond-> (assoc col :lib/source source-type)
+                                (= :source/card source-type) (-> (assoc :lib/card-id source-card)
+                                                                 (dissoc :lib/expression-name)))))
                        ;; do not truncate the desired column aliases coming back from a native query, because if a
                        ;; native query returns a 'crazy long' column name then we need to use that in the next stage.
                        ;; See [[metabase.lib.stage-test/propagate-crazy-long-native-identifiers-test]]
