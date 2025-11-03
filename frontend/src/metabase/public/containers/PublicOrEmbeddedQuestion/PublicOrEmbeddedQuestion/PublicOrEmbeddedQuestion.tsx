@@ -2,6 +2,7 @@ import type { Location } from "history";
 import { useCallback, useEffect, useState } from "react";
 import { useLatest, useMount } from "react-use";
 
+import { fetchDataOrError } from "metabase/dashboard/utils";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
@@ -121,16 +122,18 @@ export const PublicOrEmbeddedQuestion = ({
       let newResult;
       if (token) {
         // embeds apply parameter values server-side
-        newResult = await maybeUsePivotEndpoint(
-          EmbedApi.cardQuery,
-          card,
-          metadataRef.current,
-        )({
-          token,
-          parameters: JSON.stringify(
-            getParameterValuesBySlug(parameters, parameterValues),
-          ),
-        });
+        newResult = await fetchDataOrError(
+          maybeUsePivotEndpoint(
+            EmbedApi.cardQuery,
+            card,
+            metadataRef.current,
+          )({
+            token,
+            parameters: JSON.stringify(
+              getParameterValuesBySlug(parameters, parameterValues),
+            ),
+          }),
+        );
       } else if (uuid) {
         // public links currently apply parameters client-side
         const datasetQuery = applyParameters(
@@ -140,14 +143,16 @@ export const PublicOrEmbeddedQuestion = ({
           [],
           { sparse: true },
         );
-        newResult = await maybeUsePivotEndpoint(
-          PublicApi.cardQuery,
-          card,
-          metadataRef.current,
-        )({
-          uuid,
-          parameters: JSON.stringify(datasetQuery.parameters),
-        });
+        newResult = await fetchDataOrError(
+          maybeUsePivotEndpoint(
+            PublicApi.cardQuery,
+            card,
+            metadataRef.current,
+          )({
+            uuid,
+            parameters: JSON.stringify(datasetQuery.parameters),
+          }),
+        );
       } else {
         throw { status: 404 };
       }
