@@ -5,6 +5,8 @@ import { isTest } from "metabase/env";
 import { isWithinIframe } from "metabase/lib/dom";
 import { delay } from "metabase/lib/promise";
 
+import { IS_EMBED_PREVIEW } from "./embed";
+
 const ONE_SECOND = 1000;
 const MAX_RETRIES = 10;
 
@@ -73,8 +75,14 @@ export class Api extends EventEmitter {
     if (isWithinIframe() && !self.requestClient) {
       // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
       headers["X-Metabase-Embedded"] = "true";
-      // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
-      headers["X-Metabase-Client"] = "embedding-iframe";
+      /**
+       * We counted static embed preview query executions which lead to wrong embedding stats (EMB-930)
+       * This header is only used for logging in `view_log` and `query_execution` tables, so it's safe to exclude it.
+       */
+      if (!IS_EMBED_PREVIEW) {
+        // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+        headers["X-Metabase-Client"] = "embedding-iframe";
+      }
     }
 
     if (self.requestClient) {
