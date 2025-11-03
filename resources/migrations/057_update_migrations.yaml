@@ -1802,7 +1802,7 @@ databaseChangeLog:
                   name: ui_display_type
                   remarks: The display type of the schedule, used for the UI only; "cron/raw" or "cron/builder".
                   type: varchar(32)
-                  defaultValue: 'cron/raw'
+                  defaultValue: "cron/raw"
                   constraints:
                     nullable: false
 
@@ -1816,7 +1816,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: ui_display_type
-                  value: 'cron/builder'
+                  value: "cron/builder"
             where: built_in_type IS NOT NULL
       rollback:
         - update:
@@ -1824,7 +1824,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: ui_display_type
-                  value: 'cron/raw'
+                  value: "cron/raw"
             where: built_in_type IS NOT NULL
 
   - changeSet:
@@ -2458,66 +2458,6 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_transform_ref_creator_id
             onDelete: CASCADE
-
-  - changeSet:
-      id: v57.2025-10-31T11:00:00
-      author: poom
-      comment: Create embedding_theme table for named themes in SDK and EAJS
-      changes:
-        - createTable:
-            tableName: embedding_theme
-            remarks: Store named themes for React SDK and EAJS embedding
-            columns:
-              - column:
-                  name: id
-                  type: int
-                  autoIncrement: true
-                  remarks: Unique ID
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-              - column:
-                  name: name
-                  type: varchar(255)
-                  remarks: Name of the theme (case-insensitive, unique, used in embed code)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: settings
-                  type: ${text.type}
-                  remarks: JSON object of theme settings
-                  constraints:
-                    nullable: false
-              - column:
-                  name: created_at
-                  type: ${timestamp_type}
-                  remarks: When the theme was created
-                  defaultValueComputed: current_timestamp
-                  constraints:
-                    nullable: false
-              - column:
-                  name: updated_at
-                  type: ${timestamp_type}
-                  remarks: When the theme was last updated
-                  defaultValueComputed: current_timestamp
-                  constraints:
-                    nullable: false
-
-  - changeSet:
-      id: v57.2025-10-31T11:01:00
-      author: poom
-      comment: Add index on embedding_theme.name for fast case-insensitive lookups
-      changes:
-        - createIndex:
-            tableName: embedding_theme
-            indexName: idx_embedding_theme_name
-            columns:
-              - column:
-                  name: name
-      rollback:
-        - dropIndex:
-            tableName: embedding_theme
-            indexName: idx_embedding_theme_name
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

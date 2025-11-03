@@ -38,9 +38,51 @@ databaseChangeLog:
             tableName: report_card
             columnName: embedding_type
 
+  - changeSet:
+      id: v58.2025-10-31T11:00:00
+      author: heypoom
+      comment: Add embedding_theme table for embedding theme editor
+      changes:
+        - createTable:
+            tableName: embedding_theme
+            remarks: Stores themes created via the embedding theme editor
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Unique ID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(255)
+                  remarks: Name of the embed theme
+                  constraints:
+                    nullable: false
+              - column:
+                  name: settings
+                  type: ${text.type}
+                  remarks: JSON object of theme settings
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when the theme was created
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when the theme was last updated
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
 
-# >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
-
+  # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 ########################################################################################################################
 #
 # ADVICE:
@@ -68,7 +110,11 @@ databaseChangeLog:
 #
 # 2) Migrations should go in the ###_update_migrations.yaml file for the target version.
 #
+<<<<<<< HEAD
 # 3) Run mage lint-migrations to run core.spec checks against any changes you make here. Liquibase is pretty
+=======
+# 3) Run mage lint-migrations-file to run core.spec checks against any changes you make here. Liquibase is pretty
+>>>>>>> 338462e101c (update migration file)
 #    forgiving and won't complain if you accidentally mix up things like deleteCascade and onDelete: CASCADE. CI runs
 #    this check but it's nicer to know now instead of waiting for CI.
 #
