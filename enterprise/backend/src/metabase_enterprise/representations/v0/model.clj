@@ -8,6 +8,8 @@
    [metabase-enterprise.representations.v0.mbql :as v0-mbql]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.queries.models.card.metadata :as card.metadata]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -38,22 +40,17 @@
     :keys [_type name description database collection columns] :as representation}
    ref-index]
   (let [database-id (lookup/lookup-database-id ref-index database)
-        ;; TODO: once we've cleaned up mbql stuff, this explicit lookup should be superfluous.
-        ;; Just pull it off of the dataset-query
         dataset-query (-> (assoc representation :database database-id)
                           (v0-mbql/import-dataset-query ref-index))
-        ;; An alternative:
-        ;; 1. Get the database-id, construct a metadata-provider.
-        ;; 2. Call `card.metadata/normalize-dataset-query` on the query with that metadata-provider
-        ;; 3. Call `lib/query` on the normalized query with the metadata-provider
-        ;; 4. Pass the result of that into `lib/returned-columns`
-        ;; No idea which is better.
-        inferred-metadata (card.metadata/infer-metadata dataset-query)]
+        metadata-provider (lib-be/application-database-metadata-provider database-id)
+        normalized-query (card.metadata/normalize-dataset-query dataset-query)
+        mlv2-query (lib/query metadata-provider normalized-query)
+        inferred-metadata (lib/returned-columns mlv2-query)]
     (-> {:name (or model-name name)
          :description description
          :dataset_query dataset-query
          :database_id database-id
-         :query_type (if (= (name (:type dataset-query)) "native") :native :query)
+         :query_type (if (lib/native-only-query? dataset-query) :native :query)
          :type :model
          :result_metadata (when columns
                             (columns->result-metadata columns inferred-metadata))
