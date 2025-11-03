@@ -72,7 +72,7 @@
     (mt/with-model-cleanup [:model/User :model/RemoteSyncTask]
       (let [user (first (t2/insert-returning-instances! :model/User {:first_name "Test"
                                                                      :last_name "User"
-                                                                     :email "test@example.com"
+                                                                     :email "test2@example.com"
                                                                      :password "password123"}))
             task (first (t2/insert-returning-instances! :model/RemoteSyncTask {:sync_task_type "import"
                                                                                :initiated_by (:id user)}))
