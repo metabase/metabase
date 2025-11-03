@@ -19,7 +19,7 @@ export const PushChangesButton = (props: PushChangesButtonProps) => {
     <>
       <ActionIcon
         aria-label={t`Push to Git`}
-        color="icon-secondary"
+        c="icon-secondary"
         h={24}
         onClick={openPush}
         px={0}

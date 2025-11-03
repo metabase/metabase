@@ -207,11 +207,11 @@
 (def ^:private all-date-string-decoders
   (concat relative-date-string-decoders absolute-date-string-decoders))
 
-(mu/defn date-string->filter :- mbql.s/Filter
+(mu/defn date-string->filter :- ::mbql.s/Filter
   "Takes a string description of a *date* (not datetime) range such as 'lastmonth' or '2016-07-15~2016-08-6', or
   an absolute date *or datetime* string, and returns a corresponding MBQL filter clause for a given field reference."
   [date-string :- :string
-   field       :- [:or ::lib.schema.id/field mbql.s/FieldOrExpressionRef]]
+   field       :- [:or ::lib.schema.id/field ::mbql.s/FieldOrExpressionRef]]
   #_{:clj-kondo/ignore [:deprecated-var]}
   (or (#'qp.parameters.dates/execute-decoders all-date-string-decoders :filter (mbql.u/wrap-field-id-if-needed field) date-string)
       (throw (ex-info (tru "Don''t know how to parse date string {0}" (pr-str date-string))

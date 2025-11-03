@@ -1,12 +1,14 @@
 (ns metabase.query-processor.middleware.add-rows-truncated
   "Adds `:rows_truncated` to the query results if the results were truncated because of the query's constraints."
+  (:refer-clojure :exclude [empty?])
   (:require
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.query-processor.middleware.limit :as-alias limit]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.settings :as qp.settings]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [empty?]]))
 
 (defn- results-limit
   [{{:keys [max-results max-results-bare-rows]} :constraints

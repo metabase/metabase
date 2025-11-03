@@ -1,5 +1,6 @@
 import { match } from "ts-pattern";
 
+import { openSharingMenu } from "e2e/support/helpers/e2e-sharing-helpers";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme/MetabaseTheme";
 import type { CreateApiKeyResponse } from "metabase-types/api";
 
@@ -339,3 +340,9 @@ export const mockEmbedJsToDevServer = () => {
     }
   });
 };
+
+export function openEmbedJsModal() {
+  openSharingMenu("Embed");
+
+  cy.findByText("Embedded Analytics JS").click();
+}
