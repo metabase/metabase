@@ -10,13 +10,13 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { Metabot } from "./components/Metabot";
 import { MetabotAdminPage } from "./components/MetabotAdmin/MetabotAdminPage";
+import { MetabotPlaygroundAdminPage } from "./components/MetabotAdmin/MetabotPlaygroundPage";
 import { MetabotAdminAppBarButton } from "./components/MetabotAdminAppBarButton";
 import { MetabotAppBarButton } from "./components/MetabotAppBarButton";
 import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
 import { MetabotToggleButton } from "./components/MetabotToggleButton";
 import { MetabotContext, MetabotProvider, defaultContext } from "./context";
 import { getMetabotVisible, metabotReducer } from "./state";
-import { MetabotPlaygroundAdminPage } from "./components/MetabotAdmin/MetabotPlaygroundPage";
 
 if (hasPremiumFeature("metabot_v3")) {
   PLUGIN_METABOT.isEnabled = () => true;

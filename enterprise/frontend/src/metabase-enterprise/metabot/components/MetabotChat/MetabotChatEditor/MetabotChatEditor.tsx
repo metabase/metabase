@@ -28,12 +28,13 @@ import { SmartLink } from "metabase-enterprise/rich_text_editing/tiptap/extensio
 import type { SuggestionModel } from "metabase-enterprise/rich_text_editing/tiptap/extensions/shared/types";
 import { createSuggestionRenderer } from "metabase-enterprise/rich_text_editing/tiptap/extensions/suggestionRenderer";
 
+import { defaultSuggestionModels } from "../MetabotChat";
+
 import S from "./MetabotChatEditor.module.css";
 import {
   parseMetabotMessageToTiptapDoc,
   serializeTiptapToMetabotMessage,
 } from "./utils";
-import { defaultSuggestionModels } from "../MetabotChat";
 
 interface Props {
   value: string;

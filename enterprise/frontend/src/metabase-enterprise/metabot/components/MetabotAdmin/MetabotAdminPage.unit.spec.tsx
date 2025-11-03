@@ -1,7 +1,9 @@
+import { combineReducers } from "@reduxjs/toolkit";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
+import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   findRequests,
   setupCollectionByIdEndpoint,
@@ -22,6 +24,8 @@ import {
   createMockCollection,
   createMockMetabotInfo,
 } from "metabase-types/api/mocks";
+
+import { getMetabotInitialState, metabotReducer } from "../../state";
 
 import { MetabotAdminPage } from "./MetabotAdminPage";
 import * as hooks from "./utils";
@@ -85,6 +89,8 @@ const setup = async (
   seedCollections = defaultSeedCollections,
   error = false,
 ) => {
+  setupEnterprisePlugins();
+
   mockPathParam(initialPathParam);
   setupMetabotsEndpoints(metabots, error ? 500 : undefined);
   setupCollectionByIdEndpoint({
@@ -110,6 +116,16 @@ const setup = async (
     {
       withRouter: true,
       initialRoute: `/admin/metabot/${initialPathParam}`,
+      storeInitialState: {
+        plugins: {
+          metabotPlugin: getMetabotInitialState(),
+        },
+      } as any,
+      customReducers: {
+        plugins: combineReducers({
+          metabotPlugin: metabotReducer,
+        }),
+      },
     },
   );
 

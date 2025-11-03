@@ -38,6 +38,7 @@ import {
   FIXED_METABOT_ENTITY_IDS,
   FIXED_METABOT_IDS,
 } from "metabase-enterprise/metabot/constants";
+import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type {
   Collection,
@@ -47,7 +48,6 @@ import type {
 
 import { MetabotPromptSuggestionPane } from "./MetabotAdminSuggestedPrompts";
 import { useMetabotIdPath } from "./utils";
-import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
 export function MetabotAdminPage() {
   const metabotId = useMetabotIdPath() ?? FIXED_METABOT_IDS.DEFAULT;
@@ -116,7 +116,7 @@ export function MetabotNavPane() {
   useEffect(() => {
     const hasMetabotId = metabots?.some((metabot) => metabot.id === pathId);
 
-    if (pathId !== "playground" && !hasMetabotId && metabots?.length) {
+    if (!hasMetabotId && metabots?.length) {
       dispatch(push(`/admin/metabot/${metabots[0]?.id}`));
     }
   }, [metabots, pathId, dispatch]);
