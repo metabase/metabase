@@ -226,7 +226,7 @@ export const DataModel = ({ children, location, params }: Props) => {
               justify="center"
               miw={rem(EMPTY_STATE_MIN_WIDTH)}
             >
-              <Box maw={rem(320)} p="xl">
+              <Box p="xl">
                 <EmptyState
                   illustrationElement={<img src={EmptyDashboardBot} />}
                   title={
