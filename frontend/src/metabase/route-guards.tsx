@@ -2,6 +2,7 @@ import { routerActions } from "react-router-redux";
 import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
+import { canAccessWorkbench } from "metabase/bench/selectors";
 import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";
 import { MetabaseReduxContext } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
@@ -68,11 +69,20 @@ const UserCanAccessSettings = connectedReduxRedirect<Props, State>({
   context: MetabaseReduxContext,
 });
 
-export const UserCanAccessOnboarding = connectedReduxRedirect<Props, State>({
+const UserCanAccessOnboarding = connectedReduxRedirect<Props, State>({
   wrapperDisplayName: "UserCanAccessOnboarding",
   redirectPath: "/",
   allowRedirectBack: false,
   authenticatedSelector: (state) => getCanAccessOnboardingPage(state),
+  redirectAction: routerActions.replace,
+  context: MetabaseReduxContext,
+});
+
+const UserCanAccessWorkbench = connectedReduxRedirect<Props, State>({
+  wrapperDisplayName: "UserCanAccessWorkbench",
+  redirectPath: "/unauthorized",
+  allowRedirectBack: false,
+  authenticatedSelector: canAccessWorkbench,
   redirectAction: routerActions.replace,
   context: MetabaseReduxContext,
 });
@@ -93,5 +103,9 @@ export const CanAccessSettings = MetabaseIsSetup(
 );
 
 export const CanAccessOnboarding = UserCanAccessOnboarding(
+  ({ children }) => children,
+);
+
+export const CanAccessWorkbench = UserCanAccessWorkbench(
   ({ children }) => children,
 );

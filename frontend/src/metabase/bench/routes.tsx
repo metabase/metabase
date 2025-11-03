@@ -7,9 +7,9 @@ import { BenchLayout } from "./pages/BenchLayout";
 import { DataSectionLayout } from "./pages/DataSectionLayout";
 import { DependenciesSectionLayout } from "./pages/DependenciesSectionLayout";
 
-export function getBenchRoutes() {
+export function getWorkbenchRoutes() {
   return (
-    <Route path="bench" component={BenchLayout}>
+    <Route component={BenchLayout}>
       <Route component={DataSectionLayout}>
         {getMetadataRoutes()}
         {PLUGIN_TRANSFORMS.getTransformRoutes()}

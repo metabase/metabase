@@ -9,7 +9,7 @@ import { ForgotPassword } from "metabase/auth/components/ForgotPassword";
 import { Login } from "metabase/auth/components/Login";
 import { Logout } from "metabase/auth/components/Logout";
 import { ResetPassword } from "metabase/auth/components/ResetPassword";
-import { getBenchRoutes } from "metabase/bench/routes";
+import { getWorkbenchRoutes } from "metabase/bench/routes";
 import {
   BrowseDatabases,
   BrowseMetrics,
@@ -69,6 +69,7 @@ import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 import {
   CanAccessOnboarding,
   CanAccessSettings,
+  CanAccessWorkbench,
   IsAdmin,
   IsAuthenticated,
   IsNotAuthenticated,
@@ -366,7 +367,13 @@ export const getRoutes = (store) => {
           {getAdminRoutes(store, CanAccessSettings, IsAdmin)}
 
           {/* ANALYST WORKBENCH */}
-          {getBenchRoutes()}
+          <Route
+            path="bench"
+            title={t`Data studio`}
+            component={CanAccessWorkbench}
+          >
+            {getWorkbenchRoutes()}
+          </Route>
         </Route>
       </Route>
 
