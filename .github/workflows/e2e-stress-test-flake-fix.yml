@@ -80,8 +80,6 @@ jobs:
     timeout-minutes: 60
     name: Stress test E2E flake fix
     env:
-      CYPRESS_CI: true
-      CYPRESS_IS_EMBEDDING_SDK: ${{ needs.determine-suite.outputs.suite == 'component' }}
       DISPLAY: ""
       QA_DB_ENABLED: ${{ contains(fromJSON('["sql", "mongo"]'), inputs.qa_db) }}
       CYPRESS_QA_DB_MONGO: ${{ inputs.qa_db == 'mongo' }}
