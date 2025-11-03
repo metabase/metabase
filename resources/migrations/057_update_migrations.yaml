@@ -2420,7 +2420,7 @@ databaseChangeLog:
 
   # breaking appdb/code changes can be painful, week 0/1 this will do while we work on compatibility
   - changeSet:
-      id: v57.2025-10-22T11:57:00
+      id: v57.2025-11-03T11:57:00
       author: wotbrew
       comment: Add data_source column to metabase_table
       changes:
@@ -2435,7 +2435,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v57.2025-10-22T11:57:01
+      id: v57.2025-11-03T11:57:01
       author: wotbrew
       comment: Add transform_id column to metabase_table
       changes:
@@ -2450,7 +2450,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v57.2025-10-22T11:57:02
+      id: v57.2025-11-03T11:57:02
       author: wotbrew
       comment: Add data_layer column to metabase_table
       changes:
@@ -2465,7 +2465,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v57.2025-10-22T11:57:03
+      id: v57.2025-11-03T11:57:03
       author: wotbrew
       comment: Add owner_email column to metabase_table
       changes:
@@ -2480,7 +2480,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v57.2025-10-22T11:57:04
+      id: v57.2025-11-03T11:57:04
       author: wotbrew
       comment: Add owner_user_id column to metabase_table
       changes:
@@ -2495,7 +2495,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v57.2025-10-22T11:57:05
+      id: v57.2025-11-03T11:57:05
       author: wotbrew
       comment: Add data_update_frequency
       changes:
@@ -2510,7 +2510,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v57.2025-10-2910:00:00
+      id: v57.2025-11-0310:00:00
       author: qnkhuat
       comment: Backfill data_layer from visibility_type
       changes:
