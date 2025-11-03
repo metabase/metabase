@@ -1,5 +1,5 @@
 (ns metabase.lib.metadata.composed-provider
-  (:refer-clojure :exclude [some])
+  (:refer-clojure :exclude [some empty? not-empty])
   (:require
    #?(:clj [pretty.core :as pretty])
    [better-cond.core :as b]
@@ -9,7 +9,7 @@
    [medley.core :as m]
    [metabase.lib.metadata.protocols :as metadata.protocols]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [some]]))
+   [metabase.util.performance :refer [some empty? not-empty]]))
 
 (mu/defn- cached-providers :- [:sequential ::metadata.protocols/cached-metadata-provider]
   [providers :- [:maybe [:sequential ::metadata.protocols/metadata-provider]]]
