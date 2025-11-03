@@ -57,7 +57,7 @@ export function EditTableMetadataModal({
       table_ids: Array.from(tables),
       schema_ids: Array.from(schemas),
       database_ids: Array.from(databases),
-      visibility_type2: visibilityType2 ?? undefined,
+      data_layer: visibilityType2 ?? undefined,
       data_source: dataSource === "unknown" ? null : (dataSource ?? undefined),
       owner_email:
         userId === "unknown" || typeof userId === "number"

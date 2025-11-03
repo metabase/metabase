@@ -128,7 +128,7 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
 
     const { error } = await updateTable({
       id: table.id,
-      visibility_type2: visibilityType,
+      data_layer: visibilityType,
     });
 
     if (error) {
@@ -137,7 +137,7 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
       sendSuccessToast(t`Table layer updated`, async () => {
         const { error } = await updateTable({
           id: table.id,
-          visibility_type2: table.visibility_type2,
+          data_layer: table.data_layer,
         });
         sendUndoToast(error);
       });
@@ -389,7 +389,7 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
       <Box pb="xl" px="xl">
         <TitledSection title={t`Metadata`}>
           <LayerInput
-            value={table.visibility_type2 ?? "copper"}
+            value={table.data_layer ?? "copper"}
             onChange={handleLayerChange}
           />
 

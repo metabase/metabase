@@ -37,7 +37,7 @@ export function SearchNew({
     refetch,
   } = useListTablesQuery({
     term: query,
-    visibility_type2: filters.visibilityType2 ?? undefined,
+    data_layer: filters.visibilityType2 ?? undefined,
     data_source:
       filters.dataSource === "unknown"
         ? null

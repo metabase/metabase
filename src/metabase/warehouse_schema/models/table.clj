@@ -23,27 +23,27 @@
    (Basically any non-nil value is a reason for hiding the table.)"
   #{:hidden :technical :cruft})
 
-(def visibility-types-v2
-  "Valid values for `Table.visibility_type2`.
+(def data-layer-types
+  "Valid values for `Table.data_layer`.
   :gold   - highest quality, fully visible
   :silver - high quality, visible
   :bronze - acceptable quality, visible
   :copper - low quality, hidden"
   #{:gold :silver :bronze :copper})
 
-(defn- visibility-type->v2
-  "Convert legacy visibility_type to visibility_type2.
+(defn- visibility-type->data-layer
+  "Convert legacy visibility_type to data_layer.
   Used when updating via the legacy field."
   [visibility-type]
   (if (contains? #{:hidden :retired :sensitive :technical :cruft} visibility-type)
     "copper"
     "gold"))
 
-(defn- visibility-type-v2->v1
-  "Convert visibility_type2 back to legacy visibility_type.
+(defn- data-layer->visibility-type
+  "Convert data_layer back to legacy visibility_type.
   Used for rollback compatibility to v56."
-  [visibility-type2]
-  (case visibility-type2
+  [data-layer]
+  (case data-layer
     :copper "hidden"
     ;; gold, silver, bronze all map to visible (nil)
     nil))
@@ -105,12 +105,12 @@
           (some-> value name))})
 
 (t2/deftransforms :model/Table
-  {:entity_type      mi/transform-keyword
-   :visibility_type  mi/transform-keyword
-   :visibility_type2 mi/transform-keyword
-   :field_order      mi/transform-keyword
+  {:entity_type    mi/transform-keyword
+   :visibility_type mi/transform-keyword
+   :data_layer     mi/transform-keyword
+   :field_order    mi/transform-keyword
    ;; Warning: by using a transform to handle unexpected enum values, serialization becomes lossy
-   :data_authority   transform-data-authority})
+   :data_authority transform-data-authority})
 
 (methodical/defmethod t2/model-for-automagic-hydration [:default :table]
   [_original-model _k]
@@ -121,30 +121,30 @@
   (dissoc table :is_defective_duplicate :unique_table_helper))
 
 (defn sync-visibility-fields
-  "Sync visibility_type and visibility_type2 fields, ensuring only one is updated at a time.
+  "Sync visibility_type and data_layer fields, ensuring only one is updated at a time.
   Returns updated changes map with both fields in sync for rollback compatibility."
-  [{:keys [visibility_type visibility_type2] :as changes}
-   {original-v1 :visibility_type, original-v2 :visibility_type2}]
+  [{:keys [visibility_type data_layer] :as changes}
+   {original-v1 :visibility_type, original-v2 :data_layer}]
   (let [v1-changing? (and (contains? changes :visibility_type)
                           (not= (keyword visibility_type)
                                 (keyword original-v1)))
-        v2-changing? (and (contains? changes :visibility_type2)
-                          (not= (keyword visibility_type2)
+        v2-changing? (and (contains? changes :data_layer)
+                          (not= (keyword data_layer)
                                 (keyword original-v2)))]
     (cond
       ;; Error: don't allow updating both at once
       (and v1-changing? v2-changing?)
-      (throw (ex-info "Cannot update both visibility_type and visibility_type2"
+      (throw (ex-info "Cannot update both visibility_type and data_layer"
                       {:status-code 400}))
 
       ;; Legacy field update -> convert to new field and sync back
       v1-changing?
-      (assoc changes :visibility_type2 (visibility-type->v2 (keyword visibility_type)))
+      (assoc changes :data_layer (visibility-type->data-layer (keyword visibility_type)))
 
       ;; New field update -> sync back to legacy field for rollback
       v2-changing?
       (assoc changes :visibility_type
-             (visibility-type-v2->v1 (keyword visibility_type2)))
+             (data-layer->visibility-type (keyword data_layer)))
 
       :else changes)))
 
@@ -173,7 +173,7 @@
       (throw (ex-info "Cannot set data_authority back to unconfigured once it has been configured"
                       {:status-code 400})))
 
-    ;; Sync visibility_type and visibility_type2 fields
+    ;; Sync visibility_type and data_layer fields
     (let [changes (sync-visibility-fields changes original-table)]
       (cond
         ;; active: true -> false (table being deactivated)
@@ -419,7 +419,7 @@
                :database_require_filter :is_defective_duplicate :unique_table_helper :is_writable :data_authority
                :data_source :data_update_frequency :transform_id
                :owner_email :owner_user_id
-               :visibility_type2]
+               :data_layer]
    :skip      [:estimated_row_count :view_count]
    :transform {:created_at (serdes/date)
                :archived_at (serdes/date)

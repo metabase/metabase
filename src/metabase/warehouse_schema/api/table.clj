@@ -64,12 +64,12 @@
 (api.macros/defendpoint :get "/"
   "Get all `Tables`."
   [_
-   {:keys [term visibility_type visibility_type2 data_source owner_user_id owner_email orphan_only]}
+   {:keys [term visibility_type data_layer data_source owner_user_id owner_email orphan_only]}
    :- [:map
        ;; conjunctive search terms
        [:term {:optional true} :string]
-       [:visibility_type  {:optional true} :string]
-       [:visibility_type2 {:optional true} :string]
+       [:visibility_type {:optional true} :string]
+       [:data_layer {:optional true} :string]
        [:data_source {:optional true} :string]
        [:owner_user_id {:optional true} [:or :int [:enum ""]]]
        [:owner_email {:optional true} :string]
@@ -79,11 +79,11 @@
         empty-null (fn [x] (if (and (string? x) (str/blank? x)) nil x))
         where      (cond-> [:and [:= :active true]]
                      (not (str/blank? term)) (conj [like :name pattern])
-                     visibility_type         (conj [:= :visibility_type  (empty-null visibility_type)])
-                     visibility_type2        (conj [:= :visibility_type2 (empty-null visibility_type2)])
-                     data_source             (conj [:= :data_source      (empty-null data_source)])
-                     owner_user_id           (conj [:= :owner_user_id    (empty-null owner_user_id)])
-                     owner_email             (conj [:= :owner_email      (empty-null owner_email)]))
+                     visibility_type         (conj [:= :visibility_type (empty-null visibility_type)])
+                     data_layer              (conj [:= :data_layer      (empty-null data_layer)])
+                     data_source             (conj [:= :data_source     (empty-null data_source)])
+                     owner_user_id           (conj [:= :owner_user_id   (empty-null owner_user_id)])
+                     owner_email             (conj [:= :owner_email     (empty-null owner_email)]))
         ;; Use LEFT JOIN to efficiently filter orphaned tables
         ;; Exclude transforms as dependents since they produce tables
         query      (cond-> {:where    where
@@ -155,9 +155,9 @@
    body]
   (when-let [changes (not-empty (u/select-keys-when body
                                                     :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
-                                                    :present [:description :caveats :points_of_interest :visibility_type :visibility_type2
+                                                    :present [:description :caveats :points_of_interest :visibility_type :data_layer
                                                               ;; bulk-metadata-editing
-                                                              :data_authority :data_source :visibility_type2 :owner_email :owner_user_id]))]
+                                                              :data_authority :data_source :owner_email :owner_user_id]))]
     (t2/update! :model/Table id changes))
   (let [updated-table        (t2/select-one :model/Table :id id)
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
@@ -213,7 +213,7 @@
             [:data_authority          {:optional true} [:maybe ::data-authority-write]]
             ;; bulk-metadata-editing
             [:data_source             {:optional true} [:maybe :string]]
-            [:visibility_type2        {:optional true} [:maybe :string]]
+            [:data_layer              {:optional true} [:maybe :string]]
             [:owner_email             {:optional true} [:maybe :string]]
             [:owner_user_id           {:optional true} [:maybe :int]]]]
   (first (update-tables! [id] body)))
@@ -234,7 +234,7 @@
                                [:data_authority          {:optional true} [:maybe ::data-authority-write]]
                                ;; bulk-metadata-editing
                                [:data_source             {:optional true} [:maybe :string]]
-                               [:visibility_type2        {:optional true} [:maybe :string]]
+                               [:data_layer              {:optional true} [:maybe :string]]
                                [:owner_email             {:optional true} [:maybe :string]]
                                [:owner_user_id           {:optional true} [:maybe :int]]]]
   (update-tables! ids body))
@@ -271,7 +271,7 @@
         [:visibility_type {:optional true} [:maybe :string]]
         [:data_authority {:optional true} [:maybe :string]]
         [:data_source {:optional true} [:maybe :string]]
-        [:visibility_type2 {:optional true} [:maybe :string]]
+        [:data_layer {:optional true} [:maybe :string]]
         [:owner_email {:optional true} [:maybe :string]]
         [:owner_user_id {:optional true} [:maybe :int]]]]]
   ;; todo so much
@@ -279,7 +279,7 @@
         set-ks  [:visibility_type
                  :data_authority
                  :data_source
-                 :visibility_type2
+                 :data_layer
                  :owner_email
                  :owner_user_id]
         set-map (select-keys body set-ks)

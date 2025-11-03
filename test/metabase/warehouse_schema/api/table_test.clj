@@ -414,7 +414,7 @@
                              :description      "What a nice table!"
                              ;; bulk-metadata-editing
                              :data_source      "metabase-transform"
-                             :visibility_type2 "copper"
+                             :data_layer "copper"
                              :owner_email      "bob@org.com"
                              :owner_user_id    (mt/user->id :crowberto)})
       (is (= (merge
@@ -430,7 +430,7 @@
                :is_writable     nil
                ;; bulk-metadata-editing
                :data_source      "metabase-transform"
-               :visibility_type2 "copper"
+               :data_layer "copper"
                ;; exclusive later (not now)
                :owner_email      "bob@org.com"
                :owner_user_id    (mt/user->id :crowberto)})
@@ -1214,16 +1214,16 @@
                    (filter #(= (:db_id %) (mt/id)))         ; prevent stray tables from affecting unit test results
                    (map #(select-keys % [:display_name])))))
 
-      (mt/user-http-request :crowberto :put 200 (format "table/%d" products2-id) {:visibility_type2 "gold"})
+      (mt/user-http-request :crowberto :put 200 (format "table/%d" products2-id) {:data_layer "gold"})
       (is (=? [{:display_name "Products2"}]
-              (->> (mt/user-http-request :crowberto :get 200 "table" :term "P" :visibility_type2 "gold")
+              (->> (mt/user-http-request :crowberto :get 200 "table" :term "P" :data_layer "gold")
                    (filter #(= (:db_id %) (mt/id)))         ; prevent stray tables from affecting unit test results
                    (map #(select-keys % [:display_name])))))
 
       (testing "empty filter"
         (is (=? [{:display_name "People"}
                  {:display_name "Products"}]
-                (->> (mt/user-http-request :crowberto :get 200 "table" :term "P" :visibility_type2 "")
+                (->> (mt/user-http-request :crowberto :get 200 "table" :term "P" :data_layer "")
                      (filter #(= (:db_id %) (mt/id)))       ; prevent stray tables from affecting unit test results
                      (map #(select-keys % [:display_name])))))))))
 
@@ -1238,24 +1238,24 @@
                    :model/Table    {gc :id}         {:db_id jvm, :schema "jre"}
                    :model/Table    {jit :id}        {:db_id jvm, :schema "jre"}]
 
-      (is (= #{nil} (t2/select-fn-set :visibility_type2 :model/Table :db_id [:in [clojure jvm]])))
+      (is (= #{nil} (t2/select-fn-set :data_layer :model/Table :db_id [:in [clojure jvm]])))
 
       (mt/user-http-request :crowberto :post 200 "table/edit" {:database_ids     [clojure jvm]
-                                                               :visibility_type2 "copper"})
+                                                               :data_layer "copper"})
 
-      (is (= #{"copper"} (t2/select-fn-set :visibility_type2 :model/Table :db_id [:in [clojure jvm]])))
+      (is (= #{"copper"} (t2/select-fn-set :data_layer :model/Table :db_id [:in [clojure jvm]])))
 
       (mt/user-http-request :crowberto :post 200 "table/edit" {:database_ids     [clojure]
                                                                :table_ids        [classes]
                                                                :schema_ids       [(format "%d:jre" jvm)]
-                                                               :visibility_type2 "silver"})
+                                                               :data_layer "silver"})
       (is (= {vars       "silver"
               namespaces "silver"
               beans      "copper"
               classes    "silver"
               gc         "silver"
               jit        "silver"}
-             (t2/select-pk->fn :visibility_type2 :model/Table :db_id [:in [clojure jvm]]))))))
+             (t2/select-pk->fn :data_layer :model/Table :db_id [:in [clojure jvm]]))))))
 
 (deftest publish-model-test
   (testing "POST /api/table/publish-model"
@@ -1284,50 +1284,50 @@
                    :model/Table    {table-2-id :id} {:db_id db-id}
                    :model/Table    {table-3-id :id} {:db_id db-id}]
 
-      (testing "updating visibility_type syncs to visibility_type2 for all tables"
+      (testing "updating visibility_type syncs to data_layer for all tables"
         (mt/user-http-request :crowberto :post 200 "table/edit"
                               {:table_ids       [table-1-id table-2-id table-3-id]
                                :visibility_type "hidden"})
-        (is (= #{:copper} (t2/select-fn-set :visibility_type2 :model/Table :id [:in [table-1-id table-2-id table-3-id]])))
+        (is (= #{:copper} (t2/select-fn-set :data_layer :model/Table :id [:in [table-1-id table-2-id table-3-id]])))
         (is (= #{:hidden} (t2/select-fn-set :visibility_type :model/Table :id [:in [table-1-id table-2-id table-3-id]]))))
 
-      (testing "updating visibility_type2 syncs to visibility_type for all tables"
+      (testing "updating data_layer syncs to visibility_type for all tables"
         (mt/user-http-request :crowberto :post 200 "table/edit"
                               {:table_ids        [table-1-id table-2-id]
-                               :visibility_type2 "gold"})
-        (is (= :gold (t2/select-one-fn :visibility_type2 :model/Table :id table-1-id)))
+                               :data_layer "gold"})
+        (is (= :gold (t2/select-one-fn :data_layer :model/Table :id table-1-id)))
         (is (= nil (t2/select-one-fn :visibility_type :model/Table :id table-1-id)))
-        (is (= :gold (t2/select-one-fn :visibility_type2 :model/Table :id table-2-id)))
+        (is (= :gold (t2/select-one-fn :data_layer :model/Table :id table-2-id)))
         (is (= nil (t2/select-one-fn :visibility_type :model/Table :id table-2-id)))
-        (is (= :copper (t2/select-one-fn :visibility_type2 :model/Table :id table-3-id))))
+        (is (= :copper (t2/select-one-fn :data_layer :model/Table :id table-3-id))))
 
-      (testing "cannot update both visibility_type and visibility_type2 at once"
-        (is (= "Cannot update both visibility_type and visibility_type2"
+      (testing "cannot update both visibility_type and data_layer at once"
+        (is (= "Cannot update both visibility_type and data_layer"
                (mt/user-http-request :crowberto :post 400 "table/edit"
                                      {:table_ids        [table-1-id]
                                       :visibility_type  "hidden"
-                                      :visibility_type2 "copper"})))))))
+                                      :data_layer "copper"})))))))
 
 (deftest ^:parallel update-table-visibility-sync-test
   (testing "PUT /api/table/:id visibility field synchronization"
     (mt/with-temp [:model/Table table {}]
-      (testing "updating visibility_type syncs to visibility_type2"
+      (testing "updating visibility_type syncs to data_layer"
         (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
                               {:visibility_type "hidden"})
-        (is (= :copper (t2/select-one-fn :visibility_type2 :model/Table :id (u/the-id table))))
+        (is (= :copper (t2/select-one-fn :data_layer :model/Table :id (u/the-id table))))
         (is (= :hidden (t2/select-one-fn :visibility_type :model/Table :id (u/the-id table)))))
 
-      (testing "updating visibility_type2 syncs to visibility_type"
+      (testing "updating data_layer syncs to visibility_type"
         (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
-                              {:visibility_type2 "gold"})
-        (is (= :gold (t2/select-one-fn :visibility_type2 :model/Table :id (u/the-id table))))
+                              {:data_layer "gold"})
+        (is (= :gold (t2/select-one-fn :data_layer :model/Table :id (u/the-id table))))
         (is (= nil (t2/select-one-fn :visibility_type :model/Table :id (u/the-id table)))))
 
-      (testing "cannot update both visibility_type and visibility_type2 at once"
-        (is (= "Cannot update both visibility_type and visibility_type2"
+      (testing "cannot update both visibility_type and data_layer at once"
+        (is (= "Cannot update both visibility_type and data_layer"
                (mt/user-http-request :crowberto :put 400 (format "table/%d" (u/the-id table))
                                      {:visibility_type  "hidden"
-                                      :visibility_type2 "copper"})))))))
+                                      :data_layer "copper"})))))))
 
 (deftest orphan-only-filter-test
   (testing "GET /api/table?orphan_only=true"
@@ -1361,7 +1361,6 @@
                         (filter #(= (:db_id %) db-id))
                         (map :id)
                         set)))))))))
-
 
 ;; todo stolen from elsewhere, cleanup
 (defn basic-orders

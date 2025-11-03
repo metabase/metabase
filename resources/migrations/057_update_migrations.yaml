@@ -2280,13 +2280,13 @@ databaseChangeLog:
   - changeSet:
       id: v57.2025-10-22T11:57:02
       author: wotbrew
-      comment: Add visibility_type2 column to metabase_table
+      comment: Add data_layer column to metabase_table
       changes:
         - addColumn:
             tableName: metabase_table
             columns:
               - column:
-                  name: visibility_type2
+                  name: data_layer
                   type: varchar(254)
                   remarks: The (new) enum for visibility class
                   constraints:
@@ -2340,11 +2340,11 @@ databaseChangeLog:
   - changeSet:
       id: v57.2025-10-2910:00:00
       author: qnkhuat
-      comment: Backfill visibility_type2 from visibility_type
+      comment: Backfill data_layer from visibility_type
       changes:
         - sql: >-
             UPDATE metabase_table
-            SET visibility_type2 = CASE
+            SET data_layer = CASE
               WHEN visibility_type IN ('hidden', 'retired', 'sensitive', 'technical', 'cruft') THEN 'copper'
               ELSE 'gold'
             END

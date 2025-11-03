@@ -21,7 +21,7 @@ export type TableVisibilityType =
   | "technical"
   | "cruft";
 
-export type TableVisibilityType2 = "gold" | "silver" | "bronze" | "copper";
+export type TableDataLayer = "gold" | "silver" | "bronze" | "copper";
 
 export type TableDataSource =
   | "ingested"
@@ -62,7 +62,7 @@ export type Table = {
   updated_at: string;
 
   data_source: TableDataSource | null;
-  visibility_type2: TableVisibilityType2 | null;
+  data_layer: TableDataLayer | null;
   owner_email: string | null;
   owner_user_id: UserId | null;
   transform_id: TransformId | null; // readonly
@@ -97,7 +97,7 @@ export interface TableListQuery {
   skip_fields?: boolean;
   term?: string;
   visibility_type?: TableVisibilityType;
-  visibility_type2?: TableVisibilityType2;
+  data_layer?: TableDataLayer;
   data_source?: string | null;
   owner_user_id?: UserId | null;
   owner_email?: string | null;
@@ -135,7 +135,7 @@ export interface UpdateTableRequest {
   field_order?: TableFieldOrder;
 
   data_source?: TableDataSource | null;
-  visibility_type2?: TableVisibilityType2 | null;
+  data_layer?: TableDataLayer | null;
   owner_email?: string | null;
   owner_user_id?: UserId | null;
 }
@@ -150,7 +150,7 @@ export interface UpdateTableListRequest {
   show_in_getting_started?: boolean;
 
   data_source?: TableDataSource | null;
-  visibility_type2?: TableVisibilityType2 | null;
+  data_layer?: TableDataLayer | null;
   owner_email?: string | null;
   owner_user_id?: UserId | null;
 }
@@ -167,7 +167,7 @@ export interface EditTablesRequest {
   visibility_type?: TableVisibilityType;
   data_authority?: string;
   data_source?: TableDataSource | null;
-  visibility_type2?: TableVisibilityType2 | null;
+  data_layer?: TableDataLayer | null;
   owner_email?: string | null;
   owner_user_id?: UserId | null;
 }
