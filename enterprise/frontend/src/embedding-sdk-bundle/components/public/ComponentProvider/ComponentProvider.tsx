@@ -32,12 +32,20 @@ type ComponentProviderInternalProps = ComponentProviderProps & {
   isLocalHost?: boolean;
 };
 
+let hasInitializedPlugins = false;
+
 function usePluginsInitialization() {
   const tokenFeatures = useSelector(
     (state) => state.settings.values["token-features"],
   );
 
   useEffect(() => {
+    if (hasInitializedPlugins || !tokenFeatures) {
+      return;
+    }
+
+    hasInitializedPlugins = true;
+
     initializePlugins();
   }, [tokenFeatures]);
 }
