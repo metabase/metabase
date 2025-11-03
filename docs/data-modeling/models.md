@@ -121,7 +121,10 @@ You can edit a model's query by clicking on the down arrow next to the model's n
 
 ## Model list view
 
-![Viewing a model as a list, with a detail view](./images/model-list-detail.png)
+![Viewing a model as a list](./images/model-list.png)
+
+List view helps you explore records one by one instead of sorting through big tables. You can customize the layout to highlight the most important fields.
+
 
 To view a model as a list:
 
@@ -131,7 +134,7 @@ To view a model as a list:
 4. Navigate to the **Settings** tab.
 5. Under "What should the default view of this data be?", toggle to **List**.
 
-![Model list view](./images/model-list-view.png)
+![Model list edit](./images/model-list-edit.png)
 
 ### Customize model list view
 
@@ -141,9 +144,9 @@ You can customize how the data appears by clicking **Customize the List layout**
 
 Each item in the list has:
 
-- An entity icon. If the record has an image link, it shows the image, which you can hide anytime.
-- A left column showing the title or primary identifier.
-- A right column for up to 5 additional columns.
+- **An entity icon.** If the record has an image link, it shows the image, which you can hide anytime.
+- **A left column** showing the title or primary identifier.
+- **A right column** for up to 5 additional columns.
 
 You can:
 
