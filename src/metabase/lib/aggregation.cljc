@@ -1,5 +1,5 @@
 (ns metabase.lib.aggregation
-  (:refer-clojure :exclude [count distinct max min var select-keys mapv #?(:clj doseq) #?(:clj for)])
+  (:refer-clojure :exclude [count distinct max min var select-keys mapv empty? not-empty #?(:clj doseq) #?(:clj for)])
   (:require
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
@@ -23,7 +23,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [select-keys mapv #?(:clj doseq) #?(:clj for)]]))
+   [metabase.util.performance :refer [select-keys mapv empty? not-empty #?(:clj doseq) #?(:clj for)]]))
 
 (mu/defn column-metadata->aggregation-ref :- :mbql.clause/aggregation
   "Given `:metadata/column` column metadata for an aggregation, construct an `:aggregation` reference."

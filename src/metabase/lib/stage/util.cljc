@@ -2,11 +2,13 @@
   "General stage-related utility functions that don't require a any other Lib namespaces except for very general
   high-level ones like `lib.schema` and `lib.util`. This namespace was spun out from [[metabase.lib.stage]] to avoid
   circular dependencies between it and other Lib namespaces."
+  (:refer-clojure :exclude [not-empty])
   (:require
    [medley.core :as m]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.util :as lib.util]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [not-empty]]))
 
 (mu/defn has-clauses? :- :boolean
   "Does given query stage have any clauses?"

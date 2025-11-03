@@ -145,7 +145,15 @@ H.describeWithSnowplowEE("documents", () => {
 
     // Force the click since this is hidden behind a toast notification
     H.navigationSidebar().findByText("Trash").click({ force: true });
-    H.getUnpinnedSection().findByText("Test Document").should("exist");
+    H.getUnpinnedSection().findByText("Test Document").should("exist").click();
+
+    cy.log("test that deleted documents cannot be edited (metabase#63112)");
+    cy.findByRole("textbox", { name: "Document Title" })
+      .should("be.visible")
+      .and("have.attr", "readonly");
+    H.documentContent()
+      .findByRole("textbox")
+      .should("have.attr", "contenteditable", "false");
   });
 
   it("should handle navigating from /new to /new gracefully", () => {
@@ -706,6 +714,31 @@ H.describeWithSnowplowEE("documents", () => {
         H.getDocumentCard("Orders").should("exist");
       });
 
+      it("should support renaming cards", () => {
+        cy.log("Add card");
+        H.documentContent().click();
+        H.addToDocument("/", false);
+        H.commandSuggestionItem("Chart").click();
+        H.commandSuggestionDialog()
+          .findByText(PRODUCTS_COUNT_BY_CATEGORY_PIE.name)
+          .click();
+
+        cy.log("Rename card");
+        cy.findByTestId("card-embed-title").realHover();
+        cy.icon("pencil").click();
+        cy.realType("New name{enter}");
+
+        cy.log("Edit query");
+        H.openDocumentCardMenu("New name");
+        H.popover().findByText("Edit Query").click();
+        H.removeSummaryGroupingField({ field: "Category" });
+        H.addSummaryGroupingField({ field: "Price" });
+        H.modal().findByRole("button", { name: "Save and use" }).click();
+
+        cy.log("Assert new name is preserved");
+        H.getDocumentCard("New name").should("exist");
+      });
+
       it("should support resizing cards", () => {
         H.documentContent().click();
         H.addToDocument("/", false);
@@ -830,6 +863,7 @@ H.describeWithSnowplowEE("documents", () => {
         H.getDocumentCard("Orders, Count, Grouped by Created At (year)").should(
           "be.visible",
         );
+
         H.cartesianChartCircle().eq(1).click();
 
         H.popover().findByText("See these Orders").click();

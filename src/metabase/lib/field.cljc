@@ -1,5 +1,5 @@
 (ns metabase.lib.field
-  (:refer-clojure :exclude [every? select-keys mapv #?(:clj for)])
+  (:refer-clojure :exclude [every? select-keys mapv empty? not-empty #?(:clj for)])
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -32,7 +32,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [every? select-keys mapv #?(:clj for)]]
+   [metabase.util.performance :refer [every? select-keys mapv empty? not-empty #?(:clj for)]]
    [metabase.util.time :as u.time]))
 
 (defn- column-metadata-effective-type

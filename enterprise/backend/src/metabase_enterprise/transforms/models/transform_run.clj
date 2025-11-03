@@ -3,6 +3,7 @@
    [medley.core :as m]
    [metabase-enterprise.transforms.models.transform-run-cancelation :as cancel]
    [metabase.app-db.core :as mdb]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.util :as u]
@@ -58,11 +59,13 @@
   ([transform-id]
    (start-run! transform-id {}))
   ([transform-id properties]
-   (t2/insert-returning-instance! :model/TransformRun
-                                  (assoc properties
-                                         :transform_id transform-id
-                                         :status :started
-                                         :is_active true))))
+   (let [run (t2/insert-returning-instance! :model/TransformRun
+                                            (assoc properties
+                                                   :transform_id transform-id
+                                                   :status :started
+                                                   :is_active true))]
+     (events/publish-event! :event/transform-run-start {:object run})
+     run)))
 
 (defn succeed-started-run!
   "Mark a started run as successfully completed."

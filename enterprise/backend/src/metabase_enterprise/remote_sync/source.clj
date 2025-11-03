@@ -58,9 +58,6 @@
 (methodical/defmethod source.p/->ingestable GitSource
   [{:keys [remote-url] :as source} opts]
   (git/fetch! source)
-  (when-not (git/has-data? source)
-    (throw (ex-info (str "Cannot connect to uninitialized repository " remote-url)
-                    {:url remote-url})))
   (if-let [commit-ref (git/commit-sha source)]
     (next-method (assoc source :commit-ish commit-ref) opts)
     (throw (ex-info (str "Unable to find branch " (:commit-ish source) " to read from") {:url remote-url
