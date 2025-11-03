@@ -7,7 +7,10 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { createMockDashboardCard } from "metabase-types/api/mocks";
+import {
+  createMockDashboardCard,
+  createMockDocument,
+} from "metabase-types/api/mocks";
 
 const { admin } = USERS;
 
@@ -41,6 +44,7 @@ describe("command palette", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
+    H.activateToken("bleeding-edge");
   });
 
   it("should render a searchable command palette", () => {
@@ -64,8 +68,16 @@ describe("command palette", () => {
       description: "The best question",
     });
 
+    //Create a document so that it appears in the recents list
+    cy.request(
+      "POST",
+      "/api/ee/document",
+      createMockDocument({ collection_id: ADMIN_PERSONAL_COLLECTION_ID }),
+    );
+
     //Request to have an item in the recents list
     cy.request(`/api/dashboard/${ORDERS_DASHBOARD_ID}`);
+
     cy.visit("/");
 
     cy.findByRole("button", { name: /search/i }).click();
@@ -95,6 +107,12 @@ describe("command palette", () => {
       cy.findByRole("option", { name: "Orders in a dashboard" }).should(
         "contain.text",
         "Our analytics",
+      );
+
+      // UXW-1786
+      cy.findByRole("option", { name: "Test Document" }).should(
+        "contain.text",
+        "Bobby Tables's Personal Collection",
       );
 
       cy.log("Should search entities and docs");
