@@ -101,6 +101,11 @@
     ;; we release it.
     (try
       (.. lock writeLock lock)
+      (queue.proto/-stop @#'search.ingestion/queue)
+      (when-not (queue.proto/-await-termination @#'search.ingestion/queue 5000)
+        (queue.proto/-stop! @#'search.ingestion/queue)
+        (throw (ex-info "Could not shut down search ingestion queue" {})))
+      (queue.proto/-start @#'search.ingestion/queue)
       (reset-app-db-connection-pool!)
       (restore-app-db-from-snapshot! path)
       (mdb/increment-app-db-unique-indentifier!)
@@ -123,9 +128,6 @@
   "Restore a database snapshot for testing purposes."
   [{snapshot-name :name} :- [:map
                              [:name ms/NonBlankString]]]
-  (queue.proto/-stop! @#'search.ingestion/queue)
-  (when-not (queue.proto/-await-termination @#'search.ingestion/queue 1000)
-    (throw (ex-info "Could not shut down search ingestion queue" {})))
   (restore-snapshot! snapshot-name)
   (search/reindex! {:async? false})
   nil)

@@ -237,9 +237,7 @@
     (if (listener-exists? listener-name)
       (do
         (log/warn "Listener exists")
-        (stop-listening! listener-name)
-        (swap! listeners dissoc listener-name)
-        (create-queue-listener args))
+        (get @listeners listener-name))
       (let [inner-ql (map->QueueListener {:queue queue
                                           :pool-size pool-size
                                           :state (atom {:status ::initialized})
