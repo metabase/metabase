@@ -1,7 +1,7 @@
 (ns metabase.driver.postgres
   "Database driver for PostgreSQL databases. Builds on top of the SQL JDBC driver, which implements most functionality
   for JDBC-based drivers."
-  (:refer-clojure :exclude [some select-keys mapv])
+  (:refer-clojure :exclude [some select-keys mapv not-empty])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
@@ -34,7 +34,7 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf :refer [some select-keys mapv]])
+   [metabase.util.performance :as perf :refer [some select-keys mapv not-empty]])
   (:import
    (java.io StringReader)
    (java.sql
