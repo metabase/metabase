@@ -38,7 +38,10 @@ export default class RevisionHistory extends Component {
             <Breadcrumbs
               className={CS.py4}
               crumbs={[
-                [t`Segments`, `/bench/data/segments?table=${segment.table_id}`],
+                [
+                  t`Segments`,
+                  `/data-studio/data/segments?table=${segment.table_id}`,
+                ],
                 [t`Segment History`],
               ]}
             />

@@ -9,7 +9,6 @@ import { ForgotPassword } from "metabase/auth/components/ForgotPassword";
 import { Login } from "metabase/auth/components/Login";
 import { Logout } from "metabase/auth/components/Logout";
 import { ResetPassword } from "metabase/auth/components/ResetPassword";
-import { getWorkbenchRoutes } from "metabase/bench/routes";
 import {
   BrowseDatabases,
   BrowseMetrics,
@@ -31,6 +30,7 @@ import { DashboardMoveModalConnected } from "metabase/dashboard/components/Dashb
 import { ArchiveDashboardModalConnected } from "metabase/dashboard/containers/ArchiveDashboardModal";
 import { AutomaticDashboardApp } from "metabase/dashboard/containers/AutomaticDashboardApp";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
+import { getDataStudioRoutes } from "metabase/data-studio/routes";
 import { TableDetailPage } from "metabase/detail-view/pages/TableDetailPage";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
@@ -67,9 +67,9 @@ import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
 import {
+  CanAccessDataStudio,
   CanAccessOnboarding,
   CanAccessSettings,
-  CanAccessWorkbench,
   IsAdmin,
   IsAuthenticated,
   IsNotAuthenticated,
@@ -366,9 +366,9 @@ export const getRoutes = (store) => {
           {/* ADMIN */}
           {getAdminRoutes(store, CanAccessSettings, IsAdmin)}
 
-          {/* ANALYST WORKBENCH */}
-          <Route path="bench" component={CanAccessWorkbench}>
-            {getWorkbenchRoutes()}
+          {/* DATA STUDIO */}
+          <Route path="data-studio" component={CanAccessDataStudio}>
+            {getDataStudioRoutes()}
           </Route>
         </Route>
       </Route>

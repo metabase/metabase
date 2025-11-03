@@ -2,12 +2,6 @@ import type { Location } from "history";
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import {
-  BenchHeader,
-  BenchHeaderInput,
-  type BenchHeaderTab,
-  BenchHeaderTabs,
-} from "metabase/bench/components/BenchHeader";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
@@ -16,6 +10,12 @@ import { getLocation } from "metabase/selectors/routing";
 import { useUpdateTransformMutation } from "metabase-enterprise/api";
 import type { TransformId } from "metabase-types/api";
 
+import {
+  PaneHeader,
+  PaneHeaderInput,
+  type PaneHeaderTab,
+  PaneHeaderTabs,
+} from "../../../../../../../frontend/src/metabase/data-studio/components/PaneHeader";
 import { NAME_MAX_LENGTH } from "../../constants";
 import { TransformMoreMenuWithModal } from "../TransformMoreMenu";
 
@@ -35,7 +35,7 @@ export function TransformHeader({
   onChangeName,
 }: TransformHeaderProps) {
   return (
-    <BenchHeader
+    <PaneHeader
       title={
         <TransformNameInput id={id} name={name} onChangeName={onChangeName} />
       }
@@ -82,7 +82,7 @@ function TransformNameInput({
   };
 
   return (
-    <BenchHeaderInput
+    <PaneHeaderInput
       initialValue={name}
       maxLength={NAME_MAX_LENGTH}
       onChange={handleChangeName}
@@ -97,10 +97,10 @@ type TransformTabsProps = {
 function TransformTabs({ id }: TransformTabsProps) {
   const location = useSelector(getLocation);
   const tabs = getTabs(id, location);
-  return <BenchHeaderTabs tabs={tabs} />;
+  return <PaneHeaderTabs tabs={tabs} />;
 }
 
-function getTabs(id: TransformId, { pathname }: Location): BenchHeaderTab[] {
+function getTabs(id: TransformId, { pathname }: Location): PaneHeaderTab[] {
   return [
     {
       label: t`Query`,

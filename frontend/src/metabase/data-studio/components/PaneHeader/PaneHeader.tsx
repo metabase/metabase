@@ -11,21 +11,16 @@ import {
   Stack,
 } from "metabase/ui";
 
-import S from "./BenchHeader.module.css";
+import S from "./PaneHeader.module.css";
 
-interface BenchHeaderProps {
+interface PaneHeaderProps {
   title: ReactNode;
   menu?: ReactNode;
   tabs?: ReactNode;
   actions?: ReactNode;
 }
 
-export const BenchHeader = ({
-  title,
-  menu,
-  tabs,
-  actions,
-}: BenchHeaderProps) => {
+export const PaneHeader = ({ title, menu, tabs, actions }: PaneHeaderProps) => {
   return (
     <Group className={S.header} p="md" justify="space-between" gap="sm">
       <Stack gap="sm">
@@ -40,17 +35,17 @@ export const BenchHeader = ({
   );
 };
 
-type BenchHeaderInputProps = {
+type PaneHeaderInputProps = {
   initialValue?: string;
   maxLength?: number;
   onChange?: (value: string) => void;
 };
 
-export function BenchHeaderInput({
+export function PaneHeaderInput({
   initialValue,
   maxLength,
   onChange,
-}: BenchHeaderInputProps) {
+}: PaneHeaderInputProps) {
   return (
     <EditableText
       initialValue={initialValue}
@@ -65,18 +60,18 @@ export function BenchHeaderInput({
   );
 }
 
-export type BenchHeaderTab = {
+export type PaneHeaderTab = {
   label: string;
   to: string;
   icon: IconName;
   isSelected: boolean;
 };
 
-type BenchHeaderTabsProps = {
-  tabs: BenchHeaderTab[];
+type PaneHeaderTabsProps = {
+  tabs: PaneHeaderTab[];
 };
 
-export function BenchHeaderTabs({ tabs }: BenchHeaderTabsProps) {
+export function PaneHeaderTabs({ tabs }: PaneHeaderTabsProps) {
   return (
     <Group gap="sm">
       {tabs.map(({ label, to, icon, isSelected }) => (

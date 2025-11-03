@@ -10,11 +10,11 @@ import {
 } from "metabase/plugins";
 
 import {
-  BenchSectionLayout,
-  type BenchSectionTab,
-  BenchSectionTabs,
-  BenchSectionTitle,
-} from "../../components/BenchSectionLayout";
+  SectionLayout,
+  type SectionTab,
+  SectionTabs,
+  SectionTitle,
+} from "../../components/SectionLayout";
 
 type DataSectionLayoutProps = {
   location: Location;
@@ -34,17 +34,17 @@ export function DataSectionLayout({
   const tabs = getTabs(location, { canAccessDataModel, canAccessTransforms });
 
   return (
-    <BenchSectionLayout
+    <SectionLayout
       title={
-        <BenchSectionTitle
+        <SectionTitle
           title={t`Data structure`}
           description={t`Explore and manage your data assets`}
         />
       }
-      tabs={tabs.length > 0 && <BenchSectionTabs tabs={tabs} />}
+      tabs={tabs.length > 0 && <SectionTabs tabs={tabs} />}
     >
       {children}
-    </BenchSectionLayout>
+    </SectionLayout>
   );
 }
 
@@ -56,7 +56,7 @@ type FeatureOptions = {
 function getTabs(
   { pathname }: Location,
   { canAccessDataModel, canAccessTransforms }: FeatureOptions,
-): BenchSectionTab[] {
+): SectionTab[] {
   if (!canAccessDataModel || !canAccessTransforms) {
     return [];
   }
@@ -64,9 +64,9 @@ function getTabs(
   return [
     {
       label: t`Data`,
-      to: Urls.workbench(),
+      to: Urls.dataStudio(),
       isSelected:
-        pathname === Urls.workbench() || pathname.startsWith(Urls.dataModel()),
+        pathname === Urls.dataStudio() || pathname.startsWith(Urls.dataModel()),
     },
     {
       label: t`Transforms`,

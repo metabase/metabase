@@ -4,19 +4,15 @@ import { t } from "ttag";
 
 import { Box, Button, Group, Stack, Tabs } from "metabase/ui";
 
-import S from "./BenchSectionLayout.module.css";
+import S from "./SectionLayout.module.css";
 
-type BenchSectionLayoutProps = {
+type SectionLayoutProps = {
   title?: ReactNode;
   tabs?: ReactNode;
   children?: ReactNode;
 };
 
-export function BenchSectionLayout({
-  title,
-  tabs,
-  children,
-}: BenchSectionLayoutProps) {
+export function SectionLayout({ title, tabs, children }: SectionLayoutProps) {
   return (
     <Stack h="100%" gap={0}>
       <Group
@@ -40,15 +36,12 @@ export function BenchSectionLayout({
   );
 }
 
-type BenchSectionTitleProps = {
+type SectionTitleProps = {
   title: string;
   description?: string;
 };
 
-export function BenchSectionTitle({
-  title,
-  description,
-}: BenchSectionTitleProps) {
+export function SectionTitle({ title, description }: SectionTitleProps) {
   return (
     <Group gap="md">
       <Box fz="lg" lh="h3">
@@ -59,17 +52,17 @@ export function BenchSectionTitle({
   );
 }
 
-export type BenchSectionTab = {
+export type SectionTab = {
   label: string;
   to: string;
   isSelected: boolean;
 };
 
-type BenchSectionTabsProps = {
-  tabs: BenchSectionTab[];
+type SectionTabsProps = {
+  tabs: SectionTab[];
 };
 
-export function BenchSectionTabs({ tabs }: BenchSectionTabsProps) {
+export function SectionTabs({ tabs }: SectionTabsProps) {
   const selectedTab = tabs.find((tab) => tab.isSelected);
 
   return (

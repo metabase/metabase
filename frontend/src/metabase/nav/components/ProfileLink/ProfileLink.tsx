@@ -5,7 +5,6 @@ import _ from "underscore";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
 import { logout } from "metabase/auth/actions";
-import { canAccessWorkbench } from "metabase/bench/selectors";
 import { ErrorDiagnosticModalWrapper } from "metabase/common/components/ErrorPages/ErrorDiagnosticModal";
 import { trackErrorDiagnosticModalOpened } from "metabase/common/components/ErrorPages/analytics";
 import { ForwardRefLink } from "metabase/common/components/Link";
@@ -13,6 +12,7 @@ import LogoIcon from "metabase/common/components/LogoIcon";
 import Modal from "metabase/common/components/Modal";
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
+import { canAccessDataStudio } from "metabase/data-studio/selectors";
 import {
   getCanAccessOnboardingPage,
   getIsNewInstance,
@@ -37,7 +37,7 @@ import { useHelpLink } from "./useHelpLink";
 const mapStateToProps = (state: State) => ({
   adminItems: getAdminPaths(state),
   canAccessOnboardingPage: getCanAccessOnboardingPage(state),
-  canAccessWorkbench: canAccessWorkbench(state),
+  canAccessDataStudio: canAccessDataStudio(state),
   isNewInstance: getIsNewInstance(state),
 });
 
@@ -49,7 +49,7 @@ const mapDispatchToProps = {
 interface ProfileLinkProps {
   adminItems: AdminPath[];
   canAccessOnboardingPage: boolean;
-  canAccessWorkbench: boolean;
+  canAccessDataStudio: boolean;
   isNewInstance: boolean;
   onOpenDiagnostics: () => void;
   onLogout: () => void;
@@ -67,7 +67,7 @@ interface MenuItem {
 function ProfileLinkInner({
   adminItems,
   canAccessOnboardingPage,
-  canAccessWorkbench,
+  canAccessDataStudio,
   isNewInstance,
   onLogout,
   onOpenDiagnostics,
@@ -108,12 +108,12 @@ function ProfileLinkInner({
             },
           ]
         : []),
-      ...(canAccessWorkbench
+      ...(canAccessDataStudio
         ? [
             {
               title: t`Data studio`,
               icon: null,
-              link: Urls.workbench(),
+              link: Urls.dataStudio(),
             },
           ]
         : []),

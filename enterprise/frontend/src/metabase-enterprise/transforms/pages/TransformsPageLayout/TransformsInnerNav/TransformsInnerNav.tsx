@@ -7,7 +7,7 @@ import { SegmentedControl } from "metabase/ui";
 
 import { useTransformsCurrentTab } from "../hooks";
 
-const TRANSFORMS_BASE_PATH = "/bench/transforms";
+const TRANSFORMS_BASE_PATH = "/data-studio/transforms";
 
 const NAV_ITEMS = [
   {
