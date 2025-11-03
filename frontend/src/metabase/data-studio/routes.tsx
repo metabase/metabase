@@ -1,14 +1,17 @@
+import { IndexRedirect } from "react-router";
+
 import { Route } from "metabase/hoc/Title";
 import { getMetadataRoutes } from "metabase/metadata/routes";
 import { PLUGIN_DEPENDENCIES, PLUGIN_TRANSFORMS } from "metabase/plugins";
 
-import { BenchLayout } from "./pages/BenchLayout";
 import { DataSectionLayout } from "./pages/DataSectionLayout";
+import { DataStudioLayout } from "./pages/DataStudioLayout";
 import { DependenciesSectionLayout } from "./pages/DependenciesSectionLayout";
 
-export function getWorkbenchRoutes() {
+export function getDataStudioRoutes() {
   return (
-    <Route component={BenchLayout}>
+    <Route component={DataStudioLayout}>
+      <IndexRedirect to="data" />
       <Route component={DataSectionLayout}>
         {getMetadataRoutes()}
         {PLUGIN_TRANSFORMS.getTransformRoutes()}

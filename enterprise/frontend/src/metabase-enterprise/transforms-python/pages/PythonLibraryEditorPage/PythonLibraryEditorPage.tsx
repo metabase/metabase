@@ -2,7 +2,6 @@ import { useLayoutEffect, useState } from "react";
 import type { Route } from "react-router";
 import { t } from "ttag";
 
-import { BenchHeader } from "metabase/bench/components/BenchHeader";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { isResourceNotFoundError } from "metabase/lib/errors";
@@ -14,6 +13,7 @@ import {
   useUpdatePythonLibraryMutation,
 } from "metabase-enterprise/api/python-transform-library";
 
+import { PaneHeader } from "../../../../../../../frontend/src/metabase/data-studio/components/PaneHeader";
 import { PythonEditor } from "../../components/PythonEditor";
 
 import S from "./PythonLibraryEditorPage.module.css";
@@ -121,7 +121,7 @@ export function LibraryEditorHeader({
   onRevert: () => void;
 }) {
   return (
-    <BenchHeader
+    <PaneHeader
       title={<Box fw="bold" fz="h3" lh="h3">{t`Python library`}</Box>}
       actions={
         (isDirty || isSaving) && (

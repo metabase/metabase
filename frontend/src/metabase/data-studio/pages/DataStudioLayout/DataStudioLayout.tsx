@@ -8,16 +8,16 @@ import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
 import { Box, Flex, Icon, type IconName, Stack } from "metabase/ui";
 
-import S from "./BenchLayout.module.css";
+import S from "./DataStudioLayout.module.css";
 
-type BenchLayoutProps = {
+type DataStudioLayoutProps = {
   children?: ReactNode;
 };
 
-export function BenchLayout({ children }: BenchLayoutProps) {
+export function DataStudioLayout({ children }: DataStudioLayoutProps) {
   return (
     <Flex h="100%">
-      <BenchNav />
+      <DataStudioNav />
       <Box h="100%" flex={1}>
         {children}
       </Box>
@@ -25,7 +25,7 @@ export function BenchLayout({ children }: BenchLayoutProps) {
   );
 }
 
-function BenchNav() {
+function DataStudioNav() {
   const location = useSelector(getLocation);
   const { pathname } = location;
 
@@ -35,17 +35,16 @@ function BenchNav() {
 
   return (
     <Stack className={S.nav} h="100%" p="0.75rem" gap="0.75rem">
-      <BenchNavItem
-        to={Urls.workbench()}
+      <DataStudioNavItem
+        to={Urls.dataModel()}
         icon="database"
         isSelected={
-          pathname === Urls.workbench() ||
           pathname.startsWith(Urls.dataModel()) ||
           pathname.startsWith(Urls.transformList())
         }
       />
       {PLUGIN_DEPENDENCIES.isEnabled && (
-        <BenchNavItem
+        <DataStudioNavItem
           icon="schema"
           to={Urls.dependencyGraph()}
           isSelected={pathname.startsWith(Urls.dependencyGraph())}
@@ -55,13 +54,13 @@ function BenchNav() {
   );
 }
 
-type BenchNavItemProps = {
+type DataStudioNavItemProps = {
   to: string;
   icon: IconName;
   isSelected: boolean;
 };
 
-function BenchNavItem({ to, icon, isSelected }: BenchNavItemProps) {
+function DataStudioNavItem({ to, icon, isSelected }: DataStudioNavItemProps) {
   return (
     <Box
       className={cx(S.item, { [S.selected]: isSelected })}

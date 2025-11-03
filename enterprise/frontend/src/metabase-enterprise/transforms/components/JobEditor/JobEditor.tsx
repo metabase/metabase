@@ -1,11 +1,11 @@
 import type { ReactNode } from "react";
 
-import {
-  BenchHeader,
-  BenchHeaderInput,
-} from "metabase/bench/components/BenchHeader";
 import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
 
+import {
+  PaneHeader,
+  PaneHeaderInput,
+} from "../../../../../../../frontend/src/metabase/data-studio/components/PaneHeader";
 import { NAME_MAX_LENGTH } from "../../constants";
 import { ColumnLayout, ColumnLayoutBody } from "../ColumnLayout";
 import { JobMoreMenuWithModal } from "../JobMoreMenu";
@@ -35,9 +35,9 @@ export function JobEditor({
 }: JobEditorProps) {
   return (
     <ColumnLayout>
-      <BenchHeader
+      <PaneHeader
         title={
-          <BenchHeaderInput
+          <PaneHeaderInput
             initialValue={job.name}
             maxLength={NAME_MAX_LENGTH}
             onChange={onNameChange}

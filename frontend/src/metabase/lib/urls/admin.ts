@@ -46,11 +46,11 @@ export function editDatabase(databaseId: DatabaseId) {
 }
 
 export function dataModel() {
-  return `/bench/data`;
+  return `/data-studio/data`;
 }
 
 export function dataModelDatabase(databaseId: DatabaseId) {
-  return `/bench/data/database/${databaseId}`;
+  return `/data-studio/data/database/${databaseId}`;
 }
 
 export function dataModelSchema(
