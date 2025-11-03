@@ -10,6 +10,7 @@
    [metabase.util.log :as log])
   (:import
    (java.io File)
+   (org.apache.commons.io FileUtils)
    (org.eclipse.jgit.api Git GitCommand TransportCommand)
    (org.eclipse.jgit.dircache DirCache DirCacheEntry)
    (org.eclipse.jgit.lib CommitBuilder Constants FileMode PersonIdent Ref)
@@ -379,11 +380,14 @@
 
 (def ^:private jgit (atom {}))
 
-(defn- get-jgit [^File path {:keys [url token]}]
+(defn- get-jgit [^File path {:keys [url token] :as args}]
   (if-let [obj (get @jgit (.getPath path))]
     obj
-    (get (swap! jgit assoc (.getPath path) (open-jgit path {:url   url
-                                                            :token token}))
+    (get (swap! jgit assoc (.getPath path) (u/prog1 (open-jgit path {:url   url
+                                                                     :token token})
+                                             (when-not (has-data? (assoc args :git <>))
+                                               (FileUtils/deleteDirectory path)
+                                               (throw (ex-info (str "Cannot connect to uninitialized repository") {:url url})))))
          (.getPath path))))
 
 (defn git-source
