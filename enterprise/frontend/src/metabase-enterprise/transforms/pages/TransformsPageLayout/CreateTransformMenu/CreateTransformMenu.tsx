@@ -38,6 +38,7 @@ export const CreateTransformMenu = () => {
             </Center>
           ) : (
             <>
+              <Menu.Label>{t`Create your transform with…`}</Menu.Label>
               <Menu.Item
                 leftSection={<Icon name="notebook" />}
                 onClick={() => dispatch(push(Urls.newQueryTransform()))}
@@ -71,7 +72,7 @@ export const CreateTransformMenu = () => {
 
       {isPickerOpened && (
         <QuestionPickerModal
-          title={t`Pick a question`}
+          title={t`Pick a question or a model`}
           models={["card", "dataset"]}
           shouldDisableItem={(item) => shouldDisableItem(item, databases?.data)}
           onChange={(item) => {
