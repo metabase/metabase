@@ -13,8 +13,6 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
-;;;; schemas
-
 (mr/def ::EmbeddingTheme
   [:map
    [:id                           ms/PositiveInt]
