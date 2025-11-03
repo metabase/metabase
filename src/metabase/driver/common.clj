@@ -282,6 +282,24 @@
     :display-name (deferred-tru "Auth token request headers (a JSON map)")
     :visible-if {"auth-provider" "oauth"}}])
 
+(def auth-provider-options-only-aws
+  "Options for using an auth provider instead of a literal password. Only AWS IAM enabled."
+  [{:name "use-auth-provider"
+    :type :checked-section
+    :check (fn []
+             (and
+               ;; Managed Identities only make sense if Metabase is in the same cloud as the DW
+              (not (premium-features/is-hosted?))
+              (premium-features/enable-database-auth-providers?)))
+    :default false}
+   {:name "auth-provider"
+    :display-name (deferred-tru "Auth provider")
+    :type :select
+    :options [{:name (deferred-tru "AWS IAM")
+               :value "aws-iam"}]
+    :default "aws-iam"
+    :visible-if {"use-auth-provider" true}}])
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Class -> Base Type                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
