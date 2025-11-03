@@ -138,6 +138,7 @@ export const RemoteSyncAdminSettings = () => {
           await updateRemoteSyncSettings({ [URL_KEY]: "" }).unwrap();
           sendToast({ message: t`Remote Sync disabled`, icon: "check" });
         } catch (error) {
+          console.error(error);
           sendToast({
             message: t`Failed to disable Remote Sync`,
             icon: "warning",
