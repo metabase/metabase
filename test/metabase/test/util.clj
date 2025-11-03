@@ -20,6 +20,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.content-verification.models.moderation-review :as moderation-review]
+   [metabase.lib.core :as lib]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.test-util :as perms.test-util]
@@ -53,7 +54,12 @@
    (java.util Locale)
    (java.util.concurrent CountDownLatch TimeoutException)
    (org.eclipse.jetty.server Server)
-   (org.quartz CronTrigger JobDetail JobKey Scheduler Trigger)
+   (org.quartz
+    CronTrigger
+    JobDetail
+    JobKey
+    Scheduler
+    Trigger)
    (org.quartz.impl StdSchedulerFactory)))
 
 (set! *warn-on-reflection* true)
@@ -325,10 +331,7 @@
    (fn [_]
      {:name (str "Test Transform " (u/generate-nano-id))
       :source {:type  "query"
-               :query {:database (data/id)
-                       :type     "native"
-                       :native   {:query         "SELECT 1 as num"
-                                  :template-tags {}}}}
+               :query (lib/native-query (data/metadata-provider) "SELECT 1 as num")}
       :target {:type "table"
                :name (str "test_table_" (u/generate-nano-id))}})
 
