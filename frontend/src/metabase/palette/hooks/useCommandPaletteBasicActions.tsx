@@ -318,11 +318,6 @@ export const useCommandPaletteBasicActions = ({
   useRegisterShortcut([
     {
       id: "toggle-dark-mode",
-      name: t`Toggle dark/light mode`,
-      section: "basic",
-      keywords:
-        "toggle, toggle dark, toggle light, dark, light, dark mode, light mode, theme, mode, night",
-      icon: "moon",
       perform: () => colorSchemeRef.current.toggleColorScheme(),
     },
     {
