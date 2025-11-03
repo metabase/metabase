@@ -41,7 +41,7 @@
                                          export/standard-ref-strategies
                                          export/add-sequence-number))))
 
-(deftest hard-one
+(deftest hard-one-2
   (let [reps [{:name "1" :display_name "b" :type :question :database "ref:2"}
               {:name "2" :display_name "b" :type :database}]
         reps' (export/rename-refs reps
@@ -55,3 +55,53 @@
            (->> reps'
                 (filter #(= :database (:type %)))
                 :name)))))
+
+(deftest munge-name-english-test
+  (testing "Basic English names"
+    (is (= "hello-world" (#'export/munge-name "Hello World")))
+    (is (= "my-dashboard" (#'export/munge-name "My Dashboard")))
+    (is (= "user-report-2024" (#'export/munge-name "User Report 2024")))
+    (is (= "sales-data" (#'export/munge-name "Sales_Data")))
+    (is (= "trim-spaces" (#'export/munge-name "  Trim Spaces  ")))))
+
+(deftest munge-name-accented-characters-test
+  (testing "Accented characters should be preserved"
+    (is (= "café" (#'export/munge-name "Café")))
+    (is (= "naïve" (#'export/munge-name "Naïve")))
+    (is (= "résumé" (#'export/munge-name "Résumé")))
+    (is (= "señor" (#'export/munge-name "Señor")))
+    (is (= "zürich" (#'export/munge-name "Zürich")))
+    (is (= "crème-brûlée" (#'export/munge-name "Crème Brûlée")))))
+
+(deftest munge-name-emoji-test
+  (testing "Emojis should be replaced with hyphens"
+    (is (= "hello-world" (#'export/munge-name "Hello 😀 World")))
+    (is (= "report-2024" (#'export/munge-name "Report 📊 2024")))
+    (is (= "dashboard" (#'export/munge-name "🎯 Dashboard 🎯")))
+    (is (= "sales-data" (#'export/munge-name "Sales 💰 Data")))
+    (is (= "check-this-out" (#'export/munge-name "Check ✅ This ✅ Out")))))
+
+(deftest munge-name-cjk-test
+  (testing "Chinese characters should not be replaced with hyphens"
+    (is (= "用户报告" (#'export/munge-name "用户报告")))
+    (is (= "销售数据-2024" (#'export/munge-name "销售数据 2024")))
+    (is (= "我的仪表板" (#'export/munge-name "我的仪表板"))))
+
+  (testing "Japanese characters should not be replaced with hyphens"
+    (is (= "ユーザーレポート" (#'export/munge-name "ユーザーレポート")))
+    (is (= "売上データ" (#'export/munge-name "売上データ")))
+    (is (= "私のダッシュボード" (#'export/munge-name "私のダッシュボード"))))
+
+  (testing "Korean characters should not be replaced with hyphens"
+    (is (= "사용자-보고서" (#'export/munge-name "사용자 보고서")))
+    (is (= "판매-데이터" (#'export/munge-name "판매 데이터")))
+    (is (= "내-대시보드" (#'export/munge-name "내 대시보드")))))
+
+(deftest munge-name-mixed-test
+  (testing "Mixed scripts and special characters"
+    (is (= "hello-世界" (#'export/munge-name "Hello 世界")))
+    (is (= "café-日本" (#'export/munge-name "Café 日本")))
+    (is (= "report-2024" (#'export/munge-name "Report!!! 2024")))
+    (is (= "my-dashboard" (#'export/munge-name "My---Dashboard")))))
+
+

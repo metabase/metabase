@@ -9,6 +9,7 @@
    [metabase-enterprise.representations.v0.core :as v0]
    [metabase-enterprise.representations.yaml :as rep-yaml]
    [metabase.collections.api :as coll.api]
+   [metabase.util :as mu]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -42,9 +43,28 @@
         (recur (into acc reps) acc))
       acc)))
 
+(defn- munge-name
+  "Convert a name to a filesystem-safe format.
+  - Preserves Unicode letters (including accented characters and CJK)
+  - Preserves numbers
+  - Replaces all other characters (spaces, punctuation, emojis, etc.) with hyphens
+  - Collapses multiple hyphens into one
+  - Removes leading and trailing hyphens
+  - Converts to lowercase"
+  [name]
+  (-> name
+      (str/trim)
+      ;; Replace any sequence of non-letter, non-number characters with a single hyphen
+      ;; This preserves accented characters (é, ñ, ü) and CJK characters
+      ;; while replacing emojis, punctuation, and spaces with hyphens
+      (str/replace #"[^\p{L}\p{N}]+" "-")
+      ;; Remove leading and trailing hyphens
+      (str/replace #"^-+|-+$" "")
+      (mu/lower-case-en)))
+
 (defn ref-from-name
   [reps]
-  (map #(assoc % ::proposed-ref (:display_name %)) reps))
+  (map #(assoc % ::proposed-ref (munge-name (:display_name %))) reps))
 
 (defn add-type
   [reps]
