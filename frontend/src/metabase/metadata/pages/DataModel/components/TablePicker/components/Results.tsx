@@ -27,10 +27,8 @@ const INDENT_OFFSET = 18;
 interface Props {
   items: FlatItem[];
   path: TreePath;
-  reload?: (path: TreePath) => void;
   selectedIndex?: number;
   toggle?: (key: string, value?: boolean) => void;
-  withMassToggle?: boolean;
   onItemClick?: (path: TreePath) => void;
   onSelectedIndexChange?: (index: number) => void;
   onItemToggle?: (item: FlatItem) => void;
@@ -39,10 +37,8 @@ interface Props {
 export function Results({
   items,
   path,
-  reload,
   selectedIndex,
   toggle,
-  withMassToggle,
   onItemClick,
   onSelectedIndexChange,
   onItemToggle,

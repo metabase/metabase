@@ -14,7 +14,7 @@ import type {
   SchemaId,
   TableDataSource,
   TableId,
-  TableVisibilityType2,
+  TableDataLayer,
   UserId,
 } from "metabase-types/api";
 
@@ -37,8 +37,7 @@ export function EditTableMetadataModal({
 }: Props) {
   const [editTables, { isLoading }] = useEditTablesMutation();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
-  const [visibilityType2, setVisibilityType2] =
-    useState<TableVisibilityType2 | null>(null);
+  const [dataLayer, setDataLayer] = useState<TableDataLayer | null>(null);
   const [dataSource, setDataSource] = useState<
     TableDataSource | "unknown" | null
   >(null);
@@ -46,7 +45,7 @@ export function EditTableMetadataModal({
   const [userId, setUserId] = useState<UserId | "unknown" | null>(null);
 
   const reset = () => {
-    setVisibilityType2(null);
+    setDataLayer(null);
     setDataSource(null);
     setEmail(null);
     setUserId(null);
@@ -57,7 +56,7 @@ export function EditTableMetadataModal({
       table_ids: Array.from(tables),
       schema_ids: Array.from(schemas),
       database_ids: Array.from(databases),
-      data_layer: visibilityType2 ?? undefined,
+      data_layer: dataLayer ?? undefined,
       data_source: dataSource === "unknown" ? null : (dataSource ?? undefined),
       owner_email:
         userId === "unknown" || typeof userId === "number"
@@ -84,10 +83,7 @@ export function EditTableMetadataModal({
   };
 
   const disabled =
-    email == null &&
-    dataSource == null &&
-    userId == null &&
-    visibilityType2 == null;
+    email == null && dataSource == null && userId == null && dataLayer == null;
 
   return (
     <Modal
@@ -98,11 +94,7 @@ export function EditTableMetadataModal({
       onClose={handleClose}
     >
       <Stack gap="md" pt="sm">
-        <LayerInput
-          clearable
-          value={visibilityType2}
-          onChange={setVisibilityType2}
-        />
+        <LayerInput clearable value={dataLayer} onChange={setDataLayer} />
 
         <UserInput
           clearable

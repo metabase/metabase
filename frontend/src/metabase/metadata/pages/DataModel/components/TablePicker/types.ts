@@ -68,6 +68,7 @@ type ExpandedItem = Item & {
   parent?: NodeKey;
   level: number;
   disabled?: boolean;
+  isSelected?: "yes" | "no" | "some";
 };
 
 type LoadingItem = {

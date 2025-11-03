@@ -285,9 +285,7 @@ export function Tree({
     <Results
       items={items}
       path={path}
-      reload={reload}
       toggle={toggle}
-      withMassToggle
       onItemClick={onChange}
       onItemToggle={onItemToggle}
     />

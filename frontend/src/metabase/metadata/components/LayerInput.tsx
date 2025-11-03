@@ -3,11 +3,11 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { Group, Icon, Select, SelectItem, type SelectProps } from "metabase/ui";
-import type { TableVisibilityType2 } from "metabase-types/api";
+import type { TableDataLayer } from "metabase-types/api";
 
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
-  value: TableVisibilityType2 | null;
-  onChange: (value: TableVisibilityType2 | null) => void;
+  value: TableDataLayer | null;
+  onChange: (value: TableDataLayer | null) => void;
 }
 
 export const LayerInput = ({
@@ -66,7 +66,7 @@ export const LayerInput = ({
 };
 
 // TODO: remove `string | ` part.
-function getColor(value: string | TableVisibilityType2): string {
+function getColor(value: string | TableDataLayer): string {
   return match(value)
     .with("copper", () => {
       return "#B87333";

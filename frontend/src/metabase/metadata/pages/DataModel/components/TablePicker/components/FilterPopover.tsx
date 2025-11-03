@@ -17,14 +17,14 @@ import {
 } from "metabase/ui";
 import type {
   TableDataSource,
-  TableVisibilityType2,
+  TableDataLayer,
   UserId,
 } from "metabase-types/api";
 
-import { getFiltersCount } from "../../../utils";
+import { getFiltersCount } from "../utils";
 
 export interface FilterState {
-  visibilityType2: TableVisibilityType2 | null;
+  visibilityType2: TableDataLayer | null;
   dataSource: TableDataSource | "unknown" | null;
   ownerEmail: string | null;
   ownerUserId: UserId | "unknown" | null;
