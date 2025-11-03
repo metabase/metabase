@@ -10,16 +10,8 @@ type SetupOpts = {
   children?: ReactNode;
 };
 
-function setup({
-  label = "Default Title",
-  rightSection,
-  children,
-}: SetupOpts = {}) {
-  renderWithProviders(
-    <TitleSection label={label} rightSection={rightSection}>
-      {children}
-    </TitleSection>,
-  );
+function setup({ label = "Default Title", children }: SetupOpts = {}) {
+  renderWithProviders(<TitleSection label={label}>{children}</TitleSection>);
 }
 
 describe("TitleSection", () => {

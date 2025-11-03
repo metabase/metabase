@@ -8,9 +8,8 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import type { TransformJobId } from "metabase-types/api";
 
-import type { JobMoreMenuModalState } from "../../types";
-
 import { DeleteJobModal } from "./DeleteJobModal";
+import type { JobMoreMenuModalState } from "./types";
 
 type JobMoreMenuProps = {
   jobId: TransformJobId;
