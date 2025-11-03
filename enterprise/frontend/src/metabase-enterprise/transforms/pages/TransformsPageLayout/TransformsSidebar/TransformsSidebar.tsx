@@ -19,6 +19,7 @@ import { SHARED_LIB_IMPORT_PATH } from "metabase-enterprise/transforms-python/co
 import { CreateTransformMenu } from "../CreateTransformMenu";
 import { ListEmptyState } from "../ListEmptyState";
 import { SidebarContainer } from "../SidebarContainer";
+import { SidebarLoadingState } from "../SidebarLoadingState";
 import { SidebarSearch } from "../SidebarSearch";
 import {
   SidebarSortControl,
@@ -89,8 +90,8 @@ export const TransformsSidebar = ({
     return item.icon === "table2" ? 52 : 33;
   }, []);
 
-  if (isLoading || error) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  if (error) {
+    return <LoadingAndErrorWrapper loading={false} error={error} />;
   }
 
   return (
@@ -106,7 +107,9 @@ export const TransformsSidebar = ({
         />
       </Flex>
       <Flex direction="column" flex={1} mih={0}>
-        {transformsSorted.length === 0 ? (
+        {isLoading ? (
+          <SidebarLoadingState />
+        ) : transformsSorted.length === 0 ? (
           <ListEmptyState
             label={
               debouncedSearchQuery

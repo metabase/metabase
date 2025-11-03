@@ -76,7 +76,6 @@ export const SidebarSortControl = ({
   return (
     <Group gap="sm" wrap="nowrap">
       <Select
-        size="sm"
         flex={1}
         value={validValue}
         onChange={(value) => {
@@ -90,8 +89,8 @@ export const SidebarSortControl = ({
         (onAdd && (
           <Button
             p="sm"
-            w={36}
-            h={36}
+            w={40}
+            h={40}
             leftSection={<Icon name="add" size={16} />}
             onClick={onAdd}
           />

@@ -13,6 +13,7 @@ import { useListTransformJobsQuery } from "metabase-enterprise/api";
 
 import { ListEmptyState } from "../ListEmptyState";
 import { SidebarContainer } from "../SidebarContainer";
+import { SidebarLoadingState } from "../SidebarLoadingState";
 import { SidebarSearch } from "../SidebarSearch";
 import {
   JOB_SORT_OPTIONS,
@@ -65,8 +66,8 @@ export const JobsSidebar = ({ selectedJobId }: JobsSidebarProps) => {
     dispatch(push(Urls.newTransformJob()));
   };
 
-  if (isLoading || error) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  if (error) {
+    return <LoadingAndErrorWrapper loading={false} error={error} />;
   }
 
   return (
@@ -81,34 +82,38 @@ export const JobsSidebar = ({ selectedJobId }: JobsSidebarProps) => {
           options={JOB_SORT_OPTIONS}
         />
       </Flex>
-      {jobsSorted.length === 0 ? (
-        <ListEmptyState
-          label={debouncedSearchQuery ? t`No jobs found` : t`No jobs yet`}
-        />
-      ) : (
-        <SidebarList>
-          {jobsSorted.map((job) => {
-            const subtitle =
-              job.last_run?.start_time &&
-              `${job.last_run?.status === "failed" ? t`Failed` : t`Last run`}: ${new Date(
-                job.last_run.start_time,
-              ).toLocaleString("en-US", {
-                timeZone: systemTimezone ?? undefined,
-              })}`;
+      <Flex direction="column" flex={1} mih={0}>
+        {isLoading ? (
+          <SidebarLoadingState />
+        ) : jobsSorted.length === 0 ? (
+          <ListEmptyState
+            label={debouncedSearchQuery ? t`No jobs found` : t`No jobs yet`}
+          />
+        ) : (
+          <SidebarList>
+            {jobsSorted.map((job) => {
+              const subtitle =
+                job.last_run?.start_time &&
+                `${job.last_run?.status === "failed" ? t`Failed` : t`Last run`}: ${new Date(
+                  job.last_run.start_time,
+                ).toLocaleString("en-US", {
+                  timeZone: systemTimezone ?? undefined,
+                })}`;
 
-            return (
-              <SidebarListItem
-                key={job.id}
-                icon="play_outlined"
-                href={Urls.transformJob(job.id)}
-                label={job.name}
-                subtitle={subtitle}
-                isActive={job.id === selectedJobId}
-              />
-            );
-          })}
-        </SidebarList>
-      )}
+              return (
+                <SidebarListItem
+                  key={job.id}
+                  icon="play_outlined"
+                  href={Urls.transformJob(job.id)}
+                  label={job.name}
+                  subtitle={subtitle}
+                  isActive={job.id === selectedJobId}
+                />
+              );
+            })}
+          </SidebarList>
+        )}
+      </Flex>
     </SidebarContainer>
   );
 };

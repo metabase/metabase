@@ -26,8 +26,8 @@ export const CreateTransformMenu = () => {
         <Menu.Target>
           <Button
             p="sm"
-            w={36}
-            h={36}
+            w={40}
+            h={40}
             leftSection={<Icon name="add" size={16} />}
           />
         </Menu.Target>
