@@ -1,3 +1,3 @@
-export function bench() {
+export function workbench() {
   return "/bench";
 }

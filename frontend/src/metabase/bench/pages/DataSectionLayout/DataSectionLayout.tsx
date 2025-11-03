@@ -64,9 +64,9 @@ function getTabs(
   return [
     {
       label: t`Data`,
-      to: Urls.bench(),
+      to: Urls.workbench(),
       isSelected:
-        pathname === Urls.bench() || pathname.startsWith(Urls.dataModel()),
+        pathname === Urls.workbench() || pathname.startsWith(Urls.dataModel()),
     },
     {
       label: t`Transforms`,

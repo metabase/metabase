@@ -5,6 +5,7 @@ import _ from "underscore";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
 import { logout } from "metabase/auth/actions";
+import { canAccessWorkbench } from "metabase/bench/selectors";
 import { ErrorDiagnosticModalWrapper } from "metabase/common/components/ErrorPages/ErrorDiagnosticModal";
 import { trackErrorDiagnosticModalOpened } from "metabase/common/components/ErrorPages/analytics";
 import { ForwardRefLink } from "metabase/common/components/Link";
@@ -21,7 +22,6 @@ import { connect, useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { openDiagnostics } from "metabase/redux/app";
 import { setOpenModal } from "metabase/redux/ui";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   getApplicationName,
   getIsWhiteLabeling,
@@ -37,6 +37,7 @@ import { useHelpLink } from "./useHelpLink";
 const mapStateToProps = (state: State) => ({
   adminItems: getAdminPaths(state),
   canAccessOnboardingPage: getCanAccessOnboardingPage(state),
+  canAccessWorkbench: canAccessWorkbench(state),
   isNewInstance: getIsNewInstance(state),
 });
 
@@ -48,6 +49,7 @@ const mapDispatchToProps = {
 interface ProfileLinkProps {
   adminItems: AdminPath[];
   canAccessOnboardingPage: boolean;
+  canAccessWorkbench: boolean;
   isNewInstance: boolean;
   onOpenDiagnostics: () => void;
   onLogout: () => void;
@@ -65,6 +67,7 @@ interface MenuItem {
 function ProfileLinkInner({
   adminItems,
   canAccessOnboardingPage,
+  canAccessWorkbench,
   isNewInstance,
   onLogout,
   onOpenDiagnostics,
@@ -75,7 +78,6 @@ function ProfileLinkInner({
   const { tag, date, ...versionExtra } = version;
   const helpLink = useHelpLink();
   const dispatch = useDispatch();
-  const isAdmin = useSelector(getUserIsAdmin);
 
   const openModal = (modalName: string) => {
     setModalOpen(modalName);
@@ -106,12 +108,12 @@ function ProfileLinkInner({
             },
           ]
         : []),
-      ...(isAdmin
+      ...(canAccessWorkbench
         ? [
             {
               title: t`Data studio`,
               icon: null,
-              link: Urls.bench(),
+              link: Urls.workbench(),
             },
           ]
         : []),
