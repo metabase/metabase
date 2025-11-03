@@ -49,16 +49,16 @@ If you're on a paid plan (Pro, Enterprise, or a trial), Metabase periodically se
 
 The token validation request includes:
 
-- Active user count (used for billing)
-- External user count
-- Internal user count
-- Email domain count
-- Embedded dashboard and question counts
-- Embedding configuration states (static, interactive, SDK, simple)
-- Site UUID
+- Count of active users (used for billing)
+- Count of external users
+- Count of internal users
+- Count of email domains
+- Count of embedded dashboards and questions
+- Embedding configuration states (static, interactive, Embedded analtyics SDK, Embedded analytics JS)
+- Site UUID (just an identifier for your Metabase)
 - Metabase version
 - Query execution timestamp (last UTC day)
-- Metabot usage statistics (tokens, queries, users, and date)
+- Metabot usage statistics: count of tokens, queries, users, and date (just counts and the date).
 
 ## Further reading
 
