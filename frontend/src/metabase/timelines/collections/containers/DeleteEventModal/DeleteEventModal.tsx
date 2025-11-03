@@ -1,4 +1,4 @@
-import { goBack, push } from "react-router-redux";
+import { push } from "react-router-redux";
 import _ from "underscore";
 
 import TimelineEvents from "metabase/entities/timeline-events";
@@ -31,9 +31,6 @@ const mapDispatchToProps = (dispatch: any) => ({
   onSubmit: async (event: TimelineEvent, timeline: Timeline) => {
     await dispatch(TimelineEvents.actions.delete(event));
     dispatch(push(Urls.timelineArchiveInCollection(timeline)));
-  },
-  onCancel: () => {
-    dispatch(goBack());
   },
 });
 

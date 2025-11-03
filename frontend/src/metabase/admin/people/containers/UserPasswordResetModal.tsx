@@ -1,4 +1,3 @@
-import { goBack } from "react-router-redux";
 import { useUnmount } from "react-use";
 import { c, t } from "ttag";
 
@@ -111,7 +110,6 @@ export const UserPasswordResetModal = (props: UserPasswordResetModalProps) => {
       {user && (
         <UserPasswordResetModalInner
           {...props}
-          onClose={() => dispatch(goBack())}
           clearTemporaryPassword={() =>
             dispatch(clearTemporaryPassword(user.id))
           }
