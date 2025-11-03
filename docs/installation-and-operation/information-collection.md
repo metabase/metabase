@@ -41,6 +41,29 @@ If you're self-hosting Metabase, you can opt out of providing us with your anony
 
 If you're in the process of setting up your Metabase, you can also toggle off tracking during the `Usage Data Preferences` onboarding step. We collect a few anonymous events before that point, but won't do so anymore if you choose to opt out.
 
+## Token validation requests for paid plans
+
+If you're on a paid plan (Pro, Enterprise, or a trial), Metabase periodically sends a token validation request to verify your license. This is separate from the anonymous usage data described above.
+
+### Data included in token validation requests
+
+The token validation request includes:
+
+- Active user count (used for billing)
+- External user count
+- Internal user count
+- Email domain count
+- Embedded dashboard and question counts
+- Embedding configuration states (static, interactive, SDK, simple)
+- Site UUID
+- Metabase version
+- Query execution timestamp (last UTC day)
+- Metabot usage statistics (tokens, queries, users, and date)
+
+This data is sent to `token-check.metabase.com` (or `store.metabase.com` as a fallback) to validate your token.
+
+Here's the code for the [token check](https://github.com/metabase/metabase/blob/master/src/metabase/premium_features/token_check.clj).
+
 ## Further reading
 
 Check out our page on [data privacy and security](https://www.metabase.com/security).
