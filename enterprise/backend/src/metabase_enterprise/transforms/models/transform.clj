@@ -223,10 +223,11 @@
   {:copy [:name :description :entity_id]
    :skip [:dependency_analysis_version :source_type]
    :transform {:created_at (serdes/date)
-               :source {:export #(update % :query serdes/export-mbql)
-                        :import #(update % :query serdes/import-mbql)}
-               :target {:export serdes/export-mbql :import serdes/import-mbql}
-               :tags (serdes/nested :model/TransformTransformTag :transform_id opts)}})
+               :creator_id (serdes/fk :model/User)
+               :source     {:export #(update % :query serdes/export-mbql)
+                            :import #(update % :query serdes/import-mbql)}
+               :target     {:export serdes/export-mbql :import serdes/import-mbql}
+               :tags       (serdes/nested :model/TransformTransformTag :transform_id opts)}})
 
 (defmethod serdes/dependencies "Transform"
   [{:keys [source tags]}]
