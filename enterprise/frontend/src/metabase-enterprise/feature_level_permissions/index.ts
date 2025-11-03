@@ -10,13 +10,13 @@ import {
   getDownloadWidgetMessageOverride,
 } from "./query-downloads";
 import {
-  dataModelPermissionAllowedPathGetter,
+  canAccessDataModel,
   databaseManagementPermissionAllowedPathGetter,
   getDataColumns,
 } from "./utils";
 
 if (hasPremiumFeature("advanced_permissions")) {
-  PLUGIN_ADMIN_ALLOWED_PATH_GETTERS.push(dataModelPermissionAllowedPathGetter);
+  PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel = canAccessDataModel;
   PLUGIN_ADMIN_ALLOWED_PATH_GETTERS.push(
     databaseManagementPermissionAllowedPathGetter,
   );

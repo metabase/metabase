@@ -514,7 +514,7 @@ export const PLUGIN_FEATURE_LEVEL_PERMISSIONS = {
   getDataColumns: (_subject: PermissionSubject) => [] as any,
   getDownloadWidgetMessageOverride: (_result: Dataset): string | null => null,
   canDownloadResults: (_result: Dataset): boolean => true,
-  canAccessDataModel: getUserIsAdmin,
+  canAccessDataModel: (state: State): boolean => getUserIsAdmin(state),
   dataModelQueryProps: {} as any,
   databaseDetailsQueryProps: {} as any,
 };
