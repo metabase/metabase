@@ -1802,7 +1802,7 @@ databaseChangeLog:
                   name: ui_display_type
                   remarks: The display type of the schedule, used for the UI only; "cron/raw" or "cron/builder".
                   type: varchar(32)
-                  defaultValue: "cron/raw"
+                  defaultValue: 'cron/raw'
                   constraints:
                     nullable: false
 
@@ -1816,7 +1816,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: ui_display_type
-                  value: "cron/builder"
+                  value: 'cron/builder'
             where: built_in_type IS NOT NULL
       rollback:
         - update:
@@ -1824,7 +1824,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: ui_display_type
-                  value: "cron/raw"
+                  value: 'cron/raw'
             where: built_in_type IS NOT NULL
 
   - changeSet:
