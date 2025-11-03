@@ -7,7 +7,7 @@ const { H } = cy;
 const SOURCE_TABLE = "Animals";
 
 // Helper functions for metabot transform interactions
-const visitTransformListPage = () => cy.visit("/admin/transforms");
+const visitTransformListPage = () => cy.visit("/data-studio/transforms");
 
 const suggestions = () => cy.findAllByTestId("metabot-chat-suggestion");
 // eslint-disable-next-line no-unsafe-element-filtering
@@ -93,7 +93,7 @@ H.describeWithSnowplowEE("scenarios > metabot > transforms codegen", () => {
 
         cy.log("Should be able to visit and the see new transform");
         viewLastSuggestion();
-        cy.url().should("include", "/admin/transforms/new/native");
+        cy.url().should("include", "/data-studio/transforms/new/native");
         assertEditorDiffState({ exists: false }); // nothing to diff, so we shouldn't show the UI for it
         assertEditorContent("native", "SELECT 1");
 
@@ -165,7 +165,7 @@ H.describeWithSnowplowEE("scenarios > metabot > transforms codegen", () => {
 
         cy.log("Should be able to visit and the see new transform");
         viewLastSuggestion();
-        cy.url().should("include", "/admin/transforms/new/python");
+        cy.url().should("include", "/data-studio/transforms/new/python");
         assertEditorDiffState({ exists: false }); // nothing to diff, so we shouldn't show the UI for it
         assertEditorContent("python", "pd.DataFrame({'value': [1]})");
 
