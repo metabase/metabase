@@ -4,7 +4,10 @@ import { t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { PLUGIN_TRANSFORMS } from "metabase/plugins";
+import {
+  PLUGIN_FEATURE_LEVEL_PERMISSIONS,
+  PLUGIN_TRANSFORMS,
+} from "metabase/plugins";
 
 import {
   BenchSectionLayout,
@@ -22,8 +25,13 @@ export function DataSectionLayout({
   location,
   children,
 }: DataSectionLayoutProps) {
-  const hasTransforms = useSelector(PLUGIN_TRANSFORMS.canAccessTransforms);
-  const tabs = getTabs(location, hasTransforms);
+  const canAccessDataModel = useSelector(
+    PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel,
+  );
+  const canAccessTransforms = useSelector(
+    PLUGIN_TRANSFORMS.canAccessTransforms,
+  );
+  const tabs = getTabs(location, { canAccessDataModel, canAccessTransforms });
 
   return (
     <BenchSectionLayout
@@ -40,11 +48,16 @@ export function DataSectionLayout({
   );
 }
 
+type FeatureOptions = {
+  canAccessDataModel: boolean;
+  canAccessTransforms: boolean;
+};
+
 function getTabs(
   { pathname }: Location,
-  hasTransforms: boolean,
+  { canAccessDataModel, canAccessTransforms }: FeatureOptions,
 ): BenchSectionTab[] {
-  if (!hasTransforms) {
+  if (!canAccessDataModel || !canAccessTransforms) {
     return [];
   }
 

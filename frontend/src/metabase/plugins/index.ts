@@ -47,6 +47,7 @@ import {
 } from "metabase/plugins/components/PluginPlaceholder";
 import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
 import type { SearchFilterComponent } from "metabase/search/types";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import { _FileUploadErrorModal } from "metabase/status/components/FileUploadStatusLarge/FileUploadErrorModal";
 import type { IconName, IconProps, StackProps } from "metabase/ui";
 import type { HoveredObject } from "metabase/visualizations/types";
@@ -513,6 +514,7 @@ export const PLUGIN_FEATURE_LEVEL_PERMISSIONS = {
   getDataColumns: (_subject: PermissionSubject) => [] as any,
   getDownloadWidgetMessageOverride: (_result: Dataset): string | null => null,
   canDownloadResults: (_result: Dataset): boolean => true,
+  canAccessDataModel: getUserIsAdmin,
   dataModelQueryProps: {} as any,
   databaseDetailsQueryProps: {} as any,
 };
