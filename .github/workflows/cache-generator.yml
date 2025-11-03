@@ -48,6 +48,7 @@ jobs:
     outputs:
       m2-cache-key: ${{ steps.get-cache-keys.outputs.m2-cache-key }}
       node-cache-key: ${{ steps.get-cache-keys.outputs.node-cache-key }}
+      pyodide-cache-key: ${{ steps.get-cache-keys.outputs.pyodide-cache-key }}
 
   generate-m2-cache:
     runs-on: ubuntu-22.04
