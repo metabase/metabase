@@ -2,6 +2,6 @@ import { Route } from "metabase/hoc/Title";
 
 import { PythonLibraryEditorPage } from "./pages/PythonLibraryEditorPage";
 
-export function getBenchRoutes() {
+export function getPythonLibraryRoutes() {
   return <Route path="library/:path" component={PythonLibraryEditorPage} />;
 }

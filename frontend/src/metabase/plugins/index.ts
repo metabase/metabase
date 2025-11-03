@@ -898,13 +898,15 @@ export type TransformPickerProps = {
 };
 
 export type TransformsPlugin = {
+  canAccessTransforms: (state: State) => boolean;
+  getTransformRoutes(): ReactNode;
   TransformPicker: ComponentType<TransformPickerProps>;
-  getBenchRoutes(): ReactNode;
 };
 
 export const PLUGIN_TRANSFORMS: TransformsPlugin = {
+  canAccessTransforms: () => false,
+  getTransformRoutes: () => null,
   TransformPicker: PluginPlaceholder,
-  getBenchRoutes: () => null,
 };
 
 export const PLUGIN_REMOTE_SYNC: {
@@ -954,21 +956,21 @@ export type PythonTransformEditorProps = {
 
 export type PythonTransformsPlugin = {
   isEnabled: boolean;
-  getBenchRoutes: () => ReactNode;
+  getPythonLibraryRoutes: () => ReactNode;
   TransformEditor: ComponentType<PythonTransformEditorProps>;
   PythonRunnerSettingsPage: ComponentType;
 };
 
 export const PLUGIN_TRANSFORMS_PYTHON: PythonTransformsPlugin = {
   isEnabled: false,
-  getBenchRoutes: () => null,
+  getPythonLibraryRoutes: () => null,
   TransformEditor: PluginPlaceholder,
   PythonRunnerSettingsPage: NotFoundPlaceholder,
 };
 
 type DependenciesPlugin = {
   isEnabled: boolean;
-  getBenchRoutes: () => ReactNode;
+  getDependencyGraphRoutes: () => ReactNode;
   DependencyGraphPage: ComponentType;
   DependencyGraphPageContext: Context<DependencyGraphPageContextType>;
   CheckDependenciesForm: ComponentType<CheckDependenciesFormProps>;
@@ -1030,7 +1032,7 @@ function useCheckDependencies<TChange>({
 
 export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
   isEnabled: false,
-  getBenchRoutes: () => null,
+  getDependencyGraphRoutes: () => null,
   DependencyGraphPage: PluginPlaceholder,
   DependencyGraphPageContext: createContext({}),
   CheckDependenciesForm: PluginPlaceholder,

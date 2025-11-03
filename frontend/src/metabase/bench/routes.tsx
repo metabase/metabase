@@ -12,11 +12,11 @@ export function getBenchRoutes() {
     <Route path="bench" component={BenchLayout}>
       <Route component={DataSectionLayout}>
         {getMetadataRoutes()}
-        {PLUGIN_TRANSFORMS.getBenchRoutes()}
+        {PLUGIN_TRANSFORMS.getTransformRoutes()}
       </Route>
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <Route path="dependencies" component={DependenciesSectionLayout}>
-          {PLUGIN_DEPENDENCIES.getBenchRoutes()}
+          {PLUGIN_DEPENDENCIES.getDependencyGraphRoutes()}
         </Route>
       )}
     </Route>

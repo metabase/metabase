@@ -25,7 +25,7 @@ import { TransformTargetPage } from "./pages/TransformTargetPage";
 import { TransformsSidebarLayout } from "./pages/TransformsPageLayout/TransformsSidebarLayout";
 import { TransformsTopNavLayout } from "./pages/TransformsPageLayout/TransformsTopNavLayout";
 
-export function getBenchRoutes() {
+export function getTransformRoutes() {
   return (
     <Route path="transforms">
       <Route title={t`Transforms`}>
@@ -54,7 +54,7 @@ export function getBenchRoutes() {
               <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
             </Route>
           )}
-          {PLUGIN_TRANSFORMS_PYTHON.getBenchRoutes()}
+          {PLUGIN_TRANSFORMS_PYTHON.getPythonLibraryRoutes()}
         </Route>
       </Route>
     </Route>
