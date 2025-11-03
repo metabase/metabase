@@ -316,6 +316,57 @@
                       :type "card"}]
                     response))))))))
 
+(deftest graph-archived-card-test
+  (testing "GET /api/ee/dependencies/graph with archived parameter"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/Card :model/Dependency]
+        (mt/with-temp [:model/User user {:email "test@test.com"}]
+          (let [base-card (card/create-card! (basic-card "Archived Base Card") user)
+                dependent-card (card/create-card! (wrap-card base-card) user)]
+            (card/update-card! {:card-before-update base-card
+                                :card-updates {:archived true}})
+            (testing "archived=false (default) excludes archived card from dependencies"
+              (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
+                                                   :id (:id dependent-card)
+                                                   :type "card")
+                    node-ids (set (map :id (:nodes response)))]
+                (is (contains? node-ids (:id dependent-card)))
+                (is (not (contains? node-ids (:id base-card))))))
+            (testing "archived=true includes archived card in dependencies"
+              (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
+                                                   :id (:id dependent-card)
+                                                   :type "card"
+                                                   :archived true)
+                    node-ids (set (map :id (:nodes response)))]
+                (is (contains? node-ids (:id dependent-card)))
+                (is (contains? node-ids (:id base-card)))
+                (is (contains? node-ids (mt/id :orders)))))))))))
+
+(deftest dependents-archived-card-test
+  (testing "GET /api/ee/dependencies/graph/dependents with archived parameter"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/Card :model/Dependency]
+        (mt/with-temp [:model/User user {:email "test@test.com"}]
+          (let [base-card (card/create-card! (basic-card "Base Card") user)
+                dependent-card (card/create-card! (wrap-card base-card) user)]
+            (card/update-card! {:card-before-update dependent-card
+                                :card-updates {:archived true}})
+            (testing "archived=false (default) excludes archived dependent"
+              (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
+                                                   :id (:id base-card)
+                                                   :type "card"
+                                                   :dependent_type "card")]
+                (is (empty? response))))
+            (testing "archived=true includes archived dependent"
+              (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
+                                                   :id (:id base-card)
+                                                   :type "card"
+                                                   :dependent_type "card"
+                                                   :dependent_card_type "question"
+                                                   :archived true)
+                    dependent-ids (set (map :id response))]
+                (is (contains? dependent-ids (:id dependent-card)))))))))))
+
 (deftest check-card-permissions-test
   (testing "POST /api/ee/dependencies/check_card requires read permissions on the input card"
     (mt/with-premium-features #{:dependencies}

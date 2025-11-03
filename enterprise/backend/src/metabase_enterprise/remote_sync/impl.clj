@@ -305,6 +305,8 @@
 (defn finish-remote-config!
   "Based on the current configuration, fill in any missing settings and finalize remote sync setup.
 
+  Will attempt, import the remote collection if no remote-collection exists locally or you are in production mode.
+
   Returns the async-task id if an async task was started, otherwise nil."
   []
   (if (settings/remote-sync-enabled)

@@ -1,12 +1,11 @@
 import { t } from "ttag";
 
-import MetabotCloudIcon from "assets/img/metabot-cloud-96x96.svg";
 import { useTokenRefreshUntil } from "metabase/api/utils";
+import { MetabotLogo } from "metabase/common/components/MetabotLogo";
 import {
   Box,
   Button,
   Flex,
-  Image,
   Loader,
   Modal,
   type ModalProps,
@@ -36,8 +35,7 @@ export const MetabotPurchaseSettingUpModal = ({
     >
       <Stack align="center" gap="lg" my="4.5rem">
         <Box h={96} pos="relative" w={96}>
-          <Image src={MetabotCloudIcon} h={96} w={96} alt={t`Metabot Cloud`} />
-
+          <MetabotLogo variant="cloud" alt={t`Metabot Cloud`} />
           {isSettingUp && (
             <Flex
               bottom={0}
