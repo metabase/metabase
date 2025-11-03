@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-956-integration-branch-for-named-theme-editor-for-embedding",
-    "hash": "8f10457e3263feb0d528d04b6c509a3965f2600e"
+    "hash": "89adf23ef79873f2bd90d28cc87676db77aba983"
   },
   "upstream": {
     "branch": "emb-938-crud-api-for-named-themes-on-the-backend"
