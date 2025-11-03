@@ -676,6 +676,7 @@
                      (->
                       (assoc :subprotocol "aws-wrapper:mysql"
                              :classname "software.amazon.jdbc.ds.AwsWrapperDataSource"
+                             :sslMode "VERIFY_CA"
                              :wrapperPlugins "iam")
                       (dissoc :auth-provider :use-auth-provider))
 

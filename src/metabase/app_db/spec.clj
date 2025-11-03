@@ -31,7 +31,8 @@
 (defn- make-aws-iam-spec [subprotocol]
   {:subprotocol (str "aws-wrapper:" subprotocol)
    :classname "software.amazon.jdbc.ds.AwsWrapperDataSource"
-   :wrapperPlugins "iam"})
+   :wrapperPlugins "iam"
+   :useSSL true})
 
 (defmethod spec :postgres
   [_ {:keys [host port db aws-iam]
@@ -57,7 +58,9 @@
     :subprotocol "mysql"
     :subname     (make-subname host (or port 3306) db)}
    (when aws-iam
-     (make-aws-iam-spec "mysql"))
+     (assoc
+      (make-aws-iam-spec "mysql")
+      :sslMode "VERIFY_CA"))
    (dissoc opts :host :port :db)))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

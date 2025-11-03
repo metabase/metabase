@@ -93,6 +93,7 @@
 (defn- env->DataSource
   [db-type {:keys [mb-db-connection-uri mb-db-user mb-db-pass mb-db-azure-managed-identity-client-id], :as env-vars}]
   (if mb-db-connection-uri
+    ;; TODO: aws-iam
     (mdb.data-source/raw-connection-string->DataSource
      mb-db-connection-uri mb-db-user mb-db-pass mb-db-azure-managed-identity-client-id)
     (mdb.data-source/broken-out-details->DataSource db-type (broken-out-details db-type env-vars))))
