@@ -168,6 +168,7 @@ export function TableMetadataSection({ table }: Props) {
           styles={{
             label: {
               gridColumn: 1,
+              fontWeight: "normal",
             },
             input: {
               gridColumn: 2,
@@ -182,6 +183,7 @@ export function TableMetadataSection({ table }: Props) {
           styles={{
             label: {
               gridColumn: 1,
+              fontWeight: "normal",
             },
             input: {
               gridColumn: 2,
@@ -196,6 +198,7 @@ export function TableMetadataSection({ table }: Props) {
           styles={{
             label: {
               gridColumn: 1,
+              fontWeight: "normal",
             },
             input: {
               gridColumn: 2,
@@ -211,6 +214,7 @@ export function TableMetadataSection({ table }: Props) {
           styles={{
             label: {
               gridColumn: 1,
+              fontWeight: "normal",
             },
             input: {
               gridColumn: 2,
