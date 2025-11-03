@@ -119,10 +119,10 @@ export const PublicOrEmbeddedQuestion = ({
     try {
       setResult(null);
 
-      let newResult;
+      let newResult: Dataset | { error: unknown };
       if (token) {
         // embeds apply parameter values server-side
-        newResult = await fetchDataOrError(
+        newResult = (await fetchDataOrError(
           maybeUsePivotEndpoint(
             EmbedApi.cardQuery,
             card,
@@ -133,7 +133,7 @@ export const PublicOrEmbeddedQuestion = ({
               getParameterValuesBySlug(parameters, parameterValues),
             ),
           }),
-        );
+        )) as Dataset | { error: unknown };
       } else if (uuid) {
         // public links currently apply parameters client-side
         const datasetQuery = applyParameters(
@@ -143,7 +143,7 @@ export const PublicOrEmbeddedQuestion = ({
           [],
           { sparse: true },
         );
-        newResult = await fetchDataOrError(
+        newResult = (await fetchDataOrError(
           maybeUsePivotEndpoint(
             PublicApi.cardQuery,
             card,
@@ -152,12 +152,12 @@ export const PublicOrEmbeddedQuestion = ({
             uuid,
             parameters: JSON.stringify(datasetQuery.parameters),
           }),
-        );
+        )) as Dataset | { error: unknown };
       } else {
         throw { status: 404 };
       }
 
-      setResult(newResult);
+      setResult(newResult as Dataset);
     } catch (error) {
       console.error("error", error);
       dispatch(setErrorPage(error));

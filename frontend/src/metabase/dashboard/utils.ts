@@ -276,7 +276,8 @@ export async function fetchDataOrError<T>(dataPromise: Promise<T>) {
       typeof error.status === "number" &&
       error.status >= 400 &&
       error.status < 500 &&
-      "data" in error
+      "data" in error &&
+      typeof error.data === "object"
     ) {
       // Return the error data as if it were a successful response
       return error.data;
