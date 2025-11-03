@@ -15,12 +15,14 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.queries.core :as card]
    [metabase.query-processor :as qp]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.upload.impl-test :as upload-test]
    [metabase.util :as u]
    [metabase.warehouse-schema.api.table :as api.table]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import (java.util.concurrent CountDownLatch TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
@@ -1397,3 +1399,31 @@
           (testing "cards yield equivalent results"
             (is (= (:rows (qp/process-query (lib.limit/limit (:dataset_query table-card) 10)))
                    (:rows (qp/process-query (lib.limit/limit (:dataset_query updated-card) 10)))))))))))
+
+(deftest ^:parallel non-admins-cant-trigger-bulk-sync-test
+  (testing "Non-admins should not be allowed to trigger sync"
+    (is (= "You don't have permissions to do that."
+           (mt/user-http-request :rasta :post 403 "table/sync_schema" {:database_ids [(mt/id)]})))))
+
+(deftest trigger-bulk-metadata-sync-for-table-test
+  ;; lot more to test here but will wait for firmer ground
+  (testing "Can we trigger a metadata sync for a filtered set of tables"
+    (let [tables       (atom [])
+          latch        (CountDownLatch. 4)]
+      (mt/with-temp [:model/Database {d1 :id} {:engine "h2", :details (:details (mt/db))}
+                     :model/Database {d2 :id} {:engine "h2", :details (:details (mt/db))}
+                     :model/Table    {t1 :id} {:db_id d1, :schema "PUBLIC"}
+                     :model/Table    {t2 :id} {:db_id d1, :schema "PUBLIC"}
+                     :model/Table    {t3 :id} {:db_id d2, :schema "PUBLIC"}
+                     :model/Table    {t4 :id} {:db_id d2, :schema "PUBLIC"}
+                     :model/Table    {t5 :id} {:db_id d2, :schema "FOO"}]
+        (with-redefs [sync/sync-table! (fn [table]
+                                         (swap! tables conj table)
+                                         (.countDown latch)
+                                         nil)]
+          (mt/user-http-request :crowberto :post 200 "table/sync_schema" {:database_ids [d1],
+                                                                          :schema_ids   [(format "%d:FOO" d2)]
+                                                                          :table_ids    [t4]}))
+        (testing "sync called?"
+          (is (true? (.await latch 4 TimeUnit/SECONDS)))
+          (is (= [t1 t2 t4 t5] (map :id @tables))))))))

@@ -570,3 +570,38 @@
       (do
         (quick-task/submit-task! #(database-routing/with-database-routing-off (sync/sync-table! table)))
         {:status :ok}))))
+
+(api.macros/defendpoint :post "/sync_schema"
+  "Batch version of /table/:id/sync_schema. Takes an abstract table selection as /table/edit does.
+  - Currently checks policy before returning (so you might receive a 4xx on e.g. AuthZ policy failure)
+  - The sync itself is however, asyncronous. This call may return before all tables synced."
+  [_
+   _
+   body :- ::table-selectors]
+  ;; todo this obviously will not do
+  ;; a. can checks/events/sync be batched
+  ;; b. sync is flakey
+  ;; idea: flag dirty / ready for sync
+  ;;       job comes along and actually performs sync
+  ;;       promise is nothing is done apart from the dirty/queueing with the call (incl authz/event until batchy batchy)
+  (let [tables (t2/select :model/Table {:where (table-selectors->filter body), :order-by [[:id]]})
+        ;; join in clojure, nice, not sure why get-database is important yet, copied from single table sync api
+        db-ids (sort (set (map :db_id tables)))
+        databases (mapv #(warehouses/get-database % {:exclude-uneditable-details? true}) db-ids)
+        db-id->database (u/index-by :id databases)]
+    (doseq [table tables]
+      (api/write-check table)
+      (api/write-check (db-id->database (:db_id table))))
+    (doseq [table tables]
+      (events/publish-event! :event/table-manual-sync {:object table :user-id api/*current-user-id*}))
+    (doseq [database databases]
+      (try
+        (binding [driver.settings/*allow-testing-h2-connections* true]
+          (driver.u/can-connect-with-details? (:engine database) (:details database) :throw-exceptions))
+        nil
+        (catch Throwable e
+          (log/warn (u/format-color :red "Cannot connect to database '%s' in order to sync tables" (:name database)))
+          (throw (ex-info (ex-message e) {:status-code 422})))))
+    (doseq [table tables]
+      (quick-task/submit-task! #(database-routing/with-database-routing-off (sync/sync-table! table))))
+    {:status :ok}))
