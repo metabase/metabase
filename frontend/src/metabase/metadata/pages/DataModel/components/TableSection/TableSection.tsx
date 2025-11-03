@@ -390,32 +390,6 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
       <Box px="xl" pb="xl">
         <TableMetadataSection table={table} />
       </Box>
-      <Box pb="xl" px="xl">
-        <TitledSection title={t`Metadata`}>
-          <LayerInput
-            value={table.data_layer ?? "copper"}
-            onChange={handleLayerChange}
-          />
-
-          <UserInput
-            email={table.owner_email}
-            label={t`Owner`}
-            userId={
-              !table.owner_email && !table.owner_user_id
-                ? "unknown"
-                : table.owner_user_id
-            }
-            onEmailChange={handleOwnerEmailChange}
-            onUserIdChange={handleOwnerUserIdChange}
-          />
-
-          <DataSourceInput
-            transformId={table.transform_id}
-            value={table.data_source ?? "unknown"}
-            onChange={handleDataSourceChange}
-          />
-        </TitledSection>
-      </Box>
 
       <Box
         bg="accent-gray-light"
