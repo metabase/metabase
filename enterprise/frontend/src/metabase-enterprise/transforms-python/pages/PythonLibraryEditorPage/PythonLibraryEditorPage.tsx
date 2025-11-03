@@ -1,13 +1,12 @@
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { t } from "ttag";
 
-import Button from "metabase/common/components/Button";
-import EditBar from "metabase/common/components/EditBar";
+import { BenchHeader } from "metabase/bench/components/BenchHeader";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { isResourceNotFoundError } from "metabase/lib/errors";
 import type * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Box, Flex } from "metabase/ui";
+import { Box, Button, Flex, Group } from "metabase/ui";
 import {
   useGetPythonLibraryQuery,
   useUpdatePythonLibraryMutation,
@@ -68,7 +67,11 @@ export function PythonLibraryEditorPage({
   }
 
   // When the library loads, set the source to the current library source
-  useEffect(handleRevert, [isLoading, error, library]);
+  useLayoutEffect(() => {
+    if (library != null) {
+      setSource(library.source);
+    }
+  }, [library]);
 
   const isDirty = source !== (library?.source ?? EMPTY_LIBRARY_SOURCE);
 
@@ -81,7 +84,7 @@ export function PythonLibraryEditorPage({
   }
 
   return (
-    <Flex h="100%" w="100%" bg="bg-light" gap={0} direction="column">
+    <Flex h="100%" w="100%" gap={0} direction="column">
       <LibraryEditorHeader
         onSave={handleSave}
         onRevert={handleRevert}
@@ -111,30 +114,20 @@ export function LibraryEditorHeader({
   onRevert: () => void;
 }) {
   return (
-    <EditBar
-      title={t`You are editing the shared Python library`}
-      admin
-      data-testid="library-editor-header"
-      buttons={[
-        <Button
-          key="save"
-          onClick={onRevert}
-          primary
-          small
-          disabled={!isDirty || isSaving}
-        >
-          {t`Revert`}
-        </Button>,
-        <Button
-          key="save"
-          onClick={onSave}
-          primary
-          small
-          disabled={!isDirty || isSaving}
-        >
-          {t`Save`}
-        </Button>,
-      ]}
+    <BenchHeader
+      title={<Box fw="bold" fz="h3" lh="h3">{t`Python library`}</Box>}
+      actions={
+        (isDirty || isSaving) && (
+          <Group>
+            <Button disabled={isSaving} onClick={onRevert}>
+              {t`Revert`}
+            </Button>
+            <Button variant="filled" disabled={isSaving} onClick={onSave}>
+              {t`Save`}
+            </Button>
+          </Group>
+        )
+      }
     />
   );
 }
