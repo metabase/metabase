@@ -290,7 +290,7 @@
   [:and
    [:map
     [:name :string]
-    [:type [:enum :number, :string, :date, :datetime, :time, :boolean, :null]]
+    [:type [:enum :number, :string, :date, :datetime, :time, :boolean, nil]]
     [:description {:optional true} [:maybe :string]]
     [:table-reference {:optional true} :string]]
    [:map {:encode/ai-service-request #(set/rename-keys % {:table-reference :table_reference})}]])
