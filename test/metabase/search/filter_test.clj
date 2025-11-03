@@ -25,6 +25,11 @@
 (defn- with-all-models-and-sandboxed-user [search-ctx]
   (with-all-models (assoc search-ctx :is-impersonated-user? false :is-sandboxed-user? true)))
 
+(defn- with-all-models-and-superuser [search-ctx]
+  (-> search-ctx
+      with-all-models-and-regular-user
+      (assoc :is-superuser? true)))
+
 (defn- test-value-for-filter
   "Returns an appropriate test value for each filter type."
   [filter-key]
@@ -60,6 +65,10 @@
   (testing "Indexed entities and transforms (which are admin-only) are not visible for sandboxed users"
     (is (= (disj search.config/all-models "indexed-entity" "transform")
            (search.filter/search-context->applicable-models (with-all-models-and-sandboxed-user {:archived? false})))))
+
+  (testing "All models including transforms are visible for superusers"
+    (is (= search.config/all-models
+           (search.filter/search-context->applicable-models (with-all-models-and-superuser {:archived? false})))))
 
   (doseq [active-filters (active-filter-combinations)]
     (testing (str "Consistent models included when filtering on " (vec active-filters))

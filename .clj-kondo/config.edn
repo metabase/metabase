@@ -902,7 +902,9 @@
   performance-sensitive
   {:linters
    {:discouraged-var
-    {clojure.core/every?          {:message "Use metabase.util.performance/every?"}
+    {clojure.core/empty?          {:message "Use metabase.util.performance/empty?"}
+     clojure.core/not-empty       {:message "Use metabase.util.performance/not-empty"}
+     clojure.core/every?          {:message "Use metabase.util.performance/every?"}
      clojure.core/mapv            {:message "Use metabase.util.performance/mapv"}
      clojure.core/run!            {:message "Use metabase.util.performance/run!"}
      clojure.core/select-keys     {:message "Use metabase.util.performance/select-keys"}
@@ -911,7 +913,9 @@
      clojure.walk/keywordize-keys {:message "Use metabase.util.performance/keywordize-keys"}
      clojure.walk/postwalk        {:message "Use metabase.util.performance/postwalk"}
      clojure.walk/prewalk         {:message "Use metabase.util.performance/prewalk"}
-     clojure.walk/walk            {:message "Use metabase.util.performance/walk"}}}}
+     clojure.walk/walk            {:message "Use metabase.util.performance/walk"}
+     clojure.walk/for             {:message "Use metabase.util.performance/for"}
+     clojure.walk/doseq           {:message "Use metabase.util.performance/doseq"}}}}
 
   qp-and-driver-source-namespaces
   {:linters
