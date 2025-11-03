@@ -26,7 +26,7 @@ function setup({ job = createMockTransformJob(), isError }: SetupOpts = {}) {
   }
 
   renderWithProviders(
-    <DeleteJobModal job={job} onDelete={onDelete} onClose={onClose} />,
+    <DeleteJobModal jobId={job.id} onDelete={onDelete} onClose={onClose} />,
   );
 
   return { onDelete, onClose };

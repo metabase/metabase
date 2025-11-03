@@ -32,6 +32,7 @@ export const JobsSidebar = ({ selectedJobId }: JobsSidebarProps) => {
   const systemTimezone = useSetting("system-timezone");
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery] = useDebouncedValue(searchQuery, 300);
+  // TODO use useUserKeyValue
   const [sortType, setSortType] = useLocalStorage<SortOption>(
     "metabase-jobs-display",
     "alphabetical",

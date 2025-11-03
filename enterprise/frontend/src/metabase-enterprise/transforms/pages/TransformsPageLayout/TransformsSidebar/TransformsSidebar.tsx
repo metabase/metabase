@@ -39,6 +39,7 @@ export const TransformsSidebar = ({
   const dispatch = useDispatch();
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery] = useDebouncedValue(searchQuery, 300);
+  // TODO use useUserKeyValue
   const [sortType = "tree", setSortType] = useLocalStorage<SortOption>(
     "metabase-transforms-display",
   );
