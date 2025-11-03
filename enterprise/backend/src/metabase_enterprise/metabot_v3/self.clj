@@ -4,7 +4,7 @@
   - done: async tool calls appended to the same xf results
   - done: usage tracking - they'll go through and we can do whatever we want later on
   - done: test structured output
-  - add anthropic api support to see how hard is to be heterogeneous
+  - done: add anthropic api support to see how hard is to be heterogeneous
   - figure out what's lacking compared to ai-service"
   (:require
    [clojure.core.async :as a]
@@ -97,6 +97,11 @@
                                                 :period "Q1 2025"}))))
   (def w (into [] (tool-executor-rff TOOLS) q))
   (def e (into [] aisdk-xf w))
+
+  (def q (a/<!! (a/into [] (openai-raw
+                            {:system "You are a data analysis assistant. When users provide time-series data and ask for insights, use the analyze-data-trend tool to generate interpretations. Always call the tool rather than making up your own analysis."
+                             :input [{:role "user" :content "Can you analyze these trends? Revenue for Q1: [50000, 55000, 58000, 62000] and customer count: [100, 110, 105, 115]. What story do these numbers tell?"}]
+                             :tools    (vals metabase-enterprise.metabot-v3.self/TOOLS)}))))
 
   (def q (a/<!! (a/into [] (claude-raw
                             {:input [{:role "user" :content "Can you tell me currencies of three northmost American countries?"}]
