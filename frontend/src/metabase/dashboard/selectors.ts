@@ -183,9 +183,23 @@ export function getDashCardBeforeEditing(state: State, dashcardId: DashCardId) {
 export const getLoadingDashCards = (state: State) =>
   state.dashboard.loadingDashCards;
 
-export const getDashboardById = (state: State, dashboardId: DashboardId) => {
+export const getDashboardById = (
+  state: State,
+  dashboardId: DashboardId,
+): StoreDashboard => {
   const dashboards = getDashboards(state);
-  return dashboards[dashboardId];
+
+  const isEntityId = typeof dashboardId === "string";
+  if (isEntityId) {
+    return isNotNull(
+      Object.values(dashboards).find(
+        (dashboard) => dashboard.entity_id === dashboardId,
+      ),
+    );
+  } else {
+    // Number ID
+    return dashboards[dashboardId];
+  }
 };
 
 export const getDashboardComplete = createSelector(
