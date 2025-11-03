@@ -12,7 +12,7 @@ describe("scenarios > admin > datamodel > segments", () => {
 
   describe("with no segments", () => {
     it("should have 'Custom expression' in a filter list (metabase#13069)", () => {
-      cy.visit("/admin/datamodel/segments");
+      cy.visit("/data-studio/data/segments");
 
       cy.log("should initially show no segments in UI");
       cy.get("main").findByText(
@@ -104,7 +104,7 @@ describe("scenarios > admin > datamodel > segments", () => {
     });
 
     it("should show up in UI list and should show the segment details of a specific id", () => {
-      cy.visit("/admin/datamodel/segments");
+      cy.visit("/data-studio/data/segments");
 
       cy.findByRole("table").within(() => {
         cy.findByText("Filtered by Total is less than 100").should(
@@ -235,7 +235,7 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.log(
         "Make sure revisions are displayed properly in admin table metadata",
       );
-      cy.visit("/admin/datamodel/segments");
+      cy.visit("/data-studio/data/segments");
       cy.get("tr")
         .filter(`:contains(${SEGMENT_NAME})`)
         .icon("ellipsis")
@@ -244,7 +244,7 @@ describe("scenarios > admin > datamodel > segments", () => {
 
       cy.location("pathname").should(
         "eq",
-        "/admin/datamodel/segment/1/revisions",
+        "/data-studio/data/segment/1/revisions",
       );
 
       cy.findByTestId("segment-revisions").within(() => {
@@ -261,7 +261,7 @@ describe("scenarios > admin > datamodel > segments", () => {
         cy.findByRole("link", { name: "Segments" }).click();
       });
 
-      cy.location("pathname").should("eq", "/admin/datamodel/segments");
+      cy.location("pathname").should("eq", "/data-studio/data/segments");
       cy.location("search").should("eq", `?table=${ORDERS_ID}`);
 
       function assertRevisionHistory() {

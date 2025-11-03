@@ -190,7 +190,7 @@ describe("(metabase#46714)", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.visit("/admin/datamodel/segment/create");
+    cy.visit("/data-studio/data/segment/create");
 
     cy.findByTestId("segment-editor").findByText("Select a table").click();
 

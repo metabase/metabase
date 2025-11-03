@@ -199,7 +199,7 @@ describe("issue 52411", { tags: "@external" }, () => {
   });
 
   it("should be able to select a table in a database with multiple schemas on segments list page when there are multiple databases and there is a saved question (metabase#52411)", () => {
-    cy.visit("/admin/datamodel/segments");
+    cy.visit("/data-studio/data/segments");
     cy.findByTestId("segment-list-table").findByText("Filter by table").click();
     H.popover().within(() => {
       cy.findByText("Writable Postgres12").click();
