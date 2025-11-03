@@ -4,11 +4,13 @@ import { push, replace } from "react-router-redux";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getLocation } from "metabase/selectors/routing";
 
+import type { RouteParams } from "../../types";
+
 import { TablePicker } from "./components";
 import type { ChangeOptions, TreePath } from "./types";
 import { getUrl } from "./utils";
 
-export function RouterTablePicker(props: TreePath) {
+export function RouterTablePicker(props: TreePath & { params: RouteParams }) {
   const dispatch = useDispatch();
   const [value, setValue] = useState(props);
   const location = useSelector(getLocation);
@@ -40,15 +42,17 @@ export function RouterTablePicker(props: TreePath) {
     setValue(props);
   }, [props]);
 
-  return <TablePicker path={value} onChange={onChange} />;
+  return <TablePicker path={value} onChange={onChange} params={props} />;
 }
 
 export function UncontrolledTablePicker({
   initialValue,
   onChange,
+  params,
 }: {
   initialValue: TreePath;
   onChange?: (path: TreePath) => void;
+  params: RouteParams;
 }) {
   const [value, setValue] = useState(initialValue);
   const handleChange = useCallback(
@@ -58,5 +62,5 @@ export function UncontrolledTablePicker({
     },
     [onChange],
   );
-  return <TablePicker path={value} onChange={handleChange} />;
+  return <TablePicker path={value} onChange={handleChange} params={params} />;
 }
