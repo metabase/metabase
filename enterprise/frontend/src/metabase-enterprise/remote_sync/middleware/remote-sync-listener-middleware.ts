@@ -12,8 +12,11 @@ import { documentApi } from "metabase-enterprise/api/document";
 import { remoteSyncApi } from "metabase-enterprise/api/remote-sync";
 import type {
   Card,
+  CardId,
   Collection,
+  CollectionId,
   Dashboard,
+  DashboardId,
   Document,
   RemoteSyncTaskStatus,
 } from "metabase-types/api";
@@ -28,34 +31,6 @@ import {
 } from "../sync-task-slice";
 
 export const remoteSyncListenerMiddleware = createListenerMiddleware<State>();
-
-function invalidateRemoteSyncTags(dispatch: any) {
-  dispatch(Api.util.invalidateTags(REMOTE_SYNC_INVALIDATION_TAGS as any));
-}
-
-function shouldInvalidateForEntity(
-  oldEntity: Card | Dashboard | Document | undefined,
-  newEntity: Card | Dashboard | Document,
-): boolean {
-  const oldSynced = oldEntity?.is_remote_synced ?? false;
-  const newSynced = newEntity.is_remote_synced ?? false;
-
-  return oldSynced !== newSynced || newSynced;
-}
-
-function shouldInvalidateForCollection(
-  oldCollection?: Collection,
-  newCollection?: Collection,
-): boolean {
-  if (!newCollection) {
-    return false;
-  }
-
-  const oldType = oldCollection?.type;
-  const newType = newCollection.type;
-
-  return oldType === "remote-synced" || newType === "remote-synced";
-}
 
 remoteSyncListenerMiddleware.startListening({
   matcher: isAnyOf(
@@ -82,7 +57,7 @@ remoteSyncListenerMiddleware.startListening({
     { getOriginalState, dispatch },
   ) => {
     const newCard = action.payload;
-    const oldCard = getOriginalState().entities.questions[newCard.id];
+    const oldCard = getOriginalCard(getOriginalState(), newCard.id);
 
     if (shouldInvalidateForEntity(oldCard, newCard)) {
       invalidateRemoteSyncTags(dispatch);
@@ -97,8 +72,10 @@ remoteSyncListenerMiddleware.startListening({
     { getOriginalState, dispatch },
   ) => {
     const newDashboard = action.payload;
-    const oldDashboard =
-      getOriginalState().entities.dashboards[newDashboard.id];
+    const oldDashboard = getOriginalDashboard(
+      getOriginalState(),
+      newDashboard.id,
+    );
 
     if (shouldInvalidateForEntity(oldDashboard, newDashboard)) {
       invalidateRemoteSyncTags(dispatch);
@@ -113,7 +90,7 @@ remoteSyncListenerMiddleware.startListening({
     { getOriginalState, dispatch },
   ) => {
     const newDocument = action.payload;
-    const oldDocument = getOriginalState().entities.documents[newDocument.id];
+    const oldDocument = getOriginalDocument(getOriginalState(), newDocument.id);
 
     if (shouldInvalidateForEntity(oldDocument, newDocument)) {
       invalidateRemoteSyncTags(dispatch);
@@ -124,13 +101,10 @@ remoteSyncListenerMiddleware.startListening({
 remoteSyncListenerMiddleware.startListening({
   matcher: cardApi.endpoints.deleteCard.matchFulfilled,
   effect: async (action, { getOriginalState, dispatch }) => {
-    const originalState = getOriginalState();
     const id = (action.meta as any).arg.originalArgs as number;
 
     if (id) {
-      const card = cardApi.endpoints.getCard.select({ id })(
-        originalState,
-      )?.data;
+      const card = getOriginalCard(getOriginalState(), id);
 
       if (card?.is_remote_synced) {
         invalidateRemoteSyncTags(dispatch);
@@ -142,13 +116,10 @@ remoteSyncListenerMiddleware.startListening({
 remoteSyncListenerMiddleware.startListening({
   matcher: dashboardApi.endpoints.deleteDashboard.matchFulfilled,
   effect: async (action, { getOriginalState, dispatch }) => {
-    const originalState = getOriginalState();
     const id = (action.meta as any).arg.originalArgs as number;
 
     if (id) {
-      const dashboard = dashboardApi.endpoints.getDashboard.select({ id })(
-        originalState,
-      )?.data;
+      const dashboard = getOriginalDashboard(getOriginalState(), id);
 
       if (dashboard?.is_remote_synced) {
         invalidateRemoteSyncTags(dispatch);
@@ -160,13 +131,10 @@ remoteSyncListenerMiddleware.startListening({
 remoteSyncListenerMiddleware.startListening({
   matcher: documentApi.endpoints.deleteDocument.matchFulfilled,
   effect: async (action, { getOriginalState, dispatch }) => {
-    const originalState = getOriginalState();
     const id = (action.meta as any).arg.originalArgs as number;
 
     if (id) {
-      const document = documentApi.endpoints.getDocument.select({ id })(
-        originalState as any,
-      )?.data;
+      const document = getOriginalDocument(getOriginalState(), id);
 
       if (document?.is_remote_synced) {
         invalidateRemoteSyncTags(dispatch);
@@ -193,7 +161,7 @@ remoteSyncListenerMiddleware.startListening({
     { getOriginalState, dispatch },
   ) => {
     const newCollection = action.payload;
-    const oldCollection = getCollectionFromCollectionsTree(
+    const oldCollection = getOriginalCollection(
       getOriginalState(),
       newCollection.id,
     );
@@ -207,15 +175,15 @@ remoteSyncListenerMiddleware.startListening({
 remoteSyncListenerMiddleware.startListening({
   matcher: collectionApi.endpoints.deleteCollection.matchFulfilled,
   effect: async (action, { getOriginalState, dispatch }) => {
-    const originalState = getOriginalState();
     const deleteRequest = (action.meta as any).arg.originalArgs as {
       id: number;
     };
 
     if (deleteRequest?.id) {
-      const collection = collectionApi.endpoints.getCollection.select({
-        id: deleteRequest.id,
-      })(originalState)?.data;
+      const collection = getOriginalCollection(
+        getOriginalState(),
+        deleteRequest.id,
+      );
 
       if (collection?.type === "remote-synced") {
         invalidateRemoteSyncTags(dispatch);
@@ -346,3 +314,47 @@ remoteSyncListenerMiddleware.startListening({
     }
   },
 });
+
+const invalidateRemoteSyncTags = (dispatch: any) => {
+  dispatch(Api.util.invalidateTags(REMOTE_SYNC_INVALIDATION_TAGS as any));
+};
+
+const shouldInvalidateForEntity = (
+  oldEntity: Card | Dashboard | Document | undefined,
+  newEntity: Card | Dashboard | Document,
+): boolean => {
+  const oldSynced = oldEntity?.is_remote_synced ?? false;
+  const newSynced = newEntity.is_remote_synced ?? false;
+
+  return oldSynced !== newSynced || newSynced;
+};
+
+const shouldInvalidateForCollection = (
+  oldCollection?: Collection,
+  newCollection?: Collection,
+): boolean => {
+  if (!newCollection) {
+    return false;
+  }
+
+  const oldType = oldCollection?.type;
+  const newType = newCollection.type;
+
+  return oldType === "remote-synced" || newType === "remote-synced";
+};
+
+const getOriginalDocument = (originalState: State, id: number) =>
+  documentApi.endpoints.getDocument.select({ id })(originalState as any)
+    ?.data || originalState.entities.documents[id];
+
+const getOriginalDashboard = (originalState: State, id: DashboardId) =>
+  dashboardApi.endpoints.getDashboard.select({ id })(originalState as any)
+    ?.data || originalState.entities.dashboards[id];
+
+const getOriginalCard = (originalState: State, id: CardId) =>
+  cardApi.endpoints.getCard.select({ id })(originalState as any)?.data ||
+  originalState.entities.questions[id];
+
+const getOriginalCollection = (originalState: State, id: CollectionId) =>
+  collectionApi.endpoints.getCollection.select({ id })(originalState)?.data ||
+  getCollectionFromCollectionsTree(originalState, id);
