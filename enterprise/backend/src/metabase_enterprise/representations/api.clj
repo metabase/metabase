@@ -161,7 +161,8 @@
                        (export/export-set)
                        (reduce-tables)
                        (v0-common/order-representations)
-                       (reverse))
+                       (reverse)
+                       (export/rename-refs export/ref-from-name export/standard-ref-strategies export/add-sequence-number))
         export-set (mapv #(dissoc % :entity_id :entity-id) export-set)
         clean-yamls (mapv v0-common/cleanup-delete-before-output export-set)
         export-yamls (mapv rep-yaml/generate-string clean-yamls)]
