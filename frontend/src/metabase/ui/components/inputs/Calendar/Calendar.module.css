@@ -6,8 +6,8 @@
   line-height: 24px;
   border-radius: var(--mantine-radius-xs);
 
-  &:hover {
-    background-color: var(--mb-color-bg-light);
+  [data-mantine-color-scheme] &:hover {
+    background-color: var(--mb-color-background-hover);
   }
 
   &[data-disabled] {

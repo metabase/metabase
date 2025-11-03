@@ -10,7 +10,7 @@
   the move to MBQL 5 in the app DB and over the wire -- any new MBQL clauses should only get added to the MBQL 5
   schema in [[metabase.lib.schema]] going forward. We don't want to have to add things to two places for the rest of
   our lives; it's ok if MBQL 4 doesn't support some new features."
-  (:refer-clojure :exclude [every? select-keys #?(:clj doseq) some mapv update-keys])
+  (:refer-clojure :exclude [every? select-keys #?(:clj doseq) some mapv update-keys empty? not-empty])
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -39,7 +39,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :as perf :refer [every? select-keys #?(:clj doseq) some mapv update-keys]]
+   [metabase.util.performance :as perf :refer [every? select-keys #?(:clj doseq) some mapv update-keys empty? not-empty]]
    [metabase.util.time :as u.time]))
 
 ;; A NOTE ABOUT METADATA:
