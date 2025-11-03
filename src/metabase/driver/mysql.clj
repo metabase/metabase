@@ -227,7 +227,9 @@
     (assoc driver.common/default-port-details :placeholder 3306)
     driver.common/default-dbname-details
     driver.common/default-user-details
-    driver.common/default-password-details
+    driver.common/auth-provider-options-only-aws
+    (assoc driver.common/default-password-details
+           :visible-if {"use-auth-provider" false})
     driver.common/default-role-details
     driver.common/cloud-ip-address-info
     driver.common/default-ssl-details
@@ -651,12 +653,13 @@
       (set-prog-nm-fn)))) ; additional-options did not contain connectionAttributes at all; set it
 
 (defmethod sql-jdbc.conn/connection-details->spec :mysql
-  [_ {ssl? :ssl, :keys [additional-options ssl-cert], :as details}]
+  [_ {ssl? :ssl, :keys [additional-options ssl-cert auth-provider], :as details}]
   ;; In versions older than 0.32.0 the MySQL driver did not correctly save `ssl?` connection status. Users worked
   ;; around this by including `useSSL=true`. Check if that's there, and if it is, assume SSL status. See #9629
   ;;
   ;; TODO - should this be fixed by a data migration instead?
   (let [addl-opts-map (sql-jdbc.common/additional-options->map additional-options :url "=" false)
+        use-iam?      (= (some-> auth-provider keyword) :aws-iam)
         ssl?          (or ssl? (= "true" (get addl-opts-map "useSSL")))
         ssl-cert?     (and ssl? (some? ssl-cert))]
     (when (and ssl? (not (contains? addl-opts-map "trustServerCertificate")))
@@ -665,9 +668,20 @@
      default-connection-args
      ;; newer versions of MySQL will complain if you don't specify this when not using SSL
      {:useSSL (boolean ssl?)}
-     (let [details (-> (if ssl-cert? (set/rename-keys details {:ssl-cert :serverSslCert}) details)
-                       (set/rename-keys {:dbname :db})
-                       (dissoc :ssl))]
+     (let [details (cond-> details
+                     ssl-cert?
+                     (set/rename-keys {:ssl-cert :serverSslCert})
+
+                     use-iam?
+                     (->
+                      (assoc :subprotocol "aws-wrapper:mysql"
+                             :classname "software.amazon.jdbc.ds.AwsWrapperDataSource"
+                             :wrapperPlugins "iam")
+                      (dissoc :auth-provider :use-auth-provider))
+
+                     true
+                     (-> (set/rename-keys {:dbname :db})
+                         (dissoc :ssl)))]
        (-> (driver-api/spec :mysql details)
            (maybe-add-program-name-option addl-opts-map)
            (sql-jdbc.common/handle-additional-options details))))))

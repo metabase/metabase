@@ -28,6 +28,11 @@
   [host port db]
   (str "//" (when-not (str/blank? host) (str host ":" port)) (if-not (str/blank? db) (str "/" db) "/")))
 
+(defn- make-aws-iam-spec [subprotocol]
+  {:subprotocol (str "aws-wrapper:" subprotocol)
+   :classname "software.amazon.jdbc.ds.AwsWrapperDataSource"
+   :wrapperPlugins "iam"})
+
 (defmethod spec :postgres
   [_ {:keys [host port db aws-iam]
       :or   {host "localhost", port 5432, db ""}
@@ -40,19 +45,19 @@
     :OpenSourceSubProtocolOverride true
     :ApplicationName               config/mb-version-and-process-identifier}
    (when aws-iam
-     {:subprotocol "aws-wrapper:postgresql"
-      :classname "software.amazon.jdbc.ds.AwsWrapperDataSource"
-      :wrapperPlugins "iam"})
+     (make-aws-iam-spec "postgresql"))
    (dissoc opts :host :port :db)))
 
 (defmethod spec :mysql
-  [_ {:keys [host port db]
+  [_ {:keys [host port db aws-iam]
       :or   {host "localhost", port 3306, db ""}
       :as   opts}]
   (merge
    {:classname   "org.mariadb.jdbc.Driver"
     :subprotocol "mysql"
     :subname     (make-subname host (or port 3306) db)}
+   (when aws-iam
+     (make-aws-iam-spec "mysql"))
    (dissoc opts :host :port :db)))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
