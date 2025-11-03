@@ -8,7 +8,7 @@ interface SidebarContainerProps {
 
 export const SidebarContainer = ({ children }: SidebarContainerProps) => {
   return (
-    <Flex direction="column" w={360} p="md" gap="md" className={S.root}>
+    <Flex direction="column" w={360} h="100%" className={S.root}>
       {children}
     </Flex>
   );
