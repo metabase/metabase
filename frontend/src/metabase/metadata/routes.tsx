@@ -10,9 +10,9 @@ import { DataModel } from "./pages/DataModel";
 
 export function getMetadataRoutes() {
   return (
-    <Route>
+    <Route title={t`Data`}>
       <IndexRoute component={DataModel} />
-      <Route path="data" title={t`Data`}>
+      <Route path="data">
         <IndexRoute component={DataModel} />
         <Route path="database" component={DataModel} />
         <Route path="database/:databaseId" component={DataModel} />

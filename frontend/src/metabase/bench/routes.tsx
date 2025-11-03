@@ -1,5 +1,4 @@
-import { Route } from "react-router";
-
+import { Route } from "metabase/hoc/Title";
 import { getMetadataRoutes } from "metabase/metadata/routes";
 import { PLUGIN_DEPENDENCIES, PLUGIN_TRANSFORMS } from "metabase/plugins";
 
@@ -15,7 +14,11 @@ export function getWorkbenchRoutes() {
         {PLUGIN_TRANSFORMS.getTransformRoutes()}
       </Route>
       {PLUGIN_DEPENDENCIES.isEnabled && (
-        <Route path="dependencies" component={DependenciesSectionLayout}>
+        <Route
+          title={`Dependency graph`}
+          path="dependencies"
+          component={DependenciesSectionLayout}
+        >
           {PLUGIN_DEPENDENCIES.getDependencyGraphRoutes()}
         </Route>
       )}

@@ -27,35 +27,33 @@ import { TransformsTopNavLayout } from "./pages/TransformsPageLayout/TransformsT
 
 export function getTransformRoutes() {
   return (
-    <Route path="transforms">
-      <Route title={t`Transforms`}>
-        <Route path="runs" component={TransformsTopNavLayout}>
-          <IndexRoute component={RunListPage} />
-        </Route>
-        <Route component={TransformsSidebarLayout}>
-          <IndexRoute component={TransformEmptyPage} />
-          <Route path="jobs" component={JobEmptyPage} />
-          <Route path="jobs/new" component={NewJobPage} />
-          <Route path="jobs/:jobId" component={JobPage} />
-          <Route path="new/query" component={NewQueryTransformPage} />
-          <Route path="new/native" component={NewNativeTransformPage} />
-          <Route path="new/card/:cardId" component={NewCardTransformPage} />
-          {PLUGIN_TRANSFORMS_PYTHON.isEnabled && (
-            <Route path="new/python" component={NewPythonTransformPage} />
-          )}
-          <Route path=":transformId" component={TransformQueryPage} />
-          <Route path=":transformId/run" component={TransformRunPage} />
-          <Route path=":transformId/target" component={TransformTargetPage} />
-          {PLUGIN_DEPENDENCIES.isEnabled && (
-            <Route
-              path=":transformId/dependencies"
-              component={TransformDependenciesPage}
-            >
-              <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
-            </Route>
-          )}
-          {PLUGIN_TRANSFORMS_PYTHON.getPythonLibraryRoutes()}
-        </Route>
+    <Route title={t`Transforms`} path="transforms">
+      <Route path="runs" component={TransformsTopNavLayout}>
+        <IndexRoute component={RunListPage} />
+      </Route>
+      <Route component={TransformsSidebarLayout}>
+        <IndexRoute component={TransformEmptyPage} />
+        <Route path="jobs" component={JobEmptyPage} />
+        <Route path="jobs/new" component={NewJobPage} />
+        <Route path="jobs/:jobId" component={JobPage} />
+        <Route path="new/query" component={NewQueryTransformPage} />
+        <Route path="new/native" component={NewNativeTransformPage} />
+        <Route path="new/card/:cardId" component={NewCardTransformPage} />
+        {PLUGIN_TRANSFORMS_PYTHON.isEnabled && (
+          <Route path="new/python" component={NewPythonTransformPage} />
+        )}
+        <Route path=":transformId" component={TransformQueryPage} />
+        <Route path=":transformId/run" component={TransformRunPage} />
+        <Route path=":transformId/target" component={TransformTargetPage} />
+        {PLUGIN_DEPENDENCIES.isEnabled && (
+          <Route
+            path=":transformId/dependencies"
+            component={TransformDependenciesPage}
+          >
+            <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
+          </Route>
+        )}
+        {PLUGIN_TRANSFORMS_PYTHON.getPythonLibraryRoutes()}
       </Route>
     </Route>
   );

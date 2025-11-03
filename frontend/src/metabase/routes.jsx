@@ -367,11 +367,7 @@ export const getRoutes = (store) => {
           {getAdminRoutes(store, CanAccessSettings, IsAdmin)}
 
           {/* ANALYST WORKBENCH */}
-          <Route
-            path="bench"
-            title={t`Data studio`}
-            component={CanAccessWorkbench}
-          >
+          <Route path="bench" component={CanAccessWorkbench}>
             {getWorkbenchRoutes()}
           </Route>
         </Route>
