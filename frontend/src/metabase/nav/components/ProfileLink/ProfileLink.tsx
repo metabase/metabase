@@ -60,7 +60,6 @@ interface MenuItem {
   link?: string;
   action?: () => void;
   separator?: boolean;
-  event?: string;
 }
 
 function ProfileLinkInner({
@@ -97,37 +96,48 @@ function ProfileLinkInner({
         title: t`Account settings`,
         icon: null,
         link: Urls.accountSettings(),
-        event: `Navbar;Profile Dropdown;Edit Profile`,
       },
-      showAdminSettingsItem && {
-        title: t`Admin settings`,
-        icon: null,
-        link: "/admin",
-        event: `Navbar;Profile Dropdown;Enter Admin`,
-      },
-      isAdmin && {
-        title: t`Workbench`,
-        icon: null,
-        link: Urls.bench(),
-        event: `Navbar;Profile Dropdown;Enter workbench`,
-      },
+      ...(showAdminSettingsItem
+        ? [
+            {
+              title: t`Admin settings`,
+              icon: null,
+              link: "/admin",
+            },
+          ]
+        : []),
+      ...(isAdmin
+        ? [
+            {
+              title: t`Data studio`,
+              icon: null,
+              link: Urls.dataStudio(),
+            },
+          ]
+        : []),
       {
         separator: true,
       },
-      helpLink.visible && {
-        title: t`Help`,
-        icon: null,
-        link: helpLink.href,
-        externalLink: true,
-        event: `Navbar;Profile Dropdown;About ${tag}`,
-      },
-      showOnboardingLink && {
-        // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for non-whitelabeled instances
-        title: t`How to use Metabase`,
-        icon: null,
-        link: "/getting-started",
-        event: `Navbar;Profile Dropdown;Getting Started`,
-      },
+      ...(helpLink.visible
+        ? [
+            {
+              title: t`Help`,
+              icon: null,
+              link: helpLink.href,
+              externalLink: true,
+            },
+          ]
+        : []),
+      ...(showOnboardingLink
+        ? [
+            {
+              // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for non-whitelabeled instances
+              title: t`How to use Metabase`,
+              icon: null,
+              link: "/getting-started",
+            },
+          ]
+        : []),
       {
         title: t`Keyboard shortcuts`,
         icon: null,
@@ -140,13 +150,11 @@ function ProfileLinkInner({
           trackErrorDiagnosticModalOpened("profile-menu");
           onOpenDiagnostics();
         },
-        event: `Navbar;Profile Dropdown;Report Bug`,
       },
       {
         title: t`About ${applicationName}`,
         icon: null,
         action: () => openModal("about"),
-        event: `Navbar;Profile Dropdown;About ${tag}`,
       },
       {
         separator: true,
@@ -155,9 +163,8 @@ function ProfileLinkInner({
         title: t`Sign out`,
         icon: null,
         action: () => onLogout(),
-        event: `Navbar;Profile Dropdown;Logout`,
       },
-    ].filter((item) => !!item);
+    ];
   };
 
   // show trademark if application name is not whitelabeled

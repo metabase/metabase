@@ -30,7 +30,7 @@ export function BenchSectionLayout({
           {tabs}
         </Stack>
         <Button my="md" component={Link} to="/">
-          {t`Exit workbench`}
+          {t`Exit data studio`}
         </Button>
       </Group>
       <Box flex={1} mih={0}>
