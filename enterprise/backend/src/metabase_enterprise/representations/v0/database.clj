@@ -102,7 +102,7 @@
 
 (defn export-database
   "Export a Database Toucan entity to a v0 database representation."
-  [database]
+  [database _resolve]
   (let [ref (v0-common/unref (v0-common/->ref (:id database) :database))]
     (-> (ordered-map
          :name ref

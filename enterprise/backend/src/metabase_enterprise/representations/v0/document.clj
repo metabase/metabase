@@ -70,13 +70,13 @@
         (first (t2/insert-returning-instances! :model/Document document-data))))))
 
 (defn- patch-refs-for-export
-  [yaml]
+  [yaml resolve]
   (walk/postwalk
    (fn [node]
      (if-not (and (map? node)
                   (= "cardEmbed" (:type node)))
        node
-       (update-in node [:attrs :id] v0-mbql/id->card-ref)))
+       (update-in node [:attrs :id] resolve :model/Card)))
    yaml))
 
 (defn- edn->markdown
@@ -104,9 +104,9 @@
 
 (defn export-document
   "Export a Document Toucan entity to a v0 document representation."
-  [document]
+  [document resolve]
   (let [document-ref (v0-common/unref (v0-common/->ref (:id document) :document))
-        document (patch-refs-for-export document)
+        document (patch-refs-for-export document resolve)
         doc-content (let [doc (:document document)]
                       (cond
                         (nil? doc)

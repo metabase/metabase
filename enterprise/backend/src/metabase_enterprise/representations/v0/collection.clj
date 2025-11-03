@@ -76,11 +76,11 @@
 
 (defn export-collection
   "Export a Collection Toucan entity to a v0 collection representation."
-  [t2-collection]
+  [t2-collection _resolve]
   (-> {:type :collection
        :version :v0
        :name (format "%s-%s" "collection" (:id t2-collection))
        :display_name (:name t2-collection)
        :description (:description t2-collection)
-       :children (children t2-collection)}
+       :children (children t2-collection)} ;; todo: where's the other collection exporter?
       u/remove-nils))

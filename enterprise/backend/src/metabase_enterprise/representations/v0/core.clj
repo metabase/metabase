@@ -6,7 +6,6 @@
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.v0.database :as v0-database]
    [metabase-enterprise.representations.v0.document :as v0-document]
-   [metabase-enterprise.representations.v0.mbql :as v0-mbql]
    [metabase-enterprise.representations.v0.metric :as v0-metric]
    [metabase-enterprise.representations.v0.model :as v0-model]
    [metabase-enterprise.representations.v0.question :as v0-question]
@@ -27,21 +26,19 @@
     :transform v0-transform/toucan-model))
 
 (defn export-entity
-  "Export the Toucan entity to a v0 representation."
-  [t2-entity]
-  (case (v0-common/representation-type t2-entity)
-    :collection (v0-coll/export-collection t2-entity)
-    :database (v0-database/export-database t2-entity)
-    :document (v0-document/export-document t2-entity)
-    :metric (v0-metric/export-metric t2-entity)
-    :model (v0-model/export-model t2-entity)
-    :question (v0-question/export-question t2-entity)
-    :snippet (v0-snippet/export-snippet t2-entity)
-    :transform (v0-transform/export-transform t2-entity)))
+  "Export the Toucan entity to a v0 representation.
 
-(defmethod v0-mbql/export-entity :default
-  [t2-entity]
-  (export-entity t2-entity))
+  resolve is a function that takes id and toucan model name and returns a ref"
+  [t2-entity resolve]
+  (case (v0-common/representation-type t2-entity)
+    :collection (v0-coll/export-collection     t2-entity resolve)
+    :database   (v0-database/export-database   t2-entity resolve)
+    :document   (v0-document/export-document   t2-entity resolve)
+    :metric     (v0-metric/export-metric       t2-entity resolve)
+    :model      (v0-model/export-model         t2-entity resolve)
+    :question   (v0-question/export-question   t2-entity resolve)
+    :snippet    (v0-snippet/export-snippet     t2-entity resolve)
+    :transform  (v0-transform/export-transform t2-entity resolve)))
 
 (defn yaml->toucan
   "Convert a v0 representation into data suitable for creating/updating an entity."
@@ -72,9 +69,9 @@
 (defn insert!
   "Insert a v0 representation as a new entity."
   [representation ref-index]
-  (if (identical? :transform (:type representation))
-    (v0-transform/insert! representation ref-index)
-    ;; Everything else is simple:
+  (case (:type representation)
+    :transform (v0-transform/insert! representation ref-index)
+    ;; default
     (let [model (toucan-model (:type representation))
           toucan (->> (yaml->toucan representation ref-index)
                       (rep-t2/with-toucan-defaults model))]
@@ -83,8 +80,9 @@
 (defn update!
   "Update an existing v0 entity from a representation."
   [representation id ref-index]
-  (if (identical? :transform (:type representation))
-    (v0-transform/update! representation id ref-index)
+  (case (:type representation)
+    :transform (v0-transform/update! representation id ref-index)
+    ;; default
     (let [model (toucan-model (:type representation))
           toucan (yaml->toucan representation ref-index)]
       (t2/update! model id toucan)

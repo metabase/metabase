@@ -103,7 +103,7 @@
 
 (defn export-model
   "Export a Model Card Toucan entity to a v0 model representation."
-  [card]
+  [card resolve]
   (let [card-ref (v0-common/unref (v0-common/->ref (:id card) :model))
         columns (when-let [result-metadata (:result_metadata card)]
                   (seq (mapv extract-user-editable-column-metadata result-metadata)))]
@@ -113,6 +113,6 @@
           :version :v0
           :display_name (:name card)
           :description (:description card)})
-        (merge (v0-mbql/export-dataset-query (:dataset_query card)))
+        (merge (v0-mbql/export-dataset-query (:dataset_query card) resolve))
         (assoc :columns columns)
         u/remove-nils)))

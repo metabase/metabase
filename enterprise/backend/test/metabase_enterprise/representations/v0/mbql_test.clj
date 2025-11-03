@@ -27,4 +27,5 @@
     ;; make sure we can get the query of any existing cards
   (doseq [card (t2/select :model/Card)]
     (let [query (v0-mbql/export-dataset-query (:dataset_query card))]
-      (is (:database query)))))
+      (is (:database query))
+      (is (:query query)))))

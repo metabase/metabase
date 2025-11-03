@@ -46,14 +46,15 @@
 (defn- template-tag-ref
   "Given a template tag map, return its ref string."
   [template-tag]
-  (let [type (:type template-tag)]
-    (cond (= type :snippet) (v0-common/->ref (:snippet-id template-tag) :snippet)
-          (= type :card) (v0-common/->ref (:card-id template-tag) :card)
-          :else (throw (ex-info "Unknown template tag type" {:template-tag template-tag})))))
+  (case (:type template-tag)
+    :snippet (v0-common/->ref (:snippet-id template-tag) :snippet)
+    :card    (v0-common/->ref (:card-id    template-tag) :card)
+    (throw (ex-info (str "Unknown template tag type " (:type template-tag))
+                    {:template-tag template-tag}))))
 
 (defn export-snippet
   "Export a NativeQuerySnippet Toucan entity to a v0 snippet representation."
-  [snippet]
+  [snippet _resolve]
   (let [snippet-ref (v0-common/unref (v0-common/->ref (:id snippet) :snippet))
         template-tags (into {}
                             (comp

@@ -51,7 +51,7 @@
 
 (defn export-question
   "Export a Question Card Toucan entity to a v0 question representation."
-  [card]
+  [card resolve]
   (let [card-ref (v0-common/unref (v0-common/->ref (:id card) :question))]
     (-> (ordered-map
          :name card-ref
@@ -59,5 +59,5 @@
          :version :v0
          :display_name (:name card)
          :description (:description card))
-        (merge (v0-mbql/export-dataset-query (:dataset_query card)))
+        (merge (v0-mbql/export-dataset-query (:dataset_query card) resolve))
         u/remove-nils)))

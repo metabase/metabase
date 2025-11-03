@@ -99,8 +99,8 @@
 
 (defn export-transform
   "Export a Transform Toucan entity to a v0 transform representation."
-  [transform]
-  (let [query (v0-mbql/export-dataset-query (-> transform :source :query))]
+  [transform resolve]
+  (let [query (v0-mbql/export-dataset-query (-> transform :source :query) resolve)]
     (cond-> (ordered-map
              :name (v0-common/unref (v0-common/->ref (:id transform) :transform))
              :type :transform
