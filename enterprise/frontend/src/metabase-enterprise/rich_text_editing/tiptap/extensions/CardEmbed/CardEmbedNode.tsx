@@ -45,9 +45,6 @@ import {
 import { getListCommentsQuery } from "metabase-enterprise/documents/utils/api";
 import { usePublicDocumentContext } from "metabase-enterprise/public/contexts/PublicDocumentContext";
 import { usePublicDocumentCardData } from "metabase-enterprise/public/hooks/use-public-document-card-data";
-import { useDndHelpers } from "metabase-enterprise/rich_text_editing/tiptap/extensions/CardEmbed/use-dnd-helpers.hook";
-import { useUpdateCardOperations } from "metabase-enterprise/rich_text_editing/tiptap/extensions/CardEmbed/use-update-card-operations.hook";
-import { getEmbedIndex } from "metabase-enterprise/rich_text_editing/tiptap/extensions/CardEmbed/utils";
 import Question from "metabase-lib/v1/Question";
 import { getUrl } from "metabase-lib/v1/urls";
 import type { CardDisplayType, Dataset } from "metabase-types/api";
@@ -64,6 +61,9 @@ import styles from "./CardEmbedNode.module.css";
 import { ModifyQuestionModal } from "./ModifyQuestionModal";
 import { NativeQueryModal } from "./NativeQueryModal";
 import { PublicDocumentCardMenu } from "./PublicDocumentCardMenu";
+import { useDndHelpers } from "./use-dnd-helpers";
+import { useUpdateCardOperations } from "./use-update-card-operations";
+import { getEmbedIndex } from "./utils";
 
 interface CardEmbedMenuContext {
   canWrite: boolean;
