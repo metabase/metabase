@@ -8,7 +8,7 @@ import {
   SIDEBAR_NAME,
 } from "metabase/dashboard/constants";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { isNotNull } from "metabase/lib/types";
+import { checkNotNull, isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import {
   getDashboardQuestions,
@@ -191,7 +191,7 @@ export const getDashboardById = (
 
   const isEntityId = typeof dashboardId === "string";
   if (isEntityId) {
-    return isNotNull(
+    return checkNotNull(
       Object.values(dashboards).find(
         (dashboard) => dashboard.entity_id === dashboardId,
       ),
