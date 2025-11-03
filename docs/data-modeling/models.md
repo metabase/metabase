@@ -141,21 +141,18 @@ You can customize how the data appears by clicking **Customize the List layout**
 
 Each item in the list has:
 
-- An entity icon
-- A left column with:
-  - The title or primary identifier on top.
-  - A subtitle/description or secondary identifier.
-  - An image (only if the record contains an image link)
+- An entity icon. If the record has an image link, it shows the image, which you can hide anytime.
+- A left column showing the title or primary identifier.
 - A right column for up to 5 additional columns.
 
 You can:
 
-- **Search for columns** using the "Find a column..." search box
-- **Drag columns** from the available list into either the left (Title + Subtitle) or right columns areas
-- **Reorder columns** by dragging them within their respective areas
+- **Search for columns** using the "Find a column..." search box.
+- **Drag columns** from the available list into either the left column or right columns areas.
+- **Reorder columns** by dragging them within their respective areas.
 - **Remove columns** by clicking on the X on the column.
 
-You can see a preview on the bottom with sample data from your model. 
+You can see a preview on the bottom with sample data from your model.
 
 Click **Done** to save your changes.
 
