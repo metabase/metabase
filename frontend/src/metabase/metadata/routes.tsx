@@ -1,4 +1,4 @@
-import { IndexRedirect, Redirect } from "react-router";
+import { IndexRoute, Redirect } from "react-router";
 import { t } from "ttag";
 
 import { Route } from "metabase/hoc/Title";
@@ -8,10 +8,10 @@ import { DataModel } from "./pages/DataModel";
 export function getMetadataRoutes() {
   return (
     <Route>
-      <IndexRedirect to="data" />
+      <IndexRoute component={DataModel} />
       <Route path="data">
         <Route title={t`Data`}>
-          <IndexRedirect to="database" />
+          <IndexRoute component={DataModel} />
           <Route path="database" component={DataModel} />
           <Route path="database/:databaseId" component={DataModel} />
           <Route

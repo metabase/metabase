@@ -32,9 +32,10 @@ function BenchNav() {
   return (
     <Stack className={S.nav} h="100%" p="0.75rem" gap="0.75rem">
       <BenchNavItem
-        to={Urls.dataStudio()}
+        to={Urls.bench()}
         icon="database"
         isSelected={
+          pathname === Urls.bench() ||
           pathname.startsWith(Urls.dataModel()) ||
           pathname.startsWith(Urls.transformList())
         }

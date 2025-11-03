@@ -111,7 +111,7 @@ function ProfileLinkInner({
             {
               title: t`Data studio`,
               icon: null,
-              link: Urls.dataStudio(),
+              link: Urls.bench(),
             },
           ]
         : []),
