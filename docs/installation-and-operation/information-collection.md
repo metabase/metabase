@@ -60,10 +60,6 @@ The token validation request includes:
 - Query execution timestamp (last UTC day)
 - Metabot usage statistics (tokens, queries, users, and date)
 
-This data is sent to `token-check.metabase.com` (or `store.metabase.com` as a fallback) to validate your token.
-
-Here's the code for the [token check](https://github.com/metabase/metabase/blob/master/src/metabase/premium_features/token_check.clj).
-
 ## Further reading
 
 Check out our page on [data privacy and security](https://www.metabase.com/security).
