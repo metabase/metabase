@@ -387,7 +387,7 @@
                                                                      :token token})
                                              (when-not (has-data? (assoc args :git <>))
                                                (FileUtils/deleteDirectory path)
-                                               (throw (ex-info (str "Cannot connect to uninitialized repository") {:url url})))))
+                                               (throw (ex-info "Cannot connect to uninitialized repository" {:url url})))))
          (.getPath path))))
 
 (defn git-source
