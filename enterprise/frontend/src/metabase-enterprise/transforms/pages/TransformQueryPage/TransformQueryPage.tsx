@@ -5,7 +5,6 @@ import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { skipToken, useListDatabasesQuery } from "metabase/api";
-import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
@@ -140,9 +139,10 @@ export function TransformQueryPageBody({
   };
 
   return (
-    <AdminSettingsLayout fullWidth>
+    <>
       {source.type === "python" ? (
         <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
+          id={transform.id}
           name={transform.name}
           source={source}
           proposedSource={
@@ -189,6 +189,6 @@ export function TransformQueryPageBody({
         isEnabled={isDirty && !isSaving && !isCheckingDependencies}
         onConfirm={rejectProposed}
       />
-    </AdminSettingsLayout>
+    </>
   );
 }
