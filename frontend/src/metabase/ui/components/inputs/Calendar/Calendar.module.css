@@ -71,7 +71,7 @@
   height: 2rem;
   border-radius: var(--mantine-radius-xs);
 
-  [data-mantine-color-scheme] &:hover {
+  &:hover {
     color: var(--mb-color-text-hover);
     background-color: var(--mb-color-background-hover);
   }
