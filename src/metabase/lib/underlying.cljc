@@ -1,9 +1,8 @@
 (ns metabase.lib.underlying
   "Helpers for getting at \"underlying\" or \"top-level\" queries and columns.
   This logic is shared by a handful of things like drill-thrus."
-  #?(:clj (:refer-clojure :exclude [for]))
+  (:refer-clojure :exclude [empty? #?(:clj for)])
   (:require
-   #?(:clj [metabase.util.performance :refer [for]])
    [clojure.set :as set]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.breakout :as lib.breakout]
@@ -16,7 +15,8 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [empty? #?(:clj for)]]))
 
 (mu/defn- pop-until-aggregation-or-breakout :- [:tuple [:maybe ::lib.schema/query] [:int {:max -1}]]
   "Strips off any trailing stages that do not contain aggregations or breakouts.
