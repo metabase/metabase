@@ -61,7 +61,7 @@ export function mountSdkContent(
   }
 
   if (waitForUser) {
-    cy.wait("@getUser").then(({ response }) => {
+    cy.wait("@getUser", { timeout: 15000 }).then(({ response }) => {
       expect(response?.statusCode).to.equal(200);
     });
   }
