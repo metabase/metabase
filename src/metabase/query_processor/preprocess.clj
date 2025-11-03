@@ -1,4 +1,5 @@
 (ns metabase.query-processor.preprocess
+  (:refer-clojure :exclude [not-empty])
   (:require
    [metabase.config.core :as config]
    [metabase.lib.schema :as lib.schema]
@@ -43,7 +44,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [not-empty]]))
 
 (set! *warn-on-reflection* true)
 

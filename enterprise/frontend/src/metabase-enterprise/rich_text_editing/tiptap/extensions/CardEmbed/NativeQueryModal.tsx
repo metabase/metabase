@@ -31,7 +31,7 @@ interface NativeQueryModalProps {
   card: Card;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (result: { card_id: number; name: string }) => void;
+  onSave: (result: { card_id: number }) => void;
   initialDataset?: Dataset;
 }
 
@@ -229,7 +229,7 @@ export const NativeQueryModal = ({
       }),
     );
 
-    onSave({ card_id: newCardId, name: card.name });
+    onSave({ card_id: newCardId });
     onClose();
   }, [modifiedQuestion, card, dispatch, onSave, onClose]);
 
