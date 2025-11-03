@@ -25,6 +25,25 @@ export const pythonLibraryApi = EnterpriseApi.injectEndpoints({
       }),
       invalidatesTags: (_, error, { path }) =>
         invalidateTags(error, [idTag("python-transform-library", path)]),
+      onQueryStarted: async (
+        { path, ...patch },
+        { dispatch, queryFulfilled },
+      ) => {
+        const patchResult = dispatch(
+          pythonLibraryApi.util.updateQueryData(
+            "getPythonLibrary",
+            { path },
+            (draft) => {
+              Object.assign(draft, patch);
+            },
+          ),
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
     }),
   }),
 });
