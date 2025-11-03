@@ -1,5 +1,7 @@
 (ns metabase-enterprise.representations.dev-helpers
-  "Helper functions for experimenting with representations in the REPL"
+  "TOTALLY TEMPORARY HACKS.
+  Helper functions for experimenting with representations in the REPL to check
+  that what we export matches what we'd want to use on import."
   (:require
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]

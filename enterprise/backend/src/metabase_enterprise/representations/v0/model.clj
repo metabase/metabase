@@ -26,7 +26,7 @@
   "Merge required inferred-metadata into the yml column metadata for user-defined fields."
   [user-metadata inferred-metadata]
   (mapv (fn [user-column inferred]
-          (assoc user-column :base_type (:base_type inferred)))
+          (assoc user-column :base-type (:base-type inferred)))
         user-metadata
         inferred-metadata))
 

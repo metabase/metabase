@@ -28,11 +28,8 @@
 
     ;; map with database ref - resolve database and lookup table
     (v0-common/table-ref? source-table)
-    (let [db-id (-> ref-index
-                    (v0-common/lookup-entity (:database source-table default-db))
-                    (v0-common/ensure-not-nil)
-                    (v0-common/ensure-correct-type :database)
-                    :id)
+    (let [db-ref (:database source-table default-db)
+          db-id (lookup/lookup-database-id ref-index db-ref)
           table-id (t2/select-one-fn :id :model/Table
                                      :db_id db-id
                                      :schema (:schema source-table)
@@ -60,11 +57,8 @@
    (fn [node]
      (if (v0-common/field-ref? node)
        ;; It's a field map - resolve it to [:field id]
-       (let [db-id (-> ref-index
-                       (v0-common/lookup-entity (:database node default-db))
-                       (v0-common/ensure-not-nil)
-                       (v0-common/ensure-correct-type :database)
-                       :id)
+       (let [db-ref (:database node default-db)
+             db-id (lookup/lookup-database-id ref-index db-ref)
              table-id (v0-common/ensure-not-nil
                        (t2/select-one-fn :id :model/Table
                                          :db_id db-id
@@ -93,7 +87,7 @@
 
       (let [resolved-lib (-> query
                              (replace-source-tables database ref-index)
-                             #_(replace-source-cards  ref-index)
+                             #_(replace-source-cards ref-index)
                              (replace-fields database ref-index))]
         {:lib/type :mbql/query
          :database database-id
