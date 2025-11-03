@@ -8,6 +8,7 @@ import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
 
 import { NAME_MAX_LENGTH } from "../../constants";
 import { ColumnLayout, ColumnLayoutBody } from "../ColumnLayout";
+import { JobMoreMenuWithModal } from "../JobMoreMenu";
 
 import { DependenciesSection } from "./DependenciesSection";
 import { ScheduleSection } from "./ScheduleSection";
@@ -42,6 +43,7 @@ export function JobEditor({
             onChange={onNameChange}
           />
         }
+        menu={job.id != null && <JobMoreMenuWithModal jobId={job.id} />}
         actions={actions}
       />
       <ColumnLayoutBody>
