@@ -2,5 +2,8 @@
   "base": {
     "name": "master",
     "hash": "89adf23ef79873f2bd90d28cc87676db77aba983"
+  },
+  "upstream": {
+    "branch": "emb-956-integration-branch-for-named-theme-editor-for-embedding"
   }
 }
