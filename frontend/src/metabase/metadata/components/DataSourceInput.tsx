@@ -45,7 +45,7 @@ export const DataSourceInput = ({
         ...comboboxProps,
       }}
       data={getData(value, showMetabaseTransform)}
-      label={t`Data source`}
+      label={t`Source`}
       placeholder={t`Select a data source`}
       value={value}
       onChange={(value) => onChange(value)}

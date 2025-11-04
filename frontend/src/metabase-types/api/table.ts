@@ -140,6 +140,7 @@ export interface UpdateTableRequest {
   entity_type?: string | null;
   owner_email?: string | null;
   owner_user_id?: UserId | null;
+  active?: boolean;
 }
 
 export interface UpdateTableListRequest {

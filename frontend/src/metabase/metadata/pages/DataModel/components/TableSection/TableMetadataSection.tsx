@@ -1,6 +1,7 @@
 import S from "./TableMetadataSection.module.css";
 
 import {
+  ActiveInput,
   DataSourceInput,
   EntityTypeInput,
   FieldOrderPicker,
@@ -152,6 +153,25 @@ export function TableMetadataSection({ table }: Props) {
     }
   };
 
+  const handleActiveChange = async (active: boolean) => {
+    const { error } = await updateTable({
+      id: table.id,
+      active,
+    });
+
+    if (error) {
+      sendErrorToast(t`Failed to update table active status`);
+    } else {
+      sendSuccessToast(t`Table active status updated`, async () => {
+        const { error } = await updateTable({
+          id: table.id,
+          active: table.active,
+        });
+        sendUndoToast(error);
+      });
+    }
+  };
+
   return (
     <>
       <div className={S.container}>
@@ -211,6 +231,21 @@ export function TableMetadataSection({ table }: Props) {
           transformId={table.transform_id}
           value={table.data_source ?? "unknown"}
           onChange={handleDataSourceChange}
+          styles={{
+            label: {
+              gridColumn: 1,
+              fontWeight: "normal",
+            },
+            input: {
+              gridColumn: 2,
+            },
+          }}
+          className={S.gridLabelInput}
+        />
+
+        <ActiveInput
+          value={table.active}
+          onChange={handleActiveChange}
           styles={{
             label: {
               gridColumn: 1,
