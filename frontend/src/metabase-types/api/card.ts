@@ -385,7 +385,7 @@ export interface CreateCardRequest {
   type?: CardType;
   parameters?: Parameter[];
   parameter_mappings?: unknown;
-  description?: string;
+  description?: string | null;
   collection_id?: CollectionId;
   dashboard_id?: DashboardId;
   document_id?: DocumentId | null;

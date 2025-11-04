@@ -10,10 +10,17 @@ import * as Urls from "metabase/lib/urls";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
+import type { Card } from "metabase-types/api";
 
 import { ModelEditor } from "../../components/ModelEditor";
 
-import { getInitialNativeQuery, getInitialQuery, getQuery } from "./utils";
+import { CreateModelModal } from "./CreateModelModal";
+import {
+  getDefaultValues,
+  getInitialNativeQuery,
+  getInitialQuery,
+  getQuery,
+} from "./utils";
 
 type NewModelPageProps = {
   initialName?: string;
@@ -31,7 +38,8 @@ function NewModelPage({
     Lib.toJsQuery(initialQuery),
   );
   const [uiState, setUiState] = useState(getInitialUiState);
-  const [isModalOpened, { open: openModal }] = useDisclosure();
+  const [isModalOpened, { open: openModal, close: closeModal }] =
+    useDisclosure();
   const metadata = useSelector(getMetadata);
   const dispatch = useDispatch();
 
@@ -39,6 +47,10 @@ function NewModelPage({
     () => getQuery(datasetQuery, metadata),
     [datasetQuery, metadata],
   );
+
+  const handleCreate = (card: Card) => {
+    dispatch(push(Urls.dataStudioModel(card.id)));
+  };
 
   const handleChangeQuery = (query: Lib.Query) => {
     setDatasetQuery(Lib.toJsQuery(query));
@@ -62,6 +74,14 @@ function NewModelPage({
         onSave={openModal}
         onCancel={handleCancel}
       />
+      {isModalOpened && (
+        <CreateModelModal
+          query={query}
+          defaultValues={getDefaultValues(name)}
+          onCreate={handleCreate}
+          onClose={closeModal}
+        />
+      )}
       <LeaveRouteConfirmModal route={route} isEnabled={!isModalOpened} />
     </>
   );
