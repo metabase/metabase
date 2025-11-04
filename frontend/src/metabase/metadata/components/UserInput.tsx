@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { useListUsersQuery } from "metabase/api";
 import { isEmail } from "metabase/lib/email";
-import { Avatar, Group, Select, type SelectProps, Text } from "metabase/ui";
+import { Avatar, Group, Icon, Select, type SelectProps } from "metabase/ui";
 import type { User, UserId } from "metabase-types/api";
 
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
@@ -26,6 +26,14 @@ export const UserInput = ({
   const { data: usersData } = useListUsersQuery();
   const users = useMemo(() => usersData?.data ?? [], [usersData]);
   const data = useMemo(() => getData(search, users), [search, users]);
+
+  const userName = useMemo(() => {
+    if (userId == null) {
+      return undefined;
+    }
+
+    return users.find((user) => user.id === userId)?.common_name;
+  }, [users, userId]);
 
   const handleFocus = (event: FocusEvent<HTMLInputElement>) => {
     event.target.select();
@@ -60,6 +68,17 @@ export const UserInput = ({
         ...comboboxProps,
       }}
       data={data}
+      leftSection={
+        userName ? (
+          <Avatar name={userName} />
+        ) : email ? (
+          <Avatar color="initials" name="emails">
+            <Icon name="mail" />
+          </Avatar>
+        ) : (
+          <Avatar name={t`?`} />
+        )
+      }
       placeholder={t`Select user or type an email`}
       nothingFoundMessage={t`Didn't find any results`}
       searchable
@@ -71,9 +90,9 @@ export const UserInput = ({
             {option.type === "user" && <Avatar name={item.option.label} />}
             {option.type === "unknown" && <Avatar name={t`?`} />}
             {option.type === "email" && (
-              <Text
-                c={item.checked ? "white" : "text-secondary"}
-              >{t`Email: `}</Text>
+              <Avatar color="initials" name="emails">
+                <Icon name="mail" />
+              </Avatar>
             )}
 
             {option.type === "unknown" && <i>{item.option.label}</i>}
