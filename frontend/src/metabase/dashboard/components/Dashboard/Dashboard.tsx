@@ -7,7 +7,9 @@ import ColorS from "metabase/css/core/colors.module.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import { useDashboardContext } from "metabase/dashboard/context";
+import { getIsHeaderVisible } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { useSelector } from "metabase/lib/redux";
 import { FilterApplyToast } from "metabase/parameters/components/FilterApplyToast";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
@@ -41,6 +43,8 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
     shouldRenderAsNightMode,
   } = useDashboardContext();
 
+  const isHeaderVisible = useSelector(getIsHeaderVisible);
+
   const currentTabDashcards = useMemo(() => {
     if (!dashboard || !Array.isArray(dashboard.dashcards)) {
       return [];
@@ -66,6 +70,7 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
   }
 
   const isEmpty = !dashboardHasCards || (dashboardHasCards && !tabHasCards);
+  const hasTabs = dashboard.tabs && dashboard.tabs.length > 1;
 
   // Embedding SDK has parent containers that requires dashboard to be full height to avoid double scrollbars.
   const isFullHeight = isEditing || isSharing || isEmbeddingSdk();
@@ -101,6 +106,7 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
             [S.isEmbeddingSdk]: isEmbeddingSdk(),
             [S.isFullscreen]: isFullscreen,
             [S.isNightMode]: shouldRenderAsNightMode,
+            [S.noBorder]: !hasTabs && !isHeaderVisible,
           },
         )}
         data-element-id="dashboard-header-container"
