@@ -11,6 +11,7 @@ interface SelectionContextValue {
   setSelectedDatabases: (databases: Set<DatabaseId>) => void;
   resetSelection: () => void;
   hasSelectedItems: boolean;
+  selectedItemsCount: number;
 }
 
 const SelectionContext = createContext<SelectionContextValue | null>(null);
@@ -35,6 +36,9 @@ export function SelectionProvider({ children }: { children: ReactNode }) {
     selectedSchemas.size > 0 ||
     selectedDatabases.size > 0;
 
+  const selectedItemsCount =
+    selectedTables.size + selectedSchemas.size + selectedDatabases.size;
+
   return (
     <SelectionContext.Provider
       value={{
@@ -46,6 +50,7 @@ export function SelectionProvider({ children }: { children: ReactNode }) {
         setSelectedDatabases,
         resetSelection,
         hasSelectedItems,
+        selectedItemsCount,
       }}
     >
       {children}
