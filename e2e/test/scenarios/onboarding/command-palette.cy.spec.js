@@ -44,7 +44,6 @@ describe("command palette", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
   });
 
   it("should render a searchable command palette", () => {
@@ -67,13 +66,6 @@ describe("command palette", () => {
     cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
       description: "The best question",
     });
-
-    //Create a document so that it appears in the recents list
-    cy.request(
-      "POST",
-      "/api/ee/document",
-      createMockDocument({ collection_id: ADMIN_PERSONAL_COLLECTION_ID }),
-    );
 
     //Request to have an item in the recents list
     cy.request(`/api/dashboard/${ORDERS_DASHBOARD_ID}`);
@@ -107,12 +99,6 @@ describe("command palette", () => {
       cy.findByRole("option", { name: "Orders in a dashboard" }).should(
         "contain.text",
         "Our analytics",
-      );
-
-      // UXW-1786
-      cy.findByRole("option", { name: "Test Document" }).should(
-        "contain.text",
-        "Bobby Tables's Personal Collection",
       );
 
       cy.log("Should search entities and docs");
@@ -233,6 +219,31 @@ describe("command palette", () => {
           });
       });
     });
+  });
+
+  // Making this a separate test for now because it requires the bleeding edge token, which
+  // Enables a bunch of other stuff and messes up the "Renders a searchable command palette"
+  // test. In the future, this can be integrated into the test above, or moved to a BE test
+  it("should display collection names for documents in recents", () => {
+    H.activateToken("bleeding-edge");
+
+    //Create a document so that it appears in the recents list
+    cy.request(
+      "POST",
+      "/api/ee/document",
+      createMockDocument({ collection_id: ADMIN_PERSONAL_COLLECTION_ID }),
+    );
+
+    cy.visit("/");
+
+    cy.findByRole("button", { name: /search/i }).click();
+    H.commandPalette().should("be.visible");
+
+    // UXW-1786
+    cy.findByRole("option", { name: "Test Document" }).should(
+      "contain.text",
+      "Bobby Tables's Personal Collection",
+    );
   });
 
   describe("admin settings links", () => {
