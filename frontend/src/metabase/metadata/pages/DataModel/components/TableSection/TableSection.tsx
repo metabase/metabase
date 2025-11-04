@@ -195,9 +195,16 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
         <Group justify="space-between">
           <Button
             component={Link}
-            leftSection={<Icon name="network" />}
+            onClick={(event) => {
+              event.preventDefault();
+            }}
             to={`/bench/dependencies?id=${table.id}&type=table`}
-          >{t`Dependency graph`}</Button>
+            disabled
+          >
+            <Tooltip label={t`Dependency graph`}>
+              <Icon name="network" c="text-light" />
+            </Tooltip>
+          </Button>
 
           <Menu position="bottom-end">
             <Menu.Target>

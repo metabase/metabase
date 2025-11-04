@@ -296,6 +296,8 @@ import move_component from "./move.svg?component";
 import move_source from "./move.svg?source";
 import move_card_component from "./move_card.svg?component";
 import move_card_source from "./move_card.svg?source";
+import network_component from "./network.svg?component";
+import network_source from "./network.svg?source";
 import new_folder_component from "./new_folder.svg?component";
 import new_folder_source from "./new_folder.svg?source";
 import notebook_component from "./notebook.svg?component";
@@ -505,1030 +507,1033 @@ import zoom_in_source from "./zoom_in.svg?source";
 import zoom_out_component from "./zoom_out.svg?component";
 import zoom_out_source from "./zoom_out.svg?source";
 
-export const Icons: Record<IconName, { component: React.VFC; source: string }> =
-  {
-    add: {
-      component: add_component,
-      source: add_source,
-    },
-    add_column: {
-      component: add_column_component,
-      source: add_column_source,
-    },
-    add_data: {
-      component: add_data_component,
-      source: add_data_source,
-    },
-    add_folder: {
-      component: add_folder_component,
-      source: add_folder_source,
-    },
-    add_row: {
-      component: add_row_component,
-      source: add_row_source,
-    },
-    add_to_dash: {
-      component: add_to_dash_component,
-      source: add_to_dash_source,
-    },
-    add_comment: {
-      component: add_comment_component,
-      source: add_comment_source,
-    },
-    ai: {
-      component: ai_component,
-      source: ai_source,
-    },
-    alert: {
-      component: alert_component,
-      source: alert_source,
-    },
-    alert_filled: {
-      component: alert_filled_component,
-      source: alert_filled_source,
-    },
-    alert_confirm: {
-      component: alert_confirm_component,
-      source: alert_confirm_source,
-    },
-    archive: {
-      component: archive_component,
-      source: archive_source,
-    },
-    area: {
-      component: area_component,
-      source: area_source,
-    },
-    attachment: {
-      component: attachment_component,
-      source: attachment_source,
-    },
-    arrow_up: {
-      component: arrow_up_component,
-      source: arrow_up_source,
-    },
-    arrow_down: {
-      component: arrow_down_component,
-      source: arrow_down_source,
-    },
-    arrow_left: {
-      component: arrow_left_component,
-      source: arrow_left_source,
-    },
-    arrow_left_to_line: {
-      component: arrow_left_to_line_component,
-      source: arrow_left_to_line_source,
-    },
-    arrow_right: {
-      component: arrow_right_component,
-      source: arrow_right_source,
-    },
-    arrow_split: {
-      component: arrow_split_component,
-      source: arrow_split_source,
-    },
-    audit: {
-      component: audit_component,
-      source: audit_source,
-    },
-    badge: {
-      component: badge_component,
-      source: badge_source,
-    },
-    ban: {
-      component: ban_component,
-      source: ban_source,
-    },
-    bar: {
-      component: bar_component,
-      source: bar_source,
-    },
-    bell: {
-      component: bell_component,
-      source: bell_source,
-    },
-    birthday: {
-      component: birthday_component,
-      source: birthday_source,
-    },
-    bookmark: {
-      component: bookmark_component,
-      source: bookmark_source,
-    },
-    bookmark_filled: {
-      component: bookmark_filled_component,
-      source: bookmark_filled_source,
-    },
-    bolt: {
-      component: bolt_component,
-      source: bolt_source,
-    },
-    bolt_filled: {
-      component: bolt_filled_component,
-      source: bolt_filled_source,
-    },
-    breakout: {
-      component: breakout_component,
-      source: breakout_source,
-    },
-    bubble: {
-      component: bubble_component,
-      source: bubble_source,
-    },
-    burger: {
-      component: burger_component,
-      source: burger_source,
-    },
-    calendar: {
-      component: calendar_component,
-      source: calendar_source,
-    },
-    camera: {
-      component: camera_component,
-      source: camera_source,
-    },
-    check: {
-      component: check_component,
-      source: check_source,
-    },
-    check_filled: {
-      component: check_filled_component,
-      source: check_filled_source,
-    },
-    code_block: {
-      component: code_block_component,
-      source: code_block_source,
-    },
-    chevrondown: {
-      component: chevrondown_component,
-      source: chevrondown_source,
-    },
-    chevronleft: {
-      component: chevronleft_component,
-      source: chevronleft_source,
-    },
-    chevronright: {
-      component: chevronright_component,
-      source: chevronright_source,
-    },
-    chevronup: {
-      component: chevronup_component,
-      source: chevronup_source,
-    },
-    click: {
-      component: click_component,
-      source: click_source,
-    },
-    clipboard: {
-      component: clipboard_component,
-      source: clipboard_source,
-    },
-    clock: {
-      component: clock_component,
-      source: clock_source,
-    },
-    clone: {
-      component: clone_component,
-      source: clone_source,
-    },
-    close: {
-      component: close_component,
-      source: close_source,
-    },
-    cloud: {
-      component: cloud_component,
-      source: cloud_source,
-    },
-    cloud_filled: {
-      component: cloud_filled_component,
-      source: cloud_filled_source,
-    },
-    compare: {
-      component: compare_component,
-      source: compare_source,
-    },
-    combine: {
-      component: combine_component,
-      source: combine_source,
-    },
-    company: {
-      component: company_component,
-      source: company_source,
-    },
-    comment: {
-      component: comment_component,
-      source: comment_source,
-    },
-    connections: {
-      component: connections_component,
-      source: connections_source,
-    },
-    contract: {
-      component: contract_component,
-      source: contract_source,
-    },
-    copy: {
-      component: copy_component,
-      source: copy_source,
-    },
-    currency: {
-      component: currency_component,
-      source: currency_source,
-    },
-    curved: {
-      component: curved_component,
-      source: curved_source,
-    },
-    database: {
-      component: database_component,
-      source: database_source,
-    },
-    dash: {
-      component: dash_component,
-      source: dash_source,
-    },
-    dashboard: {
-      component: dashboard_component,
-      source: dashboard_source,
-    },
-    curve: {
-      component: curve_component,
-      source: curve_source,
-    },
-    document: {
-      component: document_component,
-      source: document_source,
-    },
-    download: {
-      component: download_component,
-      source: download_source,
-    },
-    dyno: {
-      component: dyno_component,
-      source: dyno_source,
-    },
-    edit_document: {
-      component: edit_document_component,
-      source: edit_document_source,
-    },
-    edit_document_outlined: {
-      component: edit_document_outlined_component,
-      source: edit_document_outlined_source,
-    },
-    ellipsis: {
-      component: ellipsis_component,
-      source: ellipsis_source,
-    },
-    embed: {
-      component: embed_component,
-      source: embed_source,
-    },
-    empty: {
-      component: empty_component,
-      source: empty_source,
-    },
-    enter_or_return: {
-      component: enter_or_return_component,
-      source: enter_or_return_source,
-    },
-    expand: {
-      component: expand_component,
-      source: expand_source,
-    },
-    expand_arrow: {
-      component: expand_arrow_component,
-      source: expand_arrow_source,
-    },
-    extract: {
-      component: extract_component,
-      source: extract_source,
-    },
-    eye: {
-      component: eye_component,
-      source: eye_source,
-    },
-    eye_crossed_out: {
-      component: eye_crossed_out_component,
-      source: eye_crossed_out_source,
-    },
-    eye_outline: {
-      component: eye_outline_component,
-      source: eye_outline_source,
-    },
-    factory: {
-      component: factory_component,
-      source: factory_source,
-    },
-    field: {
-      component: field_component,
-      source: field_source,
-    },
-    fields: {
-      component: fields_component,
-      source: fields_source,
-    },
-    filter: {
-      component: filter_component,
-      source: filter_source,
-    },
-    filter_plus: {
-      component: filter_plus_component,
-      source: filter_plus_source,
-    },
-    bug: {
-      component: bug_component,
-      source: bug_source,
-    },
-    format_code: {
-      component: format_code_component,
-      source: format_code_source,
-    },
-    formula: {
-      component: formula_component,
-      source: formula_source,
-    },
-    function: {
-      component: function_component,
-      source: function_source,
-    },
-    funnel: {
-      component: funnel_component,
-      source: funnel_source,
-    },
-    funnel_outline: {
-      component: funnel_outline_component,
-      source: funnel_outline_source,
-    },
-    folder: {
-      component: folder_component,
-      source: folder_source,
-    },
-    folder_filled: {
-      component: folder_filled_component,
-      source: folder_filled_source,
-    },
-    gauge: {
-      component: gauge_component,
-      source: gauge_source,
-    },
-    gear: {
-      component: gear_component,
-      source: gear_source,
-    },
-    gear_settings_filled: {
-      component: gear_settings_filled_component,
-      source: gear_settings_filled_source,
-    },
-    gem: {
-      component: gem_component,
-      source: gem_source,
-    },
-    git_branch: {
-      component: git_branch_component,
-      source: git_branch_source,
-    },
-    globe: {
-      component: globe_component,
-      source: globe_source,
-    },
-    grabber: {
-      component: grabber_component,
-      source: grabber_source,
-    },
-    grid: {
-      component: grid_component,
-      source: grid_source,
-    },
-    group: {
-      component: group_component,
-      source: group_source,
-    },
-    google: {
-      component: google_component,
-      source: google_source,
-    },
-    google_drive: {
-      component: google_drive_component,
-      source: google_drive_source,
-    },
-    google_sheet: {
-      component: google_sheet_component,
-      source: google_sheet_source,
-    },
-    history: {
-      component: history_component,
-      source: history_source,
-    },
-    home: {
-      component: home_component,
-      source: home_source,
-    },
-    horizontal_bar: {
-      component: horizontal_bar_component,
-      source: horizontal_bar_source,
-    },
-    hourglass: {
-      component: hourglass_component,
-      source: hourglass_source,
-    },
-    info: {
-      component: info_component,
-      source: info_source,
-    },
-    info_outline: {
-      component: info_outline_component,
-      source: info_outline_source,
-    },
-    insight: {
-      component: insight_component,
-      source: insight_source,
-    },
-    int: {
-      component: int_component,
-      source: int_source,
-    },
-    io: {
-      component: io_component,
-      source: io_source,
-    },
-    join_full_outer: {
-      component: join_full_outer_component,
-      source: join_full_outer_source,
-    },
-    join_inner: {
-      component: join_inner_component,
-      source: join_inner_source,
-    },
-    join_left_outer: {
-      component: join_left_outer_component,
-      source: join_left_outer_source,
-    },
-    join_right_outer: {
-      component: join_right_outer_component,
-      source: join_right_outer_source,
-    },
-    index: {
-      component: index_component,
-      source: index_source,
-    },
-    key: {
-      component: key_component,
-      source: key_source,
-    },
-    label: {
-      component: label_component,
-      source: label_source,
-    },
-    ldap: {
-      component: ldap_component,
-      source: ldap_source,
-    },
-    learn: {
-      component: learn_component,
-      source: learn_source,
-    },
-    lightbulb: {
-      component: lightbulb_component,
-      source: lightbulb_source,
-    },
-    link: {
-      component: link_component,
-      source: link_source,
-    },
-    line: {
-      component: line_component,
-      source: line_source,
-    },
-    lines: {
-      component: lines_component,
-      source: lines_source,
-    },
-    lineandbar: {
-      component: lineandbar_component,
-      source: lineandbar_source,
-    },
-    line_style_dashed: {
-      component: line_style_dashed_component,
-      source: line_style_dashed_source,
-    },
-    line_style_dotted: {
-      component: line_style_dotted_component,
-      source: line_style_dotted_source,
-    },
-    line_style_solid: {
-      component: line_style_solid_component,
-      source: line_style_solid_source,
-    },
-    list: {
-      component: list_component,
-      source: list_source,
-    },
-    location: {
-      component: location_component,
-      source: location_source,
-    },
-    lock: {
-      component: lock_component,
-      source: lock_source,
-    },
-    lock_filled: {
-      component: lock_filled_component,
-      source: lock_filled_source,
-    },
-    mail: {
-      component: mail_component,
-      source: mail_source,
-    },
-    mail_filled: {
-      component: mail_filled_component,
-      source: mail_filled_source,
-    },
-    medallion: {
-      component: medallion_component,
-      source: medallion_source,
-    },
-    message_circle: {
-      component: message_circle_component,
-      source: message_circle_source,
-    },
-    metabot: {
-      component: metabot_component,
-      source: metabot_source,
-    },
-    metabot_sad: {
-      component: metabot_sad_component,
-      source: metabot_sad_source,
-    },
-    metric: {
-      component: metric_component,
-      source: metric_source,
-    },
-    model: {
-      component: model_component,
-      source: model_source,
-    },
-    model_with_badge: {
-      component: model_with_badge_component,
-      source: model_with_badge_source,
-    },
-    moon: {
-      component: moon_component,
-      source: moon_source,
-    },
-    move: {
-      component: move_component,
-      source: move_source,
-    },
-    move_card: {
-      component: move_card_component,
-      source: move_card_source,
-    },
-    new_folder: {
-      component: new_folder_component,
-      source: new_folder_source,
-    },
-    notebook: {
-      component: notebook_component,
-      source: notebook_source,
-    },
-    number: {
-      component: number_component,
-      source: number_source,
-    },
-    package: {
-      component: package_component,
-      source: package_source,
-    },
-    palette: {
-      component: palette_component,
-      source: palette_source,
-    },
-    pause: {
-      component: pause_component,
-      source: pause_source,
-    },
-    pencil: {
-      component: pencil_component,
-      source: pencil_source,
-    },
-    pencil_lines: {
-      component: pencil_lines_component,
-      source: pencil_lines_source,
-    },
-    permissions_limited: {
-      component: permissions_limited_component,
-      source: permissions_limited_source,
-    },
-    person: {
-      component: person_component,
-      source: person_source,
-    },
-    pie: {
-      component: pie_component,
-      source: pie_source,
-    },
-    pin: {
-      component: pin_component,
-      source: pin_source,
-    },
-    pinmap: {
-      component: pinmap_component,
-      source: pinmap_source,
-    },
-    pivot_table: {
-      component: pivot_table_component,
-      source: pivot_table_source,
-    },
-    play: {
-      component: play_component,
-      source: play_source,
-    },
-    play_outlined: {
-      component: play_outlined_component,
-      source: play_outlined_source,
-    },
-    popover: {
-      component: popover_component,
-      source: popover_source,
-    },
-    popular: {
-      component: popular_component,
-      source: popular_source,
-    },
-    progress: {
-      component: progress_component,
-      source: progress_source,
-    },
-    embed_interactive: {
-      component: embed_interactive_component,
-      source: embed_interactive_source,
-    },
-    embed_modular: {
-      component: embed_modular_component,
-      source: embed_modular_source,
-    },
-    embed_static: {
-      component: embed_static_component,
-      source: embed_static_source,
-    },
-    pulse: {
-      component: pulse_component,
-      source: pulse_source,
-    },
-    receipt: {
-      component: receipt_component,
-      source: receipt_source,
-    },
-    recents: {
-      component: recents_component,
-      source: recents_source,
-    },
-    revert: {
-      component: revert_component,
-      source: revert_source,
-    },
-    schema: {
-      component: schema_component,
-      source: schema_source,
-    },
-    sankey: {
-      component: sankey_component,
-      source: sankey_source,
-    },
-    share: {
-      component: share_component,
-      source: share_source,
-    },
-    sort: {
-      component: sort_component,
-      source: sort_source,
-    },
-    sort_arrows: {
-      component: sort_arrows_component,
-      source: sort_arrows_source,
-    },
-    split: {
-      component: split_component,
-      source: split_source,
-    },
-    sql: {
-      component: sql_component,
-      source: sql_source,
-    },
-    subscription: {
-      component: subscription_component,
-      source: subscription_source,
-    },
-    straight: {
-      component: straight_component,
-      source: straight_source,
-    },
-    stepped: {
-      component: stepped_component,
-      source: stepped_source,
-    },
-    sticky_note: {
-      component: sticky_note_component,
-      source: sticky_note_source,
-    },
-    sum: {
-      component: sum_component,
-      source: sum_source,
-    },
-    sync: {
-      component: sync_component,
-      source: sync_source,
-    },
-    synced_collection: {
-      component: synced_collection_component,
-      source: synced_collection_source,
-    },
-    question: {
-      component: question_component,
-      source: question_source,
-    },
-    quote: {
-      component: quote_component,
-      source: quote_source,
-    },
-    return: {
-      component: return_component,
-      source: return_source,
-    },
-    redo: {
-      component: redo_component,
-      source: redo_source,
-    },
-    reference: {
-      component: reference_component,
-      source: reference_source,
-    },
-    refresh: {
-      component: refresh_component,
-      source: refresh_source,
-    },
-    refresh_downstream: {
-      component: refresh_downstream_component,
-      source: refresh_downstream_source,
-    },
-    repository: {
-      component: repository_component,
-      source: repository_source,
-    },
-    rocket: {
-      component: rocket_component,
-      source: rocket_source,
-    },
-    ruler: {
-      component: ruler_component,
-      source: ruler_source,
-    },
-    search: {
-      component: search_component,
-      source: search_source,
-    },
-    section: {
-      component: section_component,
-      source: section_source,
-    },
-    segment: {
-      component: segment_component,
-      source: segment_source,
-    },
-    send: {
-      component: send_component,
-      source: send_source,
-    },
-    shield: {
-      component: shield_component,
-      source: shield_source,
-    },
-    shield_outline: {
-      component: shield_outline_component,
-      source: shield_outline_source,
-    },
-    sidebar_closed: {
-      component: sidebar_closed_component,
-      source: sidebar_closed_source,
-    },
-    sidebar_open: {
-      component: sidebar_open_component,
-      source: sidebar_open_source,
-    },
-    slack: {
-      component: slack_component,
-      source: slack_source,
-    },
-    slack_colorized: {
-      component: slack_colorized_component,
-      source: slack_colorized_source,
-    },
-    smartscalar: {
-      component: smartscalar_component,
-      source: smartscalar_source,
-    },
-    smile: {
-      component: smile_component,
-      source: smile_source,
-    },
-    snail: {
-      component: snail_component,
-      source: snail_source,
-    },
-    snippet: {
-      component: snippet_component,
-      source: snippet_source,
-    },
-    sparkles: {
-      component: sparkles_component,
-      source: sparkles_source,
-    },
-    star_filled: {
-      component: star_filled_component,
-      source: star_filled_source,
-    },
-    star: {
-      component: star_component,
-      source: star_source,
-    },
-    stop: {
-      component: stop_component,
-      source: stop_source,
-    },
-    store: {
-      component: store_component,
-      source: store_source,
-    },
-    string: {
-      component: string_component,
-      source: string_source,
-    },
-    sun: {
-      component: sun_component,
-      source: sun_source,
-    },
-    "t-shirt": {
-      component: t_shirt_component,
-      source: t_shirt_source,
-    },
-    tab: {
-      component: tab_component,
-      source: tab_source,
-    },
-    table: {
-      // for database tables
-      component: table_component,
-      source: table_source,
-    },
-    table2: {
-      // for questions with table visualizations
-      component: table2_component,
-      source: table2_source,
-    },
-    text_bold: {
-      component: text_bold_component,
-      source: text_bold_source,
-    },
-    text_italic: {
-      component: text_italic_component,
-      source: text_italic_source,
-    },
-    text_strike: {
-      component: text_strike_component,
-      source: text_strike_source,
-    },
-    thumbs_down: {
-      component: thumbs_down_component,
-      source: thumbs_down_source,
-    },
-    thumbs_up: {
-      component: thumbs_up_component,
-      source: thumbs_up_source,
-    },
-    time_history: {
-      component: time_history_component,
-      source: time_history_source,
-    },
-    trash: {
-      component: trash_component,
-      source: trash_source,
-    },
-    trash_filled: {
-      component: trash_filled_component,
-      source: trash_filled_source,
-    },
-    triangle_left: {
-      component: triangle_left_component,
-      source: triangle_left_source,
-    },
-    triangle_right: {
-      component: triangle_right_component,
-      source: triangle_right_source,
-    },
-    unarchive: {
-      component: unarchive_component,
-      source: unarchive_source,
-    },
-    undo: {
-      component: undo_component,
-      source: undo_source,
-    },
-    unknown: {
-      component: unknown_component,
-      source: unknown_source,
-    },
-    unpin: {
-      component: unpin_component,
-      source: unpin_source,
-    },
-    unsubscribe: {
-      component: unsubscribe_component,
-      source: unsubscribe_source,
-    },
-    upload: {
-      component: upload_component,
-      source: upload_source,
-    },
-    variable: {
-      component: variable_component,
-      source: variable_source,
-    },
-    verified: {
-      component: verified_component,
-      source: verified_source,
-    },
-    octagon_alert: {
-      component: octagon_alert_component,
-      source: octagon_alert_source,
-    },
-    official_collection: {
-      component: official_collection_component,
-      source: official_collection_source,
-    },
-    ordered_list: {
-      component: ordered_list_component,
-      source: ordered_list_source,
-    },
-    verified_filled: {
-      component: verified_filled_component,
-      source: verified_filled_source,
-    },
-    view_archive: {
-      component: view_archive_component,
-      source: view_archive_source,
-    },
-    warning: {
-      component: warning_component,
-      source: warning_source,
-    },
-    warning_round_filled: {
-      component: warning_round_filled_component,
-      source: warning_round_filled_source,
-    },
-    warning_triangle_filled: {
-      component: warning_triangle_filled_component,
-      source: warning_triangle_filled_source,
-    },
-    waterfall: {
-      component: waterfall_component,
-      source: waterfall_source,
-    },
-    webhook: {
-      component: webhook_component,
-      source: webhook_source,
-    },
-    "10k": {
-      component: ten_thousand_component,
-      source: ten_thousand_source,
-    },
-    "1m": {
-      component: one_million_component,
-      source: one_million_source,
-    },
-    zap: { component: zap_component, source: zap_source },
-    zoom_in: {
-      component: zoom_in_component,
-      source: zoom_in_source,
-    },
-    zoom_out: {
-      component: zoom_out_component,
-      source: zoom_out_source,
-    },
-    scalar: {
-      component: number_component,
-      source: number_source,
-    },
-    cake: {
-      component: birthday_component,
-      source: birthday_source,
-    },
-    external: { component: share_component, source: share_source },
-    table_spaced: { component: table_component, source: table_source },
-    collection: { component: folder_component, source: folder_source },
-    beaker: { component: formula_component, source: formula_source },
-    test_tube: { component: test_tube_component, source: test_tube_source },
-    eye_filled: { component: eye_component, source: eye_source },
-  };
+export const Icons: Record<IconName, { component: React.VFC; source: string }> = {
+  add: {
+    component: add_component,
+    source: add_source,
+  },
+  add_column: {
+    component: add_column_component,
+    source: add_column_source,
+  },
+  add_data: {
+    component: add_data_component,
+    source: add_data_source,
+  },
+  add_folder: {
+    component: add_folder_component,
+    source: add_folder_source,
+  },
+  add_row: {
+    component: add_row_component,
+    source: add_row_source,
+  },
+  add_to_dash: {
+    component: add_to_dash_component,
+    source: add_to_dash_source,
+  },
+  add_comment: {
+    component: add_comment_component,
+    source: add_comment_source,
+  },
+  ai: {
+    component: ai_component,
+    source: ai_source,
+  },
+  alert: {
+    component: alert_component,
+    source: alert_source,
+  },
+  alert_filled: {
+    component: alert_filled_component,
+    source: alert_filled_source,
+  },
+  alert_confirm: {
+    component: alert_confirm_component,
+    source: alert_confirm_source,
+  },
+  archive: {
+    component: archive_component,
+    source: archive_source,
+  },
+  area: {
+    component: area_component,
+    source: area_source,
+  },
+  attachment: {
+    component: attachment_component,
+    source: attachment_source,
+  },
+  arrow_up: {
+    component: arrow_up_component,
+    source: arrow_up_source,
+  },
+  arrow_down: {
+    component: arrow_down_component,
+    source: arrow_down_source,
+  },
+  arrow_left: {
+    component: arrow_left_component,
+    source: arrow_left_source,
+  },
+  arrow_left_to_line: {
+    component: arrow_left_to_line_component,
+    source: arrow_left_to_line_source,
+  },
+  arrow_right: {
+    component: arrow_right_component,
+    source: arrow_right_source,
+  },
+  arrow_split: {
+    component: arrow_split_component,
+    source: arrow_split_source,
+  },
+  audit: {
+    component: audit_component,
+    source: audit_source,
+  },
+  badge: {
+    component: badge_component,
+    source: badge_source,
+  },
+  ban: {
+    component: ban_component,
+    source: ban_source,
+  },
+  bar: {
+    component: bar_component,
+    source: bar_source,
+  },
+  bell: {
+    component: bell_component,
+    source: bell_source,
+  },
+  birthday: {
+    component: birthday_component,
+    source: birthday_source,
+  },
+  bookmark: {
+    component: bookmark_component,
+    source: bookmark_source,
+  },
+  bookmark_filled: {
+    component: bookmark_filled_component,
+    source: bookmark_filled_source,
+  },
+  bolt: {
+    component: bolt_component,
+    source: bolt_source,
+  },
+  bolt_filled: {
+    component: bolt_filled_component,
+    source: bolt_filled_source,
+  },
+  breakout: {
+    component: breakout_component,
+    source: breakout_source,
+  },
+  bubble: {
+    component: bubble_component,
+    source: bubble_source,
+  },
+  burger: {
+    component: burger_component,
+    source: burger_source,
+  },
+  calendar: {
+    component: calendar_component,
+    source: calendar_source,
+  },
+  camera: {
+    component: camera_component,
+    source: camera_source,
+  },
+  check: {
+    component: check_component,
+    source: check_source,
+  },
+  check_filled: {
+    component: check_filled_component,
+    source: check_filled_source,
+  },
+  code_block: {
+    component: code_block_component,
+    source: code_block_source,
+  },
+  chevrondown: {
+    component: chevrondown_component,
+    source: chevrondown_source,
+  },
+  chevronleft: {
+    component: chevronleft_component,
+    source: chevronleft_source,
+  },
+  chevronright: {
+    component: chevronright_component,
+    source: chevronright_source,
+  },
+  chevronup: {
+    component: chevronup_component,
+    source: chevronup_source,
+  },
+  click: {
+    component: click_component,
+    source: click_source,
+  },
+  clipboard: {
+    component: clipboard_component,
+    source: clipboard_source,
+  },
+  clock: {
+    component: clock_component,
+    source: clock_source,
+  },
+  clone: {
+    component: clone_component,
+    source: clone_source,
+  },
+  close: {
+    component: close_component,
+    source: close_source,
+  },
+  cloud: {
+    component: cloud_component,
+    source: cloud_source,
+  },
+  cloud_filled: {
+    component: cloud_filled_component,
+    source: cloud_filled_source,
+  },
+  compare: {
+    component: compare_component,
+    source: compare_source,
+  },
+  combine: {
+    component: combine_component,
+    source: combine_source,
+  },
+  company: {
+    component: company_component,
+    source: company_source,
+  },
+  comment: {
+    component: comment_component,
+    source: comment_source,
+  },
+  connections: {
+    component: connections_component,
+    source: connections_source,
+  },
+  contract: {
+    component: contract_component,
+    source: contract_source,
+  },
+  copy: {
+    component: copy_component,
+    source: copy_source,
+  },
+  currency: {
+    component: currency_component,
+    source: currency_source,
+  },
+  curved: {
+    component: curved_component,
+    source: curved_source,
+  },
+  database: {
+    component: database_component,
+    source: database_source,
+  },
+  dash: {
+    component: dash_component,
+    source: dash_source,
+  },
+  dashboard: {
+    component: dashboard_component,
+    source: dashboard_source,
+  },
+  curve: {
+    component: curve_component,
+    source: curve_source,
+  },
+  document: {
+    component: document_component,
+    source: document_source,
+  },
+  download: {
+    component: download_component,
+    source: download_source,
+  },
+  dyno: {
+    component: dyno_component,
+    source: dyno_source,
+  },
+  edit_document: {
+    component: edit_document_component,
+    source: edit_document_source,
+  },
+  edit_document_outlined: {
+    component: edit_document_outlined_component,
+    source: edit_document_outlined_source,
+  },
+  ellipsis: {
+    component: ellipsis_component,
+    source: ellipsis_source,
+  },
+  embed: {
+    component: embed_component,
+    source: embed_source,
+  },
+  empty: {
+    component: empty_component,
+    source: empty_source,
+  },
+  enter_or_return: {
+    component: enter_or_return_component,
+    source: enter_or_return_source,
+  },
+  expand: {
+    component: expand_component,
+    source: expand_source,
+  },
+  expand_arrow: {
+    component: expand_arrow_component,
+    source: expand_arrow_source,
+  },
+  extract: {
+    component: extract_component,
+    source: extract_source,
+  },
+  eye: {
+    component: eye_component,
+    source: eye_source,
+  },
+  eye_crossed_out: {
+    component: eye_crossed_out_component,
+    source: eye_crossed_out_source,
+  },
+  eye_outline: {
+    component: eye_outline_component,
+    source: eye_outline_source,
+  },
+  factory: {
+    component: factory_component,
+    source: factory_source,
+  },
+  field: {
+    component: field_component,
+    source: field_source,
+  },
+  fields: {
+    component: fields_component,
+    source: fields_source,
+  },
+  filter: {
+    component: filter_component,
+    source: filter_source,
+  },
+  filter_plus: {
+    component: filter_plus_component,
+    source: filter_plus_source,
+  },
+  bug: {
+    component: bug_component,
+    source: bug_source,
+  },
+  format_code: {
+    component: format_code_component,
+    source: format_code_source,
+  },
+  formula: {
+    component: formula_component,
+    source: formula_source,
+  },
+  function: {
+    component: function_component,
+    source: function_source,
+  },
+  funnel: {
+    component: funnel_component,
+    source: funnel_source,
+  },
+  funnel_outline: {
+    component: funnel_outline_component,
+    source: funnel_outline_source,
+  },
+  folder: {
+    component: folder_component,
+    source: folder_source,
+  },
+  folder_filled: {
+    component: folder_filled_component,
+    source: folder_filled_source,
+  },
+  gauge: {
+    component: gauge_component,
+    source: gauge_source,
+  },
+  gear: {
+    component: gear_component,
+    source: gear_source,
+  },
+  gear_settings_filled: {
+    component: gear_settings_filled_component,
+    source: gear_settings_filled_source,
+  },
+  gem: {
+    component: gem_component,
+    source: gem_source,
+  },
+  git_branch: {
+    component: git_branch_component,
+    source: git_branch_source,
+  },
+  globe: {
+    component: globe_component,
+    source: globe_source,
+  },
+  grabber: {
+    component: grabber_component,
+    source: grabber_source,
+  },
+  grid: {
+    component: grid_component,
+    source: grid_source,
+  },
+  group: {
+    component: group_component,
+    source: group_source,
+  },
+  google: {
+    component: google_component,
+    source: google_source,
+  },
+  google_drive: {
+    component: google_drive_component,
+    source: google_drive_source,
+  },
+  google_sheet: {
+    component: google_sheet_component,
+    source: google_sheet_source,
+  },
+  history: {
+    component: history_component,
+    source: history_source,
+  },
+  home: {
+    component: home_component,
+    source: home_source,
+  },
+  horizontal_bar: {
+    component: horizontal_bar_component,
+    source: horizontal_bar_source,
+  },
+  hourglass: {
+    component: hourglass_component,
+    source: hourglass_source,
+  },
+  info: {
+    component: info_component,
+    source: info_source,
+  },
+  info_outline: {
+    component: info_outline_component,
+    source: info_outline_source,
+  },
+  insight: {
+    component: insight_component,
+    source: insight_source,
+  },
+  int: {
+    component: int_component,
+    source: int_source,
+  },
+  io: {
+    component: io_component,
+    source: io_source,
+  },
+  join_full_outer: {
+    component: join_full_outer_component,
+    source: join_full_outer_source,
+  },
+  join_inner: {
+    component: join_inner_component,
+    source: join_inner_source,
+  },
+  join_left_outer: {
+    component: join_left_outer_component,
+    source: join_left_outer_source,
+  },
+  join_right_outer: {
+    component: join_right_outer_component,
+    source: join_right_outer_source,
+  },
+  index: {
+    component: index_component,
+    source: index_source,
+  },
+  key: {
+    component: key_component,
+    source: key_source,
+  },
+  label: {
+    component: label_component,
+    source: label_source,
+  },
+  ldap: {
+    component: ldap_component,
+    source: ldap_source,
+  },
+  learn: {
+    component: learn_component,
+    source: learn_source,
+  },
+  lightbulb: {
+    component: lightbulb_component,
+    source: lightbulb_source,
+  },
+  link: {
+    component: link_component,
+    source: link_source,
+  },
+  line: {
+    component: line_component,
+    source: line_source,
+  },
+  lines: {
+    component: lines_component,
+    source: lines_source,
+  },
+  lineandbar: {
+    component: lineandbar_component,
+    source: lineandbar_source,
+  },
+  line_style_dashed: {
+    component: line_style_dashed_component,
+    source: line_style_dashed_source,
+  },
+  line_style_dotted: {
+    component: line_style_dotted_component,
+    source: line_style_dotted_source,
+  },
+  line_style_solid: {
+    component: line_style_solid_component,
+    source: line_style_solid_source,
+  },
+  list: {
+    component: list_component,
+    source: list_source,
+  },
+  location: {
+    component: location_component,
+    source: location_source,
+  },
+  lock: {
+    component: lock_component,
+    source: lock_source,
+  },
+  lock_filled: {
+    component: lock_filled_component,
+    source: lock_filled_source,
+  },
+  mail: {
+    component: mail_component,
+    source: mail_source,
+  },
+  mail_filled: {
+    component: mail_filled_component,
+    source: mail_filled_source,
+  },
+  medallion: {
+    component: medallion_component,
+    source: medallion_source,
+  },
+  message_circle: {
+    component: message_circle_component,
+    source: message_circle_source,
+  },
+  metabot: {
+    component: metabot_component,
+    source: metabot_source,
+  },
+  metabot_sad: {
+    component: metabot_sad_component,
+    source: metabot_sad_source,
+  },
+  metric: {
+    component: metric_component,
+    source: metric_source,
+  },
+  model: {
+    component: model_component,
+    source: model_source,
+  },
+  model_with_badge: {
+    component: model_with_badge_component,
+    source: model_with_badge_source,
+  },
+  moon: {
+    component: moon_component,
+    source: moon_source,
+  },
+  move: {
+    component: move_component,
+    source: move_source,
+  },
+  move_card: {
+    component: move_card_component,
+    source: move_card_source,
+  },
+  network: {
+    component: network_component,
+    source: network_source,
+  },
+  new_folder: {
+    component: new_folder_component,
+    source: new_folder_source,
+  },
+  notebook: {
+    component: notebook_component,
+    source: notebook_source,
+  },
+  number: {
+    component: number_component,
+    source: number_source,
+  },
+  package: {
+    component: package_component,
+    source: package_source,
+  },
+  palette: {
+    component: palette_component,
+    source: palette_source,
+  },
+  pause: {
+    component: pause_component,
+    source: pause_source,
+  },
+  pencil: {
+    component: pencil_component,
+    source: pencil_source,
+  },
+  pencil_lines: {
+    component: pencil_lines_component,
+    source: pencil_lines_source,
+  },
+  permissions_limited: {
+    component: permissions_limited_component,
+    source: permissions_limited_source,
+  },
+  person: {
+    component: person_component,
+    source: person_source,
+  },
+  pie: {
+    component: pie_component,
+    source: pie_source,
+  },
+  pin: {
+    component: pin_component,
+    source: pin_source,
+  },
+  pinmap: {
+    component: pinmap_component,
+    source: pinmap_source,
+  },
+  pivot_table: {
+    component: pivot_table_component,
+    source: pivot_table_source,
+  },
+  play: {
+    component: play_component,
+    source: play_source,
+  },
+  play_outlined: {
+    component: play_outlined_component,
+    source: play_outlined_source,
+  },
+  popover: {
+    component: popover_component,
+    source: popover_source,
+  },
+  popular: {
+    component: popular_component,
+    source: popular_source,
+  },
+  progress: {
+    component: progress_component,
+    source: progress_source,
+  },
+  embed_interactive: {
+    component: embed_interactive_component,
+    source: embed_interactive_source,
+  },
+  embed_modular: {
+    component: embed_modular_component,
+    source: embed_modular_source,
+  },
+  embed_static: {
+    component: embed_static_component,
+    source: embed_static_source,
+  },
+  pulse: {
+    component: pulse_component,
+    source: pulse_source,
+  },
+  receipt: {
+    component: receipt_component,
+    source: receipt_source,
+  },
+  recents: {
+    component: recents_component,
+    source: recents_source,
+  },
+  revert: {
+    component: revert_component,
+    source: revert_source,
+  },
+  schema: {
+    component: schema_component,
+    source: schema_source,
+  },
+  sankey: {
+    component: sankey_component,
+    source: sankey_source,
+  },
+  share: {
+    component: share_component,
+    source: share_source,
+  },
+  sort: {
+    component: sort_component,
+    source: sort_source,
+  },
+  sort_arrows: {
+    component: sort_arrows_component,
+    source: sort_arrows_source,
+  },
+  split: {
+    component: split_component,
+    source: split_source,
+  },
+  sql: {
+    component: sql_component,
+    source: sql_source,
+  },
+  subscription: {
+    component: subscription_component,
+    source: subscription_source,
+  },
+  straight: {
+    component: straight_component,
+    source: straight_source,
+  },
+  stepped: {
+    component: stepped_component,
+    source: stepped_source,
+  },
+  sticky_note: {
+    component: sticky_note_component,
+    source: sticky_note_source,
+  },
+  sum: {
+    component: sum_component,
+    source: sum_source,
+  },
+  sync: {
+    component: sync_component,
+    source: sync_source,
+  },
+  synced_collection: {
+    component: synced_collection_component,
+    source: synced_collection_source,
+  },
+  question: {
+    component: question_component,
+    source: question_source,
+  },
+  quote: {
+    component: quote_component,
+    source: quote_source,
+  },
+  return: {
+    component: return_component,
+    source: return_source,
+  },
+  redo: {
+    component: redo_component,
+    source: redo_source,
+  },
+  reference: {
+    component: reference_component,
+    source: reference_source,
+  },
+  refresh: {
+    component: refresh_component,
+    source: refresh_source,
+  },
+  refresh_downstream: {
+    component: refresh_downstream_component,
+    source: refresh_downstream_source,
+  },
+  repository: {
+    component: repository_component,
+    source: repository_source,
+  },
+  rocket: {
+    component: rocket_component,
+    source: rocket_source,
+  },
+  ruler: {
+    component: ruler_component,
+    source: ruler_source,
+  },
+  search: {
+    component: search_component,
+    source: search_source,
+  },
+  section: {
+    component: section_component,
+    source: section_source,
+  },
+  segment: {
+    component: segment_component,
+    source: segment_source,
+  },
+  send: {
+    component: send_component,
+    source: send_source,
+  },
+  shield: {
+    component: shield_component,
+    source: shield_source,
+  },
+  shield_outline: {
+    component: shield_outline_component,
+    source: shield_outline_source,
+  },
+  sidebar_closed: {
+    component: sidebar_closed_component,
+    source: sidebar_closed_source,
+  },
+  sidebar_open: {
+    component: sidebar_open_component,
+    source: sidebar_open_source,
+  },
+  slack: {
+    component: slack_component,
+    source: slack_source,
+  },
+  slack_colorized: {
+    component: slack_colorized_component,
+    source: slack_colorized_source,
+  },
+  smartscalar: {
+    component: smartscalar_component,
+    source: smartscalar_source,
+  },
+  smile: {
+    component: smile_component,
+    source: smile_source,
+  },
+  snail: {
+    component: snail_component,
+    source: snail_source,
+  },
+  snippet: {
+    component: snippet_component,
+    source: snippet_source,
+  },
+  sparkles: {
+    component: sparkles_component,
+    source: sparkles_source,
+  },
+  star_filled: {
+    component: star_filled_component,
+    source: star_filled_source,
+  },
+  star: {
+    component: star_component,
+    source: star_source,
+  },
+  stop: {
+    component: stop_component,
+    source: stop_source,
+  },
+  store: {
+    component: store_component,
+    source: store_source,
+  },
+  string: {
+    component: string_component,
+    source: string_source,
+  },
+  sun: {
+    component: sun_component,
+    source: sun_source,
+  },
+  "t-shirt": {
+    component: t_shirt_component,
+    source: t_shirt_source,
+  },
+  tab: {
+    component: tab_component,
+    source: tab_source,
+  },
+  table: {
+    // for database tables
+    component: table_component,
+    source: table_source,
+  },
+  table2: {
+    // for questions with table visualizations
+    component: table2_component,
+    source: table2_source,
+  },
+  text_bold: {
+    component: text_bold_component,
+    source: text_bold_source,
+  },
+  text_italic: {
+    component: text_italic_component,
+    source: text_italic_source,
+  },
+  text_strike: {
+    component: text_strike_component,
+    source: text_strike_source,
+  },
+  thumbs_down: {
+    component: thumbs_down_component,
+    source: thumbs_down_source,
+  },
+  thumbs_up: {
+    component: thumbs_up_component,
+    source: thumbs_up_source,
+  },
+  time_history: {
+    component: time_history_component,
+    source: time_history_source,
+  },
+  trash: {
+    component: trash_component,
+    source: trash_source,
+  },
+  trash_filled: {
+    component: trash_filled_component,
+    source: trash_filled_source,
+  },
+  triangle_left: {
+    component: triangle_left_component,
+    source: triangle_left_source,
+  },
+  triangle_right: {
+    component: triangle_right_component,
+    source: triangle_right_source,
+  },
+  unarchive: {
+    component: unarchive_component,
+    source: unarchive_source,
+  },
+  undo: {
+    component: undo_component,
+    source: undo_source,
+  },
+  unknown: {
+    component: unknown_component,
+    source: unknown_source,
+  },
+  unpin: {
+    component: unpin_component,
+    source: unpin_source,
+  },
+  unsubscribe: {
+    component: unsubscribe_component,
+    source: unsubscribe_source,
+  },
+  upload: {
+    component: upload_component,
+    source: upload_source,
+  },
+  variable: {
+    component: variable_component,
+    source: variable_source,
+  },
+  verified: {
+    component: verified_component,
+    source: verified_source,
+  },
+  octagon_alert: {
+    component: octagon_alert_component,
+    source: octagon_alert_source,
+  },
+  official_collection: {
+    component: official_collection_component,
+    source: official_collection_source,
+  },
+  ordered_list: {
+    component: ordered_list_component,
+    source: ordered_list_source,
+  },
+  verified_filled: {
+    component: verified_filled_component,
+    source: verified_filled_source,
+  },
+  view_archive: {
+    component: view_archive_component,
+    source: view_archive_source,
+  },
+  warning: {
+    component: warning_component,
+    source: warning_source,
+  },
+  warning_round_filled: {
+    component: warning_round_filled_component,
+    source: warning_round_filled_source,
+  },
+  warning_triangle_filled: {
+    component: warning_triangle_filled_component,
+    source: warning_triangle_filled_source,
+  },
+  waterfall: {
+    component: waterfall_component,
+    source: waterfall_source,
+  },
+  webhook: {
+    component: webhook_component,
+    source: webhook_source,
+  },
+  "10k": {
+    component: ten_thousand_component,
+    source: ten_thousand_source,
+  },
+  "1m": {
+    component: one_million_component,
+    source: one_million_source,
+  },
+  zap: { component: zap_component, source: zap_source },
+  zoom_in: {
+    component: zoom_in_component,
+    source: zoom_in_source,
+  },
+  zoom_out: {
+    component: zoom_out_component,
+    source: zoom_out_source,
+  },
+  scalar: {
+    component: number_component,
+    source: number_source,
+  },
+  cake: {
+    component: birthday_component,
+    source: birthday_source,
+  },
+  external: { component: share_component, source: share_source },
+  table_spaced: { component: table_component, source: table_source },
+  collection: { component: folder_component, source: folder_source },
+  beaker: { component: formula_component, source: formula_source },
+  test_tube: { component: test_tube_component, source: test_tube_source },
+  eye_filled: { component: eye_component, source: eye_source },
+};
 
 /**
  * We need a standalone type to prevent adding the `Icons` object (as a type) into `index.d.ts` of Embedding SDK dist
