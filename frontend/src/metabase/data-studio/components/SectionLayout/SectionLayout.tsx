@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { PLUGIN_METABOT } from "metabase/plugins";
-import { Box, Button, Group, Stack, Tabs } from "metabase/ui";
+import { Box, Button, Flex, Group, Stack, Tabs } from "metabase/ui";
 
 import S from "./SectionLayout.module.css";
 
@@ -16,7 +16,7 @@ type SectionLayoutProps = {
 export function SectionLayout({ title, tabs, children }: SectionLayoutProps) {
   return (
     <Stack h="100%" gap={0}>
-      <Group
+      <Flex
         data-testid="data-studio-header"
         className={S.header}
         px="lg"
@@ -34,10 +34,11 @@ export function SectionLayout({ title, tabs, children }: SectionLayoutProps) {
             {t`Exit data studio`}
           </Button>
         </Group>
-      </Group>
-      <Box flex={1} mih={0}>
-        {children}
-      </Box>
+      </Flex>
+      <Flex flex={1} mih={0}>
+        <Box flex={1}>{children}</Box>
+        <PLUGIN_METABOT.MetabotDataStudioSidebar />
+      </Flex>
     </Stack>
   );
 }
