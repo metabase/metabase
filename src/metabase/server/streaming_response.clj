@@ -5,6 +5,7 @@
    [compojure.response]
    [metabase.api.common.internal]
    [metabase.server.protocols :as server.protocols]
+   [metabase.server.settings :as server.settings]
    [metabase.server.streaming-response.thread-pool :as thread-pool]
    [metabase.util :as u]
    [metabase.util.async :as async.u]
@@ -42,7 +43,8 @@
       500))
 
 (defn- format-exception [e]
-  (assoc (Throwable->map e) :_status (ex-status-code e)))
+  (cond-> (assoc (Throwable->map e) :_status (ex-status-code e))
+    (server.settings/hide-stacktraces) (dissoc :via :trace)))
 
 (defn write-error!
   "Write an error to the output stream, formatting it nicely. Closes output stream afterwards."
@@ -67,7 +69,8 @@
                              x))
                          obj)
                         obj)
-                      (dissoc :export-format))]
+                      (dissoc :export-format)
+                      (cond-> (server.settings/hide-stacktraces) (dissoc :stacktrace :trace :via)))]
           (with-open [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
             (json/encode-to obj writer {})))
         (catch EofException _)

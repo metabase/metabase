@@ -60,6 +60,9 @@
                    (map schema.table/present-table))
           tables)))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/:id"
   "Get `Table` with ID."
   [{:keys [id]} :- [:map
@@ -184,6 +187,12 @@
                                [:data_authority          {:optional true} [:maybe ::data-authority-write]]]]
   (update-tables! ids body))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+;;
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/:id/query_metadata"
   "Get metadata about a `Table` useful for running queries.
    Returns DB, fields, field FKs, and field values.
@@ -206,12 +215,16 @@
                                                :include-hidden-fields?       include_hidden_fields
                                                :include-editable-data-model? include_editable_data_model}))
 
+;; I think this endpoint can keep the `card__` part since it's a HACK to make IDs like `card__1` work
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :get "/card__:id/query_metadata"
   "Return metadata for the 'virtual' table for a Card."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (first (schema.table/batch-fetch-card-query-metadatas [id] {:include-database? true})))
 
+;; I think this endpoint can keep the `card__` part since it's a HACK to make IDs like `card__1` work
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :get "/card__:id/fks"
   "Return FK info for the 'virtual' table for a Card. This is always empty, so this endpoint
    serves mainly as a placeholder to avoid having to change anything on the frontend."
@@ -234,6 +247,8 @@
        :destination_id (:fk_target_field_id origin-field)
        :destination    (t2/hydrate (t2/select-one :model/Field :id (:fk_target_field_id origin-field)) :table)})))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :post "/:id/rescan_values"
   "Manually trigger an update for the FieldValues for the Fields belonging to this Table. Only applies to Fields that
    are eligible for FieldValues."
@@ -251,6 +266,8 @@
          (sync/update-field-values-for-table! table))))
     {:status :success}))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :post "/:id/discard_values"
   "Discard the FieldValues belonging to the Fields in this Table. Only applies to fields that have FieldValues. If
    this Table's Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
@@ -336,6 +353,8 @@
                 :file     (get-in multipart-params ["file" :tempfile])
                 :action   :metabase.upload/replace}))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :post "/:id/sync_schema"
   "Trigger a manual update of the schema metadata for this `Table`."
   [{:keys [id]} :- [:map

@@ -1,7 +1,8 @@
 (ns metabase.lib.metadata
-  (:refer-clojure :exclude [every? #?(:clj doseq) #?(:clj for)])
+  (:refer-clojure :exclude [every? empty? #?(:clj doseq) #?(:clj for)])
   (:require
    [medley.core :as m]
+   [metabase.lib.computed :as lib.computed]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -11,7 +12,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [every? #?(:clj doseq) #?(:clj for)]]))
+   [metabase.util.performance :refer [every? empty? #?(:clj doseq) #?(:clj for)]]))
 
 ;;; TODO -- deprecate all the schemas below, and just use the versions in [[lib.schema.metadata]] instead.
 
@@ -152,8 +153,10 @@
   "Get metadata for a Card, aka Saved Question, with `card-id`, if it can be found."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    card-id               :- ::lib.schema.id/card]
-  (some-> (lib.metadata.protocols/card (->metadata-provider metadata-providerable) card-id)
-          (m/update-existing :dataset-query normalize-query metadata-providerable)))
+  (lib.computed/with-cache-sticky* metadata-providerable [:metadata/card card-id :metadata]
+    (fn []
+      (some-> (lib.metadata.protocols/card (->metadata-provider metadata-providerable) card-id)
+              (m/update-existing :dataset-query normalize-query metadata-providerable)))))
 
 (mu/defn native-query-snippet :- [:maybe ::lib.schema.metadata/native-query-snippet]
   "Get metadata for a NativeQuerySnippet with `snippet-id` if it can be found."
