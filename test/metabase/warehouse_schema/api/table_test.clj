@@ -1450,3 +1450,46 @@
         (testing "rescanned?"
           (is (true? (.await latch 4 TimeUnit/SECONDS)))
           (is (= [t1 t2 t4 t5] (map :id @tables))))))))
+
+(deftest ^:parallel bulk-discard-values-test
+  (testing "POST /api/table/:id/discard_values"
+    (mt/with-temp
+      [:model/Database    {d1 :id} {:engine "h2", :details (:details (mt/db))}
+       :model/Database    {d2 :id} {:engine "h2", :details (:details (mt/db))}
+       :model/Table       {t1 :id} {:db_id d1, :schema "PUBLIC"}
+       :model/Table       {t2 :id} {:db_id d1, :schema "PUBLIC"}
+       :model/Table       {t3 :id} {:db_id d2, :schema "PUBLIC"}
+       :model/Table       {t4 :id} {:db_id d2, :schema "PUBLIC"}
+       :model/Table       {t5 :id} {:db_id d2, :schema "FOO"}
+       :model/Field       {f1 :id} {:table_id t1}
+       :model/FieldValues {v1 :id} {:field_id f1, :values ["T1"]}
+       :model/Field       {f2 :id} {:table_id t2}
+       :model/FieldValues {v2 :id} {:field_id f2, :values ["T2"]}
+       :model/Field       {f3 :id} {:table_id t3}
+       :model/FieldValues {v3 :id} {:field_id f3, :values ["T3"]}
+       :model/Field       {f4 :id} {:table_id t4}
+       :model/FieldValues {v4 :id} {:field_id f4, :values ["T4-1"]}
+       :model/Field       {f5 :id} {:table_id t4}
+       :model/FieldValues {v5 :id} {:field_id f5, :values ["T4-2"]}
+       :model/Field       {f6 :id} {:table_id t5}
+       :model/FieldValues {v6 :id} {:field_id f6, :values ["T5-1"]}
+       :model/Field       {f7 :id} {:table_id t5}
+       :model/FieldValues {v7 :id} {:field_id f7, :values ["T5-2"]}]
+      (let [url "table/discard_values"
+            remaining-field-values-q {:select   [:fv.id]
+                                      :from     [[(t2/table-name :model/FieldValues) :fv]
+                                                 [(t2/table-name :model/Field) :f]]
+                                      :where    [:and [:= :fv.field_id :f.id]
+                                                 [:in :f.table_id [t1 t2 t3 t4 t5]]]
+                                      :order-by [[:fv.id :asc]]}
+            get-field-values         #(mapv :id (t2/query remaining-field-values-q))]
+        (testing "Non-admin toucans should not be allowed to discard values"
+          (is (= "You don't have permissions to do that." (mt/user-http-request :rasta :post 403 url {:table_ids [t1]})))
+          (testing "FieldValues should still exist"
+            (is (= [v1 v2 v3 v4 v5 v6 v7] (get-field-values)))))
+        (testing "Admins should be able to successfully delete them"
+          (is (= {:status "ok"} (mt/user-http-request :crowberto :post 200 url {:database_ids [d1],
+                                                                                :schema_ids   [(format "%d:FOO" d2)]
+                                                                                :table_ids    [t4]})))
+          (testing "Selected FieldValues should be gone"
+            (is (= [v3] (get-field-values)))))))))

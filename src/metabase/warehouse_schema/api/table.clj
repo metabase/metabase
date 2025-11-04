@@ -621,3 +621,16 @@
       (doseq [table tables]
         (quick-task/submit-task! #(sync/update-field-values-for-table! table))))
     {:status :ok}))
+
+(api.macros/defendpoint :post "/discard_values"
+  "Batch version of /table/:id/discard_values. Takes an abstract table selection as /table/edit does."
+  [_
+   _
+   body :- ::table-selectors]
+  (let [tables (t2/select :model/Table {:where (table-selectors->filter body), :order-by [[:id]]})]
+    (run! api/write-check tables)
+    (let [field-ids-to-delete-q {:select [:id]
+                                 :from   [(t2/table-name :model/Field)]
+                                 :where  [:in :table_id (map :id tables)]}]
+      (t2/delete! (t2/table-name :model/FieldValues) :field_id [:in field-ids-to-delete-q]))
+    {:status :ok}))
