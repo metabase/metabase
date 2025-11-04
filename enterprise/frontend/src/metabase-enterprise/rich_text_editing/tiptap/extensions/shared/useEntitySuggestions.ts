@@ -38,7 +38,7 @@ interface UseEntitySuggestionsResult {
   isLoading: boolean;
   searchResults: SearchResult[];
   selectedIndex: number;
-  modal: "question-picker" | null;
+  modal: "question-picker" | "create-new" | null;
   totalItems: number;
   selectedSearchModelName?: string;
   handlers: {
@@ -51,6 +51,7 @@ interface UseEntitySuggestionsResult {
     handleModalClose: () => void;
     openModal: () => void;
     hoverHandler: (index: number) => void;
+    createNewQuestion: () => void;
   };
 }
 
@@ -65,7 +66,9 @@ export function useEntitySuggestions({
   canBrowseAll,
 }: UseEntitySuggestionsOptions): UseEntitySuggestionsResult {
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [modal, setModal] = useState<"question-picker" | null>(null);
+  const [modal, setModal] = useState<"question-picker" | "create-new" | null>(
+    null,
+  );
   const [selectedSearchModel, setSelectedSearchModel] =
     useState<SuggestionModel | null>(null);
 
@@ -258,6 +261,10 @@ export function useEntitySuggestions({
     setModal("question-picker");
   }, []);
 
+  const createNewQuestion = useCallback(() => {
+    setModal("create-new");
+  }, []);
+
   useEffect(() => {
     setSelectedIndex(0);
   }, [menuItems.length]);
@@ -285,6 +292,7 @@ export function useEntitySuggestions({
       handleModalClose,
       openModal,
       hoverHandler,
+      createNewQuestion,
     },
   };
 }

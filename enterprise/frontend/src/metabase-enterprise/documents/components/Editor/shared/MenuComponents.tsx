@@ -92,6 +92,25 @@ export const SearchResultsFooter = ({
   </UnstyledButton>
 );
 
+export const CreateNewQuestionFooter = ({
+  isSelected,
+  onClick,
+  ...rest
+}: ExtraItemProps) => (
+  <UnstyledButton
+    className={S.menuItem}
+    onClick={onClick}
+    role="option"
+    aria-selected={isSelected}
+    {...rest}
+  >
+    <Group gap="sm" wrap="nowrap" align="center">
+      <Icon name="add" size={16} color="inherit" />
+      <Text size="md" lh="lg" c="inherit">{t`New chart`}</Text>
+    </Group>
+  </UnstyledButton>
+);
+
 export const MetabotFooter = ({ isSelected, onClick }: ExtraItemProps) => (
   <UnstyledButton
     className={S.menuItemWithBorder}

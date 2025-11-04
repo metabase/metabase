@@ -5,6 +5,7 @@ import type { QuestionPickerValueItem } from "metabase/common/components/Pickers
 import { Box, Divider, Text } from "metabase/ui";
 import type { MenuItem } from "metabase-enterprise/documents/components/Editor/shared/MenuComponents";
 import {
+  CreateNewQuestionFooter,
   MenuItemComponent,
   SearchResultsFooter,
 } from "metabase-enterprise/documents/components/Editor/shared/MenuComponents";
@@ -17,12 +18,13 @@ interface EntitySearchSectionProps {
   onFooterClick: () => void;
   query: string;
   searchResults: SearchResult[];
-  modal: "question-picker" | null;
+  modal: "question-picker" | "create-new" | null;
   onModalSelect: (item: QuestionPickerValueItem) => void;
   onModalClose: () => void;
   onItemHover: (index: number) => void;
   canBrowseAll?: boolean;
   selectedSearchModelName?: string;
+  onCreateNew: () => void;
 }
 
 export function EntitySearchSection({
@@ -38,6 +40,7 @@ export function EntitySearchSection({
   onItemHover,
   selectedSearchModelName,
   canBrowseAll,
+  onCreateNew,
 }: EntitySearchSectionProps) {
   return (
     <>
@@ -67,13 +70,26 @@ export function EntitySearchSection({
       {canBrowseAll && (
         <>
           {menuItems.length > 0 && <Divider my="sm" mx="sm" />}
-          <SearchResultsFooter
+          <CreateNewQuestionFooter
             isSelected={selectedIndex === menuItems.length}
-            onClick={onFooterClick}
+            onClick={onCreateNew}
             onMouseEnter={() => onItemHover(menuItems.length)}
           />
 
+          <SearchResultsFooter
+            isSelected={selectedIndex === menuItems.length + 1}
+            onClick={onFooterClick}
+            onMouseEnter={() => onItemHover(menuItems.length + 1)}
+          />
+
           {modal === "question-picker" && (
+            <QuestionPickerModal
+              onChange={onModalSelect}
+              onClose={onModalClose}
+            />
+          )}
+
+          {modal === "create-new" && (
             <QuestionPickerModal
               onChange={onModalSelect}
               onClose={onModalClose}
