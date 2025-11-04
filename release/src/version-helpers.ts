@@ -106,6 +106,16 @@ export const getVersionFromReleaseBranch = (branch: string) => {
   return `v0.${majorVersion}.0`;
 };
 
+export const getMajorVersionFromRef = (ref: string) => {
+  if (ref.startsWith("refs/tags/")) {
+    const tagName = ref.replace("refs/tags/", "");
+    const versionParts = getVersionParts(tagName);
+    return versionParts.major;
+  }
+
+  return getMajorVersionNumberFromReleaseBranch(ref.replace("refs/heads/", ""));
+};
+
 const SDK_TAG_REGEXP = /embedding-sdk-(0\.\d+\.\d+(-\w+)?)$/;
 
 export const getSdkVersionFromReleaseTagName = (tagName: string) => {
@@ -216,6 +226,7 @@ export const versionRequirements: Record<
   54: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
   55: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
   56: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
+  57: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
 };
 
 export const getBuildRequirements = (version: string) => {

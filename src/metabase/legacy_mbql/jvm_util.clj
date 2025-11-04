@@ -1,6 +1,7 @@
 (ns metabase.legacy-mbql.jvm-util
   "This namespace contains functionality that is not compatible with js, hence can not be stored in correspoding
   cljc ns, ie. [[metabase.legacy-mbql.util]]."
+  {:deprecated "0.57.0"}
   (:require
    [metabase.lib.filter.desugar.jvm :as lib.filter.desugar.jvm]
    [metabase.lib.util.match :as lib.util.match]))

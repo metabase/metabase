@@ -4,13 +4,15 @@
    [metabase-enterprise.documents.core :as documents]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ;; TODO (Cam 10/10/25) -- update MetaBot to use Lib + MBQL 5
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
+   [metabase.util.log :as log]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
@@ -26,16 +28,39 @@
                               {:order-by [[:id :desc]]})]
     (= (:status review) "verified")))
 
+(def ^:private max-glossary-items
+  "Maximal number of items from glossary to include in Metabot's context."
+  100)
+
+(def ^:private glossary-order-column
+  "Column to order by when selecting glossary items for Metabot's context injection."
+  :updated_at)
+
+(defn- glossary-for-context
+  []
+  ;; Rather small glossary sizes are anticipated. Additional count is bearable.
+  (let [glossary-size (t2/count :model/Glossary)]
+    (when (> glossary-size max-glossary-items)
+      ;; If we are notified about the following warning we should reconsider current,
+      ;; context injection, approach to glossary integration into Metabot.
+      (log/warnf "Glossary size is larger than limit for context injection (%d > %d)."
+                 glossary-size max-glossary-items)))
+  (not-empty (t2/select-fn->fn :term :definition :model/Glossary
+                               {:order-by [[glossary-order-column :desc]]
+                                :limit max-glossary-items})))
+
 (defn get-current-user
   "Get information about the current user."
   []
   (if-let [{:keys [id email first_name last_name]}
            (or (some-> api/*current-user* deref)
                (t2/select-one [:model/User :id :email :first_name :last_name] api/*current-user-id*))]
-    {:structured-output {:id id
-                         :type :user
-                         :name (str first_name " " last_name)
-                         :email-address email}}
+    {:structured-output (merge {:id id
+                                :type :user
+                                :name (str first_name " " last_name)
+                                :email-address email}
+                               (when-some [glossary (glossary-for-context)]
+                                 {:glossary glossary}))}
     {:output "current user not found"}))
 
 (defn get-dashboard-details

@@ -2,7 +2,7 @@ import type { ChangeEvent } from "react";
 import { useRef, useState } from "react";
 import { t } from "ttag";
 
-import BookmarkToggle from "metabase/common/components/BookmarkToggle";
+import { BookmarkToggle } from "metabase/common/components/BookmarkToggle";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { UploadInput } from "metabase/common/components/upload";
 import { useDispatch } from "metabase/lib/redux";
@@ -105,7 +105,6 @@ export const QuestionActions = ({
       {!question.isArchived() && (
         <Box className={ViewTitleHeaderS.ViewHeaderIconButtonContainer}>
           <BookmarkToggle
-            className={ViewTitleHeaderS.ViewHeaderIconButton}
             onCreateBookmark={onToggleBookmark}
             onDeleteBookmark={onToggleBookmark}
             isBookmarked={isBookmarked}
