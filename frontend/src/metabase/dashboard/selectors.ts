@@ -8,7 +8,7 @@ import {
   SIDEBAR_NAME,
 } from "metabase/dashboard/constants";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { checkNotNull, isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import {
   getDashboardQuestions,
@@ -184,18 +184,13 @@ export function getDashCardBeforeEditing(state: State, dashcardId: DashCardId) {
 export const getLoadingDashCards = (state: State) =>
   state.dashboard.loadingDashCards;
 
-export const getDashboardById = (
-  state: State,
-  dashboardId: DashboardId,
-): StoreDashboard => {
+export const getDashboardById = (state: State, dashboardId: DashboardId) => {
   const dashboards = getDashboards(state);
 
   const isEntityId = isBaseEntityID(dashboardId);
   if (isEntityId) {
-    return checkNotNull(
-      Object.values(dashboards).find(
-        (dashboard) => dashboard.entity_id === dashboardId,
-      ),
+    return Object.values(dashboards).find(
+      (dashboard) => dashboard.entity_id === dashboardId,
     );
   } else {
     // Number and jwt (static embed) IDs
