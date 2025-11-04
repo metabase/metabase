@@ -37,6 +37,7 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
     useCreateTransformTagMutation();
   const tagById = getTagById(tags);
   const [searchValue, setSearchValue] = useState("");
+  const trimmedSearchValue = searchValue.trim();
   const [modalType, setModalType] = useState<TagModalType>();
   const [selectedTagId, setSelectedTagId] = useState<TransformTagId>();
   const { sendErrorToast } = useMetadataToasts();
@@ -45,11 +46,12 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
     if (isCreating) {
       return;
     }
-    const { data: tag } = await createTag({ name: searchValue });
+    const { data: tag } = await createTag({ name: trimmedSearchValue });
     if (!tag) {
       sendErrorToast(t`Failed to create a tag`);
     } else {
       onChange([...tagIds, tag.id], true);
+      setSearchValue("");
     }
   };
 
@@ -92,19 +94,22 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
     <>
       <MultiSelect
         value={tagIds.map(getValue)}
-        data={getOptions(tags, searchValue)}
+        data={getOptions(tags, trimmedSearchValue)}
         placeholder={t`Add tags`}
         searchValue={searchValue}
-        hidePickedOptions={false}
         searchable
         rightSection={
           isLoading || isCreating ? <Loader size="sm" /> : undefined
         }
-        nothingFoundMessage={t`No tags found.`}
+        nothingFoundMessage={getNotFoundMessage(
+          tags,
+          tagIds,
+          trimmedSearchValue,
+        )}
         renderOption={(item) =>
           item.option.value === NEW_VALUE ? (
             <NewTagSelectItem
-              searchValue={searchValue}
+              trimmedSearchValue={trimmedSearchValue}
               selected={item.checked}
               onCreate={handleCreate}
             />
@@ -140,12 +145,12 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
 }
 
 type NewTagSelectItemProps = SelectItemProps & {
-  searchValue: string;
+  trimmedSearchValue: string;
   onCreate: () => void;
 };
 
 function NewTagSelectItem({
-  searchValue,
+  trimmedSearchValue,
   selected,
   onCreate,
 }: NewTagSelectItemProps) {
@@ -158,7 +163,7 @@ function NewTagSelectItem({
   return (
     <SelectItem selected={selected} mih="2.25rem" onClick={handleClick}>
       <Text c="inherit" lh="inherit">
-        {jt`Create ${(<strong key="value">{searchValue}</strong>)}`}
+        {jt`Create ${(<strong key="value">{trimmedSearchValue}</strong>)}`}
       </Text>
     </SelectItem>
   );
@@ -227,15 +232,18 @@ function getTagId(value: string): TransformTagId {
   return parseInt(value, 10);
 }
 
-function getOptions(tags: TransformTag[], searchValue: string) {
+function getOptions(tags: TransformTag[], trimmedSearchValue: string) {
   const options = tags.map((tag) => ({
     tag,
     value: getValue(tag.id),
     label: tag.name,
   }));
 
-  if (searchValue.length > 0 && tags.every((tag) => tag.name !== searchValue)) {
-    return [...options, { value: NEW_VALUE, label: searchValue }];
+  if (
+    trimmedSearchValue.length > 0 &&
+    tags.every((tag) => tag.name !== trimmedSearchValue)
+  ) {
+    return [...options, { value: NEW_VALUE, label: trimmedSearchValue }];
   }
 
   return options;
@@ -245,4 +253,21 @@ function getTagById(
   tags: TransformTag[],
 ): Record<TransformTagId, TransformTag> {
   return Object.fromEntries(tags.map((tag) => [tag.id, tag]));
+}
+
+function getNotFoundMessage(
+  tags: TransformTag[],
+  tagIds: TransformTagId[],
+  trimmedSearchValue: string,
+) {
+  if (tags.length === 0) {
+    return t`Start typing to create a tag`;
+  }
+  if (tags.some((tag) => tag.name === trimmedSearchValue)) {
+    return t`A tag with that name already exists`;
+  }
+  if (tags.length === tagIds.length) {
+    return t`All tags selected`;
+  }
+  return t`No tags found`;
 }

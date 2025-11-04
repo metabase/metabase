@@ -1,10 +1,12 @@
 (ns metabase.query-processor.store-test
+  ;; The parent namespace is in the process of deprecation so ignore deprecated vars in this namespace.
+  {:clj-kondo/config '{:linters {:deprecated-var {:level :off}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]))
 
 (deftest ^:parallel cached-test

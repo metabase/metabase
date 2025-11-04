@@ -1,9 +1,6 @@
 (ns metabase.query-processor.dashboard-test
   "There are more e2e tests in [[metabase.dashboards.api-test]]."
-  {:clj-kondo/config '{:linters
-                       ;; allowing `with-temp` here for now since this tests the REST API which doesn't fully use
-                       ;; metadata providers.
-                       {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
+  {:clj-kondo/config '{:linters {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.dashboards.api-test :as api.dashboard-test]
@@ -26,7 +23,7 @@
                             (qp/process-query (assoc query :info info))))
            options)))
 
-(deftest resolve-parameters-validation-test
+(deftest ^:parallel resolve-parameters-validation-test
   (api.dashboard-test/with-chain-filter-fixtures [{{dashboard-id :id} :dashboard
                                                    {card-id :id}      :card
                                                    {dashcard-id :id}  :dashcard}]
@@ -46,8 +43,10 @@
       (testing "Should error if parameter is of a different type"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"Invalid parameter type :number/!= for parameter \"_PRICE_\".*"
-             (resolve-params [{:id "_PRICE_", :value 4, :type :number/!=}]))))))
+             #"Invalid parameter value type :number/!= for parameter \"_PRICE_\".*"
+             (resolve-params [{:id "_PRICE_", :value 4, :type :number/!=}])))))))
+
+(deftest ^:parallel resolve-parameters-validation-test-2
   (testing "Resolves new operator type arguments without error (#25031)"
     (mt/dataset test-data
       (let [query (mt/native-query {:query         "select COUNT(*) from \"ORDERS\" where true [[AND quantity={{qty_locked}}]]"
@@ -119,7 +118,7 @@
                             #"Not found"
                             (run-query-for-dashcard dashboard-id card-id-2 dashcard-id-3))))))
 
-(deftest ^:parallel default-value-precedence-test-field-filters
+(deftest default-value-precedence-test-field-filters
   (testing "If both Dashboard and Card have default values for a Field filter parameter, Card defaults should take precedence\n"
     (mt/dataset test-data
       (mt/with-temp
@@ -174,9 +173,9 @@
       [:model/Card {card-id :id} {:database_id   (mt/id)
                                   :table_id      (mt/id :venues)
                                   :dataset_query (mt/mbql-query venues
-                                                   {:aggregation  [:count]
-                                                    :breakout     [$category_id
-                                                                   $price]})}
+                                                   {:aggregation [:count]
+                                                    :breakout    [$category_id
+                                                                  $price]})}
        :model/Dashboard {dashboard-id :id} {:parameters
                                             [{:slug      "venue_id"
                                               :id        "_VENUE_ID_"
@@ -456,8 +455,8 @@
     (mt/dataset test-data
       (mt/with-temp [:model/Dashboard {dashboard-id :id} {:last_viewed_at #t "2000-01-01"}
                      :model/Card {card-id :id} {:dataset_query (mt/native-query
-                                                                 {:query "SELECT COUNT(*) FROM \"ORDERS\""
-                                                                  :template-tags {}})}
+                                                                {:query "SELECT COUNT(*) FROM \"ORDERS\""
+                                                                 :template-tags {}})}
                      :model/DashboardCard {dashcard-id :id} {:card_id card-id
                                                              :dashboard_id dashboard-id}]
         (let [original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard dashboard-id)]

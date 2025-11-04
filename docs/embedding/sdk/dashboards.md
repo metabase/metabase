@@ -8,7 +8,7 @@ title: "Embedded analytics SDK - dashboards"
 
 You can embed an interactive, editable, or static dashboard.
 
-**Please keep in mind - embedding multiple instances of dashboards on the same page is not yet supported.**
+**Keep in mind that embedding multiple instances of dashboards on the same page is not yet supported.**
 
 ## Embedding a dashboard
 

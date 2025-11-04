@@ -83,7 +83,8 @@
    (select-keys
     field
     [:created_at :fingerprint :fingerprint_version :fk_target_field_id :id :last_analyzed :updated_at
-     :database_required :database_is_auto_increment :entity_id])))
+     :database_required :database_is_auto_increment :database_is_pk :database_is_generated :database_is_nullable
+     :entity_id])))
 
 (deftest ^:parallel list-table-test
   (testing "GET /api/table"
@@ -798,7 +799,8 @@
   (testing "GET /api/table/card__:id/query_metadata for deleted cards (#48461)"
     (mt/with-temp
       [:model/Card {card-id-1 :id} {:dataset_query (mt/mbql-query products)}
-       :model/Card {card-id-2 :id} {:dataset_query {:type     :query
+       :model/Card {card-id-2 :id} {:dataset_query {:database (mt/id)
+                                                    :type     :query
                                                     :query    {:source-table (str "card__" card-id-1)}}}]
       (letfn [(query-metadata [expected-status card-id]
                 (->> (format "table/card__%d/query_metadata" card-id)
@@ -867,7 +869,7 @@
                                       :type          :model
                                       :dataset_query (mt/mbql-query venues)}]
       (let [card-virtual-table-id (str "card__" (:id model))
-            metric-query          {:database 2
+            metric-query          {:database (mt/id)
                                    :type     "query"
                                    :query    {:source-table card-virtual-table-id
                                               :aggregation  [["count"]]}}]
@@ -888,7 +890,10 @@
                                      :database_id    (mt/id)
                                      :name           "Venues metric"
                                      :type           "metric"
-                                     :dataset_query  metric-query
+                                     :dataset_query  {:database (mt/id)
+                                                      :lib/type "mbql/query"
+                                                      :stages   [{:source-card (:id model)
+                                                                  :aggregation [["count" {}]]}]}
                                      :id             (:id metric)}]}
                     (mt/user-http-request :crowberto :get 200
                                           (format "table/card__%d/query_metadata" (u/the-id model))))))

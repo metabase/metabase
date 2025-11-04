@@ -23,6 +23,11 @@ export const getAdminPaths: () => AdminPath[] = () => {
       path: "/admin/databases",
       key: "databases",
     },
+    {
+      name: t`Embedding`,
+      path: "/admin/embedding",
+      key: "embedding",
+    },
     ...PLUGIN_METABOT.getAdminPaths(),
     {
       name: t`Table Metadata`,

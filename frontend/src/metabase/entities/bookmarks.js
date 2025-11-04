@@ -151,6 +151,7 @@ function getEntityFor(type) {
     collection: Collections,
     dashboard: Dashboards,
     document: PLUGIN_ENTITIES.entities["documents"],
+    transform: PLUGIN_ENTITIES.entities["transforms"],
   };
 
   return entities[type];

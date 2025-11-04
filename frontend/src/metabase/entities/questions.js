@@ -1,12 +1,7 @@
 import { updateIn } from "icepick";
 import { t } from "ttag";
 
-import {
-  cardApi,
-  datasetApi,
-  useGetCardQuery,
-  useListCardsQuery,
-} from "metabase/api";
+import { cardApi, useGetCardQuery, useListCardsQuery } from "metabase/api";
 import {
   canonicalCollectionId,
   isRootTrashCollection,
@@ -21,21 +16,17 @@ import {
   entityCompatibleQuery,
   undo,
 } from "metabase/lib/entities";
-import { compose, withAction, withNormalize } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls/questions";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
   API_UPDATE_QUESTION,
   SOFT_RELOAD_CARD,
 } from "metabase/query_builder/actions/core/types";
-import { QueryMetadataSchema } from "metabase/schema";
 import {
   getMetadata,
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
 
-const FETCH_METADATA = "metabase/entities/questions/FETCH_METADATA";
-const FETCH_ADHOC_METADATA = "metabase/entities/questions/FETCH_ADHOC_METADATA";
 export const INJECT_RTK_QUERY_QUESTION_VALUE =
   "metabase/entities/questions/FETCH_ADHOC_METADATA";
 
@@ -86,34 +77,6 @@ const Questions = createEntity({
     },
     delete: ({ id }, dispatch) =>
       entityCompatibleQuery(id, dispatch, cardApi.endpoints.deleteCard),
-  },
-
-  actions: {
-    fetchMetadata: compose(
-      withAction(FETCH_METADATA),
-      withNormalize(QueryMetadataSchema),
-    )(
-      ({ id } = {}) =>
-        (dispatch) =>
-          entityCompatibleQuery(
-            id,
-            dispatch,
-            cardApi.endpoints.getCardQueryMetadata,
-            { forceRefetch: false },
-          ),
-    ),
-    fetchAdhocMetadata: compose(
-      withAction(FETCH_ADHOC_METADATA),
-      withNormalize(QueryMetadataSchema),
-    )(
-      (query) => (dispatch) =>
-        entityCompatibleQuery(
-          query,
-          dispatch,
-          datasetApi.endpoints.getAdhocQueryMetadata,
-          { forceRefetch: false },
-        ),
-    ),
   },
 
   objectActions: {

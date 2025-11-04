@@ -16,6 +16,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { closeNavbar, setDetailView } from "metabase/redux/app";
 import { getIsNavbarOpen } from "metabase/selectors/app";
+import { getMetadata } from "metabase/selectors/metadata";
 import { extractRemappedColumns } from "metabase/visualizations";
 import * as Lib from "metabase-lib";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
@@ -38,16 +39,19 @@ export function ModelDetailPage({ params }: Props) {
   } = useGetCardQuery(cardId == null ? skipToken : { id: cardId });
 
   const {
-    data: metadata,
+    data: queryMetadata,
     error: metadataError,
     isLoading: isMetadataLoading,
   } = useGetCardQueryMetadataQuery(cardId == null ? skipToken : cardId);
 
-  const table = metadata?.tables?.find(
+  const table = queryMetadata?.tables?.find(
     (table) => table.id === getQuestionVirtualTableId(cardId),
   );
-
-  const tableQuery = useMemo(() => getTableQuery(table), [table]);
+  const metadata = useSelector(getMetadata);
+  const tableQuery = useMemo(
+    () => getTableQuery(metadata, table),
+    [metadata, table],
+  );
   const objectQuery = useMemo(() => {
     return tableQuery && table
       ? filterByPk(tableQuery, table.fields ?? [], rowId)
@@ -59,7 +63,7 @@ export function ModelDetailPage({ params }: Props) {
     error: queryError,
     isLoading: isQueryLoading,
   } = useGetAdhocQueryQuery(
-    objectQuery ? Lib.toLegacyQuery(objectQuery) : skipToken,
+    objectQuery ? Lib.toJsQuery(objectQuery) : skipToken,
   );
 
   const error = metadataError ?? queryError ?? cardError;

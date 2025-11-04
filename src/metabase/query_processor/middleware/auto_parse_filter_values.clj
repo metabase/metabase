@@ -42,7 +42,7 @@
   [_query _path-type _path clause]
   (lib.util.match/match-lite clause
     [:value
-     (opts :guard (fn [{:keys [effective-type], :as _value-options}]
+     (opts :guard (let [{:keys [effective-type]} opts]
                     (and effective-type
                          (not (isa? effective-type :type/Text)))))
      (v :guard string?)]

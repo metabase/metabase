@@ -1,14 +1,11 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
 
+import Link from "metabase/common/components/Link/Link";
 import CS from "metabase/css/core/index.css";
+import { Icon } from "metabase/ui";
 
-import {
-  BrowserCrumbsIcon,
-  BrowserCrumbsItem,
-  BrowserCrumbsLink,
-  BrowserCrumbsRoot,
-} from "./BrowserCrumbs.styled";
+import S from "./BrowserCrumbs.module.css";
 
 // TODO: merge with Breadcrumbs
 
@@ -29,22 +26,22 @@ type BrowserCrumbsType = {
 };
 
 export const BrowserCrumbs = ({ crumbs }: BrowserCrumbsType) => (
-  <BrowserCrumbsRoot data-testid="browsercrumbs">
+  <div className={S.root} data-testid="browsercrumbs">
     {crumbs
       .filter((c) => c)
       .map((crumb, index, crumbs) => (
-        <BrowserCrumbsItem key={index}>
+        <div key={index} className={S.item}>
           {crumb.to ? (
-            <BrowserCrumbsLink to={crumb.to}>
+            <Link className={S.link} to={crumb.to}>
               <Crumb>{crumb.title}</Crumb>
-            </BrowserCrumbsLink>
+            </Link>
           ) : (
             <Crumb>{crumb.title}</Crumb>
           )}
           {index < crumbs.length - 1 ? (
-            <BrowserCrumbsIcon name="chevronright" />
+            <Icon className={S.icon} name="chevronright" />
           ) : null}
-        </BrowserCrumbsItem>
+        </div>
       ))}
-  </BrowserCrumbsRoot>
+  </div>
 );

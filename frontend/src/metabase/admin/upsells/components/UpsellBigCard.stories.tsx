@@ -101,12 +101,21 @@ export default {
 
 export const Default = {
   render: DefaultTemplate,
+  parameters: {
+    loki: { skip: true },
+  },
 };
 
 export const Secondary = {
   render: SecondaryTemplate,
+  parameters: {
+    loki: { skip: true },
+  },
 };
 
 export const ModalStory = {
   render: ModalTemplate,
+  parameters: {
+    loki: { skip: true },
+  },
 };

@@ -1,5 +1,8 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 
+import { useSdkSelector } from "embedding-sdk-bundle/store";
+import { getPlugins } from "embedding-sdk-bundle/store/selectors";
+import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
 import { PublicOrEmbeddedDashCardMenu } from "metabase/dashboard/components/DashCard/PublicOrEmbeddedDashCardMenu";
 import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
 import { isQuestionCard } from "metabase/dashboard/utils";
@@ -10,6 +13,8 @@ import type { ClickActionModeGetter } from "metabase/visualizations/types";
 
 import { SdkDashboard, type SdkDashboardProps } from "../SdkDashboard";
 
+import { interactiveDashboardSchema } from "./InteractiveDashboard.schema";
+
 /**
  * @interface
  * @expand
@@ -17,15 +22,21 @@ import { SdkDashboard, type SdkDashboardProps } from "../SdkDashboard";
  */
 export type InteractiveDashboardProps = SdkDashboardProps;
 
-export const InteractiveDashboard = (props: InteractiveDashboardProps) => {
+const InteractiveDashboardInner = (props: InteractiveDashboardProps) => {
+  const globalPlugins = useSdkSelector(getPlugins);
+
+  const plugins: MetabasePluginsConfig = useMemo(() => {
+    return { ...globalPlugins, ...props.plugins };
+  }, [globalPlugins, props.plugins]);
+
   const getClickActionMode: ClickActionModeGetter = useCallback(
     ({ question }) =>
       getEmbeddingMode({
         question,
         queryMode: EmbeddingSdkMode,
-        plugins: props.plugins as InternalMetabasePluginsConfig,
+        plugins: plugins as InternalMetabasePluginsConfig,
       }),
-    [props.plugins],
+    [plugins],
   );
 
   return (
@@ -46,3 +57,7 @@ export const InteractiveDashboard = (props: InteractiveDashboardProps) => {
     />
   );
 };
+
+export const InteractiveDashboard = Object.assign(InteractiveDashboardInner, {
+  schema: interactiveDashboardSchema,
+});

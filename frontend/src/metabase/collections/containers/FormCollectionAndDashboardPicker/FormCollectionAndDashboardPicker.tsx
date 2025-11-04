@@ -3,7 +3,7 @@ import type { HTMLAttributes } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { useLazyGetDashboardQuery } from "metabase/api";
+import { useGetCollectionQuery, useLazyGetDashboardQuery } from "metabase/api";
 import {
   canonicalCollectionId,
   isTrashedCollection,
@@ -21,8 +21,8 @@ import {
 import SnippetCollectionName from "metabase/common/components/SnippetCollectionName";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import Collections from "metabase/entities/collections";
+import { getCollectionIcon } from "metabase/entities/collections/utils";
 import Dashboard from "metabase/entities/dashboards";
-import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import { Button, Flex, Icon } from "metabase/ui";
 import type { CollectionId, DashboardId } from "metabase-types/api";
@@ -36,18 +36,27 @@ function ItemName({
   dashboardId: DashboardId;
   type?: "collections" | "snippet-collections";
 }) {
+  const { data: collection } = useGetCollectionQuery(
+    { id: collectionId },
+    { skip: !collectionId || dashboardId != null },
+  );
+
   if (dashboardId) {
     return (
       <Flex align="center" gap="sm">
-        <Icon name="dashboard" color={color("brand")} />
+        <Icon name="dashboard" c="brand" />
         <Dashboard.Name id={dashboardId} />
       </Flex>
     );
   }
 
+  const collectionIcon = collection
+    ? getCollectionIcon(collection)
+    : { name: "collection" as const };
+
   return (
     <Flex align="center" gap="sm">
-      <Icon name="collection" color={color("brand")} />
+      <Icon name={collectionIcon.name} c="brand" />
       {type === "snippet-collections" ? (
         <SnippetCollectionName id={collectionId} />
       ) : (

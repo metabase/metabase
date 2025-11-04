@@ -34,7 +34,7 @@ Here's how to set it up:
 5. Give the service account **Viewer** permissions. Metabase will only have access to this folder or sheet; it won't have access to any other files in your Google Drive. If you select folder, Metabase will also sync any sheets it finds in any subfolders.
 6. Click **Send** to share the folder with the Metabase service account.
 7. Copy the sharing link for the folder or sheet.
-8. Return to Metabase and paste the sharing link into the field that asks for "the sharing link for this folder/file".
+8. Return to Metabase and paste the sharing link into "the sharing link for this folder/file" field.
 
 **If you synced a Google Drive folder**, Metabase will sync with the Google Drive folder (and its subfolders) and import all Google Sheets, creating a new table in your Metabase Cloud Storage database for each sheet. For sheets with multiple tabs, Metabase will create a table for each tab. Metabase will only sync Google Sheets; it'll ignore other file types in the folder. After the initial sync, Metabase will sync every 15 minutes.
 
@@ -80,6 +80,7 @@ Here's what you need to know when syncing Google Sheets:
 - **Special character replacement**. Some characters just don't play nice with databases (like "?"). When we find these in column names, we'll replace them with "x" to keep things running smoothly.
 - **Renamed files will create new tables**. If you rename files in your folder or tabs in your sheets, we'll treat them as brand new tables and import them fresh.
 - **New columns sync automatically**. Adding new columns to your sheets? No problem — they'll show up in Metabase as expected.
+- **Renaming sheet columns will create new table columns**. If you rename a column in a spreadsheet, Metabase will create a new column with the new name in the synced table. The original column will remain in the table but it'll become empty. You'll be able to hide the old column in Table Metadata settings.
 - **Empty sheets won't import**. We won't import completely empty sheets or sheets that only have column headers. There needs to be some actual data in there.
 - **Google Sheets must have unique names**. If files in the synced Google Drive folder (and its subfolders) have the same name (e.g., one sheet is in the root folder, another sheet in a subfolder), the sheets might not sync properly.
 

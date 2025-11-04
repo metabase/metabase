@@ -8,16 +8,19 @@ import {
   useListSyncableDatabaseSchemasQuery,
 } from "metabase/api";
 import { getErrorMessage, useAdminSetting } from "metabase/api/utils";
-import ActionButton from "metabase/common/components/ActionButton";
-import Alert from "metabase/common/components/Alert";
+import ActionButton, {
+  type ActionButtonHandle,
+} from "metabase/common/components/ActionButton";
 import Link from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting, useToast } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import {
+  Alert,
   Box,
   Flex,
   Group,
+  Icon,
   Select,
   Stack,
   Text,
@@ -76,9 +79,9 @@ export function UploadSettingsFormView({
 
   const isHosted = useSetting("is-hosted?");
 
-  const enableButtonRef = useRef<ActionButton>(null);
-  const disableButtonRef = useRef<ActionButton>(null);
-  const updateButtonRef = useRef<ActionButton>(null);
+  const enableButtonRef = useRef<ActionButtonHandle>(null);
+  const disableButtonRef = useRef<ActionButtonHandle>(null);
+  const updateButtonRef = useRef<ActionButtonHandle>(null);
 
   const resetButtons = () => {
     enableButtonRef?.current?.resetState();
@@ -280,7 +283,7 @@ export function UploadSettingsFormView({
 
 const H2PersistenceWarning = ({ isHosted }: { isHosted: boolean }) => (
   <Stack my="md" maw={620}>
-    <Alert icon="warning" variant="warning">
+    <Alert icon={<Icon name="warning" />} color="warning">
       <Text>
         {t`Warning: uploads to the Sample Database are for testing only and may disappear. If you want your data to stick around, you should upload to a PostgreSQL, MySQL, Redshift or Clickhouse database.`}
       </Text>

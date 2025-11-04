@@ -34,7 +34,7 @@ describe("scenarios > embedding-sdk > incompatibility-with-instance-banner", () 
     mockAuthProviderAndJwtSignIn();
   });
 
-  describe("when the SDK is incompatible with an instance", () => {
+  describe("when the SDK bundle is incompatible with an instance", () => {
     it("should show an error with a close button", () => {
       cy.mount(
         <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>

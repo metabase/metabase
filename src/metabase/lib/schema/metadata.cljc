@@ -1,6 +1,7 @@
 (ns metabase.lib.schema.metadata
   (:require
-   [clojure.string :as str]
+   #?@(:clj
+       ([metabase.util.regex :as u.regex]))
    [medley.core :as m]
    [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -9,23 +10,6 @@
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util.malli.registry :as mr]))
-
-(defn- kebab-cased-key? [k]
-  (and (keyword? k)
-       (not (str/includes? (str k) "_"))))
-
-(defn- kebab-cased-map? [m]
-  (and (map? m)
-       (every? kebab-cased-key? (keys m))))
-
-(mr/def ::kebab-cased-map
-  [:fn
-   {:error/message "map with all kebab-cased keys"
-    :error/fn      (fn [{:keys [value]} _]
-                     (if-not (map? value)
-                       "map with all kebab-cased keys"
-                       (str "map with all kebab-cased keys, got: " (pr-str (remove kebab-cased-key? (keys value))))))}
-   kebab-cased-map?])
 
 ;;; Column vs Field?
 ;;;
@@ -160,11 +144,22 @@
    ;; `:values`
    [:human-readable-values [:sequential :any]]])
 
+;; these can both be empty strings like `""` because SQL Server (and possibly some other DBs) allow empty strings as
+;; column identifiers
+
 (mr/def ::source-column-alias
-  ::lib.schema.common/non-blank-string)
+  "Name for a column as returned/projected by the previous stage of the query or source Table/source Card. The
+  left-hand side (LHS) of
+
+    SELECT lhs AS rhs"
+  :string)
 
 (mr/def ::desired-column-alias
-  [:string {:min 1}])
+  "Name we should use as a column alias for a column in this stage of a query. The desired column alias in stage N
+  becomes the source column alias in stage N+1. The right-hand side (RHS) in
+
+    SELECT lhs AS rhs"
+  :string)
 
 (mr/def ::original-name
   "The original name of the column as it appeared in the very first place it came from (i.e., the physical name of the
@@ -331,7 +326,7 @@
     ;; came from. Prefer one of the other name keys instead, only falling back to `:name` if they are not present.
     [:name      :string]
     ;; TODO -- ignore `base_type` and make `effective_type` required; see #29707
-    [:base-type ::lib.schema.common/base-type]
+    [:base-type {:default :type/*} ::lib.schema.common/base-type]
     ;; This is nillable because internal remap columns have `:id nil`.
     [:id             {:optional true} [:maybe ::lib.schema.id/field]]
     [:display-name   {:optional true} [:maybe :string]]
@@ -491,7 +486,11 @@
     ;;
     ;; Added by [[metabase.lib.metadata.result-metadata]] primarily for legacy/backward-compatibility purposes with
     ;; legacy viz settings. This should not be used for anything other than that.
-    [:field-ref {:optional true} [:maybe [:ref :metabase.legacy-mbql.schema/Reference]]]
+    [:field-ref {:optional true} [:maybe #?(:cljs [:or
+                                                   [:ref :metabase.legacy-mbql.schema/Reference]
+                                                   [:fn {:error/message "JS array"}
+                                                    array?]]
+                                            :clj  [:ref :metabase.legacy-mbql.schema/Reference])]]
     ;;
     [:source {:optional true} [:maybe [:ref ::column.legacy-source]]]
     ;;
@@ -501,9 +500,19 @@
     ;; in [[metabase.lib-be.metadata.jvm]]. I don't think this is really needed on the FE, at any rate the JS metadata
     ;; provider doesn't add these keys.
     [:lib/external-remap {:optional true} [:maybe [:ref ::column.remapping.external]]]
-    [:lib/internal-remap {:optional true} [:maybe [:ref ::column.remapping.internal]]]]
-   ;; TODO (Cam 6/13/25) -- go add this to some of the other metadata schemas as well.
-   ::kebab-cased-map
+    [:lib/internal-remap {:optional true} [:maybe [:ref ::column.remapping.internal]]]
+    ;;
+    ;; The [[metabase.query-processor.middleware.add-implicit-clauses/add-implicit-fields]] middleware adds
+    ;; `:qp/added-implicit-fields?` to stages where it adds implicit fields,
+    ;; then [[metabase.lib.stage/fields-columns]] adds this key to any col from such a
+    ;; stage. [[metabase.lib.metadata.result-metadata/super-broken-legacy-field-ref]] uses this to know to force Field
+    ;; ID refs for QP `:field_ref` in results metadata to preserve historic behavior to avoid breaking legacy viz
+    ;; settings that use it as a key.
+    [:qp/implicit-field? {:optional true} [:maybe :boolean]]]
+   ;;
+   ;; Additional constraints
+   ;;
+   ::lib.schema.common/kebab-cased-map
    [:ref ::column.validate-for-source]])
 
 (mr/def ::persisted-info.definition
@@ -525,18 +534,33 @@
    [:definition {:optional true} [:maybe [:ref ::persisted-info.definition]]]
    [:query-hash {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
+(def card-types
+  "Valid Card `:type`s."
+  #{:question :model :metric})
+
 (mr/def ::card.type
-  [:enum
-   :question
-   :model
-   :metric])
+  "All acceptable card types.
+
+  Previously (< 49), we only had 2 card types: question and model, which were differentiated using the boolean
+  `dataset` column. Soon we'll have more card types (e.g: metric) and we will longer be able to use a boolean column
+  to differentiate between all types. So we've added a new `type` column for this purpose.
+
+  Migrating all the code to use `report_card.type` will be quite an effort, we decided that we'll migrate it
+  gradually."
+  (into [:enum
+         (merge
+          {:decode/json      lib.schema.common/normalize-keyword
+           :decode/normalize lib.schema.common/normalize-keyword}
+          #?(:clj
+             {:api/regex (u.regex/re-or (map name card-types))}))]
+        card-types))
 
 (mr/def ::type
   "TODO -- not convinced we need a separate `:metadata/metric` anymore, it made sense back when Legacy/V1 Metrics were a
   separate table in the app DB, but now that they're a subtype of Card it's probably not important anymore, we can
   probably just use `:metadata/card` here."
   [:enum :metadata/database :metadata/table :metadata/column :metadata/card :metadata/metric
-   :metadata/segment])
+   :metadata/segment :metadata/native-query-snippet])
 
 (mr/def ::lib-or-legacy-column
   "Schema for the maps in card `:result-metadata` and similar. These can be either
@@ -547,10 +571,9 @@
                 ;; if this has `:lib/type` we know FOR SURE that it's lib-style metadata; but we should also be able
                 ;; to infer this fact automatically if it's using `kebab-case` keys. `:base-type` is required for both
                 ;; styles so look at that.
-                (let [col (lib.schema.common/normalize-map-no-kebab-case col)]
-                  (if ((some-fn :lib/type :base-type) col)
-                    :lib
-                    :legacy)))}
+                (if ((some-fn :lib/type #(get % "lib/type") :base-type #(get % "base-type")) col)
+                  :lib
+                  :legacy))}
    [:lib
     [:merge
      [:ref ::column]
@@ -732,3 +755,10 @@
    {:decode/normalize lib.schema.common/normalize-map}
    [:lib/type [:= {:default :metadata/results} :metadata/results]]
    [:columns [:sequential ::column]]])
+
+(mr/def ::transform
+  "TODO (Cam 10/1/25) -- I'm putting this here as a placeholder until you guys go fill it out a little more."
+  [:map
+   [:id     ::lib.schema.id/transform]
+   [:source {:optional true} [:map
+                              [:query {:optional true} [:ref :metabase.lib.schema/query]]]]])

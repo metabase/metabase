@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [honey.sql :as sql]
    [metabase-enterprise.semantic-search.dlq :as semantic.dlq]
+   [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.gate :as semantic.gate]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
@@ -33,16 +34,16 @@
   (Timestamp/from (Instant/parse s)))
 
 (deftest indexing-step-test
-  (let [pgvector       semantic.tu/db
+  (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.tu/unique-index-metadata)
         model          semantic.tu/mock-embedding-model
         index          (semantic.index-metadata/qualify-index (semantic.index/default-index model) index-metadata)
         t1             (ts "2025-01-01T00:01:00Z")
         t2             (ts "2025-01-02T00:03:10Z")
         t3             (ts "2025-01-03T00:02:42Z")
-        c1             {:model "card" :id "1" :name "Poodle" :searchable_text "Dog Training Guide"}
-        c2             {:model "card" :id "2" :name "Pug"    :searchable_text "Dog Training Guide 2"}
-        c3             {:model "card" :id "3" :name "Collie" :searchable_text "Dog Training Guide 3"}
+        c1             {:model "card" :id "1" :name "Poodle" :searchable_text "Dog Training Guide" :embeddable_text "Dog Training Guide"}
+        c2             {:model "card" :id "2" :name "Pug"    :searchable_text "Dog Training Guide 2" :embeddable_text "Dog Training Guide 2"}
+        c3             {:model "card" :id "3" :name "Collie" :searchable_text "Dog Training Guide 3" :embeddable_text "Dog Training Guide 3"}
         version        semantic.gate/search-doc->gate-doc
         delete         (fn [doc t] (semantic.gate/deleted-search-doc->gate-doc (:model doc) (:id doc) t))]
     (with-open [_ (semantic.tu/open-metadata! pgvector index-metadata)
@@ -214,7 +215,7 @@
            (log/fatal "Indexing loop thread not exiting during test!")))))))
 
 (deftest indexing-loop-thread-test
-  (let [pgvector       semantic.tu/db
+  (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.tu/unique-index-metadata)
         index          semantic.tu/mock-index
         metadata-row   {:indexer_last_poll Instant/EPOCH
@@ -283,12 +284,12 @@
             (is (.join thread (Duration/ofSeconds 1)))))))))
 
 (deftest indexing-loop-exit-test
-  (let [pgvector       semantic.tu/db
+  (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.tu/unique-index-metadata)
         model          semantic.tu/mock-embedding-model
         index          (semantic.index-metadata/qualify-index (semantic.index/default-index model) index-metadata)
         t1             (ts "2025-01-01T00:01:00Z")
-        c1             {:model "card" :id "1" :name "Dog" :searchable_text "Dog Training Guide"}
+        c1             {:model "card" :id "1" :name "Dog" :searchable_text "Dog Training Guide" :embeddable_text "Dog Training Guide"}
         version        semantic.gate/search-doc->gate-doc]
     (with-open [_ (semantic.tu/open-metadata! pgvector index-metadata)
                 _ (semantic.tu/open-index! pgvector index)]
@@ -371,7 +372,7 @@
    (fn [_] (semantic.dlq/drop-dlq-table-if-exists! pgvector index-metadata index-id))))
 
 (deftest quartz-job-run!-test
-  (let [pgvector        semantic.tu/db
+  (let [pgvector        (semantic.env/get-pgvector-datasource!)
         index-metadata  (semantic.tu/unique-index-metadata)
         open-job-thread (fn [& args]
                           (let [caught-ex (volatile! nil)]
@@ -458,7 +459,7 @@
 
 (deftest dlq-step-test
   (mt/with-prometheus-system! [_ system]
-    (let [pgvector       semantic.tu/db
+    (let [pgvector       (semantic.env/get-pgvector-datasource!)
           index-metadata (semantic.tu/unique-index-metadata)
           model          semantic.tu/mock-embedding-model
           index          (semantic.index-metadata/qualify-index (semantic.index/default-index model) index-metadata)
@@ -541,14 +542,14 @@
 
 (deftest indexer-stall-and-recovery-test
   (mt/with-prometheus-system! [_ system]
-    (let [pgvector             semantic.tu/db
+    (let [pgvector             (semantic.env/get-pgvector-datasource!)
           index-metadata       (semantic.tu/unique-index-metadata)
           model                semantic.tu/mock-embedding-model
           index                (semantic.index-metadata/qualify-index (semantic.index/default-index model) index-metadata)
           clock-ref            (volatile! (Instant/parse "2025-01-04T10:00:00Z"))
           clock                (reify InstantSource (instant [_] @clock-ref))
           t1                   (ts "2025-01-01T00:01:00Z")
-          card                 (fn [id] {:model "card" :id (str id) :name "Test" :searchable_text "Content"})
+          card                 (fn [id] {:model "card" :id (str id) :name "Test" :searchable_text "Content" :embeddable_text "Content"})
           version              semantic.gate/search-doc->gate-doc
           fresh-indexing-state (fn []
                                  (let [state (semantic.indexer/init-indexing-state (get-metadata-row! pgvector index-metadata index))]
@@ -660,14 +661,14 @@
                         (mt/metric-value system :metabase-search/semantic-indexer-poll-to-poll-interval-ms)))))))))))
 
 (deftest dlq-integration-with-indexer-loop-test
-  (let [pgvector         semantic.tu/db
+  (let [pgvector         (semantic.env/get-pgvector-datasource!)
         index-metadata   (semantic.tu/unique-index-metadata)
         model            semantic.tu/mock-embedding-model
         index            (semantic.index-metadata/qualify-index (semantic.index/default-index model) index-metadata)
         clock-ref        (volatile! (Instant/parse "2025-01-04T10:00:00Z"))
         clock            (reify InstantSource (instant [_] @clock-ref))
         t1               (ts "2025-01-01T00:01:00Z")
-        card             (fn [id content] {:model "card" :id (str id) :name content :searchable_text content})
+        card             (fn [id content] {:model "card" :id (str id) :name content :searchable_text content :embeddable_text content})
         version          semantic.gate/search-doc->gate-doc
         poisoned-doc-id  (volatile! nil)
         get-indexed-docs (fn []
@@ -776,7 +777,7 @@
 
 (deftest indexer-loop-metric-test
   (mt/with-prometheus-system! [_ system]
-    (let [pgvector semantic.tu/db
+    (let [pgvector (semantic.env/get-pgvector-datasource!)
           index-metadata (semantic.tu/unique-index-metadata)
           metadata-row {:id                42
                         :indexer_last_poll (ts "2025-01-01T12:00:00Z")
