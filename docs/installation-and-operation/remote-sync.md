@@ -47,13 +47,6 @@ Here's a basic remote-sync workflow:
 
 We'll cover [setting up Remote Sync](#setting-up-remote-sync), an [example dev-to-production workflow](#an-example-dev-to-production-workflow), [branch management](#branch-management), and some other odds and ends.
 
-### Remote Sync vs. Serialization
-
-Remote Sync uses the same underlying serialization format as the [Metabase CLI serialization feature](./serialization.md), but serves a different purpose:
-
-- **Remote Sync**: Designed for adding new content to a read-only production environment through a Git-based workflow. Best when you want a centralized team creating content in development and deploying it to production automatically.
-- **Serialization**: Command-line tool for exporting and importing Metabase content. Best for migrating existing content, complex multi-environment setups, and scenarios requiring full control over what gets exported and imported.
-
 ## Setting up Remote Sync
 
 You'll need to be an admin to set up Remote Sync.
@@ -67,11 +60,11 @@ You'll need to be an admin to set up Remote Sync.
 7. [Create a personal access token for production](#7-create-a-personal-access-token-for-production)
 8. [Connect your production Metabase to your repository](#8-connect-your-production-metabase-to-your-repository)
 
-## 1. Set up a repository to store your content
+### 1. Set up a repository to store your content
 
 Before you connect Metabase to your Git repository, create a [new GitHub repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-new-repository). Initialize the repo with a README.md.
 
-## 2. Create a personal access token for development
+### 2. Create a personal access token for development
 
 GitHub offers two types of personal access tokens. We recommend the fine-grained token (not the classic) because you can limit their permissions to specific repositories.
 
@@ -86,7 +79,7 @@ GitHub offers two types of personal access tokens. We recommend the fine-grained
 
 For more, see GitHub's docs on [personal access tokens](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens).
 
-## 3. Understand Development and Production modes
+### 3. Understand Development and Production modes
 
 Remote Sync has two modes: Development and Production.
 
@@ -104,7 +97,7 @@ Remote Sync has two modes: Development and Production.
 
 You can use any Metabase instance in Development mode. Metabase also offers [Development instances](./development-instance.md) for testing, which allow you to test with multiple users without paying per user account. You can use these Development instances in Remote Sync's Development mode (but not in Production mode, as they're intended for testing, not live production use).
 
-## 4. Connect your development Metabase to your repository
+### 4. Connect your development Metabase to your repository
 
 1. Go to **Admin settings** > **Settings** > **Remote sync**.
 
@@ -122,7 +115,7 @@ You can use any Metabase instance in Development mode. Metabase also offers [Dev
 
    - Click "Save changes". Metabase will check whether it can reach your repository. If the connection fails, make sure your token has the appropriate permissions and hasn't expired. You may also have incorrectly copied and pasted the PAT, in which case you'll need to generate a new token.
 
-## 5. Add an item to your synced collection
+### 5. Add an item to your synced collection
 
 When you first connect in Development mode, Metabase automatically creates a special collection called "Library" that's synced with your Git repository. This is a **synced collection**—any content you add to it will be tracked in Git and can be pushed to your repository.
 
@@ -144,7 +137,7 @@ You can rename the Library collection if you want, and you can add sub-collectio
 
 [Items in synced collections can't depend on items outside of synced collections](#items-in-synced-collections-cant-depend-on-items-outside-of-the-synced-collection). For example, if you try to add a question that references a model, make sure the model is also in a synced collection.
 
-## 6. Push your changes to your repository
+### 6. Push your changes to your repository
 
 ![Push your changes](./images/push-changes.png)
 
@@ -158,13 +151,13 @@ Once you've added content, you'll see a yellow dot on your Library collection in
 
 Check your repository—you should see the collection with your content in it.
 
-## 7. Create a personal access token for production
+### 7. Create a personal access token for production
 
 Now that you have content in your repository, you can set up your production Metabase to pull that content.
 
 [Create a personal access token](#2-create-a-personal-access-token-for-development) following the same steps as before, but add Contents permissions to the token that are **Read-only** (NOT write), as you only want your production Metabase reading from the repo. (Contents permissions require Metadata permissions, which GitHub will add automatically).
 
-## 8. Connect your production Metabase to your repository
+### 8. Connect your production Metabase to your repository
 
 1. Go to **Admin settings** > **Settings** > **Remote sync**.
 
@@ -187,6 +180,8 @@ Now that you have content in your repository, you can set up your production Met
    - Toggle on "Auto-sync with Git" to automatically pull changes from your main branch every five minutes.
 
 In Production mode, synced collections appear in the regular collections list with a special icon to indicate that they're versioned and read-only.
+
+![Production Metabase](./images/production-view.png)
 
 At this point, you should be all set up. Exit Admin settings, then reload your browser. You should see your synced Library collection in your production Metabase.
 
@@ -256,7 +251,7 @@ Content in other Metabases that depended on this item may break since the depend
 
 **Synced collections are self-contained.** Everything a dashboard or question needs must be inside the synced collection for Remote Sync to work properly. Metabase enforces these dependency constraints to ensure all content can be properly versioned and synced between instances.
 
-**If it's not in the collection, it won't sync**—and that includes metadata. The one critical exception: table metadata (column types, descriptions, etc.) doesn't sync at all, even when questions that depend on it do sync. See [table metadata limitations](#important-table-metadata-limitations) for details.
+**If it's not in the collection, it won't sync** — and that includes metadata. The one critical exception: table metadata (column types, descriptions, etc.) doesn't sync at all, even when questions that depend on it do sync. See [table metadata limitations](#important-table-metadata-limitations) for details.
 
 For example:
 
@@ -389,7 +384,7 @@ Currently, you can only delete branches in GitHub or from the command line. Meta
 
 ## Pushing changes to Git
 
-You can only push changes in a Metabase with Remote sync set to Development mode.
+You can only push changes in a Metabase with Remote Sync set to Development mode.
 
 ### Committing your changes
 
@@ -449,3 +444,5 @@ If you want to switch to this remote-sync setup, we still recommend you start wi
 2. Import your data to your Metabase instance with the serialization command as you normally would.
 3. Move the content you want to sync into the synced collection.
 4. Push up your changes to the new repo.
+
+Remote Sync does NOT sync the data model, so if you're importing and exporting your [table metadata](../data-modeling/metadata-editing.md), you should stick with serialization.
