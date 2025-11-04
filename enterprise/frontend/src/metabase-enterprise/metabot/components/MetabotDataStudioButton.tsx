@@ -3,15 +3,13 @@ import { t } from "ttag";
 
 import { METAKEY } from "metabase/lib/browser";
 import * as Urls from "metabase/lib/urls";
-import { AdminActionButton } from "metabase/nav/components/AdminNavbar/AdminNavbar.styled";
-import { Icon, Tooltip } from "metabase/ui";
+import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 
 import { trackMetabotChatOpened } from "../analytics";
 import { useMetabotAgent } from "../hooks";
 
-export const MetabotAdminAppBarButton = () => {
+export const MetabotDataStudioButton = () => {
   const metabot = useMetabotAgent();
-
   const location = useLocation();
   const disabled = !location.pathname?.startsWith(Urls.transformList());
 
@@ -23,17 +21,24 @@ export const MetabotAdminAppBarButton = () => {
     metabot.setVisible(!metabot.visible);
   };
 
+  const label = disabled
+    ? `Metabot can't be viewed on this page`
+    : t`Chat with Metabot (${METAKEY}+E)`;
+
   return (
-    <Tooltip
-      label={
-        disabled
-          ? `Metabot can't be viewed on this page`
-          : t`Chat with Metabot (${METAKEY}+E)`
-      }
-    >
-      <AdminActionButton disabled={disabled} onClick={handleClick}>
-        <Icon name="metabot" />
-      </AdminActionButton>
+    <Tooltip label={label}>
+      <ActionIcon
+        variant="subtle"
+        bd="1px solid var(--mb-color-border)"
+        p="sm"
+        h="2.25rem"
+        w="2.25rem"
+        disabled={disabled}
+        aria-label={label}
+        onClick={handleClick}
+      >
+        <Icon c={disabled ? undefined : "text-primary"} name="metabot" />
+      </ActionIcon>
     </Tooltip>
   );
 };

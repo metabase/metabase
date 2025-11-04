@@ -2,9 +2,7 @@ import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_METABOT } from "metabase/plugins";
-import { getLocation } from "metabase/selectors/routing";
 import { Box, Button, Group, Stack, Tabs } from "metabase/ui";
 
 import S from "./SectionLayout.module.css";
@@ -16,11 +14,6 @@ type SectionLayoutProps = {
 };
 
 export function SectionLayout({ title, tabs, children }: SectionLayoutProps) {
-  const location = useSelector(getLocation);
-  const isMetabotEnabledForRoute = location.pathname.startsWith(
-    "/data-studio/transforms",
-  );
-
   return (
     <Stack h="100%" gap={0}>
       <Group
@@ -35,20 +28,7 @@ export function SectionLayout({ title, tabs, children }: SectionLayoutProps) {
           {tabs}
         </Stack>
         <Group my="md">
-          <PLUGIN_METABOT.Metabot
-            hide={!isMetabotEnabledForRoute}
-            config={{
-              // we don't save snapshots of the metabot conversation "state" value and do not
-              // revert it to the point in time of a message was sent. this will cause values
-              // like the todo list to confuse the agent as there may no longer be any conversation
-              // history but an in progress/complete todo list.
-              preventRetryMessage: true,
-              preventClose: true,
-              hideSuggestedPrompts: true,
-              emptyText: t`Let's transform your data together!`,
-              suggestionModels: ["dataset", "transform", "table", "database"],
-            }}
-          />
+          <PLUGIN_METABOT.MetabotDataStudioButton />
           <Button component={Link} to="/">
             {t`Exit data studio`}
           </Button>
