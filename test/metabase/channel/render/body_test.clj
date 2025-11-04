@@ -1121,3 +1121,7 @@
                    "ID"
                    "Product ID [external remap]"]
                   (map (comp :title second) (-> table :content second (nth 2) second last)))))))))
+
+(deftest failing-test
+  (testing "A test that fails"
+    (is (= 0 1))))

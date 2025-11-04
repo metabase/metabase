@@ -1685,3 +1685,7 @@
       (met/with-gtaps! {:gtaps {:venues (venues-category-native-sandbox-def)}, :attributes {"cat" 50}}
         (mt/with-premium-features #{}
           (is (thrown-with-msg? clojure.lang.ExceptionInfo sandboxing-disabled-error (run-venues-count-query))))))))
+
+(deftest failing-test
+  (testing "A test that fails"
+    (is (= 0 1))))

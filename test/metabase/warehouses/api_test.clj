@@ -2439,3 +2439,7 @@
                                           :api-test-disabled-for-database
                                           :api-test-disabled-for-custom-reasons
                                           :api-test-disabled-for-multiple-reasons])))))))))
+
+(deftest failing-test
+  (testing "A test that fails"
+    (is (= 0 1))))

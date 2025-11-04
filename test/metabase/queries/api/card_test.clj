@@ -4598,3 +4598,7 @@
                           :aggregation  [["count"]]}}
               (-> (mt/user-http-request :crowberto :get 200 (str "card/" (:id card)) :legacy-mbql true)
                   :dataset_query))))))
+
+(deftest failing-test
+  (testing "A test that fails"
+    (is (= 0 1))))
