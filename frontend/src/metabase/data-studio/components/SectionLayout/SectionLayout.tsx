@@ -22,6 +22,7 @@ export function SectionLayout({ title, tabs, children }: SectionLayoutProps) {
         px="lg"
         justify="space-between"
         align={tabs ? "start" : "center"}
+        aria-label={t`Navigation bar`}
       >
         <Stack gap="sm" pt="md" py={tabs ? undefined : "md"}>
           {title}
