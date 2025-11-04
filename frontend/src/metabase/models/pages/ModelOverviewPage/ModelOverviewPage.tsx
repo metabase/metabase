@@ -2,7 +2,6 @@ import { skipToken, useGetCardQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
 import { Center, Flex } from "metabase/ui";
-import type { Card } from "metabase-types/api";
 
 import { ModelHeader } from "../../components/ModelHeader";
 
@@ -32,14 +31,6 @@ export function ModelOverviewPage({ params }: ModelOverviewPageProps) {
     );
   }
 
-  return <ModelOverviewPageBody model={model} />;
-}
-
-type ModelOverviewPageBodyProps = {
-  model: Card;
-};
-
-function ModelOverviewPageBody({ model }: ModelOverviewPageBodyProps) {
   return (
     <Flex direction="column" h="100%">
       <ModelHeader id={model.id} name={model.name} />
