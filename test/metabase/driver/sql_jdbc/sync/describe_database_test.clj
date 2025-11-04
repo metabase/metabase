@@ -13,7 +13,7 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.util :as driver.u]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
@@ -168,9 +168,8 @@
   [_driver _feature _database]
   true)
 
-;;; BigQuery is tested separately in [[metabase.driver.bigquery-cloud-sdk-test/dataset-filtering-test]], because
-;;; otherwise this test takes too long and flakes intermittently Redshift is also tested separately because it flakes.
-(doseq [driver [:bigquery-cloud-sdk :redshift]]
+;;; These drivers are tested separately because they take too long and flake in CI
+(doseq [driver [:bigquery-cloud-sdk :redshift :databricks]]
   (defmethod driver/database-supports? [driver ::database-schema-filtering-test]
     [_driver _feature _database]
     false))

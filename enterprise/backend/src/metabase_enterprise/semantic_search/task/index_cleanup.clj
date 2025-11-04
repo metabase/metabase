@@ -10,6 +10,7 @@
    [java-time.api :as t]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
+   [metabase-enterprise.semantic-search.util :as semantic.u]
    [metabase.task.core :as task]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
@@ -163,11 +164,12 @@
 
 (defn- cleanup-stale-indexes-and-gate-tombstones!
   []
-  (let [pgvector             (semantic.env/get-pgvector-datasource!)
-        index-metadata       (semantic.env/get-index-metadata)]
-    (cleanup-stale-indexes! pgvector index-metadata)
-    (cleanup-old-gate-tombstones! pgvector index-metadata)
-    (cleanup-orphan-repair-tables! pgvector)))
+  (when (semantic.u/semantic-search-available?)
+    (let [pgvector             (semantic.env/get-pgvector-datasource!)
+          index-metadata       (semantic.env/get-index-metadata)]
+      (cleanup-stale-indexes! pgvector index-metadata)
+      (cleanup-old-gate-tombstones! pgvector index-metadata)
+      (cleanup-orphan-repair-tables! pgvector))))
 
 (def ^:private cleanup-job-key (jobs/key "metabase.task.semantic-index-cleanup.job"))
 (def ^:private cleanup-trigger-key (triggers/key "metabase.task.semantic-index-cleanup.trigger"))
@@ -178,16 +180,17 @@
   (cleanup-stale-indexes-and-gate-tombstones!))
 
 (defmethod task/init! ::SemanticIndexCleanup [_]
-  (let [job (jobs/build
-             (jobs/of-type SemanticIndexCleanup)
-             (jobs/with-identity cleanup-job-key))
-        trigger (triggers/build
-                 (triggers/with-identity cleanup-trigger-key)
-                 (triggers/start-now)
-                 (triggers/with-schedule
+  (when (semantic.u/semantic-search-available?)
+    (let [job (jobs/build
+               (jobs/of-type SemanticIndexCleanup)
+               (jobs/with-identity cleanup-job-key))
+          trigger (triggers/build
+                   (triggers/with-identity cleanup-trigger-key)
+                   (triggers/start-now)
+                   (triggers/with-schedule
                   ;; Run daily at 3 AM
-                  (cron/cron-schedule "0 0 3 * * ? *")))]
-    (task/schedule-task! job trigger)))
+                    (cron/cron-schedule "0 0 3 * * ? *")))]
+      (task/schedule-task! job trigger))))
 
 (comment
   (task/job-exists? cleanup-job-key)

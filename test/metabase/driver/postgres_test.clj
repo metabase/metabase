@@ -30,9 +30,10 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
+   [metabase.notification.payload.temp-storage :as temp-storage]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.secrets.models.secret :as secret]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
@@ -42,6 +43,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.warehouses.provider-detection :as provider-detection]
    [next.jdbc :as next.jdbc]
@@ -58,22 +60,7 @@
                       ;; 2. Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these
                       ;;    tests.
                       (binding [sync-util/*log-exceptions-and-continue?* false]
-                        (thunk))))
-
-(deftest ^:parallel interval-test
-  (is (= ["INTERVAL '2 day'"]
-         (sql/format-expr [::postgres/interval 2 :day])))
-  (is (= ["INTERVAL '-2.5 year'"]
-         (sql/format-expr [::postgres/interval -2.5 :year])))
-  (are [amount unit msg] (thrown-with-msg?
-                          AssertionError
-                          msg
-                          (sql/format-expr [::postgres/interval amount unit]))
-    "2"  :day  #"\QAssert failed: (number? amount)\E"
-    :day 2     #"\QAssert failed: (number? amount)\E"
-    2    "day" #"\QAssert failed: (#{:day :hour :week :second :month :year :millisecond :minute} unit)\E"
-    2    2     #"\QAssert failed: (#{:day :hour :week :second :month :year :millisecond :minute} unit)\E"
-    2    :can  #"\QAssert failed: (#{:day :hour :week :second :month :year :millisecond :minute} unit)\E"))
+                        (mt/with-test-user :rasta (thunk)))))
 
 (deftest ^:parallel extract-test
   (is (= ["extract(month from NOW())"]
@@ -520,7 +507,7 @@
                        :type     :query
                        :query    {:source-table "card__123"}})]
           (is (= ["SELECT"
-                  "  \"json_alias_test\" AS \"json_alias_test\","
+                  "  \"source\".\"json_alias_test\" AS \"json_alias_test\","
                   "  \"source\".\"count\" AS \"count\""
                   "FROM"
                   "  ("
@@ -627,13 +614,13 @@
                (mt/rows
                 (qp/process-query
                  (assoc (mt/native-query
-                          {:query         "SELECT * FROM users WHERE {{user}}"
-                           :template-tags {:user
-                                           {:name         "user"
-                                            :display_name "User ID"
-                                            :type         "dimension"
-                                            :widget-type  "number"
-                                            :dimension    [:field (mt/id :users :user_id) nil]}}})
+                         {:query         "SELECT * FROM users WHERE {{user}}"
+                          :template-tags {:user
+                                          {:name         "user"
+                                           :display_name "User ID"
+                                           :type         "dimension"
+                                           :widget-type  "number"
+                                           :dimension    [:field (mt/id :users :user_id) nil]}}})
                         :parameters
                         [{:type   "text"
                           :target ["dimension" ["template-tag" "user"]]
@@ -644,13 +631,13 @@
                (mt/rows
                 (qp/process-query
                  (assoc (mt/native-query
-                          {:query         "SELECT * FROM users WHERE {{user}}"
-                           :template-tags {:user
-                                           {:name         "user"
-                                            :display_name "User ID"
-                                            :type         "dimension"
-                                            :widget-type  :number
-                                            :dimension    [:field (mt/id :users :user_id) nil]}}})
+                         {:query         "SELECT * FROM users WHERE {{user}}"
+                          :template-tags {:user
+                                          {:name         "user"
+                                           :display_name "User ID"
+                                           :type         "dimension"
+                                           :widget-type  :number
+                                           :dimension    [:field (mt/id :users :user_id) nil]}}})
                         :parameters
                         [{:type   "text"
                           :target ["dimension" ["template-tag" "user"]]
@@ -1353,10 +1340,10 @@
                                   (-> {:query         (str "SELECT * FROM json_table "
                                                            "WHERE json_val::jsonb ? 'a' "
                                                            "AND json_val::jsonb ->> 'a' = {{val}}")
-                                       :template-tags {:val
+                                       :template-tags {"val"
                                                        {:name         "val"
-                                                        :display_name "Val"
-                                                        :type         "text"}}}
+                                                        :display-name "Val"
+                                                        :type         :text}}}
                                       mt/native-query
                                       (assoc :parameters
                                              [{:type   "number/="
@@ -1824,6 +1811,58 @@
                   mt/process-query
                   mt/rows))))))
 
+(deftest ^:parallel arrays-have-base-type
+  (testing "queries with pg arrays have a base type on column metadata (#63909)"
+    (mt/test-driver :postgres
+      (is (=? [{:name "id"
+                :database_type "int4"
+                :base_type :type/Integer}
+               {:name "urls"
+                :database_type "_text"
+                :base_type :type/*}]
+              (->> (mt/native-query {:query "SELECT *
+                                             FROM (
+                                               VALUES
+                                                 (1, ARRAY['https://example.com', 'https://example.org']),
+                                                 (2, ARRAY['https://test.com']),
+                                                 (3, ARRAY['https://foo.com', 'https://bar.com', 'https://baz.com'])
+                                             ) AS adhoc_table (id, urls);"})
+                   mt/process-query
+                   mt/cols))))))
+
+(deftest can-edit-model-metadata
+  (testing "queries with pg arrays have a base type on column metadata (#63909)"
+    (mt/test-driver :postgres
+      (let [query "SELECT *
+                   FROM (
+                     VALUES
+                       (1, ARRAY['https://example.com', 'https://example.org']),
+                       (2, ARRAY['https://test.com']),
+                       (3, ARRAY['https://foo.com', 'https://bar.com', 'https://baz.com'])
+                   ) AS adhoc_table (id, urls);"]
+        (mt/with-temp [:model/Card model (mt/card-with-metadata
+                                          {:name "model"
+                                           :type :model
+                                           :dataset_query (mt/native-query {:query query})
+                                           :database_id (mt/id)})]
+          ;; update cards such that base_type is missing, similuating existing data
+          (t2/query ["update report_card set result_metadata = ? where id = ?"
+                     (json/encode [(first (:result_metadata model))
+                                   (assoc (second (:result_metadata model))
+                                          :base_type nil)])
+                     (:id model)])
+          (let [response (mt/user-http-request :crowberto :put 200
+                                               (format "card/%d" (:id model))
+                                               {:dataset_query
+                                                (mt/native-query {:query (str "-- comment at top\n " query)})})]
+            (is (=? [{:name "id"
+                      :database_type "int4"
+                      :base_type "type/Integer"}
+                     {:name "urls"
+                      :database_type "_text"
+                      :base_type "type/*"}]
+                    (:result_metadata response)))))))))
+
 (deftest ^:parallel detect-provider-from-database-test
   (let [tests [["Aiven" "mydb-project.aivencloud.com"]
                ["Amazon RDS" "czrs8kj4isg7.us-east-1.rds.amazonaws.com"]
@@ -1843,3 +1882,57 @@
       (doseq [[provider host] tests]
         (let [database {:details {:host host} :engine :postgres}]
           (is (= provider (provider-detection/detect-provider-from-database database))))))))
+
+(deftest ^:parallel complex-types-in-notification-payload
+  (mt/test-driver :postgres
+    (testing "we handle complex types in notifications"
+      (let [sql "SELECT
+                    i AS id,
+                    'User_' || i AS username,
+                    -- JSON types
+                    ('{\"userId\": ' || i || ', \"score\": ' || (i % 1000) || ', \"active\": ' || (i % 2 = 0)::text || '}')::jsonb AS settings,
+                    -- Arrays
+                    ARRAY['tag' || (i % 10), 'category' || (i % 5)]::text[] AS tags,
+                    ARRAY[i, i*2, i*3]::integer[] AS numbers,
+                    -- UUID
+                    '7e3cd49d-bfe1-4620-83dd-0c163719175c'::uuid AS uuid,
+                    -- Network
+                    ('192.168.' || (i % 255) || '.' || ((i*7) % 255))::inet AS ip,
+                    -- Geometric
+                    point(i % 180 - 90, i % 360 - 180) AS coordinates,
+                    circle(point(i % 100, i % 100), 50) AS area,
+                    -- Text search
+                    to_tsvector('english', 'Content for row ' || i) AS search_data,
+                    -- Binary
+                    decode(md5(i::text), 'hex') AS hash,
+                    -- Range types
+                    int4range(i, i + 100) AS value_range,
+                    -- Money
+                    ((RANDOM() * 1000)::numeric(10,2))::money AS price,
+                    -- Standard
+                    NOW() - ((i % 365) || ' days')::interval AS created_at
+               FROM generate_series(1, 5000) AS i;"
+            results (qp/process-query (mt/native-query {:query sql})
+                                      (temp-storage/notification-rff 500))]
+        (is (integer? (:data.rows-file-size results)))
+        (is (temp-storage/streaming-temp-file? (-> results :data :rows)))
+        (is (=? [1
+                 "User_1"
+                 "{\"score\": 1, \"active\": false, \"userId\": 1}"
+                 ["tag1" "category1"]
+                 [1 2 3]
+                 ;; match on type
+                 uuid?
+                 "192.168.1.7"
+                 "(-89.0,-179.0)"
+                 "<(1.0,1.0),50.0>"
+                 "'1':4 'content':1 'row':3"
+                 ;; match on type
+                 bytes?
+                 "[1,101)"
+                 ;; match on type
+                 decimal?
+                 ;; we don't have an easy way to recognize a datetime string. assuming if it's a string and query
+                 ;; doesnt error then it worked
+                 string?]
+                (-> results :data :rows deref first)))))))

@@ -1,12 +1,12 @@
 import { createAction } from "redux-actions";
 import _ from "underscore";
 
-import { invalidateNotificationsApiCache } from "metabase/api";
+import { invalidateNotificationsApiCache, revisionApi } from "metabase/api";
 import Databases from "metabase/entities/databases";
 import { updateModelIndexes } from "metabase/entities/model-indexes/actions";
 import Questions from "metabase/entities/questions";
-import Revisions from "metabase/entities/revisions";
 import { shouldOpenInBlankWindow } from "metabase/lib/dom";
+import { entityCompatibleQuery } from "metabase/lib/entities";
 import { createThunkAction } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
@@ -376,11 +376,20 @@ function normalizeValue(
 export const REVERT_TO_REVISION = "metabase/qb/REVERT_TO_REVISION";
 export const revertToRevision = createThunkAction(
   REVERT_TO_REVISION,
-  (revision) => {
+  (cardId, revision) => {
     return async (dispatch) => {
-      await dispatch(Revisions.objectActions.revert(revision));
+      await entityCompatibleQuery(
+        {
+          id: cardId,
+          entity: "card",
+          revision_id: revision.id,
+        },
+        dispatch,
+        revisionApi.endpoints.revertRevision,
+      );
       await dispatch(reloadCard());
       await dispatch(runQuestionQuery({ shouldUpdateUrl: false }));
+      return { id: cardId };
     };
   },
 );

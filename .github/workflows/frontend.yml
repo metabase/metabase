@@ -35,8 +35,6 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "cljs"
       - name: Restore ESLint cache
         uses: actions/cache@v4
         with:
@@ -65,8 +63,6 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "cljs"
       - run: yarn build-pure:cljs
         name: Compile CLJS
       - run: yarn type-check-pure
@@ -90,10 +86,11 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "cljs"
       - name: Run frontend unit tests
         run: yarn run test-unit --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }}
+        # We want Trunk to still receive test reports even if this job fails.
+        # It will filter out the quarantined tests, and will control the job exit code based on the analysis.
+        continue-on-error: true
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always() && github.event_name != 'workflow_dispatch'
@@ -116,8 +113,6 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "cljs"
       - name: Run frontend timezones tests
         run: yarn run test-timezones
 

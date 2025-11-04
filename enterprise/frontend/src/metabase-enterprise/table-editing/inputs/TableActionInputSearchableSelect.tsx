@@ -197,7 +197,6 @@ export const TableActionInputSearchableSelect = ({
                 key={item.value}
               >
                 {item.label}
-                {searchFieldId ? ` [${item.value}]` : ""}
               </Combobox.Option>
             ))
           ) : isLoading ? (

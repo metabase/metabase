@@ -1,6 +1,6 @@
 import type { SdkUserId } from "embedding-sdk-bundle/types/user";
 
-import type { SdkEntityId } from "./entity-id";
+import type { SdkEntityId } from "./entity";
 
 // "CollectionId" from core app also includes "root" | "users" and "trash", we don't want to include those
 // in public apis of the sdk, as we don't support them
@@ -30,6 +30,7 @@ export type MetabaseCollectionItem = {
   type?:
     | "instance-analytics"
     | "trash"
+    | "remote-synced"
     | "model"
     | "question"
     | "metric"

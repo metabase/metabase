@@ -9,7 +9,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
-   [metabase.driver.common.parameters :as params]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
    [metabase.driver.snowflake :as driver.snowflake]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -26,7 +26,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.secrets.core :as secret]
    [metabase.sync.core :as sync]
    [metabase.sync.fetch-metadata :as fetch-metadata]
@@ -440,21 +440,23 @@
     (testing "make sure describe-table uses the NAME FROM DETAILS too"
       (is (= {:name   "categories"
               :schema "PUBLIC"
-              :fields #{{:name              "id"
-                         :database-type     "NUMBER"
-                         :base-type         :type/Number
-                         :pk?               true
-                         :database-position 0
+              :fields #{{:name                       "id"
+                         :database-type              "NUMBER"
+                         :base-type                  :type/Number
+                         :pk?                        true
+                         :database-position          0
                          :database-is-auto-increment true
-                         :database-required false
-                         :json-unfolding    false}
-                        {:name              "name"
-                         :database-type     "VARCHAR"
-                         :base-type         :type/Text
-                         :database-position 1
+                         :database-is-nullable       false
+                         :database-required          false
+                         :json-unfolding             false}
+                        {:name                       "name"
+                         :database-type              "VARCHAR"
+                         :base-type                  :type/Text
+                         :database-position          1
                          :database-is-auto-increment false
-                         :database-required true
-                         :json-unfolding    false}}}
+                         :database-is-nullable       false
+                         :database-required          true
+                         :json-unfolding             false}}}
              (driver/describe-table :snowflake (assoc (mt/db) :name "ABC") (t2/select-one :model/Table :id (mt/id :categories))))))))
 
 (deftest ^:parallel describe-table-fks-test
@@ -1305,3 +1307,19 @@
               (is (true? details-changed?))
               (is (= original-priv-key priv-key-after-update))
               (is (not= priv-key-after-update priv-key-after-event)))))))))
+
+(deftest ^:parallel type->database-type-test
+  (testing "type->database-type multimethod returns correct Snowflake types"
+    (are [base-type expected] (= expected (driver/type->database-type :snowflake base-type))
+      :type/Array              [:ARRAY]
+      :type/Boolean            [:BOOLEAN]
+      :type/Date               [:DATE]
+      :type/DateTime           [:DATETIME]
+      :type/DateTimeWithLocalTZ [:TIMESTAMPTZ]
+      :type/DateTimeWithTZ     [:TIMESTAMPLTZ]
+      :type/Decimal            [:DECIMAL]
+      :type/Float              [:DOUBLE]
+      :type/Number             [:BIGINT]
+      :type/Integer            [:INTEGER]
+      :type/Text               [:TEXT]
+      :type/Time               [:TIME])))

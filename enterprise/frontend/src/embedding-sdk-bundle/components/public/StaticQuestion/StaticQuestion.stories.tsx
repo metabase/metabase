@@ -64,3 +64,14 @@ export const WithCustomTitle = {
     withChartTypeSelector: false,
   },
 };
+
+export const WithAdditionalElements = {
+  render: Template,
+
+  args: {
+    questionId: QUESTION_ID,
+    title: "Acme Inc. Sales Report",
+    withDownloads: true,
+    withChartTypeSelector: true,
+  },
+};
