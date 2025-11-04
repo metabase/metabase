@@ -8,7 +8,7 @@ import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import type { CollectionTreeItem } from "metabase/entities/collections";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { ActionIcon, Box, Icon, Menu, Stack } from "metabase/ui";
+import { Box, Button, Icon, Menu, Stack } from "metabase/ui";
 
 import { ModelingSidebarSection } from "./ModelingSidebarSection";
 import { ModelingSidebarTreeNode } from "./ModelingSidebarTreeNode";
@@ -49,30 +49,26 @@ export function ModelingSidebarView({ collections }: ModelingSidebarViewProps) {
 
   return (
     <Box w={280} h="100%" bg="bg-white" className={S.sidebar}>
-      <Stack gap="lg" p="md">
+      <Stack gap="md" p="md">
         <Menu
           opened={isCreateMenuOpen}
           onChange={setIsCreateMenuOpen}
           position="bottom-end"
         >
           <ModelingSidebarSection
-            icon="folder"
+            icon="repository"
             title={t`Library`}
-            action={{
-              icon: "add",
-              label: t`Create model`,
-              onClick: () => setIsCreateMenuOpen(true),
-            }}
-            actionTarget={
+            rightSection={
               <Menu.Target>
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  aria-label={t`Create model`}
-                  ml="auto"
-                >
-                  <Icon name="add" size={16} />
-                </ActionIcon>
+                <Button
+                  w={32}
+                  h={32}
+                  size="compact-md"
+                  variant="filled"
+                  leftSection={<Icon name="add" />}
+                  aria-label={t`Create model or metric`}
+                  onClick={() => setIsCreateMenuOpen(true)}
+                />
               </Menu.Target>
             }
           >
@@ -102,7 +98,7 @@ export function ModelingSidebarView({ collections }: ModelingSidebarViewProps) {
         </Menu>
 
         <ModelingSidebarSection
-          icon="label"
+          icon="book_open"
           title={t`Glossary`}
           to="/data-studio/modeling/glossary"
           isActive={isGlossaryActive}

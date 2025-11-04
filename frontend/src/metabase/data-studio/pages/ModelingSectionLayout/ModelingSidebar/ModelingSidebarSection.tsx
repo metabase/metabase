@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Link } from "react-router";
 
 import type { IconName } from "metabase/ui";
-import { ActionIcon, Box, Flex, Icon, Stack, Text } from "metabase/ui";
+import { Box, Flex, Icon, Stack, Text } from "metabase/ui";
 
 import S from "./ModelingSidebarSection.module.css";
 
@@ -17,7 +17,7 @@ interface ModelingSidebarSectionProps {
     label: string;
     onClick: () => void;
   };
-  actionTarget?: ReactNode;
+  rightSection?: ReactNode;
 }
 
 export function ModelingSidebarSection({
@@ -26,39 +26,15 @@ export function ModelingSidebarSection({
   children,
   to,
   isActive = false,
-  action,
-  actionTarget,
+  rightSection = null,
 }: ModelingSidebarSectionProps) {
-  const actionButton = action && (
-    <ActionIcon
-      size="sm"
-      variant="subtle"
-      aria-label={action.label}
-      onClick={(e) => {
-        if (to) {
-          e.preventDefault();
-          e.stopPropagation();
-        }
-        action.onClick();
-      }}
-      ml="auto"
-    >
-      <Icon name={action.icon} size={16} />
-    </ActionIcon>
-  );
-
   const titleContent = (
-    <Flex
-      align="center"
-      gap="sm"
-      px="sm"
-      c={isActive ? "text-hover" : "text-primary"}
-    >
+    <Flex align="center" gap="sm" pl="sm">
       <Icon name={icon} size={16} />
-      <Text size="lg" fw="bold" className={S.titleText}>
+      <Text fw="bold" className={S.titleText}>
         {title}
       </Text>
-      {actionTarget || actionButton}
+      {rightSection}
     </Flex>
   );
 

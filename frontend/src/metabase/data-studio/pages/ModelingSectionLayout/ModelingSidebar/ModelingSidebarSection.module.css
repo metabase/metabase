@@ -6,8 +6,17 @@
   cursor: pointer;
 }
 
+.sectionLink[data-active] {
+  color: var(--mb-color-text-brand);
+  background-color: var(--mb-color-brand-light);
+}
+
 .sectionLink:not([data-active]):hover {
   background-color: var(--mb-color-brand-lighter);
+}
+
+.sectionLink[data-active]:hover {
+  background-color: var(--mb-color-brand-light);
 }
 
 .titleText {
