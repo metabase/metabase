@@ -20,6 +20,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
+   [metabase.segments.schema :as segments.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -33,14 +34,9 @@
 (methodical/defmethod t2/table-name :model/Segment [_model] :segment)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :segment] [_original-model _k] :model/Segment)
 
-(mr/def ::segment-definition
-  [:map
-   [:filter      {:optional true} [:maybe mbql.s/Filter]]
-   [:aggregation {:optional true} [:maybe [:sequential ::mbql.s/Aggregation]]]])
-
 (defn- validate-segment-definition
   [definition]
-  (if-let [error (mr/explain ::segment-definition definition)]
+  (if-let [error (mr/explain ::segments.schema/segment definition)]
     (let [humanized (me/humanize error)]
       (throw (ex-info (tru "Invalid Metric or Segment: {0}" (pr-str humanized))
                       {:error     error
@@ -52,7 +48,7 @@
   [definition]
   (when (seq definition)
     ;; TODO (Cam 10/1/25) -- update segments to persist MBQL 5
-    (u/prog1 #_{:clj-kondo/ignore [:deprecated-var]} (mbql.normalize/normalize-fragment [:query] definition)
+    (u/prog1 #_{:clj-kondo/ignore [:deprecated-var]} (mbql.normalize/normalize ::mbql.s/MBQLQuery definition)
       (validate-segment-definition <>))))
 
 (def ^:private transform-segment-definition

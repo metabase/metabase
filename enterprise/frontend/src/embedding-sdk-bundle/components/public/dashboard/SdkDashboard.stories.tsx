@@ -342,7 +342,6 @@ export const ExperimentalLayout = {
                   <Paper>
                     <SdkDashboard.ExportAsPdfButton />
                     <SdkDashboard.InfoButton />
-                    <SdkDashboard.NightModeButton />
                     <SdkDashboard.RefreshPeriod />
                   </Paper>
                 </Popover.Dropdown>

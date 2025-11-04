@@ -1,13 +1,13 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import type { TransformListParams } from "metabase-enterprise/transforms/types";
+import type * as Urls from "metabase/lib/urls";
 import type { TransformTag } from "metabase-types/api";
 
 import { TransformFilterList } from "./TransformFilterList";
 
 type SetupOpts = {
-  params?: TransformListParams;
+  params?: Urls.TransformListParams;
   tags?: TransformTag[];
 };
 
