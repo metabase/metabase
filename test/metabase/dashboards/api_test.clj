@@ -5415,6 +5415,25 @@
                                           :size_y  4}]})
       (is (not (nil? (t2/select-one :model/PulseCard :card_id new-card-id)))))))
 
+(deftest update-dashboard-embedding-type-to-nil-test
+  (testing "PUT /api/dashboard/:id"
+    (testing "Admin should be able to set embedding_type to nil to clear it"
+      (mt/with-temporary-setting-values [enable-embedding-static true]
+        (mt/with-temp [:model/Dashboard dashboard {:enable_embedding true
+                                                   :embedding_type "static-legacy"}]
+          (with-dashboards-in-writeable-collection! [dashboard]
+            (testing "Verify initial state has embedding_type set"
+              (is (= "static-legacy"
+                     (t2/select-one-fn :embedding_type :model/Dashboard :id (u/the-id dashboard)))))
+            (testing "Setting embedding_type to nil should clear it"
+              (let [response (mt/user-http-request :crowberto :put 200 (str "dashboard/" (u/the-id dashboard))
+                                                   {:embedding_type nil})]
+                (testing "Response should contain nil embedding_type"
+                  (is (= nil (:embedding_type response))))
+                (testing "Database should contain nil embedding_type"
+                  (is (= nil
+                         (t2/select-one-fn :embedding_type :model/Dashboard :id (u/the-id dashboard)))))))))))))
+
 (deftest save-dashboard-test
   (let [response (mt/user-http-request :crowberto :post 200 "dashboard/save" {:auto_apply_filters true,
                                                                               :name               "Test Dashboard",
@@ -5423,3 +5442,114 @@
                                                                               })]
     (is (partial= {:name       "Test Dashboard"
                    :creator_id (mt/user->id :crowberto)} response))))
+
+(deftest param-mapped-SAME-fields-filtered-cards-test
+  (testing "Values for param mapped to _same_ field in _different_ cards containing filters are computed correctly (#41684)"
+    (let [mp (mt/metadata-provider)
+          param-key "p"
+          base-queries [(-> (lib/query mp (lib.metadata/table mp (mt/id :categories)))
+                            (lib/filter (lib/in (lib.metadata/field mp (mt/id :categories :name))
+                                                "African" "Artisan" "Bakery")))
+
+                        (-> (lib/query mp (lib.metadata/table mp (mt/id :categories)))
+                            (lib/filter (lib/in (lib.metadata/field mp (mt/id :categories :name))
+                                                "African" "Artisan")))]
+          tests [{:test-case "single level queries"
+                  :queries base-queries
+                  :expectations [["African"] ["Artisan"] ["Bakery"]]}
+
+                 {:test-case "nested filters"
+                  :queries (mapv (fn [query]
+                                   ;; dummy stage
+                                   (-> (lib/append-stage query)
+                                       (lib/expression "e" (lib/concat (lib.metadata/field mp (mt/id :categories :name))
+                                                                       "XXX"))))
+                                 base-queries)
+                  :expectations [["African"] ["Artisan"] ["Bakery"]]}]]
+      (doseq [{:keys [test-case queries expectations]} tests]
+        (mt/with-temp
+          [:model/Card
+           c1
+           {:dataset_query (queries 0)}
+
+           :model/Card
+           c2
+           {:dataset_query (queries 1)}
+
+           :model/Dashboard
+           d
+           {:parameters [{:id param-key
+                          :name "filtered names filter"
+                          :slug param-key
+                          :type "string/="
+                          :sectionId "string"}]}
+
+           :model/DashboardCard
+           _
+           {:dashboard_id (:id d)
+            :card_id (:id c1)
+            :parameter_mappings [{:card_id (:id c1)
+                                  :parameter_id param-key
+                                  :target ["dimension" ["field" (mt/id :categories :name) nil]]}]}
+
+           :model/DashboardCard
+           _
+           {:dashboard_id (:id d)
+            :card_id (:id c2)
+            :parameter_mappings [{:card_id (:id c2)
+                                  :parameter_id param-key
+                                  :target ["dimension" ["field" (mt/id :categories :name) nil]]}]}]
+
+          (testing test-case
+            (is (=? {:values expectations}
+                    (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/params/%s/values"
+                                                                      (:id d) param-key))))))))))
+
+(deftest param-mapped-DIFFERENT-fields-filtered-cards-test
+  (testing "Values for param mapped to different fields in cards containing filters are computed correctly (#41684)"
+    (let [mp (mt/metadata-provider)
+          param-key "p"]
+      (mt/with-temp
+        [:model/Card
+         c1
+         {:dataset_query  (-> (lib/query mp (lib.metadata/table mp (mt/id :categories)))
+                              (lib/filter (lib/in (lib.metadata/field mp (mt/id :categories :name))
+                                                  "African" "Artisan" "Bakery")))}
+
+         :model/Card
+         c2
+         {:dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                             (lib/filter (lib/in (lib.metadata/field mp (mt/id :venues :name))
+                                                 "Red Medicine" "Krua Siri"))
+                             (lib/append-stage)
+                             (lib/expression "e" (lib/concat (lib.metadata/field mp (mt/id :categories :name))
+                                                             "XXX")))}
+
+         :model/Dashboard
+         d
+         {:parameters [{:id param-key
+                        :name "filtered names filter"
+                        :slug param-key
+                        :type "string/="
+                        :sectionId "string"}]}
+
+         :model/DashboardCard
+         _
+         {:dashboard_id (:id d)
+          :card_id (:id c1)
+          :parameter_mappings [{:card_id (:id c1)
+                                :parameter_id param-key
+                                :target ["dimension" ["field" (mt/id :categories :name) nil]]}]}
+
+         :model/DashboardCard
+         _
+         {:dashboard_id (:id d)
+          :card_id (:id c2)
+          :parameter_mappings [{:card_id (:id c2)
+                                :parameter_id param-key
+                                :target ["dimension" ["field" (mt/id :venues :name) nil]]}]}]
+
+        (testing "Param mapped to different fields with different filters"
+          (is (=? {:values [["African"] ["Artisan"] ["Bakery"] ["Krua Siri"] ["Red Medicine"]]}
+                  (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/params/%s/values"
+                                                                    (:id d) param-key)))))))))
