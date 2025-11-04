@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { ActionIcon, Box, FixedSizeIcon, Flex, TextInput } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  FixedSizeIcon,
+  Flex,
+  TextInput,
+  Tooltip,
+} from "metabase/ui";
 
 interface LinkPopupProps {
   initialUrl: string;
@@ -74,17 +81,22 @@ export const LinkPopup = ({
           autoFocus
         />
       </Box>
-      {/* TODO: Add aria labels and/or tooltips */}
       <Box c="var(--mb-color-text-secondary)">
-        <ActionIcon c="inherit" onClick={handleSubmit}>
-          <FixedSizeIcon name="check" />
-        </ActionIcon>
-        <ActionIcon c="inherit" onClick={() => onSubmit("")}>
-          <FixedSizeIcon name="trash" />
-        </ActionIcon>
-        <ActionIcon c="inherit" onClick={handleCancel}>
-          <FixedSizeIcon name="ellipsis" />
-        </ActionIcon>
+        <Tooltip label={t`Save`}>
+          <ActionIcon c="inherit" onClick={handleSubmit}>
+            <FixedSizeIcon name="check" />
+          </ActionIcon>
+        </Tooltip>
+        <Tooltip label={t`Remove link`}>
+          <ActionIcon c="inherit" onClick={() => onSubmit("")}>
+            <FixedSizeIcon name="trash" />
+          </ActionIcon>
+        </Tooltip>
+        <Tooltip label={t`Formatting`}>
+          <ActionIcon c="inherit" onClick={handleCancel}>
+            <FixedSizeIcon name="ellipsis" />
+          </ActionIcon>
+        </Tooltip>
       </Box>
     </Flex>
   );
