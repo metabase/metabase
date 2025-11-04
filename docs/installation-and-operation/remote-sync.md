@@ -79,7 +79,7 @@ GitHub offers two types of personal access tokens. We recommend the fine-grained
 
 For more, see GitHub's docs on [personal access tokens](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens).
 
-### 3. Understand Development and Production modes
+### 3. Development mode creates content, Production mode serves it
 
 Remote Sync has two modes: Development and Production.
 
@@ -95,7 +95,7 @@ Remote Sync has two modes: Development and Production.
 - **Read-only content:** Users can view and use synced content but can't edit it.
 - **Auto-sync option:** Automatically pull changes from your main branch every five minutes.
 
-You can use any Metabase instance in Development mode. Metabase also offers [Development instances](./development-instance.md) for testing, which allow you to test with multiple users without paying per user account. You can use these Development instances in Remote Sync's Development mode (but not in Production mode, as they're intended for testing, not live production use).
+You can use any Metabase instance in Development mode. Metabase also offers [Development instances](./development-instance.md) for testing, which allow you to test with multiple users without paying per user account. You can connect Development instances using Remote Sync's Development mode. Note: Development instances are for testing only, not for live production use.
 
 ### 4. Connect your development Metabase to your repository
 
@@ -175,7 +175,7 @@ Now that you have content in your repository, you can set up your production Met
 
    - Click "Save changes". Metabase will verify it can reach your repository. If the connection fails, verify your token has the appropriate permissions and hasn't expired.
 
-6. Pull changes and/or enable auto-sync (optional):
+6. Pull changes or enable auto-sync (optional):
    - Pull changes to sync from your repo.
    - Toggle on "Auto-sync with Git" to automatically pull changes from your main branch every five minutes.
 
@@ -260,7 +260,7 @@ For example:
 - If a dashboard has click behaviors that link to other dashboards or questions, those linked items must be in synced collections.
 - If a document contains @ mentions of other items (questions, dashboards, models, etc.), those mentioned items must be in synced collections.
 
-Questions that depend on snippets can't be added to synced collections, as snippets aren't stored in collections and therefore can't be synced.
+Snippets live outside of collections, so questions that reference snippets must remain outside synced collections.
 
 Items can reference other items in sub-collections that are also synced.
 
@@ -298,7 +298,7 @@ Remote Sync uses the same serialization format as the [Metabase CLI serializatio
 
 ### Important: Table metadata limitations
 
-**Table metadata is not synced by Remote Sync.** This means any customizations you make to table metadata in your development instance—such as changing a column's display type from "Unix timestamp" to "Date", adding column descriptions, or adjusting visibility—will not automatically sync to production.
+**Remote Sync excludes table metadata.** This means any customizations you make to table metadata in your development instance—such as changing a column's display type from "Unix timestamp" to "Date", adding column descriptions, or adjusting visibility—will not automatically sync to production.
 
 If your questions or dashboards rely on customized table metadata, you must manually apply the same metadata changes in your production instance. Otherwise, content that works in development may not work correctly in production.
 
@@ -347,7 +347,7 @@ Branching is only available in Development mode.
 
 You can create branches in Metabase or directly in your Git repository. Branches created in Git will appear in the Metabase branch dropdown once Metabase syncs with your repository.
 
-We recommend pushing an initial commit to your main branch before creating branches. Creating a branch from an empty main branch can cause unexpected behavior.
+Push an initial commit to your main branch before creating branches. Branches work best when created from a main branch that has at least one commit.
 
 To create a new branch in Metabase:
 
