@@ -10,6 +10,8 @@ import { DataSectionLayout } from "./pages/DataSectionLayout";
 import { DataStudioLayout } from "./pages/DataStudioLayout";
 import { DependenciesSectionLayout } from "./pages/DependenciesSectionLayout";
 import { ModelingSectionLayout } from "./pages/ModelingSectionLayout";
+import { ModelingCollectionView } from "./pages/ModelingSectionLayout/ModelingCollectionView";
+import { ModelingGlossary } from "./pages/ModelingSectionLayout/ModelingGlossary";
 
 export function getDataStudioRoutes() {
   return (
@@ -32,6 +34,11 @@ export function getDataStudioRoutes() {
         path="modeling"
         component={ModelingSectionLayout}
       >
+        <Route
+          path="collections/:collectionId"
+          component={ModelingCollectionView}
+        />
+        <Route path="glossary" component={ModelingGlossary} />
         {getDataStudioModelRoutes()}
       </Route>
       {PLUGIN_DEPENDENCIES.isEnabled && (
