@@ -100,6 +100,7 @@ export const LinkHoverMenu = ({ editor, editable }: LinkHoverMenuProps) => {
           {editable && (
             <ActionIcon
               ml="sm"
+              c="var(--mb-color-text-primary)"
               onClick={() => {
                 editor.commands.focus();
                 const pos = editor.view.posAtDOM(hoveredLink, 0);

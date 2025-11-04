@@ -56,15 +56,17 @@ export const LinkPopup = ({
         />
       </Box>
       {/* TODO: Add aria labels and/or tooltips */}
-      <ActionIcon onClick={handleSubmit}>
-        <FixedSizeIcon name="check" />
-      </ActionIcon>
-      <ActionIcon onClick={() => onSubmit("")}>
-        <FixedSizeIcon name="trash" />
-      </ActionIcon>
-      <ActionIcon onClick={handleCancel}>
-        <FixedSizeIcon name="ellipsis" />
-      </ActionIcon>
+      <Box c="var(--mb-color-text-primary)">
+        <ActionIcon c="inherit" onClick={handleSubmit}>
+          <FixedSizeIcon name="check" />
+        </ActionIcon>
+        <ActionIcon c="inherit" onClick={() => onSubmit("")}>
+          <FixedSizeIcon name="trash" />
+        </ActionIcon>
+        <ActionIcon c="inherit" onClick={handleCancel}>
+          <FixedSizeIcon name="ellipsis" />
+        </ActionIcon>
+      </Box>
     </Flex>
   );
 };

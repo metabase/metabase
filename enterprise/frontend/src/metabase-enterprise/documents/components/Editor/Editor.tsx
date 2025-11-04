@@ -264,7 +264,11 @@ export const Editor: React.FC<EditorProps> = ({
             disallowedNodes={BUBBLE_MENU_DISALLOWED_NODES}
           />
         )}
-        <LinkHoverMenu editor={editor} editable={editable} />
+        <Box pos="absolute" top={0} left={0} w="100%">
+          <Box className={S.editorWrapper} pos="relative">
+            <LinkHoverMenu editor={editor} editable={editable} />
+          </Box>
+        </Box>
       </Box>
     </Box>
   );
