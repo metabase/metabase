@@ -4,7 +4,6 @@ import { Box, SegmentedControl } from "metabase/ui";
 
 interface Props {
   value: boolean;
-  onChange: (value: boolean) => void;
   label?: string;
   className?: string;
   styles?: {
@@ -15,7 +14,6 @@ interface Props {
 
 export const ActiveInput = ({
   value,
-  onChange,
   label = t`Active`,
   className,
   styles,
@@ -32,7 +30,6 @@ export const ActiveInput = ({
             { value: "false", label: t`Inactive` },
           ]}
           value={value ? "true" : "false"}
-          onChange={(value) => onChange(value === "true")}
           fullWidth
           disabled
         />

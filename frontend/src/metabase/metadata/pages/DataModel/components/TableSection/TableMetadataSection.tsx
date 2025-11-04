@@ -226,7 +226,6 @@ export function TableMetadataSection({ table }: Props) {
 
         <ActiveInput
           value={table.active}
-          onChange={handleActiveChange}
           styles={{
             label: {
               gridColumn: 1,
