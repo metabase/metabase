@@ -171,7 +171,7 @@
                   :name "Main Dashboard"
                   :description "Dashboard desc"
                   :verified false
-                  :collection {:name "Finance" :authority_level "official"}
+                  :collection {:name "Finance" :authority_level "official" :description "Finance collection"}
                   :updated_at "2024-01-03"
                   :created_at "2024-01-03"}
           expected {:id 3
@@ -179,7 +179,7 @@
                     :name "Main Dashboard"
                     :description "Dashboard desc"
                     :verified false
-                    :collection {:name "Finance" :authority_level "official"}
+                    :collection {:name "Finance" :authority_level "official" :description "Finance collection"}
                     :updated_at "2024-01-03"
                     :created_at "2024-01-03"}]
       (is (= expected (#'search/postprocess-search-result result)))))
@@ -190,7 +190,7 @@
                   :name "Q1"
                   :description "Question desc"
                   :moderated_status "verified"
-                  :collection {:name "Analytics" :authority_level nil}
+                  :collection {:name "Analytics" :authority_level nil :description "Analytics collection"}
                   :updated_at "2024-01-04"
                   :created_at "2024-01-04"}
           expected {:id 4
@@ -199,7 +199,7 @@
                     :description "Question desc"
                     :database_id nil
                     :verified true
-                    :collection {:name "Analytics" :authority_level nil}
+                    :collection {:name "Analytics" :authority_level nil :description "Analytics collection"}
                     :updated_at "2024-01-04"
                     :created_at "2024-01-04"}]
       (is (= expected (#'search/postprocess-search-result result)))))

@@ -30,7 +30,7 @@
   [{:keys [verified moderated_status collection] :as result}]
   (let [model (:model result)
         verified? (or (boolean verified) (= moderated_status "verified"))
-        collection-info (select-keys collection [:name :authority_level])
+        collection-info (select-keys collection [:name :authority_level :description])
         common-fields {:id          (:id result)
                        :type        (search-model->result-type model)
                        :name        (:name result)
