@@ -39,6 +39,7 @@ import { FieldList } from "./FieldList";
 import { TableMetadataSection } from "./TableMetadataSection";
 import S from "./TableSection.module.css";
 import { useResponsiveButtons } from "./hooks";
+import { ThemeIcon } from "@mantine/core";
 
 interface Props {
   params: RouteParams;
@@ -155,11 +156,12 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
   };
 
   return (
-    <Stack data-testid="table-section" gap={0} pb="xl">
+    <Stack data-testid="table-section" gap="md" pb="xl">
       <Box
         className={S.header}
         bg="accent-gray-light"
-        p="xl"
+        px="xl"
+        mt="xl"
         pos="sticky"
         ref={headerRef}
         top={0}
@@ -191,8 +193,8 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
         />
       </Box>
 
-      <Box px="xl" pb="xl">
-        <Group justify="space-between">
+      <Box px="xl">
+        <Group justify="flex-start" gap="sm">
           <Button
             component={Link}
             onClick={(event) => {
@@ -200,54 +202,28 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
             }}
             to={`/bench/dependencies?id=${table.id}&type=table`}
             disabled
-          >
-            <Tooltip label={t`Dependency graph`}>
-              <Icon name="network" c="text-light" />
-            </Tooltip>
-          </Button>
-
-          <Menu position="bottom-end">
-            <Menu.Target>
-              <Tooltip label={`Table actions`}>
-                <Button
-                  p="sm"
-                  leftSection={<Icon name="ellipsis" />}
-                  style={{
-                    width: 40,
-                  }}
-                />
+            p="sm"
+            leftSection={
+              <Tooltip label={t`Dependency graph`}>
+                <Icon name="network" c="text-light" />
               </Tooltip>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Item
-                leftSection={<Icon name="model" />}
-                rightSection={
-                  <Tooltip
-                    label={t`Create a model and place it in a given collection.`}
-                  >
-                    <Icon name="info_outline" />
-                  </Tooltip>
-                }
-                onClick={() => setIsCreateModelsModalOpen(true)}
-              >
-                {t`Create model`}
-              </Menu.Item>
-
-              <Menu.Item
-                leftSection={<Icon name="sync" />}
-                rightSection={
-                  <Tooltip
-                    label={t`Create a model that wraps this table. All dependent entities will be updated to reference the model instead.`}
-                  >
-                    <Icon name="info_outline" />
-                  </Tooltip>
-                }
-                onClick={() => setIsSubstituteModelModalOpen(true)}
-              >
-                {t`Substitute with model`}
-              </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
+            }
+            style={{
+              width: 40,
+            }}
+          />
+          <Button
+            onClick={() => setIsCreateModelsModalOpen(true)}
+            p="sm"
+            leftSection={
+              <Tooltip label={t`Create model`}>
+                <Icon name="model" />
+              </Tooltip>
+            }
+            style={{
+              width: 40,
+            }}
+          />
         </Group>
       </Box>
 
