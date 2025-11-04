@@ -241,7 +241,11 @@ export const DataGrid = function DataGrid<TData>({
                       );
 
                       return (
-                        <div key={header.id} style={style}>
+                        <div
+                          key={header.id}
+                          style={style}
+                          data-header-id={header.id}
+                        >
                           {headerContent}
                         </div>
                       );

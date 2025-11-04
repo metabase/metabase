@@ -53,6 +53,7 @@ interface TestDataGridProps {
   enableRowId?: boolean;
   sortableColumns?: boolean;
   wrapableColumns?: string[];
+  enableSelection?: boolean;
 }
 
 const TestDataGrid = ({
@@ -66,6 +67,7 @@ const TestDataGrid = ({
   enableRowId = false,
   sortableColumns = false,
   wrapableColumns = [],
+  enableSelection = false,
 }: TestDataGridProps) => {
   const columns: ColumnOptions<SampleDataType>[] = useMemo(
     () => [
@@ -135,6 +137,7 @@ const TestDataGrid = ({
     onColumnReorder,
     onColumnResize,
     rowId,
+    enableSelection,
   });
 
   return (
@@ -262,5 +265,53 @@ describe("DataGrid", () => {
 
     expect(idSortIcon).toBeDefined();
     expect(nameSortIcon).toBeDefined();
+  });
+
+  it("can copy selected cells with headers included", async () => {
+    const writeTextMock = jest.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: writeTextMock,
+      },
+    });
+
+    renderWithProviders(
+      <TestDataGrid sortableColumns={true} enableSelection={true} />,
+    );
+
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    const bodyCells = screen
+      .getByTestId("table-body")
+      .querySelectorAll("[data-selectable-cell]");
+
+    // Find cells by their content
+    const cellsArray = Array.from(bodyCells);
+    const firstCell = cellsArray.find((cell) => cell.textContent === "Item 1");
+    const lastCell = cellsArray.find((cell) => cell.textContent === "Clothing");
+
+    // Select first cell and extend to last desired cell
+    fireEvent.mouseDown(firstCell!);
+    fireEvent.mouseUp(firstCell!);
+    fireEvent.mouseDown(lastCell!, { shiftKey: true });
+    fireEvent.mouseUp(lastCell!);
+
+    // Trigger copy
+    fireEvent.keyDown(window, { key: "c", metaKey: true });
+
+    // Assert clipboard was called and data copied
+    expect(writeTextMock).toHaveBeenCalledTimes(1);
+    const copiedText = writeTextMock.mock.calls[0][0];
+
+    const lines = copiedText.split("\n");
+    expect(lines.length).toBe(3);
+
+    // Should have headers
+    expect(lines[0]).toBe("Name\tCategory");
+    // And selected data rows
+    expect(lines[1]).toBe("Item 1\tElectronics");
+    expect(lines[2]).toBe("Item 2\tClothing");
   });
 });

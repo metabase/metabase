@@ -1,5 +1,11 @@
 import type { Cell, Row, Table } from "@tanstack/react-table";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  type RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import _ from "underscore";
 
 import type { CellId, DataGridSelection } from "../types";
@@ -20,6 +26,8 @@ export type SelectedCellRowMap = Record<string, CellId[]>;
 interface UseCellSelectionProps {
   /** Table instance from TanStack Table */
   table: Table<any>;
+  /** Ref to the grid element */
+  gridRef: RefObject<HTMLDivElement>;
   /** Whether cell selection is enabled */
   isEnabled?: boolean;
   /** Optional function to scroll to a specific cell */
@@ -47,10 +55,11 @@ interface UseCellSelectionProps {
  * @returns Object with selection state and event handlers
  */
 export const useCellSelection = ({
-  table,
+  gridRef,
   isEnabled = false,
-  scrollTo,
   onChangeSelection,
+  scrollTo,
+  table,
 }: UseCellSelectionProps): DataGridSelection => {
   const [selectedCells, setSelectedCells] = useState<CellId[]>([]);
   const [focusedCell, setFocusedCell] = useState<CellId | null>(null);
@@ -61,10 +70,15 @@ export const useCellSelection = ({
 
   const handleCopy = useCallback(
     async (useRawValues = false) => {
-      const formattedText = getCellValues(table, selectedCells, useRawValues);
+      const formattedText = getCellValues(
+        gridRef,
+        table,
+        selectedCells,
+        useRawValues,
+      );
       await navigator.clipboard.writeText(formattedText);
     },
-    [table, selectedCells],
+    [gridRef, table, selectedCells],
   );
 
   const handleClickOutside = useCallback(
@@ -489,12 +503,14 @@ const extractRowCellValues = (
 /**
  * Converts selected cells to clipboard-ready text format.
  *
+ * @param gridRef - Ref to the grid html element
  * @param table - The table instance
  * @param cells - Array of selected cells
  * @param useRawValues - Whether to use raw values instead of formatted ones
  * @returns Tab-separated values with newlines between rows
  */
 const getCellValues = (
+  gridRef: RefObject<HTMLDivElement>,
   table: Table<unknown>,
   cells: CellId[],
   useRawValues = false,
@@ -505,7 +521,7 @@ const getCellValues = (
 
   const rowGroups = groupCellsByRow(cells);
 
-  return Object.keys(rowGroups)
+  const dataRows = Object.keys(rowGroups)
     .map((rowId) => {
       try {
         const row = table.getRow(rowId);
@@ -521,8 +537,26 @@ const getCellValues = (
         return "";
       }
     })
-    .filter((rowText) => rowText.length > 0)
-    .join("\n");
+    .filter((rowText) => rowText.length > 0);
+
+  const refDataRow = Object.values(rowGroups)[0];
+  const headerRow = refDataRow
+    .map((cell) => table.getColumn(cell.columnId)?.id)
+    .map((headerId) => {
+      return headerId
+        ? gridRef.current?.querySelector(`[data-header-id="${headerId}"]`)
+            ?.textContent
+        : undefined;
+    })
+    .filter(Boolean) as string[];
+
+  if (headerRow.length !== refDataRow.length) {
+    // Couldn't retrieve all headers: copy the data only
+    return dataRows.join("\n");
+  }
+
+  // Combine headers and data
+  return [headerRow.join("\t"), ...dataRows].join("\n");
 };
 
 const canSelectCell = (cell: Cell<any, any>) => {
