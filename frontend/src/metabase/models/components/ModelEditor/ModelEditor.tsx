@@ -7,7 +7,7 @@ import type * as Lib from "metabase-lib";
 import type { CardId } from "metabase-types/api";
 
 import { EditorHeader } from "./EditorHeader";
-import { getValidationResult } from "./utils";
+import { getEditorOptions, getValidationResult } from "./utils";
 
 type ModelEditorProps = {
   id?: CardId;
@@ -36,6 +36,7 @@ export function ModelEditor({
   onSave,
   onCancel,
 }: ModelEditorProps) {
+  const uiOptions = useMemo(() => getEditorOptions(), []);
   const validationResult = useMemo(() => getValidationResult(query), [query]);
 
   return (
@@ -60,6 +61,7 @@ export function ModelEditor({
       <QueryEditor
         query={query}
         uiState={uiState}
+        uiOptions={uiOptions}
         onChangeQuery={onChangeQuery}
         onChangeUiState={onChangeUiState}
       />
