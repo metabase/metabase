@@ -24,6 +24,7 @@ import {
 import {
   Badge,
   Box,
+  Button,
   Flex,
   Radio,
   Stack,
@@ -68,6 +69,11 @@ export const RemoteSyncAdminSettings = () => {
     modalContent: changeBranchConfirmationModal,
   } = useConfirmation();
   const [sendToast] = useToast();
+
+  const {
+    show: showDisableConfirmation,
+    modalContent: disableConfirmationModal,
+  } = useConfirmation();
 
   const handleSubmit = useCallback(
     async (values: RemoteSyncConfigurationSettings) => {
@@ -117,6 +123,30 @@ export const RemoteSyncAdminSettings = () => {
       showChangeBranchConfirmation,
     ],
   );
+
+  const handleDisable = useCallback(async () => {
+    showDisableConfirmation({
+      title: t`Disable Remote Sync?`,
+      message: t`This will clear all remote sync settings. Any changes made to the Library collection after disabling can be overwritten if you enable sync again.`,
+      confirmButtonText: t`Disable`,
+      confirmButtonProps: {
+        variant: "filled",
+        color: "danger",
+      },
+      onConfirm: async () => {
+        try {
+          await updateRemoteSyncSettings({ [URL_KEY]: "" }).unwrap();
+          sendToast({ message: t`Remote Sync disabled`, icon: "check" });
+        } catch (error) {
+          console.error(error);
+          sendToast({
+            message: t`Failed to disable Remote Sync`,
+            icon: "warning",
+          });
+        }
+      },
+    });
+  }, [updateRemoteSyncSettings, sendToast, showDisableConfirmation]);
 
   const initialValues = useMemo(() => {
     const values = REMOTE_SYNC_SCHEMA.cast(settingValues, {
@@ -249,6 +279,11 @@ export const RemoteSyncAdminSettings = () => {
 
                   <Flex justify="end" align="center" gap="md">
                     <FormErrorMessage />
+                    {isRemoteSyncEnabled && (
+                      <Button onClick={handleDisable}>
+                        {t`Disable Remote Sync`}
+                      </Button>
+                    )}
                     <FormSubmitButton
                       label={
                         isRemoteSyncEnabled
@@ -268,6 +303,7 @@ export const RemoteSyncAdminSettings = () => {
       </SettingsSection>
 
       {changeBranchConfirmationModal}
+      {disableConfirmationModal}
     </SettingsPageWrapper>
   );
 };
