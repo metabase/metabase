@@ -1,6 +1,8 @@
 import { IndexRedirect, IndexRoute, Redirect } from "react-router";
 
 import ActionCreatorModal from "metabase/actions/containers/ActionCreatorModal/ActionCreatorModal";
+import { ModelingCollectionView } from "metabase/data-studio/pages/ModelingSectionLayout/ModelingCollectionView";
+import { ModelingGlossary } from "metabase/data-studio/pages/ModelingSectionLayout/ModelingGlossary";
 import { ModelDetailPage } from "metabase/detail-view/pages/ModelDetailPage/ModelDetailPage";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
@@ -44,16 +46,23 @@ export const getRoutes = () => (
 
 export function getDataStudioModelRoutes() {
   return (
-    <Route path="models">
-      <Route path="new/query" component={NewQueryModelPage} />
-      <Route path="new/native" component={NewNativeModelPage} />
-      <Route path=":modelId" component={ModelOverviewPage} />
-      <Route path=":modelId/query" component={ModelQueryPage} />
-      {PLUGIN_DEPENDENCIES.isEnabled && (
-        <Route path=":modelId/dependencies" component={ModelDependenciesPage}>
-          <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
-        </Route>
-      )}
-    </Route>
+    <>
+      <Route path="models">
+        <Route path="new/query" component={NewQueryModelPage} />
+        <Route path="new/native" component={NewNativeModelPage} />
+        <Route path=":modelId" component={ModelOverviewPage} />
+        <Route path=":modelId/query" component={ModelQueryPage} />
+        {PLUGIN_DEPENDENCIES.isEnabled && (
+          <Route path=":modelId/dependencies" component={ModelDependenciesPage}>
+            <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
+          </Route>
+        )}
+      </Route>
+      <Route
+        path="collections/:collectionId"
+        component={ModelingCollectionView}
+      />
+      <Route path="glossary" component={ModelingGlossary} />
+    </>
   );
 }

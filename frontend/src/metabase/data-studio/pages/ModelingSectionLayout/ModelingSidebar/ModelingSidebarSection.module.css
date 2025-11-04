@@ -1,0 +1,15 @@
+.sectionLink {
+  display: block;
+  border-radius: 0.5rem;
+  text-decoration: none;
+  background-color: transparent;
+  cursor: pointer;
+}
+
+.sectionLink:not([data-active]):hover {
+  background-color: var(--mb-color-brand-lighter);
+}
+
+.titleText {
+  flex: 1;
+}
