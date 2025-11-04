@@ -16,6 +16,7 @@ import { createAction, createThunkAction } from "metabase/lib/redux";
 import {
   type NewParameterOpts,
   createParameter,
+  getFilteredParameterMappingsForDashcardText,
   setParameterName as setParamName,
   setParameterType as setParamType,
 } from "metabase/parameters/utils/dashboards";
@@ -440,6 +441,39 @@ export const setParameterMapping = createThunkAction(
               cardId,
               target,
             ),
+          },
+        }),
+      );
+    };
+  },
+);
+
+export const UPDATE_PARAMETER_MAPPINGS_FOR_DASHCARD_TEXT =
+  "metabase/dashboard/UPDATE_PARAMETER_MAPPINGS_FOR_DASHCARD_TEXT";
+export const updateParameterMappingsForDashcardText = createThunkAction(
+  UPDATE_PARAMETER_MAPPINGS_FOR_DASHCARD_TEXT,
+  (dashcardId: DashCardId) => {
+    return (dispatch, getState) => {
+      const dashcard = getDashCardById(getState(), dashcardId);
+      const parameterMappings = dashcard?.parameter_mappings;
+      const text = dashcard?.visualization_settings?.text;
+
+      if (typeof text !== "string") {
+        return;
+      }
+
+      const filteredParameterMappings =
+        getFilteredParameterMappingsForDashcardText(parameterMappings, text);
+
+      if (!filteredParameterMappings) {
+        return;
+      }
+
+      dispatch(
+        setDashCardAttributes({
+          id: dashcardId,
+          attributes: {
+            parameter_mappings: filteredParameterMappings,
           },
         }),
       );
