@@ -25,7 +25,7 @@
   `name` is `:remapped_from` `:category_id`.
 
   See also [[metabase.parameters.chain-filter]] for another explanation of remapping."
-  (:refer-clojure :exclude [mapv select-keys some])
+  (:refer-clojure :exclude [mapv select-keys some empty? not-empty])
   (:require
    [clojure.data :as data]
    [medley.core :as m]
@@ -47,7 +47,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [mapv select-keys some]]))
+   [metabase.util.performance :refer [mapv select-keys some empty? not-empty]]))
 
 (mr/def ::simplified-ref
   [:tuple
@@ -238,6 +238,8 @@
                             (apply distinct? remappings)))]]]]
    [:query  ::lib.schema/query]])
 
+;; PERF: There's a ton of re-processing of the same fields lists building little indexes, I think that can be consolidated
+;; into a more pipelined thing. Not sure how much it buys us, but this is a seriously slow middleware with wide tables.
 (mu/defn- add-fk-remaps-to-fields :- [:maybe ::lib.schema/fields]
   [infos  :- [:maybe [:sequential ::remap-info]]
    fields :- [:maybe ::lib.schema/fields]]
@@ -264,6 +266,7 @@
                                      (map (fn [{:keys [original-field-clause new-field-clause]}]
                                             [(simplify-ref-options original-field-clause) new-field-clause]))
                                      infos)
+            ;; PERF: More indexing on the same stuff! This really needs to be poured into a common context.
             new-breakout       (add-fk-remaps-rewrite-breakout original->remapped breakout)
             new-order-by       (add-fk-remaps-rewrite-order-by original->remapped order-by)
             remaps             (into []
@@ -277,6 +280,7 @@
           (seq remaps)   (assoc ::remaps remaps)))
       ;; otherwise return query as-is
       (cond-> stage
+        ;; PERF: This is an edit to the query, busting the caching unnecessarily when there's nothing to remap.
         (seq previous-stage-remaps) (assoc ::remaps previous-stage-remaps)))))
 
 (mu/defn- add-fk-remaps-to-join :- [:maybe ::lib.schema.join/join]
