@@ -224,7 +224,7 @@ export function TableMetadataSection({ table }: Props) {
           className={S.gridLabelInput}
         />
 
-        <ActiveInput
+        {/* <ActiveInput
           value={table.active}
           styles={{
             label: {
@@ -236,7 +236,7 @@ export function TableMetadataSection({ table }: Props) {
             },
           }}
           className={S.gridLabelInput}
-        />
+        /> */}
       </div>
     </>
   );
