@@ -5,7 +5,7 @@ import { t } from "ttag";
 
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import RevisionMessageModal from "metabase/reference/components/RevisionMessageModal";
+import { RevisionMessageModal } from "metabase/reference/components/RevisionMessageModal";
 
 import S from "./EditHeader.module.css";
 
