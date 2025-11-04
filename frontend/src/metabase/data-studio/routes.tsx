@@ -4,10 +4,10 @@ import { Route } from "metabase/hoc/Title";
 import { getMetadataRoutes } from "metabase/metadata/routes";
 import { PLUGIN_DEPENDENCIES, PLUGIN_TRANSFORMS } from "metabase/plugins";
 
-import { DataModelLayout } from "./pages/DataModelLayout";
 import { DataSectionLayout } from "./pages/DataSectionLayout";
 import { DataStudioLayout } from "./pages/DataStudioLayout";
 import { DependenciesSectionLayout } from "./pages/DependenciesSectionLayout";
+import { ModelingSectionLayout } from "./pages/ModelingSectionLayout";
 
 export function getDataStudioRoutes() {
   return (
@@ -17,7 +17,7 @@ export function getDataStudioRoutes() {
         {getMetadataRoutes()}
         {PLUGIN_TRANSFORMS.getTransformRoutes()}
       </Route>
-      <Route component={DataModelLayout} />
+      <Route component={ModelingSectionLayout} />
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <Route
           title={`Dependency graph`}

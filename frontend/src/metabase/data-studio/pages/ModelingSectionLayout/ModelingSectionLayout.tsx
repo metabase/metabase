@@ -3,11 +3,13 @@ import { t } from "ttag";
 
 import { SectionLayout, SectionTitle } from "../../components/SectionLayout";
 
-type DataModelLayoutProps = {
+type ModelingSectionLayoutProps = {
   children?: ReactNode;
 };
 
-export function DataModelLayout({ children }: DataModelLayoutProps) {
+export function ModelingSectionLayout({
+  children,
+}: ModelingSectionLayoutProps) {
   return (
     <SectionLayout
       title={
