@@ -67,6 +67,7 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
     } else {
       editor.chain().focus().unsetLink().run();
     }
+    editor.commands.setTextSelection(editor.state.selection.to);
     setInitialLinkUrl(null);
   };
 

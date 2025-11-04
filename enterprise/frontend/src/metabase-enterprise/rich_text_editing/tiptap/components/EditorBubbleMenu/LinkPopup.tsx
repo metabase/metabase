@@ -59,11 +59,7 @@ export const LinkPopup = ({
       <ActionIcon onClick={handleSubmit}>
         <FixedSizeIcon name="check" />
       </ActionIcon>
-      <ActionIcon
-        onClick={() => {
-          // TODO: Remove
-        }}
-      >
+      <ActionIcon onClick={() => onSubmit("")}>
         <FixedSizeIcon name="trash" />
       </ActionIcon>
       <ActionIcon onClick={handleCancel}>
