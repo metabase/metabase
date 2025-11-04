@@ -192,11 +192,12 @@ export function setupCollectionByIdEndpoint({
     return;
   }
 
-  fetchMock.get(/api\/collection\/\d+$/, (call) => {
+  fetchMock.get(/api\/collection\/(\d+|root)$/, (call) => {
     const urlString = call.url;
     const parts = urlString.split("/");
     const collectionIdParam = parts[parts.length - 1];
-    const collectionId = Number(collectionIdParam);
+    const collectionId =
+      collectionIdParam === "root" ? "root" : Number(collectionIdParam);
 
     const collection = collections.find(
       (collection) => collection.id === collectionId,

@@ -23,12 +23,9 @@
 
 (deftest ^:parallel snippet-tag-test
   (are [exp input] (= exp (set (keys (lib.native/extract-template-tags meta/metadata-provider input))))
-    #{"snippet:   foo  "} "SELECT * FROM table WHERE {{snippet:   foo  }} AND some_field IS NOT NULL"
-    #{"snippet:   foo  *#&@"} "SELECT * FROM table WHERE {{snippet:   foo  *#&@}}"
-    ;; TODO: This logic should trim the whitespace and unify these two snippet names.
-    ;; I think this is a bug in the original code but am aiming to reproduce it exactly for now.
-    ;; Tech debt issue: #39378
-    #{"snippet: foo" "snippet:foo"} "SELECT * FROM table WHERE {{snippet: foo}} AND {{snippet:foo}}"))
+    #{"snippet: foo"} "SELECT * FROM table WHERE {{snippet:   foo  }} AND some_field IS NOT NULL"
+    #{"snippet: foo  *#&@"} "SELECT * FROM table WHERE {{snippet:   foo  *#&@}}"
+    #{"snippet: foo"} "SELECT * FROM table WHERE {{snippet: foo}} AND {{snippet:foo}}"))
 
 (deftest ^:parallel card-tag-test
   (are [exp input] (= exp (set (keys (lib.native/extract-template-tags meta/metadata-provider input))))
@@ -42,29 +39,22 @@
 
 (deftest ^:parallel template-tags-test
   (testing "snippet tags"
-    (let [snippet {:type         :snippet
-                   :name         "foo"
-                   :id           1}
+    (let [snippet           {:type :snippet
+                             :name "foo"
+                             :id   1}
           metadata-provider (lib.tu/mock-metadata-provider
                              {:native-query-snippets [snippet]})]
-      (is (=? {"snippet:foo" {:type         :snippet
-                              :name         "snippet:foo"
-                              :snippet-name "foo"
-                              :snippet-id   1
-                              :id           string?}}
-              (lib.native/extract-template-tags metadata-provider "SELECT * FROM table WHERE {{snippet:foo}}")))
-      (is (=? {"snippet:foo"  {:type         :snippet
-                               :name         "snippet:foo"
-                               :snippet-name "foo"
-                               :snippet-id   1
-                               :id           string?}
-               "snippet: foo" {:type         :snippet
+      (is (=? {"snippet: foo" {:type         :snippet
                                :name         "snippet: foo"
                                :snippet-name "foo"
                                :snippet-id   1
                                :id           string?}}
-              ;; TODO: This should probably be considered a bug - whitespace matters for the name.
-              ;; Tech debt issue: #39378
+              (lib.native/extract-template-tags metadata-provider "SELECT * FROM table WHERE {{snippet:foo}}")))
+      (is (=? {"snippet: foo" {:type         :snippet
+                               :name         "snippet: foo"
+                               :snippet-name "foo"
+                               :snippet-id   1
+                               :id           string?}}
               (lib.native/extract-template-tags metadata-provider "SELECT * FROM {{snippet: foo}} WHERE {{snippet:foo}}")))))
 
   (testing "renaming a variable"
@@ -103,18 +93,18 @@
 
   (testing "general case, add and remove"
     (let [mktag (fn [base]
-                  (merge {:type    :text
+                  (merge {:type         :text
                           :display-name (u.humanization/name->human-readable-name :simple (:name base))
                           :id           string?}
                          base))
           v1    (mktag {:name "foo"})
           v2    (mktag {:name "bar"})
           v3    (mktag {:name "baz"})
-          s1    (mktag {:name         "snippet:first snippet"
+          s1    (mktag {:name         "snippet: first snippet"
                         :snippet-name "first snippet"
                         :snippet-id   123
                         :type         :snippet})
-          s2    (mktag {:name         "snippet:another snippet"
+          s2    (mktag {:name         "snippet: another snippet"
                         :snippet-name "another snippet"
                         :snippet-id   124
                         :type         :snippet})
@@ -130,28 +120,28 @@
                                                        :id   123}
                                                       {:name "another snippet"
                                                        :id   124}]})]
-      (is (=? {"foo"                   v1
-               "#123-card-1"           c1
-               "snippet:first snippet" s1}
+      (is (=? {"foo"                    v1
+               "#123-card-1"            c1
+               "snippet: first snippet" s1}
               (lib.native/extract-template-tags
                metadata-provider
                "SELECT * FROM {{#123-card-1}} WHERE {{foo}} AND {{  snippet:first snippet}}")))
-      (is (=? {"bar"                     v2
-               "baz"                     v3
-               "snippet:another snippet" s2
-               "#321"                    c2}
+      (is (=? {"bar"                      v2
+               "baz"                      v3
+               "snippet: another snippet" s2
+               "#321"                     c2}
               (lib.native/extract-template-tags
                metadata-provider
                "SELECT * FROM {{#321}} WHERE {{baz}} AND {{bar}} AND {{snippet:another snippet}}"
-               {"foo"                   (assoc v1 :id (str (random-uuid)))
-                "#123-card-1"           (assoc c1 :id (str (random-uuid)))
-                "snippet:first snippet" (assoc s1 :id (str (random-uuid)))})))
+               {"foo"                    (assoc v1 :id (str (random-uuid)))
+                "#123-card-1"            (assoc c1 :id (str (random-uuid)))
+                "snippet: first snippet" (assoc s1 :id (str (random-uuid)))})))
       (let [s1-uuid (str (random-uuid))]
-        (is (= {"snippet:another snippet" (assoc s2 :id s1-uuid)}
+        (is (= {"snippet: another snippet" (assoc s2 :id s1-uuid)}
                (lib.native/extract-template-tags
                 metadata-provider
                 "SELECT * FROM {{snippet:another snippet}}"
-                {"snippet:first snippet" (assoc s1 :id s1-uuid)})))))))
+                {"snippet: first snippet" (assoc s1 :id s1-uuid)})))))))
 
 (def ^:private qp-results-metadata
   "Capture of the `data.results_metadata` that would come back when running `SELECT * FROM VENUES;` with the Query
@@ -248,6 +238,22 @@
          #"Must be a native query"
          (-> (lib.tu/venues-query)
              (lib/with-template-tags {"myid" (assoc (get original-tags "myid") :display-name "My ID")}))))))
+
+(deftest ^:parallel with-template-tags-update-map-order-test
+  ;; yes, I know template tags are sorted as a map, but for small maps we should preserve the order passed in by the
+  ;; FE. See
+  ;; https://metaboat.slack.com/archives/C0645JP1W81/p1759974826834279?thread_ts=1759289751.539169&cid=C0645JP1W81
+  (testing "it should be possible to reorder template tags with with-template-tags"
+    (let [query         (lib/native-query meta/metadata-provider "{{x}} {{y}} {{z}}")
+          original-tags (lib/template-tags query)]
+      (is (=? {"x" {}, "y" {}, "z" {}}
+              original-tags))
+      (is (= ["x" "y" "z"]
+             (keys original-tags)))
+      (let [updated-tags {"y" (get original-tags "y"), "x" (get original-tags "x")}
+            query'       (lib/with-template-tags query updated-tags)]
+        (is (= ["y" "x" "z"]
+               (keys (lib/template-tags query'))))))))
 
 (defn ^:private metadata-provider-requiring-collection []
   (meta/updated-metadata-provider update :features conj :native-requires-specified-collection))
@@ -458,3 +464,129 @@
               :display-name "Price"
               :lib/source   :source/card}]
             (lib/returned-columns query)))))
+
+(deftest ^:parallel add-parameters-text-tag-test
+  (is (= [{:id     "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7",
+           :type   :string/=,
+           :value  ["foo"],
+           :target ["variable" ["template-tag" "mytag"]]}]
+         (-> (lib/native-query meta/metadata-provider "select * from venues where {{mytag}}")
+             (lib/with-template-tags {"mytag" {:type :text,
+                                               :name "mytag",
+                                               :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+                                               :display-name "My Tag"}})
+             lib/add-parameters-for-template-tags
+             :parameters))))
+
+(deftest ^:parallel add-parameters-number-tag-test
+  (is (= [{:id     "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7",
+           :type   :number/=,
+           :value  ["0"],
+           :target ["variable" ["template-tag" "mytag"]]}]
+         (-> (lib/native-query meta/metadata-provider "select * from venues where {{mytag}}")
+             (lib/with-template-tags {"mytag"
+                                      {:display-name "My Tag"
+                                       :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+                                       :name "mytag"
+                                       :type :number}})
+             lib/add-parameters-for-template-tags
+             :parameters))))
+
+(deftest ^:parallel add-parameters-date-tag-test
+  (is (= [{:id     "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7",
+           :type   :date/single,
+           :value  "1970-01-01",
+           :target ["variable" ["template-tag" "mytag"]]}]
+         (-> (lib/native-query meta/metadata-provider "select * from venues where {{mytag}}")
+             (lib/with-template-tags {"mytag"
+                                      {:display-name "My Tag"
+                                       :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+                                       :name "mytag"
+                                       :type :date}})
+             lib/add-parameters-for-template-tags
+             :parameters))))
+
+(deftest ^:parallel add-parameters-boolean-tag-test
+  (is (= [{:id     "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7",
+           :type   :boolean/=,
+           :value  [false],
+           :target ["variable" ["template-tag" "mytag"]]}]
+         (-> (lib/native-query meta/metadata-provider "select * from venues where {{mytag}}")
+             (lib/with-template-tags {"mytag"
+                                      {:display-name "My Tag"
+                                       :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+                                       :name "mytag"
+                                       :type :boolean}})
+             lib/add-parameters-for-template-tags
+             :parameters))))
+
+(deftest ^:parallel add-parameters-string-dimension-tag-test
+  (is (= [{:id     "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7",
+           :type   :string/=,
+           :value  ["foo"],
+           :target ["dimension" ["template-tag" "mytag"]]}]
+         (-> (lib/native-query meta/metadata-provider "select * from venues where {{mytag}}")
+             (lib/with-template-tags {"mytag"
+                                      {:dimension [:field
+                                                   {:lib/uuid "a9e2b665-cadd-4d25-b1c1-09ca8f1736cf"}
+                                                   (meta/id :products :category)]
+                                       :display-name "My Tag"
+                                       :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+                                       :name "mytag"
+                                       :type :dimension
+                                       :widget-type :date/range}})
+             lib/add-parameters-for-template-tags
+             :parameters))))
+
+(deftest ^:parallel add-parameters-number-dimension-tag-test
+  (is (= [{:id     "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7",
+           :type   :number/=,
+           :value  ["0"],
+           :target ["dimension" ["template-tag" "mytag"]]}]
+         (-> (lib/native-query meta/metadata-provider "select * from venues where {{mytag}}")
+             (lib/with-template-tags {"mytag"
+                                      {:dimension [:field
+                                                   {:lib/uuid "a9e2b665-cadd-4d25-b1c1-09ca8f1736cf"}
+                                                   (meta/id :orders :total)]
+                                       :display-name "My Tag"
+                                       :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+                                       :name "mytag"
+                                       :type :dimension
+                                       :widget-type :date/range}})
+             lib/add-parameters-for-template-tags
+             :parameters))))
+
+(deftest ^:parallel add-parameters-date-dimension-tag-test
+  (is (= [{:id     "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7",
+           :type   :date/single,
+           :value  "2025-01-01",
+           :target ["dimension" ["template-tag" "mytag"]]}]
+         (-> (lib/native-query meta/metadata-provider "select * from venues where {{mytag}}")
+             (lib/with-template-tags {"mytag"
+                                      {:dimension [:field
+                                                   {:lib/uuid "a9e2b665-cadd-4d25-b1c1-09ca8f1736cf"}
+                                                   (meta/id :orders :created-at)]
+                                       :display-name "My Tag"
+                                       :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+                                       :name "mytag"
+                                       :type :dimension
+                                       :widget-type :date/range}})
+             lib/add-parameters-for-template-tags
+             :parameters))))
+
+(deftest ^:parallel add-parameters-temporal-unit-tag-test
+  (is (= [{:id     "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7",
+           :type   :temporal-unit,
+           :value  "week",
+           :target ["dimension" ["template-tag" "mytag"]]}]
+         (-> (lib/native-query meta/metadata-provider "select * from venues where {{mytag}}")
+             (lib/with-template-tags {"mytag"
+                                      {:dimension [:field
+                                                   {:lib/uuid "a9e2b665-cadd-4d25-b1c1-09ca8f1736cf"}
+                                                   (meta/id :orders :created-at)]
+                                       :display-name "My Tag"
+                                       :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+                                       :name "mytag"
+                                       :type :temporal-unit}})
+             lib/add-parameters-for-template-tags
+             :parameters))))

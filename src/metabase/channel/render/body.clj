@@ -197,17 +197,18 @@
 (defn- order-data [data viz-settings]
   (if (some? (::mb.viz/table-columns viz-settings))
     (let [;; Deduplicate table-columns by name to handle duplicated viz settings
-          deduped-table-columns     (->> (::mb.viz/table-columns viz-settings)
-                                         (m/index-by ::mb.viz/table-column-name)
-                                         vals)
-          deduped-viz-settings      (assoc viz-settings ::mb.viz/table-columns deduped-table-columns)
+          deduped-table-columns       (->> (::mb.viz/table-columns viz-settings)
+                                           (m/distinct-by ::mb.viz/table-column-name))
+          deduped-viz-settings        (assoc viz-settings ::mb.viz/table-columns deduped-table-columns)
           [ordered-cols output-order] (qp.streaming/order-cols (:cols data) deduped-viz-settings)
+          ;; table-columns from viz-settings only includes remapped columns, not the source columns
+          santized-ordered-cols       (map #(dissoc % :remapped_from :remapped_to) ordered-cols)
           keep-filtered-idx           (fn [row] (if output-order
                                                   (let [row-v (into [] row)]
                                                     (for [i output-order] (row-v i)))
                                                   row))
           ordered-rows                (map keep-filtered-idx (:rows data))]
-      [ordered-cols ordered-rows])
+      [santized-ordered-cols ordered-rows])
     [(:cols data) (:rows data)]))
 
 (defn- minibar-columns
@@ -637,6 +638,21 @@
 (mu/defmethod render :card-error :- ::RenderedPartCard
   [_chart-type _render-type _timezone-id _card _dashcard _data]
   @card-error-rendered-info)
+
+(mu/defmethod render :card-error/results-too-large :- ::RenderedPartCard
+  [_chart-type _render-type _timezone-id _card _dashcard data]
+  (let [filesize-limit (:max-size-human-readable data "10.0 mb")]
+    {:attachments nil,
+     :content [:div
+               {:style "font-family: Lato, \"Helvetica Neue\", Helvetica, Arial, sans-serif; margin: 0px 0;"}
+               [:div
+                {:style "background-color: #F9FBFC; border: 1px solid #DCE1E4; border-radius: 8px; padding: 16px;"}
+                [:p
+                 {:style "margin: 4px; font-size: 14px; font-weight: 700; color: #4C5773;"}
+                 (trs "This chart exceeded the {0} size limit." filesize-limit)]
+                [:p
+                 {:style "margin: 4px; font-size: 12px; font-weight: 400; color: #696E7B;"}
+                 (trs "You can make it smaller by adding filters, or summarizing the data.")]]]}))
 
 (mu/defmethod render :render-error :- ::RenderedPartCard
   [_chart-type _render-type _timezone-id _card _dashcard _data]

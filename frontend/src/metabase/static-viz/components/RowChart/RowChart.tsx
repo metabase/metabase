@@ -1,11 +1,6 @@
 import { Group } from "@visx/group";
 
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
-import {
-  getColumnValueStaticFormatter,
-  getLabelsStaticFormatter,
-  getStaticFormatters,
-} from "metabase/static-viz/lib/format";
 import { measureTextWidth } from "metabase/static-viz/lib/text";
 import { extractRemappedColumns } from "metabase/visualizations";
 import { getChartGoal } from "metabase/visualizations/lib/settings/goal";
@@ -21,6 +16,11 @@ import {
 } from "metabase/visualizations/shared/utils/data";
 import { getTwoDimensionalChartSeries } from "metabase/visualizations/shared/utils/series";
 import type { RemappingHydratedChartData } from "metabase/visualizations/types";
+import {
+  getColumnValueFormatter,
+  getFormatters,
+  getLabelsFormatter,
+} from "metabase/visualizations/visualizations/RowChart/utils/format";
 import { getLegendItems } from "metabase/visualizations/visualizations/RowChart/utils/legend";
 import {
   getAxesVisibility,
@@ -67,7 +67,7 @@ export const StaticRowChart = ({
     rawSeries[0].data,
   ) as RemappingHydratedChartData;
   const { getColor } = renderingContext;
-  const columnValueFormatter = getColumnValueStaticFormatter();
+  const columnValueFormatter = getColumnValueFormatter();
 
   const { chartColumns, series, seriesColors } = getTwoDimensionalChartSeries(
     data,
@@ -80,12 +80,12 @@ export const StaticRowChart = ({
     settings,
     columnValueFormatter,
   );
-  const labelsFormatter = getLabelsStaticFormatter(chartColumns, settings);
+  const labelsFormatter = getLabelsFormatter(chartColumns, settings);
   const goal = getChartGoal(settings);
   const theme = getStaticChartTheme(getColor);
   const stackOffset = getStackOffset(settings);
 
-  const tickFormatters = getStaticFormatters(chartColumns, settings);
+  const tickFormatters = getFormatters(chartColumns, settings);
 
   const { xLabel, yLabel } = getLabels(settings);
 

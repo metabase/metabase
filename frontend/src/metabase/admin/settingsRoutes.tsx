@@ -2,7 +2,11 @@ import { IndexRedirect, Route } from "react-router";
 
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { NotFound } from "metabase/common/components/ErrorPages";
-import { PLUGIN_AUTH_PROVIDERS } from "metabase/plugins";
+import {
+  PLUGIN_AUTH_PROVIDERS,
+  PLUGIN_REMOTE_SYNC,
+  PLUGIN_TRANSFORMS_PYTHON,
+} from "metabase/plugins";
 
 import { GoogleAuthForm } from "./settings/auth/components/GoogleAuthForm";
 import { SettingsLdapForm } from "./settings/components/SettingsLdapForm";
@@ -55,9 +59,17 @@ export const getSettingsRoutes = () => (
       path="authentication/jwt"
       component={() => <PLUGIN_AUTH_PROVIDERS.SettingsJWTForm />}
     />
+    <Route
+      path="remote-sync"
+      component={() => <PLUGIN_REMOTE_SYNC.RemoteSyncSettings />}
+    />
     <Route path="maps" component={MapsSettingsPage} />
     <Route path="localization" component={LocalizationSettingsPage} />
     <Route path="uploads" component={UploadSettingsPage} />
+    <Route
+      path="python-runner"
+      component={PLUGIN_TRANSFORMS_PYTHON.PythonRunnerSettingsPage}
+    />
     <Route path="public-sharing" component={PublicSharingSettingsPage} />
     <Route path="license" component={LicenseSettingsPage} />
     <Route path="appearance" component={() => <AppearanceSettingsPage />} />

@@ -1148,3 +1148,29 @@
         (is (= [[1 "ref1" ref-1 "some_collection" id-1 nil]
                 [2 "ref2" ref-2 "some_collection" id-2 "some_db"]]
                (mt/rows (mt/run-mbql-query dbref_coll))))))))
+
+(deftest ^:parallel type->database-type-test
+  (testing "type->database-type multimethod returns correct MongoDB types"
+    (are [base-type expected] (= expected (driver/type->database-type :mongo base-type))
+      :type/TextLike           "string"
+      :type/Text               "string"
+      :type/Number             "long"
+      :type/Integer            "int"
+      :type/BigInteger         "long"
+      :type/Float              "double"
+      :type/Decimal            "decimal"
+      :type/Boolean            "bool"
+      :type/Date               "date"
+      :type/DateTime           "date"
+      :type/DateTimeWithTZ     "date"
+      :type/Time               "date"
+      :type/TimeWithTZ         "date"
+      :type/Instant            "date"
+      :type/UUID               "uuid"
+      :type/JSON               "object"
+      :type/SerializedJSON     "string"
+      :type/Array              "array"
+      :type/Dictionary         "object"
+      :type/MongoBSONID        "objectId"
+      :type/MongoBinData       "binData"
+      :type/IPAddress          "string")))

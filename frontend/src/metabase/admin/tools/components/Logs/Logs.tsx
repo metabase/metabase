@@ -9,6 +9,7 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
+import { AnsiLogs } from "metabase/common/components/AnsiLogs";
 import Select, { Option } from "metabase/common/components/Select";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { openSaveDialog } from "metabase/lib/dom";
@@ -143,9 +144,14 @@ const LogsBase = ({
               </Flex>
             </Flex>
 
-            <LogsContent id="logs-content" ref={scrollRef} onScroll={onScroll}>
+            <AnsiLogs
+              id="logs-content"
+              ref={scrollRef}
+              onScroll={onScroll}
+              component={LogsContent}
+            >
               {displayLogs}
-            </LogsContent>
+            </AnsiLogs>
           </LogsContainer>
         </SettingsSection>
       </SettingsPageWrapper>

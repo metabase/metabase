@@ -11,7 +11,7 @@ import { Box } from "metabase/ui";
 import type { DatabaseData, Engine, EngineKey } from "metabase-types/api";
 
 import { DatabaseConnectionStringField } from "../DatabaseConnectionUri";
-import DatabaseDetailField from "../DatabaseDetailField";
+import { DatabaseDetailField } from "../DatabaseDetailField";
 import { DatabaseEngineField } from "../DatabaseEngineField";
 import DatabaseEngineWarning from "../DatabaseEngineWarning";
 import { DatabaseFormError } from "../DatabaseFormError";

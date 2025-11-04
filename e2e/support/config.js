@@ -1,11 +1,14 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import cypressOnFix from "cypress-on-fix";
 import installLogsPrinter from "cypress-terminal-report/src/installLogsPrinter";
 
 import * as ciTasks from "./ci_tasks";
 import { collectFailingTests } from "./collectFailedTests";
 import {
+  copyDirectory,
+  readDirectory,
   removeDirectory,
   verifyDownloadTasks,
 } from "./commands/downloads/downloadUtils";
@@ -27,9 +30,6 @@ const snowplowMicroUrl = process.env["MB_SNOWPLOW_URL"];
 
 const isQaDatabase = process.env["QA_DB_ENABLED"] === "true";
 
-const sourceVersion = process.env["CROSS_VERSION_SOURCE"];
-const targetVersion = process.env["CROSS_VERSION_TARGET"];
-
 const isEmbeddingSdk = process.env.CYPRESS_IS_EMBEDDING_SDK === "true";
 
 // docs say that tsconfig paths should handle aliases, but they don't
@@ -50,7 +50,7 @@ const assetsResolverPlugin = {
 };
 
 // these are special and shouldn't be chunked out arbitrarily
-const specBlacklist = ["/embedding-sdk/", "/cross-version/"];
+const specBlacklist = ["/embedding-sdk/"];
 
 function getSplittableSpecs(specs) {
   return specs.filter((spec) => {
@@ -62,9 +62,12 @@ function getSplittableSpecs(specs) {
 
 const defaultConfig = {
   // This is the functionality of the old cypress-plugins.js file
-  setupNodeEvents(on, config) {
+  setupNodeEvents(cypressOn, config) {
     // `on` is used to hook into various events Cypress emits
     // `config` is the resolved Cypress config
+
+    // Use cypress-on-fix to enable multiple handlers
+    const on = cypressOnFix(cypressOn);
 
     // CLI grep can't handle commas in the name
     // needed when we want to run only specific tests
@@ -124,6 +127,8 @@ const defaultConfig = {
       ...dbTasks,
       ...ciTasks,
       ...verifyDownloadTasks,
+      readDirectory,
+      copyDirectory,
       removeDirectory,
       signJwt,
     });
@@ -144,8 +149,6 @@ const defaultConfig = {
     config.env.IS_ENTERPRISE = isEnterprise;
     config.env.HAS_SNOWPLOW_MICRO = hasSnowplowMicro;
     config.env.SNOWPLOW_MICRO_URL = snowplowMicroUrl;
-    config.env.SOURCE_VERSION = sourceVersion;
-    config.env.TARGET_VERSION = targetVersion;
 
     require("@cypress/grep/src/plugin")(config);
 
@@ -230,18 +233,6 @@ const snapshotsConfig = {
   video: false,
 };
 
-const crossVersionSourceConfig = {
-  ...defaultConfig,
-  baseUrl: "http://localhost:3000",
-  specPattern: "e2e/test/scenarios/cross-version/source/**/*.cy.spec.{js,ts}",
-};
-
-const crossVersionTargetConfig = {
-  ...defaultConfig,
-  baseUrl: "http://localhost:3001",
-  specPattern: "e2e/test/scenarios/cross-version/target/**/*.cy.spec.{js,ts}",
-};
-
 const stressTestConfig = {
   ...defaultConfig,
   retries: 0,
@@ -271,7 +262,5 @@ module.exports = {
   mainConfig,
   snapshotsConfig,
   stressTestConfig,
-  crossVersionSourceConfig,
-  crossVersionTargetConfig,
   embeddingSdkComponentTestConfig,
 };

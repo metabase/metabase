@@ -336,7 +336,7 @@
   ;; Rest with guard
   (t/is (= "a=1 b=2 rest=(3 4 5)"
            (lib.util.match/match-lite [1 2 3 4 5]
-             [a b & (rst :guard #(> (count %) 2))] (str "a=" a " b=" b " rest=" rst))))
+             [a b & (rst :guard (> (count rst) 2))] (str "a=" a " b=" b " rest=" rst))))
 
   (t/testing "Edge cases"
     (t/testing "Empty collections"
@@ -355,3 +355,32 @@
       (t/is (= :false-value (lib.util.match/match-lite false
                               true :true-value
                               false :false-value))))))
+
+(t/deftest ^:parallel same-result-with-different-bindings-test
+  (t/testing "result here should not be treated as a common because it refers to different bindings in branches"
+    (t/is (= 1 (lib.util.match/match-lite [1 2]
+                 [(a :guard (odd? a)) (b :guard (even? b))] (- b a)
+                 [(b :guard (even? b)) (a :guard (odd? a))] (- b a))))))
+
+(t/deftest ^:parallel guard-predicate-test
+  (t/is (= -2 (lib.util.match/match-lite [2]
+                [(a :guard odd?)] a
+                [(b :guard even?)] (- b))))
+  (t/is (= -2 (lib.util.match/match-lite [2]
+                [(a :guard (odd? a))] a
+                [(b :guard (even? b))] (- b))))
+  (t/is (= -2 (lib.util.match/match-lite [2]
+                [(_ :guard odd?)] 1
+                [(_ :guard even?)] -2)))
+  (t/is (= 2 (lib.util.match/match-lite [{:b 2}]
+               [(_ :guard :a)] 1
+               [(_ :guard :b)] 2)))
+  (t/is (= :ok (lib.util.match/match-lite [3]
+                 [(_ :guard #{1 2 3})] :ok)))
+
+  #?(:clj (t/is (thrown? clojure.lang.Compiler$CompilerException
+                         (eval '(lib.util.match/match-lite [1]
+                                  [(a :guard #(odd? %))] a)))))
+  #?(:clj (t/is (thrown? clojure.lang.Compiler$CompilerException
+                         (eval '(lib.util.match/match-lite [1]
+                                  [(a :guard (fn [x] (odd? x)))] a))))))

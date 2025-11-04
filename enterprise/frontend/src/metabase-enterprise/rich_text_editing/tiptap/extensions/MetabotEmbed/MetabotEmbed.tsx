@@ -26,6 +26,8 @@ import { getCurrentDocument } from "metabase-enterprise/documents/selectors";
 import MetabotThinkingStyles from "metabase-enterprise/metabot/components/MetabotChat/MetabotThinking.module.css";
 import type { Card, MetabotGenerateContentRequest } from "metabase-types/api";
 
+import { wrapCardEmbed } from "../shared/layout";
+
 import S from "./MetabotEmbed.module.css";
 
 declare module "@tiptap/core" {
@@ -233,12 +235,12 @@ export const MetabotComponent = memo(
       );
 
       editor.commands.insertContentAt(nodePosition, [
-        {
+        wrapCardEmbed({
           type: "cardEmbed",
           attrs: {
             id: newCardId,
           },
-        },
+        }),
         {
           type: "paragraph",
           content: [createTextNode(data.description)],

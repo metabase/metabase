@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import MetabotLogo from "metabase/common/components/MetabotLogo";
+import { MetabotLogo } from "metabase/common/components/MetabotLogo";
 import { breakpointMinExtraLarge } from "metabase/styled-components/theme";
 
 export const GreetingRoot = styled.div`
@@ -11,7 +11,7 @@ export const GreetingRoot = styled.div`
 
 export const GreetingLogoContainer = styled.div`
   position: relative;
-  width: 3.375rem;
+  width: 4rem;
   height: 2.5rem;
   margin-inline-end: 0.5rem;
 

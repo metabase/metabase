@@ -1,11 +1,11 @@
 (ns metabase.driver.postgres
   "Database driver for PostgreSQL databases. Builds on top of the SQL JDBC driver, which implements most functionality
   for JDBC-based drivers."
+  (:refer-clojure :exclude [some select-keys mapv not-empty])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [honey.sql.pg-ops :as sql.pg-ops]
@@ -33,7 +33,8 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf :refer [some select-keys mapv not-empty]])
   (:import
    (java.io StringReader)
    (java.sql
@@ -62,9 +63,14 @@
                               :describe-fields          true
                               :describe-fks             true
                               :describe-indexes         true
+                              :describe-default-expr    true
+                              :describe-is-generated    true
+                              :describe-is-nullable     true
                               :convert-timezone         true
                               :datetime-diff            true
                               :now                      true
+                              :rename                   true
+                              :atomic-renames           true
                               :persist-models           true
                               :schemas                  true
                               :identifiers-with-spaces  true
@@ -78,6 +84,7 @@
                               :expressions/date         true
                               :database-routing         true
                               :transforms/table         true
+                              :transforms/python        true
                               :metadata/table-existence-check true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
@@ -322,10 +329,15 @@
                         [:and [:!= :column_default nil] [:like :column_default [:inline "%nextval(%"]]]
                         [:!= :is_identity [:inline "NO"]]]]]
                 :database-required]
+               [:column_default :database-default]
                [[:or
                  [:and [:!= :column_default nil] [:like :column_default [:inline "%nextval(%"]]]
                  [:!= :is_identity [:inline "NO"]]]
-                :database-is-auto-increment]]
+                :database-is-auto-increment]
+               [[:= :is_generated "ALWAYS"]
+                :database-is-generated]
+               [[:= :is_nullable [:inline "YES"]]
+                :database-is-nullable]]
       :from [[:information_schema.columns :c]]
       :left-join [[{:select [:tc.table_schema
                              :tc.table_name
@@ -359,7 +371,10 @@
                [false :pk?]
                [nil :field-comment]
                [false :database-required]
-               [false :database-is-auto-increment]]
+               [nil   :database-default]
+               [false :database-is-auto-increment]
+               [false :database-is-generated]
+               [false :database-is-nullable]]
       :from [[:pg_catalog.pg_class :pc]]
       :join [[:pg_catalog.pg_namespace :pn] [:= :pn.oid :pc.relnamespace]
              [:pg_catalog.pg_attribute :pa] [:= :pa.attrelid :pc.oid]
@@ -442,42 +457,9 @@
   [_ json-field-identifier]
   [:length [:cast json-field-identifier :text]])
 
-(defn- ->timestamp [honeysql-form]
-  (h2x/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "timestamp with time zone" "date"} honeysql-form))
-
-(defn- format-interval
-  "Generate a Postgres 'INTERVAL' literal.
-
-    (sql/format-expr [::interval 2 :day])
-    =>
-    [\"INTERVAL '2 day'\"]"
-  ;; I tried to write this with Malli but couldn't figure out how to make it work. See
-  ;; https://metaboat.slack.com/archives/CKZEMT1MJ/p1676076592468909
-  [_fn [amount unit]]
-  {:pre [(number? amount)
-         (#{:millisecond :second :minute :hour :day :week :month :year} unit)]}
-  [(format "INTERVAL '%s %s'" (num amount) (name unit))])
-
-(sql/register-fn! ::interval #'format-interval)
-
-(defn- interval [amount unit]
-  (h2x/with-database-type-info [::interval amount unit] "interval"))
-
 (defmethod sql.qp/add-interval-honeysql-form :postgres
   [driver hsql-form amount unit]
-  ;; Postgres doesn't support quarter in intervals (#20683)
-  (cond
-    (= unit :quarter)
-    (recur driver hsql-form (* 3 amount) :month)
-
-    ;; date + interval -> timestamp, so cast the expression back to date
-    (h2x/is-of-type? hsql-form "date")
-    (h2x/cast "date" (h2x/+ hsql-form (interval amount unit)))
-
-    :else
-    (let [hsql-form (->timestamp hsql-form)]
-      (-> (h2x/+ hsql-form (interval amount unit))
-          (h2x/with-type-info (h2x/type-info hsql-form))))))
+  (h2x/add-interval-honeysql-form driver hsql-form amount unit))
 
 (defmethod sql.qp/current-datetime-honeysql-form :postgres
   [driver]
@@ -535,12 +517,12 @@
     (h2x/cast "date" [:date_trunc (h2x/literal unit) expr])
 
     #_else
-    (let [expr' (->timestamp expr)]
+    (let [expr' (h2x/->pg-timestamp expr)]
       (-> [:date_trunc (h2x/literal unit) expr']
           (h2x/with-database-type-info (h2x/database-type expr'))))))
 
 (defn- extract-from-timestamp [unit expr]
-  (extract unit (->timestamp expr)))
+  (extract unit (h2x/->pg-timestamp expr)))
 
 (defn- extract-integer [unit expr]
   (h2x/->integer (extract-from-timestamp unit expr)))
@@ -588,7 +570,8 @@
   [driver [_ arg target-timezone source-timezone]]
   (let [expr         (sql.qp/->honeysql driver (cond-> arg
                                                  (string? arg) u.date/parse))
-        timestamptz? (or (h2x/is-of-type? expr "timestamptz")
+        timestamptz? (or (sql.qp.u/field-with-tz? arg)
+                         (h2x/is-of-type? expr "timestamptz")
                          (h2x/is-of-type? expr "timestamp with time zone"))
         _            (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
         expr         [:timezone target-timezone (if (not timestamptz?)
@@ -757,7 +740,7 @@
       (if (or (::sql.qp/forced-alias opts)
               (= (driver-api/qp.add.source-table opts) driver-api/qp.add.source))
         (keyword (driver-api/qp.add.source-alias opts))
-        (walk/postwalk #(if (h2x/identifier? %)
+        (perf/postwalk #(if (h2x/identifier? %)
                           (sql.qp/json-query :postgres % stored-field)
                           %)
                        identifier))
@@ -1033,6 +1016,33 @@
                            :sql    (str stmt)
                            :type   driver-api/qp.error-type.invalid-query}))
           (throw e))))))
+
+(defmulti ^:private type->database-type
+  "Internal type->database-type multimethod for Postgres that dispatches on type."
+  {:arglists '([type])}
+  identity)
+
+(defmethod type->database-type :type/TextLike [_] [:text])
+(defmethod type->database-type :type/Text [_] [:text])
+(defmethod type->database-type :type/Number [_] [:bigint])
+(defmethod type->database-type :type/BigInteger [_] [:bigint])
+(defmethod type->database-type :type/Integer [_] [:int])
+(defmethod type->database-type :type/Float [_] [:float])
+(defmethod type->database-type :type/Decimal [_] [:decimal])
+(defmethod type->database-type :type/Boolean [_] [:boolean])
+(defmethod type->database-type :type/Date [_] [:date])
+(defmethod type->database-type :type/DateTime [_] [:timestamp])
+(defmethod type->database-type :type/DateTimeWithTZ [_] [:timestamp-with-time-zone])
+(defmethod type->database-type :type/Time [_] [:time])
+(defmethod type->database-type :type/TimeWithTZ [_] [:time-with-time-zone])
+(defmethod type->database-type :type/UUID [_] [:uuid])
+(defmethod type->database-type :type/JSON [_] [:jsonb])
+(defmethod type->database-type :type/SerializedJSON [_] [:jsonb])
+(defmethod type->database-type :type/IPAddress [_] [:inet])
+
+(defmethod driver/type->database-type :postgres
+  [_driver base-type]
+  (type->database-type base-type))
 
 (defmethod driver/upload-type->database-type :postgres
   [_driver upload-type]

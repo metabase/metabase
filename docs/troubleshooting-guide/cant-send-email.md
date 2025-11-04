@@ -22,9 +22,9 @@ Before any other troubleshooting, try sending a test email to isolate the proble
 4. Verify that the email is delivered to your account.
 5. If the message is not sent or an error message is displayed in Metabase, try to use the same account credentials in another email program and see if they work. See the logs for more detailed error by navigating to **Tools** and click **Logs** in the left sidebar.
 
-## Is the mail server actually sending the message?
+## Is the mail server sending the message?
 
-**Root cause:** Some email delivery services have very specific rules regarding valid "from" addresses, or have test modes that restrict delivery.
+**Root cause:** Some email delivery services have specific rules regarding valid "from" addresses, or have test modes that restrict delivery.
 
 **Steps to take:**
 

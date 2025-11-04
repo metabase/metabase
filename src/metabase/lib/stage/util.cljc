@@ -2,16 +2,23 @@
   "General stage-related utility functions that don't require a any other Lib namespaces except for very general
   high-level ones like `lib.schema` and `lib.util`. This namespace was spun out from [[metabase.lib.stage]] to avoid
   circular dependencies between it and other Lib namespaces."
+  (:refer-clojure :exclude [not-empty])
   (:require
+   [medley.core :as m]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.util :as lib.util]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [not-empty]]))
 
 (mu/defn has-clauses? :- :boolean
   "Does given query stage have any clauses?"
   [query        :- ::lib.schema/query
    stage-number :- :int]
-  (boolean (seq (dissoc (lib.util/query-stage query stage-number) :lib/type :source-table :source-card))))
+  (-> (lib.util/query-stage query stage-number)
+      (dissoc :source-table :source-card)
+      (->> (m/filter-keys simple-keyword?))
+      not-empty
+      boolean))
 
 (mu/defn append-stage :- ::lib.schema/query
   "Adds a new blank stage to the end of the pipeline."

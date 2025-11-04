@@ -97,4 +97,15 @@ describe("HomeXraySection", () => {
 
     expect(screen.getByTestId("xray-schema-name")).toHaveTextContent("public");
   });
+
+  it("should not render a caption when there are no x-rays", async () => {
+    await setup({
+      database: createMockDatabase(),
+      candidates: [],
+    });
+
+    expect(
+      screen.queryByText(/Here are some explorations/),
+    ).not.toBeInTheDocument();
+  });
 });
