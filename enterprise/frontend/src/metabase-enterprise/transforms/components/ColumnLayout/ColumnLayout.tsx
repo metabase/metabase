@@ -6,11 +6,15 @@ import S from "./ColumnLayout.module.css";
 
 type ColumnLayoutProps = {
   children?: ReactNode;
+  "data-testid"?: string;
 };
 
-export function ColumnLayout({ children }: ColumnLayoutProps) {
+export function ColumnLayout({
+  children,
+  "data-testid": dataTestId,
+}: ColumnLayoutProps) {
   return (
-    <Flex direction="column" h="100%">
+    <Flex direction="column" h="100%" data-testid={dataTestId}>
       {children}
     </Flex>
   );

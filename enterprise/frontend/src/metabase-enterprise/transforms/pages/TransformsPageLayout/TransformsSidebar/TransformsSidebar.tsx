@@ -19,6 +19,7 @@ import { SHARED_LIB_IMPORT_PATH } from "metabase-enterprise/transforms-python/co
 import { CreateTransformMenu } from "../CreateTransformMenu";
 import { ListEmptyState } from "../ListEmptyState";
 import { SidebarContainer } from "../SidebarContainer";
+import { SidebarLoadingState } from "../SidebarLoadingState";
 import { SidebarSearch } from "../SidebarSearch";
 import {
   SidebarSortControl,
@@ -34,6 +35,8 @@ import { lastModifiedSorter, nameSorter } from "../utils";
 import { TransformsTreeNode } from "./TransformsTreeNode";
 import { buildTreeData } from "./utils";
 
+const DEFAULT_SORT_TYPE = "tree";
+
 interface TransformsSidebarProps {
   selectedTransformId?: number;
 }
@@ -46,9 +49,11 @@ export const TransformsSidebar = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery] = useDebouncedValue(searchQuery, 300);
   // TODO use useUserKeyValue
-  const [sortType = "tree", setSortType] = useLocalStorage<SortOption>(
-    "metabase-transforms-display",
-  );
+  const [sortType = DEFAULT_SORT_TYPE, setSortType] =
+    useLocalStorage<SortOption>(
+      "metabase-transforms-display",
+      DEFAULT_SORT_TYPE,
+    );
 
   const { data: transforms, error, isLoading } = useListTransformsQuery({});
   const { data: databaseData } = useListDatabasesQuery();
@@ -89,12 +94,12 @@ export const TransformsSidebar = ({
     return item.icon === "table2" ? 52 : 33;
   }, []);
 
-  if (isLoading || error) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  if (error) {
+    return <LoadingAndErrorWrapper loading={false} error={error} />;
   }
 
   return (
-    <SidebarContainer>
+    <SidebarContainer data-testid="transforms-sidebar">
       <Flex direction="column" gap="md" p="md">
         <TransformsInnerNav />
         <SidebarSearch value={searchQuery} onChange={setSearchQuery} />
@@ -106,7 +111,9 @@ export const TransformsSidebar = ({
         />
       </Flex>
       <Flex direction="column" flex={1} mih={0}>
-        {transformsSorted.length === 0 ? (
+        {isLoading ? (
+          <SidebarLoadingState />
+        ) : transformsSorted.length === 0 ? (
           <ListEmptyState
             label={
               debouncedSearchQuery
@@ -126,8 +133,6 @@ export const TransformsSidebar = ({
             }}
             TreeNode={TransformsTreeNode}
             estimateSize={getTreeItemEstimateSize}
-            px="md"
-            p={0}
           />
         ) : (
           <SidebarList>

@@ -40,7 +40,7 @@ export function createTransformJob(
         cy.wrap(body.id).as(idAlias);
       }
       if (visitTransformJob) {
-        cy.visit(`/admin/transforms/jobs/${body.id}`);
+        cy.visit(`/data-studio/transforms/jobs/${body.id}`);
       }
     });
 }

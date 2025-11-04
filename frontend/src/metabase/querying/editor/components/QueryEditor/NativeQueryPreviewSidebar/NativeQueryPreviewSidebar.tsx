@@ -57,10 +57,10 @@ export function NativeQueryPreviewSidebarToggle({
   isNativeQueryPreviewSidebarOpen,
   onToggleNativeQueryPreviewSidebar,
 }: NativeQueryPreviewSidebarToggleProps) {
+  const label = isNativeQueryPreviewSidebarOpen ? t`Hide SQL` : t`View SQL`;
+
   return (
-    <Tooltip
-      label={isNativeQueryPreviewSidebarOpen ? t`Hide SQL` : t`View SQL`}
-    >
+    <Tooltip label={label}>
       <ActionIcon
         key="view-sql"
         onClick={onToggleNativeQueryPreviewSidebar}
@@ -68,6 +68,7 @@ export function NativeQueryPreviewSidebarToggle({
         className={S.nativeSidebarToggle}
         color="text"
         variant="subtle"
+        aria-label={label}
       >
         <Icon name="sql" color="text" />
       </ActionIcon>

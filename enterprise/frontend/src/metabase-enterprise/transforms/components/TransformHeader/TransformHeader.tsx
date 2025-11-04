@@ -44,6 +44,7 @@ export function TransformHeader({
       }
       tabs={id != null && <TransformTabs id={id} />}
       actions={actions}
+      data-testid="transforms-header"
     />
   );
 }

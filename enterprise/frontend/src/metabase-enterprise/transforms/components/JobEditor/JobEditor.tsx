@@ -34,7 +34,7 @@ export function JobEditor({
   onTagListChange,
 }: JobEditorProps) {
   return (
-    <ColumnLayout>
+    <ColumnLayout data-testid="jobs-editor">
       <PaneHeader
         title={
           <PaneHeaderInput
@@ -45,6 +45,7 @@ export function JobEditor({
         }
         menu={job.id != null && <JobMoreMenuWithModal jobId={job.id} />}
         actions={actions}
+        data-testid="jobs-header"
       />
       <ColumnLayoutBody>
         <ScheduleSection job={job} onScheduleChange={onScheduleChange} />

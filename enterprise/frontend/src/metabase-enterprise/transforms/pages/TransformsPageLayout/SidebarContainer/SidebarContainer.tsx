@@ -4,11 +4,21 @@ import S from "./SidebarContainer.module.css";
 
 interface SidebarContainerProps {
   children: React.ReactNode;
+  "data-testid"?: string;
 }
 
-export const SidebarContainer = ({ children }: SidebarContainerProps) => {
+export const SidebarContainer = ({
+  children,
+  "data-testid": dataTestId,
+}: SidebarContainerProps) => {
   return (
-    <Flex direction="column" w={360} h="100%" className={S.root}>
+    <Flex
+      data-testid={dataTestId}
+      direction="column"
+      w={360}
+      h="100%"
+      className={S.root}
+    >
       {children}
     </Flex>
   );

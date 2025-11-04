@@ -10,7 +10,6 @@ interface SidebarSearchProps {
 export const SidebarSearch = ({ value, onChange }: SidebarSearchProps) => {
   return (
     <TextInput
-      size="sm"
       placeholder={t`Search…`}
       leftSection={<Icon name="search" />}
       value={value}
