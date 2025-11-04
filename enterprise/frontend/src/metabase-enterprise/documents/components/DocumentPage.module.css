@@ -3,10 +3,6 @@
   flex-direction: column;
   height: 100%;
   background-color: var(--mb-color-bg-white);
-
-  &.commentsOpened {
-    width: calc(100% - 25rem);
-  }
 }
 
 .header {
@@ -32,7 +28,7 @@
   display: flex;
   flex-direction: column;
   overflow-y: auto;
-  padding: 0 2rem;
+  padding: 0 3rem 0 2rem;
   scroll-padding-top: 32px;
 }
 

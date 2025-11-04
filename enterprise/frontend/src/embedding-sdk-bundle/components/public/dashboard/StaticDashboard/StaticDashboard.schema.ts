@@ -1,45 +1,35 @@
-import {
-  any,
-  function as functionSchema,
-  nonoptional,
-  optional,
-  strictObject,
-} from "zod/mini";
-import type { infer as zInfer } from "zod/v4/core/core";
+import * as Yup from "yup";
 
-import type { ValidateInferredSchema } from "embedding-sdk-bundle/types/schema";
+import type { FunctionSchema } from "embedding-sdk-bundle/types/schema";
 
 import type { StaticDashboardProps } from "./StaticDashboard";
 
-const rawPropsSchema = strictObject({
-  children: optional(any()),
-  className: optional(any()),
-  dashboardId: nonoptional(any()),
-  dataPickerProps: optional(
-    strictObject({
-      entityTypes: optional(any()),
-    }),
-  ),
-  hiddenParameters: optional(any()),
-  initialParameters: optional(any()),
-  onLoad: optional(any()),
-  onLoadWithoutCards: optional(any()),
-  plugins: optional(
-    strictObject({
-      mapQuestionClickActions: optional(any()),
-      dashboard: optional(any()),
-    }),
-  ),
-  style: optional(any()),
-  withCardTitle: optional(any()),
-  withDownloads: optional(any()),
-  withTitle: optional(any()),
-});
-const propsSchema: ValidateInferredSchema<
-  StaticDashboardProps,
-  zInfer<typeof rawPropsSchema>
-> = rawPropsSchema;
+const propsSchema: Yup.SchemaOf<StaticDashboardProps> = Yup.object({
+  children: Yup.mixed().optional(),
+  className: Yup.mixed().optional(),
+  dashboardId: Yup.mixed().required(),
+  dataPickerProps: Yup.object({
+    entityTypes: Yup.mixed().optional(),
+  })
+    .optional()
+    .noUnknown(),
+  hiddenParameters: Yup.mixed().optional(),
+  initialParameters: Yup.mixed().optional(),
+  onLoad: Yup.mixed().optional(),
+  onLoadWithoutCards: Yup.mixed().optional(),
+  plugins: Yup.object({
+    mapQuestionClickActions: Yup.mixed().optional(),
+    dashboard: Yup.mixed().optional(),
+  })
+    .optional()
+    .noUnknown(),
+  style: Yup.mixed().optional(),
+  withCardTitle: Yup.mixed().optional(),
+  withDownloads: Yup.mixed().optional(),
+  withTitle: Yup.mixed().optional(),
+  onVisualizationChange: Yup.mixed().optional(),
+}).noUnknown();
 
-export const staticDashboardSchema = functionSchema({
+export const staticDashboardSchema: FunctionSchema = {
   input: [propsSchema],
-});
+};

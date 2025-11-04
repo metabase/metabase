@@ -3,10 +3,12 @@
   {:clj-kondo/config '{:linters
                        ;; allowing `with-temp` here for now since this tests the REST API which doesn't fully use
                        ;; metadata providers.
-                       {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
+                       {:discouraged-var {metabase.test/with-temp           {:level :off}
+                                          toucan2.tools.with-temp/with-temp {:level :off}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -15,7 +17,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.results-metadata :as qp.results-metadata]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
@@ -151,7 +153,7 @@
             (testing disallowed-type
               (is (thrown-with-msg?
                    clojure.lang.ExceptionInfo
-                   #"Invalid parameter type :[^\s]+ for parameter \"date\".*/"
+                   #"Invalid parameter value type :[^\s]+ for parameter \"date\".*/"
                    (validate disallowed-type)))
               (testing "should be ignored if `*allow-arbitrary-mbql-parameters*` is enabled"
                 (binding [qp.card/*allow-arbitrary-mbql-parameters* true]
@@ -268,7 +270,7 @@
                        :semantic_type (base-type->semantic-type (:base_type col)))))]
       ;; use a MetadataProvider to build cards and populate metadata, but we have to use `with-temp` before
       ;; calling [[run-query-for-card]] since the Card QP code does not currently fully support metadata providers.
-      (let [mp (as-> (mt/application-database-metadata-provider (mt/id)) mp
+      (let [mp (as-> (mt/metadata-provider) mp
                  (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
                   mp
                   [{:database (mt/id)
@@ -281,9 +283,9 @@
                                             {:dataset_query   (:dataset-query card-1)
                                              :type            :model
                                              :result_metadata (add-user-edits (:result-metadata card-1))})
-                       :model/Card card-2 (let [card-2 (lib.metadata/card mp 2)]
-                                            {:dataset_query   (-> (:dataset-query card-2)
-                                                                  (assoc-in [:query :source-table] (format "card__%d" (:id card-1))))
+                       :model/Card card-2 (let [card-2 (lib.metadata/card mp 2)
+                                                mp     (mt/metadata-provider)]
+                                            {:dataset_query (lib/query mp (lib.metadata/card mp (:id card-1)))
                                              :result_metadata (:result-metadata card-2)})]
           (doseq [[card-type card-id] {"model"                     (:id card-1)
                                        "card with model as source" (:id card-2)}]

@@ -27,3 +27,8 @@
   z-index: 2;
   background-color: var(--mb-color-bg-white);
 }
+
+.tabPanel {
+  height: calc(100dvh - 160px);
+  overflow-y: auto;
+}

@@ -1,5 +1,5 @@
-import { function as functionSchema } from "zod/mini";
+import type { FunctionSchema } from "embedding-sdk-bundle/types/schema";
 
-export const sdkDebugInfoSchema = functionSchema({
+export const sdkDebugInfoSchema: FunctionSchema = {
   input: [],
-});
+};

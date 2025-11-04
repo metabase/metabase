@@ -106,7 +106,7 @@ describe("issue 21984", () => {
 
     H.commandPaletteButton().click();
     H.commandPalette().within(() => {
-      cy.findByText("Recent items").should("not.exist");
+      cy.findByText("Recents").should("not.exist");
     });
   });
 });
@@ -356,12 +356,12 @@ describe("issues 55617, 55618", () => {
 
     cy.log("field list view (metabase#55617)");
     cy.findAllByPlaceholderText("Select a semantic type")
-      .eq(8)
+      .eq(6)
       .should("have.value", "Discount")
       .click();
     H.popover().findByText("No semantic type").click();
     cy.findAllByPlaceholderText("Select a semantic type")
-      .eq(8)
+      .eq(6)
       .should("have.value", "No semantic type");
 
     cy.log("field detail view");
@@ -446,6 +446,7 @@ describe("issue 55619", () => {
       cy.findByText("Orders").click();
     });
     H.runButtonOverlay().click();
+    H.tableInteractive().should("contain", "37.65");
     cy.findByTestId("editor-tabs-columns-name").click();
     H.openColumnOptions("Discount");
     cy.findByTestId("sidebar-content")
@@ -457,6 +458,9 @@ describe("issue 55619", () => {
       .should("be.visible");
     H.datasetEditBar().button("Save").click();
     H.modal().button("Save").click();
+    H.modal().should("not.exist"); // wait for modal to disappear
+    H.queryBuilderHeader().findByText("Orders").should("be.visible"); // wait for qb to turn into view-mode
+    cy.findByTestId("loading-indicator").should("not.exist"); // wait for query to complete
     H.tableHeaderColumn("Discount (€)").should("be.visible");
   });
 });

@@ -50,8 +50,10 @@ export const collectionApi = Api.injectEndpoints({
         url: "/api/collection/tree",
         params,
       }),
-      providesTags: (collections = []) =>
-        provideCollectionListTags(collections),
+      providesTags: (collections = []) => [
+        ...provideCollectionListTags(collections),
+        "collection-tree",
+      ],
     }),
     listCollectionItems: builder.query<
       ListCollectionItemsResponse,
@@ -62,8 +64,10 @@ export const collectionApi = Api.injectEndpoints({
         url: `/api/collection/${id}/items`,
         params,
       }),
-      providesTags: (response, error, { models }) =>
-        provideCollectionItemListTags(response?.data ?? [], models),
+      providesTags: (response, error, { models, id }) => [
+        ...provideCollectionItemListTags(response?.data ?? [], models),
+        { type: "collection", id: `${id}-items` },
+      ],
     }),
     getCollection: builder.query<Collection, getCollectionRequest>({
       query: ({ id, ...params }) => {

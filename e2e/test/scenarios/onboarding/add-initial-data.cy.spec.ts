@@ -27,7 +27,7 @@ H.describeWithSnowplow(
         cy.visit("/");
         H.navigationSidebar()
           .findByRole("tab", { name: /^Getting Started/i })
-          .findByLabelText("Add data")
+          .findByLabelText("Add your data")
           .should("be.visible")
           .click();
         addDataModal().should("be.visible");
@@ -219,15 +219,12 @@ describe("Add data modal", () => {
         cy.findByText("Home").should("be.visible");
         cy.log("Make sure we don't display the 'Getting Started' section");
         cy.findByText(/Getting Started/i).should("not.exist");
-        cy.findByText("Add data").should("not.exist");
+        cy.findByText("Add your data").should("not.exist");
 
         cy.log(
-          "Make sure we don't display the 'Add' button in the 'Data' section",
+          "Make sure we don't display the 'Add data' button in the 'Data' section",
         );
         cy.findByText(/^Data$/i).should("be.visible");
-        cy.findByText("Add").should("not.exist");
-
-        cy.log("Both buttons have the same label, and neither should exist");
         cy.findByLabelText("Add data").should("not.exist");
       });
     });

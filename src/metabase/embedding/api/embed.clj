@@ -25,6 +25,7 @@
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.request.core :as request]
    [metabase.tiles.api :as api.tiles]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -74,8 +75,7 @@
                        [:token string?]]]
   (let [unsigned (unsign-and-translate-ids token)]
     (api.embed.common/check-embedding-enabled-for-card (embedding.jwt/get-in-unsigned-token-or-throw unsigned [:resource :question]))
-    (u/prog1 (api.embed.common/card-for-unsigned-token unsigned, :constraints [:enable_embedding true])
-      (events/publish-event! :event/card-read {:object-id (:id <>), :user-id api/*current-user-id*, :context :question}))))
+    (api.embed.common/card-for-unsigned-token unsigned, :constraints [:enable_embedding true])))
 
 (defn ^:private run-query-for-unsigned-token-async
   "Run the query belonging to Card identified by `unsigned-token`. Checks that embedding is enabled both globally and
@@ -108,6 +108,9 @@
    query-params :- :map]
   (run-query-for-unsigned-token-async (unsign-and-translate-ids token) :api (api.embed.common/parse-query-params query-params)))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get ["/card/:token/query/:export-format", :export-format qp.schema/export-formats-regex]
   "Like `GET /api/embed/card/query`, but returns the results as a file in the specified format."
   [{:keys [token export-format]} :- [:map
@@ -182,9 +185,8 @@
                                            [:dashcard-id ms/PositiveInt]
                                            [:card-id     ms/PositiveInt]]
    query-params :- :map]
-  (u/prog1 (process-query-for-dashcard-with-signed-token token dashcard-id card-id :api
-                                                         (api.embed.common/parse-query-params query-params))
-    (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :dashboard})))
+  (process-query-for-dashcard-with-signed-token token dashcard-id card-id :api
+                                                (api.embed.common/parse-query-params query-params)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        FieldValues, Search, Remappings                                         |
@@ -192,6 +194,9 @@
 
 ;;; --------------------------------------------------- Remappings ---------------------------------------------------
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get ["/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:export-format"
                               :export-format qp.schema/export-formats-regex]
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
@@ -311,44 +316,52 @@
                                            [:dashcard-id ms/PositiveInt]
                                            [:card-id     ms/PositiveInt]]
    query-params :- :map]
-  (u/prog1 (process-query-for-dashcard-with-signed-token token dashcard-id card-id
-                                                         :api (api.embed.common/parse-query-params query-params)
-                                                         :qp qp.pivot/run-pivot-query)
-    (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :dashboard})))
+  (process-query-for-dashcard-with-signed-token token dashcard-id card-id
+                                                :api (api.embed.common/parse-query-params query-params)
+                                                :qp qp.pivot/run-pivot-query))
 
-(api.macros/defendpoint :get "/tiles/card/:token/:zoom/:x/:y/:lat-field/:lon-field"
+(api.macros/defendpoint :get "/tiles/card/:token/:zoom/:x/:y"
   "Generates a single tile image for an embedded Card using the map visualization."
-  [{:keys [token zoom x y lat-field lon-field]}
-   :- [:merge
-       :api.tiles/route-params
-       [:map
-        [:token string?]]]
-   {:keys [parameters]}
+  [{:keys [token zoom x y]}
    :- [:map
-       [:parameters {:optional true} ms/JSONString]]]
+       [:token string?]
+       [:zoom ms/Int]
+       [:x ms/Int]
+       [:y ms/Int]]
+   {:keys [parameters latField lonField]}
+   :- [:map
+       [:parameters {:optional true} ms/JSONString]
+       [:latField string?]
+       [:lonField string?]]]
   (let [unsigned   (unsign-and-translate-ids token)
-        card-id    (embedding.jwt/get-in-unsigned-token-or-throw unsigned [:resource :question])
-        parameters (json/decode+kw parameters)
-        lat-field    (json/decode+kw lat-field)
-        lon-field    (json/decode+kw lon-field)]
+        card-id    (api.embed.common/unsigned-token->card-id unsigned)
+        parameters (when parameters (json/decode+kw parameters))
+        lat-field  (json/decode+kw latField)
+        lon-field  (json/decode+kw lonField)]
     (api.embed.common/check-embedding-enabled-for-card card-id)
-    (api.tiles/process-tiles-query-for-card card-id parameters zoom x y lat-field lon-field)))
+    (request/as-admin
+      (api.tiles/process-tiles-query-for-card card-id parameters zoom x y lat-field lon-field))))
 
-(api.macros/defendpoint :get "/tiles/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
+(api.macros/defendpoint :get "/tiles/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y"
   "Generates a single tile image for a Card on an embedded Dashboard using the map visualization."
-  [{:keys [token dashcard-id card-id zoom x y lat-field lon-field]}
-   :- [:merge
-       :api.tiles/route-params
-       [:map
-        [:token       string?]
-        [:dashcard-id ms/PositiveInt]
-        [:card-id     ms/PositiveInt]]]
-   {:keys [parameters]}
+  [{:keys [token dashcard-id card-id zoom x y]}
    :- [:map
-       [:parameters {:optional true} ms/JSONString]]]
+       [:token       string?]
+       [:dashcard-id ms/PositiveInt]
+       [:card-id     ms/PositiveInt]
+       [:zoom        ms/Int]
+       [:x           ms/Int]
+       [:y           ms/Int]]
+   {:keys [parameters latField lonField]}
+   :- [:map
+       [:parameters {:optional true} ms/JSONString]
+       [:latField string?]
+       [:lonField string?]]]
   (let [unsigned     (unsign-and-translate-ids token)
-        dashboard-id (embedding.jwt/get-in-unsigned-token-or-throw unsigned [:resource :dashboard])
-        parameters   (json/decode+kw parameters)
-        lat-field    (json/decode+kw lat-field)
-        lon-field    (json/decode+kw lon-field)]
-    (api.tiles/process-tiles-query-for-dashcard dashboard-id dashcard-id card-id parameters zoom x y lat-field lon-field)))
+        dashboard-id (api.embed.common/unsigned-token->dashboard-id unsigned)
+        parameters   (when parameters (json/decode+kw parameters))
+        lat-field    (json/decode+kw latField)
+        lon-field    (json/decode+kw lonField)]
+    (api.embed.common/check-embedding-enabled-for-dashboard dashboard-id)
+    (request/as-admin
+      (api.tiles/process-tiles-query-for-dashcard dashboard-id dashcard-id card-id parameters zoom x y lat-field lon-field))))

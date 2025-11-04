@@ -6,3 +6,4 @@ export * from "./Image";
 export * from "./Indicator";
 export * from "./Kbd";
 export * from "./Timeline";
+export * from "./Stepper";

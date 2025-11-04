@@ -173,7 +173,7 @@
                   (testing "No cache after job ran again"
                     (mt/with-clock (t 121)
                       (is (pos? (:schedule-invalidated (#'task.cache/refresh-cache-configs!))))
-                      (let [q (#'qp.card/query-for-card card3 {} {} {} {})]
+                      (let [q (#'qp.card/query-for-card card3 [] {} {} {})]
                         (is (=? (mkres nil)
                                 (-> (qp/process-query q) (dissoc :data)))))))))
 

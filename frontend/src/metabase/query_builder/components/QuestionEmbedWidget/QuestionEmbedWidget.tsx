@@ -5,6 +5,7 @@ import {
   useUpdateCardEnableEmbeddingMutation,
 } from "metabase/api";
 import type { ExportFormatType } from "metabase/embedding/components/PublicLinkPopover/types";
+import { STATIC_LEGACY_EMBEDDING_TYPE } from "metabase/embedding/constants";
 import { useSelector } from "metabase/lib/redux";
 import { publicQuestion } from "metabase/lib/urls";
 import {
@@ -48,12 +49,23 @@ export const QuestionEmbedWidget = (props: QuestionEmbedWidgetProps) => {
           onCreatePublicLink={() => createPublicQuestionLink({ id: card.id })}
           onDeletePublicLink={() => deletePublicQuestionLink({ id: card.id })}
           onUpdateEnableEmbedding={(enable_embedding) =>
-            updateEnableEmbedding({ id: card.id, enable_embedding })
+            updateEnableEmbedding({
+              id: card.id,
+              enable_embedding,
+              embedding_type: enable_embedding
+                ? STATIC_LEGACY_EMBEDDING_TYPE
+                : null,
+            })
           }
           onUpdateEmbeddingParams={(embedding_params) =>
-            updateEmbeddingParams({ id: card.id, embedding_params })
+            updateEmbeddingParams({
+              id: card.id,
+              embedding_params,
+              embedding_type: STATIC_LEGACY_EMBEDDING_TYPE,
+            })
           }
           getPublicUrl={getPublicQuestionUrl}
+          onClose={onClose}
         />
       )}
     </EmbedModal>

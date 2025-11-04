@@ -176,25 +176,30 @@
   (locking tokens
     (reset! tokens {})))
 
-(def ^:private ^:dynamic *retrying-authentication*  false)
-
 (defn- client-fn [the-client username & args]
-  (try
-    (apply the-client (username->token username) args)
-    (catch ExceptionInfo e
-      (let [{:keys [status-code]} (ex-data e)]
-        (when-not (= status-code 401)
-          (throw e))
-        ;; If we got a 401 unauthenticated clear the tokens cache + recur
-        ;;
-        ;; If we're already recursively retrying throw an Exception so we don't recurse forever.
-        (when *retrying-authentication*
-          (throw (ex-info (format "Failed to authenticate %s after two tries: %s" username (ex-message e))
-                          {:user username}
-                          e)))
-        (clear-cached-session-tokens!)
-        (binding [*retrying-authentication* true]
-          (apply client-fn the-client username args))))))
+  (letfn [(thunk []
+            (apply the-client (username->token username) args))
+          (rethrow-when-not-401 [e]
+            (when-not (= (:status-code (ex-data e)) 401)
+              (throw e)))]
+    (try
+      (thunk)
+      (catch ExceptionInfo e
+        (rethrow-when-not-401 e)
+        ;; first retry: get lock, then try again.
+        (locking tokens
+          (try
+            (thunk)
+            (catch ExceptionInfo e
+              (rethrow-when-not-401 e)
+              ;; second retry: clear cached session tokens, then try again one last time
+              (clear-cached-session-tokens!)
+              (try
+                (thunk)
+                (catch ExceptionInfo e
+                  (throw (ex-info (format "Failed to authenticate %s after three tries: %s" username (ex-message e))
+                                  {:user username}
+                                  e)))))))))))
 
 (defn- user-request
   [the-client user & args]

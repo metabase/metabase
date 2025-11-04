@@ -20,6 +20,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.content-verification.models.moderation-review :as moderation-review]
+   [metabase.lib.core :as lib]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.test-util :as perms.test-util]
@@ -53,7 +54,12 @@
    (java.util Locale)
    (java.util.concurrent CountDownLatch TimeoutException)
    (org.eclipse.jetty.server Server)
-   (org.quartz CronTrigger JobDetail JobKey Scheduler Trigger)
+   (org.quartz
+    CronTrigger
+    JobDetail
+    JobKey
+    Scheduler
+    Trigger)
    (org.quartz.impl StdSchedulerFactory)))
 
 (set! *warn-on-reflection* true)
@@ -325,18 +331,16 @@
    (fn [_]
      {:name (str "Test Transform " (u/generate-nano-id))
       :source {:type  "query"
-               :query {:database (data/id)
-                       :type     "native"
-                       :native   {:query         "SELECT 1 as num"
-                                  :template-tags {}}}}
+               :query (lib/native-query (data/metadata-provider) "SELECT 1 as num")}
       :target {:type "table"
                :name (str "test_table_" (u/generate-nano-id))}})
 
    :model/TransformJob
    (fn [_]
      (default-timestamped
-      {:name (str "Test Transform Job " (u/generate-nano-id))
-       :schedule "0 0 * * * ?"}))
+      {:name            (str "Test Transform Job " (u/generate-nano-id))
+       :schedule        "0 0 * * * ?"
+       :ui_display_type :cron/raw}))
 
    :model/TransformRun
    (fn [_]
@@ -588,6 +592,24 @@
   {:style/indent 1}
   [settings & body]
   `(do-with-discarded-setting-changes! ~(mapv keyword settings) (fn [] ~@body)))
+
+(defmacro with-random-premium-token!
+  "Temporarily sets a premium embedding token to a random value and stubs token check to avoid
+  triggering premium token status checks. Use like:
+
+  (mt/with-random-premium-token [token-value]
+    (some-call))
+
+  The token-value binding will contain the random token that was set."
+  [[token-value] & body]
+  `(let [~token-value (premium-features.test-util/random-token)]
+     (with-redefs [metabase.premium-features.token-check/check-token
+                   (constantly {:valid    true
+                                :status   "fake"
+                                :features ["test" "fixture"]
+                                :trial    false})]
+       (with-temporary-raw-setting-values [:premium-embedding-token ~token-value]
+         ~@body))))
 
 (defn- maybe-merge-original-values
   "For some map columns like `Database.settings` or `User.settings`, merge the original values with the temp ones to
@@ -859,7 +881,16 @@
       (created-query-cache!)
       (is cached?))
 
-  Only works for models that have a numeric primary key e.g. `:id`."
+  Only works for models that have a numeric primary key e.g. `:id`.
+
+  # TODO (Cam 9/29/25)
+
+  I'm planning on deprecating and removing this in near future. Instead of using this you can do
+
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      ...)
+
+  which is thread-safe."
   [models & body]
   `(do-with-model-cleanup ~models (fn [] ~@body)))
 
@@ -883,30 +914,29 @@
           (testing "Shouldn't delete other Cards"
             (is (pos? (t2/count :model/Card)))))))))
 
-(defn do-with-verified-cards!
-  "Impl for [[with-verified-cards!]]."
-  [card-or-ids thunk]
+(defn do-with-verified!
+  "Impl for [[with-verified!]]."
+  [cards-or-dashes thunk]
   (with-model-cleanup [:model/ModerationReview]
-    (doseq [card-or-id card-or-ids]
+    (doseq [[item-type model-or-ids] cards-or-dashes
+            model-or-id              model-or-ids]
       (doseq [status ["verified" nil "verified"]]
         ;; create multiple moderation review for a card, but the end result is it's still verified
         (moderation-review/create-review!
-         {:moderated_item_id (u/the-id card-or-id)
-          :moderated_item_type "card"
-          :moderator_id ((requiring-resolve 'metabase.test.data.users/user->id) :rasta)
-          :status status})))
+         {:moderated_item_id   (u/the-id model-or-id)
+          :moderated_item_type (name item-type)
+          :moderator_id        ((requiring-resolve 'metabase.test.data.users/user->id) :rasta)
+          :status              status})))
     (thunk)))
 
-(defmacro with-verified-cards!
+(defmacro with-verified!
   "Execute the body with all `card-or-ids` verified."
-  [card-or-ids & body]
-  `(do-with-verified-cards! ~card-or-ids (fn [] ~@body)))
+  [cards-or-dashes & body]
+  `(do-with-verified! ~cards-or-dashes (fn [] ~@body)))
 
-(deftest with-verified-cards-test
-  #_{:clj-kondo/ignore [:discouraged-var]}
-  (t2.with-temp/with-temp
-    [:model/Card {card-id :id} {}]
-    (with-verified-cards! [card-id]
+(deftest with-verified-test
+  (t2.with-temp/with-temp [:model/Card {card-id :id} {}]
+    (with-verified! {:card [card-id]}
       (is (=? #{{:moderated_item_id card-id
                  :moderated_item_type :card
                  :most_recent true

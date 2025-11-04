@@ -17,7 +17,7 @@ import { ActionIcon, Group, Icon, Loader, Paper } from "metabase/ui";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 
 import { BrowseHeaderContent } from "../../components/BrowseHeader.styled";
-import { trackTableClick } from "../analytics";
+import { trackBrowseXRayClicked, trackTableClick } from "../analytics";
 
 import S from "./TableBrowser.module.css";
 import { useDatabaseCrumb } from "./useDatabaseCrumb";
@@ -157,6 +157,7 @@ const TableBrowserItemButtons = ({
             tooltip={t`X-ray this table`}
             color="warning"
             aria-label={t`X-ray this table`}
+            onClick={trackBrowseXRayClicked}
           >
             <Icon name="bolt" />
           </ActionIcon>

@@ -1,4 +1,8 @@
-import type { AnyExtension } from "@tiptap/core";
+import {
+  type AnyExtension,
+  callOrReturn,
+  getExtensionField,
+} from "@tiptap/core";
 import { Blockquote } from "@tiptap/extension-blockquote";
 import { Bold } from "@tiptap/extension-bold";
 import { BulletList } from "@tiptap/extension-bullet-list";
@@ -14,6 +18,13 @@ import { CustomCodeBlock } from "../CodeBlock";
 import { CustomHeading } from "../Heading";
 import { CustomOrderedList } from "../OrderedList";
 import { CustomParagraph } from "../Paragraph";
+
+declare module "@tiptap/core" {
+  // This adds a new configuration option to the NodeConfig
+  interface NodeConfig {
+    disableDropCursor?: boolean | null;
+  }
+}
 
 const CustomBold = Bold.extend({
   addKeyboardShortcuts() {
@@ -39,10 +50,16 @@ const replaceExtension = <T extends AnyExtension>(
   return clone;
 };
 
+interface CustomStarterKitOptions extends StarterKitOptions {
+  paragraph: StarterKitOptions["paragraph"] & {
+    editorContext?: "comments" | "document";
+  };
+}
+
 /**
  * Modified StarterKit so it doesn't hijack browsers' cmd/ctrl+shift+b behavior
  */
-export const CustomStarterKit = StarterKit.extend<StarterKitOptions>({
+export const CustomStarterKit = StarterKit.extend<CustomStarterKitOptions>({
   name: "customStarterKit",
   addExtensions() {
     let extensions = this.parent?.() || [];
@@ -104,5 +121,21 @@ export const CustomStarterKit = StarterKit.extend<StarterKitOptions>({
     }
 
     return extensions;
+  },
+
+  // fixup for tiptap's wrapper over https://github.com/ProseMirror/prosemirror-dropcursor to enable "disableDropCursor" setting
+  extendNodeSchema(extension) {
+    const context = {
+      name: extension.name,
+      options: extension.options,
+      storage: extension.storage,
+    };
+
+    return {
+      disableDropCursor:
+        callOrReturn(
+          getExtensionField(extension, "disableDropCursor", context),
+        ) ?? null,
+    };
   },
 });

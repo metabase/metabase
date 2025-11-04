@@ -10,6 +10,8 @@ import SidebarItem from "metabase/common/components/SidebarItem";
 import CS from "metabase/css/core/index.css";
 import MetabaseSettings from "metabase/lib/settings";
 
+import { trackReferenceXRayClicked } from "../analytics";
+
 const TableSidebar = ({ database, table, style, className }) => (
   <div className={cx(S.sidebar, className)} style={style}>
     <div>
@@ -49,6 +51,7 @@ const TableSidebar = ({ database, table, style, className }) => (
           href={`/auto/dashboard/table/${table.id}`}
           icon="bolt"
           name={t`X-ray this table`}
+          onClick={() => trackReferenceXRayClicked("table")}
         />
       )}
     </ol>

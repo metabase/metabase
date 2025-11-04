@@ -1,9 +1,11 @@
 (ns metabase.lib.stage
   "Method implementations for a stage of a query."
+  (:refer-clojure :exclude [mapv some not-empty #?(:clj for)])
   (:require
    [clojure.string :as str]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.breakout :as lib.breakout]
+   [metabase.lib.computed :as lib.computed]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field.util :as lib.field.util]
@@ -19,10 +21,12 @@
    [metabase.lib.stage.util]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
+   [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
-   [metabase.util.namespaces :as shared.ns]))
+   [metabase.util.namespaces :as shared.ns]
+   [metabase.util.performance :refer [mapv some not-empty #?(:clj for)]]))
 
 (comment metabase.lib.stage.util/keep-me)
 
@@ -57,11 +61,14 @@
                             :mbql.stage/mbql   :source/card)]
           (not-empty
            (into []
-                 (comp (map #(assoc % :lib/source source-type))
+                 (comp (map (fn [col]
+                              (cond-> (assoc col :lib/source source-type)
+                                (= :source/card source-type) (-> (assoc :lib/card-id source-card)
+                                                                 (dissoc :lib/expression-name)))))
                        ;; do not truncate the desired column aliases coming back from a native query, because if a
                        ;; native query returns a 'crazy long' column name then we need to use that in the next stage.
                        ;; See [[metabase.lib.stage-test/propagate-crazy-long-native-identifiers-test]]
-                       (lib.field.util/add-source-and-desired-aliases-xform query (lib.util/non-truncating-unique-name-generator)))
+                       (lib.field.util/add-source-and-desired-aliases-xform query (lib.util.unique-name-generator/non-truncating-unique-name-generator)))
                  (:columns metadata))))))))
 
 (mu/defn- breakouts-columns :- [:maybe ::lib.metadata.calculation/visible-columns]
@@ -88,14 +95,21 @@
   [query        :- ::lib.schema/query
    stage-number :- :int
    options      :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
-  (when-let [{fields :fields} (lib.util/query-stage query stage-number)]
-    (-> (for [[tag :as ref-clause] fields
-              :let                 [col (lib.metadata.calculation/metadata query stage-number ref-clause)]]
-          (cond-> col
-            (= tag :expression) (assoc :lib/source              :source/expressions
-                                       :lib/source-column-alias (:lib/expression-name col))))
-        (as-> $cols (concat $cols (lib.metadata.calculation/remapped-columns query stage-number $cols options)))
-        not-empty)))
+  (let [stage             (lib.util/query-stage query stage-number)
+        ;; this key is added by [[metabase.query-processor.middleware.add-implicit-clauses/add-implicit-fields]]; we
+        ;; forward it as `:qp/implicit-field?`
+        ;; so [[metabase.lib.metadata.result-metadata/super-broken-legacy-field-ref]] will know to force Field ID
+        ;; `:field_ref`s in the QP results metadata to preserve historic behavior
+        added-implicitly? (:qp/added-implicit-fields? stage)]
+    (when-let [{fields :fields} stage]
+      (-> (for [[tag :as ref-clause] fields
+                :let                 [col (lib.metadata.calculation/metadata query stage-number ref-clause)]]
+            (cond-> col
+              (= tag :expression) (assoc :lib/source              :source/expressions
+                                         :lib/source-column-alias (:lib/expression-name col))
+              added-implicitly?   (assoc :qp/implicit-field? true)))
+          (as-> $cols (concat $cols (lib.metadata.calculation/remapped-columns query stage-number $cols options)))
+          not-empty))))
 
 (mu/defn- summary-columns :- [:maybe ::lib.metadata.calculation/visible-columns]
   [query        :- ::lib.schema/query
@@ -283,47 +297,50 @@
    stage-number                           :- :int
    _stage                                 :- ::lib.schema/stage
    {:keys [include-remaps?], :as options} :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
-  (or
-   (existing-stage-metadata query stage-number)
-   (let [summary-cols (summary-columns query stage-number options)
-         field-cols   (fields-columns query stage-number options)
-         ;; ... then calculate metadata for this stage
-         cols         (cond
-                        summary-cols
-                        (concat summary-cols field-cols)
+  ;; Not including the stage itself in the cache key, since it's not used(!)
+  (lib.computed/with-cache-ephemeral* query [::returned-columns stage-number (lib.metadata.calculation/cacheable-options options)]
+    (fn []
+      (or
+       (existing-stage-metadata query stage-number)
+       (let [summary-cols (summary-columns query stage-number options)
+             field-cols   (fields-columns query stage-number options)
+             ;; ... then calculate metadata for this stage
+             cols         (cond
+                            summary-cols
+                            (concat summary-cols field-cols)
 
-                        field-cols
-                        (reduce
-                         (fn [field-cols join]
-                           (add-cols-from-join query stage-number options field-cols join))
-                         field-cols
-                         (lib.join/joins query stage-number))
+                            field-cols
+                            (reduce
+                             (fn [field-cols join]
+                               (add-cols-from-join query stage-number options field-cols join))
+                             field-cols
+                             (lib.join/joins query stage-number))
 
-                        :else
-                        ;; there is no `:fields` or summary columns (aggregtions or breakouts) which means we return
-                        ;; all the visible columns from the source or previous stage plus all the expressions. We
-                        ;; return only the `:fields` from any joins
-                        (let [;; we don't want to include all visible joined columns, so calculate that separately
-                              source-cols (previous-stage-or-source-visible-columns
-                                           query stage-number
-                                           {:include-implicitly-joinable? false
-                                            :include-remaps?              (boolean include-remaps?)})]
-                          (concat
-                           source-cols
-                           (expressions-metadata query stage-number {:include-late-exprs? true})
-                           (lib.metadata.calculation/remapped-columns query stage-number source-cols options)
-                           (lib.join/all-joins-fields-to-add-to-parent-stage query stage-number options))))]
-     (into []
-           (comp (lib.field.util/add-source-and-desired-aliases-xform query)
-                 ;; we need to update `:name` to be the deduplicated name here, otherwise viz settings will break (see
-                 ;; longer explanation in [[metabase.lib.stage-test/returned-columns-deduplicate-names-test]]). Only
-                 ;; do this if this is the last stage of the query, just like the QP does! Otherwise we might
-                 ;; accidentally break something else that incorrectly relies on the notoriously unreliable `:name`
-                 ;; key.
-                 (if (lib.util/last-stage? query stage-number)
-                   (map #(assoc % :name (:lib/deduplicated-name %)))
-                   identity))
-           cols))))
+                            :else
+                            ;; there is no `:fields` or summary columns (aggregtions or breakouts) which means we return
+                            ;; all the visible columns from the source or previous stage plus all the expressions. We
+                            ;; return only the `:fields` from any joins
+                            (let [;; we don't want to include all visible joined columns, so calculate that separately
+                                  source-cols (previous-stage-or-source-visible-columns
+                                               query stage-number
+                                               {:include-implicitly-joinable? false
+                                                :include-remaps?              (boolean include-remaps?)})]
+                              (concat
+                               source-cols
+                               (expressions-metadata query stage-number {:include-late-exprs? true})
+                               (lib.metadata.calculation/remapped-columns query stage-number source-cols options)
+                               (lib.join/all-joins-fields-to-add-to-parent-stage query stage-number options))))]
+         (into []
+               (comp (lib.field.util/add-source-and-desired-aliases-xform query)
+                     ;; we need to update `:name` to be the deduplicated name here, otherwise viz settings will break
+                     ;; (see longer explanation in [[metabase.lib.stage-test/returned-columns-deduplicate-names-test]]).
+                     ;; Only do this if this is the last stage of the query, just like the QP does! Otherwise we might
+                     ;; accidentally break something else that incorrectly relies on the notoriously unreliable `:name`
+                     ;; key.
+                     (if (lib.util/last-stage? query stage-number)
+                       (map #(assoc % :name (:lib/deduplicated-name %)))
+                       identity))
+               cols))))))
 
 (defmethod lib.metadata.calculation/display-name-method :mbql.stage/native
   [_query _stage-number _stage _style]

@@ -1036,7 +1036,7 @@ describe("scenarios > admin > datamodel", () => {
           column: "New tax",
           values: ["2.07", "6.1", "2.9", "6.01", "7.03"],
         });
-        verifyObjectDetailPreview({ index: 4, row: ["New tax", "2.07"] });
+        verifyObjectDetailPreview({ rowNumber: 4, row: ["New tax", "2.07"] });
 
         cy.log("verify viz");
         H.openOrdersTable();
@@ -1399,6 +1399,15 @@ describe("scenarios > admin > datamodel", () => {
   });
 
   describe("Field section", () => {
+    beforeEach(() => {
+      H.resetSnowplow();
+      H.enableTracking();
+    });
+
+    afterEach(() => {
+      H.expectNoBadSnowplowEvents();
+    });
+
     describe("Name and description", () => {
       it("should allow changing the field name", () => {
         H.DataModel.visit({
@@ -1420,7 +1429,7 @@ describe("scenarios > admin > datamodel", () => {
           column: "New tax",
           values: ["2.07", "6.1", "2.9", "6.01", "7.03"],
         });
-        verifyObjectDetailPreview({ index: 4, row: ["New tax", "2.07"] });
+        verifyObjectDetailPreview({ rowNumber: 4, row: ["New tax", "2.07"] });
 
         cy.log("verify viz");
         H.openOrdersTable();
@@ -1562,7 +1571,7 @@ describe("scenarios > admin > datamodel", () => {
           values: ["14", "123", "105", "94", "132"],
         });
         verifyObjectDetailPreview({
-          index: 2,
+          rowNumber: 2,
           row: ["Remapped Product ID", "14"],
         });
 
@@ -1640,6 +1649,11 @@ describe("scenarios > admin > datamodel", () => {
           H.popover().should("not.contain.text", "Coercion");
           H.popover().findByText("UNIX seconds → Datetime").click();
           cy.wait("@updateField");
+          H.expectUnstructuredSnowplowEvent({
+            event: "metadata_edited",
+            event_detail: "type_casting",
+            triggered_from: "admin",
+          });
           verifyAndCloseToast("Casting enabled for Rating");
 
           cy.log("verify preview");
@@ -1655,7 +1669,7 @@ describe("scenarios > admin > datamodel", () => {
             ],
           });
           verifyObjectDetailPreview({
-            index: 4,
+            rowNumber: 4,
             row: ["Rating", "December 31, 1969, 4:00 PM"],
           });
 
@@ -1704,7 +1718,7 @@ describe("scenarios > admin > datamodel", () => {
             ],
           });
           verifyObjectDetailPreview({
-            index: 4,
+            rowNumber: 4,
             row: ["Rating", "December 31, 1969, 4:00 PM"],
           });
 
@@ -1753,6 +1767,11 @@ describe("scenarios > admin > datamodel", () => {
             // it should allow to just type to search (metabase#59052)
             .type("no sema{downarrow}{enter}");
           cy.wait("@updateField");
+          H.expectUnstructuredSnowplowEvent({
+            event: "metadata_edited",
+            event_detail: "semantic_type_change",
+            triggered_from: "admin",
+          });
           H.undoToast().should(
             "contain.text",
             "Semantic type of Product ID updated",
@@ -1970,8 +1989,8 @@ describe("scenarios > admin > datamodel", () => {
             values: ["2.07", "6.10", "2.90", "6.01", "7.03"],
           });
           verifyObjectDetailPreview({
-            index: 4,
-            row: ["Tax ($)", "$2.07"],
+            rowNumber: 4,
+            row: ["Tax ($)", "2.07"],
           });
 
           cy.log("change currency");
@@ -1990,8 +2009,8 @@ describe("scenarios > admin > datamodel", () => {
             values: ["2.07", "6.10", "2.90", "6.01", "7.03"],
           });
           verifyObjectDetailPreview({
-            index: 4,
-            row: ["Tax (CA$)", "CA$2.07"],
+            rowNumber: 4,
+            row: ["Tax (CA$)", "2.07"],
           });
 
           cy.log("verify viz");
@@ -2140,6 +2159,11 @@ describe("scenarios > admin > datamodel", () => {
             .click();
           H.popover().findByText("Everywhere").click();
           cy.wait("@updateField");
+          H.expectUnstructuredSnowplowEvent({
+            event: "metadata_edited",
+            event_detail: "visibility_change",
+            triggered_from: "admin",
+          });
           verifyAndCloseToast("Visibility of Tax updated");
           FieldSection.getVisibilityInput().should("have.value", "Everywhere");
 
@@ -2151,7 +2175,7 @@ describe("scenarios > admin > datamodel", () => {
             values: ["2.07", "6.1", "2.9", "6.01", "7.03"],
           });
           verifyObjectDetailPreview({
-            index: 4,
+            rowNumber: 4,
             row: ["Tax", "2.07"],
           });
 
@@ -2269,7 +2293,7 @@ describe("scenarios > admin > datamodel", () => {
             .should("be.visible");
           cy.get("@dataset.all").should("have.length", 0);
           verifyObjectDetailPreview({
-            index: 4,
+            rowNumber: 4,
             row: ["Tax", "2.07"],
           });
 
@@ -2327,6 +2351,11 @@ describe("scenarios > admin > datamodel", () => {
             .click();
           H.popover().findByText("Search box").click();
           cy.wait("@updateField");
+          H.expectUnstructuredSnowplowEvent({
+            event: "metadata_edited",
+            event_detail: "filtering_change",
+            triggered_from: "admin",
+          });
           verifyAndCloseToast("Filtering of Quantity updated");
 
           cy.log("verify preview");
@@ -2480,7 +2509,7 @@ describe("scenarios > admin > datamodel", () => {
             values: ["14", "123", "105", "94", "132"],
           });
           verifyObjectDetailPreview({
-            index: 2,
+            rowNumber: 2,
             row: ["Product ID", "14"],
           });
 
@@ -2488,6 +2517,11 @@ describe("scenarios > admin > datamodel", () => {
           H.popover().findByText("Use foreign key").click();
           H.popover().findByText("Title").click();
           cy.wait("@updateFieldDimension");
+          H.expectUnstructuredSnowplowEvent({
+            event: "metadata_edited",
+            event_detail: "display_values",
+            triggered_from: "admin",
+          });
           H.undoToast().should(
             "contain.text",
             "Display values of Product ID updated",
@@ -2495,7 +2529,7 @@ describe("scenarios > admin > datamodel", () => {
 
           cy.log("verify preview");
           verifyObjectDetailPreview({
-            index: 2,
+            rowNumber: 2,
             row: ["Product ID", "Awesome Concrete Shoes"],
           });
           verifyTablePreview({
@@ -2575,6 +2609,11 @@ describe("scenarios > admin > datamodel", () => {
                 FieldSection.getDisplayValuesInput().scrollIntoView().click();
                 H.popover().findByText("Custom mapping").click();
                 cy.wait("@updateFieldValues");
+                H.expectUnstructuredSnowplowEvent({
+                  event: "metadata_edited",
+                  event_detail: "display_values",
+                  triggered_from: "admin",
+                });
                 H.undoToast().should(
                   "contain.text",
                   "Display values of Num updated",
@@ -2631,7 +2670,7 @@ describe("scenarios > admin > datamodel", () => {
           cy.log("verify preview");
           FieldSection.getPreviewButton().click();
           verifyObjectDetailPreview({
-            index: 2,
+            rowNumber: 2,
             row: ["Product ID", "Awesome Concrete Shoes"],
           });
           verifyTablePreview({
@@ -2716,7 +2755,7 @@ describe("scenarios > admin > datamodel", () => {
             ],
           });
           verifyObjectDetailPreview({
-            index: 3,
+            rowNumber: 3,
             row: ["Rating", "Perfecto"],
           });
 
@@ -2807,6 +2846,10 @@ describe("scenarios > admin > datamodel", () => {
               'You can only use custom mapping for numerical fields with filtering set to "A list of all values"',
             );
 
+          cy.log("close popover by clicking on element inside panel");
+          FieldSection.get().findByText("Field settings").click();
+
+          cy.log("open popover");
           FieldSection.getFilteringInput().click();
           H.popover().findByText("A list of all values").click();
           cy.wait("@updateField");
@@ -2859,7 +2902,7 @@ describe("scenarios > admin > datamodel", () => {
             ],
           });
           verifyObjectDetailPreview({
-            index: 1,
+            rowNumber: 1,
             row: ["User ID", "2023-10-07T01:34:35.462-07:00"],
           });
 
@@ -2913,7 +2956,7 @@ describe("scenarios > admin > datamodel", () => {
             values: ["10", "10"],
           });
           verifyObjectDetailPreview({
-            index: 1,
+            rowNumber: 1,
             row: ["Json → A", "10"],
           });
 
@@ -2929,6 +2972,11 @@ describe("scenarios > admin > datamodel", () => {
           FieldSection.getUnfoldJsonInput().should("have.value", "Yes").click();
           H.popover().findByText("No").click();
           cy.wait("@updateField");
+          H.expectUnstructuredSnowplowEvent({
+            event: "metadata_edited",
+            event_detail: "json_unfolding",
+            triggered_from: "admin",
+          });
           H.undoToast().should(
             "contain.text",
             "JSON unfolding disabled for Json",
@@ -3049,6 +3097,11 @@ describe("scenarios > admin > datamodel", () => {
         FieldSection.getStyleInput().click();
         H.popover().findByText("Percent").click();
         cy.wait("@updateField");
+        H.expectUnstructuredSnowplowEvent({
+          event: "metadata_edited",
+          event_detail: "formatting",
+          triggered_from: "admin",
+        });
         verifyAndCloseToast("Formatting of Quantity updated");
 
         cy.log("verify preview");
@@ -3058,7 +3111,7 @@ describe("scenarios > admin > datamodel", () => {
           values: ["200%", "300%", "200%", "600%", "500%"],
         });
         verifyObjectDetailPreview({
-          index: 8,
+          rowNumber: 8,
           row: ["Quantity", "200%"],
         });
       });
@@ -3128,7 +3181,7 @@ describe("scenarios > admin > datamodel", () => {
           values: ["about 2", "about 3", "about 2", "about 6", "about 5"],
         });
         verifyObjectDetailPreview({
-          index: 8,
+          rowNumber: 8,
           row: ["Quantity", "about 2"],
         });
 
@@ -3816,31 +3869,28 @@ function verifyTablePreview({
 }
 
 function verifyObjectDetailPreview({
-  index,
+  rowNumber,
   row,
 }: {
-  index: number;
+  rowNumber: number;
   row: [string, string];
 }) {
   const [label, value] = row;
-  const labelIndex = index * 2;
-  const valueIndex = labelIndex + 1;
 
   PreviewSection.getPreviewTypeInput().findByText("Detail").click();
   cy.wait("@dataset");
 
-  cy.findAllByTestId("object-details-table-cell").should((elements) => {
-    const index = [...elements].findIndex(
-      (element) => element.textContent?.trim() === label,
-    );
-    expect(index).to.eq(labelIndex);
-  });
+  cy.findAllByTestId("column-name").then(($els) => {
+    const foundRowIndex = $els
+      .toArray()
+      .findIndex((el) => el.textContent?.trim() === label);
 
-  cy.findAllByTestId("object-details-table-cell").should((elements) => {
-    const index = [...elements].findIndex(
-      (element) => element.textContent?.trim() === value,
-    );
-    expect(index).to.eq(valueIndex);
+    expect(rowNumber).to.eq(foundRowIndex);
+
+    cy.findAllByTestId("value")
+      .should("have.length.gte", foundRowIndex)
+      .eq(foundRowIndex)
+      .should("contain", value);
   });
 }
 

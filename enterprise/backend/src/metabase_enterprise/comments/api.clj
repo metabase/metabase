@@ -4,18 +4,22 @@
    [honey.sql.helpers :as sql.helpers]
    [metabase-enterprise.comments.models.comment :as comment]
    [metabase-enterprise.comments.models.comment-reaction :as comment-reaction]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.channel.render.core :as channel.render]
    [metabase.events.core :as events]
    [metabase.request.core :as request]
    [metabase.users.api :as api.user]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+;;; TODO (Cam 10/28/25) -- don't capitalize constants https://guide.clojure.style/#naming-constants
 (def ^:private TYPE->MODEL
   {"document" :model/Document})
 
@@ -30,11 +34,6 @@
   [entity]
   (case (t2/model entity)
     :model/Document (str "/document/" (:id entity))))
-
-(defn- content->str [content]
-  (when content
-    (or (:text content)
-        (pr-str content))))
 
 ;;; schemas
 
@@ -53,6 +52,7 @@
    [:target_type [:enum "document"]]
    [:target_id   ms/PositiveInt]
    [:content     CommentContent]
+   [:html        :string]
    [:child_target_id {:optional true} [:maybe :string]]
    [:parent_comment_id {:optional true} [:maybe ms/PositiveInt]]])
 
@@ -60,6 +60,7 @@
   "Schema for updating a comment"
   [:map
    [:content {:optional true} CommentContent]
+   [:html    {:optional true} :string]
    [:is_resolved {:optional true} :boolean]])
 
 ;;; routes
@@ -82,28 +83,81 @@
                                                          {:emoji emoji
                                                           :count (count users)
                                                           :users (take 10 users)})))))]
-    (into [] (comp (map render-reactions) (keep delete-comment)) comments)))
+    (into [] (comp (map #(dissoc % :content_html))
+                   (map render-reactions)
+                   (keep delete-comment))
+          comments)))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/"
   "Get comments for an entity"
   [_route-params
    {:keys [target_type target_id]} :- [:map
                                        [:target_type [:enum "document"]]
-                                       [:target_id ms/PositiveInt]]]
-  (let [_entity  (api/read-check (TYPE->MODEL target_type) target_id)
-        comments (-> (t2/select :model/Comment
-                                {:where    [:and
-                                            [:= :target_type target_type]
-                                            [:= :target_id target_id]]
-                                 :order-by [[:created_at :asc]]})
-                     (t2/hydrate :creator :reactions))]
-    {:comments (render-comments comments)}))
+                                       [:target_id ms/PositiveInt]]
+   _body
+   req]
+  (if (analytics/embedding-context? (get-in req [:headers "x-metabase-client"]))
+    {:disabled true
+     :comments []}
+    (let [_entity  (api/read-check (TYPE->MODEL target_type) target_id)
+          comments (-> (t2/select :model/Comment
+                                  {:where    [:and
+                                              [:= :target_type target_type]
+                                              [:= :target_id target_id]]
+                                   :order-by [[:created_at :asc]]})
+                       (t2/hydrate :creator :reactions))]
+      {:comments (render-comments comments)})))
+
+(defn notify-comment!
+  "Send a notification about comment"
+  [{:keys [target_type target_id parent_comment_id] :as comment}
+   & [{:keys [entity parent]
+       ;; if you don't pass them we'll try to fetch them
+       :or   {entity (t2/select-one (TYPE->MODEL target_type) :id target_id)
+              parent (when parent_comment_id
+                       (t2/select-one :model/Comment :id parent_comment_id))}}]]
+  (let [clause     (if parent_comment_id
+                     {:where [:in :id {:from   [:comment]
+                                       :select [:creator_id]
+                                       :where  [:or
+                                                [:= :id parent_comment_id]
+                                                [:= :parent_comment_id parent_comment_id]]}]}
+                     ;; TODO: when we expand to more entity types, add dispatch here if not everyone has `creator_id`
+                     {:where [:= :id (:creator_id entity)]})
+        mentions   (comment/mentions (:content comment))
+        recipients (-> (t2/select-fn-set :email [:model/User :email]
+                                         (cond-> clause
+                                           (seq mentions) (sql.helpers/where :or [:in :id mentions])))
+                       (disj (:email @api/*current-user*)))
+        payload    {:entity_type    (:target_type comment)
+                    :entity_title   (:name entity)
+                    :comment_href   (comment/url entity comment)
+                    :document_href  (urlpath-for entity)
+                    :created_at     (:created_at comment)
+                    :author         (:common_name (:creator comment))
+                    :comment        (:content_html comment)
+                    :parent_author  (:common_name (:creator parent))
+                    :parent_comment (:content_html parent)
+                    :style            {:color_text_dark   channel.render/color-text-dark
+                                       :color_text_light  channel.render/color-text-light
+                                       :color_text_medium channel.render/color-text-medium}}]
+    (doseq [email recipients]
+      (events/publish-event! :event/comment-created (assoc payload :email email)))))
+
+(defn notify-comment-id!
+  "Send a notification using only comment id"
+  [comment-id]
+  (notify-comment! (-> (t2/select-one :model/Comment :id comment-id)
+                       (t2/hydrate :creator :reactions))))
 
 (api.macros/defendpoint :post "/"
   "Create a new comment"
   [_route-params
    _query-params
-   {:keys [target_type target_id child_target_id parent_comment_id content]} :- CreateComment]
+   {:keys [target_type target_id child_target_id parent_comment_id content html]} :- CreateComment]
   (let [entity     (-> (api/read-check (TYPE->MODEL target_type) target_id)
                        (u/prog1 (api/check-400 (not (entity-archived? <>))
                                                "Cannot comment on archived entities")))
@@ -121,41 +175,22 @@
                                                        :child_target_id   child_target_id
                                                        :parent_comment_id parent_comment_id
                                                        :content           content
+                                                       :content_html      html
                                                        :creator_id        api/*current-user-id*})
                        (t2/hydrate :creator)
                        ;; New comments always have empty reactions map
-                       (assoc :reactions []))
-        clause     (if parent_comment_id
-                     {:where [:in :id {:from   [:comment]
-                                       :select [:creator_id]
-                                       :where  [:or
-                                                [:= :id parent_comment_id]
-                                                [:= :parent_comment_id parent_comment_id]]}]}
-                     ;; FIXME: add dispatch on different entity types
-                     {:where [:= :id (:creator_id entity)]})
-        mentions   (comment/mentions content)
-        recipients (-> (t2/select-fn-set :email [:model/User :email]
-                                         (cond-> clause
-                                           (seq mentions) (sql.helpers/where :or [:in :id mentions])))
-                       (disj (:email @api/*current-user*)))
-        payload    {:entity_type    target_type
-                    :entity_title   (:name entity)
-                    :comment_href   (comment/url entity comment)
-                    :document_href  (urlpath-for entity)
-                    :created_at     (:created_at comment)
-                    :author         (:common_name (:creator comment))
-                    :comment        (content->str (:content comment))
-                    :parent_author  (:common_name (:creator parent))
-                    :parent_comment (content->str (:content parent))}]
-    (doseq [email recipients]
-      (events/publish-event! :event/comment-created (assoc payload :email email)))
+                       (assoc :reactions []))]
+    (notify-comment! comment {:entity entity :parent parent})
+    (events/publish-event! :event/comment-create
+                           {:object comment
+                            :user-id api/*current-user-id*})
     comment))
 
 (api.macros/defendpoint :put "/:comment-id"
   "Update a comment"
   [{:keys [comment-id]} :- [:map [:comment-id ms/PositiveInt]]
    _query-params
-   {:keys [content is_resolved]} :- UpdateComment]
+   {:keys [content html is_resolved]} :- UpdateComment]
   (let [comment (api/check-404 (t2/select-one :model/Comment :id comment-id))
         entity  (-> (api/read-check (TYPE->MODEL (:target_type comment)) (:target_id comment))
                     (u/prog1 (api/check-400 (not (entity-archived? <>))
@@ -173,13 +208,17 @@
       ;; Anyone with write permission to target entity can resolve/unresolve
       (api/write-check entity))
 
-    (when-let [updates (-> {:content content :is_resolved is_resolved}
+    (when-let [updates (-> {:content content :html html :is_resolved is_resolved}
                            u/remove-nils
                            not-empty)]
       (t2/update! :model/Comment comment-id updates))
 
-    (-> (t2/select-one :model/Comment :id comment-id)
-        (t2/hydrate :creator :reactions))))
+    (let [updated-comment (-> (t2/select-one :model/Comment :id comment-id)
+                              (t2/hydrate :creator :reactions))]
+      (events/publish-event! :event/comment-update
+                             {:object updated-comment
+                              :user-id api/*current-user-id*})
+      updated-comment)))
 
 (api.macros/defendpoint :delete "/:comment-id"
   "Soft delete a comment"
@@ -198,6 +237,10 @@
 
     ;; Soft delete the comment
     (t2/update! :model/Comment comment-id {:deleted_at [:now]})
+
+    (events/publish-event! :event/comment-delete
+                           {:object comment
+                            :user-id api/*current-user-id*})
 
     ;; Return 204 No Content
     api/generic-204-no-content))
@@ -219,17 +262,20 @@
 
 (api.macros/defendpoint :get "/mentions"
   "Get a list of entities suitable for mentions. NOTE: only users for now."
-  [_route-params _query-params]
-  (let [clauses (api.user/user-clauses nil nil nil nil)]
+  [_route _query _body req]
+  ;; no access in embedding context
+  (api/check-404 (not (analytics/embedding-context? (get-in req [:headers "x-metabase-client"]))))
+
+  (let [clauses (user/filter-clauses nil nil nil nil {:limit  (request/limit)
+                                                      :offset (request/offset)})]
     ;; returns nothing while we're trying to figure out how do we deal with sandboxes and tenants etc
     ;; do not forget to uncomment tests (both api and e2e)
-    {:data   []
-     #_(->> (t2/select [:model/User :id :first_name :last_name]
-                       (-> clauses
-                           (sql.helpers/order-by [:%lower.first_name :asc]
-                                                 [:%lower.last_name :asc]
-                                                 [:id :asc])))
-            (mapv #(assoc % :model "user")))
+    {:data   (->> (t2/select [:model/User :id :first_name :last_name]
+                             (-> clauses
+                                 (sql.helpers/order-by [:%lower.first_name :asc]
+                                                       [:%lower.last_name :asc]
+                                                       [:id :asc])))
+                  (mapv #(assoc % :model "user")))
      :total  (:count (t2/query-one
                       (merge {:select [[[:count [:distinct :core_user.id]] :count]]
                               :from   :core_user}

@@ -1,6 +1,9 @@
 (ns metabase.lib.metadata.invocation-tracker
   (:require
-   #?(:clj [pretty.core :as pretty])
+   #?@(:clj
+       (^{:clj-kondo/ignore [:discouraged-namespace]} [clj-yaml.core]
+        [metabase.util.json :as json]
+        [pretty.core :as pretty]))
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]))
 
 (def ^:private ^:dynamic *to-track-metadata-types*
@@ -89,3 +92,18 @@
   "Wraps `metadata-provider` with a provider that records all invoked ids of [[lib.metadata.protocols/MetadataProvider]] methods."
   [metadata-provider]
   (->InvocationTracker (atom {}) metadata-provider))
+
+#?(:clj
+   ;; do not encode MetadataProviders to JSON, just generate `nil` instead.
+   (json/add-encoder
+    InvocationTracker
+    (fn [_mp json-generator]
+      (json/generate-nil nil json-generator))))
+
+;;; this is here as a sanity check to make sure we're not trying to write MBQL 5 to SerDes yet until we update the
+;;; SerDes code to handle it
+#?(:clj
+   (extend-protocol clj-yaml.core/YAMLCodec
+     InvocationTracker
+     (encode [_this]
+       (throw (Exception. "Encoding MBQL 5 queries to YAML for SerDes is not yet supported; please convert the query to legacy first.")))))
