@@ -6,7 +6,7 @@
    [clojure.walk :as walk]
    [metabase-enterprise.representations.toucan.core :as rep-t2]
    [metabase-enterprise.representations.v0.common :as v0-common]
-   [metabase-enterprise.representations.v0.mbql :as v0-mbql]
+   [metabase-enterprise.representations.v0.core :as v0-core]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -78,7 +78,7 @@
      (cond-> node
        (and (map? node)
             (= "cardEmbed" (:type node)))
-       (update-in [:attrs :id] v0-common/id-model->ref :model/Card)))
+       (update-in [:attrs :id] v0-core/id-model->ref :model/Card)))
    yaml))
 
 (defn- edn->markdown
