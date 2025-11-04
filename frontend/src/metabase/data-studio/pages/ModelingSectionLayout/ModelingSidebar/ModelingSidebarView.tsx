@@ -37,14 +37,24 @@ export function ModelingSidebarView({ collections }: ModelingSidebarViewProps) {
     [dispatch],
   );
 
-  const handleCreateNotebook = useCallback(() => {
+  const handleCreateModelNotebook = useCallback(() => {
     setIsCreateMenuOpen(false);
     dispatch(push(Urls.newDataStudioQueryModel()));
   }, [dispatch]);
 
-  const handleCreateNative = useCallback(() => {
+  const handleCreateModelNative = useCallback(() => {
     setIsCreateMenuOpen(false);
     dispatch(push(Urls.newDataStudioNativeModel()));
+  }, [dispatch]);
+
+  const handleCreateMetricNotebook = useCallback(() => {
+    setIsCreateMenuOpen(false);
+    dispatch(push(Urls.newDataStudioQueryMetric()));
+  }, [dispatch]);
+
+  const handleCreateMetricNative = useCallback(() => {
+    setIsCreateMenuOpen(false);
+    dispatch(push(Urls.newDataStudioNativeMetric()));
   }, [dispatch]);
 
   return (
@@ -82,18 +92,48 @@ export function ModelingSidebarView({ collections }: ModelingSidebarViewProps) {
             />
           </ModelingSidebarSection>
           <Menu.Dropdown>
-            <Menu.Item
-              leftSection={<Icon name="notebook" />}
-              onClick={handleCreateNotebook}
-            >
-              {t`Notebook`}
-            </Menu.Item>
-            <Menu.Item
-              leftSection={<Icon name="sql" />}
-              onClick={handleCreateNative}
-            >
-              {t`Native query`}
-            </Menu.Item>
+            <Menu.Sub>
+              <Menu.Sub.Target>
+                <Menu.Sub.Item leftSection={<Icon name="model" />}>
+                  {t`Model`}
+                </Menu.Sub.Item>
+              </Menu.Sub.Target>
+              <Menu.Sub.Dropdown>
+                <Menu.Item
+                  leftSection={<Icon name="notebook" />}
+                  onClick={handleCreateModelNotebook}
+                >
+                  {t`Notebook`}
+                </Menu.Item>
+                <Menu.Item
+                  leftSection={<Icon name="sql" />}
+                  onClick={handleCreateModelNative}
+                >
+                  {t`Native query`}
+                </Menu.Item>
+              </Menu.Sub.Dropdown>
+            </Menu.Sub>
+            <Menu.Sub>
+              <Menu.Sub.Target>
+                <Menu.Sub.Item leftSection={<Icon name="metric" />}>
+                  {t`Metric`}
+                </Menu.Sub.Item>
+              </Menu.Sub.Target>
+              <Menu.Sub.Dropdown>
+                <Menu.Item
+                  leftSection={<Icon name="notebook" />}
+                  onClick={handleCreateMetricNotebook}
+                >
+                  {t`Notebook`}
+                </Menu.Item>
+                <Menu.Item
+                  leftSection={<Icon name="sql" />}
+                  onClick={handleCreateMetricNative}
+                >
+                  {t`Native query`}
+                </Menu.Item>
+              </Menu.Sub.Dropdown>
+            </Menu.Sub>
           </Menu.Dropdown>
         </Menu>
 

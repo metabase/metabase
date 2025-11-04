@@ -5,3 +5,8 @@
   border-color: var(--mb-color-border);
   color: var(--mb-color-text-primary);
 }
+
+.dropdown[data-menu-dropdown="true"] {
+  padding: 0.75rem;
+  overflow: visible;
+}
