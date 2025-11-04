@@ -77,7 +77,7 @@
 (defn- broken-out-details
   "Connection details that can be used when pretending the Metabase DB is itself a `Database` (e.g., to use the Generic
   SQL driver functions on the Metabase DB itself)."
-  [db-type {:keys [mb-db-dbname mb-db-host mb-db-pass mb-db-port mb-db-user mb-db-azure-managed-identity-client-id mb-db-aws-iam]
+  [db-type {:keys [mb-db-dbname mb-db-host mb-db-pass mb-db-port mb-db-user mb-db-azure-managed-identity-client-id mb-db-aws-iam mb-db-ssl-cert]
             :as   env-vars}]
   (if (= db-type :h2)
     (assoc h2-connection-properties
@@ -88,7 +88,8 @@
      :user                             mb-db-user
      :password                         mb-db-pass
      :azure-managed-identity-client-id mb-db-azure-managed-identity-client-id
-     :aws-iam                          mb-db-aws-iam}))
+     :aws-iam                          mb-db-aws-iam
+     :ssl-cert                         mb-db-ssl-cert}))
 
 (defn- env->DataSource
   [db-type {:keys [mb-db-connection-uri mb-db-user mb-db-pass mb-db-azure-managed-identity-client-id aws-iam], :as env-vars}]
@@ -133,7 +134,8 @@
     :mb-db-user                             (config/config-str :mb-db-user)
     :mb-db-pass                             (config/config-str :mb-db-pass)
     :mb-db-azure-managed-identity-client-id (config/config-str :mb-db-azure-managed-identity-client-id)
-    :mb-db-aws-iam                          (config/config-bool :mb-db-aws-iam)}
+    :mb-db-aws-iam                          (config/config-bool :mb-db-aws-iam)
+    :mb-db-ssl-cert                         (config/config-str :mb-db-ssl-cert)}
    (env-defaults db-type)))
 
 (def env
@@ -178,21 +180,23 @@
 
 ;; If someone is using mysql and wants to authenticate with AWS IAM, they need to either specify the server ssl certificate
 ;; or trust it. Let's let them know in case they don't.
-(when-let [raw-connection-string (not-empty (:mb-db-connection-uri env))]
-  (when (and (:aws-iam env)
-             (= db-type :mysql)
-             (not
-              (or
-               (str/includes? raw-connection-string "trustServerCertificate=true")
-               (and
-                (str/includes? raw-connection-string "sslMode=VERIFY_CA")
-                (str/includes? raw-connection-string "serverSslCert=")))))
-    ;; Unfortunately this can't be i18n'ed because the application DB hasn't been initialized yet at the time we log
-    ;; this and thus the site locale is unavailable.
-    (log/warn (str/join " " ["Warning: MySQL connection string with AWS IAM authentication detected."
-                             "You must add one of the following to your application DB connection string:"
-                             "`?sslMode=VERIFY_CA&serverSslCert=/path/to/certificate.pem` or `?trustServerCertificate=true`"
-                             "SSL certificates can be found at: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.SSL.html"]))))
+(when (and (:aws-iam env)
+           (= db-type :mysql))
+  (let [raw-connection-string (not-empty (:mb-db-connection-uri env))
+        ssl-cert (:mb-db-ssl-cert env)
+        has-ssl-config? (or ssl-cert
+                            (and raw-connection-string
+                                 (or (str/includes? raw-connection-string "trustServerCertificate=true")
+                                     (and (str/includes? raw-connection-string "sslMode=VERIFY_CA")
+                                          (str/includes? raw-connection-string "serverSslCert=")))))]
+    (when-not has-ssl-config?
+      ;; Unfortunately this can't be i18n'ed because the application DB hasn't been initialized yet at the time we log
+      ;; this and thus the site locale is unavailable.
+      (log/warn (str/join " " ["Warning: MySQL with AWS IAM authentication detected but SSL configuration is missing."
+                               (if raw-connection-string
+                                 "Add one of: `?sslMode=VERIFY_CA&serverSslCert=/path/to/certificate.pem` or `?trustServerCertificate=true` to your connection URI."
+                                 "Set MB_DB_SSL_CERT environment variable to either 'trust' or a path to your SSL certificate.")
+                               "SSL certificates can be found at: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.SSL.html"])))))
 
 (def ^javax.sql.DataSource data-source
   "A [[javax.sql.DataSource]] ultimately derived from the environment variables."

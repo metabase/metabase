@@ -49,7 +49,7 @@
    (dissoc opts :host :port :db :aws-iam)))
 
 (defmethod spec :mysql
-  [_ {:keys [host port db aws-iam]
+  [_ {:keys [host port db aws-iam ssl-cert]
       :or   {host "localhost", port 3306, db ""}
       :as   opts}]
   (merge
@@ -57,10 +57,19 @@
     :subprotocol "mysql"
     :subname     (make-subname host (or port 3306) db)}
    (when aws-iam
-     (assoc
+     (merge
       (make-aws-iam-spec "mysql")
-      :sslMode "VERIFY_CA"))
-   (dissoc opts :host :port :db :aws-iam)))
+      (cond
+        (= ssl-cert "trust")
+        {:trustServerCertificate true}
+
+        (and ssl-cert (not= ssl-cert "trust"))
+        {:sslMode       "VERIFY_CA"
+         :serverSslCert ssl-cert}
+
+        :else
+        {:sslMode "VERIFY_CA"})))
+   (dissoc opts :host :port :db :aws-iam :ssl-cert)))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !!                                                                                                               !!
