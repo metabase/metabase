@@ -1185,7 +1185,7 @@ export function dateStyleOption(
 ) {
   let format = getDateFormatFromStyle(style, unit);
   if (abbreviate) {
-    format = format.replace(/MMMM/, "MMM").replace(/dddd/, "ddd");
+    format = format.replace(/MMMM/, "MMM").replace(/dddd/, "ddd"); // FIXME: make this not explode, format is null
   }
   return {
     name: EXAMPLE_DATE.format(format),
